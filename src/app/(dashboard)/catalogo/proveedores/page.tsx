@@ -8,17 +8,53 @@ import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { Modal } from "@/components/Modal";
 
-const PRIORIDAD_COLORS: Record<string, string> = {
-  ALTA:  '#EF4444',
-  MEDIA: '#F59E0B',
-  BAJA:  '#6B7280',
+const STAR_COLOR = '#C9A84C'
+
+const GIROS_OPCIONES = [
+  'Renta de equipo',
+  'Venta de equipo',
+  'Transporte',
+  'Fotografía y video',
+  'Catering y limpieza',
+  'Iluminación arquitectónica',
+  'Sonorización',
+  'Estructuras y tarimas',
+  'Pistas de baile',
+  'Cerrajería',
+  'Mecánico',
+  'Grúas',
+  'DJ',
+  'Agencia de marketing',
+  'Particular',
+  'Otro',
+] as const
+
+function StarRating({ value, onChange, size = 16 }: {
+  value: number
+  onChange?: (v: number) => void
+  size?: number
+}) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3].map(n => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onChange?.(value === n ? 0 : n)}
+          className="leading-none transition-transform hover:scale-110 focus:outline-none"
+          style={{
+            fontSize: size,
+            color: n <= value ? STAR_COLOR : '#2a2a2a',
+            cursor: onChange ? 'pointer' : 'default',
+            lineHeight: 1,
+          }}
+        >
+          {n <= value ? '\u2605' : '\u2606'}
+        </button>
+      ))}
+    </div>
+  )
 }
-const PRIORIDAD_LABELS: Record<string, string> = {
-  ALTA:  'Alta',
-  MEDIA: 'Media',
-  BAJA:  'Baja',
-}
-const PRIORIDAD_ORDER: Record<string, number> = { ALTA: 0, MEDIA: 1, BAJA: 2 }
 
 type Proveedor = {
   id: string;
@@ -37,8 +73,7 @@ type Proveedor = {
   noTarjeta: string | null;
   datosFiscales: string | null;
   activo: boolean;
-  prioridad: boolean;
-  nivelPrioridad: string;
+  prioridad: number;
   portalToken: string | null;
 };
 
@@ -71,7 +106,7 @@ const fmt = (n: number) => new Intl.NumberFormat("es-MX", { style: "currency", c
 const EMPTY = {
   nombre: "", empresa: "", empresaId: "", giro: "", telefono: "", correo: "",
   notas: "", rfc: "", cuentaBancaria: "", clabe: "", banco: "", noTarjeta: "", datosFiscales: "",
-  nivelPrioridad: "MEDIA",
+  prioridad: 0,
 };
 
 type SortKey = "nombre" | "giro" | "empresa";
@@ -82,7 +117,7 @@ export default function ProveedoresPage() {
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [editing, setEditing] = useState<Proveedor | null>(null);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState(EMPTY);
+  const [form, setForm] = useState<typeof EMPTY>(EMPTY);
   const [saving, setSaving] = useState(false);
   const [autoSaved, setAutoSaved] = useState(false);
   const [view, setView] = useState<"card" | "list">("list");
@@ -94,14 +129,13 @@ export default function ProveedoresPage() {
   const currentEditId = useRef<string | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Popover state
+  const [prioPopover, setPrioPopover] = useState<string | null>(null)
+  const [giroPopover, setGiroPopover] = useState<string | null>(null)
+  const [giroManual, setGiroManual] = useState<string | null>(null)
+
   // Empresa combobox state
   const [empresaEdit, setEmpresaEdit] = useState<{ id: string; nombre: string } | null>(null);
-
-  // Giro combobox state
-  const [girosBase, setGirosBase] = useState<string[]>([]);
-  const [giroQuery, setGiroQuery] = useState("");
-  const [giroDropdown, setGiroDropdown] = useState(false);
-  const giroInputRef = useRef<HTMLInputElement>(null);
 
   // Portal state
   const [generandoToken, setGenerandoToken] = useState<string | null>(null);
@@ -115,31 +149,7 @@ export default function ProveedoresPage() {
     setProveedores(data.proveedores ?? []);
   }
 
-  async function loadGiros() {
-    const res = await fetch("/api/giros-proveedor", { cache: "no-store" });
-    const data = await res.json();
-    setGirosBase(Array.isArray(data) ? data : []);
-  }
-
-  async function selectGiro(nombre: string) {
-    setForm(p => ({ ...p, giro: nombre }));
-    setGiroQuery(nombre);
-    setGiroDropdown(false);
-  }
-
-  async function addGiro(nombre: string) {
-    const trimmed = nombre.trim();
-    if (!trimmed) return;
-    await fetch("/api/giros-proveedor", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre: trimmed }),
-    });
-    setGirosBase(prev => [...new Set([...prev, trimmed])].sort());
-    selectGiro(trimmed);
-  }
-
-  useEffect(() => { load(); loadGiros(); }, []);
+  useEffect(() => { load(); }, []);
 
   async function generarPortalToken(p: Proveedor) {
     if (p.portalToken) {
@@ -207,7 +217,7 @@ export default function ProveedoresPage() {
     if (!editing || editing.id !== currentEditId.current) return;
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(async () => {
-      const payload = { nombre: form.nombre, empresaId: form.empresaId || null, empresa: form.empresa || null, giro: form.giro || null, telefono: form.telefono || null, correo: form.correo || null, notas: form.notas || null, rfc: form.rfc || null, cuentaBancaria: form.cuentaBancaria || null, clabe: form.clabe || null, banco: form.banco || null, noTarjeta: form.noTarjeta || null, datosFiscales: form.datosFiscales || null };
+      const payload = { nombre: form.nombre, empresaId: form.empresaId || null, empresa: form.empresa || null, giro: form.giro || null, telefono: form.telefono || null, correo: form.correo || null, notas: form.notas || null, rfc: form.rfc || null, cuentaBancaria: form.cuentaBancaria || null, clabe: form.clabe || null, banco: form.banco || null, noTarjeta: form.noTarjeta || null, datosFiscales: form.datosFiscales || null, prioridad: form.prioridad ?? 0 };
       await fetch(`/api/proveedores/${editing.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       setProveedores(prev => prev.map(p => p.id === editing.id ? { ...p, ...payload } : p));
       setAutoSaved(true); setTimeout(() => setAutoSaved(false), 2000);
@@ -224,16 +234,15 @@ export default function ProveedoresPage() {
       cuentaBancaria: p.cuentaBancaria ?? "", clabe: p.clabe ?? "",
       banco: p.banco ?? "", noTarjeta: p.noTarjeta ?? "",
       datosFiscales: p.datosFiscales ?? "",
-      nivelPrioridad: p.nivelPrioridad ?? 'MEDIA',
+      prioridad: p.prioridad ?? 0,
     });
     setEmpresaEdit(p.compania ?? null);
-    setGiroQuery(p.giro ?? "");
     setCreating(false);
   }
 
-  function startCreate() { currentEditId.current = null; setCreating(true); setEditing(null); setForm(EMPTY); setEmpresaEdit(null); setGiroQuery(""); }
+  function startCreate() { currentEditId.current = null; setCreating(true); setEditing(null); setForm(EMPTY); setEmpresaEdit(null); }
   function cancel() { currentEditId.current = null; setEditing(null); setCreating(false); }
-  function set(key: keyof typeof EMPTY, value: string) {
+  function set<K extends keyof typeof EMPTY>(key: K, value: typeof EMPTY[K]) {
     setForm(prev => ({ ...prev, [key]: value }));
   }
 
@@ -253,6 +262,7 @@ export default function ProveedoresPage() {
       banco: form.banco || null,
       noTarjeta: form.noTarjeta || null,
       datosFiscales: form.datosFiscales || null,
+      prioridad: form.prioridad ?? 0,
     };
     const url = editing ? `/api/proveedores/${editing.id}` : "/api/proveedores";
     const method = editing ? "PATCH" : "POST";
@@ -268,25 +278,35 @@ export default function ProveedoresPage() {
     setSaving(false);
   }
 
-  async function togglePrioridad(id: string, current: boolean) {
-    await fetch(`/api/proveedores/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prioridad: !current }),
-    });
-    setProveedores(prev => prev.map(p => p.id === id ? { ...p, prioridad: !current } : p));
+  async function handleSetPrioridad(id: string, value: number) {
+    setProveedores(prev => prev.map(p => p.id === id ? { ...p, prioridad: value } : p))
+    setPrioPopover(null)
+    try {
+      const res = await fetch(`/api/proveedores/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prioridad: value }),
+      })
+      if (!res.ok) throw new Error('PATCH failed')
+    } catch {
+      // optimistic — leave as-is on failure
+    }
   }
 
-  async function cycleNivelPrioridad(id: string, current: string) {
-    const levels = ['ALTA', 'MEDIA', 'BAJA'] as const
-    const idx = levels.indexOf(current as typeof levels[number])
-    const next = levels[(idx + 1) % levels.length]
-    setProveedores(prev => prev.map(p => p.id === id ? { ...p, nivelPrioridad: next } : p))
-    await fetch(`/api/proveedores/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nivelPrioridad: next }),
-    })
+  async function handleSetGiro(id: string, value: string) {
+    const giro = value.trim() || null
+    setProveedores(prev => prev.map(p => p.id === id ? { ...p, giro } : p))
+    setGiroPopover(null)
+    setGiroManual(null)
+    try {
+      await fetch(`/api/proveedores/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ giro }),
+      })
+    } catch {
+      // silently fail, data remains in optimistic state
+    }
   }
 
   async function toggleActivo(p: Proveedor) {
@@ -320,9 +340,7 @@ export default function ProveedoresPage() {
   });
 
   filtered = [...filtered].sort((a, b) => {
-    const prioA = PRIORIDAD_ORDER[a.nivelPrioridad ?? 'MEDIA'] ?? 1
-    const prioB = PRIORIDAD_ORDER[b.nivelPrioridad ?? 'MEDIA'] ?? 1
-    if (prioA !== prioB) return prioA - prioB
+    if (b.prioridad !== a.prioridad) return b.prioridad - a.prioridad // higher stars first
     if (sortBy === "giro") return (a.giro ?? "").localeCompare(b.giro ?? "");
     if (sortBy === "empresa") return (a.empresa ?? a.nombre).localeCompare(b.empresa ?? b.nombre);
     return a.nombre.localeCompare(b.nombre);
@@ -333,6 +351,11 @@ export default function ProveedoresPage() {
 
   return (
     <div className="p-3 md:p-6 max-w-6xl mx-auto">
+      {/* Backdrop for popovers */}
+      {(prioPopover || giroPopover) && (
+        <div className="fixed inset-0 z-40" onClick={() => { setPrioPopover(null); setGiroPopover(null) }} />
+      )}
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Proveedores</h1>
@@ -382,38 +405,29 @@ export default function ProveedoresPage() {
               placeholder="Buscar o crear empresa..."
             />
           </div>
-          <div className="relative">
-            <label className="text-xs text-gray-500 mb-1 block">Giro / Tipo de servicio</label>
-            <input
-              ref={giroInputRef}
-              type="text"
-              value={giroQuery}
-              onChange={e => { setGiroQuery(e.target.value); set("giro", e.target.value); setGiroDropdown(true); }}
-              onFocus={() => setGiroDropdown(true)}
-              onBlur={() => setTimeout(() => setGiroDropdown(false), 150)}
-              placeholder="Buscar o escribe un nuevo giro..."
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] placeholder-[#555]"
-            />
-            {giroDropdown && (
-              <div className="absolute z-50 w-full mt-1 bg-[#161616] border border-[#2a2a2a] rounded-lg shadow-xl max-h-52 overflow-y-auto">
-                {girosBase
-                  .filter(g => !giroQuery || g.toLowerCase().includes(giroQuery.toLowerCase()))
-                  .map(g => (
-                    <button key={g} type="button" onMouseDown={() => selectGiro(g)}
-                      className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#222] transition-colors">
-                      {g}
-                    </button>
-                  ))}
-                {giroQuery.trim() && !girosBase.some(g => g.toLowerCase() === giroQuery.trim().toLowerCase()) && (
-                  <button type="button" onMouseDown={() => addGiro(giroQuery)}
-                    className="w-full text-left px-3 py-2 text-sm text-[#B3985B] hover:bg-[#222] transition-colors border-t border-[#2a2a2a]">
-                    + Agregar &ldquo;{giroQuery.trim()}&rdquo;
-                  </button>
-                )}
-                {!giroQuery && girosBase.length === 0 && (
-                  <p className="px-3 py-2 text-xs text-[#555]">Escribe el primer giro</p>
-                )}
-              </div>
+          {/* Giro — select from list or write manually */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1.5">Giro / Tipo de servicio</label>
+            <select
+              value={GIROS_OPCIONES.includes(form.giro as typeof GIROS_OPCIONES[number]) ? form.giro : (form.giro ? '__otro__' : '')}
+              onChange={e => {
+                if (e.target.value === '__otro__') return  // handled by input below
+                set('giro', e.target.value || '')
+              }}
+              className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-[#2a2a2a]"
+            >
+              <option value="">Sin giro</option>
+              {GIROS_OPCIONES.map(g => <option key={g} value={g}>{g}</option>)}
+              <option value="__otro__">Otro (escribir)</option>
+            </select>
+            {/* If current giro is not in the list, show custom input */}
+            {form.giro && !GIROS_OPCIONES.includes(form.giro as typeof GIROS_OPCIONES[number]) && (
+              <input
+                value={form.giro ?? ''}
+                onChange={e => set('giro', e.target.value)}
+                placeholder="Giro personalizado..."
+                className="mt-2 w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2 text-sm text-gray-300 focus:outline-none focus:border-[#2a2a2a]"
+              />
             )}
           </div>
           <div>
@@ -470,29 +484,20 @@ export default function ProveedoresPage() {
               className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
               placeholder="Condiciones de pago, disponibilidad, referencias..." />
           </div>
-          {/* Nivel de prioridad */}
+          {/* Prioridad */}
           <div className="col-span-2">
-            <label className="block text-xs text-gray-500 mb-2">Nivel de prioridad</label>
-            <div className="flex gap-2">
-              {(['ALTA', 'MEDIA', 'BAJA'] as const).map(nivel => {
-                const active = (form.nivelPrioridad ?? 'MEDIA') === nivel
-                const color = PRIORIDAD_COLORS[nivel]
-                return (
-                  <button
-                    key={nivel}
-                    type="button"
-                    onClick={() => set('nivelPrioridad', nivel)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all"
-                    style={active
-                      ? { backgroundColor: color + '20', borderColor: color, color }
-                      : { backgroundColor: 'transparent', borderColor: '#2a2a2a', color: '#6b7280' }
-                    }
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: active ? color : '#3a3a3a' }} />
-                    {PRIORIDAD_LABELS[nivel]}
-                  </button>
-                )
-              })}
+            <label className="block text-xs text-gray-500 mb-2">Prioridad</label>
+            <div className="flex items-center gap-3">
+              <StarRating
+                value={form.prioridad ?? 0}
+                onChange={v => set('prioridad', v)}
+                size={20}
+              />
+              <span className="text-xs text-gray-600">
+                {(form.prioridad ?? 0) === 0
+                  ? 'Sin prioridad'
+                  : `${form.prioridad} estrella${(form.prioridad ?? 0) > 1 ? 's' : ''}`}
+              </span>
             </div>
           </div>
         </div>
@@ -577,7 +582,6 @@ export default function ProveedoresPage() {
                 onRevocarToken={() => revocarPortalToken(p)}
                 onVerEquipos={() => verEquipos(p)}
                 equiposPanelOpen={equiposPanel?.proveedorId === p.id}
-                onTogglePrioridad={() => togglePrioridad(p.id, p.prioridad)}
               />
             ))}
           </div>
@@ -657,10 +661,10 @@ export default function ProveedoresPage() {
       ) : (
         /* ── LISTA ── */
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
-          <table className="w-full min-w-[600px]">
+          <table className="w-full min-w-[700px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
-                {["Proveedor", "Empresa", "Giro", "Teléfono", "Correo", ""].map(h => (
+                {["Proveedor", "Empresa", "Giro", "Prioridad", "Teléfono", "Correo", ""].map(h => (
                   <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
                 ))}
               </tr>
@@ -679,10 +683,104 @@ export default function ProveedoresPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">{p.empresa ?? "—"}</td>
+                  {/* Giro cell with popover */}
                   <td className="px-4 py-3">
-                    {p.giro ? (
-                      <span className="text-[10px] bg-[#1a1a1a] text-[#B3985B] px-1.5 py-0.5 rounded">{p.giro}</span>
-                    ) : <span className="text-[#555] text-xs">—</span>}
+                    <div className="relative">
+                      <button
+                        onClick={() => { setGiroPopover(giroPopover === p.id ? null : p.id); setGiroManual(null) }}
+                        className="focus:outline-none"
+                      >
+                        {p.giro
+                          ? <span className="text-[10px] bg-[#1a1a1a] text-[#B3985B] px-1.5 py-0.5 rounded cursor-pointer hover:opacity-75 transition-opacity">{p.giro}</span>
+                          : <span className="text-[10px] bg-[#111] text-gray-600 border border-[#1e1e1e] px-1.5 py-0.5 rounded cursor-pointer hover:text-gray-400 transition-colors">Sin giro</span>
+                        }
+                      </button>
+
+                      {giroPopover === p.id && (
+                        <div
+                          className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-2"
+                          style={{ width: 220 }}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 pb-1">Giro</p>
+                          <div className="max-h-[280px] overflow-y-auto">
+                            {GIROS_OPCIONES.map(g => (
+                              <button
+                                key={g}
+                                onClick={() => handleSetGiro(p.id, g)}
+                                className={`w-full flex items-center justify-between px-3 py-1.5 text-xs transition-colors ${
+                                  p.giro === g ? 'bg-[#1e1e1e] text-white' : 'text-gray-400 hover:bg-[#1a1a1a]'
+                                }`}
+                              >
+                                <span>{g}</span>
+                                {p.giro === g && <span style={{ color: STAR_COLOR }}>✓</span>}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="border-t border-[#1e1e1e] mt-1 pt-1">
+                            {giroManual === p.id ? (
+                              <div className="px-3 py-1">
+                                <input
+                                  autoFocus
+                                  defaultValue={p.giro ?? ''}
+                                  onBlur={e => handleSetGiro(p.id, e.target.value)}
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') handleSetGiro(p.id, (e.target as HTMLInputElement).value)
+                                    if (e.key === 'Escape') { setGiroManual(null); setGiroPopover(null) }
+                                  }}
+                                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-[#C9A84C]/40"
+                                  placeholder="Escribir giro..."
+                                />
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setGiroManual(p.id)}
+                                className="w-full text-left px-3 py-1.5 text-xs text-gray-600 hover:text-gray-400 transition-colors"
+                              >
+                                + Escribir manualmente
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  {/* Prioridad cell with popover */}
+                  <td className="px-4 py-3">
+                    <div className="relative">
+                      <button
+                        onClick={() => setPrioPopover(prioPopover === p.id ? null : p.id)}
+                        className="flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <StarRating value={p.prioridad} size={13} />
+                        {p.prioridad === 0 && <span className="text-[9px] text-gray-700">Sin prioridad</span>}
+                      </button>
+
+                      {prioPopover === p.id && (
+                        <div
+                          className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-2"
+                          style={{ width: 180 }}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 pb-2">Prioridad</p>
+                          {([0, 1, 2, 3] as const).map(n => (
+                            <button
+                              key={n}
+                              onClick={() => handleSetPrioridad(p.id, n)}
+                              className={`w-full flex items-center justify-between px-3 py-2 text-xs transition-colors ${
+                                p.prioridad === n ? 'bg-[#1e1e1e] text-white' : 'text-gray-400 hover:bg-[#1a1a1a]'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <StarRating value={n} size={11} />
+                                <span>{n === 0 ? 'Sin prioridad' : n === 1 ? '1 estrella' : n === 2 ? '2 estrellas' : '3 estrellas'}</span>
+                              </div>
+                              {p.prioridad === n && <span style={{ color: STAR_COLOR }} className="text-xs">✓</span>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">
                     {p.telefono ? (
@@ -702,22 +800,6 @@ export default function ProveedoresPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-2 items-center">
-                      <button
-                        onClick={() => cycleNivelPrioridad(p.id, p.nivelPrioridad ?? 'MEDIA')}
-                        title={`Prioridad: ${PRIORIDAD_LABELS[p.nivelPrioridad ?? 'MEDIA']} — click para cambiar`}
-                        className="flex items-center gap-1 group transition-all shrink-0"
-                      >
-                        <span
-                          className="w-2 h-2 rounded-full transition-transform group-hover:scale-125"
-                          style={{ backgroundColor: PRIORIDAD_COLORS[p.nivelPrioridad ?? 'MEDIA'] }}
-                        />
-                        <span
-                          className="text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-                          style={{ color: PRIORIDAD_COLORS[p.nivelPrioridad ?? 'MEDIA'] }}
-                        >
-                          {PRIORIDAD_LABELS[p.nivelPrioridad ?? 'MEDIA']}
-                        </span>
-                      </button>
                       <button onClick={() => startEdit(p)} className="text-[#B3985B] text-xs hover:underline">Editar</button>
                       <button onClick={() => toggleActivo(p)} className="text-gray-600 text-xs hover:text-white transition-colors">Desactivar</button>
                     </div>
@@ -729,6 +811,7 @@ export default function ProveedoresPage() {
                   <td className="px-4 py-3 text-gray-400 text-sm">{p.nombre}</td>
                   <td className="px-4 py-3 text-xs text-[#555]">{p.empresa ?? "—"}</td>
                   <td className="px-4 py-3 text-xs text-[#555]">{p.giro ?? "—"}</td>
+                  <td className="px-4 py-3 text-xs text-[#555]">—</td>
                   <td className="px-4 py-3 text-xs text-[#555]">{p.telefono ?? "—"}</td>
                   <td className="px-4 py-3 text-xs text-[#555]">{p.correo ?? "—"}</td>
                   <td className="px-4 py-3 text-right">
@@ -751,7 +834,6 @@ function ProveedorCard({
   onRevocarToken,
   onVerEquipos,
   equiposPanelOpen = false,
-  onTogglePrioridad,
 }: {
   proveedor: Proveedor;
   onEdit: (p: Proveedor) => void;
@@ -761,7 +843,6 @@ function ProveedorCard({
   onRevocarToken?: () => void;
   onVerEquipos?: () => void;
   equiposPanelOpen?: boolean;
-  onTogglePrioridad?: () => void;
 }) {
   const initials = p.nombre.split(" ").slice(0, 2).map(n => n[0]).join("").toUpperCase();
   const portalUrl = p.portalToken ? `${typeof window !== "undefined" ? window.location.origin : ""}/portal/proveedor/${p.portalToken}` : "";
@@ -783,25 +864,12 @@ function ProveedorCard({
           {p.giro && (
             <span className="text-[10px] bg-[#1a1a1a] text-[#B3985B] px-1.5 py-0.5 rounded mt-0.5 inline-block">{p.giro}</span>
           )}
+          {p.prioridad > 0 && (
+            <div className="flex items-center gap-1 mt-1">
+              <StarRating value={p.prioridad} size={11} />
+            </div>
+          )}
         </div>
-        {onTogglePrioridad && (
-          <button
-            onClick={e => { e.stopPropagation(); onTogglePrioridad(); }}
-            title={`Prioridad: ${PRIORIDAD_LABELS[p.nivelPrioridad ?? 'MEDIA']} — click para cambiar`}
-            className="flex items-center gap-1 group transition-all shrink-0"
-          >
-            <span
-              className="w-2 h-2 rounded-full transition-transform group-hover:scale-125"
-              style={{ backgroundColor: PRIORIDAD_COLORS[p.nivelPrioridad ?? 'MEDIA'] }}
-            />
-            <span
-              className="text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ color: PRIORIDAD_COLORS[p.nivelPrioridad ?? 'MEDIA'] }}
-            >
-              {PRIORIDAD_LABELS[p.nivelPrioridad ?? 'MEDIA']}
-            </span>
-          </button>
-        )}
       </div>
 
       {/* Info */}
