@@ -34,25 +34,70 @@ const FRASES = [
   "Comprometerse con mejoras personales es el primer paso para elevar al equipo.",
 ];
 
+// ─── Paleta de prioridad (igual que TaskItem.tsx) ──────────────────────────────
+
+const PRIO_STYLE: Record<string, { ring: string; dot: string; color: string; label: string }> = {
+  URGENTE: { ring: 'border-red-500/70',    dot: 'bg-red-500',    color: '#f87171', label: 'Urgente' },
+  ALTA:    { ring: 'border-orange-500/70', dot: 'bg-orange-500', color: '#fb923c', label: 'Alta'    },
+  MEDIA:   { ring: 'border-[#B3985B]/60',  dot: 'bg-[#B3985B]', color: '#B3985B', label: 'Media'   },
+  BAJA:    { ring: 'border-[#2a2a2a]',     dot: 'bg-[#333]',    color: '#4b5563', label: 'Baja'    },
+}
+
+function fmtFechaBadge(iso: string | null): { label: string; cls: string } | null {
+  if (!iso) return null
+  const d   = new Date(iso.substring(0, 10) + 'T00:00:00')
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+  const man = new Date(hoy); man.setDate(hoy.getDate() + 1)
+  const sem = new Date(hoy); sem.setDate(hoy.getDate() + 7)
+  if (d < hoy)  return { label: d.toLocaleDateString('es-MX', { month: 'short', day: 'numeric' }), cls: 'text-red-400 bg-red-950/30' }
+  if (d < man)  return { label: 'Hoy',    cls: 'text-emerald-400 bg-emerald-950/30' }
+  if (d < new Date(man.getTime() + 86400000)) return { label: 'Mañana', cls: 'text-yellow-400 bg-yellow-950/20' }
+  if (d <= sem) return { label: d.toLocaleDateString('es-MX', { weekday: 'short' }), cls: 'text-[#777] bg-[#111]' }
+  return { label: d.toLocaleDateString('es-MX', { month: 'short', day: 'numeric' }), cls: 'text-[#666] bg-[#0f0f0f]' }
+}
+
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
-interface TareaItem { titulo: string; fechaVencimiento: string; }
 interface Incidencia { que: string; causa: string; propuesta: string; }
 interface SessionInfo { id: string; name: string; area: string | null; }
 
 type TareaOp = {
-  id: string; titulo: string; prioridad: string; estado: string;
-  fecha: string | null; fechaVencimiento: string | null; proyecto: string | null;
+  id: string
+  titulo: string
+  prioridad: string
+  estado: string
+  fecha: string | null
+  fechaVencimiento: string | null
+  proyecto: string | null
+  asignadoNombre: string | null
 }
+
 type CompromisoPlan = {
-  id: string; templateNombre: string; impacto: string;
-  areaNombre: string; areaColor: string; fechaVencimiento: string;
+  id: string
+  templateNombre: string
+  impacto: string
+  areaNombre: string
+  areaColor: string
+  fechaVencimiento: string
 }
+
 type AccionTarea = {
-  accion: 'completada' | 'reagendada' | 'pendiente';
-  fechaComprometida?: string;
-  nota?: string;
+  accion: 'completada' | 'reagendada' | 'pendiente'
+  fechaComprometida?: string
+  nota?: string
 }
+
+// Para la sección de próxima semana (QuickAdd-like)
+type ProximaTarea = {
+  id: string  // local UUID temporal
+  titulo: string
+  fecha: string | null
+  prioridad: string
+  asignadoId: string | null
+  asignadoNombre: string | null
+}
+
+type UsuarioOpt = { id: string; name: string }
 
 // ─── Section component ────────────────────────────────────────────────────────
 
@@ -78,7 +123,6 @@ function Section({ num, title, hint, children }: {
 }
 
 const ta = "w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none transition-colors placeholder:text-gray-700 leading-relaxed";
-const inp = "bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] transition-colors placeholder:text-gray-700";
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
@@ -96,21 +140,33 @@ export default function ReporteSemanalLandingPage() {
   const rango = fmtWeekRange(semana, anio);
 
   const [logros, setLogros] = useState("");
-  const [pendientes, setPendientes] = useState("");
-  const [tareas, setTareas] = useState<TareaItem[]>([{ titulo: "", fechaVencimiento: "" }]);
   const [incidencias, setIncidencias] = useState<Incidencia[]>([{ que: "", causa: "", propuesta: "" }]);
   const [mejoras, setMejoras] = useState("");
   const [compromisos, setCompromisos] = useState("");
   const [sugerencias, setSugerencias] = useState("");
   const [bienestar, setBienestar] = useState(7);
-  const tareaRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Tareas de plataforma
+  // — Plataforma pendientes —
   const [tareasOp, setTareasOp] = useState<TareaOp[]>([])
   const [compPlan, setCompPlan] = useState<CompromisoPlan[]>([])
   const [loadingPendientes, setLoadingPendientes] = useState(false)
   const [accionesOp, setAccionesOp] = useState<Record<string, AccionTarea>>({})
   const [accionesPlan, setAccionesPlan] = useState<Record<string, AccionTarea>>({})
+  const [reagendarFechaOp, setReagendarFechaOp] = useState<Record<string, string>>({})
+  const [reagendarFechaPlan, setReagendarFechaPlan] = useState<Record<string, string>>({})
+
+  // — Próxima semana QuickAdd —
+  const [proximasTareas, setProximasTareas] = useState<ProximaTarea[]>([])
+  const [qaTitulo, setQaTitulo] = useState('')
+  const [qaFecha, setQaFecha] = useState('')
+  const [qaPrioridad, setQaPrioridad] = useState('MEDIA')
+  const [qaAsignadoId, setQaAsignadoId] = useState<string | null>(null)
+  const [qaAsignadoNombre, setQaAsignadoNombre] = useState<string | null>(null)
+  const [qaPanel, setQaPanel] = useState<'fecha' | 'prioridad' | 'asignado' | null>(null)
+  const [usuarios, setUsuarios] = useState<UsuarioOpt[]>([])
+
+  // Unused ref retained for potential future use
+  const _tareaRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
     fetch("/api/me")
@@ -122,30 +178,30 @@ export default function ReporteSemanalLandingPage() {
       .catch(() => router.push(`/login?redirect=/formularios/reporte-semanal/nuevo`));
   }, []); // eslint-disable-line
 
+  // Cargar pendientes de plataforma
   useEffect(() => {
     if (!session) return
     setLoadingPendientes(true)
     fetch('/api/formularios/reporte-semanal/pendientes')
       .then(r => r.json())
       .then(d => {
-        setTareasOp(d.tareasOperaciones ?? [])
+        setTareasOp((d.tareasOperaciones ?? []).map((t: {
+          id: string; titulo: string; prioridad: string; estado: string;
+          fecha: string | null; fechaVencimiento: string | null; proyecto: string | null;
+        }) => ({ ...t, asignadoNombre: null })))
         setCompPlan(d.compromisosPlan ?? [])
       })
       .catch(() => {})
       .finally(() => setLoadingPendientes(false))
   }, [session])
 
-  function addTarea() {
-    setTareas((p) => [...p, { titulo: "", fechaVencimiento: "" }]);
-    setTimeout(() => tareaRefs.current[tareas.length]?.focus(), 50);
-  }
-  function updateTarea(i: number, f: keyof TareaItem, v: string) {
-    setTareas((p) => p.map((t, idx) => idx === i ? { ...t, [f]: v } : t));
-  }
-  function removeTarea(i: number) { setTareas((p) => p.filter((_, idx) => idx !== i)); }
-  function handleTareaKey(e: React.KeyboardEvent<HTMLInputElement>, i: number) {
-    if (e.key === "Enter") { e.preventDefault(); if (i === tareas.length - 1) addTarea(); else tareaRefs.current[i + 1]?.focus(); }
-  }
+  // Cargar usuarios para QuickAdd
+  useEffect(() => {
+    fetch('/api/usuarios')
+      .then(r => r.json())
+      .then(d => setUsuarios(d.usuarios ?? []))
+      .catch(() => {})
+  }, [])
 
   function addIncidencia() { setIncidencias((p) => [...p, { que: "", causa: "", propuesta: "" }]); }
   function updateInc(i: number, f: keyof Incidencia, v: string) {
@@ -156,26 +212,69 @@ export default function ReporteSemanalLandingPage() {
     setIncidencias((p) => p.filter((_, idx) => idx !== i));
   }
 
-  function setAccionOp(id: string, accion: AccionTarea) {
-    setAccionesOp(prev => ({ ...prev, [id]: accion }))
-    if (accion.accion === 'completada') {
-      fetch(`/api/tareas/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ estado: 'COMPLETADA' }),
-      }).catch(() => {})
-    }
+  // ── Handlers tareas Op ──
+  function handleCompletarOp(id: string) {
+    setAccionesOp(prev => ({ ...prev, [id]: { accion: 'completada' } }))
+    fetch(`/api/tareas/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ estado: 'COMPLETADA' }),
+    }).catch(() => {})
   }
 
-  function setAccionPlan(id: string, accion: AccionTarea) {
-    setAccionesPlan(prev => ({ ...prev, [id]: accion }))
-    if (accion.accion === 'completada') {
-      fetch(`/api/plan-trabajo/instancias/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ estado: 'COMPLETADA' }),
-      }).catch(() => {})
-    }
+  function handleReagendarOp(id: string) {
+    setAccionesOp(prev => ({
+      ...prev,
+      [id]: { accion: prev[id]?.accion === 'reagendada' ? 'pendiente' : 'reagendada' }
+    }))
+  }
+
+  function handleFechaReagendarOp(id: string, fecha: string) {
+    setReagendarFechaOp(prev => ({ ...prev, [id]: fecha }))
+    setAccionesOp(prev => ({ ...prev, [id]: { ...(prev[id] ?? {}), accion: 'reagendada', fechaComprometida: fecha } }))
+  }
+
+  // ── Handlers compromisos Plan ──
+  function handleCompletarPlan(id: string) {
+    setAccionesPlan(prev => ({ ...prev, [id]: { accion: 'completada' } }))
+    fetch(`/api/plan-trabajo/instancias/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ estado: 'COMPLETADA' }),
+    }).catch(() => {})
+  }
+
+  function handleReagendarPlan(id: string) {
+    setAccionesPlan(prev => ({
+      ...prev,
+      [id]: { accion: prev[id]?.accion === 'reagendada' ? 'pendiente' : 'reagendada' }
+    }))
+  }
+
+  function handleFechaReagendarPlan(id: string, fecha: string) {
+    setReagendarFechaPlan(prev => ({ ...prev, [id]: fecha }))
+    setAccionesPlan(prev => ({ ...prev, [id]: { ...(prev[id] ?? {}), accion: 'reagendada', fechaComprometida: fecha } }))
+  }
+
+  // ── QuickAdd ──
+  function addProximaTarea() {
+    if (!qaTitulo.trim()) return
+    setProximasTareas(prev => [...prev, {
+      id: Math.random().toString(36).slice(2),
+      titulo: qaTitulo.trim(),
+      fecha: qaFecha || null,
+      prioridad: qaPrioridad,
+      asignadoId: qaAsignadoId,
+      asignadoNombre: qaAsignadoNombre,
+    }])
+    setQaTitulo('')
+    setQaFecha('')
+    setQaPrioridad('MEDIA')
+    setQaAsignadoId(null)
+    setQaAsignadoNombre(null)
+    setQaPanel(null)
+  }
+
+  function removeProximaTarea(id: string) {
+    setProximasTareas(prev => prev.filter(t => t.id !== id))
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -184,26 +283,28 @@ export default function ReporteSemanalLandingPage() {
     if (!logros.trim()) { toast.error("Por favor completa los logros de la semana"); return; }
     setEnviando(true);
     try {
-      const tareasLimpias = tareas.filter((t) => t.titulo.trim()).map((t) => ({
-        titulo: t.titulo.trim(), fechaVencimiento: t.fechaVencimiento || null,
-      }));
+      const tareasLimpias = proximasTareas.map(t => ({
+        titulo: t.titulo,
+        fechaVencimiento: t.fecha || null,
+        prioridad: t.prioridad,
+        asignadoNombre: t.asignadoNombre,
+      }))
       const incidenciasLimpias = incidencias.filter((i) => i.que.trim() || i.causa.trim() || i.propuesta.trim());
       const res = await fetch("/api/formularios/reporte-semanal", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          semana, anio, logros, pendientes, tareas: tareasLimpias,
+          semana, anio, logros,
+          tareas: tareasLimpias,
           incidencias: incidenciasLimpias, mejoras, compromisos, sugerencias, bienestar,
           tareasOperaciones: tareasOp.map(t => ({
-            tareaId: t.id,
-            titulo: t.titulo,
-            prioridad: t.prioridad,
+            tareaId: t.id, titulo: t.titulo, prioridad: t.prioridad,
             ...(accionesOp[t.id] ?? { accion: 'pendiente' }),
+            fechaComprometida: reagendarFechaOp[t.id] ?? undefined,
           })),
           compromisosPlan: compPlan.map(c => ({
-            instanciaId: c.id,
-            templateNombre: c.templateNombre,
-            areaNombre: c.areaNombre,
+            instanciaId: c.id, templateNombre: c.templateNombre, areaNombre: c.areaNombre,
             ...(accionesPlan[c.id] ?? { accion: 'pendiente' }),
+            fechaComprometida: reagendarFechaPlan[c.id] ?? undefined,
           })),
         }),
       });
@@ -336,6 +437,9 @@ export default function ReporteSemanalLandingPage() {
         </div>
       </div>
 
+      {/* Overlay para cerrar dropdowns QuickAdd */}
+      {qaPanel && <div className="fixed inset-0 z-40" onClick={() => setQaPanel(null)} />}
+
       <form onSubmit={handleSubmit}>
         <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
 
@@ -345,7 +449,7 @@ export default function ReporteSemanalLandingPage() {
               Semana {semana} · {anio} · {rango}
             </p>
             <h1 className="text-white text-lg font-bold mb-2">Reporte General Semanal</h1>
-            <p className="text-gray-400 text-xs leading-relaxed italic">"{frase}"</p>
+            <p className="text-gray-400 text-xs leading-relaxed italic">&ldquo;{frase}&rdquo;</p>
           </div>
 
           {/* 1. Logros */}
@@ -356,209 +460,445 @@ export default function ReporteSemanalLandingPage() {
               value={logros} onChange={(e) => setLogros(e.target.value)} required />
           </Section>
 
-          {/* ── Sección: Tareas pendientes en Módulo de Tareas ── */}
-          {(tareasOp.length > 0 || loadingPendientes) && (
+          {/* ── Tareas pendientes en plataforma ── */}
+          {(loadingPendientes || tareasOp.length > 0) && (
             <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
+              {/* Header */}
               <div className="px-5 pt-5 pb-4 border-b border-[#1a1a1a]">
                 <div className="flex items-start gap-3">
-                  <span className="w-7 h-7 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-sm flex items-center justify-center shrink-0 mt-0.5">⚠️</span>
+                  <span className="w-7 h-7 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  </span>
                   <div>
                     <h2 className="text-white font-semibold text-sm">Tareas pendientes en la plataforma</h2>
                     <p className="text-gray-500 text-xs mt-0.5 leading-relaxed">
-                      Estas son tus tareas que están pendientes o en progreso en el <strong className="text-gray-400">Módulo de Tareas</strong>. Si ya las realizaste, dales ✓. Si aún no puedes terminarlas, reagéndalas y comprométete a una nueva fecha.
+                      Estas son tus tareas con fecha y asignadas a ti que aún no están completadas. Si ya las realizaste, dáles ✓. Si no puedes completarlas ahora, agéndalas con una nueva fecha.
                     </p>
                   </div>
                 </div>
               </div>
-              <div className="px-5 py-4">
+              {/* Lista */}
+              <div className="py-1">
                 {loadingPendientes ? (
-                  <p className="text-gray-600 text-xs">Cargando tareas...</p>
+                  <p className="text-gray-600 text-xs px-5 py-4">Cargando tareas...</p>
                 ) : tareasOp.length === 0 ? (
-                  <p className="text-green-400/70 text-xs">✓ Sin tareas pendientes en el módulo de tareas</p>
+                  <p className="text-green-400/60 text-xs px-5 py-4">✓ Sin tareas pendientes</p>
                 ) : (
-                  <div className="space-y-2">
-                    {tareasOp.map(t => {
-                      const accion = accionesOp[t.id]
-                      const isCompletada = accion?.accion === 'completada'
-                      const isReagendada = accion?.accion === 'reagendada'
-                      const PRIO_COLOR: Record<string, string> = { URGENTE: '#f87171', ALTA: '#fb923c', MEDIA: '#B3985B', BAJA: '#4b5563' }
-                      return (
-                        <div key={t.id} className={`bg-[#0d0d0d] border rounded-xl p-3 transition-all ${
-                          isCompletada ? 'border-green-900/30 opacity-60' : isReagendada ? 'border-[#B3985B]/20' : 'border-[#2a2a2a]'
-                        }`}>
-                          <div className="flex items-start gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: PRIO_COLOR[t.prioridad] ?? '#555' }} />
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm ${isCompletada ? 'line-through text-gray-600' : 'text-white'}`}>{t.titulo}</p>
-                              {t.proyecto && <p className="text-[10px] text-gray-600 mt-0.5">{t.proyecto}</p>}
-                              {t.fechaVencimiento && !isCompletada && (
-                                <p className="text-[10px] text-orange-400/70 mt-0.5">Vence: {t.fechaVencimiento}</p>
-                              )}
-                              {isReagendada && (
-                                <div className="mt-2 space-y-1.5">
-                                  <input
-                                    type="date"
-                                    className="bg-[#111] border border-[#B3985B]/30 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
-                                    value={accion.fechaComprometida ?? ''}
-                                    onChange={e => setAccionOp(t.id, { ...accion, fechaComprometida: e.target.value })}
-                                    placeholder="Nueva fecha"
-                                  />
-                                  <input
-                                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-2 py-1 text-xs text-white focus:outline-none placeholder:text-gray-700"
-                                    placeholder="¿Por qué no se completó y cuándo se hará?"
-                                    value={accion.nota ?? ''}
-                                    onChange={e => setAccionOp(t.id, { ...accion, nota: e.target.value })}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                            {!isCompletada && (
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <button
-                                  type="button"
-                                  onClick={() => setAccionOp(t.id, { accion: 'completada' })}
-                                  className="w-7 h-7 rounded-lg bg-green-900/20 border border-green-900/30 text-green-400 text-xs hover:bg-green-900/40 transition-all"
-                                  title="Marcar como completada"
-                                >✓</button>
-                                <button
-                                  type="button"
-                                  onClick={() => setAccionOp(t.id, isReagendada ? { accion: 'pendiente' } : { accion: 'reagendada' })}
-                                  className={`w-7 h-7 rounded-lg text-xs transition-all ${
-                                    isReagendada
-                                      ? 'bg-[#B3985B]/20 border border-[#B3985B]/30 text-[#B3985B]'
-                                      : 'bg-[#1a1a1a] border border-[#2a2a2a] text-gray-500 hover:text-[#B3985B]'
-                                  }`}
-                                  title="Reagendar"
-                                >📅</button>
-                              </div>
+                  tareasOp.map(t => {
+                    const prio = PRIO_STYLE[t.prioridad] ?? PRIO_STYLE.BAJA
+                    const accion = accionesOp[t.id]
+                    const isComp = accion?.accion === 'completada'
+                    const isReag = accion?.accion === 'reagendada'
+                    const fechaKey = t.fechaVencimiento ?? t.fecha
+                    const fechaBadge = fechaKey ? fmtFechaBadge(fechaKey) : null
+
+                    return (
+                      <div
+                        key={t.id}
+                        className={`group flex items-start gap-3 px-5 py-2.5 transition-all ${
+                          isComp ? 'opacity-40' : 'hover:bg-[#0d0d0d]'
+                        }`}
+                      >
+                        {/* Checkbox estilo TaskItem */}
+                        <button
+                          type="button"
+                          onClick={() => handleCompletarOp(t.id)}
+                          disabled={isComp}
+                          className={`mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 flex items-center justify-center transition-all ${
+                            isComp
+                              ? 'border-[#333] bg-[#1f1f1f]'
+                              : `${prio.ring} hover:bg-[#111] group-hover:shadow-md`
+                          }`}
+                          aria-label="Completar"
+                        >
+                          {isComp && (
+                            <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="#555" strokeWidth="2.5"><path d="M2 6l3 3 5-5"/></svg>
+                          )}
+                          {!isComp && (
+                            <div className={`w-1.5 h-1.5 rounded-full ${prio.dot} opacity-0 group-hover:opacity-50 transition-opacity`} />
+                          )}
+                        </button>
+
+                        {/* Contenido */}
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-[15px] leading-snug transition-colors ${
+                            isComp ? 'line-through text-[#333]' : 'text-[#d0d0d0]'
+                          }`}>{t.titulo}</p>
+
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                            {/* Proyecto */}
+                            {t.proyecto && (
+                              <span className="flex items-center gap-1 text-[13px] text-[#444]">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#444] inline-block shrink-0" />
+                                {t.proyecto}
+                              </span>
                             )}
-                            {isCompletada && (
-                              <button
-                                type="button"
-                                onClick={() => setAccionOp(t.id, { accion: 'pendiente' })}
-                                className="text-[10px] text-gray-600 hover:text-gray-400 shrink-0"
-                              >Deshacer</button>
+
+                            {/* Fecha badge */}
+                            {fechaBadge && !isComp && (
+                              <span className={`inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium ${fechaBadge.cls}`}>
+                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                {fechaBadge.label}
+                              </span>
+                            )}
+
+                            {/* Asignado */}
+                            {t.asignadoNombre && !isComp && (
+                              <span className="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold shrink-0" title={t.asignadoNombre}>
+                                {t.asignadoNombre.charAt(0).toUpperCase()}
+                              </span>
+                            )}
+
+                            {/* Badge reagendada */}
+                            {isReag && reagendarFechaOp[t.id] && (
+                              <span className="text-[11px] text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/20 px-1.5 py-0.5 rounded-md">
+                                ↺ {reagendarFechaOp[t.id]}
+                              </span>
                             )}
                           </div>
+
+                          {/* Inline reagendar date input */}
+                          {isReag && (
+                            <div className="flex items-center gap-2 mt-2">
+                              <input
+                                type="date"
+                                value={reagendarFechaOp[t.id] ?? ''}
+                                onChange={e => handleFechaReagendarOp(t.id, e.target.value)}
+                                className="bg-[#0d0d0d] border border-[#B3985B]/30 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-[#B3985B]/50"
+                              />
+                              <span className="text-[10px] text-[#444]">Nueva fecha comprometida</span>
+                            </div>
+                          )}
                         </div>
-                      )
-                    })}
-                  </div>
+
+                        {/* Acciones */}
+                        {!isComp && (
+                          <div className="flex items-center gap-1 shrink-0 mt-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                            {/* Completar */}
+                            <button
+                              type="button"
+                              onClick={() => handleCompletarOp(t.id)}
+                              title="Marcar como completada"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg text-[#3a3a3a] hover:text-green-400 hover:bg-[#1a1a1a] transition-all"
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                            </button>
+                            {/* Reagendar */}
+                            <button
+                              type="button"
+                              onClick={() => handleReagendarOp(t.id)}
+                              title="Reagendar"
+                              className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all ${
+                                isReag
+                                  ? 'bg-[#B3985B]/15 text-[#B3985B]'
+                                  : 'text-[#3a3a3a] hover:text-[#aaa] hover:bg-[#1a1a1a]'
+                              }`}
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            </button>
+                          </div>
+                        )}
+                        {isComp && (
+                          <button type="button" onClick={() => setAccionesOp(prev => ({ ...prev, [t.id]: { accion: 'pendiente' } }))}
+                            className="text-[10px] text-[#2a2a2a] hover:text-[#555] shrink-0 transition-colors"
+                          >Deshacer</button>
+                        )}
+                      </div>
+                    )
+                  })
                 )}
               </div>
             </div>
           )}
 
-          {/* ── Sección: Compromisos pendientes del Plan de Trabajo ── */}
-          {(compPlan.length > 0 || loadingPendientes) && (
+          {/* ── Compromisos pendientes del Plan de Trabajo ── */}
+          {(loadingPendientes || compPlan.length > 0) && (
             <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
               <div className="px-5 pt-5 pb-4 border-b border-[#1a1a1a]">
                 <div className="flex items-start gap-3">
-                  <span className="w-7 h-7 rounded-lg bg-[#B3985B]/10 border border-[#B3985B]/20 text-[#B3985B] text-sm flex items-center justify-center shrink-0 mt-0.5">📋</span>
+                  <span className="w-7 h-7 rounded-lg bg-[#B3985B]/10 border border-[#B3985B]/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="2"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><line x1="12" y1="11" x2="12" y2="17"/><line x1="9" y1="14" x2="15" y2="14"/></svg>
+                  </span>
                   <div>
                     <h2 className="text-white font-semibold text-sm">Compromisos pendientes del Plan de Trabajo</h2>
                     <p className="text-gray-500 text-xs mt-0.5 leading-relaxed">
-                      Compromisos recurrentes de semanas anteriores que quedaron sin completar en el <strong className="text-gray-400">Plan de Trabajo</strong>. Sé honesto: ¿los realizaste fuera de la plataforma? ¿O necesitan reagendarse?
+                      Compromisos recurrentes de semanas anteriores que no se completaron en el sistema. ¿Los realizaste? Dáles ✓. ¿Necesitan reagendarse? Elige una nueva fecha.
                     </p>
                   </div>
                 </div>
               </div>
-              <div className="px-5 py-4">
+              <div className="py-1">
                 {loadingPendientes ? (
-                  <p className="text-gray-600 text-xs">Cargando compromisos...</p>
+                  <p className="text-gray-600 text-xs px-5 py-4">Cargando compromisos...</p>
                 ) : compPlan.length === 0 ? (
-                  <p className="text-green-400/70 text-xs">✓ Sin compromisos pendientes del plan de trabajo</p>
+                  <p className="text-green-400/60 text-xs px-5 py-4">✓ Sin compromisos pendientes</p>
                 ) : (
-                  <div className="space-y-2">
-                    {compPlan.map(c => {
-                      const accion = accionesPlan[c.id]
-                      const isCompletada = accion?.accion === 'completada'
-                      const isReagendada = accion?.accion === 'reagendada'
-                      return (
-                        <div key={c.id} className={`bg-[#0d0d0d] border rounded-xl p-3 transition-all ${
-                          isCompletada ? 'border-green-900/30 opacity-60' : isReagendada ? 'border-[#B3985B]/20' : 'border-[#2a2a2a]'
-                        }`}>
-                          <div className="flex items-start gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: c.areaColor }} />
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-sm ${isCompletada ? 'line-through text-gray-600' : 'text-white'}`}>{c.templateNombre}</p>
-                              <p className="text-[10px] text-gray-600 mt-0.5">{c.areaNombre} · Venció: {c.fechaVencimiento}</p>
-                              {isReagendada && (
-                                <div className="mt-2 space-y-1.5">
-                                  <input
-                                    type="date"
-                                    className="bg-[#111] border border-[#B3985B]/30 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
-                                    value={accion.fechaComprometida ?? ''}
-                                    onChange={e => setAccionPlan(c.id, { ...accion, fechaComprometida: e.target.value })}
-                                  />
-                                  <input
-                                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-2 py-1 text-xs text-white focus:outline-none placeholder:text-gray-700"
-                                    placeholder="¿Por qué no se realizó y cuándo se hará?"
-                                    value={accion.nota ?? ''}
-                                    onChange={e => setAccionPlan(c.id, { ...accion, nota: e.target.value })}
-                                  />
-                                </div>
-                              )}
-                            </div>
-                            {!isCompletada && (
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <button type="button" onClick={() => setAccionPlan(c.id, { accion: 'completada' })}
-                                  className="w-7 h-7 rounded-lg bg-green-900/20 border border-green-900/30 text-green-400 text-xs hover:bg-green-900/40 transition-all" title="Marcar como realizado"
-                                >✓</button>
-                                <button type="button"
-                                  onClick={() => setAccionPlan(c.id, isReagendada ? { accion: 'pendiente' } : { accion: 'reagendada' })}
-                                  className={`w-7 h-7 rounded-lg text-xs transition-all ${
-                                    isReagendada ? 'bg-[#B3985B]/20 border border-[#B3985B]/30 text-[#B3985B]' : 'bg-[#1a1a1a] border border-[#2a2a2a] text-gray-500 hover:text-[#B3985B]'
-                                  }`} title="Reagendar"
-                                >📅</button>
-                              </div>
+                  compPlan.map(c => {
+                    const accion = accionesPlan[c.id]
+                    const isComp = accion?.accion === 'completada'
+                    const isReag = accion?.accion === 'reagendada'
+                    const fechaBadge = fmtFechaBadge(c.fechaVencimiento)
+                    const impactoColor = c.impacto === 'critico' ? '#f87171' : c.impacto === 'alto' ? '#fb923c' : '#555'
+
+                    return (
+                      <div
+                        key={c.id}
+                        className={`group flex items-start gap-3 px-5 py-2.5 transition-all ${
+                          isComp ? 'opacity-40' : 'hover:bg-[#0d0d0d]'
+                        }`}
+                      >
+                        {/* Checkbox con color de área */}
+                        <button
+                          type="button"
+                          onClick={() => handleCompletarPlan(c.id)}
+                          disabled={isComp}
+                          className="mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 flex items-center justify-center transition-all hover:bg-[#111]"
+                          style={{ borderColor: isComp ? '#333' : c.areaColor + 'aa', backgroundColor: isComp ? '#1f1f1f' : undefined }}
+                        >
+                          {isComp ? (
+                            <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="#555" strokeWidth="2.5"><path d="M2 6l3 3 5-5"/></svg>
+                          ) : (
+                            <div className="w-1.5 h-1.5 rounded-full opacity-0 group-hover:opacity-50 transition-opacity" style={{ backgroundColor: c.areaColor }} />
+                          )}
+                        </button>
+
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-[15px] leading-snug ${isComp ? 'line-through text-[#333]' : 'text-[#d0d0d0]'}`}>
+                            {c.templateNombre}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                            {/* Área */}
+                            <span className="flex items-center gap-1 text-[13px] text-[#444]">
+                              <span className="w-1.5 h-1.5 rounded-full inline-block shrink-0" style={{ backgroundColor: c.areaColor }} />
+                              {c.areaNombre}
+                            </span>
+                            {/* Fecha vencida */}
+                            {fechaBadge && !isComp && (
+                              <span className={`inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium ${fechaBadge.cls}`}>
+                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                Venció {fechaBadge.label}
+                              </span>
                             )}
-                            {isCompletada && (
-                              <button type="button" onClick={() => setAccionPlan(c.id, { accion: 'pendiente' })}
-                                className="text-[10px] text-gray-600 hover:text-gray-400 shrink-0">Deshacer</button>
+                            {/* Impacto */}
+                            {c.impacto !== 'estandar' && !isComp && (
+                              <span className="flex items-center gap-1 text-[12px]" style={{ color: impactoColor }}>
+                                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: impactoColor }} />
+                                {c.impacto === 'critico' ? 'Crítico' : 'Alto'}
+                              </span>
+                            )}
+                            {/* Reagendada badge */}
+                            {isReag && reagendarFechaPlan[c.id] && (
+                              <span className="text-[11px] text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/20 px-1.5 py-0.5 rounded-md">
+                                ↺ {reagendarFechaPlan[c.id]}
+                              </span>
                             )}
                           </div>
+                          {isReag && (
+                            <div className="flex items-center gap-2 mt-2">
+                              <input
+                                type="date"
+                                value={reagendarFechaPlan[c.id] ?? ''}
+                                onChange={e => handleFechaReagendarPlan(c.id, e.target.value)}
+                                className="bg-[#0d0d0d] border border-[#B3985B]/30 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
+                              />
+                              <span className="text-[10px] text-[#444]">Nueva fecha comprometida</span>
+                            </div>
+                          )}
                         </div>
-                      )
-                    })}
-                  </div>
+
+                        {!isComp && (
+                          <div className="flex items-center gap-1 shrink-0 mt-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                            <button type="button" onClick={() => handleCompletarPlan(c.id)} title="Marcar como realizado"
+                              className="w-7 h-7 flex items-center justify-center rounded-lg text-[#3a3a3a] hover:text-green-400 hover:bg-[#1a1a1a] transition-all">
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                            </button>
+                            <button type="button" onClick={() => handleReagendarPlan(c.id)} title="Reagendar"
+                              className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all ${
+                                isReag ? 'bg-[#B3985B]/15 text-[#B3985B]' : 'text-[#3a3a3a] hover:text-[#aaa] hover:bg-[#1a1a1a]'
+                              }`}>
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            </button>
+                          </div>
+                        )}
+                        {isComp && (
+                          <button type="button" onClick={() => setAccionesPlan(prev => ({ ...prev, [c.id]: { accion: 'pendiente' } }))}
+                            className="text-[10px] text-[#2a2a2a] hover:text-[#555] shrink-0 transition-colors">Deshacer</button>
+                        )}
+                      </div>
+                    )
+                  })
                 )}
               </div>
             </div>
           )}
 
-          {/* 2. Pendientes */}
-          <Section num={2} title="Pendientes de la semana anterior"
-            hint="¿Qué quedó sin terminar de la semana pasada? Lista las tareas que no pudiste completar o que quedaron en proceso. Si no tienes pendientes, escribe 'Sin pendientes'.">
-            <textarea className={ta} rows={3}
-              placeholder="Ejemplo: Falta confirmar el rider técnico del evento del sábado. No terminé de actualizar el inventario de equipo de audio..."
-              value={pendientes} onChange={(e) => setPendientes(e.target.value)} />
-          </Section>
-
-          {/* 3. Tareas */}
-          <Section num={3} title="Tareas para la próxima semana"
-            hint="Lista las tareas concretas que tienes planeadas para los próximos días. Agrega una fecha límite para cada una. Presiona Enter para agregar la siguiente tarea. Estas tareas quedarán registradas en el sistema.">
-            <div className="space-y-2 mb-3">
-              {tareas.map((t, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <span className="text-gray-700 text-xs w-5 text-right shrink-0">{i + 1}.</span>
-                  <input ref={(el) => { tareaRefs.current[i] = el; }} className={`${inp} flex-1`}
-                    placeholder="¿Qué vas a hacer?" value={t.titulo}
-                    onChange={(e) => updateTarea(i, "titulo", e.target.value)}
-                    onKeyDown={(e) => handleTareaKey(e, i)} />
-                  <input type="date" className={`${inp} w-36 text-xs`} value={t.fechaVencimiento}
-                    onChange={(e) => updateTarea(i, "fechaVencimiento", e.target.value)} title="¿Para cuándo?" />
-                  {tareas.length > 1 && (
-                    <button type="button" onClick={() => removeTarea(i)} className="text-gray-700 hover:text-red-400 transition-colors text-lg leading-none shrink-0">×</button>
-                  )}
+          {/* 3. Tareas próxima semana — QuickAdd */}
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
+            <div className="px-5 pt-5 pb-4 border-b border-[#1a1a1a]">
+              <div className="flex items-start gap-3">
+                <span className="w-7 h-7 rounded-lg bg-[#B3985B]/15 border border-[#B3985B]/30 text-[#B3985B] text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">3</span>
+                <div>
+                  <h2 className="text-white font-semibold text-sm">Tareas para la próxima semana</h2>
+                  <p className="text-gray-500 text-xs mt-0.5 leading-relaxed">
+                    ¿Qué está en tu agenda para la siguiente semana? Agrégalas aquí con fecha y prioridad. Quedarán registradas y Dirección las verá el lunes.
+                  </p>
                 </div>
-              ))}
+              </div>
             </div>
-            <button type="button" onClick={addTarea} className="flex items-center gap-1.5 text-xs text-[#B3985B]/70 hover:text-[#B3985B] transition-colors">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
-              Agregar otra tarea
-            </button>
-          </Section>
+            <div className="px-5 py-4">
+              {/* Tareas ya agregadas */}
+              {proximasTareas.length > 0 && (
+                <div className="mb-3 space-y-0.5">
+                  {proximasTareas.map(t => {
+                    const prio = PRIO_STYLE[t.prioridad] ?? PRIO_STYLE.MEDIA
+                    const fechaBadge = t.fecha ? fmtFechaBadge(t.fecha) : null
+                    return (
+                      <div key={t.id} className="group flex items-start gap-3 px-2 py-2 rounded-xl hover:bg-[#0d0d0d] transition-all">
+                        {/* Dot prioridad */}
+                        <span className={`mt-[7px] w-[7px] h-[7px] shrink-0 rounded-full ${prio.dot} opacity-70`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[15px] leading-snug text-[#d0d0d0]">{t.titulo}</p>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                            {fechaBadge && (
+                              <span className={`inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium ${fechaBadge.cls}`}>
+                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                {fechaBadge.label}
+                              </span>
+                            )}
+                            <span className="text-[12px]" style={{ color: prio.color }}>{prio.label}</span>
+                            {t.asignadoNombre && (
+                              <span className="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold shrink-0">
+                                {t.asignadoNombre.charAt(0).toUpperCase()}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => removeProximaTarea(t.id)}
+                          className="opacity-0 group-hover:opacity-100 mt-0.5 w-6 h-6 flex items-center justify-center rounded-lg text-[#333] hover:text-red-400 hover:bg-[#1a1a1a] transition-all shrink-0">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* QuickAdd input */}
+              <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl focus-within:border-[#B3985B]/40 transition-colors">
+                <div className="flex items-center gap-2 px-3 py-2.5">
+                  <button type="button" onClick={addProximaTarea}
+                    className="w-6 h-6 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-[#444] hover:text-[#B3985B] hover:border-[#B3985B]/30 transition-all shrink-0">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  </button>
+                  <input
+                    className="flex-1 bg-transparent text-[15px] text-[#d0d0d0] placeholder:text-[#333] focus:outline-none"
+                    placeholder="¿Qué vas a hacer la próxima semana?"
+                    value={qaTitulo}
+                    onChange={e => setQaTitulo(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addProximaTarea() } }}
+                  />
+                </div>
+
+                {/* Toolbar */}
+                <div className="flex items-center gap-1 px-3 pb-2.5 border-t border-[#1a1a1a] pt-2">
+                  {/* Fecha */}
+                  <div className="relative">
+                    <button type="button"
+                      onClick={() => setQaPanel(prev => prev === 'fecha' ? null : 'fecha')}
+                      className={`flex items-center gap-1.5 text-[12px] px-2 py-1 rounded-lg transition-all ${
+                        qaFecha ? 'text-[#B3985B] bg-[#B3985B]/10' : 'text-[#444] hover:text-[#888] hover:bg-[#1a1a1a]'
+                      }`}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                      {qaFecha || 'Fecha'}
+                    </button>
+                    {qaPanel === 'fecha' && (
+                      <div className="absolute left-0 top-8 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl p-2">
+                        <input type="date" value={qaFecha} onChange={e => { setQaFecha(e.target.value); setQaPanel(null) }}
+                          className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-[#B3985B]/30" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Prioridad */}
+                  <div className="relative">
+                    <button type="button"
+                      onClick={() => setQaPanel(prev => prev === 'prioridad' ? null : 'prioridad')}
+                      className={`flex items-center gap-1.5 text-[12px] px-2 py-1 rounded-lg transition-all ${
+                        qaPrioridad !== 'MEDIA' ? 'bg-current/10' : 'text-[#444] hover:text-[#888] hover:bg-[#1a1a1a]'
+                      }`}
+                      style={qaPrioridad !== 'MEDIA' ? { color: PRIO_STYLE[qaPrioridad]?.color } : undefined}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15" stroke="currentColor" strokeWidth="2" fill="none"/></svg>
+                      {PRIO_STYLE[qaPrioridad]?.label ?? 'Prioridad'}
+                    </button>
+                    {qaPanel === 'prioridad' && (
+                      <div className="absolute left-0 top-8 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[130px]">
+                        {Object.entries(PRIO_STYLE).map(([key, p]) => (
+                          <button key={key} type="button"
+                            onClick={() => { setQaPrioridad(key); setQaPanel(null) }}
+                            className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[#1f1f1f] ${
+                              qaPrioridad === key ? 'font-semibold' : ''
+                            }`} style={{ color: p.color }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/></svg>
+                            {p.label}
+                            {qaPrioridad === key && <svg className="ml-auto" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Asignado */}
+                  <div className="relative">
+                    <button type="button"
+                      onClick={() => setQaPanel(prev => prev === 'asignado' ? null : 'asignado')}
+                      className={`flex items-center gap-1.5 text-[12px] px-2 py-1 rounded-lg transition-all ${
+                        qaAsignadoId ? 'text-[#B3985B] bg-[#B3985B]/10' : 'text-[#444] hover:text-[#888] hover:bg-[#1a1a1a]'
+                      }`}
+                    >
+                      {qaAsignadoId ? (
+                        <span className="w-4 h-4 rounded-full bg-[#B3985B]/20 text-[10px] text-[#B3985B] flex items-center justify-center font-bold">
+                          {qaAsignadoNombre?.charAt(0).toUpperCase()}
+                        </span>
+                      ) : (
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                      )}
+                      {qaAsignadoNombre?.split(' ')[0] ?? 'Asignar'}
+                    </button>
+                    {qaPanel === 'asignado' && (
+                      <div className="absolute left-0 top-8 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[160px]">
+                        <p className="text-[10px] text-[#555] uppercase tracking-wider px-3 pt-1 pb-1.5">Asignar a</p>
+                        {qaAsignadoId && (
+                          <button type="button" onClick={() => { setQaAsignadoId(null); setQaAsignadoNombre(null); setQaPanel(null) }}
+                            className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-red-400 hover:bg-[#1f1f1f] transition-colors">
+                            Sin asignar
+                          </button>
+                        )}
+                        {usuarios.map(u => (
+                          <button key={u.id} type="button"
+                            onClick={() => { setQaAsignadoId(u.id); setQaAsignadoNombre(u.name); setQaPanel(null) }}
+                            className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-[#1f1f1f] transition-colors ${
+                              qaAsignadoId === u.id ? 'text-[#B3985B]' : 'text-[#ccc]'
+                            }`}>
+                            <span className="w-5 h-5 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] text-[10px] text-[#B3985B] flex items-center justify-center font-semibold shrink-0">
+                              {u.name.charAt(0).toUpperCase()}
+                            </span>
+                            {u.name}
+                            {qaAsignadoId === u.id && <svg className="ml-auto" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {proximasTareas.length === 0 && (
+                <p className="text-[#2a2a2a] text-xs text-center mt-2">Presiona Enter o + para agregar tareas</p>
+              )}
+            </div>
+          </div>
 
           {/* 4. Incidencias */}
           <Section num={4} title="Incidencias de la semana"
@@ -624,8 +964,8 @@ export default function ReporteSemanalLandingPage() {
           </Section>
 
           {/* 8. Bienestar */}
-          <Section num={8} title="¿Cómo empiezas esta semana?"
-            hint="Califica tu nivel de energía, motivación y bienestar general al iniciar esta semana. Del 1 (muy mal) al 10 (excelente). Ayuda a Dirección a saber cómo está el equipo.">
+          <Section num={8} title="¿Cómo terminas esta semana?"
+            hint="Califica tu nivel de energía, motivación y bienestar general al cerrar esta semana. Del 1 (muy pesado) al 10 (excelente). Ayuda a Dirección a conocer el estado del equipo.">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-gray-600 text-xs">Muy pesado</span>
