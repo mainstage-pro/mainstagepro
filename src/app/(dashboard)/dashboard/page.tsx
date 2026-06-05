@@ -226,8 +226,8 @@ export default async function DashboardPage() {
 
   ]);
 
-  // ── Eventos recientes (pasados, no cerrados, dentro de ventana miércoles) ───────────
-  const eventosRecientesRaw = await prisma.proyecto.findMany({
+  // ── Eventos recientes: pasados, sin cerrar, últimos 14 días (sin corte de miércoles) ──
+  const eventosRecientes = await prisma.proyecto.findMany({
     where: {
       fechaEvento: { gte: hace14dias, lt: inicioDeHoy },
       estado: { notIn: ["COMPLETADO", "CANCELADO"] },
@@ -241,11 +241,6 @@ export default async function DashboardPage() {
     },
     orderBy: { fechaEvento: "desc" },
   });
-
-  // Filtrar en JS con la regla del miércoles post-evento — sin límite de cantidad
-  const eventosRecientes = eventosRecientesRaw.filter(
-    e => e.fechaEvento && ahora <= calcularMiercolesPostEvento(e.fechaEvento)
-  );
 
   // ── Cálculos ──────────────────────────────────────────────────────────────
   const etapasMap: Record<string, number> = {};
