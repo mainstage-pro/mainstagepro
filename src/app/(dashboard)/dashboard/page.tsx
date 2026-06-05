@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { formatCurrency } from "@/lib/cotizador";
+import { calcularMiercolesPostEvento } from "@/lib/dashboardUtils";
 import Link from "next/link";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { GraficaIngresos } from "@/components/GraficaIngresos";
@@ -38,6 +39,7 @@ export default async function DashboardPage() {
   const finMes    = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0);
   const en7dias   = new Date(ahora.getTime() + 7 * 86400000);
   const en30dias  = new Date(ahora.getTime() + 30 * 86400000);
+  const hace14dias = new Date(ahora.getTime() - 14 * 86400000);
   const mes       = ahora.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
   const mesISO    = ahora.toISOString().slice(0, 7); // "2026-04"
 
@@ -224,6 +226,27 @@ export default async function DashboardPage() {
 
   ]);
 
+  // ── Eventos recientes (pasados, no cerrados, dentro de ventana miércoles) ───────────
+  const eventosRecientesRaw = await prisma.proyecto.findMany({
+    where: {
+      fechaEvento: { gte: hace14dias, lt: inicioDeHoy },
+      estado: { notIn: ["COMPLETADO", "CANCELADO"] },
+    },
+    select: {
+      id: true,
+      nombre: true,
+      fechaEvento: true,
+      estado: true,
+      cliente: { select: { nombre: true } },
+    },
+    orderBy: { fechaEvento: "desc" },
+  });
+
+  // Filtrar en JS con la regla del miércoles post-evento — sin límite de cantidad
+  const eventosRecientes = eventosRecientesRaw.filter(
+    e => e.fechaEvento && ahora <= calcularMiercolesPostEvento(e.fechaEvento)
+  );
+
   // ── Cálculos ──────────────────────────────────────────────────────────────
   const etapasMap: Record<string, number> = {};
   tratosPorEtapa.forEach(t => { etapasMap[t.etapa] = t._count._all; });
@@ -384,7 +407,7 @@ export default async function DashboardPage() {
       {/* ══════════════════════════════════════════════════════════════════════
           ESTA SEMANA
       ══════════════════════════════════════════════════════════════════════ */}
-      {(proyectosEstaSemana.length > 0 || cxcVence7dias.length > 0 || cxpVence7dias.length > 0) && (
+      {(proyectosEstaSemana.length > 0 || eventosRecientes.length > 0 || cxcVence7dias.length > 0 || cxpVence7dias.length > 0) && (
         <div className="space-y-3">
           <div className="flex items-center gap-3">
             <p className="text-[11px] font-bold text-[#B3985B] uppercase tracking-widest">Esta semana</p>
@@ -396,9 +419,13 @@ export default async function DashboardPage() {
             <div className="bg-[#0f0f0f] border border-[#1e1e1e] rounded-xl overflow-hidden">
               <div className="px-4 py-2.5 border-b border-[#1a1a1a] flex items-center justify-between">
                 <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider">Eventos</p>
-                <span className="text-[10px] text-[#B3985B] bg-[#B3985B]/10 px-2 py-0.5 rounded-full">{proyectosEstaSemana.length}</span>
+                <span className="text-[10px] text-[#B3985B] bg-[#B3985B]/10 px-2 py-0.5 rounded-full">
+                  {proyectosEstaSemana.length + eventosRecientes.length}
+                </span>
               </div>
-              {proyectosEstaSemana.length === 0 ? (
+
+              {/* ── Próximos ── */}
+              {proyectosEstaSemana.length === 0 && eventosRecientes.length === 0 ? (
                 <p className="text-gray-600 text-xs px-4 py-3">Sin eventos esta semana</p>
               ) : proyectosEstaSemana.map(p => {
                 const hoyStrEvt = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
@@ -420,6 +447,39 @@ export default async function DashboardPage() {
                   </a>
                 );
               })}
+
+              {/* ── Por cerrar (recientes) ── */}
+              {eventosRecientes.length > 0 && (
+                <>
+                  {proyectosEstaSemana.length > 0 && (
+                    <div className="border-t border-[#1a1a1a]" />
+                  )}
+                  <div className="px-4 py-2">
+                    <p className="text-[9px] uppercase tracking-widest text-gray-700 font-semibold mb-1.5">Por cerrar</p>
+                    {eventosRecientes.map(e => {
+                      const diasDesde = Math.floor(
+                        (ahora.getTime() - new Date(e.fechaEvento!).getTime()) / 86400000
+                      );
+                      return (
+                        <a
+                          key={e.id}
+                          href={`/proyectos/${e.id}`}
+                          className="flex items-center gap-2 py-2 hover:bg-[#151515] -mx-4 px-4 transition-colors border-b border-[#0d0d0d] last:border-0"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-amber-500/80" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-xs font-medium truncate">{e.nombre}</p>
+                            <p className="text-gray-600 text-[10px] mt-0.5">{e.cliente.nombre}</p>
+                          </div>
+                          <span className="shrink-0 text-[10px] text-gray-600 bg-[#1a1a1a] px-1.5 py-0.5 rounded whitespace-nowrap">
+                            hace {diasDesde}d
+                          </span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
             {/* CxC */}
             <div className="bg-[#0f0f0f] border border-[#1e1e1e] rounded-xl overflow-hidden">
