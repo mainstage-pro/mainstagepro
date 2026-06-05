@@ -247,8 +247,8 @@ function MiDiaItem({
     <div className={`relative border rounded-xl overflow-hidden transition-all duration-200 flex ${
       completada ? 'border-[#1a1a1a] opacity-55' : 'border-[#1e1e1e] hover:border-[#2a2a2a]'
     }`}>
-      {/* Left impact bar */}
-      <div className={`w-1 shrink-0 ${imp.bar}`} />
+      {/* Left bar — area color */}
+      <div className="w-1 shrink-0 rounded-r-sm" style={{ backgroundColor: t.area.color || '#333' }} />
 
       <div className="flex-1 min-w-0">
         {/* Main row */}
@@ -256,14 +256,15 @@ function MiDiaItem({
           className="flex items-start gap-3 px-4 py-3.5 cursor-pointer select-none"
           onClick={() => setExpanded(v => !v)}
         >
-          {/* Toggle circle */}
+          {/* Toggle circle — neutral, area-tinted on hover */}
           <button
             onClick={handleToggle}
             disabled={toggling}
+            style={completada ? {} : { borderColor: (t.area.color || '#333') + '55' }}
             className={`mt-0.5 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all duration-200 ${
               completada
                 ? 'bg-green-500 border-green-500'
-                : imp.dot
+                : 'hover:bg-[#1a1a1a]'
             }`}
           >
             {completada && <span className="text-white text-[10px] leading-none font-bold">✓</span>}
@@ -281,9 +282,17 @@ function MiDiaItem({
 
             {/* Badges row */}
             <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-              <span className={`text-[9px] font-bold uppercase tracking-wider ${imp.labelCls}`}>
-                {imp.label}
-              </span>
+              {/* Impact — only shown for crítico / alto, as subtle dot + label */}
+              {t.impacto !== 'estandar' && (
+                <span className="flex items-center gap-1">
+                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                    t.impacto === 'critico' ? 'bg-red-500' : 'bg-orange-400'
+                  }`} />
+                  <span className={`text-[9px] uppercase tracking-wider ${
+                    t.impacto === 'critico' ? 'text-red-400/60' : 'text-orange-400/60'
+                  }`}>{imp.label}</span>
+                </span>
+              )}
               {t.tipo === 'ENTREGABLE' && (
                 <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#C9A84C]/30 text-[#C9A84C] bg-[#C9A84C]/5">
                   📄 Entregable
