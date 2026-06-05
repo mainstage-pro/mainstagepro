@@ -17,6 +17,8 @@ type Instancia = {
     tipo: string
     impacto: string
     contexto: string
+    frecuencia: string
+    diasSemana: number[]
     cuando: string | null
     descripcion: string | null
     estandarMinimo: string | null
@@ -71,9 +73,16 @@ function getGreeting(): string {
 }
 
 const DIAS_CORTO = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+const DIAS_COMPLETO = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 const DIAS_INICIAL = ['D', 'L', 'M', 'X', 'J', 'V', 'S']
 const MESES_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 const MESES_FULL = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+
+const DIAS_PLAN_LABEL: Record<number, string> = { 1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V' }
+const FRECUENCIA_LABEL: Record<string, string> = {
+  DIARIO: 'Diario', SEMANAL: 'Semanal', QUINCENAL: 'Quincenal',
+  MENSUAL: 'Mensual', TRIMESTRAL: 'Trimestral', POR_EVENTO: 'Por evento',
+}
 
 function fmtFechaLarga(d: Date): string {
   return `${DIAS_CORTO[d.getDay()]}, ${d.getDate()} de ${MESES_FULL[d.getMonth()]} de ${d.getFullYear()}`
@@ -86,10 +95,10 @@ function fmtRangoSemana(dias: Date[]): string {
   return `${ini.getDate()} ${MESES_ES[ini.getMonth()]} – ${fin.getDate()} ${MESES_ES[fin.getMonth()]} ${fin.getFullYear()}`
 }
 
-const IMPACTO: Record<string, { color: string; dot: string; label: string }> = {
-  critico:  { color: 'text-red-400',    dot: 'border-red-500 hover:bg-red-500/20',    label: 'CRÍTICO'  },
-  alto:     { color: 'text-orange-400', dot: 'border-orange-400 hover:bg-orange-400/20', label: 'ALTO'  },
-  estandar: { color: 'text-gray-500',   dot: 'border-[#444] hover:bg-[#2a2a2a]',      label: 'ESTÁNDAR' },
+const IMPACTO: Record<string, { color: string; dot: string; label: string; bar: string }> = {
+  critico:  { color: 'text-red-400',    dot: 'border-red-500 hover:bg-red-500/20',       bar: 'bg-red-500',    label: 'CRÍTICO'  },
+  alto:     { color: 'text-orange-400', dot: 'border-orange-400 hover:bg-orange-400/20', bar: 'bg-orange-400', label: 'ALTO'     },
+  estandar: { color: 'text-gray-500',   dot: 'border-[#444] hover:bg-[#2a2a2a]',         bar: 'bg-[#444]',     label: 'ESTÁNDAR' },
 }
 
 const CONTEXTO: Record<string, { label: string; cls: string }> = {
@@ -124,112 +133,147 @@ function MiDiaItem({
   }
 
   return (
-    <div className={`border rounded-xl overflow-hidden transition-all duration-200 ${
+    <div className={`relative border rounded-xl overflow-hidden transition-all duration-200 flex ${
       completada ? 'border-[#1a1a1a] opacity-60' : 'border-[#222] hover:border-[#333]'
     }`}>
-      {/* Main row */}
-      <div
-        className="flex items-start gap-3 px-4 py-3.5 cursor-pointer select-none"
-        onClick={() => setExpanded(v => !v)}
-      >
-        {/* Toggle circle */}
-        <button
-          onClick={handleToggle}
-          disabled={toggling}
-          className={`mt-0.5 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all duration-200 ${
-            completada
-              ? 'bg-green-500 border-green-500'
-              : imp.dot
-          }`}
+      {/* Left impacto bar */}
+      <div className={`w-1 shrink-0 ${imp.bar}`} />
+
+      <div className="flex-1 min-w-0">
+        {/* Main row */}
+        <div
+          className="flex items-start gap-3 px-4 py-3.5 cursor-pointer select-none"
+          onClick={() => setExpanded(v => !v)}
         >
-          {completada && <span className="text-white text-[10px] leading-none font-bold">✓</span>}
-          {toggling && !completada && <span className="w-2 h-2 rounded-full bg-current animate-pulse" />}
-        </button>
+          {/* Toggle circle */}
+          <button
+            onClick={handleToggle}
+            disabled={toggling}
+            className={`mt-0.5 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all duration-200 ${
+              completada
+                ? 'bg-green-500 border-green-500'
+                : imp.dot
+            }`}
+          >
+            {completada && <span className="text-white text-[10px] leading-none font-bold">✓</span>}
+            {toggling && !completada && <span className="w-2 h-2 rounded-full bg-current animate-pulse" />}
+          </button>
 
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-1.5 mb-1">
-            <span className={`text-[9px] font-bold uppercase tracking-wider ${imp.color}`}>
-              {imp.label}
-            </span>
-            <span className={`text-[9px] px-1.5 py-0.5 rounded-full border ${ctx.cls}`}>
-              {ctx.label}
-            </span>
-            {t.tipo === 'ENTREGABLE' && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#C9A84C]/30 text-[#C9A84C] bg-[#C9A84C]/5">
-                📄 Entregable
-              </span>
-            )}
-            {t.puestoDefault === 'Todo el equipo' && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#444] text-gray-500 bg-[#1a1a1a]">
-                👥 Todo el equipo
-              </span>
-            )}
-          </div>
-
-          <p className={`text-sm font-medium leading-snug ${completada ? 'line-through text-gray-600' : 'text-white'}`}>
-            {t.nombre}
-          </p>
-
-          {t.cuando && !expanded && (
-            <p className="text-[11px] text-gray-600 mt-0.5 truncate">{t.cuando}</p>
-          )}
-        </div>
-
-        {/* Area + chevron */}
-        <div className="shrink-0 flex items-center gap-2">
-          <span className="text-[9px] text-gray-700 hidden sm:block">{t.area.icono} {t.area.nombre}</span>
-          <span className="text-gray-600 text-[10px]">{expanded ? '▲' : '▼'}</span>
-        </div>
-      </div>
-
-      {/* Expanded detail */}
-      {expanded && (
-        <div className="px-4 pb-4 pt-1 border-t border-[#111] space-y-3">
-          {t.cuando && (
-            <p className="text-xs text-gray-500">
-              <span className="text-gray-700">⏰ Cuándo: </span>{t.cuando}
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <p className={`text-sm font-medium leading-snug mb-1 ${
+              completada ? 'line-through text-gray-600' : 'text-white'
+            }`}>
+              {t.nombre}
             </p>
-          )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {t.descripcion && (
-              <div className="bg-[#0d0d0d] rounded-lg p-3">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-gray-600 mb-1.5">Descripción</p>
-                <p className="text-xs text-gray-300 leading-relaxed">{t.descripcion}</p>
+            {/* Badges row */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className={`text-[9px] font-bold uppercase tracking-wider ${imp.color}`}>
+                {imp.label}
+              </span>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full border ${ctx.cls}`}>
+                {ctx.label}
+              </span>
+              {t.tipo === 'ENTREGABLE' && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#C9A84C]/30 text-[#C9A84C] bg-[#C9A84C]/5">
+                  📄 Entregable
+                </span>
+              )}
+              {t.puestoDefault === 'Todo el equipo' && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#444] text-gray-500 bg-[#1a1a1a]">
+                  👥 Todo el equipo
+                </span>
+              )}
+            </div>
+
+            {/* Bottom meta row: responsable + diasSemana + frecuencia */}
+            <div className="flex flex-wrap items-center gap-2 mt-1.5">
+              {instancia.responsable && (
+                <span className="text-[10px] text-gray-500">{instancia.responsable.name.split(' ')[0]}</span>
+              )}
+              {/* diasSemana boxes */}
+              <div className="flex gap-0.5">
+                {[1,2,3,4,5].map(d => (
+                  <span
+                    key={d}
+                    className={`text-[8px] w-3.5 h-3.5 rounded flex items-center justify-center font-bold ${
+                      (t.diasSemana ?? []).includes(d)
+                        ? 'bg-[#C9A84C]/20 text-[#C9A84C]'
+                        : 'bg-[#1a1a1a] text-gray-700'
+                    }`}
+                  >
+                    {DIAS_PLAN_LABEL[d]}
+                  </span>
+                ))}
               </div>
-            )}
-            {t.porqueSeHace && (
-              <div className="bg-[#0d0d0d] rounded-lg p-3">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-gray-600 mb-1.5">Por qué se hace</p>
-                <p className="text-xs text-gray-300 leading-relaxed">{t.porqueSeHace}</p>
-              </div>
-            )}
-            {t.estandarMinimo && (
-              <div className="bg-[#C9A84C]/5 border border-[#C9A84C]/20 rounded-lg p-3">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-[#C9A84C] mb-1.5">Estándar mínimo</p>
-                <p className="text-xs text-gray-300 leading-relaxed">{t.estandarMinimo}</p>
-              </div>
-            )}
-            {t.siNoSeHace && (
-              <div className="bg-red-950/20 border border-red-900/20 rounded-lg p-3">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-red-400 mb-1.5">Si no se hace</p>
-                <p className="text-xs text-gray-400 leading-relaxed">{t.siNoSeHace}</p>
-              </div>
+              {t.frecuencia && (
+                <span className="text-[9px] text-gray-600">
+                  {FRECUENCIA_LABEL[t.frecuencia] ?? t.frecuencia}
+                </span>
+              )}
+            </div>
+
+            {t.cuando && !expanded && (
+              <p className="text-[11px] text-gray-600 mt-0.5 truncate">{t.cuando}</p>
             )}
           </div>
 
-          {t.moduloDestino && t.moduloTexto && (
-            <a
-              href={t.moduloDestino}
-              onClick={e => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 text-sm text-[#C9A84C] hover:underline"
-            >
-              {t.moduloTexto} →
-            </a>
-          )}
+          {/* Area + chevron */}
+          <div className="shrink-0 flex items-center gap-2">
+            <span className="text-[9px] text-gray-700 hidden sm:block">{t.area.icono} {t.area.nombre}</span>
+            <span className="text-gray-600 text-[10px]">{expanded ? '▲' : '▼'}</span>
+          </div>
         </div>
-      )}
+
+        {/* Expanded detail */}
+        {expanded && (
+          <div className="px-4 pb-4 pt-1 border-t border-[#111] space-y-3">
+            {t.cuando && (
+              <p className="text-xs text-gray-500">
+                <span className="text-gray-700">⏰ Cuándo: </span>{t.cuando}
+              </p>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {t.descripcion && (
+                <div className="bg-[#0d0d0d] rounded-lg p-3">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-gray-600 mb-1.5">Descripción</p>
+                  <p className="text-xs text-gray-300 leading-relaxed">{t.descripcion}</p>
+                </div>
+              )}
+              {t.porqueSeHace && (
+                <div className="bg-[#0d0d0d] rounded-lg p-3">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-gray-600 mb-1.5">Por qué se hace</p>
+                  <p className="text-xs text-gray-300 leading-relaxed">{t.porqueSeHace}</p>
+                </div>
+              )}
+              {t.estandarMinimo && (
+                <div className="bg-[#C9A84C]/5 border border-[#C9A84C]/20 rounded-lg p-3">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#C9A84C] mb-1.5">Estándar mínimo</p>
+                  <p className="text-xs text-gray-300 leading-relaxed">{t.estandarMinimo}</p>
+                </div>
+              )}
+              {t.siNoSeHace && (
+                <div className="bg-red-950/20 border border-red-900/20 rounded-lg p-3">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-red-400 mb-1.5">Si no se hace</p>
+                  <p className="text-xs text-gray-400 leading-relaxed">{t.siNoSeHace}</p>
+                </div>
+              )}
+            </div>
+
+            {t.moduloDestino && t.moduloTexto && (
+              <a
+                href={t.moduloDestino}
+                onClick={e => e.stopPropagation()}
+                className="inline-flex items-center gap-1.5 text-sm text-[#C9A84C] hover:underline"
+              >
+                {t.moduloTexto} →
+              </a>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -380,31 +424,34 @@ export default function MiDiaPage() {
             const conteo = conteosSemana[diaStr]
             const isSelected = esMismaFecha(dia, fechaActual)
             const isToday = esHoy(dia)
+            const diaNombre = DIAS_COMPLETO[dia.getDay()]
+            const diaNumero = dia.getDate()
+            const mesAbrev = MESES_ES[dia.getMonth()]
 
             return (
               <button
                 key={diaStr}
                 onClick={() => setFechaActual(new Date(dia))}
-                className={`flex flex-col items-center py-2.5 rounded-xl border transition-all ${
+                className={`flex flex-col items-center px-2 py-3 rounded-xl border transition-all ${
                   isSelected
                     ? 'bg-[#C9A84C]/10 border-[#C9A84C]/40 shadow-sm'
                     : 'bg-[#0a0a0a] border-[#1a1a1a] hover:border-[#333]'
                 }`}
               >
-                <span className={`text-[9px] font-bold uppercase tracking-wider mb-1 ${
-                  isToday ? 'text-[#C9A84C]' : 'text-gray-600'
+                <span className={`text-xs font-semibold mb-0.5 ${
+                  isSelected ? 'text-[#C9A84C]' : isToday ? 'text-white' : 'text-[#666]'
                 }`}>
-                  {DIAS_INICIAL[dia.getDay()]}
+                  {diaNombre}
                 </span>
-                <span className={`text-base font-bold leading-none ${
-                  isSelected ? 'text-[#C9A84C]' : isToday ? 'text-white' : 'text-gray-400'
+                <span className={`text-[11px] mt-0.5 ${
+                  isSelected ? 'text-[#C9A84C]/80' : isToday ? 'text-gray-300' : 'text-[#444]'
                 }`}>
-                  {dia.getDate()}
+                  {diaNumero} de {mesAbrev}
                 </span>
                 <span className={`text-[9px] mt-1 font-mono ${
                   isSelected ? 'text-[#C9A84C]/70' : 'text-gray-700'
                 }`}>
-                  {loadingConteos ? '·' : (conteo !== undefined ? conteo : '–')}
+                  {loadingConteos ? '·' : (conteo !== undefined ? `${conteo} tarea${conteo !== 1 ? 's' : ''}` : '–')}
                 </span>
               </button>
             )

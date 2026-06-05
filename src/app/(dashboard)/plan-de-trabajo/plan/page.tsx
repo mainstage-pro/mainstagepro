@@ -428,12 +428,14 @@ function TemplateRow({
   onEdit,
   onDelete,
   onResponsableChange,
+  onDiasSemanaChange,
 }: {
   t: Template
   usuarios: Usuario[]
   onEdit: (t: Template) => void
   onDelete: (id: string) => void
   onResponsableChange: (templateId: string, responsableId: string | null) => void
+  onDiasSemanaChange?: (templateId: string, diasSemana: number[]) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const ctx = CONTEXTO_BADGE[t.contexto] ?? CONTEXTO_BADGE.independiente
@@ -476,19 +478,41 @@ function TemplateRow({
         </td>
 
         {/* Días */}
-        <td className="py-3 px-3 hidden md:table-cell">
+        <td className="py-3 px-3 hidden md:table-cell" onClick={e => e.stopPropagation()}>
           <div className="flex gap-0.5">
             {[1,2,3,4,5].map(d => (
-              <span
-                key={d}
-                className={`text-[9px] w-4 h-4 rounded flex items-center justify-center font-bold ${
-                  t.diasSemana.includes(d)
-                    ? 'bg-[#C9A84C]/20 text-[#C9A84C]'
-                    : 'bg-[#1a1a1a] text-gray-700'
-                }`}
-              >
-                {DIAS_LABEL[d]}
-              </span>
+              onDiasSemanaChange ? (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={e => {
+                    e.stopPropagation()
+                    const next = t.diasSemana.includes(d)
+                      ? t.diasSemana.filter(x => x !== d)
+                      : [...t.diasSemana, d].sort((a, b) => a - b)
+                    onDiasSemanaChange(t.id, next)
+                  }}
+                  className={`text-[9px] w-4 h-4 rounded flex items-center justify-center font-bold transition-colors ${
+                    t.diasSemana.includes(d)
+                      ? 'bg-[#C9A84C]/20 text-[#C9A84C] hover:bg-[#C9A84C]/40'
+                      : 'bg-[#1a1a1a] text-gray-700 hover:bg-[#2a2a2a] hover:text-gray-500'
+                  }`}
+                  title={DIAS_SEMANA.find(x => x.d === d)?.full}
+                >
+                  {DIAS_LABEL[d]}
+                </button>
+              ) : (
+                <span
+                  key={d}
+                  className={`text-[9px] w-4 h-4 rounded flex items-center justify-center font-bold ${
+                    t.diasSemana.includes(d)
+                      ? 'bg-[#C9A84C]/20 text-[#C9A84C]'
+                      : 'bg-[#1a1a1a] text-gray-700'
+                  }`}
+                >
+                  {DIAS_LABEL[d]}
+                </span>
+              )
             ))}
           </div>
         </td>
@@ -606,6 +630,17 @@ function VistaPorPersona({
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
 
+  async function handleDiasSemanaChange(templateId: string, diasSemana: number[]) {
+    // Optimistic update
+    setTemplates(prev => prev.map(t => t.id === templateId ? { ...t, diasSemana } : t))
+    // Persist
+    await fetch(`/api/plan-trabajo/templates/${templateId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ diasSemana }),
+    })
+  }
+
   useEffect(() => {
     async function load() {
       setLoading(true)
@@ -658,6 +693,7 @@ function VistaPorPersona({
                       onEdit={onEdit}
                       onDelete={onDelete}
                       onResponsableChange={onResponsableChange}
+                      onDiasSemanaChange={handleDiasSemanaChange}
                     />
                   ))}
                 </tbody>
@@ -686,6 +722,7 @@ function VistaPorPersona({
                       onEdit={onEdit}
                       onDelete={onDelete}
                       onResponsableChange={onResponsableChange}
+                      onDiasSemanaChange={handleDiasSemanaChange}
                     />
                   ))}
                 </tbody>
