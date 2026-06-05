@@ -6,7 +6,7 @@ export async function GET() {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  // Helper: last 8 Mondays (Mexico City timezone offset handled)
+  // Helper: last 8 Mondays
   function getLunes(offsetWeeks: number): Date {
     const now = new Date()
     const dow = now.getDay()
@@ -16,15 +16,15 @@ export async function GET() {
     return lunes
   }
 
-  // Base filter: only measurable tasks
+  // Measurable = has a responsable assigned (fecha is NOT required — many project tasks lack it)
+  // Subtasks (parentId != null) are excluded to avoid double-counting
   const measurableWhere = {
-    fecha: { not: null },
-    asignadoAId: { not: null },
+    asignadoAId: { not: null as string | null },
     estado: { not: 'CANCELADA' },
-    parentId: null, // exclude subtasks from top-level metrics
+    parentId: null as string | null,
   }
 
-  // 1. Weekly stats (last 8 weeks)
+  // 1. Weekly stats — uses fecha to bucket tasks into weeks (only tasks with fecha)
   const semanas = await Promise.all(
     Array.from({ length: 8 }, (_, i) => i).reverse().map(async (offset) => {
       const lunes = getLunes(offset)
@@ -32,13 +32,14 @@ export async function GET() {
       domingo.setDate(lunes.getDate() + 6)
       domingo.setHours(23, 59, 59, 999)
 
+      const weekWhere = {
+        ...measurableWhere,
+        fecha: { gte: lunes, lte: domingo },
+      }
+
       const [total, completadas] = await Promise.all([
-        prisma.tarea.count({
-          where: { ...measurableWhere, fecha: { gte: lunes, lte: domingo } },
-        }),
-        prisma.tarea.count({
-          where: { ...measurableWhere, fecha: { gte: lunes, lte: domingo }, estado: 'COMPLETADA' },
-        }),
+        prisma.tarea.count({ where: weekWhere }),
+        prisma.tarea.count({ where: { ...weekWhere, estado: 'COMPLETADA' } }),
       ])
 
       const label = lunes.toLocaleDateString('es-MX', {
@@ -55,7 +56,7 @@ export async function GET() {
     })
   )
 
-  // 2. Per-user stats (all time, measurable tasks)
+  // 2. Per-user stats — ALL assigned tasks regardless of fecha
   const tareasUsuario = await prisma.tarea.groupBy({
     by: ['asignadoAId'],
     where: measurableWhere,
@@ -67,7 +68,6 @@ export async function GET() {
     _count: { id: true },
   })
 
-  // Get user names
   const userIds = tareasUsuario.map(t => t.asignadoAId).filter(Boolean) as string[]
   const users = await prisma.user.findMany({
     where: { id: { in: userIds } },
@@ -83,11 +83,12 @@ export async function GET() {
       name: u.name,
       total,
       completadas,
+      pendientes: total - completadas,
       pct: total > 0 ? Math.round((completadas / total) * 100) : 0,
     }
   }).sort((a, b) => b.pct - a.pct)
 
-  // 3. Per-priority stats
+  // 3. Per-priority stats — ALL assigned tasks
   const PRIORIDADES = ['URGENTE', 'ALTA', 'MEDIA', 'BAJA']
   const prioStats = await Promise.all(PRIORIDADES.map(async (p) => {
     const [total, completadas] = await Promise.all([
@@ -97,16 +98,16 @@ export async function GET() {
     return { prioridad: p, total, completadas, pct: total > 0 ? Math.round((completadas / total) * 100) : 0 }
   }))
 
-  // 4. No medibles count (missing fecha OR asignadoAId)
-  const noMedibles = await prisma.tarea.count({
+  // 4. Sin responsable = not measurable (can't track who's responsible)
+  const sinResponsable = await prisma.tarea.count({
     where: {
       estado: { not: 'CANCELADA' },
       parentId: null,
-      OR: [{ fecha: null }, { asignadoAId: null }],
+      asignadoAId: null,
     },
   })
 
-  // 5. Total general
+  // 5. Totals
   const [totalMedibles, totalCompletadas] = await Promise.all([
     prisma.tarea.count({ where: measurableWhere }),
     prisma.tarea.count({ where: { ...measurableWhere, estado: 'COMPLETADA' } }),
@@ -116,7 +117,7 @@ export async function GET() {
     semanas,
     usuarios,
     prioridades: prioStats,
-    noMedibles,
+    noMedibles: sinResponsable,   // tasks without responsable (truly untrackable)
     totalMedibles,
     totalCompletadas,
     pctGeneral: totalMedibles > 0 ? Math.round((totalCompletadas / totalMedibles) * 100) : 0,

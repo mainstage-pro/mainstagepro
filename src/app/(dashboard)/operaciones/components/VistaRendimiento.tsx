@@ -63,10 +63,10 @@ export function VistaRendimiento() {
         <p className="text-[10px] text-[#B3985B] uppercase tracking-[0.2em] font-semibold">Módulo de tareas</p>
         <h1 className="text-xl font-bold text-white mt-1">Rendimiento operativo</h1>
         <p className="text-xs text-[#444] mt-1">
-          Solo se miden tareas con fecha y responsable asignados.
+          Solo se miden tareas con responsable asignado. La fecha solo aplica para el análisis semanal.
           {data.noMedibles > 0 && (
             <span className="ml-2 text-[#555]">
-              {data.noMedibles} tarea{data.noMedibles !== 1 ? 's' : ''} sin fecha o responsable (no medibles)
+              {data.noMedibles} tarea{data.noMedibles !== 1 ? 's' : ''} sin responsable asignado (no medibles)
             </span>
           )}
         </p>
