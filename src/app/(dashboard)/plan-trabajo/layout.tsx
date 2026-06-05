@@ -8,7 +8,8 @@ export default function PlanTrabajoLayout({ children }: { children: React.ReactN
   const pathname = usePathname()
 
   const tabs = [
-    { href: '/plan-trabajo/hoy',         label: '📅 Mi día'      },
+    { href: '/plan-trabajo/hoy',          label: '📅 Mi día'      },
+    { href: '/plan-trabajo/plan',         label: '📋 Plan'        },
     { href: '/plan-trabajo/rendimiento',  label: '📊 Rendimiento' },
   ]
 
