@@ -145,6 +145,11 @@ export async function POST(request: NextRequest) {
             subtotal: parseFloat(String(l.subtotal || 0)),
             esIncluido: Boolean(l.esIncluido),
             notas: l.notas as string || null,
+            // Déficit de stock propio
+            cantidadPropia: l.cantidadPropia != null ? parseFloat(String(l.cantidadPropia)) : null,
+            cantidadExterna: l.cantidadExterna != null ? parseFloat(String(l.cantidadExterna)) : null,
+            proveedorRentaId: l.proveedorRentaId as string || null,
+            notasInternas: l.notasInternas as string || null,
           })),
         },
       },

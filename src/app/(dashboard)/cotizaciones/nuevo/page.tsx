@@ -25,6 +25,7 @@ interface Equipo {
   cantidadTotal: number;
   proveedorDefaultId: string | null;
   categoria: { id: string; nombre: string; orden: number };
+  proveedoresPrecios: { precio: number; proveedor: { id: string; nombre: string; empresa: string | null; prioridad: number } }[];
 }
 
 interface LineaOcasional {
@@ -286,6 +287,14 @@ function CotizadorForm() {
   // Proveedores para selector en modal nuevo equipo
   const [proveedores, setProveedores] = useState<Array<{ id: string; nombre: string; telefono: string | null }>>([]);
   const [showConfirmDisp, setShowConfirmDisp] = useState(false);
+
+  // ── Déficit de stock propio ──
+  const [deficitInfo, setDeficitInfo] = useState<{
+    equipoId: string; lineaId: string; stockPropio: number; deficit: number;
+  } | null>(null);
+  const [deficitProveedores, setDeficitProveedores] = useState<{ precio: number; proveedor: { id: string; nombre: string; empresa: string | null; prioridad: number } }[]>([]);
+  const [deficitProveedorId, setDeficitProveedorId] = useState('');
+  const [deficitProveedorTexto, setDeficitProveedorTexto] = useState('');
 
   // Nuevos: modal nuevo equipo proveedor + adicionales
   const [showNuevoEqModal, setShowNuevoEqModal] = useState(false);
@@ -567,6 +576,15 @@ function CotizadorForm() {
       .finally(() => setLoadingDisp(false));
   }, [evento.fechaEvento, editId]);
 
+  // Cargar proveedores cuando hay déficit detectado
+  useEffect(() => {
+    if (!deficitInfo) { setDeficitProveedores([]); return; }
+    fetch(`/api/equipos/${deficitInfo.equipoId}/proveedores`)
+      .then(r => r.json())
+      .then(d => setDeficitProveedores(d.proveedores?.map((pp: { precio: number; proveedor: { id: string; nombre: string; empresa: string | null; prioridad: number } }) => ({ precio: pp.precio, proveedor: pp.proveedor })) ?? []))
+      .catch(() => {});
+  }, [deficitInfo]);
+
   // Equipos propios agrupados por categoría
   const equiposPorCategoria = useMemo(() => {
     const propios = equipos.filter(e => e.tipo === "PROPIO");
@@ -661,6 +679,13 @@ function CotizadorForm() {
       categoria: eq.categoria.nombre,
       notas: "",
     }]);
+    // Déficit check para equipos PROPIOS
+    const disponible = dispMap[eq.id]?.disponible ?? eq.cantidadTotal;
+    if (cant > disponible) {
+      const deficit = cant - disponible;
+      const lineaId = uid(); // track which line has the deficit
+      setDeficitInfo({ equipoId: eq.id, lineaId, stockPropio: disponible, deficit });
+    }
     setSelEq(""); setSelEqCant("1"); setSelEqDias(evento.diasEquipo);
   }
 
@@ -739,15 +764,17 @@ function CotizadorForm() {
     const cant = parseFloat(selExtCant) || 1;
     const dias = parseInt(selExtDias) || 1;
     const costo = eq.costoProveedor ?? 0;
+    // Auto-seleccionar proveedor de mayor prioridad si existe
+    const mejorProveedor = (eq.proveedoresPrecios ?? [])[0] ?? null;
     setLineasExterno(prev => [...prev, {
       id: uid(), equipoId: eq.id, descripcion: eq.descripcion,
       marca: [eq.marca, eq.modelo].filter(Boolean).join(" "),
       cantidad: cant, dias,
       precioUnitario: eq.precioRenta,
-      costoProveedor: costo,
+      costoProveedor: mejorProveedor ? mejorProveedor.precio : costo,
       subtotal: eq.precioRenta * cant * dias,
-      costoTotal: costo * cant * dias,
-      proveedorId: eq.proveedorDefaultId ?? null,
+      costoTotal: (mejorProveedor ? mejorProveedor.precio : costo) * cant * dias,
+      proveedorId: mejorProveedor ? mejorProveedor.proveedor.id : (eq.proveedorDefaultId ?? null),
     }]);
     setSelExt(""); setSelExtCant("1"); setSelExtDias(evento.diasEquipo);
   }
@@ -1012,13 +1039,24 @@ function CotizadorForm() {
     setSaving(true); setError("");
 
     const todasLineas = [
-      ...lineasEquipo.map(l => ({
-        tipo: "EQUIPO_PROPIO", descripcion: l.descripcion, marca: l.marca,
-        cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
-        costoUnitario: 0, subtotal: l.subtotal,
-        esExterno: false, esIncluido: false, equipoId: l.equipoId,
-        notas: buildNotasValue(l.categoria, l.notas),
-      })),
+      ...lineasEquipo.map(l => {
+        const notasRaw = l.notas ?? '';
+        const deficitMatch = notasRaw.match(/\|?deficit:(\{.*\})$/);
+        let deficitFields = {};
+        let notasLimpia = notasRaw;
+        if (deficitMatch) {
+          try { deficitFields = JSON.parse(deficitMatch[1]); } catch { /* ignore */ }
+          notasLimpia = notasRaw.replace(/\|?deficit:\{.*\}$/, '');
+        }
+        return {
+          tipo: "EQUIPO_PROPIO", descripcion: l.descripcion, marca: l.marca,
+          cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
+          costoUnitario: 0, subtotal: l.subtotal,
+          esExterno: false, esIncluido: false, equipoId: l.equipoId,
+          notas: buildNotasValue(l.categoria, notasLimpia),
+          ...deficitFields,
+        };
+      }),
       ...lineasExterno.map(l => ({
         tipo: "EQUIPO_EXTERNO", descripcion: l.descripcion, marca: l.marca,
         cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
@@ -2521,6 +2559,89 @@ function CotizadorForm() {
           </div>
         </div>
       </div>
+
+      {/* Panel déficit de stock */}
+      {deficitInfo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl p-6 max-w-md w-full mx-4">
+            <div className="flex items-center gap-2 mb-4">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <h3 className="text-white font-semibold">Stock insuficiente</h3>
+            </div>
+            <p className="text-gray-400 text-sm mb-4">
+              Tienes <strong className="text-white">{deficitInfo.stockPropio}</strong> unidades disponibles. Necesitas <strong className="text-orange-400">{deficitInfo.deficit} más</strong> de un proveedor externo.
+            </p>
+            <p className="text-xs text-gray-500 mb-4">Esta información es interna y NO aparece en la cotización al cliente.</p>
+
+            {deficitProveedores.length > 0 && (
+              <div className="mb-4">
+                <p className="text-xs text-gray-400 font-semibold mb-2 uppercase tracking-wider">Proveedores recomendados</p>
+                <div className="space-y-1.5">
+                  {deficitProveedores.map(pp => (
+                    <button key={pp.proveedor.id} type="button"
+                      onClick={() => { setDeficitProveedorId(pp.proveedor.id); setDeficitProveedorTexto(''); }}
+                      className={`w-full text-left flex items-center justify-between px-3 py-2 rounded-xl border transition-all ${
+                        deficitProveedorId === pp.proveedor.id
+                          ? 'border-[#B3985B] bg-[#B3985B]/10'
+                          : 'border-[#2a2a2a] hover:border-[#3a3a3a] bg-[#0d0d0d]'
+                      }`}>
+                      <div>
+                        <span className="text-sm text-white">{pp.proveedor.nombre}</span>
+                        {pp.proveedor.empresa && <span className="text-xs text-gray-500 ml-1">— {pp.proveedor.empresa}</span>}
+                        {pp.proveedor.prioridad > 0 && <span className="ml-2 text-[10px] text-yellow-500">{'⭐'.repeat(pp.proveedor.prioridad).slice(0, pp.proveedor.prioridad)}</span>}
+                      </div>
+                      <span className="text-xs text-[#B3985B] font-semibold">${pp.precio.toLocaleString('es-MX')}/día</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="mb-4">
+              <p className="text-xs text-gray-400 font-semibold mb-2 uppercase tracking-wider">O escribir proveedor</p>
+              <input
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]/40 placeholder:text-gray-700"
+                placeholder="Nombre del proveedor..."
+                value={deficitProveedorTexto}
+                onChange={e => { setDeficitProveedorTexto(e.target.value); setDeficitProveedorId(''); }}
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <button type="button"
+                onClick={() => {
+                  if (deficitInfo) {
+                    const deficitData = JSON.stringify({
+                      cantidadPropia: deficitInfo.stockPropio,
+                      cantidadExterna: deficitInfo.deficit,
+                      proveedorRentaId: deficitProveedorId || null,
+                      notasInternas: deficitProveedorTexto || null,
+                    });
+                    setLineasEquipo(prev => {
+                      const idx = [...prev].reverse().findIndex(l => l.equipoId === deficitInfo.equipoId);
+                      if (idx === -1) return prev;
+                      const realIdx = prev.length - 1 - idx;
+                      return prev.map((l, i) => i === realIdx
+                        ? { ...l, notas: l.notas ? `${l.notas}|deficit:${deficitData}` : `deficit:${deficitData}` }
+                        : l
+                      );
+                    });
+                  }
+                  setDeficitInfo(null);
+                  setDeficitProveedorId('');
+                  setDeficitProveedorTexto('');
+                }}
+                className="flex-1 bg-[#B3985B] hover:bg-[#c9a96e] text-black text-sm font-bold py-2.5 rounded-xl transition-colors">
+                Confirmar
+              </button>
+              <button type="button" onClick={() => { setDeficitInfo(null); setDeficitProveedorId(''); setDeficitProveedorTexto(''); }}
+                className="px-4 text-sm text-gray-500 hover:text-gray-300 border border-[#2a2a2a] rounded-xl transition-colors">
+                Omitir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

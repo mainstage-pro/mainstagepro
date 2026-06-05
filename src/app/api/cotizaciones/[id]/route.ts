@@ -234,6 +234,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                 rolTecnicoId: (l.rolTecnicoId as string) || null,
                 proveedorId: (l.proveedorId as string) || null,
                 notas: (l.notas as string) || null,
+                // Déficit de stock propio
+                cantidadPropia: l.cantidadPropia != null ? Number(l.cantidadPropia) : null,
+                cantidadExterna: l.cantidadExterna != null ? Number(l.cantidadExterna) : null,
+                proveedorRentaId: (l.proveedorRentaId as string) || null,
+                notasInternas: (l.notasInternas as string) || null,
               })),
             },
           },

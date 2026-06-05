@@ -412,6 +412,13 @@ model CotizacionLinea {
   esIncluido     Boolean  @default(false)
   notas          String?
 
+  // Campos para déficit de stock propio (NO aparecen en PDF)
+  cantidadPropia   Float?    // cuántas unidades propias se asignan
+  cantidadExterna  Float?    // cuántas vienen de proveedor externo (déficit)
+  proveedorRentaId String?   // proveedor que cubre el déficit
+  proveedorRenta   Proveedor? @relation("ProveedorRentaLineas", fields: [proveedorRentaId], references: [id])
+  notasInternas    String?   // notas internas que NO salen en el PDF
+
   @@map("cotizacion_lineas")
 }
 
@@ -657,8 +664,24 @@ model Equipo {
   unidades             EquipoUnidad[]
   accesorios           EquipoAccesorio[]
   notasEquipo          EquipoNota[]
+  proveedoresPrecios   EquipoProveedorPrecio[] @relation("EquipoProveedores")
 
   @@map("equipos")
+}
+
+model EquipoProveedorPrecio {
+  id          String    @id @default(cuid())
+  equipoId    String
+  equipo      Equipo    @relation("EquipoProveedores", fields: [equipoId], references: [id], onDelete: Cascade)
+  proveedorId String
+  proveedor   Proveedor @relation("ProveedorEquiposPrecios", fields: [proveedorId], references: [id], onDelete: Cascade)
+  precio      Float     @default(0)   // precio que nos cobra este proveedor por día
+  notas       String?
+  activo      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  @@unique([equipoId, proveedorId])
+  @@map("equipo_proveedor_precios")
 }
 
 model EquipoNota {
@@ -780,6 +803,8 @@ model Proveedor {
   movimientos      MovimientoFinanciero[]
   ordenesCompra    OrdenCompra[]
   equiposPortal    EquipoProveedor[]
+  equiposPrecios   EquipoProveedorPrecio[] @relation("ProveedorEquiposPrecios")
+  lineasRenta      CotizacionLinea[]      @relation("ProveedorRentaLineas")
 
   @@map("proveedores")
 }

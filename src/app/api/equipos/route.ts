@@ -21,6 +21,14 @@ const EQUIPO_SELECT = {
   voltajeRequerido: true,
   imagenUrl: true,
   imagenesUrls: true,
+  proveedoresPrecios: {
+    where: { activo: true },
+    select: {
+      precio: true,
+      proveedor: { select: { id: true, nombre: true, empresa: true, prioridad: true } },
+    },
+    orderBy: { proveedor: { prioridad: 'desc' as const } },
+  },
 };
 
 export async function GET(req: NextRequest) {

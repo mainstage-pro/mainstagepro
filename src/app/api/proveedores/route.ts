@@ -10,7 +10,7 @@ export async function GET() {
     include: {
       compania: { select: { id: true, nombre: true } },
     },
-    orderBy: { nombre: "asc" },
+    orderBy: [{ prioridad: 'desc' as const }, { nombre: 'asc' as const }],
   });
 
   return NextResponse.json({ proveedores });

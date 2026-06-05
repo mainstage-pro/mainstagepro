@@ -36,6 +36,15 @@ export async function GET(req: NextRequest) {
         proveedorDefault: { select: { id: true, nombre: true, empresa: true } },
         imagenUrl: true,
         _count: { select: { accesorios: true } },
+        proveedoresPrecios: {
+          where: { activo: true },
+          select: {
+            precio: true,
+            notas: true,
+            proveedor: { select: { id: true, nombre: true, empresa: true, prioridad: true } },
+          },
+          orderBy: { proveedor: { prioridad: 'desc' as const } },
+        },
       },
       orderBy: [{ categoria: { orden: "asc" } }, { descripcion: "asc" }],
     }),

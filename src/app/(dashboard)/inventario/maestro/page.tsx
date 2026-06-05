@@ -24,10 +24,11 @@ type Equipo = {
   amperajeRequerido: number | null;
   voltajeRequerido: number | null;
   _count: { accesorios: number };
+  proveedoresPrecios: { precio: number; notas: string | null; proveedor: { id: string; nombre: string; empresa: string | null; prioridad: number } }[];
 };
 
 type Categoria = { id: string; nombre: string; orden: number };
-type Proveedor = { id: string; nombre: string; empresa: string | null };
+type Proveedor = { id: string; nombre: string; empresa: string | null; prioridad: number };
 
 type Kpis = {
   totalEquipos: number;
@@ -116,12 +117,51 @@ type FormPanelProps = {
   onClose: () => void;
   onImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onSave: () => void;
+  // Supplier management
+  showAddProveedor: boolean;
+  setShowAddProveedor: (v: boolean) => void;
+  newProveedorId: string;
+  setNewProveedorId: (v: string) => void;
+  newProveedorPrecio: string;
+  setNewProveedorPrecio: (v: string) => void;
+  newProveedorNotas: string;
+  setNewProveedorNotas: (v: string) => void;
+  savingProveedor: boolean;
+  onAddProveedor: (equipoId: string) => void;
+  onRemoveProveedor: (equipoId: string, proveedorId: string) => void;
 };
 
-function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, proveedores, imgRef, onClose, onImageChange, onSave }: FormPanelProps) {
+const inputCls = "w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50";
+const labelCls = "block text-[10px] text-gray-500 uppercase tracking-wider mb-1";
+
+function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, proveedores, imgRef, onClose, onImageChange, onSave,
+  showAddProveedor, setShowAddProveedor, newProveedorId, setNewProveedorId, newProveedorPrecio, setNewProveedorPrecio,
+  newProveedorNotas, setNewProveedorNotas, savingProveedor, onAddProveedor, onRemoveProveedor,
+}: FormPanelProps) {
   const equipoActual = panel !== "nuevo" ? equipos.find(e => e.id === panel) : null;
   return (
     <div>
+      {/* Clonar de inventario propio — solo al crear externo */}
+      {panel === "nuevo" && form.tipo === "EXTERNO" && (
+        <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl p-3 mb-3">
+          <p className="text-xs text-gray-500 mb-2">¿Basado en un equipo de tu inventario?</p>
+          <select
+            className={inputCls}
+            onChange={e => {
+              const eq = equipos.find(eq => eq.id === e.target.value)
+              if (eq) setForm(p => ({ ...p, descripcion: eq.descripcion, marca: eq.marca ?? '', modelo: eq.modelo ?? '' }))
+            }}
+            defaultValue=""
+          >
+            <option value="">Crear desde cero</option>
+            {equipos.filter(eq => eq.tipo === "PROPIO").map(eq => (
+              <option key={eq.id} value={eq.id}>{eq.descripcion} {eq.marca} {eq.modelo}</option>
+            ))}
+          </select>
+          <p className="text-[10px] text-gray-600 mt-1.5">Solo copia marca y modelo. No afecta tu inventario propio.</p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
         {/* Col 1 — descripción + imagen */}
         <div className="space-y-3">
@@ -188,13 +228,71 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
           <FieldGroup label="Cantidad total">
             <FInput type="number" value={form.cantidadTotal} onChange={v => setForm(p => ({ ...p, cantidadTotal: v }))} />
           </FieldGroup>
-          <FieldGroup label="Proveedor (externo)">
+          <FieldGroup label="Proveedor por defecto">
             <select value={form.proveedorDefaultId} onChange={e => setForm(p => ({ ...p, proveedorDefaultId: e.target.value }))}
               className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50">
               <option value="">— Ninguno —</option>
               {proveedores.map(p => <option key={p.id} value={p.id}>{p.nombre}{p.empresa ? ` · ${p.empresa}` : ""}</option>)}
             </select>
           </FieldGroup>
+
+          {/* Proveedores y precios — solo en modo edición de EXTERNO */}
+          {equipoActual && equipoActual.tipo === "EXTERNO" && (
+            <div>
+              <label className={labelCls}>Proveedores y precios</label>
+              <div className="space-y-1.5 mb-2">
+                {(equipoActual.proveedoresPrecios ?? []).map(pp => (
+                  <div key={pp.proveedor.id} className="flex items-center justify-between bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      {pp.proveedor.prioridad > 0 && <span className="text-yellow-500 text-[10px]">{'⭐'.repeat(pp.proveedor.prioridad).slice(0, pp.proveedor.prioridad)}</span>}
+                      <span className="text-xs text-white">{pp.proveedor.nombre}</span>
+                      {pp.proveedor.empresa && <span className="text-[10px] text-gray-500">{pp.proveedor.empresa}</span>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-[#B3985B] font-semibold">${pp.precio.toLocaleString('es-MX')}/día</span>
+                      <button type="button"
+                        onClick={() => onRemoveProveedor(equipoActual.id, pp.proveedor.id)}
+                        className="text-[#333] hover:text-red-400 text-xs transition-colors">×</button>
+                    </div>
+                  </div>
+                ))}
+                {(equipoActual.proveedoresPrecios ?? []).length === 0 && (
+                  <p className="text-[11px] text-gray-700">Sin proveedores registrados para este equipo.</p>
+                )}
+              </div>
+              {!showAddProveedor ? (
+                <button type="button" onClick={() => setShowAddProveedor(true)}
+                  className="flex items-center gap-1.5 text-xs text-[#B3985B]/70 hover:text-[#B3985B] transition-colors">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Agregar proveedor
+                </button>
+              ) : (
+                <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl p-3 space-y-2">
+                  <select value={newProveedorId} onChange={e => setNewProveedorId(e.target.value)} className={inputCls}>
+                    <option value="">Selecciona proveedor...</option>
+                    {proveedores.filter(p => !(equipoActual.proveedoresPrecios ?? []).some(pp => pp.proveedor.id === p.id)).map(p => (
+                      <option key={p.id} value={p.id}>{p.nombre}{p.empresa ? ` — ${p.empresa}` : ''} {p.prioridad > 0 ? '⭐'.repeat(p.prioridad).slice(0, p.prioridad) : ''}</option>
+                    ))}
+                  </select>
+                  <div className="flex gap-2">
+                    <input type="number" placeholder="Precio/día $" value={newProveedorPrecio}
+                      onChange={e => setNewProveedorPrecio(e.target.value)} className={`${inputCls} flex-1`} />
+                    <input type="text" placeholder="Notas (opcional)" value={newProveedorNotas}
+                      onChange={e => setNewProveedorNotas(e.target.value)} className={`${inputCls} flex-1`} />
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => onAddProveedor(equipoActual.id)} disabled={savingProveedor}
+                      className="flex-1 bg-[#B3985B] hover:bg-[#c9a96e] text-black text-xs font-semibold py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                      {savingProveedor ? 'Guardando...' : 'Agregar'}
+                    </button>
+                    <button type="button" onClick={() => setShowAddProveedor(false)}
+                      className="px-3 text-xs text-gray-500 hover:text-gray-300 transition-colors">Cancelar</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-2">
             <FieldGroup label="Amperaje (A)">
               <FInput type="number" value={form.amperajeRequerido} onChange={v => setForm(p => ({ ...p, amperajeRequerido: v }))} placeholder="—" />
@@ -256,6 +354,13 @@ export default function InventarioMaestroPage() {
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [kpis, setKpis] = useState<Kpis | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Supplier management state
+  const [showAddProveedor, setShowAddProveedor] = useState(false);
+  const [newProveedorId, setNewProveedorId] = useState('');
+  const [newProveedorPrecio, setNewProveedorPrecio] = useState('');
+  const [newProveedorNotas, setNewProveedorNotas] = useState('');
+  const [savingProveedor, setSavingProveedor] = useState(false);
 
   const [filtroTipo, setFiltroTipo] = useState<"" | "PROPIO" | "EXTERNO">("");
   const [filtroEstado, setFiltroEstado] = useState<"" | "ACTIVO" | "EN_MANTENIMIENTO" | "DADO_DE_BAJA">("");
@@ -406,9 +511,38 @@ export default function InventarioMaestroPage() {
     [equiposFiltrados]
   );
 
+  async function handleAddProveedorPrecio(equipoId: string) {
+    if (!newProveedorId || !newProveedorPrecio) return;
+    setSavingProveedor(true);
+    try {
+      await fetch(`/api/equipos/${equipoId}/proveedores`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ proveedorId: newProveedorId, precio: Number(newProveedorPrecio), notas: newProveedorNotas || null }),
+      });
+      setShowAddProveedor(false);
+      setNewProveedorId(''); setNewProveedorPrecio(''); setNewProveedorNotas('');
+      // Refresh equipos
+      const res = await fetch('/api/inventario/maestro');
+      const d = await res.json();
+      setEquipos(d.equipos ?? []);
+    } catch { /* ignore */ }
+    finally { setSavingProveedor(false); }
+  }
+
+  async function handleRemoveProveedorPrecio(equipoId: string, proveedorId: string) {
+    await fetch(`/api/equipos/${equipoId}/proveedores/${proveedorId}`, { method: 'DELETE' });
+    const res = await fetch('/api/inventario/maestro');
+    const d = await res.json();
+    setEquipos(d.equipos ?? []);
+  }
+
   const formPanelProps: FormPanelProps = {
     panel, equipos, form, setForm, imagen, saving, categorias, proveedores, imgRef,
     onClose: cerrarPanel, onImageChange: handleImagen, onSave: guardar,
+    showAddProveedor, setShowAddProveedor, newProveedorId, setNewProveedorId,
+    newProveedorPrecio, setNewProveedorPrecio, newProveedorNotas, setNewProveedorNotas,
+    savingProveedor, onAddProveedor: handleAddProveedorPrecio, onRemoveProveedor: handleRemoveProveedorPrecio,
   };
 
   return (
