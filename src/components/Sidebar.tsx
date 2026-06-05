@@ -41,10 +41,10 @@ const NAV: NavSection[] = [
     section: "",
     items: [
       { label: "Mi Dashboard", href: "/dashboard" },
-      { key: "operaciones", label: "Módulo de tareas", href: "/operaciones" },
-      { key: "plan-trabajo", label: "Plan de Trabajo", href: "/plan-trabajo" },
-      { key: "kpis-dashboard", label: "KPIs", href: "/kpis", adminOnly: true, icon: BarChart2 },
       { key: "objetivos", label: "Objetivos", href: "/objetivos", adminOnly: true, icon: Target },
+      { key: "kpis-dashboard", label: "KPIs", href: "/kpis", adminOnly: true, icon: BarChart2 },
+      { key: "plan-trabajo", label: "Plan de Trabajo", href: "/plan-trabajo" },
+      { key: "operaciones", label: "Módulo de tareas", href: "/operaciones" },
       {
         key: "calendario",
         label: "Calendario de eventos",
