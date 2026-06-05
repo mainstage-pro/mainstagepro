@@ -46,6 +46,8 @@ export async function POST(req: NextRequest) {
     compromisos,
     sugerencias,
     bienestar,
+    tareasOperaciones,
+    compromisosPlan,
   } = body;
 
   if (!semana || !anio || bienestar === undefined) {
@@ -70,6 +72,8 @@ export async function POST(req: NextRequest) {
       sugerencias: sugerencias ?? "",
       bienestar: Number(bienestar),
       estado: "enviado",
+      tareasOperaciones: tareasOperaciones ?? [],
+      compromisosPlan:   compromisosPlan   ?? [],
     },
     include: {
       user: { select: { id: true, name: true, area: true } },

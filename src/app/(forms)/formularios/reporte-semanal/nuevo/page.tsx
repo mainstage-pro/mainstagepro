@@ -40,6 +40,20 @@ interface TareaItem { titulo: string; fechaVencimiento: string; }
 interface Incidencia { que: string; causa: string; propuesta: string; }
 interface SessionInfo { id: string; name: string; area: string | null; }
 
+type TareaOp = {
+  id: string; titulo: string; prioridad: string; estado: string;
+  fecha: string | null; fechaVencimiento: string | null; proyecto: string | null;
+}
+type CompromisoPlan = {
+  id: string; templateNombre: string; impacto: string;
+  areaNombre: string; areaColor: string; fechaVencimiento: string;
+}
+type AccionTarea = {
+  accion: 'completada' | 'reagendada' | 'pendiente';
+  fechaComprometida?: string;
+  nota?: string;
+}
+
 // ─── Section component ────────────────────────────────────────────────────────
 
 function Section({ num, title, hint, children }: {
@@ -91,6 +105,13 @@ export default function ReporteSemanalLandingPage() {
   const [bienestar, setBienestar] = useState(7);
   const tareaRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // Tareas de plataforma
+  const [tareasOp, setTareasOp] = useState<TareaOp[]>([])
+  const [compPlan, setCompPlan] = useState<CompromisoPlan[]>([])
+  const [loadingPendientes, setLoadingPendientes] = useState(false)
+  const [accionesOp, setAccionesOp] = useState<Record<string, AccionTarea>>({})
+  const [accionesPlan, setAccionesPlan] = useState<Record<string, AccionTarea>>({})
+
   useEffect(() => {
     fetch("/api/me")
       .then((r) => r.json())
@@ -100,6 +121,19 @@ export default function ReporteSemanalLandingPage() {
       })
       .catch(() => router.push(`/login?redirect=/formularios/reporte-semanal/nuevo`));
   }, []); // eslint-disable-line
+
+  useEffect(() => {
+    if (!session) return
+    setLoadingPendientes(true)
+    fetch('/api/formularios/reporte-semanal/pendientes')
+      .then(r => r.json())
+      .then(d => {
+        setTareasOp(d.tareasOperaciones ?? [])
+        setCompPlan(d.compromisosPlan ?? [])
+      })
+      .catch(() => {})
+      .finally(() => setLoadingPendientes(false))
+  }, [session])
 
   function addTarea() {
     setTareas((p) => [...p, { titulo: "", fechaVencimiento: "" }]);
@@ -122,6 +156,28 @@ export default function ReporteSemanalLandingPage() {
     setIncidencias((p) => p.filter((_, idx) => idx !== i));
   }
 
+  function setAccionOp(id: string, accion: AccionTarea) {
+    setAccionesOp(prev => ({ ...prev, [id]: accion }))
+    if (accion.accion === 'completada') {
+      fetch(`/api/tareas/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'COMPLETADA' }),
+      }).catch(() => {})
+    }
+  }
+
+  function setAccionPlan(id: string, accion: AccionTarea) {
+    setAccionesPlan(prev => ({ ...prev, [id]: accion }))
+    if (accion.accion === 'completada') {
+      fetch(`/api/plan-trabajo/instancias/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'COMPLETADA' }),
+      }).catch(() => {})
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!session) { toast.error("Debes estar autenticado"); return; }
@@ -134,7 +190,22 @@ export default function ReporteSemanalLandingPage() {
       const incidenciasLimpias = incidencias.filter((i) => i.que.trim() || i.causa.trim() || i.propuesta.trim());
       const res = await fetch("/api/formularios/reporte-semanal", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ semana, anio, logros, pendientes, tareas: tareasLimpias, incidencias: incidenciasLimpias, mejoras, compromisos, sugerencias, bienestar }),
+        body: JSON.stringify({
+          semana, anio, logros, pendientes, tareas: tareasLimpias,
+          incidencias: incidenciasLimpias, mejoras, compromisos, sugerencias, bienestar,
+          tareasOperaciones: tareasOp.map(t => ({
+            tareaId: t.id,
+            titulo: t.titulo,
+            prioridad: t.prioridad,
+            ...(accionesOp[t.id] ?? { accion: 'pendiente' }),
+          })),
+          compromisosPlan: compPlan.map(c => ({
+            instanciaId: c.id,
+            templateNombre: c.templateNombre,
+            areaNombre: c.areaNombre,
+            ...(accionesPlan[c.id] ?? { accion: 'pendiente' }),
+          })),
+        }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al enviar el reporte"); return; }
       setEnviado(true);
@@ -284,6 +355,177 @@ export default function ReporteSemanalLandingPage() {
               placeholder="Ejemplo: Cerré la cotización del evento Expo Guadalajara. Terminé de organizar el almacén de producción. Mejoré el proceso de check-in con el cliente..."
               value={logros} onChange={(e) => setLogros(e.target.value)} required />
           </Section>
+
+          {/* ── Sección: Tareas pendientes en Módulo de Tareas ── */}
+          {(tareasOp.length > 0 || loadingPendientes) && (
+            <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
+              <div className="px-5 pt-5 pb-4 border-b border-[#1a1a1a]">
+                <div className="flex items-start gap-3">
+                  <span className="w-7 h-7 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-400 text-sm flex items-center justify-center shrink-0 mt-0.5">⚠️</span>
+                  <div>
+                    <h2 className="text-white font-semibold text-sm">Tareas pendientes en la plataforma</h2>
+                    <p className="text-gray-500 text-xs mt-0.5 leading-relaxed">
+                      Estas son tus tareas que están pendientes o en progreso en el <strong className="text-gray-400">Módulo de Tareas</strong>. Si ya las realizaste, dales ✓. Si aún no puedes terminarlas, reagéndalas y comprométete a una nueva fecha.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="px-5 py-4">
+                {loadingPendientes ? (
+                  <p className="text-gray-600 text-xs">Cargando tareas...</p>
+                ) : tareasOp.length === 0 ? (
+                  <p className="text-green-400/70 text-xs">✓ Sin tareas pendientes en el módulo de tareas</p>
+                ) : (
+                  <div className="space-y-2">
+                    {tareasOp.map(t => {
+                      const accion = accionesOp[t.id]
+                      const isCompletada = accion?.accion === 'completada'
+                      const isReagendada = accion?.accion === 'reagendada'
+                      const PRIO_COLOR: Record<string, string> = { URGENTE: '#f87171', ALTA: '#fb923c', MEDIA: '#B3985B', BAJA: '#4b5563' }
+                      return (
+                        <div key={t.id} className={`bg-[#0d0d0d] border rounded-xl p-3 transition-all ${
+                          isCompletada ? 'border-green-900/30 opacity-60' : isReagendada ? 'border-[#B3985B]/20' : 'border-[#2a2a2a]'
+                        }`}>
+                          <div className="flex items-start gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: PRIO_COLOR[t.prioridad] ?? '#555' }} />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm ${isCompletada ? 'line-through text-gray-600' : 'text-white'}`}>{t.titulo}</p>
+                              {t.proyecto && <p className="text-[10px] text-gray-600 mt-0.5">{t.proyecto}</p>}
+                              {t.fechaVencimiento && !isCompletada && (
+                                <p className="text-[10px] text-orange-400/70 mt-0.5">Vence: {t.fechaVencimiento}</p>
+                              )}
+                              {isReagendada && (
+                                <div className="mt-2 space-y-1.5">
+                                  <input
+                                    type="date"
+                                    className="bg-[#111] border border-[#B3985B]/30 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
+                                    value={accion.fechaComprometida ?? ''}
+                                    onChange={e => setAccionOp(t.id, { ...accion, fechaComprometida: e.target.value })}
+                                    placeholder="Nueva fecha"
+                                  />
+                                  <input
+                                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-2 py-1 text-xs text-white focus:outline-none placeholder:text-gray-700"
+                                    placeholder="¿Por qué no se completó y cuándo se hará?"
+                                    value={accion.nota ?? ''}
+                                    onChange={e => setAccionOp(t.id, { ...accion, nota: e.target.value })}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                            {!isCompletada && (
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setAccionOp(t.id, { accion: 'completada' })}
+                                  className="w-7 h-7 rounded-lg bg-green-900/20 border border-green-900/30 text-green-400 text-xs hover:bg-green-900/40 transition-all"
+                                  title="Marcar como completada"
+                                >✓</button>
+                                <button
+                                  type="button"
+                                  onClick={() => setAccionOp(t.id, isReagendada ? { accion: 'pendiente' } : { accion: 'reagendada' })}
+                                  className={`w-7 h-7 rounded-lg text-xs transition-all ${
+                                    isReagendada
+                                      ? 'bg-[#B3985B]/20 border border-[#B3985B]/30 text-[#B3985B]'
+                                      : 'bg-[#1a1a1a] border border-[#2a2a2a] text-gray-500 hover:text-[#B3985B]'
+                                  }`}
+                                  title="Reagendar"
+                                >📅</button>
+                              </div>
+                            )}
+                            {isCompletada && (
+                              <button
+                                type="button"
+                                onClick={() => setAccionOp(t.id, { accion: 'pendiente' })}
+                                className="text-[10px] text-gray-600 hover:text-gray-400 shrink-0"
+                              >Deshacer</button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Sección: Compromisos pendientes del Plan de Trabajo ── */}
+          {(compPlan.length > 0 || loadingPendientes) && (
+            <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
+              <div className="px-5 pt-5 pb-4 border-b border-[#1a1a1a]">
+                <div className="flex items-start gap-3">
+                  <span className="w-7 h-7 rounded-lg bg-[#B3985B]/10 border border-[#B3985B]/20 text-[#B3985B] text-sm flex items-center justify-center shrink-0 mt-0.5">📋</span>
+                  <div>
+                    <h2 className="text-white font-semibold text-sm">Compromisos pendientes del Plan de Trabajo</h2>
+                    <p className="text-gray-500 text-xs mt-0.5 leading-relaxed">
+                      Compromisos recurrentes de semanas anteriores que quedaron sin completar en el <strong className="text-gray-400">Plan de Trabajo</strong>. Sé honesto: ¿los realizaste fuera de la plataforma? ¿O necesitan reagendarse?
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="px-5 py-4">
+                {loadingPendientes ? (
+                  <p className="text-gray-600 text-xs">Cargando compromisos...</p>
+                ) : compPlan.length === 0 ? (
+                  <p className="text-green-400/70 text-xs">✓ Sin compromisos pendientes del plan de trabajo</p>
+                ) : (
+                  <div className="space-y-2">
+                    {compPlan.map(c => {
+                      const accion = accionesPlan[c.id]
+                      const isCompletada = accion?.accion === 'completada'
+                      const isReagendada = accion?.accion === 'reagendada'
+                      return (
+                        <div key={c.id} className={`bg-[#0d0d0d] border rounded-xl p-3 transition-all ${
+                          isCompletada ? 'border-green-900/30 opacity-60' : isReagendada ? 'border-[#B3985B]/20' : 'border-[#2a2a2a]'
+                        }`}>
+                          <div className="flex items-start gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5" style={{ backgroundColor: c.areaColor }} />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm ${isCompletada ? 'line-through text-gray-600' : 'text-white'}`}>{c.templateNombre}</p>
+                              <p className="text-[10px] text-gray-600 mt-0.5">{c.areaNombre} · Venció: {c.fechaVencimiento}</p>
+                              {isReagendada && (
+                                <div className="mt-2 space-y-1.5">
+                                  <input
+                                    type="date"
+                                    className="bg-[#111] border border-[#B3985B]/30 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
+                                    value={accion.fechaComprometida ?? ''}
+                                    onChange={e => setAccionPlan(c.id, { ...accion, fechaComprometida: e.target.value })}
+                                  />
+                                  <input
+                                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-2 py-1 text-xs text-white focus:outline-none placeholder:text-gray-700"
+                                    placeholder="¿Por qué no se realizó y cuándo se hará?"
+                                    value={accion.nota ?? ''}
+                                    onChange={e => setAccionPlan(c.id, { ...accion, nota: e.target.value })}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                            {!isCompletada && (
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button type="button" onClick={() => setAccionPlan(c.id, { accion: 'completada' })}
+                                  className="w-7 h-7 rounded-lg bg-green-900/20 border border-green-900/30 text-green-400 text-xs hover:bg-green-900/40 transition-all" title="Marcar como realizado"
+                                >✓</button>
+                                <button type="button"
+                                  onClick={() => setAccionPlan(c.id, isReagendada ? { accion: 'pendiente' } : { accion: 'reagendada' })}
+                                  className={`w-7 h-7 rounded-lg text-xs transition-all ${
+                                    isReagendada ? 'bg-[#B3985B]/20 border border-[#B3985B]/30 text-[#B3985B]' : 'bg-[#1a1a1a] border border-[#2a2a2a] text-gray-500 hover:text-[#B3985B]'
+                                  }`} title="Reagendar"
+                                >📅</button>
+                              </div>
+                            )}
+                            {isCompletada && (
+                              <button type="button" onClick={() => setAccionPlan(c.id, { accion: 'pendiente' })}
+                                className="text-[10px] text-gray-600 hover:text-gray-400 shrink-0">Deshacer</button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* 2. Pendientes */}
           <Section num={2} title="Pendientes de la semana anterior"

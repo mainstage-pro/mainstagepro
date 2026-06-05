@@ -2683,6 +2683,8 @@ model ReporteFormulario {
   sugerencias String   @db.Text
   bienestar   Int      // 1–10
   estado      String   @default("enviado")
+  tareasOperaciones  Json?  // [{tareaId, titulo, prioridad, accion: 'completada'|'reagendada'|'pendiente', fechaComprometida?, nota?}]
+  compromisosPlan    Json?  // [{instanciaId, templateNombre, areaNombre, accion, fechaComprometida?, nota?}]
 
   @@map("reportes_formulario")
 }

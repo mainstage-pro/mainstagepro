@@ -4,6 +4,19 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getSemanaISO(date: Date = new Date()): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface SessionInfo { id: string; name: string; role: string; area: string | null; }
+
 interface ReporteItem {
   id: string;
   semana: number;
@@ -12,6 +25,9 @@ interface ReporteItem {
   logros: string;
   estado: string;
   createdAt: string;
+  tareas: { titulo: string; fechaVencimiento: string | null }[] | null;
+  tareasOperaciones: { titulo: string; accion: string; fechaComprometida?: string }[] | null;
+  compromisosPlan: { templateNombre: string; accion: string; fechaComprometida?: string }[] | null;
   user: { id: string; name: string; area: string | null };
 }
 
@@ -38,8 +54,22 @@ function fmtDate(iso: string) {
 
 export default function ReporteSemanalHistorialPage() {
   const toast = useToast();
+  const [session, setSession] = useState<SessionInfo | null>(null);
   const [reportes, setReportes] = useState<ReporteItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // ISO week for today
+  const semanaActual = getSemanaISO();
+  const anioActual = new Date().getFullYear();
+
+  useEffect(() => {
+    fetch("/api/me")
+      .then(r => r.json())
+      .then(d => {
+        if (d?.id) setSession({ id: d.id, name: d.name, role: d.role ?? "USER", area: d.area ?? null });
+      })
+      .catch(() => {});
+  }, []); // eslint-disable-line
 
   useEffect(() => {
     fetch("/api/formularios/reporte-semanal", { cache: "no-store" })
@@ -48,6 +78,11 @@ export default function ReporteSemanalHistorialPage() {
       .catch(() => toast.error("Error al cargar reportes"))
       .finally(() => setLoading(false));
   }, []); // eslint-disable-line
+
+  // Reports from current ISO week
+  const reportesSemanaActual = reportes.filter(
+    r => r.semana === semanaActual && r.anio === anioActual
+  );
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto">
@@ -81,6 +116,73 @@ export default function ReporteSemanalHistorialPage() {
           Nuevo reporte
         </Link>
       </div>
+
+      {/* ── Vista de Lunes ── solo admin, reportes de semana actual */}
+      {session?.role === "ADMIN" && reportesSemanaActual.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-[#B3985B] font-bold text-sm">📅 Compromisos para esta semana</span>
+            <span className="text-[10px] text-gray-600 border border-[#2a2a2a] px-2 py-0.5 rounded-full">
+              S{semanaActual} · {reportesSemanaActual.length} reporte{reportesSemanaActual.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {reportesSemanaActual.map(r => {
+              const tareas = (r.tareas as { titulo: string; fechaVencimiento: string | null }[]) ?? [];
+              const tareasOp = (r.tareasOperaciones as { titulo: string; accion: string; fechaComprometida?: string }[] | null) ?? [];
+              const compPlan = (r.compromisosPlan as { templateNombre: string; accion: string; fechaComprometida?: string }[] | null) ?? [];
+              const reagendadasOp = tareasOp.filter(t => t.accion === "reagendada");
+              const reagendasPlan = compPlan.filter(c => c.accion === "reagendada");
+              const hasPendientes = reagendadasOp.length > 0 || reagendasPlan.length > 0;
+              return (
+                <div key={r.id} className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-white text-sm font-semibold">{r.user.name.split(" ")[0]}</p>
+                      <p className="text-[10px] text-gray-600">{r.user.area ?? ""}</p>
+                    </div>
+                    {hasPendientes && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-900/20 border border-orange-900/30 text-orange-400">Con reagendados</span>
+                    )}
+                  </div>
+
+                  {/* Tareas próxima semana */}
+                  {tareas.length > 0 && (
+                    <div className="mb-3">
+                      <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-1.5">Compromisos semana</p>
+                      <ul className="space-y-1">
+                        {tareas.slice(0, 5).map((t, i) => (
+                          <li key={i} className="flex items-start gap-1.5">
+                            <span className="text-[#B3985B] text-[10px] mt-0.5 shrink-0">·</span>
+                            <span className="text-xs text-gray-400 leading-snug">{t.titulo}</span>
+                            {t.fechaVencimiento && <span className="text-[9px] text-gray-600 shrink-0 ml-auto">{t.fechaVencimiento}</span>}
+                          </li>
+                        ))}
+                        {tareas.length > 5 && <li className="text-[10px] text-gray-600">+{tareas.length - 5} más</li>}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Reagendados */}
+                  {(reagendadasOp.length > 0 || reagendasPlan.length > 0) && (
+                    <div className="border-t border-[#1a1a1a] pt-2 mt-2">
+                      <p className="text-[9px] text-orange-400/70 uppercase tracking-wider mb-1.5">Reagendados</p>
+                      <ul className="space-y-1">
+                        {[...reagendadasOp.map(t => t.titulo), ...reagendasPlan.map(c => c.templateNombre)].slice(0, 4).map((nombre, i) => (
+                          <li key={i} className="flex items-start gap-1.5">
+                            <span className="text-orange-400/50 text-[10px] mt-0.5 shrink-0">↺</span>
+                            <span className="text-xs text-gray-500 leading-snug">{nombre}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Loading */}
       {loading && (
