@@ -18,6 +18,8 @@ type Instancia = {
     tipo: string
     impacto: string
     contexto: string
+    frecuencia: string
+    diasSemana: number[]
     cuando: string | null
     descripcion: string | null
     estandarMinimo: string | null
@@ -73,9 +75,15 @@ function getGreeting(): string {
 }
 
 const DIAS_CORTO = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+const DIAS_COMPLETO = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 const DIAS_INICIAL = ['D', 'L', 'M', 'X', 'J', 'V', 'S']
+const DIAS_PLAN_LABEL: Record<number, string> = { 1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V' }
 const MESES_ES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 const MESES_FULL = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
+const FRECUENCIA_LABEL: Record<string, string> = {
+  DIARIO: 'Diario', SEMANAL: 'Semanal', QUINCENAL: 'Quincenal',
+  MENSUAL: 'Mensual', TRIMESTRAL: 'Trimestral', POR_EVENTO: 'Por evento',
+}
 
 function fmtFechaLarga(d: Date): string {
   return `${DIAS_CORTO[d.getDay()]}, ${d.getDate()} de ${MESES_FULL[d.getMonth()]} de ${d.getFullYear()}`
@@ -88,10 +96,10 @@ function fmtRangoSemana(dias: Date[]): string {
   return `${ini.getDate()} ${MESES_ES[ini.getMonth()]} – ${fin.getDate()} ${MESES_ES[fin.getMonth()]} ${fin.getFullYear()}`
 }
 
-const IMPACTO: Record<string, { leftBorder: string; dot: string; label: string; labelCls: string }> = {
-  critico:  { leftBorder: 'border-l-2 border-l-red-500/40',    dot: 'border-red-500/60 hover:bg-red-500/10',      label: 'Crítico',   labelCls: 'text-red-400/70' },
-  alto:     { leftBorder: 'border-l-2 border-l-orange-400/30', dot: 'border-orange-400/50 hover:bg-orange-400/10', label: 'Alto',      labelCls: 'text-orange-400/70' },
-  estandar: { leftBorder: 'border-l-transparent',              dot: 'border-[#444] hover:bg-[#2a2a2a]',           label: 'Estándar',  labelCls: 'text-gray-600' },
+const IMPACTO: Record<string, { bar: string; dot: string; label: string; labelCls: string }> = {
+  critico:  { bar: 'bg-red-500',    dot: 'border-red-500/60 hover:bg-red-500/10',      label: 'Crítico',   labelCls: 'text-red-400' },
+  alto:     { bar: 'bg-orange-400', dot: 'border-orange-400/50 hover:bg-orange-400/10', label: 'Alto',      labelCls: 'text-orange-400' },
+  estandar: { bar: 'bg-[#333]',     dot: 'border-[#444] hover:bg-[#2a2a2a]',           label: 'Estándar',  labelCls: 'text-gray-600' },
 }
 
 const CONTEXTO: Record<string, { label: string; cls: string }> = {
@@ -236,66 +244,98 @@ function MiDiaItem({
   }
 
   return (
-    <div className={`border rounded-xl overflow-hidden transition-all duration-200 ${
+    <div className={`relative border rounded-xl overflow-hidden transition-all duration-200 flex ${
       completada ? 'border-[#1a1a1a] opacity-55' : 'border-[#1e1e1e] hover:border-[#2a2a2a]'
-    } ${!completada ? imp.leftBorder : ''}`}>
-      {/* Main row */}
-      <div
-        className="flex items-start gap-3 px-4 py-3.5 cursor-pointer select-none"
-        onClick={() => setExpanded(v => !v)}
-      >
-        {/* Toggle circle */}
-        <button
-          onClick={handleToggle}
-          disabled={toggling}
-          className={`mt-0.5 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all duration-200 ${
-            completada
-              ? 'bg-green-500 border-green-500'
-              : imp.dot
-          }`}
-        >
-          {completada && <span className="text-white text-[10px] leading-none font-bold">✓</span>}
-          {toggling && !completada && <span className="w-2 h-2 rounded-full bg-current animate-pulse" />}
-        </button>
+    }`}>
+      {/* Left impact bar */}
+      <div className={`w-1 shrink-0 ${imp.bar}`} />
 
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-1.5 mb-1">
-            {t.impacto !== 'estandar' && (
-              <span className={`text-[9px] font-medium ${imp.labelCls}`}>
+      <div className="flex-1 min-w-0">
+        {/* Main row */}
+        <div
+          className="flex items-start gap-3 px-4 py-3.5 cursor-pointer select-none"
+          onClick={() => setExpanded(v => !v)}
+        >
+          {/* Toggle circle */}
+          <button
+            onClick={handleToggle}
+            disabled={toggling}
+            className={`mt-0.5 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all duration-200 ${
+              completada
+                ? 'bg-green-500 border-green-500'
+                : imp.dot
+            }`}
+          >
+            {completada && <span className="text-white text-[10px] leading-none font-bold">✓</span>}
+            {toggling && !completada && <span className="w-2 h-2 rounded-full bg-current animate-pulse" />}
+          </button>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            {/* Task name */}
+            <p className={`text-sm font-medium leading-snug mb-1.5 ${
+              completada ? 'line-through text-gray-600' : 'text-white'
+            }`}>
+              {t.nombre}
+            </p>
+
+            {/* Badges row */}
+            <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+              <span className={`text-[9px] font-bold uppercase tracking-wider ${imp.labelCls}`}>
                 {imp.label}
               </span>
-            )}
-            <span className={`text-[9px] px-1.5 py-0.5 rounded-full border ${ctx.cls}`}>
-              {ctx.label}
-            </span>
-            {t.tipo === 'ENTREGABLE' && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#C9A84C]/30 text-[#C9A84C] bg-[#C9A84C]/5">
-                📄 Entregable
-              </span>
-            )}
-            {t.puestoDefault === 'Todo el equipo' && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#444] text-gray-500 bg-[#1a1a1a]">
-                👥 Todo el equipo
-              </span>
+              {t.tipo === 'ENTREGABLE' && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#C9A84C]/30 text-[#C9A84C] bg-[#C9A84C]/5">
+                  📄 Entregable
+                </span>
+              )}
+              {t.puestoDefault === 'Todo el equipo' && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#444] text-gray-500 bg-[#1a1a1a]">
+                  👥 Todos
+                </span>
+              )}
+            </div>
+
+            {/* Meta row: responsable + days + frecuencia */}
+            <div className="flex flex-wrap items-center gap-2">
+              {instancia.responsable && (
+                <span className="text-[10px] text-gray-500">
+                  {instancia.responsable.name.split(' ')[0]}
+                </span>
+              )}
+              {/* diasSemana boxes */}
+              <div className="flex gap-0.5">
+                {[1,2,3,4,5].map(d => (
+                  <span
+                    key={d}
+                    className={`text-[8px] w-3.5 h-3.5 rounded flex items-center justify-center font-bold ${
+                      (t.diasSemana ?? []).includes(d)
+                        ? 'bg-[#C9A84C]/20 text-[#C9A84C]'
+                        : 'bg-[#111] text-gray-700'
+                    }`}
+                  >
+                    {DIAS_PLAN_LABEL[d]}
+                  </span>
+                ))}
+              </div>
+              {t.frecuencia && (
+                <span className="text-[9px] text-gray-700">
+                  {FRECUENCIA_LABEL[t.frecuencia] ?? t.frecuencia}
+                </span>
+              )}
+            </div>
+
+            {t.cuando && !expanded && (
+              <p className="text-[11px] text-gray-600 mt-1 truncate">{t.cuando}</p>
             )}
           </div>
 
-          <p className={`text-sm font-medium leading-snug ${completada ? 'line-through text-gray-600' : 'text-white'}`}>
-            {t.nombre}
-          </p>
-
-          {t.cuando && !expanded && (
-            <p className="text-[11px] text-gray-600 mt-0.5 truncate">{t.cuando}</p>
-          )}
+          {/* Area + chevron */}
+          <div className="shrink-0 flex items-center gap-2">
+            <span className="text-[9px] text-gray-700 hidden sm:block">{t.area.icono}</span>
+            <span className="text-gray-600 text-[10px]">{expanded ? '▲' : '▼'}</span>
+          </div>
         </div>
-
-        {/* Area + chevron */}
-        <div className="shrink-0 flex items-center gap-2">
-          <span className="text-[9px] text-gray-700 hidden sm:block">{t.area.icono} {t.area.nombre}</span>
-          <span className="text-gray-600 text-[10px]">{expanded ? '▲' : '▼'}</span>
-        </div>
-      </div>
 
       {/* Expanded detail */}
       {expanded && (
@@ -344,6 +384,7 @@ function MiDiaItem({
           )}
         </div>
       )}
+      </div>
     </div>
   )
 }
@@ -625,33 +666,33 @@ export default function MiDiaPage() {
               const conteo = conteosSemana[diaStr]
               const isSelected = esMismaFecha(dia, fechaActual)
               const isToday = esHoy(dia)
+              const diaNombre = DIAS_COMPLETO[dia.getDay()]
+              const mesAbrev = MESES_ES[dia.getMonth()]
               return (
                 <button
                   key={diaStr}
                   onClick={() => setFechaActual(new Date(dia))}
-                  className={`flex-1 flex flex-col items-center py-1.5 px-1 rounded-lg transition-all ${
+                  className={`flex-1 flex flex-col items-center py-2 px-1 rounded-xl transition-all ${
                     isSelected
                       ? 'bg-[#C9A84C]/10 border border-[#C9A84C]/30'
                       : 'border border-transparent hover:border-[#1e1e1e] hover:bg-[#0d0d0d]'
                   }`}
                 >
-                  <span className={`text-[9px] font-bold uppercase ${
-                    isToday ? 'text-[#C9A84C]' : 'text-gray-600'
-                  }`}>
-                    {DIAS_INICIAL[dia.getDay()]}
-                  </span>
-                  <span className={`text-sm font-bold leading-none mt-0.5 ${
+                  <span className={`text-[10px] font-semibold leading-tight ${
                     isSelected ? 'text-[#C9A84C]' : isToday ? 'text-white' : 'text-gray-500'
                   }`}>
-                    {dia.getDate()}
+                    {diaNombre}
                   </span>
-                  {conteo !== undefined && conteo > 0 && (
-                    <span className={`text-[8px] mt-0.5 tabular-nums ${
-                      isSelected ? 'text-[#C9A84C]/60' : 'text-gray-700'
-                    }`}>
-                      {loadingConteos ? '·' : conteo}
-                    </span>
-                  )}
+                  <span className={`text-[10px] mt-0.5 ${
+                    isSelected ? 'text-[#C9A84C]/80' : isToday ? 'text-gray-300' : 'text-gray-600'
+                  }`}>
+                    {dia.getDate()} de {mesAbrev}
+                  </span>
+                  <span className={`text-[9px] mt-1 font-mono ${
+                    isSelected ? 'text-[#C9A84C]/60' : 'text-gray-700'
+                  }`}>
+                    {loadingConteos ? '·' : (conteo !== undefined ? `${conteo} tarea${conteo !== 1 ? 's' : ''}` : '–')}
+                  </span>
                 </button>
               )
             })}
