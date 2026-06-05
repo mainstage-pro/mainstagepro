@@ -419,6 +419,21 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
         {(
           <div className="grid grid-cols-1 md:grid-cols-3 gap-y-4 gap-x-6 text-sm">
             <div>
+              <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Empresa</p>
+              {cliente.compania ? (
+                <a
+                  href={`/catalogo/empresas/${cliente.compania.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm text-[#B3985B] hover:text-[#C9A84C] transition-colors"
+                >
+                  {cliente.compania.nombre}
+                </a>
+              ) : (
+                <span className="text-sm text-gray-600">—</span>
+              )}
+            </div>
+            <div>
               <p className="text-gray-500 text-xs mb-1">Teléfono</p>
               {cliente.telefono ? (
                 <div className="flex items-center gap-2">

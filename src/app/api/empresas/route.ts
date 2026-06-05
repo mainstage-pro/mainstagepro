@@ -7,11 +7,16 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const tipo = new URL(req.url).searchParams.get("tipo");
+  const q = new URL(req.url).searchParams.get("q");
+  const limit = parseInt(new URL(req.url).searchParams.get("limit") ?? "50");
 
   const where: Record<string, unknown> = { activo: true };
   if (tipo === "cliente") where.tipo = { in: ["CLIENTE", "AMBOS"] };
   else if (tipo === "proveedor") where.tipo = { in: ["PROVEEDOR", "AMBOS"] };
   else if (tipo === "CLIENTE" || tipo === "PROVEEDOR" || tipo === "AMBOS") where.tipo = tipo;
+  if (q && q.trim()) {
+    where.nombre = { contains: q.trim(), mode: "insensitive" };
+  }
 
   const empresas = await prisma.empresa.findMany({
     where,
@@ -20,6 +25,7 @@ export async function GET(req: NextRequest) {
       contactosProveedor: { select: { id: true, nombre: true, telefono: true, correo: true } },
     },
     orderBy: { nombre: "asc" },
+    take: q ? Math.min(limit, 10) : limit,
   });
 
   return NextResponse.json({ empresas });

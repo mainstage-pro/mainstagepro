@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TIPO_CLIENTE_LABELS, CLASIFICACION_LABELS, TIPO_SERVICIO_LABELS } from "@/lib/constants";
@@ -119,6 +119,13 @@ export default function ClientesClient({ clientes: initial, usuarios }: { client
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const router = useRouter();
 
+  // Empresa popover state
+  const [empresaPopoverId, setEmpresaPopoverId] = useState<string | null>(null);
+  const [empresaMode, setEmpresaMode] = useState<'view' | 'search'>('view');
+  const [empresaSearch, setEmpresaSearch] = useState('');
+  const [empresaResults, setEmpresaResults] = useState<{ id: string; nombre: string }[]>([]);
+  const [empresaSearching, setEmpresaSearching] = useState(false);
+
   // Filtros
   const [busqueda, setBusqueda] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("");
@@ -152,6 +159,53 @@ export default function ClientesClient({ clientes: initial, usuarios }: { client
     setFiltroVendedor("");
   }
 
+  // Empresa search effect
+  useEffect(() => {
+    if (!empresaPopoverId || empresaMode !== 'search') {
+      setEmpresaResults([]);
+      return;
+    }
+    if (!empresaSearch.trim()) {
+      setEmpresaResults([]);
+      return;
+    }
+    setEmpresaSearching(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/empresas?q=${encodeURIComponent(empresaSearch.trim())}&limit=6`);
+        const data = await res.json();
+        setEmpresaResults(data.empresas ?? []);
+      } catch {
+        setEmpresaResults([]);
+      } finally {
+        setEmpresaSearching(false);
+      }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [empresaSearch, empresaMode, empresaPopoverId]);
+
+  async function handleVincularEmpresa(clienteId: string, empresaId: string, empresaNombre: string) {
+    // Optimistic update
+    setClientes(prev => prev.map(c =>
+      c.id === clienteId
+        ? { ...c, empresa: empresaNombre, compania: { id: empresaId, nombre: empresaNombre } }
+        : c
+    ));
+    closeEmpresaPopover();
+    await fetch(`/api/clientes/${clienteId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ empresaId }),
+    });
+  }
+
+  function closeEmpresaPopover() {
+    setEmpresaPopoverId(null);
+    setEmpresaMode('view');
+    setEmpresaSearch('');
+    setEmpresaResults([]);
+  }
+
   function actualizarVendedor(clienteId: string, vendedor: Vendedor | null) {
     setClientes(prev => prev.map(c => c.id === clienteId ? { ...c, vendedor } : c));
   }
@@ -177,6 +231,10 @@ export default function ClientesClient({ clientes: initial, usuarios }: { client
 
   return (
     <>
+      {/* Empresa popover backdrop */}
+      {empresaPopoverId && (
+        <div className="fixed inset-0 z-40" onClick={closeEmpresaPopover} />
+      )}
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
@@ -299,8 +357,8 @@ export default function ClientesClient({ clientes: initial, usuarios }: { client
           <table className="w-full min-w-[700px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
-                {["Cliente", "Tipo", "Clasificación", "Servicio usual", "Responsable", "Tratos", "Proyectos", ""].map(h => (
-                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
+                {["Cliente", "Empresa", "Tipo", "Clasificación", "Servicio usual", "Responsable", "Tratos", "Proyectos", ""].map(h => (
+                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -309,8 +367,100 @@ export default function ClientesClient({ clientes: initial, usuarios }: { client
                 <tr key={c.id} className="hover:bg-[#1a1a1a] transition-colors">
                   <td className="px-4 py-3">
                     <p className="text-white text-sm font-medium">{c.nombre}</p>
-                    {(c.compania?.nombre ?? c.empresa) && <p className="text-[#6b7280] text-xs">{c.compania?.nombre ?? c.empresa}</p>}
                     {c.correo && <span className="flex items-center gap-1"><p className="text-[#555] text-xs">{c.correo}</p><CopyButton value={c.correo} size="xs" /></span>}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="relative">
+                      {/* Trigger */}
+                      <button
+                        onClick={() => {
+                          if (empresaPopoverId === c.id) {
+                            closeEmpresaPopover();
+                          } else {
+                            setEmpresaPopoverId(c.id);
+                            setEmpresaMode(c.compania ? 'view' : 'search');
+                            setEmpresaSearch('');
+                            setEmpresaResults([]);
+                          }
+                        }}
+                        className="text-left focus:outline-none"
+                      >
+                        {c.compania ? (
+                          <span className="text-sm text-[#B3985B] hover:text-[#C9A84C] transition-colors cursor-pointer">
+                            {c.compania.nombre}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-700 hover:text-gray-400 transition-colors cursor-pointer">
+                            + Vincular
+                          </span>
+                        )}
+                      </button>
+
+                      {/* Popover */}
+                      {empresaPopoverId === c.id && (
+                        <div
+                          className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-2"
+                          style={{ width: 260 }}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          {empresaMode === 'view' && c.compania ? (
+                            // View mode: show Ver + Cambiar options
+                            <>
+                              <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 pb-2">Empresa</p>
+                              <a
+                                href={`/catalogo/empresas/${c.compania.id}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center justify-between px-3 py-2 text-sm text-gray-300 hover:bg-[#1a1a1a] transition-colors"
+                                onClick={closeEmpresaPopover}
+                              >
+                                <span>Ver empresa</span>
+                                <span className="text-gray-600">→</span>
+                              </a>
+                              <button
+                                onClick={() => { setEmpresaMode('search'); setEmpresaSearch(''); }}
+                                className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-300 hover:bg-[#1a1a1a] transition-colors"
+                              >
+                                <span>Cambiar empresa</span>
+                              </button>
+                            </>
+                          ) : (
+                            // Search mode
+                            <>
+                              <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 pb-2">
+                                Vincular empresa
+                              </p>
+                              <div className="px-3 pb-2">
+                                <input
+                                  autoFocus
+                                  value={empresaSearch}
+                                  onChange={e => setEmpresaSearch(e.target.value)}
+                                  placeholder="Buscar empresa..."
+                                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-gray-700 focus:outline-none focus:border-[#C9A84C]/30"
+                                />
+                              </div>
+                              <div className="max-h-[200px] overflow-y-auto">
+                                {empresaSearching && (
+                                  <p className="text-xs text-gray-600 px-3 py-2">Buscando...</p>
+                                )}
+                                {!empresaSearching && empresaResults.length === 0 && empresaSearch.trim() && (
+                                  <p className="text-xs text-gray-600 px-3 py-2">Sin resultados</p>
+                                )}
+                                {empresaResults.map(emp => (
+                                  <button
+                                    key={emp.id}
+                                    onClick={() => handleVincularEmpresa(c.id, emp.id, emp.nombre)}
+                                    className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-[#1a1a1a] transition-colors"
+                                  >
+                                    {emp.nombre}
+                                  </button>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3"><TipoBadge tipo={c.tipoCliente} /></td>
                   <td className="px-4 py-3"><ClasificacionBadge clasificacion={c.clasificacion} /></td>

@@ -172,7 +172,8 @@ const NAV: NavSection[] = [
         key: "catalogo",
         label: "Catálogo",
         children: [
-          { key: "bd-empresas", label: "Empresas", href: "/catalogo/empresas?tipo=proveedor" },
+          // Hidden from sidebar — route still accessible via direct URL
+          // { key: "bd-empresas", label: "Empresas", href: "/catalogo/empresas?tipo=proveedor" },
           { key: "bd-proveedores", label: "Proveedores", href: "/catalogo/proveedores" },
           { key: "bd-tecnicos", label: "Técnicos freelance", href: "/catalogo/tecnicos" },
           { key: "bd-venues", label: "Venues", href: "/catalogo/venues" },
