@@ -159,7 +159,7 @@ export default function RendimientoPage() {
         <StatCard
           label="Cumplimiento"
           value={`${semanaActual?.pct ?? 0}%`}
-          sub={semanaActual?.total === 0 ? 'Sin tareas generadas' : undefined}
+          sub={semanaActual?.total === 0 ? 'Sin compromisos generados' : undefined}
         />
         <StatCard
           label="vs semana anterior"
@@ -386,7 +386,7 @@ export default function RendimientoPage() {
 
                     {/* Bottom: completadas/total */}
                     <p className="text-[9px] text-gray-700 mt-1 tabular-nums">
-                      {u.completadas} de {u.total} tareas completadas
+                      {u.completadas} de {u.total} compromisos completados
                     </p>
                   </div>
                 )

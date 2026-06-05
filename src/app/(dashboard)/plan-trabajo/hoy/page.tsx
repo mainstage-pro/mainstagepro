@@ -122,12 +122,12 @@ const FRASES_MOTIVADORAS = [
   'Las empresas que crecen tienen algo en común: personas que hacen lo que dijeron que iban a hacer.',
   'Seguir el plan de trabajo no es rigidez, es respeto — por tu tiempo, el de tu equipo y el del cliente.',
   'El caos se combate con claridad. Tu plan de hoy es tu escudo contra lo urgente e improductivo.',
-  'Las pequeñas tareas de hoy construyen los grandes logros del mes. No las subestimes.',
+  'Los pequeños compromisos de hoy construyen los grandes logros del mes. No los subestimes.',
   'Tu disciplina en el plan de trabajo es directamente proporcional al éxito del equipo en producción.',
   'Lo que no se planea, se improvisa. Lo que se improvisa, cuesta más tiempo y dinero.',
   'Un equipo con plan claro es más ágil, más efectivo y más rentable. Tú eres parte de eso.',
   'La mejor manera de predecir el futuro de tu área es construirlo con acciones diarias bien ejecutadas.',
-  'No existe tarea pequeña cuando el propósito es grande. Ejecuta con intención.',
+  'No existe compromiso pequeño cuando el propósito es grande. Ejecuta con intención.',
   'El orden que mantienes en tu plan de trabajo se refleja directamente en la calidad del servicio al cliente.',
   'Cada día de ejecución limpia acumula confianza — la de tu equipo, la de la empresa y la tuya.',
   'La estructura del plan existe para liberarte, no para atarte. Úsala a tu favor.',
@@ -196,7 +196,7 @@ function DayPanel({ pct, completadas, total }: { pct: number; completadas: numbe
     <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-4">
       <p className="text-[10px] uppercase tracking-[0.15em] text-gray-600 mb-3">Avance</p>
       {total === 0 ? (
-        <p className="text-xs text-gray-600">Sin tareas generadas</p>
+        <p className="text-xs text-gray-600">Sin compromisos generados</p>
       ) : (
         <div className="space-y-2">
           <div className="flex justify-between text-xs">
@@ -536,7 +536,7 @@ export default function MiDiaPage() {
     )
 
     showUndoToast({
-      message: 'Tarea completada',
+      message: 'Compromiso completado',
       duration: 5000,
       onUndo: () => {
         // Revert optimistic update
@@ -692,7 +692,7 @@ export default function MiDiaPage() {
                   <span className={`text-[9px] mt-1 font-mono ${
                     isSelected ? 'text-[#C9A84C]/60' : 'text-gray-700'
                   }`}>
-                    {loadingConteos ? '·' : (conteo !== undefined ? `${conteo} tarea${conteo !== 1 ? 's' : ''}` : '–')}
+                    {loadingConteos ? '·' : (conteo !== undefined ? `${conteo} compromiso${conteo !== 1 ? 's' : ''}` : '–')}
                   </span>
                 </button>
               )
@@ -725,7 +725,7 @@ export default function MiDiaPage() {
                 </span>
               )}
               {criticas === 0 && altas === 0 && (
-                <span className="text-[10px] text-gray-600">Sin tareas urgentes</span>
+                <span className="text-[10px] text-gray-600">Sin compromisos urgentes</span>
               )}
               <div className="flex-1" />
               <span className="text-[10px] text-gray-600">{pct}% completado</span>
@@ -739,11 +739,11 @@ export default function MiDiaPage() {
         {/* Left — tasks (65%) */}
         <div className="flex-1 min-w-0">
           {loading ? (
-            <div className="text-center py-16 text-gray-600 text-sm">Cargando tareas del día...</div>
+            <div className="text-center py-16 text-gray-600 text-sm">Cargando compromisos del día...</div>
           ) : instancias.length === 0 ? (
             <div className="bg-[#111] border border-dashed border-[#2a2a2a] rounded-2xl p-12 text-center">
               <p className="text-4xl mb-3">📋</p>
-              <p className="text-white font-semibold mb-1">No hay tareas generadas para este día</p>
+              <p className="text-white font-semibold mb-1">No hay compromisos generados para este día</p>
               <p className="text-gray-500 text-sm mb-6">
                 Genera las instancias del día a partir del plan de actividades.
               </p>
@@ -752,7 +752,7 @@ export default function MiDiaPage() {
                 disabled={generando}
                 className="bg-[#C9A84C] text-black font-semibold px-6 py-3 rounded-xl text-sm hover:bg-[#d4b060] disabled:opacity-50 transition-colors"
               >
-                {generando ? 'Generando...' : 'Generar tareas →'}
+                {generando ? 'Generando...' : 'Generar compromisos →'}
               </button>
             </div>
           ) : (
@@ -761,7 +761,7 @@ export default function MiDiaPage() {
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Mis tareas del día
+                    Mis compromisos del día
                   </p>
                   <span className="text-[10px] bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 px-2 py-0.5 rounded-full">
                     {pendientes.length} pendiente{pendientes.length !== 1 ? 's' : ''}

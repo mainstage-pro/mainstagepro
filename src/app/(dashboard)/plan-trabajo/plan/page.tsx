@@ -354,7 +354,7 @@ function TareaModal({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-white font-semibold text-base">
-              {isEdit ? 'Editar tarea' : 'Nueva tarea'}
+              {isEdit ? 'Editar compromiso' : 'Nuevo compromiso'}
             </h2>
             <p className="text-[10px] text-gray-600 mt-0.5">{modal.subAreaNombre}</p>
           </div>
@@ -427,7 +427,7 @@ function TareaModal({
               <label className={labelCls}>¿Qué semana del mes?</label>
               <p className="text-[11px] text-gray-600 mb-2">
                 {form.frecuencia === 'MENSUAL'
-                  ? 'Selecciona en qué semana(s) del mes aplica esta tarea'
+                  ? 'Selecciona en qué semana(s) del mes aplica este compromiso'
                   : '¿En qué semana(s) del mes?'}
               </p>
               <div className="flex gap-2 flex-wrap">
@@ -498,7 +498,7 @@ function TareaModal({
         {form.tipoAsignacion === 'todos' ? (
           <div>
             <label className={labelCls}>Responsable</label>
-            <p className="text-xs text-gray-600">Esta tarea aparece para todos los usuarios del equipo</p>
+            <p className="text-xs text-gray-600">Este compromiso aparece para todos los usuarios del equipo</p>
           </div>
         ) : (
           <div>
@@ -561,10 +561,10 @@ function TareaModal({
           {showDetalle && (
             <div className="mt-3 space-y-3">
               {[
-                { key: 'descripcion',    label: 'Descripción',       placeholder: 'Qué implica esta tarea, cómo ejecutarla...',   rows: 3 },
+                { key: 'descripcion',    label: 'Descripción',       placeholder: 'Qué implica este compromiso, cómo ejecutarlo...',   rows: 3 },
                 { key: 'estandarMinimo', label: 'Estándar mínimo',  placeholder: 'Qué cuenta como hecho correctamente...',        rows: 2 },
-                { key: 'porqueSeHace',   label: 'Por qué se hace',  placeholder: 'Razón de existir de esta tarea...',              rows: 2 },
-                { key: 'relacionCon',    label: 'Se relaciona con', placeholder: 'Otras tareas o módulos...',                      rows: 2 },
+                { key: 'porqueSeHace',   label: 'Por qué se hace',  placeholder: 'Razón de existir de este compromiso...',              rows: 2 },
+                { key: 'relacionCon',    label: 'Se relaciona con', placeholder: 'Otros compromisos o módulos...',                      rows: 2 },
                 { key: 'siNoSeHace',     label: 'Si no se hace',    placeholder: 'Consecuencias si no se ejecuta...',              rows: 2 },
               ].map(({ key, label, placeholder, rows }) => (
                 <div key={key}>
@@ -595,7 +595,7 @@ function TareaModal({
             disabled={saving || !form.nombre.trim()}
             className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-black text-sm font-semibold hover:bg-[#d4b060] disabled:opacity-40 transition-colors"
           >
-            {saving ? 'Guardando...' : (isEdit ? 'Guardar cambios' : 'Crear tarea')}
+            {saving ? 'Guardando...' : (isEdit ? 'Guardar cambios' : 'Crear compromiso')}
           </button>
         </div>
       </div>
@@ -1067,7 +1067,7 @@ function AreaPersonasView({
           {loading ? (
             <p className="text-xs text-gray-600 py-4">Cargando...</p>
           ) : Object.keys(byPersona).length === 0 ? (
-            <p className="text-xs text-gray-600 py-4">Sin tareas asignadas en esta área</p>
+            <p className="text-xs text-gray-600 py-4">Sin compromisos asignados en esta área</p>
           ) : (
             <div className="space-y-6">
               {Object.entries(byPersona).map(([nombre, tareas]) => {
@@ -1088,7 +1088,7 @@ function AreaPersonasView({
                         </div>
                       )}
                       <span className="text-xs font-medium text-gray-400">{nombre}</span>
-                      <span className="text-[10px] text-gray-700">{tareas.length} tarea{tareas.length !== 1 ? 's' : ''}</span>
+                      <span className="text-[10px] text-gray-700">{tareas.length} compromiso{tareas.length !== 1 ? 's' : ''}</span>
                     </div>
                     <table className="w-full">
                       <tbody>
@@ -1175,7 +1175,7 @@ function VistaPorPersona({
           </div>
           <div>
             <h2 className="text-base font-bold text-white">{usuario.name}</h2>
-            <p className="text-[10px] text-gray-600">{usuario.area ?? ''} · {templates.length} tarea{templates.length !== 1 ? 's' : ''}</p>
+            <p className="text-[10px] text-gray-600">{usuario.area ?? ''} · {templates.length} compromiso{templates.length !== 1 ? 's' : ''}</p>
           </div>
         </div>
       </div>
@@ -1245,7 +1245,7 @@ function VistaPorPersona({
         })()}
 
         {templates.length === 0 && (
-          <div className="text-center py-16 text-gray-700 text-sm">Sin tareas asignadas</div>
+          <div className="text-center py-16 text-gray-700 text-sm">Sin compromisos asignados</div>
         )}
       </div>
     </div>
@@ -1417,7 +1417,7 @@ export default function PlanPage() {
   }
 
   async function handleDelete(templateId: string) {
-    if (!confirm('¿Eliminar esta tarea del plan?')) return
+    if (!confirm('¿Eliminar este compromiso del plan?')) return
     const res = await fetch(`/api/plan-trabajo/templates/${templateId}`, { method: 'DELETE' })
     if (res.ok) {
       setAreas(prev => prev.map(a => ({
@@ -1671,14 +1671,14 @@ export default function PlanPage() {
                       <p className="text-xs text-gray-500 mt-0.5 max-w-xl">{area.objetivo}</p>
                     )}
                   </div>
-                  <span className="ml-auto text-xs text-gray-600">{totalVisible} tareas</span>
+                  <span className="ml-auto text-xs text-gray-600">{totalVisible} compromisos</span>
                 </div>
 
                 {/* Filters */}
                 <div className="flex items-center gap-2 mt-3 flex-wrap">
                   <input
                     type="text"
-                    placeholder="Buscar tarea..."
+                    placeholder="Buscar compromiso..."
                     value={busqueda}
                     onChange={e => setBusqueda(e.target.value)}
                     className="bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#C9A84C] w-44"
@@ -1711,7 +1711,7 @@ export default function PlanPage() {
                 <thead className="bg-[#060606] border-b border-[#0d0d0d]">
                   <tr>
                     <th className="w-1 p-0" />
-                    <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium">Tarea</th>
+                    <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium">Compromiso</th>
                     <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden sm:table-cell">Responsable</th>
                     <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden md:table-cell">Días</th>
                     <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden lg:table-cell">Recurrencia</th>
@@ -1745,7 +1745,7 @@ export default function PlanPage() {
                               onClick={() => handleOpenModal({ areaId: area.id, subAreaId: group.subArea.id, subAreaNombre: group.subArea.nombre })}
                               className="ml-auto text-[10px] text-gray-700 hover:text-[#C9A84C] transition-colors flex items-center gap-1"
                             >
-                              + Agregar tarea
+                              + Agregar compromiso
                             </button>
                           </div>
                         </td>
