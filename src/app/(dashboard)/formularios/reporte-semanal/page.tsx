@@ -231,93 +231,127 @@ export default function ReporteSemanalHistorialPage() {
         </div>
       )}
 
-      {/* Lista de reportes */}
-      {!loading && reportes.length > 0 && (
-        <div className="space-y-2">
-          {reportes.map((r) => {
-            const bw = BIENESTAR_LABEL[r.bienestar] ?? { label: `${r.bienestar}/10`, color: "bg-gray-800 text-gray-400" };
-            const preview = r.logros?.slice(0, 120);
-            const isConfirming = confirmDelete === r.id;
-            const isDeleting = deleting === r.id;
-            return (
-              <div
-                key={r.id}
-                className="group flex items-stretch bg-[#111] border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-xl transition-all"
-              >
-                {/* Contenido principal — clickeable */}
-                <Link
-                  href={`/formularios/reporte-semanal/${r.id}`}
-                  className="flex-1 min-w-0 px-5 py-4"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-white font-semibold text-sm">
-                          Reporte de {r.user.name}
-                        </span>
-                        {r.user.area && (
-                          <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full">
-                            {r.user.area}
-                          </span>
+      {/* Lista de reportes — agrupada por usuario */}
+      {!loading && reportes.length > 0 && (() => {
+        // Agrupar por usuario preservando orden de aparición
+        const grupos = Object.values(
+          reportes.reduce<Record<string, { user: ReporteItem["user"]; items: ReporteItem[] }>>((acc, r) => {
+            if (!acc[r.user.id]) acc[r.user.id] = { user: r.user, items: [] };
+            acc[r.user.id].items.push(r);
+            return acc;
+          }, {})
+        );
+
+        return (
+          <div className="space-y-8">
+            {grupos.map(({ user, items }) => (
+              <div key={user.id}>
+                {/* Encabezado de usuario */}
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-8 h-8 rounded-full bg-[#B3985B]/15 border border-[#B3985B]/25 flex items-center justify-center shrink-0">
+                    <span className="text-[#B3985B] text-xs font-bold">
+                      {user.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <p className="text-white font-semibold text-sm truncate">{user.name}</p>
+                    {user.area && (
+                      <span className="text-[10px] text-gray-600 bg-[#1a1a1a] border border-[#2a2a2a] px-2 py-0.5 rounded-full shrink-0">
+                        {user.area}
+                      </span>
+                    )}
+                    <span className="text-[10px] text-gray-700 shrink-0">
+                      {items.length} reporte{items.length !== 1 ? "s" : ""}
+                    </span>
+                  </div>
+                  <div className="flex-1 h-px bg-[#1e1e1e]" />
+                </div>
+
+                {/* Reportes de este usuario */}
+                <div className="space-y-1.5 pl-11">
+                  {items.map((r) => {
+                    const bw = BIENESTAR_LABEL[r.bienestar] ?? { label: `${r.bienestar}/10`, color: "bg-gray-800 text-gray-400" };
+                    const preview = r.logros?.slice(0, 100);
+                    const isConfirming = confirmDelete === r.id;
+                    const isDeleting = deleting === r.id;
+                    return (
+                      <div
+                        key={r.id}
+                        className="group flex items-stretch bg-[#111] border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-xl transition-all"
+                      >
+                        <Link
+                          href={`/formularios/reporte-semanal/${r.id}`}
+                          className="flex-1 min-w-0 px-4 py-3"
+                        >
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-white text-sm font-medium">
+                                  Semana {r.semana} · {r.anio}
+                                </span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${bw.color}`}>
+                                  {bw.label} {r.bienestar}/10
+                                </span>
+                              </div>
+                              {preview && (
+                                <p className="text-gray-500 text-xs truncate max-w-lg mt-0.5">
+                                  {preview}{r.logros.length > 100 ? "…" : ""}
+                                </p>
+                              )}
+                              <p className="text-gray-700 text-[10px] mt-0.5">{fmtDate(r.createdAt)}</p>
+                            </div>
+                            <svg className="w-4 h-4 text-gray-700 group-hover:text-[#B3985B] shrink-0 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                          </div>
+                        </Link>
+
+                        {/* Botón eliminar — solo admins */}
+                        {session?.role === "ADMIN" && (
+                          <div className="flex items-center pr-3 pl-2 border-l border-[#1a1a1a] shrink-0">
+                            {isConfirming ? (
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  onClick={() => setConfirmDelete(null)}
+                                  className="text-[11px] text-gray-500 hover:text-gray-300 px-2 py-1 rounded transition-colors"
+                                >
+                                  Cancelar
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(r.id)}
+                                  disabled={isDeleting}
+                                  className="text-[11px] text-red-400 bg-red-900/20 border border-red-900/30 hover:bg-red-900/30 px-2.5 py-1 rounded-lg transition-all disabled:opacity-50"
+                                >
+                                  {isDeleting ? "…" : "¿Eliminar?"}
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setConfirmDelete(r.id)}
+                                title="Eliminar reporte"
+                                className="opacity-0 group-hover:opacity-100 w-7 h-7 flex items-center justify-center rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-900/15 transition-all"
+                              >
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="3 6 5 6 21 6"/>
+                                  <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                                  <path d="M10 11v6M14 11v6"/>
+                                  <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                                </svg>
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-gray-500 text-xs">Semana {r.semana} · {r.anio}</span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${bw.color}`}>
-                          {bw.label} {r.bienestar}/10
-                        </span>
-                      </div>
-                      {preview && (
-                        <p className="text-gray-500 text-xs truncate max-w-lg">{preview}{r.logros.length > 120 ? "…" : ""}</p>
-                      )}
-                      <p className="text-gray-700 text-[10px] mt-1">{fmtDate(r.createdAt)}</p>
-                    </div>
-                    <svg className="w-4 h-4 text-gray-700 group-hover:text-[#B3985B] shrink-0 transition-colors mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </Link>
-
-                {/* Botón eliminar — solo admins */}
-                {session?.role === "ADMIN" && (
-                  <div className="flex items-center pr-4 pl-2 border-l border-[#1a1a1a] shrink-0">
-                    {isConfirming ? (
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => setConfirmDelete(null)}
-                          className="text-[11px] text-gray-500 hover:text-gray-300 px-2 py-1 rounded transition-colors"
-                        >
-                          Cancelar
-                        </button>
-                        <button
-                          onClick={() => handleDelete(r.id)}
-                          disabled={isDeleting}
-                          className="text-[11px] text-red-400 bg-red-900/20 border border-red-900/30 hover:bg-red-900/30 px-2.5 py-1 rounded-lg transition-all disabled:opacity-50"
-                        >
-                          {isDeleting ? "…" : "¿Eliminar?"}
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => setConfirmDelete(r.id)}
-                        title="Eliminar reporte"
-                        className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-900/15 transition-all"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6"/>
-                          <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
-                          <path d="M10 11v6M14 11v6"/>
-                          <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                )}
+                    );
+                  })}
+                </div>
               </div>
-            );
-          })}
-        </div>
-      )}
+            ))}
+          </div>
+        );
+      })()}
+
+
     </div>
   );
 }
