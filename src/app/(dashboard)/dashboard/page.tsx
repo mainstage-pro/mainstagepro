@@ -350,7 +350,7 @@ export default async function DashboardPage() {
 
   const eventosProximos = [...eventosProyecto, ...eventosTrato]
     .sort((a, b) => a.fechaEvento.getTime() - b.fechaEvento.getTime())
-    .slice(0, 5);
+    .slice(0, 10);
 
   const [tareasAbandonadas, tratosEnfriados, tratosCriticos, tratosSinMovimientoRaw, tratosRevisionRaw] = await Promise.all([
     prisma.tarea.count({

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import DailyGreeting from "@/components/DailyGreeting";
 import TareasPendientesWidget from "@/components/TareasPendientesWidget";
+import { EventosWidget } from "@/components/dashboard/EventosWidget";
 
 function fmt(n: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
@@ -259,6 +260,8 @@ export default async function DashboardVentasPage() {
         </div>
         <TareasPendientesWidget area="VENTAS" />
       </div>
+
+      <EventosWidget />
     </div>
   );
 }

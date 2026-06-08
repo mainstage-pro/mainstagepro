@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import DailyGreeting from "@/components/DailyGreeting";
 import TareasPendientesWidget from "@/components/TareasPendientesWidget";
+import { EventosWidget } from "@/components/dashboard/EventosWidget";
 
 function KpiCard({ label, value, sub, color = "text-white", href }: { label: string; value: string | number; sub?: string; color?: string; href?: string }) {
   const content = (
@@ -133,6 +134,8 @@ export default async function DashboardRRHHPage() {
         </div>
         <TareasPendientesWidget area="RRHH" />
       </div>
+
+      <EventosWidget />
     </div>
   );
 }

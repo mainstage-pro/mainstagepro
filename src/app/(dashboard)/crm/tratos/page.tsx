@@ -1215,7 +1215,7 @@ export default function TratosPage() {
     return "lista";
   });
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-  const [orden, setOrden] = useState<"evento_asc" | "evento_desc" | "creacion_desc" | "creacion_asc">("evento_asc");
+  const [orden, setOrden] = useState<"evento_asc" | "evento_desc" | "creacion_desc" | "creacion_asc">("creacion_desc");
   const [agrupacion, setAgrupacion] = useState<"todos" | "mes" | "semana">("mes");
   const [gruposOpen, setGruposOpen] = useState<Record<string, boolean>>({});
   const [ordenTrato, setOrdenTrato] = useState<OrdenTrato>('fechaEvento');

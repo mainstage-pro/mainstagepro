@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import DailyGreeting from "@/components/DailyGreeting";
 import TareasPendientesWidget from "@/components/TareasPendientesWidget";
+import { EventosWidget } from "@/components/dashboard/EventosWidget";
 
 const AREA_LABELS: Record<string, string> = {
   VENTAS: "Ventas", ADMINISTRACION: "Administración",
@@ -327,6 +328,8 @@ export default async function DashboardDireccionPage() {
           <TareasPendientesWidget area="DIRECCION" />
         </div>
       )}
+
+      <EventosWidget />
     </div>
   );
 }
