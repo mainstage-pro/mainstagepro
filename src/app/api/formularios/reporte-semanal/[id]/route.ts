@@ -31,3 +31,24 @@ export async function GET(
 
   return NextResponse.json({ reporte });
 }
+
+// DELETE /api/formularios/reporte-semanal/[id]
+// Solo ADMIN puede eliminar reportes
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (session.role !== "ADMIN") {
+    return NextResponse.json({ error: "Solo administradores pueden eliminar reportes" }, { status: 403 });
+  }
+
+  const { id } = await params;
+
+  const reporte = await prisma.reporteFormulario.findUnique({ where: { id } });
+  if (!reporte) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+  await prisma.reporteFormulario.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
+}

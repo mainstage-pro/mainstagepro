@@ -57,6 +57,8 @@ export default function ReporteSemanalHistorialPage() {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [reportes, setReportes] = useState<ReporteItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   // ISO week for today
   const semanaActual = getSemanaISO();
@@ -83,6 +85,25 @@ export default function ReporteSemanalHistorialPage() {
   const reportesSemanaActual = reportes.filter(
     r => r.semana === semanaActual && r.anio === anioActual
   );
+
+  async function handleDelete(id: string) {
+    setDeleting(id);
+    try {
+      const res = await fetch(`/api/formularios/reporte-semanal/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setReportes(prev => prev.filter(r => r.id !== id));
+        toast.success("Reporte eliminado");
+      } else {
+        const d = await res.json();
+        toast.error(d.error ?? "Error al eliminar");
+      }
+    } catch {
+      toast.error("Error de conexión");
+    } finally {
+      setDeleting(null);
+      setConfirmDelete(null);
+    }
+  }
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto">
@@ -210,49 +231,89 @@ export default function ReporteSemanalHistorialPage() {
         </div>
       )}
 
-      {/* Lista de reportes agrupados por año */}
+      {/* Lista de reportes */}
       {!loading && reportes.length > 0 && (
         <div className="space-y-2">
           {reportes.map((r) => {
             const bw = BIENESTAR_LABEL[r.bienestar] ?? { label: `${r.bienestar}/10`, color: "bg-gray-800 text-gray-400" };
             const preview = r.logros?.slice(0, 120);
+            const isConfirming = confirmDelete === r.id;
+            const isDeleting = deleting === r.id;
             return (
-              <Link
+              <div
                 key={r.id}
-                href={`/formularios/reporte-semanal/${r.id}`}
-                className="block bg-[#111] border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-xl px-5 py-4 transition-all group"
+                className="group flex items-stretch bg-[#111] border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-xl transition-all"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      {/* Nombre como título principal */}
-                      <span className="text-white font-semibold text-sm">
-                        Reporte de {r.user.name}
-                      </span>
-                      {r.user.area && (
-                        <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full">
-                          {r.user.area}
+                {/* Contenido principal — clickeable */}
+                <Link
+                  href={`/formularios/reporte-semanal/${r.id}`}
+                  className="flex-1 min-w-0 px-5 py-4"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="text-white font-semibold text-sm">
+                          Reporte de {r.user.name}
                         </span>
+                        {r.user.area && (
+                          <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full">
+                            {r.user.area}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className="text-gray-500 text-xs">Semana {r.semana} · {r.anio}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${bw.color}`}>
+                          {bw.label} {r.bienestar}/10
+                        </span>
+                      </div>
+                      {preview && (
+                        <p className="text-gray-500 text-xs truncate max-w-lg">{preview}{r.logros.length > 120 ? "…" : ""}</p>
                       )}
+                      <p className="text-gray-700 text-[10px] mt-1">{fmtDate(r.createdAt)}</p>
                     </div>
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className="text-gray-500 text-xs">
-                        Semana {r.semana} · {r.anio}
-                      </span>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${bw.color}`}>
-                        {bw.label} {r.bienestar}/10
-                      </span>
-                    </div>
-                    {preview && (
-                      <p className="text-gray-500 text-xs truncate max-w-lg">{preview}{r.logros.length > 120 ? "…" : ""}</p>
-                    )}
-                    <p className="text-gray-700 text-[10px] mt-1">{fmtDate(r.createdAt)}</p>
+                    <svg className="w-4 h-4 text-gray-700 group-hover:text-[#B3985B] shrink-0 transition-colors mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
                   </div>
-                  <svg className="w-4 h-4 text-gray-700 group-hover:text-[#B3985B] shrink-0 transition-colors mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </Link>
+                </Link>
+
+                {/* Botón eliminar — solo admins */}
+                {session?.role === "ADMIN" && (
+                  <div className="flex items-center pr-4 pl-2 border-l border-[#1a1a1a] shrink-0">
+                    {isConfirming ? (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setConfirmDelete(null)}
+                          className="text-[11px] text-gray-500 hover:text-gray-300 px-2 py-1 rounded transition-colors"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={() => handleDelete(r.id)}
+                          disabled={isDeleting}
+                          className="text-[11px] text-red-400 bg-red-900/20 border border-red-900/30 hover:bg-red-900/30 px-2.5 py-1 rounded-lg transition-all disabled:opacity-50"
+                        >
+                          {isDeleting ? "…" : "¿Eliminar?"}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDelete(r.id)}
+                        title="Eliminar reporte"
+                        className="opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-900/15 transition-all"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                          <path d="M10 11v6M14 11v6"/>
+                          <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
