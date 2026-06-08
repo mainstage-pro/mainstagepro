@@ -70,6 +70,17 @@ type ModalState = {
   subAreaNombre: string
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function sortTemplatesByDay(templates: Template[]): Template[] {
+  return [...templates].sort((a, b) => {
+    const dayA = a.diasSemana && a.diasSemana.length > 0 ? Math.min(...a.diasSemana) : 999
+    const dayB = b.diasSemana && b.diasSemana.length > 0 ? Math.min(...b.diasSemana) : 999
+    if (dayA !== dayB) return dayA - dayB
+    return a.nombre.localeCompare(b.nombre)
+  })
+}
+
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const DIAS_LABEL: Record<number, string> = { 1: 'L', 2: 'M', 3: 'X', 4: 'J', 5: 'V' }
@@ -856,6 +867,9 @@ function TemplateRow({
   onGroupChange,
   onDragStart,
   onDragEnd,
+  onDragOverRow,
+  onDropOnRow,
+  dragOverIndicator,
   canEdit,
 }: {
   t: Template
@@ -869,6 +883,9 @@ function TemplateRow({
   onGroupChange: (templateId: string, tipoAsignacion: string, areaAsignada?: string) => void
   onDragStart?: () => void
   onDragEnd?: () => void
+  onDragOverRow?: (templateId: string, position: 'above' | 'below') => void
+  onDropOnRow?: (targetId: string, position: 'above' | 'below') => void
+  dragOverIndicator?: 'above' | 'below' | null
   canEdit?: boolean
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -881,11 +898,31 @@ function TemplateRow({
       <tr
         className={`border-b border-[#111] transition-colors group ${
           expanded ? 'bg-[#0d0d0d]' : 'hover:bg-[#0a0a0a]'
-        }${onDragStart ? ' cursor-grab active:cursor-grabbing' : ' cursor-pointer'}`}
+        }${onDragStart ? ' cursor-grab active:cursor-grabbing' : ' cursor-pointer'}${
+          dragOverIndicator === 'above' ? ' border-t-2 border-t-[#C9A84C]' : ''
+        }${
+          dragOverIndicator === 'below' ? ' border-b-2 border-b-[#C9A84C]' : ''
+        }`}
         onClick={() => setExpanded(v => !v)}
         draggable={!!onDragStart}
         onDragStart={onDragStart ? e => { e.currentTarget.style.opacity = '0.4'; e.dataTransfer.effectAllowed = 'move'; onDragStart() } : undefined}
         onDragEnd={onDragEnd ? e => { e.currentTarget.style.opacity = '1'; onDragEnd() } : undefined}
+        onDragOver={onDragOverRow ? (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          const rect = e.currentTarget.getBoundingClientRect()
+          const midY = rect.top + rect.height / 2
+          const position: 'above' | 'below' = e.clientY < midY ? 'above' : 'below'
+          onDragOverRow(t.id, position)
+        } : undefined}
+        onDrop={onDropOnRow ? (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          const rect = e.currentTarget.getBoundingClientRect()
+          const midY = rect.top + rect.height / 2
+          const position: 'above' | 'below' = e.clientY < midY ? 'above' : 'below'
+          onDropOnRow(t.id, position)
+        } : undefined}
       >
         {/* Impacto bar */}
         <td className="w-1 p-0">
@@ -1369,6 +1406,7 @@ export default function PlanPage() {
   // Drag and drop
   const [dragState, setDragState]           = useState<{ templateId: string; fromSubAreaId: string } | null>(null)
   const [dragOverSubAreaId, setDragOverSubAreaId] = useState<string | null>(null)
+  const [dragOverRow, setDragOverRow] = useState<{ templateId: string; position: 'above' | 'below' } | null>(null)
 
   // Load areas + templates + usuarios
   useEffect(() => {
@@ -1391,7 +1429,6 @@ export default function PlanPage() {
           const tData: { templates: Template[] } = await tRes.json()
           const templates = tData.templates ?? []
 
-          const IMPACTO_ORDER: Record<string, number> = { critico: 0, alto: 1, estandar: 2 }
           const subMap = new Map<string, SubareaGroup>()
           for (const t of templates) {
             if (!t.subArea) continue
@@ -1399,13 +1436,10 @@ export default function PlanPage() {
               subMap.set(t.subArea.id, { subArea: t.subArea, templates: [] })
             }
             subMap.get(t.subArea.id)!.templates.push(t)
-            subMap.get(t.subArea.id)!.templates.sort((a, b) => {
-              const impDiff = (IMPACTO_ORDER[a.impacto] ?? 2) - (IMPACTO_ORDER[b.impacto] ?? 2)
-              if (impDiff !== 0) return impDiff
-              const aDay = a.diasSemana.length > 0 ? Math.min(...a.diasSemana) : 99
-              const bDay = b.diasSemana.length > 0 ? Math.min(...b.diasSemana) : 99
-              return aDay - bDay
-            })
+          }
+          // Feature 1A: sort each subarea's templates by day of week
+          for (const sg of subMap.values()) {
+            sg.templates = sortTemplatesByDay(sg.templates)
           }
 
           return { ...area, subareaGroups: Array.from(subMap.values()) }
@@ -1643,15 +1677,64 @@ export default function PlanPage() {
         subareaGroups: isEdit
           ? a.subareaGroups.map(sg => ({
               ...sg,
-              templates: sg.templates.map(t => t.id === saved.id ? saved : t),
+              // Feature 1A: re-sort after edit in case diasSemana changed
+              templates: sortTemplatesByDay(sg.templates.map(t => t.id === saved.id ? saved : t)),
             }))
           : a.subareaGroups.map(sg =>
               sg.subArea.id === saved.subArea.id
-                ? { ...sg, templates: [...sg.templates, saved] }
+                // Feature 1A: insert then re-sort
+                ? { ...sg, templates: sortTemplatesByDay([...sg.templates, saved]) }
                 : sg
             ),
       }
     }))
+  }
+
+  async function handleReorderTemplate(draggedId: string, targetId: string, position: 'above' | 'below') {
+    if (!dragState) return
+    const subAreaId = dragState.fromSubAreaId
+
+    // Optimistic UI update
+    setAreas(prev => prev.map(a => ({
+      ...a,
+      subareaGroups: a.subareaGroups.map(sg => {
+        if (sg.subArea.id !== subAreaId) return sg
+        const templates = [...sg.templates]
+        const draggedIndex = templates.findIndex(t => t.id === draggedId)
+        if (draggedIndex === -1) return sg
+        const [dragged] = templates.splice(draggedIndex, 1)
+        const targetIndex = templates.findIndex(t => t.id === targetId)
+        if (targetIndex === -1) return sg
+        const insertAt = position === 'above' ? targetIndex : targetIndex + 1
+        templates.splice(insertAt, 0, dragged)
+        return { ...sg, templates }
+      }),
+    })))
+
+    // Compute the new order from the current state for persistence
+    const subAreaGroup = areas.flatMap(a => a.subareaGroups).find(sg => sg.subArea.id === subAreaId)
+    if (!subAreaGroup) { setDragState(null); setDragOverRow(null); return }
+
+    const currentTemplates = subAreaGroup.templates
+    const reordered = [...currentTemplates]
+    const draggedIndex = reordered.findIndex(t => t.id === draggedId)
+    if (draggedIndex !== -1) {
+      const [dragged] = reordered.splice(draggedIndex, 1)
+      const targetIndex = reordered.findIndex(t => t.id === targetId)
+      if (targetIndex !== -1) {
+        const insertAt = position === 'above' ? targetIndex : targetIndex + 1
+        reordered.splice(insertAt, 0, dragged)
+      }
+    }
+
+    await fetch('/api/plan-trabajo/templates/reorder', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderedIds: reordered.map(t => t.id) }),
+    })
+
+    setDragState(null)
+    setDragOverRow(null)
   }
 
   // ── Render helpers ────────────────────────────────────────────────────────
@@ -1905,7 +1988,16 @@ export default function PlanPage() {
                           onSemanaDeMesChange={handleSemanaDeMesChange}
                           onGroupChange={handleGroupAssignment}
                           onDragStart={() => setDragState({ templateId: t.id, fromSubAreaId: group.subArea.id })}
-                          onDragEnd={() => { setDragState(null); setDragOverSubAreaId(null) }}
+                          onDragEnd={() => { setDragState(null); setDragOverSubAreaId(null); setDragOverRow(null) }}
+                          onDragOverRow={(targetId, position) => setDragOverRow({ templateId: targetId, position })}
+                          onDropOnRow={(targetId, position) => {
+                            if (dragState && dragState.fromSubAreaId === group.subArea.id) {
+                              handleReorderTemplate(dragState.templateId, targetId, position)
+                            } else if (dragState) {
+                              handleMoveTemplate(dragState.templateId, group.subArea.id)
+                            }
+                          }}
+                          dragOverIndicator={dragOverRow?.templateId === t.id ? dragOverRow.position : null}
                           canEdit={isAdmin}
                         />
                       ))}

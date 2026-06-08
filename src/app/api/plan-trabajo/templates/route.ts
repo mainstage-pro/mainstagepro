@@ -85,7 +85,12 @@ export async function POST(req: NextRequest) {
     diasSemana, horaLimite, responsableId, impacto, contexto,
     cuando, puestoDefault, estandarMinimo, porqueSeHace,
     relacionCon, siNoSeHace, semanaDeMes,
+    tipoAsignacion, areaAsignada, esAccionCampo, moduloDestino, moduloTexto, moduloDisponible,
   } = body
+
+  // Compute default orden from diasSemana (Feature 1B)
+  const diasArr = Array.isArray(diasSemana) ? diasSemana.map(Number) : []
+  const ordenDefault = diasArr.length > 0 ? Math.min(...diasArr) * 100 : 999
 
   if (!areaId || !subAreaId || !nombre) {
     return NextResponse.json(
@@ -114,6 +119,13 @@ export async function POST(req: NextRequest) {
       porqueSeHace:   porqueSeHace   || null,
       relacionCon:    relacionCon    || null,
       siNoSeHace:     siNoSeHace     || null,
+      orden:          ordenDefault,
+      tipoAsignacion: tipoAsignacion || 'individual',
+      areaAsignada:   areaAsignada   || null,
+      esAccionCampo:  esAccionCampo  ?? false,
+      moduloDestino:  moduloDestino  || null,
+      moduloTexto:    moduloTexto    || null,
+      moduloDisponible: moduloDisponible ?? true,
     },
     include: {
       area:        true,

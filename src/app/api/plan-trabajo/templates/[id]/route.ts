@@ -27,7 +27,12 @@ export async function PUT(
   if (descripcion !== undefined) data.descripcion = descripcion
   if (tipo        !== undefined) data.tipo        = tipo
   if (frecuencia  !== undefined) data.frecuencia  = frecuencia
-  if (diasSemana  !== undefined) data.diasSemana  = diasSemana
+  if (diasSemana  !== undefined) {
+    data.diasSemana = diasSemana
+    // Feature 1C: keep orden in sync with diasSemana
+    const diasArr = Array.isArray(diasSemana) ? diasSemana.map(Number) : []
+    data.orden = diasArr.length > 0 ? Math.min(...diasArr) * 100 : 999
+  }
   if (horaLimite  !== undefined) data.horaLimite  = horaLimite
   if (moduloDestino    !== undefined) data.moduloDestino    = moduloDestino
   if (moduloTexto      !== undefined) data.moduloTexto      = moduloTexto
