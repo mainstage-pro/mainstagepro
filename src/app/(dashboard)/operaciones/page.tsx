@@ -871,7 +871,11 @@ export default function OperacionesPage() {
     if (!nuevaSeccionNombre.trim() || typeof vista === "string" || vista.tipo === "area") return;
     const res = await fetch("/api/operaciones/secciones", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre: nuevaSeccionNombre.trim(), proyectoId: (vista as { tipo: "proyecto"; id: string }).id }),
+      body: JSON.stringify({
+        nombre: nuevaSeccionNombre.trim(),
+        proyectoId: (vista as { tipo: "proyecto"; id: string }).id,
+        orden: proyectoDetalle?.secciones.length ?? 0,
+      }),
     });
     if (res.ok) {
       const { seccion } = await res.json();

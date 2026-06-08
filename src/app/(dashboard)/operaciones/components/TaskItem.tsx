@@ -545,17 +545,36 @@ export default function TaskItem({
       <div className={`hidden md:flex items-center gap-1 shrink-0 mt-0.5 transition-opacity duration-100 ${actionsVisible ? "opacity-100" : "opacity-0"}`}
         onClick={e => e.stopPropagation()}>
 
+        {/* Fecha de realización */}
+        <span className="relative">
+          {editingDate === "fecha" && onDateChange && (
+            <DatePicker value={localFecha}
+              onChange={val => { setLocalFecha(val); onDateChange(tarea.id, "fecha", val); }}
+              onClose={() => setEditingDate(null)} autoOpen hideTrigger showClear className="absolute right-0 top-8 z-50" />
+          )}
+          <ActionBtn
+            title={localFecha ? `Fecha: ${formatFecha(localFecha).label}` : "Sin fecha de realización"}
+            active={!!localFecha}
+            onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fecha"); }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          </ActionBtn>
+        </span>
+        {/* Fecha de vencimiento */}
         <span className="relative">
           {editingDate === "fechaVencimiento" && onDateChange && (
             <DatePicker value={localFechaVen}
               onChange={val => { setLocalFechaVen(val); onDateChange(tarea.id, "fechaVencimiento", val); }}
               onClose={() => setEditingDate(null)} autoOpen hideTrigger showClear className="absolute right-0 top-8 z-50" />
           )}
-          <ActionBtn title={tarea.fechaVencimiento ? `Vence: ${formatFecha(tarea.fechaVencimiento).label}` : "Agendar fecha"}
-            active={!!tarea.fechaVencimiento} onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fechaVencimiento"); }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="4" width="18" height="18" rx="2"/>
-              <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          <ActionBtn
+            title={localFechaVen ? `Vence: ${formatFecha(localFechaVen).label}` : "Sin fecha límite"}
+            active={!!localFechaVen}
+            onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fechaVencimiento"); }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
             </svg>
           </ActionBtn>
         </span>
