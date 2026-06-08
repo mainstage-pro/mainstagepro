@@ -856,6 +856,7 @@ function TemplateRow({
   onGroupChange,
   onDragStart,
   onDragEnd,
+  canEdit,
 }: {
   t: Template
   usuarios: Usuario[]
@@ -868,6 +869,7 @@ function TemplateRow({
   onGroupChange: (templateId: string, tipoAsignacion: string, areaAsignada?: string) => void
   onDragStart?: () => void
   onDragEnd?: () => void
+  canEdit?: boolean
 }) {
   const [expanded, setExpanded] = useState(false)
   const ctx = CONTEXTO_BADGE[t.contexto] ?? CONTEXTO_BADGE.independiente
@@ -940,25 +942,27 @@ function TemplateRow({
         {/* Actions + Expand */}
         <td className="py-3 px-3 text-right">
           <div className="flex items-center justify-end gap-1">
-            <div
-              className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity"
-              onClick={e => e.stopPropagation()}
-            >
-              <button
-                onClick={() => onEdit(t)}
-                className="p-1.5 rounded-lg hover:bg-[#1a1a1a] text-gray-600 hover:text-white transition-colors"
-                title="Editar"
+            {canEdit !== false && (
+              <div
+                className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity"
+                onClick={e => e.stopPropagation()}
               >
-                ✎
-              </button>
-              <button
-                onClick={() => onDelete(t.id)}
-                className="p-1.5 rounded-lg hover:bg-red-900/20 text-gray-700 hover:text-red-400 transition-colors"
-                title="Eliminar"
-              >
-                ✕
-              </button>
-            </div>
+                <button
+                  onClick={() => onEdit(t)}
+                  className="p-1.5 rounded-lg hover:bg-[#1a1a1a] text-gray-600 hover:text-white transition-colors"
+                  title="Editar"
+                >
+                  ✎
+                </button>
+                <button
+                  onClick={() => onDelete(t.id)}
+                  className="p-1.5 rounded-lg hover:bg-red-900/20 text-gray-700 hover:text-red-400 transition-colors"
+                  title="Eliminar"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
             <span className="text-gray-600 text-xs ml-1">{expanded ? '▲' : '▼'}</span>
           </div>
         </td>
@@ -1089,6 +1093,7 @@ function AreaPersonasView({
   onFrecuenciaChange,
   onSemanaDeMesChange,
   onGroupChange,
+  canEdit,
 }: {
   areaId: string
   usuarios: Usuario[]
@@ -1099,6 +1104,7 @@ function AreaPersonasView({
   onFrecuenciaChange: (templateId: string, frecuencia: string) => void
   onSemanaDeMesChange: (templateId: string, semanaDeMes: number[]) => void
   onGroupChange: (templateId: string, tipoAsignacion: string, areaAsignada?: string) => void
+  canEdit?: boolean
 }) {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(false)
@@ -1187,6 +1193,7 @@ function AreaPersonasView({
                             onFrecuenciaChange={onFrecuenciaChange}
                             onSemanaDeMesChange={onSemanaDeMesChange}
                             onGroupChange={onGroupChange}
+                            canEdit={canEdit}
                           />
                         ))}
                       </tbody>
@@ -1214,6 +1221,7 @@ function VistaPorPersona({
   onSemanaDeMesChange,
   onGroupChange,
   usuarios,
+  canEdit,
 }: {
   usuario: Usuario
   onEdit: (t: Template) => void
@@ -1224,6 +1232,7 @@ function VistaPorPersona({
   onSemanaDeMesChange: (templateId: string, semanaDeMes: number[]) => void
   onGroupChange: (templateId: string, tipoAsignacion: string, areaAsignada?: string) => void
   usuarios: Usuario[]
+  canEdit?: boolean
 }) {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
@@ -1287,6 +1296,7 @@ function VistaPorPersona({
                       onFrecuenciaChange={onFrecuenciaChange}
                       onSemanaDeMesChange={onSemanaDeMesChange}
                       onGroupChange={onGroupChange}
+                      canEdit={canEdit}
                     />
                   ))}
                 </tbody>
@@ -1319,6 +1329,7 @@ function VistaPorPersona({
                       onFrecuenciaChange={onFrecuenciaChange}
                       onSemanaDeMesChange={onSemanaDeMesChange}
                       onGroupChange={onGroupChange}
+                      canEdit={canEdit}
                     />
                   ))}
                 </tbody>
@@ -1347,6 +1358,7 @@ export default function PlanPage() {
   const [filtroContexto, setFiltroContexto] = useState('todos')
   const [usuarios, setUsuarios]         = useState<Usuario[]>([])
   const [modal, setModal]               = useState<ModalState | null>(null)
+  const [isAdmin, setIsAdmin]           = useState(false)
 
   // Add subarea
   const [addingSubareaForAreaId, setAddingSubareaForAreaId] = useState<string | null>(null)
@@ -1359,13 +1371,16 @@ export default function PlanPage() {
   // Load areas + templates + usuarios
   useEffect(() => {
     async function load() {
-      const [soRes, usuRes] = await Promise.all([
+      const [soRes, usuRes, meRes] = await Promise.all([
         fetch('/api/plan-trabajo/sistema-operativo'),
         fetch('/api/usuarios'),
+        fetch('/api/me'),
       ])
       const soData: { areas: SOArea[] } = await soRes.json()
       const usuData: { usuarios: Usuario[] } = await usuRes.json()
+      const meData: { role: string } = await meRes.json()
       setUsuarios(usuData.usuarios ?? [])
+      setIsAdmin(meData.role === 'ADMIN')
 
       const areasData: AreaData[] = await Promise.all(
         soData.areas.map(async area => {
@@ -1736,6 +1751,7 @@ export default function PlanPage() {
           onFrecuenciaChange={handleFrecuenciaChange}
           onSemanaDeMesChange={handleSemanaDeMesChange}
           onGroupChange={handleGroupAssignment}
+          canEdit={isAdmin}
         />
       ) : (
         <div className="flex-1 overflow-auto">
@@ -1824,12 +1840,14 @@ export default function PlanPage() {
                               {group.subArea.nombre}
                             </span>
                             <span className="text-[10px] text-gray-700">{filtered.length}</span>
-                            <button
-                              onClick={() => handleOpenModal({ areaId: area.id, subAreaId: group.subArea.id, subAreaNombre: group.subArea.nombre })}
-                              className="ml-auto text-[10px] text-gray-700 hover:text-[#C9A84C] transition-colors flex items-center gap-1"
-                            >
-                              + Agregar compromiso
-                            </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => handleOpenModal({ areaId: area.id, subAreaId: group.subArea.id, subAreaNombre: group.subArea.nombre })}
+                                className="ml-auto text-[10px] text-gray-700 hover:text-[#C9A84C] transition-colors flex items-center gap-1"
+                              >
+                                + Agregar compromiso
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1853,6 +1871,7 @@ export default function PlanPage() {
                           onGroupChange={handleGroupAssignment}
                           onDragStart={() => setDragState({ templateId: t.id, fromSubAreaId: group.subArea.id })}
                           onDragEnd={() => { setDragState(null); setDragOverSubAreaId(null) }}
+                          canEdit={isAdmin}
                         />
                       ))}
                     </tbody>
@@ -1862,7 +1881,7 @@ export default function PlanPage() {
 
               {/* Add new subarea */}
               <div className="px-4 pb-3 pt-1">
-                {addingSubareaForAreaId === area.id ? (
+                {isAdmin && (addingSubareaForAreaId === area.id ? (
                   <div className="flex items-center gap-2 py-2">
                     <input
                       autoFocus
@@ -1898,7 +1917,7 @@ export default function PlanPage() {
                     </svg>
                     Nueva subárea
                   </button>
-                )}
+                ))}
               </div>
 
               {/* Ver por persona en esta área */}
@@ -1912,6 +1931,7 @@ export default function PlanPage() {
                 onFrecuenciaChange={handleFrecuenciaChange}
                 onSemanaDeMesChange={handleSemanaDeMesChange}
                 onGroupChange={handleGroupAssignment}
+                canEdit={isAdmin}
               />
             </>
           )}
