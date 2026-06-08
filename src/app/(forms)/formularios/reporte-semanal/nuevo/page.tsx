@@ -482,6 +482,7 @@ export default function ReporteSemanalLandingPage() {
             </div>
 
             <button
+              type="button"
               onClick={() => setPrivacyDismissed(true)}
               className="w-full bg-[#B3985B] hover:bg-[#c9a96e] text-black font-bold py-3.5 rounded-xl transition-colors text-sm"
             >
@@ -524,7 +525,7 @@ export default function ReporteSemanalLandingPage() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} noValidate>
         <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
 
           {/* Hero */}
@@ -541,7 +542,7 @@ export default function ReporteSemanalLandingPage() {
             hint="Escribe los logros, avances y cosas que salieron bien esta semana. Pueden ser resultados de proyectos, tareas completadas, victorias del equipo o tuyas personales. Sé específico — no importa si son pequeños o grandes.">
             <textarea className={ta} rows={4}
               placeholder="Ejemplo: Cerré la cotización del evento Expo Guadalajara. Terminé de organizar el almacén de producción. Mejoré el proceso de check-in con el cliente..."
-              value={logros} onChange={(e) => setLogros(e.target.value)} required />
+              value={logros} onChange={(e) => setLogros(e.target.value)} />
           </Section>
 
           {/* ── Tareas pendientes en plataforma — IDÉNTICO a operaciones ── */}

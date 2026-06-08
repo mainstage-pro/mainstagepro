@@ -57,6 +57,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Guard: prevent duplicate reports for same user+semana+anio
+  const existing = await prisma.reporteFormulario.findFirst({
+    where: {
+      userId: session.id,
+      semana: Number(semana),
+      anio: Number(anio),
+    },
+  });
+  if (existing) {
+    return NextResponse.json(
+      { error: "Ya existe un reporte para esta semana", reporteId: existing.id },
+      { status: 409 }
+    );
+  }
+
   // Crear el reporte
   const reporte = await prisma.reporteFormulario.create({
     data: {
@@ -80,11 +95,11 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // Crear tareas en el modelo Tarea — cada tarea del reporte
+  // Only create tasks that don't already exist (no tareaId — tasks with tareaId were already created via QuickAdd)
   const tareasArr = Array.isArray(tareas) ? tareas : [];
-  if (tareasArr.length > 0) {
-    const tareasData = tareasArr
-      .filter((t: { titulo: string; fechaVencimiento?: string | null }) => t.titulo?.trim())
+  const tareasNuevas = tareasArr.filter((t: { tareaId?: string; titulo?: string }) => !t.tareaId && t.titulo?.trim());
+  if (tareasNuevas.length > 0) {
+    const tareasData = tareasNuevas
       .map((t: { titulo: string; fechaVencimiento?: string | null }) => ({
         titulo: t.titulo.trim(),
         descripcion: `Tarea comprometida en Reporte Semanal — Semana ${semana}/${anio}`,
@@ -96,9 +111,7 @@ export async function POST(req: NextRequest) {
         fechaVencimiento: t.fechaVencimiento ? new Date(t.fechaVencimiento) : null,
       }));
 
-    if (tareasData.length > 0) {
-      await prisma.tarea.createMany({ data: tareasData });
-    }
+    await prisma.tarea.createMany({ data: tareasData });
   }
 
   return NextResponse.json({ reporte }, { status: 201 });
