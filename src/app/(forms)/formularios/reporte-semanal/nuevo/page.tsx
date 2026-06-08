@@ -160,18 +160,17 @@ export default function ReporteSemanalLandingPage() {
   // 2. Pendientes + recursos (cuando session está lista)
   useEffect(() => {
     if (!session) return
-    // Pendientes — only fetch when NOT in modoArranque
-    if (!modoArranque) {
-      setLoadingPendientes(true)
-      fetch('/api/formularios/reporte-semanal/pendientes')
-        .then(r => r.json())
-        .then(d => {
-          setTareasOp(d.tareasOperaciones ?? [])
-          setCompPlan(d.compromisosPlan ?? [])
-        })
-        .catch(() => {})
-        .finally(() => setLoadingPendientes(false))
-    }
+    // Siempre cargar tareas pendientes del módulo de tareas (tareasOp)
+    // compPlan se carga también pero su sección JSX está gateada por modoArranque
+    setLoadingPendientes(true)
+    fetch('/api/formularios/reporte-semanal/pendientes')
+      .then(r => r.json())
+      .then(d => {
+        setTareasOp(d.tareasOperaciones ?? [])
+        setCompPlan(d.compromisosPlan ?? [])
+      })
+      .catch(() => {})
+      .finally(() => setLoadingPendientes(false))
     // Recursos para TaskPanel y QuickAdd
     Promise.all([
       fetch('/api/usuarios').then(r => r.json()),
