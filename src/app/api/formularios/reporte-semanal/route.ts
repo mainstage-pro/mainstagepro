@@ -57,20 +57,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Guard: prevent duplicate reports for same user+semana+anio
-  const existing = await prisma.reporteFormulario.findFirst({
-    where: {
-      userId: session.id,
-      semana: Number(semana),
-      anio: Number(anio),
-    },
-  });
-  if (existing) {
-    return NextResponse.json(
-      { error: "Ya existe un reporte para esta semana", reporteId: existing.id },
-      { status: 409 }
-    );
-  }
 
   // Crear el reporte
   const reporte = await prisma.reporteFormulario.create({
