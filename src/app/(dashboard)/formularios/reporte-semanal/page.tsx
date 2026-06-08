@@ -240,6 +240,9 @@ export default function ReporteSemanalHistorialPage() {
             acc[r.user.id].items.push(r);
             return acc;
           }, {})
+        ).sort((a, b) =>
+          // El grupo cuyo reporte más reciente va primero
+          new Date(b.items[0].createdAt).getTime() - new Date(a.items[0].createdAt).getTime()
         );
 
         return (
