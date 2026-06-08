@@ -1166,6 +1166,32 @@ function AreaPersonasView({
     setOpen(v => !v)
   }
 
+  // Local handlers: update local templates state AND call parent (which does API + areas state)
+  function localResponsableChange(templateId: string, responsableId: string | null) {
+    const resp = responsableId ? (usuarios.find(u => u.id === responsableId) ?? null) : null
+    setTemplates(prev => prev.map(t =>
+      t.id === templateId ? { ...t, responsableId: responsableId ?? null, responsable: resp ? { id: resp.id, name: resp.name } : null } : t
+    ))
+    onResponsableChange(templateId, responsableId)
+  }
+  function localDiasChange(templateId: string, diasSemana: number[]) {
+    setTemplates(prev => prev.map(t => t.id === templateId ? { ...t, diasSemana } : t))
+    onDiasChange(templateId, diasSemana)
+  }
+  function localFrecuenciaChange(templateId: string, frecuencia: string) {
+    setTemplates(prev => prev.map(t => t.id === templateId ? { ...t, frecuencia } : t))
+    onFrecuenciaChange(templateId, frecuencia)
+  }
+  function localSemanaDeMesChange(templateId: string, semanaDeMes: number[]) {
+    setTemplates(prev => prev.map(t => t.id === templateId ? { ...t, semanaDeMes } : t))
+    onSemanaDeMesChange(templateId, semanaDeMes)
+  }
+  function localGroupChange(templateId: string, tipoAsignacion: string, areaAsignada?: string) {
+    setTemplates(prev => prev.map(t =>
+      t.id === templateId ? { ...t, tipoAsignacion, areaAsignada: areaAsignada ?? null, responsable: null, responsableId: null } : t
+    ))
+    onGroupChange(templateId, tipoAsignacion, areaAsignada)
+  }
   const byPersona = templates.reduce((acc, t) => {
     const key = t.responsable?.name ?? 'Sin asignar'
     if (!acc[key]) acc[key] = []
@@ -1225,11 +1251,11 @@ function AreaPersonasView({
                             usuarios={usuarios}
                             onEdit={onEdit}
                             onDelete={onDelete}
-                            onResponsableChange={onResponsableChange}
-                            onDiasChange={onDiasChange}
-                            onFrecuenciaChange={onFrecuenciaChange}
-                            onSemanaDeMesChange={onSemanaDeMesChange}
-                            onGroupChange={onGroupChange}
+                            onResponsableChange={localResponsableChange}
+                            onDiasChange={localDiasChange}
+                            onFrecuenciaChange={localFrecuenciaChange}
+                            onSemanaDeMesChange={localSemanaDeMesChange}
+                            onGroupChange={localGroupChange}
                             canEdit={canEdit}
                           />
                         ))}
@@ -1288,6 +1314,33 @@ function VistaPorPersona({
     load()
   }, [usuario.id])
 
+  // Local handlers: update local templates state AND call parent (which does API + areas state)
+  function localResponsableChange(templateId: string, responsableId: string | null) {
+    const resp = responsableId ? (usuarios.find(u => u.id === responsableId) ?? null) : null
+    setTemplates(prev => prev.map(t =>
+      t.id === templateId ? { ...t, responsableId: responsableId ?? null, responsable: resp ? { id: resp.id, name: resp.name } : null } : t
+    ))
+    onResponsableChange(templateId, responsableId)
+  }
+  function localDiasChange(templateId: string, diasSemana: number[]) {
+    setTemplates(prev => prev.map(t => t.id === templateId ? { ...t, diasSemana } : t))
+    onDiasChange(templateId, diasSemana)
+  }
+  function localFrecuenciaChange(templateId: string, frecuencia: string) {
+    setTemplates(prev => prev.map(t => t.id === templateId ? { ...t, frecuencia } : t))
+    onFrecuenciaChange(templateId, frecuencia)
+  }
+  function localSemanaDeMesChange(templateId: string, semanaDeMes: number[]) {
+    setTemplates(prev => prev.map(t => t.id === templateId ? { ...t, semanaDeMes } : t))
+    onSemanaDeMesChange(templateId, semanaDeMes)
+  }
+  function localGroupChange(templateId: string, tipoAsignacion: string, areaAsignada?: string) {
+    setTemplates(prev => prev.map(t =>
+      t.id === templateId ? { ...t, tipoAsignacion, areaAsignada: areaAsignada ?? null, responsable: null, responsableId: null } : t
+    ))
+    onGroupChange(templateId, tipoAsignacion, areaAsignada)
+  }
+
   if (loading) {
     return <div className="flex-1 flex items-center justify-center text-gray-600 text-sm">Cargando...</div>
   }
@@ -1328,11 +1381,11 @@ function VistaPorPersona({
                       usuarios={usuarios}
                       onEdit={onEdit}
                       onDelete={onDelete}
-                      onResponsableChange={onResponsableChange}
-                      onDiasChange={onDiasChange}
-                      onFrecuenciaChange={onFrecuenciaChange}
-                      onSemanaDeMesChange={onSemanaDeMesChange}
-                      onGroupChange={onGroupChange}
+                      onResponsableChange={localResponsableChange}
+                      onDiasChange={localDiasChange}
+                      onFrecuenciaChange={localFrecuenciaChange}
+                      onSemanaDeMesChange={localSemanaDeMesChange}
+                      onGroupChange={localGroupChange}
                       canEdit={canEdit}
                     />
                   ))}
@@ -1361,11 +1414,11 @@ function VistaPorPersona({
                       usuarios={usuarios}
                       onEdit={onEdit}
                       onDelete={onDelete}
-                      onResponsableChange={onResponsableChange}
-                      onDiasChange={onDiasChange}
-                      onFrecuenciaChange={onFrecuenciaChange}
-                      onSemanaDeMesChange={onSemanaDeMesChange}
-                      onGroupChange={onGroupChange}
+                      onResponsableChange={localResponsableChange}
+                      onDiasChange={localDiasChange}
+                      onFrecuenciaChange={localFrecuenciaChange}
+                      onSemanaDeMesChange={localSemanaDeMesChange}
+                      onGroupChange={localGroupChange}
                       canEdit={canEdit}
                     />
                   ))}
