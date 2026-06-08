@@ -1359,6 +1359,7 @@ export default function PlanPage() {
   const [usuarios, setUsuarios]         = useState<Usuario[]>([])
   const [modal, setModal]               = useState<ModalState | null>(null)
   const [isAdmin, setIsAdmin]           = useState(false)
+  const [userArea, setUserArea]         = useState<string | null>(null)
 
   // Add subarea
   const [addingSubareaForAreaId, setAddingSubareaForAreaId] = useState<string | null>(null)
@@ -1378,9 +1379,10 @@ export default function PlanPage() {
       ])
       const soData: { areas: SOArea[] } = await soRes.json()
       const usuData: { usuarios: Usuario[] } = await usuRes.json()
-      const meData: { role: string } = await meRes.json()
+      const meData: { role: string; area?: string | null } = await meRes.json()
       setUsuarios(usuData.usuarios ?? [])
       setIsAdmin(meData.role === 'ADMIN')
+      setUserArea(meData.area ?? null)
 
       const areasData: AreaData[] = await Promise.all(
         soData.areas.map(async area => {
@@ -1409,8 +1411,27 @@ export default function PlanPage() {
         })
       )
 
-      setAreas(areasData)
-      setActiveAreaId(areasData[0]?.id ?? null)
+      // For non-admins: scope to their own area
+      if (meData.role !== 'ADMIN' && meData.area) {
+        const AREA_MAP: Record<string, string[]> = {
+          VENTAS:         ['ventas', 'comercial', 'sales'],
+          MARKETING:      ['marketing'],
+          PRODUCCION:     ['produccion', 'producción', 'technical', 'técnica'],
+          ADMINISTRACION: ['administracion', 'administración', 'admin'],
+          RRHH:           ['rrhh', 'recursos humanos'],
+          DIRECCION:      ['direccion', 'dirección'],
+        }
+        const keywords = AREA_MAP[meData.area] ?? []
+        const filtered = areasData.filter(a =>
+          keywords.some(kw => a.nombre.toLowerCase().includes(kw))
+        )
+        const scoped = filtered.length > 0 ? filtered : areasData
+        setAreas(scoped)
+        setActiveAreaId(scoped[0]?.id ?? null)
+      } else {
+        setAreas(areasData)
+        setActiveAreaId(areasData[0]?.id ?? null)
+      }
       setLoading(false)
     }
     load()
@@ -1648,96 +1669,98 @@ export default function PlanPage() {
 
   return (
     <div className="flex" style={{ minHeight: 'calc(100vh - 130px)' }}>
-      {/* ── Sidebar ── */}
-      <div className="w-48 shrink-0 border-r border-[#141414] bg-[#060606] py-4 flex flex-col gap-0.5 overflow-y-auto sticky top-0" style={{ height: '100vh' }}>
-        {loading ? (
-          <p className="px-4 text-gray-700 text-xs mt-2">Cargando...</p>
-        ) : (
-          <>
-            {/* Áreas section */}
-            <div className="px-3 mb-1">
-              <p className="text-[8px] uppercase tracking-[0.2em] text-gray-700 font-bold px-1 mb-2">Por Área</p>
-              {areas.map(a => {
-                const isActive = activeAreaId === a.id && !vistaPersonaId
-                const color = getAreaColor(a.nombre)
-                const total = a.subareaGroups.reduce((sum, sg) => sum + sg.templates.length, 0)
-                return (
-                  <button
-                    key={a.id}
-                    onClick={() => { setActiveAreaId(a.id); setVistaPersonaId(null) }}
-                    className={`w-full text-left px-2.5 py-2 rounded-lg transition-all flex items-center gap-2.5 mb-0.5 ${
-                      isActive
-                        ? 'bg-[#111] shadow-sm'
-                        : 'hover:bg-[#0a0a0a]'
-                    }`}
-                  >
-                    <div
-                      className={`w-2.5 h-2.5 rounded-full shrink-0 transition-all ${
-                        isActive ? 'opacity-100 scale-110' : 'opacity-50'
-                      }`}
-                      style={{ backgroundColor: color }}
-                    />
-                    <span className={`text-xs font-medium truncate transition-colors ${
-                      isActive ? 'text-white' : 'text-gray-500'
-                    }`}>
-                      {a.nombre}
-                    </span>
-                    <span className={`ml-auto text-[9px] tabular-nums shrink-0 transition-colors ${
-                      isActive ? 'text-gray-500' : 'text-gray-700'
-                    }`}>
-                      {total}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-
-            {/* Divider */}
-            <div className="mx-3 my-2 h-px bg-[#111]" />
-
-            {/* Por Persona section */}
-            {usuarios.length > 0 && (
-              <div className="px-3">
-                <p className="text-[8px] uppercase tracking-[0.2em] text-gray-700 font-bold px-1 mb-2">Por Persona</p>
-                {usuarios.map(u => {
-                  const isActive = vistaPersonaId === u.id
-                  const color = getAreaColor(u.area ?? '')
+      {/* ── Sidebar — only shown for admins ── */}
+      {isAdmin && (
+        <div className="w-48 shrink-0 border-r border-[#141414] bg-[#060606] py-4 flex flex-col gap-0.5 overflow-y-auto sticky top-0" style={{ height: '100vh' }}>
+          {loading ? (
+            <p className="px-4 text-gray-700 text-xs mt-2">Cargando...</p>
+          ) : (
+            <>
+              {/* Áreas section */}
+              <div className="px-3 mb-1">
+                <p className="text-[8px] uppercase tracking-[0.2em] text-gray-700 font-bold px-1 mb-2">Por Área</p>
+                {areas.map(a => {
+                  const isActive = activeAreaId === a.id && !vistaPersonaId
+                  const color = getAreaColor(a.nombre)
+                  const total = a.subareaGroups.reduce((sum, sg) => sum + sg.templates.length, 0)
                   return (
                     <button
-                      key={u.id}
-                      onClick={() => { setVistaPersonaId(u.id); setActiveAreaId(null) }}
-                      className={`w-full text-left px-2 py-2 rounded-lg transition-all flex items-center gap-2 mb-0.5 ${
+                      key={a.id}
+                      onClick={() => { setActiveAreaId(a.id); setVistaPersonaId(null) }}
+                      className={`w-full text-left px-2.5 py-2 rounded-lg transition-all flex items-center gap-2.5 mb-0.5 ${
                         isActive
                           ? 'bg-[#111] shadow-sm'
                           : 'hover:bg-[#0a0a0a]'
                       }`}
                     >
                       <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white/80 shrink-0 transition-all ${
-                          isActive ? 'opacity-100 ring-1 ring-white/10' : 'opacity-50'
+                        className={`w-2.5 h-2.5 rounded-full shrink-0 transition-all ${
+                          isActive ? 'opacity-100 scale-110' : 'opacity-50'
                         }`}
                         style={{ backgroundColor: color }}
-                      >
-                        {u.name[0]}
-                      </div>
-                      <div className="min-w-0">
-                        <p className={`text-xs font-medium truncate transition-colors ${
-                          isActive ? 'text-white' : 'text-gray-500'
-                        }`}>
-                          {u.name.split(' ')[0]}
-                        </p>
-                        {u.area && (
-                          <p className="text-[8px] text-gray-700 truncate">{u.area}</p>
-                        )}
-                      </div>
+                      />
+                      <span className={`text-xs font-medium truncate transition-colors ${
+                        isActive ? 'text-white' : 'text-gray-500'
+                      }`}>
+                        {a.nombre}
+                      </span>
+                      <span className={`ml-auto text-[9px] tabular-nums shrink-0 transition-colors ${
+                        isActive ? 'text-gray-500' : 'text-gray-700'
+                      }`}>
+                        {total}
+                      </span>
                     </button>
                   )
                 })}
               </div>
-            )}
-          </>
-        )}
-      </div>
+
+              {/* Divider */}
+              <div className="mx-3 my-2 h-px bg-[#111]" />
+
+              {/* Por Persona section */}
+              {usuarios.length > 0 && (
+                <div className="px-3">
+                  <p className="text-[8px] uppercase tracking-[0.2em] text-gray-700 font-bold px-1 mb-2">Por Persona</p>
+                  {usuarios.map(u => {
+                    const isActive = vistaPersonaId === u.id
+                    const color = getAreaColor(u.area ?? '')
+                    return (
+                      <button
+                        key={u.id}
+                        onClick={() => { setVistaPersonaId(u.id); setActiveAreaId(null) }}
+                        className={`w-full text-left px-2 py-2 rounded-lg transition-all flex items-center gap-2 mb-0.5 ${
+                          isActive
+                            ? 'bg-[#111] shadow-sm'
+                            : 'hover:bg-[#0a0a0a]'
+                        }`}
+                      >
+                        <div
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white/80 shrink-0 transition-all ${
+                            isActive ? 'opacity-100 ring-1 ring-white/10' : 'opacity-50'
+                          }`}
+                          style={{ backgroundColor: color }}
+                        >
+                          {u.name[0]}
+                        </div>
+                        <div className="min-w-0">
+                          <p className={`text-xs font-medium truncate transition-colors ${
+                            isActive ? 'text-white' : 'text-gray-500'
+                          }`}>
+                            {u.name.split(' ')[0]}
+                          </p>
+                          {u.area && (
+                            <p className="text-[8px] text-gray-700 truncate">{u.area}</p>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
 
       {/* ── Content ── */}
       {usuarioSeleccionado ? (
