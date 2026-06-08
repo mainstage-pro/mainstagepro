@@ -127,6 +127,7 @@ export default function ReporteSemanalLandingPage() {
   const [compPlan, setCompPlan]                       = useState<CompromisoPlan[]>([])
   const [accionesPlan, setAccionesPlan]               = useState<Record<string, AccionTarea>>({})
   const [reagendarFechaPlan, setReagendarFechaPlan]   = useState<Record<string, string>>({})
+  const [modoArranque, setModoArranque]               = useState(false)
 
   // — TaskPanel —
   const [selectedTask, setSelectedTask]   = useState<TareaDetalle | null>(null)
@@ -148,8 +149,10 @@ export default function ReporteSemanalLandingPage() {
     fetch("/api/me")
       .then((r) => r.json())
       .then((d) => {
-        if (d?.id) setSession({ id: d.id, name: d.name, area: d.area ?? null });
-        else router.push(`/login?redirect=/formularios/reporte-semanal/nuevo`);
+        if (d?.id) {
+          setSession({ id: d.id, name: d.name, area: d.area ?? null });
+          setModoArranque(d.modoArranque ?? false);
+        } else router.push(`/login?redirect=/formularios/reporte-semanal/nuevo`);
       })
       .catch(() => router.push(`/login?redirect=/formularios/reporte-semanal/nuevo`));
   }, []); // eslint-disable-line
@@ -157,16 +160,18 @@ export default function ReporteSemanalLandingPage() {
   // 2. Pendientes + recursos (cuando session está lista)
   useEffect(() => {
     if (!session) return
-    // Pendientes
-    setLoadingPendientes(true)
-    fetch('/api/formularios/reporte-semanal/pendientes')
-      .then(r => r.json())
-      .then(d => {
-        setTareasOp(d.tareasOperaciones ?? [])
-        setCompPlan(d.compromisosPlan ?? [])
-      })
-      .catch(() => {})
-      .finally(() => setLoadingPendientes(false))
+    // Pendientes — only fetch when NOT in modoArranque
+    if (!modoArranque) {
+      setLoadingPendientes(true)
+      fetch('/api/formularios/reporte-semanal/pendientes')
+        .then(r => r.json())
+        .then(d => {
+          setTareasOp(d.tareasOperaciones ?? [])
+          setCompPlan(d.compromisosPlan ?? [])
+        })
+        .catch(() => {})
+        .finally(() => setLoadingPendientes(false))
+    }
     // Recursos para TaskPanel y QuickAdd
     Promise.all([
       fetch('/api/usuarios').then(r => r.json()),
@@ -595,7 +600,7 @@ export default function ReporteSemanalLandingPage() {
           )}
 
           {/* ── Compromisos pendientes del Plan de Trabajo ── */}
-          {(loadingPendientes || compPlan.length > 0) && (
+          {!modoArranque && (loadingPendientes || compPlan.length > 0) && (
             <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
               <div className="px-5 pt-5 pb-4 border-b border-[#1a1a1a]">
                 <div className="flex items-start gap-3">

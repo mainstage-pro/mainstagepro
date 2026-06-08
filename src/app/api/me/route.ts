@@ -12,5 +12,8 @@ export async function GET() {
     moduloKeys = accesos.map(a => a.moduloKey);
   }
 
-  return NextResponse.json({ id: session.id, name: session.name, email: session.email, role: session.role, area: session.area, moduloKeys });
+  const modoArranqueRow = await prisma.appConfig.findFirst({ where: { key: 'plan-trabajo.modo-arranque' } });
+  const modoArranque = modoArranqueRow?.value === 'true';
+
+  return NextResponse.json({ id: session.id, name: session.name, email: session.email, role: session.role, area: session.area, moduloKeys, modoArranque });
 }

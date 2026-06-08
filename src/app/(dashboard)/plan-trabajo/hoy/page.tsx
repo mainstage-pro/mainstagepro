@@ -446,6 +446,7 @@ export default function MiDiaPage() {
   // ── Tomorrow preview state ──────────────────────────────────────────────────
   const [manana, setManana] = useState<{ nombre: string; impacto: string }[]>([])
   const [atrasadas, setAtrasadas] = useState<Instancia[]>([])
+  const [modoArranque, setModoArranque] = useState(false)
 
   // ── User / collaboration state ──────────────────────────────────────────────
   const [userName, setUserName] = useState<string>('')
@@ -458,7 +459,10 @@ export default function MiDiaPage() {
   useEffect(() => {
     fetch('/api/me')
       .then(r => r.json())
-      .then(d => setUserName(d.name?.split(' ')[0] ?? ''))
+      .then(d => {
+        setUserName(d.name?.split(' ')[0] ?? '')
+        setModoArranque(d.modoArranque ?? false)
+      })
       .catch(() => {})
   }, [])
 
@@ -524,12 +528,12 @@ export default function MiDiaPage() {
 
   // ── Fetch atrasadas (pendientes de días anteriores) ─────────────────────────
   useEffect(() => {
-    if (viendoUsuarioId) { setAtrasadas([]); return }
+    if (viendoUsuarioId || modoArranque) { setAtrasadas([]); return }
     fetch('/api/plan-trabajo/instancias?pendientesAnteriores=true')
       .then(r => r.json())
       .then(d => setAtrasadas(d.instancias ?? []))
       .catch(() => {})
-  }, [viendoUsuarioId])
+  }, [viendoUsuarioId, modoArranque])
 
   function cambiarSemana(dir: number) {
     setSemanaOffset(prev => prev + dir)
@@ -792,7 +796,7 @@ export default function MiDiaPage() {
         {/* Left — tasks (65%) */}
         <div className="flex-1 min-w-0">
           {/* ── Atrasadas — pendientes de días anteriores ── */}
-          {!viendoUsuarioId && atrasadas.filter(i => i.estado !== 'COMPLETADA').length > 0 && (
+          {!modoArranque && !viendoUsuarioId && atrasadas.filter(i => i.estado !== 'COMPLETADA').length > 0 && (
             <div className="mb-5 border border-amber-700/30 bg-amber-950/10 rounded-2xl overflow-hidden">
               <div className="px-4 pt-4 pb-2 flex items-center gap-2">
                 <span className="text-amber-400 text-base">⚠️</span>
