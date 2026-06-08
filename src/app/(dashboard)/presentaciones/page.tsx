@@ -18,9 +18,9 @@ const PRESENTACIONES = [
       },
       {
         key: "alineacion",
-        label: "Alineación estratégica",
-        desc: "Identidad, servicios, mercado, cultura, ejecución y equipo. Para alinear a todo el team.",
-        href: "/presentacion/alineacion",
+        label: "Alineación de equipo 2026",
+        desc: "Propósito, visión, misión, valores, principios y mentalidad Mainstage. Para alinear a todo el equipo.",
+        href: "/presentacion/alineacion-2026",
         icon: "🧭",
         audience: "Equipo interno",
       },
