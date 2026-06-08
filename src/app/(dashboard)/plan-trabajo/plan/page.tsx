@@ -1447,14 +1447,14 @@ export default function PlanPage() {
       )
 
       // For non-admins: scope to their own area
-      if (meData.role !== 'ADMIN' && meData.area) {
+      // DIRECCION users see all areas (cross-functional role)
+      if (meData.role !== 'ADMIN' && meData.area && meData.area !== 'DIRECCION') {
         const AREA_MAP: Record<string, string[]> = {
           VENTAS:         ['ventas', 'comercial', 'sales'],
           MARKETING:      ['marketing'],
           PRODUCCION:     ['produccion', 'producción', 'technical', 'técnica'],
           ADMINISTRACION: ['administracion', 'administración', 'admin'],
           RRHH:           ['rrhh', 'recursos humanos'],
-          DIRECCION:      ['direccion', 'dirección'],
         }
         const keywords = AREA_MAP[meData.area] ?? []
         const filtered = areasData.filter(a =>
