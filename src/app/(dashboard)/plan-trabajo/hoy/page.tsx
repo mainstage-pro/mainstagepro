@@ -260,19 +260,19 @@ function MiDiaItem({
           className="flex items-start gap-3 px-4 py-3.5 cursor-pointer select-none"
           onClick={() => setExpanded(v => !v)}
         >
-          {/* Toggle circle — neutral, area-tinted on hover */}
+          {/* Toggle circle — dorado y visible */}
           <button
             onClick={handleToggle}
             disabled={toggling}
-            style={completada ? {} : { borderColor: (t.area.color || '#333') + '55' }}
-            className={`mt-0.5 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all duration-200 ${
+            className={`mt-0.5 w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all duration-200 ${
               completada
-                ? 'bg-green-500 border-green-500'
-                : 'hover:bg-[#1a1a1a]'
+                ? 'bg-green-500 border-green-500 shadow-[0_0_0_3px_rgba(34,197,94,0.15)]'
+                : 'border-[#C9A84C] hover:bg-[#C9A84C]/20 hover:shadow-[0_0_0_3px_rgba(201,168,76,0.18)]'
             }`}
           >
             {completada && <span className="text-white text-[10px] leading-none font-bold">✓</span>}
-            {toggling && !completada && <span className="w-2 h-2 rounded-full bg-current animate-pulse" />}
+            {!completada && !toggling && <span className="w-2 h-2 rounded-full bg-[#C9A84C]/50" />}
+            {toggling && !completada && <span className="w-2.5 h-2.5 rounded-full bg-[#C9A84C] animate-pulse" />}
           </button>
 
           {/* Content */}
