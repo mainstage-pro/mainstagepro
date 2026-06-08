@@ -1507,38 +1507,62 @@ export default function OperacionesPage() {
             <div className="ml-auto flex items-center gap-2">
 
               {/* User filter avatars */}
-              {usuarios.length > 0 && (
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setFilterUserProy(null)}
-                    className={`px-2 py-1 rounded-lg text-xs font-medium transition-all border ${
-                      !filterUserProy
-                        ? "bg-[#B3985B]/15 text-[#B3985B] border-[#B3985B]/30"
-                        : "bg-transparent text-[#555] border-transparent hover:text-white"
-                    }`}
-                  >
-                    Todos
-                  </button>
-                  {usuarios.map((u, idx) => {
-                    const initials = u.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
-                    const isActive = filterUserProy === u.id;
-                    return (
-                      <button
-                        key={u.id}
-                        onClick={() => setFilterUserProy(isActive ? null : u.id)}
-                        title={u.name}
-                        className={`${idx >= 4 ? "hidden sm:flex" : "flex"} w-7 h-7 rounded-full text-[10px] font-bold transition-all items-center justify-center shrink-0 ${
-                          isActive
-                            ? "ring-2 ring-[#B3985B] bg-[#B3985B]/20 text-[#B3985B]"
-                            : "bg-[#1a1a1a] text-[#555] hover:text-white hover:bg-[#222]"
-                        }`}
-                      >
-                        {initials}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
+              {usuarios.length > 0 && (() => {
+                // Count tasks per user (before user filter, respecting showCompleted)
+                const allTareasProy = proyectoDetalle ? [
+                  ...proyectoDetalle.tareas,
+                  ...proyectoDetalle.secciones.flatMap(s => s.tareas),
+                ].filter(t => proyViewOpts.showCompleted || t.estado !== 'COMPLETADA') : []
+                const countByUser: Record<string, number> = {}
+                for (const t of allTareasProy) {
+                  const uid = t.asignadoA?.id ?? '__none'
+                  countByUser[uid] = (countByUser[uid] ?? 0) + 1
+                }
+                const totalCount = allTareasProy.length
+                return (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setFilterUserProy(null)}
+                      className={`px-2 py-1 rounded-lg text-xs font-medium transition-all border ${
+                        !filterUserProy
+                          ? "bg-[#B3985B]/15 text-[#B3985B] border-[#B3985B]/30"
+                          : "bg-transparent text-[#555] border-transparent hover:text-white"
+                      }`}
+                    >
+                      Todos {totalCount > 0 && <span className="text-[10px] opacity-70">({totalCount})</span>}
+                    </button>
+                    {usuarios.map((u, idx) => {
+                      const initials = u.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
+                      const isActive = filterUserProy === u.id;
+                      const count = countByUser[u.id] ?? 0;
+                      return (
+                        <button
+                          key={u.id}
+                          onClick={() => setFilterUserProy(isActive ? null : u.id)}
+                          title={`${u.name} · ${count} tarea${count !== 1 ? 's' : ''}`}
+                          className={`${idx >= 4 ? "hidden sm:flex" : "flex"} relative w-7 h-7 rounded-full text-[10px] font-bold transition-all items-center justify-center shrink-0 ${
+                            isActive
+                              ? "ring-2 ring-[#B3985B] bg-[#B3985B]/20 text-[#B3985B]"
+                              : "bg-[#1a1a1a] text-[#555] hover:text-white hover:bg-[#222]"
+                          }`}
+                        >
+                          {initials}
+                          {count > 0 && (
+                            <span className={`absolute -bottom-1 -right-1 min-w-[14px] h-3.5 rounded-full border text-[7px] font-bold flex items-center justify-center px-0.5 ${
+                              isActive
+                                ? 'bg-[#B3985B]/20 border-[#B3985B]/40 text-[#B3985B]'
+                                : 'bg-[#111] border-[#222] text-gray-500'
+                            }`}>
+                              {count > 9 ? '9+' : count}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )
+              })()}
+
 
               <div className="relative" ref={viewPanelRef}>
               <button
