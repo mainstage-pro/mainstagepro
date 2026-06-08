@@ -423,22 +423,73 @@ export default function ReporteSemanalLandingPage() {
 
   if (enviado) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
-        <div className="text-center max-w-sm">
-          <div className="w-20 h-20 bg-[#B3985B]/10 border border-[#B3985B]/20 rounded-2xl flex items-center justify-center mx-auto mb-5">
-            <span className="text-4xl">✅</span>
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md space-y-5">
+
+          {/* ── Confirmación ── */}
+          <div className="text-center">
+            <div className="w-20 h-20 bg-[#B3985B]/10 border border-[#B3985B]/20 rounded-2xl flex items-center justify-center mx-auto mb-5">
+              <span className="text-4xl">✅</span>
+            </div>
+            <h1 className="text-white font-bold text-xl mb-2">¡Reporte enviado!</h1>
+            <p className="text-gray-500 text-sm leading-relaxed mb-2">
+              Gracias, <span className="text-white font-semibold">{session.name}</span>. Tu reporte de la semana {semana} fue recibido correctamente.
+            </p>
+            <p className="text-gray-700 text-xs">Solo Dirección tiene acceso a esta información.</p>
           </div>
-          <h1 className="text-white font-bold text-xl mb-2">¡Reporte enviado!</h1>
-          <p className="text-gray-500 text-sm leading-relaxed mb-4">
-            Gracias, <span className="text-white font-semibold">{session.name}</span>. Tu reporte de la semana {semana} fue recibido correctamente.
-          </p>
-          <p className="text-gray-700 text-xs">Solo Dirección tiene acceso a esta información.</p>
-          <div className="mt-8 pt-6 border-t border-[#1e1e1e] flex items-center justify-center gap-2">
+
+          {/* ── Próximo paso: revisar tareas ── */}
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-5">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-[#B3985B]/10 border border-[#B3985B]/20 flex items-center justify-center shrink-0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                  <path d="M8 14h.01M12 14h4M8 18h.01M12 18h4"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-white font-semibold text-sm">Tu próximo paso: tareas pendientes</p>
+                <p className="text-gray-600 text-[11px] mt-0.5">Antes de cerrar, revisa tus compromisos del día</p>
+              </div>
+            </div>
+
+            <p className="text-gray-500 text-xs leading-relaxed mb-5">
+              Mantener tus tareas actualizadas permite que el equipo coordine sin fricciones, que no haya bloqueos silenciosos y que Dirección tenga visibilidad real del avance de cada área. <span className="text-gray-400">Un minuto de orden ahora ahorra horas de confusión después.</span>
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-2.5">
+              <a
+                href="/plan-trabajo/hoy"
+                className="flex-1 flex items-center justify-center gap-2 bg-[#B3985B] hover:bg-[#c9a96e] text-black font-bold py-3 rounded-xl transition-all text-sm shadow-lg shadow-[#B3985B]/10 hover:shadow-[#B3985B]/20"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+                Ver mis tareas de hoy
+              </a>
+              <a
+                href="/"
+                className="flex-1 flex items-center justify-center gap-2 bg-[#161616] hover:bg-[#1e1e1e] border border-[#2a2a2a] hover:border-[#3a3a3a] text-gray-300 hover:text-white font-medium py-3 rounded-xl transition-all text-sm"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                  <rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/>
+                </svg>
+                Ir al Dashboard
+              </a>
+            </div>
+          </div>
+
+          {/* ── Footer ── */}
+          <div className="flex items-center justify-center gap-2 pt-1">
             <div className="w-6 h-6 rounded-md bg-[#111] border border-[#2a2a2a] flex items-center justify-center">
               <span className="text-[#B3985B] text-xs font-bold">M</span>
             </div>
-            <span className="text-gray-400 text-sm font-semibold">Mainstage Pro</span>
+            <span className="text-gray-600 text-sm font-semibold">Mainstage Pro</span>
           </div>
+
         </div>
       </div>
     );
