@@ -7,35 +7,88 @@ export async function GET(_req: NextRequest) {
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const ahora = new Date()
-  const hace7dias = new Date(ahora.getTime() - 7 * 24 * 60 * 60 * 1000)
+  const inicioDeHoy = new Date(
+    new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }) + 'T00:00:00.000-06:00'
+  )
+  const en30dias = new Date(ahora.getTime() + 30 * 86400000)
+  const hace14dias = new Date(ahora.getTime() - 14 * 86400000)
 
-  const [proximos, recientes] = await Promise.all([
-    // Active/confirmed projects ordered by event date
+  const [proximos, recientes, tratosVC] = await Promise.all([
+    // Proyectos próximos (30 días)
     prisma.proyecto.findMany({
-      where: { estado: { in: ['CONFIRMADO', 'EN_CURSO'] } },
+      where: {
+        estado: { in: ['PLANEACION', 'CONFIRMADO', 'EN_CURSO'] },
+        fechaEvento: { gte: inicioDeHoy, lte: en30dias },
+      },
       select: {
-        id: true, nombre: true, estado: true,
+        id: true, nombre: true, estado: true, numeroProyecto: true,
         fechaEvento: true, lugarEvento: true,
         cliente: { select: { nombre: true, empresa: true } },
       },
       orderBy: { fechaEvento: 'asc' },
-      take: 20,
+      take: 15,
     }),
-    // Completed projects from last 7 days
+    // Proyectos recientes (14 días)
     prisma.proyecto.findMany({
       where: {
-        estado: 'COMPLETADO',
-        fechaEvento: { gte: hace7dias },
+        fechaEvento: { gte: hace14dias, lt: inicioDeHoy },
+        estado: { notIn: ['CANCELADO'] },
       },
       select: {
-        id: true, nombre: true, estado: true,
+        id: true, nombre: true, estado: true, numeroProyecto: true,
         fechaEvento: true, lugarEvento: true,
         cliente: { select: { nombre: true, empresa: true } },
       },
       orderBy: { fechaEvento: 'desc' },
       take: 10,
     }),
+    // Tratos VENTA_CERRADA sin proyecto, con cotización APROBADA próxima
+    prisma.trato.findMany({
+      where: {
+        etapa: 'VENTA_CERRADA',
+        proyecto: null,
+        cotizaciones: {
+          some: {
+            estado: 'APROBADA',
+            fechaEvento: { gte: inicioDeHoy, lte: en30dias, not: null },
+          },
+        },
+      },
+      select: {
+        id: true,
+        nombreEvento: true,
+        cliente: { select: { nombre: true, empresa: true } },
+        cotizaciones: {
+          where: { estado: 'APROBADA', fechaEvento: { gte: inicioDeHoy, not: null } },
+          select: { fechaEvento: true },
+          orderBy: { fechaEvento: 'asc' },
+          take: 1,
+        },
+      },
+    }),
   ])
 
-  return NextResponse.json({ proximos, recientes })
+  // Merge tratos into proximos shape
+  const tratosProximos = tratosVC.flatMap(t =>
+    t.cotizaciones.filter(c => c.fechaEvento).map(c => ({
+      id: t.id,
+      nombre: t.nombreEvento ?? 'Evento',
+      estado: 'VENTA_CERRADA',
+      numeroProyecto: null,
+      fechaEvento: c.fechaEvento!,
+      lugarEvento: null,
+      cliente: t.cliente,
+      sinProyecto: true,
+    }))
+  )
+
+  const proximosMerged = [
+    ...proximos.map(p => ({ ...p, sinProyecto: false })),
+    ...tratosProximos,
+  ].sort((a, b) => new Date(a.fechaEvento).getTime() - new Date(b.fechaEvento).getTime())
+
+  return NextResponse.json({
+    proximos: proximosMerged,
+    recientes: recientes.map(p => ({ ...p, sinProyecto: false })),
+  })
 }

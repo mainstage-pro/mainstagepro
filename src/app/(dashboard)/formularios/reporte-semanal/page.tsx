@@ -120,7 +120,7 @@ export default function ReporteSemanalHistorialPage() {
             <span className="text-gray-700 text-[10px]">/</span>
             <span className="text-[10px] text-gray-500">Reporte General Semanal</span>
           </div>
-          <h1 className="text-2xl font-bold text-white">Historial de Reportes</h1>
+          <h1 className="text-2xl font-bold text-white">Archivo de Reportes</h1>
           <p className="text-gray-500 text-sm mt-1">
             {reportes.length > 0
               ? `${reportes.length} reporte${reportes.length !== 1 ? "s" : ""} registrado${reportes.length !== 1 ? "s" : ""}`

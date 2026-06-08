@@ -55,9 +55,11 @@ type ProyectoAgenda = {
   id: string;
   nombre: string;
   estado: string;
+  numeroProyecto?: string | null;
   fechaEvento: string | null;
   lugarEvento: string | null;
   cliente: { nombre: string; empresa: string | null } | null;
+  sinProyecto?: boolean;
 };
 
 type Usuario = { id: string; name: string; area: string | null };
@@ -93,7 +95,7 @@ const PRIO_COLOR: Record<string, string> = {
 function parseRespuesta(tipo: string, respuesta: string | null) {
   if (!respuesta) return null;
   try {
-    if (tipo === "PRIORIDADES_SEMANA" || tipo === "RECONOCIMIENTO") {
+    if (tipo === "RECONOCIMIENTO") {
       return JSON.parse(respuesta);
     }
   } catch {}
@@ -333,72 +335,45 @@ function ItemAgenda({ item, juntaId, onUpdate }: {
           </div>
         );
 
-      case "PRIORIDADES_SEMANA":
+      case "PRIORIDADES_SEMANA": {
         return (
-          <div className="space-y-4">
-            {/* Sub-sección A: Próximos eventos */}
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">A · Próximos eventos</p>
-              <div className="border border-[#1a1a1a] rounded-lg overflow-hidden mb-2">
-                {!proyectosAgenda ? (
-                  <div className="p-3 space-y-2">
-                    {[1,2,3].map((i) => <div key={i} className="h-8 bg-[#111] rounded animate-pulse" />)}
-                  </div>
-                ) : proyectosAgenda.proximos.length === 0 ? (
-                  <p className="text-gray-600 text-[11px] text-center py-3">Sin proyectos activos</p>
-                ) : (
-                  proyectosAgenda.proximos.slice(0, 8).map((p) => (
-                    <div key={p.id} className="flex items-center gap-3 px-3 py-2 border-b border-[#1a1a1a] last:border-0">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#B3985B] shrink-0" />
+          <div className="space-y-3">
+            {/* Próximos eventos */}
+            {proyectosAgenda?.proximos && proyectosAgenda.proximos.length > 0 && (
+              <div>
+                <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-1.5">Eventos próximos</p>
+                <div className="space-y-1.5">
+                  {proyectosAgenda.proximos.slice(0, 6).map((p) => (
+                    <div key={p.id} className="flex items-start gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#C9A84C] shrink-0 mt-1.5" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-white font-medium truncate">{p.nombre}</p>
-                        {p.lugarEvento && <p className="text-[10px] text-gray-600 truncate">{p.lugarEvento}</p>}
+                        <p className="text-white text-xs leading-snug">{p.nombre}</p>
+                        {p.cliente && (
+                          <p className="text-gray-500 text-[10px]">{p.cliente.nombre}{p.cliente.empresa ? ` · ${p.cliente.empresa}` : ''}</p>
+                        )}
+                        <p className="text-[#C9A84C] text-[10px]">
+                          {new Date(p.fechaEvento!).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'America/Mexico_City' })}
+                        </p>
                       </div>
-                      <p className="text-[10px] text-[#B3985B] shrink-0">
-                        {p.fechaEvento ? new Date(p.fechaEvento).toLocaleDateString("es-MX", { day: "numeric", month: "short" }) : ""}
-                      </p>
                     </div>
-                  ))
-                )}
+                  ))}
+                </div>
               </div>
-              <textarea
-                value={structured.notasEventos ?? ""}
-                onChange={(e) => updateStructuredField("notasEventos", e.target.value)}
-                rows={2}
-                placeholder="Notas sobre próximos eventos..."
-                className={textareaCls}
-              />
-            </div>
-
-            {/* Sub-sección B: Proyectos con atención */}
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">B · Proyectos con atención esta semana</p>
-              <textarea
-                value={structured.notasProyectos ?? ""}
-                onChange={(e) => updateStructuredField("notasProyectos", e.target.value)}
-                rows={3}
-                placeholder="¿Qué proyectos requieren atención especial esta semana?"
-                className={textareaCls}
-              />
-            </div>
-
-            {/* Sub-sección C: Objetivos de la semana */}
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">C · Objetivos de la semana</p>
-              <div className="space-y-2">
-                {["objetivo1", "objetivo2", "objetivo3"].map((key, i) => (
-                  <input
-                    key={key}
-                    placeholder={`Objetivo ${i + 1}`}
-                    value={structured[key] ?? ""}
-                    onChange={(e) => updateStructuredField(key, e.target.value)}
-                    className={inputCls}
-                  />
-                ))}
-              </div>
-            </div>
+            )}
+            {proyectosAgenda?.proximos?.length === 0 && (
+              <p className="text-gray-600 text-xs">Sin eventos próximos</p>
+            )}
+            {/* Notas */}
+            <textarea
+              className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-700 resize-none focus:outline-none focus:border-[#C9A84C]/40"
+              rows={3}
+              placeholder={item.placeholder ?? 'Notas sobre eventos próximos:'}
+              value={respuesta}
+              onChange={(e) => handleRespuestaChange(e.target.value)}
+            />
           </div>
         );
+      }
 
       case "RECONOCIMIENTO":
         return (
@@ -793,35 +768,102 @@ function PanelEventosGlobal() {
 
 // ─── Panel Global — Proyectos Activos ─────────────────────────────────────────
 
-function PanelProyectosGlobal({ proyectosAgenda }: { proyectosAgenda: { proximos: ProyectoAgenda[]; recientes: ProyectoAgenda[] } | null }) {
+function PanelProyectosGlobal({
+  proyectosAgenda,
+}: {
+  proyectosAgenda: { proximos: ProyectoAgenda[]; recientes: ProyectoAgenda[] } | null;
+}) {
+  if (!proyectosAgenda) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-gray-600 text-xs">Cargando eventos...</p>
+      </div>
+    );
+  }
+
+  const { proximos, recientes } = proyectosAgenda;
+
+  function fmtFechaEvento(d: string | Date) {
+    return new Date(d).toLocaleDateString('es-MX', {
+      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+      timeZone: 'America/Mexico_City',
+    });
+  }
+
+  function estadoBadge(estado: string, sinProyecto?: boolean) {
+    if (sinProyecto) return <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-900/30 text-amber-400">Sin proyecto</span>;
+    const map: Record<string, string> = {
+      PLANEACION: 'bg-[#1e1e1e] text-gray-400',
+      CONFIRMADO: 'bg-[#C9A84C]/15 text-[#C9A84C]',
+      EN_CURSO: 'bg-green-900/30 text-green-400',
+      COMPLETADO: 'bg-green-900/20 text-green-600',
+      VENTA_CERRADA: 'bg-amber-900/30 text-amber-400',
+    };
+    const cls = map[estado] ?? 'bg-[#1e1e1e] text-gray-500';
+    const labels: Record<string, string> = {
+      PLANEACION: 'Planeación', CONFIRMADO: 'Confirmado', EN_CURSO: 'En curso',
+      COMPLETADO: 'Realizado', VENTA_CERRADA: 'Cerrado',
+    };
+    return <span className={`text-[9px] px-1.5 py-0.5 rounded ${cls}`}>{labels[estado] ?? estado}</span>;
+  }
+
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="px-4 py-3 border-b border-[#1a1a1a]">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Proyectos</p>
+      {/* Header */}
+      <div className="px-4 py-2.5 border-b border-[#1a1a1a]">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Eventos / Servicios</p>
       </div>
-      {!proyectosAgenda ? (
-        <div className="p-4 space-y-2">
-          {[1,2,3].map((i) => <div key={i} className="h-10 bg-[#111] rounded animate-pulse" />)}
-        </div>
-      ) : proyectosAgenda.proximos.length === 0 ? (
-        <p className="text-gray-600 text-xs text-center p-6">Sin proyectos activos</p>
-      ) : (
-        <div className="divide-y divide-[#1a1a1a]">
-          {proyectosAgenda.proximos.map((p) => (
-            <div key={p.id} className="px-4 py-3 hover:bg-[#111] transition-colors">
-              <p className="text-xs font-medium text-white leading-snug">{p.nombre}</p>
-              <div className="flex items-center gap-2 mt-1">
-                {p.fechaEvento && (
-                  <span className="text-[10px] text-[#B3985B]">
-                    {new Date(p.fechaEvento).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
-                  </span>
+
+      {/* Próximos */}
+      {proximos.length > 0 && (
+        <div>
+          <p className="px-4 pt-2.5 pb-1 text-[9px] text-gray-600 uppercase tracking-wider font-semibold">Próximos 30 días</p>
+          <div className="divide-y divide-[#141414]">
+            {proximos.map((p) => (
+              <div key={p.id} className="px-4 py-2">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-white text-xs font-medium leading-snug flex-1">{p.nombre}</p>
+                  {estadoBadge(p.estado, p.sinProyecto)}
+                </div>
+                {p.cliente && (
+                  <p className="text-gray-500 text-[10px] mt-0.5">
+                    {p.cliente.nombre}{p.cliente.empresa ? ` · ${p.cliente.empresa}` : ''}
+                  </p>
                 )}
-                {p.lugarEvento && (
-                  <span className="text-[10px] text-gray-600 truncate">{p.lugarEvento}</span>
-                )}
+                {p.fechaEvento && <p className="text-[#C9A84C] text-[10px] mt-0.5">{fmtFechaEvento(p.fechaEvento)}</p>}
+                {p.lugarEvento && <p className="text-gray-600 text-[10px]">{p.lugarEvento}</p>}
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recientes */}
+      {recientes.length > 0 && (
+        <div className={proximos.length > 0 ? 'border-t border-[#1a1a1a]' : ''}>
+          <p className="px-4 pt-2.5 pb-1 text-[9px] text-gray-600 uppercase tracking-wider font-semibold">Recientes (14 días)</p>
+          <div className="divide-y divide-[#141414]">
+            {recientes.map((p) => (
+              <div key={p.id} className="px-4 py-2 opacity-70">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-gray-300 text-xs font-medium leading-snug flex-1">{p.nombre}</p>
+                  {estadoBadge(p.estado)}
+                </div>
+                {p.cliente && (
+                  <p className="text-gray-500 text-[10px] mt-0.5">
+                    {p.cliente.nombre}{p.cliente.empresa ? ` · ${p.cliente.empresa}` : ''}
+                  </p>
+                )}
+                {p.fechaEvento && <p className="text-gray-600 text-[10px] mt-0.5">{fmtFechaEvento(p.fechaEvento)}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {proximos.length === 0 && recientes.length === 0 && (
+        <div className="px-4 py-6 text-center">
+          <p className="text-gray-600 text-xs">Sin eventos activos</p>
         </div>
       )}
     </div>
@@ -830,8 +872,9 @@ function PanelProyectosGlobal({ proyectosAgenda }: { proyectosAgenda: { proximos
 
 // ─── Panel Global — Quick Task Form ──────────────────────────────────────────
 
-function PanelQuickTarea({ juntaId }: { juntaId: string }) {
+function PanelQuickTarea({ juntaId, participantes }: { juntaId: string; participantes: { user: { id: string; name: string } }[] }) {
   const [quickTarea, setQuickTarea] = useState({ titulo: "", descripcion: "", prioridad: "MEDIA", fechaVencimiento: "" });
+  const [asignadoAId, setAsignadoAId] = useState("");
   const [savingQuickTarea, setSavingQuickTarea] = useState(false);
   const [tareasCreadas, setTareasCreadas] = useState<{ id: string; titulo: string }[]>([]);
 
@@ -847,7 +890,7 @@ function PanelQuickTarea({ juntaId }: { juntaId: string }) {
           descripcion: quickTarea.descripcion || undefined,
           prioridad: quickTarea.prioridad,
           fechaVencimiento: quickTarea.fechaVencimiento || undefined,
-          asignadoAId: "cmnrpg62h0000zmizxpydetsm", // Mauricio
+          asignadoAId: asignadoAId || undefined,
         }),
       });
       if (res.ok) {
@@ -871,26 +914,36 @@ function PanelQuickTarea({ juntaId }: { juntaId: string }) {
           onChange={(e) => setQuickTarea((p) => ({ ...p, titulo: e.target.value }))}
           onKeyDown={(e) => { if (e.key === "Enter") crearTareaRapida(); }}
           placeholder="Título de la tarea *"
-          className="w-full bg-[#111] border border-[#222] hover:border-[#333] focus:border-[#B3985B]/60 rounded-lg px-3 py-2 text-white text-xs focus:outline-none placeholder-gray-700"
+          className="w-full border border-[#1e1e1e] bg-[#0d0d0d] focus:border-[#C9A84C]/50 focus:outline-none rounded-lg px-3 py-2 text-sm text-white placeholder-gray-700"
         />
         <textarea
           value={quickTarea.descripcion}
           onChange={(e) => setQuickTarea((p) => ({ ...p, descripcion: e.target.value }))}
           placeholder="Descripción (opcional)"
           rows={2}
-          className="w-full bg-[#111] border border-[#222] hover:border-[#333] focus:border-[#B3985B]/60 rounded-lg px-3 py-2 text-white text-xs focus:outline-none resize-none placeholder-gray-700"
+          className="w-full border border-[#1e1e1e] bg-[#0d0d0d] focus:border-[#C9A84C]/50 focus:outline-none rounded-lg px-3 py-2 text-sm text-white placeholder-gray-700 resize-none"
         />
+        <select
+          value={asignadoAId}
+          onChange={(e) => setAsignadoAId(e.target.value)}
+          className="w-full border border-[#1e1e1e] bg-[#0d0d0d] focus:border-[#C9A84C]/50 focus:outline-none rounded-lg px-3 py-2 text-sm text-white"
+        >
+          <option value="">— Sin asignar —</option>
+          {participantes.map((p) => (
+            <option key={p.user.id} value={p.user.id}>{p.user.name}</option>
+          ))}
+        </select>
         <div className="flex gap-2">
           <input
             type="date"
             value={quickTarea.fechaVencimiento}
             onChange={(e) => setQuickTarea((p) => ({ ...p, fechaVencimiento: e.target.value }))}
-            className="flex-1 bg-[#111] border border-[#222] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]/60 [color-scheme:dark]"
+            className="flex-1 border border-[#1e1e1e] bg-[#0d0d0d] focus:border-[#C9A84C]/50 focus:outline-none rounded-lg px-2 py-1.5 text-sm text-white [color-scheme:dark]"
           />
           <select
             value={quickTarea.prioridad}
             onChange={(e) => setQuickTarea((p) => ({ ...p, prioridad: e.target.value }))}
-            className="bg-[#111] border border-[#222] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none"
+            className="border border-[#1e1e1e] bg-[#0d0d0d] focus:border-[#C9A84C]/50 focus:outline-none rounded-lg px-2 py-1.5 text-sm text-white"
           >
             <option value="BAJA">Baja</option>
             <option value="MEDIA">Media</option>
@@ -901,7 +954,7 @@ function PanelQuickTarea({ juntaId }: { juntaId: string }) {
         <button
           onClick={crearTareaRapida}
           disabled={savingQuickTarea || !quickTarea.titulo.trim()}
-          className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold py-2 rounded-lg transition-colors"
+          className="w-full bg-[#B3985B] hover:bg-[#c9a96e] text-black font-semibold text-xs px-4 py-2 rounded-lg transition-colors disabled:opacity-40"
         >
           {savingQuickTarea ? "Guardando..." : "+ Agregar tarea"}
         </button>
@@ -1163,7 +1216,7 @@ export default function JuntaActivaPage({ params }: { params: Promise<{ id: stri
           {/* ── Mitad inferior: Quick task form (Global) or Tareas pendientes del área ── */}
           <div className="flex-1 overflow-hidden">
             {esGlobal ? (
-              <PanelQuickTarea juntaId={id} />
+              <PanelQuickTarea juntaId={id} participantes={junta.participantes} />
             ) : (
               <PanelTareasPendientes proyectos={proyectos} area={junta.area} />
             )}

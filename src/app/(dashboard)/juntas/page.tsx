@@ -475,7 +475,7 @@ export default function JuntasPage() {
           {/* ── Columna derecha: Historial ── */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-gray-500 uppercase tracking-wider">Historial</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wider">Archivo</p>
               <select
                 value={filtroArea}
                 onChange={(e) => setFiltroArea(e.target.value)}
