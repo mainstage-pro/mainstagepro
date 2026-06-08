@@ -69,6 +69,185 @@ function Field({ label, value, onChange, placeholder, multiline, required }: {
   );
 }
 
+type VehiculoItem = { id: string; nombre: string; marca?: string | null; placas?: string | null; color?: string | null };
+
+function VehiculoSelector({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [vehiculos, setVehiculos] = useState<VehiculoItem[]>([]);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showNew, setShowNew] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [newNombre, setNewNombre] = useState("");
+  const [newMarca, setNewMarca] = useState("");
+  const [newPlacas, setNewPlacas] = useState("");
+  const [newColor, setNewColor] = useState("");
+
+  useEffect(() => {
+    fetch("/api/vehiculos")
+      .then(r => r.json())
+      .then(d => setVehiculos(d.vehiculos ?? []))
+      .catch(() => {});
+  }, []);
+
+  const cls = "w-full bg-[#0d0d0d] border border-[#222] rounded-xl px-4 py-3 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/50";
+
+  const filtered = vehiculos.filter(v => {
+    const q = search.toLowerCase();
+    return !q || v.nombre.toLowerCase().includes(q) ||
+      (v.marca ?? "").toLowerCase().includes(q) ||
+      (v.placas ?? "").toLowerCase().includes(q);
+  });
+
+  function displayName(v: VehiculoItem) {
+    const parts = [v.nombre];
+    if (v.placas) parts.push(`(${v.placas})`);
+    return parts.join(" ");
+  }
+
+  async function handleCrearVehiculo() {
+    if (!newNombre.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/vehiculos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nombre: newNombre.trim(),
+          marca: newMarca.trim() || null,
+          placas: newPlacas.trim() || null,
+          color: newColor.trim() || null,
+        }),
+      });
+      const d = await res.json();
+      if (res.ok && d.vehiculo) {
+        const v = d.vehiculo as VehiculoItem;
+        setVehiculos(prev => [...prev, v].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+        onChange(displayName(v));
+        setOpen(false);
+        setShowNew(false);
+        setNewNombre(""); setNewMarca(""); setNewPlacas(""); setNewColor("");
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="relative">
+      <label className="block text-[11px] font-bold text-[#555] uppercase tracking-wider mb-1.5">
+        Vehículo / Transporte
+      </label>
+
+      {/* Campo principal */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => { setOpen(v => !v); setShowNew(false); }}
+          className={`flex-1 ${cls} text-left flex items-center justify-between`}
+        >
+          <span className={value ? "text-white" : "text-[#333]"}>
+            {value || "Seleccionar o registrar vehículo..."}
+          </span>
+          <svg className="w-4 h-4 text-gray-600 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="px-3 py-2 text-gray-600 hover:text-gray-400 bg-[#0d0d0d] border border-[#222] rounded-xl transition-colors text-xs"
+            title="Limpiar"
+          >✕</button>
+        )}
+      </div>
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-[#111] border border-[#222] rounded-xl overflow-hidden shadow-2xl">
+          {/* Search */}
+          <div className="px-3 pt-3 pb-2">
+            <input
+              autoFocus
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar vehículo..."
+              className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50"
+            />
+          </div>
+
+          {/* Lista */}
+          <div className="max-h-48 overflow-y-auto divide-y divide-[#1a1a1a]">
+            {filtered.length === 0 && (
+              <p className="px-4 py-3 text-sm text-gray-600">Sin resultados</p>
+            )}
+            {filtered.map(v => (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => { onChange(displayName(v)); setOpen(false); setSearch(""); }}
+                className="w-full text-left px-4 py-2.5 hover:bg-[#1a1a1a] transition-colors"
+              >
+                <p className="text-white text-sm">{v.nombre}</p>
+                <p className="text-gray-500 text-xs">
+                  {[v.marca, v.color, v.placas ? `Placas: ${v.placas}` : null].filter(Boolean).join(" · ")}
+                </p>
+              </button>
+            ))}
+          </div>
+
+          {/* Registrar nuevo */}
+          <div className="border-t border-[#1a1a1a]">
+            {!showNew ? (
+              <button
+                type="button"
+                onClick={() => setShowNew(true)}
+                className="w-full text-left px-4 py-3 text-[#B3985B] hover:bg-[#1a1a1a] text-sm font-medium flex items-center gap-2 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                Registrar nuevo vehículo
+              </button>
+            ) : (
+              <div className="p-3 space-y-2 bg-[#0d0d0d]">
+                <p className="text-[10px] font-bold text-[#B3985B] uppercase tracking-wider mb-2">Nuevo vehículo</p>
+                <input
+                  type="text" value={newNombre} onChange={e => setNewNombre(e.target.value)}
+                  placeholder="Nombre identificador * (ej: Sprinter Negra)"
+                  className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="text" value={newMarca} onChange={e => setNewMarca(e.target.value)}
+                    placeholder="Marca (ej: Mercedes)"
+                    className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+                  <input type="text" value={newColor} onChange={e => setNewColor(e.target.value)}
+                    placeholder="Color"
+                    className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+                </div>
+                <input type="text" value={newPlacas} onChange={e => setNewPlacas(e.target.value)}
+                  placeholder="Placas (opcional)"
+                  className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+                <div className="flex gap-2 pt-1">
+                  <button type="button" onClick={() => setShowNew(false)}
+                    className="flex-1 text-xs text-gray-500 hover:text-gray-300 py-2 rounded-lg border border-[#222] transition-colors">
+                    Cancelar
+                  </button>
+                  <button type="button" onClick={handleCrearVehiculo} disabled={!newNombre.trim() || saving}
+                    className="flex-1 text-xs font-semibold bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-50 text-black py-2 rounded-lg transition-colors">
+                    {saving ? "Guardando..." : "Registrar y usar"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function PlanProduccionPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -325,8 +504,8 @@ export default function PlanProduccionPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Hora de llegada al venue" required value={plan.horaLlegada}
               onChange={v => setPlan(p => ({ ...p, horaLlegada: v }))} placeholder="ej: 08:00" />
-            <Field label="Vehículo / transporte" value={plan.vehiculo}
-              onChange={v => setPlan(p => ({ ...p, vehiculo: v }))} placeholder="Camioneta, trailer, van..." />
+            <VehiculoSelector value={plan.vehiculo}
+              onChange={v => setPlan(p => ({ ...p, vehiculo: v }))} />
             <Field label="Ruta / dirección de carga" value={plan.rutaTransporte}
               onChange={v => setPlan(p => ({ ...p, rutaTransporte: v }))} placeholder="Punto de salida y ruta hasta el venue" multiline />
             <Field label="Alimentación del crew" value={plan.alimentacion}
