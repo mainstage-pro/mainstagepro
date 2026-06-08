@@ -1855,45 +1855,67 @@ export default function PlanPage() {
               <div className="mx-3 my-2 h-px bg-[#111]" />
 
               {/* Por Persona section */}
-              {usuarios.length > 0 && (
-                <div className="px-3">
-                  <p className="text-[8px] uppercase tracking-[0.2em] text-gray-700 font-bold px-1 mb-2">Por Persona</p>
-                  {usuarios.map(u => {
-                    const isActive = vistaPersonaId === u.id
-                    const color = getAreaColor(u.area ?? '')
-                    return (
-                      <button
-                        key={u.id}
-                        onClick={() => { setVistaPersonaId(u.id); setActiveAreaId(null) }}
-                        className={`w-full text-left px-2 py-2 rounded-lg transition-all flex items-center gap-2 mb-0.5 ${
-                          isActive
-                            ? 'bg-[#111] shadow-sm'
-                            : 'hover:bg-[#0a0a0a]'
-                        }`}
-                      >
-                        <div
-                          className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white/80 shrink-0 transition-all ${
-                            isActive ? 'opacity-100 ring-1 ring-white/10' : 'opacity-50'
+              {usuarios.length > 0 && (() => {
+                // Count templates assigned to each user across all areas
+                const countByUser: Record<string, number> = {}
+                for (const area of areas) {
+                  for (const sg of area.subareaGroups) {
+                    for (const t of sg.templates) {
+                      if (t.responsable?.id) {
+                        countByUser[t.responsable.id] = (countByUser[t.responsable.id] ?? 0) + 1
+                      }
+                    }
+                  }
+                }
+                return (
+                  <div className="px-3">
+                    <p className="text-[8px] uppercase tracking-[0.2em] text-gray-700 font-bold px-1 mb-2">Por Persona</p>
+                    {usuarios.map(u => {
+                      const isActive = vistaPersonaId === u.id
+                      const color = getAreaColor(u.area ?? '')
+                      const count = countByUser[u.id] ?? 0
+                      return (
+                        <button
+                          key={u.id}
+                          onClick={() => { setVistaPersonaId(u.id); setActiveAreaId(null) }}
+                          className={`w-full text-left px-2 py-2 rounded-lg transition-all flex items-center gap-2 mb-0.5 ${
+                            isActive
+                              ? 'bg-[#111] shadow-sm'
+                              : 'hover:bg-[#0a0a0a]'
                           }`}
-                          style={{ backgroundColor: color }}
                         >
-                          {u.name[0]}
-                        </div>
-                        <div className="min-w-0">
-                          <p className={`text-xs font-medium truncate transition-colors ${
-                            isActive ? 'text-white' : 'text-gray-500'
-                          }`}>
-                            {u.name.split(' ')[0]}
-                          </p>
-                          {u.area && (
-                            <p className="text-[8px] text-gray-700 truncate">{u.area}</p>
+                          <div
+                            className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white/80 shrink-0 transition-all ${
+                              isActive ? 'opacity-100 ring-1 ring-white/10' : 'opacity-50'
+                            }`}
+                            style={{ backgroundColor: color }}
+                          >
+                            {u.name[0]}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className={`text-xs font-medium truncate transition-colors ${
+                              isActive ? 'text-white' : 'text-gray-500'
+                            }`}>
+                              {u.name.split(' ')[0]}
+                            </p>
+                            {u.area && (
+                              <p className="text-[8px] text-gray-700 truncate">{u.area}</p>
+                            )}
+                          </div>
+                          {count > 0 && (
+                            <span className={`text-[9px] font-semibold shrink-0 tabular-nums ${
+                              isActive ? 'text-[#C9A84C]' : 'text-gray-700'
+                            }`}>
+                              {count}
+                            </span>
                           )}
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+
             </>
           )}
         </div>
