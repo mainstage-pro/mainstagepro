@@ -28,7 +28,7 @@
   --secondary: #1a1a1a;
   --secondary-foreground: #f0f0f0;
   --muted: #1a1a1a;
-  --muted-foreground: #9aa0aa;
+  --muted-foreground: #b8bec6;
   --accent: #1e1e1e;
   --accent-foreground: #f0f0f0;
   --destructive: #ef4444;
@@ -280,36 +280,36 @@ input[type="number"]::-webkit-inner-spin-button {
 ──────────────────────────────────────────────────────────────────────── */
 
 /* Tier fantasma / hints */
-.text-white\/5  { color: rgb(255 255 255 / 0.12) }
-.text-white\/\[0\.05\] { color: rgb(255 255 255 / 0.12) }
+.text-white\/5  { color: rgb(255 255 255 / 0.18) }
+.text-white\/\[0\.05\] { color: rgb(255 255 255 / 0.18) }
 
 /* Tier muy bajo (decorativo) */
-.text-white\/10 { color: rgb(255 255 255 / 0.22) }
-.text-white\/\[0\.1\]  { color: rgb(255 255 255 / 0.22) }
+.text-white\/10 { color: rgb(255 255 255 / 0.30) }
+.text-white\/\[0\.1\]  { color: rgb(255 255 255 / 0.30) }
 
 /* Tier bajo */
-.text-white\/15 { color: rgb(255 255 255 / 0.30) }
-.text-white\/20 { color: rgb(255 255 255 / 0.38) }
-.text-white\/\[0\.2\]  { color: rgb(255 255 255 / 0.38) }
+.text-white\/15 { color: rgb(255 255 255 / 0.40) }
+.text-white\/20 { color: rgb(255 255 255 / 0.50) }
+.text-white\/\[0\.2\]  { color: rgb(255 255 255 / 0.50) }
 
 /* Tier secundario */
-.text-white\/25 { color: rgb(255 255 255 / 0.44) }
-.text-white\/30 { color: rgb(255 255 255 / 0.52) }
-.text-white\/\[0\.3\]  { color: rgb(255 255 255 / 0.52) }
-.text-white\/35 { color: rgb(255 255 255 / 0.58) }
+.text-white\/25 { color: rgb(255 255 255 / 0.56) }
+.text-white\/30 { color: rgb(255 255 255 / 0.62) }
+.text-white\/\[0\.3\]  { color: rgb(255 255 255 / 0.62) }
+.text-white\/35 { color: rgb(255 255 255 / 0.68) }
 
 /* Tier medio */
-.text-white\/40 { color: rgb(255 255 255 / 0.62) }
-.text-white\/\[0\.4\]  { color: rgb(255 255 255 / 0.62) }
-.text-white\/45 { color: rgb(255 255 255 / 0.67) }
-.text-white\/50 { color: rgb(255 255 255 / 0.72) }
-.text-white\/\[0\.5\]  { color: rgb(255 255 255 / 0.72) }
+.text-white\/40 { color: rgb(255 255 255 / 0.73) }
+.text-white\/\[0\.4\]  { color: rgb(255 255 255 / 0.73) }
+.text-white\/45 { color: rgb(255 255 255 / 0.77) }
+.text-white\/50 { color: rgb(255 255 255 / 0.81) }
+.text-white\/\[0\.5\]  { color: rgb(255 255 255 / 0.81) }
 
 /* Tier alto */
-.text-white\/55 { color: rgb(255 255 255 / 0.76) }
-.text-white\/60 { color: rgb(255 255 255 / 0.80) }
-.text-white\/\[0\.6\]  { color: rgb(255 255 255 / 0.80) }
-.text-white\/65 { color: rgb(255 255 255 / 0.84) }
-.text-white\/70 { color: rgb(255 255 255 / 0.88) }
-.text-white\/\[0\.7\]  { color: rgb(255 255 255 / 0.88) }
-.text-white\/75 { color: rgb(255 255 255 / 0.92) }
+.text-white\/55 { color: rgb(255 255 255 / 0.85) }
+.text-white\/60 { color: rgb(255 255 255 / 0.88) }
+.text-white\/\[0\.6\]  { color: rgb(255 255 255 / 0.88) }
+.text-white\/65 { color: rgb(255 255 255 / 0.91) }
+.text-white\/70 { color: rgb(255 255 255 / 0.93) }
+.text-white\/\[0\.7\]  { color: rgb(255 255 255 / 0.93) }
+.text-white\/75 { color: rgb(255 255 255 / 0.96) }
