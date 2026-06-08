@@ -237,7 +237,6 @@ function MiDiaItem({
   const completada = instancia.estado === 'COMPLETADA'
   const { template: t } = instancia
   const imp = IMPACTO[t.impacto] ?? IMPACTO.estandar
-  const ctx = CONTEXTO[t.contexto] ?? CONTEXTO.independiente
   const router = useRouter()
 
   async function handleToggle(e: React.MouseEvent) {
@@ -248,172 +247,167 @@ function MiDiaItem({
   }
 
   return (
-    <div className={`relative border rounded-xl overflow-hidden transition-all duration-200 flex ${
-      completada ? 'border-[#1a1a1a] opacity-55' : 'border-[#1e1e1e] hover:border-[#2a2a2a]'
-    }`}>
-      {/* Left bar — area color */}
-      <div className="w-1 shrink-0 rounded-r-sm" style={{ backgroundColor: t.area.color || '#333' }} />
+    <>
+      <tr
+        className={`border-b border-[#111] transition-colors group cursor-pointer ${
+          completada ? 'opacity-50' : 'hover:bg-[#0a0a0a]'
+        } ${expanded ? 'bg-[#0d0d0d]' : ''}`}
+        onClick={() => setExpanded(v => !v)}
+      >
+        {/* Left bar — area color */}
+        <td className="w-1 p-0">
+          <div
+            className="w-1 min-h-[44px] h-full rounded-l-sm"
+            style={{
+              backgroundColor: t.area.color || '#333',
+              opacity: t.impacto === 'critico' ? 1 : t.impacto === 'alto' ? 0.55 : 0.25,
+            }}
+          />
+        </td>
 
-      <div className="flex-1 min-w-0">
-        {/* Main row */}
-        <div
-          className="flex items-start gap-3 px-4 py-3.5 cursor-pointer select-none"
-          onClick={() => setExpanded(v => !v)}
-        >
-          {/* Toggle circle — dorado y visible */}
+        {/* Check circle */}
+        <td className="w-10 py-3 px-2" onClick={e => e.stopPropagation()}>
           <button
+            type="button"
             onClick={handleToggle}
             disabled={toggling}
-            className={`mt-0.5 w-6 h-6 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all duration-200 ${
+            className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
               completada
                 ? 'bg-green-500 border-green-500 shadow-[0_0_0_3px_rgba(34,197,94,0.15)]'
+                : toggling
+                ? 'border-[#C9A84C] animate-pulse'
                 : 'border-[#C9A84C] hover:bg-[#C9A84C]/20 hover:shadow-[0_0_0_3px_rgba(201,168,76,0.18)]'
             }`}
           >
-            {completada && <span className="text-white text-[10px] leading-none font-bold">✓</span>}
+            {completada && <span className="text-white text-[10px] font-bold">✓</span>}
             {!completada && !toggling && <span className="w-2 h-2 rounded-full bg-[#C9A84C]/50" />}
-            {toggling && !completada && <span className="w-2.5 h-2.5 rounded-full bg-[#C9A84C] animate-pulse" />}
           </button>
+        </td>
 
-          {/* Content */}
-          <div className="flex-1 min-w-0">
-            {/* Task name */}
-            <p className={`text-sm font-medium leading-snug mb-1 ${
+        {/* Nombre + chips */}
+        <td className="py-3 px-3">
+          <div className="flex items-start gap-2 flex-wrap">
+            <span className={`text-sm leading-snug ${
               completada ? 'line-through text-gray-600' : 'text-white'
-            }`}>
-              {t.nombre}
-            </p>
-
-            {/* Módulo de ejecución — inline bajo el nombre */}
-            {t.esAccionCampo ? (
-              <p className="text-[10px] text-[#444] mt-0.5 mb-1">· En campo</p>
-            ) : t.moduloDestino && t.moduloTexto ? (
-              t.moduloDisponible ? (
-                <button
-                  onClick={(e) => { e.stopPropagation(); router.push(t.moduloDestino!.split('#')[0]) }}
-                  className="text-[10px] text-[#C9A84C] hover:text-[#d4b060] mt-0.5 mb-1 transition-colors block"
-                >
-                  → {t.moduloTexto}
-                </button>
-              ) : (
-                <p className="text-[10px] text-[#333] mt-0.5 mb-1">→ {t.moduloTexto}</p>
-              )
-            ) : null}
-
-            {/* Badges row */}
-            <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-              {/* Impact — only shown for crítico / alto, as subtle dot + label */}
-              {t.impacto !== 'estandar' && (
-                <span className="flex items-center gap-1">
-                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                    t.impacto === 'critico' ? 'bg-red-500' : 'bg-orange-400'
-                  }`} />
-                  <span className={`text-[9px] uppercase tracking-wider ${
-                    t.impacto === 'critico' ? 'text-red-400/60' : 'text-orange-400/60'
-                  }`}>{imp.label}</span>
-                </span>
-              )}
-              {t.tipo === 'ENTREGABLE' && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#C9A84C]/30 text-[#C9A84C] bg-[#C9A84C]/5">
-                  📄 Entregable
-                </span>
-              )}
-              {t.puestoDefault === 'Todo el equipo' && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#444] text-gray-500 bg-[#1a1a1a]">
-                  👥 Todos
-                </span>
-              )}
-            </div>
-
-            {/* Meta row: responsable + days + frecuencia */}
-            <div className="flex flex-wrap items-center gap-2">
-              {instancia.responsable && (
-                <span className="text-[10px] text-gray-500">
-                  {instancia.responsable.name.split(' ')[0]}
-                </span>
-              )}
-              {/* diasSemana boxes */}
-              <div className="flex gap-0.5">
-                {[1,2,3,4,5].map(d => (
-                  <span
-                    key={d}
-                    className={`text-[8px] w-3.5 h-3.5 rounded flex items-center justify-center font-bold ${
-                      (t.diasSemana ?? []).includes(d)
-                        ? 'bg-[#C9A84C]/20 text-[#C9A84C]'
-                        : 'bg-[#111] text-gray-700'
-                    }`}
-                  >
-                    {DIAS_PLAN_LABEL[d]}
-                  </span>
-                ))}
-              </div>
-              {t.frecuencia && (
-                <span className="text-[9px] text-gray-700">
-                  {FRECUENCIA_LABEL[t.frecuencia] ?? t.frecuencia}
-                </span>
-              )}
-            </div>
-
+            }`}>{t.nombre}</span>
+          </div>
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            {t.impacto !== 'estandar' && (
+              <span className={`text-[9px] ${
+                t.impacto === 'critico' ? 'text-red-400' : 'text-orange-400'
+              }`}>{imp.label}</span>
+            )}
+            {t.tipo === 'ENTREGABLE' && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#C9A84C]/30 text-[#C9A84C]">Entregable</span>
+            )}
             {t.cuando && !expanded && (
-              <p className="text-[11px] text-gray-600 mt-1 truncate">{t.cuando}</p>
+              <span className="text-[10px] text-gray-600 truncate max-w-[160px]">{t.cuando}</span>
+            )}
+            {/* Módulo link */}
+            {t.moduloDestino && t.moduloTexto && !t.esAccionCampo && t.moduloDisponible && (
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); router.push(t.moduloDestino!.split('#')[0]) }}
+                className="text-[9px] text-[#C9A84C] hover:underline"
+              >
+                → {t.moduloTexto}
+              </button>
             )}
           </div>
+        </td>
 
-          {/* Area + chevron */}
-          <div className="shrink-0 flex items-center gap-2">
-            <span className="text-[9px] text-gray-700 hidden sm:block">{t.area.icono}</span>
-            <span className="text-gray-600 text-[10px]">{expanded ? '▲' : '▼'}</span>
+        {/* Responsable */}
+        <td className="py-3 px-3 hidden sm:table-cell">
+          {instancia.responsable ? (
+            <span className="text-xs text-gray-500">{instancia.responsable.name.split(' ')[0]}</span>
+          ) : t.puestoDefault === 'Todo el equipo' ? (
+            <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full">👥 Todos</span>
+          ) : null}
+        </td>
+
+        {/* Días */}
+        <td className="py-3 px-3 hidden md:table-cell">
+          <div className="flex gap-0.5">
+            {[1,2,3,4,5].map(d => (
+              <span
+                key={d}
+                className={`text-[8px] w-3.5 h-3.5 rounded flex items-center justify-center font-bold ${
+                  (t.diasSemana ?? []).includes(d)
+                    ? 'bg-[#C9A84C]/20 text-[#C9A84C]'
+                    : 'bg-[#111] text-gray-700'
+                }`}
+              >
+                {DIAS_PLAN_LABEL[d]}
+              </span>
+            ))}
           </div>
-        </div>
+        </td>
+
+        {/* Frecuencia */}
+        <td className="py-3 px-3 hidden lg:table-cell">
+          <span className="text-[10px] text-gray-600">
+            {FRECUENCIA_LABEL[t.frecuencia] ?? t.frecuencia}
+          </span>
+        </td>
+
+        {/* Chevron */}
+        <td className="py-3 px-3 text-right w-10">
+          <span className="text-gray-600 text-xs">{expanded ? '▲' : '▼'}</span>
+        </td>
+      </tr>
 
       {/* Expanded detail */}
       {expanded && (
-        <div className="px-4 pb-4 pt-1 border-t border-[#111] space-y-3">
-          {t.cuando && (
-            <p className="text-xs text-gray-500">
-              <span className="text-gray-700">⏰ Cuándo: </span>{t.cuando}
-            </p>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {t.descripcion && (
-              <div className="bg-[#0d0d0d] rounded-lg p-3">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-gray-600 mb-1.5">Descripción</p>
-                <p className="text-xs text-gray-300 leading-relaxed">{t.descripcion}</p>
-              </div>
-            )}
-            {t.porqueSeHace && (
-              <div className="bg-[#0d0d0d] rounded-lg p-3">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-gray-600 mb-1.5">Por qué se hace</p>
-                <p className="text-xs text-gray-300 leading-relaxed">{t.porqueSeHace}</p>
-              </div>
-            )}
-            {t.estandarMinimo && (
-              <div className="bg-[#C9A84C]/5 border border-[#C9A84C]/20 rounded-lg p-3">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-[#C9A84C] mb-1.5">Estándar mínimo</p>
-                <p className="text-xs text-gray-300 leading-relaxed">{t.estandarMinimo}</p>
-              </div>
-            )}
-            {t.siNoSeHace && (
-              <div className="bg-red-950/20 border border-red-900/20 rounded-lg p-3">
-                <p className="text-[9px] font-bold uppercase tracking-wider text-red-400 mb-1.5">Si no se hace</p>
-                <p className="text-xs text-gray-400 leading-relaxed">{t.siNoSeHace}</p>
-              </div>
-            )}
-          </div>
-
-          {t.moduloDestino && t.moduloTexto && !t.esAccionCampo && (
-            <button
-              onClick={e => { e.stopPropagation(); router.push(t.moduloDestino!.split('#')[0]) }}
-              className="inline-flex items-center gap-1.5 text-sm text-[#C9A84C] hover:underline"
-            >
-              {t.moduloTexto} →
-            </button>
-          )}
-        </div>
+        <tr className="bg-[#080808] border-b border-[#0d0d0d]">
+          <td colSpan={7} className="px-4 pb-4 pt-0">
+            <div className="ml-12 pt-3 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {t.cuando && (
+                <div className="sm:col-span-2">
+                  <p className="text-xs text-gray-500">
+                    <span className="text-gray-700">⏰ Cuándo: </span>{t.cuando}
+                  </p>
+                </div>
+              )}
+              {t.descripcion && (
+                <div className="bg-[#0d0d0d] rounded-lg p-3">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-gray-600 mb-1.5">Descripción</p>
+                  <p className="text-xs text-gray-300 leading-relaxed">{t.descripcion}</p>
+                </div>
+              )}
+              {t.porqueSeHace && (
+                <div className="bg-[#0d0d0d] rounded-lg p-3">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-gray-600 mb-1.5">Por qué se hace</p>
+                  <p className="text-xs text-gray-300 leading-relaxed">{t.porqueSeHace}</p>
+                </div>
+              )}
+              {t.estandarMinimo && (
+                <div className="bg-[#C9A84C]/5 border border-[#C9A84C]/20 rounded-lg p-3">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#C9A84C] mb-1.5">Estándar mínimo</p>
+                  <p className="text-xs text-gray-300 leading-relaxed">{t.estandarMinimo}</p>
+                </div>
+              )}
+              {t.siNoSeHace && (
+                <div className="bg-red-950/20 border border-red-900/20 rounded-lg p-3">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-red-400 mb-1.5">Si no se hace</p>
+                  <p className="text-xs text-gray-400 leading-relaxed">{t.siNoSeHace}</p>
+                </div>
+              )}
+              {t.moduloDestino && t.moduloTexto && !t.esAccionCampo && (
+                <div className="sm:col-span-2">
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); router.push(t.moduloDestino!.split('#')[0]) }}
+                    className="inline-flex items-center gap-1.5 text-sm text-[#C9A84C] hover:underline"
+                  >
+                    {t.moduloTexto} →
+                  </button>
+                </div>
+              )}
+            </div>
+          </td>
+        </tr>
       )}
-      </div>
-    </div>
+    </>
   )
 }
 
@@ -808,20 +802,28 @@ export default function MiDiaPage() {
                   {atrasadas.filter(i => i.estado !== 'COMPLETADA').length}
                 </span>
               </div>
-              <div className="px-4 pb-4 space-y-2">
-                {atrasadas.filter(i => i.estado !== 'COMPLETADA').map(inst => {
-                  const fechaOrigen = new Date(inst.fechaVencimiento)
-                  const diasAtras = Math.round((Date.now() - fechaOrigen.getTime()) / (1000 * 60 * 60 * 24))
-                  return (
-                    <div key={inst.id} className="relative">
-                      <div className="absolute -top-0 right-0 z-10 bg-amber-900/60 text-amber-300 text-[9px] px-2 py-0.5 rounded-bl-lg rounded-tr-xl border-l border-b border-amber-700/30 font-medium">
-                        {diasAtras === 1 ? 'ayer' : `hace ${diasAtras} días`}
-                      </div>
-                      <MiDiaItem instancia={inst} onToggle={handleToggleAtrasada} />
-                    </div>
-                  )
-                })}
-              </div>
+              <table className="w-full">
+                <thead className="bg-[#060606] border-b border-[#0d0d0d]">
+                  <tr>
+                    <th className="w-1 p-0" />
+                    <th className="w-10" />
+                    <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium">Compromiso</th>
+                    <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden sm:table-cell">Responsable</th>
+                    <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden md:table-cell">Días</th>
+                    <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden lg:table-cell">Recurrencia</th>
+                    <th className="w-10" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {atrasadas.filter(i => i.estado !== 'COMPLETADA').map(inst => (
+                    <MiDiaItem
+                      key={inst.id}
+                      instancia={inst}
+                      onToggle={handleToggleAtrasada}
+                    />
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
 
@@ -874,37 +876,57 @@ export default function MiDiaPage() {
                             <span className="text-[9px] text-gray-700">{Object.values(subareas).flat().length}</span>
                           </div>
                           {/* Subareas */}
-                          {subKeys.map((subNombre, subIdx) => {
-                            const collapseKey = `${areaNombre}__${subNombre}`
-                            const isCollapsed = collapsedSubareas.has(collapseKey)
-                            const toggleCollapse = () => setCollapsedSubareas(prev => {
-                              const next = new Set(prev)
-                              if (next.has(collapseKey)) next.delete(collapseKey)
-                              else next.add(collapseKey)
-                              return next
-                            })
-                            return (
-                              <div key={subNombre} className={subIdx > 0 ? 'mt-5' : ''}>
-                                <button
-                                  type="button"
-                                  onClick={toggleCollapse}
-                                  className="flex items-center gap-2 w-full text-left group mb-2 pl-4"
-                                >
-                                  <p className="text-[9px] uppercase tracking-[0.1em] text-gray-600 group-hover:text-gray-400 transition-colors flex-1">{subNombre}</p>
-                                  <span className="text-[9px] text-gray-700 group-hover:text-gray-500 transition-colors">
-                                    {isCollapsed ? `▶ ${subareas[subNombre].length}` : '▼'}
-                                  </span>
-                                </button>
-                                {!isCollapsed && (
-                                  <div className="space-y-2">
-                                    {subareas[subNombre].map(inst => (
-                                      <MiDiaItem key={inst.id} instancia={inst} onToggle={handleToggle} />
-                                    ))}
-                                  </div>
-                                )}
+                  <table className="w-full">
+                    <thead className="bg-[#060606] border-b border-[#0d0d0d]">
+                      <tr>
+                        <th className="w-1 p-0" />
+                        <th className="w-10" />
+                        <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium">Compromiso</th>
+                        <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden sm:table-cell">Responsable</th>
+                        <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden md:table-cell">Días</th>
+                        <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden lg:table-cell">Recurrencia</th>
+                        <th className="w-10" />
+                      </tr>
+                    </thead>
+                    {subKeys.map((subNombre) => {
+                      const collapseKey = `${areaNombre}__${subNombre}`
+                      const isCollapsed = collapsedSubareas.has(collapseKey)
+                      const toggleCollapse = () => setCollapsedSubareas(prev => {
+                        const next = new Set(prev)
+                        if (next.has(collapseKey)) next.delete(collapseKey)
+                        else next.add(collapseKey)
+                        return next
+                      })
+                      return (
+                        <tbody key={subNombre}
+                          className={`transition-colors`}
+                        >
+                          {/* Subarea header row */}
+                          <tr
+                            className="bg-[#070707] border-b border-[#111] cursor-pointer select-none group"
+                            onClick={toggleCollapse}
+                          >
+                            <td colSpan={7} className="px-4 py-2.5">
+                              <div className="flex items-center gap-3">
+                                <div className="w-0.5 h-4 rounded-full bg-[#C9A84C]/40" />
+                                <span className="text-[11px] text-[#C9A84C] uppercase tracking-[0.12em] font-semibold">
+                                  {subNombre}
+                                </span>
+                                <span className="text-[10px] text-gray-700">{subareas[subNombre].length}</span>
+                                <span className="ml-auto text-gray-700 text-[10px] group-hover:text-gray-500 transition-colors">
+                                  {isCollapsed ? '▶' : '▼'}
+                                </span>
                               </div>
-                            )
-                          })}
+                            </td>
+                          </tr>
+                          {/* Task rows */}
+                          {!isCollapsed && subareas[subNombre].map(inst => (
+                            <MiDiaItem key={inst.id} instancia={inst} onToggle={handleToggle} />
+                          ))}
+                        </tbody>
+                      )
+                    })}
+                  </table>
                         </div>
                       )
                     })}
@@ -918,11 +940,24 @@ export default function MiDiaPage() {
                   <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">
                     ✓ Completadas ({completadas.length})
                   </p>
-                  <div className="space-y-2">
-                    {completadas.map(inst => (
-                      <MiDiaItem key={inst.id} instancia={inst} onToggle={handleToggle} />
-                    ))}
-                  </div>
+                  <table className="w-full">
+                    <thead className="bg-[#060606] border-b border-[#0d0d0d]">
+                      <tr>
+                        <th className="w-1 p-0" />
+                        <th className="w-10" />
+                        <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium">Compromiso</th>
+                        <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden sm:table-cell">Responsable</th>
+                        <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden md:table-cell">Días</th>
+                        <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden lg:table-cell">Recurrencia</th>
+                        <th className="w-10" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {completadas.map(inst => (
+                        <MiDiaItem key={inst.id} instancia={inst} onToggle={handleToggle} />
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>

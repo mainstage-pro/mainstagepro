@@ -1360,6 +1360,7 @@ export default function PlanPage() {
   const [modal, setModal]               = useState<ModalState | null>(null)
   const [isAdmin, setIsAdmin]           = useState(false)
   const [userArea, setUserArea]         = useState<string | null>(null)
+  const [collapsedSubs, setCollapsedSubs] = useState<Set<string>>(new Set())
 
   // Add subarea
   const [addingSubareaForAreaId, setAddingSubareaForAreaId] = useState<string | null>(null)
@@ -1855,7 +1856,15 @@ export default function PlanPage() {
                       }`}
                     >
                       {/* Subarea header row */}
-                      <tr className="bg-[#070707] border-b border-[#111]">
+                      <tr
+                        className="bg-[#070707] border-b border-[#111] cursor-pointer group select-none"
+                        onClick={() => setCollapsedSubs(prev => {
+                          const next = new Set(prev)
+                          if (next.has(group.subArea.id)) next.delete(group.subArea.id)
+                          else next.add(group.subArea.id)
+                          return next
+                        })}
+                      >
                         <td colSpan={6} className="px-4 py-2.5">
                           <div className="flex items-center gap-3">
                             <div className="w-0.5 h-4 rounded-full bg-[#C9A84C]/40" />
@@ -1865,17 +1874,20 @@ export default function PlanPage() {
                             <span className="text-[10px] text-gray-700">{filtered.length}</span>
                             {isAdmin && (
                               <button
-                                onClick={() => handleOpenModal({ areaId: area.id, subAreaId: group.subArea.id, subAreaNombre: group.subArea.nombre })}
-                                className="ml-auto text-[10px] text-gray-700 hover:text-[#C9A84C] transition-colors flex items-center gap-1"
+                                onClick={e => { e.stopPropagation(); handleOpenModal({ areaId: area.id, subAreaId: group.subArea.id, subAreaNombre: group.subArea.nombre }) }}
+                                className="text-[10px] text-gray-700 hover:text-[#C9A84C] transition-colors flex items-center gap-1"
                               >
                                 + Agregar compromiso
                               </button>
                             )}
+                            <span className={`${isAdmin ? '' : 'ml-auto'} text-gray-700 text-[10px] group-hover:text-gray-500 transition-colors`}>
+                              {collapsedSubs.has(group.subArea.id) ? '▶' : '▼'}
+                            </span>
                           </div>
                         </td>
                       </tr>
                       {/* Task rows */}
-                      {filtered.map(t => (
+                      {!collapsedSubs.has(group.subArea.id) && filtered.map(t => (
                         <TemplateRow
                           key={t.id}
                           t={t}
