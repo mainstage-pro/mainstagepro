@@ -445,6 +445,7 @@ export default function MiDiaPage() {
 
   // ── Tomorrow preview state ──────────────────────────────────────────────────
   const [manana, setManana] = useState<{ nombre: string; impacto: string }[]>([])
+  const [atrasadas, setAtrasadas] = useState<Instancia[]>([])
 
   // ── User / collaboration state ──────────────────────────────────────────────
   const [userName, setUserName] = useState<string>('')
@@ -521,6 +522,15 @@ export default function MiDiaPage() {
       .catch(() => {})
   }, [toDateStr(fechaActual)])
 
+  // ── Fetch atrasadas (pendientes de días anteriores) ─────────────────────────
+  useEffect(() => {
+    if (viendoUsuarioId) { setAtrasadas([]); return }
+    fetch('/api/plan-trabajo/instancias?pendientesAnteriores=true')
+      .then(r => r.json())
+      .then(d => setAtrasadas(d.instancias ?? []))
+      .catch(() => {})
+  }, [viendoUsuarioId])
+
   function cambiarSemana(dir: number) {
     setSemanaOffset(prev => prev + dir)
     // Move fechaActual to Monday of the new week
@@ -538,6 +548,21 @@ export default function MiDiaPage() {
     })
     await cargar()
     setGenerando(false)
+  }
+
+  async function handleToggleAtrasada(id: string, currentEstado: string) {
+    const goingComplete = currentEstado !== 'COMPLETADA'
+    setAtrasadas(prev => prev.map(i =>
+      i.id === id ? { ...i, estado: goingComplete ? 'COMPLETADA' : 'PENDIENTE' } : i
+    ))
+    await fetch('/api/plan-trabajo/instancias', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instanciaId: id, estado: goingComplete ? 'COMPLETADA' : 'PENDIENTE' }),
+    })
+    if (goingComplete) {
+      setTimeout(() => setAtrasadas(prev => prev.filter(i => i.id !== id)), 1200)
+    }
   }
 
   async function handleToggle(id: string, currentEstado: string) {
@@ -766,6 +791,35 @@ export default function MiDiaPage() {
       <div className="flex gap-6 items-start">
         {/* Left — tasks (65%) */}
         <div className="flex-1 min-w-0">
+          {/* ── Atrasadas — pendientes de días anteriores ── */}
+          {!viendoUsuarioId && atrasadas.filter(i => i.estado !== 'COMPLETADA').length > 0 && (
+            <div className="mb-5 border border-amber-700/30 bg-amber-950/10 rounded-2xl overflow-hidden">
+              <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+                <span className="text-amber-400 text-base">⚠️</span>
+                <p className="text-[11px] font-bold text-amber-400 uppercase tracking-widest">
+                  Sin completar de días anteriores
+                </p>
+                <span className="text-[10px] bg-amber-900/30 border border-amber-700/30 text-amber-400/80 px-2 py-0.5 rounded-full ml-auto">
+                  {atrasadas.filter(i => i.estado !== 'COMPLETADA').length}
+                </span>
+              </div>
+              <div className="px-4 pb-4 space-y-2">
+                {atrasadas.filter(i => i.estado !== 'COMPLETADA').map(inst => {
+                  const fechaOrigen = new Date(inst.fechaVencimiento)
+                  const diasAtras = Math.round((Date.now() - fechaOrigen.getTime()) / (1000 * 60 * 60 * 24))
+                  return (
+                    <div key={inst.id} className="relative">
+                      <div className="absolute -top-0 right-0 z-10 bg-amber-900/60 text-amber-300 text-[9px] px-2 py-0.5 rounded-bl-lg rounded-tr-xl border-l border-b border-amber-700/30 font-medium">
+                        {diasAtras === 1 ? 'ayer' : `hace ${diasAtras} días`}
+                      </div>
+                      <MiDiaItem instancia={inst} onToggle={handleToggleAtrasada} />
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div className="text-center py-16 text-gray-600 text-sm">Cargando compromisos del día...</div>
           ) : instancias.length === 0 ? (

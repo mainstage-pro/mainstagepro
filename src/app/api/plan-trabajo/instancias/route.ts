@@ -13,6 +13,45 @@ export async function GET(req: NextRequest) {
   const vista = searchParams.get("vista") ?? "dia";
   const areaFiltro = searchParams.get("area"); // filtro para vista de dirección
   const userFiltro = searchParams.get("userId"); // filtro para vista de dirección
+  const pendientesAnteriores = searchParams.get("pendientesAnteriores") === "true";
+
+  // ── Pendientes de días anteriores ────────────────────────────────────────────
+  if (pendientesAnteriores) {
+    const tzLocal = "America/Mexico_City";
+    const hoyStr = new Date().toLocaleDateString("en-CA", { timeZone: tzLocal });
+    const hoyInicio = new Date(`${hoyStr}T00:00:00.000-06:00`);
+    const hace14Dias = new Date(hoyInicio);
+    hace14Dias.setDate(hoyInicio.getDate() - 14);
+
+    const atrasadas = await prisma.pTTareaInstancia.findMany({
+      where: {
+        fechaVencimiento: { gte: hace14Dias, lt: hoyInicio },
+        estado: { in: ["PENDIENTE", "EN_PROGRESO"] },
+        OR: [
+          { responsableId: session.id },
+          { template: { puestoDefault: "Todo el equipo" } },
+        ],
+      },
+      include: {
+        template: { include: { area: true, subArea: true } },
+        responsable: { select: { id: true, name: true, email: true } },
+        subtareasInstancia: { include: { subtarea: true }, orderBy: { subtarea: { orden: "asc" } } },
+        comentarios: {
+          include: { autor: { select: { id: true, name: true } } },
+          orderBy: { createdAt: "asc" },
+          take: 10,
+        },
+        historial: {
+          include: { usuario: { select: { id: true, name: true } } },
+          orderBy: { createdAt: "desc" },
+          take: 5,
+        },
+      },
+      orderBy: { fechaVencimiento: "desc" },
+    });
+
+    return NextResponse.json({ instancias: atrasadas });
+  }
 
   const tz = "America/Mexico_City";
   const hoy = fechaParam
