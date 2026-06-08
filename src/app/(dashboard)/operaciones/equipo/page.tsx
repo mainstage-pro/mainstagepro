@@ -415,31 +415,50 @@ export default function EquipoPage() {
         )}
 
         {/* Persona */}
-        {usuarios.length > 1 && (
-          <div className="flex flex-wrap items-center gap-1 ml-auto">
-            <button
-              onClick={() => setFiltroUsuario("")}
-              className={`px-2.5 py-1 text-[11px] font-medium rounded-full transition-colors border ${
-                !filtroUsuario ? "bg-[#1e1e1e] text-white border-[#2a2a2a]" : "text-[#444] hover:text-[#666] border-[#1a1a1a]"
-              }`}
-            >
-              Todos
-            </button>
-            {usuarios.map(u => (
+        {usuarios.length > 1 && (() => {
+          // Count per user: area filter applied, user filter NOT applied
+          const countByUser: Record<string, number> = {}
+          for (const t of tareas) {
+            if (filtroArea && t.area !== filtroArea) continue
+            const uid = t.asignadoA?.id ?? '__sin_asignar__'
+            countByUser[uid] = (countByUser[uid] ?? 0) + 1
+          }
+          const totalPre = tareas.filter(t => !filtroArea || t.area === filtroArea).length
+          return (
+            <div className="flex flex-wrap items-center gap-1 ml-auto">
               <button
-                key={u.id}
-                onClick={() => setFiltroUsuario(filtroUsuario === u.id ? "" : u.id)}
+                onClick={() => setFiltroUsuario("")}
                 className={`px-2.5 py-1 text-[11px] font-medium rounded-full transition-colors border ${
-                  filtroUsuario === u.id
-                    ? "bg-[#B3985B]/20 text-[#B3985B] border-[#B3985B]/30"
-                    : "text-[#444] hover:text-[#666] border-[#1a1a1a]"
+                  !filtroUsuario ? "bg-[#1e1e1e] text-white border-[#2a2a2a]" : "text-[#444] hover:text-[#666] border-[#1a1a1a]"
                 }`}
               >
-                {u.name.split(" ")[0]}
+                Todos <span className="text-[10px] opacity-60">({totalPre})</span>
               </button>
-            ))}
-          </div>
-        )}
+              {usuarios.map(u => {
+                const count = countByUser[u.id] ?? 0
+                return (
+                  <button
+                    key={u.id}
+                    onClick={() => setFiltroUsuario(filtroUsuario === u.id ? "" : u.id)}
+                    className={`px-2.5 py-1 text-[11px] font-medium rounded-full transition-colors border ${
+                      filtroUsuario === u.id
+                        ? "bg-[#B3985B]/20 text-[#B3985B] border-[#B3985B]/30"
+                        : "text-[#444] hover:text-[#666] border-[#1a1a1a]"
+                    }`}
+                  >
+                    {u.name.split(" ")[0]}
+                    {count > 0 && (
+                      <span className={`ml-1 text-[10px] ${filtroUsuario === u.id ? 'text-[#B3985B]/70' : 'text-[#555]'}`}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          )
+        })()}
+
       </div>
 
       {/* ── Contenido ───────────────────────────────────────────────────────── */}
