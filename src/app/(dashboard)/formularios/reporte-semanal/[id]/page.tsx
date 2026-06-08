@@ -50,6 +50,19 @@ function fmtDate(iso: string) {
     day: "numeric",
     month: "long",
     year: "numeric",
+    timeZone: "America/Mexico_City",
+  });
+}
+
+function fmtDateTime(iso: string) {
+  return new Date(iso).toLocaleString("es-MX", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Mexico_City",
   });
 }
 
@@ -152,7 +165,7 @@ export default function ReporteDetalleePage() {
               Semana {reporte.semana} · {reporte.anio}
               {reporte.user.area && <span className="ml-2 text-gray-600">· {reporte.user.area}</span>}
             </p>
-            <p className="text-gray-600 text-[10px] mt-0.5">{fmtDate(reporte.createdAt)}</p>
+            <p className="text-gray-600 text-[10px] mt-0.5">Enviado el {fmtDateTime(reporte.createdAt)}</p>
           </div>
           <div>
             <span className={`text-xs px-3 py-1 rounded-full border font-semibold ${bw.color}`}>
@@ -289,7 +302,7 @@ export default function ReporteDetalleePage() {
 
       {/* Footer */}
       <div className="text-center pb-8">
-        <p className="text-gray-700 text-xs">Reporte enviado el {fmtDate(reporte.createdAt)}</p>
+        <p className="text-gray-700 text-xs">Reporte enviado el {fmtDateTime(reporte.createdAt)}</p>
         <Link href="/formularios/reporte-semanal" className="inline-block mt-3 text-xs text-[#B3985B] hover:underline">
           ← Volver al historial
         </Link>

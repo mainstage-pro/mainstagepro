@@ -447,6 +447,7 @@ export default function MiDiaPage() {
   const [manana, setManana] = useState<{ nombre: string; impacto: string }[]>([])
   const [atrasadas, setAtrasadas] = useState<Instancia[]>([])
   const [modoArranque, setModoArranque] = useState(false)
+  const [collapsedSubareas, setCollapsedSubareas] = useState<Set<string>>(new Set())
 
   // ── User / collaboration state ──────────────────────────────────────────────
   const [userName, setUserName] = useState<string>('')
@@ -873,16 +874,37 @@ export default function MiDiaPage() {
                             <span className="text-[9px] text-gray-700">{Object.values(subareas).flat().length}</span>
                           </div>
                           {/* Subareas */}
-                          {subKeys.map((subNombre, subIdx) => (
-                            <div key={subNombre} className={subIdx > 0 ? 'mt-5' : ''}>
-                              <p className="text-[9px] uppercase tracking-[0.1em] text-gray-600 mb-2 pl-4">{subNombre}</p>
-                              <div className="space-y-2">
-                                {subareas[subNombre].map(inst => (
-                                  <MiDiaItem key={inst.id} instancia={inst} onToggle={handleToggle} />
-                                ))}
+                          {subKeys.map((subNombre, subIdx) => {
+                            const collapseKey = `${areaNombre}__${subNombre}`
+                            const isCollapsed = collapsedSubareas.has(collapseKey)
+                            const toggleCollapse = () => setCollapsedSubareas(prev => {
+                              const next = new Set(prev)
+                              if (next.has(collapseKey)) next.delete(collapseKey)
+                              else next.add(collapseKey)
+                              return next
+                            })
+                            return (
+                              <div key={subNombre} className={subIdx > 0 ? 'mt-5' : ''}>
+                                <button
+                                  type="button"
+                                  onClick={toggleCollapse}
+                                  className="flex items-center gap-2 w-full text-left group mb-2 pl-4"
+                                >
+                                  <p className="text-[9px] uppercase tracking-[0.1em] text-gray-600 group-hover:text-gray-400 transition-colors flex-1">{subNombre}</p>
+                                  <span className="text-[9px] text-gray-700 group-hover:text-gray-500 transition-colors">
+                                    {isCollapsed ? `▶ ${subareas[subNombre].length}` : '▼'}
+                                  </span>
+                                </button>
+                                {!isCollapsed && (
+                                  <div className="space-y-2">
+                                    {subareas[subNombre].map(inst => (
+                                      <MiDiaItem key={inst.id} instancia={inst} onToggle={handleToggle} />
+                                    ))}
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       )
                     })}
