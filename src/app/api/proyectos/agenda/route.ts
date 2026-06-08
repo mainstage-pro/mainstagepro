@@ -11,7 +11,12 @@ export async function GET(_req: NextRequest) {
     new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' }) + 'T00:00:00.000-06:00'
   )
   const en30dias = new Date(ahora.getTime() + 30 * 86400000)
-  const hace14dias = new Date(ahora.getTime() - 14 * 86400000)
+
+  // Semana anterior exacta (lunes–domingo previo), hora CDMX
+  const dow = inicioDeHoy.getDay() // 0=dom, 1=lun... 6=sab
+  const diasDesdeElLunes = (dow + 6) % 7  // 0 si es lunes, 6 si es domingo
+  const lunesEstaaSemana = new Date(inicioDeHoy.getTime() - diasDesdeElLunes * 86400000)
+  const lunesAnterior = new Date(lunesEstaaSemana.getTime() - 7 * 86400000)
 
   const [proximos, recientes, tratosVC] = await Promise.all([
     // Proyectos próximos (30 días)
@@ -28,10 +33,10 @@ export async function GET(_req: NextRequest) {
       orderBy: { fechaEvento: 'asc' },
       take: 15,
     }),
-    // Proyectos recientes (14 días)
+    // Proyectos semana anterior (lunes–domingo previo)
     prisma.proyecto.findMany({
       where: {
-        fechaEvento: { gte: hace14dias, lt: inicioDeHoy },
+        fechaEvento: { gte: lunesAnterior, lt: lunesEstaaSemana },
         estado: { notIn: ['CANCELADO'] },
       },
       select: {
