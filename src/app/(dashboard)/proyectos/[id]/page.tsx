@@ -541,6 +541,135 @@ function EquipoRow({ eq, proyectoId, fichaCompleta, fichaTooltip, onToggleConfir
 }
 
 // ─── Página principal ─────────────────────────────────────────────────────────
+type VehiculoListItem = { id: string; nombre: string; marca: string | null; modelo: string | null; placas: string | null };
+
+function VehiculoIdSelector({
+  value, onChange, vehiculos, onAddVehiculo,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+  vehiculos: VehiculoListItem[];
+  onAddVehiculo: (v: VehiculoListItem) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showNew, setShowNew] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [newNombre, setNewNombre] = useState("");
+  const [newMarca, setNewMarca] = useState("");
+  const [newPlacas, setNewPlacas] = useState("");
+  const [newColor, setNewColor] = useState("");
+
+  const selected = vehiculos.find(v => v.id === value);
+  const label = selected
+    ? selected.nombre + (selected.marca ? ` · ${selected.marca}` : "") + (selected.placas ? ` (${selected.placas})` : "")
+    : "— Seleccionar vehículo —";
+
+  const filtered = vehiculos.filter(v => {
+    const q = search.toLowerCase();
+    return !q ||
+      v.nombre.toLowerCase().includes(q) ||
+      (v.marca ?? "").toLowerCase().includes(q) ||
+      (v.placas ?? "").toLowerCase().includes(q);
+  });
+
+  async function handleCrear() {
+    if (!newNombre.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/vehiculos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: newNombre.trim(), marca: newMarca.trim() || null, placas: newPlacas.trim() || null, color: newColor.trim() || null }),
+      });
+      const d = await res.json();
+      if (res.ok && d.vehiculo) {
+        onAddVehiculo(d.vehiculo);
+        onChange(d.vehiculo.id);
+        setOpen(false); setShowNew(false);
+        setNewNombre(""); setNewMarca(""); setNewPlacas(""); setNewColor("");
+      }
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => { setOpen(v => !v); setShowNew(false); }}
+        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B] flex items-center justify-between"
+      >
+        <span className={selected ? "text-white" : "text-gray-600"}>{label}</span>
+        <svg className="w-3 h-3 text-gray-600 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-[#111] border border-[#333] rounded-xl overflow-hidden shadow-2xl">
+          <div className="px-2 pt-2 pb-1">
+            <input autoFocus type="text" value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar..."
+              className="w-full bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]/50" />
+          </div>
+          <div className="max-h-44 overflow-y-auto divide-y divide-[#1a1a1a]">
+            <button type="button" onClick={() => { onChange(""); setOpen(false); setSearch(""); }}
+              className="w-full text-left px-3 py-2 text-xs text-gray-600 hover:bg-[#1a1a1a] transition-colors">
+              — Sin vehículo —
+            </button>
+            {filtered.length === 0 && search && (
+              <p className="px-3 py-2 text-xs text-gray-700">Sin resultados</p>
+            )}
+            {filtered.map(v => (
+              <button key={v.id} type="button"
+                onClick={() => { onChange(v.id); setOpen(false); setSearch(""); }}
+                className="w-full text-left px-3 py-2 hover:bg-[#1a1a1a] transition-colors">
+                <p className="text-white text-xs">{v.nombre}</p>
+                <p className="text-gray-500 text-[10px]">{[v.marca, v.modelo, v.placas ? `Placas: ${v.placas}` : null].filter(Boolean).join(" · ")}</p>
+              </button>
+            ))}
+          </div>
+          <div className="border-t border-[#1a1a1a]">
+            {!showNew ? (
+              <button type="button" onClick={() => setShowNew(true)}
+                className="w-full text-left px-3 py-2.5 text-[#B3985B] hover:bg-[#1a1a1a] text-xs font-medium flex items-center gap-2 transition-colors">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+                Registrar nuevo vehículo
+              </button>
+            ) : (
+              <div className="p-3 space-y-2 bg-[#0d0d0d]">
+                <p className="text-[10px] font-bold text-[#B3985B] uppercase tracking-wider">Nuevo vehículo</p>
+                <input type="text" value={newNombre} onChange={e => setNewNombre(e.target.value)}
+                  placeholder="Nombre * (ej: Sprinter Negra)"
+                  className="w-full bg-[#111] border border-[#222] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]/50" />
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="text" value={newMarca} onChange={e => setNewMarca(e.target.value)}
+                    placeholder="Marca" className="bg-[#111] border border-[#222] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]/50" />
+                  <input type="text" value={newColor} onChange={e => setNewColor(e.target.value)}
+                    placeholder="Color" className="bg-[#111] border border-[#222] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]/50" />
+                </div>
+                <input type="text" value={newPlacas} onChange={e => setNewPlacas(e.target.value)}
+                  placeholder="Placas (opcional)"
+                  className="w-full bg-[#111] border border-[#222] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]/50" />
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setShowNew(false)}
+                    className="flex-1 text-xs text-gray-500 hover:text-gray-300 py-1.5 rounded-lg border border-[#222] transition-colors">Cancelar</button>
+                  <button type="button" onClick={handleCrear} disabled={!newNombre.trim() || saving}
+                    className="flex-1 text-xs font-semibold bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-50 text-black py-1.5 rounded-lg transition-colors">
+                    {saving ? "Guardando..." : "Registrar y usar"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProyectoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
@@ -3415,11 +3544,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">Vehículo</label>
-                      <Combobox
+                      <VehiculoIdSelector
                         value={slot.vehiculoId}
                         onChange={v => { const n = transporteSlots.map((s, idx) => idx === i ? { ...s, vehiculoId: v } : s); setTransporteSlots(n); guardarTransportes(n); }}
-                        options={[{ value: "", label: "— Seleccionar vehículo —" }, ...vehiculos.map(v => ({ value: v.id, label: v.nombre + (v.marca ? ` · ${v.marca}` : "") + (v.modelo ? ` ${v.modelo}` : "") + (v.placas ? ` (${v.placas})` : "") }))]}
-                        className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                        vehiculos={vehiculos}
+                        onAddVehiculo={v => setVehiculos(prev => [...prev, v].sort((a, b) => a.nombre.localeCompare(b.nombre)))}
                       />
                     </div>
                     <div>
