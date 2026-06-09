@@ -269,7 +269,7 @@ function TabSelector({ active, onChange, quoteCount }: { active: Tab; onChange: 
     {
       key: "catalogo",
       icon: (
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+        <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
           <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
           <rect x="18" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
           <rect x="2" y="18" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
@@ -282,7 +282,7 @@ function TabSelector({ active, onChange, quoteCount }: { active: Tab; onChange: 
     {
       key: "precios",
       icon: (
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+        <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
           <path d="M6 8h20M6 14h14M6 20h18M6 26h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
           <circle cx="26" cy="23" r="4" stroke="currentColor" strokeWidth="1.5"/>
           <path d="M26 21v2l1 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -294,7 +294,7 @@ function TabSelector({ active, onChange, quoteCount }: { active: Tab; onChange: 
     {
       key: "cotizador",
       icon: (
-        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+        <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
           <path d="M10 6H6a2 2 0 00-2 2v18a2 2 0 002 2h20a2 2 0 002-2V8a2 2 0 00-2-2h-4" stroke="currentColor" strokeWidth="1.5"/>
           <rect x="10" y="3" width="12" height="6" rx="2" stroke="currentColor" strokeWidth="1.5"/>
           <path d="M10 15h12M10 20h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -339,7 +339,7 @@ function TabSelector({ active, onChange, quoteCount }: { active: Tab; onChange: 
                 }}
               >
                 <span style={{ opacity: isActive ? 0.8 : 0.9, flexShrink: 0 }}>
-                  <svg width="22" height="22" viewBox="0 0 32 32" fill="none">{(c.icon as React.ReactElement).props.children}</svg>
+                  {c.icon}
                 </span>
                 <div>
                   <p style={{ fontWeight: 700, fontSize: "0.95rem", letterSpacing: "-0.01em", color: isActive ? "#000" : "white", marginBottom: "0.2rem" }}>
