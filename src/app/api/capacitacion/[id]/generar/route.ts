@@ -1,55 +1,51 @@
 import { NextRequest } from "next/server";
-import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import Anthropic from "@anthropic-ai/sdk";
+import { jwtVerify } from "jose";
 
-// Node.js runtime with streaming — avoids Vercel Hobby 10s timeout via chunked response
-export const runtime = "nodejs";
+// ── Edge runtime: no Prisma, sin límite de 10s (CPU time) ────────────────────
+export const runtime = "edge";
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-export async function POST(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await getSession();
-  if (!session) {
+type SesionData = {
+  numero: number;
+  titulo: string;
+  bloque: string;
+  fechaStr: string;
+  duracion: number;
+  impartidor: string;
+  puntos: string[];
+  notas: string | null;
+};
+
+export async function POST(req: NextRequest) {
+  // ── Auth: verifica JWT sin Prisma (Edge-compatible) ──────────────────────
+  const token = req.cookies.get("auth-token")?.value;
+  if (!token) {
     return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401 });
   }
-
-  const { id } = await params;
-
-  // Fetch session from DB
-  const sesion = await prisma.sesionCapacitacion.findUnique({
-    where: { id },
-    include: {
-      versiones: {
-        select: { version: true },
-        orderBy: { version: "desc" },
-        take: 1,
-      },
-    },
-  });
-
-  if (!sesion) {
-    return new Response(JSON.stringify({ error: "Sesión no encontrada" }), { status: 404 });
+  try {
+    const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET!);
+    await jwtVerify(token, secret);
+  } catch {
+    return new Response(JSON.stringify({ error: "Token inválido" }), { status: 401 });
   }
 
-  const nextVersion =
-    sesion.versiones.length > 0 ? sesion.versiones[0].version + 1 : 1;
-  const puntos =
-    sesion.puntosEditados.length > 0 ? sesion.puntosEditados : sesion.puntosBase;
-  const fechaStr = sesion.fechaProgramada
-    ? new Date(sesion.fechaProgramada).toLocaleDateString("es-MX", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      })
-    : "Por programar";
+  // ── Datos de sesión desde el body (cliente los envía) ───────────────────
+  let sesionData: SesionData;
+  try {
+    const body = await req.json() as { sesionData: SesionData };
+    sesionData = body.sesionData;
+    if (!sesionData?.titulo) throw new Error("sesionData incompleta");
+  } catch {
+    return new Response(JSON.stringify({ error: "Body inválido" }), { status: 400 });
+  }
 
+  const { numero, titulo, bloque, fechaStr, duracion, impartidor, puntos, notas } = sesionData;
+
+  // ── Prompts ────────────────────────────────────────────────────────────────
   const systemPrompt = `Eres el generador de presentaciones de capacitación interna de Mainstage Pro.
 Mainstage Pro es una empresa de producción técnica para eventos (audio, iluminación,
 video, rigging, staging) en Querétaro, México. El director es Mauricio Hernández.
@@ -137,19 +133,20 @@ Sin explicaciones, sin markdown, sin bloques de código, sin backticks.`;
 
   const userPrompt = `Genera la presentación para esta sesión de capacitación:
 
-NÚMERO: ${sesion.numero}
-TÍTULO: ${sesion.titulo}
-BLOQUE: ${sesion.bloque}
+NÚMERO: ${numero}
+TÍTULO: ${titulo}
+BLOQUE: ${bloque}
 FECHA: ${fechaStr}
-DURACIÓN: ${sesion.duracion} minutos
-IMPARTIDOR: ${sesion.impartidor}
+DURACIÓN: ${duracion} minutos
+IMPARTIDOR: ${impartidor}
 
 PUNTOS DE LA SESIÓN:
 ${puntos.map((p, i) => `${String(i + 1).padStart(2, "0")}. ${p}`).join("\n")}
 
 NOTAS PERSONALES DEL DIRECTOR (integrar de forma natural):
-${sesion.notas?.trim() || "No hay notas adicionales para esta sesión."}`;
+${notas?.trim() || "No hay notas adicionales para esta sesión."}`;
 
+  // ── SSE Stream ─────────────────────────────────────────────────────────────
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
@@ -158,12 +155,10 @@ ${sesion.notas?.trim() || "No hay notas adicionales para esta sesión."}`;
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
       }
 
-      let htmlContent = "";
-
       try {
         const anthropicStream = await client.messages.create({
           model: "claude-sonnet-4-5-20250929",
-          max_tokens: 8000,
+          max_tokens: 6000,
           system: systemPrompt,
           messages: [{ role: "user", content: userPrompt }],
           stream: true,
@@ -174,43 +169,12 @@ ${sesion.notas?.trim() || "No hay notas adicionales para esta sesión."}`;
             event.type === "content_block_delta" &&
             event.delta.type === "text_delta"
           ) {
-            htmlContent += event.delta.text;
             send({ type: "chunk", text: event.delta.text });
           }
         }
 
-        // Clean HTML
-        if (
-          !htmlContent.startsWith("<!DOCTYPE html") &&
-          !htmlContent.startsWith("<!doctype html")
-        ) {
-          const match = htmlContent.match(/(<!DOCTYPE html[\s\S]*)/i);
-          if (match) htmlContent = match[1];
-        }
-
-        // Save to DB (Node.js runtime — Prisma works fine here)
-        const version = await prisma.versionPresentacion.create({
-          data: {
-            sesionId: id,
-            version: nextVersion,
-            htmlContent,
-            notasSnapshot: sesion.notas,
-            puntosSnapshot: puntos,
-            generadaPor: session.name ?? "Mauricio Hernández",
-          },
-        });
-
-        await prisma.sesionCapacitacion.update({
-          where: { id },
-          data: { estado: "lista" },
-        });
-
-        send({
-          type: "done",
-          versionId: version.id,
-          version: version.version,
-          generadaEn: version.generadaEn.toISOString(),
-        });
+        // Stream done — client will call /versiones to save to DB
+        send({ type: "done" });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Error desconocido";
         send({ type: "error", message: `Error al generar con IA: ${msg}` });

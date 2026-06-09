@@ -360,13 +360,37 @@ export default function CapacitacionDetailPage() {
     showToast("Configuración guardada", "success");
   }
 
-  // ── Generate (SSE streaming) ──────────────────────────────────────────────────
+  // ── Generate (SSE streaming via Edge route) ───────────────────────────────
   async function handleGenerate() {
+    if (!sesion) return;
     setGenerating(true);
     showToast("Generando presentación con Claude IA...", "info");
 
     try {
-      const res = await fetch(`/api/capacitacion/${id}/generar`, { method: "POST" });
+      // Build fecha string client-side (same as server used to do)
+      const fechaStr = sesion.fechaProgramada
+        ? new Date(sesion.fechaProgramada).toLocaleDateString("es-MX", {
+            weekday: "long", day: "numeric", month: "long", year: "numeric",
+          })
+        : "Por programar";
+
+      // POST session data in body — Edge route has no Prisma access
+      const res = await fetch(`/api/capacitacion/${id}/generar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sesionData: {
+            numero: sesion.numero,
+            titulo: sesion.titulo,
+            bloque: sesion.bloque,
+            fechaStr,
+            duracion: sesion.duracion,
+            impartidor,
+            puntos: puntos.map((p) => p.text),
+            notas,
+          },
+        }),
+      });
 
       if (!res.ok || !res.body) {
         let msg = "Error al conectar con el servidor";
@@ -374,6 +398,7 @@ export default function CapacitacionDetailPage() {
         throw new Error(msg);
       }
 
+      // ── Stream reading ──────────────────────────────────────────────────
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -394,21 +419,6 @@ export default function CapacitacionDetailPage() {
           serverError = typeof ev.message === "string" ? ev.message : "Error al generar presentación";
         } else if (ev.type === "done") {
           doneSeen = true;
-          const newVersion: VersionMeta = {
-            id: ev.versionId as string,
-            version: ev.version as number,
-            generadaPor: impartidor,
-            generadaEn: ev.generadaEn as string,
-            notasSnapshot: notas,
-            puntosSnapshot: puntos.map((p) => p.text),
-          };
-          setSesion((prev) =>
-            prev ? { ...prev, estado: "lista", versiones: [newVersion, ...prev.versiones] } : prev
-          );
-          setEstado("lista");
-          showToast(`Presentación v${ev.version} generada`, "success");
-          setModalHtml(htmlContent);
-          setModalTitle(`Sesión ${padNum(sesion?.numero ?? 0)} — v${ev.version}`);
         }
       }
 
@@ -423,7 +433,43 @@ export default function CapacitacionDetailPage() {
       if (buffer.trim()) buffer.split("\n").forEach(parseLine);
 
       if (serverError) throw new Error(serverError);
-      if (!doneSeen) throw new Error("La generación fue interrumpida por timeout. Intenta de nuevo.");
+      if (!doneSeen) throw new Error("La generación fue interrumpida (timeout). Intenta de nuevo.");
+
+      // Clean HTML if needed
+      if (!htmlContent.startsWith("<!DOCTYPE") && !htmlContent.startsWith("<!doctype")) {
+        const match = htmlContent.match(/(<!DOCTYPE html[\s\S]*)/i);
+        if (match) htmlContent = match[1];
+      }
+
+      // ── Guardar versión en DB (Node.js route) ──────────────────────────
+      showToast("Guardando presentación...", "info");
+      const saveRes = await fetch(`/api/capacitacion/${id}/versiones`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          htmlContent,
+          notasSnapshot: notas,
+          puntosSnapshot: puntos.map((p) => p.text),
+        }),
+      });
+      const saveData = await saveRes.json();
+      if (!saveRes.ok) throw new Error(saveData.error || "Error al guardar la presentación");
+
+      const newVersion: VersionMeta = {
+        id: saveData.versionId,
+        version: saveData.version,
+        generadaPor: impartidor,
+        generadaEn: saveData.generadaEn,
+        notasSnapshot: notas,
+        puntosSnapshot: puntos.map((p) => p.text),
+      };
+      setSesion((prev) =>
+        prev ? { ...prev, estado: "lista", versiones: [newVersion, ...prev.versiones] } : prev
+      );
+      setEstado("lista");
+      showToast(`Presentación v${saveData.version} generada ✓`, "success");
+      setModalHtml(htmlContent);
+      setModalTitle(`Sesión ${padNum(sesion.numero)} — v${saveData.version}`);
 
     } catch (err) {
       showToast(
