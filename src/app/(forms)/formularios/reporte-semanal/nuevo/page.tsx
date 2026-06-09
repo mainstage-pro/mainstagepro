@@ -243,15 +243,15 @@ export default function ReporteSemanalLandingPage() {
     if (selectedTask?.id === id) setSelectedTask(null)
   }
 
-  async function handleDateChange(id: string, field: 'fecha' | 'fechaVencimiento', value: string) {
+  async function handleDateChange(id: string, value: string) {
     await fetch(`/api/tareas/${id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [field]: value || null }),
+      body: JSON.stringify({ fecha: value || null }),
     })
-    const updater = (t: TareaItem) => t.id === id ? { ...t, [field]: value } : t
+    const updater = (t: TareaItem) => t.id === id ? { ...t, fecha: value } : t
     setTareasOp(prev => prev.map(updater))
     setTareasProxima(prev => prev.map(updater))
-    if (selectedTask?.id === id) setSelectedTask(prev => prev ? { ...prev, [field]: value } : prev)
+    if (selectedTask?.id === id) setSelectedTask(prev => prev ? { ...prev, fecha: value } : prev)
   }
 
   async function handlePriorityChange(id: string, prioridad: string) {
@@ -301,7 +301,7 @@ export default function ReporteSemanalLandingPage() {
         descripcion:      updated.descripcion ?? t.descripcion,
         prioridad:        updated.prioridad ?? t.prioridad,
         fecha:            updated.fecha ?? t.fecha,
-        fechaVencimiento: updated.fechaVencimiento ?? t.fechaVencimiento,
+        
         asignadoA:        updated.asignadoA ?? t.asignadoA,
         proyectoTarea:    updated.proyectoTarea ?? t.proyectoTarea,
       } : t
@@ -359,7 +359,7 @@ export default function ReporteSemanalLandingPage() {
         area: tarea.area,
         estado: tarea.estado,
         fecha: tarea.fecha ?? null,
-        fechaVencimiento: tarea.fechaVencimiento ?? null,
+        
         recurrencia: tarea.recurrencia ?? null,
         proyectoTarea: tarea.proyectoTarea ?? null,
         seccion: tarea.seccion ?? null,
@@ -388,7 +388,7 @@ export default function ReporteSemanalLandingPage() {
           tareas: tareasProxima.map(t => ({
             tareaId: t.id,
             titulo: t.titulo,
-            fechaVencimiento: t.fechaVencimiento || null,
+            
           })),
           incidencias: incidenciasLimpias, mejoras, compromisos, sugerencias, bienestar,
           tareasOperaciones: tareasOp.map(t => ({ tareaId: t.id, titulo: t.titulo, accion: 'pendiente' })),

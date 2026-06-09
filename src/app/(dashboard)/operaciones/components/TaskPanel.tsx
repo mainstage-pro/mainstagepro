@@ -13,7 +13,7 @@ interface Iniciativa { id: string; nombre: string; color: string | null }
 
 interface Subtarea {
   id: string; titulo: string; estado: string; prioridad: string;
-  fecha: string | null; fechaVencimiento: string | null;
+  fecha: string | null;
   _count: { subtareas: number };
 }
 
@@ -21,7 +21,7 @@ function subtareaToItem(s: Subtarea): TareaItem {
   return {
     id: s.id, titulo: s.titulo, descripcion: null,
     prioridad: s.prioridad, area: "GENERAL", estado: s.estado,
-    fecha: s.fecha, fechaVencimiento: s.fechaVencimiento,
+    fecha: s.fecha, 
     recurrencia: null, proyectoTarea: null, seccion: null, asignadoA: null,
     _count: { subtareas: s._count.subtareas, comentarios: 0, archivos: 0 },
     createdAt: new Date().toISOString(), fechaCompletada: null,
@@ -38,7 +38,7 @@ interface Archivo {
 export interface TareaDetalle {
   id: string; titulo: string; descripcion: string | null; prioridad: string;
   area: string; estado: string; notas: string | null; etiquetas: string | null;
-  fecha: string | null; fechaVencimiento: string | null; recurrencia: string | null;
+  fecha: string | null; recurrencia: string | null;
   asignadoA: { id: string; name: string } | null;
   proyectoTarea: { id: string; nombre: string; color: string | null } | null;
   seccion: { id: string; nombre: string } | null;
@@ -95,7 +95,6 @@ export default function TaskPanel({
   const [proyectoId, setProyectoId]   = useState(tarea.proyectoTarea?.id ?? "");
   const [iniciativaId, setIniciativaId] = useState(tarea.iniciativa?.id ?? "");
   const [fecha, setFecha]         = useState(tarea.fecha ? tarea.fecha.substring(0, 10) : "");
-  const [fechaVen, setFechaVen]   = useState(tarea.fechaVencimiento ? tarea.fechaVencimiento.substring(0, 10) : "");
   const [recTexto, setRecTexto]   = useState("");
   const [editingRec, setEditingRec] = useState(false);
   const [comentario, setComentario] = useState("");
@@ -136,7 +135,6 @@ export default function TaskPanel({
     setProyectoId(tarea.proyectoTarea?.id ?? "");
     setIniciativaId(tarea.iniciativa?.id ?? "");
     setFecha(tarea.fecha ? tarea.fecha.substring(0, 10) : "");
-    setFechaVen(tarea.fechaVencimiento ? tarea.fechaVencimiento.substring(0, 10) : "");
     setShowFechaVenPicker(false);
     setDirty(false);
     setSubtareasLocal(tarea.subtareas ?? []);
@@ -160,7 +158,7 @@ export default function TaskPanel({
       proyectoTareaId:  proyectoId       || null,
       iniciativaId:     iniciativaId     || null,
       fecha:            fecha            || null,
-      fechaVencimiento: fechaVen         || null,
+      fecha:            fecha            || null,
     });
     setSaving(false);
     setDirty(false);
@@ -429,18 +427,6 @@ export default function TaskPanel({
             {!editingRec && !tarea.recurrencia && (
               <div className="space-y-2">
                 <DatePicker value={fecha} onChange={val => { setFecha(val); mark(); }} size="sm" />
-                {(fechaVen || showFechaVenPicker) ? (
-                  <DatePicker
-                    value={fechaVen}
-                    onChange={val => { setFechaVen(val); mark(); if (!val) setShowFechaVenPicker(false); }}
-                    size="sm" showClear placeholder="Fecha límite (opcional)"
-                  />
-                ) : (
-                  <button onClick={() => setShowFechaVenPicker(true)}
-                    className="text-xs text-[#333] hover:text-[#666] transition-colors py-0.5">
-                    + Fecha límite
-                  </button>
-                )}
               </div>
             )}
 
@@ -491,9 +477,9 @@ export default function TaskPanel({
                 onDeleteSubtarea(sub.id);
                 setSubtareasLocal(prev => prev.filter(s => s.id !== sub.id));
               }}
-              onDateChange={(id, field, val) => {
-                onSave(id, { [field]: val || null });
-                setSubtareasLocal(prev => prev.map(s => s.id === id ? { ...s, [field]: val || null } : s));
+              onDateChange={(id, val) => {
+                onSave(id, { fecha: val || null });
+                setSubtareasLocal(prev => prev.map(s => s.id === id ? { ...s, fecha: val || null } : s));
               }}
             />
           ))}

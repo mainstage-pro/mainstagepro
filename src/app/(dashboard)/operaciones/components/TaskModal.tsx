@@ -30,7 +30,7 @@ function subtareaToItem(s: Subtarea): TareaItem {
   return {
     id: s.id, titulo: s.titulo, descripcion: null,
     prioridad: s.prioridad, area: "GENERAL", estado: s.estado,
-    fecha: s.fecha, fechaVencimiento: s.fechaVencimiento,
+    fecha: s.fecha,
     recurrencia: null, proyectoTarea: null, seccion: null, asignadoA: null,
     _count: { subtareas: s._count.subtareas, comentarios: 0, archivos: 0 },
     createdAt: new Date().toISOString(), fechaCompletada: null,
@@ -730,9 +730,9 @@ export default function TaskModal({
                       onDeleteSubtarea(sub.id);
                       setSubtareasLocal(prev => prev.filter(s => s.id !== sub.id));
                     }}
-                    onDateChange={(id, field, val) => {
-                      onSave(id, { [field]: val || null });
-                      setSubtareasLocal(prev => prev.map(s => s.id === id ? { ...s, [field]: val || null } : s));
+                    onDateChange={(id, val) => {
+                      onSave(id, { fecha: val || null });
+                      setSubtareasLocal(prev => prev.map(s => s.id === id ? { ...s, fecha: val || null } : s));
                     }}
                   />
                 ))}

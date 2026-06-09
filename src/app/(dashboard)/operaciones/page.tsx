@@ -396,8 +396,8 @@ export default function OperacionesPage() {
     });
     if (proyViewOpts.sortBy === "fecha") {
       r = [...r].sort((a, b) => {
-        const da = a.fecha ?? a.fechaVencimiento ?? null;
-        const db = b.fecha ?? b.fechaVencimiento ?? null;
+        const da = a.fecha ?? null;
+        const db = b.fecha ?? null;
         if (!da) return 1; if (!db) return -1;
         return da.localeCompare(db);
       });
@@ -597,7 +597,6 @@ export default function OperacionesPage() {
       if (patch.area         != null) next.area      = patch.area      as string;
       if (patch.estado       != null) next.estado    = patch.estado    as string;
       if ("fecha"            in patch) next.fecha            = patch.fecha            as string | null;
-      if ("fechaVencimiento" in patch) next.fechaVencimiento = patch.fechaVencimiento as string | null;
       if ("asignadoAId"      in patch) {
         const uid = patch.asignadoAId as string | null;
         next.asignadoA = uid ? (usuarios.find(u => u.id === uid) ?? null) : null;
@@ -957,8 +956,8 @@ export default function OperacionesPage() {
       });
       if (vistaOpts.sortBy === "fecha") {
         return [...arr].sort((a, b) => {
-          const da = a.fecha ?? a.fechaVencimiento ?? null;
-          const db = b.fecha ?? b.fechaVencimiento ?? null;
+          const da = a.fecha ?? null;
+          const db = b.fecha ?? null;
           if (!da) return 1; if (!db) return -1;
           return da.localeCompare(db);
         });
@@ -1003,7 +1002,7 @@ export default function OperacionesPage() {
     let base = applyBusqueda(vistaOpts.showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA"));
     if (vistaOpts.filterPrio.length > 0) base = base.filter(t => vistaOpts.filterPrio.includes(t.prioridad));
     if (vistaOpts.sortBy === "prioridad") return [...base].sort((a, b) => (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3));
-    if (vistaOpts.sortBy === "fecha")     return [...base].sort((a, b) => { if (!a.fechaVencimiento) return 1; if (!b.fechaVencimiento) return -1; return a.fechaVencimiento.localeCompare(b.fechaVencimiento); });
+    if (vistaOpts.sortBy === "fecha")     return [...base].sort((a, b) => { if (!a.fecha) return 1; if (!b.fecha) return -1; return a.fecha.localeCompare(b.fecha); });
     if (vistaOpts.sortBy === "nombre")    return [...base].sort((a, b) => a.titulo.localeCompare(b.titulo, "es"));
     return sortCronoPrio(base);
   }, [tareas, vistaOpts, busqueda]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1681,7 +1680,7 @@ export default function OperacionesPage() {
               {searchResults.map(t => (
                 <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
                   onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
-                  onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
+                  onDateChange={(id, val) => saveTarea(id, { fecha: val || null })}
                   onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                   onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
                   onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
@@ -1765,7 +1764,7 @@ export default function OperacionesPage() {
                   {group.tareas.map(t => (
                     <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
                       onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
-                      onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
+                      onDateChange={(id, val) => saveTarea(id, { fecha: val || null })}
                       onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                       onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
                       onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
@@ -1809,7 +1808,7 @@ export default function OperacionesPage() {
               ) : tareasOrdenadas.map(t => (
                 <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
                   onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
-                  onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
+                  onDateChange={(id, val) => saveTarea(id, { fecha: val || null })}
                   onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                   onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
                   onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
@@ -1851,7 +1850,7 @@ export default function OperacionesPage() {
                     {group.tareas.map(t => (
                       <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
                         onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
-                        onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
+                        onDateChange={(id, val) => saveTarea(id, { fecha: val || null })}
                         onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                         onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
                         onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
@@ -1873,7 +1872,7 @@ export default function OperacionesPage() {
                 tareasOrdenadas.map(t => (
                   <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
                     onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
-                    onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
+                    onDateChange={(id, val) => saveTarea(id, { fecha: val || null })}
                     onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                     onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
                     onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
@@ -1967,7 +1966,7 @@ export default function OperacionesPage() {
                       {group.items.map(t => (
                         <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
                           onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
-                          onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
+                          onDateChange={(id, val) => saveTarea(id, { fecha: val || null })}
                           onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                           onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
                           onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
@@ -2007,7 +2006,7 @@ export default function OperacionesPage() {
                         }
                       }}
                       onMoveToNoSection={moveToNoSection}
-                      onDateChange={(id, field, val) => saveTarea(id, { [field]: val || null })}
+                      onDateChange={(id, val) => saveTarea(id, { fecha: val || null })}
                       onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                       onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
                       onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
@@ -2926,7 +2925,7 @@ function SectionBlock({
   onMoveToSection?:   (taskId: string, seccionId: string) => void;
   ptrTargetSec?:      string | null;
   onPtrDragStart?:    (taskId: string, title: string) => void;
-  onDateChange?:      (id: string, field: "fecha" | "fechaVencimiento", value: string) => void;
+  onDateChange?:      (id: string, value: string) => void;
 }) {
   const [hov,        setHov]        = useState(false);
   const [headerOver, setHeaderOver] = useState(false);
