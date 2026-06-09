@@ -7,30 +7,27 @@ import { getSession } from "@/lib/auth";
 // Running server-side means we can use /logo-white.png as a relative URL
 // (the browser will resolve it against the serving domain).
 
+// CSS injection: controls all slide visibility via .active class
+// Using !important beats ALL inline styles and CSS rules Claude may have generated
+const SLIDE_CSS = `<style id="ms-nav-css">
+section.slide, div.slide { display: none !important; }
+section.slide.active, div.slide.active { display: flex !important; }
+</style>`;
+
 const NAV_SCRIPT = `
 <script>
-// Globals — onclick="goTo(cur-1)" reads these directly from window scope
 var cur = 0;
 var _slides = [];
 var _dots   = [];
 var _counter = null;
-
-function show(el) {
-  // CSS already has .slide { display:flex } — just remove the inline override
-  el.style.removeProperty('display');
-}
-function hide(el) {
-  // Inline style beats the CSS rule
-  el.style.display = 'none';
-}
 
 function init() {
   _slides  = Array.from(document.querySelectorAll('.slide'));
   _dots    = Array.from(document.querySelectorAll('.dot'));
   _counter = document.getElementById('slide-counter');
   if (!_slides.length) return;
-  _slides.forEach(function(s, i) { if (i === 0) show(s); else hide(s); });
-  _dots.forEach(function(d, i)   { d.style.opacity = i === 0 ? '1' : '0.3'; });
+  _slides[0].classList.add('active');
+  _dots.forEach(function(d, i) { d.style.opacity = i === 0 ? '1' : '0.3'; });
   if (_counter) _counter.textContent = '01 / ' + String(_slides.length).padStart(2, '0');
 }
 
@@ -39,10 +36,10 @@ function goTo(n) {
   if (!_slides.length) return;
   n = parseInt(n, 10);
   if (isNaN(n)) return;
-  hide(_slides[cur]);
+  _slides[cur].classList.remove('active');
   if (_dots[cur]) _dots[cur].style.opacity = '0.3';
   cur = ((n % _slides.length) + _slides.length) % _slides.length;
-  show(_slides[cur]);
+  _slides[cur].classList.add('active');
   if (_dots[cur]) _dots[cur].style.opacity = '1';
   if (_counter) _counter.textContent =
     String(cur + 1).padStart(2, '0') + ' / ' + String(_slides.length).padStart(2, '0');
@@ -74,11 +71,17 @@ function fixHtml(html: string): string {
     LOGO_IMG
   );
 
-  // 3. Inject nav script before </body>
-  if (result.includes("</body>")) {
-    result = result.replace(/<\/body>/i, NAV_SCRIPT + "</body>");
+  // 3. Inject CSS + script — try before </head>, then before </body>, then append
+  const injection = SLIDE_CSS + "\n" + NAV_SCRIPT;
+  if (result.includes("</head>")) {
+    result = result.replace(/<\/head>/i, SLIDE_CSS + "</head>");
+    result = result.includes("</body>")
+      ? result.replace(/<\/body>/i, NAV_SCRIPT + "</body>")
+      : result + NAV_SCRIPT;
+  } else if (result.includes("</body>")) {
+    result = result.replace(/<\/body>/i, injection + "</body>");
   } else {
-    result = result + NAV_SCRIPT;
+    result = result + injection;
   }
 
   return result;
