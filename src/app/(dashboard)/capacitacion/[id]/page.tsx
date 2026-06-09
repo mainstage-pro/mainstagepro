@@ -130,6 +130,66 @@ function SortablePoint({
   );
 }
 
+// ─── Navigation fix ───────────────────────────────────────────────────────────
+// Claude's generated scripts can be broken (wrapped in DOMContentLoaded, wrong
+// scope, wrong order, etc.). We strip them all and inject our own bulletproof
+// implementation so navigation always works.
+
+const NAV_SCRIPT = `
+<script>
+(function() {
+  var cur = 0;
+  var slides = [];
+  var dots   = [];
+  var counter = null;
+
+  function init() {
+    slides  = Array.from(document.querySelectorAll('.slide'));
+    dots    = Array.from(document.querySelectorAll('.dot'));
+    counter = document.getElementById('slide-counter');
+    if (!slides.length) return;
+    slides.forEach(function(s, i) { s.style.display = i === 0 ? 'flex' : 'none'; });
+    dots.forEach(function(d, i)   { d.style.opacity = i === 0 ? '1'    : '0.3';  });
+    if (counter) counter.textContent = '01 / ' + String(slides.length).padStart(2,'0');
+  }
+
+  window.goTo = function(n) {
+    if (!slides.length) { init(); }
+    if (!slides.length) return;
+    slides[cur].style.display = 'none';
+    if (dots[cur]) dots[cur].style.opacity = '0.3';
+    cur = ((n % slides.length) + slides.length) % slides.length;
+    slides[cur].style.display = 'flex';
+    if (dots[cur]) dots[cur].style.opacity = '1';
+    if (counter) counter.textContent =
+      String(cur + 1).padStart(2,'0') + ' / ' + String(slides.length).padStart(2,'0');
+  };
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') window.goTo(cur + 1);
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   window.goTo(cur - 1);
+  });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+</script>`;
+
+function fixNavigation(html: string): string {
+  if (!html) return html;
+  // Remove all existing <script>...</script> blocks from Claude's output
+  const stripped = html.replace(/<script[\s\S]*?<\/script>/gi, "");
+  // Inject our script right before </body>
+  if (stripped.includes("</body>")) {
+    return stripped.replace(/<\/body>/i, NAV_SCRIPT + "</body>");
+  }
+  // Fallback: append at end
+  return stripped + NAV_SCRIPT;
+}
+
 // ─── Presentation Modal ───────────────────────────────────────────────────────
 
 function PresentationModal({
@@ -142,6 +202,8 @@ function PresentationModal({
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
+
+  const fixed = React.useMemo(() => fixNavigation(htmlContent), [htmlContent]);
 
   return (
     <div
@@ -166,10 +228,11 @@ function PresentationModal({
         </button>
       </div>
 
-      {/* iframe */}
+      {/* iframe — key forces remount when content changes */}
       <iframe
+        key={fixed.length}
         className="flex-1 w-full border-none"
-        srcDoc={htmlContent}
+        srcDoc={fixed}
         title="Presentación de capacitación"
         sandbox="allow-scripts allow-same-origin"
       />
