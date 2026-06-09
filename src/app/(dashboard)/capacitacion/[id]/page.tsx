@@ -378,57 +378,67 @@ export default function CapacitacionDetailPage() {
       let buffer = "";
       let htmlContent = "";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      function processLine(line: string) {
+        if (!line.startsWith("data: ")) return;
+        const raw = line.slice(6).trim();
+        if (!raw) return;
 
-        buffer += decoder.decode(value, { stream: true });
+        try {
+          const event = JSON.parse(raw) as {
+            type: "chunk" | "done" | "error";
+            text?: string;
+            message?: string;
+            versionId?: string;
+            version?: number;
+            generadaEn?: string;
+          };
 
-        // Parse SSE lines
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? ""; // keep incomplete line in buffer
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const raw = line.slice(6).trim();
-          if (!raw) continue;
-
-          try {
-            const event = JSON.parse(raw) as {
-              type: "chunk" | "done" | "error";
-              text?: string;
-              message?: string;
-              versionId?: string;
-              version?: number;
-              generadaEn?: string;
+          if (event.type === "chunk" && event.text) {
+            htmlContent += event.text;
+          } else if (event.type === "error") {
+            throw new Error(event.message ?? "Error al generar");
+          } else if (event.type === "done") {
+            const newVersion: VersionMeta = {
+              id: event.versionId!,
+              version: event.version!,
+              generadaPor: impartidor,
+              generadaEn: event.generadaEn!,
+              notasSnapshot: notas,
+              puntosSnapshot: puntos.map((p) => p.text),
             };
-
-            if (event.type === "chunk" && event.text) {
-              htmlContent += event.text;
-            } else if (event.type === "error") {
-              throw new Error(event.message ?? "Error al generar");
-            } else if (event.type === "done") {
-              const newVersion: VersionMeta = {
-                id: event.versionId!,
-                version: event.version!,
-                generadaPor: impartidor,
-                generadaEn: event.generadaEn!,
-                notasSnapshot: notas,
-                puntosSnapshot: puntos.map((p) => p.text),
-              };
-              setSesion((prev) =>
-                prev ? { ...prev, estado: "lista", versiones: [newVersion, ...prev.versiones] } : prev
-              );
-              setEstado("lista");
-              showToast(`Presentación v${event.version} generada`, "success");
-              setModalHtml(htmlContent);
-              setModalTitle(`Sesión ${padNum(sesion?.numero ?? 0)} — v${event.version}`);
-            }
-          } catch (parseErr) {
-            // Skip unparseable SSE lines
+            setSesion((prev) =>
+              prev ? { ...prev, estado: "lista", versiones: [newVersion, ...prev.versiones] } : prev
+            );
+            setEstado("lista");
+            showToast(`Presentación v${event.version} generada`, "success");
+            setModalHtml(htmlContent);
+            setModalTitle(`Sesión ${padNum(sesion?.numero ?? 0)} — v${event.version}`);
           }
+        } catch {
+          // skip
         }
       }
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (value) {
+          buffer += decoder.decode(value, { stream: !done });
+        }
+
+        // On final chunk, flush everything
+        const lines = buffer.split("\n");
+        buffer = done ? "" : (lines.pop() ?? "");
+        lines.forEach(processLine);
+
+        if (done) break;
+      }
+
+      // Process any remaining data in buffer
+      if (buffer.trim()) {
+        buffer.split("\n").forEach(processLine);
+      }
+
     } catch (err) {
       showToast(
         err instanceof Error ? err.message : "No se pudo generar la presentación. Intenta de nuevo.",
