@@ -1,14 +1,19 @@
 import { NextRequest } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import Anthropic from "@anthropic-ai/sdk";
 
-export const runtime = "edge";
+// Node.js runtime with streaming — avoids Vercel Hobby 10s timeout via chunked response
+export const runtime = "nodejs";
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// POST /api/capacitacion/[id]/generar — Stream HTML generation via SSE
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const session = await getSession();
   if (!session) {
     return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401 });
@@ -16,20 +21,32 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
 
-  // 1. Fetch session
+  // Fetch session from DB
   const sesion = await prisma.sesionCapacitacion.findUnique({
     where: { id },
-    include: { versiones: { select: { version: true }, orderBy: { version: "desc" }, take: 1 } },
+    include: {
+      versiones: {
+        select: { version: true },
+        orderBy: { version: "desc" },
+        take: 1,
+      },
+    },
   });
+
   if (!sesion) {
     return new Response(JSON.stringify({ error: "Sesión no encontrada" }), { status: 404 });
   }
 
-  const nextVersion = sesion.versiones.length > 0 ? sesion.versiones[0].version + 1 : 1;
-  const puntos = sesion.puntosEditados.length > 0 ? sesion.puntosEditados : sesion.puntosBase;
+  const nextVersion =
+    sesion.versiones.length > 0 ? sesion.versiones[0].version + 1 : 1;
+  const puntos =
+    sesion.puntosEditados.length > 0 ? sesion.puntosEditados : sesion.puntosBase;
   const fechaStr = sesion.fechaProgramada
     ? new Date(sesion.fechaProgramada).toLocaleDateString("es-MX", {
-        weekday: "long", day: "numeric", month: "long", year: "numeric",
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
       })
     : "Por programar";
 
@@ -112,9 +129,8 @@ NAVEGACIÓN JS (obligatoria):
 
 SOBRE LAS NOTAS DEL DIRECTOR:
 Integra las notas de forma completamente natural. No las menciones como 'notas agregadas'.
-Úsalas para enriquecer el concepto clave (slide 4), alimentar el desarrollo (slide 5),
-construir la frase de reflexión (slide 6) o formular la pregunta del cierre (slide 7).
-El resultado debe sentirse como UNA sola presentación coherente.
+Úsalas para enriquecer el concepto clave, alimentar el desarrollo, construir la frase
+de reflexión o formular la pregunta del cierre. El resultado debe ser UNA presentación coherente.
 
 Devuelve ÚNICAMENTE el HTML completo empezando con <!DOCTYPE html>.
 Sin explicaciones, sin markdown, sin bloques de código, sin backticks.`;
@@ -131,10 +147,9 @@ IMPARTIDOR: ${sesion.impartidor}
 PUNTOS DE LA SESIÓN:
 ${puntos.map((p, i) => `${String(i + 1).padStart(2, "0")}. ${p}`).join("\n")}
 
-NOTAS PERSONALES DEL DIRECTOR (integrar de forma natural en la presentación):
+NOTAS PERSONALES DEL DIRECTOR (integrar de forma natural):
 ${sesion.notas?.trim() || "No hay notas adicionales para esta sesión."}`;
 
-  // 2. Stream SSE response
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream({
@@ -143,14 +158,15 @@ ${sesion.notas?.trim() || "No hay notas adicionales para esta sesión."}`;
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
       }
 
-      try {
-        let htmlContent = "";
+      let htmlContent = "";
 
-        const anthropicStream = client.messages.stream({
+      try {
+        const anthropicStream = await client.messages.create({
           model: "claude-sonnet-4-5-20250929",
           max_tokens: 8000,
           system: systemPrompt,
           messages: [{ role: "user", content: userPrompt }],
+          stream: true,
         });
 
         for await (const event of anthropicStream) {
@@ -163,13 +179,16 @@ ${sesion.notas?.trim() || "No hay notas adicionales para esta sesión."}`;
           }
         }
 
-        // Clean up HTML
-        if (!htmlContent.startsWith("<!DOCTYPE html") && !htmlContent.startsWith("<!doctype html")) {
+        // Clean HTML
+        if (
+          !htmlContent.startsWith("<!DOCTYPE html") &&
+          !htmlContent.startsWith("<!doctype html")
+        ) {
           const match = htmlContent.match(/(<!DOCTYPE html[\s\S]*)/i);
           if (match) htmlContent = match[1];
         }
 
-        // Save to DB
+        // Save to DB (Node.js runtime — Prisma works fine here)
         const version = await prisma.versionPresentacion.create({
           data: {
             sesionId: id,
@@ -190,7 +209,7 @@ ${sesion.notas?.trim() || "No hay notas adicionales para esta sesión."}`;
           type: "done",
           versionId: version.id,
           version: version.version,
-          generadaEn: version.generadaEn,
+          generadaEn: version.generadaEn.toISOString(),
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Error desconocido";
@@ -204,8 +223,9 @@ ${sesion.notas?.trim() || "No hay notas adicionales para esta sesión."}`;
   return new Response(stream, {
     headers: {
       "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
+      "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
     },
   });
 }
