@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 const GOLD = "#B3985B";
 const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20conocer%20el%20equipo%20disponible%20para%20mi%20evento.";
@@ -114,7 +114,42 @@ const CAT_HERO_IMGS: Record<string, string> = {
   "Entarimado":              "/images/presentacion/entarimado.png",
 };
 
+// ─── Equipment that should always show the Mainstage logo (no real image) ────
+const FORCE_LOGO_KEYWORDS = [
+  "laser led 6 watts",
+  "l\u00e1ser led 6 watts",
+  "cym pro",
+  "elevadores de audio",
+  "esquinero de truss a 45",
+  "motores de rigging",
+  "pantalla smart tv 50",
+  "back decorativo acabado tipo m\u00e1rmol",
+  "booth decorativo acabado tipo m\u00e1rmol",
+  "booth decorativo premium color blanco",
+  "torre decorativa premium blanco 2 metros",
+  "torre decorativa premium blanco 2.5 metros",
+  "entarimado 2.5",
+];
+
+// ─── Equipment to hide from the presentation entirely ─────────────────────────
+const EXCLUDE_KEYWORDS = [
+  "colocaci\u00f3n de puntos de colgado",
+  "anclaje en alturas",
+];
+
+function shouldForceLogo(eq: EquipoData): boolean {
+  const desc = (eq.descripcion ?? "").toLowerCase();
+  return FORCE_LOGO_KEYWORDS.some(k => desc.includes(k.toLowerCase()));
+}
+
+function shouldExclude(eq: EquipoData): boolean {
+  const desc = (eq.descripcion ?? "").toLowerCase();
+  return EXCLUDE_KEYWORDS.some(k => desc.includes(k.toLowerCase()));
+}
+
 function getEqImg(eq: EquipoData): string | null {
+  // Force logo for specific equipment
+  if (shouldForceLogo(eq)) return null;
   // DB image takes absolute priority
   if (eq.imagenUrl) return eq.imagenUrl;
   // Fallback to hardcoded map (covers equipment without DB image yet)
@@ -190,7 +225,7 @@ function R({ children, delay = 0, y = 36, className = "" }: { children: React.Re
 }
 
 // ─── Equipment card ───────────────────────────────────────────────────────────
-function EquipoCard({ eq, delay = 0 }: { eq: EquipoData; delay?: number }) {
+function EquipoCard({ eq, delay = 0, onImageClick }: { eq: EquipoData; delay?: number; onImageClick: (src: string, alt: string) => void }) {
   const img = getEqImg(eq);
   const [hovered, setHovered] = useState(false);
   return (
@@ -209,7 +244,8 @@ function EquipoCard({ eq, delay = 0 }: { eq: EquipoData; delay?: number }) {
           {img ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={img} alt={eq.descripcion} draggable={false}
-                 className="max-h-full max-w-full object-contain transition-all duration-500"
+                 onClick={() => onImageClick(img, eq.descripcion)}
+                 className="max-h-full max-w-full object-contain transition-all duration-500 cursor-zoom-in"
                  style={{ transform: hovered ? "scale(1.07)" : "scale(1)", filter: hovered ? "brightness(1.1)" : "brightness(0.9)" }} />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
@@ -219,7 +255,7 @@ function EquipoCard({ eq, delay = 0 }: { eq: EquipoData; delay?: number }) {
           {/* Qty badge */}
           <div className="absolute top-3 right-3 rounded-full px-2.5 py-1 text-xs font-bold"
                style={{ background: eq.cantidadTotal > 4 ? GOLD : "#1a1a1a", color: eq.cantidadTotal > 4 ? "#000" : GOLD, border: `1px solid ${GOLD}30` }}>
-            ×{eq.cantidadTotal}
+            \u00d7{eq.cantidadTotal}
           </div>
         </div>
         {/* Info */}
@@ -236,7 +272,7 @@ function EquipoCard({ eq, delay = 0 }: { eq: EquipoData; delay?: number }) {
           {eq.precioRenta > 0 && (
             <p className="text-[#B3985B] text-xs font-semibold mt-3 pt-3"
                style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-              {fmtPrice(eq.precioRenta)} <span className="text-white/25 font-normal">/ día</span>
+              {fmtPrice(eq.precioRenta)} <span className="text-white/25 font-normal">/ d\u00eda</span>
             </p>
           )}
         </div>
@@ -264,11 +300,29 @@ function StatBlock({ target, suffix = "", label, sub }: { target: number; suffix
 export default function InventarioClient({ data }: Props) {
   const scrolled  = useScrollHeader();
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
+
+  const openLightbox = useCallback((src: string, alt: string) => setLightbox({ src, alt }), []);
+  const closeLightbox = useCallback(() => setLightbox(null), []);
+
+  // Close lightbox with Escape
+  useEffect(() => {
+    if (!lightbox) return;
+    const fn = (e: KeyboardEvent) => { if (e.key === "Escape") closeLightbox(); };
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+  }, [lightbox, closeLightbox]);
+
+  // Filter out excluded equipment from categories
+  const filteredCategorias = data.categorias.map(cat => ({
+    ...cat,
+    equipos: cat.equipos.filter(eq => !shouldExclude(eq)),
+  })).filter(cat => cat.equipos.length > 0);
 
   // Scroll spy for sticky category nav
   useEffect(() => {
     const fn = () => {
-      for (const cat of data.categorias) {
+      for (const cat of filteredCategorias) {
         const el = document.getElementById(`cat-${cat.orden}`);
         if (!el) continue;
         const rect = el.getBoundingClientRect();
@@ -277,7 +331,7 @@ export default function InventarioClient({ data }: Props) {
     };
     window.addEventListener("scroll", fn, { passive: true }); fn();
     return () => window.removeEventListener("scroll", fn);
-  }, [data.categorias]);
+  }, [filteredCategorias]);
 
   const scrollToCategory = (orden: number) => {
     const el = document.getElementById(`cat-${orden}`);
@@ -300,6 +354,59 @@ export default function InventarioClient({ data }: Props) {
         ::-webkit-scrollbar-track { background: #000; }
         ::-webkit-scrollbar-thumb { background: rgba(179,152,91,0.35); border-radius: 2px; }
       `}</style>
+
+      {/* ── Lightbox ── */}
+      {lightbox && (
+        <div
+          onClick={closeLightbox}
+          style={{
+            position: "fixed", inset: 0, zIndex: 9999,
+            background: "rgba(0,0,0,0.92)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            backdropFilter: "blur(12px)",
+            animation: "fadeIn 0.2s ease",
+          }}
+        >
+          {/* Close button */}
+          <button
+            onClick={closeLightbox}
+            style={{
+              position: "absolute", top: "1.5rem", right: "1.5rem",
+              background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)",
+              borderRadius: "50%", width: "44px", height: "44px",
+              color: "white", fontSize: "20px", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              transition: "background 0.2s",
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.15)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
+          >
+            \u00d7
+          </button>
+          {/* Image */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightbox.src}
+            alt={lightbox.alt}
+            onClick={e => e.stopPropagation()}
+            style={{
+              maxWidth: "90vw", maxHeight: "85vh",
+              objectFit: "contain",
+              borderRadius: "12px",
+              boxShadow: "0 32px 80px rgba(0,0,0,0.8)",
+            }}
+            draggable={false}
+          />
+          {/* Caption */}
+          <p style={{
+            position: "absolute", bottom: "2rem", left: "50%", transform: "translateX(-50%)",
+            color: "rgba(255,255,255,0.45)", fontSize: "13px", whiteSpace: "nowrap",
+            letterSpacing: "0.05em",
+          }}>
+            {lightbox.alt}
+          </p>
+        </div>
+      )}
 
       {/* ── Nav ── */}
       <nav className="fixed top-0 inset-x-0 z-50 transition-all duration-500"
@@ -374,7 +481,7 @@ export default function InventarioClient({ data }: Props) {
       <div className="sticky top-16 z-40 overflow-x-auto no-scrollbar py-3 px-6 transition-all duration-300"
            style={{ background: "rgba(5,5,5,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${GOLD}10` }}>
         <div className="flex items-center gap-2 min-w-max">
-          {data.categorias.map(cat => (
+          {filteredCategorias.map(cat => (
             <button key={cat.nombre}
                     onClick={() => scrollToCategory(cat.orden)}
                     className="text-xs px-4 py-2 rounded-full transition-all duration-300 whitespace-nowrap"
@@ -391,7 +498,7 @@ export default function InventarioClient({ data }: Props) {
       </div>
 
       {/* ── Categories ── */}
-      {data.categorias.map((cat, ci) => (
+      {filteredCategorias.map((cat, ci) => (
         <section key={cat.nombre} id={`cat-${cat.orden}`} className="py-20 px-6"
                  style={{ background: ci % 2 === 0 ? "#050505" : "#070707" }}>
           <div className="max-w-7xl mx-auto">
@@ -401,7 +508,7 @@ export default function InventarioClient({ data }: Props) {
                    style={{ borderBottom: `1px solid ${GOLD}15` }}>
                 <div>
                   <p className="text-white/20 text-xs tracking-[0.3em] uppercase mb-3 font-mono">
-                    {String(ci + 1).padStart(2, "0")} / {String(data.categorias.length).padStart(2, "0")}
+                    {String(ci + 1).padStart(2, "0")} / {String(filteredCategorias.length).padStart(2, "0")}
                   </p>
                   <h2 className="font-bold text-white leading-none"
                       style={{ fontSize: "clamp(1.8rem,5vw,3.6rem)", letterSpacing: "-0.03em" }}>
@@ -427,7 +534,7 @@ export default function InventarioClient({ data }: Props) {
             {/* Equipment grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {cat.equipos.map((eq, i) => (
-                <EquipoCard key={eq.id} eq={eq} delay={Math.min(i * 50, 400)} />
+                <EquipoCard key={eq.id} eq={eq} delay={Math.min(i * 50, 400)} onImageClick={openLightbox} />
               ))}
             </div>
           </div>
