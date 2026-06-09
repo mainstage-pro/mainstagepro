@@ -158,7 +158,6 @@ export default function TaskPanel({
       proyectoTareaId:  proyectoId       || null,
       iniciativaId:     iniciativaId     || null,
       fecha:            fecha            || null,
-      fecha:            fecha            || null,
     });
     setSaving(false);
     setDirty(false);
