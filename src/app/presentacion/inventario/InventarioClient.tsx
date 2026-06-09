@@ -4,6 +4,9 @@ import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 const GOLD = "#B3985B";
 const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20conocer%20el%20equipo%20disponible%20para%20mi%20evento.";
 
+// Image map fetched asynchronously after hydration (avoids 3+ MB base64 in initial HTML)
+type ImageMap = Record<string, string>;
+
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface EquipoData {
   id: string; descripcion: string; marca: string | null;
@@ -121,8 +124,10 @@ function shouldExclude(eq: EquipoData) {
   const d = (eq.descripcion ?? "").toLowerCase();
   return EXCLUDE_KEYWORDS.some(k => d.includes(k.toLowerCase()));
 }
-function getEqImg(eq: EquipoData): string | null {
+function getEqImg(eq: EquipoData, imageMap?: ImageMap): string | null {
   if (shouldForceLogo(eq)) return null;
+  // Check async-loaded image map first, then fallback to static maps
+  if (imageMap && imageMap[eq.id]) return imageMap[eq.id];
   if (eq.imagenUrl) return eq.imagenUrl;
   if (eq.modelo) {
     for (const [k, v] of Object.entries(MODELO_IMGS))
@@ -186,8 +191,8 @@ function R({ children, delay = 0, y = 36, className = "" }: { children: React.Re
 }
 
 // ─── Equipo card (catálogo) ──────────────────────────────────────────────────────
-function EquipoCard({ eq, delay = 0, onImageClick }: { eq: EquipoData; delay?: number; onImageClick: (src: string, alt: string) => void }) {
-  const img = getEqImg(eq);
+function EquipoCard({ eq, delay = 0, onImageClick, imageMap }: { eq: EquipoData; delay?: number; onImageClick: (src: string, alt: string) => void; imageMap?: ImageMap }) {
+  const img = getEqImg(eq, imageMap);
   const [hovered, setHovered] = useState(false);
   return (
     <R delay={delay}>
@@ -198,7 +203,7 @@ function EquipoCard({ eq, delay = 0, onImageClick }: { eq: EquipoData; delay?: n
              style={{ height: "160px", background: "#050505", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
           {img ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={img} alt={eq.descripcion} draggable={false} onClick={() => onImageClick(img, eq.descripcion)}
+            <img src={img} alt={eq.descripcion} draggable={false} loading="lazy" onClick={() => onImageClick(img, eq.descripcion)}
                  className="max-h-full max-w-full object-contain transition-all duration-500 cursor-zoom-in"
                  style={{ transform: hovered ? "scale(1.07)" : "scale(1)", filter: hovered ? "brightness(1.1)" : "brightness(0.9)" }} />
           ) : (
@@ -365,10 +370,11 @@ function TabSelector({ active, onChange, quoteCount }: { active: Tab; onChange: 
 }
 
 // ─── Lista de precios ──────────────────────────────────────────────────────────────
-function PreciosTab({ categorias, onAddItem, onSwitchToCotizador }: {
+function PreciosTab({ categorias, onAddItem, onSwitchToCotizador, imageMap }: {
   categorias: CategoriaData[];
   onAddItem: (eq: EquipoData) => void;
   onSwitchToCotizador: () => void;
+  imageMap?: ImageMap;
 }) {
   const [open, setOpen] = useState<Set<string>>(new Set(categorias.map(c => c.nombre)));
   const toggle = (n: string) => setOpen(prev => { const s = new Set(prev); s.has(n) ? s.delete(n) : s.add(n); return s; });
@@ -414,7 +420,7 @@ function PreciosTab({ categorias, onAddItem, onSwitchToCotizador }: {
                     <span />
                   </div>
                   {cat.equipos.map((eq, i) => {
-                    const img = getEqImg(eq);
+                    const img = getEqImg(eq, imageMap);
                     return (
                       <div key={eq.id} className="grid px-5 py-3 items-center group transition-colors hover:bg-white/[0.025]"
                            style={{ gridTemplateColumns: "36px 1fr auto", gap: "12px", borderTop: i > 0 ? "1px solid rgba(255,255,255,0.04)" : undefined }}>
@@ -422,7 +428,7 @@ function PreciosTab({ categorias, onAddItem, onSwitchToCotizador }: {
                         <div className="w-9 h-9 rounded-lg overflow-hidden flex items-center justify-center shrink-0"
                              style={{ background: "#080808", border: "1px solid rgba(255,255,255,0.06)" }}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={img || "/logo-icon.png"} alt="" draggable={false}
+                          <img src={img || "/logo-icon.png"} alt="" draggable={false} loading="lazy"
                                className={`object-contain ${img ? "w-8 h-8" : "w-4 h-4 opacity-15"}`} />
                         </div>
                         {/* name */}
@@ -468,13 +474,14 @@ function PreciosTab({ categorias, onAddItem, onSwitchToCotizador }: {
 }
 
 // ─── Cotizador ────────────────────────────────────────────────────────────────────
-function CotizadorTab({ categorias, quoteItems, onAddItem, onUpdateQty, onRemoveItem, onAddCustom }: {
+function CotizadorTab({ categorias, quoteItems, onAddItem, onUpdateQty, onRemoveItem, onAddCustom, imageMap }: {
   categorias: CategoriaData[];
   quoteItems: QuoteItem[];
   onAddItem: (eq: EquipoData) => void;
   onUpdateQty: (id: string, delta: number) => void;
   onRemoveItem: (id: string) => void;
   onAddCustom: (desc: string) => void;
+  imageMap?: ImageMap;
 }) {
   const [search, setSearch]         = useState("");
   const [activeCat, setActiveCat]   = useState<string | null>(null);
@@ -603,7 +610,7 @@ function CotizadorTab({ categorias, quoteItems, onAddItem, onUpdateQty, onRemove
               <div className="py-10 text-center text-white/25 text-sm">No encontramos equipos con ese criterio.</div>
             ) : filtered.map((eq, idx) => {
               const qty = qtyInCart(eq.id);
-              const img = getEqImg(eq);
+              const img = getEqImg(eq, imageMap);
               const inCart = qty > 0;
               return (
                 <div key={eq.id}
@@ -615,7 +622,7 @@ function CotizadorTab({ categorias, quoteItems, onAddItem, onUpdateQty, onRemove
                   {/* thumbnail */}
                   <div className="shrink-0 w-8 h-8 rounded-md overflow-hidden flex items-center justify-center" style={{ background: "#050505" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={img || "/logo-icon.png"} alt="" draggable={false}
+                    <img src={img || "/logo-icon.png"} alt="" draggable={false} loading="lazy"
                          className={`object-contain ${img ? "max-h-7 max-w-full" : "w-4 h-4 opacity-10"}`} />
                   </div>
                   {/* name + price */}
@@ -816,6 +823,16 @@ export default function InventarioClient({ data }: Props) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [lightbox, setLightbox]           = useState<{ src: string; alt: string } | null>(null);
   const [quoteItems, setQuoteItems]       = useState<QuoteItem[]>([]);
+  // DB images loaded asynchronously — not in initial HTML payload
+  const [imageMap, setImageMap]           = useState<ImageMap>({});
+
+  // Fetch DB images after hydration (runs once on client)
+  useEffect(() => {
+    fetch("/api/presentacion/imagenes")
+      .then(r => r.ok ? r.json() : {})
+      .then((map: ImageMap) => setImageMap(map))
+      .catch(() => { /* silently ignore — static fallback images still work */ });
+  }, []);
 
   // Lightbox helpers
   const openLightbox  = useCallback((src: string, alt: string) => setLightbox({ src, alt }), []);
@@ -825,6 +842,7 @@ export default function InventarioClient({ data }: Props) {
     const fn = (e: KeyboardEvent) => { if (e.key === "Escape") closeLightbox(); };
     window.addEventListener("keydown", fn); return () => window.removeEventListener("keydown", fn);
   }, [lightbox, closeLightbox]);
+
 
   // Quote helpers
   const addItem = useCallback((eq: EquipoData) => {
@@ -998,7 +1016,7 @@ export default function InventarioClient({ data }: Props) {
                 </R>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   {cat.equipos.map((eq, i) => (
-                    <EquipoCard key={eq.id} eq={eq} delay={Math.min(i * 50, 400)} onImageClick={openLightbox} />
+                    <EquipoCard key={eq.id} eq={eq} delay={Math.min(i * 50, 400)} onImageClick={openLightbox} imageMap={imageMap} />
                   ))}
                 </div>
               </div>
@@ -1064,12 +1082,12 @@ export default function InventarioClient({ data }: Props) {
       )}
 
       {activeTab === "precios" && (
-        <PreciosTab categorias={filteredCategorias} onAddItem={addItem} onSwitchToCotizador={() => setActiveTab("cotizador")} />
+        <PreciosTab categorias={filteredCategorias} onAddItem={addItem} onSwitchToCotizador={() => setActiveTab("cotizador")} imageMap={imageMap} />
       )}
 
       {activeTab === "cotizador" && (
         <CotizadorTab categorias={filteredCategorias} quoteItems={quoteItems}
-          onAddItem={addItem} onUpdateQty={updateQty} onRemoveItem={removeItem} onAddCustom={addCustom} />
+          onAddItem={addItem} onUpdateQty={updateQty} onRemoveItem={removeItem} onAddCustom={addCustom} imageMap={imageMap} />
       )}
 
       {/* Footer */}

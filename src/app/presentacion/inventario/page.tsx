@@ -1,12 +1,26 @@
 import { prisma } from "@/lib/prisma";
 import InventarioClient from "./InventarioClient";
 
-export const dynamic = "force-dynamic";
+// ISR: cache rendered HTML for 5 minutes on Vercel edge.
+// Inventory rarely changes in real time — this removes the per-request DB hit.
+export const revalidate = 300;
 
 export default async function InventarioPage() {
+  // Fetch metadata ONLY — no imagenUrl (3+ MB of base64 in the payload)
+  // Images are fetched client-side from /api/presentacion/imagenes after hydration.
   const equipos = await prisma.equipo.findMany({
     where: { tipo: "PROPIO", activo: true },
-    include: { categoria: { select: { nombre: true, orden: true } } },
+    select: {
+      id: true,
+      descripcion: true,
+      marca: true,
+      modelo: true,
+      cantidadTotal: true,
+      estado: true,
+      notas: true,
+      precioRenta: true,
+      categoria: { select: { nombre: true, orden: true } },
+    },
     orderBy: [{ categoria: { orden: "asc" } }, { descripcion: "asc" }],
   });
 
@@ -30,7 +44,7 @@ export default async function InventarioPage() {
         cantidadTotal: eq.cantidadTotal,
         estado: eq.estado,
         notas: eq.notas,
-        imagenUrl: eq.imagenUrl ?? null,
+        imagenUrl: null as string | null, // loaded client-side
         precioRenta: eq.precioRenta,
       })),
     })),
