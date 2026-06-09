@@ -78,8 +78,11 @@ window.addEventListener('load', msInit);
 const LOGO_IMG = `<img src="/logo-white.png" alt="Mainstage Pro" style="height:28px;object-fit:contain;display:block;">`;
 
 function fixHtml(html: string): string {
-  // 1. Remove Claude's scripts
+  // 1. Remove closed <script>...</script> blocks
   let result = html.replace(/<script[\s\S]*?<\/script>/gi, "");
+  // 2. Remove any UNCLOSED <script> tag (Claude truncates HTML, leaving script without </script>)
+  //    Everything from the unclosed <script> to end-of-string is dead markup — strip it.
+  result = result.replace(/<script[\s\S]*/i, "");
 
   // 2. Replace logo: __LOGO_SRC__ placeholder (new prompts) and SVG (old prompts)
   result = result.split("__LOGO_SRC__").join("/logo-white.png");
