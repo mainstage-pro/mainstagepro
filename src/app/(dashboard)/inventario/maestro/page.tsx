@@ -374,6 +374,7 @@ export default function InventarioMaestroPage() {
   const [imagen, setImagen] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [eliminando, setEliminando] = useState<string | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const imgRef = useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -570,6 +571,22 @@ export default function InventarioMaestroPage() {
         <FormPanel {...formPanelProps} />
       </Modal>
 
+      {/* Lightbox */}
+      {lightboxUrl && (
+        <div
+          onClick={() => setLightboxUrl(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.92)", display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(12px)", animation: "fadeIn 0.15s ease" }}
+        >
+          <button
+            onClick={() => setLightboxUrl(null)}
+            style={{ position: "absolute", top: "1.25rem", right: "1.25rem", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "50%", width: 40, height: 40, color: "white", fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+          >✕</button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={lightboxUrl} alt="" onClick={e => e.stopPropagation()} draggable={false}
+               style={{ maxWidth: "88vw", maxHeight: "82vh", objectFit: "contain", borderRadius: 12, boxShadow: "0 32px 80px rgba(0,0,0,0.8)" }} />
+        </div>
+      )}
+
       {/* KPIs */}
       {kpis && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -664,7 +681,11 @@ export default function InventarioMaestroPage() {
                     <div key={e.id}
                       className="bg-[#111] border border-[#1a1a1a] hover:border-[#B3985B]/40 rounded-xl p-3 flex flex-col gap-2 transition-colors cursor-pointer group"
                       onClick={() => abrirEdit(e)}>
-                      <div className="aspect-square rounded-lg overflow-hidden bg-[#0d0d0d] flex items-center justify-center">
+                      <div
+                        className="aspect-square rounded-lg overflow-hidden bg-[#0d0d0d] flex items-center justify-center"
+                        onClick={e.imagenUrl ? (ev => { ev.stopPropagation(); setLightboxUrl(e.imagenUrl!); }) : undefined}
+                        style={e.imagenUrl ? { cursor: "zoom-in" } : undefined}
+                      >
                         {e.imagenUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={e.imagenUrl} alt={e.descripcion} className="w-full h-full object-contain p-2" />
@@ -740,7 +761,11 @@ export default function InventarioMaestroPage() {
                                 <div className="flex items-center gap-2.5 min-w-0">
                                   {e.imagenUrl ? (
                                     // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={e.imagenUrl} alt="" className="w-8 h-8 object-contain rounded bg-[#0a0a0a] p-0.5 shrink-0" />
+                                    <img
+                                      src={e.imagenUrl} alt=""
+                                      className="w-8 h-8 object-contain rounded bg-[#0a0a0a] p-0.5 shrink-0 cursor-zoom-in hover:opacity-80 transition-opacity"
+                                      onClick={ev => { ev.stopPropagation(); setLightboxUrl(e.imagenUrl!); }}
+                                    />
                                   ) : (
                                     <div className="w-8 h-8 rounded bg-[#1a1a1a] shrink-0" />
                                   )}
