@@ -1,34 +1,36 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import Anthropic from "@anthropic-ai/sdk";
 
-// Allow up to 60 seconds — Claude generation takes ~20-30s
-export const maxDuration = 60;
+export const runtime = "edge";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// POST /api/capacitacion/[id]/generar — Generate a new presentation version
+// POST /api/capacitacion/[id]/generar — Stream HTML generation via SSE
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (!session) {
+    return new Response(JSON.stringify({ error: "No autorizado" }), { status: 401 });
+  }
 
   const { id } = await params;
 
-  // 1. Fetch session with existing versions
+  // 1. Fetch session
   const sesion = await prisma.sesionCapacitacion.findUnique({
     where: { id },
     include: { versiones: { select: { version: true }, orderBy: { version: "desc" }, take: 1 } },
   });
-  if (!sesion) return NextResponse.json({ error: "Sesión no encontrada" }, { status: 404 });
+  if (!sesion) {
+    return new Response(JSON.stringify({ error: "Sesión no encontrada" }), { status: 404 });
+  }
 
-  // 2. Calculate next version number
   const nextVersion = sesion.versiones.length > 0 ? sesion.versiones[0].version + 1 : 1;
-
-  // 3. Build prompt data
   const puntos = sesion.puntosEditados.length > 0 ? sesion.puntosEditados : sesion.puntosBase;
   const fechaStr = sesion.fechaProgramada
-    ? sesion.fechaProgramada.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    ? new Date(sesion.fechaProgramada).toLocaleDateString("es-MX", {
+        weekday: "long", day: "numeric", month: "long", year: "numeric",
+      })
     : "Por programar";
 
   const systemPrompt = `Eres el generador de presentaciones de capacitación interna de Mainstage Pro.
@@ -75,7 +77,7 @@ Slide 3 — CONTENIDO
 
 Slide 4 — CONCEPTO CLAVE
   Fondo #080808. Eyebrow + H1 con el concepto central del tema.
-  Grid 2×2 de cards (border .5px solid #1a1a1a, border-radius 7px):
+  Grid 2x2 de cards (border .5px solid #1a1a1a, border-radius 7px):
   - Card 1 (borde dorado, fondo #0c0b08): el concepto más importante
   - Cards 2-4: conceptos complementarios
   Cada card tiene: label (eyebrow dorado) + título (font-weight 700) + descripción (color #666)
@@ -101,8 +103,7 @@ Slide 7 — CIERRE
     - Tarea concreta para el equipo
 
 NAVEGACIÓN JS (obligatoria):
-El HTML debe incluir:
-- Botones ← → clickeables
+- Botones anterior/siguiente clickeables
 - Puntos de navegación que se actualizan al cambiar slide
 - Teclas ArrowLeft/ArrowRight del teclado
 - Contador 'XX / 07' que se actualiza
@@ -111,9 +112,8 @@ El HTML debe incluir:
 
 SOBRE LAS NOTAS DEL DIRECTOR:
 Integra las notas de forma completamente natural. No las menciones como 'notas agregadas'.
-Úsalas para: enriquecer el concepto clave (slide 4), alimentar el desarrollo (slide 5),
+Úsalas para enriquecer el concepto clave (slide 4), alimentar el desarrollo (slide 5),
 construir la frase de reflexión (slide 6) o formular la pregunta del cierre (slide 7).
-Si contiene anécdotas o casos reales, incorpóralos donde más impacten.
 El resultado debe sentirse como UNA sola presentación coherente.
 
 Devuelve ÚNICAMENTE el HTML completo empezando con <!DOCTYPE html>.
@@ -134,56 +134,78 @@ ${puntos.map((p, i) => `${String(i + 1).padStart(2, "0")}. ${p}`).join("\n")}
 NOTAS PERSONALES DEL DIRECTOR (integrar de forma natural en la presentación):
 ${sesion.notas?.trim() || "No hay notas adicionales para esta sesión."}`;
 
-  // 4. Call Claude API
-  let htmlContent: string;
-  try {
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-5-20250929",
-      max_tokens: 8000,
-      messages: [{ role: "user", content: userPrompt }],
-      system: systemPrompt,
-    });
+  // 2. Stream SSE response
+  const encoder = new TextEncoder();
 
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      return NextResponse.json({ error: "La IA no devolvió contenido de texto" }, { status: 500 });
-    }
+  const stream = new ReadableStream({
+    async start(controller) {
+      function send(data: object) {
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+      }
 
-    htmlContent = textBlock.text.trim();
+      try {
+        let htmlContent = "";
 
-    // Ensure the content starts with <!DOCTYPE html>
-    if (!htmlContent.startsWith("<!DOCTYPE html") && !htmlContent.startsWith("<!doctype html")) {
-      const match = htmlContent.match(/(<!DOCTYPE html[\s\S]*)/i);
-      if (match) htmlContent = match[1];
-    }
-  } catch (err) {
-    console.error("[generar] Anthropic API error:", err);
-    const msg = err instanceof Error ? err.message : "Error desconocido";
-    return NextResponse.json({ error: `Error al generar con IA: ${msg}` }, { status: 500 });
-  }
+        const anthropicStream = client.messages.stream({
+          model: "claude-sonnet-4-5-20250929",
+          max_tokens: 8000,
+          system: systemPrompt,
+          messages: [{ role: "user", content: userPrompt }],
+        });
 
-  // 5. Save new version (never overwrite existing)
-  const version = await prisma.versionPresentacion.create({
-    data: {
-      sesionId: id,
-      version: nextVersion,
-      htmlContent,
-      notasSnapshot: sesion.notas,
-      puntosSnapshot: puntos,
-      generadaPor: session.name ?? "Mauricio Hernández",
+        for await (const event of anthropicStream) {
+          if (
+            event.type === "content_block_delta" &&
+            event.delta.type === "text_delta"
+          ) {
+            htmlContent += event.delta.text;
+            send({ type: "chunk", text: event.delta.text });
+          }
+        }
+
+        // Clean up HTML
+        if (!htmlContent.startsWith("<!DOCTYPE html") && !htmlContent.startsWith("<!doctype html")) {
+          const match = htmlContent.match(/(<!DOCTYPE html[\s\S]*)/i);
+          if (match) htmlContent = match[1];
+        }
+
+        // Save to DB
+        const version = await prisma.versionPresentacion.create({
+          data: {
+            sesionId: id,
+            version: nextVersion,
+            htmlContent,
+            notasSnapshot: sesion.notas,
+            puntosSnapshot: puntos,
+            generadaPor: session.name ?? "Mauricio Hernández",
+          },
+        });
+
+        await prisma.sesionCapacitacion.update({
+          where: { id },
+          data: { estado: "lista" },
+        });
+
+        send({
+          type: "done",
+          versionId: version.id,
+          version: version.version,
+          generadaEn: version.generadaEn,
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Error desconocido";
+        send({ type: "error", message: `Error al generar con IA: ${msg}` });
+      } finally {
+        controller.close();
+      }
     },
   });
 
-  // 6. Update session state to "lista"
-  await prisma.sesionCapacitacion.update({
-    where: { id },
-    data: { estado: "lista" },
-  });
-
-  return NextResponse.json({
-    versionId: version.id,
-    version: version.version,
-    htmlContent: version.htmlContent,
-    generadaEn: version.generadaEn,
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
   });
 }

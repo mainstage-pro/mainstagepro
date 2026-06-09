@@ -360,36 +360,80 @@ export default function CapacitacionDetailPage() {
     showToast("Configuración guardada", "success");
   }
 
-  // ── Generate ─────────────────────────────────────────────────────────────────
+  // ── Generate (SSE streaming) ──────────────────────────────────────────────────
   async function handleGenerate() {
     setGenerating(true);
-    showToast("Generando presentación, esto puede tomar unos segundos...", "info");
+    showToast("Generando presentación con Claude IA...", "info");
+
     try {
       const res = await fetch(`/api/capacitacion/${id}/generar`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Error al generar");
 
-      // Add to versions list
-      const newVersion: VersionMeta = {
-        id: data.versionId,
-        version: data.version,
-        generadaPor: impartidor,
-        generadaEn: data.generadaEn,
-        notasSnapshot: notas,
-        puntosSnapshot: puntos.map((p) => p.text),
-      };
-      setSesion((prev) => {
-        if (!prev) return prev;
-        return { ...prev, estado: "lista", versiones: [newVersion, ...prev.versiones] };
-      });
-      setEstado("lista");
+      if (!res.ok || !res.body) {
+        const text = await res.text();
+        throw new Error(text || "Error al conectar con el servidor");
+      }
 
-      showToast(`Presentación v${data.version} generada`, "success");
-      // Open modal immediately
-      setModalHtml(data.htmlContent);
-      setModalTitle(`Sesión ${padNum(sesion?.numero ?? 0)} — v${data.version}`);
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let htmlContent = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Parse SSE lines
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? ""; // keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const raw = line.slice(6).trim();
+          if (!raw) continue;
+
+          try {
+            const event = JSON.parse(raw) as {
+              type: "chunk" | "done" | "error";
+              text?: string;
+              message?: string;
+              versionId?: string;
+              version?: number;
+              generadaEn?: string;
+            };
+
+            if (event.type === "chunk" && event.text) {
+              htmlContent += event.text;
+            } else if (event.type === "error") {
+              throw new Error(event.message ?? "Error al generar");
+            } else if (event.type === "done") {
+              const newVersion: VersionMeta = {
+                id: event.versionId!,
+                version: event.version!,
+                generadaPor: impartidor,
+                generadaEn: event.generadaEn!,
+                notasSnapshot: notas,
+                puntosSnapshot: puntos.map((p) => p.text),
+              };
+              setSesion((prev) =>
+                prev ? { ...prev, estado: "lista", versiones: [newVersion, ...prev.versiones] } : prev
+              );
+              setEstado("lista");
+              showToast(`Presentación v${event.version} generada`, "success");
+              setModalHtml(htmlContent);
+              setModalTitle(`Sesión ${padNum(sesion?.numero ?? 0)} — v${event.version}`);
+            }
+          } catch (parseErr) {
+            // Skip unparseable SSE lines
+          }
+        }
+      }
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "No se pudo generar la presentación. Intenta de nuevo.", "error");
+      showToast(
+        err instanceof Error ? err.message : "No se pudo generar la presentación. Intenta de nuevo.",
+        "error"
+      );
     } finally {
       setGenerating(false);
     }
