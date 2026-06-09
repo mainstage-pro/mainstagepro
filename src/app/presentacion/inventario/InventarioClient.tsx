@@ -307,12 +307,12 @@ function TabSelector({ active, onChange, quoteCount }: { active: Tab; onChange: 
     },
   ];
   return (
-    <section style={{ background: "#060606", borderBottom: `1px solid ${GOLD}10`, padding: "5rem 1.5rem" }}>
-      <div style={{ maxWidth: "900px", margin: "0 auto" }}>
-        <p style={{ textAlign: "center", color: "rgba(255,255,255,0.25)", fontSize: "11px", letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: "0.75rem", fontFamily: "monospace" }}>Explorar</p>
-        <h2 style={{ textAlign: "center", fontSize: "clamp(1.8rem,4vw,2.8rem)", fontWeight: 700, letterSpacing: "-0.03em", color: "white", marginBottom: "0.5rem" }}>¿Qué deseas explorar?</h2>
-        <p style={{ textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: "0.95rem", marginBottom: "3.5rem" }}>Elige una sección para continuar.</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: "1rem" }}>
+    <section style={{ background: "#060606", borderBottom: `1px solid ${GOLD}10`, padding: "3rem 1.5rem" }}>
+      <div style={{ maxWidth: "780px", margin: "0 auto" }}>
+        <p style={{ textAlign: "center", color: "rgba(255,255,255,0.25)", fontSize: "10px", letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: "0.5rem", fontFamily: "monospace" }}>Explorar</p>
+        <h2 style={{ textAlign: "center", fontSize: "clamp(1.3rem,3vw,1.9rem)", fontWeight: 700, letterSpacing: "-0.03em", color: "white", marginBottom: "0.35rem" }}>{"\u00bfQu\u00e9 deseas explorar?"}</h2>
+        <p style={{ textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: "0.82rem", marginBottom: "2rem" }}>{"Elige una secci\u00f3n para continuar."}</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "0.75rem" }}>
           {cards.map(c => {
             const isActive = active === c.key;
             return (
@@ -323,24 +323,26 @@ function TabSelector({ active, onChange, quoteCount }: { active: Tab; onChange: 
                 style={{
                   position: "relative",
                   display: "flex",
-                  flexDirection: "column",
-                  alignItems: "flex-start",
+                  flexDirection: "row",
+                  alignItems: "center",
                   gap: "1rem",
-                  padding: "2rem 1.75rem",
-                  borderRadius: "16px",
+                  padding: "1.25rem 1.25rem",
+                  borderRadius: "12px",
                   cursor: "pointer",
                   transition: "all 0.35s cubic-bezier(0.4,0,0.2,1)",
                   background: isActive ? GOLD : "rgba(255,255,255,0.03)",
                   border: `1.5px solid ${isActive ? GOLD : `${GOLD}20`}`,
                   color: isActive ? "#000" : GOLD,
                   textAlign: "left",
-                  boxShadow: isActive ? `0 8px 40px ${GOLD}30` : "none",
+                  boxShadow: isActive ? `0 6px 30px ${GOLD}28` : "none",
                   transform: isActive ? "translateY(-2px)" : "translateY(0)",
                 }}
               >
-                <span style={{ opacity: isActive ? 0.8 : 0.9 }}>{c.icon}</span>
+                <span style={{ opacity: isActive ? 0.8 : 0.9, flexShrink: 0 }}>
+                  <svg width="22" height="22" viewBox="0 0 32 32" fill="none">{(c.icon as React.ReactElement).props.children}</svg>
+                </span>
                 <div>
-                  <p style={{ fontWeight: 700, fontSize: "1.15rem", letterSpacing: "-0.01em", color: isActive ? "#000" : "white", marginBottom: "0.4rem" }}>
+                  <p style={{ fontWeight: 700, fontSize: "0.95rem", letterSpacing: "-0.01em", color: isActive ? "#000" : "white", marginBottom: "0.2rem" }}>
                     {c.title}
                     {c.key === "cotizador" && quoteCount > 0 && (
                       <span style={{ marginLeft: "0.5rem", display: "inline-flex", alignItems: "center", justifyContent: "center", width: "20px", height: "20px", borderRadius: "50%", background: isActive ? "#000" : GOLD, color: isActive ? GOLD : "#000", fontSize: "10px", fontWeight: 700, verticalAlign: "middle" }}>
