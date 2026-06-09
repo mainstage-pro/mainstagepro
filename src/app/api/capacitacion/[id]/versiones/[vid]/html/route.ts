@@ -7,11 +7,17 @@ import { getSession } from "@/lib/auth";
 // Running server-side means we can use /logo-white.png as a relative URL
 // (the browser will resolve it against the serving domain).
 
-// CSS injection: controls all slide visibility via .active class
-// Using !important beats ALL inline styles and CSS rules Claude may have generated
+// CSS: shows first slide by default (CSS fallback if JS is slow).
+// .active class overrides everything via !important.
 const SLIDE_CSS = `<style id="ms-nav-css">
-section.slide, div.slide { display: none !important; }
-section.slide.active, div.slide.active { display: flex !important; }
+/* Hide all slides */
+.slide { display: none !important; }
+/* CSS fallback: show first slide even before JS runs */
+.slide:first-child { display: flex !important; }
+/* JS-controlled active slide always wins */
+.slide.active { display: flex !important; }
+/* Explicitly hidden slides (covers first-child when navigating away) */
+.slide.ms-hidden { display: none !important; }
 </style>`;
 
 const NAV_SCRIPT = `
@@ -20,25 +26,34 @@ var cur = 0;
 var _slides = [];
 var _dots   = [];
 var _counter = null;
+var _inited  = false;
 
-function init() {
-  _slides  = Array.from(document.querySelectorAll('.slide'));
+function msInit() {
+  if (_inited) return;
+  var found = document.querySelectorAll('.slide');
+  if (!found.length) return;
+  _inited = true;
+  _slides  = Array.from(found);
   _dots    = Array.from(document.querySelectorAll('.dot'));
   _counter = document.getElementById('slide-counter');
-  if (!_slides.length) return;
+  // Mark all as hidden, then show first
+  _slides.forEach(function(s) { s.classList.add('ms-hidden'); s.classList.remove('active'); });
+  _slides[0].classList.remove('ms-hidden');
   _slides[0].classList.add('active');
   _dots.forEach(function(d, i) { d.style.opacity = i === 0 ? '1' : '0.3'; });
   if (_counter) _counter.textContent = '01 / ' + String(_slides.length).padStart(2, '0');
 }
 
 function goTo(n) {
-  if (!_slides.length) init();
+  if (!_inited) msInit();
   if (!_slides.length) return;
   n = parseInt(n, 10);
   if (isNaN(n)) return;
   _slides[cur].classList.remove('active');
+  _slides[cur].classList.add('ms-hidden');
   if (_dots[cur]) _dots[cur].style.opacity = '0.3';
   cur = ((n % _slides.length) + _slides.length) % _slides.length;
+  _slides[cur].classList.remove('ms-hidden');
   _slides[cur].classList.add('active');
   if (_dots[cur]) _dots[cur].style.opacity = '1';
   if (_counter) _counter.textContent =
@@ -50,11 +65,13 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   goTo(cur - 1);
 });
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
-}
+// Multiple init attempts to guarantee it runs regardless of readyState
+msInit();
+setTimeout(msInit, 0);
+setTimeout(msInit, 100);
+setTimeout(msInit, 500);
+document.addEventListener('DOMContentLoaded', msInit);
+window.addEventListener('load', msInit);
 </script>`;
 
 // Real logo as an <img> tag — served from same origin so no base64 needed
