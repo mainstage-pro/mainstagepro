@@ -59,7 +59,7 @@ const AREA_ORDER: Record<string, number> = {
 // ─── Template selector cards ───────────────────────────────────────────────────
 
 const TEMPLATE_CARDS = [
-  { key: "GLOBAL_SEMANAL", label: "Global", sub: "Lunes 10:30 · Todo el equipo", area: "GLOBAL" as AreaJunta, tipo: "GLOBAL_SEMANAL" },
+  { key: "GLOBAL_SEMANAL", label: "Junta General", sub: "Lunes 10:30 · Todo el equipo", area: "GLOBAL" as AreaJunta, tipo: "GLOBAL_SEMANAL" },
   { key: "ADMINISTRACION", label: "Administración", sub: "Área · 45 min", area: "ADMINISTRACION" as AreaJunta, tipo: "AREA_SEMANAL" },
   { key: "MARKETING",      label: "Marketing",      sub: "Área · 45 min", area: "MARKETING" as AreaJunta, tipo: "AREA_SEMANAL" },
   { key: "VENTAS",         label: "Ventas",          sub: "Área · 45 min", area: "VENTAS" as AreaJunta, tipo: "AREA_SEMANAL" },
