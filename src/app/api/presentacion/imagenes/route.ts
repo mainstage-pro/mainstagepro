@@ -6,7 +6,7 @@ export const revalidate = 300;
 
 export async function GET() {
   const rows = await prisma.equipo.findMany({
-    where: { tipo: "PROPIO", activo: true, imagenUrl: { not: null } },
+    where: { activo: true, imagenUrl: { not: null } },
     select: { id: true, imagenUrl: true },
   });
 

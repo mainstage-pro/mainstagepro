@@ -8,8 +8,9 @@ export const revalidate = 300;
 export default async function InventarioPage() {
   // Fetch metadata ONLY — no imagenUrl (3+ MB of base64 in the payload)
   // Images are fetched client-side from /api/presentacion/imagenes after hydration.
+  // Includes both PROPIO and EXTERNO equipment — all gear Mainstage offers to clients.
   const equipos = await prisma.equipo.findMany({
-    where: { tipo: "PROPIO", activo: true },
+    where: { activo: true },
     select: {
       id: true,
       descripcion: true,
