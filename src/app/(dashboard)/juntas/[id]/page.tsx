@@ -275,6 +275,35 @@ function ItemAgenda({ item, juntaId, onUpdate }: {
 
   function renderBody() {
     switch (item.tipo) {
+      case "MODALIDAD": {
+        const MODS = [
+          { key: "PRESENCIAL", emoji: "🟢", label: "Presencial", sub: "Todos en el mismo espacio" },
+          { key: "VIRTUAL",    emoji: "🔵", label: "Virtual",    sub: "Por videollamada" },
+          { key: "DOCUMENTO",  emoji: "📄", label: "Solo documento", sub: "Se comparte sin junta en vivo" },
+        ];
+        return (
+          <div className="flex gap-2 flex-wrap">
+            {MODS.map(m => (
+              <button
+                key={m.key}
+                type="button"
+                onClick={() => handleRespuestaChange(m.key)}
+                className={`flex-1 min-w-[140px] rounded-xl border p-3 text-left transition-all ${
+                  respuesta === m.key
+                    ? "bg-[#C9A84C]/10 border-[#C9A84C]/50"
+                    : "bg-[#0d0d0d] border-[#1a1a1a] hover:border-[#2a2a2a]"
+                }`}
+              >
+                <p className={`text-xs font-medium ${respuesta === m.key ? "text-[#C9A84C]" : "text-gray-400"}`}>
+                  {m.emoji} {m.label}
+                </p>
+                <p className="text-[10px] text-gray-600 mt-0.5">{m.sub}</p>
+              </button>
+            ))}
+          </div>
+        );
+      }
+
       case "APERTURA":
       case "CIERRE":
         return (
