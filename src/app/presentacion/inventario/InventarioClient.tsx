@@ -458,7 +458,6 @@ function PreciosTab({ categorias, onAddItem, onSwitchToCotizador }: {
         ))}
       </div>
 
-      {/* Bottom note */}
       <R>
         <p className="mt-10 text-center text-white/20 text-xs">
           {"* Precios de referencia por día de evento. Sujetos a disponibilidad y confirmación."}
@@ -481,8 +480,15 @@ function CotizadorTab({ categorias, quoteItems, onAddItem, onUpdateQty, onRemove
   const [activeCat, setActiveCat]   = useState<string | null>(null);
   const [customText, setCustomText] = useState("");
   const [dias, setDias]             = useState(1);
-  const [nombre, setNombre]         = useState("");
-  const [fecha, setFecha]           = useState("");
+  const [nombre,     setNombre]     = useState("");
+  const [evento,     setEvento]     = useState("");
+  const [fecha,      setFecha]      = useState("");
+  const [tipoEvento, setTipoEvento] = useState("");
+  const [lugar,      setLugar]      = useState("");
+  const [invitados,  setInvitados]  = useState("");
+  const [ambiente,   setAmbiente]   = useState("");
+  const [horario,    setHorario]    = useState("");
+  const [notas,      setNotas]      = useState("");
 
   const allEquipos = useMemo(() => categorias.flatMap(c => c.equipos), [categorias]);
 
@@ -503,7 +509,18 @@ function CotizadorTab({ categorias, quoteItems, onAddItem, onUpdateQty, onRemove
   function buildWAMsg() {
     const catalog = quoteItems.filter(i => !i.esPersonalizado);
     const custom  = quoteItems.filter(i =>  i.esPersonalizado);
-    let msg = "Hola! Me interesa una cotización para los siguientes equipos:\n\n";
+    let msg = "Hola! Me interesa una cotización de equipo para mi evento.\n\n";
+    const infoLines: string[] = [];
+    if (nombre)     infoLines.push(`• Contacto: ${nombre}`);
+    if (evento)     infoLines.push(`• Nombre del evento: ${evento}`);
+    if (fecha)      infoLines.push(`• Fecha: ${fecha}`);
+    if (tipoEvento) infoLines.push(`• Tipo de evento: ${tipoEvento}`);
+    if (lugar)      infoLines.push(`• Lugar / Venue: ${lugar}`);
+    if (invitados)  infoLines.push(`• Invitados aprox.: ${invitados}`);
+    if (ambiente)   infoLines.push(`• Ambiente: ${ambiente}`);
+    if (horario)    infoLines.push(`• Horario: ${horario}`);
+    if (notas)      infoLines.push(`• Notas: ${notas}`);
+    if (infoLines.length) msg += `*Información del evento:*\n${infoLines.join("\n")}\n\n`;
     if (catalog.length) {
       msg += "🎛 *Equipos del catálogo Mainstage Pro:*\n";
       catalog.forEach(i => {
@@ -523,9 +540,7 @@ function CotizadorTab({ categorias, quoteItems, onAddItem, onUpdateQty, onRemove
       if (dias > 1) msg += ` × ${dias} días = *${fmtPrice(subtotal * dias)}*`;
       msg += "\n";
     }
-    msg += "_(Operación técnica, traslado e instalación se cotiza por separado)_\n";
-    if (nombre) msg += `\nNombre: ${nombre}`;
-    if (fecha)  msg += `\nFecha del evento: ${fecha}`;
+    msg += "_(Operación técnica, traslado e instalación se cotiza por separado)_";
     return msg;
   }
 
@@ -538,82 +553,93 @@ function CotizadorTab({ categorias, quoteItems, onAddItem, onUpdateQty, onRemove
     borderRadius: "10px", color: "white", padding: "10px 14px", fontSize: "13px",
     width: "100%", outline: "none", transition: "border-color 0.2s",
   };
+  const inpSm: React.CSSProperties = { ...inp, fontSize: "12px", padding: "8px 12px" };
+  const focusGold = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    (e.target.style.borderColor = `${GOLD}60`);
+  const blurGold  = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    (e.target.style.borderColor = "rgba(255,255,255,0.09)");
 
   return (
     <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6">
       <div className="flex flex-col lg:flex-row gap-6 items-start">
 
-        {/* ── Left: browser ── */}
+        {/* ── Left: equipment browser ── */}
         <div className="flex-1 min-w-0">
-          <div className="mb-6">
-            <h2 className="font-bold text-white text-2xl mb-1" style={{ letterSpacing: "-0.02em" }}>Arma tu presupuesto</h2>
-            <p className="text-white/35 text-sm">Selecciona los equipos que necesitas. Nuestro equipo ajustará el detalle final.</p>
+          <div className="mb-5">
+            <h2 className="font-bold text-white text-xl mb-1" style={{ letterSpacing: "-0.02em" }}>Arma tu presupuesto</h2>
+            <p className="text-white/35 text-sm">Selecciona los equipos que necesitas.</p>
           </div>
 
           {/* Search */}
           <div className="relative mb-3">
-            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2">
+            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2">
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
             <input type="text" value={search} onChange={e => setSearch(e.target.value)}
                    placeholder="Buscar por nombre, marca o modelo…"
-                   style={{ ...inp, paddingLeft: "36px" }}
-                   onFocus={e => (e.target.style.borderColor = `${GOLD}60`)}
-                   onBlur={e  => (e.target.style.borderColor = "rgba(255,255,255,0.09)")} />
+                   style={{ ...inpSm, paddingLeft: "34px" }}
+                   onFocus={focusGold} onBlur={blurGold} />
           </div>
 
           {/* Category pills */}
-          <div className="flex gap-2 flex-wrap mb-5">
+          <div className="flex gap-1.5 flex-wrap mb-4">
             <button onClick={() => setActiveCat(null)}
-                    className="text-xs px-3.5 py-1.5 rounded-full font-medium transition-all"
-                    style={{ background: !activeCat ? GOLD : "rgba(255,255,255,0.04)", color: !activeCat ? "#000" : "rgba(255,255,255,0.45)", border: `1px solid ${!activeCat ? GOLD : "rgba(255,255,255,0.07)"}` }}>
+                    className="text-xs px-3 py-1 rounded-full font-medium transition-all"
+                    style={{ background: !activeCat ? GOLD : "rgba(255,255,255,0.04)", color: !activeCat ? "#000" : "rgba(255,255,255,0.4)", border: `1px solid ${!activeCat ? GOLD : "rgba(255,255,255,0.07)"}` }}>
               Todos
             </button>
             {categorias.map(c => (
               <button key={c.nombre} onClick={() => setActiveCat(c.nombre === activeCat ? null : c.nombre)}
-                      className="text-xs px-3.5 py-1.5 rounded-full font-medium transition-all"
-                      style={{ background: activeCat === c.nombre ? GOLD : "rgba(255,255,255,0.04)", color: activeCat === c.nombre ? "#000" : "rgba(255,255,255,0.45)", border: `1px solid ${activeCat === c.nombre ? GOLD : "rgba(255,255,255,0.07)"}` }}>
+                      className="text-xs px-3 py-1 rounded-full font-medium transition-all"
+                      style={{ background: activeCat === c.nombre ? GOLD : "rgba(255,255,255,0.04)", color: activeCat === c.nombre ? "#000" : "rgba(255,255,255,0.4)", border: `1px solid ${activeCat === c.nombre ? GOLD : "rgba(255,255,255,0.07)"}` }}>
                 {c.nombre}
               </button>
             ))}
           </div>
 
-          {/* Equipment grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6" style={{ maxHeight: "500px", overflowY: "auto" }}>
-            {filtered.length === 0 && (
-              <div className="col-span-3 py-12 text-center text-white/25 text-sm">No encontramos equipos con ese criterio.</div>
-            )}
-            {filtered.map(eq => {
+          {/* ── Compact list ── */}
+          <div className="rounded-xl overflow-hidden mb-5" style={{ border: "1px solid rgba(255,255,255,0.07)", maxHeight: "440px", overflowY: "auto" }}>
+            {filtered.length === 0 ? (
+              <div className="py-10 text-center text-white/25 text-sm">No encontramos equipos con ese criterio.</div>
+            ) : filtered.map((eq, idx) => {
               const qty = qtyInCart(eq.id);
               const img = getEqImg(eq);
+              const inCart = qty > 0;
               return (
-                <div key={eq.id} className="rounded-xl p-3 flex flex-col gap-2 transition-all duration-200"
-                     style={{ background: qty > 0 ? `${GOLD}08` : "rgba(255,255,255,0.025)", border: `1px solid ${qty > 0 ? GOLD + "30" : "rgba(255,255,255,0.07)"}` }}>
-                  <div className="w-full h-14 flex items-center justify-center rounded-lg overflow-hidden" style={{ background: "#050505" }}>
+                <div key={eq.id}
+                     className="flex items-center gap-3 px-4 py-2.5 transition-colors"
+                     style={{
+                       borderTop: idx > 0 ? "1px solid rgba(255,255,255,0.04)" : undefined,
+                       background: inCart ? `${GOLD}07` : "transparent",
+                     }}>
+                  {/* thumbnail */}
+                  <div className="shrink-0 w-8 h-8 rounded-md overflow-hidden flex items-center justify-center" style={{ background: "#050505" }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={img || "/logo-icon.png"} alt="" draggable={false}
-                         className={`object-contain transition-all duration-300 ${img ? "max-h-12 max-w-full" : "w-7 h-7 opacity-10"}`} />
+                         className={`object-contain ${img ? "max-h-7 max-w-full" : "w-4 h-4 opacity-10"}`} />
                   </div>
-                  <p className="text-white text-xs font-medium leading-snug line-clamp-2" style={{ minHeight: "2.5em" }}>
-                    {eqDisplayName(eq)}
-                  </p>
-                  <p className="text-xs" style={{ color: eq.precioRenta > 0 ? GOLD : "rgba(255,255,255,0.2)" }}>
-                    {eq.precioRenta > 0 ? `${fmtPrice(eq.precioRenta)}/día` : "Consultar"}
-                  </p>
+                  {/* name + price */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-xs font-medium leading-snug truncate">{eqDisplayName(eq)}</p>
+                    {eq.precioRenta > 0 && (
+                      <p className="text-[10px]" style={{ color: `${GOLD}90` }}>{fmtPrice(eq.precioRenta)}/día</p>
+                    )}
+                  </div>
+                  {/* controls */}
                   {qty === 0 ? (
                     <button onClick={() => onAddItem(eq)}
-                            className="w-full py-1.5 rounded-lg text-xs font-semibold transition-all"
-                            style={{ background: `${GOLD}18`, color: GOLD, border: `1px solid ${GOLD}30` }}>
+                            className="shrink-0 text-xs px-3 py-1 rounded-full font-semibold transition-all"
+                            style={{ background: `${GOLD}15`, color: GOLD, border: `1px solid ${GOLD}25` }}>
                       + Agregar
                     </button>
                   ) : (
-                    <div className="flex items-center justify-between rounded-lg" style={{ border: `1px solid ${GOLD}40`, background: `${GOLD}10` }}>
+                    <div className="shrink-0 flex items-center rounded-lg overflow-hidden" style={{ border: `1px solid ${GOLD}45`, background: `${GOLD}12` }}>
                       <button onClick={() => onUpdateQty(eq.id, -1)}
-                              className="w-8 h-7 flex items-center justify-center text-base font-semibold hover:bg-white/10 transition-colors rounded-l-lg"
+                              className="w-7 h-7 flex items-center justify-center text-sm font-bold hover:bg-white/10 transition-colors"
                               style={{ color: GOLD }}>−</button>
-                      <span className="text-white font-bold text-xs">{qty}</span>
+                      <span className="text-white font-bold text-xs px-1.5">{qty}</span>
                       <button onClick={() => onUpdateQty(eq.id, 1)}
-                              className="w-8 h-7 flex items-center justify-center text-base font-semibold hover:bg-white/10 transition-colors rounded-r-lg"
+                              className="w-7 h-7 flex items-center justify-center text-sm font-bold hover:bg-white/10 transition-colors"
                               style={{ color: GOLD }}>+</button>
                     </div>
                   )}
@@ -623,18 +649,16 @@ function CotizadorTab({ categorias, quoteItems, onAddItem, onUpdateQty, onRemove
           </div>
 
           {/* Custom item */}
-          <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <p className="text-white font-semibold text-sm mb-1">¿No encuentras lo que necesitas?</p>
-            <p className="text-white/30 text-xs mb-4">Agrégalo por concepto. Nuestro equipo lo conseguirá o te dará alternativas.</p>
+          <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <p className="text-white font-semibold text-xs mb-0.5">¿No encuentras lo que necesitas?</p>
+            <p className="text-white/30 text-xs mb-3">Agrégalo por concepto y nuestro equipo lo consigue o te da alternativas.</p>
             <div className="flex gap-2">
               <input type="text" value={customText} onChange={e => setCustomText(e.target.value)}
                      onKeyDown={e => { if (e.key === "Enter" && customText.trim()) { onAddCustom(customText.trim()); setCustomText(""); } }}
                      placeholder="Ej: Generador 50kva, pantalla LED curva…"
-                     style={inp}
-                     onFocus={e => (e.target.style.borderColor = `${GOLD}60`)}
-                     onBlur={e  => (e.target.style.borderColor = "rgba(255,255,255,0.09)")} />
+                     style={inpSm} onFocus={focusGold} onBlur={blurGold} />
               <button onClick={() => { if (customText.trim()) { onAddCustom(customText.trim()); setCustomText(""); } }}
-                      className="shrink-0 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                      className="shrink-0 px-4 py-2 rounded-xl text-xs font-semibold transition-all"
                       style={{ background: `${GOLD}20`, color: GOLD, border: `1px solid ${GOLD}35` }}>
                 Agregar
               </button>
@@ -642,113 +666,148 @@ function CotizadorTab({ categorias, quoteItems, onAddItem, onUpdateQty, onRemove
           </div>
         </div>
 
-        {/* ── Right: quote panel ── */}
-        <div className="w-full lg:w-80 xl:w-96 shrink-0">
-          <div className="sticky top-24 rounded-2xl overflow-hidden" style={{ border: `1px solid ${GOLD}25`, background: "#060606" }}>
-            {/* Header */}
-            <div className="px-5 py-4" style={{ borderBottom: `1px solid ${GOLD}15` }}>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-bold text-white">Tu presupuesto</h3>
-                {quoteItems.length > 0 && (
-                  <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: `${GOLD}15`, color: GOLD }}>
-                    {quoteItems.length} {quoteItems.length === 1 ? "ítem" : "ítems"}
-                  </span>
-                )}
-              </div>
-              {/* Days */}
-              <div className="flex items-center gap-2">
-                <span className="text-white/40 text-xs">{"Días del evento:"}</span>
-                <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
-                  <button onClick={() => setDias(d => Math.max(1, d - 1))}
-                          className="w-7 h-7 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors">−</button>
-                  <span className="text-white text-sm font-semibold px-2">{dias}</span>
-                  <button onClick={() => setDias(d => d + 1)}
-                          className="w-7 h-7 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors">+</button>
-                </div>
-              </div>
-            </div>
+        {/* ── Right panel ── */}
+        <div className="w-full lg:w-80 xl:w-[360px] shrink-0">
+          <div className="sticky top-24 space-y-4">
 
-            {/* Items */}
-            <div style={{ maxHeight: "260px", overflowY: "auto" }}>
-              {quoteItems.length === 0 ? (
-                <div className="px-5 py-10 text-center">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
-                       style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5">
-                      <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>
-                      <path d="M16 10a4 4 0 01-8 0"/>
-                    </svg>
-                  </div>
-                  <p className="text-white/20 text-xs leading-relaxed">Tu presupuesto está vacío.<br />Agrega equipos del catálogo.</p>
-                </div>
-              ) : quoteItems.map((item, idx) => (
-                <div key={item.id} className="px-4 py-3 flex items-start gap-3"
-                     style={{ borderTop: idx > 0 ? "1px solid rgba(255,255,255,0.04)" : undefined }}>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-xs font-medium leading-snug line-clamp-2">{item.descripcion}</p>
-                    {!item.esPersonalizado && item.precioUnitario > 0 && (
-                      <p className="text-white/30 text-xs mt-0.5">{fmtPrice(item.precioUnitario)} × {item.cantidad} × {dias} día{dias > 1 ? "s" : ""} = <span style={{ color: GOLD }}>{fmtPrice(item.precioUnitario * item.cantidad * dias)}</span></p>
-                    )}
-                    {item.esPersonalizado && <p className="text-white/25 text-xs mt-0.5 italic">precio a confirmar</p>}
-                  </div>
-                  {!item.esPersonalizado && (
-                    <div className="flex items-center rounded-lg overflow-hidden shrink-0" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
-                      <button onClick={() => onUpdateQty(item.id, -1)}
-                              className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors text-sm">−</button>
-                      <span className="text-white text-xs font-semibold px-1.5">{item.cantidad}</span>
-                      <button onClick={() => onUpdateQty(item.id, 1)}
-                              className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors text-sm">+</button>
-                    </div>
+            {/* Quote summary */}
+            <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${GOLD}25`, background: "#060606" }}>
+              <div className="px-5 py-4" style={{ borderBottom: `1px solid ${GOLD}15` }}>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-white text-sm">Tu presupuesto</h3>
+                  {quoteItems.length > 0 && (
+                    <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: `${GOLD}15`, color: GOLD }}>
+                      {quoteItems.length} {quoteItems.length === 1 ? "ítem" : "ítems"}
+                    </span>
                   )}
-                  <button onClick={() => onRemoveItem(item.id)}
-                          className="shrink-0 w-5 h-5 flex items-center justify-center rounded transition-colors hover:bg-red-900/30"
-                          style={{ color: "rgba(255,255,255,0.2)" }}>
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                  </button>
                 </div>
-              ))}
+                <div className="flex items-center gap-2">
+                  <span className="text-white/40 text-xs flex-1">{`Días del evento:`}</span>
+                  <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
+                    <button onClick={() => setDias(d => Math.max(1, d - 1))} className="w-7 h-7 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors">−</button>
+                    <span className="text-white text-sm font-semibold px-2">{dias}</span>
+                    <button onClick={() => setDias(d => d + 1)} className="w-7 h-7 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors">+</button>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ maxHeight: "240px", overflowY: "auto" }}>
+                {quoteItems.length === 0 ? (
+                  <div className="px-5 py-8 text-center">
+                    <p className="text-white/20 text-xs leading-relaxed">Tu presupuesto está vacío.<br />Agrega equipos de la lista.</p>
+                  </div>
+                ) : quoteItems.map((item, idx) => (
+                  <div key={item.id} className="px-4 py-2.5 flex items-start gap-2.5"
+                       style={{ borderTop: idx > 0 ? "1px solid rgba(255,255,255,0.04)" : undefined }}>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-xs font-medium leading-snug line-clamp-1">{item.descripcion}</p>
+                      {!item.esPersonalizado && item.precioUnitario > 0 && (
+                        <p className="text-white/30 text-[10px] mt-0.5">
+                          {fmtPrice(item.precioUnitario)} × {item.cantidad} × {dias} {"día"}{dias > 1 ? "s" : ""} = <span style={{ color: GOLD }}>{fmtPrice(item.precioUnitario * item.cantidad * dias)}</span>
+                        </p>
+                      )}
+                      {item.esPersonalizado && <p className="text-white/25 text-[10px] mt-0.5 italic">precio a confirmar</p>}
+                    </div>
+                    {!item.esPersonalizado && (
+                      <div className="flex items-center rounded-lg overflow-hidden shrink-0" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
+                        <button onClick={() => onUpdateQty(item.id, -1)} className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors text-sm">−</button>
+                        <span className="text-white text-xs font-semibold px-1">{item.cantidad}</span>
+                        <button onClick={() => onUpdateQty(item.id, 1)} className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors text-sm">+</button>
+                      </div>
+                    )}
+                    <button onClick={() => onRemoveItem(item.id)}
+                            className="shrink-0 w-5 h-5 flex items-center justify-center rounded transition-colors hover:bg-red-900/30"
+                            style={{ color: "rgba(255,255,255,0.2)" }}>
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {quoteItems.length > 0 && subtotal > 0 && (
+                <div className="px-5 py-4 flex items-baseline justify-between" style={{ borderTop: `1px solid ${GOLD}15` }}>
+                  <span className="text-white/40 text-xs">{dias > 1 ? `Total (${dias} días)` : "Subtotal / día"}</span>
+                  <span className="text-white font-bold text-xl" style={{ letterSpacing: "-0.02em" }}>{fmtPrice(subtotal * dias)}</span>
+                </div>
+              )}
             </div>
 
-            {/* Subtotal + contact + CTA */}
-            {quoteItems.length > 0 && (
-              <div className="px-5 py-5 space-y-4" style={{ borderTop: `1px solid ${GOLD}15` }}>
-                {subtotal > 0 && (
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-white/40 text-xs">{dias > 1 ? `Total (${dias} días)` : "Subtotal / día"}</span>
-                    <span className="text-white font-bold text-xl" style={{ letterSpacing: "-0.02em" }}>{fmtPrice(subtotal * dias)}</span>
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <input type="text" value={nombre} onChange={e => setNombre(e.target.value)}
-                         placeholder="Tu nombre (opcional)" style={{ ...inp, fontSize: "12px", padding: "8px 12px" }}
-                         onFocus={e => (e.target.style.borderColor = `${GOLD}60`)}
-                         onBlur={e  => (e.target.style.borderColor = "rgba(255,255,255,0.09)")} />
-                  <input type="text" value={fecha} onChange={e => setFecha(e.target.value)}
-                         placeholder="Fecha del evento (opcional)" style={{ ...inp, fontSize: "12px", padding: "8px 12px" }}
-                         onFocus={e => (e.target.style.borderColor = `${GOLD}60`)}
-                         onBlur={e  => (e.target.style.borderColor = "rgba(255,255,255,0.09)")} />
-                </div>
-                <button onClick={handleSend}
-                        className="w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
-                        style={{ background: GOLD, color: "#000", boxShadow: `0 4px 20px ${GOLD}30` }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                  </svg>
-                  Solicitar cotización completa
-                </button>
-                <p className="text-white/18 text-[10px] leading-relaxed text-center">
-                  * Este resumen incluye solo equipos. La operación técnica (técnicos especializados, traslado, instalación y desmontaje) se cotiza por separado según los requerimientos de tu evento.
-                </p>
+            {/* ── Discovery form ── */}
+            <div className="rounded-2xl p-5 space-y-2.5" style={{ border: "1px solid rgba(255,255,255,0.08)", background: "#060606" }}>
+              <div className="mb-1">
+                <p className="text-white font-semibold text-sm">{"Informaci\u00f3n del evento"}</p>
+                <p className="text-white/30 text-xs mt-0.5">{"Completa para que nuestro equipo prepare una cotizaci\u00f3n exacta."}</p>
               </div>
-            )}
+
+              <input type="text" value={nombre} onChange={e => setNombre(e.target.value)}
+                     placeholder="Tu nombre" style={inpSm} onFocus={focusGold} onBlur={blurGold} />
+              <input type="text" value={evento} onChange={e => setEvento(e.target.value)}
+                     placeholder="Nombre del evento" style={inpSm} onFocus={focusGold} onBlur={blurGold} />
+              <input type="text" value={fecha} onChange={e => setFecha(e.target.value)}
+                     placeholder="Fecha (dd/mm/aaaa)" style={inpSm} onFocus={focusGold} onBlur={blurGold} />
+
+              <select value={tipoEvento} onChange={e => setTipoEvento(e.target.value)}
+                      style={{ ...inpSm, appearance: "none" } as React.CSSProperties}
+                      onFocus={focusGold} onBlur={blurGold}>
+                <option value="">{"Tipo de evento\u2026"}</option>
+                <option>Boda</option>
+                <option>{"Corporativo / Empresa"}</option>
+                <option>{"Concierto / Show"}</option>
+                <option>Festival</option>
+                <option>{"Cumplea\u00f1os / Fiesta privada"}</option>
+                <option>{"Congreso / Convenci\u00f3n"}</option>
+                <option>{"Lanzamiento de producto"}</option>
+                <option>{"Graduaci\u00f3n"}</option>
+                <option>Otro</option>
+              </select>
+
+              <input type="text" value={lugar} onChange={e => setLugar(e.target.value)}
+                     placeholder="Lugar / Venue" style={inpSm} onFocus={focusGold} onBlur={blurGold} />
+
+              <div className="grid grid-cols-2 gap-2">
+                <input type="text" value={invitados} onChange={e => setInvitados(e.target.value)}
+                       placeholder="# Invitados" style={inpSm} onFocus={focusGold} onBlur={blurGold} />
+                <select value={ambiente} onChange={e => setAmbiente(e.target.value)}
+                        style={{ ...inpSm, appearance: "none" } as React.CSSProperties}
+                        onFocus={focusGold} onBlur={blurGold}>
+                  <option value="">{"Ambiente\u2026"}</option>
+                  <option>Interior</option>
+                  <option>Exterior</option>
+                  <option>Mixto</option>
+                </select>
+              </div>
+
+              <input type="text" value={horario} onChange={e => setHorario(e.target.value)}
+                     placeholder="Horario aprox. (setup 2pm, evento 6pm–1am)" style={inpSm} onFocus={focusGold} onBlur={blurGold} />
+
+              <textarea value={notas} onChange={e => setNotas(e.target.value)}
+                        placeholder="Notas (techo, generador, accesos, nivel de sonido…)"
+                        rows={3}
+                        style={{ ...inpSm, resize: "vertical" } as React.CSSProperties}
+                        onFocus={focusGold} onBlur={blurGold} />
+
+              <button onClick={handleSend}
+                      className="w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                      style={{ background: GOLD, color: "#000", boxShadow: `0 4px 20px ${GOLD}30` }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
+                {"Solicitar cotizaci\u00f3n completa"}
+              </button>
+              <p className="text-white/20 text-[10px] leading-relaxed text-center">
+                {"* La operaci\u00f3n t\u00e9cnica (t\u00e9cnicos, traslado e instalaci\u00f3n) se cotiza por separado."}
+              </p>
+            </div>
+
           </div>
         </div>
       </div>
     </div>
   );
 }
+
 
 // ─── Main ─────────────────────────────────────────────────────────────────────────
 export default function InventarioClient({ data }: Props) {
