@@ -115,13 +115,54 @@ Slide 7 — CIERRE
     - Material de apoyo
     - Tarea concreta para el equipo
 
-NAVEGACIÓN JS (obligatoria):
-- Botones anterior/siguiente clickeables
-- Puntos de navegación que se actualizan al cambiar slide
-- Teclas ArrowLeft/ArrowRight del teclado
-- Contador 'XX / 07' que se actualiza
-- Primer slide visible, resto display:none, JS cambia visibilidad
-- Aspect ratio 16/9 centrado en la página, máx 1200px ancho, con nav arriba
+NAVEGACIÓN JS — USA EXACTAMENTE ESTE CÓDIGO (no lo improvises, cópialo tal cual):
+
+Cada slide DEBE tener class="slide":
+  <section class="slide" style="display:none; width:100%; aspect-ratio:16/9; ...">contenido</section>
+
+Barra de navegación (fuera de los slides, siempre visible):
+  <nav id="nav-bar" style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px;background:#0a0a0a;border-bottom:1px solid #1a1a1a;">
+    <button onclick="goTo(cur-1)" style="background:none;border:1px solid #333;color:#999;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:16px;">‹</button>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <!-- un <span class="dot"> por cada slide -->
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span id="slide-counter" style="font-size:11px;color:#555;font-variant-numeric:tabular-nums;">01 / 07</span>
+      <button onclick="goTo(cur+1)" style="background:none;border:1px solid #333;color:#999;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:16px;">›</button>
+    </div>
+  </nav>
+
+Script (al final del body, antes de </body>):
+  <script>
+    var cur = 0;
+    var slides = document.querySelectorAll('.slide');
+    var dots = document.querySelectorAll('.dot');
+    var counter = document.getElementById('slide-counter');
+    function goTo(n) {
+      slides[cur].style.display = 'none';
+      dots[cur].style.opacity = '0.3';
+      cur = ((n % slides.length) + slides.length) % slides.length;
+      slides[cur].style.display = 'flex';
+      dots[cur].style.opacity = '1';
+      if (counter) counter.textContent = String(cur+1).padStart(2,'0') + ' / ' + String(slides.length).padStart(2,'0');
+    }
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') goTo(cur+1);
+      if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   goTo(cur-1);
+    });
+    // Init
+    slides.forEach(function(s,i){ s.style.display = i===0?'flex':'none'; });
+    dots.forEach(function(d,i){ d.style.opacity = i===0?'1':'0.3'; });
+  </script>
+
+Layout general: <body style="margin:0;padding:0;background:#000;">
+  <nav id="nav-bar">...</nav>
+  <div id="deck" style="width:100%;max-width:1200px;margin:0 auto;">
+    <section class="slide">...</section>  <!-- slide 1, display:flex -->
+    <section class="slide">...</section>  <!-- slides 2-7, display:none -->
+  </div>
+  <script>...</script>
+</body>
 
 SOBRE LAS NOTAS DEL DIRECTOR:
 Integra las notas de forma completamente natural. No las menciones como 'notas agregadas'.
