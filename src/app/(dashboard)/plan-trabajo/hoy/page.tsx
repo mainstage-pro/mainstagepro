@@ -161,7 +161,7 @@ function getFraseDelDia(): string {
 function CircularProgress({ pct, completadas, total }: { pct: number; completadas: number; total: number }) {
   const r = 54
   const circ = 2 * Math.PI * r
-  const dash = (pct / 100) * circ
+  const offset = circ - (pct / 100) * circ
 
   return (
     <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-5 flex flex-col items-center">
@@ -175,9 +175,10 @@ function CircularProgress({ pct, completadas, total }: { pct: number; completada
             stroke="#C9A84C"
             strokeWidth="8"
             strokeLinecap="round"
-            strokeDasharray={`${dash} ${circ}`}
-            strokeDashoffset={circ / 4}
-            style={{ transition: 'stroke-dasharray 0.5s ease' }}
+            strokeDasharray={circ}
+            strokeDashoffset={offset}
+            transform="rotate(-90 64 64)"
+            style={{ transition: 'stroke-dashoffset 0.5s ease' }}
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">

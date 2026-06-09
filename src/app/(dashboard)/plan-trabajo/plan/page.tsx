@@ -1131,7 +1131,9 @@ function AreaPersonasView({
   onSemanaDeMesChange,
   onGroupChange,
   canEdit,
+  savedTemplate,
 }: {
+  areas?: never
   areaId: string
   usuarios: Usuario[]
   onEdit: (t: Template) => void
@@ -1142,6 +1144,7 @@ function AreaPersonasView({
   onSemanaDeMesChange: (templateId: string, semanaDeMes: number[]) => void
   onGroupChange: (templateId: string, tipoAsignacion: string, areaAsignada?: string) => void
   canEdit?: boolean
+  savedTemplate?: Template | null
 }) {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(false)
@@ -1160,6 +1163,12 @@ function AreaPersonasView({
       setLoading(false)
     }
   }
+
+  // Sync when a template is saved via modal
+  useEffect(() => {
+    if (!savedTemplate) return
+    setTemplates(prev => prev.map(t => t.id === savedTemplate.id ? savedTemplate : t))
+  }, [savedTemplate])
 
   function toggle() {
     if (!open && !loaded) load()
@@ -1192,6 +1201,12 @@ function AreaPersonasView({
     ))
     onGroupChange(templateId, tipoAsignacion, areaAsignada)
   }
+  // Local delete: remove from local state AND call parent (API)
+  function localDelete(templateId: string) {
+    setTemplates(prev => prev.filter(t => t.id !== templateId))
+    onDelete(templateId)
+  }
+
   const byPersona = templates.reduce((acc, t) => {
     const key = t.responsable?.name ?? 'Sin asignar'
     if (!acc[key]) acc[key] = []
@@ -1250,7 +1265,7 @@ function AreaPersonasView({
                             t={t}
                             usuarios={usuarios}
                             onEdit={onEdit}
-                            onDelete={onDelete}
+                            onDelete={localDelete}
                             onResponsableChange={localResponsableChange}
                             onDiasChange={localDiasChange}
                             onFrecuenciaChange={localFrecuenciaChange}
@@ -1285,6 +1300,7 @@ function VistaPorPersona({
   onGroupChange,
   usuarios,
   canEdit,
+  savedTemplate,
 }: {
   usuario: Usuario
   onEdit: (t: Template) => void
@@ -1296,6 +1312,7 @@ function VistaPorPersona({
   onGroupChange: (templateId: string, tipoAsignacion: string, areaAsignada?: string) => void
   usuarios: Usuario[]
   canEdit?: boolean
+  savedTemplate?: Template | null
 }) {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
@@ -1341,6 +1358,18 @@ function VistaPorPersona({
     onGroupChange(templateId, tipoAsignacion, areaAsignada)
   }
 
+  // Sync when a template is saved via modal
+  useEffect(() => {
+    if (!savedTemplate) return
+    setTemplates(prev => prev.map(t => t.id === savedTemplate.id ? savedTemplate : t))
+  }, [savedTemplate])
+
+  // Local delete: remove from local state AND call parent (API)
+  function localDelete(templateId: string) {
+    setTemplates(prev => prev.filter(t => t.id !== templateId))
+    onDelete(templateId)
+  }
+
   if (loading) {
     return <div className="flex-1 flex items-center justify-center text-gray-600 text-sm">Cargando...</div>
   }
@@ -1380,7 +1409,7 @@ function VistaPorPersona({
                       t={t}
                       usuarios={usuarios}
                       onEdit={onEdit}
-                      onDelete={onDelete}
+                      onDelete={localDelete}
                       onResponsableChange={localResponsableChange}
                       onDiasChange={localDiasChange}
                       onFrecuenciaChange={localFrecuenciaChange}
@@ -1413,7 +1442,7 @@ function VistaPorPersona({
                       t={t}
                       usuarios={usuarios}
                       onEdit={onEdit}
-                      onDelete={onDelete}
+                      onDelete={localDelete}
                       onResponsableChange={localResponsableChange}
                       onDiasChange={localDiasChange}
                       onFrecuenciaChange={localFrecuenciaChange}
@@ -1451,6 +1480,7 @@ export default function PlanPage() {
   const [isAdmin, setIsAdmin]           = useState(false)
   const [userArea, setUserArea]         = useState<string | null>(null)
   const [collapsedSubs, setCollapsedSubs] = useState<Set<string>>(new Set())
+  const [lastSaved, setLastSaved]       = useState<Template | null>(null)
 
   // Add subarea
   const [addingSubareaForAreaId, setAddingSubareaForAreaId] = useState<string | null>(null)
@@ -1730,17 +1760,16 @@ export default function PlanPage() {
         subareaGroups: isEdit
           ? a.subareaGroups.map(sg => ({
               ...sg,
-              // Feature 1A: re-sort after edit in case diasSemana changed
               templates: sortTemplatesByDay(sg.templates.map(t => t.id === saved.id ? saved : t)),
             }))
           : a.subareaGroups.map(sg =>
               sg.subArea.id === saved.subArea.id
-                // Feature 1A: insert then re-sort
                 ? { ...sg, templates: sortTemplatesByDay([...sg.templates, saved]) }
                 : sg
             ),
       }
     }))
+    if (isEdit) setLastSaved({ ...saved }) // propagate to local components
   }
 
   async function handleReorderTemplate(draggedId: string, targetId: string, position: 'above' | 'below') {
@@ -1934,6 +1963,7 @@ export default function PlanPage() {
           onSemanaDeMesChange={handleSemanaDeMesChange}
           onGroupChange={handleGroupAssignment}
           canEdit={isAdmin}
+          savedTemplate={lastSaved}
         />
       ) : (
         <div className="flex-1 overflow-auto">
@@ -2134,6 +2164,7 @@ export default function PlanPage() {
                 onSemanaDeMesChange={handleSemanaDeMesChange}
                 onGroupChange={handleGroupAssignment}
                 canEdit={isAdmin}
+                savedTemplate={lastSaved}
               />
             </>
           )}
