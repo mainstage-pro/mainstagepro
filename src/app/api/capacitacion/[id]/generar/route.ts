@@ -3,10 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import Anthropic from "@anthropic-ai/sdk";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// Allow up to 60 seconds — Claude generation takes ~20-30s
+export const maxDuration = 60;
 
-// GET /api/capacitacion/[id]/versiones/[vid] — lazy-load HTML for a specific version
-// (handled via this route so we don't bloat the list response)
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // POST /api/capacitacion/[id]/generar — Generate a new presentation version
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -138,7 +138,7 @@ ${sesion.notas?.trim() || "No hay notas adicionales para esta sesión."}`;
   let htmlContent: string;
   try {
     const response = await client.messages.create({
-      model: "claude-sonnet-4-5",
+      model: "claude-sonnet-4-5-20250929",
       max_tokens: 8000,
       messages: [{ role: "user", content: userPrompt }],
       system: systemPrompt,
