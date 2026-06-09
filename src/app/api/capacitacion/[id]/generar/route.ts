@@ -60,14 +60,8 @@ IDENTIDAD VISUAL OBLIGATORIA (no negociable):
 - Peso display/hero: 800 | Títulos H1: 700 | Labels/captions: 600 | Cuerpo: 400
 - Letter-spacing títulos: -0.03em | Labels: uppercase + 0.12em tracking
 
-LOGO SVG (usar en portada, cierre y footers):
-<svg viewBox='0 0 220 38' xmlns='http://www.w3.org/2000/svg'>
-  <circle cx='13' cy='19' r='11' fill='#6b6b6b' opacity='.8'/>
-  <circle cx='22' cy='25' r='11' fill='#B3985B' opacity='.9'/>
-  <text x='40' y='22' font-family='-apple-system,SF Pro Display,Segoe UI,sans-serif' font-size='14' font-weight='300' fill='#ffffff' letter-spacing='3'>MAINSTAGE</text>
-  <line x1='40' y1='28' x2='193' y2='28' stroke='#B3985B' stroke-width='.6' opacity='.6'/>
-  <text x='165' y='36' font-family='-apple-system,SF Pro Display,Segoe UI,sans-serif' font-size='10' font-weight='700' fill='#B3985B' letter-spacing='1.5'>PRO</text>
-</svg>
+LOGO — usar en portada, cierre y footers con este EXACTO elemento HTML:
+  <img src="__LOGO_SRC__" alt="Mainstage Pro" style="height:28px;object-fit:contain;display:block;">
 
 ESTRUCTURA DE SLIDES — siempre exactamente 7 slides:
 

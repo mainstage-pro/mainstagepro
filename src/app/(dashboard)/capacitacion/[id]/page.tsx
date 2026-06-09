@@ -179,16 +179,45 @@ if (document.readyState === 'loading') {
 }
 </script>`;
 
-function fixNavigation(html: string): string {
+async function fixNavigation(html: string): Promise<string> {
   if (!html) return html;
-  // Remove all existing <script>...</script> blocks from Claude's output
-  const stripped = html.replace(/<script[\s\S]*?<\/script>/gi, "");
-  // Inject our script right before </body>
-  if (stripped.includes("</body>")) {
-    return stripped.replace(/<\/body>/i, NAV_SCRIPT + "</body>");
+
+  // 1. Remove all existing <script>...</script> blocks from Claude's output
+  let result = html.replace(/<script[\s\S]*?<\/script>/gi, "");
+
+  // 2. Inject our bulletproof nav script before </body>
+  if (result.includes("</body>")) {
+    result = result.replace(/<\/body>/i, NAV_SCRIPT + "</body>");
+  } else {
+    result = result + NAV_SCRIPT;
   }
-  // Fallback: append at end
-  return stripped + NAV_SCRIPT;
+
+  // 3. Fetch real logo and embed as base64 data URL
+  try {
+    const res = await fetch("/logo-white.png");
+    const buffer = await res.arrayBuffer();
+    const uint8 = new Uint8Array(buffer);
+    let binary = "";
+    const chunk = 8192;
+    for (let i = 0; i < uint8.length; i += chunk) {
+      binary += String.fromCharCode(...uint8.subarray(i, i + chunk));
+    }
+    const dataUrl = `data:image/png;base64,${btoa(binary)}`;
+    const imgTag = `<img src="${dataUrl}" alt="Mainstage Pro" style="height:28px;object-fit:contain;display:block;">`;
+
+    // Replace placeholder used in new presentations
+    result = result.split("__LOGO_SRC__").join(dataUrl);
+
+    // Replace the SVG logo that Claude generates from the old prompt
+    result = result.replace(
+      /<svg[^>]*viewBox=['"]0 0 220 38['"][\s\S]*?<\/svg>/gi,
+      imgTag
+    );
+  } catch {
+    // Keep Claude's SVG / placeholder if logo fetch fails
+  }
+
+  return result;
 }
 
 // ─── Presentation Modal ───────────────────────────────────────────────────────
@@ -198,13 +227,17 @@ function PresentationModal({
 }: {
   htmlContent: string; onClose: () => void; onDownload: () => void;
 }) {
+  const [fixed, setFixed] = useState<string>("");
+
+  useEffect(() => {
+    fixNavigation(htmlContent).then(setFixed);
+  }, [htmlContent]);
+
   useEffect(() => {
     function handler(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [onClose]);
-
-  const fixed = React.useMemo(() => fixNavigation(htmlContent), [htmlContent]);
 
   return (
     <div
@@ -229,14 +262,20 @@ function PresentationModal({
         </button>
       </div>
 
-      {/* iframe — key forces remount when content changes */}
-      <iframe
-        key={fixed.length}
-        className="flex-1 w-full border-none"
-        srcDoc={fixed}
-        title="Presentación de capacitación"
-        sandbox="allow-scripts allow-same-origin"
-      />
+      {/* iframe: key forces remount; srcDoc shows loader until fixed HTML is ready */}
+      {fixed ? (
+        <iframe
+          key={fixed.length}
+          className="flex-1 w-full border-none"
+          srcDoc={fixed}
+          title="Presentación de capacitación"
+          sandbox="allow-scripts allow-same-origin"
+        />
+      ) : (
+        <div className="flex-1 flex items-center justify-center">
+          <span className="text-sm" style={{ color: "#4b5563" }}>Cargando presentación...</span>
+        </div>
+      )}
     </div>
   );
 }
