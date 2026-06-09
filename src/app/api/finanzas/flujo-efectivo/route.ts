@@ -31,8 +31,8 @@ export async function GET(req: NextRequest) {
     year = p.getFullYear();
     month = p.getMonth() + 1;
   }
-  const desde     = new Date(year, month - 1, 1);
-  const hasta     = new Date(year, month, 0, 23, 59, 59, 999);
+  const desde      = new Date(year, month - 1, 1);
+  const hasta      = new Date(year, month, 0, 23, 59, 59, 999);
   const periodoStr = `${year}-${String(month).padStart(2, "0")}`;
 
   // ── Fuentes de efectivo ──────────────────────────────────────────────────
@@ -43,14 +43,18 @@ export async function GET(req: NextRequest) {
     abonosPagoOrfanos,
     gastosEventoOrfanos,
     cuentasBancarias,
+    // CxC con fechaCompromiso en el mes (pendientes y parciales)
+    cxcPendientesMes,
+    // CxP con fechaCompromiso en el mes (pendientes y parciales)
+    cxpPendientesMes,
   ] = await Promise.all([
-    // TODO central: MovimientoFinanciero
+    // Fuente central: MovimientoFinanciero
     prisma.movimientoFinanciero.findMany({
       where: { fecha: { gte: desde, lte: hasta } },
       include: {
-        categoria:      { select: { nombre: true, tipo: true } },
-        cuentaOrigen:   { select: { nombre: true, banco: true } },
-        cuentaDestino:  { select: { nombre: true, banco: true } },
+        categoria:     { select: { nombre: true, tipo: true } },
+        cuentaOrigen:  { select: { nombre: true, banco: true } },
+        cuentaDestino: { select: { nombre: true, banco: true } },
       },
       orderBy: { fecha: "asc" },
     }),
@@ -58,91 +62,111 @@ export async function GET(req: NextRequest) {
     // Nómina pagada en el mes SIN movimiento conciliado
     prisma.pagoNomina.findMany({
       where: {
-        estado:      "PAGADO",
-        fechaPago:   { gte: desde, lte: hasta },
+        estado:       "PAGADO",
+        fechaPago:    { gte: desde, lte: hasta },
         movimientoId: null,
       },
       include: { personal: { select: { nombre: true } } },
     }),
 
-    // Abonos (CxC) en el mes SIN movimiento conciliado
+    // Abonos CxC en el mes SIN movimiento conciliado (fallback)
     prisma.abono.findMany({
-      where: {
-        fecha:        { gte: desde, lte: hasta },
-        movimientoId: null,
-      },
+      where: { fecha: { gte: desde, lte: hasta }, movimientoId: null },
       include: {
         cuentaCobrar: {
-          select: {
-            concepto: true,
-            cliente:  { select: { nombre: true } },
-          },
+          select: { concepto: true, cliente: { select: { nombre: true } } },
         },
       },
     }),
 
-    // Abonos de pago (CxP) en el mes SIN movimiento conciliado
+    // Abonos CxP en el mes SIN movimiento conciliado (fallback)
     prisma.abonoPago.findMany({
-      where: {
-        fecha:        { gte: desde, lte: hasta },
-        movimientoId: null,
-      },
+      where: { fecha: { gte: desde, lte: hasta }, movimientoId: null },
       include: {
         cuentaPagar: { select: { concepto: true, tipoAcreedor: true } },
       },
     }),
 
-    // GastoOperativo entregado en el mes (SIEMPRE fuera del libro de movimientos)
+    // GastoOperativo entregado en el mes (siempre fuera del libro)
     prisma.gastoOperativo.findMany({
-      where: {
-        entregado:     true,
-        fechaEntrega: { gte: desde, lte: hasta },
-      },
-      include: {
-        proyecto: { select: { nombre: true, numeroProyecto: true } },
-      },
+      where: { entregado: true, fechaEntrega: { gte: desde, lte: hasta } },
+      include: { proyecto: { select: { nombre: true, numeroProyecto: true } } },
     }),
 
-    // Cuentas bancarias activas para el saldo
+    // Cuentas bancarias activas
     prisma.cuentaBancaria.findMany({
       where: { activa: true },
       select: { id: true, nombre: true, banco: true },
     }),
+
+    // ── CxC pendientes del mes — cobros esperados ────────────────────────
+    // CxC cuya fechaCompromiso cae en el período y aún no están liquidadas
+    prisma.cuentaCobrar.findMany({
+      where: {
+        fechaCompromiso: { gte: desde, lte: hasta },
+        estado: { in: ["PENDIENTE", "PARCIAL", "VENCIDO"] },
+      },
+      include: {
+        cliente:  { select: { nombre: true } },
+        proyecto: { select: { nombre: true, numeroProyecto: true } },
+      },
+      orderBy: { fechaCompromiso: "asc" },
+    }),
+
+    // ── CxP pendientes del mes — pagos comprometidos ─────────────────────
+    // CxP cuya fechaCompromiso cae en el período y aún no están liquidadas
+    prisma.cuentaPagar.findMany({
+      where: {
+        fechaCompromiso: { gte: desde, lte: hasta },
+        estado: { in: ["PENDIENTE", "PARCIAL", "VENCIDO"] },
+      },
+      include: {
+        tecnico:   { select: { nombre: true } },
+        proveedor: { select: { nombre: true } },
+        proyecto:  { select: { nombre: true, numeroProyecto: true } },
+      },
+      orderBy: { fechaCompromiso: "asc" },
+    }),
   ]);
 
   // ── Clasificar movimientos ───────────────────────────────────────────────
-  const ingresoMovs      = movimientos.filter(m => m.tipo === "INGRESO");
-  const gastoMovs        = movimientos.filter(m => m.tipo === "GASTO");
-  const transMovs        = movimientos.filter(m => m.tipo === "TRANSFERENCIA");
-  const inversionMovs    = movimientos.filter(m => m.tipo === "INVERSION");
-  const retiroMovs       = movimientos.filter(m => m.tipo === "RETIRO");
+  const ingresoMovs   = movimientos.filter(m => m.tipo === "INGRESO");
+  const gastoMovs     = movimientos.filter(m => m.tipo === "GASTO");
+  const transMovs     = movimientos.filter(m => m.tipo === "TRANSFERENCIA");
+  const inversionMovs = movimientos.filter(m => m.tipo === "INVERSION");
+  const retiroMovs    = movimientos.filter(m => m.tipo === "RETIRO");
 
-  const totalIngresos     = ingresoMovs.reduce((s, m) => s + m.monto, 0);
-  const totalGastos       = gastoMovs.reduce((s, m) => s + m.monto, 0);
-  const totalInvRetiro    = inversionMovs.reduce((s, m) => s + m.monto, 0)
-                          + retiroMovs.reduce((s, m) => s + m.monto, 0);
+  const totalIngresos  = ingresoMovs.reduce((s, m) => s + m.monto, 0);
+  const totalGastos    = gastoMovs.reduce((s, m) => s + m.monto, 0);
+  const totalInvRetiro = inversionMovs.reduce((s, m) => s + m.monto, 0)
+                       + retiroMovs.reduce((s, m) => s + m.monto, 0);
 
-  // Orphaned totals
-  const orphanIngresos    = abonosOrfanos.reduce((s, a) => s + a.monto, 0);
-  const orphanGastos      = abonosPagoOrfanos.reduce((s, a) => s + a.monto, 0)
-                          + nominaOrfana.reduce((s, p) => s + p.monto, 0)
-                          + gastosEventoOrfanos.reduce((s, g) => s + g.monto * g.cantidad, 0);
+  // Orphaned totals (abonos sin conciliar — fallback)
+  const orphanIngresos = abonosOrfanos.reduce((s, a) => s + a.monto, 0);
+  const orphanGastos   = abonosPagoOrfanos.reduce((s, a) => s + a.monto, 0)
+                       + nominaOrfana.reduce((s, p) => s + p.monto, 0)
+                       + gastosEventoOrfanos.reduce((s, g) => s + g.monto * g.cantidad, 0);
 
-  const flujoNeto = totalIngresos + orphanIngresos - totalGastos - orphanGastos;
+  // ── Compromisos pendientes del mes ───────────────────────────────────────
+  const porCobrarMes  = cxcPendientesMes.reduce((s, c) => s + Math.max(0, c.monto - c.montoCobrado), 0);
+  const porPagarMes   = cxpPendientesMes.reduce((s, c) => s + Math.max(0, c.monto - c.montoPagado), 0);
+
+  const flujoNeto          = totalIngresos + orphanIngresos - totalGastos - orphanGastos;
+  const flujoNetoProyectado = flujoNeto + porCobrarMes - porPagarMes;
 
   return NextResponse.json({
     periodo: periodoStr,
 
     ingresos: {
-      total:       totalIngresos + orphanIngresos,
-      conciliado:  totalIngresos,
-      orphan:      orphanIngresos,
+      total:        totalIngresos + orphanIngresos,
+      conciliado:   totalIngresos,
+      orphan:       orphanIngresos,
       porCategoria: groupByCategoria(ingresoMovs),
-      detalle:     ingresoMovs.map(m => ({
-        id:        m.id, fecha: m.fecha, concepto: m.concepto,
-        monto:     m.monto, metodoPago: m.metodoPago,
+      detalle: ingresoMovs.map(m => ({
+        id: m.id, fecha: m.fecha, concepto: m.concepto,
+        monto: m.monto, metodoPago: m.metodoPago,
         categoria: m.categoria?.nombre ?? "Sin categoría",
-        cuenta:    m.cuentaDestino?.nombre ?? null,
+        cuenta: m.cuentaDestino?.nombre ?? null,
       })),
       abonosOrfanos: abonosOrfanos.map(a => ({
         monto:    a.monto,
@@ -153,15 +177,15 @@ export async function GET(req: NextRequest) {
     },
 
     gastos: {
-      total:       totalGastos + orphanGastos,
-      conciliado:  totalGastos,
-      orphan:      orphanGastos,
+      total:        totalGastos + orphanGastos,
+      conciliado:   totalGastos,
+      orphan:       orphanGastos,
       porCategoria: groupByCategoria(gastoMovs),
-      detalle:     gastoMovs.map(m => ({
-        id:        m.id, fecha: m.fecha, concepto: m.concepto,
-        monto:     m.monto, metodoPago: m.metodoPago,
+      detalle: gastoMovs.map(m => ({
+        id: m.id, fecha: m.fecha, concepto: m.concepto,
+        monto: m.monto, metodoPago: m.metodoPago,
         categoria: m.categoria?.nombre ?? "Sin categoría",
-        cuenta:    m.cuentaOrigen?.nombre ?? null,
+        cuenta: m.cuentaOrigen?.nombre ?? null,
       })),
       abonosPagoOrfanos: abonosPagoOrfanos.map(a => ({
         monto:    a.monto,
@@ -181,7 +205,7 @@ export async function GET(req: NextRequest) {
         proyecto: g.proyecto
           ? `#${g.proyecto.numeroProyecto ?? ""} ${g.proyecto.nombre}`.trim()
           : null,
-        fecha:    g.fechaEntrega,
+        fecha: g.fechaEntrega,
       })),
     },
 
@@ -197,12 +221,48 @@ export async function GET(req: NextRequest) {
     otrasOperaciones: {
       total:   totalInvRetiro,
       detalle: [...inversionMovs, ...retiroMovs].map(m => ({
-        tipo:     m.tipo, concepto: m.concepto, monto: m.monto, fecha: m.fecha,
+        tipo: m.tipo, concepto: m.concepto, monto: m.monto, fecha: m.fecha,
         categoria: m.categoria?.nombre ?? "—",
       })),
     },
 
+    // ── CxC y CxP del período (compromisos pendientes) ───────────────────
+    cuentasPorCobrar: {
+      total: porCobrarMes,
+      count: cxcPendientesMes.length,
+      detalle: cxcPendientesMes.map(c => ({
+        id:              c.id,
+        concepto:        c.concepto,
+        cliente:         c.cliente?.nombre ?? "Sin cliente",
+        proyecto:        c.proyecto ? `#${c.proyecto.numeroProyecto ?? ""} ${c.proyecto.nombre}`.trim() : null,
+        monto:           c.monto,
+        montoCobrado:    c.montoCobrado,
+        saldoPendiente:  Math.max(0, c.monto - c.montoCobrado),
+        estado:          c.estado,
+        fechaCompromiso: c.fechaCompromiso,
+        tipoPago:        c.tipoPago,
+      })),
+    },
+
+    cuentasPorPagar: {
+      total: porPagarMes,
+      count: cxpPendientesMes.length,
+      detalle: cxpPendientesMes.map(c => ({
+        id:              c.id,
+        concepto:        c.concepto,
+        acreedor:        c.tecnico?.nombre ?? c.proveedor?.nombre ?? c.concepto,
+        tipoAcreedor:    c.tipoAcreedor,
+        proyecto:        c.proyecto ? `#${c.proyecto.numeroProyecto ?? ""} ${c.proyecto.nombre}`.trim() : null,
+        monto:           c.monto,
+        montoPagado:     c.montoPagado,
+        saldoPendiente:  Math.max(0, c.monto - c.montoPagado),
+        estado:          c.estado,
+        fechaCompromiso: c.fechaCompromiso,
+      })),
+    },
+
     flujoNeto,
+    flujoNetoProyectado,
     cuentasBancarias,
 
     // Conciliation flags

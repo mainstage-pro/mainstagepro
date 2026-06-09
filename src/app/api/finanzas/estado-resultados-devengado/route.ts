@@ -77,12 +77,12 @@ export async function GET(req: NextRequest) {
       orderBy: { fechaCompromiso: "asc" },
     }),
 
-    // COSTOS DIRECTOS: CxP con proyectoId creadas en el mes
+    // COSTOS DIRECTOS: CxP con proyectoId y fechaCompromiso en el mes
     prisma.cuentaPagar.findMany({
       where: {
-        createdAt:    { gte: desde, lte: hasta },
-        proyectoId:   { not: null },
-        tipoAcreedor: { in: ["TECNICO", "PROVEEDOR", "EMPRESA", "SOCIO"] },
+        fechaCompromiso: { gte: desde, lte: hasta },
+        proyectoId:      { not: null },
+        tipoAcreedor:    { in: ["TECNICO", "PROVEEDOR", "EMPRESA", "SOCIO"] },
       },
       include: {
         tecnico:   { select: { nombre: true } },
@@ -91,10 +91,10 @@ export async function GET(req: NextRequest) {
       },
     }),
 
-    // CxP sin proyecto creadas en el mes (impuestos y gastos op — split in JS)
+    // CxP sin proyecto con fechaCompromiso en el mes (impuestos y gastos op — split in JS)
     prisma.cuentaPagar.findMany({
       where: {
-        createdAt:  { gte: desde, lte: hasta },
+        fechaCompromiso: { gte: desde, lte: hasta },
         proyectoId: null,
       },
     }),

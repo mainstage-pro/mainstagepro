@@ -29,7 +29,7 @@ export async function GET() {
         fechaCompromiso: { gte: ahora, lte: en90dias },
       },
       select: {
-        id: true, concepto: true, monto: true, fechaCompromiso: true, tipoAcreedor: true,
+        id: true, concepto: true, monto: true, montoPagado: true, fechaCompromiso: true, tipoAcreedor: true,
         proyecto: { select: { id: true, nombre: true, numeroProyecto: true } },
       },
       orderBy: { fechaCompromiso: "asc" },
@@ -86,7 +86,8 @@ export async function GET() {
         cxc: [], cxp: [],
       };
     }
-    semanas[idx].salidas += p.monto;
+    const saldoPendiente = Math.max(0, p.monto - (p.montoPagado ?? 0));
+    semanas[idx].salidas += saldoPendiente;
     semanas[idx].cxp.push(p);
   }
 

@@ -56,7 +56,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       data: {
         montoCobrado: nuevoMontoCobrado,
         estado: liquidado ? "LIQUIDADO" : "PARCIAL",
-        fechaCobroReal: liquidado ? new Date() : undefined,
+        fechaCobroReal: fecha ? new Date(fecha) : new Date(), // siempre registrar fecha del \u00faltimo abono
         cuentaDestinoId: cuentaId || undefined,
       },
     });
