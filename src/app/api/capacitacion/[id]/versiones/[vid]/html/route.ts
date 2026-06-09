@@ -9,18 +9,27 @@ import { getSession } from "@/lib/auth";
 
 const NAV_SCRIPT = `
 <script>
-// Globals must NOT be inside an IIFE: onclick="goTo(cur-1)" reads these directly
+// Globals — onclick="goTo(cur-1)" reads these directly from window scope
 var cur = 0;
 var _slides = [];
 var _dots   = [];
 var _counter = null;
+
+function show(el) {
+  // CSS already has .slide { display:flex } — just remove the inline override
+  el.style.removeProperty('display');
+}
+function hide(el) {
+  // Inline style beats the CSS rule
+  el.style.display = 'none';
+}
 
 function init() {
   _slides  = Array.from(document.querySelectorAll('.slide'));
   _dots    = Array.from(document.querySelectorAll('.dot'));
   _counter = document.getElementById('slide-counter');
   if (!_slides.length) return;
-  _slides.forEach(function(s, i) { s.style.setProperty('display', i === 0 ? 'flex' : 'none', 'important'); });
+  _slides.forEach(function(s, i) { if (i === 0) show(s); else hide(s); });
   _dots.forEach(function(d, i)   { d.style.opacity = i === 0 ? '1' : '0.3'; });
   if (_counter) _counter.textContent = '01 / ' + String(_slides.length).padStart(2, '0');
 }
@@ -30,10 +39,10 @@ function goTo(n) {
   if (!_slides.length) return;
   n = parseInt(n, 10);
   if (isNaN(n)) return;
-  _slides[cur].style.setProperty('display', 'none', 'important');
+  hide(_slides[cur]);
   if (_dots[cur]) _dots[cur].style.opacity = '0.3';
   cur = ((n % _slides.length) + _slides.length) % _slides.length;
-  _slides[cur].style.setProperty('display', 'flex', 'important');
+  show(_slides[cur]);
   if (_dots[cur]) _dots[cur].style.opacity = '1';
   if (_counter) _counter.textContent =
     String(cur + 1).padStart(2, '0') + ' / ' + String(_slides.length).padStart(2, '0');
