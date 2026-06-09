@@ -873,6 +873,33 @@ export default function CapacitacionDetailPage() {
                           >
                             ↓
                           </button>
+                          <button
+                            onClick={async () => {
+                              if (!window.confirm(`¿Eliminar Versión ${v.version}? Esta acción no se puede deshacer.`)) return;
+                              const res = await fetch(`/api/capacitacion/${id}/versiones/${v.id}`, { method: "DELETE" });
+                              const data = await res.json();
+                              if (res.ok) {
+                                setSesion((prev) => {
+                                  if (!prev) return prev;
+                                  const newVersiones = prev.versiones.filter((x) => x.id !== v.id);
+                                  return {
+                                    ...prev,
+                                    versiones: newVersiones,
+                                    estado: data.remaining === 0 ? "en-preparacion" : prev.estado,
+                                  };
+                                });
+                                if (data.remaining === 0) setEstado("en-preparacion");
+                                showToast(`Versión ${v.version} eliminada`, "success");
+                              } else {
+                                showToast("Error al eliminar", "error");
+                              }
+                            }}
+                            className="py-1.5 px-3 rounded-lg text-xs font-medium transition-colors hover:border-red-900 hover:text-red-500"
+                            style={{ border: "1px solid #1e1e1e", color: "#4b5563" }}
+                            title="Eliminar versión"
+                          >
+                            🗑
+                          </button>
                         </div>
                       </div>
                     ))}
