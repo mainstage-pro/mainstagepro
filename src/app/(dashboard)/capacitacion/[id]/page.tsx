@@ -369,75 +369,61 @@ export default function CapacitacionDetailPage() {
       const res = await fetch(`/api/capacitacion/${id}/generar`, { method: "POST" });
 
       if (!res.ok || !res.body) {
-        const text = await res.text();
-        throw new Error(text || "Error al conectar con el servidor");
+        let msg = "Error al conectar con el servidor";
+        try { const t = await res.text(); if (t) msg = t; } catch { /* ignore */ }
+        throw new Error(msg);
       }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
       let htmlContent = "";
+      let doneSeen = false;
+      let serverError: string | undefined;
 
-      function processLine(line: string) {
+      function parseLine(line: string) {
         if (!line.startsWith("data: ")) return;
         const raw = line.slice(6).trim();
         if (!raw) return;
+        let ev: Record<string, unknown>;
+        try { ev = JSON.parse(raw); } catch { return; }
 
-        try {
-          const event = JSON.parse(raw) as {
-            type: "chunk" | "done" | "error";
-            text?: string;
-            message?: string;
-            versionId?: string;
-            version?: number;
-            generadaEn?: string;
+        if (ev.type === "chunk" && typeof ev.text === "string") {
+          htmlContent += ev.text;
+        } else if (ev.type === "error") {
+          serverError = typeof ev.message === "string" ? ev.message : "Error al generar presentación";
+        } else if (ev.type === "done") {
+          doneSeen = true;
+          const newVersion: VersionMeta = {
+            id: ev.versionId as string,
+            version: ev.version as number,
+            generadaPor: impartidor,
+            generadaEn: ev.generadaEn as string,
+            notasSnapshot: notas,
+            puntosSnapshot: puntos.map((p) => p.text),
           };
-
-          if (event.type === "chunk" && event.text) {
-            htmlContent += event.text;
-          } else if (event.type === "error") {
-            throw new Error(event.message ?? "Error al generar");
-          } else if (event.type === "done") {
-            const newVersion: VersionMeta = {
-              id: event.versionId!,
-              version: event.version!,
-              generadaPor: impartidor,
-              generadaEn: event.generadaEn!,
-              notasSnapshot: notas,
-              puntosSnapshot: puntos.map((p) => p.text),
-            };
-            setSesion((prev) =>
-              prev ? { ...prev, estado: "lista", versiones: [newVersion, ...prev.versiones] } : prev
-            );
-            setEstado("lista");
-            showToast(`Presentación v${event.version} generada`, "success");
-            setModalHtml(htmlContent);
-            setModalTitle(`Sesión ${padNum(sesion?.numero ?? 0)} — v${event.version}`);
-          }
-        } catch {
-          // skip
+          setSesion((prev) =>
+            prev ? { ...prev, estado: "lista", versiones: [newVersion, ...prev.versiones] } : prev
+          );
+          setEstado("lista");
+          showToast(`Presentación v${ev.version} generada`, "success");
+          setModalHtml(htmlContent);
+          setModalTitle(`Sesión ${padNum(sesion?.numero ?? 0)} — v${ev.version}`);
         }
       }
 
       while (true) {
         const { done, value } = await reader.read();
-
-        if (value) {
-          buffer += decoder.decode(value, { stream: !done });
-        }
-
-        // On final chunk, flush everything
+        if (value) buffer += decoder.decode(value, { stream: !done });
         const lines = buffer.split("\n");
         buffer = done ? "" : (lines.pop() ?? "");
-        lines.forEach(processLine);
-
+        lines.forEach(parseLine);
         if (done) break;
       }
+      if (buffer.trim()) buffer.split("\n").forEach(parseLine);
 
-      // Process any remaining data in buffer
-      if (buffer.trim()) {
-        buffer.split("\n").forEach(processLine);
-      }
+      if (serverError) throw new Error(serverError);
+      if (!doneSeen) throw new Error("La generación fue interrumpida por timeout. Intenta de nuevo.");
 
     } catch (err) {
       showToast(
