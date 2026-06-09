@@ -571,8 +571,8 @@ export default function CapacitacionDetailPage() {
       );
       setEstado("lista");
       showToast(`Presentación v${saveData.version} generada ✓`, "success");
-      setModalHtml(htmlContent);
-      setModalTitle(`Sesión ${padNum(sesion.numero)} — v${saveData.version}`);
+      // Open in new tab — no iframe restrictions
+      window.open(`/api/capacitacion/${id}/versiones/${saveData.versionId}/html`, "_blank");
 
     } catch (err) {
       showToast(
@@ -584,17 +584,9 @@ export default function CapacitacionDetailPage() {
     }
   }
 
-  // ── View version ─────────────────────────────────────────────────────────────
-  async function viewVersion(v: VersionMeta) {
-    showToast("Cargando presentación...", "info");
-    const res = await fetch(`/api/capacitacion/${id}/versiones/${v.id}`);
-    const data = await res.json();
-    if (res.ok) {
-      setModalHtml(data.htmlContent);
-      setModalTitle(`Sesión ${padNum(sesion?.numero ?? 0)} — v${v.version}`);
-    } else {
-      showToast("No se pudo cargar la versión", "error");
-    }
+  // ── View version — opens in new tab as a real HTML page ─────────────────────
+  function viewVersion(v: VersionMeta) {
+    window.open(`/api/capacitacion/${id}/versiones/${v.id}/html`, "_blank");
   }
 
   function downloadHtml(html: string, filename: string) {
