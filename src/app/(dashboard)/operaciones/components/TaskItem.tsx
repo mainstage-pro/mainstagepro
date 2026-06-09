@@ -396,18 +396,7 @@ export default function TaskItem({
             )}
 
             {fecha && !isCompleted && (
-              // El badge es visible en todos los tamaños.
-              // El DatePicker dentro del badge solo aparece en móvil (md:hidden);
-              // en desktop el picker abre desde el botón de acciones (hidden md:flex).
               <span className="relative">
-                {editingDate === "fecha" && (
-                  <span className="md:hidden">
-                    <DatePicker value={localFecha}
-                      onChange={val => { setLocalFecha(val); onDateChange?.(tarea.id, val); }}
-                      onClose={() => setEditingDate(null)}
-                      autoOpen hideTrigger showClear className="absolute" />
-                  </span>
-                )}
                 <button onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fecha"); }}
                   className={`inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium transition-all ${fecha.cls} ${onDateChange ? "hover:brightness-125 cursor-pointer" : "cursor-default"}`}>
                   <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -528,13 +517,8 @@ export default function TaskItem({
       <div className={`hidden md:flex items-center gap-1 shrink-0 mt-0.5 transition-opacity duration-100 ${actionsVisible ? "opacity-100" : "opacity-0"}`}
         onClick={e => e.stopPropagation()}>
 
-        {/* Fecha de realización — ÚNICO DatePicker, solo en desktop actions */}
+        {/* Fecha de realización — solo el botón, el picker es único al nivel del row */}
         <span className="relative">
-          {editingDate === "fecha" && onDateChange && (
-            <DatePicker value={localFecha}
-              onChange={val => { setLocalFecha(val); onDateChange(tarea.id, val); }}
-              onClose={() => setEditingDate(null)} autoOpen hideTrigger showClear className="absolute right-0 top-8 z-50" />
-          )}
           <ActionBtn
             title={localFecha ? `Fecha: ${formatFecha(localFecha).label}` : "Sin fecha"}
             active={!!localFecha}
@@ -751,6 +735,17 @@ export default function TaskItem({
           )}
         </span>
       </div>
+
+      {/* ── ÚNICO DatePicker de fecha — al nivel del row, fuera de mobile/desktop sections ── */}
+      {editingDate === "fecha" && onDateChange && (
+        <DatePicker
+          value={localFecha}
+          onChange={val => { setLocalFecha(val); onDateChange(tarea.id, val); }}
+          onClose={() => setEditingDate(null)}
+          autoOpen hideTrigger showClear
+          className="absolute right-0 top-full mt-1 z-50"
+        />
+      )}
     </div>
 
     {dropIndicatorBelow && (
