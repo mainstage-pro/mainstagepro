@@ -396,13 +396,17 @@ export default function TaskItem({
             )}
 
             {fecha && !isCompleted && (
-              // md:hidden: en desktop el DatePicker vive SOLO en el área de acciones (evita doble picker)
-              <span className="relative md:hidden">
+              // El badge es visible en todos los tamaños.
+              // El DatePicker dentro del badge solo aparece en móvil (md:hidden);
+              // en desktop el picker abre desde el botón de acciones (hidden md:flex).
+              <span className="relative">
                 {editingDate === "fecha" && (
-                  <DatePicker value={localFecha}
-                    onChange={val => { setLocalFecha(val); onDateChange?.(tarea.id, val); }}
-                    onClose={() => setEditingDate(null)}
-                    autoOpen hideTrigger showClear className="absolute" />
+                  <span className="md:hidden">
+                    <DatePicker value={localFecha}
+                      onChange={val => { setLocalFecha(val); onDateChange?.(tarea.id, val); }}
+                      onClose={() => setEditingDate(null)}
+                      autoOpen hideTrigger showClear className="absolute" />
+                  </span>
                 )}
                 <button onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fecha"); }}
                   className={`inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium transition-all ${fecha.cls} ${onDateChange ? "hover:brightness-125 cursor-pointer" : "cursor-default"}`}>
