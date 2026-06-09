@@ -10,6 +10,7 @@ type Instancia = {
   id: string
   estado: string
   notas: string | null
+  razonNoRealizado: string | null
   fechaVencimiento: string
   completadaAt: string | null
   responsable: { id: string; name: string } | null
@@ -224,18 +225,29 @@ function DayPanel({ pct, completadas, total }: { pct: number; completadas: numbe
   )
 }
 
+const RAZONES_NO_REALIZADO = [
+  { key: 'no_alcanzo_tiempo',   label: '🕐 No alcanzó el tiempo' },
+  { key: 'ya_estaba_cubierto',  label: '✅ Ya estaba cubierto' },
+  { key: 'tarea_no_clara',      label: '❓ Tarea no era clara' },
+  { key: 'no_habia_necesidad',  label: '🚫 No había necesidad' },
+]
+
 // ── MiDiaItem ──────────────────────────────────────────────────────────────────
 
 function MiDiaItem({
   instancia,
   onToggle,
+  onNoRealizado,
 }: {
   instancia: Instancia
   onToggle: (id: string, currentEstado: string) => Promise<void>
+  onNoRealizado?: (id: string, razon: string) => Promise<void>
 }) {
   const [expanded, setExpanded] = useState(false)
   const [toggling, setToggling] = useState(false)
+  const [showRazones, setShowRazones] = useState(false)
   const completada = instancia.estado === 'COMPLETADA'
+  const noRealizado = instancia.estado === 'NO_REALIZADO'
   const { template: t } = instancia
   const imp = IMPACTO[t.impacto] ?? IMPACTO.estandar
   const router = useRouter()
@@ -247,11 +259,16 @@ function MiDiaItem({
     setToggling(false)
   }
 
+  async function handleSelectRazon(razon: string) {
+    setShowRazones(false)
+    if (onNoRealizado) await onNoRealizado(instancia.id, razon)
+  }
+
   return (
     <>
       <tr
         className={`border-b border-[#111] transition-colors group cursor-pointer ${
-          completada ? 'opacity-50' : 'hover:bg-[#0a0a0a]'
+          completada || noRealizado ? 'opacity-50' : 'hover:bg-[#0a0a0a]'
         } ${expanded ? 'bg-[#0d0d0d]' : ''}`}
         onClick={() => setExpanded(v => !v)}
       >
@@ -260,8 +277,8 @@ function MiDiaItem({
           <div
             className="w-1 min-h-[44px] h-full rounded-l-sm"
             style={{
-              backgroundColor: t.area.color || '#333',
-              opacity: t.impacto === 'critico' ? 1 : t.impacto === 'alto' ? 0.55 : 0.25,
+              backgroundColor: noRealizado ? '#555' : (t.area.color || '#333'),
+              opacity: noRealizado ? 0.4 : t.impacto === 'critico' ? 1 : t.impacto === 'alto' ? 0.55 : 0.25,
             }}
           />
         </td>
@@ -275,13 +292,16 @@ function MiDiaItem({
             className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
               completada
                 ? 'bg-green-500 border-green-500 shadow-[0_0_0_3px_rgba(34,197,94,0.15)]'
+                : noRealizado
+                ? 'bg-[#2a1a1a] border-[#5a2a2a] hover:border-red-800'
                 : toggling
                 ? 'border-[#C9A84C] animate-pulse'
                 : 'border-[#C9A84C] hover:bg-[#C9A84C]/20 hover:shadow-[0_0_0_3px_rgba(201,168,76,0.18)]'
             }`}
           >
             {completada && <span className="text-white text-[10px] font-bold">✓</span>}
-            {!completada && !toggling && <span className="w-2 h-2 rounded-full bg-[#C9A84C]/50" />}
+            {noRealizado && <span className="text-red-800 text-[10px] font-bold">✗</span>}
+            {!completada && !noRealizado && !toggling && <span className="w-2 h-2 rounded-full bg-[#C9A84C]/50" />}
           </button>
         </td>
 
@@ -289,23 +309,28 @@ function MiDiaItem({
         <td className="py-3 px-3">
           <div className="flex items-start gap-2 flex-wrap">
             <span className={`text-sm leading-snug ${
-              completada ? 'line-through text-gray-600' : 'text-white'
+              completada ? 'line-through text-gray-600' : noRealizado ? 'line-through text-gray-700' : 'text-white'
             }`}>{t.nombre}</span>
           </div>
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            {t.impacto !== 'estandar' && (
+            {noRealizado && instancia.razonNoRealizado && (
+              <span className="text-[9px] text-red-900 bg-red-950/30 px-1.5 py-0.5 rounded-full border border-red-900/20">
+                {RAZONES_NO_REALIZADO.find(r => r.key === instancia.razonNoRealizado)?.label ?? instancia.razonNoRealizado}
+              </span>
+            )}
+            {!noRealizado && t.impacto !== 'estandar' && (
               <span className={`text-[9px] ${
                 t.impacto === 'critico' ? 'text-red-400' : 'text-orange-400'
               }`}>{imp.label}</span>
             )}
-            {t.tipo === 'ENTREGABLE' && (
+            {!noRealizado && t.tipo === 'ENTREGABLE' && (
               <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#C9A84C]/30 text-[#C9A84C]">Entregable</span>
             )}
-            {t.cuando && !expanded && (
+            {!noRealizado && t.cuando && !expanded && (
               <span className="text-[10px] text-gray-600 truncate max-w-[160px]">{t.cuando}</span>
             )}
             {/* Módulo link */}
-            {t.moduloDestino && t.moduloTexto && !t.esAccionCampo && t.moduloDisponible && (
+            {!noRealizado && t.moduloDestino && t.moduloTexto && !t.esAccionCampo && t.moduloDisponible && (
               <button
                 type="button"
                 onClick={e => { e.stopPropagation(); router.push(t.moduloDestino!.split('#')[0]) }}
@@ -351,9 +376,39 @@ function MiDiaItem({
           </span>
         </td>
 
-        {/* Chevron */}
-        <td className="py-3 px-3 text-right w-10">
-          <span className="text-gray-600 text-xs">{expanded ? '▲' : '▼'}</span>
+        {/* Chevron + No realizado */}
+        <td className="py-3 px-2 text-right w-16" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-end gap-1">
+            {/* No realizado button — only for pending tasks */}
+            {!completada && !noRealizado && onNoRealizado && (
+              <div className="relative">
+                <button
+                  type="button"
+                  title="Marcar como no realizado"
+                  onClick={e => { e.stopPropagation(); setShowRazones(v => !v) }}
+                  className="text-[#3a3a3a] hover:text-red-800 text-[10px] px-1.5 py-1 rounded transition-colors opacity-0 group-hover:opacity-100"
+                >
+                  ✗
+                </button>
+                {showRazones && (
+                  <div className="absolute right-0 top-6 z-50 bg-[#111] border border-[#222] rounded-xl shadow-2xl py-1 w-52">
+                    <p className="text-[8px] uppercase tracking-wider text-gray-600 px-3 py-1.5">¿Por qué no se realizó?</p>
+                    {RAZONES_NO_REALIZADO.map(r => (
+                      <button
+                        key={r.key}
+                        type="button"
+                        onClick={() => handleSelectRazon(r.key)}
+                        className="w-full text-left px-3 py-2 text-[11px] text-gray-400 hover:bg-[#1a1a1a] hover:text-white transition-colors"
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <span className="text-gray-600 text-xs">{expanded ? '▲' : '▼'}</span>
+          </div>
         </td>
       </tr>
 
@@ -550,6 +605,17 @@ export default function MiDiaPage() {
     setGenerando(false)
   }
 
+  async function handleNoRealizado(id: string, razon: string) {
+    setInstancias(prev => prev.map(i =>
+      i.id === id ? { ...i, estado: 'NO_REALIZADO', razonNoRealizado: razon } : i
+    ))
+    await fetch('/api/plan-trabajo/instancias', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ instanciaId: id, estado: 'NO_REALIZADO', razonNoRealizado: razon }),
+    })
+  }
+
   async function handleToggleAtrasada(id: string, currentEstado: string) {
     const goingComplete = currentEstado !== 'COMPLETADA'
     setAtrasadas(prev => prev.map(i =>
@@ -617,8 +683,9 @@ export default function MiDiaPage() {
     const bHora = b.template.horaLimite ?? '99:99'
     return aHora.localeCompare(bHora)
   })
-  const pendientes  = sorted.filter(i => i.estado !== 'COMPLETADA' && i.estado !== 'OMITIDA')
-  const completadas = sorted.filter(i => i.estado === 'COMPLETADA')
+  const pendientes    = sorted.filter(i => i.estado !== 'COMPLETADA' && i.estado !== 'OMITIDA' && i.estado !== 'NO_REALIZADO')
+  const completadas   = sorted.filter(i => i.estado === 'COMPLETADA')
+  const noRealizados  = sorted.filter(i => i.estado === 'NO_REALIZADO')
   const total = instancias.length
   const pct   = total > 0 ? Math.round((completadas.length / total) * 100) : 0
 
@@ -922,7 +989,7 @@ export default function MiDiaPage() {
                           </tr>
                           {/* Task rows */}
                           {!isCollapsed && subareas[subNombre].map(inst => (
-                            <MiDiaItem key={inst.id} instancia={inst} onToggle={handleToggle} />
+                            <MiDiaItem key={inst.id} instancia={inst} onToggle={handleToggle} onNoRealizado={handleNoRealizado} />
                           ))}
                         </tbody>
                       )
@@ -950,11 +1017,25 @@ export default function MiDiaPage() {
                         <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden sm:table-cell">Responsable</th>
                         <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden md:table-cell">Días</th>
                         <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden lg:table-cell">Recurrencia</th>
-                        <th className="w-10" />
+                        <th className="w-16" />
                       </tr>
                     </thead>
                     <tbody>
                       {completadas.map(inst => (
+                        <MiDiaItem key={inst.id} instancia={inst} onToggle={handleToggle} />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {noRealizados.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-3">
+                    ✗ No realizados ({noRealizados.length})
+                  </p>
+                  <table className="w-full opacity-60">
+                    <tbody>
+                      {noRealizados.map(inst => (
                         <MiDiaItem key={inst.id} instancia={inst} onToggle={handleToggle} />
                       ))}
                     </tbody>

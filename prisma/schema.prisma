@@ -2866,10 +2866,11 @@ model PTTareaInstancia {
   responsableId  String?
   responsable    User?    @relation("PTInstanciaResponsable", fields: [responsableId], references: [id], onDelete: SetNull)
   fechaVencimiento DateTime
-  estado         String   @default("PENDIENTE") // PENDIENTE | EN_PROGRESO | COMPLETADA | VENCIDA | OMITIDA
+  estado         String   @default("PENDIENTE") // PENDIENTE | EN_PROGRESO | COMPLETADA | VENCIDA | OMITIDA | NO_REALIZADO
   esEntregable   Boolean  @default(false)
   periodoLabel   String?  // "Semana 22", "Mayo 2026", "Lunes 26 mayo"
   notas          String?  @db.Text
+  razonNoRealizado String? // no_alcanzo_tiempo | ya_estaba_cubierto | tarea_no_clara | no_habia_necesidad
   completadaAt   DateTime?
   completadaPorId String?
   completadaPor  User?    @relation("PTInstanciaCompletadaPor", fields: [completadaPorId], references: [id], onDelete: SetNull)

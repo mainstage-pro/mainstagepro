@@ -167,13 +167,13 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { instanciaId, estado, nota } = body;
+  const { instanciaId, estado, nota, razonNoRealizado } = body;
 
   if (!instanciaId || !estado) {
     return NextResponse.json({ error: "instanciaId y estado requeridos" }, { status: 400 });
   }
 
-  const validEstados = ["PENDIENTE", "EN_PROGRESO", "COMPLETADA", "OMITIDA"];
+  const validEstados = ["PENDIENTE", "EN_PROGRESO", "COMPLETADA", "OMITIDA", "NO_REALIZADO"];
   if (!validEstados.includes(estado)) {
     return NextResponse.json({ error: "Estado inválido" }, { status: 400 });
   }
@@ -183,6 +183,7 @@ export async function POST(req: NextRequest) {
     data: {
       estado,
       notas: nota ?? undefined,
+      razonNoRealizado: estado === "NO_REALIZADO" ? (razonNoRealizado ?? null) : estado === "PENDIENTE" ? null : undefined,
       completadaAt: estado === "COMPLETADA" ? new Date() : null,
       completadaPorId: estado === "COMPLETADA" ? session.id : null,
     },
@@ -197,10 +198,11 @@ export async function POST(req: NextRequest) {
     data: {
       instanciaId,
       usuarioId: session.id,
-      accion: estado === "COMPLETADA" ? "COMPLETADA" : estado === "PENDIENTE" ? "REABIERTA" : "OMITIDA",
-      detalles: nota ?? null,
+      accion: estado === "COMPLETADA" ? "COMPLETADA" : estado === "PENDIENTE" ? "REABIERTA" : estado === "NO_REALIZADO" ? "NO_REALIZADO" : "OMITIDA",
+      detalles: estado === "NO_REALIZADO" ? razonNoRealizado ?? null : nota ?? null,
     },
   });
 
   return NextResponse.json({ instancia });
 }
+
