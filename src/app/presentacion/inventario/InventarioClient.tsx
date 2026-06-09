@@ -206,8 +206,8 @@ function EquipoCard({ eq, delay = 0, onImageClick }: { eq: EquipoData; delay?: n
             <img src="/logo-icon.png" alt="Mainstage Pro" draggable={false} className="w-16 h-16 object-contain opacity-10" />
           )}
           <div className="absolute top-3 right-3 rounded-full px-2.5 py-1 text-xs font-bold"
-               style={{ background: eq.cantidadTotal > 4 ? GOLD : "#1a1a1a", color: eq.cantidadTotal > 4 ? "#000" : GOLD, border: `1px solid ${GOLD}30` }}>
-            {eq.cantidadTotal}<span style={{fontSize:"9px",fontWeight:400,opacity:0.7,marginLeft:"2px"}}>uds</span>
+               style={{ background: `${GOLD}20`, color: GOLD, border: `1px solid ${GOLD}50` }}>
+            {eq.cantidadTotal}<span style={{fontSize:"9px",fontWeight:400,opacity:0.8,marginLeft:"2px"}}>unidades</span>
           </div>
         </div>
         <div className="p-5 flex-1 flex flex-col">
