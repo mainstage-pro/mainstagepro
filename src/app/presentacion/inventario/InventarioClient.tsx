@@ -207,7 +207,7 @@ function EquipoCard({ eq, delay = 0, onImageClick }: { eq: EquipoData; delay?: n
           )}
           <div className="absolute top-3 right-3 rounded-full px-2.5 py-1 text-xs font-bold"
                style={{ background: eq.cantidadTotal > 4 ? GOLD : "#1a1a1a", color: eq.cantidadTotal > 4 ? "#000" : GOLD, border: `1px solid ${GOLD}30` }}>
-            ×{eq.cantidadTotal}
+            {eq.cantidadTotal}<span style={{fontSize:"9px",fontWeight:400,opacity:0.7,marginLeft:"2px"}}>uds</span>
           </div>
         </div>
         <div className="p-5 flex-1 flex flex-col">
@@ -216,7 +216,7 @@ function EquipoCard({ eq, delay = 0, onImageClick }: { eq: EquipoData; delay?: n
           {eq.notas && <p className="text-white/20 text-xs mt-2 leading-relaxed line-clamp-2">{eq.notas}</p>}
           {eq.precioRenta > 0 && (
             <p className="text-[#B3985B] text-xs font-semibold mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-              {fmtPrice(eq.precioRenta)} <span className="text-white/25 font-normal">/ día</span>
+              {fmtPrice(eq.precioRenta)} <span className="text-white/25 font-normal">{" / día"}</span>
             </p>
           )}
         </div>
@@ -278,7 +278,7 @@ function PreciosTab({ categorias, onAddItem, onSwitchToCotizador }: {
         <div className="mb-10">
           <p className="text-white/20 text-xs tracking-[0.3em] uppercase mb-3 font-mono">Mainstage Pro · Catálogo técnico</p>
           <h2 className="font-bold text-white" style={{ fontSize: "clamp(2rem,5vw,3.5rem)", letterSpacing: "-0.03em" }}>Lista de precios</h2>
-          <p className="text-white/35 text-sm mt-3">Precios de renta por día de evento. La operación técnica (técnicos, traslado e instalación) se cotiza por separado.</p>
+          <p className="text-white/35 text-sm mt-3">{"Precios de renta por día de evento."} La operación técnica (técnicos, traslado e instalación) se cotiza por separado.</p>
         </div>
       </R>
 
@@ -309,7 +309,7 @@ function PreciosTab({ categorias, onAddItem, onSwitchToCotizador }: {
                     <span />
                     <span>Equipo</span>
                     <span className="text-center">Unid.</span>
-                    <span className="text-right">Precio/día</span>
+                    <span className="text-right">{"Precio/día"}</span>
                     <span />
                   </div>
                   {cat.equipos.map((eq, i) => {
@@ -360,7 +360,7 @@ function PreciosTab({ categorias, onAddItem, onSwitchToCotizador }: {
       {/* Bottom note */}
       <R>
         <p className="mt-10 text-center text-white/20 text-xs">
-          * Precios de referencia por día de evento. Sujetos a disponibilidad y confirmación.
+          {"* Precios de referencia por día de evento. Sujetos a disponibilidad y confirmación."}
         </p>
       </R>
     </div>
@@ -556,7 +556,7 @@ function CotizadorTab({ categorias, quoteItems, onAddItem, onUpdateQty, onRemove
               </div>
               {/* Days */}
               <div className="flex items-center gap-2">
-                <span className="text-white/40 text-xs">Días del evento:</span>
+                <span className="text-white/40 text-xs">{"Días del evento:"}</span>
                 <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
                   <button onClick={() => setDias(d => Math.max(1, d - 1))}
                           className="w-7 h-7 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors">−</button>
