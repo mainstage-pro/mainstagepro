@@ -2797,11 +2797,29 @@ function CascadeEquipoSelect({
                     catEquipos.map(eq => {
                       const d = dispMap[eq.id];
                       const precio = preciosCliente[eq.id] ?? eq.precioRenta;
-                      const dispLabel = fechaEvento && d !== undefined
-                        ? d.disponible === 0 ? ' \u26d4'
-                          : d.disponible < d.total ? ` \u26a0${d.disponible}/${d.total}`
-                          : ` \u2713${d.disponible}`
-                        : '';
+
+                      // Availability badge — readable text with semantic color
+                      let dispText: string;
+                      let dispColor: string;
+                      if (fechaEvento && d !== undefined) {
+                        if (d.disponible === 0) {
+                          dispText = 'Sin disponibilidad';
+                          dispColor = '#ef4444';
+                        } else if (d.disponible < d.total) {
+                          dispText = `${d.disponible} de ${d.total} disp.`;
+                          dispColor = '#f59e0b';
+                        } else {
+                          dispText = `${d.disponible} disponibles`;
+                          dispColor = '#22c55e';
+                        }
+                      } else if (loadingDisp) {
+                        dispText = 'Verificando...';
+                        dispColor = '#555';
+                      } else {
+                        dispText = `${eq.cantidadTotal} en inventario`;
+                        dispColor = '#555';
+                      }
+
                       const isSelected = value === eq.id;
                       return (
                         <button
@@ -2815,8 +2833,9 @@ function CascadeEquipoSelect({
                           }`}
                         >
                           <span className="flex-1 truncate">{eq.descripcion}{eq.marca ? ` \u00b7 ${eq.marca}` : ''}</span>
-                          <span className="shrink-0 text-gray-600 font-mono text-[10px] whitespace-nowrap">
-                            {precio > 0 ? formatCurrency(precio) : 'INCLUYE'}{dispLabel}
+                          <span className="shrink-0 text-[10px] whitespace-nowrap flex items-center gap-1.5">
+                            <span className="text-gray-600">{precio > 0 ? formatCurrency(precio) : 'INCLUYE'}</span>
+                            <span style={{ color: dispColor }}>{dispText}</span>
                           </span>
                         </button>
                       );
