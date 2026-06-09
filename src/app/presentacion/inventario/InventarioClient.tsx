@@ -1,10 +1,10 @@
 "use client";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 
 const GOLD = "#B3985B";
 const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20conocer%20el%20equipo%20disponible%20para%20mi%20evento.";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────────
 interface EquipoData {
   id: string; descripcion: string; marca: string | null;
   modelo: string | null; cantidadTotal: number; estado: string; notas: string | null;
@@ -12,8 +12,18 @@ interface EquipoData {
 }
 interface CategoriaData { nombre: string; orden: number; equipos: EquipoData[]; }
 interface Props { data: { categorias: CategoriaData[]; totalEquipos: number; totalUnidades: number } }
+interface QuoteItem {
+  id: string;
+  descripcion: string;
+  marca?: string | null;
+  modelo?: string | null;
+  cantidad: number;
+  precioUnitario: number;
+  esPersonalizado: boolean;
+}
+type Tab = "catalogo" | "precios" | "cotizador";
 
-// ─── Image mapping ────────────────────────────────────────────────────────────
+// ─── Image mapping ──────────────────────────────────────────────────────────────
 const MARCA_IMGS: Record<string, string> = {
   "rcf":          "/images/presentacion/rcf-hdl30a.png",
   "electro voice":"/images/presentacion/ev-ekx12p.png",
@@ -76,96 +86,57 @@ const MODELO_IMGS: Record<string, string> = {
   "SOUL RGBW":     "/images/presentacion/sunstar-soul-rgbw.png",
   "Atem Mini Pro": "/images/presentacion/blackmagic-atem.png",
 };
-// ─── Category descriptions ────────────────────────────────────────────────────
 const CAT_DESC: Record<string, string> = {
   "Sistemas de Audio":          "Line arrays, subwoofers y monitores activos para cobertura uniforme en cualquier venue, desde jardines hasta auditorios.",
   "Equipo de Audio":            "Line arrays, subwoofers y monitores activos para cobertura uniforme en cualquier venue, desde jardines hasta auditorios.",
-  "Consolas de Audio":          "Consolas digitales para mezcla en vivo con control total sobre señal, efectos y ruteo — desde el primer orador hasta el último acorde.",
-  "Sistemas de Microfonía":     "Micrófonos de solapa, headset y de mano para oradores, artistas y ceremonias, con operación técnica dedicada.",
-  "Microfonía e Inalámbricos":  "Micrófonos de solapa, headset y de mano para oradores, artistas y ceremonias, con operación técnica dedicada.",
-  "Monitoreo In-Ear":           "Sistemas IEM para artistas y técnicos en tarima — cada músico escucha su mezcla personalizada sin interferencias.",
-  "Equipo de Iluminación":      "Cabezas móviles, beams, pares LED, efectos especiales y estructuras de soporte operados en vivo desde consola.",
-  "Consolas de Iluminación":    "Control de cues, escenas y efectos en tiempo real. Programación previa para que cada momento del evento tenga su luz.",
-  "Consolas/Equipo para DJ":    "CDJs, mezcladoras y setup profesional verificado antes de que el artista llegue — el rider cubierto sin negociaciones.",
-  "DJ Booths":                  "Booths estructurales con integración de equipo técnico, adaptables al espacio y al concepto del evento.",
-  "Equipo para DJ":             "CDJs, mezcladoras y setup profesional verificado antes de que el artista llegue — el rider cubierto sin negociaciones.",
-  "Pantalla / Video":           "Pantallas, procesadores de señal y sistemas de proyección para presentaciones, contenido en vivo y transmisiones.",
-  "Entarimado":                 "Estructuras modulares para tarimas, risers y escenarios — estables, certificadas y adaptables a cualquier dimensión.",
+  "Consolas de Audio":          "Consolas digitales para mezcla en vivo con control total sobre señal, efectos y ruteo.",
+  "Sistemas de Microfonía":     "Micrófonos de solapa, headset y de mano para oradores, artistas y ceremonias.",
+  "Microfonía e Inalámbricos":  "Micrófonos de solapa, headset y de mano para oradores, artistas y ceremonias.",
+  "Monitoreo In-Ear":           "Sistemas IEM para artistas y técnicos en tarima — mezcla personalizada sin interferencias.",
+  "Equipo de Iluminación":      "Cabezas móviles, beams, pares LED, efectos especiales y estructuras de soporte.",
+  "Consolas de Iluminación":    "Control de cues, escenas y efectos en tiempo real. Programación previa para cada momento.",
+  "Consolas/Equipo para DJ":    "CDJs, mezcladoras y setup profesional verificado antes de que el artista llegue.",
+  "DJ Booths":                  "Booths estructurales con integración de equipo técnico, adaptables al espacio y concepto.",
+  "Equipo para DJ":             "CDJs, mezcladoras y setup profesional verificado antes de que el artista llegue.",
+  "Pantalla / Video":           "Pantallas, procesadores de señal y sistemas de proyección para contenido en vivo.",
+  "Entarimado":                 "Estructuras modulares para tarimas, risers y escenarios — estables y adaptables.",
 };
 
-// ─── Price formatter ──────────────────────────────────────────────────────────
-function fmtPrice(n: number): string {
-  return "$" + n.toLocaleString("es-MX", { maximumFractionDigits: 0 });
-}
-
-const CAT_HERO_IMGS: Record<string, string> = {
-  "Equipo de Audio":         "/images/presentacion/rcf-hdl30a.jpg",
-  "Sistemas de Audio":       "/images/presentacion/rcf-hdl30a.jpg",
-  "Consolas de Audio":       "/images/presentacion/allen-heath-dlive.jpg",
-  "Sistemas de Microfonía":  "/images/presentacion/shure-slxd.png",
-  "Microfonía e Inalámbricos":"/images/presentacion/shure-slxd.png",
-  "Monitoreo In-Ear":        "/images/presentacion/sennheiser-iem.png",
-  "Equipo de Iluminación":   "/images/presentacion/equip-light.jpg",
-  "Consolas de Iluminación": "/images/presentacion/grandma-ma3.png",
-  "Consolas/Equipo para DJ": "/images/presentacion/pioneer-cdj3000.webp",
-  "DJ Booths":               "/images/presentacion/pioneer-cdj3000.webp",
-  "Equipo para DJ":          "/images/presentacion/pioneer-cdj3000.webp",
-  "Pantalla / Video":        "/images/presentacion/e-corp-screens.jpg",
-  "Entarimado":              "/images/presentacion/entarimado.png",
-};
-
-// ─── Equipment that should always show the Mainstage logo (no real image) ────
+// ─── Force logo + exclude ────────────────────────────────────────────────────
 const FORCE_LOGO_KEYWORDS = [
-  "laser led 6 watts",
-  "l\u00e1ser led 6 watts",
-  "cym pro",
-  "elevadores de audio",
-  "esquinero de truss a 45",
-  "motores de rigging",
-  "pantalla smart tv 50",
-  "back decorativo acabado tipo m\u00e1rmol",
-  "booth decorativo acabado tipo m\u00e1rmol",
-  "booth decorativo premium color blanco",
-  "torre decorativa premium blanco 2 metros",
-  "torre decorativa premium blanco 2.5 metros",
+  "laser led 6 watts","láser led 6 watts","cym pro",
+  "elevadores de audio","esquinero de truss a 45","motores de rigging",
+  "pantalla smart tv 50","back decorativo acabado tipo mármol",
+  "booth decorativo acabado tipo mármol","booth decorativo premium color blanco",
+  "torre decorativa premium blanco 2 metros","torre decorativa premium blanco 2.5 metros",
   "entarimado 2.5",
 ];
+const EXCLUDE_KEYWORDS = ["colocación de puntos de colgado","anclaje en alturas"];
 
-// ─── Equipment to hide from the presentation entirely ─────────────────────────
-const EXCLUDE_KEYWORDS = [
-  "colocaci\u00f3n de puntos de colgado",
-  "anclaje en alturas",
-];
-
-function shouldForceLogo(eq: EquipoData): boolean {
-  const desc = (eq.descripcion ?? "").toLowerCase();
-  return FORCE_LOGO_KEYWORDS.some(k => desc.includes(k.toLowerCase()));
+function shouldForceLogo(eq: EquipoData) {
+  const d = (eq.descripcion ?? "").toLowerCase();
+  return FORCE_LOGO_KEYWORDS.some(k => d.includes(k.toLowerCase()));
 }
-
-function shouldExclude(eq: EquipoData): boolean {
-  const desc = (eq.descripcion ?? "").toLowerCase();
-  return EXCLUDE_KEYWORDS.some(k => desc.includes(k.toLowerCase()));
+function shouldExclude(eq: EquipoData) {
+  const d = (eq.descripcion ?? "").toLowerCase();
+  return EXCLUDE_KEYWORDS.some(k => d.includes(k.toLowerCase()));
 }
-
 function getEqImg(eq: EquipoData): string | null {
-  // Force logo for specific equipment
   if (shouldForceLogo(eq)) return null;
-  // DB image takes absolute priority
   if (eq.imagenUrl) return eq.imagenUrl;
-  // Fallback to hardcoded map (covers equipment without DB image yet)
   if (eq.modelo) {
-    for (const [k, v] of Object.entries(MODELO_IMGS)) {
+    for (const [k, v] of Object.entries(MODELO_IMGS))
       if (eq.modelo.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(eq.modelo.toLowerCase())) return v;
-    }
   }
   const m = (eq.marca ?? "").toLowerCase().trim();
-  for (const [k, v] of Object.entries(MARCA_IMGS)) {
+  for (const [k, v] of Object.entries(MARCA_IMGS))
     if (m.includes(k) || k.includes(m)) return v;
-  }
   return null;
 }
+function fmtPrice(n: number) { return "$" + n.toLocaleString("es-MX", { maximumFractionDigits: 0 }); }
+function eqDisplayName(eq: EquipoData) { return [eq.marca, eq.modelo].filter(Boolean).join(" ") || eq.descripcion; }
 
-// ─── Hooks ────────────────────────────────────────────────────────────────────
+// ─── Hooks ──────────────────────────────────────────────────────────────────────
 function useReveal(threshold = 0.08) {
   const ref = useRef<HTMLDivElement>(null);
   const [vis, setVis] = useState(false);
@@ -176,9 +147,8 @@ function useReveal(threshold = 0.08) {
   }, [threshold]);
   return { ref, vis };
 }
-
 function useCounter(target: number, duration = 2000) {
-  const [count, setCount]     = useState(0);
+  const [count, setCount] = useState(0);
   const [started, setStarted] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -189,15 +159,11 @@ function useCounter(target: number, duration = 2000) {
   useEffect(() => {
     if (!started) return;
     let cur = 0; const step = target / (duration / 16);
-    const t = setInterval(() => {
-      cur += step;
-      if (cur >= target) { setCount(target); clearInterval(t); } else setCount(Math.floor(cur));
-    }, 16);
+    const t = setInterval(() => { cur += step; if (cur >= target) { setCount(target); clearInterval(t); } else setCount(Math.floor(cur)); }, 16);
     return () => clearInterval(t);
   }, [started, target, duration]);
   return { count, ref };
 }
-
 function useScrollHeader() {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -208,71 +174,49 @@ function useScrollHeader() {
   return scrolled;
 }
 
-// ─── Animated reveal wrapper ──────────────────────────────────────────────────
+// ─── Reveal wrapper ─────────────────────────────────────────────────────────────
 function R({ children, delay = 0, y = 36, className = "" }: { children: React.ReactNode; delay?: number; y?: number; className?: string }) {
   const { ref, vis } = useReveal();
   return (
     <div ref={ref} className={className}
-         style={{
-           transitionDelay: `${delay}ms`,
-           opacity: vis ? 1 : 0,
-           transform: vis ? "translateY(0)" : `translateY(${y}px)`,
-           transition: "opacity 0.75s cubic-bezier(0.16,1,0.3,1), transform 0.75s cubic-bezier(0.16,1,0.3,1)",
-         }}>
+         style={{ transitionDelay: `${delay}ms`, opacity: vis ? 1 : 0, transform: vis ? "translateY(0)" : `translateY(${y}px)`, transition: "opacity 0.75s cubic-bezier(0.16,1,0.3,1), transform 0.75s cubic-bezier(0.16,1,0.3,1)" }}>
       {children}
     </div>
   );
 }
 
-// ─── Equipment card ───────────────────────────────────────────────────────────
+// ─── Equipo card (catálogo) ──────────────────────────────────────────────────────
 function EquipoCard({ eq, delay = 0, onImageClick }: { eq: EquipoData; delay?: number; onImageClick: (src: string, alt: string) => void }) {
   const img = getEqImg(eq);
   const [hovered, setHovered] = useState(false);
   return (
     <R delay={delay}>
       <div className="group relative rounded-2xl overflow-hidden flex flex-col h-full transition-all duration-300"
-           style={{
-             background: hovered ? "rgba(179,152,91,0.04)" : "rgba(255,255,255,0.025)",
-             border: `1px solid ${hovered ? GOLD + "40" : "rgba(255,255,255,0.07)"}`,
-             boxShadow: hovered ? `0 8px 40px rgba(0,0,0,0.4)` : "none",
-           }}
-           onMouseEnter={() => setHovered(true)}
-           onMouseLeave={() => setHovered(false)}>
-        {/* Image area */}
+           style={{ background: hovered ? "rgba(179,152,91,0.04)" : "rgba(255,255,255,0.025)", border: `1px solid ${hovered ? GOLD + "40" : "rgba(255,255,255,0.07)"}`, boxShadow: hovered ? "0 8px 40px rgba(0,0,0,0.4)" : "none" }}
+           onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
         <div className="relative flex items-center justify-center p-5 overflow-hidden"
              style={{ height: "160px", background: "#050505", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
           {img ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={img} alt={eq.descripcion} draggable={false}
-                 onClick={() => onImageClick(img, eq.descripcion)}
+            <img src={img} alt={eq.descripcion} draggable={false} onClick={() => onImageClick(img, eq.descripcion)}
                  className="max-h-full max-w-full object-contain transition-all duration-500 cursor-zoom-in"
                  style={{ transform: hovered ? "scale(1.07)" : "scale(1)", filter: hovered ? "brightness(1.1)" : "brightness(0.9)" }} />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src="/logo-icon.png" alt="Mainstage Pro" draggable={false}
-                 className="w-16 h-16 object-contain opacity-10" />
+            <img src="/logo-icon.png" alt="Mainstage Pro" draggable={false} className="w-16 h-16 object-contain opacity-10" />
           )}
-          {/* Qty badge */}
           <div className="absolute top-3 right-3 rounded-full px-2.5 py-1 text-xs font-bold"
                style={{ background: eq.cantidadTotal > 4 ? GOLD : "#1a1a1a", color: eq.cantidadTotal > 4 ? "#000" : GOLD, border: `1px solid ${GOLD}30` }}>
-            \u00d7{eq.cantidadTotal}
+            ×{eq.cantidadTotal}
           </div>
         </div>
-        {/* Info */}
         <div className="p-5 flex-1 flex flex-col">
-          {/* Primary name: Marca + Modelo, or fall back to descripcion */}
-          <p className="text-white font-semibold text-sm leading-snug mb-1 line-clamp-2">
-            {[eq.marca, eq.modelo].filter(Boolean).join(" ") || eq.descripcion}
-          </p>
-          {/* Secondary: descripcion (only when we have a marca/modelo to show as primary) */}
-          {(eq.marca || eq.modelo) && (
-            <p className="text-white/40 text-xs leading-snug line-clamp-2">{eq.descripcion}</p>
-          )}
+          <p className="text-white font-semibold text-sm leading-snug mb-1 line-clamp-2">{eqDisplayName(eq)}</p>
+          {(eq.marca || eq.modelo) && <p className="text-white/40 text-xs leading-snug line-clamp-2">{eq.descripcion}</p>}
           {eq.notas && <p className="text-white/20 text-xs mt-2 leading-relaxed line-clamp-2">{eq.notas}</p>}
           {eq.precioRenta > 0 && (
-            <p className="text-[#B3985B] text-xs font-semibold mt-3 pt-3"
-               style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-              {fmtPrice(eq.precioRenta)} <span className="text-white/25 font-normal">/ d\u00eda</span>
+            <p className="text-[#B3985B] text-xs font-semibold mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+              {fmtPrice(eq.precioRenta)} <span className="text-white/25 font-normal">/ día</span>
             </p>
           )}
         </div>
@@ -281,130 +225,516 @@ function EquipoCard({ eq, delay = 0, onImageClick }: { eq: EquipoData; delay?: n
   );
 }
 
-// ─── Stat counter block ───────────────────────────────────────────────────────
+// ─── Stat counter ────────────────────────────────────────────────────────────────
 function StatBlock({ target, suffix = "", label, sub }: { target: number; suffix?: string; label: string; sub: string }) {
   const { count, ref } = useCounter(target, 2200);
   return (
     <div ref={ref} className="flex flex-col items-center text-center px-6 py-8">
-      <span className="font-bold tabular-nums leading-none"
-            style={{ fontSize: "clamp(4rem,10vw,8rem)", letterSpacing: "-0.04em", color: GOLD, lineHeight: 1 }}>
-        {count}{suffix}
-      </span>
+      <span className="font-bold tabular-nums leading-none" style={{ fontSize: "clamp(4rem,10vw,8rem)", letterSpacing: "-0.04em", color: GOLD, lineHeight: 1 }}>{count}{suffix}</span>
       <span className="text-white font-semibold mt-3 text-lg">{label}</span>
       <span className="text-white/35 text-sm mt-1">{sub}</span>
     </div>
   );
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// ─── Tab nav ──────────────────────────────────────────────────────────────────────
+function TabNav({ active, onChange, quoteCount }: { active: Tab; onChange: (t: Tab) => void; quoteCount: number }) {
+  const tabs: { key: Tab; label: string }[] = [
+    { key: "catalogo", label: "Catálogo" },
+    { key: "precios",  label: "Lista de precios" },
+    { key: "cotizador", label: "Cotizador" },
+  ];
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      {tabs.map(t => (
+        <button key={t.key} onClick={() => onChange(t.key)}
+                className="relative text-sm px-5 py-2.5 rounded-full transition-all duration-300 font-medium whitespace-nowrap"
+                style={{ background: active === t.key ? GOLD : "rgba(255,255,255,0.05)", color: active === t.key ? "#000" : "rgba(255,255,255,0.55)", border: `1px solid ${active === t.key ? GOLD : "rgba(255,255,255,0.08)"}` }}>
+          {t.label}
+          {t.key === "cotizador" && quoteCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center"
+                  style={{ background: active === "cotizador" ? "#000" : GOLD, color: active === "cotizador" ? GOLD : "#000", border: `1.5px solid ${active === "cotizador" ? GOLD : "transparent"}` }}>
+              {quoteCount}
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Lista de precios ──────────────────────────────────────────────────────────────
+function PreciosTab({ categorias, onAddItem, onSwitchToCotizador }: {
+  categorias: CategoriaData[];
+  onAddItem: (eq: EquipoData) => void;
+  onSwitchToCotizador: () => void;
+}) {
+  const [open, setOpen] = useState<Set<string>>(new Set(categorias.map(c => c.nombre)));
+  const toggle = (n: string) => setOpen(prev => { const s = new Set(prev); s.has(n) ? s.delete(n) : s.add(n); return s; });
+
+  return (
+    <div className="max-w-5xl mx-auto py-16 px-4 sm:px-6">
+      <R>
+        <div className="mb-10">
+          <p className="text-white/20 text-xs tracking-[0.3em] uppercase mb-3 font-mono">Mainstage Pro · Catálogo técnico</p>
+          <h2 className="font-bold text-white" style={{ fontSize: "clamp(2rem,5vw,3.5rem)", letterSpacing: "-0.03em" }}>Lista de precios</h2>
+          <p className="text-white/35 text-sm mt-3">Precios de renta por día de evento. La operación técnica (técnicos, traslado e instalación) se cotiza por separado.</p>
+        </div>
+      </R>
+
+      <div className="space-y-3">
+        {categorias.map((cat, ci) => (
+          <R key={cat.nombre} delay={ci * 35}>
+            <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
+              <button className="w-full flex items-center justify-between px-6 py-4 text-left transition-colors"
+                      style={{ borderBottom: open.has(cat.nombre) ? "1px solid rgba(255,255,255,0.05)" : "none" }}
+                      onClick={() => toggle(cat.nombre)}>
+                <div className="flex items-center gap-3">
+                  <span className="font-semibold text-white">{cat.nombre}</span>
+                  <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: `${GOLD}15`, color: GOLD, border: `1px solid ${GOLD}20` }}>
+                    {cat.equipos.length} equipos
+                  </span>
+                </div>
+                <svg style={{ transform: open.has(cat.nombre) ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.25s ease", flexShrink: 0 }}
+                     width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+
+              {open.has(cat.nombre) && (
+                <div>
+                  {/* Column headers */}
+                  <div className="hidden sm:grid px-5 py-2 text-[10px] font-semibold text-white/20 tracking-widest uppercase"
+                       style={{ gridTemplateColumns: "36px 1fr 60px 100px 90px", gap: "12px" }}>
+                    <span />
+                    <span>Equipo</span>
+                    <span className="text-center">Unid.</span>
+                    <span className="text-right">Precio/día</span>
+                    <span />
+                  </div>
+                  {cat.equipos.map((eq, i) => {
+                    const img = getEqImg(eq);
+                    return (
+                      <div key={eq.id} className="grid px-5 py-3 items-center group transition-colors hover:bg-white/[0.025]"
+                           style={{ gridTemplateColumns: "36px 1fr auto", gap: "12px", borderTop: i > 0 ? "1px solid rgba(255,255,255,0.04)" : undefined }}>
+                        {/* thumb */}
+                        <div className="w-9 h-9 rounded-lg overflow-hidden flex items-center justify-center shrink-0"
+                             style={{ background: "#080808", border: "1px solid rgba(255,255,255,0.06)" }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={img || "/logo-icon.png"} alt="" draggable={false}
+                               className={`object-contain ${img ? "w-8 h-8" : "w-4 h-4 opacity-15"}`} />
+                        </div>
+                        {/* name */}
+                        <div className="min-w-0">
+                          <p className="text-white text-sm font-medium leading-snug">{eqDisplayName(eq)}</p>
+                          {(eq.marca || eq.modelo) && <p className="text-white/30 text-xs mt-0.5 truncate">{eq.descripcion}</p>}
+                        </div>
+                        {/* price + action */}
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="hidden sm:flex items-center gap-1">
+                            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold"
+                                  style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.4)" }}>
+                              {eq.cantidadTotal}
+                            </span>
+                          </div>
+                          <span className={`text-sm font-semibold tabular-nums ${eq.precioRenta > 0 ? "" : "text-white/25 text-xs"}`}
+                                style={{ color: eq.precioRenta > 0 ? GOLD : undefined }}>
+                            {eq.precioRenta > 0 ? fmtPrice(eq.precioRenta) : "Consultar"}
+                          </span>
+                          <button onClick={() => { onAddItem(eq); onSwitchToCotizador(); }}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity text-xs px-3 py-1.5 rounded-full font-semibold whitespace-nowrap"
+                                  style={{ background: `${GOLD}18`, color: GOLD, border: `1px solid ${GOLD}30` }}>
+                            + Cotizar
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </R>
+        ))}
+      </div>
+
+      {/* Bottom note */}
+      <R>
+        <p className="mt-10 text-center text-white/20 text-xs">
+          * Precios de referencia por día de evento. Sujetos a disponibilidad y confirmación.
+        </p>
+      </R>
+    </div>
+  );
+}
+
+// ─── Cotizador ────────────────────────────────────────────────────────────────────
+function CotizadorTab({ categorias, quoteItems, onAddItem, onUpdateQty, onRemoveItem, onAddCustom }: {
+  categorias: CategoriaData[];
+  quoteItems: QuoteItem[];
+  onAddItem: (eq: EquipoData) => void;
+  onUpdateQty: (id: string, delta: number) => void;
+  onRemoveItem: (id: string) => void;
+  onAddCustom: (desc: string) => void;
+}) {
+  const [search, setSearch]         = useState("");
+  const [activeCat, setActiveCat]   = useState<string | null>(null);
+  const [customText, setCustomText] = useState("");
+  const [dias, setDias]             = useState(1);
+  const [nombre, setNombre]         = useState("");
+  const [fecha, setFecha]           = useState("");
+
+  const allEquipos = useMemo(() => categorias.flatMap(c => c.equipos), [categorias]);
+
+  const filtered = useMemo(() => {
+    const pool = activeCat ? (categorias.find(c => c.nombre === activeCat)?.equipos ?? []) : allEquipos;
+    const q = search.toLowerCase();
+    if (!q) return pool;
+    return pool.filter(eq =>
+      eq.descripcion.toLowerCase().includes(q) ||
+      (eq.marca || "").toLowerCase().includes(q) ||
+      (eq.modelo || "").toLowerCase().includes(q)
+    );
+  }, [search, activeCat, allEquipos, categorias]);
+
+  const qtyInCart = useCallback((id: string) => quoteItems.find(i => i.id === id)?.cantidad ?? 0, [quoteItems]);
+  const subtotal  = useMemo(() => quoteItems.reduce((s, i) => s + (i.esPersonalizado ? 0 : i.precioUnitario * i.cantidad), 0), [quoteItems]);
+
+  function buildWAMsg() {
+    const catalog = quoteItems.filter(i => !i.esPersonalizado);
+    const custom  = quoteItems.filter(i =>  i.esPersonalizado);
+    let msg = "Hola! Me interesa una cotización para los siguientes equipos:\n\n";
+    if (catalog.length) {
+      msg += "🎛 *Equipos del catálogo Mainstage Pro:*\n";
+      catalog.forEach(i => {
+        const name = [i.marca, i.modelo].filter(Boolean).join(" ") || i.descripcion;
+        msg += `• ${name} × ${i.cantidad}`;
+        if (i.precioUnitario > 0) msg += ` → ${fmtPrice(i.precioUnitario * i.cantidad)}/día`;
+        msg += "\n";
+      });
+    }
+    if (custom.length) {
+      msg += "\n📝 *Equipos adicionales a conseguir:*\n";
+      custom.forEach(i => { msg += `• ${i.descripcion}\n`; });
+    }
+    msg += "\n──────────────────────────\n";
+    if (subtotal > 0) {
+      msg += `Subtotal de equipos: ${fmtPrice(subtotal)}/día`;
+      if (dias > 1) msg += ` × ${dias} días = *${fmtPrice(subtotal * dias)}*`;
+      msg += "\n";
+    }
+    msg += "_(Operación técnica, traslado e instalación se cotiza por separado)_\n";
+    if (nombre) msg += `\nNombre: ${nombre}`;
+    if (fecha)  msg += `\nFecha del evento: ${fecha}`;
+    return msg;
+  }
+
+  function handleSend() {
+    window.open(`https://wa.me/524461432565?text=${encodeURIComponent(buildWAMsg())}`, "_blank");
+  }
+
+  const inp: React.CSSProperties = {
+    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)",
+    borderRadius: "10px", color: "white", padding: "10px 14px", fontSize: "13px",
+    width: "100%", outline: "none", transition: "border-color 0.2s",
+  };
+
+  return (
+    <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6">
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+
+        {/* ── Left: browser ── */}
+        <div className="flex-1 min-w-0">
+          <div className="mb-6">
+            <h2 className="font-bold text-white text-2xl mb-1" style={{ letterSpacing: "-0.02em" }}>Arma tu presupuesto</h2>
+            <p className="text-white/35 text-sm">Selecciona los equipos que necesitas. Nuestro equipo ajustará el detalle final.</p>
+          </div>
+
+          {/* Search */}
+          <div className="relative mb-3">
+            <svg className="absolute left-3.5 top-1/2 -translate-y-1/2" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
+                   placeholder="Buscar por nombre, marca o modelo…"
+                   style={{ ...inp, paddingLeft: "36px" }}
+                   onFocus={e => (e.target.style.borderColor = `${GOLD}60`)}
+                   onBlur={e  => (e.target.style.borderColor = "rgba(255,255,255,0.09)")} />
+          </div>
+
+          {/* Category pills */}
+          <div className="flex gap-2 flex-wrap mb-5">
+            <button onClick={() => setActiveCat(null)}
+                    className="text-xs px-3.5 py-1.5 rounded-full font-medium transition-all"
+                    style={{ background: !activeCat ? GOLD : "rgba(255,255,255,0.04)", color: !activeCat ? "#000" : "rgba(255,255,255,0.45)", border: `1px solid ${!activeCat ? GOLD : "rgba(255,255,255,0.07)"}` }}>
+              Todos
+            </button>
+            {categorias.map(c => (
+              <button key={c.nombre} onClick={() => setActiveCat(c.nombre === activeCat ? null : c.nombre)}
+                      className="text-xs px-3.5 py-1.5 rounded-full font-medium transition-all"
+                      style={{ background: activeCat === c.nombre ? GOLD : "rgba(255,255,255,0.04)", color: activeCat === c.nombre ? "#000" : "rgba(255,255,255,0.45)", border: `1px solid ${activeCat === c.nombre ? GOLD : "rgba(255,255,255,0.07)"}` }}>
+                {c.nombre}
+              </button>
+            ))}
+          </div>
+
+          {/* Equipment grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6" style={{ maxHeight: "500px", overflowY: "auto" }}>
+            {filtered.length === 0 && (
+              <div className="col-span-3 py-12 text-center text-white/25 text-sm">No encontramos equipos con ese criterio.</div>
+            )}
+            {filtered.map(eq => {
+              const qty = qtyInCart(eq.id);
+              const img = getEqImg(eq);
+              return (
+                <div key={eq.id} className="rounded-xl p-3 flex flex-col gap-2 transition-all duration-200"
+                     style={{ background: qty > 0 ? `${GOLD}08` : "rgba(255,255,255,0.025)", border: `1px solid ${qty > 0 ? GOLD + "30" : "rgba(255,255,255,0.07)"}` }}>
+                  <div className="w-full h-14 flex items-center justify-center rounded-lg overflow-hidden" style={{ background: "#050505" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={img || "/logo-icon.png"} alt="" draggable={false}
+                         className={`object-contain transition-all duration-300 ${img ? "max-h-12 max-w-full" : "w-7 h-7 opacity-10"}`} />
+                  </div>
+                  <p className="text-white text-xs font-medium leading-snug line-clamp-2" style={{ minHeight: "2.5em" }}>
+                    {eqDisplayName(eq)}
+                  </p>
+                  <p className="text-xs" style={{ color: eq.precioRenta > 0 ? GOLD : "rgba(255,255,255,0.2)" }}>
+                    {eq.precioRenta > 0 ? `${fmtPrice(eq.precioRenta)}/día` : "Consultar"}
+                  </p>
+                  {qty === 0 ? (
+                    <button onClick={() => onAddItem(eq)}
+                            className="w-full py-1.5 rounded-lg text-xs font-semibold transition-all"
+                            style={{ background: `${GOLD}18`, color: GOLD, border: `1px solid ${GOLD}30` }}>
+                      + Agregar
+                    </button>
+                  ) : (
+                    <div className="flex items-center justify-between rounded-lg" style={{ border: `1px solid ${GOLD}40`, background: `${GOLD}10` }}>
+                      <button onClick={() => onUpdateQty(eq.id, -1)}
+                              className="w-8 h-7 flex items-center justify-center text-base font-semibold hover:bg-white/10 transition-colors rounded-l-lg"
+                              style={{ color: GOLD }}>−</button>
+                      <span className="text-white font-bold text-xs">{qty}</span>
+                      <button onClick={() => onUpdateQty(eq.id, 1)}
+                              className="w-8 h-7 flex items-center justify-center text-base font-semibold hover:bg-white/10 transition-colors rounded-r-lg"
+                              style={{ color: GOLD }}>+</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Custom item */}
+          <div className="rounded-2xl p-5" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
+            <p className="text-white font-semibold text-sm mb-1">¿No encuentras lo que necesitas?</p>
+            <p className="text-white/30 text-xs mb-4">Agrégalo por concepto. Nuestro equipo lo conseguirá o te dará alternativas.</p>
+            <div className="flex gap-2">
+              <input type="text" value={customText} onChange={e => setCustomText(e.target.value)}
+                     onKeyDown={e => { if (e.key === "Enter" && customText.trim()) { onAddCustom(customText.trim()); setCustomText(""); } }}
+                     placeholder="Ej: Generador 50kva, pantalla LED curva…"
+                     style={inp}
+                     onFocus={e => (e.target.style.borderColor = `${GOLD}60`)}
+                     onBlur={e  => (e.target.style.borderColor = "rgba(255,255,255,0.09)")} />
+              <button onClick={() => { if (customText.trim()) { onAddCustom(customText.trim()); setCustomText(""); } }}
+                      className="shrink-0 px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                      style={{ background: `${GOLD}20`, color: GOLD, border: `1px solid ${GOLD}35` }}>
+                Agregar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Right: quote panel ── */}
+        <div className="w-full lg:w-80 xl:w-96 shrink-0">
+          <div className="sticky top-24 rounded-2xl overflow-hidden" style={{ border: `1px solid ${GOLD}25`, background: "#060606" }}>
+            {/* Header */}
+            <div className="px-5 py-4" style={{ borderBottom: `1px solid ${GOLD}15` }}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-white">Tu presupuesto</h3>
+                {quoteItems.length > 0 && (
+                  <span className="text-xs px-2.5 py-1 rounded-full font-semibold" style={{ background: `${GOLD}15`, color: GOLD }}>
+                    {quoteItems.length} {quoteItems.length === 1 ? "ítem" : "ítems"}
+                  </span>
+                )}
+              </div>
+              {/* Days */}
+              <div className="flex items-center gap-2">
+                <span className="text-white/40 text-xs">Días del evento:</span>
+                <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <button onClick={() => setDias(d => Math.max(1, d - 1))}
+                          className="w-7 h-7 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors">−</button>
+                  <span className="text-white text-sm font-semibold px-2">{dias}</span>
+                  <button onClick={() => setDias(d => d + 1)}
+                          className="w-7 h-7 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors">+</button>
+                </div>
+              </div>
+            </div>
+
+            {/* Items */}
+            <div style={{ maxHeight: "260px", overflowY: "auto" }}>
+              {quoteItems.length === 0 ? (
+                <div className="px-5 py-10 text-center">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
+                       style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5">
+                      <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>
+                      <path d="M16 10a4 4 0 01-8 0"/>
+                    </svg>
+                  </div>
+                  <p className="text-white/20 text-xs leading-relaxed">Tu presupuesto está vacío.<br />Agrega equipos del catálogo.</p>
+                </div>
+              ) : quoteItems.map((item, idx) => (
+                <div key={item.id} className="px-4 py-3 flex items-start gap-3"
+                     style={{ borderTop: idx > 0 ? "1px solid rgba(255,255,255,0.04)" : undefined }}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-xs font-medium leading-snug line-clamp-2">{item.descripcion}</p>
+                    {!item.esPersonalizado && item.precioUnitario > 0 && (
+                      <p className="text-white/30 text-xs mt-0.5">{fmtPrice(item.precioUnitario)} × {item.cantidad} × {dias} día{dias > 1 ? "s" : ""} = <span style={{ color: GOLD }}>{fmtPrice(item.precioUnitario * item.cantidad * dias)}</span></p>
+                    )}
+                    {item.esPersonalizado && <p className="text-white/25 text-xs mt-0.5 italic">precio a confirmar</p>}
+                  </div>
+                  {!item.esPersonalizado && (
+                    <div className="flex items-center rounded-lg overflow-hidden shrink-0" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
+                      <button onClick={() => onUpdateQty(item.id, -1)}
+                              className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors text-sm">−</button>
+                      <span className="text-white text-xs font-semibold px-1.5">{item.cantidad}</span>
+                      <button onClick={() => onUpdateQty(item.id, 1)}
+                              className="w-6 h-6 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-colors text-sm">+</button>
+                    </div>
+                  )}
+                  <button onClick={() => onRemoveItem(item.id)}
+                          className="shrink-0 w-5 h-5 flex items-center justify-center rounded transition-colors hover:bg-red-900/30"
+                          style={{ color: "rgba(255,255,255,0.2)" }}>
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Subtotal + contact + CTA */}
+            {quoteItems.length > 0 && (
+              <div className="px-5 py-5 space-y-4" style={{ borderTop: `1px solid ${GOLD}15` }}>
+                {subtotal > 0 && (
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-white/40 text-xs">{dias > 1 ? `Total (${dias} días)` : "Subtotal / día"}</span>
+                    <span className="text-white font-bold text-xl" style={{ letterSpacing: "-0.02em" }}>{fmtPrice(subtotal * dias)}</span>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <input type="text" value={nombre} onChange={e => setNombre(e.target.value)}
+                         placeholder="Tu nombre (opcional)" style={{ ...inp, fontSize: "12px", padding: "8px 12px" }}
+                         onFocus={e => (e.target.style.borderColor = `${GOLD}60`)}
+                         onBlur={e  => (e.target.style.borderColor = "rgba(255,255,255,0.09)")} />
+                  <input type="text" value={fecha} onChange={e => setFecha(e.target.value)}
+                         placeholder="Fecha del evento (opcional)" style={{ ...inp, fontSize: "12px", padding: "8px 12px" }}
+                         onFocus={e => (e.target.style.borderColor = `${GOLD}60`)}
+                         onBlur={e  => (e.target.style.borderColor = "rgba(255,255,255,0.09)")} />
+                </div>
+                <button onClick={handleSend}
+                        className="w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        style={{ background: GOLD, color: "#000", boxShadow: `0 4px 20px ${GOLD}30` }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                  </svg>
+                  Solicitar cotización completa
+                </button>
+                <p className="text-white/18 text-[10px] leading-relaxed text-center">
+                  * Este resumen incluye solo equipos. La operación técnica (técnicos especializados, traslado, instalación y desmontaje) se cotiza por separado según los requerimientos de tu evento.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────────
 export default function InventarioClient({ data }: Props) {
-  const scrolled  = useScrollHeader();
+  const scrolled = useScrollHeader();
+  const [activeTab, setActiveTab]         = useState<Tab>("catalogo");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
+  const [lightbox, setLightbox]           = useState<{ src: string; alt: string } | null>(null);
+  const [quoteItems, setQuoteItems]       = useState<QuoteItem[]>([]);
 
-  const openLightbox = useCallback((src: string, alt: string) => setLightbox({ src, alt }), []);
+  // Lightbox helpers
+  const openLightbox  = useCallback((src: string, alt: string) => setLightbox({ src, alt }), []);
   const closeLightbox = useCallback(() => setLightbox(null), []);
-
-  // Close lightbox with Escape
   useEffect(() => {
     if (!lightbox) return;
     const fn = (e: KeyboardEvent) => { if (e.key === "Escape") closeLightbox(); };
-    window.addEventListener("keydown", fn);
-    return () => window.removeEventListener("keydown", fn);
+    window.addEventListener("keydown", fn); return () => window.removeEventListener("keydown", fn);
   }, [lightbox, closeLightbox]);
 
-  // Filter out excluded equipment from categories
-  const filteredCategorias = data.categorias.map(cat => ({
-    ...cat,
-    equipos: cat.equipos.filter(eq => !shouldExclude(eq)),
-  })).filter(cat => cat.equipos.length > 0);
+  // Quote helpers
+  const addItem = useCallback((eq: EquipoData) => {
+    setQuoteItems(prev => {
+      const exists = prev.find(i => i.id === eq.id);
+      if (exists) return prev.map(i => i.id === eq.id ? { ...i, cantidad: i.cantidad + 1 } : i);
+      return [...prev, { id: eq.id, descripcion: eq.descripcion, marca: eq.marca, modelo: eq.modelo, cantidad: 1, precioUnitario: eq.precioRenta, esPersonalizado: false }];
+    });
+  }, []);
+  const updateQty = useCallback((id: string, delta: number) => {
+    setQuoteItems(prev => prev.flatMap(i => {
+      if (i.id !== id) return [i];
+      const q = i.cantidad + delta;
+      return q <= 0 ? [] : [{ ...i, cantidad: q }];
+    }));
+  }, []);
+  const removeItem = useCallback((id: string) => setQuoteItems(prev => prev.filter(i => i.id !== id)), []);
+  const addCustom  = useCallback((desc: string) => {
+    setQuoteItems(prev => [...prev, { id: `custom-${Date.now()}`, descripcion: desc, cantidad: 1, precioUnitario: 0, esPersonalizado: true }]);
+  }, []);
 
-  // Scroll spy for sticky category nav
+  // Filter excluded
+  const filteredCategorias = useMemo(() =>
+    data.categorias.map(cat => ({ ...cat, equipos: cat.equipos.filter(eq => !shouldExclude(eq)) }))
+                   .filter(cat => cat.equipos.length > 0),
+    [data.categorias]
+  );
+
+  // Scroll spy (catálogo only)
   useEffect(() => {
+    if (activeTab !== "catalogo") return;
     const fn = () => {
       for (const cat of filteredCategorias) {
         const el = document.getElementById(`cat-${cat.orden}`);
         if (!el) continue;
-        const rect = el.getBoundingClientRect();
-        if (rect.top <= 100 && rect.bottom > 100) { setActiveCategory(cat.nombre); break; }
+        const r = el.getBoundingClientRect();
+        if (r.top <= 100 && r.bottom > 100) { setActiveCategory(cat.nombre); break; }
       }
     };
     window.addEventListener("scroll", fn, { passive: true }); fn();
     return () => window.removeEventListener("scroll", fn);
-  }, [filteredCategorias]);
+  }, [filteredCategorias, activeTab]);
 
   const scrollToCategory = (orden: number) => {
-    const el = document.getElementById(`cat-${orden}`);
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById(`cat-${orden}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  // BRANDS marquee
-  const brands = ["Pioneer DJ", "RCF", "Allen & Heath", "Shure", "Sennheiser", "Grand MA", "Chauvet", "Astera", "Lite Tek", "Lumos", "Electro-Voice", "Rode", "Blackmagic", "Midas", "Sun Star"];
+  const brands = ["Pioneer DJ","RCF","Allen & Heath","Shure","Sennheiser","Grand MA","Chauvet","Astera","Lite Tek","Lumos","Electro-Voice","Rode","Blackmagic","Midas","Sun Star"];
 
   return (
     <div className="bg-[#050505] text-white min-h-screen" style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
       <style>{`
-        @keyframes kenBurns { from { transform:scale(1); } to { transform:scale(1.05) translate(-0.8%,-0.5%); } }
-        @keyframes fadeUp { from { opacity:0; transform:translateY(32px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
-        @keyframes marquee { from { transform:translateX(0); } to { transform:translateX(-50%); } }
-        @keyframes pulse { 0%,100% { opacity:0.6; } 50% { opacity:1; } }
+        @keyframes fadeUp   { from { opacity:0; transform:translateY(32px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes fadeIn   { from { opacity:0; } to { opacity:1; } }
+        @keyframes marquee  { from { transform:translateX(0); } to { transform:translateX(-50%); } }
         html { scroll-behavior: smooth; }
-        ::-webkit-scrollbar { width: 3px; }
-        ::-webkit-scrollbar-track { background: #000; }
-        ::-webkit-scrollbar-thumb { background: rgba(179,152,91,0.35); border-radius: 2px; }
+        ::-webkit-scrollbar       { width:3px; height:3px; }
+        ::-webkit-scrollbar-track { background:#000; }
+        ::-webkit-scrollbar-thumb { background:rgba(179,152,91,0.35); border-radius:2px; }
       `}</style>
 
       {/* ── Lightbox ── */}
       {lightbox && (
-        <div
-          onClick={closeLightbox}
-          style={{
-            position: "fixed", inset: 0, zIndex: 9999,
-            background: "rgba(0,0,0,0.92)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            backdropFilter: "blur(12px)",
-            animation: "fadeIn 0.2s ease",
-          }}
-        >
-          {/* Close button */}
-          <button
-            onClick={closeLightbox}
-            style={{
-              position: "absolute", top: "1.5rem", right: "1.5rem",
-              background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: "50%", width: "44px", height: "44px",
-              color: "white", fontSize: "20px", cursor: "pointer",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              transition: "background 0.2s",
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.15)")}
-            onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
-          >
-            \u00d7
-          </button>
-          {/* Image */}
+        <div onClick={closeLightbox} style={{ position:"fixed", inset:0, zIndex:9999, background:"rgba(0,0,0,0.92)", display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(12px)", animation:"fadeIn 0.2s ease" }}>
+          <button onClick={closeLightbox}
+                  style={{ position:"absolute", top:"1.5rem", right:"1.5rem", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:"50%", width:"44px", height:"44px", color:"white", fontSize:"20px", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={lightbox.src}
-            alt={lightbox.alt}
-            onClick={e => e.stopPropagation()}
-            style={{
-              maxWidth: "90vw", maxHeight: "85vh",
-              objectFit: "contain",
-              borderRadius: "12px",
-              boxShadow: "0 32px 80px rgba(0,0,0,0.8)",
-            }}
-            draggable={false}
-          />
-          {/* Caption */}
-          <p style={{
-            position: "absolute", bottom: "2rem", left: "50%", transform: "translateX(-50%)",
-            color: "rgba(255,255,255,0.45)", fontSize: "13px", whiteSpace: "nowrap",
-            letterSpacing: "0.05em",
-          }}>
-            {lightbox.alt}
-          </p>
+          <img src={lightbox.src} alt={lightbox.alt} onClick={e => e.stopPropagation()} draggable={false}
+               style={{ maxWidth:"90vw", maxHeight:"85vh", objectFit:"contain", borderRadius:"12px", boxShadow:"0 32px 80px rgba(0,0,0,0.8)" }} />
+          <p style={{ position:"absolute", bottom:"2rem", left:"50%", transform:"translateX(-50%)", color:"rgba(255,255,255,0.4)", fontSize:"13px", whiteSpace:"nowrap" }}>{lightbox.alt}</p>
         </div>
       )}
 
@@ -426,43 +756,21 @@ export default function InventarioClient({ data }: Props) {
 
       {/* ── Hero ── */}
       <section className="relative flex flex-col items-center justify-center overflow-hidden text-center" style={{ minHeight: "100svh" }}>
-        {/* Subtle background pattern */}
-        <div className="absolute inset-0" style={{
-          background: "radial-gradient(ellipse 80% 60% at 50% 40%, rgba(179,152,91,0.06) 0%, transparent 70%), linear-gradient(to bottom, #050505 0%, #080808 50%, #050505 100%)"
-        }} />
-        {/* Animated grid lines */}
-        <div className="absolute inset-0 pointer-events-none" style={{
-          backgroundImage: `linear-gradient(rgba(179,152,91,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(179,152,91,0.03) 1px, transparent 1px)`,
-          backgroundSize: "80px 80px",
-          animation: "fadeIn 2s ease forwards 0.5s", opacity: 0
-        }} />
-
+        <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 80% 60% at 50% 40%, rgba(179,152,91,0.06) 0%, transparent 70%), linear-gradient(to bottom, #050505 0%, #080808 50%, #050505 100%)" }} />
+        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `linear-gradient(rgba(179,152,91,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(179,152,91,0.03) 1px, transparent 1px)`, backgroundSize: "80px 80px", animation: "fadeIn 2s ease forwards 0.5s", opacity: 0 }} />
         <div className="relative z-10 px-6 max-w-5xl mx-auto">
           <div className="mb-10" style={{ animation: "fadeUp 0.7s ease forwards 0.1s", opacity: 0 }}>
-            <span className="text-xs tracking-[0.3em] uppercase px-4 py-2 rounded-full"
-                  style={{ background: `${GOLD}15`, color: GOLD, border: `1px solid ${GOLD}25` }}>
+            <span className="text-xs tracking-[0.3em] uppercase px-4 py-2 rounded-full" style={{ background: `${GOLD}15`, color: GOLD, border: `1px solid ${GOLD}25` }}>
               Mainstage Pro · Catálogo Técnico
             </span>
           </div>
-
-          <h1 className="font-bold leading-[0.95]"
-              style={{ fontSize: "clamp(3.5rem,12vw,10rem)", letterSpacing: "-0.04em", animation: "fadeUp 0.9s ease forwards 0.3s", opacity: 0 }}>
-            El equipo.
-          </h1>
-          <h1 className="font-bold leading-[0.95]"
-              style={{ fontSize: "clamp(3.5rem,12vw,10rem)", letterSpacing: "-0.04em", color: GOLD, animation: "fadeUp 0.9s ease forwards 0.5s", opacity: 0 }}>
-            Disponible.
-          </h1>
-          <p className="text-white/40 mt-10 max-w-xl mx-auto leading-relaxed"
-             style={{ fontSize: "clamp(1rem,1.8vw,1.2rem)", animation: "fadeUp 0.9s ease forwards 0.75s", opacity: 0 }}>
-            Audio, iluminación y video de nivel profesional.
-            Todo listo para operar en tu evento.
+          <h1 className="font-bold leading-[0.95]" style={{ fontSize: "clamp(3.5rem,12vw,10rem)", letterSpacing: "-0.04em", animation: "fadeUp 0.9s ease forwards 0.3s", opacity: 0 }}>El equipo.</h1>
+          <h1 className="font-bold leading-[0.95]" style={{ fontSize: "clamp(3.5rem,12vw,10rem)", letterSpacing: "-0.04em", color: GOLD, animation: "fadeUp 0.9s ease forwards 0.5s", opacity: 0 }}>Disponible.</h1>
+          <p className="text-white/40 mt-10 max-w-xl mx-auto leading-relaxed" style={{ fontSize: "clamp(1rem,1.8vw,1.2rem)", animation: "fadeUp 0.9s ease forwards 0.75s", opacity: 0 }}>
+            Audio, iluminación y video de nivel profesional. Todo listo para operar en tu evento.
           </p>
         </div>
-
-        {/* Scroll indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3"
-             style={{ animation: "fadeUp 1s ease forwards 1.1s", opacity: 0 }}>
+        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3" style={{ animation: "fadeUp 1s ease forwards 1.1s", opacity: 0 }}>
           <span className="text-xs tracking-[0.2em] uppercase text-white/30">Explorar</span>
           <div className="w-px h-12 bg-gradient-to-b from-[#B3985B40] to-transparent" />
         </div>
@@ -471,147 +779,133 @@ export default function InventarioClient({ data }: Props) {
       {/* ── Stats ── */}
       <section className="py-4 px-6 border-y" style={{ borderColor: `${GOLD}12` }}>
         <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-[#1a1a0a]">
-          <StatBlock target={data.totalEquipos}   suffix="" label="Referencias de equipo" sub="modelos distintos en inventario"   />
-          <StatBlock target={data.totalUnidades}   suffix="" label="Unidades totales"       sub="piezas listas para tu evento"      />
-          <StatBlock target={data.categorias.length} suffix="" label="Categorías"            sub="familias de equipo audiovisual"   />
+          <StatBlock target={data.totalEquipos}      label="Referencias de equipo" sub="modelos distintos en inventario"  />
+          <StatBlock target={data.totalUnidades}      label="Unidades totales"       sub="piezas listas para tu evento"     />
+          <StatBlock target={filteredCategorias.length} label="Categorías"            sub="familias de equipo audiovisual"  />
         </div>
       </section>
 
-      {/* ── Category sticky nav ── */}
-      <div className="sticky top-16 z-40 overflow-x-auto no-scrollbar py-3 px-6 transition-all duration-300"
-           style={{ background: "rgba(5,5,5,0.92)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${GOLD}10` }}>
-        <div className="flex items-center gap-2 min-w-max">
-          {filteredCategorias.map(cat => (
-            <button key={cat.nombre}
-                    onClick={() => scrollToCategory(cat.orden)}
-                    className="text-xs px-4 py-2 rounded-full transition-all duration-300 whitespace-nowrap"
-                    style={{
-                      background: activeCategory === cat.nombre ? GOLD : "rgba(255,255,255,0.04)",
-                      color: activeCategory === cat.nombre ? "#000" : "rgba(255,255,255,0.5)",
-                      fontWeight: activeCategory === cat.nombre ? "700" : "400",
-                      border: `1px solid ${activeCategory === cat.nombre ? GOLD : "rgba(255,255,255,0.06)"}`,
-                    }}>
-              {cat.nombre}
-            </button>
-          ))}
+      {/* ── Tab nav ── */}
+      <div className="sticky top-16 z-40 py-3 px-6 transition-all duration-300"
+           style={{ background: "rgba(5,5,5,0.95)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${GOLD}10` }}>
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          <TabNav active={activeTab} onChange={setActiveTab} quoteCount={quoteItems.length} />
+          {/* Catálogo: category scroll nav */}
+          {activeTab === "catalogo" && (
+            <div className="hidden lg:flex items-center gap-1.5 overflow-x-auto">
+              {filteredCategorias.map(cat => (
+                <button key={cat.nombre} onClick={() => scrollToCategory(cat.orden)}
+                        className="text-xs px-3 py-1.5 rounded-full transition-all whitespace-nowrap"
+                        style={{ background: activeCategory === cat.nombre ? GOLD : "rgba(255,255,255,0.04)", color: activeCategory === cat.nombre ? "#000" : "rgba(255,255,255,0.4)", border: `1px solid ${activeCategory === cat.nombre ? GOLD : "rgba(255,255,255,0.06)"}`, fontWeight: activeCategory === cat.nombre ? "700" : "400" }}>
+                  {cat.nombre}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ── Categories ── */}
-      {filteredCategorias.map((cat, ci) => (
-        <section key={cat.nombre} id={`cat-${cat.orden}`} className="py-20 px-6"
-                 style={{ background: ci % 2 === 0 ? "#050505" : "#070707" }}>
-          <div className="max-w-7xl mx-auto">
-            {/* Category header */}
-            <R y={24}>
-              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-14 pb-6"
-                   style={{ borderBottom: `1px solid ${GOLD}15` }}>
-                <div>
-                  <p className="text-white/20 text-xs tracking-[0.3em] uppercase mb-3 font-mono">
-                    {String(ci + 1).padStart(2, "0")} / {String(filteredCategorias.length).padStart(2, "0")}
-                  </p>
-                  <h2 className="font-bold text-white leading-none"
-                      style={{ fontSize: "clamp(1.8rem,5vw,3.6rem)", letterSpacing: "-0.03em" }}>
-                    {cat.nombre}
-                  </h2>
-                  {CAT_DESC[cat.nombre] && (
-                    <p className="text-white/35 text-sm leading-relaxed mt-3 max-w-xl">{CAT_DESC[cat.nombre]}</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs px-3 py-1.5 rounded-full font-semibold"
-                        style={{ background: `${GOLD}15`, color: GOLD, border: `1px solid ${GOLD}25` }}>
-                    {cat.equipos.length} {cat.equipos.length === 1 ? "equipo" : "equipos"}
-                  </span>
-                  <span className="text-xs px-3 py-1.5 rounded-full text-white/40"
-                        style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                    {cat.equipos.reduce((s, e) => s + e.cantidadTotal, 0)} unidades
-                  </span>
+      {/* ── Tab content ── */}
+      {activeTab === "catalogo" && (
+        <>
+          {filteredCategorias.map((cat, ci) => (
+            <section key={cat.nombre} id={`cat-${cat.orden}`} className="py-20 px-6"
+                     style={{ background: ci % 2 === 0 ? "#050505" : "#070707" }}>
+              <div className="max-w-7xl mx-auto">
+                <R y={24}>
+                  <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-14 pb-6" style={{ borderBottom: `1px solid ${GOLD}15` }}>
+                    <div>
+                      <p className="text-white/20 text-xs tracking-[0.3em] uppercase mb-3 font-mono">
+                        {String(ci + 1).padStart(2, "0")} / {String(filteredCategorias.length).padStart(2, "0")}
+                      </p>
+                      <h2 className="font-bold text-white leading-none" style={{ fontSize: "clamp(1.8rem,5vw,3.6rem)", letterSpacing: "-0.03em" }}>{cat.nombre}</h2>
+                      {CAT_DESC[cat.nombre] && <p className="text-white/35 text-sm leading-relaxed mt-3 max-w-xl">{CAT_DESC[cat.nombre]}</p>}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs px-3 py-1.5 rounded-full font-semibold" style={{ background: `${GOLD}15`, color: GOLD, border: `1px solid ${GOLD}25` }}>
+                        {cat.equipos.length} {cat.equipos.length === 1 ? "equipo" : "equipos"}
+                      </span>
+                      <span className="text-xs px-3 py-1.5 rounded-full text-white/40" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        {cat.equipos.reduce((s, e) => s + e.cantidadTotal, 0)} unidades
+                      </span>
+                    </div>
+                  </div>
+                </R>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                  {cat.equipos.map((eq, i) => (
+                    <EquipoCard key={eq.id} eq={eq} delay={Math.min(i * 50, 400)} onImageClick={openLightbox} />
+                  ))}
                 </div>
               </div>
-            </R>
+            </section>
+          ))}
 
-            {/* Equipment grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {cat.equipos.map((eq, i) => (
-                <EquipoCard key={eq.id} eq={eq} delay={Math.min(i * 50, 400)} onImageClick={openLightbox} />
-              ))}
+          {/* Brands marquee */}
+          <section className="py-20 overflow-hidden" style={{ background: "#030303", borderTop: `1px solid ${GOLD}10`, borderBottom: `1px solid ${GOLD}10` }}>
+            <R><p className="text-center text-white/25 text-xs tracking-[0.28em] uppercase mb-10">Marcas con las que trabajamos</p></R>
+            <div className="relative">
+              <div className="flex whitespace-nowrap" style={{ animation: "marquee 25s linear infinite" }}>
+                {[...brands, ...brands].map((b, i) => (
+                  <span key={i} className="inline-flex items-center gap-6 mx-4 text-white/20 text-sm font-medium tracking-widest uppercase">
+                    {b}<span style={{ color: `${GOLD}40`, fontSize: "6px" }}>●</span>
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
-      ))}
+          </section>
 
-      {/* ── Brands marquee ── */}
-      <section className="py-20 overflow-hidden" style={{ background: "#030303", borderTop: `1px solid ${GOLD}10`, borderBottom: `1px solid ${GOLD}10` }}>
-        <R>
-          <p className="text-center text-white/25 text-xs tracking-[0.28em] uppercase mb-10">Marcas con las que trabajamos</p>
-        </R>
-        <div className="relative">
-          <div className="flex whitespace-nowrap" style={{ animation: "marquee 25s linear infinite" }}>
-            {[...brands, ...brands].map((b, i) => (
-              <span key={i} className="inline-flex items-center gap-6 mx-4 text-white/20 text-sm font-medium tracking-widest uppercase">
-                {b}
-                <span style={{ color: `${GOLD}40`, fontSize: "6px" }}>●</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Solicitud especial ── */}
-      <section className="py-24 px-6" style={{ background: "#070707", borderTop: `1px solid ${GOLD}10` }}>
-        <div className="max-w-3xl mx-auto">
-          <R>
-            <div className="rounded-2xl p-10 sm:p-14 text-center"
-                 style={{ background: `${GOLD}08`, border: `1px solid ${GOLD}20` }}>
-              <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Solicitud especial</p>
-              <h2 className="font-bold text-white leading-tight mb-5"
-                  style={{ fontSize: "clamp(1.6rem,4vw,2.6rem)", letterSpacing: "-0.025em" }}>
-                ¿No ves lo que necesitas?
-              </h2>
-              <p className="text-white/40 mb-8 leading-relaxed max-w-lg mx-auto text-sm">
-                Si tienes un requerimiento técnico específico que no aparece en este catálogo, contáctanos.
-                Evaluamos cada solicitud y nos encargamos de conseguirlo — solo dinos qué necesitas.
-              </p>
-              <a href={WA} target="_blank" rel="noopener noreferrer"
-                 className="inline-flex items-center gap-3 px-8 py-4 rounded-full font-semibold text-black text-sm tracking-wide transition-all duration-300 hover:scale-105"
-                 style={{ background: GOLD }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                Hacer una solicitud
-              </a>
+          {/* Solicitud especial */}
+          <section className="py-24 px-6" style={{ background: "#070707", borderTop: `1px solid ${GOLD}10` }}>
+            <div className="max-w-3xl mx-auto">
+              <R>
+                <div className="rounded-2xl p-10 sm:p-14 text-center" style={{ background: `${GOLD}08`, border: `1px solid ${GOLD}20` }}>
+                  <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Solicitud especial</p>
+                  <h2 className="font-bold text-white leading-tight mb-5" style={{ fontSize: "clamp(1.6rem,4vw,2.6rem)", letterSpacing: "-0.025em" }}>¿No ves lo que necesitas?</h2>
+                  <p className="text-white/40 mb-8 leading-relaxed max-w-lg mx-auto text-sm">
+                    Si tienes un requerimiento técnico específico que no aparece en este catálogo, contáctanos. Evaluamos cada solicitud y nos encargamos de conseguirlo.
+                  </p>
+                  <a href={WA} target="_blank" rel="noopener noreferrer"
+                     className="inline-flex items-center gap-3 px-8 py-4 rounded-full font-semibold text-black text-sm tracking-wide transition-all duration-300 hover:scale-105"
+                     style={{ background: GOLD }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    Hacer una solicitud
+                  </a>
+                </div>
+              </R>
             </div>
-          </R>
-        </div>
-      </section>
+          </section>
 
-      {/* ── CTA ── */}
-      <section className="py-32 px-6">
-        <div className="max-w-3xl mx-auto text-center">
-          <R>
-            <h2 className="font-bold text-white leading-tight mb-8"
-                style={{ fontSize: "clamp(2rem,5vw,4rem)", letterSpacing: "-0.03em" }}>
-              ¿Quieres este equipo<br />
-              <span style={{ color: GOLD }}>en tu evento?</span>
-            </h2>
-            <p className="text-white/40 mb-12 leading-relaxed max-w-lg mx-auto">
-              Contáctanos, cuéntanos el tipo de evento y te preparamos una propuesta personalizada.
-              Respuesta en menos de 24 horas.
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <a href={WA} target="_blank" rel="noopener noreferrer"
-                 className="inline-flex items-center gap-3 px-10 py-5 rounded-full font-semibold text-black text-sm tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-2xl"
-                 style={{ background: GOLD, boxShadow: `0 4px 40px ${GOLD}30` }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                Ver disponibilidad
-              </a>
-              <a href="/presentacion/servicios"
-                 className="text-white/40 text-sm hover:text-[#B3985B] transition-colors">
-                Conocer nuestros servicios →
-              </a>
+          {/* CTA final */}
+          <section className="py-32 px-6">
+            <div className="max-w-3xl mx-auto text-center">
+              <R>
+                <h2 className="font-bold text-white leading-tight mb-8" style={{ fontSize: "clamp(2rem,5vw,4rem)", letterSpacing: "-0.03em" }}>
+                  ¿Quieres este equipo<br /><span style={{ color: GOLD }}>en tu evento?</span>
+                </h2>
+                <p className="text-white/40 mb-12 leading-relaxed max-w-lg mx-auto">Contáctanos, cuéntanos el tipo de evento y te preparamos una propuesta personalizada. Respuesta en menos de 24 horas.</p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                  <a href={WA} target="_blank" rel="noopener noreferrer"
+                     className="inline-flex items-center gap-3 px-10 py-5 rounded-full font-semibold text-black text-sm tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+                     style={{ background: GOLD, boxShadow: `0 4px 40px ${GOLD}30` }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                    Ver disponibilidad
+                  </a>
+                  <a href="/presentacion/servicios" className="text-white/40 text-sm hover:text-[#B3985B] transition-colors">Conocer nuestros servicios →</a>
+                </div>
+              </R>
             </div>
-          </R>
-        </div>
-      </section>
+          </section>
+        </>
+      )}
+
+      {activeTab === "precios" && (
+        <PreciosTab categorias={filteredCategorias} onAddItem={addItem} onSwitchToCotizador={() => setActiveTab("cotizador")} />
+      )}
+
+      {activeTab === "cotizador" && (
+        <CotizadorTab categorias={filteredCategorias} quoteItems={quoteItems}
+          onAddItem={addItem} onUpdateQty={updateQty} onRemoveItem={removeItem} onAddCustom={addCustom} />
+      )}
 
       {/* Footer */}
       <footer className="py-10 px-6 border-t text-center" style={{ borderColor: `${GOLD}10` }}>
