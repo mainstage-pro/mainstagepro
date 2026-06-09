@@ -3153,3 +3153,43 @@ model KeyResult {
 
   @@map("key_results")
 }
+
+// ─── CAPACITACIÓN CON IA ─────────────────────────────────────────────────────
+
+model SesionCapacitacion {
+  id              String   @id @default(cuid())
+  numero          Int
+  titulo          String
+  bloque          String
+  bloqueLetra     String
+  descripcion     String
+  objetivos       String[]
+  puntosBase      String[]
+  puntosEditados  String[]
+  semana          Int      @default(1)
+  fechaProgramada DateTime?
+  duracion        Int      @default(60)
+  impartidor      String   @default("Mauricio Hernández")
+  estado          String   @default("pendiente")
+  notas           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  versiones       VersionPresentacion[]
+
+  @@map("sesiones_capacitacion")
+}
+
+model VersionPresentacion {
+  id              String             @id @default(cuid())
+  sesionId        String
+  sesion          SesionCapacitacion @relation(fields: [sesionId], references: [id], onDelete: Cascade)
+  version         Int
+  htmlContent     String             @db.Text
+  notasSnapshot   String?
+  puntosSnapshot  String[]
+  generadaPor     String             @default("Mauricio Hernández")
+  generadaEn      DateTime           @default(now())
+
+  @@unique([sesionId, version])
+  @@map("versiones_presentacion")
+}

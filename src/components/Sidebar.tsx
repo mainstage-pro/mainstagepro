@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { BarChart2, Target } from "lucide-react";
+import { BarChart2, Target, GraduationCap } from "lucide-react";
 import BusquedaGlobal from "@/components/BusquedaGlobal";
 import NotificacionesBell from "@/components/NotificacionesBell";
 
@@ -56,6 +56,7 @@ const NAV: NavSection[] = [
     items: [
       { key: "juntas", label: "Juntas", href: "/juntas" },
       { key: "presentaciones", label: "Presentaciones", href: "/presentaciones" },
+      { key: "capacitacion", label: "Capacitación", href: "/capacitacion", icon: GraduationCap },
       { key: "formularios", label: "Formularios", href: "/formularios", adminOnly: true },
       { key: "admin-usuarios", label: "Usuarios y accesos", href: "/admin/usuarios", adminOnly: true },
       { key: "admin-actividad", label: "Log de actividad", href: "/admin/actividad", adminOnly: true },
@@ -214,7 +215,7 @@ function getInitialOpen(pathname: string): Set<string> {
 }
 
 function getActiveSectionKey(pathname: string): string | null {
-  if (pathname.startsWith("/presentaciones") || pathname.startsWith("/admin") || pathname.startsWith("/juntas") || pathname.startsWith("/formularios")) return "seccion-direccion";
+  if (pathname.startsWith("/presentaciones") || pathname.startsWith("/admin") || pathname.startsWith("/juntas") || pathname.startsWith("/formularios") || pathname.startsWith("/capacitacion")) return "seccion-direccion";
   if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles")) return "seccion-administracion";
   if (pathname.startsWith("/marketing")) return "seccion-marketing";
   if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas") || pathname.startsWith("/prospectos")) return "seccion-ventas";
