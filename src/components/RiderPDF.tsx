@@ -217,13 +217,13 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
 
         {Array.from(categorias.entries()).map(([catNombre, equipos]) => (
           <View key={catNombre} style={{ marginBottom: 10 }}>
-            {/* Categoría header */}
-            <View style={s.catHead}>
+            {/* Categoría header — pegado al primer equipo */}
+            <View style={s.catHead} wrap={false}>
               <Text style={s.catTxt}>{catNombre}</Text>
             </View>
 
             {equipos.map(eq => (
-              <View key={eq.id} style={s.equipCard}>
+              <View key={eq.id} style={s.equipCard} wrap={false}>
                 {/* Equipo header */}
                 <View style={s.equipHead}>
                   <View style={s.checkBox} />
@@ -272,7 +272,7 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
           <>
             <SectionHeader title="Equipos adicionales" />
             {data.equiposRiderExtra.map(eq => (
-              <View key={eq.id} style={[s.equipCard, { marginBottom: 8 }]}>
+              <View key={eq.id} style={[s.equipCard, { marginBottom: 8 }]} wrap={false}>
                 <View style={s.equipHead}>
                   <View style={s.checkBox} />
                   <Text style={s.equipName}>{eq.descripcion}</Text>
