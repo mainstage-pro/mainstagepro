@@ -237,7 +237,7 @@ function StatBlock({ target, suffix = "", label, sub }: { target: number; suffix
   );
 }
 
-// ─── Tab nav ──────────────────────────────────────────────────────────────────────
+// ─── Tab nav compacto (sticky scroll) ────────────────────────────────────────────
 function TabNav({ active, onChange, quoteCount }: { active: Tab; onChange: (t: Tab) => void; quoteCount: number }) {
   const tabs: { key: Tab; label: string }[] = [
     { key: "catalogo", label: "Catálogo" },
@@ -245,21 +245,120 @@ function TabNav({ active, onChange, quoteCount }: { active: Tab; onChange: (t: T
     { key: "cotizador", label: "Cotizador" },
   ];
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex items-center gap-1.5 flex-wrap">
       {tabs.map(t => (
         <button key={t.key} onClick={() => onChange(t.key)}
-                className="relative text-sm px-5 py-2.5 rounded-full transition-all duration-300 font-medium whitespace-nowrap"
-                style={{ background: active === t.key ? GOLD : "rgba(255,255,255,0.05)", color: active === t.key ? "#000" : "rgba(255,255,255,0.55)", border: `1px solid ${active === t.key ? GOLD : "rgba(255,255,255,0.08)"}` }}>
+                className="relative text-xs px-4 py-2 rounded-full transition-all duration-300 font-medium whitespace-nowrap"
+                style={{ background: active === t.key ? GOLD : "rgba(255,255,255,0.05)", color: active === t.key ? "#000" : "rgba(255,255,255,0.45)", border: `1px solid ${active === t.key ? GOLD : "rgba(255,255,255,0.08)"}` }}>
           {t.label}
           {t.key === "cotizador" && quoteCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center"
-                  style={{ background: active === "cotizador" ? "#000" : GOLD, color: active === "cotizador" ? GOLD : "#000", border: `1.5px solid ${active === "cotizador" ? GOLD : "transparent"}` }}>
+            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center"
+                  style={{ background: active === "cotizador" ? "#000" : GOLD, color: active === "cotizador" ? GOLD : "#000" }}>
               {quoteCount}
             </span>
           )}
         </button>
       ))}
     </div>
+  );
+}
+
+// ─── Tab selector central (sección hero) ─────────────────────────────────────────
+function TabSelector({ active, onChange, quoteCount }: { active: Tab; onChange: (t: Tab) => void; quoteCount: number }) {
+  const cards: { key: Tab; icon: React.ReactNode; title: string; desc: string }[] = [
+    {
+      key: "catalogo",
+      icon: (
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+          <rect x="18" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+          <rect x="2" y="18" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+          <rect x="18" y="18" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+        </svg>
+      ),
+      title: "Catálogo",
+      desc: "Explora todo el equipo disponible por categoría con fichas técnicas y fotos.",
+    },
+    {
+      key: "precios",
+      icon: (
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <path d="M6 8h20M6 14h14M6 20h18M6 26h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          <circle cx="26" cy="23" r="4" stroke="currentColor" strokeWidth="1.5"/>
+          <path d="M26 21v2l1 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      ),
+      title: "Lista de precios",
+      desc: "Consulta tarifas por día de evento organizadas por categoría de equipo.",
+    },
+    {
+      key: "cotizador",
+      icon: (
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <path d="M10 6H6a2 2 0 00-2 2v18a2 2 0 002 2h20a2 2 0 002-2V8a2 2 0 00-2-2h-4" stroke="currentColor" strokeWidth="1.5"/>
+          <rect x="10" y="3" width="12" height="6" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+          <path d="M10 15h12M10 20h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          <circle cx="24" cy="22" r="4" fill="currentColor" opacity="0.2"/>
+          <path d="M24 20v2h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      ),
+      title: "Cotizador",
+      desc: "Selecciona equipos y obtén un presupuesto estimado al instante para tu evento.",
+    },
+  ];
+  return (
+    <section style={{ background: "#060606", borderBottom: `1px solid ${GOLD}10`, padding: "5rem 1.5rem" }}>
+      <div style={{ maxWidth: "900px", margin: "0 auto" }}>
+        <p style={{ textAlign: "center", color: "rgba(255,255,255,0.25)", fontSize: "11px", letterSpacing: "0.3em", textTransform: "uppercase", marginBottom: "0.75rem", fontFamily: "monospace" }}>Explorar</p>
+        <h2 style={{ textAlign: "center", fontSize: "clamp(1.8rem,4vw,2.8rem)", fontWeight: 700, letterSpacing: "-0.03em", color: "white", marginBottom: "0.5rem" }}>¿Qué deseas explorar?</h2>
+        <p style={{ textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: "0.95rem", marginBottom: "3.5rem" }}>Elige una sección para continuar.</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: "1rem" }}>
+          {cards.map(c => {
+            const isActive = active === c.key;
+            return (
+              <button
+                key={c.key}
+                id={`tab-card-${c.key}`}
+                onClick={() => onChange(c.key)}
+                style={{
+                  position: "relative",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: "1rem",
+                  padding: "2rem 1.75rem",
+                  borderRadius: "16px",
+                  cursor: "pointer",
+                  transition: "all 0.35s cubic-bezier(0.4,0,0.2,1)",
+                  background: isActive ? GOLD : "rgba(255,255,255,0.03)",
+                  border: `1.5px solid ${isActive ? GOLD : `${GOLD}20`}`,
+                  color: isActive ? "#000" : GOLD,
+                  textAlign: "left",
+                  boxShadow: isActive ? `0 8px 40px ${GOLD}30` : "none",
+                  transform: isActive ? "translateY(-2px)" : "translateY(0)",
+                }}
+              >
+                <span style={{ opacity: isActive ? 0.8 : 0.9 }}>{c.icon}</span>
+                <div>
+                  <p style={{ fontWeight: 700, fontSize: "1.15rem", letterSpacing: "-0.01em", color: isActive ? "#000" : "white", marginBottom: "0.4rem" }}>
+                    {c.title}
+                    {c.key === "cotizador" && quoteCount > 0 && (
+                      <span style={{ marginLeft: "0.5rem", display: "inline-flex", alignItems: "center", justifyContent: "center", width: "20px", height: "20px", borderRadius: "50%", background: isActive ? "#000" : GOLD, color: isActive ? GOLD : "#000", fontSize: "10px", fontWeight: 700, verticalAlign: "middle" }}>
+                        {quoteCount}
+                      </span>
+                    )}
+                  </p>
+                  <p style={{ fontSize: "0.82rem", color: isActive ? "rgba(0,0,0,0.65)" : "rgba(255,255,255,0.35)", lineHeight: 1.5, fontWeight: 400 }}>{c.desc}</p>
+                </div>
+                {isActive && (
+                  <span style={{ position: "absolute", top: "1.25rem", right: "1.25rem", fontSize: "12px", opacity: 0.5, color: "#000" }}>✓</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -785,12 +884,14 @@ export default function InventarioClient({ data }: Props) {
         </div>
       </section>
 
-      {/* ── Tab nav ── */}
+      {/* ── Tab selector central ── */}
+      <TabSelector active={activeTab} onChange={t => { setActiveTab(t); setTimeout(() => document.getElementById('tab-content')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50); }} quoteCount={quoteItems.length} />
+
+      {/* ── Sticky compact tab nav (aparece al scrollear) ── */}
       <div className="sticky top-16 z-40 py-3 px-6 transition-all duration-300"
-           style={{ background: "rgba(5,5,5,0.95)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${GOLD}10` }}>
+           style={{ background: "rgba(5,5,5,0.97)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${GOLD}10` }}>
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           <TabNav active={activeTab} onChange={setActiveTab} quoteCount={quoteItems.length} />
-          {/* Catálogo: category scroll nav */}
           {activeTab === "catalogo" && (
             <div className="hidden lg:flex items-center gap-1.5 overflow-x-auto">
               {filteredCategorias.map(cat => (
@@ -804,6 +905,9 @@ export default function InventarioClient({ data }: Props) {
           )}
         </div>
       </div>
+
+      {/* Anchor para scroll al contenido */}
+      <div id="tab-content" />
 
       {/* ── Tab content ── */}
       {activeTab === "catalogo" && (
