@@ -351,15 +351,13 @@ function fixHtml(html: string, logoUrl: string, sessionId: string, versionId: st
     `<img src="${logoUrl}" class="ms-logo" alt="Mainstage Pro">`
   );
 
-  // 4. Inject meta tags + CSS + NAV_SCRIPT into <head>
-  // Script goes in <head> so it arrives early (before large body content)
+  // 4. Inject meta tags + CSS into <head>
   const metaTags = `<meta name="ms-sid" content="${sessionId}">
 <meta name="ms-vid" content="${versionId}">`;
 
-  const headInject = metaTags + "\n" + MS_CSS + "\n" + NAV_SCRIPT;
+  const headInject = metaTags + "\n" + MS_CSS;
 
   if (result.includes("</head>")) {
-    // Use function replacement to avoid $1/$2/etc being interpreted as backreferences
     result = result.replace(/<[/]head>/i, () => headInject + "</head>");
   } else if (result.includes("<head>")) {
     result = result.replace(/<head>/i, () => "<head>" + headInject);
@@ -369,6 +367,14 @@ function fixHtml(html: string, logoUrl: string, sessionId: string, versionId: st
 ${headInject}</head>` + result;
   }
 
+  // 5. Inject NAV_SCRIPT at end of body (AFTER all slides are in the DOM)
+  // This is critical: when the script runs, all .slide elements are already parsed
+  // so msInit() can find them synchronously on the first call.
+  if (result.includes("</body>")) {
+    result = result.replace(/<[/]body>/i, () => NAV_SCRIPT + "</body>");
+  } else {
+    result = result + NAV_SCRIPT;
+  }
 
   return result;
 }
