@@ -264,11 +264,12 @@ function msSave(){
   for(var k=0;k<_s.length;k++)dotHtml+='<span class="ms-dot"></span>';
   navHtml=navHtml.replace(/(<div[^>]*id="ms-dots"[^>]*>)[\s\S]*?(<\/div>)/,'$1'+dotHtml+'$2');
 
-  var html='<!DOCTYPE html>\n<html lang="es">\n<head>\n'
-    +'<meta charset="UTF-8">\n'
-    +'<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">\n'
-    +'<title>'+document.title+'</title>\n'
-    +'</head>\n<body>\n'+navHtml+'\n'+deckHtml+'\n</body>\n</html>';
+  var html='<!DOCTYPE html><html lang="es"><head>'
+    +'<meta charset="UTF-8">'
+    +'<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">'
+    +'<title>'+document.title+'</title>'
+    +'</head><body>'+navHtml+deckHtml+'</body></html>';
+
 
   if(!_sid||!_vid){
     if(msg){msg.style.display='inline';msg.style.color='#f87171';msg.textContent='No se pudo guardar';}
