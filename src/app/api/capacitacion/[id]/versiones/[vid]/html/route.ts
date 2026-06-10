@@ -281,10 +281,19 @@ function msSave(){
   var deckHtml=deckEl?deckEl.outerHTML:'';
 
 
-  // Rebuild dots in nav
+  // Rebuild dots in nav — use indexOf instead of regex to avoid template-literal escape issues
   var dotHtml='';
   for(var k=0;k<_s.length;k++)dotHtml+='<span class="ms-dot"></span>';
-  navHtml=navHtml.replace(/(<div[^>]*id="ms-dots"[^>]*>)[\s\S]*?(<\/div>)/,'$1'+dotHtml+'$2');
+  var dotsAttr=navHtml.indexOf('id="ms-dots"');
+  if(dotsAttr>=0){
+    var dotsTagEnd=navHtml.indexOf('>',dotsAttr)+1;
+    var dotsClose=navHtml.indexOf('</div>',dotsTagEnd);
+    if(dotsTagEnd>0&&dotsClose>0){
+      navHtml=navHtml.substring(0,dotsTagEnd)+dotHtml+navHtml.substring(dotsClose);
+    }
+  }
+
+
 
   var html='<!DOCTYPE html><html lang="es"><head>'
     +'<meta charset="UTF-8">'
