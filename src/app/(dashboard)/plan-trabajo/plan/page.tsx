@@ -2123,7 +2123,7 @@ export default function PlanPage() {
                         if (e.key === 'Enter') handleAddSubarea(area.id)
                         if (e.key === 'Escape') { setAddingSubareaForAreaId(null); setNewSubareaName('') }
                       }}
-                      placeholder="Nombre de la subárea..."
+                      placeholder="Nombre del departamento..."
                       className="bg-transparent border-b border-[#C9A84C]/40 text-sm text-white focus:outline-none flex-1 py-1 placeholder:text-gray-700"
                     />
                     <button
@@ -2147,7 +2147,7 @@ export default function PlanPage() {
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M12 5v14M5 12h14"/>
                     </svg>
-                    Nueva subárea
+                    Nuevo departamento
                   </button>
                 ))}
               </div>
