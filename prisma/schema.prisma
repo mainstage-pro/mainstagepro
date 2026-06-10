@@ -65,6 +65,7 @@ model User {
   iniciativasCaptura     Iniciativa[]           @relation("IniciativaUsuario")
   reportesArea           ReporteAreaSemanal[]   @relation("ReportesAreaAutor")
   incidenciasSemanales   IncidenciaSemanal[]    @relation("IncidenciasSemanalesUser")
+  presentacionesVenta    PresentacionVenta[]    @relation("PresentacionesVentaCreadas")
 
 
   @@map("users")
@@ -3193,3 +3194,34 @@ model VersionPresentacion {
   @@unique([sesionId, version])
   @@map("versiones_presentacion")
 }
+
+// ─── PRESENTACIONES DE VENTA ──────────────────────────────────────────────────
+
+model PresentacionVenta {
+  id           String     @id @default(cuid())
+  titulo       String
+  descripcion  String     @db.Text
+  htmlContent  String     @default("") @db.Text
+  estado       String     @default("BORRADOR")
+  tokenPublico String?    @unique
+  creadaPorId  String
+  creadaPor    User       @relation("PresentacionesVentaCreadas", fields: [creadaPorId], references: [id])
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  imagenes     ImagenPV[]
+
+  @@map("presentaciones_venta")
+}
+
+model ImagenPV {
+  id             String            @id @default(cuid())
+  presentacionId String
+  presentacion   PresentacionVenta @relation(fields: [presentacionId], references: [id], onDelete: Cascade)
+  blobUrl        String
+  nombre         String
+  orden          Int               @default(0)
+  createdAt      DateTime          @default(now())
+
+  @@map("imagenes_pv")
+}
+
