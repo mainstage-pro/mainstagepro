@@ -6349,7 +6349,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               HOSPEDAJE: "Hospedaje",
               OTRO: "Otros",
             };
-            type LinCot = { id: string; tipo: string; descripcion: string; cantidad: number; precioUnitario: number };
+            type LinCot = { id: string; tipo: string; descripcion: string; cantidad: number; dias: number; precioUnitario: number };
             const lineasConCosto: LinCot[] = (cot?.lineas ?? []).filter(l =>
               l.precioUnitario > 0 && !["EQUIPO_PROPIO","DESCUENTO_BENEFICIO","PAQUETE"].includes(l.tipo)
             );
@@ -6411,7 +6411,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           <p className="text-xs text-gray-700 italic">Sin líneas de costo en la cotización</p>
                         ) : (
                           Object.entries(grouped).map(([tipo, lineas]) => {
-                            const grupoTotal = lineas.reduce((s, l) => s + l.precioUnitario * l.cantidad, 0);
+                            const grupoTotal = lineas.reduce((s, l) => s + l.precioUnitario * l.cantidad * (l.dias || 1), 0);
                             return (
                               <div key={tipo}>
                                 <div className="flex items-center justify-between mb-1">
@@ -6420,8 +6420,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                 </div>
                                 {lineas.map(l => (
                                   <div key={l.id} className="flex items-center justify-between py-0.5 pl-3">
-                                    <span className="text-xs text-gray-600 truncate mr-2">· {l.descripcion}{l.cantidad > 1 ? ` ×${Math.round(l.cantidad)}` : ""}</span>
-                                    <span className="text-xs text-gray-600 shrink-0">{fmt(l.precioUnitario * l.cantidad)}</span>
+                                    <span className="text-xs text-gray-600 truncate mr-2">· {l.descripcion}{l.cantidad > 1 ? ` ×${Math.round(l.cantidad)}` : ""}{l.dias > 1 ? ` · ${l.dias}d` : ""}</span>
+                                    <span className="text-xs text-gray-600 shrink-0">{fmt(l.precioUnitario * l.cantidad * (l.dias || 1))}</span>
                                   </div>
                                 ))}
                               </div>
