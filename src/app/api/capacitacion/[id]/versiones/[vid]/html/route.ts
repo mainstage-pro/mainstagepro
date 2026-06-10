@@ -139,12 +139,16 @@ html,body{width:100%;height:100%;overflow:hidden;background:#040404;
 .slide.ms-hidden{display:none!important}
 </style>`;
 
-// ── Navigation + Edit mode script ─────────────────────────────────────────
- const NAV_SCRIPT = `
+// -- Navigation + Edit mode script (ES5-compatible, no optional chaining) --
+const NAV_SCRIPT = `
 <script>
 var cur=0,_s=[],_d=[],_c=null,_ok=false,_edit=false;
-var _sid=document.querySelector('meta[name=ms-sid]')?.content;
-var _vid=document.querySelector('meta[name=ms-vid]')?.content;
+
+// Read IDs from injected meta tags - NO optional chaining for browser compat
+var _sidEl=document.querySelector('meta[name="ms-sid"]');
+var _vidEl=document.querySelector('meta[name="ms-vid"]');
+var _sid=_sidEl?_sidEl.getAttribute('content'):null;
+var _vid=_vidEl?_vidEl.getAttribute('content'):null;
 
 function msInit(){
   if(_ok)return;
@@ -154,22 +158,25 @@ function msInit(){
   _s=Array.from(found);
   _d=Array.from(document.querySelectorAll('.ms-dot'));
   _c=document.getElementById('ms-counter');
-  _s.forEach(function(s){s.classList.add('ms-hidden');s.classList.remove('active')});
+  _s.forEach(function(s){s.classList.add('ms-hidden');s.classList.remove('active');});
   _s[0].classList.remove('ms-hidden');
   _s[0].classList.add('active');
-  _d.forEach(function(d,i){d.className='ms-dot'+(i===0?' on':'')});
+  _d.forEach(function(d,i){d.className='ms-dot'+(i===0?' on':'');});
   if(_c)_c.textContent='01 / '+String(_s.length).padStart(2,'0');
   msAddEditUI();
 }
 
 function goTo(n){
-  if(!_ok)msInit();if(!_s.length)return;
+  if(!_ok)msInit();
+  if(!_s.length)return;
   n=((parseInt(n,10)%_s.length)+_s.length)%_s.length;
   if(n===cur)return;
-  _s[cur].classList.remove('active');_s[cur].classList.add('ms-hidden');
+  _s[cur].classList.remove('active');
+  _s[cur].classList.add('ms-hidden');
   if(_d[cur])_d[cur].className='ms-dot';
   cur=n;
-  _s[cur].classList.remove('ms-hidden');_s[cur].classList.add('active');
+  _s[cur].classList.remove('ms-hidden');
+  _s[cur].classList.add('active');
   if(_d[cur])_d[cur].className='ms-dot on';
   if(_c)_c.textContent=String(cur+1).padStart(2,'0')+' / '+String(_s.length).padStart(2,'0');
 }
@@ -180,47 +187,34 @@ document.addEventListener('keydown',function(e){
   if(e.key==='ArrowLeft'||e.key==='ArrowUp')goTo(cur-1);
 });
 
-// ── Edit mode ──
-var EDITABLE_SELECTORS=[
-  '.ms-title','.ms-subtitle','.ms-eyebrow',
-  '.ms-card-title','.ms-card-body','.ms-card-label',
-  '.ms-quote','.ms-quote-source',
-  '.ms-stat-num','.ms-stat-label',
-  '.ms-obj-box','.ms-list li','.ms-tag',
-  '.ms-footer span','.ms-footer p',
-  'h1','h2','h3','p:not(.ms-eyebrow)','li'
-];
+// -- Edit mode UI --
+var EDIT_SEL='.ms-title,.ms-subtitle,.ms-card-title,.ms-card-body'
+  +',.ms-quote,.ms-quote-source,.ms-stat-num,.ms-stat-label'
+  +',.ms-obj-box,.ms-tag,h1,h2,h3';
 
 function msAddEditUI(){
   var nav=document.getElementById('ms-nav');
   if(!nav||document.getElementById('ms-edit-btn'))return;
 
-  // Edit button
   var eb=document.createElement('button');
-  eb.id='ms-edit-btn';
-  eb.className='ms-btn';
-  eb.title='Editar presentación';
-  eb.innerHTML='✏︎';
-  eb.onclick=msToggleEdit;
+  eb.id='ms-edit-btn'; eb.className='ms-btn'; eb.title='Editar';
+  eb.innerHTML='\u270f'; eb.onclick=msToggleEdit;
 
-  // Save button
   var sb=document.createElement('button');
   sb.id='ms-save-btn';
-  sb.title='Guardar cambios';
   sb.style.cssText='display:none;padding:0 14px;height:32px;border-radius:8px;'
     +'background:#B3985B;border:none;color:#000;font-size:12px;'
-    +'font-weight:700;cursor:pointer;letter-spacing:.05em;white-space:nowrap';
-  sb.textContent='Guardar';
-  sb.onclick=msSave;
+    +'font-weight:700;cursor:pointer;white-space:nowrap';
+  sb.textContent='Guardar'; sb.onclick=msSave;
 
-  // Msg
   var msg=document.createElement('span');
   msg.id='ms-msg';
-  msg.style.cssText='font-size:11px;font-weight:600;display:none;margin-left:6px';
+  msg.style.cssText='font-size:11px;font-weight:600;display:none;margin:0 6px';
 
-  nav.insertBefore(msg,nav.children[nav.children.length-1]);
-  nav.insertBefore(sb,nav.children[nav.children.length-1]);
-  nav.insertBefore(eb,nav.children[nav.children.length-1]);
+  var last=nav.lastElementChild;
+  nav.insertBefore(msg,last);
+  nav.insertBefore(sb,last);
+  nav.insertBefore(eb,last);
 }
 
 function msToggleEdit(){
@@ -228,95 +222,90 @@ function msToggleEdit(){
   var eb=document.getElementById('ms-edit-btn');
   var sb=document.getElementById('ms-save-btn');
   var msg=document.getElementById('ms-msg');
-  var els=document.querySelectorAll(EDITABLE_SELECTORS.join(','));
-
-  els.forEach(function(el){
-    if(el.closest('#ms-nav')||el.tagName==='IMG')return;
+  var els=document.querySelectorAll(EDIT_SEL);
+  for(var i=0;i<els.length;i++){
+    var el=els[i];
+    if(el.closest&&el.closest('#ms-nav'))continue;
     el.contentEditable=_edit?'true':'false';
-    el.style.outline=_edit?'1px dashed rgba(179,152,91,.4)':'';
-    el.style.borderRadius=_edit?'3px':'';
-    el.style.minHeight=_edit?'1em':'';
-  });
-
-  if(eb){eb.style.color=_edit?'#B3985B':'';eb.title=_edit?'Cancelar edición':'Editar presentación';}
-  if(sb)sb.style.display=_edit?'flex':'none';
+    el.style.outline=_edit?'1px dashed rgba(179,152,91,.5)':'';
+  }
+  if(eb)eb.style.color=_edit?'#B3985B':'';
+  if(sb)sb.style.display=_edit?'inline-block':'none';
   if(msg)msg.style.display='none';
 }
 
 function msSave(){
   var sb=document.getElementById('ms-save-btn');
   var msg=document.getElementById('ms-msg');
-  if(sb){sb.disabled=true;sb.textContent='Guardando...'}
-
-  // Capture clean nav HTML (strip injected edit controls temporarily)
   var eb=document.getElementById('ms-edit-btn');
-  var sbEl=document.getElementById('ms-save-btn');
-  var msgEl=document.getElementById('ms-msg');
-  [eb,sbEl,msgEl].forEach(function(el){if(el)el.style.display='none'});
+  if(sb){sb.disabled=true;sb.textContent='Guardando...';}
 
-  // Clean up edit state from DOM
-  document.querySelectorAll(EDITABLE_SELECTORS.join(',')).forEach(function(el){
-    el.contentEditable='false';
-    el.style.outline='';
-    el.style.borderRadius='';
-    el.style.minHeight='';
-  });
-  // Clean active/hidden classes so stored HTML is neutral
-  _s.forEach(function(s){s.classList.remove('active','ms-hidden')});
+  // Exit edit mode
+  var els=document.querySelectorAll(EDIT_SEL);
+  for(var i=0;i<els.length;i++){
+    els[i].contentEditable='false';
+    els[i].style.outline='';
+  }
+  _edit=false;
+  if(eb)eb.style.color='';
+  if(sb)sb.style.display='none';
 
-  var navHtml=document.getElementById('ms-nav')?.outerHTML||'';
-  var deckHtml=document.getElementById('deck')?.outerHTML||'';
-  var title=document.title;
+  // Strip active/ms-hidden so saved HTML is class-neutral
+  for(var j=0;j<_s.length;j++){_s[j].classList.remove('active','ms-hidden');}
 
-  // Reconstruct count of dots
-  var dotCount=_s.length;
-  var dots=Array.from({length:dotCount}).map(function(){return '<span class="ms-dot"></span>'}).join('');
-  navHtml=navHtml.replace(/<div[^>]*id=["']ms-dots["'][^>]*>[\s\S]*?<\/div>/,
-    '<div class="ms-dots" id="ms-dots">'+dots+'</div>');
+  // Capture nav + deck
+  var navEl=document.getElementById('ms-nav');
+  var deckEl=document.getElementById('deck');
+  var navHtml=navEl?navEl.outerHTML:'';
+  var deckHtml=deckEl?deckEl.outerHTML:'';
 
-  var clean=['<!DOCTYPE html>','<html lang="es">','<head>',
-    '<meta charset="UTF-8">',
-    '<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">',
-    '<title>'+title+'</title>',
-    '</head>','<body>',
-    navHtml,
-    deckHtml,
-    '</body>','</html>'].join('\n');
+  // Rebuild dots in nav
+  var dotHtml='';
+  for(var k=0;k<_s.length;k++)dotHtml+='<span class="ms-dot"></span>';
+  navHtml=navHtml.replace(/(<div[^>]*id="ms-dots"[^>]*>)[\s\S]*?(<\/div>)/,'$1'+dotHtml+'$2');
 
-  if(!_sid||!_vid){if(msg){msg.style.display='inline';msg.style.color='#f87171';msg.textContent='⚠ No se pudo identificar la sesión';}return;}
+  var html='<!DOCTYPE html>\n<html lang="es">\n<head>\n'
+    +'<meta charset="UTF-8">\n'
+    +'<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">\n'
+    +'<title>'+document.title+'</title>\n'
+    +'</head>\n<body>\n'+navHtml+'\n'+deckHtml+'\n</body>\n</html>';
+
+  if(!_sid||!_vid){
+    if(msg){msg.style.display='inline';msg.style.color='#f87171';msg.textContent='No se pudo guardar';}
+    _ok=false;msInit();return;
+  }
 
   fetch('/api/capacitacion/'+_sid+'/versiones/'+_vid,{
     method:'PATCH',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({htmlContent:clean}),
+    body:JSON.stringify({htmlContent:html}),
     credentials:'include'
   })
-  .then(function(r){return r.json()})
+  .then(function(r){return r.json();})
   .then(function(d){
     if(d.ok){
-      if(msg){msg.style.display='inline';msg.style.color='#4ade80';msg.textContent='✓ Guardado';}
-      _edit=false;
-      // Restore nav controls
-      [eb,sbEl].forEach(function(el){if(el)el.style.display=''});
-      if(msgEl)msgEl.style.display='inline';
-      if(sb){sb.disabled=false;sb.textContent='Guardar';sb.style.display='none';}
-      if(eb){eb.style.color='';eb.title='Editar presentación';}
-      // Restore active state
-      msInit._ok=false;_ok=false;msInit();
+      if(msg){msg.style.display='inline';msg.style.color='#4ade80';msg.textContent='\u2713 Guardado';}
       setTimeout(function(){if(msg)msg.style.display='none';},2500);
+    } else {
+      if(msg){msg.style.display='inline';msg.style.color='#f87171';msg.textContent='Error al guardar';}
+      if(sb){sb.disabled=false;sb.textContent='Guardar';sb.style.display='inline-block';}
     }
+    _ok=false;msInit();
   })
   .catch(function(){
-    if(msg){msg.style.display='inline';msg.style.color='#f87171';msg.textContent='⚠ Error al guardar';}
-    [eb,sbEl,msgEl].forEach(function(el){if(el)el.style.display='';});
-    if(sb){sb.disabled=false;sb.textContent='Guardar';}
+    if(msg){msg.style.display='inline';msg.style.color='#f87171';msg.textContent='Error al guardar';}
+    if(sb){sb.disabled=false;sb.textContent='Guardar';sb.style.display='inline-block';}
+    _ok=false;msInit();
   });
 }
 
-msInit();setTimeout(msInit,0);setTimeout(msInit,150);
+msInit();
+setTimeout(msInit,0);
+setTimeout(msInit,150);
 document.addEventListener('DOMContentLoaded',msInit);
 window.addEventListener('load',msInit);
 </script>`;
+
 
 // ── Logo cache ─────────────────────────────────────────────────────────────
 let _logoDataUrl: string | null = null;
