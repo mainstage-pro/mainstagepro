@@ -2,6 +2,8 @@
 
 import React, { useState, useRef, useCallback, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { upload } from "@vercel/blob/client";
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -28,17 +30,14 @@ function useToast() {
   return { toasts, show };
 }
 
-// ─── Image upload helper ──────────────────────────────────────────────────────
+// ─── Image upload helper (client-side direct upload to Vercel Blob) ─────────
 
 async function uploadImage(file: File): Promise<{ url: string; nombre: string }> {
-  const form = new FormData();
-  form.append("file", file);
-  const res = await fetch("/api/presentaciones-venta/imagenes", { method: "POST", body: form });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.error || "Error al subir imagen");
-  }
-  return res.json();
+  const blob = await upload(file.name, file, {
+    access: "public",
+    handleUploadUrl: "/api/presentaciones-venta/imagenes",
+  });
+  return { url: blob.url, nombre: file.name };
 }
 
 // ─── Image preview card ───────────────────────────────────────────────────────

@@ -1,30 +1,40 @@
+import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextRequest, NextResponse } from "next/server";
-import { put } from "@vercel/blob";
 import { getSession } from "@/lib/auth";
 
-export async function POST(req: NextRequest) {
+/**
+ * Client-upload handler for Vercel Blob.
+ * The browser uploads directly to Blob CDN — no Next.js body size limit.
+ * See: https://vercel.com/docs/storage/vercel-blob/client-upload
+ */
+export async function POST(request: NextRequest): Promise<Response> {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  const body = (await request.json()) as HandleUploadBody;
+
   try {
-    const formData = await req.formData();
-    const file = formData.get("file") as File;
-    if (!file) return NextResponse.json({ error: "No file" }, { status: 400 });
+    const jsonResponse = await handleUpload({
+      body,
+      request,
+      onBeforeGenerateToken: async (pathname) => {
+        // Only allow image uploads
+        return {
+          allowedContentTypes: ["image/jpeg", "image/png", "image/webp", "image/gif", "image/heic"],
+          maximumSizeInBytes: 20 * 1024 * 1024, // 20MB — camera photos can be large
+          tokenPayload: JSON.stringify({ userId: session.id, pathname }),
+        };
+      },
+      onUploadCompleted: async ({ blob }) => {
+        // Optional: log or record in DB
+        console.log("[blob] Upload completed:", blob.url);
+      },
+    });
 
-    if (!file.type.startsWith("image/")) {
-      return NextResponse.json({ error: "Solo imágenes" }, { status: 400 });
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json({ error: "Máximo 10MB por imagen" }, { status: 400 });
-    }
-
-    const filename = `pv/${session.id}/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-    const blob = await put(filename, file, { access: "public" });
-
-    return NextResponse.json({ url: blob.url, nombre: file.name });
+    return NextResponse.json(jsonResponse);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[presentaciones-venta/imagenes] Upload error:", message);
-    return NextResponse.json({ error: `Error al subir: ${message}` }, { status: 500 });
+    console.error("[presentaciones-venta/imagenes] Token error:", message);
+    return NextResponse.json({ error: message }, { status: 400 });
   }
 }
