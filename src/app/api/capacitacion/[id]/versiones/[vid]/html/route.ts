@@ -36,8 +36,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:#040404;
   background:rgba(255,255,255,.2);
   transition:background .2s,transform .2s;cursor:pointer}
 .ms-dot.on{background:#B3985B;transform:scale(1.3)}
-#ms-counter{font-size:11px;font-weight:700;letter-spacing:.12em;
-  color:#B3985B;min-width:52px;text-align:right}
+#ms-counter{font-size:13px;font-weight:800;letter-spacing:.05em;
+  color:#fff;min-width:60px;text-align:center;
+  background:#B3985B;border-radius:6px;padding:2px 8px}
+
 
 
 /* ── Logo ── */
