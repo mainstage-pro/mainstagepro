@@ -178,6 +178,11 @@ export function fixHtml(
     /src="(?!https?:\/\/)[^"]*logo[^"]{0,120}\.(?:pn|png|jpe?g|svg|webp|gif)[^"]*"/gi,
     `src="${logoUrl}"`
   );
+  // Also fix full Vercel Blob URLs Claude hallucinates for the logo
+  result = result.replace(
+    /src="https:\/\/[^"]*\.blob\.vercel-storage\.com\/logo[^"]*"/gi,
+    `src="${logoUrl}"`
+  );
   // Also fix truncated extensions (Claude sometimes cuts off .png as .pn)
   result = result.replace(
     /src="(?!https?:\/\/|\/logo-white)[^"]*logo-mainstage[^"]*"/gi,
