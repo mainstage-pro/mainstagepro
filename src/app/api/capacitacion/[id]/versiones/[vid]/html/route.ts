@@ -149,24 +149,35 @@ var _vidEl=document.querySelector('meta[name="ms-vid"]');
 var _sid=_sidEl?_sidEl.getAttribute('content'):null;
 var _vid=_vidEl?_vidEl.getAttribute('content'):null;
 
+function pad2(n){return(n<10?'0':'')+n;}
+function toArr(nl){var a=[];for(var i=0;i<nl.length;i++)a.push(nl[i]);return a;}
+
 function msShow(idx){
-  for(var i=0;i<_s.length;i++)_s[i].style.display=(i===idx?'flex':'none');
-  if(_d[cur])_d[cur].className='ms-dot';
-  cur=idx;
-  if(_d[cur])_d[cur].className='ms-dot on';
-  if(_c)_c.textContent=String(cur+1).padStart(2,'0')+' / '+String(_s.length).padStart(2,'0');
+  try{
+    for(var i=0;i<_s.length;i++){
+      _s[i].style.display=(i===idx)?'flex':'none';
+    }
+    if(_d[cur])_d[cur].className='ms-dot';
+    cur=idx;
+    if(_d[cur])_d[cur].className='ms-dot on';
+    if(_c)_c.textContent=pad2(cur+1)+' / '+pad2(_s.length);
+  }catch(e){}
 }
 
 function msInit(){
   if(_ok)return;
   var found=document.querySelectorAll('.slide');
   if(!found.length)return;
-  _ok=true;
-  _s=Array.from(found);
-  _d=Array.from(document.querySelectorAll('.ms-dot'));
-  _c=document.getElementById('ms-counter');
-  msShow(0);
-  msAddEditUI();
+  try{
+    _ok=true;
+    _s=toArr(found);
+    _d=toArr(document.querySelectorAll('.ms-dot'));
+    _c=document.getElementById('ms-counter');
+    msShow(0);
+    msAddEditUI();
+  }catch(e){
+    _ok=false;
+  }
 }
 
 function goTo(n){
@@ -246,14 +257,27 @@ function msSave(){
   if(eb)eb.style.color='';
   if(sb)sb.style.display='none';
 
-  // Strip active/ms-hidden so saved HTML is class-neutral
-  for(var j=0;j<_s.length;j++){_s[j].classList.remove('active','ms-hidden');}
+  // Strip active/ms-hidden classes AND inline display styles so saved HTML is clean
+  for(var j=0;j<_s.length;j++){
+    _s[j].classList.remove('active','ms-hidden');
+    _s[j].style.display='';
+  }
 
   // Capture nav + deck
   var navEl=document.getElementById('ms-nav');
   var deckEl=document.getElementById('deck');
+
+  // Remove injected edit controls from nav before saving
+  var ebClone=document.getElementById('ms-edit-btn');
+  var sbClone=document.getElementById('ms-save-btn');
+  var msgClone=document.getElementById('ms-msg');
+  if(ebClone&&ebClone.parentNode)ebClone.parentNode.removeChild(ebClone);
+  if(sbClone&&sbClone.parentNode)sbClone.parentNode.removeChild(sbClone);
+  if(msgClone&&msgClone.parentNode)msgClone.parentNode.removeChild(msgClone);
+
   var navHtml=navEl?navEl.outerHTML:'';
   var deckHtml=deckEl?deckEl.outerHTML:'';
+
 
   // Rebuild dots in nav
   var dotHtml='';
