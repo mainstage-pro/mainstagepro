@@ -55,6 +55,8 @@ document.addEventListener('keydown',function(e){
   if(_edit)return;
   if(e.key==='ArrowRight'||e.key==='ArrowDown')goTo(cur+1);
   if(e.key==='ArrowLeft'||e.key==='ArrowUp')goTo(cur-1);
+  if(e.key==='f'||e.key==='F')msToggleFullscreen();
+  if(e.key==='Escape'&&document.fullscreenElement)document.exitFullscreen();
 });
 
 // ── Edit mode ───────────────────────────────────────────────────────────────
@@ -66,6 +68,13 @@ function msAddEditUI(){
   var nav=document.getElementById('ms-nav');
   if(!nav||document.getElementById('ms-edit-btn'))return;
 
+  // ── Fullscreen button ──
+  var fb=document.createElement('button');
+  fb.id='ms-fs-btn'; fb.className='ms-btn'; fb.title='Pantalla completa (F)';
+  fb.innerHTML='\u26f6'; fb.onclick=msToggleFullscreen;
+  nav.insertBefore(fb, nav.firstElementChild);
+
+  // ── Edit + Save buttons ──
   var eb=document.createElement('button');
   eb.id='ms-edit-btn'; eb.className='ms-btn'; eb.title='Editar';
   eb.innerHTML='\u270f'; eb.onclick=msToggleEdit;
@@ -86,6 +95,32 @@ function msAddEditUI(){
   nav.insertBefore(sb,last);
   nav.insertBefore(eb,last);
 }
+
+// ── Fullscreen ───────────────────────────────────────────────────────────────
+function msToggleFullscreen(){
+  if(!document.fullscreenElement){
+    (document.documentElement.requestFullscreen
+      ||document.documentElement.webkitRequestFullscreen
+      ||function(){}).call(document.documentElement);
+  } else {
+    (document.exitFullscreen
+      ||document.webkitExitFullscreen
+      ||function(){}).call(document);
+  }
+}
+
+function msUpdateFsBtn(){
+  var fb=document.getElementById('ms-fs-btn');
+  if(!fb)return;
+  var isFs=!!document.fullscreenElement;
+  // ⛶ = enter fullscreen  ⊡ = exit (use unicode arrows)
+  fb.innerHTML=isFs?'\u2715':'\u26f6';
+  fb.title=isFs?'Salir de pantalla completa (Esc)':'Pantalla completa (F)';
+  fb.style.color=isFs?'#B3985B':'';
+}
+
+document.addEventListener('fullscreenchange', msUpdateFsBtn);
+document.addEventListener('webkitfullscreenchange', msUpdateFsBtn);
 
 function msToggleEdit(){
   _edit=!_edit;
