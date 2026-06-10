@@ -36,8 +36,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:#040404;
   background:rgba(255,255,255,.2);
   transition:background .2s,transform .2s;cursor:pointer}
 .ms-dot.on{background:#B3985B;transform:scale(1.3)}
-#ms-counter{font-size:11px;font-weight:600;letter-spacing:.12em;
-  color:rgba(255,255,255,.2);min-width:48px;text-align:right}
+#ms-counter{font-size:11px;font-weight:700;letter-spacing:.12em;
+  color:#B3985B;min-width:52px;text-align:right}
+
 
 /* ── Logo ── */
 .ms-logo{height:22px;object-fit:contain;display:block}
@@ -132,11 +133,9 @@ html,body{width:100%;height:100%;overflow:hidden;background:#040404;
 .slide.active>*:nth-child(5){animation-delay:.28s}
 .slide.active>*:nth-child(6){animation-delay:.35s}
 
-/* ── Active/hidden state management (injected by server) ── */
-.slide{display:none!important}
-.slide:first-child{display:flex!important}
-.slide.active{display:flex!important}
-.slide.ms-hidden{display:none!important}
+/* ── Slide initial state: first slide visible as fallback before JS ── */
+.slide{display:none}
+.slide:first-child{display:flex}
 </style>`;
 
 // -- Navigation + Edit mode script (ES5-compatible, no optional chaining) --
@@ -150,6 +149,14 @@ var _vidEl=document.querySelector('meta[name="ms-vid"]');
 var _sid=_sidEl?_sidEl.getAttribute('content'):null;
 var _vid=_vidEl?_vidEl.getAttribute('content'):null;
 
+function msShow(idx){
+  for(var i=0;i<_s.length;i++)_s[i].style.display=(i===idx?'flex':'none');
+  if(_d[cur])_d[cur].className='ms-dot';
+  cur=idx;
+  if(_d[cur])_d[cur].className='ms-dot on';
+  if(_c)_c.textContent=String(cur+1).padStart(2,'0')+' / '+String(_s.length).padStart(2,'0');
+}
+
 function msInit(){
   if(_ok)return;
   var found=document.querySelectorAll('.slide');
@@ -158,11 +165,7 @@ function msInit(){
   _s=Array.from(found);
   _d=Array.from(document.querySelectorAll('.ms-dot'));
   _c=document.getElementById('ms-counter');
-  _s.forEach(function(s){s.classList.add('ms-hidden');s.classList.remove('active');});
-  _s[0].classList.remove('ms-hidden');
-  _s[0].classList.add('active');
-  _d.forEach(function(d,i){d.className='ms-dot'+(i===0?' on':'');});
-  if(_c)_c.textContent='01 / '+String(_s.length).padStart(2,'0');
+  msShow(0);
   msAddEditUI();
 }
 
@@ -171,14 +174,7 @@ function goTo(n){
   if(!_s.length)return;
   n=((parseInt(n,10)%_s.length)+_s.length)%_s.length;
   if(n===cur)return;
-  _s[cur].classList.remove('active');
-  _s[cur].classList.add('ms-hidden');
-  if(_d[cur])_d[cur].className='ms-dot';
-  cur=n;
-  _s[cur].classList.remove('ms-hidden');
-  _s[cur].classList.add('active');
-  if(_d[cur])_d[cur].className='ms-dot on';
-  if(_c)_c.textContent=String(cur+1).padStart(2,'0')+' / '+String(_s.length).padStart(2,'0');
+  msShow(n);
 }
 
 document.addEventListener('keydown',function(e){
