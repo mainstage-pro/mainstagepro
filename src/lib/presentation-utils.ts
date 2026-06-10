@@ -170,8 +170,18 @@ export function fixHtml(
   result = result.split("LOGO_HERE").join(logoUrl);
   result = result.split("__LOGO_SRC__").join(logoUrl);
   result = result.replace(
-    /<svg[^>]*viewBox=['"]0 0 220 38['"][\s\S]*?<\/svg>/gi,
+    /<svg[^>]*viewBox=['"]0 0 220 38['"\][\s\S]*?<\/svg>/gi,
     `<img src="${logoUrl}" class="ms-logo" alt="Mainstage Pro">`
+  );
+  // Fix hallucinated logo URLs (Claude sometimes invents Blob-like paths for the logo)
+  result = result.replace(
+    /src="(?!https?:\/\/)[^"]*logo[^"]{0,120}\.(?:pn|png|jpe?g|svg|webp|gif)[^"]*"/gi,
+    `src="${logoUrl}"`
+  );
+  // Also fix truncated extensions (Claude sometimes cuts off .png as .pn)
+  result = result.replace(
+    /src="(?!https?:\/\/|\/logo-white)[^"]*logo-mainstage[^"]*"/gi,
+    `src="${logoUrl}"`
   );
 
   // 4. Inject meta tags + CSS into <head>

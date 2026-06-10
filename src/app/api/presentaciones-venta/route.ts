@@ -81,7 +81,7 @@ CLASES DISPONIBLES (úsalas):
 - Dorado: <span class="ms-gold">texto</span>
 - Divisor: <div class="ms-divider"></div>
 - Footer del slide: <div class="ms-footer"><span>Mainstage Pro</span><span>2025</span></div>
-- Logo: <img src="LOGO_HERE" class="ms-logo" alt="Mainstage Pro">
+- Logo: <img src="/logo-white.png" class="ms-logo" alt="Mainstage Pro"> (USA EXACTAMENTE esta URL, no inventes otras)
 - Galería: <div class="ms-gallery cols-2"><img src="URL" alt="desc"></div>
 
 ESTRUCTURA DE LOS 9 SLIDES:
@@ -107,6 +107,7 @@ ${fotosDisponibles > 3 ? '6. GALERÍA 2 (bg-mid): Continúa con más fotos del t
 - Comienza con <div id="deck"> y termina con </div>
 - NO incluyas <style>, <script>, <html>, <head>, <body> ni <nav>
 - Usa texto REAL y específico basado en la descripción, no placeholders
+- El logo SIEMPRE es <img src="/logo-white.png" class="ms-logo" alt="Mainstage Pro"> — nunca inventes una URL diferente
 - El contenido debe ser profesional, conciso y orientado a ventas
 - Usa ms-gold para destacar números y datos importantes
 - Los slides deben tener contenido equilibrado
