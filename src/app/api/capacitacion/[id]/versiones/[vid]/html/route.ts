@@ -327,24 +327,13 @@ document.addEventListener('DOMContentLoaded',msInit);
 window.addEventListener('load',msInit);
 </script>`;
 
-
-// ── Logo cache ─────────────────────────────────────────────────────────────
-let _logoDataUrl: string | null = null;
-
-async function getLogoDataUrl(): Promise<string> {
-  if (_logoDataUrl) return _logoDataUrl;
-  try {
-    const buf = await readFile(join(process.cwd(), "public", "logo-white.png"));
-    const b64 = buf.toString("base64");
-    _logoDataUrl = `data:image/png;base64,${b64}`;
-    return _logoDataUrl;
-  } catch {
-    return "/logo-white.png"; // fallback to relative URL
-  }
+// ── Logo URL ── use public URL, NOT base64
+function getLogoUrl(): string {
+  return "/logo-white.png";
 }
 
 // ── fixHtml ────────────────────────────────────────────────────
-function fixHtml(html: string, logoDataUrl: string, sessionId: string, versionId: string): string {
+function fixHtml(html: string, logoUrl: string, sessionId: string, versionId: string): string {
   // 1. Strip ALL scripts from Claude (closed and unclosed)
   let result = html.replace(/<script[\s\S]*?<\/script>/gi, "");
   result = result.replace(/<script[\s\S]*/i, "");
@@ -352,38 +341,36 @@ function fixHtml(html: string, logoDataUrl: string, sessionId: string, versionId
   // 2. Strip Claude's style blocks (we inject our own)
   result = result.replace(/<style[\s\S]*?<\/style>/gi, "");
 
-  // 3. Replace logo placeholder
-  result = result.split("LOGO_HERE").join(logoDataUrl);
-  // Also handle old format and SVG logo
-  result = result.split("__LOGO_SRC__").join(logoDataUrl);
+  // 3. Replace logo placeholder with simple URL (no base64 — avoids 222KB bloat)
+  result = result.split("LOGO_HERE").join(logoUrl);
+  result = result.split("__LOGO_SRC__").join(logoUrl);
   result = result.replace(
     /<svg[^>]*viewBox=['"]0 0 220 38['"][\s\S]*?<\/svg>/gi,
-    `<img src="${logoDataUrl}" class="ms-logo" alt="Mainstage Pro">`
+    `<img src="${logoUrl}" class="ms-logo" alt="Mainstage Pro">`
   );
 
-  // 4. Inject meta tags with session/version IDs for the edit save function
+  // 4. Inject meta tags + CSS + NAV_SCRIPT into <head>
+  // Script goes in <head> so it arrives early (before large body content)
   const metaTags = `<meta name="ms-sid" content="${sessionId}">
 <meta name="ms-vid" content="${versionId}">`;
+
+  const headInject = metaTags + "\n" + MS_CSS + "\n" + NAV_SCRIPT;
+
   if (result.includes("</head>")) {
-    result = result.replace(/<\/head>/i, metaTags + "\n" + MS_CSS + "</head>");
+    // Use function replacement to avoid $1/$2/etc being interpreted as backreferences
+    result = result.replace(/<[/]head>/i, () => headInject + "</head>");
   } else if (result.includes("<head>")) {
-    result = result.replace(/<head>/i, "<head>" + metaTags + "\n" + MS_CSS);
+    result = result.replace(/<head>/i, () => "<head>" + headInject);
   } else {
     result = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-${metaTags}
-${MS_CSS}</head>` + result;
+${headInject}</head>` + result;
   }
 
-  // 5. Inject nav script before </body>
-  if (result.includes("</body>")) {
-    result = result.replace(/<\/body>/i, NAV_SCRIPT + "</body>");
-  } else {
-    result = result + NAV_SCRIPT;
-  }
 
   return result;
 }
+
 
 /**
  * GET /api/capacitacion/[id]/versiones/[vid]/html
@@ -409,8 +396,9 @@ export async function GET(
     return new NextResponse("Versión no encontrada", { status: 404 });
   }
 
-  const logoDataUrl = await getLogoDataUrl();
-  const fixed = fixHtml(version.htmlContent, logoDataUrl, id, vid);
+  const logoUrl = getLogoUrl();
+  const fixed = fixHtml(version.htmlContent, logoUrl, id, vid);
+
 
   return new NextResponse(fixed, {
     headers: {
