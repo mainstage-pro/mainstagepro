@@ -6420,7 +6420,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                 </div>
                                 {lineas.map(l => (
                                   <div key={l.id} className="flex items-center justify-between py-0.5 pl-3">
-                                    <span className="text-xs text-gray-600 truncate mr-2">· {l.descripcion}{l.cantidad > 1 ? ` ×${Math.round(l.cantidad)}` : ""}{l.dias > 1 ? ` · ${l.dias}d` : ""}</span>
+                                    <span className="text-xs text-gray-600 truncate mr-2">· {l.descripcion}{l.cantidad > 1 ? ` ×${Math.round(l.cantidad)}` : ""}{(l.dias ?? 1) > 1 ? ` · ${l.dias}d` : ""}</span>
                                     <span className="text-xs text-gray-600 shrink-0">{fmt(l.precioUnitario * l.cantidad * (l.dias || 1))}</span>
                                   </div>
                                 ))}
