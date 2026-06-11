@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
-  title: "Formularios — Mainstage Pro",
+  title: "Formularios — Mainstage Pro — Sistema Operativo",
   description: "Formularios internos del equipo Mainstage Pro.",
   robots: { index: false, follow: false },
 };

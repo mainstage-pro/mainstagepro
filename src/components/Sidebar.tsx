@@ -474,7 +474,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
             <Image src="/logo-icon.png" alt="Mainstage Pro" width={28} height={28} className="shrink-0" />
             <div>
               <p className="text-white text-sm font-semibold leading-tight">Mainstage Pro</p>
-              <p className="text-[#555] text-[10px]">Sistema operativo</p>
+              <p className="text-[#555] text-[10px]">Sistema Operativo</p>
             </div>
           </Link>
           <div className="flex items-center gap-2 mt-3">
@@ -553,7 +553,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
             <Image src="/logo-icon.png" alt="Mainstage Pro" width={28} height={28} className="shrink-0" />
             <div>
               <p className="text-white text-sm font-semibold leading-tight">Mainstage Pro</p>
-              <p className="text-[#555] text-[10px]">Sistema operativo</p>
+              <p className="text-[#555] text-[10px]">Sistema Operativo</p>
             </div>
           </Link>
           <button
