@@ -6349,7 +6349,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               HOSPEDAJE: "Hospedaje",
               OTRO: "Otros",
             };
-            type LinCot = { id: string; tipo: string; descripcion: string; cantidad: number; dias: number; precioUnitario: number };
+            type LinCot = { id: string; tipo: string; descripcion: string; cantidad: number; dias?: number; precioUnitario: number };
             const lineasConCosto: LinCot[] = (cot?.lineas ?? []).filter(l =>
               l.precioUnitario > 0 && !["EQUIPO_PROPIO","DESCUENTO_BENEFICIO","PAQUETE"].includes(l.tipo)
             );
