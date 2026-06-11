@@ -22,7 +22,7 @@ async function generarBackup() {
     prisma.tecnico.findMany(),
     prisma.equipo.findMany(),
     prisma.trato.findMany(),
-    prisma.categoriaGasto.findMany(),
+    prisma.categoriaFinanciera.findMany(),
     prisma.presentacionVenta.findMany({ include: { imagenes: true } }).catch(() => []),
   ]);
 
