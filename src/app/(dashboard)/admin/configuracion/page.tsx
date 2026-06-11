@@ -148,6 +148,13 @@ export default function ConfiguracionPage() {
   const [migrando, setMigrando] = useState(false);
   const [migMsg, setMigMsg] = useState<string | null>(null);
 
+  // ── Backups ───────────────────────────────────────────────────────────────
+  interface BackupEntry { url: string; nombre: string; fecha: string; size: string; }
+  const [backups, setBackups] = useState<BackupEntry[]>([]);
+  const [loadingBackups, setLoadingBackups] = useState(false);
+  const [generandoBackup, setGenerandoBackup] = useState(false);
+  const [backupMsg, setBackupMsg] = useState<string | null>(null);
+
   const loadConfig = useCallback(async () => {
     const configRes = await fetch("/api/admin/config");
     const configData = await configRes.json();
@@ -164,6 +171,34 @@ export default function ConfiguracionPage() {
   }, []);
 
   useEffect(() => { loadConfig(); }, [loadConfig]);
+
+  const loadBackups = useCallback(async () => {
+    setLoadingBackups(true);
+    try {
+      const r = await fetch("/api/admin/backup");
+      const d = await r.json();
+      setBackups(d.backups ?? []);
+    } catch { /* silencioso */ }
+    finally { setLoadingBackups(false); }
+  }, []);
+
+  useEffect(() => { loadBackups(); }, [loadBackups]);
+
+  async function generarBackupManual() {
+    setGenerandoBackup(true);
+    setBackupMsg(null);
+    try {
+      const r = await fetch("/api/admin/backup", { method: "POST" });
+      const d = await r.json();
+      if (r.ok) {
+        setBackupMsg(`✓ Backup generado — ${d.size} — ${d.totales?.clientes} clientes, ${d.totales?.proyectos} proyectos`);
+        await loadBackups();
+      } else {
+        setBackupMsg(`Error: ${d.error}`);
+      }
+    } catch { setBackupMsg("Error de conexión"); }
+    finally { setGenerandoBackup(false); }
+  }
 
   async function saveLabels() {
     setSavingLabels(true);
@@ -406,6 +441,60 @@ export default function ConfiguracionPage() {
           </button>
         </div>
         {migMsg && <p className={`text-sm ${migMsg.startsWith("Listo") ? "text-green-400" : "text-red-400"}`}>{migMsg}</p>}
+      </div>
+
+      {/* ── Backups ── */}
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="text-white font-semibold text-sm flex items-center gap-2">
+              🛡 Respaldos de datos
+            </h2>
+            <p className="text-gray-600 text-xs mt-0.5">
+              Se genera automáticamente cada día a las 2am · Incluye clientes, proyectos, cotizaciones, finanzas
+            </p>
+          </div>
+          <button
+            onClick={generarBackupManual}
+            disabled={generandoBackup}
+            className="shrink-0 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+          >
+            {generandoBackup ? "Generando..." : "+ Generar ahora"}
+          </button>
+        </div>
+
+        {backupMsg && (
+          <p className={`text-xs px-3 py-2 rounded-lg border ${backupMsg.startsWith("✓") ? "bg-green-900/20 text-green-400 border-green-900/30" : "bg-red-900/20 text-red-400 border-red-900/30"}`}>
+            {backupMsg}
+          </p>
+        )}
+
+        {loadingBackups ? (
+          <p className="text-gray-600 text-xs">Cargando respaldos...</p>
+        ) : backups.length === 0 ? (
+          <p className="text-gray-700 text-xs italic">Sin respaldos aún — genera el primero ahora.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {backups.map((b, i) => (
+              <div key={b.url} className="flex items-center justify-between gap-3 px-3 py-2.5 bg-[#0d0d0d] rounded-lg border border-[#1a1a1a]">
+                <div className="min-w-0">
+                  <p className="text-xs text-white truncate">{b.nombre}</p>
+                  <p className="text-[10px] text-gray-600 mt-0.5">
+                    {new Date(b.fecha).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })} · {b.size}
+                    {i === 0 && <span className="ml-2 text-green-400 font-semibold">● más reciente</span>}
+                  </p>
+                </div>
+                <a
+                  href={b.url}
+                  download
+                  className="shrink-0 text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/30 hover:border-[#B3985B] px-3 py-1 rounded transition-colors"
+                >
+                  ↓ Descargar
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

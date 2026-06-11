@@ -30,6 +30,10 @@
   ],
   "crons": [
     {
+      "path": "/api/cron/backup-datos",
+      "schedule": "0 8 * * *"
+    },
+    {
       "path": "/api/cron/hervam-mensual",
       "schedule": "0 14 1 * *"
     },
