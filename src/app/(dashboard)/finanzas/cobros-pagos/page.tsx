@@ -1690,7 +1690,22 @@ export default function CobrosPagosPage() {
                 </h3>
                 <p className="text-gray-500 text-xs mt-0.5 truncate max-w-xs">{plan.concepto}</p>
               </div>
-              <button onClick={() => setPlan(null)} className="text-gray-600 hover:text-white text-xl leading-none">×</button>
+              <div className="flex items-center gap-2">
+                {plan.cuotas.length > 0 && (
+                  <a
+                    href={plan.tipo === 'cxc' ? `/api/cuentas-cobrar/${plan.cuentaId}/plan/pdf` : `/api/cuentas-pagar/${plan.cuentaId}/plan/pdf`}
+                    target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B]/60 hover:bg-[#B3985B]/5 px-2.5 py-1.5 rounded-lg transition-colors"
+                    title="Descargar PDF del plan"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    PDF
+                  </a>
+                )}
+                <button onClick={() => setPlan(null)} className="text-gray-600 hover:text-white text-xl leading-none">×</button>
+              </div>
             </div>
 
             {/* Summary */}
@@ -1724,10 +1739,22 @@ export default function CobrosPagosPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs text-gray-500">{plan.cuotas.length} cuota{plan.cuotas.length !== 1 ? 's' : ''} en el plan</p>
-                  <button onClick={() => setPlan(prev => prev ? { ...prev, view: 'create', draft: distribuirCuotas(prev.monto - prev.montoPagado, prev.numCuotas, new Date().toISOString().slice(0, 10)) } : null)}
-                    className="text-xs text-purple-400 hover:text-purple-300 transition-colors">
-                    Replantear cuotas →
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={plan.tipo === 'cxc' ? `/api/cuentas-cobrar/${plan.cuentaId}/plan/pdf` : `/api/cuentas-pagar/${plan.cuentaId}/plan/pdf`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-xs text-[#B3985B] hover:text-[#d4b068] transition-colors"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Descargar PDF
+                    </a>
+                    <button onClick={() => setPlan(prev => prev ? { ...prev, view: 'create', draft: distribuirCuotas(prev.monto - prev.montoPagado, prev.numCuotas, new Date().toISOString().slice(0, 10)) } : null)}
+                      className="text-xs text-purple-400 hover:text-purple-300 transition-colors">
+                      Replantear cuotas →
+                    </button>
+                  </div>
                 </div>
                 {plan.cuotas.map(cuota => (
                   <div key={cuota.id} className={`rounded-xl border p-3 ${cuota.estado === 'PAGADO' ? 'border-green-900/30 bg-green-900/5' : 'border-[#2a2a2a] bg-[#0d0d0d]'}`}>
