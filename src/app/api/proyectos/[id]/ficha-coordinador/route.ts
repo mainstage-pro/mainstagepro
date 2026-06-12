@@ -89,6 +89,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         rolEnEvento: p.rolEnEvento ?? null,
         rolTecnico: p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? null,
         celular: p.tecnico.celular ?? null,
+        confirmado: p.confirmado ?? false,
+        fechaJornada: p.fechaJornada ?? null,
+        participacion: p.participacion ?? null,
+        jornada: p.jornada ?? null,
       })),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     proveedores: (proyecto.proveedoresEvento ?? []).map((p: any) => ({

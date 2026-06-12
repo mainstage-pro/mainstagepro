@@ -64,6 +64,9 @@ export interface PersonalItem {
   rolTecnico: string | null;
   celular: string | null;
   confirmado: boolean;
+  fechaJornada: string | null;  // YYYY-MM-DD — fecha específica de jornada
+  participacion: string | null; // OPERACION | MONTAJE | DESMONTAJE | TRANSPORTE | OTRO
+  jornada: string | null;       // CORTA | MEDIA | LARGA
 }
 export interface ProveedorEvento {
   nombreProveedor: string;
@@ -433,30 +436,87 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
           </View>
         )}
 
-        {/* 9. PERSONAL TÉCNICO */}
-        {data.personal.length > 0 && (
-          <View style={base.section}>
-            <SeccionHeader num="9" titulo="Personal Técnico" />
-            <View style={s.tbl}>
-              <View style={s.tblHd}>
-                <Text style={[s.tblHdTxt, { flex: 1 }]}>Nombre</Text>
-                <Text style={[s.tblHdTxt, { flex: 1 }]}>Rol en el evento</Text>
-                <Text style={[s.tblHdTxt, { width: 90 }]}>Celular</Text>
-                <Text style={[s.tblHdTxt, { width: 60 }]}>Estado</Text>
-              </View>
-              {data.personal.map((p, i) => (
-                <View key={i} style={i < data.personal.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
-                  <Text style={[s.tblTxt, { flex: 1, fontFamily: "Helvetica-Bold" }]}>{p.nombre}</Text>
-                  <Text style={[s.tblTxtMuted, { flex: 1 }]}>{p.rolEnEvento ?? p.rolTecnico ?? "—"}</Text>
-                  <Text style={[s.tblTxtMuted, { width: 90 }]}>{p.celular ?? "—"}</Text>
-                  <Text style={[p.confirmado ? s.chipOk : s.chipPend, { width: 60 }]}>
-                    {p.confirmado ? "Confirmado" : "Pendiente"}
-                  </Text>
-                </View>
-              ))}
+        {/* 9. PERSONAL TÉCNICO — agrupado por jornada/fecha */}
+        {data.personal.length > 0 && (() => {
+          // Agrupar por fechaJornada (YYYY-MM-DD) → "2025-06-14" o null
+          const grupos = new Map<string, PersonalItem[]>();
+          for (const p of data.personal) {
+            const key = p.fechaJornada ?? '__sin_fecha__';
+            if (!grupos.has(key)) grupos.set(key, []);
+            grupos.get(key)!.push(p);
+          }
+          // Ordenar grupos: fechas primero (asc), luego sin fecha
+          const keys = Array.from(grupos.keys()).sort((a, b) => {
+            if (a === '__sin_fecha__') return 1;
+            if (b === '__sin_fecha__') return -1;
+            return a.localeCompare(b);
+          });
+          const tieneMultiplesFechas = keys.filter(k => k !== '__sin_fecha__').length > 0 && keys.length > 1;
+          const fmtJornada = (yyyymmdd: string): string => {
+            try {
+              return new Date(yyyymmdd + 'T12:00:00Z').toLocaleDateString('es-MX', {
+                timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long',
+              });
+            } catch { return yyyymmdd; }
+          };
+          const PART: Record<string, string> = {
+            OPERACION: 'Operación', MONTAJE: 'Montaje', DESMONTAJE: 'Desmontaje',
+            TRANSPORTE: 'Transporte', OTRO: 'Otro',
+          };
+          return (
+            <View style={base.section}>
+              <SeccionHeader num="9" titulo="Personal Técnico" />
+              {keys.map((key) => {
+                const items = grupos.get(key)!;
+                return (
+                  <View key={key}>
+                    {tieneMultiplesFechas && (
+                      <View wrap={false} style={{
+                        backgroundColor: key === '__sin_fecha__' ? '#f1f1f1' : '#0d0d0d',
+                        paddingVertical: 4, paddingHorizontal: 8,
+                        borderRadius: 3, marginBottom: 2, marginTop: 6,
+                      }}>
+                        <Text style={{
+                          fontSize: 7, fontFamily: 'Helvetica-Bold',
+                          color: key === '__sin_fecha__' ? '#5a5a5a' : '#ffffff',
+                          textTransform: 'uppercase', letterSpacing: 0.8,
+                        }}>
+                          {key === '__sin_fecha__' ? 'Todas las jornadas' : fmtJornada(key)}
+                        </Text>
+                      </View>
+                    )}
+                    <View style={s.tbl}>
+                      <View style={s.tblHd}>
+                        <Text style={[s.tblHdTxt, { flex: 1 }]}>Nombre</Text>
+                        <Text style={[s.tblHdTxt, { flex: 1 }]}>Rol en el evento</Text>
+                        {tieneMultiplesFechas && <Text style={[s.tblHdTxt, { width: 70 }]}>Jornada</Text>}
+                        <Text style={[s.tblHdTxt, { width: 90 }]}>Celular</Text>
+                        <Text style={[s.tblHdTxt, { width: 60 }]}>Estado</Text>
+                      </View>
+                      {items.map((p, i) => (
+                        <View key={i} style={i < items.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
+                          <Text style={[s.tblTxt, { flex: 1, fontFamily: 'Helvetica-Bold' }]}>{p.nombre}</Text>
+                          <Text style={[s.tblTxtMuted, { flex: 1 }]}>
+                            {p.rolEnEvento ?? p.rolTecnico ?? '—'}
+                            {p.participacion && p.participacion !== 'OPERACION' ? ` · ${PART[p.participacion] ?? p.participacion}` : ''}
+                          </Text>
+                          {tieneMultiplesFechas && (
+                            <Text style={[s.tblTxtMuted, { width: 70 }]}>{p.jornada ?? '—'}</Text>
+                          )}
+                          <Text style={[s.tblTxtMuted, { width: 90 }]}>{p.celular ?? '—'}</Text>
+                          <Text style={[p.confirmado ? s.chipOk : s.chipPend, { width: 60 }]}>
+                            {p.confirmado ? 'Confirmado' : 'Pendiente'}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                );
+              })}
             </View>
-          </View>
-        )}
+          );
+        })()}
+
 
         {/* 10. ARCHIVOS OPERATIVOS */}
         {data.archivos.length > 0 && (

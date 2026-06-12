@@ -250,19 +250,103 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
           </View>
         )}
 
-        {/* EQUIPO DE TRABAJO */}
-        {data.personal.length > 0 && (
-          <View style={s.secWrap}>
-            <Text style={s.secTitle}>Equipo de Trabajo en el Evento</Text>
-            {data.personal.map((p, i) => (
-              <View key={i} style={[s.equipoRow, i === data.personal.length - 1 ? { borderBottomWidth: 0 } : {}]}>
-                <Text style={s.equipoNombre}>{p.nombre}</Text>
-                <Text style={s.equipoRol}>{p.rolEnEvento ?? p.rolTecnico ?? "Técnico"}</Text>
-                <Text style={s.equipoCel}>{p.celular ?? "—"}</Text>
-              </View>
-            ))}
-          </View>
-        )}
+        {/* EQUIPO DE TRABAJO — agrupado por fecha de jornada */}
+        {data.personal.length > 0 && (() => {
+          // Agrupar por fechaJornada
+          const grupos = new Map<string, (typeof data.personal)[number][]>();
+          for (const p of data.personal) {
+            const key = p.fechaJornada ?? '__sin_fecha__';
+            if (!grupos.has(key)) grupos.set(key, []);
+            grupos.get(key)!.push(p);
+          }
+          const keys = Array.from(grupos.keys()).sort((a, b) => {
+            if (a === '__sin_fecha__') return 1;
+            if (b === '__sin_fecha__') return -1;
+            return a.localeCompare(b);
+          });
+          const tieneMultiplesFechas = keys.length > 1 || (keys.length === 1 && keys[0] !== '__sin_fecha__');
+          const fmtJornada = (yyyymmdd: string): string => {
+            try {
+              return new Date(yyyymmdd + 'T12:00:00Z').toLocaleDateString('es-MX', {
+                timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long',
+              });
+            } catch { return yyyymmdd; }
+          };
+          const PART: Record<string, string> = {
+            OPERACION: 'Operación', MONTAJE: 'Montaje', DESMONTAJE: 'Desmontaje',
+            TRANSPORTE: 'Transporte', OTRO: 'Otro',
+          };
+          const JORNADA: Record<string, string> = {
+            CORTA: 'Corta', MEDIA: 'Media', LARGA: 'Larga',
+          };
+
+          return (
+            <View style={s.secWrap}>
+              <Text style={s.secTitle}>Equipo de Trabajo en el Evento</Text>
+              {keys.map((key) => {
+                const items = grupos.get(key)!;
+                return (
+                  <View key={key} style={{ marginBottom: tieneMultiplesFechas ? 10 : 0 }}>
+                    {/* Encabezado de fecha/jornada */}
+                    {tieneMultiplesFechas && (
+                      <View wrap={false} style={{
+                        backgroundColor: key === '__sin_fecha__' ? '#f0f0f0' : '#0d0d0d',
+                        paddingVertical: 6, paddingHorizontal: 10,
+                        borderRadius: 4, marginBottom: 6,
+                        flexDirection: 'row', alignItems: 'center',
+                      }}>
+                        <Text style={{
+                          fontSize: 8.5, fontFamily: 'Helvetica-Bold',
+                          color: key === '__sin_fecha__' ? '#5a5a5a' : '#ffffff',
+                          flex: 1,
+                        }}>
+                          {key === '__sin_fecha__' ? 'Todas las jornadas' : fmtJornada(key)}
+                        </Text>
+                        <Text style={{
+                          fontSize: 7, color: key === '__sin_fecha__' ? '#888' : '#aaa',
+                          textTransform: 'uppercase', letterSpacing: 0.8,
+                        }}>
+                          {items.length} {items.length === 1 ? 'técnico' : 'técnicos'}
+                        </Text>
+                      </View>
+                    )}
+                    {/* Filas de técnicos */}
+                    {items.map((p, i) => (
+                      <View
+                        key={i}
+                        style={[
+                          s.equipoRow,
+                          i === items.length - 1 ? { borderBottomWidth: 0 } : {},
+                        ]}
+                        wrap={false}
+                      >
+                        <Text style={s.equipoNombre}>{p.nombre}</Text>
+                        <Text style={s.equipoRol}>
+                          {p.rolEnEvento ?? p.rolTecnico ?? 'Técnico'}
+                          {p.participacion && p.participacion !== 'OPERACION'
+                            ? ` · ${PART[p.participacion] ?? p.participacion}`
+                            : ''}
+                        </Text>
+                        {p.jornada && (
+                          <Text style={{
+                            width: 55, fontSize: 7.5,
+                            color: '#B3985B', fontFamily: 'Helvetica-Bold',
+                            textAlign: 'right',
+                          }}>
+                            {JORNADA[p.jornada] ?? p.jornada}
+                          </Text>
+                        )}
+                        <Text style={[s.equipoCel, p.jornada ? { width: 80 } : {}]}>
+                          {p.celular ?? '—'}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                );
+              })}
+            </View>
+          );
+        })()}
 
         {/* CONTACTOS CLAVE */}
         {(data.encargadoNombre || data.encargadoLugar || data.proveedoresEvento.length > 0) && (
