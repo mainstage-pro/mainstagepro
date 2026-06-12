@@ -53,6 +53,7 @@ export type RiderPDFData = {
   cliente: { nombre: string; empresa: string | null; telefono: string | null } | null
   equipos: ProyectoEquipoData[]
   equiposRiderExtra: EquipoRiderExtra[]
+  cotizacionLineas: { id: string; tipo: string; descripcion: string; marca: string | null; cantidad: number; notas: string | null }[]
   logoSrc: string | null
 }
 
@@ -288,6 +289,42 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
             ))}
           </View>
         ))}
+
+        {/* ── Equipos adicionales / Terceros (de cotización) ── */}
+        {data.cotizacionLineas.length > 0 && (
+          <>
+            <SectionHeader title="Equipos adicionales / Terceros" />
+            <View style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 5, overflow: 'hidden', marginBottom: 8 }}>
+              {data.cotizacionLineas.map((l, i) => (
+                <View
+                  key={l.id}
+                  wrap={false}
+                  style={[
+                    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 7 },
+                    i < data.cotizacionLineas.length - 1
+                      ? { borderBottomWidth: 0.5, borderBottomColor: BORDER }
+                      : {},
+                    i % 2 === 1 ? { backgroundColor: LIGHT1 } : {},
+                  ]}
+                >
+                  <View style={{ width: 12, height: 12, borderWidth: 1.5, borderColor: INK5, borderRadius: 2, marginRight: 8, flexShrink: 0 }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 9, color: INK1 }}>
+                      {l.descripcion}{l.marca ? ` — ${l.marca}` : ''}
+                    </Text>
+                    {l.notas ? <Text style={{ fontSize: 7.5, color: INK8, marginTop: 1 }}>{l.notas}</Text> : null}
+                  </View>
+                  <View style={[s.badge, { marginLeft: 8 }]}>
+                    <Text style={s.badgeTxt}>×{l.cantidad}</Text>
+                  </View>
+                  <Text style={{ fontSize: 7, color: l.tipo === 'EQUIPO_EXTERNO' ? '#b45309' : INK8, marginLeft: 6, width: 44, textAlign: 'right' }}>
+                    {l.tipo === 'EQUIPO_EXTERNO' ? 'Tercero' : 'Adicional'}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
 
         {/* ── Equipos adicionales (rider extra) ── */}
         {data.equiposRiderExtra.length > 0 && (

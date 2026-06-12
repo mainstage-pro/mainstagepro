@@ -39,6 +39,15 @@ export async function GET(
         },
         orderBy: { id: 'asc' },
       },
+      cotizacion: {
+        select: {
+          numeroCotizacion: true,
+          lineas: {
+            select: { id: true, tipo: true, descripcion: true, marca: true, cantidad: true, notas: true },
+            orderBy: { id: 'asc' },
+          },
+        },
+      },
     },
   })
 
@@ -128,6 +137,10 @@ export async function GET(
       })),
     })),
     equiposRiderExtra,
+    cotizacionLineas: (proyecto.cotizacion?.lineas ?? []).filter(
+      (l: { tipo: string; descripcion: string }) =>
+        ['EQUIPO_EXTERNO', 'OTRO'].includes(l.tipo) && !!l.descripcion
+    ) as { id: string; tipo: string; descripcion: string; marca: string | null; cantidad: number; notas: string | null }[],
     logoSrc,
   }
 
