@@ -930,8 +930,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [selTarifa, setSelTarifa] = useState("");
   const [selResp, setSelResp] = useState("");
   const [selParticipacion, setSelParticipacion] = useState("OPERACION");
+  const [selFechaJornada, setSelFechaJornada] = useState("");
   const [selRolEnEvento, setSelRolEnEvento] = useState("");
   const [addingPersonal, setAddingPersonal] = useState(false);
+  // Quick-add inline: state for the mini-form shown when clicking "+ Agregar" on a date block
+  const [quickAddFechaId, setQuickAddFechaId] = useState<string | null>(null); // key = fecha string or "__new__"
+  const [quickAddPart, setQuickAddPart] = useState("OPERACION");
+  const [quickAddFecha, setQuickAddFecha] = useState("");
   const [disponibilidad, setDisponibilidad] = useState<{ disponible: boolean; conflictos: { id: string; nombre: string; numeroProyecto: string }[] } | null>(null);
   const [showBroadcast, setShowBroadcast] = useState(false);
   const [showSugerencias, setShowSugerencias] = useState(false);
@@ -2081,6 +2086,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         tarifaAcordada: selTarifa || null,
         responsabilidad: selResp || null,
         rolEnEvento: selRolEnEvento || null,
+        fechaJornada: selFechaJornada || null,
       }),
     });
     if (!res.ok) {
@@ -2091,7 +2097,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     }
     const d = await res.json();
     setProyecto(prev => prev ? { ...prev, personal: [...prev.personal, d.personal] } : prev);
-    setSelTecnico(""); setSelRol(""); setSelNivel("AAA"); setSelTarifa(""); setSelResp(""); setSelRolEnEvento("");
+    setSelTecnico(""); setSelRol(""); setSelNivel("AAA"); setSelTarifa(""); setSelResp(""); setSelRolEnEvento(""); setSelFechaJornada("");
     setShowAddPersonal(false);
     setAddingPersonal(false);
   }
@@ -3948,13 +3954,31 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               {showAddPersonal && (
                 <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
                   <div>
-                    <label className="text-xs text-gray-500 block mb-1">Participación en</label>
+                    <label className="text-xs text-gray-500 block mb-1">Tipo de participación *</label>
                     <Combobox
                       value={selParticipacion}
                       onChange={v => setSelParticipacion(v)}
-                      options={[{ value: "OPERACION", label: "Operación (incluye montaje)" }, { value: "MONTAJE", label: "Montaje (día previo)" }, { value: "DESMONTAJE", label: "Desmontaje" }, { value: "TRANSPORTE", label: "Transporte" }, { value: "OTRO", label: "Otro" }]}
+                      options={[{ value: "OPERACION", label: "⚡ Operación (día del evento)" }, { value: "MONTAJE", label: "🔧 Montaje (día previo)" }, { value: "DESMONTAJE", label: "📦 Desmontaje" }, { value: "TRANSPORTE", label: "🚛 Transporte" }, { value: "OTRO", label: "✦ Otro" }]}
                       className="w-full bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
                     />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Día de la jornada *</label>
+                    <input
+                      type="date"
+                      value={selFechaJornada}
+                      onChange={e => setSelFechaJornada(e.target.value)}
+                      className="w-full bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a96a]"
+                    />
+                    {!selFechaJornada && proyecto.fechaEvento && (
+                      <button
+                        type="button"
+                        onClick={() => setSelFechaJornada(proyecto.fechaEvento!.substring(0, 10))}
+                        className="mt-1 text-[10px] text-gray-500 hover:text-[#B3985B] transition-colors"
+                      >
+                        Usar fecha del evento ({new Date(proyecto.fechaEvento!.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" })})
+                      </button>
+                    )}
                   </div>
                   <div>
                     <label className="text-xs text-gray-500 block mb-1">Técnico</label>
@@ -4377,9 +4401,70 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             {grupo.some(p => !p.confirmado && p.tecnico) && (
                               <button onClick={() => confirmarGrupo(grupo)} className="text-xs text-gray-500 hover:text-green-400 border border-[#2a2a2a] hover:border-green-800/60 px-2 py-0.5 rounded transition-colors">Confirmar todos</button>
                             )}
-                            <button onClick={() => agregarSlotVacio("OPERACION", esSinFecha ? null : fecha)} className="text-xs text-gray-500 hover:text-white border border-[#2a2a2a] hover:border-[#444] px-2 py-0.5 rounded transition-colors">+ Agregar</button>
+                            <button
+                              onClick={() => {
+                                if (quickAddFechaId === fecha) {
+                                  setQuickAddFechaId(null);
+                                } else {
+                                  setQuickAddFechaId(fecha);
+                                  setQuickAddPart("OPERACION");
+                                  setQuickAddFecha(esSinFecha ? "" : fecha);
+                                }
+                              }}
+                              className={`text-xs border px-2 py-0.5 rounded transition-colors ${quickAddFechaId === fecha ? "border-[#B3985B]/50 text-[#B3985B]" : "border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"}`}>
+                              {quickAddFechaId === fecha ? "− Cancelar" : "+ Agregar"}
+                            </button>
                           </div>
                         </div>
+                        {/* Mini-form rápido */}
+                        {quickAddFechaId === fecha && (
+                          <div className="mx-4 mb-3 mt-2 p-3 bg-[#0d0d0d] border border-[#B3985B]/20 rounded-lg">
+                            <p className="text-[10px] text-[#B3985B] uppercase tracking-widest font-semibold mb-3">Nuevo slot de técnico</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Tipo de participación</label>
+                                <select
+                                  value={quickAddPart}
+                                  onChange={e => setQuickAddPart(e.target.value)}
+                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                                >
+                                  <option value="OPERACION">⚡ Operación (día del evento)</option>
+                                  <option value="MONTAJE">🔧 Montaje (día previo)</option>
+                                  <option value="DESMONTAJE">📦 Desmontaje</option>
+                                  <option value="TRANSPORTE">🚛 Transporte</option>
+                                  <option value="OTRO">✦ Otro</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Día de la jornada</label>
+                                <input
+                                  type="date"
+                                  value={quickAddFecha}
+                                  onChange={e => setQuickAddFecha(e.target.value)}
+                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                                />
+                                {!quickAddFecha && proyecto.fechaEvento && (
+                                  <button type="button" onClick={() => setQuickAddFecha(proyecto.fechaEvento!.substring(0, 10))} className="mt-1 text-[10px] text-gray-600 hover:text-[#B3985B] transition-colors">
+                                    Usar fecha del evento
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 mt-3">
+                              <button
+                                onClick={async () => {
+                                  await agregarSlotVacio(quickAddPart, quickAddFecha || null);
+                                  setQuickAddFechaId(null);
+                                }}
+                                className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold py-1.5 rounded-lg transition-colors"
+                              >
+                                Crear slot
+                              </button>
+                              <button onClick={() => setQuickAddFechaId(null)} className="px-3 text-gray-500 hover:text-white text-xs transition-colors">Cancelar</button>
+                            </div>
+                          </div>
+                        )}
+                        {/* Lista plana de técnicos */}
                         {grupo.map(p => renderCard(p))}
                       </div>
                     );
