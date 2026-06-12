@@ -4130,28 +4130,38 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               );
             })()}
 
-            {/* Lista personal agrupada */}
+            {/* Lista personal: fecha → tipo de participación */}
             {proyecto.personal.length === 0 ? (
               <div className="border-t border-[#1a1a1a] py-6 text-center text-gray-600 text-sm">
                 Sin personal asignado aún
               </div>
-            ) : (
-              (["OPERACION", "MONTAJE", "DESMONTAJE", "TRANSPORTE", "OTRO"] as const).map(tipo => {
-                const grupo = proyecto.personal.filter(p => (p.participacion ?? "OPERACION") === tipo);
+            ) : (() => {
+              const PART_LABELS: Record<string, string> = {
+                OPERACION: "Operadores del evento",
+                MONTAJE: "Técnicos de montaje",
+                DESMONTAJE: "Técnicos de desmontaje",
+                TRANSPORTE: "Transportes",
+                OTRO: "Otros",
+              };
+              const fechasUnicas = [...new Set(proyecto.personal.map(p => p.fechaJornada ?? null))];
+              const tieneMultiplesFechas =
+                fechasUnicas.filter(f => f !== null).length > 1 ||
+                (fechasUnicas.filter(f => f !== null).length === 1 && fechasUnicas.some(f => f === null));
+              const fmtJornadaDate = (yyyymmdd: string) => {
+                try {
+                  return new Date(yyyymmdd + "T12:00:00Z").toLocaleDateString("es-MX", {
+                    timeZone: "UTC", weekday: "long", day: "numeric", month: "long",
+                  });
+                } catch { return yyyymmdd; }
+              };
+              const renderSubGrupo = (tipo: string, grupo: typeof proyecto.personal, fechaSlot: string | null) => {
                 if (grupo.length === 0) return null;
-                const labels: Record<string, string> = {
-                  OPERACION: "Operadores del evento",
-                  MONTAJE: "Técnicos de montaje",
-                  DESMONTAJE: "Técnicos de desmontaje",
-                  TRANSPORTE: "Transportes",
-                  OTRO: "Otros",
-                };
                 const sinAsignar = grupo.filter(p => !p.tecnico).length;
                 return (
-                  <div key={tipo} className="border-t border-[#1a1a1a]">
+                  <div key={`${fechaSlot ?? "__"}-${tipo}`} className="border-t border-[#1a1a1a]">
                     <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <p className="text-xs text-white font-semibold uppercase tracking-wider">{labels[tipo]}</p>
+                        <p className="text-xs text-white font-semibold uppercase tracking-wider">{PART_LABELS[tipo]}</p>
                         <span className="text-xs text-gray-600">{grupo.length}</span>
                         {sinAsignar > 0 && <span className="text-xs text-gray-500">{sinAsignar} pendiente{sinAsignar !== 1 ? "s" : ""}</span>}
                       </div>
@@ -4163,7 +4173,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           </button>
                         )}
                         <button
-                          onClick={() => agregarSlotVacio(tipo, grupo[0]?.fechaJornada ?? null)}
+                          onClick={() => agregarSlotVacio(tipo, fechaSlot)}
                           className="text-xs text-gray-500 hover:text-white border border-[#2a2a2a] hover:border-[#444] px-2 py-0.5 rounded transition-colors">
                           + Agregar
                         </button>
@@ -4293,7 +4303,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               {p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "Sin rol"}
                               {p.rolEnEvento ? ` · ${p.rolEnEvento}` : ""}
                               {p.jornada ? ` · ${p.jornada}` : ""}
-                              {p.fechaJornada ? ` · ${new Date(p.fechaJornada + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" })}` : ""}
+                              {!tieneMultiplesFechas && p.fechaJornada ? ` · ${new Date(p.fechaJornada + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" })}` : ""}
                             </p>
                             {p.responsabilidad && (
                               <p className="text-gray-400 text-xs mt-1 leading-relaxed">{p.responsabilidad}</p>
@@ -4474,8 +4484,58 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     ))}
                   </div>
                 );
-              })
-            )}
+              };
+
+              if (tieneMultiplesFechas) {
+                const fechasOrdenadas = [...new Set(
+                  proyecto.personal.map(p => p.fechaJornada ?? "__sin_fecha__")
+                )].sort((a, b) => {
+                  if (a === "__sin_fecha__") return 1;
+                  if (b === "__sin_fecha__") return -1;
+                  return a.localeCompare(b);
+                });
+                return (
+                  <>
+                    {fechasOrdenadas.map(fecha => {
+                      const grupoFecha = proyecto.personal.filter(
+                        p => (p.fechaJornada ?? "__sin_fecha__") === fecha
+                      );
+                      const esSinFecha = fecha === "__sin_fecha__";
+                      return (
+                        <div key={fecha} className="border-t border-[#1a1a1a]">
+                          {/* Encabezado de fecha */}
+                          <div className={`px-4 py-3 flex items-center justify-between ${esSinFecha ? "bg-[#0d0d0d]" : "bg-[#0a0a0a]"}`}>
+                            <div className="flex items-center gap-3">
+                              <div className={`w-1 h-4 rounded-full ${esSinFecha ? "bg-[#444]" : "bg-[#B3985B]"}`} />
+                              <p className={`text-sm font-bold ${esSinFecha ? "text-gray-500" : "text-white"}`}>
+                                {esSinFecha ? "Sin fecha asignada" : fmtJornadaDate(fecha)}
+                              </p>
+                            </div>
+                            <span className="text-xs text-gray-600">
+                              {grupoFecha.length} técnico{grupoFecha.length !== 1 ? "s" : ""}
+                            </span>
+                          </div>
+                          {/* Sub-grupos por participación */}
+                          {(["OPERACION", "MONTAJE", "DESMONTAJE", "TRANSPORTE", "OTRO"] as const).map(tipo => {
+                            const sub = grupoFecha.filter(p => (p.participacion ?? "OPERACION") === tipo);
+                            return renderSubGrupo(tipo, sub, esSinFecha ? null : fecha);
+                          })}
+                        </div>
+                      );
+                    })}
+                  </>
+                );
+              } else {
+                return (
+                  <>
+                    {(["OPERACION", "MONTAJE", "DESMONTAJE", "TRANSPORTE", "OTRO"] as const).map(tipo => {
+                      const grupo = proyecto.personal.filter(p => (p.participacion ?? "OPERACION") === tipo);
+                      return renderSubGrupo(tipo, grupo, grupo[0]?.fechaJornada ?? null);
+                    })}
+                  </>
+                );
+              }
+            })()}
           </div>
 
           {/* ── Proveedores y Subrentas ── */}
