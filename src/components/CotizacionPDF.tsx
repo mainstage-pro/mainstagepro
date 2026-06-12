@@ -415,6 +415,41 @@ const s = StyleSheet.create({
     marginTop: 8,
     fontFamily: "Helvetica-Oblique",
   },
+  // Firma
+  firmaBloque: {
+    marginHorizontal: 40,
+    marginTop: 24,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+  firmaCol: {
+    width: 200,
+    alignItems: "center",
+  },
+  firmaEspacio: {
+    height: 72,  // espacio para pegar la firma
+  },
+  firmaLinea: {
+    height: 1.5,
+    backgroundColor: GOLD,
+    width: "100%",
+    marginBottom: 5,
+  },
+  firmaNombre: {
+    fontSize: 8.5,
+    fontFamily: "Helvetica-Bold",
+    color: BLACK,
+    textAlign: "center",
+    letterSpacing: 0.3,
+  },
+  firmaCargo: {
+    fontSize: 7.5,
+    color: GRAY,
+    textAlign: "center",
+    marginTop: 2,
+    letterSpacing: 0.2,
+  },
+
 });
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -1040,6 +1075,18 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
               <Text style={s.terminoTexto}>{t}</Text>
             </View>
           ))}
+        </View>
+
+        {/* ── FIRMA ── */}
+        <View style={s.firmaBloque}>
+          <View style={s.firmaCol}>
+            {/* Espacio para pegar la firma digital */}
+            <View style={s.firmaEspacio} />
+            {/* Línea dorada */}
+            <View style={s.firmaLinea} />
+            <Text style={s.firmaNombre}>Jose Mauricio Alejandro Hernández Vázquez Mellado</Text>
+            <Text style={s.firmaCargo}>Director General · Mainstage Pro</Text>
+          </View>
         </View>
 
         {/* ── FOOTER ── */}
