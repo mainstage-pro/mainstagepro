@@ -207,7 +207,7 @@ export function FichaCliente({ data }: { data: FichaClienteData }) {
                       <Text style={base.catTxt}>{cat}</Text>
                     </View>
                     {items.map((e, i) => (
-                      <View key={i} style={base.tableRow}>
+                      <View key={i} style={base.tableRow} wrap={false}>
                         <Text style={[base.tdTxt, { width: 36 }]}>{e.cantidad}</Text>
                         <Text style={[base.tdTxt, { flex: 1 }]}>{e.descripcion}{e.marca ? ` — ${e.marca}` : ""}</Text>
                         <Text style={[base.tdMuted, { width: 100 }]}>{cat}</Text>

@@ -687,7 +687,7 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                 {cotExtras.map((l, i) => {
                   const nombre = `${l.marca ? l.marca + " " : ""}${l.descripcion}`;
                   return (
-                    <View key={l.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
+                    <View key={l.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt} wrap={false}>
                       <View style={s.colModelo}>
                         <Text style={s.cellText}>{nombre}</Text>
                         {l.notas ? <Text style={{ fontSize: 6, color: LIGHT, fontStyle: "italic", marginTop: 1 }}>{l.notas}</Text> : null}
@@ -727,7 +727,7 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                 {cotExtras.map((l, i) => {
                   const nombre = `${l.marca ? l.marca + " " : ""}${l.descripcion}`;
                   return (
-                    <View key={l.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
+                    <View key={l.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt} wrap={false}>
                       <View style={s.colModelo}>
                         <Text style={s.cellText}>{nombre}</Text>
                         {l.notas ? <Text style={{ fontSize: 6, color: LIGHT, fontStyle: "italic", marginTop: 1 }}>{l.notas}</Text> : null}

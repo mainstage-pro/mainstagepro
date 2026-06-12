@@ -244,7 +244,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
               <SecNum num={sec("horarios")} titulo="Horarios del día" />
               <View style={s.horaTable}>
                 {horariosDia.map((h, i) => (
-                  <View key={i} style={i < horariosDia.length - 1 ? s.horaRow : s.horaRowLast}>
+                  <View key={i} style={i < horariosDia.length - 1 ? s.horaRow : s.horaRowLast} wrap={false}>
                     <Text style={s.horaIcon}>{h.icon}</Text>
                     <Text style={s.horaLabel}>{h.label}</Text>
                     {h.fecha
@@ -320,7 +320,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                   <Text style={[base.thTxt, { width: 100 }]}>Responsable</Text>
                 </View>
                 {cronConDatos.map((r, i) => (
-                  <View key={i} style={i < cronConDatos.length - 1 ? base.tableRow : base.tableRowLast}>
+                  <View key={i} style={i < cronConDatos.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
                     <Text style={[base.tdTxt, { width: 46, fontFamily: "Helvetica-Bold" }]}>{fmtHora(r.horaInicio)}</Text>
                     <Text style={[base.tdMuted, { width: 40 }]}>{fmtHora(r.horaFin)}</Text>
                     <Text style={[base.tdTxt, { flex: 1 }]}>{r.actividad}</Text>
@@ -343,7 +343,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                   <Text style={[base.thTxt, { flex: 1 }]}>Notas</Text>
                 </View>
                 {transConDatos.map((t, i) => (
-                  <View key={i} style={i < transConDatos.length - 1 ? base.tableRow : base.tableRowLast}>
+                  <View key={i} style={i < transConDatos.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
                     <Text style={[base.tdTxt, { flex: 1 }]}>{t.vehiculoNombre ?? t.vehiculoId}</Text>
                     <Text style={[base.tdTxt, { flex: 1 }]}>{t.choferNombre ?? t.choferId}</Text>
                     <Text style={[base.tdTxt, { width: 48, fontFamily: "Helvetica-Bold" }]}>{fmtHora(t.horaSalida)}</Text>
@@ -362,7 +362,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                 <View key={cat} style={{ marginBottom: 8 }}>
                   <Text style={[base.catTxt, { marginBottom: 4 }]}>{cat}</Text>
                   {items.map((e, i) => (
-                    <View key={i}>
+                    <View key={i} wrap={false}>
                       <View style={base.checkRow}>
                         <View style={base.checkBox} />
                         <Text style={base.checkTxt}>
@@ -399,7 +399,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                   <Text style={[base.thTxt, { width: 60 }]}>Estado</Text>
                 </View>
                 {externos.map((e, i) => (
-                  <View key={i} style={i < externos.length - 1 ? base.tableRow : base.tableRowLast}>
+                  <View key={i} style={i < externos.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
                     <Text style={[base.tdTxt, { width: 36 }]}>{e.cantidad}</Text>
                     <Text style={[base.tdTxt, { flex: 1 }]}>{e.descripcion}</Text>
                     <Text style={[base.tdMuted, { flex: 1 }]}>{e.proveedor ?? "—"}</Text>
@@ -417,7 +417,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
             <View style={base.section}>
               <SecNum num={sec("extra")} titulo="Equipo Adicional (fuera de cotización)" />
               {data.equiposRiderExtra.map((e, i) => (
-                <View key={i} style={base.checkRow}>
+                <View key={i} style={base.checkRow} wrap={false}>
                   <View style={base.checkBox} />
                   <Text style={base.checkTxt}>
                     {e.cantidad}x {e.descripcion}
@@ -439,7 +439,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                   <Text style={[base.thTxt, { width: 100 }]}>Teléfono</Text>
                 </View>
                 {todosProveedores.map((p, i) => (
-                  <View key={i} style={i < todosProveedores.length - 1 ? base.tableRow : base.tableRowLast}>
+                  <View key={i} style={i < todosProveedores.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
                     <Text style={[base.tdTxt, { flex: 1, fontFamily: "Helvetica-Bold" }]}>{p.nombre}</Text>
                     <Text style={[base.tdMuted, { flex: 1 }]}>{p.servicio ?? "—"}</Text>
                     <Text style={[base.tdMuted, { width: 100 }]}>{p.tel ?? "—"}</Text>
@@ -461,7 +461,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                   <Text style={[base.thTxt, { width: 60 }]}>Estado</Text>
                 </View>
                 {data.personal.map((p, i) => (
-                  <View key={i} style={i < data.personal.length - 1 ? base.tableRow : base.tableRowLast}>
+                  <View key={i} style={i < data.personal.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
                     <Text style={[base.tdTxt, { flex: 1, fontFamily: "Helvetica-Bold" }]}>{p.nombre}</Text>
                     <Text style={[base.tdMuted, { flex: 1 }]}>{p.rolEnEvento ?? p.rolTecnico ?? "—"}</Text>
                     <Text style={[base.tdTxt, { width: 95 }]}>{p.celular ?? "—"}</Text>
@@ -485,7 +485,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                   <Text style={[base.thTxt, { flex: 1 }]}>URL</Text>
                 </View>
                 {data.archivos.map((a, i) => (
-                  <View key={i} style={i < data.archivos.length - 1 ? base.tableRow : base.tableRowLast}>
+                  <View key={i} style={i < data.archivos.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
                     <Text style={[base.tdMuted, { width: 80 }]}>{ARCHIVO_TIPO[a.tipo] ?? a.tipo}</Text>
                     <Text style={[base.tdTxt, { flex: 1 }]}>{a.nombre}</Text>
                     <Text style={[{ fontSize: 7, color: "#1a73e8", flex: 1 }]}>{a.url}</Text>
@@ -510,7 +510,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                       <Text style={[base.thTxt, { flex: 1 }]}>Notas</Text>
                     </View>
                     {soundcheck.map((r, i) => (
-                      <View key={i} style={i < soundcheck.length - 1 ? base.tableRow : base.tableRowLast}>
+                      <View key={i} style={i < soundcheck.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
                         <Text style={[base.tdTxt, { width: 46 }]}>{r.hora}</Text>
                         <Text style={[base.tdTxt, { flex: 1 }]}>{r.artista}</Text>
                         <Text style={[base.tdMuted, { width: 56 }]}>{r.duracion}</Text>
@@ -531,7 +531,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                       <Text style={[base.thTxt, { flex: 1 }]}>Notas</Text>
                     </View>
                     {programa.map((r, i) => (
-                      <View key={i} style={i < programa.length - 1 ? base.tableRow : base.tableRowLast}>
+                      <View key={i} style={i < programa.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
                         <Text style={[base.tdTxt, { width: 46, fontFamily: "Helvetica-Bold" }]}>{r.hora}</Text>
                         <Text style={[base.tdTxt, { flex: 1 }]}>{r.actividad}</Text>
                         <Text style={[base.tdMuted, { width: 100 }]}>{r.responsable}</Text>
@@ -552,7 +552,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                       <Text style={[base.thTxt, { flex: 1 }]}>Notas</Text>
                     </View>
                     {coordProv.map((r, i) => (
-                      <View key={i} style={i < coordProv.length - 1 ? base.tableRow : base.tableRowLast}>
+                      <View key={i} style={i < coordProv.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
                         <Text style={[base.tdTxt, { flex: 1 }]}>{r.proveedor}</Text>
                         <Text style={[base.tdMuted, { width: 100 }]}>{r.contacto}</Text>
                         <Text style={[base.tdMuted, { width: 56 }]}>{r.horario}</Text>

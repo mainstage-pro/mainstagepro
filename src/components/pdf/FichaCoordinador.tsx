@@ -325,7 +325,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                 <Text style={[s.tblHdTxt, { width: 90 }]}>Responsable</Text>
               </View>
               {cronConDatos.map((r, i) => (
-                <View key={i} style={i < cronConDatos.length - 1 ? s.tblRow : s.tblRowLast}>
+                <View key={i} style={i < cronConDatos.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
                   <Text style={[s.tblTxt, { width: 50 }]}>{fmtHora(r.horaInicio)}</Text>
                   <Text style={[s.tblTxtMuted, { width: 50 }]}>{fmtHora(r.horaFin)}</Text>
                   <Text style={[s.tblTxt, { flex: 1 }]}>{r.actividad}</Text>
@@ -348,7 +348,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                 <Text style={[s.tblHdTxt, { flex: 1 }]}>Notas</Text>
               </View>
               {transConDatos.map((t, i) => (
-                <View key={i} style={i < transConDatos.length - 1 ? s.tblRow : s.tblRowLast}>
+                <View key={i} style={i < transConDatos.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
                   <Text style={[s.tblTxt, { flex: 1 }]}>{t.vehiculoNombre ?? t.vehiculoId}</Text>
                   <Text style={[s.tblTxt, { flex: 1 }]}>{t.choferNombre ?? t.choferId}</Text>
                   <Text style={[s.tblTxt, { width: 50 }]}>{fmtHora(t.horaSalida)}</Text>
@@ -373,7 +373,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                 <React.Fragment key={cat}>
                   <View style={s.catRow}><Text style={s.catTxt}>{cat}</Text></View>
                   {items.map((e, i) => (
-                    <View key={i} style={s.tblRow}>
+                    <View key={i} style={s.tblRow} wrap={false}>
                       <Text style={[s.tblTxt, { width: 36 }]}>{e.cantidad}</Text>
                       <Text style={[s.tblTxt, { flex: 1 }]}>{e.descripcion}{e.marca ? ` — ${e.marca}` : ""}</Text>
                       <Text style={[s.tblTxtMuted, { width: 80 }]}>{cat}</Text>
@@ -398,7 +398,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
               </View>
               {Array.from(gruposExternos.entries()).flatMap(([, items]) =>
                 items.map((e, i) => (
-                  <View key={i} style={s.tblRow}>
+                  <View key={i} style={s.tblRow} wrap={false}>
                     <Text style={[s.tblTxt, { width: 36 }]}>{e.cantidad}</Text>
                     <Text style={[s.tblTxt, { flex: 1 }]}>{e.descripcion}</Text>
                     <Text style={[s.tblTxtMuted, { flex: 1 }]}>{e.proveedor ?? "—"}</Text>
@@ -423,7 +423,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                 <Text style={[s.tblHdTxt, { width: 90 }]}>Teléfono</Text>
               </View>
               {todosProveedores.map((p, i) => (
-                <View key={i} style={i < todosProveedores.length - 1 ? s.tblRow : s.tblRowLast}>
+                <View key={i} style={i < todosProveedores.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
                   <Text style={[s.tblTxt, { flex: 1, fontFamily: "Helvetica-Bold" }]}>{p.nombre}</Text>
                   <Text style={[s.tblTxtMuted, { flex: 1 }]}>{p.servicio ?? "—"}</Text>
                   <Text style={[s.tblTxtMuted, { width: 90 }]}>{p.telefono ?? "—"}</Text>
@@ -445,7 +445,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                 <Text style={[s.tblHdTxt, { width: 60 }]}>Estado</Text>
               </View>
               {data.personal.map((p, i) => (
-                <View key={i} style={i < data.personal.length - 1 ? s.tblRow : s.tblRowLast}>
+                <View key={i} style={i < data.personal.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
                   <Text style={[s.tblTxt, { flex: 1, fontFamily: "Helvetica-Bold" }]}>{p.nombre}</Text>
                   <Text style={[s.tblTxtMuted, { flex: 1 }]}>{p.rolEnEvento ?? p.rolTecnico ?? "—"}</Text>
                   <Text style={[s.tblTxtMuted, { width: 90 }]}>{p.celular ?? "—"}</Text>
@@ -469,7 +469,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                 <Text style={[s.tblHdTxt, { flex: 1 }]}>URL</Text>
               </View>
               {data.archivos.map((a, i) => (
-                <View key={i} style={i < data.archivos.length - 1 ? s.tblRow : s.tblRowLast}>
+                <View key={i} style={i < data.archivos.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
                   <Text style={[s.tblTxtMuted, { width: 80 }]}>{ARCHIVO_TIPO[a.tipo] ?? a.tipo}</Text>
                   <Text style={[s.tblTxt, { flex: 1 }]}>{a.nombre}</Text>
                   <Text style={[{ fontSize: 6.5, color: "#1a73e8", flex: 1 }]}>{a.url}</Text>
@@ -494,7 +494,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                     <Text style={[s.tblHdTxt, { flex: 1 }]}>Notas</Text>
                   </View>
                   {soundcheckConDatos.map((r, i) => (
-                    <View key={i} style={i < soundcheckConDatos.length - 1 ? s.tblRow : s.tblRowLast}>
+                    <View key={i} style={i < soundcheckConDatos.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
                       <Text style={[s.tblTxt, { width: 50 }]}>{r.hora}</Text>
                       <Text style={[s.tblTxt, { flex: 1 }]}>{r.artista}</Text>
                       <Text style={[s.tblTxtMuted, { width: 60 }]}>{r.duracion}</Text>
@@ -515,7 +515,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                     <Text style={[s.tblHdTxt, { flex: 1 }]}>Notas</Text>
                   </View>
                   {programaConDatos.map((r, i) => (
-                    <View key={i} style={i < programaConDatos.length - 1 ? s.tblRow : s.tblRowLast}>
+                    <View key={i} style={i < programaConDatos.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
                       <Text style={[s.tblTxt, { width: 50 }]}>{r.hora}</Text>
                       <Text style={[s.tblTxt, { flex: 1 }]}>{r.actividad}</Text>
                       <Text style={[s.tblTxtMuted, { width: 90 }]}>{r.responsable}</Text>
@@ -536,7 +536,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
                     <Text style={[s.tblHdTxt, { flex: 1 }]}>Notas</Text>
                   </View>
                   {coordProvConDatos.map((r, i) => (
-                    <View key={i} style={i < coordProvConDatos.length - 1 ? s.tblRow : s.tblRowLast}>
+                    <View key={i} style={i < coordProvConDatos.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
                       <Text style={[s.tblTxt, { flex: 1 }]}>{r.proveedor}</Text>
                       <Text style={[s.tblTxtMuted, { width: 90 }]}>{r.contacto}</Text>
                       <Text style={[s.tblTxtMuted, { width: 60 }]}>{r.horario}</Text>
@@ -564,7 +564,7 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
               { label: "Liquidación", val: liquidacion ? (liquidacion.montoCobrado >= liquidacion.monto ? "Cobrada ✓" : `$${liquidacion.montoCobrado.toLocaleString()} / $${liquidacion.monto.toLocaleString()}`) : "Sin esquema" },
               { label: "Checklist operativo", val: checkTotal > 0 ? `${checkOk}/${checkTotal} completados` : "Sin ítems" },
             ].map((item, i, arr) => (
-              <View key={i} style={i < arr.length - 1 ? s.tblRow : s.tblRowLast}>
+              <View key={i} style={i < arr.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
                 <Text style={[s.tblTxt, { flex: 1 }]}>{item.label}</Text>
                 <Text style={[s.tblTxtMuted, { flex: 1 }]}>{item.val}</Text>
               </View>

@@ -254,7 +254,7 @@ export function FichaCoordinadorPDF({ data }: { data: FichaCoordinadorData }) {
                 <Text style={[styles.tableHeaderCell, { flex: 1 }]}>Equipo</Text>
               </View>
               {equiposPropios.map((eq, i) => (
-                <View key={i} style={styles.tableRow}>
+                <View key={i} style={styles.tableRow} wrap={false}>
                   <Text style={[styles.tableCell, { width: 30, fontFamily: "Helvetica-Bold" }]}>{eq.cantidad}</Text>
                   <Text style={[styles.tableCell, { flex: 1 }]}>
                     {eq.marca ? `${eq.marca} ` : ""}{eq.descripcion}
@@ -276,7 +276,7 @@ export function FichaCoordinadorPDF({ data }: { data: FichaCoordinadorData }) {
                 <Text style={[styles.tableHeaderCell, { width: 80 }]}>Teléfono</Text>
               </View>
               {data.proveedores.map((p, i) => (
-                <View key={i} style={styles.tableRow}>
+                <View key={i} style={styles.tableRow} wrap={false}>
                   <Text style={[styles.tableCell, { flex: 1.2, fontFamily: "Helvetica-Bold" }]}>{p.nombreProveedor}</Text>
                   <Text style={[styles.tableCell, { flex: 1.5 }]}>{p.servicioEquipo ?? "—"}</Text>
                   <Text style={[styles.tableCell, { width: 80 }]}>{p.telefonoProveedor ?? "—"}</Text>
@@ -297,7 +297,7 @@ export function FichaCoordinadorPDF({ data }: { data: FichaCoordinadorData }) {
                 <Text style={[styles.tableHeaderCell, { width: 80 }]}>Teléfono</Text>
               </View>
               {data.personal.map((p, i) => (
-                <View key={i} style={styles.tableRow}>
+                <View key={i} style={styles.tableRow} wrap={false}>
                   <Text style={[styles.tableCell, { flex: 1.2, fontFamily: "Helvetica-Bold" }]}>{p.nombre}</Text>
                   <Text style={[styles.tableCell, { flex: 1.5 }]}>{p.rolEnEvento ?? p.rolTecnico ?? "—"}</Text>
                   <Text style={[styles.tableCell, { width: 80 }]}>{p.celular ?? "—"}</Text>

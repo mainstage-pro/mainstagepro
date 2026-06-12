@@ -143,7 +143,7 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
             <Text style={s.secTitle}>Horarios — Tu día</Text>
             <View style={s.horaTable}>
               {horarios.map((h, i) => (
-                <View key={i} style={i < horarios.length - 1 ? s.horaRow : s.horaRowLast}>
+                <View key={i} style={i < horarios.length - 1 ? s.horaRow : s.horaRowLast} wrap={false}>
                   <Text style={s.horaIcon}>{h.icon}</Text>
                   <Text style={s.horaLabel}>{h.label}</Text>
                   <Text style={s.horaVal}>{h.hora}</Text>
@@ -219,7 +219,7 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
               <View key={cat}>
                 <Text style={s.catHeader}>{cat}</Text>
                 {items.map((e, i) => (
-                  <View key={i} style={s.checkRow}>
+                  <View key={i} style={s.checkRow} wrap={false}>
                     <View style={s.checkBox} />
                     {e.imagenUrl ? (
                       <Image src={e.imagenUrl} style={{ width: 24, height: 24, marginRight: 4, objectFit: "contain" }} />
@@ -237,7 +237,7 @@ export function FichaTecnicos({ data }: { data: FichaTecnicosData }) {
               <View>
                 <Text style={s.catHeader}>Subrenta — Confirmar llegada con proveedor</Text>
                 {equiposExternos.map((e, i) => (
-                  <View key={i} style={s.checkRow}>
+                  <View key={i} style={s.checkRow} wrap={false}>
                     <View style={s.checkBox} />
                     <Text style={s.checkText}>
                       {e.cantidad}x {e.descripcion}
