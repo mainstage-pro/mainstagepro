@@ -4145,8 +4145,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               };
               const fechasUnicas = [...new Set(proyecto.personal.map(p => p.fechaJornada ?? null))];
               const tieneMultiplesFechas =
-                fechasUnicas.filter(f => f !== null).length > 1 ||
-                (fechasUnicas.filter(f => f !== null).length === 1 && fechasUnicas.some(f => f === null));
+                fechasUnicas.some(f => f !== null);
               const fmtJornadaDate = (yyyymmdd: string) => {
                 try {
                   return new Date(yyyymmdd + "T12:00:00Z").toLocaleDateString("es-MX", {

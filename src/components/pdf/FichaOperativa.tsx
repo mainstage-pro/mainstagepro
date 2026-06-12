@@ -90,6 +90,7 @@ function KV({ label, value, bold, full }: { label: string; value?: string | null
 export interface PersonalItem {
   nombre: string; rolEnEvento: string | null; rolTecnico: string | null;
   celular: string | null; confirmado: boolean;
+  fechaJornada: string | null; participacion: string | null;
 }
 export interface ProveedorEvento {
   nombreProveedor: string; servicioEquipo: string | null; telefonoProveedor: string | null;
@@ -471,30 +472,107 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
             </View>
           )}
 
-          {/* 10. PERSONAL TÉCNICO */}
-          {data.personal.length > 0 && (
-            <View style={base.section}>
-              <SecNum num={sec("personal")} titulo="Personal Técnico" />
-              <View style={base.table}>
-                <View style={base.tableHd}>
-                  <Text style={[base.thTxt, { flex: 1 }]}>Nombre</Text>
-                  <Text style={[base.thTxt, { flex: 1 }]}>Rol en el evento</Text>
-                  <Text style={[base.thTxt, { width: 95 }]}>Celular</Text>
-                  <Text style={[base.thTxt, { width: 60 }]}>Estado</Text>
-                </View>
-                {data.personal.map((p, i) => (
-                  <View key={i} style={i < data.personal.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
-                    <Text style={[base.tdTxt, { flex: 1, fontFamily: "Helvetica-Bold" }]}>{p.nombre}</Text>
-                    <Text style={[base.tdMuted, { flex: 1 }]}>{p.rolEnEvento ?? p.rolTecnico ?? "—"}</Text>
-                    <Text style={[base.tdTxt, { width: 95 }]}>{p.celular ?? "—"}</Text>
-                    <Text style={p.confirmado ? base.chipOk : base.chipPend}>
-                      {p.confirmado ? "Confirmado" : "Pendiente"}
-                    </Text>
-                  </View>
-                ))}
+          {/* 10. PERSONAL TÉCNICO — agrupado por fecha de jornada */}
+          {data.personal.length > 0 && (() => {
+            // Agrupar por fechaJornada
+            const gruposFecha = new Map<string, typeof data.personal>();
+            for (const p of data.personal) {
+              const key = p.fechaJornada ?? "__sin_fecha__";
+              if (!gruposFecha.has(key)) gruposFecha.set(key, []);
+              gruposFecha.get(key)!.push(p);
+            }
+            const fechaKeys = Array.from(gruposFecha.keys()).sort((a, b) => {
+              if (a === "__sin_fecha__") return 1;
+              if (b === "__sin_fecha__") return -1;
+              return a.localeCompare(b);
+            });
+            const tieneMultiplesFechas =
+              fechaKeys.filter(k => k !== "__sin_fecha__").length > 1 ||
+              (fechaKeys.filter(k => k !== "__sin_fecha__").length === 1 && fechaKeys.some(k => k === "__sin_fecha__")) ||
+              (fechaKeys.length === 1 && fechaKeys[0] !== "__sin_fecha__");
+
+            const fmtJornada = (yyyymmdd: string) => {
+              try {
+                return new Date(yyyymmdd + "T12:00:00Z").toLocaleDateString("es-MX", {
+                  timeZone: "UTC", weekday: "long", day: "numeric", month: "long",
+                });
+              } catch { return yyyymmdd; }
+            };
+            const PART_LABELS: Record<string, string> = {
+              OPERACION: "Operacion tecnica", MONTAJE: "Montaje", DESMONTAJE: "Desmontaje",
+              TRANSPORTE: "Transporte", OTRO: "Otro",
+            };
+
+            return (
+              <View style={base.section}>
+                <SecNum num={sec("personal")} titulo="Personal Tecnico" />
+                {fechaKeys.map((fechaKey) => {
+                  const itemsFecha = gruposFecha.get(fechaKey)!;
+                  // Sub-agrupar por participacion dentro de cada fecha
+                  const subGrupos = new Map<string, typeof data.personal>();
+                  for (const p of itemsFecha) {
+                    const pKey = p.participacion ?? "OTRO";
+                    if (!subGrupos.has(pKey)) subGrupos.set(pKey, []);
+                    subGrupos.get(pKey)!.push(p);
+                  }
+                  const tipoKeys = Array.from(subGrupos.keys()).sort();
+
+                  return (
+                    <View key={fechaKey} style={{ marginBottom: tieneMultiplesFechas ? 10 : 0 }}>
+                      {/* Encabezado de fecha */}
+                      {tieneMultiplesFechas && (
+                        <View wrap={false} style={{
+                          backgroundColor: fechaKey === "__sin_fecha__" ? "#f0f0f0" : "#0d0d0d",
+                          paddingVertical: 5, paddingHorizontal: 10,
+                          marginBottom: 4,
+                          flexDirection: "row", alignItems: "center",
+                        }}>
+                          <Text style={{
+                            fontSize: 8.5, fontFamily: "Helvetica-Bold",
+                            color: fechaKey === "__sin_fecha__" ? "#5a5a5a" : "#ffffff", flex: 1,
+                          }}>
+                            {fechaKey === "__sin_fecha__" ? "Sin fecha asignada" : fmtJornada(fechaKey)}
+                          </Text>
+                          <Text style={{ fontSize: 7, color: fechaKey === "__sin_fecha__" ? "#888" : "#aaa" }}>
+                            {itemsFecha.length} {itemsFecha.length === 1 ? "tecnico" : "tecnicos"}
+                          </Text>
+                        </View>
+                      )}
+                      {/* Sub-encabezado de tipo + tabla */}
+                      {tipoKeys.map((tipoKey) => {
+                        const items = subGrupos.get(tipoKey)!;
+                        return (
+                          <View key={tipoKey} style={{ marginBottom: 6 }}>
+                            <View style={base.table}>
+                              {/* Sub-encabezado de tipo de participacion */}
+                              <View style={[base.tableHd, { backgroundColor: "#1a1a1a" }]}>
+                                <Text style={[base.thTxt, { flex: 1, color: "#B3985B" }]}>
+                                  {PART_LABELS[tipoKey] ?? tipoKey}
+                                </Text>
+                                <Text style={[base.thTxt, { flex: 1 }]}>Rol en el evento</Text>
+                                <Text style={[base.thTxt, { width: 95 }]}>Celular</Text>
+                                <Text style={[base.thTxt, { width: 60 }]}>Estado</Text>
+                              </View>
+                              {items.map((p, i) => (
+                                <View key={i} style={i < items.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
+                                  <Text style={[base.tdTxt, { flex: 1, fontFamily: "Helvetica-Bold" }]}>{p.nombre}</Text>
+                                  <Text style={[base.tdMuted, { flex: 1 }]}>{p.rolEnEvento ?? p.rolTecnico ?? "—"}</Text>
+                                  <Text style={[base.tdTxt, { width: 95 }]}>{p.celular ?? "—"}</Text>
+                                  <Text style={p.confirmado ? base.chipOk : base.chipPend}>
+                                    {p.confirmado ? "Confirmado" : "Pendiente"}
+                                  </Text>
+                                </View>
+                              ))}
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  );
+                })}
               </View>
-            </View>
-          )}
+            );
+          })()}
 
           {/* 11. ARCHIVOS OPERATIVOS */}
           {data.archivos.length > 0 && (
