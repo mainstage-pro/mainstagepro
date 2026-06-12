@@ -472,12 +472,26 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
             </View>
           )}
 
-          {/* 10. PERSONAL TÉCNICO — agrupado por fecha de jornada */}
+          {/* 10. PERSONAL TECNICO — agrupado por fecha derivada del proyecto */}
           {data.personal.length > 0 && (() => {
-            // Agrupar por fechaJornada
+            // Fechas base del proyecto
+            const fechaEvento = data.fechaEvento ? data.fechaEvento.substring(0, 10) : null;
+            const fechaMontajeProy = data.fechaMontaje ? data.fechaMontaje.substring(0, 10) : null;
+
+            // Derivar fecha efectiva: fechaJornada manual tiene prioridad;
+            // si no, MONTAJE usa fechaMontaje del proyecto, el resto usa fechaEvento
+            const fechaEfectiva = (p: PersonalItem): string => {
+              if (p.fechaJornada) return p.fechaJornada;
+              const part = p.participacion ?? "OPERACION";
+              if (part === "MONTAJE" && fechaMontajeProy) return fechaMontajeProy;
+              if (part === "MONTAJE" && fechaEvento) return fechaEvento;
+              return fechaEvento ?? "__sin_fecha__";
+            };
+
+            // Agrupar por fecha efectiva
             const gruposFecha = new Map<string, typeof data.personal>();
             for (const p of data.personal) {
-              const key = p.fechaJornada ?? "__sin_fecha__";
+              const key = fechaEfectiva(p);
               if (!gruposFecha.has(key)) gruposFecha.set(key, []);
               gruposFecha.get(key)!.push(p);
             }
@@ -486,10 +500,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
               if (b === "__sin_fecha__") return -1;
               return a.localeCompare(b);
             });
-            const tieneMultiplesFechas =
-              fechaKeys.filter(k => k !== "__sin_fecha__").length > 1 ||
-              (fechaKeys.filter(k => k !== "__sin_fecha__").length === 1 && fechaKeys.some(k => k === "__sin_fecha__")) ||
-              (fechaKeys.length === 1 && fechaKeys[0] !== "__sin_fecha__");
+            const tieneMultiplesFechas = fechaKeys.filter(k => k !== "__sin_fecha__").length >= 1;
 
             const fmtJornada = (yyyymmdd: string) => {
               try {

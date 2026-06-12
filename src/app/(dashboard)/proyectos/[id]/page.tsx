@@ -4145,9 +4145,26 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 TRANSPORTE: "Transportes",
                 OTRO: "Otros",
               };
-              const fechasUnicas = [...new Set(proyecto.personal.map(p => p.fechaJornada ?? null))];
-              const tieneMultiplesFechas =
-                fechasUnicas.some(f => f !== null);
+
+              // Fechas base del proyecto (yyyy-mm-dd)
+              const fechaEvento = proyecto.fechaEvento ? proyecto.fechaEvento.substring(0, 10) : null;
+              const fechaMontaje = proyecto.fechaMontaje ? proyecto.fechaMontaje.substring(0, 10) : null;
+
+              // Derivar fecha efectiva para cada técnico según su participación
+              // fechaJornada manual tiene prioridad si está seteado
+              const fechaEfectiva = (p: Personal): string | null => {
+                if (p.fechaJornada) return p.fechaJornada;
+                const part = p.participacion ?? "OPERACION";
+                if (part === "MONTAJE" && fechaMontaje) return fechaMontaje;
+                if (part === "MONTAJE" && fechaEvento) return fechaEvento;
+                return fechaEvento;
+              };
+
+              // ¿Hay al menos dos fechas distintas entre los técnicos?
+              const fechasUsadas = [...new Set(proyecto.personal.map(p => fechaEfectiva(p) ?? "__sin_fecha__"))];
+              const tieneMultiplesFechas = fechasUsadas.length > 1 ||
+                (fechasUsadas.length === 1 && fechasUsadas[0] !== "__sin_fecha__");
+
               const fmtJornadaDate = (yyyymmdd: string) => {
                 try {
                   return new Date(yyyymmdd + "T12:00:00Z").toLocaleDateString("es-MX", {
@@ -4500,7 +4517,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
               if (tieneMultiplesFechas) {
                 const fechasOrdenadas = [...new Set(
-                  proyecto.personal.map(p => p.fechaJornada ?? "__sin_fecha__")
+                  proyecto.personal.map(p => fechaEfectiva(p) ?? "__sin_fecha__")
                 )].sort((a, b) => {
                   if (a === "__sin_fecha__") return 1;
                   if (b === "__sin_fecha__") return -1;
@@ -4510,7 +4527,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <>
                     {fechasOrdenadas.map(fecha => {
                       const grupoFecha = proyecto.personal.filter(
-                        p => (p.fechaJornada ?? "__sin_fecha__") === fecha
+                        p => (fechaEfectiva(p) ?? "__sin_fecha__") === fecha
                       );
                       const esSinFecha = fecha === "__sin_fecha__";
                       return (
@@ -4542,7 +4559,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <>
                     {(["OPERACION", "MONTAJE", "DESMONTAJE", "TRANSPORTE", "OTRO"] as const).map(tipo => {
                       const grupo = proyecto.personal.filter(p => (p.participacion ?? "OPERACION") === tipo);
-                      return renderSubGrupo(tipo, grupo, grupo[0]?.fechaJornada ?? null);
+                      return renderSubGrupo(tipo, grupo, fechaEfectiva(grupo[0] ?? { fechaJornada: null, participacion: tipo } as Personal) ?? null);
                     })}
                   </>
                 );
