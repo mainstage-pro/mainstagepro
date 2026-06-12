@@ -32,6 +32,30 @@ interface AbonoItem {
   notas: string | null;
 }
 
+interface CuotaItem {
+  id: string;
+  numeroCuota: number;
+  monto: number;
+  fechaCompromiso: string;
+  estado: string; // PENDIENTE | PAGADO
+  abonoPago?: { id: string; fecha: string; monto: number; metodoPago: string } | null;
+  abono?: { id: string; fecha: string; monto: number; metodoPago: string } | null;
+}
+
+// ── Plan de pagos state ────────────────────────────────────────────────────────
+interface PlanState {
+  cuentaId: string;
+  tipo: 'cxc' | 'cxp';
+  monto: number;
+  montoPagado: number;
+  concepto: string;
+  cuotas: CuotaItem[];
+  // ui state
+  view: 'list' | 'create'; // 'list' = ver plan existente, 'create' = crear nuevo
+  numCuotas: number;
+  draft: { monto: string; fecha: string }[];
+}
+
 interface CxCItem {
   id: string;
   concepto: string;
@@ -213,6 +237,24 @@ function fmtDiaSemana(iso: string) {
   return new Date(iso + "T12:00:00").toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "short" });
 }
 
+// ── Smart distribution for cuotas ────────────────────────────────────────────
+function distribuirCuotas(total: number, n: number, fechaBase: string): { monto: string; fecha: string }[] {
+  if (n < 1) return [];
+  // Determine rounding precision based on average cuota size
+  const avg = total / n;
+  const precision = avg > 10000 ? 1000 : avg > 1000 ? 500 : avg > 100 ? 100 : 10;
+  const base = Math.floor(total / n / precision) * precision;
+  const result: { monto: string; fecha: string }[] = [];
+  for (let i = 0; i < n; i++) {
+    const d = new Date(fechaBase + 'T12:00:00Z');
+    d.setMonth(d.getMonth() + i + 1);
+    const fecha = d.toISOString().slice(0, 10);
+    const monto = i < n - 1 ? base : Math.round((total - base * (n - 1)) * 100) / 100;
+    result.push({ monto: monto.toString(), fecha });
+  }
+  return result;
+}
+
 interface SemanaOpCobro {
   id: string; concepto: string; monto: number; montoCobrado: number; estado: string; tipoPago: string;
   cliente: { nombre: string; telefono: string | null };
@@ -305,6 +347,101 @@ export default function CobrosPagosPage() {
   const [showReciboModal, setShowReciboModal] = useState(false);
   const [reciboGrupos, setReciboGrupos] = useState<Array<{ key: string; nombre: string; items: CxPItem[] }>>([]);
   const [reciboSeleccionados, setReciboSeleccionados] = useState<Record<string, Set<string>>>({});
+  // Plan de pagos / cobros
+  const [plan, setPlan] = useState<PlanState | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState(false);
+  const [savingPlan, setSavingPlan] = useState(false);
+  const [payingCuota, setPayingCuota] = useState<string | null>(null);
+  const [payCuotaId, setPayCuotaId] = useState<string | null>(null);
+  const [payCuotaMetodo, setPayCuotaMetodo] = useState('TRANSFERENCIA');
+  const [payCuotaCuenta, setPayCuotaCuenta] = useState('');
+  const [payCuotaNotas, setPayCuotaNotas] = useState('');
+  const [payCuotaFecha, setPayCuotaFecha] = useState(new Date().toISOString().split('T')[0]);
+
+  // ── Plan de pagos / cobros ────────────────────────────────────────────────
+  async function openPlan(id: string, tipo: 'cxc' | 'cxp', monto: number, montoPagado: number, concepto: string) {
+    setLoadingPlan(true);
+    const endpoint = tipo === 'cxc' ? `/api/cuentas-cobrar/${id}/plan` : `/api/cuentas-pagar/${id}/plan`;
+    const res = await fetch(endpoint, { cache: 'no-store' });
+    const data = await res.json();
+    const cuotas: CuotaItem[] = data.cuotas ?? [];
+    const pendiente = monto - montoPagado;
+    const hasCuotas = cuotas.length > 0;
+    const numDefault = hasCuotas ? cuotas.length : 3;
+    const draft = hasCuotas
+      ? cuotas.filter(c => c.estado === 'PENDIENTE').map(c => ({ monto: c.monto.toString(), fecha: c.fechaCompromiso.substring(0, 10) }))
+      : distribuirCuotas(pendiente, numDefault, new Date().toISOString().slice(0, 10));
+    setPlan({
+      cuentaId: id, tipo, monto, montoPagado, concepto, cuotas,
+      view: hasCuotas ? 'list' : 'create',
+      numCuotas: numDefault,
+      draft,
+    });
+    setLoadingPlan(false);
+  }
+
+  function updatePlanDraft(n: number) {
+    if (!plan) return;
+    const pendiente = plan.monto - plan.montoPagado;
+    const draft = distribuirCuotas(pendiente, n, new Date().toISOString().slice(0, 10));
+    setPlan(prev => prev ? { ...prev, numCuotas: n, draft } : null);
+  }
+
+  async function savePlan() {
+    if (!plan) return;
+    setSavingPlan(true);
+    const cuotas = plan.draft.map(d => ({ monto: parseFloat(d.monto), fechaCompromiso: d.fecha }));
+    const endpoint = plan.tipo === 'cxc' ? `/api/cuentas-cobrar/${plan.cuentaId}/plan` : `/api/cuentas-pagar/${plan.cuentaId}/plan`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cuotas }),
+    });
+    const data = await res.json();
+    if (!res.ok) { toast.error(data.error ?? 'Error al guardar plan'); setSavingPlan(false); return; }
+    toast.success('Plan de cuotas creado');
+    // Reload plan
+    await openPlan(plan.cuentaId, plan.tipo, plan.monto, plan.montoPagado, plan.concepto);
+    setSavingPlan(false);
+  }
+
+  async function pagarCuota(cuotaId: string) {
+    if (!plan) return;
+    setPayingCuota(cuotaId);
+    const endpoint = plan.tipo === 'cxc'
+      ? `/api/cuentas-cobrar/${plan.cuentaId}/plan/${cuotaId}/cobrar`
+      : `/api/cuentas-pagar/${plan.cuentaId}/plan/${cuotaId}/pagar`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ metodoPago: payCuotaMetodo, cuentaDestinoId: payCuotaCuenta || null, cuentaOrigenId: payCuotaCuenta || null, notas: payCuotaNotas || null, fecha: payCuotaFecha || null }),
+    });
+    const data = await res.json();
+    if (!res.ok) { toast.error(data.error ?? 'Error al registrar pago'); setPayingCuota(null); return; }
+    toast.success(plan.tipo === 'cxc' ? 'Cobro registrado' : 'Pago registrado');
+    setPayCuotaId(null); setPayCuotaMetodo('TRANSFERENCIA'); setPayCuotaCuenta(''); setPayCuotaNotas(''); setPayCuotaFecha(new Date().toISOString().split('T')[0]);
+    // Reload plan + main list
+    const updatedCuenta = data.cuenta;
+    if (updatedCuenta) {
+      if (plan.tipo === 'cxc') {
+        setCxc(prev => prev.map(c => c.id === plan.cuentaId ? { ...c, montoCobrado: updatedCuenta.montoCobrado, estado: updatedCuenta.estado } : c));
+      } else {
+        setCxp(prev => prev.map(c => c.id === plan.cuentaId ? { ...c, montoPagado: updatedCuenta.montoPagado, estado: updatedCuenta.estado } : c));
+      }
+    }
+    await openPlan(plan.cuentaId, plan.tipo, plan.monto, updatedCuenta?.montoPagado ?? updatedCuenta?.montoCobrado ?? plan.montoPagado, plan.concepto);
+    setPayingCuota(null);
+  }
+
+  async function eliminarPlanPendiente() {
+    if (!plan) return;
+    const ok = await confirm({ message: '¿Eliminar todas las cuotas PENDIENTES de este plan?', confirmText: 'Eliminar', danger: true });
+    if (!ok) return;
+    const endpoint = plan.tipo === 'cxc' ? `/api/cuentas-cobrar/${plan.cuentaId}/plan` : `/api/cuentas-pagar/${plan.cuentaId}/plan`;
+    await fetch(endpoint, { method: 'DELETE' });
+    toast.success('Cuotas pendientes eliminadas');
+    setPlan(null);
+  }
 
   async function cargarProgramacion() {
     if (semanasOp.length > 0) return;
@@ -1185,6 +1322,12 @@ export default function CobrosPagosPage() {
                       </svg>
                       Registrar abono
                     </button>
+                    <button
+                      onClick={() => openPlan(c.id, 'cxc', c.monto, c.montoCobrado, c.concepto)}
+                      className="flex items-center gap-1.5 text-xs text-purple-400 border border-purple-900/40 hover:border-purple-600/60 hover:bg-purple-900/10 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      📅 Plan de cobros
+                    </button>
                     <button onClick={() => openEdit(c, "cxc")}
                       className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -1414,6 +1557,12 @@ export default function CobrosPagosPage() {
                         </svg>
                         Registrar abono
                       </button>
+                      <button
+                        onClick={() => openPlan(c.id, 'cxp', c.monto, c.montoPagado, c.concepto)}
+                        className="flex items-center gap-1.5 text-xs text-purple-400 border border-purple-900/40 hover:border-purple-600/60 hover:bg-purple-900/10 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        📅 Plan de pagos
+                      </button>
                       <button onClick={() => openEdit(c, "cxp")}
                         className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -1528,6 +1677,201 @@ export default function CobrosPagosPage() {
           ))}
         </div>
       )}
+
+      {/* ── Modal Plan de Pagos / Cobros ── */}
+      {plan && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" onClick={e => { if (e.target === e.currentTarget) setPlan(null); }}>
+          <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h3 className="text-white font-semibold text-base">
+                  {plan.tipo === 'cxc' ? '📅 Plan de cobros' : '📅 Plan de pagos'}
+                </h3>
+                <p className="text-gray-500 text-xs mt-0.5 truncate max-w-xs">{plan.concepto}</p>
+              </div>
+              <button onClick={() => setPlan(null)} className="text-gray-600 hover:text-white text-xl leading-none">×</button>
+            </div>
+
+            {/* Summary */}
+            <div className="flex items-center gap-4 mb-5 p-3 bg-[#0d0d0d] rounded-xl border border-[#1a1a1a]">
+              <div className="text-center">
+                <p className="text-[10px] text-gray-600 uppercase tracking-wide">Total</p>
+                <p className="text-white font-semibold text-sm">{formatCurrency(plan.monto)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] text-gray-600 uppercase tracking-wide">{plan.tipo === 'cxc' ? 'Cobrado' : 'Pagado'}</p>
+                <p className="text-green-400 font-semibold text-sm">{formatCurrency(plan.montoPagado)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] text-gray-600 uppercase tracking-wide">Pendiente</p>
+                <p className="text-[#B3985B] font-semibold text-sm">{formatCurrency(plan.monto - plan.montoPagado)}</p>
+              </div>
+              {plan.cuotas.length > 0 && (
+                <div className="ml-auto">
+                  <div className="w-24 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                    <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${Math.min(100, (plan.montoPagado / plan.monto) * 100)}%` }} />
+                  </div>
+                  <p className="text-[10px] text-gray-600 mt-1 text-right">{Math.round((plan.montoPagado / plan.monto) * 100)}%</p>
+                </div>
+              )}
+            </div>
+
+            {loadingPlan ? (
+              <p className="text-center text-gray-600 text-sm py-6">Cargando plan...</p>
+            ) : plan.view === 'list' && plan.cuotas.length > 0 ? (
+              /* ── Vista de cuotas existentes ── */
+              <div className="space-y-2">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs text-gray-500">{plan.cuotas.length} cuota{plan.cuotas.length !== 1 ? 's' : ''} en el plan</p>
+                  <button onClick={() => setPlan(prev => prev ? { ...prev, view: 'create', draft: distribuirCuotas(prev.monto - prev.montoPagado, prev.numCuotas, new Date().toISOString().slice(0, 10)) } : null)}
+                    className="text-xs text-purple-400 hover:text-purple-300 transition-colors">
+                    Replantear cuotas →
+                  </button>
+                </div>
+                {plan.cuotas.map(cuota => (
+                  <div key={cuota.id} className={`rounded-xl border p-3 ${cuota.estado === 'PAGADO' ? 'border-green-900/30 bg-green-900/5' : 'border-[#2a2a2a] bg-[#0d0d0d]'}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${cuota.estado === 'PAGADO' ? 'bg-green-500 text-black' : 'border border-purple-700/60 text-purple-400'}`}>
+                          {cuota.estado === 'PAGADO' ? '✓' : cuota.numeroCuota}
+                        </span>
+                        <div>
+                          <p className="text-white text-sm font-medium">{formatCurrency(cuota.monto)}</p>
+                          <p className="text-gray-500 text-[11px]">{fmtDate(cuota.fechaCompromiso)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {cuota.estado === 'PAGADO' ? (
+                          <span className="text-green-400 text-[11px]">
+                            ✓ {plan.tipo === 'cxc' ? 'Cobrado' : 'Pagado'} {fmtDate((cuota.abonoPago?.fecha ?? cuota.abono?.fecha) ?? '')}
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => { setPayCuotaId(prev => prev === cuota.id ? null : cuota.id); setPayCuotaFecha(new Date().toISOString().split('T')[0]); }}
+                            className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${payCuotaId === cuota.id ? 'border-purple-600/60 text-purple-300 bg-purple-900/10' : 'border-[#333] text-gray-400 hover:border-purple-700/60 hover:text-purple-400'}`}
+                          >
+                            {plan.tipo === 'cxc' ? 'Cobrar ▸' : 'Pagar ▸'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {/* Mini-form to pay this cuota */}
+                    {payCuotaId === cuota.id && cuota.estado === 'PENDIENTE' && (
+                      <div className="mt-3 pt-3 border-t border-[#2a2a2a] space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] text-gray-600 uppercase tracking-wide block mb-1">Método</label>
+                            <select value={payCuotaMetodo} onChange={e => setPayCuotaMetodo(e.target.value)} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-purple-700">
+                              <option value="TRANSFERENCIA">Transferencia</option>
+                              <option value="EFECTIVO">Efectivo</option>
+                              <option value="TARJETA">Tarjeta</option>
+                              <option value="CHEQUE">Cheque</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-gray-600 uppercase tracking-wide block mb-1">Fecha</label>
+                            <input type="date" value={payCuotaFecha} onChange={e => setPayCuotaFecha(e.target.value)} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-purple-700" />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-600 uppercase tracking-wide block mb-1">{plan.tipo === 'cxc' ? 'Cuenta destino' : 'Cuenta origen'}</label>
+                          <select value={payCuotaCuenta} onChange={e => setPayCuotaCuenta(e.target.value)} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-purple-700">
+                            <option value="">— Sin especificar —</option>
+                            {cuentas.map(ct => <option key={ct.id} value={ct.id}>{ct.nombre}{ct.banco ? ` · ${ct.banco}` : ''}</option>)}
+                          </select>
+                        </div>
+                        <input value={payCuotaNotas} onChange={e => setPayCuotaNotas(e.target.value)} placeholder="Notas / referencia (opcional)" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-purple-700" />
+                        <div className="flex gap-2 pt-1">
+                          <button onClick={() => pagarCuota(cuota.id)} disabled={payingCuota === cuota.id} className="flex-1 bg-purple-700 hover:bg-purple-600 disabled:opacity-40 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors">
+                            {payingCuota === cuota.id ? 'Registrando...' : plan.tipo === 'cxc' ? 'Confirmar cobro' : 'Confirmar pago'}
+                          </button>
+                          <button onClick={() => setPayCuotaId(null)} className="px-3 text-gray-500 hover:text-white text-xs">Cancelar</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                <button onClick={eliminarPlanPendiente} className="mt-3 w-full text-xs text-red-500/50 hover:text-red-400 border border-red-900/20 hover:border-red-900/40 py-1.5 rounded-lg transition-colors">
+                  Eliminar cuotas pendientes
+                </button>
+              </div>
+            ) : (
+              /* ── Vista de creación / edición de plan ── */
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs text-gray-500 block mb-2">Número de cuotas</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {[2,3,4,6,8,10,12].map(n => (
+                      <button key={n} onClick={() => updatePlanDraft(n)} className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${plan.numCuotas === n ? 'border-purple-600 bg-purple-900/20 text-purple-300' : 'border-[#2a2a2a] text-gray-500 hover:border-[#444] hover:text-gray-300'}`}>
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-500">Distribución de cuotas <span className="text-gray-700 ml-1">(editable)</span></p>
+                  {plan.draft.map((d, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full border border-purple-700/40 flex items-center justify-center text-[10px] text-purple-400 shrink-0">{i + 1}</span>
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
+                        <input
+                          type="number"
+                          value={d.monto}
+                          onChange={e => setPlan(prev => {
+                            if (!prev) return null;
+                            const draft = [...prev.draft];
+                            draft[i] = { ...draft[i], monto: e.target.value };
+                            return { ...prev, draft };
+                          })}
+                          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg pl-7 pr-3 py-1.5 text-white text-xs focus:outline-none focus:border-purple-700"
+                        />
+                      </div>
+                      <input
+                        type="date"
+                        value={d.fecha}
+                        onChange={e => setPlan(prev => {
+                          if (!prev) return null;
+                          const draft = [...prev.draft];
+                          draft[i] = { ...draft[i], fecha: e.target.value };
+                          return { ...prev, draft };
+                        })}
+                        className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-purple-700"
+                      />
+                      {i === plan.draft.length - 1 && (
+                        <span className="text-[10px] text-gray-600 shrink-0">← residuo</span>
+                      )}
+                    </div>
+                  ))}
+                  {/* Totals check */}
+                  {(() => {
+                    const suma = plan.draft.reduce((s, d) => s + (parseFloat(d.monto) || 0), 0);
+                    const pendiente = plan.monto - plan.montoPagado;
+                    const diff = Math.abs(suma - pendiente);
+                    return (
+                      <div className={`text-xs flex justify-between pt-1 border-t border-[#1a1a1a] ${diff > 1 ? 'text-red-400' : 'text-green-400/70'}`}>
+                        <span>Suma: {formatCurrency(suma)}</span>
+                        <span>Pendiente: {formatCurrency(pendiente)}</span>
+                        {diff > 1 && <span>⚠ Diferencia: {formatCurrency(diff)}</span>}
+                      </div>
+                    );
+                  })()}
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button onClick={savePlan} disabled={savingPlan || (() => { const suma = plan.draft.reduce((s, d) => s + (parseFloat(d.monto) || 0), 0); return Math.abs(suma - (plan.monto - plan.montoPagado)) > 1; })()} className="flex-1 bg-purple-700 hover:bg-purple-600 disabled:opacity-40 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors">
+                    {savingPlan ? 'Guardando...' : 'Confirmar plan'}
+                  </button>
+                  <button onClick={() => setPlan(null)} className="px-4 text-sm text-gray-500 hover:text-white border border-[#333] rounded-xl transition-colors">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
 
       {/* Modal confirmar */}
       {modal && (

@@ -987,6 +987,7 @@ model CuentaCobrar {
   updatedAt       DateTime @updatedAt
 
   abonos          Abono[]
+  cuotas          CuotaCobro[]
 
   @@map("cuentas_cobrar")
 }
@@ -1005,6 +1006,8 @@ model Abono {
   movimiento       MovimientoFinanciero? @relation(fields: [movimientoId], references: [id], onDelete: SetNull)
   creadoPor        String?
   createdAt        DateTime @default(now())
+
+  cuotaCobro       CuotaCobro?
 
   @@map("abonos")
 }
@@ -1039,6 +1042,7 @@ model CuentaPagar {
   updatedAt       DateTime @updatedAt
 
   abonos          AbonoPago[]
+  cuotas          CuotaPago[]
 
   @@map("cuentas_pagar")
 }
@@ -1058,7 +1062,43 @@ model AbonoPago {
   creadoPor       String?
   createdAt       DateTime    @default(now())
 
+  cuotaPago       CuotaPago?
+
   @@map("abonos_pago")
+}
+
+// ─── PLAN DE CUOTAS ──────────────────────────────────────────────────────────
+
+model CuotaPago {
+  id              String      @id @default(cuid())
+  cuentaPagarId   String
+  cuentaPagar     CuentaPagar @relation(fields: [cuentaPagarId], references: [id], onDelete: Cascade)
+  numeroCuota     Int         // 1, 2, 3...
+  monto           Float
+  fechaCompromiso DateTime
+  estado          String      @default("PENDIENTE") // PENDIENTE | PAGADO
+  abonoPagoId     String?     @unique
+  abonoPago       AbonoPago?  @relation(fields: [abonoPagoId], references: [id], onDelete: SetNull)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@map("cuotas_pago")
+}
+
+model CuotaCobro {
+  id               String       @id @default(cuid())
+  cuentaCobrarId   String
+  cuentaCobrar     CuentaCobrar @relation(fields: [cuentaCobrarId], references: [id], onDelete: Cascade)
+  numeroCuota      Int
+  monto            Float
+  fechaCompromiso  DateTime
+  estado           String       @default("PENDIENTE") // PENDIENTE | PAGADO
+  abonoId          String?      @unique
+  abono            Abono?       @relation(fields: [abonoId], references: [id], onDelete: SetNull)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@map("cuotas_cobro")
 }
 
 // ─── EVALUACIÓN ──────────────────────────────────────────────────────────────
