@@ -30,6 +30,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ("responsabilidad" in body) data.responsabilidad = body.responsabilidad || null;
   if ("notas" in body) data.notas = body.notas || null;
   if ("rolEnEvento" in body) data.rolEnEvento = body.rolEnEvento || null;
+  if ("fechaJornada" in body) data.fechaJornada = body.fechaJornada || null;
 
   // Leer el registro previo para detectar si se está asignando un técnico nuevo
   const previo = await prisma.proyectoPersonal.findUnique({

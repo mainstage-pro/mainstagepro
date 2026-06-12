@@ -1054,7 +1054,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [crearParaSlotId, setCrearParaSlotId] = useState<string | null>(null);
   // Estado para editar slot de personal completo
   const [editandoPersonalId, setEditandoPersonalId] = useState<string | null>(null);
-  const [editPersonalForm, setEditPersonalForm] = useState({ tecnicoId: "", rolTecnicoId: "", nivel: "A", jornada: "MEDIA", tarifa: "", participacion: "OPERACION", responsabilidad: "", rolEnEvento: "" });
+  const [editPersonalForm, setEditPersonalForm] = useState({ tecnicoId: "", rolTecnicoId: "", nivel: "A", jornada: "MEDIA", tarifa: "", participacion: "OPERACION", responsabilidad: "", rolEnEvento: "", fechaJornada: "" });
   const [savingPersonal, setSavingPersonal] = useState(false);
 
   // Estados para otros gastos
@@ -2131,6 +2131,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       participacion: p.participacion ?? "OPERACION",
       responsabilidad: p.responsabilidad ?? "",
       rolEnEvento: p.rolEnEvento ?? "",
+      fechaJornada: p.fechaJornada ?? "",
     });
     // Buscar rolTecnicoId desde la lista de roles por nombre
     const rolNombre = p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre;
@@ -2153,6 +2154,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         participacion: editPersonalForm.participacion || null,
         responsabilidad: editPersonalForm.responsabilidad || null,
         rolEnEvento: editPersonalForm.rolEnEvento || null,
+        fechaJornada: editPersonalForm.fechaJornada || null,
       }),
     });
     if (res.ok) {
@@ -4389,14 +4391,25 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                 />
                               </div>
                             </div>
-                            <div>
-                              <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Rol en el evento</label>
-                              <input
-                                value={editPersonalForm.rolEnEvento}
-                                onChange={e => setEditPersonalForm(prev => ({ ...prev, rolEnEvento: e.target.value }))}
-                                placeholder="Ej: Operador de audio, Iluminación..."
-                                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
-                              />
+                            <div className="col-span-2 grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Fecha de jornada</label>
+                                <input
+                                  type="date"
+                                  value={editPersonalForm.fechaJornada}
+                                  onChange={e => setEditPersonalForm(prev => ({ ...prev, fechaJornada: e.target.value }))}
+                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Rol en el evento</label>
+                                <input
+                                  value={editPersonalForm.rolEnEvento}
+                                  onChange={e => setEditPersonalForm(prev => ({ ...prev, rolEnEvento: e.target.value }))}
+                                  placeholder="Ej: Operador FOH, Iluminación..."
+                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
+                                />
+                              </div>
                             </div>
                             <div>
                               <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Descripción · ¿qué hará en el evento?</label>
