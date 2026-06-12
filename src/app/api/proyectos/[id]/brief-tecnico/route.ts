@@ -7,8 +7,7 @@ import { logoBase64 } from "@/components/pdf/PdfShared";
 import React from "react";
 import path from "path";
 
-export async function GET(
-  _req: NextRequest,
+export async function GET(req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession();
@@ -76,11 +75,12 @@ export async function GET(
   }
   const buf = Buffer.concat(chunks);
 
+  const isPreview = req.nextUrl?.searchParams?.get('preview') === '1';
   return new NextResponse(buf, {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="brief-tecnico-${proyecto.numeroProyecto}.pdf"`,
+      "Content-Disposition": `${isPreview ? 'inline' : 'attachment'}; filename="brief-tecnico-${proyecto.numeroProyecto}.pdf"`,
       "Content-Length": String(buf.length),
     },
   });

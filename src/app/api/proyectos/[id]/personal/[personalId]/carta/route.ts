@@ -101,10 +101,11 @@ export async function GET(
   const nombre = (pp.tecnico?.nombre ?? "freelance").replace(/\s+/g, "-");
   const filename = `Carta-Freelance-${proy.numeroProyecto}-${nombre}.pdf`;
 
+  const isPreview = req.nextUrl?.searchParams?.get("preview") === "1";
   return new NextResponse(pdf, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+"Content-Disposition": `${isPreview ? 'inline' : 'attachment'}; filename="${filename}"`,
     },
   });
 }

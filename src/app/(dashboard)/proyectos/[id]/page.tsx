@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, use } from "react";
+import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { upload } from "@vercel/blob/client";
 import { usePdfDownload } from "@/hooks/usePdfDownload";
 import Link from "next/link";
@@ -939,6 +940,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [showAddProveedor, setShowAddProveedor] = useState(false);
   const [showFichasMenu, setShowFichasMenu] = useState(false);
   const { downloading, downloadPdf } = usePdfDownload();
+  const [pdfPreview, setPdfPreview] = useState<{ url: string; title: string; filename: string } | null>(null);
+  const previewPdf = (url: string, title: string, filename: string) => setPdfPreview({ url, title, filename });
   const [provNombre, setProvNombre] = useState("");
   const [provServicio, setProvServicio] = useState("");
   const [provTelefono, setProvTelefono] = useState("");
@@ -2890,59 +2893,70 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </svg>
               </button>
               {showFichasMenu && (
-                <div className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl py-1 min-w-[200px] flex flex-col z-50 shadow-xl shadow-black/40">
-                  <button
-                    onClick={() => { setShowFichasMenu(false); downloadPdf(`/api/proyectos/${proyecto.id}/fichas/cliente`, `confirmacion-cliente-${proyecto.numeroProyecto}.pdf`); }}
-                    disabled={!!downloading}
-                    className="px-4 py-3 text-xs text-gray-300 hover:text-white hover:bg-[#222] disabled:opacity-60 transition-colors flex items-center gap-2.5 w-full text-left">
-                    <span className="text-[#B3985B] text-sm">
-                      {downloading === `confirmacion-cliente-${proyecto.numeroProyecto}.pdf` ? (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
-                      ) : "👤"}
-                    </span>
-                    <span>
-                      <span className="block font-medium text-white">Confirmación para cliente</span>
-                      <span className="block text-gray-500 text-[10px]">
-                        {downloading === `confirmacion-cliente-${proyecto.numeroProyecto}.pdf` ? "Generando PDF..." : "Evento, equipo y coordinador"}
-                      </span>
-                    </span>
-                  </button>
-                  <div className="border-t border-[#2a2a2a] mx-2" />
-                  <button
-                    onClick={() => { setShowFichasMenu(false); downloadPdf(`/api/proyectos/${proyecto.id}/fichas/operativa`, `ficha-operativa-${proyecto.numeroProyecto}.pdf`); }}
-                    disabled={!!downloading}
-                    className="px-4 py-3 text-xs text-gray-300 hover:text-white hover:bg-[#222] disabled:opacity-60 transition-colors flex items-center gap-2.5 w-full text-left">
-                    <span className="text-[#B3985B] text-sm">
-                      {downloading === `ficha-operativa-${proyecto.numeroProyecto}.pdf` ? (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
-                      ) : "📋"}
-                    </span>
-                    <span>
-                      <span className="block font-medium text-white">Ficha operativa</span>
-                      <span className="block text-gray-500 text-[10px]">
-                        {downloading === `ficha-operativa-${proyecto.numeroProyecto}.pdf` ? "Generando PDF..." : "Coordinador y técnicos"}
-                      </span>
-                    </span>
-                  </button>
-                  <div className="border-t border-[#2a2a2a] mx-2" />
-                  {(proyecto.tipoServicio === 'PRODUCCION_TECNICA' || proyecto.tipoServicio === 'RENTA') && (
+                <div className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl py-1 min-w-[240px] flex flex-col z-50 shadow-xl shadow-black/40">
+                  {/* Confirmación cliente */}
+                  <div className="flex items-stretch">
                     <button
-                      onClick={() => { setShowFichasMenu(false); downloadPdf(`/api/proyectos/${proyecto.id}/brief-tecnico`, `brief-tecnico-${proyecto.numeroProyecto}.pdf`); }}
+                      onClick={() => { setShowFichasMenu(false); downloadPdf(`/api/proyectos/${proyecto.id}/fichas/cliente`, `confirmacion-cliente-${proyecto.numeroProyecto}.pdf`); }}
                       disabled={!!downloading}
-                      className="px-4 py-3 text-xs text-gray-300 hover:text-white hover:bg-[#222] disabled:opacity-60 transition-colors flex items-center gap-2.5 w-full text-left"
-                    >
-                      <span className="text-[#B3985B] text-sm">
-                        {downloading === `brief-tecnico-${proyecto.numeroProyecto}.pdf` ? (
+                      className="flex-1 px-4 py-3 text-xs text-gray-300 hover:text-white hover:bg-[#222] disabled:opacity-60 transition-colors flex items-center gap-2.5 text-left">
+                      <span className="text-[#B3985B] text-sm shrink-0">
+                        {downloading === `confirmacion-cliente-${proyecto.numeroProyecto}.pdf` ? (
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
-                        ) : "🔧"}
+                        ) : "👤"}
                       </span>
                       <span>
-                        <span className="block font-medium text-white">Brief técnico</span>
-                        <span className="block text-gray-500 text-[10px]">
-                          {downloading === `brief-tecnico-${proyecto.numeroProyecto}.pdf` ? "Generando PDF..." : "Logística para equipo técnico"}
-                        </span>
+                        <span className="block font-medium text-white">Confirmación para cliente</span>
+                        <span className="block text-gray-500 text-[10px]">Evento, equipo y coordinador</span>
                       </span>
                     </button>
+                    <button onClick={() => { setShowFichasMenu(false); previewPdf(`/api/proyectos/${proyecto.id}/fichas/cliente`, 'Confirmación para cliente', `confirmacion-cliente-${proyecto.numeroProyecto}.pdf`); }} title="Vista previa" className="px-3 text-gray-600 hover:text-[#B3985B] hover:bg-[#222] transition-colors shrink-0 border-l border-[#2a2a2a]">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                  </div>
+                  <div className="border-t border-[#2a2a2a] mx-2" />
+                  {/* Ficha operativa */}
+                  <div className="flex items-stretch">
+                    <button
+                      onClick={() => { setShowFichasMenu(false); downloadPdf(`/api/proyectos/${proyecto.id}/fichas/operativa`, `ficha-operativa-${proyecto.numeroProyecto}.pdf`); }}
+                      disabled={!!downloading}
+                      className="flex-1 px-4 py-3 text-xs text-gray-300 hover:text-white hover:bg-[#222] disabled:opacity-60 transition-colors flex items-center gap-2.5 text-left">
+                      <span className="text-[#B3985B] text-sm shrink-0">
+                        {downloading === `ficha-operativa-${proyecto.numeroProyecto}.pdf` ? (
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                        ) : "📋"}
+                      </span>
+                      <span>
+                        <span className="block font-medium text-white">Ficha operativa</span>
+                        <span className="block text-gray-500 text-[10px]">Coordinador y técnicos</span>
+                      </span>
+                    </button>
+                    <button onClick={() => { setShowFichasMenu(false); previewPdf(`/api/proyectos/${proyecto.id}/fichas/operativa`, 'Ficha Operativa', `ficha-operativa-${proyecto.numeroProyecto}.pdf`); }} title="Vista previa" className="px-3 text-gray-600 hover:text-[#B3985B] hover:bg-[#222] transition-colors shrink-0 border-l border-[#2a2a2a]">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </button>
+                  </div>
+                  <div className="border-t border-[#2a2a2a] mx-2" />
+                  {/* Brief técnico */}
+                  {(proyecto.tipoServicio === 'PRODUCCION_TECNICA' || proyecto.tipoServicio === 'RENTA') && (
+                    <div className="flex items-stretch">
+                      <button
+                        onClick={() => { setShowFichasMenu(false); downloadPdf(`/api/proyectos/${proyecto.id}/brief-tecnico`, `brief-tecnico-${proyecto.numeroProyecto}.pdf`); }}
+                        disabled={!!downloading}
+                        className="flex-1 px-4 py-3 text-xs text-gray-300 hover:text-white hover:bg-[#222] disabled:opacity-60 transition-colors flex items-center gap-2.5 text-left">
+                        <span className="text-[#B3985B] text-sm shrink-0">
+                          {downloading === `brief-tecnico-${proyecto.numeroProyecto}.pdf` ? (
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                          ) : "🔧"}
+                        </span>
+                        <span>
+                          <span className="block font-medium text-white">Brief técnico</span>
+                          <span className="block text-gray-500 text-[10px]">Logística para equipo técnico</span>
+                        </span>
+                      </button>
+                      <button onClick={() => { setShowFichasMenu(false); previewPdf(`/api/proyectos/${proyecto.id}/brief-tecnico`, 'Brief Técnico', `brief-tecnico-${proyecto.numeroProyecto}.pdf`); }} title="Vista previa" className="px-3 text-gray-600 hover:text-[#B3985B] hover:bg-[#222] transition-colors shrink-0 border-l border-[#2a2a2a]">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
@@ -5096,14 +5110,23 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <p className="text-white font-semibold">Rider de carga</p>
                   <p className="text-gray-500 text-xs mt-0.5">Listado de equipos con accesorios y herramientas necesarias para montaje</p>
                 </div>
-                <a
-                  href={`/api/proyectos/${id}/rider-pdf`}
-                  download
-                  className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B]/60 hover:bg-[#B3985B]/5 px-3 py-1.5 rounded-lg transition-all"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  Descargar rider
-                </a>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => previewPdf(`/api/proyectos/${id}/rider-pdf`, 'Rider de Carga', `rider-carga-${proyecto.numeroProyecto}.pdf`)}
+                    className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-all"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    Vista previa
+                  </button>
+                  <a
+                    href={`/api/proyectos/${id}/rider-pdf`}
+                    download
+                    className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/30 hover:border-[#B3985B]/60 hover:bg-[#B3985B]/5 px-3 py-1.5 rounded-lg transition-all"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Descargar rider
+                  </a>
+                </div>
               </div>
 
               {cotObservaciones && (
@@ -7220,6 +7243,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         </div>
       );
     })()}
+    {/* ── PDF Preview Modal ── */}
+    {pdfPreview && (
+      <PDFPreviewModal
+        isOpen={!!pdfPreview}
+        onClose={() => setPdfPreview(null)}
+        title={pdfPreview.title}
+        apiUrl={pdfPreview.url}
+        filename={pdfPreview.filename}
+      />
+    )}
     </>
   );
 }

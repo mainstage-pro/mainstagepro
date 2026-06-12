@@ -55,6 +55,13 @@ export type RiderPDFData = {
   equiposRiderExtra: EquipoRiderExtra[]
   cotizacionLineas: { id: string; tipo: string; descripcion: string; marca: string | null; cantidad: number; notas: string | null }[]
   logoSrc: string | null
+  direccionVenue: string | null
+  linkMaps: string | null
+  indicacionesAcceso: string | null
+  horaSalidaBodega: string | null
+  puntoSalidaBodega: string | null
+  choferNombre: string | null
+  contactosEmergencia: string | null
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -203,12 +210,38 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
         </View>
 
         {/* ── Datos del evento ── */}
-        <View style={s.gridRow}>
+        <View style={[s.gridRow, { marginBottom: 8 }]}>
           <GridCell label="Cliente" value={data.cliente?.empresa ?? data.cliente?.nombre ?? '—'} />
           <GridCell label="Venue" value={data.lugarEvento ?? '—'} />
           <DateTimeCell label="Fecha y hora de montaje" fecha={fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento)} hora={data.horaMontaje} />
           <DateTimeCell label="Fecha y hora inicio evento" fecha={fmtFechaCorta(data.fechaEvento)} hora={data.horaInicio} />
         </View>
+
+        {/* ── Dirección y acceso ── */}
+        {(data.direccionVenue || data.linkMaps || data.horaSalidaBodega || data.choferNombre) && (
+          <View style={[s.gridRow, { marginBottom: 8 }]}>
+            {data.direccionVenue && <GridCell label="Dirección" value={data.direccionVenue} />}
+            {data.linkMaps && <GridCell label="Google Maps" value={data.linkMaps} />}
+            {data.horaSalidaBodega && <GridCell label={data.puntoSalidaBodega ? `Salida de ${data.puntoSalidaBodega}` : 'Salida desde bodega'} value={`${data.horaSalidaBodega} hrs`} />}
+            {data.choferNombre && <GridCell label="Chofer" value={data.choferNombre} />}
+          </View>
+        )}
+
+        {/* ── Indicaciones de acceso ── */}
+        {data.indicacionesAcceso && (
+          <View style={{ backgroundColor: LIGHT1, borderWidth: 1, borderColor: BORDER, borderRadius: 4, padding: 10, marginBottom: 12 }}>
+            <Text style={{ fontSize: 7, color: INK5, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: 'Helvetica-Bold', marginBottom: 4 }}>Acceso al venue</Text>
+            <Text style={{ fontSize: 9, color: INK1, lineHeight: 1.5 }}>{data.indicacionesAcceso}</Text>
+          </View>
+        )}
+
+        {/* ── Contactos de emergencia ── */}
+        {data.contactosEmergencia && (
+          <View style={{ backgroundColor: '#fff8f0', borderWidth: 1, borderColor: '#f59e0b40', borderRadius: 4, padding: 10, marginBottom: 12 }}>
+            <Text style={{ fontSize: 7, color: '#92400e', textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: 'Helvetica-Bold', marginBottom: 4 }}>Contactos de emergencia</Text>
+            <Text style={{ fontSize: 9, color: INK1, lineHeight: 1.5 }}>{data.contactosEmergencia}</Text>
+          </View>
+        )}
 
         {(data.encargadoCliente || data.encargadoLugar) && (
           <View style={[s.gridRow, { marginBottom: 12 }]}>

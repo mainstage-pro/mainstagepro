@@ -81,10 +81,11 @@ export async function GET(
   const pdf = Buffer.concat(chunks);
   const filename = `Carta-Responsiva-${proyecto.numeroProyecto}.pdf`;
 
+  const isPreview = req.nextUrl?.searchParams?.get("preview") === "1";
   return new NextResponse(pdf, {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+"Content-Disposition": `${isPreview ? 'inline' : 'attachment'}; filename="${filename}"`,
     },
   });
 }

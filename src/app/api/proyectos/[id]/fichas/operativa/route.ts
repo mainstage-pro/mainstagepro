@@ -10,7 +10,7 @@ import {
 import React from "react";
 import path from "path";
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
@@ -137,6 +137,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     encargadoClienteContacto: proyecto.encargadoClienteContacto ?? null,
     encargadoLugar: proyecto.encargadoLugar ?? null,
     encargadoLugarContacto: proyecto.encargadoLugarContacto ?? null,
+    contactosEmergencia: proyecto.contactosEmergencia ?? null,
+    llamadoBodega: proyecto.llamadoBodega?.toISOString() ?? null,
+    choferNombre: proyecto.choferNombre ?? null,
+    aplicaCatering: proyecto.aplicaCatering ?? false,
+    proveedorCatering: proyecto.proveedorCatering ?? null,
     cliente: {
       nombre: proyecto.cliente.nombre,
       empresa: proyecto.cliente.empresa ?? null,
@@ -181,11 +186,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }
   const buf = Buffer.concat(chunks);
 
+  const isPreview = req.nextUrl?.searchParams?.get('preview') === '1';
   return new NextResponse(buf, {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="ficha-operativa-${proyecto.numeroProyecto}.pdf"`,
+      "Content-Disposition": `${isPreview ? 'inline' : 'attachment'}; filename="ficha-operativa-${proyecto.numeroProyecto}.pdf"`,
       "Content-Length": String(buf.length),
     },
   });

@@ -7,8 +7,7 @@ import React from 'react'
 import path from 'path'
 import fs from 'fs'
 
-export async function GET(
-  _req: NextRequest,
+export async function GET(req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getSession()
@@ -106,6 +105,13 @@ export async function GET(
     horaFin:     (proyecto as unknown as Record<string, unknown>).horaFin as string | null ?? null,
     horaMontaje: (proyecto as unknown as Record<string, unknown>).horaMontaje as string | null ?? null,
     horaDesmontaje: (proyecto as unknown as Record<string, unknown>).horaDesmontaje as string | null ?? null,
+    direccionVenue: (proyecto as unknown as Record<string, unknown>).direccionVenue as string | null ?? null,
+    linkMaps: (proyecto as unknown as Record<string, unknown>).linkMaps as string | null ?? null,
+    indicacionesAcceso: (proyecto as unknown as Record<string, unknown>).indicacionesAcceso as string | null ?? null,
+    horaSalidaBodega: (proyecto as unknown as Record<string, unknown>).horaSalidaBodega as string | null ?? null,
+    puntoSalidaBodega: (proyecto as unknown as Record<string, unknown>).puntoSalidaBodega as string | null ?? null,
+    choferNombre: (proyecto as unknown as Record<string, unknown>).choferNombre as string | null ?? null,
+    contactosEmergencia: (proyecto as unknown as Record<string, unknown>).contactosEmergencia as string | null ?? null,
     encargadoCliente: (proyecto as unknown as Record<string, unknown>).encargadoCliente as string | null ?? null,
     encargadoClienteContacto: (proyecto as unknown as Record<string, unknown>).encargadoClienteContacto as string | null ?? null,
     encargadoLugar: (proyecto as unknown as Record<string, unknown>).encargadoLugar as string | null ?? null,
@@ -156,13 +162,15 @@ export async function GET(
 
   const filename = `RiderCarga-${(proyecto as unknown as Record<string, unknown>).numeroProyecto ?? id}.pdf`
 
+  const isPreview = req.nextUrl?.searchParams?.get("preview") === "1";
   return new NextResponse(pdfBuffer, {
     status: 200,
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Disposition': `${isPreview ? 'inline' : 'attachment'}; filename="${filename}"`,
       'Content-Length': String(pdfBuffer.length),
       'Cache-Control': 'no-store',
     },
   })
 }
+

@@ -5,7 +5,7 @@ import ReactPDF, { Document } from "@react-pdf/renderer";
 import { ReportePostEventoPDF } from "@/components/ReportePostEventoPDF";
 import React from "react";
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
@@ -58,11 +58,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }
   const pdfBuffer = Buffer.concat(chunks);
 
+  const isPreview = req.nextUrl?.searchParams?.get("preview") === "1";
   return new NextResponse(pdfBuffer, {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="ReportePostEvento-${proyecto.numeroProyecto}.pdf"`,
+"Content-Disposition": `${isPreview ? 'inline' : 'attachment'}; filename="ReportePostEvento-${proyecto.numeroProyecto}.pdf"`,
       "Content-Length": String(pdfBuffer.length),
     },
   });

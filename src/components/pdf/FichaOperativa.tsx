@@ -113,6 +113,11 @@ export interface FichaOperativaData {
   encargadoNombre: string | null;
   encargadoCliente: string | null; encargadoClienteContacto: string | null;
   encargadoLugar: string | null; encargadoLugarContacto: string | null;
+  contactosEmergencia: string | null;
+  llamadoBodega: string | null;  // ISO datetime string
+  choferNombre: string | null;
+  aplicaCatering: boolean;
+  proveedorCatering: string | null;
   cliente: { nombre: string; empresa: string | null; telefono: string | null };
   equipos: EquipoFlat[];
   equiposRiderExtra: EquipoRiderExtra[];
@@ -159,9 +164,18 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
   const programa = data.docsTecnicos?.programaEvento?.filter(r => r.actividad || r.hora) ?? [];
   const coordProv = data.docsTecnicos?.coordinacionProveedores?.filter(r => r.proveedor) ?? [];
 
+  // Extract time from llamadoBodega ISO datetime
+  const llamadoBodegaHora = data.llamadoBodega
+    ? new Date(data.llamadoBodega).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })
+    : null;
+  const llamadoBodegaFecha = data.llamadoBodega
+    ? fmtFechaCorta(data.llamadoBodega)
+    : null;
+
   // Horarios del día — solo filas con hora
   type HoraItem = { label: string; hora: string; ref: string; fecha: string };
   const horariosDia: HoraItem[] = [
+    { label: "Llamado en bodega", hora: llamadoBodegaHora ?? "", ref: data.puntoSalidaBodega ?? "", fecha: llamadoBodegaFecha ?? fmtFechaCorta(data.fechaMontaje) ?? fmtFechaCorta(data.fechaEvento) },
     { label: "Salida desde bodega", hora: horaSalida, ref: data.puntoSalidaBodega ?? "", fecha: fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento) },
     { label: "Llegada / inicio de montaje", hora: horaMontaje, ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento) },
     { label: "Inicio del evento", hora: horaIni, ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(data.fechaEvento) },
@@ -276,6 +290,12 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
               {data.encargadoLugarContacto && <KV label="Contacto del venue" value={data.encargadoLugarContacto} />}
               {data.encargadoNombre && <KV label="Coordinador Mainstage" value={data.encargadoNombre} bold />}
             </View>
+            {data.contactosEmergencia && (
+              <View style={[base.textBox, { marginTop: 6 }]}>
+                <Text style={{ fontSize: 6.5, fontFamily: 'Helvetica-Bold', color: C.grisClaro, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 3 }}>Contactos de emergencia</Text>
+                <Text style={base.textBoxContent}>{data.contactosEmergencia}</Text>
+              </View>
+            )}
           </View>
 
           {/* 3. VENUE Y LOGÍSTICA */}
@@ -296,6 +316,8 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                 {fechaMontajeStr && <KV label="Fecha de montaje" value={fechaMontajeStr} />}
                 {horaMontaje && <KV label="Inicio de montaje" value={horaMontaje} bold />}
                 {data.duracionMontajeHrs && <KV label="Duración montaje" value={`${data.duracionMontajeHrs} hrs`} />}
+                {data.choferNombre && <KV label="Chofer asignado" value={data.choferNombre} bold />}
+                {data.aplicaCatering && <KV label="Catering" value={data.proveedorCatering ? `Sí — ${data.proveedorCatering}` : 'Incluido'} />}
               </View>
               {data.indicacionesAcceso && (
                 <View style={[base.textBox, { marginTop: 6 }]}>
