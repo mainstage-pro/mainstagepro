@@ -66,6 +66,25 @@ const s = StyleSheet.create({
     backgroundColor: C.doradoClaro, paddingHorizontal: 4, paddingVertical: 1.5,
     borderRadius: 2, marginLeft: 4,
   },
+  // ── Rider-style equipment cards (misma estructura que RiderPDF.tsx, sin imágenes) ──
+  riderCatHead:    { backgroundColor: "#111111", paddingHorizontal: 10, paddingVertical: 4 },
+  riderCatTxt:     { fontSize: 7, color: "#ffffff", textTransform: "uppercase", letterSpacing: 1.5, fontFamily: "Helvetica-Bold" },
+  riderEquipCard:  { backgroundColor: "#ffffff", borderWidth: 1, borderColor: "#e0e0e0", borderRadius: 5, marginBottom: 6, overflow: "hidden" },
+  riderEquipHead:  { flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 7 },
+  riderCheckBox:   { width: 12, height: 12, borderWidth: 1.5, borderColor: "#555555", borderRadius: 2, marginRight: 8, flexShrink: 0 },
+  riderEquipName:  { fontSize: 10, color: "#111111", flex: 1, fontFamily: "Helvetica-Bold" },
+  riderEquipMeta:  { fontSize: 8, color: "#888888" },
+  riderBadge:      { backgroundColor: "#f8f8f8", borderWidth: 1, borderColor: "#9A7A3F", borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
+  riderBadgeTxt:   { fontSize: 8, color: "#9A7A3F", fontFamily: "Helvetica-Bold" },
+  riderExtBadge:   { backgroundColor: "#b4530920", borderWidth: 0.5, borderColor: "#b45309", borderRadius: 3, paddingHorizontal: 5, paddingVertical: 2, marginLeft: 4 },
+  riderExtBadgeTxt:{ fontSize: 6.5, color: "#b45309", fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.5 },
+  riderAccGrid:    { flexDirection: "row", flexWrap: "wrap", padding: 8, gap: 6, backgroundColor: "#f8f8f8" },
+  riderAccItem:    { flexDirection: "row", alignItems: "center", width: "48%", backgroundColor: "#f0f0f0", borderRadius: 3, padding: 5 },
+  riderAccCheck:   { width: 10, height: 10, borderWidth: 1, borderColor: "#555555", borderRadius: 2, marginRight: 5 },
+  riderAccTxt:     { fontSize: 8, color: "#555555", flex: 1 },
+  riderAccQty:     { fontSize: 7, color: "#9A7A3F", marginLeft: 4 },
+  riderNotaRow:    { paddingHorizontal: 10, paddingVertical: 5, backgroundColor: "#f8f8f8", borderTopWidth: 0.5, borderTopColor: "#e0e0e0" },
+  riderNotaTxt:    { fontSize: 8, color: "#555555", fontStyle: "italic" },
 });
 
 function SecNum({ num, titulo }: { num: string; titulo: string }) {
@@ -149,9 +168,8 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
   const horaMontaje = fmtHora(data.horaMontaje || data.horaInicioMontaje);
   const horaSalida = fmtHora(data.horaSalidaBodega);
 
-  const propios = data.equipos.filter(e => e.tipo === "PROPIO");
-  const externos = data.equipos.filter(e => e.tipo === "EXTERNO");
-  const gruposPropios = agruparPorCategoria(propios);
+  // Agrupa TODOS los equipos (propios + externos) por categoría — igual que RiderPDF
+  const todasCategorias = agruparPorCategoria(data.equipos);
 
   const cronConDatos = data.cronograma.filter(r => r.actividad?.trim());
   const transConDatos = data.transportes.filter(t => t.horaSalida || t.choferNombre || t.vehiculoNombre);
@@ -377,75 +395,86 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
             </View>
           )}
 
-          {/* 6. RIDER DE CARGA — EQUIPOS PROPIOS (checklist con accesorios) */}
-          {propios.length > 0 && (
+          {/* 6. EQUIPOS — estructura de cards idéntica a Rider de Carga (sin imágenes) */}
+          {data.equipos.length > 0 && (
             <View style={base.section}>
-              <SecNum num={sec("rider")} titulo="Rider de Carga — Equipos Propios" />
-              {Array.from(gruposPropios.entries()).map(([cat, items]) => (
-                <View key={cat} style={{ marginBottom: 8 }}>
-                  <Text style={[base.catTxt, { marginBottom: 4 }]}>{cat}</Text>
-                  {items.map((e, i) => (
-                    <View key={i} wrap={false}>
-                      <View style={base.checkRow}>
-                        <View style={base.checkBox} />
-                        <Text style={base.checkTxt}>
-                          {e.cantidad}x{" "}
-                          {[e.marca, e.modelo].filter(Boolean).join(" ") || e.descripcion}
-                          {(e.marca || e.modelo) && e.descripcion
-                            ? <Text style={base.checkSub}>{" — "}{e.descripcion}</Text>
-                            : null}
-                        </Text>
-                      </View>
-                      {/* Accesorios del equipo */}
-                      {e.accesorios.filter(a => a.nombre).map((a, j) => (
-                        <View key={j} style={s.accRow}>
-                          <View style={s.accBox} />
-                          <Text style={s.accTxt}>{a.cantidad}x {a.nombre}{a.categoria ? ` (${a.categoria})` : ""}</Text>
+              <SecNum num={sec("rider")} titulo="Rider de Carga — Equipos" />
+              {Array.from(todasCategorias.entries()).map(([catNombre, items]) => (
+                <View key={catNombre} style={{ marginBottom: 10 }}>
+                  {/* Header de categoría negro — igual que RiderPDF */}
+                  <View style={s.riderCatHead} wrap={false}>
+                    <Text style={s.riderCatTxt}>{catNombre}</Text>
+                  </View>
+
+                  {items.map((e, idx) => {
+                    const displayName = [e.marca, e.modelo].filter(Boolean).join(" ") || e.descripcion;
+                    const showDesc = displayName !== e.descripcion && Boolean(e.descripcion);
+                    const accs = e.accesorios.filter(a => a.nombre);
+                    return (
+                      <View key={idx} style={s.riderEquipCard} wrap={false}>
+                        {/* Header del equipo */}
+                        <View style={[
+                          s.riderEquipHead,
+                          accs.length > 0 ? { borderBottomWidth: 1, borderBottomColor: "#e0e0e0" } : {},
+                        ]}>
+                          <View style={s.riderCheckBox} />
+                          <Text style={s.riderEquipName}>{displayName}</Text>
+                          {showDesc && (
+                            <Text style={[s.riderEquipMeta, { flex: 1, marginRight: 8 }]}>{e.descripcion}</Text>
+                          )}
+                          <View style={s.riderBadge}>
+                            <Text style={s.riderBadgeTxt}>×{e.cantidad}</Text>
+                          </View>
+                          {/* Badge ámbar para equipos externos — igual que RiderPDF */}
+                          {e.tipo === "EXTERNO" && (
+                            <View style={s.riderExtBadge}>
+                              <Text style={s.riderExtBadgeTxt}>Externo</Text>
+                            </View>
+                          )}
                         </View>
-                      ))}
-                    </View>
-                  ))}
+
+                        {/* Accesorios en grid de 2 columnas */}
+                        {accs.length > 0 && (
+                          <View style={s.riderAccGrid}>
+                            {accs.map((a, j) => (
+                              <View key={j} style={s.riderAccItem}>
+                                <View style={s.riderAccCheck} />
+                                <Text style={s.riderAccTxt}>
+                                  {a.nombre}{a.categoria ? ` (${a.categoria})` : ""}
+                                </Text>
+                                {a.cantidad > 1 && (
+                                  <Text style={s.riderAccQty}>×{a.cantidad}</Text>
+                                )}
+                              </View>
+                            ))}
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })}
                 </View>
               ))}
             </View>
           )}
 
-          {/* 7. EQUIPO EXTERNO / SUBRENTAS */}
-          {externos.length > 0 && (
-            <View style={base.section}>
-              <SecNum num={sec("externo")} titulo="Equipo Externo / Subrentas" />
-              <View style={base.table}>
-                <View style={base.tableHd}>
-                  <Text style={[base.thTxt, { width: 36 }]}>Cant.</Text>
-                  <Text style={[base.thTxt, { flex: 1 }]}>Equipo</Text>
-                  <Text style={[base.thTxt, { flex: 1 }]}>Proveedor</Text>
-                  <Text style={[base.thTxt, { width: 60 }]}>Estado</Text>
-                </View>
-                {externos.map((e, i) => (
-                  <View key={i} style={i < externos.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
-                    <Text style={[base.tdTxt, { width: 36 }]}>{e.cantidad}</Text>
-                    <Text style={[base.tdTxt, { flex: 1 }]}>{e.descripcion}</Text>
-                    <Text style={[base.tdMuted, { flex: 1 }]}>{e.proveedor ?? "—"}</Text>
-                    <Text style={e.confirmado ? base.chipOk : base.chipPend}>
-                      {e.confirmado ? "Confirmado" : "Pendiente"}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
-
-          {/* 8. EQUIPOS RIDER EXTRA (fuera de cotización) */}
+          {/* 7. EQUIPOS RIDER EXTRA — también en cards estilo rider */}
           {data.equiposRiderExtra.length > 0 && (
             <View style={base.section}>
               <SecNum num={sec("extra")} titulo="Equipo Adicional (fuera de cotización)" />
               {data.equiposRiderExtra.map((e, i) => (
-                <View key={i} style={base.checkRow} wrap={false}>
-                  <View style={base.checkBox} />
-                  <Text style={base.checkTxt}>
-                    {e.cantidad}x {e.descripcion}
-                    {e.notas ? <Text style={base.checkSub}> · {e.notas}</Text> : null}
-                  </Text>
+                <View key={i} style={[s.riderEquipCard, { marginBottom: 6 }]} wrap={false}>
+                  <View style={[s.riderEquipHead, e.notas ? { borderBottomWidth: 1, borderBottomColor: "#e0e0e0" } : {}]}>
+                    <View style={s.riderCheckBox} />
+                    <Text style={s.riderEquipName}>{e.descripcion}</Text>
+                    <View style={s.riderBadge}>
+                      <Text style={s.riderBadgeTxt}>×{e.cantidad}</Text>
+                    </View>
+                  </View>
+                  {e.notas && (
+                    <View style={s.riderNotaRow}>
+                      <Text style={s.riderNotaTxt}>{e.notas}</Text>
+                    </View>
+                  )}
                 </View>
               ))}
             </View>
