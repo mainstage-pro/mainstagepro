@@ -15,6 +15,7 @@ type RiderAccesorioData = {
 
 type ProyectoEquipoData = {
   id: string
+  tipo: string  // 'PROPIO' | 'EXTERNO'
   cantidad: number
   notas: string | null
   equipo: {
@@ -281,7 +282,7 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
             {equipos.map(eq => (
               <View key={eq.id} style={s.equipCard} wrap={false}>
                 {/* Equipo header */}
-                <View style={s.equipHead}>
+                  <View style={s.equipHead}>
                   <View style={s.checkBox} />
                   {eq.equipo.imagenUrl && (
                     <Image src={eq.equipo.imagenUrl} style={{ width: 36, height: 36, marginRight: 6, objectFit: 'contain' }} />
@@ -295,6 +296,11 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
                   <View style={s.badge}>
                     <Text style={s.badgeTxt}>×{eq.cantidad}</Text>
                   </View>
+                  {eq.tipo === 'EXTERNO' && (
+                    <View style={{ backgroundColor: '#b4530920', borderWidth: 0.5, borderColor: '#b45309', borderRadius: 3, paddingHorizontal: 5, paddingVertical: 2, marginLeft: 4 }}>
+                      <Text style={{ fontSize: 6.5, color: '#b45309', fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', letterSpacing: 0.5 }}>Externo</Text>
+                    </View>
+                  )}
                 </View>
 
                 {/* Notas del equipo */}
@@ -323,10 +329,10 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
           </View>
         ))}
 
-        {/* ── Equipos adicionales / Terceros (de cotización) ── */}
+        {/* ── Equipos adicionales (de cotización — sin inventario propio) ── */}
         {data.cotizacionLineas.length > 0 && (
           <>
-            <SectionHeader title="Equipos adicionales / Terceros" />
+            <SectionHeader title="Equipos adicionales" />
             <View style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 5, overflow: 'hidden', marginBottom: 8 }}>
               {data.cotizacionLineas.map((l, i) => (
                 <View

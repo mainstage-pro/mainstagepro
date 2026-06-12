@@ -42,7 +42,7 @@ export async function GET(req: NextRequest,
         select: {
           numeroCotizacion: true,
           lineas: {
-            select: { id: true, tipo: true, descripcion: true, marca: true, cantidad: true, notas: true },
+            select: { id: true, tipo: true, descripcion: true, marca: true, cantidad: true, notas: true, equipoId: true },
             orderBy: { id: 'asc' },
           },
         },
@@ -125,6 +125,7 @@ export async function GET(req: NextRequest,
       : null,
     equipos: proyecto.equipos.map(eq => ({
       id: eq.id,
+      tipo: (eq as unknown as Record<string, unknown>).tipo as string ?? 'PROPIO',
       cantidad: eq.cantidad,
       notas: (eq as unknown as Record<string, unknown>).notas as string | null ?? null,
       equipo: {
@@ -142,11 +143,65 @@ export async function GET(req: NextRequest,
         completado: a.completado,
       })),
     })),
-    equiposRiderExtra,
-    cotizacionLineas: (proyecto.cotizacion?.lineas ?? []).filter(
-      (l: { tipo: string; descripcion: string }) =>
-        ['EQUIPO_EXTERNO', 'OTRO'].includes(l.tipo) && !!l.descripcion
-    ) as { id: string; tipo: string; descripcion: string; marca: string | null; cantidad: number; notas: string | null }[],
+    equiposRiderExtra: (() => {
+      // Dedup equiposRiderExtra against proyecto.equipos (by normalized description)
+      const equiposKeys = new Set(
+        proyecto.equipos.flatMap(eq => {
+          const keys: string[] = []
+          const desc = eq.equipo.descripcion.toLowerCase().replace(/\s+/g, ' ').trim()
+          const marca = (eq.equipo.marca ?? '').toLowerCase().trim()
+          const modelo = ((eq.equipo as unknown as Record<string, unknown>).modelo as string | null ?? '').toLowerCase().trim()
+          if (desc) keys.push(desc)
+          if (marca && modelo) keys.push(`${marca} ${modelo}`)
+          if (modelo) keys.push(modelo)
+          return keys
+        })
+      )
+      const seenExtra = new Set<string>()
+      return equiposRiderExtra.filter(ex => {
+        const key = ex.descripcion.toLowerCase().replace(/\s+/g, ' ').trim()
+        // Skip if already in proyecto.equipos
+        if ([...equiposKeys].some(k => k === key || k.includes(key) || key.includes(k))) return false
+        // Skip if duplicate within equiposRiderExtra
+        if (seenExtra.has(key)) return false
+        seenExtra.add(key)
+        return true
+      })
+    })(),
+    cotizacionLineas: (() => {
+      // Build a set of equipoIds already represented in proyecto.equipos
+      const equipoIdsEnProyecto = new Set(
+        proyecto.equipos.map(eq => eq.equipoId)
+      )
+      // Build a set of normalized descriptions from proyecto.equipos for fallback matching
+      const equiposDescNorm = new Set(
+        proyecto.equipos.flatMap(eq => {
+          const keys: string[] = []
+          const desc = eq.equipo.descripcion.toLowerCase().replace(/\s+/g, ' ').trim()
+          const marca = (eq.equipo.marca ?? '').toLowerCase().trim()
+          const modelo = ((eq.equipo as unknown as Record<string, unknown>).modelo as string | null ?? '').toLowerCase().trim()
+          if (desc) keys.push(desc)
+          if (marca && modelo) keys.push(`${marca} ${modelo}`)
+          if (modelo) keys.push(modelo)
+          return keys
+        })
+      )
+      const seenLineas = new Set<string>()
+      type CotLinea = { id: string; tipo: string; descripcion: string; marca: string | null; cantidad: number; notas: string | null; equipoId?: string | null }
+      return (proyecto.cotizacion?.lineas ?? [] as CotLinea[])
+        .filter((l: CotLinea) => ['EQUIPO_EXTERNO', 'OTRO'].includes(l.tipo) && !!l.descripcion)
+        .filter((l: CotLinea) => {
+          // Skip if this line's equipo is already a ProyectoEquipo
+          if (l.equipoId && equipoIdsEnProyecto.has(l.equipoId)) return false
+          // Fallback: skip if description matches any equipo already shown
+          const descNorm = l.descripcion.toLowerCase().replace(/\s+/g, ' ').trim()
+          if ([...equiposDescNorm].some(k => k === descNorm || k.includes(descNorm) || descNorm.includes(k))) return false
+          // Dedup within cotizacionLineas itself
+          if (seenLineas.has(descNorm)) return false
+          seenLineas.add(descNorm)
+          return true
+        }) as { id: string; tipo: string; descripcion: string; marca: string | null; cantidad: number; notas: string | null }[]
+    })(),
     logoSrc,
   }
 
