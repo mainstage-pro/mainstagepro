@@ -89,6 +89,9 @@ export async function GET(
     numeroProyecto: (proyecto as unknown as Record<string, unknown>).numeroProyecto as string ?? '',
     nombre: proyecto.nombre,
     fechaEvento: (proyecto.fechaEvento as Date | null)?.toISOString() ?? null,
+    fechaMontaje: (proyecto as unknown as Record<string, unknown>).fechaMontaje instanceof Date
+      ? ((proyecto as unknown as Record<string, unknown>).fechaMontaje as Date).toISOString()
+      : null,
     lugarEvento: (proyecto as unknown as Record<string, unknown>).lugarEvento as string | null ?? null,
     horaInicio:  (proyecto as unknown as Record<string, unknown>).horaInicio as string | null ?? null,
     horaFin:     (proyecto as unknown as Record<string, unknown>).horaFin as string | null ?? null,

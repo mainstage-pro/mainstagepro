@@ -174,11 +174,13 @@ export default function TareasHoyWidget() {
 
   useEffect(() => {
     fetch("/api/dashboard/tareas-areas")
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : null)
       .then(d => {
+        if (!d) return;
         if (d.areas)    setAreas(d.areas);
         if (d.usuarios) setUsuarios(d.usuarios);
-      });
+      })
+      .catch(() => setAreas([]));
   }, []);
 
   if (!areas) return <Skeleton />;

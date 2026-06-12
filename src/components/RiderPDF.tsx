@@ -40,6 +40,7 @@ export type RiderPDFData = {
   numeroProyecto: string
   nombre: string
   fechaEvento: string | null
+  fechaMontaje: string | null
   lugarEvento: string | null
   horaInicio: string | null
   horaFin: string | null
@@ -124,11 +125,32 @@ function fmtFecha(iso: string | null): string {
   } catch { return iso }
 }
 
+function fmtFechaCorta(iso: string | null): string {
+  if (!iso) return ''
+  try {
+    return new Date(iso).toLocaleDateString('es-MX', {
+      timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short',
+    })
+  } catch { return iso }
+}
+
 function GridCell({ label, value }: { label: string; value: string }) {
   return (
     <View style={s.gridCell}>
       <Text style={s.gridLabel}>{label}</Text>
       <Text style={s.gridValue}>{value || '—'}</Text>
+    </View>
+  )
+}
+
+function DateTimeCell({ label, fecha, hora }: { label: string; fecha: string | null; hora: string | null }) {
+  return (
+    <View style={s.gridCell}>
+      <Text style={s.gridLabel}>{label}</Text>
+      {fecha
+        ? <Text style={{ fontSize: 7.5, color: INK5, marginBottom: 1 }}>{fecha}</Text>
+        : <View style={{ width: 80, borderBottomWidth: 0.5, borderBottomColor: '#aaa', height: 9, marginBottom: 2 }} />}
+      <Text style={[s.gridValue, { fontFamily: 'Helvetica-Bold' }]}>{hora || '—'}</Text>
     </View>
   )
 }
@@ -183,8 +205,8 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
         <View style={s.gridRow}>
           <GridCell label="Cliente" value={data.cliente?.empresa ?? data.cliente?.nombre ?? '—'} />
           <GridCell label="Venue" value={data.lugarEvento ?? '—'} />
-          {data.horaInicio && <GridCell label="Hora inicio" value={data.horaInicio} />}
-          {data.horaMontaje && <GridCell label="Hora montaje" value={data.horaMontaje} />}
+          <DateTimeCell label="Fecha y hora de montaje" fecha={fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento)} hora={data.horaMontaje} />
+          <DateTimeCell label="Fecha y hora inicio evento" fecha={fmtFechaCorta(data.fechaEvento)} hora={data.horaInicio} />
         </View>
 
         {(data.encargadoCliente || data.encargadoLugar) && (

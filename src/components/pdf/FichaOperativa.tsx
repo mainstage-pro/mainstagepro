@@ -7,7 +7,7 @@
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import {
-  C, base, fmtFecha, fmtHora, duracion, nowStr,
+  C, base, fmtFecha, fmtFechaCorta, fmtHora, duracion, nowStr,
   agruparPorCategoria, EquipoFlat, CronoRow, TransporteSlot,
   DocsData, EquipoRiderExtra, ProveedorRenta, MAPS,
 } from "./PdfShared";
@@ -40,7 +40,9 @@ const s = StyleSheet.create({
   },
   horaRowLast: { flexDirection: "row", alignItems: "center", paddingVertical: 7, paddingHorizontal: 10 },
   horaIcon: { width: 18, fontSize: 11, marginRight: 8, flexShrink: 0 },
-  horaLabel: { width: 148, fontSize: 8, color: C.grisMedio },
+  horaLabel: { width: 118, fontSize: 8, color: C.grisMedio },
+  horaFecha: { width: 72, fontSize: 7.5, color: C.grisClaro },
+  horaFechaBlank: { width: 72, borderBottomWidth: 0.5, borderBottomColor: "#bbb", borderBottomStyle: "solid", height: 10 },
   horaHora: { width: 55, fontSize: 13, fontFamily: "Helvetica-Bold", color: C.negro },
   horaRef: { flex: 1, fontSize: 7.5, color: C.grisMedio },
   // Accesorio dentro de rider
@@ -158,12 +160,12 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
   const coordProv = data.docsTecnicos?.coordinacionProveedores?.filter(r => r.proveedor) ?? [];
 
   // Horarios del día — solo filas con hora
-  type HoraItem = { icon: string; label: string; hora: string; ref: string };
+  type HoraItem = { icon: string; label: string; hora: string; ref: string; fecha: string };
   const horariosDia: HoraItem[] = [
-    { icon: "🚗", label: "Salida desde bodega", hora: horaSalida, ref: data.puntoSalidaBodega ?? "" },
-    { icon: "🔧", label: "Llegada / inicio de montaje", hora: horaMontaje, ref: data.lugarEvento ?? "" },
-    { icon: "🎤", label: "Inicio del evento", hora: horaIni, ref: data.lugarEvento ?? "" },
-    { icon: "📦", label: "Fin / inicio de desmontaje", hora: horaFin, ref: "" },
+    { icon: "🚗", label: "Salida desde bodega", hora: horaSalida, ref: data.puntoSalidaBodega ?? "", fecha: fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento) },
+    { icon: "🔧", label: "Llegada / inicio de montaje", hora: horaMontaje, ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento) },
+    { icon: "🎤", label: "Inicio del evento", hora: horaIni, ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(data.fechaEvento) },
+    { icon: "📦", label: "Fin / inicio de desmontaje", hora: horaFin, ref: "", fecha: fmtFechaCorta(data.fechaEvento) },
   ].filter(h => h.hora);
 
   let seccion = 0;
@@ -245,6 +247,9 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                   <View key={i} style={i < horariosDia.length - 1 ? s.horaRow : s.horaRowLast}>
                     <Text style={s.horaIcon}>{h.icon}</Text>
                     <Text style={s.horaLabel}>{h.label}</Text>
+                    {h.fecha
+                      ? <Text style={s.horaFecha}>{h.fecha}</Text>
+                      : <View style={s.horaFechaBlank} />}
                     <Text style={s.horaHora}>{h.hora}</Text>
                     {h.ref ? <Text style={s.horaRef}>{h.ref}</Text> : null}
                   </View>
@@ -361,8 +366,11 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                       <View style={base.checkRow}>
                         <View style={base.checkBox} />
                         <Text style={base.checkTxt}>
-                          {e.cantidad}x {e.descripcion}
-                          {e.marca ? <Text style={base.checkSub}> — {e.marca}</Text> : null}
+                          {e.cantidad}x{" "}
+                          {[e.marca, e.modelo].filter(Boolean).join(" ") || e.descripcion}
+                          {(e.marca || e.modelo) && e.descripcion
+                            ? <Text style={base.checkSub}>{" — "}{e.descripcion}</Text>
+                            : null}
                         </Text>
                       </View>
                       {/* Accesorios del equipo */}

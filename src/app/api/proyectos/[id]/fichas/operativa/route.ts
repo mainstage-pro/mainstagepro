@@ -32,7 +32,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       },
       equipos: {
         include: {
-          equipo: { select: { descripcion: true, marca: true, categoria: { select: { nombre: true } } } },
+          equipo: { select: { descripcion: true, marca: true, modelo: true, categoria: { select: { nombre: true } } } },
           proveedor: { select: { nombre: true, telefono: true } },
           riderAccesorios: { orderBy: { orden: "asc" } },
         },
@@ -92,6 +92,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const equipos: EquipoFlat[] = (proyecto.equipos ?? []).map((e: any) => ({
     descripcion: e.equipo?.descripcion ?? "",
     marca: e.equipo?.marca ?? null,
+    modelo: e.equipo?.modelo ?? null,
     categoria: e.equipo?.categoria?.nombre ?? "General",
     cantidad: e.cantidad,
     tipo: e.tipo,
