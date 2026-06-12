@@ -4138,432 +4138,254 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 Sin personal asignado aún
               </div>
             ) : (() => {
-              const PART_LABELS: Record<string, string> = {
-                OPERACION: "Operadores del evento",
-                MONTAJE: "Técnicos de montaje",
-                DESMONTAJE: "Técnicos de desmontaje",
-                TRANSPORTE: "Transportes",
-                OTRO: "Otros",
+              // ── Badges por tipo de participación ─────────────────────────────
+              const PART_BADGE: Record<string, { label: string; cls: string }> = {
+                OPERACION:  { label: "Operación",  cls: "bg-blue-900/30 text-blue-300 border-blue-800/40" },
+                MONTAJE:    { label: "Montaje",    cls: "bg-amber-900/30 text-amber-300 border-amber-800/40" },
+                DESMONTAJE: { label: "Desmontaje", cls: "bg-orange-900/30 text-orange-300 border-orange-800/40" },
+                TRANSPORTE: { label: "Transporte", cls: "bg-purple-900/30 text-purple-300 border-purple-800/40" },
+                OTRO:       { label: "Otro",       cls: "bg-gray-800/60 text-gray-400 border-gray-700/40" },
               };
 
-              // Fechas base del proyecto (yyyy-mm-dd)
-              const fechaEvento = proyecto.fechaEvento ? proyecto.fechaEvento.substring(0, 10) : null;
+              // ── Fechas base del proyecto (yyyy-mm-dd) ─────────────────────────
+              const fechaEvento  = proyecto.fechaEvento  ? proyecto.fechaEvento.substring(0, 10)  : null;
               const fechaMontaje = proyecto.fechaMontaje ? proyecto.fechaMontaje.substring(0, 10) : null;
 
-              // Derivar fecha efectiva para cada técnico según su participación
+              // Fecha efectiva: MONTAJE→fechaMontaje, resto→fechaEvento
               // fechaJornada manual tiene prioridad si está seteado
-              const fechaEfectiva = (p: Personal): string | null => {
-                if (p.fechaJornada) return p.fechaJornada;
-                const part = p.participacion ?? "OPERACION";
-                if (part === "MONTAJE" && fechaMontaje) return fechaMontaje;
-                if (part === "MONTAJE" && fechaEvento) return fechaEvento;
-                return fechaEvento;
-              };
+              const fechaEf = (p: Personal): string =>
+                p.fechaJornada
+                  ? p.fechaJornada
+                  : (p.participacion === "MONTAJE" && fechaMontaje)
+                    ? fechaMontaje
+                    : (fechaEvento ?? "__sin_fecha__");
 
-              // ¿Hay al menos dos fechas distintas entre los técnicos?
-              const fechasUsadas = [...new Set(proyecto.personal.map(p => fechaEfectiva(p) ?? "__sin_fecha__"))];
-              const tieneMultiplesFechas = fechasUsadas.length > 1 ||
-                (fechasUsadas.length === 1 && fechasUsadas[0] !== "__sin_fecha__");
+              // ── Agrupar por fecha ─────────────────────────────────────────────
+              const grupoMap = new Map<string, Personal[]>();
+              for (const p of proyecto.personal) {
+                const key = fechaEf(p);
+                if (!grupoMap.has(key)) grupoMap.set(key, []);
+                grupoMap.get(key)!.push(p);
+              }
+              const fechasOrdenadas = [...grupoMap.keys()].sort((a, b) => {
+                if (a === "__sin_fecha__") return 1;
+                if (b === "__sin_fecha__") return -1;
+                return a.localeCompare(b);
+              });
 
-              const fmtJornadaDate = (yyyymmdd: string) => {
+              const fmtFecha = (s: string) => {
                 try {
-                  return new Date(yyyymmdd + "T12:00:00Z").toLocaleDateString("es-MX", {
+                  return new Date(s + "T12:00:00Z").toLocaleDateString("es-MX", {
                     timeZone: "UTC", weekday: "long", day: "numeric", month: "long",
                   });
-                } catch { return yyyymmdd; }
+                } catch { return s; }
               };
-              const renderSubGrupo = (tipo: string, grupo: typeof proyecto.personal, fechaSlot: string | null) => {
-                if (grupo.length === 0) return null;
-                const sinAsignar = grupo.filter(p => !p.tecnico).length;
+
+              // ── Render de tarjeta de técnico ──────────────────────────────────
+              const renderCard = (p: Personal) => {
+                const badge = PART_BADGE[p.participacion ?? "OPERACION"] ?? PART_BADGE.OPERACION;
                 return (
-                  <div key={`${fechaSlot ?? "__"}-${tipo}`} className="border-t border-[#1a1a1a]">
-                    <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs text-white font-semibold uppercase tracking-wider">{PART_LABELS[tipo]}</p>
-                        <span className="text-xs text-gray-600">{grupo.length}</span>
-                        {sinAsignar > 0 && <span className="text-xs text-gray-500">{sinAsignar} pendiente{sinAsignar !== 1 ? "s" : ""}</span>}
+                  <div key={p.id} className={`p-4 border-b border-[#0d0d0d] last:border-0 border-l-2 ${p.confirmado ? "border-l-green-700/60" : "border-l-[#1e1e1e]"}`}>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex-1 min-w-0">
+                        {!p.tecnico ? (
+                          asignandoId === p.id ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Combobox
+                                  value=""
+                                  placeholder="Buscar técnico..."
+                                  onChange={v => {
+                                    if (v === "__nuevo__") { setCrearParaSlotId(p.id); }
+                                    else if (v) { asignarTecnico(p.id, v); }
+                                  }}
+                                  options={[
+                                    { value: "__nuevo__", label: "＋ Registrar nuevo técnico" },
+                                    ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"} · ${t.nivel}` })),
+                                  ]}
+                                  className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-sm focus:outline-none"
+                                />
+                                <button onClick={() => { setAsignandoId(null); setCrearParaSlotId(null); setSelAsignar(""); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }}
+                                  className="text-gray-500 hover:text-white text-xs shrink-0">Cancelar</button>
+                              </div>
+                              {crearParaSlotId === p.id && (
+                                <div className="p-3 bg-[#0d0d0d] border border-[#333] rounded-lg space-y-2">
+                                  <p className="text-gray-300 text-xs font-semibold">Registrar nuevo técnico</p>
+                                  <input value={nuevoTecNombre} onChange={e => setNuevoTecNombre(e.target.value)} placeholder="Nombre completo *" autoFocus className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
+                                  <input value={nuevoTecCelular} onChange={e => setNuevoTecCelular(e.target.value)} placeholder="Celular (WhatsApp)" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
+                                  <div className="flex gap-2">
+                                    <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)} options={[{ value: "", label: "— Rol (opcional) —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]} className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                                    <Combobox value={nuevoTecNivel} onChange={v => setNuevoTecNivel(v)} options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                                  </div>
+                                  <div className="flex gap-2 pt-1">
+                                    <button onClick={crearTecnicoYAsignar} disabled={creandoTecnico || !nuevoTecNombre.trim()} className="flex-1 bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors">{creandoTecnico ? "Guardando..." : "Guardar y asignar"}</button>
+                                    <button onClick={() => { setCrearParaSlotId(null); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }} className="px-3 text-gray-500 hover:text-white text-xs transition-colors">Cancelar</button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-gray-500 text-sm">Pendiente de asignar</span>
+                              {p.nivel && <span className={`text-xs font-semibold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
+                              <span className={`px-1.5 py-0.5 rounded border text-[10px] font-medium ${badge.cls}`}>{badge.label}</span>
+                              <button onClick={() => { setAsignandoId(p.id); setSelAsignar(""); setCrearParaSlotId(null); }} className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-0.5 rounded transition-colors">Asignar</button>
+                            </div>
+                          )
+                        ) : (
+                          asignandoId === p.id ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Combobox
+                                  value={p.tecnico.id}
+                                  placeholder="Cambiar técnico..."
+                                  onChange={v => {
+                                    if (v === "__nuevo__") { setCrearParaSlotId(p.id); }
+                                    else if (v) { asignarTecnico(p.id, v); setAsignandoId(null); }
+                                  }}
+                                  options={[
+                                    { value: "__nuevo__", label: "＋ Registrar nuevo técnico" },
+                                    ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"} · ${t.nivel}` })),
+                                  ]}
+                                  className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-sm focus:outline-none"
+                                />
+                                <button onClick={() => { setAsignandoId(null); setCrearParaSlotId(null); }} className="text-gray-500 hover:text-white text-xs shrink-0">Cancelar</button>
+                              </div>
+                              {crearParaSlotId === p.id && (
+                                <div className="p-3 bg-[#0d0d0d] border border-[#333] rounded-lg space-y-2">
+                                  <p className="text-gray-300 text-xs font-semibold">Registrar nuevo técnico</p>
+                                  <input value={nuevoTecNombre} onChange={e => setNuevoTecNombre(e.target.value)} placeholder="Nombre completo *" autoFocus className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
+                                  <input value={nuevoTecCelular} onChange={e => setNuevoTecCelular(e.target.value)} placeholder="Celular (WhatsApp)" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
+                                  <div className="flex gap-2">
+                                    <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)} options={[{ value: "", label: "— Rol (opcional) —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]} className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                                    <Combobox value={nuevoTecNivel} onChange={v => setNuevoTecNivel(v)} options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]} className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                                  </div>
+                                  <div className="flex gap-2 pt-1">
+                                    <button onClick={crearTecnicoYAsignar} disabled={creandoTecnico || !nuevoTecNombre.trim()} className="flex-1 bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors">{creandoTecnico ? "Guardando..." : "Guardar y asignar"}</button>
+                                    <button onClick={() => { setCrearParaSlotId(null); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }} className="px-3 text-gray-500 hover:text-white text-xs transition-colors">Cancelar</button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-white text-sm font-medium">{p.tecnico.nombre}</p>
+                              {p.nivel && <span className={`text-xs font-semibold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
+                              <span className={`px-1.5 py-0.5 rounded border text-[10px] font-medium ${badge.cls}`}>{badge.label}</span>
+                            </div>
+                          )
+                        )}
+                        <p className="text-gray-500 text-xs mt-0.5">
+                          {p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "Sin rol"}
+                          {p.rolEnEvento ? ` · ${p.rolEnEvento}` : ""}
+                          {p.jornada ? ` · ${p.jornada}` : ""}
+                        </p>
+                        {p.responsabilidad && <p className="text-gray-400 text-xs mt-1 leading-relaxed">{p.responsabilidad}</p>}
                       </div>
-                      <div className="flex items-center gap-2">
-                        {grupo.some(p => !p.confirmado && p.tecnico) && (
-                          <button onClick={() => confirmarGrupo(grupo)}
-                            className="text-xs text-gray-500 hover:text-green-400 border border-[#2a2a2a] hover:border-green-800/60 px-2 py-0.5 rounded transition-colors">
-                            Confirmar todos
+                      <div className="flex items-center gap-1 shrink-0">
+                        {asignandoId !== p.id && (
+                          <button onClick={() => { abrirEditPersonal(p); setAsignandoId(null); }}
+                            className={`text-xs px-1.5 py-0.5 rounded border transition-colors ${editandoPersonalId === p.id ? "border-[#B3985B]/60 text-[#B3985B]" : "border-transparent text-gray-600 hover:text-gray-300 hover:border-[#333]"}`}>
+                            {editandoPersonalId === p.id ? "Editando" : "Editar"}
                           </button>
                         )}
-                        <button
-                          onClick={() => agregarSlotVacio(tipo, fechaSlot)}
-                          className="text-xs text-gray-500 hover:text-white border border-[#2a2a2a] hover:border-[#444] px-2 py-0.5 rounded transition-colors">
-                          + Agregar
-                        </button>
+                        <button onClick={async () => { const ok = await confirm({ message: "¿Eliminar este técnico del proyecto? Se borrarán también las cuentas por pagar pendientes vinculadas.", confirmText: "Eliminar", danger: true }); if (ok) eliminarPersonal(p.id); }} title="Eliminar slot" className="text-gray-600 hover:text-red-400 text-base leading-none transition-colors px-1">×</button>
                       </div>
                     </div>
-                    {grupo.map(p => (
-                      <div key={p.id} className={`p-4 border-b border-[#0d0d0d] last:border-0 border-l-2 ${p.confirmado ? "border-l-green-700/60" : "border-l-[#2a2a2a]"}`}>
-                        {/* Name / info row */}
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <div className="flex-1 min-w-0">
-                            {!p.tecnico ? (
-                              asignandoId === p.id ? (
-                                <div className="space-y-2">
-                                  <div className="flex items-center gap-2">
-                                    <Combobox
-                                      value=""
-                                      placeholder="Buscar técnico..."
-                                      onChange={v => {
-                                        if (v === "__nuevo__") { setCrearParaSlotId(p.id); }
-                                        else if (v) { asignarTecnico(p.id, v); }
-                                      }}
-                                      options={[
-                                        { value: "__nuevo__", label: "＋ Registrar nuevo técnico" },
-                                        ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"} · ${t.nivel}` })),
-                                      ]}
-                                      className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-sm focus:outline-none"
-                                    />
-                                    <button onClick={() => { setAsignandoId(null); setCrearParaSlotId(null); setSelAsignar(""); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }}
-                                      className="text-gray-500 hover:text-white text-xs shrink-0">Cancelar</button>
-                                  </div>
-                                  {crearParaSlotId === p.id && (
-                                    <div className="p-3 bg-[#0d0d0d] border border-[#333] rounded-lg space-y-2">
-                                      <p className="text-gray-300 text-xs font-semibold">Registrar nuevo técnico</p>
-                                      <input value={nuevoTecNombre} onChange={e => setNuevoTecNombre(e.target.value)}
-                                        placeholder="Nombre completo *" autoFocus
-                                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
-                                      <input value={nuevoTecCelular} onChange={e => setNuevoTecCelular(e.target.value)}
-                                        placeholder="Celular (WhatsApp)"
-                                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
-                                      <div className="flex gap-2">
-                                        <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)}
-                                          options={[{ value: "", label: "— Rol (opcional) —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
-                                          className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
-                                        <Combobox value={nuevoTecNivel} onChange={v => setNuevoTecNivel(v)}
-                                          options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
-                                          className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
-                                      </div>
-                                      <div className="flex gap-2 pt-1">
-                                        <button onClick={crearTecnicoYAsignar} disabled={creandoTecnico || !nuevoTecNombre.trim()}
-                                          className="flex-1 bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors">
-                                          {creandoTecnico ? "Guardando..." : "Guardar y asignar"}
-                                        </button>
-                                        <button onClick={() => { setCrearParaSlotId(null); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }}
-                                          className="px-3 text-gray-500 hover:text-white text-xs transition-colors">
-                                          Cancelar
-                                        </button>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-gray-500 text-sm">Pendiente de asignar</span>
-                                  {p.nivel && <span className={`text-xs font-semibold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
-                                  <button onClick={() => { setAsignandoId(p.id); setSelAsignar(""); setCrearParaSlotId(null); }}
-                                    className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-0.5 rounded transition-colors">
-                                    Asignar
-                                  </button>
-                                </div>
-                              )
-                            ) : (
-                              asignandoId === p.id ? (
-                                <div className="space-y-2">
-                                  <div className="flex items-center gap-2">
-                                    <Combobox
-                                      value={p.tecnico.id}
-                                      placeholder="Cambiar técnico..."
-                                      onChange={v => {
-                                        if (v === "__nuevo__") { setCrearParaSlotId(p.id); }
-                                        else if (v) { asignarTecnico(p.id, v); setAsignandoId(null); }
-                                      }}
-                                      options={[
-                                        { value: "__nuevo__", label: "＋ Registrar nuevo técnico" },
-                                        ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"} · ${t.nivel}` })),
-                                      ]}
-                                      className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-sm focus:outline-none"
-                                    />
-                                    <button onClick={() => { setAsignandoId(null); setCrearParaSlotId(null); }}
-                                      className="text-gray-500 hover:text-white text-xs shrink-0">Cancelar</button>
-                                  </div>
-                                  {crearParaSlotId === p.id && (
-                                    <div className="p-3 bg-[#0d0d0d] border border-[#333] rounded-lg space-y-2">
-                                      <p className="text-gray-300 text-xs font-semibold">Registrar nuevo técnico</p>
-                                      <input value={nuevoTecNombre} onChange={e => setNuevoTecNombre(e.target.value)}
-                                        placeholder="Nombre completo *" autoFocus
-                                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
-                                      <input value={nuevoTecCelular} onChange={e => setNuevoTecCelular(e.target.value)}
-                                        placeholder="Celular (WhatsApp)"
-                                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" />
-                                      <div className="flex gap-2">
-                                        <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)}
-                                          options={[{ value: "", label: "— Rol (opcional) —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
-                                          className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
-                                        <Combobox value={nuevoTecNivel} onChange={v => setNuevoTecNivel(v)}
-                                          options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
-                                          className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
-                                      </div>
-                                      <div className="flex gap-2 pt-1">
-                                        <button onClick={crearTecnicoYAsignar} disabled={creandoTecnico || !nuevoTecNombre.trim()}
-                                          className="flex-1 bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors">
-                                          {creandoTecnico ? "Guardando..." : "Guardar y asignar"}
-                                        </button>
-                                        <button onClick={() => { setCrearParaSlotId(null); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }}
-                                          className="px-3 text-gray-500 hover:text-white text-xs transition-colors">Cancelar</button>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <p className="text-white text-sm font-medium">{p.tecnico.nombre}</p>
-                                  {p.nivel && <span className={`text-xs font-semibold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
-                                </div>
-                              )
-                            )}
-                            <p className="text-gray-500 text-xs mt-0.5">
-                              {p.rolTecnico?.nombre ?? p.tecnico?.rol?.nombre ?? "Sin rol"}
-                              {p.rolEnEvento ? ` · ${p.rolEnEvento}` : ""}
-                              {p.jornada ? ` · ${p.jornada}` : ""}
-                              {!tieneMultiplesFechas && p.fechaJornada ? ` · ${new Date(p.fechaJornada + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" })}` : ""}
-                            </p>
-                            {p.responsabilidad && (
-                              <p className="text-gray-400 text-xs mt-1 leading-relaxed">{p.responsabilidad}</p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            {asignandoId !== p.id && (
-                              <button
-                                onClick={() => { abrirEditPersonal(p); setAsignandoId(null); }}
-                                className={`text-xs px-1.5 py-0.5 rounded border transition-colors ${editandoPersonalId === p.id ? "border-[#B3985B]/60 text-[#B3985B]" : "border-transparent text-gray-600 hover:text-gray-300 hover:border-[#333]"}`}>
-                                {editandoPersonalId === p.id ? "Editando" : "Editar"}
-                              </button>
-                            )}
-                            <button
-                              onClick={async () => {
-                                const ok = await confirm({ message: "¿Eliminar este técnico del proyecto? Se borrarán también las cuentas por pagar pendientes vinculadas.", confirmText: "Eliminar", danger: true });
-                                if (ok) eliminarPersonal(p.id);
-                              }}
-                              title="Eliminar slot"
-                              className="text-gray-600 hover:text-red-400 text-base leading-none transition-colors px-1">×</button>
-                          </div>
+
+                    {/* Formulario edición */}
+                    {editandoPersonalId === p.id && (
+                      <div className="mt-3 p-3 bg-[#0d0d0d] border border-[#B3985B]/20 rounded-lg space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Técnico</label>
+                            <Combobox value={editPersonalForm.tecnicoId} onChange={v => { if (v === "__nuevo__") { setShowNuevoTecnico(true); } else setEditPersonalForm(prev => ({ ...prev, tecnicoId: v })); }} options={[{ value: "", label: "— Sin asignar —" }, { value: "__nuevo__", label: "＋ Nuevo técnico..." }, ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"}` }))]} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
+                          <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Rol técnico</label>
+                            <Combobox value={editPersonalForm.rolTecnicoId} onChange={v => setEditPersonalForm(prev => ({ ...prev, rolTecnicoId: v }))} options={[{ value: "", label: "— Sin rol —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
+                          <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Participación</label>
+                            <Combobox value={editPersonalForm.participacion} onChange={v => setEditPersonalForm(prev => ({ ...prev, participacion: v }))} options={[{ value: "OPERACION", label: "Operación" }, { value: "MONTAJE", label: "Montaje" }, { value: "DESMONTAJE", label: "Desmontaje" }, { value: "TRANSPORTE", label: "Transporte" }, { value: "OTRO", label: "Otro" }]} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
+                          <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Jornada</label>
+                            <Combobox value={editPersonalForm.jornada} onChange={v => setEditPersonalForm(prev => ({ ...prev, jornada: v }))} options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
+                          <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Nivel</label>
+                            <Combobox value={editPersonalForm.nivel} onChange={v => setEditPersonalForm(prev => ({ ...prev, nivel: v }))} options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
+                          <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Tarifa acordada ($)</label>
+                            <input type="number" value={editPersonalForm.tarifa} onChange={e => setEditPersonalForm(prev => ({ ...prev, tarifa: e.target.value }))} placeholder="0" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
                         </div>
-
-                        {/* ── Formulario edición completa ── */}
-                        {editandoPersonalId === p.id && (
-                          <div className="mt-3 p-3 bg-[#0d0d0d] border border-[#B3985B]/20 rounded-lg space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Técnico</label>
-                                <Combobox
-                                  value={editPersonalForm.tecnicoId}
-                                  onChange={v => {
-                                    if (v === "__nuevo__") { setShowNuevoTecnico(true); }
-                                    else setEditPersonalForm(prev => ({ ...prev, tecnicoId: v }));
-                                  }}
-                                  options={[{ value: "", label: "— Sin asignar —" }, { value: "__nuevo__", label: "＋ Nuevo técnico..." }, ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"}` }))]}
-                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Rol técnico</label>
-                                <Combobox
-                                  value={editPersonalForm.rolTecnicoId}
-                                  onChange={v => setEditPersonalForm(prev => ({ ...prev, rolTecnicoId: v }))}
-                                  options={[{ value: "", label: "— Sin rol —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
-                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Participación</label>
-                                <Combobox
-                                  value={editPersonalForm.participacion}
-                                  onChange={v => setEditPersonalForm(prev => ({ ...prev, participacion: v }))}
-                                  options={[{ value: "OPERACION", label: "Operación" }, { value: "MONTAJE", label: "Montaje" }, { value: "DESMONTAJE", label: "Desmontaje" }, { value: "TRANSPORTE", label: "Transporte" }, { value: "OTRO", label: "Otro" }]}
-                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Jornada</label>
-                                <Combobox
-                                  value={editPersonalForm.jornada}
-                                  onChange={v => setEditPersonalForm(prev => ({ ...prev, jornada: v }))}
-                                  options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]}
-                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Nivel</label>
-                                <Combobox
-                                  value={editPersonalForm.nivel}
-                                  onChange={v => setEditPersonalForm(prev => ({ ...prev, nivel: v }))}
-                                  options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
-                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Tarifa acordada ($)</label>
-                                <input
-                                  type="number"
-                                  value={editPersonalForm.tarifa}
-                                  onChange={e => setEditPersonalForm(prev => ({ ...prev, tarifa: e.target.value }))}
-                                  placeholder="0"
-                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
-                                />
-                              </div>
-                            </div>
-                            <div className="col-span-2 grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Fecha de jornada</label>
-                                <input
-                                  type="date"
-                                  value={editPersonalForm.fechaJornada}
-                                  onChange={e => setEditPersonalForm(prev => ({ ...prev, fechaJornada: e.target.value }))}
-                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Rol en el evento</label>
-                                <input
-                                  value={editPersonalForm.rolEnEvento}
-                                  onChange={e => setEditPersonalForm(prev => ({ ...prev, rolEnEvento: e.target.value }))}
-                                  placeholder="Ej: Operador FOH, Iluminación..."
-                                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]"
-                                />
-                              </div>
-                            </div>
-                            <div>
-                              <label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Descripción · ¿qué hará en el evento?</label>
-                              <textarea
-                                value={editPersonalForm.responsabilidad}
-                                onChange={e => setEditPersonalForm(prev => ({ ...prev, responsabilidad: e.target.value }))}
-                                placeholder="Describe las actividades y responsabilidades. Ej: Operador FOH, manejo de consola DiGiCo SD7..."
-                                rows={2}
-                                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555] resize-none"
-                              />
-                            </div>
-                            <div className="flex gap-2 pt-1">
-                              <button onClick={() => guardarEditPersonal(p.id)} disabled={savingPersonal}
-                                className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold py-1.5 rounded-lg transition-colors">
-                                {savingPersonal ? "Guardando..." : "Guardar cambios"}
-                              </button>
-                              <button onClick={() => setEditandoPersonalId(null)}
-                                className="px-4 text-gray-500 hover:text-white text-xs transition-colors">
-                                Cancelar
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Actions row */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`text-sm font-medium ${p.tarifaAcordada != null ? "text-gray-300" : "text-gray-600 italic"}`}>
-                            {p.tarifaAcordada != null ? fmt(p.tarifaAcordada) : "Sin tarifa"}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                            p.estadoPago === "PAGADO" ? "bg-green-900/40 text-green-400" : "bg-[#1a1a1a] text-gray-500 border border-[#2a2a2a]"
-                          }`}>
-                            {p.estadoPago === "PAGADO" ? "Pagado" : "Pendiente"}
-                          </span>
-                          {p.confirmRespuesta && (
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                              p.confirmRespuesta === "CONFIRMADO" ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"
-                            }`}>
-                              {p.confirmRespuesta === "CONFIRMADO" ? "✓ Confirmó" : "✗ Rechazó"}
-                            </span>
-                          )}
-                          <button onClick={() => toggleConfirmar(p.id, p.confirmado)}
-                            className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${
-                              p.confirmado
-                                ? "border-green-700 text-green-400 hover:bg-red-900/20 hover:text-red-400 hover:border-red-700"
-                                : "border-[#333] text-gray-500 hover:border-green-700 hover:text-green-400"
-                            }`}>
-                            {p.confirmado ? "✓ Confirmado" : "Confirmar"}
-                          </button>
-                          {p.tecnico && (
-                            <button
-                              disabled={!fichaCompleta}
-                              title={fichaCompleta ? "Enviar invitación por WhatsApp" : fichaTooltip}
-                              onClick={async () => {
-                                const res = await fetch(`/api/proyectos/${id}/personal/${p.id}/invitar`, { method: "POST" });
-                                const d = await res.json();
-                                if (d.whatsappUrl) {
-                                  window.open(d.whatsappUrl, "_blank");
-                                  await load();
-                                } else if (d.token) {
-                                  const url = `${window.location.origin}/confirmar/tecnico/${d.token}`;
-                                  await navigator.clipboard.writeText(url).catch(() => {});
-                                  toast.info("Sin número registrado. Link copiado al portapapeles.");
-                                  await load();
-                                }
-                              }}
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${fichaCompleta ? "border-green-800/50 text-green-500 hover:bg-green-900/20 hover:border-green-600 cursor-pointer" : "border-[#333] text-gray-600 cursor-not-allowed opacity-50"}`}>
-                              📲 Invitar
-                            </button>
-                          )}
-                          {p.tecnico && (
-                            <a
-                              href={`/api/proyectos/${proyecto.id}/personal/${p.id}/carta`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="Descargar carta responsiva freelance"
-                              className="px-2 py-0.5 rounded-full text-[10px] font-medium border border-[#333] text-gray-500 hover:border-[#B3985B]/50 hover:text-[#B3985B] transition-colors"
-                            >
-                              📄 Carta
-                            </a>
-                          )}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Fecha de jornada (override)</label>
+                            <input type="date" value={editPersonalForm.fechaJornada} onChange={e => setEditPersonalForm(prev => ({ ...prev, fechaJornada: e.target.value }))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" /></div>
+                          <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Rol en el evento</label>
+                            <input value={editPersonalForm.rolEnEvento} onChange={e => setEditPersonalForm(prev => ({ ...prev, rolEnEvento: e.target.value }))} placeholder="Ej: Operador FOH, Iluminación..." className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
+                        </div>
+                        <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Descripción · ¿qué hará en el evento?</label>
+                          <textarea value={editPersonalForm.responsabilidad} onChange={e => setEditPersonalForm(prev => ({ ...prev, responsabilidad: e.target.value }))} placeholder="Describe las actividades..." rows={2} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555] resize-none" /></div>
+                        <div className="flex gap-2 pt-1">
+                          <button onClick={() => guardarEditPersonal(p.id)} disabled={savingPersonal} className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold py-1.5 rounded-lg transition-colors">{savingPersonal ? "Guardando..." : "Guardar cambios"}</button>
+                          <button onClick={() => setEditandoPersonalId(null)} className="px-4 text-gray-500 hover:text-white text-xs transition-colors">Cancelar</button>
                         </div>
                       </div>
-                    ))}
+                    )}
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 flex-wrap mt-2">
+                      <span className={`text-sm font-medium ${p.tarifaAcordada != null ? "text-gray-300" : "text-gray-600 italic"}`}>{p.tarifaAcordada != null ? fmt(p.tarifaAcordada) : "Sin tarifa"}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.estadoPago === "PAGADO" ? "bg-green-900/40 text-green-400" : "bg-[#1a1a1a] text-gray-500 border border-[#2a2a2a]"}`}>{p.estadoPago === "PAGADO" ? "Pagado" : "Pendiente"}</span>
+                      {p.confirmRespuesta && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${p.confirmRespuesta === "CONFIRMADO" ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"}`}>{p.confirmRespuesta === "CONFIRMADO" ? "✓ Confirmó" : "✗ Rechazó"}</span>}
+                      <button onClick={() => toggleConfirmar(p.id, p.confirmado)} className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${p.confirmado ? "border-green-700 text-green-400 hover:bg-red-900/20 hover:text-red-400 hover:border-red-700" : "border-[#333] text-gray-500 hover:border-green-700 hover:text-green-400"}`}>{p.confirmado ? "✓ Confirmado" : "Confirmar"}</button>
+                      {p.tecnico && (
+                        <button disabled={!fichaCompleta} title={fichaCompleta ? "Enviar invitación por WhatsApp" : fichaTooltip}
+                          onClick={async () => {
+                            const res = await fetch(`/api/proyectos/${id}/personal/${p.id}/invitar`, { method: "POST" });
+                            const d = await res.json();
+                            if (d.whatsappUrl) { window.open(d.whatsappUrl, "_blank"); await load(); }
+                            else if (d.token) { const url = `${window.location.origin}/confirmar/tecnico/${d.token}`; await navigator.clipboard.writeText(url).catch(() => {}); toast.info("Sin número registrado. Link copiado al portapapeles."); await load(); }
+                          }}
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${fichaCompleta ? "border-green-800/50 text-green-500 hover:bg-green-900/20 hover:border-green-600 cursor-pointer" : "border-[#333] text-gray-600 cursor-not-allowed opacity-50"}`}>
+                          📲 Invitar
+                        </button>
+                      )}
+                      {p.tecnico && (
+                        <a href={`/api/proyectos/${proyecto.id}/personal/${p.id}/carta`} target="_blank" rel="noopener noreferrer" title="Descargar carta responsiva freelance" className="px-2 py-0.5 rounded-full text-[10px] font-medium border border-[#333] text-gray-500 hover:border-[#B3985B]/50 hover:text-[#B3985B] transition-colors">📄 Carta</a>
+                      )}
+                    </div>
                   </div>
                 );
               };
 
-              if (tieneMultiplesFechas) {
-                const fechasOrdenadas = [...new Set(
-                  proyecto.personal.map(p => fechaEfectiva(p) ?? "__sin_fecha__")
-                )].sort((a, b) => {
-                  if (a === "__sin_fecha__") return 1;
-                  if (b === "__sin_fecha__") return -1;
-                  return a.localeCompare(b);
-                });
-                return (
-                  <>
-                    {fechasOrdenadas.map(fecha => {
-                      const grupoFecha = proyecto.personal.filter(
-                        p => (fechaEfectiva(p) ?? "__sin_fecha__") === fecha
-                      );
-                      const esSinFecha = fecha === "__sin_fecha__";
-                      return (
-                        <div key={fecha} className="border-t border-[#1a1a1a]">
-                          {/* Encabezado de fecha */}
-                          <div className={`px-4 py-3 flex items-center justify-between ${esSinFecha ? "bg-[#0d0d0d]" : "bg-[#0a0a0a]"}`}>
-                            <div className="flex items-center gap-3">
-                              <div className={`w-1 h-4 rounded-full ${esSinFecha ? "bg-[#444]" : "bg-[#B3985B]"}`} />
-                              <p className={`text-sm font-bold ${esSinFecha ? "text-gray-500" : "text-white"}`}>
-                                {esSinFecha ? "Sin fecha asignada" : fmtJornadaDate(fecha)}
+              // ── Render: bloques por fecha ──────────────────────────────────────
+              return (
+                <>
+                  {fechasOrdenadas.map(fecha => {
+                    const grupo = grupoMap.get(fecha)!;
+                    const esSinFecha = fecha === "__sin_fecha__";
+                    const sinAsignar = grupo.filter(p => !p.tecnico).length;
+                    return (
+                      <div key={fecha} className="border-t border-[#1a1a1a]">
+                        <div className={`px-4 py-3 flex items-center justify-between ${esSinFecha ? "bg-[#0d0d0d]" : "bg-[#0a0a0a]"}`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-1 h-5 rounded-full ${esSinFecha ? "bg-[#333]" : "bg-[#B3985B]"}`} />
+                            <div>
+                              <p className={`text-sm font-bold capitalize ${esSinFecha ? "text-gray-500" : "text-white"}`}>
+                                {esSinFecha ? "Sin fecha asignada" : fmtFecha(fecha)}
+                              </p>
+                              <p className="text-[11px] text-gray-600 mt-0.5">
+                                {grupo.length} técnico{grupo.length !== 1 ? "s" : ""}
+                                {sinAsignar > 0 && ` · ${sinAsignar} pendiente${sinAsignar !== 1 ? "s" : ""} de asignar`}
                               </p>
                             </div>
-                            <span className="text-xs text-gray-600">
-                              {grupoFecha.length} técnico{grupoFecha.length !== 1 ? "s" : ""}
-                            </span>
                           </div>
-                          {/* Sub-grupos por participación */}
-                          {(["OPERACION", "MONTAJE", "DESMONTAJE", "TRANSPORTE", "OTRO"] as const).map(tipo => {
-                            const sub = grupoFecha.filter(p => (p.participacion ?? "OPERACION") === tipo);
-                            return renderSubGrupo(tipo, sub, esSinFecha ? null : fecha);
-                          })}
+                          <div className="flex items-center gap-2">
+                            {grupo.some(p => !p.confirmado && p.tecnico) && (
+                              <button onClick={() => confirmarGrupo(grupo)} className="text-xs text-gray-500 hover:text-green-400 border border-[#2a2a2a] hover:border-green-800/60 px-2 py-0.5 rounded transition-colors">Confirmar todos</button>
+                            )}
+                            <button onClick={() => agregarSlotVacio("OPERACION", esSinFecha ? null : fecha)} className="text-xs text-gray-500 hover:text-white border border-[#2a2a2a] hover:border-[#444] px-2 py-0.5 rounded transition-colors">+ Agregar</button>
+                          </div>
                         </div>
-                      );
-                    })}
-                  </>
-                );
-              } else {
-                return (
-                  <>
-                    {(["OPERACION", "MONTAJE", "DESMONTAJE", "TRANSPORTE", "OTRO"] as const).map(tipo => {
-                      const grupo = proyecto.personal.filter(p => (p.participacion ?? "OPERACION") === tipo);
-                      return renderSubGrupo(tipo, grupo, fechaEfectiva(grupo[0] ?? { fechaJornada: null, participacion: tipo } as Personal) ?? null);
-                    })}
-                  </>
-                );
-              }
+                        {grupo.map(p => renderCard(p))}
+                      </div>
+                    );
+                  })}
+                </>
+              );
             })()}
           </div>
 
