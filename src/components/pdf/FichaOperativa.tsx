@@ -160,12 +160,12 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
   const coordProv = data.docsTecnicos?.coordinacionProveedores?.filter(r => r.proveedor) ?? [];
 
   // Horarios del día — solo filas con hora
-  type HoraItem = { icon: string; label: string; hora: string; ref: string; fecha: string };
+  type HoraItem = { label: string; hora: string; ref: string; fecha: string };
   const horariosDia: HoraItem[] = [
-    { icon: "🚗", label: "Salida desde bodega", hora: horaSalida, ref: data.puntoSalidaBodega ?? "", fecha: fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento) },
-    { icon: "🔧", label: "Llegada / inicio de montaje", hora: horaMontaje, ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento) },
-    { icon: "🎤", label: "Inicio del evento", hora: horaIni, ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(data.fechaEvento) },
-    { icon: "📦", label: "Fin / inicio de desmontaje", hora: horaFin, ref: "", fecha: fmtFechaCorta(data.fechaEvento) },
+    { label: "Salida desde bodega", hora: horaSalida, ref: data.puntoSalidaBodega ?? "", fecha: fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento) },
+    { label: "Llegada / inicio de montaje", hora: horaMontaje, ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento) },
+    { label: "Inicio del evento", hora: horaIni, ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(data.fechaEvento) },
+    { label: "Fin / inicio de desmontaje", hora: horaFin, ref: "", fecha: fmtFechaCorta(data.fechaEvento) },
   ].filter(h => h.hora);
 
   let seccion = 0;
@@ -245,7 +245,7 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
               <View style={s.horaTable}>
                 {horariosDia.map((h, i) => (
                   <View key={i} style={i < horariosDia.length - 1 ? s.horaRow : s.horaRowLast} wrap={false}>
-                    <Text style={s.horaIcon}>{h.icon}</Text>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: C.dorado, marginRight: 14, marginTop: 1, flexShrink: 0 }} />
                     <Text style={s.horaLabel}>{h.label}</Text>
                     {h.fecha
                       ? <Text style={s.horaFecha}>{h.fecha}</Text>
