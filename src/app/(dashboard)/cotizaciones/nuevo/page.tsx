@@ -2694,12 +2694,24 @@ function CascadeEquipoSelect({
   const allEquipos = equiposPorCategoria.flatMap(([, eqs]) => eqs);
   const selected = allEquipos.find(e => e.id === value);
 
-  const catEquipos = activeCat
-    ? (equiposPorCategoria.find(([cat]) => cat === activeCat)?.[1] ?? []).filter(eq =>
-        !search ||
-        eq.descripcion.toLowerCase().includes(search.toLowerCase()) ||
-        (eq.marca ?? '').toLowerCase().includes(search.toLowerCase())
+  // Etiqueta principal: Marca + Modelo (o descripcion si no hay)
+  const selectedLabel = selected
+    ? [selected.marca, selected.modelo].filter(Boolean).join(' ') || selected.descripcion
+    : null;
+  const selectedSubLabel = (selectedLabel && selectedLabel !== selected?.descripcion)
+    ? (selected?.descripcion ?? null)
+    : null;
+
+  // Cuando hay búsqueda: busca en TODAS las categorías e incluye modelo
+  const q = search.toLowerCase().trim();
+  const catEquipos = q
+    ? allEquipos.filter(eq =>
+        eq.descripcion.toLowerCase().includes(q) ||
+        (eq.marca ?? '').toLowerCase().includes(q) ||
+        (eq.modelo ?? '').toLowerCase().includes(q)
       )
+    : activeCat
+    ? (equiposPorCategoria.find(([cat]) => cat === activeCat)?.[1] ?? [])
     : [];
 
   function handleOpen() {
@@ -2728,9 +2740,9 @@ function CascadeEquipoSelect({
         } rounded-lg px-3 py-2 text-sm text-left focus:outline-none hover:border-[#B3985B]/60 transition-colors`}
       >
         <span className={selected ? 'text-white truncate flex-1' : 'text-gray-500 flex-1'}>
-          {selected
-            ? `${selected.descripcion}${selected.marca ? ` \u00b7 ${selected.marca}` : ''}`
-            : loadingDisp ? 'Cargando disponibilidad...' : '\u2014 Seleccionar equipo \u2014'}
+          {selectedLabel
+            ? (selectedSubLabel ? `${selectedLabel}  ·  ${selectedSubLabel}` : selectedLabel)
+            : loadingDisp ? 'Cargando disponibilidad...' : '— Seleccionar equipo —'}
         </span>
         <div className="flex items-center gap-1 shrink-0 ml-2">
           {value && (
@@ -2832,8 +2844,16 @@ function CascadeEquipoSelect({
                               : 'text-gray-400 hover:bg-[#111] hover:text-white'
                           }`}
                         >
-                          <span className="flex-1 truncate">{eq.descripcion}{eq.marca ? ` \u00b7 ${eq.marca}` : ''}</span>
+                          <span className="flex-1 min-w-0">
+                            <span className="block font-medium truncate">
+                              {[eq.marca, eq.modelo].filter(Boolean).join(' ') || eq.descripcion}
+                            </span>
+                            {([eq.marca, eq.modelo].filter(Boolean).join(' ') !== eq.descripcion) && (
+                              <span className="block text-[10px] text-gray-500 truncate">{eq.descripcion}</span>
+                            )}
+                          </span>
                           <span className="shrink-0 text-[10px] whitespace-nowrap flex items-center gap-1.5">
+                            {q && <span className="text-[9px] text-gray-600 max-w-[60px] truncate font-normal">{eq.categoria.nombre}</span>}
                             <span className="text-gray-600">{precio > 0 ? formatCurrency(precio) : 'INCLUYE'}</span>
                             <span style={{ color: dispColor }}>{dispText}</span>
                           </span>
