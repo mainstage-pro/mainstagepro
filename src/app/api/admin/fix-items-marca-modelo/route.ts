@@ -2,10 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
+function isAuthorized(req: NextRequest): boolean {
+  // Acepta sesión activa O CRON_SECRET en header Authorization
+  const authHeader = req.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && authHeader === `Bearer ${cronSecret}`) return true;
+  return false;
+}
+
 /** GET — preview cuántos registros necesitan corrección */
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (!session && !isAuthorized(req))
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const count = await prisma.cotizacionLinea.count({
     where: { equipoId: { not: null }, modelo: null, tipo: "EQUIPO_PROPIO" },
@@ -27,9 +36,10 @@ export async function GET(_req: NextRequest) {
 }
 
 /** POST — ejecuta el backfill */
-export async function POST(_req: NextRequest) {
+export async function POST(req: NextRequest) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (!session && !isAuthorized(req))
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const lineas = await prisma.cotizacionLinea.findMany({
     where: { equipoId: { not: null }, modelo: null, tipo: "EQUIPO_PROPIO" },
