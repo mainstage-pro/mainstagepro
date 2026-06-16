@@ -68,8 +68,8 @@ export async function POST(request: NextRequest) {
       ...campos
     } = body;
 
-    if (!tratoId || !clienteId) {
-      return NextResponse.json({ error: "tratoId y clienteId requeridos" }, { status: 400 });
+    if (!clienteId) {
+      return NextResponse.json({ error: "clienteId requerido" }, { status: 400 });
     }
 
     const cotizacion = await prisma.cotizacion.create({
@@ -133,6 +133,7 @@ export async function POST(request: NextRequest) {
             rolTecnicoId: l.rolTecnicoId || null,
             descripcion: String(l.descripcion || ""),
             marca: l.marca as string || null,
+            modelo: l.modelo as string || null,
             nivel: l.nivel as string || null,
             jornada: l.jornada as string || null,
             esExterno: Boolean(l.esExterno),

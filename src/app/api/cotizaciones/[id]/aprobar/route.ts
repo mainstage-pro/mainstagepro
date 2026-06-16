@@ -124,43 +124,43 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     const proy = await tx.proyecto.create({
       data: {
         numeroProyecto,
-        tratoId: cot.tratoId,
+        tratoId: cot.tratoId ?? undefined,
         cotizacionId: cot.id,
         clienteId: cot.clienteId,
         encargadoId: cot.creadaPorId,
         nombre: cot.nombreEvento || `Proyecto ${cot.numeroCotizacion}`,
         estado: "PLANEACION",
         zona: cot.zonaEvento ?? "LOCAL",
-        tipoEvento: cot.tipoEvento || cot.trato.tipoEvento || "OTRO",
-        tipoServicio: cot.tipoServicio || cot.trato.tipoServicio,
-        recoleccionStatus: (cot.tipoServicio || cot.trato.tipoServicio) === "RENTA" ? "PENDIENTE" : "NO_APLICA",
+        tipoEvento: cot.tipoEvento || cot.trato?.tipoEvento || "OTRO",
+        tipoServicio: cot.tipoServicio || cot.trato?.tipoServicio,
+        recoleccionStatus: (cot.tipoServicio || cot.trato?.tipoServicio) === "RENTA" ? "PENDIENTE" : "NO_APLICA",
         fechaEvento,
         lugarEvento: cot.lugarEvento,
         descripcionGeneral: cot.observaciones,
-        horaInicioEvento: cot.trato.horaInicioEvento ?? null,
-        horaFinEvento: cot.trato.horaFinEvento ?? null,
-        horaInicioMontaje: cot.trato.ventanaMontajeInicio ?? null,
-        duracionMontajeHrs: cot.trato.duracionMontajeHrs ?? null,
-        encargadoLugar: cot.trato.contactoVenueNombre ?? null,
-        encargadoLugarContacto: cot.trato.contactoVenueTelefono ?? null,
+        horaInicioEvento: cot.trato?.horaInicioEvento ?? null,
+        horaFinEvento: cot.trato?.horaFinEvento ?? null,
+        horaInicioMontaje: cot.trato?.ventanaMontajeInicio ?? null,
+        duracionMontajeHrs: cot.trato?.duracionMontajeHrs ?? null,
+        encargadoLugar: cot.trato?.contactoVenueNombre ?? null,
+        encargadoLugarContacto: cot.trato?.contactoVenueTelefono ?? null,
         detallesEspecificos: (() => {
           const partes: string[] = [];
-          if (cot.trato.notas) partes.push(cot.trato.notas);
-          const tipoSrv = cot.tipoServicio || cot.trato.tipoServicio;
+          if (cot.trato?.notas) partes.push(cot.trato.notas);
+          const tipoSrv = cot.tipoServicio || cot.trato?.tipoServicio;
           if (tipoSrv !== "RENTA") {
             // Categorías de equipo seleccionadas
             try {
-              const cats = cot.trato.serviciosInteres ? JSON.parse(cot.trato.serviciosInteres) : [];
+              const cats = cot.trato?.serviciosInteres ? JSON.parse(cot.trato.serviciosInteres) : [];
               if (cats.length > 0) partes.push(`Categorías: ${cats.join(", ")}`);
             } catch { /* ignore */ }
             // Referencias / ideas
-            if (cot.trato.ideasReferencias) partes.push(`Referencias: ${cot.trato.ideasReferencias}`);
+            if (cot.trato?.ideasReferencias) partes.push(`Referencias: ${cot.trato.ideasReferencias}`);
             // Ventana de desmontaje
-            if (cot.trato.ventanaMontajeFin) partes.push(`Límite montaje: ${cot.trato.ventanaMontajeFin}`);
-            if (cot.trato.horaTerminoMontaje) partes.push(`Salida desmontaje: ${cot.trato.horaTerminoMontaje}`);
+            if (cot.trato?.ventanaMontajeFin) partes.push(`Límite montaje: ${cot.trato.ventanaMontajeFin}`);
+            if (cot.trato?.horaTerminoMontaje) partes.push(`Salida desmontaje: ${cot.trato.horaTerminoMontaje}`);
             // Venue scouting
             try {
-              const s = cot.trato.scoutingData ? JSON.parse(cot.trato.scoutingData) : {};
+              const s = cot.trato?.scoutingData ? JSON.parse(cot.trato.scoutingData) : {};
               const venue: string[] = [];
               if (s.nombreVenue) venue.push(`Venue: ${s.nombreVenue}`);
               if (s.direccion) venue.push(`Dir: ${s.direccion}`);
@@ -177,9 +177,9 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
           return partes.length > 0 ? partes.join("\n") : null;
         })(),
         logisticaRenta: (() => {
-          if ((cot.tipoServicio || cot.trato.tipoServicio) !== "RENTA") return null;
+          if ((cot.tipoServicio || cot.trato?.tipoServicio) !== "RENTA") return null;
           try {
-            const s = cot.trato.scoutingData ? JSON.parse(cot.trato.scoutingData) : {};
+            const s = cot.trato?.scoutingData ? JSON.parse(cot.trato.scoutingData) : {};
             if (!s.rentaPiso && !s.rentaHorarioEntrega && !s.rentaHorarioRecoleccion) return null;
             return JSON.stringify({
               piso: s.rentaPiso || null,
@@ -234,7 +234,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     //    usando las sugerencias y presupuesto de la cotización como referencia.
 
     // 4. Crear checklist base según tipo de servicio
-    const tipoServicio = cot.tipoServicio || cot.trato.tipoServicio;
+    const tipoServicio = cot.tipoServicio || cot.trato?.tipoServicio;
     const checklistItems = tipoServicio === "RENTA" ? CHECKLIST_RENTA : CHECKLIST_BASE;
     await tx.proyectoChecklist.createMany({
       data: checklistItems.map((item, i) => ({
@@ -246,7 +246,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     });
 
     // 4b. Para renta: copiar logística del trato al proyecto
-    if (tipoServicio === "RENTA" && cot.trato.ideasReferencias) {
+    if (tipoServicio === "RENTA" && cot.trato?.ideasReferencias) {
       try {
         const rentaData = JSON.parse(cot.trato.ideasReferencias);
         if (rentaData && typeof rentaData === "object" && rentaData.nivelServicio) {
@@ -288,11 +288,13 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       data: { estado: "APROBADA" },
     });
 
-    // 9. Actualizar trato → VENTA_CERRADA
-    await tx.trato.update({
-      where: { id: cot.tratoId },
-      data: { etapa: "VENTA_CERRADA" },
-    });
+    // 9. Actualizar trato → VENTA_CERRADA (solo si hay trato vinculado)
+    if (cot.tratoId) {
+      await tx.trato.update({
+        where: { id: cot.tratoId },
+        data: { etapa: "VENTA_CERRADA" },
+      });
+    }
 
     return proy;
   });

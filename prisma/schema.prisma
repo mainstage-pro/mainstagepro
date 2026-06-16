@@ -301,8 +301,8 @@ model Cotizacion {
   version          Int      @default(1)
   opcionLetra      String   @default("A") @map("opcion_letra")
   grupoId          String?  @map("grupo_id")
-  tratoId          String
-  trato            Trato    @relation(fields: [tratoId], references: [id])
+  tratoId          String?
+  trato            Trato?   @relation(fields: [tratoId], references: [id])
   clienteId        String
   cliente          Cliente  @relation(fields: [clienteId], references: [id])
   creadaPorId      String?
@@ -428,8 +428,8 @@ model CotizacionLinea {
 model Proyecto {
   id             String   @id @default(cuid())
   numeroProyecto String   @unique
-  tratoId        String   @unique
-  trato          Trato    @relation(fields: [tratoId], references: [id])
+  tratoId        String?  @unique
+  trato          Trato?   @relation(fields: [tratoId], references: [id])
   cotizacionId   String   @unique
   cotizacion     Cotizacion @relation(fields: [cotizacionId], references: [id])
   clienteId      String

@@ -28,6 +28,8 @@ export async function GET(request: NextRequest) {
   const where: Record<string, unknown> = {};
   if (responsableId) where.responsableId = responsableId;
   if (tipoProspecto) where.tipoProspecto = tipoProspecto;
+  const clienteIdFilter = searchParams.get("clienteId");
+  if (clienteIdFilter) where.clienteId = clienteIdFilter;
   if (filtro === "enfriados") {
     where.etapa     = { notIn: ["VENTA_CERRADA", "VENTA_PERDIDA"] };
     where.createdAt = { lte: new Date(Date.now() - 15 * 86400000) };

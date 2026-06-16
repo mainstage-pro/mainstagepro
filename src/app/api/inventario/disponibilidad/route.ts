@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
       if (!linea.equipoId) continue;
       if (!comprometido[linea.equipoId]) comprometido[linea.equipoId] = { cantidad: 0, eventos: [] };
       comprometido[linea.equipoId].cantidad += Math.round(linea.cantidad);
-      const fechaCot = cot.fechaEvento ?? cot.trato.fechaEventoEstimada;
+      const fechaCot = cot.fechaEvento ?? cot.trato?.fechaEventoEstimada;
       comprometido[linea.equipoId].eventos.push({
         tipo: "COT",
         ref: cot.numeroCotizacion,
@@ -138,7 +138,7 @@ export async function GET(req: NextRequest) {
   // 6. Panel lateral — eventos encontrados
   const eventosResumen = [
     ...cotizacionesEnFecha.map((c) => {
-      const fechaCot = c.fechaEvento ?? c.trato.fechaEventoEstimada;
+      const fechaCot = c.fechaEvento ?? c.trato?.fechaEventoEstimada;
       return {
         tipo: "COT" as const,
         ref: c.numeroCotizacion,

@@ -295,7 +295,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 
   // ── Auto-crear levantamiento de contenido al marcar COMPLETADO ──
-  if (data.estado === "COMPLETADO" && proyectoAntes?.estado !== "COMPLETADO") {
+  if (data.estado === "COMPLETADO" && proyectoAntes?.estado !== "COMPLETADO" && proyecto.tratoId) {
     const levExistente = await prisma.levantamientoContenido.findUnique({ where: { tratoId: proyecto.tratoId } });
     if (!levExistente) {
       const clienteNombre = await prisma.cliente.findUnique({ where: { id: proyecto.clienteId }, select: { nombre: true } });

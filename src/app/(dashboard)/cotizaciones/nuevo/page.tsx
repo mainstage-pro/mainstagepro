@@ -49,7 +49,7 @@ interface RolTecnico {
 }
 
 interface LineaEquipo {
-  id: string; equipoId: string; descripcion: string; marca: string;
+  id: string; equipoId: string; descripcion: string; marca: string; modelo: string;
   cantidad: number; dias: number; precioUnitario: number; subtotal: number;
   categoria: string; // nombre de la categoría para subsecciones
   notas: string;     // nota libre por concepto
@@ -231,6 +231,18 @@ function CotizadorForm() {
   // IDs resueltos (para modo edición)
   const [resolvedTratoId, setResolvedTratoId] = useState(tratoId);
   const [resolvedClienteId, setResolvedClienteId] = useState(clienteId);
+
+  // ── Selector manual de cliente (cuando no vienen params en URL) ──
+  const noParams = !tratoId && !clienteId && !editId;
+  const [manualClienteId, setManualClienteId] = useState("");
+  const [manualClienteNombre, setManualClienteNombre] = useState("");
+  const [manualClienteQuery, setManualClienteQuery] = useState("");
+  const [manualClienteResults, setManualClienteResults] = useState<{id:string;nombre:string;empresa:string|null}[]>([]);
+  const [manualClienteOpen, setManualClienteOpen] = useState(false);
+  const [manualTratoId, setManualTratoId] = useState("");
+  const [manualTratos, setManualTratos] = useState<{id:string;tipoEvento:string|null;nombreEvento:string|null}[]>([]);
+  const [clienteSelectorError, setClienteSelectorError] = useState(false);
+
   // Briefing del trato (solo lectura en cotizador)
   const [tratoNotas, setTratoNotas] = useState<string | null>(null);
   const [tratoArchivos, setTratoArchivos] = useState<Array<{ id: string; nombre: string; url: string; tipo: string }>>([]);
@@ -471,9 +483,11 @@ function CotizadorForm() {
         }
         // Reconstruir líneas
         const lineas = cot.lineas ?? [];
-        setLineasEquipo(lineas.filter((l: {tipo:string}) => l.tipo === "EQUIPO_PROPIO").map((l: {id:string;equipoId:string;descripcion:string;marca:string|null;cantidad:number;dias:number;precioUnitario:number;subtotal:number;notas:string|null}) => ({
+        setLineasEquipo(lineas.filter((l: {tipo:string}) => l.tipo === "EQUIPO_PROPIO").map((l: {id:string;equipoId:string;descripcion:string;marca:string|null;modelo:string|null;cantidad:number;dias:number;precioUnitario:number;subtotal:number;notas:string|null}) => ({
           id: uid(), equipoId: l.equipoId ?? "", descripcion: l.descripcion,
-          marca: l.marca ?? "", cantidad: l.cantidad, dias: l.dias,
+          marca: l.marca ?? "",
+          modelo: l.modelo ?? "",
+          cantidad: l.cantidad, dias: l.dias,
           precioUnitario: l.precioUnitario, subtotal: l.subtotal,
           categoria: l.notas?.startsWith("cat:") ? (l.notas.split("|")[0].slice(4)) : "",
           notas: extractUserNote(l.notas),
@@ -635,7 +649,8 @@ function CotizadorForm() {
       const precio = preciosCliente[eq.id] ?? eq.precioRenta;
       nuevasLineas.push({
         id: uid(), equipoId: eq.id, descripcion: eq.descripcion,
-        marca: [eq.marca, eq.modelo].filter(Boolean).join(" "),
+        marca: eq.marca ?? "",
+        modelo: eq.modelo ?? "",
         cantidad: item.cantidad, dias: diasEq,
         precioUnitario: precio, subtotal: precio * item.cantidad * diasEq,
         categoria: eq.categoria.nombre,
@@ -673,7 +688,8 @@ function CotizadorForm() {
 
     setLineasEquipo(prev => [...prev, {
       id: uid(), equipoId: eq.id, descripcion: eq.descripcion,
-      marca: [eq.marca, eq.modelo].filter(Boolean).join(" "),
+      marca: eq.marca ?? "",
+      modelo: eq.modelo ?? "",
       cantidad: cant, dias, precioUnitario: precio,
       subtotal: precio * cant * dias,
       categoria: eq.categoria.nombre,
@@ -706,7 +722,8 @@ function CotizadorForm() {
     const dias = parseInt(evento.diasEquipo) || 1;
     setLineasEquipo(prev => [...prev, {
       id: uid(), equipoId: eq.id, descripcion: eq.descripcion,
-      marca: [eq.marca, eq.modelo].filter(Boolean).join(" "),
+      marca: eq.marca ?? "",
+      modelo: eq.modelo ?? "",
       cantidad: item.cant, dias,
       precioUnitario: precio,
       subtotal: precio * item.cant * dias,
@@ -1033,9 +1050,15 @@ function CotizadorForm() {
 
   // ── Guardar ──
   async function guardar() {
-    const tId = resolvedTratoId || tratoId;
-    const cId = resolvedClienteId || clienteId;
-    if (!tId || !cId) { setError("Falta tratoId o clienteId"); return; }
+    const tId = resolvedTratoId || tratoId || manualTratoId;
+    const cId = resolvedClienteId || clienteId || manualClienteId;
+    if (!cId) {
+      setClienteSelectorError(true);
+      setError("Selecciona un cliente para continuar");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    setClienteSelectorError(false);
     setSaving(true); setError("");
 
     const todasLineas = [
@@ -1049,7 +1072,7 @@ function CotizadorForm() {
           notasLimpia = notasRaw.replace(/\|?deficit:\{.*\}$/, '');
         }
         return {
-          tipo: "EQUIPO_PROPIO", descripcion: l.descripcion, marca: l.marca,
+          tipo: "EQUIPO_PROPIO", descripcion: l.descripcion, marca: l.marca, modelo: l.modelo,
           cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
           costoUnitario: 0, subtotal: l.subtotal,
           esExterno: false, esIncluido: false, equipoId: l.equipoId,
@@ -1113,7 +1136,7 @@ function CotizadorForm() {
     ];
 
     const payload = {
-      tratoId: tId, clienteId: cId, ...evento,
+      tratoId: tId || null, clienteId: cId, ...evento,
       zonaEvento,
       numTecnicosZona,
       notasSecciones: Object.keys(notasSecciones).length > 0 ? JSON.stringify(notasSecciones) : null,
@@ -1232,7 +1255,9 @@ function CotizadorForm() {
                       const propios = lineas.filter(l => l.tipo === "EQUIPO_PROPIO");
                       if (propios.length > 0) setLineasEquipo(propios.map(l => ({
                         id: uid(), equipoId: l.equipoId ?? "", descripcion: l.descripcion,
-                        marca: l.marca ?? "", categoria: l.notas?.startsWith("cat:") ? (l.notas.split("|")[0].slice(4)) : "",
+                        marca: l.marca ?? "",
+                        modelo: (l as {modelo?:string|null}).modelo ?? "",
+                        categoria: l.notas?.startsWith("cat:") ? (l.notas.split("|")[0].slice(4)) : "",
                         notas: extractUserNote(l.notas),
                         cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
                         subtotal: l.precioUnitario * l.cantidad * l.dias,
@@ -1288,6 +1313,101 @@ function CotizadorForm() {
       )}
 
       {error && <div className="mb-4 bg-red-900/20 border border-red-700 text-red-400 text-sm px-4 py-3 rounded-lg">{error}</div>}
+
+      {/* ── Selector de cliente cuando no vienen params en URL ── */}
+      {noParams && (
+        <div className="mb-5 bg-[#111] border border-[#262626] rounded-xl p-5">
+          <p className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider mb-4">Datos del cliente</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Cliente searchable */}
+            <div>
+              <label className="block text-xs text-gray-400 mb-1.5">
+                Cliente <span className="text-red-400">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  id="manual-cliente-input"
+                  type="text"
+                  value={manualClienteId ? manualClienteNombre : manualClienteQuery}
+                  onChange={async e => {
+                    const q = e.target.value;
+                    setManualClienteQuery(q);
+                    setManualClienteId("");
+                    setManualClienteNombre("");
+                    setClienteSelectorError(false);
+                    setManualClienteOpen(true);
+                    if (q.length >= 1) {
+                      const res = await fetch(`/api/clientes?q=${encodeURIComponent(q)}&limit=10`);
+                      const d = await res.json();
+                      setManualClienteResults(d.clientes ?? []);
+                    } else {
+                      setManualClienteResults([]);
+                    }
+                  }}
+                  onFocus={() => setManualClienteOpen(true)}
+                  onBlur={() => setTimeout(() => setManualClienteOpen(false), 200)}
+                  placeholder="Buscar cliente..."
+                  className={`w-full bg-[#0d0d0d] border rounded-lg px-3 py-2.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]/60 transition-colors ${
+                    clienteSelectorError && !manualClienteId
+                      ? 'border-red-500'
+                      : manualClienteId
+                      ? 'border-[#B3985B]/40 text-[#B3985B]'
+                      : 'border-[#262626]'
+                  }`}
+                />
+                {manualClienteOpen && manualClienteResults.length > 0 && (
+                  <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-[#111] border border-[#262626] rounded-lg shadow-xl max-h-52 overflow-y-auto">
+                    {manualClienteResults.map(c => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onMouseDown={() => {
+                          setManualClienteId(c.id);
+                          setManualClienteNombre(`${c.nombre}${c.empresa ? ` · ${c.empresa}` : ''}`);
+                          setManualClienteQuery(`${c.nombre}${c.empresa ? ` · ${c.empresa}` : ''}`);
+                          setManualClienteOpen(false);
+                          setClienteSelectorError(false);
+                          // Cargar tratos del cliente
+                          fetch(`/api/tratos?clienteId=${c.id}`).then(r => r.json()).then(d => {
+                            setManualTratos((d.tratos ?? []).filter((t: {etapa:string}) => !['VENTA_CERRADA','VENTA_PERDIDA'].includes(t.etapa)));
+                          });
+                        }}
+                        className="w-full text-left px-4 py-2.5 hover:bg-[#1a1a1a] transition-colors"
+                      >
+                        <p className="text-sm text-white">{c.nombre}</p>
+                        {c.empresa && <p className="text-xs text-gray-500">{c.empresa}</p>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {clienteSelectorError && !manualClienteId && (
+                <p className="text-red-400 text-xs mt-1">Selecciona un cliente para continuar</p>
+              )}
+            </div>
+
+            {/* Trato vinculado (opcional) */}
+            <div>
+              <label className="block text-xs text-gray-400 mb-1.5">
+                Trato vinculado <span className="text-gray-600">(opcional)</span>
+              </label>
+              <select
+                value={manualTratoId}
+                onChange={e => setManualTratoId(e.target.value)}
+                disabled={!manualClienteId}
+                className="w-full bg-[#0d0d0d] border border-[#262626] rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#B3985B]/60 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <option value="">— Sin trato vinculado —</option>
+                {manualTratos.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.tipoEvento ?? 'Evento'}{t.nombreEvento ? ` — ${t.nombreEvento}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Briefing del trato ── */}
       {(tratoNotas || tratoArchivos.length > 0 || tratoFormEstado === "COMPLETADO") && (
@@ -1615,7 +1735,7 @@ function CotizadorForm() {
                           <div className="flex items-center gap-2 px-3 py-2">
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5">
-                                <p className="text-white text-sm truncate">{l.marca || l.descripcion}</p>
+                                <p className="text-white text-sm truncate">{[l.marca, l.modelo].filter(Boolean).join(" ") || l.descripcion}</p>
                                 {esPrecioEspecialActivo && (
                                   <span
                                     title={precioOriginalCliente != null ? `Precio especial (lista original: ${formatCurrency(precioOriginalCliente)})` : "Precio especial de este cliente"}
@@ -1627,7 +1747,7 @@ function CotizadorForm() {
                                   <span title="Precio modificado manualmente en esta cotización" className="text-[10px] px-1.5 py-0.5 bg-blue-900/30 text-blue-400 rounded font-medium shrink-0">editado</span>
                                 )}
                               </div>
-                              {l.marca && <p className="text-gray-500 text-xs">{l.descripcion}</p>}
+                              {([l.marca, l.modelo].filter(Boolean).join(" ") !== l.descripcion) && <p className="text-gray-500 text-xs">{l.descripcion}</p>}
                             </div>
                             <NumSelect value={l.cantidad} onChange={v => updateEquipo(l.id, "cantidad", parseFloat(v) || 1)} max={20} className="w-14 py-1" title="Cantidad" />
                             <NumSelect value={l.dias} onChange={v => updateEquipo(l.id, "dias", parseInt(v) || 1)} max={10} className="w-14 py-1" title="Días" />

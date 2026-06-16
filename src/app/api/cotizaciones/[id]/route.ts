@@ -221,6 +221,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                 orden: i,
                 descripcion: l.descripcion as string,
                 marca: (l.marca as string) || null,
+                modelo: (l.modelo as string) || null,
                 nivel: (l.nivel as string) || null,
                 jornada: (l.jornada as string) || null,
                 cantidad: Number(l.cantidad ?? 1),
