@@ -1,8 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
-// Cache on Vercel edge for 5 minutes, revalidate in background
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   const rows = await prisma.equipo.findMany({
