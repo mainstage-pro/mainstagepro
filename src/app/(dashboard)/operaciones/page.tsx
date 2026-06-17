@@ -260,6 +260,8 @@ export default function OperacionesPage() {
   const [nuevoProyectoColor, setNuevoProyectoColor]   = useState(PROJECT_COLORS[0]);
   const [nuevoProyectoCarpeta, setNuevoProyectoCarpeta] = useState("");
   const [nuevaSeccionNombre, setNuevaSeccionNombre] = useState("");
+  const [draggingSeccionId, setDraggingSeccionId]   = useState<string | null>(null);
+  const [seccionDropTarget, setSeccionDropTarget]   = useState<{ id: string; pos: "before" | "after" } | null>(null);
   const carpetaInputRef  = useRef<HTMLInputElement>(null);
   const proyectoInputRef = useRef<HTMLInputElement>(null);
 
@@ -740,7 +742,6 @@ export default function OperacionesPage() {
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Moves multiple tasks to a section at once (used during multi-select drag)
   const moveManyToSection = useCallback((taskIds: string[], seccionId: string) => {
     const idSet = new Set(taskIds);
     setProyectoDetalle(prev => {
@@ -884,6 +885,26 @@ export default function OperacionesPage() {
       setNuevaSeccionNombre(""); setShowNuevaSeccion(false);
     }
   }, [nuevaSeccionNombre, vista]);
+
+  // ── Reorder sections via drag-and-drop ─────────────────────────────────
+  async function reorderSecciones(draggedId: string, targetId: string, pos: "before" | "after") {
+    if (!proyectoDetalle || draggedId === targetId) return;
+    const secs = [...proyectoDetalle.secciones];
+    const fromIdx = secs.findIndex(s => s.id === draggedId);
+    if (fromIdx === -1) return;
+    const [dragged] = secs.splice(fromIdx, 1);
+    let toIdx = secs.findIndex(s => s.id === targetId);
+    if (pos === "after") toIdx++;
+    secs.splice(Math.max(0, toIdx), 0, dragged);
+    const updated = secs.map((s, i) => ({ ...s, orden: i }));
+    setProyectoDetalle(prev => prev ? { ...prev, secciones: updated } : null);
+    await Promise.all(updated.map((s, i) =>
+      fetch(`/api/operaciones/secciones/${s.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orden: i }),
+      })
+    ));
+  }
 
   async function crearCarpeta() {
     if (!nuevoCarpetaNombre.trim()) return;
@@ -1986,7 +2007,7 @@ export default function OperacionesPage() {
                   ))}
 
                   {/* ── Secciones ── */}
-                  {proyectoDetalle.secciones.map((seccion, idx) => (
+                  {proyectoDetalle.secciones.map((seccion) => (
                     <SectionBlock
                       key={seccion.id} seccion={seccion} proyectoId={proyectoDetalle.id}
                       selectedId={selectedId}
@@ -2050,36 +2071,14 @@ export default function OperacionesPage() {
                           ...prev, secciones: prev.secciones.map(s => s.id === id ? { ...s, nombre: nuevoNombre } : s),
                         } : null);
                       }}
-                      canMoveUp={idx > 0}
-                      canMoveDown={idx < proyectoDetalle.secciones.length - 1}
-                      onMoveUp={async () => {
-                        const secs = proyectoDetalle.secciones;
-                        const a = secs[idx - 1], b = secs[idx];
-                        await Promise.all([
-                          fetch(`/api/operaciones/secciones/${a.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orden: b.orden }) }),
-                          fetch(`/api/operaciones/secciones/${b.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orden: a.orden }) }),
-                        ]);
-                        setProyectoDetalle(prev => {
-                          if (!prev) return null;
-                          const s = [...prev.secciones];
-                          [s[idx - 1], s[idx]] = [s[idx], s[idx - 1]];
-                          return { ...prev, secciones: s };
-                        });
-                      }}
-                      onMoveDown={async () => {
-                        const secs = proyectoDetalle.secciones;
-                        const a = secs[idx], b = secs[idx + 1];
-                        await Promise.all([
-                          fetch(`/api/operaciones/secciones/${a.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orden: b.orden }) }),
-                          fetch(`/api/operaciones/secciones/${b.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ orden: a.orden }) }),
-                        ]);
-                        setProyectoDetalle(prev => {
-                          if (!prev) return null;
-                          const s = [...prev.secciones];
-                          [s[idx], s[idx + 1]] = [s[idx + 1], s[idx]];
-                          return { ...prev, secciones: s };
-                        });
-                      }}
+                      onSectionDragStart={() => setDraggingSeccionId(seccion.id)}
+                      onSectionDragEnd={() => { setDraggingSeccionId(null); setSeccionDropTarget(null); }}
+                      onSectionDragOver={(pos) => setSeccionDropTarget({ id: seccion.id, pos })}
+                      onSectionDragLeave={() => setSeccionDropTarget(null)}
+                      onSectionDrop={(draggedId, pos) => { reorderSecciones(draggedId, seccion.id, pos); setDraggingSeccionId(null); setSeccionDropTarget(null); }}
+                      isDraggingSection={draggingSeccionId === seccion.id}
+                      isDropTarget={seccionDropTarget?.id === seccion.id}
+                      dropPos={seccionDropTarget?.id === seccion.id ? seccionDropTarget.pos : undefined}
                       allSections={proyectoDetalle.secciones}
                       onMoveToSection={moveToSection}
                     />
@@ -2881,12 +2880,15 @@ function SectionBlock({
   seccion, proyectoId, selectedId,
   onComplete, onSelect, onDelete, onAddTarea,
   onToggleCollapse, onDeleteSection, onRename,
-  canMoveUp, canMoveDown, onMoveUp, onMoveDown,
   draggingId, onDragStart, onDragEnd, onDrop, onDropSection,
   onPriorityChange, onAssign, onProjectChange, users, projects, viewFilter,
   selectedIds, onMultiSelect, onExtractChild, onMoveToNoSection,
   allSections, onMoveToSection,
   ptrTargetSec, onPtrDragStart, onDateChange,
+  // Section-level DnD
+  onSectionDragStart, onSectionDragEnd,
+  onSectionDragOver, onSectionDragLeave, onSectionDrop,
+  isDraggingSection, isDropTarget, dropPos,
 }: {
   seccion: SeccionDetalle;
   proyectoId: string;
@@ -2902,10 +2904,6 @@ function SectionBlock({
   onToggleCollapse: (id: string, colapsada: boolean) => void;
   onDeleteSection: (id: string) => void;
   onRename: (id: string, nombre: string) => Promise<void>;
-  canMoveUp: boolean;
-  canMoveDown: boolean;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
   draggingId: string | null;
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
@@ -2926,11 +2924,18 @@ function SectionBlock({
   ptrTargetSec?:      string | null;
   onPtrDragStart?:    (taskId: string, title: string) => void;
   onDateChange?:      (id: string, value: string) => void;
+  // Section-level DnD props
+  onSectionDragStart?: () => void;
+  onSectionDragEnd?:   () => void;
+  onSectionDragOver?:  (pos: "before" | "after") => void;
+  onSectionDragLeave?: () => void;
+  onSectionDrop?:      (draggedId: string, pos: "before" | "after") => void;
+  isDraggingSection?:  boolean;
+  isDropTarget?:       boolean;
+  dropPos?:            "before" | "after";
 }) {
   const [hov,        setHov]        = useState(false);
   const [headerOver, setHeaderOver] = useState(false);
-  const [bottomOver, setBottomOver] = useState(false);
-  const [sectionOver, setSectionOver] = useState(false);
   // Inline rename state
   const [editando,   setEditando]   = useState(false);
   const [editNombre, setEditNombre] = useState(seccion.nombre);
@@ -2956,9 +2961,43 @@ function SectionBlock({
 
   return (
     <div
-      className={`mt-5 rounded-2xl transition-all duration-150 ${isPtrTarget ? "ring-2 ring-[#B3985B] ring-offset-1 ring-offset-[#0a0a0a] bg-[#B3985B]/5" : ""}`}
+      className={`mt-5 rounded-2xl transition-all duration-150
+        ${isPtrTarget ? "ring-2 ring-[#B3985B] ring-offset-1 ring-offset-[#0a0a0a] bg-[#B3985B]/5" : ""}
+        ${isDraggingSection ? "opacity-40" : ""}
+      `}
       data-section-id={seccion.id}
+      onDragOver={e => {
+        // Only handle section-level DnD, not task DnD
+        if (!e.dataTransfer.types.includes("dragsectionid")) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const rect = e.currentTarget.getBoundingClientRect();
+        const pos: "before" | "after" = e.clientY < rect.top + rect.height / 2 ? "before" : "after";
+        onSectionDragOver?.(pos);
+      }}
+      onDragLeave={e => {
+        if (!e.dataTransfer.types.includes("dragsectionid")) return;
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+          onSectionDragLeave?.();
+        }
+      }}
+      onDrop={e => {
+        const draggedId = e.dataTransfer.getData("dragsectionid");
+        if (!draggedId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const rect = e.currentTarget.getBoundingClientRect();
+        const pos: "before" | "after" = e.clientY < rect.top + rect.height / 2 ? "before" : "after";
+        onSectionDrop?.(draggedId, pos);
+      }}
     >
+      {/* ── Drop indicator: BEFORE ── */}
+      <div className={`overflow-hidden transition-all duration-150 ${
+        isDropTarget && dropPos === "before" ? "max-h-2 opacity-100" : "max-h-0 opacity-0"
+      }`}>
+        <div className="h-0.5 bg-[#B3985B] rounded-full mx-2 shadow-[0_0_8px_#B3985B66]" />
+      </div>
+
       {/* ── Pointer-drag drop banner — animated so it slides in smoothly ── */}
       <div
         className={`overflow-hidden transition-all duration-200 ease-out ${isPtrTarget ? "max-h-20 mb-2 opacity-100" : "max-h-0 mb-0 opacity-0"}`}
@@ -2977,7 +3016,7 @@ function SectionBlock({
         }`}
         onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
         onClick={e => {
-          if ((e.target as HTMLElement).closest("button,input")) return;
+          if ((e.target as HTMLElement).closest("button,input,[draggable]")) return;
           if (!editando) onToggleCollapse(seccion.id, !seccion.colapsada);
         }}
         onDragOver={e => { if (!draggingId) return; e.preventDefault(); e.stopPropagation(); setHeaderOver(true); }}
@@ -2990,34 +3029,34 @@ function SectionBlock({
           <polyline points="6 9 12 15 18 9"/>
         </svg>
 
-        {/* Up / Down reorder arrows — visible on hover */}
-        {hov && !headerOver && !editando && (
-          <>
-            <button
-              onClick={e => { e.stopPropagation(); onMoveUp(); }}
-              disabled={!canMoveUp}
-              title="Subir sección"
-              className={`p-0.5 transition-colors ${
-                canMoveUp ? "text-[#444] hover:text-white" : "text-[#222] cursor-not-allowed"
-              }`}
-            >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="18 15 12 9 6 15"/>
-              </svg>
-            </button>
-            <button
-              onClick={e => { e.stopPropagation(); onMoveDown(); }}
-              disabled={!canMoveDown}
-              title="Bajar sección"
-              className={`p-0.5 transition-colors ${
-                canMoveDown ? "text-[#444] hover:text-white" : "text-[#222] cursor-not-allowed"
-              }`}
-            >
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
-            </button>
-          </>
+        {/* Drag handle — visible on hover, replaces the old arrow buttons */}
+        {hov && !editando && (
+          <div
+            draggable
+            onDragStart={e => {
+              e.stopPropagation();
+              e.dataTransfer.setData("dragsectionid", seccion.id);
+              e.dataTransfer.effectAllowed = "move";
+              onSectionDragStart?.();
+            }}
+            onDragEnd={e => {
+              e.stopPropagation();
+              onSectionDragEnd?.();
+            }}
+            onClick={e => e.stopPropagation()}
+            title="Arrastrar para reordenar"
+            className="cursor-grab active:cursor-grabbing text-[#3a3a3a] hover:text-[#777] transition-colors p-0.5 shrink-0 select-none"
+          >
+            {/* 6-dot grip icon */}
+            <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor">
+              <circle cx="2.5" cy="2"  r="1.2"/>
+              <circle cx="7.5" cy="2"  r="1.2"/>
+              <circle cx="2.5" cy="6"  r="1.2"/>
+              <circle cx="7.5" cy="6"  r="1.2"/>
+              <circle cx="2.5" cy="10" r="1.2"/>
+              <circle cx="7.5" cy="10" r="1.2"/>
+            </svg>
+          </div>
         )}
 
         {/* Section name: editable input OR static text */}
@@ -3073,7 +3112,6 @@ function SectionBlock({
         )}
       </div>
 
-
       {!seccion.colapsada && (
         <>
           {(viewFilter ? viewFilter(seccion.tareas) : seccion.tareas).map(t => (
@@ -3101,6 +3139,13 @@ function SectionBlock({
             placeholder={`Tarea en ${seccion.nombre}\u2026`} onAdd={onAddTarea} />
         </>
       )}
+
+      {/* ── Drop indicator: AFTER ── */}
+      <div className={`overflow-hidden transition-all duration-150 ${
+        isDropTarget && dropPos === "after" ? "max-h-2 opacity-100" : "max-h-0 opacity-0"
+      }`}>
+        <div className="h-0.5 bg-[#B3985B] rounded-full mx-2 mt-1 shadow-[0_0_8px_#B3985B66]" />
+      </div>
     </div>
   );
 }

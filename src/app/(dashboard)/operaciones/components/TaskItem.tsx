@@ -28,11 +28,11 @@ export interface TareaItem {
   pasos?: unknown;
 }
 
-const PRIO: Record<string, { ring: string; dot: string; glow: string }> = {
-  URGENTE: { ring: "border-red-500/70",    dot: "bg-red-500",    glow: "shadow-red-500/30" },
-  ALTA:    { ring: "border-orange-500/70", dot: "bg-orange-500", glow: "shadow-orange-500/30" },
-  MEDIA:   { ring: "border-[#B3985B]/60",  dot: "bg-[#B3985B]",  glow: "shadow-[#B3985B]/20" },
-  BAJA:    { ring: "border-[#2a2a2a]",     dot: "bg-[#333]",     glow: "" },
+const PRIO: Record<string, { ring: string; dot: string; glow: string; fill: string; dotSize: string }> = {
+  URGENTE: { ring: "border-red-500",    dot: "bg-red-500",    glow: "shadow-red-500/50",    fill: "bg-red-500/20",    dotSize: "w-2 h-2" },
+  ALTA:    { ring: "border-orange-500", dot: "bg-orange-500", glow: "shadow-orange-500/40", fill: "bg-orange-500/15", dotSize: "w-1.5 h-1.5" },
+  MEDIA:   { ring: "border-[#B3985B]",  dot: "bg-[#B3985B]",  glow: "shadow-[#B3985B]/30", fill: "bg-[#B3985B]/10", dotSize: "w-1 h-1" },
+  BAJA:    { ring: "border-[#2a2a2a]",  dot: "bg-[#333]",     glow: "",                    fill: "",               dotSize: "" },
 };
 
 const PRIO_OPTIONS = [
@@ -315,8 +315,10 @@ export default function TaskItem({
           onClick={handleComplete}
           className={`mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 flex items-center justify-center transition-all duration-150 ${
             isCompleted  ? "border-[#333] bg-[#1f1f1f]"
-            : completing ? `${prio.ring} bg-[#B3985B]/10 animate-pulse`
-            : `${prio.ring} hover:bg-[#111] ${(hovered || isSelected) ? "shadow-md " + prio.glow : ""}`
+            : completing ? `${prio.ring} ${prio.fill} animate-pulse`
+            : `${prio.ring} ${prio.fill}
+               ${tarea.prioridad === "URGENTE" ? "ring-2 ring-red-500/25 ring-offset-1 ring-offset-[#0a0a0a]" : ""}
+               ${(hovered || isSelected) ? "shadow-md " + prio.glow : ""}`
           }`}
           aria-label="Completar"
         >
@@ -325,8 +327,9 @@ export default function TaskItem({
               <path d="M2 6l3 3 5-5"/>
             </svg>
           )}
-          {!isCompleted && !completing && (hovered || isSelected) && (
-            <div className={`w-1.5 h-1.5 rounded-full ${prio.dot} opacity-50`} />
+          {/* Always show priority dot for non-BAJA when not completed */}
+          {!isCompleted && !completing && tarea.prioridad !== "BAJA" && (
+            <div className={`rounded-full ${prio.dot} ${prio.dotSize} transition-all duration-150`} />
           )}
         </button>
       )}
@@ -375,6 +378,19 @@ export default function TaskItem({
 
         {(!isCompleted || showProject) && (
           <div className="flex flex-wrap items-center gap-1.5 mt-1">
+            {/* Priority chip — only for URGENTE and ALTA */}
+            {!isCompleted && tarea.prioridad === "URGENTE" && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-red-400 bg-red-950/60 border border-red-500/30 px-1.5 py-0.5 rounded-md select-none shrink-0">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                Urgente
+              </span>
+            )}
+            {!isCompleted && tarea.prioridad === "ALTA" && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-orange-400 bg-orange-950/50 border border-orange-500/25 px-1.5 py-0.5 rounded-md select-none shrink-0">
+                <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="18 15 12 9 6 15"/></svg>
+                Alta
+              </span>
+            )}
             {showProject && tarea.proyectoTarea && (
               <span className="flex items-center gap-1 text-[13px] text-[#444] font-medium">
                 <span className="w-1.5 h-1.5 rounded-full inline-block shrink-0"
