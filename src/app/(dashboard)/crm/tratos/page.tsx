@@ -156,12 +156,12 @@ const ETAPAS = ["DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA
 const TIPOS_EVENTO = ["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"];
 
 const ALL_ETAPAS = [
-  { key: 'TODOS',          label: 'Todos',          emoji: '📋' },
-  { key: 'LEAD',           label: 'Leads',          emoji: '⚡' },
-  { key: 'DESCUBRIMIENTO', label: 'Descubrimiento', emoji: '🔍' },
-  { key: 'OPORTUNIDAD',    label: 'Oportunidad',    emoji: '💬' },
-  { key: 'VENTA_CERRADA',  label: 'Cerrada',        emoji: '✅' },
-  { key: 'VENTA_PERDIDA',  label: 'Perdida',        emoji: '❌' },
+  { key: 'TODOS',          label: 'Todos',          color: '#6B7280' },
+  { key: 'LEAD',           label: 'Leads',          color: '#F59E0B' },
+  { key: 'DESCUBRIMIENTO', label: 'Descubrimiento', color: '#3B82F6' },
+  { key: 'OPORTUNIDAD',    label: 'Oportunidad',    color: '#8B5CF6' },
+  { key: 'VENTA_CERRADA',  label: 'Cerrada',        color: '#10B981' },
+  { key: 'VENTA_PERDIDA',  label: 'Perdida',        color: '#EF4444' },
 ];
 
 function urgenciaColor(fechaProximaAccion: string | Date | null): string {
@@ -893,19 +893,35 @@ function CompactTratoRow({
 }) {
   const router = useRouter();
   const wa = waUrl(t);
-  const { activo } = diasTrato(t);
 
-  const fmtFecha2 = (fecha: string | null) => {
-    if (!fecha) return 'Sin fecha';
-    try {
-      return new Date(fecha + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
-    } catch { return 'Sin fecha'; }
+  const getSeguimientoBadge = (fecha: string | null) => {
+    if (!fecha) return { label: 'Sin seguimiento', cls: 'text-[#3a3a3a]', pill: false };
+    const diff = Math.floor((new Date(fecha).getTime() - Date.now()) / 86400000);
+    if (diff < 0) return { label: `Vencido ${Math.abs(diff)}d`, cls: 'bg-red-500/15 text-red-400', pill: true };
+    if (diff === 0) return { label: 'Hoy', cls: 'bg-yellow-500/15 text-yellow-400', pill: true };
+    const label = new Date(fecha + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+    return { label, cls: 'bg-[#1e1e1e] text-[#555]', pill: true };
   };
+
+  const TIPO_BADGE_CLS: Record<string, string> = {
+    MUSICAL: 'bg-[#1E3A5F] text-[#60A5FA]',
+    SOCIAL: 'bg-[#3D1F5B] text-[#C084FC]',
+    EMPRESARIAL: 'bg-[#1A3A2A] text-[#4ADE80]',
+    OTRO: 'bg-[#222] text-[#9CA3AF]',
+  };
+  const TIPO_LABEL_SHORT: Record<string, string> = {
+    MUSICAL: 'Musical', SOCIAL: 'Social', EMPRESARIAL: 'Empresarial', OTRO: 'Otro',
+  };
+  const ETAPA_DOT_COLOR: Record<string, string> = {
+    LEAD: '#F59E0B', DESCUBRIMIENTO: '#3B82F6', OPORTUNIDAD: '#8B5CF6',
+    VENTA_CERRADA: '#10B981', VENTA_PERDIDA: '#EF4444',
+  };
+  const seg = getSeguimientoBadge(t.fechaProximaAccion);
 
   return (
     <>
       {/* Main row */}
-      <div className={`group flex items-center gap-2 px-3 py-2.5 hover:bg-[#0a0a0a] border-b border-[#0f0f0f] last:border-0 transition-colors border-l-2 ${TIPO_EVENTO_BORDER[t.tipoEvento] ?? 'border-l-transparent'}`}>
+      <div className="group flex items-center gap-3 px-4 py-3 hover:bg-[#0d0d0d] border-b border-[#0f0f0f] last:border-0 transition-colors">
         {/* Expand toggle */}
         <button
           onClick={e => { e.stopPropagation(); onToggle(); }}
@@ -917,116 +933,88 @@ function CompactTratoRow({
           </svg>
         </button>
 
-        {/* Nombre + empresa */}
+        {/* COL 1 — Identidad */}
         <div
           className="flex-1 min-w-0 cursor-pointer"
           onClick={() => router.push(`/crm/tratos/${t.id}`)}
         >
-          <div className="flex items-center gap-1.5">
-            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${TIPO_EVENTO_DOT[t.tipoEvento] ?? 'bg-gray-600/50'}`} />
-            <p className="text-white text-sm font-medium leading-snug truncate">{t.cliente.nombre}</p>
-          </div>
-          {t.cliente.empresa && (
-            <p className="text-gray-600 text-[11px] truncate pl-3">{t.cliente.empresa}</p>
-          )}
-          {t.nombreEvento && (
-            <p className="text-gray-700 text-[10px] truncate mt-0.5 pl-3">{t.nombreEvento}</p>
+          <p className="text-[14px] text-white font-medium leading-tight truncate">
+            {t.nombreEvento || t.cliente.nombre}
+          </p>
+          <p className="text-[12px] text-[#666] mt-0.5 truncate">
+            {t.nombreEvento ? t.cliente.nombre : (t.cliente.empresa ?? '')}
+          </p>
+          {t.nombreEvento && t.cliente.empresa && (
+            <p className="text-[11px] text-[#444] truncate">{t.cliente.empresa}</p>
           )}
         </div>
 
-        {/* Tipo evento chip */}
-        <span className={`hidden sm:inline text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] shrink-0 whitespace-nowrap ${TIPO_EVENTO_TEXT[t.tipoEvento] ?? 'text-gray-500'}`}>
-          {TIPO_EVENTO_LABELS[t.tipoEvento] ?? t.tipoEvento}
-        </span>
-
-        {/* Tipo servicio chip */}
-        {t.tipoServicio && (
-          <span className="inline text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] text-gray-500 shrink-0 whitespace-nowrap">
-            {TIPO_SERVICIO_LABELS[t.tipoServicio] ?? t.tipoServicio}
+        {/* COL 2 — Tipo de evento */}
+        <div className="hidden sm:block w-[100px] shrink-0">
+          <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-medium ${TIPO_BADGE_CLS[t.tipoEvento] ?? TIPO_BADGE_CLS.OTRO}`}>
+            {TIPO_LABEL_SHORT[t.tipoEvento] ?? t.tipoEvento}
           </span>
-        )}
-
-        {/* Origen badge */}
-        <span className="hidden lg:inline text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] text-gray-600 shrink-0 whitespace-nowrap">
-          {ORIGEN_LEAD_LABELS[t.origenLead] ?? t.origenLead}
-        </span>
-
-        {/* Teléfono */}
-        {t.cliente.telefono && (
-          <span className="hidden lg:inline text-[11px] text-gray-600 font-mono shrink-0">{t.cliente.telefono}</span>
-        )}
-
-        {/* Días badge */}
-        <div className="shrink-0 hidden sm:block">
-          <BadgeDias
-            inicio={t.createdAt}
-            fin={t.fechaCierre}
-            tipo="trato"
-            cerrado={!activo}
-            labelCerrado={t.etapa === 'VENTA_PERDIDA' ? 'perdido' : undefined}
-            urgenciaClassName={urgenciaColor(t.fechaProximaAccion)}
-          />
         </div>
 
-        {/* Próxima acción */}
-        <span className="hidden md:inline text-[10px] text-gray-600 shrink-0 whitespace-nowrap">
-          {t.fechaProximaAccion ? fmtFecha2(t.fechaProximaAccion) : 'Sin seguimiento'}
-        </span>
+        {/* COL 3 — Seguimiento */}
+        <div className="hidden md:block w-[110px] shrink-0">
+          <span className={`text-[11px] ${seg.pill ? 'px-2 py-0.5 rounded-md' : ''} ${seg.cls}`}>
+            {seg.label}
+          </span>
+        </div>
 
-        {/* WhatsApp */}
-        {wa ? (
-          <a
-            href={wa}
-            target="_blank"
-            rel="noopener noreferrer"
+        {/* COL 4 — Etapa */}
+        <div className="hidden sm:flex items-center gap-1.5 w-[140px] shrink-0">
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: ETAPA_DOT_COLOR[t.etapa] ?? '#6B7280' }} />
+          <select
+            value={t.etapa}
+            onChange={e => { e.stopPropagation(); onCambiarEtapa(e.target.value); }}
             onClick={e => e.stopPropagation()}
-            className="shrink-0 text-green-700 hover:text-green-500 transition-colors"
-            title="Abrir WhatsApp"
+            className="flex-1 min-w-0 bg-transparent border-none text-gray-500 text-[11px] focus:outline-none cursor-pointer hover:text-white transition-colors"
+            title="Cambiar etapa"
           >
-            <WaIcon />
-          </a>
-        ) : (
-          <span className="w-4 shrink-0" />
-        )}
+            {ALL_ETAPAS.filter(e => e.key !== 'TODOS').map(e => (
+              <option key={e.key} value={e.key} className="bg-[#111]">{e.label}</option>
+            ))}
+          </select>
+        </div>
 
-        {/* Selector de etapa — hidden on mobile, accessible from inside the trato */}
-        <select
-          value={t.etapa}
-          onChange={e => { e.stopPropagation(); onCambiarEtapa(e.target.value); }}
-          onClick={e => e.stopPropagation()}
-          className="hidden sm:block shrink-0 bg-[#111] border border-[#222] text-gray-400 text-[10px] rounded-lg px-1.5 py-1 focus:outline-none focus:border-[#B3985B] hover:border-[#333] transition-colors cursor-pointer"
-          title="Cambiar etapa"
-        >
-          {ALL_ETAPAS.filter(e => e.key !== 'TODOS').map(e => (
-            <option key={e.key} value={e.key}>{e.emoji} {e.label}</option>
-          ))}
-        </select>
-
-        {/* Contactado rápido */}
-        <button
-          onClick={e => { e.stopPropagation(); onQuickNote(); }}
-          className="shrink-0 text-gray-700 hover:text-emerald-500 transition-colors text-[11px] hidden md:inline"
-          title="Registrar contacto"
-        >
-          ✓
-        </button>
-
-        {/* Eliminar */}
-        <button
-          onClick={e => { e.stopPropagation(); onEliminar(); }}
-          disabled={deletingId === t.id}
-          className="shrink-0 text-[#2a2a2a] hover:text-red-500/60 transition-colors disabled:opacity-40"
-          title="Eliminar trato"
-        >
-          {deletingId === t.id ? (
-            <span className="text-[10px] text-gray-600">...</span>
-          ) : (
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-              <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-            </svg>
+        {/* COL 5 — Acciones (solo en hover) */}
+        <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <button
+            onClick={e => { e.stopPropagation(); onQuickNote(); }}
+            className="text-[11px] text-[#B3985B] border border-[#B3985B]/30 rounded-md px-2 py-1 hover:bg-[#B3985B]/10 transition-colors whitespace-nowrap"
+          >
+            + Seguimiento
+          </button>
+          {wa && (
+            <a
+              href={wa}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="text-green-700 hover:text-green-500 transition-colors p-1"
+              title="WhatsApp"
+            >
+              <WaIcon />
+            </a>
           )}
-        </button>
+          <button
+            onClick={e => { e.stopPropagation(); onEliminar(); }}
+            disabled={deletingId === t.id}
+            className="text-[#2a2a2a] hover:text-red-500/60 transition-colors disabled:opacity-40 p-1"
+            title="Eliminar"
+          >
+            {deletingId === t.id ? (
+              <span className="text-[10px] text-gray-600">...</span>
+            ) : (
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Accordion panel */}
@@ -1216,9 +1204,9 @@ export default function TratosPage() {
   });
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [orden, setOrden] = useState<"evento_asc" | "evento_desc" | "creacion_desc" | "creacion_asc">("creacion_desc");
-  const [agrupacion, setAgrupacion] = useState<"todos" | "mes" | "semana">("mes");
+  const [agrupacion, setAgrupacion] = useState<"todos" | "mes" | "semana">("todos");
   const [gruposOpen, setGruposOpen] = useState<Record<string, boolean>>({});
-  const [ordenTrato, setOrdenTrato] = useState<OrdenTrato>('fechaEvento');
+  const [ordenTrato, setOrdenTrato] = useState<OrdenTrato>('fechaAgregado');
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const [showNueva, setShowNueva] = useState(false);
   const toast = useToast();
@@ -1524,10 +1512,7 @@ export default function TratosPage() {
               </svg>
             </button>
           </div>
-          <button onClick={() => setShowNueva(true)}
-            className="border border-[#2a2a2a] hover:border-[#B3985B]/40 text-gray-400 hover:text-[#B3985B] text-sm px-3 py-2 rounded-lg transition-all">
-            + Nueva oportunidad
-          </button>
+
           <NuevoTratoDropdown onLeadCreated={async () => {
             const refreshed = await fetch('/api/tratos').then(r => r.json());
             setTratos(refreshed.tratos ?? []);
@@ -1562,11 +1547,11 @@ export default function TratosPage() {
               perdidas: tratos.filter(t => t.etapa === 'VENTA_PERDIDA').length,
             };
             const cards = [
-              { emoji: '⚡', label: 'Leads',         count: counts.leads,          filter: 'LEAD' },
-              { emoji: '🔍', label: 'Descubrimiento', count: counts.descubrimiento, filter: 'DESCUBRIMIENTO' },
-              { emoji: '💬', label: 'Oportunidades',  count: counts.oportunidades,  filter: 'OPORTUNIDAD' },
-              { emoji: '✅', label: 'Cerradas',       count: counts.cerradas,       filter: 'VENTA_CERRADA' },
-              { emoji: '❌', label: 'Perdidas',       count: counts.perdidas,       filter: 'VENTA_PERDIDA' },
+              { color: '#F59E0B', label: 'Leads',         count: counts.leads,          filter: 'LEAD',           borderClass: '' },
+              { color: '#3B82F6', label: 'Descubrimiento', count: counts.descubrimiento, filter: 'DESCUBRIMIENTO', borderClass: '' },
+              { color: '#8B5CF6', label: 'Oportunidades',  count: counts.oportunidades,  filter: 'OPORTUNIDAD',    borderClass: '' },
+              { color: '#10B981', label: 'Cerradas',       count: counts.cerradas,       filter: 'VENTA_CERRADA',  borderClass: 'border-green-900/30' },
+              { color: '#EF4444', label: 'Perdidas',       count: counts.perdidas,       filter: 'VENTA_PERDIDA',  borderClass: 'border-red-900/30' },
             ];
             return (
               <div className="grid grid-cols-3 lg:grid-cols-5 gap-2 mb-4">
@@ -1577,10 +1562,10 @@ export default function TratosPage() {
                     className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all ${
                       filtroEtapa === card.filter
                         ? 'bg-[#1a1a1a] border-[#B3985B]/40'
-                        : 'bg-[#0d0d0d] border-[#1a1a1a] hover:border-[#2a2a2a]'
+                        : `bg-[#0d0d0d] ${card.borderClass || 'border-[#1a1a1a]'} hover:border-[#2a2a2a]`
                     }`}
                   >
-                    <span className="text-base">{card.emoji}</span>
+                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: card.color }} />
                     <div className="flex-1 min-w-0">
                       <p className="text-[10px] text-gray-500 truncate">{card.label}</p>
                       <p className={`text-xl font-bold tabular-nums ${
@@ -1595,21 +1580,20 @@ export default function TratosPage() {
 
           {/* ── Tab navigation ── */}
           <div className="flex border-b border-[#111] mb-4 overflow-x-auto">
-            {ALL_ETAPAS.map(({ key, label, emoji }) => {
+            {ALL_ETAPAS.map(({ key, label, color }) => {
               const count = key === 'TODOS' ? tratos.length : tratos.filter(t => t.etapa === key).length;
               return (
                 <button
                   key={key}
                   onClick={() => { setFiltroEtapa(key); setFiltroTipoEvento(null); }}
-                  className={`relative flex items-center gap-1 px-2 py-1.5 sm:gap-1.5 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
-                    filtroEtapa === key ? 'text-white' : 'text-gray-600 hover:text-gray-400'
+                  className={`relative flex items-center gap-1.5 px-3 py-2.5 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
+                    filtroEtapa === key ? 'text-[#B3985B]' : 'text-gray-600 hover:text-gray-400'
                   }`}
                 >
-                  <span className="hidden xs:inline sm:inline">{emoji}</span>
-                  <span className="hidden sm:inline">{label}</span>
-                  <span className="sm:hidden text-[10px] font-semibold">{label.slice(0, 3)}</span>
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                  <span>{label}</span>
                   <span className={`text-[10px] tabular-nums ${
-                    filtroEtapa === key ? 'text-gray-400' : 'text-gray-700'
+                    filtroEtapa === key ? 'text-[#B3985B]/60' : 'text-gray-700'
                   }`}>({count})</span>
                   {filtroEtapa === key && (
                     <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#B3985B] rounded-full" />
@@ -1632,7 +1616,7 @@ export default function TratosPage() {
                     : 'bg-transparent border-[#1a1a1a] text-gray-600 hover:text-gray-300 hover:border-[#2a2a2a]'
                 }`}
               >
-                {tipo === null ? 'Todos' : tipo === 'MUSICAL' ? '🎵 Musical' : tipo === 'SOCIAL' ? '🎉 Social' : tipo === 'EMPRESARIAL' ? '🏢 Empresarial' : '• Otro'}
+                {tipo === null ? 'Todos' : tipo === 'MUSICAL' ? 'Musical' : tipo === 'SOCIAL' ? 'Social' : tipo === 'EMPRESARIAL' ? 'Empresarial' : 'Otro'}
               </button>
             ))}
           </div>

@@ -52,6 +52,10 @@ function fmtDias(isoDate: string) {
   return Math.floor((Date.now() - new Date(isoDate).getTime()) / 86400000);
 }
 
+function diasVencido(isoDate: string) {
+  return Math.floor((Date.now() - new Date(isoDate).getTime()) / 86400000);
+}
+
 const CANAL_ICON: Record<string, string> = {
   whatsapp: "📱",
   llamada: "📞",
@@ -274,134 +278,142 @@ function ModalPropuesta({
   );
 }
 
-function SeguimientoCard({
-  seg,
+// Tarjeta compacta tipo fila
+function SeguimientoRow({
+  seguimiento,
   onComplete,
   onDelete,
 }: {
-  seg: Seguimiento;
+  seguimiento: Seguimiento;
   onComplete: (id: string, nota: string) => void;
   onDelete: (id: string) => void;
 }) {
   const [marcando, setMarcando] = useState(false);
   const [notaRes, setNotaRes] = useState("");
 
-  return (
-    <div className={`bg-[#111] border border-[#1e1e1e] rounded-xl p-4 flex gap-4 ${seg.completado ? "opacity-50" : ""}`}>
-      {/* Canal icon */}
-      <div className="text-xl shrink-0 mt-0.5">{CANAL_ICON[seg.canal] ?? "📋"}</div>
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const manana = new Date(hoy); manana.setDate(hoy.getDate() + 1);
+  const fechaSeg = new Date(seguimiento.fechaProgramada);
+  const esVencido = !seguimiento.completado && fechaSeg < hoy;
+  const esHoy = !seguimiento.completado && fechaSeg >= hoy && fechaSeg < manana;
+  const dias = esVencido ? diasVencido(seguimiento.fechaProgramada) : 0;
 
-      <div className="flex-1 min-w-0">
-        {/* Header */}
-        <div className="flex items-start gap-2 flex-wrap mb-1">
-          <BadgeTipo tipo={seg.tipo} numero={seg.numero} />
-          <span className="text-[10px] text-[#555] uppercase tracking-wider">{CANAL_LABEL[seg.canal] ?? seg.canal}</span>
+  if (marcando) {
+    return (
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-[#1a1a1a] bg-[#161616]">
+        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${esVencido ? "bg-red-500" : esHoy ? "bg-yellow-500" : "bg-[#333]"}`} />
+        <div className="flex-1 flex gap-2">
+          <input
+            autoFocus
+            value={notaRes}
+            onChange={e => setNotaRes(e.target.value)}
+            placeholder="Nota del resultado (opcional)"
+            className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+            onKeyDown={e => {
+              if (e.key === "Enter") onComplete(seguimiento.id, notaRes);
+              if (e.key === "Escape") setMarcando(false);
+            }}
+          />
+          <button
+            onClick={() => onComplete(seguimiento.id, notaRes)}
+            className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded font-semibold transition-colors"
+          >
+            Guardar
+          </button>
+          <button onClick={() => setMarcando(false)} className="text-xs text-[#555] hover:text-white transition-colors">✕</button>
         </div>
-
-        <p className="text-white text-sm font-medium mb-0.5">{seg.titulo}</p>
-
-        {/* Cliente / trato */}
-        <div className="flex items-center gap-1.5 mb-2">
-          <span className="text-[#B3985B] text-xs font-medium">{seg.trato.cliente.nombre}</span>
-          {seg.trato.nombreEvento && (
-            <>
-              <span className="text-[#333] text-xs">·</span>
-              <span className="text-[#666] text-xs truncate">{seg.trato.nombreEvento}</span>
-            </>
-          )}
-        </div>
-
-        {/* Nota */}
-        {seg.nota && !seg.nota.startsWith("Seguimiento automático") && (
-          <p className="text-[#6b7280] text-xs mb-2 italic">{seg.nota}</p>
-        )}
-
-        {/* Fecha */}
-        <p className="text-[#555] text-[11px] mb-3">{fmtFecha(seg.fechaProgramada)}</p>
-
-        {/* Nota resultado si ya completado */}
-        {seg.completado && seg.notaResultado && (
-          <p className="text-green-400/70 text-xs italic mb-2">✓ {seg.notaResultado}</p>
-        )}
-
-        {/* Acciones */}
-        {!seg.completado && (
-          <>
-            {marcando ? (
-              <div className="flex gap-2">
-                <input
-                  autoFocus
-                  value={notaRes}
-                  onChange={e => setNotaRes(e.target.value)}
-                  placeholder="Nota del resultado (opcional)"
-                  className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-                  onKeyDown={e => { if (e.key === "Enter") onComplete(seg.id, notaRes); if (e.key === "Escape") setMarcando(false); }}
-                />
-                <button
-                  onClick={() => onComplete(seg.id, notaRes)}
-                  className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-1.5 rounded font-semibold transition-colors"
-                >
-                  Guardar
-                </button>
-                <button onClick={() => setMarcando(false)} className="text-xs text-[#555] hover:text-white transition-colors">✕</button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setMarcando(true)}
-                  className="text-xs bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-white px-3 py-1.5 rounded-lg font-semibold transition-colors"
-                >
-                  ✓ Marcar hecho
-                </button>
-                <Link
-                  href={`/crm/tratos/${seg.tratoId}`}
-                  className="text-xs text-[#B3985B] hover:underline"
-                >
-                  Ver trato →
-                </Link>
-                <button
-                  onClick={() => onDelete(seg.id)}
-                  className="text-xs text-[#333] hover:text-red-400 transition-colors ml-auto"
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-          </>
-        )}
       </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 border-b border-[#1a1a1a] hover:bg-[#161616] group transition-colors">
+      {/* Indicador */}
+      <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${esVencido ? "bg-red-500" : esHoy ? "bg-yellow-500" : "bg-[#333]"}`} />
+
+      {/* Contenido */}
+      <div className="flex-1 min-w-0">
+        <p className={`text-[13px] font-medium truncate ${seguimiento.completado ? "text-[#555] line-through" : "text-white"}`}>
+          {seguimiento.titulo}
+        </p>
+        <p className="text-[11px] text-[#555] mt-0.5 truncate">
+          {seguimiento.trato?.cliente?.nombre} · {seguimiento.trato?.nombreEvento || seguimiento.trato?.cliente?.nombre}
+        </p>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-[10px] text-[#444]">{CANAL_LABEL[seguimiento.canal] ?? seguimiento.canal}</span>
+          <span className="text-[10px] text-[#333]">·</span>
+          <span className={`text-[10px] ${esVencido ? "text-red-400" : "text-[#444]"}`}>
+            {fmtFecha(seguimiento.fechaProgramada)}
+            {esVencido && ` · ${dias}d vencido`}
+          </span>
+        </div>
+      </div>
+
+      {/* Acciones */}
+      {!seguimiento.completado && (
+        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={() => setMarcando(true)}
+            className="text-[11px] px-2.5 py-1 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-[#888] hover:text-white hover:border-[#444] transition-colors whitespace-nowrap"
+          >
+            Hecho ✓
+          </button>
+          <Link
+            href={`/crm/tratos/${seguimiento.tratoId}`}
+            className="text-[11px] px-2.5 py-1 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-[#888] hover:text-white hover:border-[#444] transition-colors whitespace-nowrap"
+          >
+            Ver trato →
+          </Link>
+          <button
+            onClick={() => onDelete(seguimiento.id)}
+            className="text-[11px] text-[#333] hover:text-red-400 transition-colors px-1"
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
+// Sección agrupada con tarjetas fila
 function GroupSection({
   title,
   color,
   segs,
   onComplete,
   onDelete,
+  defaultCollapsed = false,
 }: {
   title: string;
   color: string;
   segs: Seguimiento[];
   onComplete: (id: string, nota: string) => void;
   onDelete: (id: string) => void;
+  defaultCollapsed?: boolean;
 }) {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
   if (segs.length === 0) return null;
   return (
-    <div>
-      <div className="flex items-center gap-3 mb-3">
+    <div className="mb-4">
+      <button
+        onClick={() => setCollapsed(c => !c)}
+        className="flex items-center gap-3 mb-0 w-full text-left py-2"
+      >
         <h2 className={`text-xs font-semibold uppercase tracking-wider ${color}`}>{title}</h2>
         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${color} bg-current bg-opacity-10 border border-current border-opacity-20`} style={{ opacity: 1 }}>
           {segs.length}
         </span>
         <div className="flex-1 h-px bg-[#1a1a1a]" />
-      </div>
-      <div className="space-y-2 mb-6">
-        {segs.map(s => (
-          <SeguimientoCard key={s.id} seg={s} onComplete={onComplete} onDelete={onDelete} />
-        ))}
-      </div>
+        <span className="text-[#444] text-[10px]">{collapsed ? "▾" : "▴"}</span>
+      </button>
+      {!collapsed && (
+        <div className="border border-[#1e1e1e] rounded-xl overflow-hidden">
+          {segs.map(s => (
+            <SeguimientoRow key={s.id} seguimiento={s} onComplete={onComplete} onDelete={onDelete} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -544,6 +556,8 @@ export default function SeguimientosPage() {
   const [propuestaSig, setPropuestaSig] = useState<{ segId: string; tratoId: string } | null>(null);
   const [propuestaFecha, setPropuestaFecha] = useState("");
   const [propuestaCanal, setPropuestaCanal] = useState("whatsapp");
+  const [modoRevision, setModoRevision] = useState(false);
+  const [revisionIdx, setRevisionIdx] = useState(0);
 
   const load = useCallback(async () => {
     const urls = [
@@ -593,6 +607,50 @@ export default function SeguimientosPage() {
     load();
   }
 
+  async function handleReagendarTodos() {
+    const hoyIso = new Date().toISOString();
+    await Promise.all(
+      vencidos.map(s =>
+        fetch(`/api/seguimientos/${s.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fechaProgramada: hoyIso }),
+        })
+      )
+    );
+    load();
+  }
+
+  async function marcarHecho(id: string) {
+    await fetch(`/api/seguimientos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ completado: true, notaResultado: null }),
+    });
+    setRevisionIdx(i => {
+      const next = i + 1;
+      if (next >= vencidosAntiguos.length) { setModoRevision(false); return 0; }
+      return next;
+    });
+    load();
+  }
+
+  async function reagendarUno(id: string) {
+    const hoyIso = new Date().toISOString();
+    await fetch(`/api/seguimientos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fechaProgramada: hoyIso }),
+    });
+    setRevisionIdx(i => {
+      const next = i + 1;
+      if (next >= vencidosAntiguos.length) { setModoRevision(false); return 0; }
+      return next;
+    });
+    load();
+  }
+
+  // --- Cálculo de fechas ---
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
   const manana = new Date(hoy); manana.setDate(hoy.getDate() + 1);
   const semana = new Date(hoy); semana.setDate(hoy.getDate() + 7);
@@ -601,6 +659,20 @@ export default function SeguimientosPage() {
   const hoySegs        = todos.filter(s => !s.completado && new Date(s.fechaProgramada) >= hoy && new Date(s.fechaProgramada) < manana);
   const semanaSegs     = todos.filter(s => !s.completado && new Date(s.fechaProgramada) >= manana && new Date(s.fechaProgramada) < semana);
   const completadosHoy = todos.filter(s => s.completado);
+
+  // --- Nueva agrupación por prioridad ---
+  const requierenHoy = [
+    ...hoySegs,
+    ...vencidos.filter(s => {
+      const dias = Math.floor((Date.now() - new Date(s.fechaProgramada).getTime()) / 86400000);
+      return dias <= 3;
+    }),
+  ];
+
+  const vencidosAntiguos = vencidos.filter(s => {
+    const dias = Math.floor((Date.now() - new Date(s.fechaProgramada).getTime()) / 86400000);
+    return dias > 3;
+  });
 
   // Filtro por tipo
   const filtrados = (segs: Seguimiento[]) => {
@@ -612,17 +684,17 @@ export default function SeguimientosPage() {
 
   // Filtro global por pill
   const filtroSecciones = () => {
-    if (filtro === "vencidos") return { vencidos, hoy: [], semana: [], comp: [] };
-    if (filtro === "hoy") return { vencidos: [], hoy: hoySegs, semana: [], comp: [] };
-    if (filtro === "semana") return { vencidos: [], hoy: [], semana: semanaSegs, comp: [] };
+    if (filtro === "vencidos") return { requieren: vencidos, antiguos: [], semana: [], comp: [] };
+    if (filtro === "hoy") return { requieren: hoySegs, antiguos: [], semana: [], comp: [] };
+    if (filtro === "semana") return { requieren: [], antiguos: [], semana: semanaSegs, comp: [] };
     return {
-      vencidos: filtrados(vencidos),
-      hoy: filtrados(hoySegs),
+      requieren: filtrados(requierenHoy),
+      antiguos: filtrados(vencidosAntiguos),
       semana: filtrados(semanaSegs),
       comp: filtrados(completadosHoy),
     };
   };
-  const { vencidos: vSec, hoy: hSec, semana: sSec, comp: cSec } = filtroSecciones();
+  const { requieren: reqSec, antiguos: antSec, semana: sSec, comp: cSec } = filtroSecciones();
 
   const total = vencidos.length + hoySegs.length + semanaSegs.length;
 
@@ -642,7 +714,7 @@ export default function SeguimientosPage() {
         <h1 className="text-xl font-bold text-white mb-1">Seguimientos</h1>
         {!loading && (
           <p className="text-[#555] text-sm flex flex-wrap gap-x-1">
-            {vencidos.length > 0 && <span className="text-red-400 font-medium">{vencidos.length} vencidos</span>}
+            {vencidos.length > 0 && <span className={`font-medium ${vencidos.length === 0 ? "text-green-400" : "text-red-400"}`}>{vencidos.length} vencidos</span>}
             {vencidos.length > 0 && hoySegs.length > 0 && <span className="text-[#333]">·</span>}
             {hoySegs.length > 0 && <span className="text-[#B3985B] font-medium">{hoySegs.length} hoy</span>}
             {(vencidos.length > 0 || hoySegs.length > 0) && semanaSegs.length > 0 && <span className="text-[#333]">·</span>}
@@ -658,14 +730,20 @@ export default function SeguimientosPage() {
         )}
       </div>
 
-      {/* Métricas */}
+      {/* Métricas — 5 indicadores */}
       {!loading && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
           {[
-            { label: "Vencidos", val: vencidos.length, color: "text-red-400", bg: "bg-red-900/10 border-red-900/30" },
+            {
+              label: "Vencidos",
+              val: vencidos.length,
+              color: vencidos.length === 0 ? "text-green-400" : "text-red-400",
+              bg: vencidos.length === 0 ? "bg-green-900/10 border-green-900/30" : "bg-red-900/10 border-red-900/30",
+            },
             { label: "Hoy", val: hoySegs.length, color: "text-[#B3985B]", bg: "bg-[#B3985B]/10 border-[#B3985B]/20" },
             { label: "Esta semana", val: semanaSegs.length, color: "text-blue-400", bg: "bg-blue-900/10 border-blue-900/30" },
             { label: "Total activos", val: total, color: "text-[#6b7280]", bg: "bg-[#111] border-[#1e1e1e]" },
+            { label: "Sin seguimiento", val: sinMovimiento.length, color: "text-orange-400", bg: "bg-orange-900/10 border-orange-900/30" },
           ].map(m => (
             <div key={m.label} className={`${m.bg} border rounded-xl p-3 text-center`}>
               <p className={`text-2xl font-bold ${m.color}`}>{m.val}</p>
@@ -696,10 +774,68 @@ export default function SeguimientosPage() {
         <div className="text-[#555] text-sm text-center py-12">Cargando seguimientos…</div>
       ) : (
         <>
-          <GroupSection title="Vencidos" color="text-red-400" segs={vSec} onComplete={handleComplete} onDelete={handleDelete} />
-          <GroupSection title="Hoy" color="text-[#B3985B]" segs={hSec} onComplete={handleComplete} onDelete={handleDelete} />
-          <GroupSection title="Esta semana" color="text-blue-400" segs={sSec} onComplete={handleComplete} onDelete={handleDelete} />
-          <GroupSection title="Completados hoy" color="text-green-400" segs={cSec} onComplete={handleComplete} onDelete={handleDelete} />
+          {/* Banner de acción masiva */}
+          {vencidos.length > 10 && (
+            <div className="mb-4 p-4 rounded-xl border border-orange-500/20 bg-orange-500/5 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[13px] text-orange-400 font-medium">
+                  Tienes {vencidos.length} seguimientos vencidos
+                </p>
+                <p className="text-[11px] text-[#555] mt-0.5">¿Qué quieres hacer?</p>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={handleReagendarTodos}
+                  className="text-[12px] px-3 py-1.5 rounded-lg border border-orange-500/30 text-orange-400 hover:bg-orange-500/10 transition-colors"
+                >
+                  Reagendar todos a hoy
+                </button>
+                <button
+                  onClick={() => { setModoRevision(true); setRevisionIdx(0); }}
+                  className="text-[12px] px-3 py-1.5 rounded-lg border border-[#333] text-[#888] hover:bg-[#1a1a1a] transition-colors"
+                >
+                  Revisar uno por uno
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Sección 1: Requieren acción hoy */}
+          <GroupSection
+            title="Requieren acción hoy"
+            color="text-[#B3985B]"
+            segs={reqSec}
+            onComplete={handleComplete}
+            onDelete={handleDelete}
+          />
+
+          {/* Sección 2: Vencidos — sin respuesta (más de 3 días) */}
+          <GroupSection
+            title="Vencidos — sin respuesta"
+            color="text-red-400"
+            segs={antSec}
+            onComplete={handleComplete}
+            onDelete={handleDelete}
+          />
+
+          {/* Sección 3: Esta semana */}
+          <GroupSection
+            title="Esta semana"
+            color="text-blue-400"
+            segs={sSec}
+            onComplete={handleComplete}
+            onDelete={handleDelete}
+          />
+
+          {/* Sección 5: Completados hoy */}
+          <GroupSection
+            title="Completados hoy"
+            color="text-green-400"
+            segs={cSec}
+            onComplete={handleComplete}
+            onDelete={handleDelete}
+            defaultCollapsed
+          />
 
           {/* Bloque 7 — tratos en revisión (3 seguimientos auto sin cierre) */}
           {enRevision.length > 0 && filtro === "todos" && (
@@ -737,13 +873,53 @@ export default function SeguimientosPage() {
             </div>
           )}
 
-          {vSec.length === 0 && hSec.length === 0 && sSec.length === 0 && cSec.length === 0 && sinMovimiento.length === 0 && enRevision.length === 0 && (
+          {reqSec.length === 0 && antSec.length === 0 && sSec.length === 0 && cSec.length === 0 && sinMovimiento.length === 0 && enRevision.length === 0 && (
             <div className="text-center py-16 text-[#333]">
               <p className="text-4xl mb-3">✓</p>
               <p className="text-[#555]">Sin seguimientos en esta vista</p>
             </div>
           )}
         </>
+      )}
+
+      {/* Modo revisión secuencial */}
+      {modoRevision && vencidosAntiguos[revisionIdx] && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-[#111] border border-[#222] rounded-2xl p-6 w-full max-w-md">
+            <p className="text-[11px] text-[#555] mb-1">{revisionIdx + 1} / {vencidosAntiguos.length}</p>
+            <p className="text-white font-medium text-[15px]">{vencidosAntiguos[revisionIdx].titulo}</p>
+            <p className="text-[#666] text-[13px] mt-1">
+              {vencidosAntiguos[revisionIdx].trato?.cliente?.nombre} · {vencidosAntiguos[revisionIdx].trato?.nombreEvento}
+            </p>
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => marcarHecho(vencidosAntiguos[revisionIdx].id)}
+                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black font-semibold text-[13px] hover:bg-[#C9A84C]"
+              >
+                Hecho ✓
+              </button>
+              <button
+                onClick={() => reagendarUno(vencidosAntiguos[revisionIdx].id)}
+                className="flex-1 py-2.5 rounded-xl border border-[#333] text-[#888] text-[13px] hover:bg-[#1a1a1a]"
+              >
+                Reagendar
+              </button>
+              <button
+                onClick={() => {
+                  const next = revisionIdx + 1;
+                  if (next >= vencidosAntiguos.length) { setModoRevision(false); setRevisionIdx(0); }
+                  else setRevisionIdx(next);
+                }}
+                className="flex-1 py-2.5 rounded-xl border border-[#333] text-[#888] text-[13px] hover:bg-[#1a1a1a]"
+              >
+                Descartar
+              </button>
+            </div>
+            <button onClick={() => setModoRevision(false)} className="mt-4 w-full text-[11px] text-[#444] hover:text-[#666]">
+              Cerrar revisión
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Botón flotante */}

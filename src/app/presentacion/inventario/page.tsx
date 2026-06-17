@@ -1,9 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import InventarioClient from "./InventarioClient";
 
-// ISR: cache rendered HTML for 5 minutes on Vercel edge.
-// Inventory rarely changes in real time — this removes the per-request DB hit.
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 export default async function InventarioPage() {
   // Fetch metadata ONLY — no imagenUrl (3+ MB of base64 in the payload)

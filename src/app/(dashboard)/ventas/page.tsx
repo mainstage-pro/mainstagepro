@@ -219,19 +219,7 @@ export default function VentasPage() {
                         {ORIGEN_LABEL[t.origenVenta] ?? t.origenVenta}
                       </span>
                     </div>
-                    {(() => {
-                      const desc = [t.tipoEvento, t.fechaEventoEstimada, t.lugarEstimado, t.presupuestoEstimado].filter(Boolean).length;
-                      const pct = Math.round(desc / 4 * 100);
-                      const color = pct >= 75 ? "bg-green-500" : pct >= 50 ? "bg-yellow-500" : "bg-red-500";
-                      return (
-                        <div className="flex items-center gap-1.5 mt-2">
-                          <div className="flex-1 h-1 bg-[#222] rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
-                          </div>
-                          <span className="text-[9px] text-gray-600 tabular-nums">{pct}%</span>
-                        </div>
-                      );
-                    })()}
+
                     {session?.role === "ADMIN" && t.responsable && (
                       <p className="text-gray-600 text-[10px] mt-1 truncate">↳ {t.responsable.name}</p>
                     )}
