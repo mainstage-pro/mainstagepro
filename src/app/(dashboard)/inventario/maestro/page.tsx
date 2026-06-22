@@ -22,7 +22,7 @@ type Equipo = {
   imagenUrl: string | null;
   notas: string | null;
   amperajeRequerido: number | null;
-  voltajeRequerido: number | null;
+  voltajeRequerido: string | null;
   _count: { accesorios: number };
   proveedoresPrecios: { precio: number; notas: string | null; proveedor: { id: string; nombre: string; empresa: string | null; prioridad: number } }[];
 };
@@ -295,10 +295,25 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
 
           <div className="grid grid-cols-2 gap-2">
             <FieldGroup label="Amperaje (A)">
-              <FInput type="number" value={form.amperajeRequerido} onChange={v => setForm(p => ({ ...p, amperajeRequerido: v }))} placeholder="—" />
+              <FInput type="number" value={form.amperajeRequerido} onChange={v => setForm(p => ({ ...p, amperajeRequerido: v }))} placeholder="Ej. 15" />
             </FieldGroup>
-            <FieldGroup label="Voltaje (V)">
-              <FInput type="number" value={form.voltajeRequerido} onChange={v => setForm(p => ({ ...p, voltajeRequerido: v }))} placeholder="—" />
+            <FieldGroup label="Voltaje">
+              <div className="flex gap-1">
+                {([["", "—"], ["110", "110V"], ["220", "220V"], ["AMBOS", "Ambos"]] as [string, string][]).map(([val, label]) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setForm(p => ({ ...p, voltajeRequerido: val }))}
+                    className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
+                      form.voltajeRequerido === val
+                        ? val === "" ? "bg-[#1a1a1a] border-[#333] text-gray-400" : "bg-[#B3985B]/15 border-[#B3985B]/60 text-[#C9A84C]"
+                        : "bg-[#0d0d0d] border-[#2a2a2a] text-gray-600 hover:border-[#444] hover:text-gray-400"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </FieldGroup>
           </div>
         </div>
@@ -449,7 +464,7 @@ export default function InventarioMaestroPage() {
       costoInternoEstimado: form.costoInternoEstimado !== "" ? form.costoInternoEstimado : null,
       proveedorDefaultId: form.proveedorDefaultId || null,
       notas: form.notas || null,
-      amperajeRequerido: form.amperajeRequerido !== "" ? form.amperajeRequerido : null,
+      amperajeRequerido: form.amperajeRequerido !== "" ? parseFloat(form.amperajeRequerido) : null,
       voltajeRequerido: form.voltajeRequerido !== "" ? form.voltajeRequerido : null,
       ...(imagen !== null ? { imagenUrl: imagen } : {}),
     };

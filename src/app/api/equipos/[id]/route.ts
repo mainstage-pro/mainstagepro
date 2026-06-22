@@ -58,7 +58,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
   }
   if ("amperajeRequerido" in body) data.amperajeRequerido = body.amperajeRequerido !== "" && body.amperajeRequerido != null ? parseFloat(body.amperajeRequerido) : null;
-  if ("voltajeRequerido" in body) data.voltajeRequerido = body.voltajeRequerido !== "" && body.voltajeRequerido != null ? parseInt(body.voltajeRequerido) : null;
+  if ("voltajeRequerido" in body) data.voltajeRequerido = body.voltajeRequerido !== "" && body.voltajeRequerido != null ? String(body.voltajeRequerido) : null;
 
   const equipo = await prisma.equipo.update({
     where: { id },
@@ -67,8 +67,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       categoria: { select: { id: true, nombre: true } },
       proveedorDefault: { select: { id: true, nombre: true } },
     },
+    // Explicitly select fields needed by the maestro list
   });
-  return NextResponse.json({ equipo });
+  // Add the computed fields back manually so the list row can update
+  return NextResponse.json({ equipo: { ...equipo, amperajeRequerido: equipo.amperajeRequerido, voltajeRequerido: equipo.voltajeRequerido, notas: equipo.notas } });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
       proveedorDefaultId: proveedorDefaultId || null,
       notas: notas || null,
       amperajeRequerido: amperajeRequerido !== "" && amperajeRequerido != null ? parseFloat(amperajeRequerido) : null,
-      voltajeRequerido: voltajeRequerido !== "" && voltajeRequerido != null ? parseInt(voltajeRequerido) : null,
+      voltajeRequerido: voltajeRequerido !== "" && voltajeRequerido != null ? String(voltajeRequerido) : null,
       imagenUrl: imagenUrl || null,
       activo: true,
     },

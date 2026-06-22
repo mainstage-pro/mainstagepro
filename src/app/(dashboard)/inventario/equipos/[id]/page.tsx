@@ -51,7 +51,7 @@ type Equipo = {
   notas: string | null;
   activo: boolean;
   amperajeRequerido: number | null;
-  voltajeRequerido: number | null;
+  voltajeRequerido: string | null;
   imagenUrl: string | null;
   categoria: { id: string; nombre: string };
   proveedorDefault: { id: string; nombre: string; correo: string | null; telefono: string | null } | null;
@@ -483,7 +483,7 @@ export default function EquipoFichaPage() {
               <dd className="text-yellow-400 text-xs">
                 {equipo.amperajeRequerido != null ? `${equipo.amperajeRequerido}A` : ""}
                 {equipo.amperajeRequerido != null && equipo.voltajeRequerido != null ? " · " : ""}
-                {equipo.voltajeRequerido != null ? `${equipo.voltajeRequerido}V` : ""}
+                {equipo.voltajeRequerido === "AMBOS" ? "110V + 220V" : equipo.voltajeRequerido != null ? `${equipo.voltajeRequerido}V` : ""}
               </dd>
             </div>
           )}

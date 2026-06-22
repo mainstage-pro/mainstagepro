@@ -647,7 +647,7 @@ model Equipo {
   costoInternoEstimado Float?                        // Costo interno estimado (mantenimiento, para equipos propios)
   estado               String          @default("ACTIVO") // ACTIVO | EN_MANTENIMIENTO | DADO_DE_BAJA
   amperajeRequerido    Float?          // Consumo eléctrico en amperes
-  voltajeRequerido     Int?            // Voltaje requerido (110 | 220 | etc.)
+  voltajeRequerido     String?         // Voltaje requerido ("110" | "220" | "AMBOS")
   notas                String?
   imagenUrl            String?         // URL principal del equipo (ruta /inventario/equipos/... o base64)
   imagenesUrls         String?         // JSON array de URLs adicionales
