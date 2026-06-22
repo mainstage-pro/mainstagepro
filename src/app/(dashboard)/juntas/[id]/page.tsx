@@ -33,6 +33,18 @@ type TareaPendiente = {
   asignadoA: { id: string; name: string } | null;
 };
 
+type TareaContexto = {
+  id: string; titulo: string; descripcion: string | null;
+  prioridad: string; estado: string; fechaVencimiento: string | null;
+  asignadoA: { id: string; name: string } | null;
+};
+
+type ContextoJunta = {
+  temasJunta: TareaContexto[];
+  observaciones: TareaContexto[];
+  tareasPendientes: TareaContexto[];
+};
+
 type Junta = {
   id: string; titulo: string; area: string; tipo: string;
   fecha: string; duracionMin: number; estado: string;
@@ -205,11 +217,102 @@ function ModalAgregarTarea({ junta, usuarios, proyectos, onClose, onCreated }: {
   );
 }
 
+// ─── useContexto — shared fetch hook ─────────────────────────────────────────
+
+const contextoCache: Map<string, ContextoJunta> = new Map();
+const contextoPromises: Map<string, Promise<void>> = new Map();
+
+function useContexto(juntaId: string, enabled: boolean) {
+  const [data, setData] = useState<ContextoJunta | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const cached = contextoCache.get(juntaId);
+    if (cached) { setData(cached); return; }
+
+    if (!contextoPromises.has(juntaId)) {
+      const promise = fetch(`/api/juntas/${juntaId}/contexto`)
+        .then((r) => r.ok ? r.json() : null)
+        .then((d) => {
+          if (d) {
+            contextoCache.set(juntaId, d);
+            setData(d);
+          }
+          contextoPromises.delete(juntaId);
+        })
+        .catch(() => { contextoPromises.delete(juntaId); });
+      contextoPromises.set(juntaId, promise);
+      setLoading(true);
+    }
+
+    // Poll until cache is populated
+    const poll = setInterval(() => {
+      const c = contextoCache.get(juntaId);
+      if (c) { setData(c); setLoading(false); clearInterval(poll); }
+    }, 100);
+    return () => clearInterval(poll);
+  }, [juntaId, enabled]);
+
+  return { data, loading };
+}
+
+// ─── TareaContextoRow — shared row component ──────────────────────────────────
+
+const PRIO_DOT: Record<string, string> = {
+  URGENTE: "bg-red-500", ALTA: "bg-orange-500", MEDIA: "bg-[#B3985B]", BAJA: "bg-gray-600",
+};
+
+function TareaContextoRow({ t, onComplete }: { t: TareaContexto; onComplete?: (id: string) => void }) {
+  const [done, setDone] = useState(t.estado === "COMPLETADA");
+  const venc = t.fechaVencimiento ? fmtVenc(t.fechaVencimiento) : null;
+
+  function toggle() {
+    if (done) return;
+    setDone(true);
+    fetch(`/api/tareas/${t.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado: "COMPLETADA" }),
+    }).catch(() => {});
+    onComplete?.(t.id);
+  }
+
+  return (
+    <div className={`flex items-start gap-2.5 px-3 py-2.5 border-b border-[#1a1a1a] last:border-0 transition-opacity ${done ? "opacity-40" : ""}`}>
+      <button
+        onClick={toggle}
+        className={`mt-0.5 w-4 h-4 rounded border flex-shrink-0 flex items-center justify-center transition-colors ${
+          done ? "bg-green-500 border-green-500" : "border-[#2a2a2a] hover:border-[#B3985B]"
+        }`}
+      >
+        {done && <span className="text-white text-[9px] leading-none">✓</span>}
+      </button>
+      <span className={`w-1.5 h-1.5 rounded-full shrink-0 mt-1.5 ${PRIO_DOT[t.prioridad] ?? "bg-gray-600"}`} />
+      <div className="flex-1 min-w-0">
+        <p className={`text-xs font-medium leading-snug ${done ? "line-through text-gray-600" : "text-white"}`}>{t.titulo}</p>
+        {t.descripcion && (
+          <p className="text-[10px] text-gray-600 mt-0.5 line-clamp-2">{t.descripcion}</p>
+        )}
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          {t.asignadoA && (
+            <span className="text-[10px] text-gray-500">{t.asignadoA.name}</span>
+          )}
+          {venc && (
+            <span className={`text-[10px] ${venc.cls}`}>{venc.label}</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Agenda Item ──────────────────────────────────────────────────────────────
 
-function ItemAgenda({ item, juntaId, onUpdate }: {
+function ItemAgenda({ item, juntaId, juntaArea, onUpdate }: {
   item: AgendaItem;
   juntaId: string;
+  juntaArea: string;
   onUpdate: (id: string, changes: Partial<AgendaItem>) => void;
 }) {
   const [expanded, setExpanded]     = useState(true);
@@ -229,6 +332,11 @@ function ItemAgenda({ item, juntaId, onUpdate }: {
 
   // Proyectos for EVENTOS_SEMANA and PRIORIDADES_SEMANA
   const [proyectosAgenda, setProyectosAgenda] = useState<{ proximos: ProyectoAgenda[]; recientes: ProyectoAgenda[] } | null>(null);
+
+  // Contexto para paneles dinámicos de área
+  const isDynamicPanel = ["TEMAS_JUNTA", "TAREAS_PENDIENTES", "OBSERVACIONES_OPERATIVAS"].includes(item.tipo);
+  const { data: contexto, loading: contextoLoading } = useContexto(juntaId, isDynamicPanel && expanded);
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if ((item.tipo === "EVENTOS_SEMANA" || item.tipo === "PRIORIDADES_SEMANA") && expanded && !proyectosAgenda) {
@@ -420,6 +528,114 @@ function ItemAgenda({ item, juntaId, onUpdate }: {
               className={inputCls}
             />
           </div>
+        );
+
+      case "TEMAS_JUNTA": {
+        const items = (contexto?.temasJunta ?? []).filter((t) => !hiddenIds.has(t.id));
+        return (
+          <div className="rounded-lg border border-[#1a1a1a] overflow-hidden">
+            {contextoLoading && !contexto && (
+              <div className="p-3 space-y-2">
+                {[1,2,3].map((i) => <div key={i} className="h-8 bg-[#111] rounded animate-pulse" />)}
+              </div>
+            )}
+            {!contextoLoading && items.length === 0 && (
+              <p className="text-gray-600 text-[11px] text-center py-5">Sin temas pendientes para esta junta</p>
+            )}
+            {items.map((t) => (
+              <TareaContextoRow
+                key={t.id}
+                t={t}
+                onComplete={(id) => setHiddenIds((s) => new Set([...s, id]))}
+              />
+            ))}
+          </div>
+        );
+      }
+
+      case "TAREAS_PENDIENTES": {
+        const rawItems = (contexto?.tareasPendientes ?? []).filter((t) => !hiddenIds.has(t.id));
+        const hoy = new Date(); hoy.setHours(0,0,0,0);
+        const tomorrow = new Date(hoy); tomorrow.setDate(hoy.getDate() + 1);
+        const endOfWeek = new Date(hoy); endOfWeek.setDate(hoy.getDate() + 7);
+
+        const vencidas  = rawItems.filter((t) => t.fechaVencimiento && new Date(t.fechaVencimiento) < hoy);
+        const hoyItems  = rawItems.filter((t) => { if (!t.fechaVencimiento) return false; const d = new Date(t.fechaVencimiento); return d >= hoy && d < tomorrow; });
+        const semana    = rawItems.filter((t) => { if (!t.fechaVencimiento) return false; const d = new Date(t.fechaVencimiento); return d >= tomorrow && d <= endOfWeek; });
+        const proximas  = rawItems.filter((t) => { if (!t.fechaVencimiento) return false; const d = new Date(t.fechaVencimiento); return d > endOfWeek; });
+        const sinFecha  = rawItems.filter((t) => !t.fechaVencimiento);
+
+        const groups = [
+          { label: "Vencidas",     items: vencidas,  color: "text-red-400",    dot: "bg-red-500" },
+          { label: "Hoy",          items: hoyItems,  color: "text-yellow-400", dot: "bg-yellow-500" },
+          { label: "Esta semana",  items: semana,    color: "text-gray-400",   dot: "bg-gray-500" },
+          { label: "Próximas",     items: proximas,  color: "text-gray-500",   dot: "bg-gray-600" },
+          { label: "Sin fecha",    items: sinFecha,  color: "text-gray-600",   dot: "bg-gray-700" },
+        ].filter((g) => g.items.length > 0);
+
+        return (
+          <div className="rounded-lg border border-[#1a1a1a] overflow-hidden">
+            {contextoLoading && !contexto && (
+              <div className="p-3 space-y-2">
+                {[1,2,3,4].map((i) => <div key={i} className="h-8 bg-[#111] rounded animate-pulse" />)}
+              </div>
+            )}
+            {!contextoLoading && groups.length === 0 && (
+              <p className="text-gray-600 text-[11px] text-center py-5">Sin tareas pendientes en {juntaArea}
+              </p>
+            )}
+            {groups.map((g) => (
+              <div key={g.label}>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0a0a0a] border-b border-[#1a1a1a]">
+                  <span className={`w-1.5 h-1.5 rounded-full ${g.dot}`} />
+                  <span className={`text-[9px] font-bold uppercase tracking-wider ${g.color}`}>{g.label}</span>
+                  <span className="text-[9px] text-gray-700 ml-1">({g.items.length})</span>
+                </div>
+                {g.items.map((t) => (
+                  <TareaContextoRow
+                    key={t.id}
+                    t={t}
+                    onComplete={(id) => setHiddenIds((s) => new Set([...s, id]))}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        );
+      }
+
+      case "OBSERVACIONES_OPERATIVAS": {
+        const items = (contexto?.observaciones ?? []).filter((t) => !hiddenIds.has(t.id));
+        return (
+          <div className="rounded-lg border border-[#1a1a1a] overflow-hidden">
+            {contextoLoading && !contexto && (
+              <div className="p-3 space-y-2">
+                {[1,2].map((i) => <div key={i} className="h-8 bg-[#111] rounded animate-pulse" />)}
+              </div>
+            )}
+            {!contextoLoading && items.length === 0 && (
+              <p className="text-gray-600 text-[11px] text-center py-5">Sin observaciones operativas para esta área</p>
+            )}
+            {items.map((t) => (
+              <TareaContextoRow
+                key={t.id}
+                t={t}
+                onComplete={(id) => setHiddenIds((s) => new Set([...s, id]))}
+              />
+            ))}
+          </div>
+        );
+      }
+
+      case "RECORDATORIOS":
+        return (
+          <textarea
+            value={respuesta}
+            onChange={(e) => handleRespuestaChange(e.target.value)}
+            rows={4}
+            placeholder={item.placeholder ?? "Agrega recordatorios, puntos de atención o notas libres para esta junta…"}
+            className={textareaCls}
+          />
         );
 
       default:
@@ -1155,7 +1371,7 @@ export default function JuntaActivaPage({ params }: { params: Promise<{ id: stri
           <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-3">Agenda estructurada</p>
 
           {junta.agendaItems.map((item) => (
-            <ItemAgenda key={item.id} item={item} juntaId={id} onUpdate={handleAgendaUpdate} />
+            <ItemAgenda key={item.id} item={item} juntaId={id} juntaArea={junta.area} onUpdate={handleAgendaUpdate} />
           ))}
 
           {/* Notas generales */}

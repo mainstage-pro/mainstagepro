@@ -15,7 +15,12 @@ export type TipoAgenda =
   | "EVENTOS_SEMANA"
   | "PRIORIDADES_SEMANA"
   | "MODALIDAD"
-  | "CIERRE";
+  | "CIERRE"
+  // ── Paneles dinámicos de juntas de área ──
+  | "TEMAS_JUNTA"
+  | "TAREAS_PENDIENTES"
+  | "OBSERVACIONES_OPERATIVAS"
+  | "RECORDATORIOS";
 
 export type AreaJunta =
   | "GLOBAL"
@@ -174,6 +179,34 @@ export const JUNTA_TEMPLATES: Record<string, JuntaTemplate> = {
         descripcion: "El responsable define 3 compromisos concretos. La siguiente semana se revisan aquí.",
         placeholder: "1. [QUÉ] — [QUIÉN] — [PARA CUÁNDO]\n2.\n3.",
       },
+      {
+        orden: 9,
+        tipo: "TEMAS_JUNTA",
+        titulo: "Temas a tocar",
+        descripcion: "Temas pendientes registrados en el proyecto \"8. Temas a tocar en juntas\" para esta área.",
+        placeholder: null,
+      },
+      {
+        orden: 10,
+        tipo: "TAREAS_PENDIENTES",
+        titulo: "Tareas pendientes del área",
+        descripcion: "Tareas del área con responsable y fecha de vencimiento asignados.",
+        placeholder: null,
+      },
+      {
+        orden: 11,
+        tipo: "OBSERVACIONES_OPERATIVAS",
+        titulo: "Observaciones operativas",
+        descripcion: "Observaciones registradas en el proyecto \"9. Observaciones Operativas\" para esta área.",
+        placeholder: null,
+      },
+      {
+        orden: 12,
+        tipo: "RECORDATORIOS",
+        titulo: "Recordatorios",
+        descripcion: "Notas libres y recordatorios para esta junta.",
+        placeholder: "Agrega recordatorios, puntos de atención o notas libres para esta junta…",
+      },
     ],
   },
 
@@ -250,6 +283,34 @@ export const JUNTA_TEMPLATES: Record<string, JuntaTemplate> = {
         descripcion: "El responsable define 3 compromisos concretos. La siguiente semana se revisan aquí.",
         placeholder: "1. [QUÉ] — [QUIÉN] — [PARA CUÁNDO]\n2.\n3.",
       },
+      {
+        orden: 10,
+        tipo: "TEMAS_JUNTA",
+        titulo: "Temas a tocar",
+        descripcion: "Temas pendientes registrados en el proyecto \"8. Temas a tocar en juntas\" para esta área.",
+        placeholder: null,
+      },
+      {
+        orden: 11,
+        tipo: "TAREAS_PENDIENTES",
+        titulo: "Tareas pendientes del área",
+        descripcion: "Tareas del área con responsable y fecha de vencimiento asignados.",
+        placeholder: null,
+      },
+      {
+        orden: 12,
+        tipo: "OBSERVACIONES_OPERATIVAS",
+        titulo: "Observaciones operativas",
+        descripcion: "Observaciones registradas en el proyecto \"9. Observaciones Operativas\" para esta área.",
+        placeholder: null,
+      },
+      {
+        orden: 13,
+        tipo: "RECORDATORIOS",
+        titulo: "Recordatorios",
+        descripcion: "Notas libres y recordatorios para esta junta.",
+        placeholder: "Agrega recordatorios, puntos de atención o notas libres para esta junta…",
+      },
     ],
   },
 
@@ -316,6 +377,34 @@ export const JUNTA_TEMPLATES: Record<string, JuntaTemplate> = {
         titulo: "3 compromisos de la semana",
         descripcion: "El responsable define 3 compromisos concretos. La siguiente semana se revisan aquí.",
         placeholder: "1. [QUÉ] — [QUIÉN] — [PARA CUÁNDO]\n2.\n3.",
+      },
+      {
+        orden: 9,
+        tipo: "TEMAS_JUNTA",
+        titulo: "Temas a tocar",
+        descripcion: "Temas pendientes registrados en el proyecto \"8. Temas a tocar en juntas\" para esta área.",
+        placeholder: null,
+      },
+      {
+        orden: 10,
+        tipo: "TAREAS_PENDIENTES",
+        titulo: "Tareas pendientes del área",
+        descripcion: "Tareas del área con responsable y fecha de vencimiento asignados.",
+        placeholder: null,
+      },
+      {
+        orden: 11,
+        tipo: "OBSERVACIONES_OPERATIVAS",
+        titulo: "Observaciones operativas",
+        descripcion: "Observaciones registradas en el proyecto \"9. Observaciones Operativas\" para esta área.",
+        placeholder: null,
+      },
+      {
+        orden: 12,
+        tipo: "RECORDATORIOS",
+        titulo: "Recordatorios",
+        descripcion: "Notas libres y recordatorios para esta junta.",
+        placeholder: "Agrega recordatorios, puntos de atención o notas libres para esta junta…",
       },
     ],
   },
@@ -392,6 +481,34 @@ export const JUNTA_TEMPLATES: Record<string, JuntaTemplate> = {
         titulo: "3 compromisos de la semana",
         descripcion: "El responsable define 3 compromisos concretos. La siguiente semana se revisan aquí.",
         placeholder: "1. [QUÉ] — [QUIÉN] — [PARA CUÁNDO]\n2.\n3.",
+      },
+      {
+        orden: 10,
+        tipo: "TEMAS_JUNTA",
+        titulo: "Temas a tocar",
+        descripcion: "Temas pendientes registrados en el proyecto \"8. Temas a tocar en juntas\" para esta área.",
+        placeholder: null,
+      },
+      {
+        orden: 11,
+        tipo: "TAREAS_PENDIENTES",
+        titulo: "Tareas pendientes del área",
+        descripcion: "Tareas del área con responsable y fecha de vencimiento asignados.",
+        placeholder: null,
+      },
+      {
+        orden: 12,
+        tipo: "OBSERVACIONES_OPERATIVAS",
+        titulo: "Observaciones operativas",
+        descripcion: "Observaciones registradas en el proyecto \"9. Observaciones Operativas\" para esta área.",
+        placeholder: null,
+      },
+      {
+        orden: 13,
+        tipo: "RECORDATORIOS",
+        titulo: "Recordatorios",
+        descripcion: "Notas libres y recordatorios para esta junta.",
+        placeholder: "Agrega recordatorios, puntos de atención o notas libres para esta junta…",
       },
     ],
   },
@@ -527,37 +644,45 @@ export const AREA_COLORS: Record<AreaJunta, { bg: string; text: string; border: 
 };
 
 export const TIPO_AGENDA_LABELS: Record<TipoAgenda, string> = {
-  RESULTADOS:        "Resultados",
-  COMPROMISOS:       "Compromisos",
-  BLOQUEO:           "Bloqueo",
-  DECISION:          "Decisión",
-  ACUERDO:           "Acuerdo",
-  AVISO:             "Aviso",
-  RECONOCIMIENTO:    "Reconocimiento",
-  KPI_REVIEW:        "KPIs",
-  CUSTOM:            "Tema libre",
-  APERTURA:          "Apertura",
-  EVENTOS_SEMANA:    "Eventos semana",
-  PRIORIDADES_SEMANA:"Prioridades",
-  MODALIDAD:         "Modalidad",
-  CIERRE:            "Cierre",
+  RESULTADOS:              "Resultados",
+  COMPROMISOS:             "Compromisos",
+  BLOQUEO:                 "Bloqueo",
+  DECISION:                "Decisión",
+  ACUERDO:                 "Acuerdo",
+  AVISO:                   "Aviso",
+  RECONOCIMIENTO:          "Reconocimiento",
+  KPI_REVIEW:              "KPIs",
+  CUSTOM:                  "Tema libre",
+  APERTURA:                "Apertura",
+  EVENTOS_SEMANA:          "Eventos semana",
+  PRIORIDADES_SEMANA:      "Prioridades",
+  MODALIDAD:               "Modalidad",
+  CIERRE:                  "Cierre",
+  TEMAS_JUNTA:             "Temas a tocar",
+  TAREAS_PENDIENTES:       "Tareas pendientes",
+  OBSERVACIONES_OPERATIVAS:"Observaciones",
+  RECORDATORIOS:           "Recordatorios",
 };
 
 export const TIPO_AGENDA_COLORS: Record<TipoAgenda, string> = {
-  RESULTADOS:         "text-blue-400",
-  COMPROMISOS:        "text-[#B3985B]",
-  BLOQUEO:            "text-red-400",
-  DECISION:           "text-green-400",
-  ACUERDO:            "text-green-300",
-  AVISO:              "text-gray-400",
-  RECONOCIMIENTO:     "text-yellow-400",
-  KPI_REVIEW:         "text-purple-400",
-  CUSTOM:             "text-gray-400",
-  APERTURA:           "text-[#B3985B]",
-  EVENTOS_SEMANA:     "text-blue-300",
-  PRIORIDADES_SEMANA: "text-emerald-400",
-  MODALIDAD:          "text-gray-500",
-  CIERRE:             "text-[#B3985B]",
+  RESULTADOS:              "text-blue-400",
+  COMPROMISOS:             "text-[#B3985B]",
+  BLOQUEO:                 "text-red-400",
+  DECISION:                "text-green-400",
+  ACUERDO:                 "text-green-300",
+  AVISO:                   "text-gray-400",
+  RECONOCIMIENTO:          "text-yellow-400",
+  KPI_REVIEW:              "text-purple-400",
+  CUSTOM:                  "text-gray-400",
+  APERTURA:                "text-[#B3985B]",
+  EVENTOS_SEMANA:          "text-blue-300",
+  PRIORIDADES_SEMANA:      "text-emerald-400",
+  MODALIDAD:               "text-gray-500",
+  CIERRE:                  "text-[#B3985B]",
+  TEMAS_JUNTA:             "text-[#B3985B]",
+  TAREAS_PENDIENTES:       "text-orange-400",
+  OBSERVACIONES_OPERATIVAS:"text-cyan-400",
+  RECORDATORIOS:           "text-gray-400",
 };
 
 // Lunes de la semana actual (útil para defaultear fecha de junta)
