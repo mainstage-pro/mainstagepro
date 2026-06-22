@@ -400,8 +400,11 @@ export default function OperacionesPage() {
       r = [...r].sort((a, b) => {
         const da = a.fecha ?? null;
         const db = b.fecha ?? null;
+        if (!da && !db) return (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3);
         if (!da) return 1; if (!db) return -1;
-        return da.localeCompare(db);
+        const dateCmp = da.localeCompare(db);
+        if (dateCmp !== 0) return dateCmp;
+        return (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3);
       });
     }
     if (proyViewOpts.sortBy === "nombre")    r = [...r].sort((a, b) => a.titulo.localeCompare(b.titulo, "es"));
@@ -979,8 +982,11 @@ export default function OperacionesPage() {
         return [...arr].sort((a, b) => {
           const da = a.fecha ?? null;
           const db = b.fecha ?? null;
+          if (!da && !db) return (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3);
           if (!da) return 1; if (!db) return -1;
-          return da.localeCompare(db);
+          const dateCmp = da.localeCompare(db);
+          if (dateCmp !== 0) return dateCmp;
+          return (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3);
         });
       }
       if (vistaOpts.sortBy === "nombre")    return [...arr].sort((a, b) => a.titulo.localeCompare(b.titulo, "es"));
