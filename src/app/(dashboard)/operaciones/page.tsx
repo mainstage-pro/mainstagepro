@@ -2903,9 +2903,10 @@ function SectionBlock({
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onAddTarea: (data: {
-    titulo: string; fecha: string | null; fechaVencimiento: string | null;
-    prioridad: string; recurrencia: string | null;
+    titulo: string; descripcion: string | null; fecha: string | null; fechaVencimiento: string | null;
+    prioridad: string; area: string; recurrencia: string | null;
     proyectoTareaId: string | null; seccionId: string | null; parentId: string | null;
+    asignadoAId: string | null;
   }) => void;
   onToggleCollapse: (id: string, colapsada: boolean) => void;
   onDeleteSection: (id: string) => void;
@@ -3141,8 +3142,9 @@ function SectionBlock({
               onPtrDragStart={onPtrDragStart}
             />
           ))}
-          <QuickAdd proyectoTareaId={proyectoId} seccionId={seccion.id} compact
-            placeholder={`Tarea en ${seccion.nombre}\u2026`} onAdd={onAddTarea} />
+          <QuickAdd proyectoTareaId={proyectoId} seccionId={seccion.id}
+            placeholder={`Tarea en ${seccion.nombre}…`} onAdd={onAddTarea}
+            usuarios={users ?? []} proyectos={projects ?? []} />
         </>
       )}
 
