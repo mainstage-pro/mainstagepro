@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import MarketingCalendarioPage from "../calendario/page";
 import LevantamientosPage from "../levantamientos/page";
 import KanbanPage from "../kanban/page";
+import ContenidosPage from "../contenidos/page";
 
 type TabKey = "calendario" | "parrilla" | "proximas" | "tipo" | "feed" | "shoots" | "kanban" | "tipos";
 type Vista   = "calendario" | "proximas" | "parrilla" | "tipo" | "feed";
@@ -37,7 +38,7 @@ function ContenidoInner() {
         {TABS.map(t => (
           <button
             key={t.key}
-            onClick={() => t.key === "tipos" ? router.push("/marketing/contenidos") : router.push(`/marketing/contenido?vista=${t.key}`)}
+            onClick={() => router.push(`/marketing/contenido?vista=${t.key}`)}
             className={`px-4 py-3 text-sm border-b-2 transition-colors whitespace-nowrap shrink-0 ${
               tab === t.key
                 ? "border-[#B3985B] text-white font-medium"
@@ -56,6 +57,7 @@ function ContenidoInner() {
         )}
         {tab === "shoots" && <LevantamientosPage />}
         {tab === "kanban" && <KanbanPage />}
+        {tab === "tipos" && <ContenidosPage />}
       </div>
     </div>
   );
