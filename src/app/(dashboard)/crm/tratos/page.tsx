@@ -113,14 +113,18 @@ const TIPO_SERVICIO_LABELS: Record<string, string> = {
 
 type OrdenTrato = 'urgencia' | 'fechaEvento' | 'fechaAgregado' | 'sinActividad';
 
-function groupTratosByMes(tratos: Trato[]) {
+function groupTratosByMes(tratos: Trato[], ordenTrato: OrdenTrato = 'urgencia') {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const map: Record<string, { label: string; yearMonth: string; tratos: Trato[]; isPast: boolean }> = {};
 
   for (const t of tratos) {
-    const ref = t.fechaEventoEstimada ?? t.createdAt;
+    // Decide which date to group by based on sort order
+    const ref =
+      ordenTrato === 'fechaAgregado' || ordenTrato === 'sinActividad'
+        ? t.createdAt
+        : (t.fechaEventoEstimada ?? t.createdAt);
     const d = new Date(ref.substring(0, 10) + 'T12:00:00Z');
     const year = d.getUTCFullYear();
     const month = d.getUTCMonth();
@@ -131,26 +135,50 @@ function groupTratosByMes(tratos: Trato[]) {
     map[yearMonth].tratos.push(t);
   }
 
-  // Sort each group internally by reference date desc
+  // Sort each group internally according to the selected order
   for (const g of Object.values(map)) {
     g.tratos.sort((a, b) => {
-      const da = new Date((a.fechaEventoEstimada ?? a.createdAt).substring(0, 10) + 'T12:00:00Z');
-      const db = new Date((b.fechaEventoEstimada ?? b.createdAt).substring(0, 10) + 'T12:00:00Z');
-      return db.getTime() - da.getTime();
+      switch (ordenTrato) {
+        case 'fechaAgregado':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'sinActividad': {
+          const dA = a.fechaProximaAccion ? (Date.now() - new Date(a.fechaProximaAccion).getTime()) / 86400000 : 9999;
+          const dB = b.fechaProximaAccion ? (Date.now() - new Date(b.fechaProximaAccion).getTime()) / 86400000 : 9999;
+          return dB - dA;
+        }
+        case 'fechaEvento': {
+          // Ascending: soonest event first within the group
+          if (!a.fechaEventoEstimada && !b.fechaEventoEstimada) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          if (!a.fechaEventoEstimada) return 1;
+          if (!b.fechaEventoEstimada) return -1;
+          return a.fechaEventoEstimada.localeCompare(b.fechaEventoEstimada);
+        }
+        case 'urgencia':
+        default: {
+          if (!a.fechaProximaAccion && !b.fechaProximaAccion) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          if (!a.fechaProximaAccion) return 1;
+          if (!b.fechaProximaAccion) return -1;
+          return a.fechaProximaAccion.localeCompare(b.fechaProximaAccion);
+        }
+      }
     });
   }
 
-  const future = Object.values(map).filter(g => !g.isPast).sort((a, b) => a.yearMonth.localeCompare(b.yearMonth));
-  const past   = Object.values(map).filter(g =>  g.isPast).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
-  // Unified descending: future months desc (soonest last? No — future desc = farthest first)
-  // We want: most-future first → present → most-recent past → oldest past
-  // So: future sorted desc + past sorted desc
+  // All orders: groups sorted newest month first (desc)
+  const future = Object.values(map).filter(g => !g.isPast).sort((a, b) =>
+    ordenTrato === 'fechaEvento'
+      ? a.yearMonth.localeCompare(b.yearMonth)  // fechaEvento: future groups ascending (soonest first)
+      : b.yearMonth.localeCompare(a.yearMonth)  // all others: newest first
+  );
+  const past = Object.values(map).filter(g => g.isPast).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
+
   const all = [
-    ...Object.values(map).filter(g => !g.isPast).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth)),
-    ...Object.values(map).filter(g =>  g.isPast).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth)),
+    ...future,
+    ...past,
   ];
   return { future, past, all };
 }
+
 
 const ETAPAS = ["DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA"];
 const TIPOS_EVENTO = ["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"];
@@ -1702,9 +1730,10 @@ export default function TratosPage() {
               );
             }
 
-            // ── Unified month grouping — all months descending ──────────
+            // ── Unified month grouping — respects ordenTrato ────────────
             {
-              const { all } = groupTratosByMes(tabTratos);
+              const { all } = groupTratosByMes(tabTratos, ordenTrato);
+
 
               const renderRow = (t: Trato) => (
                 <CompactTratoRow
