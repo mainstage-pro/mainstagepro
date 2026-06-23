@@ -1,10 +1,16 @@
 import { prisma } from "@/lib/prisma";
-import BaseDeDatosClient from "./BaseDeDatosClient";
+import LeadsClient from "./BaseDeDatosClient";
 
-export default async function BaseDeDatosPage() {
-  const [clientes, prospecciones, usuarios] = await Promise.all([
-    // ── Base de datos de Clientes (B2B, B2C, POR_DESCUBRIR) ──────────────────
+export default async function LeadsPage() {
+  const [leads, usuarios] = await Promise.all([
+    // Solo los que son prospectos: tipoCliente POR_DESCUBRIR o esProspecto = true
     prisma.cliente.findMany({
+      where: {
+        OR: [
+          { tipoCliente: "POR_DESCUBRIR" },
+          { esProspecto: true },
+        ],
+      },
       select: {
         id: true,
         nombre: true,
@@ -23,38 +29,6 @@ export default async function BaseDeDatosPage() {
       },
       orderBy: { createdAt: "desc" },
     }),
-
-    // ── Base de datos de Prospectos ──────────────────────────────────────────
-    prisma.prospeccion.findMany({
-      select: {
-        id: true,
-        tipo: true,
-        etapa: true,
-        estado: true,
-        tipoEvento: true,
-        origen: true,
-        fechaProximoContacto: true,
-        tipoServicioInteres: true,
-        contacto1Hecho: true,
-        contacto2Hecho: true,
-        contacto3Hecho: true,
-        contacto4Hecho: true,
-        contacto5Hecho: true,
-        notas: true,
-        createdAt: true,
-        cliente: {
-          select: {
-            id: true, nombre: true, empresa: true, telefono: true,
-            correo: true, tipoCliente: true, clasificacion: true,
-          },
-        },
-        responsable: { select: { id: true, name: true } },
-        trato: { select: { id: true, etapa: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-
-    // ── Usuarios activos (para filtros de vendedor/responsable) ──────────────
     prisma.user.findMany({
       where: { active: true },
       select: { id: true, name: true },
@@ -64,11 +38,7 @@ export default async function BaseDeDatosPage() {
 
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto">
-      <BaseDeDatosClient
-        clientes={clientes as Parameters<typeof BaseDeDatosClient>[0]["clientes"]}
-        prospecciones={prospecciones as Parameters<typeof BaseDeDatosClient>[0]["prospecciones"]}
-        usuarios={usuarios}
-      />
+      <LeadsClient leads={leads} usuarios={usuarios} />
     </div>
   );
 }
