@@ -126,6 +126,7 @@ function InlineDropdown({ options, value, onChange, placeholder = "—", colorMa
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) return;
     function handler(e: MouseEvent) {
@@ -134,7 +135,9 @@ function InlineDropdown({ options, value, onChange, placeholder = "—", colorMa
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
+
   const current = options.find(o => o.value === value);
+
   return (
     <div ref={ref} className="relative inline-block">
       <button type="button" onClick={() => setOpen(v => !v)}
@@ -182,6 +185,7 @@ function InlineMultiSelect({ options, values, onChange, placeholder = "—", max
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!open) return;
     function handler(e: MouseEvent) {
@@ -190,10 +194,12 @@ function InlineMultiSelect({ options, values, onChange, placeholder = "—", max
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
+
   function toggle(v: string) {
     if (values.includes(v)) { onChange(values.filter(x => x !== v)); }
     else { if (values.length >= maxSelect) return; onChange([...values, v]); }
   }
+
   return (
     <div ref={ref} className="relative inline-block">
       <button type="button" onClick={() => setOpen(v => !v)}
@@ -290,7 +296,7 @@ function FilterSelect({ label, value, onChange, options }: {
   );
 }
 
-// ─── LeadRow ─────────────────────────────────────────────────────────────────
+// ─── ProspectoRow (tabla, espejo de ClienteRow) ───────────────────────────────
 
 type InlineState = {
   tipoCliente: string;
@@ -300,7 +306,12 @@ type InlineState = {
   dirty: boolean;
 };
 
-function LeadRow({ c, usuarios, onSaved, onVendedorChange, onDelete, deleting, onConvertir }: {
+function ProspectoRow({
+  c, usuarios, onSaved, onVendedorChange, onDelete, deleting, onConvertir,
+  onEmpresaClick, empresaPopoverOpen,
+  empresaMode, setEmpresaMode, empresaSearch, setEmpresaSearch,
+  empresaResults, empresaSearching, onVincularEmpresa, onCloseEmpresa,
+}: {
   c: Lead;
   usuarios: Vendedor[];
   onSaved: (updated: Partial<Lead>) => void;
@@ -308,6 +319,16 @@ function LeadRow({ c, usuarios, onSaved, onVendedorChange, onDelete, deleting, o
   onDelete: () => void;
   deleting: boolean;
   onConvertir: () => void;
+  onEmpresaClick: () => void;
+  empresaPopoverOpen: boolean;
+  empresaMode: "view" | "search";
+  setEmpresaMode: (m: "view" | "search") => void;
+  empresaSearch: string;
+  setEmpresaSearch: (s: string) => void;
+  empresaResults: { id: string; nombre: string }[];
+  empresaSearching: boolean;
+  onVincularEmpresa: (empId: string, empNombre: string) => void;
+  onCloseEmpresa: () => void;
 }) {
   const toast = useToast();
   const [saving, setSaving] = useState(false);
@@ -337,7 +358,7 @@ function LeadRow({ c, usuarios, onSaved, onVendedorChange, onDelete, deleting, o
       if (!r.ok) throw new Error();
       onSaved({ tipoCliente: inline.tipoCliente, clasificacion: inline.clasificacion, servicioUsual: inline.servicioUsual || null, tiposEvento: stringifyTiposEvento(inline.tiposEvento) });
       setInline(prev => ({ ...prev, dirty: false }));
-      toast.success("Lead actualizado");
+      toast.success("Prospecto actualizado");
     } catch { toast.error("Error al guardar"); }
     finally { setSaving(false); }
   }
@@ -369,28 +390,65 @@ function LeadRow({ c, usuarios, onSaved, onVendedorChange, onDelete, deleting, o
 
       {/* Empresa */}
       <td className="px-4 py-3">
-        <span className="text-sm text-[#6b7280]">{c.compania?.nombre ?? c.empresa ?? "—"}</span>
-      </td>
-
-      {/* Prospección vinculada */}
-      <td className="px-3 py-3 text-center">
-        {c._count.prospecciones > 0 ? (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/20 font-medium">
-            En ruta
-          </span>
-        ) : (
-          <span className="text-[#333] text-xs">—</span>
-        )}
+        <div className="relative">
+          <button onClick={onEmpresaClick} className="text-left focus:outline-none">
+            {c.compania ? (
+              <span className="text-sm text-[#B3985B] hover:text-[#C9A84C] transition-colors cursor-pointer">{c.compania.nombre}</span>
+            ) : (
+              <span className="text-xs text-gray-700 hover:text-gray-400 transition-colors cursor-pointer">+ Vincular</span>
+            )}
+          </button>
+          {empresaPopoverOpen && (
+            <div className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-2" style={{ width: 260 }} onClick={e => e.stopPropagation()}>
+              {empresaMode === "view" && c.compania ? (
+                <>
+                  <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 pb-2">Empresa</p>
+                  <a href={`/catalogo/empresas/${c.compania.id}`} target="_blank" rel="noreferrer"
+                    className="flex items-center justify-between px-3 py-2 text-sm text-gray-300 hover:bg-[#1a1a1a] transition-colors" onClick={onCloseEmpresa}>
+                    <span>Ver empresa</span><span className="text-gray-600">→</span>
+                  </a>
+                  <button onClick={() => { setEmpresaMode("search"); setEmpresaSearch(""); }}
+                    className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-300 hover:bg-[#1a1a1a] transition-colors">
+                    <span>Cambiar empresa</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 pb-2">Vincular empresa</p>
+                  <div className="px-3 pb-2">
+                    <input autoFocus value={empresaSearch} onChange={e => setEmpresaSearch(e.target.value)}
+                      placeholder="Buscar empresa..."
+                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-gray-700 focus:outline-none focus:border-[#C9A84C]/30" />
+                  </div>
+                  <div className="max-h-[200px] overflow-y-auto">
+                    {empresaSearching && <p className="text-xs text-gray-600 px-3 py-2">Buscando...</p>}
+                    {!empresaSearching && empresaResults.length === 0 && empresaSearch.trim() && (
+                      <p className="text-xs text-gray-600 px-3 py-2">Sin resultados</p>
+                    )}
+                    {empresaResults.map(emp => (
+                      <button key={emp.id} onClick={() => onVincularEmpresa(emp.id, emp.nombre)}
+                        className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-[#1a1a1a] transition-colors">
+                        {emp.nombre}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </td>
 
       {/* Tipo de Cliente (inline) */}
       <td className="px-3 py-3">
-        <InlineDropdown options={TIPO_CLIENTE_OPTIONS} value={inline.tipoCliente} onChange={v => patch("tipoCliente", v)} placeholder="Tipo" />
+        <InlineDropdown options={TIPO_CLIENTE_OPTIONS} value={inline.tipoCliente} onChange={v => patch("tipoCliente", v)} placeholder="Tipo"
+          colorMap={Object.fromEntries(Object.entries(TIPO_COLORS).map(([k]) => [k, TIPO_COLORS[k]]))} />
       </td>
 
       {/* Clasificación (inline) */}
       <td className="px-3 py-3">
-        <InlineDropdown options={CLASIFICACION_OPTIONS} value={inline.clasificacion} onChange={v => patch("clasificacion", v)} placeholder="Clasificación" />
+        <InlineDropdown options={CLASIFICACION_OPTIONS} value={inline.clasificacion} onChange={v => patch("clasificacion", v)} placeholder="Clasificación"
+          colorMap={Object.fromEntries(Object.entries(CLAS_COLORS).map(([k, css]) => [k, css.replace("text-", "")]))} />
       </td>
 
       {/* Servicio Usual (inline) */}
@@ -408,8 +466,9 @@ function LeadRow({ c, usuarios, onSaved, onVendedorChange, onDelete, deleting, o
         <InlineVendedor clienteId={c.id} vendedor={c.vendedor} usuarios={usuarios} onChange={onVendedorChange} />
       </td>
 
-      {/* Prospeccion / Tratos */}
+      {/* Tratos / Proyectos */}
       <td className="px-3 py-3 text-sm text-[#9ca3af] text-center">{c._count.tratos}</td>
+      <td className="px-3 py-3 text-sm text-[#9ca3af] text-center">{c._count.proyectos}</td>
 
       {/* Acciones */}
       <td className="px-3 py-3 text-right">
@@ -431,7 +490,7 @@ function LeadRow({ c, usuarios, onSaved, onVendedorChange, onDelete, deleting, o
                 className="text-[10px] px-2 py-1 rounded-md text-emerald-400 hover:text-emerald-300 border border-emerald-900/40 hover:border-emerald-700/60 transition-colors whitespace-nowrap">
                 Convertir →
               </button>
-              <Link href={`/crm/clientes/${c.id}`} className="text-[#B3985B] text-xs hover:underline">Ver</Link>
+              <Link href={`/crm/clientes/${c.id}`} className="text-[#B3985B] text-xs hover:underline">Ver →</Link>
               <button onClick={onDelete} disabled={deleting}
                 className="text-gray-600 hover:text-red-400 transition-colors disabled:opacity-30" title="Eliminar">
                 {deleting ? "…" : "✕"}
@@ -444,109 +503,40 @@ function LeadRow({ c, usuarios, onSaved, onVendedorChange, onDelete, deleting, o
   );
 }
 
-// ─── Modal Nuevo Lead ─────────────────────────────────────────────────────────
-
-function ModalNuevoLead({ onClose, onCreated }: {
-  onClose: () => void;
-  onCreated: (c: Lead) => void;
-}) {
-  const toast = useToast();
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ nombre: "", telefono: "", correo: "", empresa: "" });
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await fetch("/api/clientes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, tipoCliente: "POR_DESCUBRIR", clasificacion: "NUEVO", esProspecto: true }),
-      });
-      if (!res.ok) throw new Error();
-      const d = await res.json();
-      onCreated({ ...d.cliente, esProspecto: true, _count: { tratos: 0, proyectos: 0, prospecciones: 0 } });
-      toast.success("Lead agregado");
-      onClose();
-    } catch { toast.error("Error al crear lead"); }
-    finally { setSaving(false); }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-      <div className="relative w-full max-w-sm bg-[#111] border border-[#2a2a2a] rounded-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e1e1e]">
-          <h2 className="text-white font-semibold text-sm">Agregar Lead</h2>
-          <button onClick={onClose} className="text-[#555] hover:text-white">✕</button>
-        </div>
-        <form onSubmit={submit} className="px-6 py-5 space-y-4">
-          <div>
-            <label className="text-[10px] text-[#555] uppercase tracking-wider block mb-1.5">Nombre *</label>
-            <input required value={form.nombre} onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]/50" placeholder="Nombre completo" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] text-[#555] uppercase tracking-wider block mb-1.5">Teléfono</label>
-              <input value={form.telefono} onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]/50" placeholder="55 1234 5678" />
-            </div>
-            <div>
-              <label className="text-[10px] text-[#555] uppercase tracking-wider block mb-1.5">Correo</label>
-              <input type="email" value={form.correo} onChange={e => setForm(f => ({ ...f, correo: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]/50" placeholder="correo@..." />
-            </div>
-          </div>
-          <div>
-            <label className="text-[10px] text-[#555] uppercase tracking-wider block mb-1.5">Empresa</label>
-            <input value={form.empresa} onChange={e => setForm(f => ({ ...f, empresa: e.target.value }))}
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]/50" placeholder="Empresa (opcional)" />
-          </div>
-          <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onClose}
-              className="flex-1 px-4 py-2 text-sm text-[#777] border border-[#2a2a2a] rounded-lg hover:text-white transition-colors">Cancelar</button>
-            <button type="submit" disabled={saving}
-              className="flex-1 px-4 py-2 text-sm bg-[#B3985B] text-black font-semibold rounded-lg hover:bg-[#C9A84C] disabled:opacity-50 transition-colors">
-              {saving ? "Creando..." : "Agregar lead"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function LeadsClient({ leads: initial, usuarios }: { leads: Lead[]; usuarios: Vendedor[] }) {
+export default function ProspectosClient({ leads: initial, usuarios }: { leads: Lead[]; usuarios: Vendedor[] }) {
   const confirm = useConfirm();
   const toast = useToast();
-  const router = useRouter();
+  const [view, setView] = useState<"list" | "card">("list");
   const [leads, setLeads] = useState<Lead[]>(initial);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [showModal, setShowModal] = useState(false);
+  const router = useRouter();
+
+  // Empresa popover state (one at a time)
+  const [empresaPopoverId, setEmpresaPopoverId] = useState<string | null>(null);
+  const [empresaMode, setEmpresaMode] = useState<"view" | "search">("view");
+  const [empresaSearch, setEmpresaSearch] = useState("");
+  const [empresaResults, setEmpresaResults] = useState<{ id: string; nombre: string }[]>([]);
+  const [empresaSearching, setEmpresaSearching] = useState(false);
 
   // Filters
   const [busqueda, setBusqueda] = useState("");
+  const [filtroTipo, setFiltroTipo] = useState("");
   const [filtroClasificacion, setFiltroClasificacion] = useState("");
   const [filtroServicio, setFiltroServicio] = useState("");
   const [filtroEvento, setFiltroEvento] = useState("");
   const [filtroVendedor, setFiltroVendedor] = useState("");
-  const [filtroConProspeccion, setFiltroConProspeccion] = useState("");
+  const [filtroRuta, setFiltroRuta] = useState("");
 
-  const hayFiltros = busqueda || filtroClasificacion || filtroServicio || filtroEvento || filtroVendedor || filtroConProspeccion;
-
-  const vendedorOptions = useMemo(() => [
-    { value: "__sin_asignar__", label: "Sin asignar" },
-    ...usuarios.map(u => ({ value: u.id, label: u.name })),
-  ], [usuarios]);
+  const hayFiltros = busqueda || filtroTipo || filtroClasificacion || filtroServicio || filtroEvento || filtroVendedor || filtroRuta;
 
   const leadsFiltrados = useMemo(() => {
     const q = busqueda.toLowerCase().trim();
     return leads.filter(c => {
       const empresaNombre = c.compania?.nombre ?? c.empresa ?? "";
       if (q && !c.nombre.toLowerCase().includes(q) && !empresaNombre.toLowerCase().includes(q) && !(c.correo ?? "").toLowerCase().includes(q) && !(c.telefono ?? "").includes(q)) return false;
+      if (filtroTipo && c.tipoCliente !== filtroTipo) return false;
       if (filtroClasificacion && c.clasificacion !== filtroClasificacion) return false;
       if (filtroServicio && c.servicioUsual !== filtroServicio) return false;
       if (filtroEvento) {
@@ -557,72 +547,126 @@ export default function LeadsClient({ leads: initial, usuarios }: { leads: Lead[
         if (filtroVendedor === "__sin_asignar__" && c.vendedor !== null) return false;
         if (filtroVendedor !== "__sin_asignar__" && c.vendedor?.id !== filtroVendedor) return false;
       }
-      if (filtroConProspeccion === "con" && c._count.prospecciones === 0) return false;
-      if (filtroConProspeccion === "sin" && c._count.prospecciones > 0) return false;
+      if (filtroRuta === "con" && c._count.prospecciones === 0) return false;
+      if (filtroRuta === "sin" && c._count.prospecciones > 0) return false;
       return true;
     });
-  }, [leads, busqueda, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroConProspeccion]);
+  }, [leads, busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroRuta]);
 
   function limpiarFiltros() {
-    setBusqueda(""); setFiltroClasificacion(""); setFiltroServicio(""); setFiltroEvento(""); setFiltroVendedor(""); setFiltroConProspeccion("");
+    setBusqueda(""); setFiltroTipo(""); setFiltroClasificacion(""); setFiltroServicio(""); setFiltroEvento(""); setFiltroVendedor(""); setFiltroRuta("");
   }
 
-  function actualizarCampos(id: string, updated: Partial<Lead>) {
-    setLeads(prev => prev.map(c => c.id === id ? { ...c, ...updated } : c));
+  // Empresa search effect
+  useEffect(() => {
+    if (!empresaPopoverId || empresaMode !== "search") { setEmpresaResults([]); return; }
+    if (!empresaSearch.trim()) { setEmpresaResults([]); return; }
+    setEmpresaSearching(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/empresas?q=${encodeURIComponent(empresaSearch.trim())}&limit=6`);
+        const data = await res.json();
+        setEmpresaResults(data.empresas ?? []);
+      } catch { setEmpresaResults([]); }
+      finally { setEmpresaSearching(false); }
+    }, 250);
+    return () => clearTimeout(t);
+  }, [empresaSearch, empresaMode, empresaPopoverId]);
+
+  function openEmpresaPopover(c: Lead) {
+    if (empresaPopoverId === c.id) { closeEmpresaPopover(); return; }
+    setEmpresaPopoverId(c.id);
+    setEmpresaMode(c.compania ? "view" : "search");
+    setEmpresaSearch("");
+    setEmpresaResults([]);
+  }
+  function closeEmpresaPopover() {
+    setEmpresaPopoverId(null); setEmpresaMode("view"); setEmpresaSearch(""); setEmpresaResults([]);
   }
 
-  function actualizarVendedor(id: string, v: Vendedor | null) {
-    setLeads(prev => prev.map(c => c.id === id ? { ...c, vendedor: v, vendedorId: v?.id ?? null } : c));
-  }
-
-  async function eliminar(lead: Lead) {
-    const ok = await confirm({ title: "Eliminar lead", message: `¿Eliminar a ${lead.nombre} de la base de datos de leads? Esta acción no se puede deshacer.`, confirmText: "Eliminar", danger: true });
-    if (!ok) return;
-    setDeletingId(lead.id);
-    try {
-      await fetch(`/api/clientes/${lead.id}`, { method: "DELETE" });
-      setLeads(prev => prev.filter(c => c.id !== lead.id));
-      toast.success("Lead eliminado");
-    } catch { toast.error("Error al eliminar"); }
-    finally { setDeletingId(null); }
-  }
-
-  async function convertirACliente(lead: Lead) {
-    const ok = await confirm({
-      title: "Convertir a cliente",
-      message: `¿Convertir a ${lead.nombre} como cliente B2C? Se moverá a la base de datos de Clientes.`,
-      confirmText: "Convertir a B2C",
+  async function handleVincularEmpresa(clienteId: string, empresaId: string, empresaNombre: string) {
+    setLeads(prev => prev.map(c => c.id === clienteId ? { ...c, empresa: empresaNombre, compania: { id: empresaId, nombre: empresaNombre } } : c));
+    closeEmpresaPopover();
+    await fetch(`/api/clientes/${clienteId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ empresaId }),
     });
-    if (!ok) return;
+  }
+
+  function actualizarVendedor(clienteId: string, vendedor: Vendedor | null) {
+    setLeads(prev => prev.map(c => c.id === clienteId ? { ...c, vendedor } : c));
+  }
+
+  function actualizarCampos(clienteId: string, updated: Partial<Lead>) {
+    setLeads(prev => prev.map(c => c.id === clienteId ? { ...c, ...updated } : c));
+  }
+
+  async function eliminar(c: Lead) {
+    if (!await confirm({ message: `¿Eliminar a ${c.nombre}? Esta acción no se puede deshacer.`, danger: true, confirmText: "Eliminar" })) return;
+    setDeletingId(c.id);
+    const r = await fetch(`/api/clientes/${c.id}`, { method: "DELETE" });
+    if (r.ok) {
+      setLeads(prev => prev.filter(x => x.id !== c.id));
+      router.refresh();
+    } else {
+      const d = await r.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar prospecto");
+    }
+    setDeletingId(null);
+  }
+
+  async function convertirACliente(c: Lead) {
+    if (!await confirm({ message: `¿Convertir a ${c.nombre} como cliente B2C? Se moverá a la base de datos de Clientes.`, confirmText: "Convertir a B2C" })) return;
     try {
-      await fetch(`/api/clientes/${lead.id}`, {
+      await fetch(`/api/clientes/${c.id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tipoCliente: "B2C", esProspecto: false }),
       });
-      setLeads(prev => prev.filter(c => c.id !== lead.id));
-      toast.success(`${lead.nombre} convertido a cliente`);
+      setLeads(prev => prev.filter(x => x.id !== c.id));
+      toast.success(`${c.nombre} convertido a cliente`);
     } catch { toast.error("Error al convertir"); }
   }
 
+  const vendedorOptions = [
+    { value: "__sin_asignar__", label: "Sin asignar" },
+    ...usuarios.map(u => ({ value: u.id, label: u.name })),
+  ];
+
   return (
     <>
-      {showModal && <ModalNuevoLead onClose={() => setShowModal(false)} onCreated={c => setLeads(prev => [c, ...prev])} />}
+      {/* Backdrop para popover empresa */}
+      {empresaPopoverId && <div className="fixed inset-0 z-40" onClick={closeEmpresaPopover} />}
 
-      {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Base de Datos de Leads</h1>
-          <p className="text-[#6b7280] text-sm mt-0.5">
-            {leads.length} leads · {leads.filter(l => l._count.prospecciones > 0).length} en ruta de prospección
+          <h1 className="text-xl font-semibold text-white">Prospectos</h1>
+          <p className="text-[#6b7280] text-sm">
+            {hayFiltros
+              ? <>{leadsFiltrados.length} <span className="text-[#555]">de {leads.length}</span></>
+              : <>{leads.length} prospectos registrados</>
+            }
           </p>
         </div>
-        <button onClick={() => setShowModal(true)}
-          className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors self-start sm:self-auto">
-          + Agregar lead
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-0.5">
+            <button onClick={() => setView("list")} title="Vista lista"
+              className={`p-1.5 rounded-md transition-colors ${view === "list" ? "bg-[#B3985B] text-black" : "text-gray-500 hover:text-gray-300"}`}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="2" rx="1" fill="currentColor"/><rect x="1" y="7" width="14" height="2" rx="1" fill="currentColor"/><rect x="1" y="11" width="14" height="2" rx="1" fill="currentColor"/></svg>
+            </button>
+            <button onClick={() => setView("card")} title="Vista tarjetas"
+              className={`p-1.5 rounded-md transition-colors ${view === "card" ? "bg-[#B3985B] text-black" : "text-gray-500 hover:text-gray-300"}`}>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" fill="currentColor"/><rect x="9" y="1" width="6" height="6" rx="1.5" fill="currentColor"/><rect x="1" y="9" width="6" height="6" rx="1.5" fill="currentColor"/><rect x="9" y="9" width="6" height="6" rx="1.5" fill="currentColor"/></svg>
+            </button>
+          </div>
+          <Link href="/crm/clientes/nuevo"
+            className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
+            + Nuevo prospecto
+          </Link>
+        </div>
       </div>
 
-      {/* ── Filtros ── */}
+      {/* Filtros */}
       <div className="flex flex-col sm:flex-row gap-2 mb-4">
         <div className="relative flex-1 min-w-0">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555] pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -638,11 +682,12 @@ export default function LeadsClient({ leads: initial, usuarios }: { leads: Lead[
           )}
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <FilterSelect label="Tipo" value={filtroTipo} onChange={setFiltroTipo} options={TIPO_CLIENTE_OPTIONS} />
           <FilterSelect label="Clasificación" value={filtroClasificacion} onChange={setFiltroClasificacion} options={CLASIFICACION_OPTIONS} />
           <FilterSelect label="Servicio" value={filtroServicio} onChange={setFiltroServicio} options={SERVICIO_OPTIONS} />
           <FilterSelect label="Evento" value={filtroEvento} onChange={setFiltroEvento} options={TIPOS_EVENTO_OPTIONS} />
           <FilterSelect label="Responsable" value={filtroVendedor} onChange={setFiltroVendedor} options={vendedorOptions} />
-          <FilterSelect label="Prospección" value={filtroConProspeccion} onChange={setFiltroConProspeccion}
+          <FilterSelect label="Prospección" value={filtroRuta} onChange={setFiltroRuta}
             options={[{ value: "con", label: "En ruta" }, { value: "sin", label: "Sin ruta" }]} />
           {hayFiltros && (
             <button onClick={limpiarFiltros}
@@ -653,42 +698,100 @@ export default function LeadsClient({ leads: initial, usuarios }: { leads: Lead[
         </div>
       </div>
 
-      {/* ── Leyenda ── */}
-      <p className="text-[10px] text-[#444] mb-3">
-        ✎ Haz clic en cualquier campo para editar directamente · <span className="text-emerald-700">Convertir →</span> para mover a Clientes
-      </p>
+      {/* Leyenda inline edit */}
+      {view === "list" && (
+        <p className="text-[10px] text-[#444] mb-3">
+          ✎ Haz clic en cualquier campo (Tipo, Clasificación, Servicio, Evento) para editar directamente en la lista · <span className="text-emerald-700">Convertir →</span> mueve el prospecto a Clientes
+        </p>
+      )}
 
-      {/* ── Tabla ── */}
+      {/* Resultados */}
       {leadsFiltrados.length === 0 ? (
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center">
           <p className="text-[#6b7280] text-sm">
-            {hayFiltros ? "Sin resultados para los filtros aplicados" : "No hay leads registrados"}
+            {hayFiltros ? "Sin resultados para los filtros aplicados" : "No hay prospectos registrados"}
           </p>
           {hayFiltros && <button onClick={limpiarFiltros} className="mt-3 text-[#B3985B] text-xs hover:underline">Limpiar filtros</button>}
         </div>
-      ) : (
+      ) : view === "list" ? (
+        /* ── LISTA ── */
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
-          <table className="w-full min-w-[900px]">
+          <table className="w-full min-w-[1000px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
-                {["Lead", "Empresa", "Prospección", "Tipo", "Clasificación", "Servicio", "Tipo de Evento", "Responsable", "Tratos", ""].map(h => (
+                {["Prospecto", "Empresa", "Tipo", "Clasificación", "Servicio", "Tipo de Evento", "Responsable", "Tratos", "Proyectos", ""].map(h => (
                   <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1a1a1a]">
               {leadsFiltrados.map(c => (
-                <LeadRow
+                <ProspectoRow
                   key={c.id} c={c} usuarios={usuarios}
                   onSaved={updated => actualizarCampos(c.id, updated)}
                   onVendedorChange={v => actualizarVendedor(c.id, v)}
                   onDelete={() => eliminar(c)}
                   deleting={deletingId === c.id}
                   onConvertir={() => convertirACliente(c)}
+                  onEmpresaClick={() => openEmpresaPopover(c)}
+                  empresaPopoverOpen={empresaPopoverId === c.id}
+                  empresaMode={empresaMode}
+                  setEmpresaMode={setEmpresaMode}
+                  empresaSearch={empresaSearch}
+                  setEmpresaSearch={setEmpresaSearch}
+                  empresaResults={empresaResults}
+                  empresaSearching={empresaSearching}
+                  onVincularEmpresa={(empId, empNombre) => handleVincularEmpresa(c.id, empId, empNombre)}
+                  onCloseEmpresa={closeEmpresaPopover}
                 />
               ))}
             </tbody>
           </table>
+        </div>
+      ) : (
+        /* ── TARJETAS ── */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {leadsFiltrados.map(c => (
+            <div key={c.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 hover:bg-[#141414] hover:border-[#2a2a2a] transition-all group">
+              <Link href={`/crm/clientes/${c.id}`} className="block">
+                <div className="w-10 h-10 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center mb-4">
+                  <span className="text-[#B3985B] text-base font-bold">{c.nombre.charAt(0).toUpperCase()}</span>
+                </div>
+                <p className="text-white text-sm font-semibold leading-tight">{c.nombre}</p>
+                {(c.compania?.nombre ?? c.empresa) && <p className="text-[#6b7280] text-xs mt-0.5">{c.compania?.nombre ?? c.empresa}</p>}
+                {c.correo && <p className="text-[#444] text-xs mt-0.5 truncate">{c.correo}</p>}
+                <div className="flex items-center gap-2 mt-3 flex-wrap">
+                  <TipoBadge tipo={c.tipoCliente} />
+                  <ClasificacionBadge clasificacion={c.clasificacion} />
+                </div>
+                {c.servicioUsual && (
+                  <p className="text-[#555] text-xs mt-2">{TIPO_SERVICIO_LABELS[c.servicioUsual] ?? c.servicioUsual}</p>
+                )}
+                {parseTiposEvento(c.tiposEvento).length > 0 && (
+                  <div className="mt-2">
+                    <EventoPills tiposEvento={parseTiposEvento(c.tiposEvento)} />
+                  </div>
+                )}
+                {c._count.prospecciones > 0 && (
+                  <span className="mt-2 inline-block text-[9px] px-1.5 py-0.5 rounded-full bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/20 font-medium">
+                    En ruta de prospección
+                  </span>
+                )}
+              </Link>
+              <div className="mt-3 flex items-center gap-1.5">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                <InlineVendedor clienteId={c.id} vendedor={c.vendedor} usuarios={usuarios} onChange={v => actualizarVendedor(c.id, v)} />
+              </div>
+              <div className="flex gap-4 mt-4 pt-3 border-t border-[#1a1a1a]">
+                <div className="text-center"><p className="text-white text-sm font-semibold">{c._count.tratos}</p><p className="text-[#555] text-[10px]">tratos</p></div>
+                <div className="text-center"><p className="text-white text-sm font-semibold">{c._count.proyectos}</p><p className="text-[#555] text-[10px]">proyectos</p></div>
+              </div>
+              <button onClick={() => convertirACliente(c)}
+                className="mt-3 w-full py-1.5 text-[10px] text-emerald-400 hover:text-emerald-300 border border-emerald-900/40 hover:border-emerald-700/60 rounded-lg transition-colors">
+                Convertir a cliente →
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </>
