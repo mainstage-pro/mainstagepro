@@ -1,35 +1,6 @@
-import { prisma } from "@/lib/prisma";
-import ClientesClient from "./ClientesClient";
+import { redirect } from "next/navigation";
 
-export default async function ClientesPage() {
-  const [clientes, usuarios] = await Promise.all([
-    prisma.cliente.findMany({
-      select: {
-        id: true,
-        nombre: true,
-        empresa: true,
-        correo: true,
-        tipoCliente: true,
-        clasificacion: true,
-        servicioUsual: true,
-        tiposEvento: true,
-        vendedorId: true,
-        compania: { select: { id: true, nombre: true } },
-        vendedor: { select: { id: true, name: true } },
-        _count: { select: { tratos: true, proyectos: true } },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.user.findMany({
-      where: { active: true },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
-  ]);
-
-  return (
-    <div className="p-3 md:p-6 max-w-7xl mx-auto">
-      <ClientesClient clientes={clientes} usuarios={usuarios} />
-    </div>
-  );
+// /crm/clientes ahora vive dentro de /crm/base-de-datos como la pestaña "Clientes"
+export default function ClientesPage() {
+  redirect("/crm/base-de-datos");
 }

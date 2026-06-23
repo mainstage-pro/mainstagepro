@@ -15,7 +15,6 @@ export async function POST(request: NextRequest) {
     const empresaNombre: string | null = body.empresa || null;
 
     if (!empresaId && empresaNombre) {
-      // Find or create empresa by name
       const existing = await prisma.empresa.findFirst({
         where: { nombre: { equals: empresaNombre, mode: "insensitive" }, activo: true },
       });
@@ -37,14 +36,20 @@ export async function POST(request: NextRequest) {
           : empresaNombre,
         empresaId,
         tipoCliente: body.tipoCliente || "POR_DESCUBRIR",
-        clasificacion: body.clasificacion || "NUEVO",
+        clasificacion: body.clasificacion || "PROSPECTO",
         servicioUsual: body.servicioUsual || null,
         telefono: body.telefono || null,
         correo: body.correo || null,
         notas: body.notas || null,
+        // Prospecto por defecto — se convierte a cliente cuando se aprueba una cotización
+        esProspecto: body.esProspecto !== undefined ? Boolean(body.esProspecto) : true,
+        origenLead: body.origenLead || null,
+        vendedorId: body.vendedorId || null,
       },
       include: {
         compania: { select: { id: true, nombre: true } },
+        vendedor: { select: { id: true, name: true } },
+        _count: { select: { tratos: true, proyectos: true, prospecciones: true, cotizaciones: true } },
       },
     });
 
@@ -83,11 +88,12 @@ export async function GET(request: NextRequest) {
       tipoCliente: true,
       clasificacion: true,
       correo: true,
+      esProspecto: true,
       vendedor: { select: { id: true, name: true } },
     },
     orderBy: { nombre: "asc" },
     take: limit,
-  });
+  });;
 
   return NextResponse.json({ clientes });
 }

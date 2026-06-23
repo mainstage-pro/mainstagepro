@@ -1,19 +1,20 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TIPO_CLIENTE_LABELS, CLASIFICACION_LABELS, TIPO_SERVICIO_LABELS } from "@/lib/constants";
 import { CopyButton } from "@/components/CopyButton";
 import { useConfirm } from "@/components/Confirm";
-import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type Tab = "clientes" | "prospectos" | "sin-clasificar";
 
 interface Vendedor { id: string; name: string }
 
-interface Lead {
+interface Contacto {
   id: string;
   nombre: string;
   empresa: string | null;
@@ -25,14 +26,25 @@ interface Lead {
   servicioUsual: string | null;
   tiposEvento: string | null;
   esProspecto: boolean;
+  origenLead: string | null;
   vendedorId: string | null;
   vendedor: Vendedor | null;
-  // Trato más reciente (para mostrar origen y etapa)
   tratos: { id: string; etapa: string; origenLead: string; nombreEvento: string | null }[];
-  _count: { tratos: number; proyectos: number; prospecciones: number };
+  _count: { tratos: number; proyectos: number; prospecciones: number; cotizaciones: number };
 }
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const TIPO_CLIENTE_OPTIONS = Object.entries(TIPO_CLIENTE_LABELS).map(([v, l]) => ({ value: v, label: l }));
+const CLASIFICACION_OPTIONS = Object.entries(CLASIFICACION_LABELS)
+  .filter(([v]) => v !== "BASIC")
+  .map(([v, l]) => ({ value: v, label: l }));
+
+const SERVICIO_OPTIONS = [
+  { value: "RENTA",              label: "Renta de Equipo" },
+  { value: "PRODUCCION_TECNICA", label: "Producción Técnica" },
+  { value: "DIRECCION_TECNICA",  label: "Dirección Técnica" },
+];
 
 const TIPOS_EVENTO_OPTIONS = [
   { value: "MUSICAL",     label: "Musical" },
@@ -41,54 +53,37 @@ const TIPOS_EVENTO_OPTIONS = [
   { value: "VARIOS",      label: "Varios" },
 ];
 
-const SERVICIO_OPTIONS = [
-  { value: "RENTA",              label: "Renta de Equipo" },
-  { value: "PRODUCCION_TECNICA", label: "Producción Técnica" },
-  { value: "DIRECCION_TECNICA",  label: "Dirección Técnica" },
+const ORIGEN_OPTIONS = [
+  { value: "META_ADS",    label: "Meta Ads" },
+  { value: "GOOGLE_ADS",  label: "Google Ads" },
+  { value: "ORGANICO",    label: "Orgánico" },
+  { value: "REFERIDO",    label: "Referido" },
+  { value: "RECOMPRA",    label: "Recompra" },
+  { value: "PROSPECCION", label: "Prospección" },
+  { value: "MANUAL",      label: "Manual" },
+  { value: "OTRO",        label: "Otro" },
 ];
 
-const TIPO_CLIENTE_OPTIONS = Object.entries(TIPO_CLIENTE_LABELS).map(([v, l]) => ({ value: v, label: l }));
-const CLASIFICACION_OPTIONS = Object.entries(CLASIFICACION_LABELS)
-  .filter(([v]) => v !== "BASIC")
-  .map(([v, l]) => ({ value: v, label: l }));
-
-const ORIGEN_LABELS: Record<string, string> = {
-  META_ADS:      "Meta Ads",
-  GOOGLE_ADS:    "Google Ads",
-  ORGANICO:      "Orgánico",
-  RECOMPRA:      "Recompra",
-  REFERIDO:      "Referido",
-  PROSPECCION:   "Prospección",
-  OTRO:          "Otro",
-};
-
+const ORIGEN_LABELS: Record<string, string> = Object.fromEntries(ORIGEN_OPTIONS.map(o => [o.value, o.label]));
 const ORIGEN_COLORS: Record<string, { bg: string; text: string }> = {
-  META_ADS:    { bg: "bg-blue-900/30",   text: "text-blue-400" },
-  GOOGLE_ADS:  { bg: "bg-red-900/30",    text: "text-red-400" },
-  ORGANICO:    { bg: "bg-gray-800/60",   text: "text-gray-500" },
+  META_ADS:    { bg: "bg-blue-900/30",    text: "text-blue-400" },
+  GOOGLE_ADS:  { bg: "bg-red-900/30",     text: "text-red-400" },
+  ORGANICO:    { bg: "bg-gray-800/60",    text: "text-gray-500" },
   RECOMPRA:    { bg: "bg-emerald-900/30", text: "text-emerald-400" },
-  REFERIDO:    { bg: "bg-yellow-900/30", text: "text-yellow-400" },
-  PROSPECCION: { bg: "bg-[#B3985B]/10",  text: "text-[#B3985B]" },
-  OTRO:        { bg: "bg-gray-800/60",   text: "text-gray-500" },
+  REFERIDO:    { bg: "bg-yellow-900/30",  text: "text-yellow-400" },
+  PROSPECCION: { bg: "bg-[#B3985B]/10",   text: "text-[#B3985B]" },
+  MANUAL:      { bg: "bg-gray-800/60",    text: "text-gray-500" },
+  OTRO:        { bg: "bg-gray-800/60",    text: "text-gray-500" },
 };
 
 const ETAPA_LABELS: Record<string, string> = {
-  LEAD:           "Lead",
-  DESCUBRIMIENTO: "Descubrimiento",
-  OPORTUNIDAD:    "Oportunidad",
-  VENTA_CERRADA:  "Cerrado",
-  VENTA_PERDIDA:  "Perdido",
+  LEAD: "Lead", DESCUBRIMIENTO: "Descubrimiento", OPORTUNIDAD: "Oportunidad",
+  VENTA_CERRADA: "Cerrado", VENTA_PERDIDA: "Perdido",
 };
-
 const ETAPA_COLORS: Record<string, string> = {
-  LEAD:           "text-sky-400",
-  DESCUBRIMIENTO: "text-purple-400",
-  OPORTUNIDAD:    "text-[#B3985B]",
-  VENTA_CERRADA:  "text-emerald-400",
-  VENTA_PERDIDA:  "text-red-500",
+  LEAD: "text-sky-400", DESCUBRIMIENTO: "text-purple-400", OPORTUNIDAD: "text-[#B3985B]",
+  VENTA_CERRADA: "text-emerald-400", VENTA_PERDIDA: "text-red-500",
 };
-
-const ORIGEN_OPTIONS = Object.entries(ORIGEN_LABELS).map(([v, l]) => ({ value: v, label: l }));
 
 const TIPO_COLORS: Record<string, string> = {
   B2B: "bg-blue-900/40 text-blue-300",
@@ -96,17 +91,11 @@ const TIPO_COLORS: Record<string, string> = {
   POR_DESCUBRIR: "bg-gray-800 text-gray-400",
 };
 const CLAS_COLORS: Record<string, string> = {
-  PROSPECTO: "text-purple-400",
-  NUEVO: "text-[#6b7280]",
-  REGULAR: "text-yellow-400",
-  PRIORITY: "text-[#B3985B]",
-  BASIC: "text-blue-400",
+  PROSPECTO: "text-purple-400", NUEVO: "text-[#6b7280]",
+  REGULAR: "text-yellow-400", PRIORITY: "text-[#B3985B]", BASIC: "text-blue-400",
 };
 const EVENTO_COLORS: Record<string, string> = {
-  MUSICAL:     "#3B82F6",
-  SOCIAL:      "#10B981",
-  EMPRESARIAL: "#F59E0B",
-  VARIOS:      "#8B5CF6",
+  MUSICAL: "#3B82F6", SOCIAL: "#10B981", EMPRESARIAL: "#F59E0B", VARIOS: "#8B5CF6",
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -115,55 +104,16 @@ function parseTiposEvento(raw: string | null): string[] {
   if (!raw) return [];
   try { return JSON.parse(raw); } catch { return []; }
 }
-
 function stringifyTiposEvento(arr: string[]): string | null {
   return arr.length ? JSON.stringify(arr) : null;
 }
 
 // ─── Small display components ─────────────────────────────────────────────────
 
-function TipoBadge({ tipo }: { tipo: string }) {
-  return (
-    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${TIPO_COLORS[tipo] ?? "bg-gray-800 text-gray-400"}`}>
-      {TIPO_CLIENTE_LABELS[tipo] ?? tipo}
-    </span>
-  );
-}
-
-function ClasificacionBadge({ clasificacion }: { clasificacion: string }) {
-  return (
-    <span className={`text-xs font-medium ${CLAS_COLORS[clasificacion] ?? "text-gray-400"}`}>
-      {CLASIFICACION_LABELS[clasificacion] ?? clasificacion}
-    </span>
-  );
-}
-
-function EventoPills({ tiposEvento }: { tiposEvento: string[] }) {
-  if (!tiposEvento.length) return <span className="text-[#444] text-xs">—</span>;
-  return (
-    <div className="flex flex-wrap gap-1">
-      {tiposEvento.map(t => {
-        const opt = TIPOS_EVENTO_OPTIONS.find(o => o.value === t);
-        return (
-          <span key={t} className="text-[9px] px-1.5 py-0.5 rounded-full font-medium text-white"
-            style={{ backgroundColor: EVENTO_COLORS[t] ?? "#6b7280" }}>
-            {opt?.label ?? t}
-          </span>
-        );
-      })}
-    </div>
-  );
-}
-
-// ─── InlineDropdown ───────────────────────────────────────────────────────────
-
 function OrigenBadge({ origen }: { origen: string }) {
   const col = ORIGEN_COLORS[origen] ?? { bg: "bg-gray-800/60", text: "text-gray-500" };
   return (
     <span className={`inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wide ${col.bg} ${col.text}`}>
-      {origen === "META_ADS" && (
-        <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.5 9.5c-.28 0-.5-.22-.5-.5V9c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2c0 .28-.22.5-.5.5S7 11.28 7 11V9c0-1.66 1.34-3 3-3h4c1.66 0 3 1.34 3 3v2c0 .28-.22.5-.5.5z"/></svg>
-      )}
       {ORIGEN_LABELS[origen] ?? origen}
     </span>
   );
@@ -177,6 +127,7 @@ function EtapaBadge({ etapa }: { etapa: string }) {
   );
 }
 
+// ─── InlineDropdown — autosave on change ─────────────────────────────────────
 
 function InlineDropdown({ options, value, onChange, placeholder = "—", colorMap }: {
   options: { value: string; label: string }[];
@@ -303,8 +254,8 @@ function InlineMultiSelect({ options, values, onChange, placeholder = "—", max
           })}
           {values.length > 0 && (
             <button type="button" onClick={() => onChange([])}
-              className="w-full text-left px-3 py-2 text-xs text-[#555] hover:text-red-400 hover:bg-[#1a1a1a] transition-colors border-t border-[#222] mt-1">
-              Limpiar selección
+              className="w-full text-left px-3 py-2 text-xs text-[#555] hover:text-red-400 hover:bg-[#1a1a1a] transition-colors border-t border-[#222]">
+              Quitar todo
             </button>
           )}
         </div>
@@ -321,22 +272,60 @@ function InlineVendedor({ clienteId, vendedor, usuarios, onChange }: {
   usuarios: Vendedor[];
   onChange: (v: Vendedor | null) => void;
 }) {
+  const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  async function asignar(vendedorId: string) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  async function select(u: Vendedor | null) {
+    setOpen(false);
     setSaving(true);
-    const r = await fetch(`/api/clientes/${clienteId}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ vendedorId: vendedorId || null }),
+    await fetch(`/api/clientes/${clienteId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vendedorId: u?.id ?? null }),
     });
-    if (r.ok) { const found = usuarios.find(u => u.id === vendedorId) ?? null; onChange(found); }
+    onChange(u);
     setSaving(false);
   }
+
   return (
-    <div onClick={e => e.stopPropagation()} className="max-w-[140px]">
-      <Combobox value={vendedor?.id ?? ""} onChange={asignar} disabled={saving}
-        options={[{ value: "", label: "Sin asignar" }, ...usuarios.map(u => ({ value: u.id, label: `${u.name.split(" ")[0]} ${u.name.split(" ")[1] ?? ""}`.trim() }))]}
-        placeholder="Sin asignar"
-        className="bg-transparent border-0 text-xs text-[#9ca3af] focus:outline-none focus:ring-0 cursor-pointer hover:text-white disabled:opacity-50 w-full truncate" />
+    <div ref={ref} className="relative inline-block">
+      <button type="button" onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-transparent hover:border-[#B3985B]/40 hover:bg-[#B3985B]/5 transition-all group text-xs">
+        {saving
+          ? <span className="text-[#555] animate-pulse">…</span>
+          : vendedor
+          ? <span className="text-gray-300">{vendedor.name}</span>
+          : <span className="text-[#444]">Sin asignar</span>}
+        <svg className="text-[#444] group-hover:text-[#B3985B] transition-colors" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[160px]">
+          {usuarios.map(u => (
+            <button key={u.id} type="button" onClick={() => select(u)}
+              className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-[#1a1a1a] ${u.id === vendedor?.id ? "text-[#B3985B]" : "text-gray-300"}`}>
+              {u.name}{u.id === vendedor?.id && <span className="ml-2">✓</span>}
+            </button>
+          ))}
+          {vendedor && (
+            <button type="button" onClick={() => select(null)}
+              className="w-full text-left px-3 py-2 text-xs text-[#555] hover:text-red-400 hover:bg-[#1a1a1a] transition-colors border-t border-[#222]">
+              Quitar asignación
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -344,109 +333,105 @@ function InlineVendedor({ clienteId, vendedor, usuarios, onChange }: {
 // ─── FilterSelect ─────────────────────────────────────────────────────────────
 
 function FilterSelect({ label, value, onChange, options }: {
-  label: string; value: string;
-  onChange: (v: string) => void;
+  label: string; value: string; onChange: (v: string) => void;
   options: { value: string; label: string }[];
 }) {
-  const active = value !== "";
   return (
-    <Combobox value={value} onChange={onChange}
-      options={[{ value: "", label: label }, ...options]} placeholder={label}
-      className={`pl-3 pr-3 py-1.5 rounded-lg text-xs border transition-colors focus:outline-none focus:ring-1 focus:ring-[#B3985B]/40 ${active ? "bg-[#B3985B]/10 border-[#B3985B]/40 text-[#B3985B]" : "bg-[#111] border-[#2a2a2a] text-[#777] hover:border-[#3a3a3a] hover:text-[#aaa]"}`}
-    />
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      className={`text-xs px-2.5 py-1.5 rounded-lg border transition-colors focus:outline-none bg-[#111] cursor-pointer ${
+        value ? "border-[#B3985B]/40 text-[#B3985B]" : "border-[#2a2a2a] text-[#555]"
+      }`}
+    >
+      <option value="">{label}</option>
+      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+    </select>
   );
 }
 
-// ─── ProspectoRow (tabla, espejo de ClienteRow) ───────────────────────────────
+// ─── ContactoRow — one row in the table with full inline autosave ──────────
 
-type InlineState = {
-  tipoCliente: string;
-  clasificacion: string;
-  servicioUsual: string;
-  tiposEvento: string[];
-  dirty: boolean;
-};
-
-function ProspectoRow({
-  c, usuarios, onSaved, onVendedorChange, onDelete, deleting, onConvertir,
-  onEmpresaClick, empresaPopoverOpen,
-  empresaMode, setEmpresaMode, empresaSearch, setEmpresaSearch,
-  empresaResults, empresaSearching, onVincularEmpresa, onCloseEmpresa,
+function ContactoRow({
+  c, usuarios, tab,
+  onSaved, onVendedorChange, onDelete, deleting,
+  onConvertir, onReclasificar,
+  empresaPopoverOpen, onEmpresaClick, empresaMode, setEmpresaMode,
+  empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
+  onVincularEmpresa, onCloseEmpresa,
 }: {
-  c: Lead;
+  c: Contacto;
   usuarios: Vendedor[];
-  onSaved: (updated: Partial<Lead>) => void;
+  tab: Tab;
+  onSaved: (updated: Partial<Contacto>) => void;
   onVendedorChange: (v: Vendedor | null) => void;
   onDelete: () => void;
   deleting: boolean;
   onConvertir: () => void;
-  onEmpresaClick: () => void;
+  onReclasificar: (esProspecto: boolean) => void;
   empresaPopoverOpen: boolean;
+  onEmpresaClick: () => void;
   empresaMode: "view" | "search";
   setEmpresaMode: (m: "view" | "search") => void;
   empresaSearch: string;
   setEmpresaSearch: (s: string) => void;
   empresaResults: { id: string; nombre: string }[];
   empresaSearching: boolean;
-  onVincularEmpresa: (empId: string, empNombre: string) => void;
+  onVincularEmpresa: (id: string, nombre: string) => void;
   onCloseEmpresa: () => void;
 }) {
   const toast = useToast();
   const [saving, setSaving] = useState(false);
-  const [inline, setInline] = useState<InlineState>({
-    tipoCliente: c.tipoCliente,
-    clasificacion: c.clasificacion,
-    servicioUsual: c.servicioUsual ?? "",
-    tiposEvento: parseTiposEvento(c.tiposEvento),
-    dirty: false,
-  });
+  const [saved, setSaved] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    setInline({ tipoCliente: c.tipoCliente, clasificacion: c.clasificacion, servicioUsual: c.servicioUsual ?? "", tiposEvento: parseTiposEvento(c.tiposEvento), dirty: false });
-  }, [c.tipoCliente, c.clasificacion, c.servicioUsual, c.tiposEvento]);
-
-  function patch<K extends keyof InlineState>(key: K, val: InlineState[K]) {
-    setInline(prev => ({ ...prev, [key]: val, dirty: true }));
-  }
-
-  async function guardar() {
+  async function patch(campo: Record<string, unknown>) {
+    if (timerRef.current) clearTimeout(timerRef.current);
     setSaving(true);
-    try {
-      const r = await fetch(`/api/clientes/${c.id}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipoCliente: inline.tipoCliente || null, clasificacion: inline.clasificacion || null, servicioUsual: inline.servicioUsual || null, tiposEvento: stringifyTiposEvento(inline.tiposEvento) }),
-      });
-      if (!r.ok) throw new Error();
-      onSaved({ tipoCliente: inline.tipoCliente, clasificacion: inline.clasificacion, servicioUsual: inline.servicioUsual || null, tiposEvento: stringifyTiposEvento(inline.tiposEvento) });
-      setInline(prev => ({ ...prev, dirty: false }));
-      toast.success("Prospecto actualizado");
-    } catch { toast.error("Error al guardar"); }
-    finally { setSaving(false); }
+    const res = await fetch(`/api/clientes/${c.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(campo),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar");
+      setSaving(false);
+      return;
+    }
+    const d = await res.json();
+    onSaved(d.cliente ?? campo);
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
   }
 
-  function cancelar() {
-    setInline({ tipoCliente: c.tipoCliente, clasificacion: c.clasificacion, servicioUsual: c.servicioUsual ?? "", tiposEvento: parseTiposEvento(c.tiposEvento), dirty: false });
-  }
+  const eventosActuales = parseTiposEvento(c.tiposEvento);
 
   return (
-    <tr className={`transition-colors ${inline.dirty ? "bg-[#1a1400]" : "hover:bg-[#161616]"}`}>
+    <tr className="border-b border-[#111] hover:bg-[#141414] transition-colors group">
       {/* Nombre */}
-      <td className="px-4 py-3 min-w-[160px]">
-        <Link href={`/crm/clientes/${c.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">
-          {c.nombre}
-        </Link>
-        {c.correo && (
-          <span className="flex items-center gap-1 mt-0.5">
-            <p className="text-[#555] text-xs truncate max-w-[150px]">{c.correo}</p>
-            <CopyButton value={c.correo} size="xs" />
-          </span>
-        )}
-        {c.telefono && (
-          <span className="flex items-center gap-1">
-            <p className="text-[#444] text-xs">{c.telefono}</p>
-            <CopyButton value={c.telefono} size="xs" />
-          </span>
-        )}
+      <td className="px-4 py-3">
+        <div className="flex flex-col gap-0.5 min-w-[160px]">
+          <Link href={`/crm/clientes/${c.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">
+            {c.nombre}
+          </Link>
+          {c.correo && (
+            <span className="flex items-center gap-1 mt-0.5">
+              <p className="text-[#555] text-xs truncate max-w-[150px]">{c.correo}</p>
+              <CopyButton value={c.correo} size="xs" />
+            </span>
+          )}
+          {c.telefono && (
+            <span className="flex items-center gap-1">
+              <p className="text-[#444] text-xs">{c.telefono}</p>
+              <CopyButton value={c.telefono} size="xs" />
+            </span>
+          )}
+          {/* Indicador de guardado */}
+          {saving && <span className="text-[9px] text-[#555] animate-pulse">Guardando…</span>}
+          {saved && !saving && <span className="text-[9px] text-emerald-500">✓ Guardado</span>}
+        </div>
       </td>
 
       {/* Empresa */}
@@ -500,10 +485,12 @@ function ProspectoRow({
         </div>
       </td>
 
-      {/* Origen del lead */}
+      {/* Origen */}
       <td className="px-3 py-3">
         <div className="flex flex-col gap-0.5">
-          {c.tratos[0] ? (
+          {c.origenLead ? (
+            <OrigenBadge origen={c.origenLead} />
+          ) : c.tratos[0] ? (
             <>
               <OrigenBadge origen={c.tratos[0].origenLead} />
               <EtapaBadge etapa={c.tratos[0].etapa} />
@@ -514,26 +501,29 @@ function ProspectoRow({
         </div>
       </td>
 
-      {/* Tipo de Cliente (inline) */}
+      {/* Tipo (autosave) */}
       <td className="px-3 py-3">
-        <InlineDropdown options={TIPO_CLIENTE_OPTIONS} value={inline.tipoCliente} onChange={v => patch("tipoCliente", v)} placeholder="Tipo"
-          colorMap={Object.fromEntries(Object.entries(TIPO_COLORS).map(([k]) => [k, TIPO_COLORS[k]]))} />
+        <InlineDropdown options={TIPO_CLIENTE_OPTIONS} value={c.tipoCliente}
+          onChange={v => patch({ tipoCliente: v })} placeholder="Tipo" />
       </td>
 
-      {/* Clasificación (inline) */}
+      {/* Clasificación (autosave) */}
       <td className="px-3 py-3">
-        <InlineDropdown options={CLASIFICACION_OPTIONS} value={inline.clasificacion} onChange={v => patch("clasificacion", v)} placeholder="Clasificación"
-          colorMap={Object.fromEntries(Object.entries(CLAS_COLORS).map(([k, css]) => [k, css.replace("text-", "")]))} />
+        <InlineDropdown options={CLASIFICACION_OPTIONS} value={c.clasificacion}
+          onChange={v => patch({ clasificacion: v })} placeholder="Clasificación"
+          colorMap={Object.fromEntries(Object.entries(CLAS_COLORS).map(([k, css]) => [k, css]))} />
       </td>
 
-      {/* Servicio Usual (inline) */}
+      {/* Servicio (autosave) */}
       <td className="px-3 py-3">
-        <InlineDropdown options={SERVICIO_OPTIONS} value={inline.servicioUsual} onChange={v => patch("servicioUsual", v)} placeholder="Servicio" />
+        <InlineDropdown options={SERVICIO_OPTIONS} value={c.servicioUsual ?? ""}
+          onChange={v => patch({ servicioUsual: v || null })} placeholder="Servicio" />
       </td>
 
-      {/* Tipos de Evento (inline multi) */}
+      {/* Tipos de Evento (autosave) */}
       <td className="px-3 py-3">
-        <InlineMultiSelect options={TIPOS_EVENTO_OPTIONS} values={inline.tiposEvento} onChange={v => patch("tiposEvento", v)} placeholder="Evento" maxSelect={3} colorMap={EVENTO_COLORS} />
+        <InlineMultiSelect options={TIPOS_EVENTO_OPTIONS} values={eventosActuales}
+          onChange={v => patch({ tiposEvento: stringifyTiposEvento(v) })} placeholder="Evento" maxSelect={3} colorMap={EVENTO_COLORS} />
       </td>
 
       {/* Responsable */}
@@ -541,59 +531,303 @@ function ProspectoRow({
         <InlineVendedor clienteId={c.id} vendedor={c.vendedor} usuarios={usuarios} onChange={onVendedorChange} />
       </td>
 
-      {/* Tratos / Proyectos */}
+      {/* Contadores */}
       <td className="px-3 py-3 text-sm text-[#9ca3af] text-center">{c._count.tratos}</td>
       <td className="px-3 py-3 text-sm text-[#9ca3af] text-center">{c._count.proyectos}</td>
 
       {/* Acciones */}
       <td className="px-3 py-3 text-right">
-        <div className="flex items-center justify-end gap-2">
-          {inline.dirty ? (
+        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          {tab === "prospectos" && (
+            <button onClick={onConvertir}
+              className="text-[10px] px-2 py-1 rounded-md text-emerald-400 hover:text-emerald-300 border border-emerald-900/40 hover:border-emerald-700/60 transition-colors whitespace-nowrap">
+              → Cliente
+            </button>
+          )}
+          {tab === "clientes" && (
+            <button onClick={() => onReclasificar(true)}
+              className="text-[10px] px-2 py-1 rounded-md text-purple-400 hover:text-purple-300 border border-purple-900/40 hover:border-purple-700/60 transition-colors whitespace-nowrap">
+              → Prospecto
+            </button>
+          )}
+          {tab === "sin-clasificar" && (
             <>
-              <button onClick={guardar} disabled={saving}
-                className="text-[10px] px-2.5 py-1 rounded-md bg-[#B3985B] text-black font-semibold hover:bg-[#c9a96a] disabled:opacity-50 transition-colors">
-                {saving ? "…" : "Guardar"}
+              <button onClick={() => onReclasificar(false)}
+                className="text-[10px] px-2 py-1 rounded-md text-[#B3985B] hover:text-[#C9A84C] border border-[#B3985B]/30 hover:border-[#B3985B]/60 transition-colors whitespace-nowrap">
+                → Cliente
               </button>
-              <button onClick={cancelar}
-                className="text-[10px] px-2 py-1 rounded-md text-[#555] hover:text-white border border-[#2a2a2a] hover:border-[#444] transition-colors">
-                ✕
-              </button>
-            </>
-          ) : (
-            <>
-              <button onClick={onConvertir}
-                className="text-[10px] px-2 py-1 rounded-md text-emerald-400 hover:text-emerald-300 border border-emerald-900/40 hover:border-emerald-700/60 transition-colors whitespace-nowrap">
-                Convertir →
-              </button>
-              <Link href={`/crm/clientes/${c.id}`} className="text-[#B3985B] text-xs hover:underline">Ver →</Link>
-              <button onClick={onDelete} disabled={deleting}
-                className="text-gray-600 hover:text-red-400 transition-colors disabled:opacity-30" title="Eliminar">
-                {deleting ? "…" : "✕"}
+              <button onClick={() => onReclasificar(true)}
+                className="text-[10px] px-2 py-1 rounded-md text-purple-400 hover:text-purple-300 border border-purple-900/40 hover:border-purple-700/60 transition-colors whitespace-nowrap">
+                → Prospecto
               </button>
             </>
           )}
+          <Link href={`/crm/clientes/${c.id}`} className="text-[#B3985B] text-xs hover:underline">Ver</Link>
+          <button onClick={onDelete} disabled={deleting}
+            className="text-gray-600 hover:text-red-400 transition-colors disabled:opacity-30" title="Eliminar">
+            {deleting ? "…" : "✕"}
+          </button>
         </div>
       </td>
     </tr>
   );
 }
 
+// ─── ModalNuevoContacto ───────────────────────────────────────────────────────
+
+function ModalNuevoContacto({ onClose, onCreado, usuarios }: {
+  onClose: () => void;
+  onCreado: (c: Contacto) => void;
+  usuarios: Vendedor[];
+}) {
+  const toast = useToast();
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    nombre: "",
+    telefono: "",
+    correo: "",
+    empresa: "",
+    tipoCliente: "POR_DESCUBRIR",
+    clasificacion: "PROSPECTO",
+    origenLead: "MANUAL",
+    notas: "",
+    esCliente: false, // toggle: "Ya es cliente (migrado)"
+  });
+
+  function setF(k: string, v: unknown) { setForm(p => ({ ...p, [k]: v })); }
+
+  async function crear() {
+    if (!form.nombre.trim()) { toast.error("El nombre es requerido"); return; }
+    setSaving(true);
+    const res = await fetch("/api/clientes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre: form.nombre.trim(),
+        telefono: form.telefono.trim() || null,
+        correo: form.correo.trim() || null,
+        empresa: form.empresa.trim() || null,
+        tipoCliente: form.tipoCliente,
+        clasificacion: form.esCliente ? (form.clasificacion === "PROSPECTO" ? "NUEVO" : form.clasificacion) : "PROSPECTO",
+        origenLead: form.origenLead,
+        notas: form.notas.trim() || null,
+        esProspecto: !form.esCliente,
+      }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al crear");
+      setSaving(false);
+      return;
+    }
+    const d = await res.json();
+    onCreado(d.cliente);
+    toast.success(`${form.nombre.trim()} registrado correctamente`);
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-[#0f0f0f] border border-[#222] rounded-2xl w-full max-w-lg shadow-2xl max-h-[92vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
+          <h3 className="text-white font-semibold text-sm">Nuevo contacto</h3>
+          <button onClick={onClose} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {/* Toggle: Prospecto vs Cliente migrado */}
+          <div className="flex items-center gap-3 p-3 rounded-xl border border-[#1e1e1e] bg-[#0d0d0d]">
+            <button
+              onClick={() => setF("esCliente", false)}
+              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${!form.esCliente ? "bg-purple-900/40 text-purple-300 border border-purple-800/40" : "text-[#555] hover:text-gray-400"}`}>
+              Prospecto nuevo
+            </button>
+            <button
+              onClick={() => setF("esCliente", true)}
+              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${form.esCliente ? "bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/30" : "text-[#555] hover:text-gray-400"}`}>
+              Ya es cliente (migrado)
+            </button>
+          </div>
+
+          <p className="text-[10px] text-[#444]">
+            {form.esCliente
+              ? "Se registrará como cliente confirmado. Úsalo para contactos que ya te han comprado pero no están en el sistema."
+              : "Se registrará como prospecto. Cuando se apruebe una cotización, se convertirá automáticamente en cliente."}
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="block text-[10px] text-gray-500 mb-1.5">Nombre <span className="text-red-500">*</span></label>
+              <input value={form.nombre} onChange={e => setF("nombre", e.target.value)} placeholder="Nombre completo"
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] placeholder-[#444]" />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1.5">Teléfono</label>
+              <input value={form.telefono} onChange={e => setF("telefono", e.target.value)} placeholder="55 1234 5678"
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] placeholder-[#444]" />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1.5">Correo</label>
+              <input type="email" value={form.correo} onChange={e => setF("correo", e.target.value)} placeholder="correo@ejemplo.com"
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] placeholder-[#444]" />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1.5">Empresa</label>
+              <input value={form.empresa} onChange={e => setF("empresa", e.target.value)} placeholder="Empresa (opcional)"
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] placeholder-[#444]" />
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1.5">Origen</label>
+              <select value={form.origenLead} onChange={e => setF("origenLead", e.target.value)}
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                {ORIGEN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] text-gray-500 mb-1.5">Tipo de cliente</label>
+              <select value={form.tipoCliente} onChange={e => setF("tipoCliente", e.target.value)}
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                {TIPO_CLIENTE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+            </div>
+            {form.esCliente && (
+              <div>
+                <label className="block text-[10px] text-gray-500 mb-1.5">Clasificación</label>
+                <select value={form.clasificacion} onChange={e => setF("clasificacion", e.target.value)}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                  {CLASIFICACION_OPTIONS.filter(o => o.value !== "PROSPECTO").map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+            )}
+            <div className="col-span-2">
+              <label className="block text-[10px] text-gray-500 mb-1.5">Notas</label>
+              <textarea value={form.notas} onChange={e => setF("notas", e.target.value)} rows={2} placeholder="Información adicional…"
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none placeholder-[#444]" />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#1a1a1a]">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
+            Cancelar
+          </button>
+          <button onClick={crear} disabled={saving || !form.nombre.trim()}
+            className="px-5 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] disabled:opacity-50 transition-colors">
+            {saving ? "Registrando…" : form.esCliente ? "Registrar como cliente" : "Registrar prospecto"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ContactList — reusable table for all 3 tabs ───────────────────────────
+
+function ContactList({
+  contactos, usuarios, tab,
+  onSaved, onVendedorChange, onDelete, deletingId, onConvertir, onReclasificar,
+  empresaPopoverId, setEmpresaPopoverId, empresaMode, setEmpresaMode,
+  empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
+  handleVincularEmpresa, closeEmpresaPopover,
+}: {
+  contactos: Contacto[];
+  usuarios: Vendedor[];
+  tab: Tab;
+  onSaved: (id: string, updated: Partial<Contacto>) => void;
+  onVendedorChange: (id: string, v: Vendedor | null) => void;
+  onDelete: (c: Contacto) => void;
+  deletingId: string | null;
+  onConvertir: (c: Contacto) => void;
+  onReclasificar: (c: Contacto, esProspecto: boolean) => void;
+  empresaPopoverId: string | null;
+  setEmpresaPopoverId: (id: string | null) => void;
+  empresaMode: "view" | "search";
+  setEmpresaMode: (m: "view" | "search") => void;
+  empresaSearch: string;
+  setEmpresaSearch: (s: string) => void;
+  empresaResults: { id: string; nombre: string }[];
+  empresaSearching: boolean;
+  handleVincularEmpresa: (cid: string, empId: string, empNombre: string) => void;
+  closeEmpresaPopover: () => void;
+}) {
+  if (contactos.length === 0) return (
+    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center">
+      <p className="text-[#6b7280] text-sm">No hay registros en esta sección</p>
+    </div>
+  );
+
+  return (
+    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+      <table className="w-full min-w-[1100px]">
+        <thead>
+          <tr className="border-b border-[#1e1e1e]">
+            {["Contacto", "Empresa", "Origen", "Tipo", "Clasificación", "Servicio", "Evento", "Responsable", "Tratos", "Proyectos", ""].map(h => (
+              <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium whitespace-nowrap">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-[#111]">
+          {contactos.map(c => (
+            <ContactoRow
+              key={c.id} c={c} usuarios={usuarios} tab={tab}
+              onSaved={updated => onSaved(c.id, updated)}
+              onVendedorChange={v => onVendedorChange(c.id, v)}
+              onDelete={() => onDelete(c)}
+              deleting={deletingId === c.id}
+              onConvertir={() => onConvertir(c)}
+              onReclasificar={esProspecto => onReclasificar(c, esProspecto)}
+              empresaPopoverOpen={empresaPopoverId === c.id}
+              onEmpresaClick={() => {
+                if (empresaPopoverId === c.id) { setEmpresaPopoverId(null); return; }
+                setEmpresaMode(c.compania ? "view" : "search");
+                setEmpresaSearch("");
+                setEmpresaPopoverId(c.id);
+              }}
+              empresaMode={empresaMode}
+              setEmpresaMode={setEmpresaMode}
+              empresaSearch={empresaSearch}
+              setEmpresaSearch={setEmpresaSearch}
+              empresaResults={empresaResults}
+              empresaSearching={empresaSearching}
+              onVincularEmpresa={(empId, empNombre) => handleVincularEmpresa(c.id, empId, empNombre)}
+              onCloseEmpresa={closeEmpresaPopover}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function ProspectosClient({ leads: initial, usuarios }: { leads: Lead[]; usuarios: Vendedor[] }) {
+interface Props {
+  clientes: Contacto[];
+  prospectos: Contacto[];
+  sinClasificar: Contacto[];
+  usuarios: Vendedor[];
+}
+
+export default function BaseDeDatosClient({ clientes: initClientes, prospectos: initProspectos, sinClasificar: initSin, usuarios }: Props) {
   const confirm = useConfirm();
   const toast = useToast();
-  const [view, setView] = useState<"list" | "card">("list");
-  const [leads, setLeads] = useState<Lead[]>(initial);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const router = useRouter();
 
-  // Empresa popover state (one at a time)
+  const [tab, setTab] = useState<Tab>("clientes");
+  const [clientes, setClientes] = useState<Contacto[]>(initClientes);
+  const [prospectos, setProspectos] = useState<Contacto[]>(initProspectos);
+  const [sinClasificar, setSinClasificar] = useState<Contacto[]>(initSin);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+
+  // Empresa popover
   const [empresaPopoverId, setEmpresaPopoverId] = useState<string | null>(null);
   const [empresaMode, setEmpresaMode] = useState<"view" | "search">("view");
   const [empresaSearch, setEmpresaSearch] = useState("");
   const [empresaResults, setEmpresaResults] = useState<{ id: string; nombre: string }[]>([]);
   const [empresaSearching, setEmpresaSearching] = useState(false);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Filters
   const [busqueda, setBusqueda] = useState("");
@@ -602,16 +836,165 @@ export default function ProspectosClient({ leads: initial, usuarios }: { leads: 
   const [filtroServicio, setFiltroServicio] = useState("");
   const [filtroEvento, setFiltroEvento] = useState("");
   const [filtroVendedor, setFiltroVendedor] = useState("");
-  const [filtroRuta, setFiltroRuta] = useState("");
   const [filtroOrigen, setFiltroOrigen] = useState("");
 
-  const hayFiltros = busqueda || filtroTipo || filtroClasificacion || filtroServicio || filtroEvento || filtroVendedor || filtroRuta || filtroOrigen;
+  const hayFiltros = busqueda || filtroTipo || filtroClasificacion || filtroServicio || filtroEvento || filtroVendedor || filtroOrigen;
+  function limpiarFiltros() {
+    setBusqueda(""); setFiltroTipo(""); setFiltroClasificacion(""); setFiltroServicio("");
+    setFiltroEvento(""); setFiltroVendedor(""); setFiltroOrigen("");
+  }
 
-  const leadsFiltrados = useMemo(() => {
+  const vendedorOptions = usuarios.map(u => ({ value: u.id, label: u.name }));
+
+  // Empresa search effect
+  useEffect(() => {
+    if (!empresaSearch.trim() || empresaSearch.length < 2) {
+      setEmpresaResults([]); return;
+    }
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    setEmpresaSearching(true);
+    searchTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/empresas?q=${encodeURIComponent(empresaSearch)}&limit=10`);
+        const d = await res.json();
+        setEmpresaResults(d.empresas ?? []);
+      } catch { setEmpresaResults([]); }
+      setEmpresaSearching(false);
+    }, 300);
+  }, [empresaSearch]);
+
+  function closeEmpresaPopover() {
+    setEmpresaPopoverId(null);
+    setEmpresaMode("view");
+    setEmpresaSearch("");
+    setEmpresaResults([]);
+  }
+
+  // Click outside to close empresa popover
+  useEffect(() => {
+    if (!empresaPopoverId) return;
+    function handler(e: MouseEvent) {
+      const target = e.target as HTMLElement;
+      if (!target.closest("[data-empresa-popover]")) closeEmpresaPopover();
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [empresaPopoverId]);
+
+  // ── Helpers para actualizar state local ─────────────────────────────────────
+
+  function getSetters(source: Tab) {
+    if (source === "clientes") return { get: clientes, set: setClientes };
+    if (source === "prospectos") return { get: prospectos, set: setProspectos };
+    return { get: sinClasificar, set: setSinClasificar };
+  }
+
+  function actualizarCampos(id: string, updated: Partial<Contacto>) {
+    const apply = (prev: Contacto[]) => prev.map(c => c.id === id ? { ...c, ...updated } : c);
+    setClientes(apply); setProspectos(apply); setSinClasificar(apply);
+  }
+
+  function actualizarVendedor(id: string, v: Vendedor | null) {
+    const apply = (prev: Contacto[]) => prev.map(c => c.id === id ? { ...c, vendedor: v, vendedorId: v?.id ?? null } : c);
+    setClientes(apply); setProspectos(apply); setSinClasificar(apply);
+  }
+
+  function removerDe(id: string, source: Tab) {
+    const apply = (prev: Contacto[]) => prev.filter(c => c.id !== id);
+    if (source === "clientes") setClientes(apply);
+    else if (source === "prospectos") setProspectos(apply);
+    else setSinClasificar(apply);
+  }
+
+  // ── Vincular empresa ────────────────────────────────────────────────────────
+
+  async function handleVincularEmpresa(cid: string, empId: string, empNombre: string) {
+    closeEmpresaPopover();
+    const res = await fetch(`/api/clientes/${cid}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ empresaId: empId }),
+    });
+    if (!res.ok) { toast.error("Error al vincular empresa"); return; }
+    const d = await res.json();
+    actualizarCampos(cid, { compania: d.cliente?.compania ?? { id: empId, nombre: empNombre }, empresa: empNombre });
+  }
+
+  // ── Convertir prospecto → cliente ────────────────────────────────────────
+
+  async function convertirACliente(c: Contacto) {
+    const ok = await confirm({
+      message: `¿Confirmar que "${c.nombre}" ya es un cliente? Esto lo moverá a la pestaña de Clientes.`,
+      confirmText: "Convertir a Cliente",
+    });
+    if (!ok) return;
+    const res = await fetch(`/api/clientes/${c.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ esProspecto: false, clasificacion: c.clasificacion === "PROSPECTO" ? "NUEVO" : c.clasificacion }),
+    });
+    if (!res.ok) { toast.error("Error al convertir"); return; }
+    const d = await res.json();
+    removerDe(c.id, tab);
+    setClientes(prev => [d.cliente, ...prev]);
+    toast.success(`${c.nombre} movido a Clientes`);
+    setTab("clientes");
+  }
+
+  // ── Reclasificar (sin-clasificar o cliente → prospecto y viceversa) ─────
+
+  async function reclasificar(c: Contacto, esProspecto: boolean) {
+    const label = esProspecto ? "Prospecto" : "Cliente";
+    const res = await fetch(`/api/clientes/${c.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ esProspecto, clasificacion: !esProspecto && c.clasificacion === "PROSPECTO" ? "NUEVO" : c.clasificacion }),
+    });
+    if (!res.ok) { toast.error("Error al reclasificar"); return; }
+    const d = await res.json();
+    removerDe(c.id, tab);
+    if (esProspecto) setProspectos(prev => [d.cliente, ...prev]);
+    else setClientes(prev => [d.cliente, ...prev]);
+    toast.success(`${c.nombre} movido a ${label}s`);
+  }
+
+  // ── Eliminar ────────────────────────────────────────────────────────────────
+
+  async function eliminar(c: Contacto) {
+    const ok = await confirm({
+      message: `¿Eliminar a "${c.nombre}"? Esta acción no se puede deshacer.`,
+      danger: true,
+      confirmText: "Eliminar",
+    });
+    if (!ok) return;
+    setDeletingId(c.id);
+    const res = await fetch(`/api/clientes/${c.id}`, { method: "DELETE" });
+    if (!res.ok) { toast.error("Error al eliminar"); setDeletingId(null); return; }
+    removerDe(c.id, tab);
+    setDeletingId(null);
+    toast.success("Contacto eliminado");
+  }
+
+  // ── Nuevo contacto creado ─────────────────────────────────────────────────
+
+  function onCreado(c: Contacto) {
+    if (c.esProspecto) {
+      setProspectos(prev => [c, ...prev]);
+      setTab("prospectos");
+    } else {
+      setClientes(prev => [c, ...prev]);
+      setTab("clientes");
+    }
+  }
+
+  // ── Filtrado ─────────────────────────────────────────────────────────────
+
+  function filtrar(lista: Contacto[]): Contacto[] {
     const q = busqueda.toLowerCase().trim();
-    return leads.filter(c => {
+    return lista.filter(c => {
       const empresaNombre = c.compania?.nombre ?? c.empresa ?? "";
-      if (q && !c.nombre.toLowerCase().includes(q) && !empresaNombre.toLowerCase().includes(q) && !(c.correo ?? "").toLowerCase().includes(q) && !(c.telefono ?? "").includes(q)) return false;
+      if (q && !c.nombre.toLowerCase().includes(q) && !empresaNombre.toLowerCase().includes(q)
+        && !(c.correo ?? "").toLowerCase().includes(q) && !(c.telefono ?? "").includes(q)) return false;
       if (filtroTipo && c.tipoCliente !== filtroTipo) return false;
       if (filtroClasificacion && c.clasificacion !== filtroClasificacion) return false;
       if (filtroServicio && c.servicioUsual !== filtroServicio) return false;
@@ -619,144 +1002,121 @@ export default function ProspectosClient({ leads: initial, usuarios }: { leads: 
         const evs = parseTiposEvento(c.tiposEvento);
         if (!evs.includes(filtroEvento)) return false;
       }
-      if (filtroVendedor) {
-        if (filtroVendedor === "__sin_asignar__" && c.vendedor !== null) return false;
-        if (filtroVendedor !== "__sin_asignar__" && c.vendedor?.id !== filtroVendedor) return false;
-      }
-      if (filtroRuta === "con" && c._count.prospecciones === 0) return false;
-      if (filtroRuta === "sin" && c._count.prospecciones > 0) return false;
+      if (filtroVendedor && c.vendedorId !== filtroVendedor) return false;
       if (filtroOrigen) {
-        const origenTrato = c.tratos[0]?.origenLead ?? "";
-        if (origenTrato !== filtroOrigen) return false;
+        const origen = c.origenLead ?? c.tratos[0]?.origenLead;
+        if (origen !== filtroOrigen) return false;
       }
       return true;
     });
-  }, [leads, busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroRuta, filtroOrigen]);
-
-  function limpiarFiltros() {
-    setBusqueda(""); setFiltroTipo(""); setFiltroClasificacion(""); setFiltroServicio(""); setFiltroEvento(""); setFiltroVendedor(""); setFiltroRuta(""); setFiltroOrigen("");
   }
 
-  // Empresa search effect
-  useEffect(() => {
-    if (!empresaPopoverId || empresaMode !== "search") { setEmpresaResults([]); return; }
-    if (!empresaSearch.trim()) { setEmpresaResults([]); return; }
-    setEmpresaSearching(true);
-    const t = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/empresas?q=${encodeURIComponent(empresaSearch.trim())}&limit=6`);
-        const data = await res.json();
-        setEmpresaResults(data.empresas ?? []);
-      } catch { setEmpresaResults([]); }
-      finally { setEmpresaSearching(false); }
-    }, 250);
-    return () => clearTimeout(t);
-  }, [empresaSearch, empresaMode, empresaPopoverId]);
+  const clientesFiltrados = useMemo(() => filtrar(clientes), [clientes, busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroOrigen]);
+  const prospectosFiltrados = useMemo(() => filtrar(prospectos), [prospectos, busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroOrigen]);
+  const sinClasificarFiltrados = useMemo(() => filtrar(sinClasificar), [sinClasificar, busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroOrigen]);
 
-  function openEmpresaPopover(c: Lead) {
-    if (empresaPopoverId === c.id) { closeEmpresaPopover(); return; }
-    setEmpresaPopoverId(c.id);
-    setEmpresaMode(c.compania ? "view" : "search");
-    setEmpresaSearch("");
-    setEmpresaResults([]);
-  }
-  function closeEmpresaPopover() {
-    setEmpresaPopoverId(null); setEmpresaMode("view"); setEmpresaSearch(""); setEmpresaResults([]);
-  }
+  const listaActual = tab === "clientes" ? clientesFiltrados : tab === "prospectos" ? prospectosFiltrados : sinClasificarFiltrados;
 
-  async function handleVincularEmpresa(clienteId: string, empresaId: string, empresaNombre: string) {
-    setLeads(prev => prev.map(c => c.id === clienteId ? { ...c, empresa: empresaNombre, compania: { id: empresaId, nombre: empresaNombre } } : c));
-    closeEmpresaPopover();
-    await fetch(`/api/clientes/${clienteId}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ empresaId }),
-    });
-  }
+  // ── Shared table props ────────────────────────────────────────────────────
 
-  function actualizarVendedor(clienteId: string, vendedor: Vendedor | null) {
-    setLeads(prev => prev.map(c => c.id === clienteId ? { ...c, vendedor } : c));
-  }
-
-  function actualizarCampos(clienteId: string, updated: Partial<Lead>) {
-    setLeads(prev => prev.map(c => c.id === clienteId ? { ...c, ...updated } : c));
-  }
-
-  async function eliminar(c: Lead) {
-    if (!await confirm({ message: `¿Eliminar a ${c.nombre}? Esta acción no se puede deshacer.`, danger: true, confirmText: "Eliminar" })) return;
-    setDeletingId(c.id);
-    const r = await fetch(`/api/clientes/${c.id}`, { method: "DELETE" });
-    if (r.ok) {
-      setLeads(prev => prev.filter(x => x.id !== c.id));
-      router.refresh();
-    } else {
-      const d = await r.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al eliminar prospecto");
-    }
-    setDeletingId(null);
-  }
-
-  async function convertirACliente(c: Lead) {
-    if (!await confirm({ message: `¿Convertir a ${c.nombre} como cliente B2C? Se moverá a la base de datos de Clientes.`, confirmText: "Convertir a B2C" })) return;
-    try {
-      await fetch(`/api/clientes/${c.id}`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipoCliente: "B2C", esProspecto: false }),
-      });
-      setLeads(prev => prev.filter(x => x.id !== c.id));
-      toast.success(`${c.nombre} convertido a cliente`);
-    } catch { toast.error("Error al convertir"); }
-  }
-
-  const vendedorOptions = [
-    { value: "__sin_asignar__", label: "Sin asignar" },
-    ...usuarios.map(u => ({ value: u.id, label: u.name })),
-  ];
+  const tableProps = {
+    usuarios,
+    tab,
+    onSaved: actualizarCampos,
+    onVendedorChange: actualizarVendedor,
+    onDelete: eliminar,
+    deletingId,
+    onConvertir: convertirACliente,
+    onReclasificar: reclasificar,
+    empresaPopoverId,
+    setEmpresaPopoverId,
+    empresaMode,
+    setEmpresaMode,
+    empresaSearch,
+    setEmpresaSearch,
+    empresaResults,
+    empresaSearching,
+    handleVincularEmpresa,
+    closeEmpresaPopover,
+  };
 
   return (
     <>
-      {/* Backdrop para popover empresa */}
-      {empresaPopoverId && <div className="fixed inset-0 z-40" onClick={closeEmpresaPopover} />}
+      {showModal && (
+        <ModalNuevoContacto onClose={() => setShowModal(false)} onCreado={onCreado} usuarios={usuarios} />
+      )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-white">Prospectos</h1>
-          <p className="text-[#6b7280] text-sm">
-            {hayFiltros
-              ? <>{leadsFiltrados.length} <span className="text-[#555]">de {leads.length}</span></>
-              : <>{leads.length} prospectos registrados</>
-            }
+          <h1 className="text-xl font-bold text-white">Base de Datos</h1>
+          <p className="text-[#555] text-xs mt-0.5">
+            {clientes.length} cliente{clientes.length !== 1 ? "s" : ""} · {prospectos.length} prospecto{prospectos.length !== 1 ? "s" : ""}
+            {sinClasificar.length > 0 && ` · ${sinClasificar.length} sin clasificar`}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-0.5">
-            <button onClick={() => setView("list")} title="Vista lista"
-              className={`p-1.5 rounded-md transition-colors ${view === "list" ? "bg-[#B3985B] text-black" : "text-gray-500 hover:text-gray-300"}`}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="2" rx="1" fill="currentColor"/><rect x="1" y="7" width="14" height="2" rx="1" fill="currentColor"/><rect x="1" y="11" width="14" height="2" rx="1" fill="currentColor"/></svg>
-            </button>
-            <button onClick={() => setView("card")} title="Vista tarjetas"
-              className={`p-1.5 rounded-md transition-colors ${view === "card" ? "bg-[#B3985B] text-black" : "text-gray-500 hover:text-gray-300"}`}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1.5" fill="currentColor"/><rect x="9" y="1" width="6" height="6" rx="1.5" fill="currentColor"/><rect x="1" y="9" width="6" height="6" rx="1.5" fill="currentColor"/><rect x="9" y="9" width="6" height="6" rx="1.5" fill="currentColor"/></svg>
-            </button>
-          </div>
-          <Link href="/crm/clientes/nuevo"
-            className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
-            + Nuevo prospecto
-          </Link>
-        </div>
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors shrink-0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Nuevo contacto
+        </button>
       </div>
 
-      {/* Filtros */}
-      <div className="flex flex-col sm:flex-row gap-2 mb-4">
-        <div className="relative flex-1 min-w-0">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555] pointer-events-none" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      {/* ── Tabs ──────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-1 mb-5 bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-1 w-fit">
+        {([
+          { key: "clientes",       label: "Clientes",        count: clientes.length,       color: "text-[#B3985B]" },
+          { key: "prospectos",     label: "Prospectos",      count: prospectos.length,      color: "text-purple-300" },
+          { key: "sin-clasificar", label: "Sin Clasificar",  count: sinClasificar.length,   color: "text-amber-400" },
+        ] as const).map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              tab === t.key
+                ? "bg-[#1a1a1a] text-white shadow-sm"
+                : "text-[#555] hover:text-gray-400"
+            }`}>
+            {t.label}
+            {t.count > 0 && (
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                tab === t.key
+                  ? `${t.color} bg-[#111]`
+                  : "text-[#444] bg-[#1a1a1a]"
+              }`}>
+                {t.count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Descripción de Sin Clasificar */}
+      {tab === "sin-clasificar" && sinClasificar.length > 0 && (
+        <div className="mb-4 p-3 rounded-xl bg-amber-900/10 border border-amber-900/30 flex items-start gap-3">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" className="mt-0.5 shrink-0">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <p className="text-amber-400/80 text-xs">
+            Estos contactos aparecen duplicados en la base de datos (mismo teléfono o correo). Usa los botones <strong className="text-[#B3985B]">→ Cliente</strong> o <strong className="text-purple-300">→ Prospecto</strong> para clasificarlos, o elimina el duplicado.
+          </p>
+        </div>
+      )}
+
+      {/* ── Filtros ───────────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-3 mb-5">
+        <div className="relative">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#444]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
-          <input type="text" placeholder="Buscar por nombre, empresa, correo o teléfono…"
+          <input
             value={busqueda} onChange={e => setBusqueda(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 bg-[#111] border border-[#2a2a2a] rounded-lg text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#B3985B]/50 focus:ring-1 focus:ring-[#B3985B]/20 transition-colors" />
+            placeholder="Buscar por nombre, correo, teléfono o empresa…"
+            className="w-full pl-9 pr-4 py-2 bg-[#111] border border-[#2a2a2a] rounded-lg text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#B3985B]/50 transition-colors" />
           {busqueda && (
-            <button onClick={() => setBusqueda("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#555] hover:text-white transition-colors">
+            <button onClick={() => setBusqueda("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white transition-colors">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           )}
@@ -767,120 +1127,25 @@ export default function ProspectosClient({ leads: initial, usuarios }: { leads: 
           <FilterSelect label="Servicio" value={filtroServicio} onChange={setFiltroServicio} options={SERVICIO_OPTIONS} />
           <FilterSelect label="Evento" value={filtroEvento} onChange={setFiltroEvento} options={TIPOS_EVENTO_OPTIONS} />
           <FilterSelect label="Responsable" value={filtroVendedor} onChange={setFiltroVendedor} options={vendedorOptions} />
-          <FilterSelect label="Prospección" value={filtroRuta} onChange={setFiltroRuta}
-            options={[{ value: "con", label: "En ruta" }, { value: "sin", label: "Sin ruta" }]} />
           <FilterSelect label="Origen" value={filtroOrigen} onChange={setFiltroOrigen} options={ORIGEN_OPTIONS} />
           {hayFiltros && (
             <button onClick={limpiarFiltros}
               className="text-[10px] text-[#555] hover:text-red-400 border border-[#2a2a2a] hover:border-red-900/40 px-2.5 py-1.5 rounded-lg transition-colors">
-              Limpiar
+              Limpiar filtros
             </button>
           )}
+          <span className="ml-auto text-[10px] text-[#444]">
+            {listaActual.length} resultado{listaActual.length !== 1 ? "s" : ""}
+          </span>
         </div>
       </div>
 
-      {/* Leyenda inline edit */}
-      {view === "list" && (
-        <p className="text-[10px] text-[#444] mb-3">
-          ✎ Haz clic en cualquier campo (Tipo, Clasificación, Servicio, Evento) para editar directamente en la lista · <span className="text-emerald-700">Convertir →</span> mueve el prospecto a Clientes
-        </p>
-      )}
+      <p className="text-[10px] text-[#333] mb-3">
+        ✎ Haz clic en cualquier campo para editar · Se guarda automáticamente al seleccionar
+      </p>
 
-      {/* Resultados */}
-      {leadsFiltrados.length === 0 ? (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center">
-          <p className="text-[#6b7280] text-sm">
-            {hayFiltros ? "Sin resultados para los filtros aplicados" : "No hay prospectos registrados"}
-          </p>
-          {hayFiltros && <button onClick={limpiarFiltros} className="mt-3 text-[#B3985B] text-xs hover:underline">Limpiar filtros</button>}
-        </div>
-      ) : view === "list" ? (
-        /* ── LISTA ── */
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
-          <table className="w-full min-w-[1000px]">
-            <thead>
-              <tr className="border-b border-[#1e1e1e]">
-                {["Prospecto", "Empresa", "Origen", "Tipo", "Clasificación", "Servicio", "Tipo de Evento", "Responsable", "Tratos", "Proyectos", ""].map(h => (
-                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#1a1a1a]">
-              {leadsFiltrados.map(c => (
-                <ProspectoRow
-                  key={c.id} c={c} usuarios={usuarios}
-                  onSaved={updated => actualizarCampos(c.id, updated)}
-                  onVendedorChange={v => actualizarVendedor(c.id, v)}
-                  onDelete={() => eliminar(c)}
-                  deleting={deletingId === c.id}
-                  onConvertir={() => convertirACliente(c)}
-                  onEmpresaClick={() => openEmpresaPopover(c)}
-                  empresaPopoverOpen={empresaPopoverId === c.id}
-                  empresaMode={empresaMode}
-                  setEmpresaMode={setEmpresaMode}
-                  empresaSearch={empresaSearch}
-                  setEmpresaSearch={setEmpresaSearch}
-                  empresaResults={empresaResults}
-                  empresaSearching={empresaSearching}
-                  onVincularEmpresa={(empId, empNombre) => handleVincularEmpresa(c.id, empId, empNombre)}
-                  onCloseEmpresa={closeEmpresaPopover}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        /* ── TARJETAS ── */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {leadsFiltrados.map(c => (
-            <div key={c.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 hover:bg-[#141414] hover:border-[#2a2a2a] transition-all group">
-              <Link href={`/crm/clientes/${c.id}`} className="block">
-                <div className="w-10 h-10 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center mb-4">
-                  <span className="text-[#B3985B] text-base font-bold">{c.nombre.charAt(0).toUpperCase()}</span>
-                </div>
-                <p className="text-white text-sm font-semibold leading-tight">{c.nombre}</p>
-                {(c.compania?.nombre ?? c.empresa) && <p className="text-[#6b7280] text-xs mt-0.5">{c.compania?.nombre ?? c.empresa}</p>}
-                {c.correo && <p className="text-[#444] text-xs mt-0.5 truncate">{c.correo}</p>}
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  <TipoBadge tipo={c.tipoCliente} />
-                  <ClasificacionBadge clasificacion={c.clasificacion} />
-                </div>
-                {c.servicioUsual && (
-                  <p className="text-[#555] text-xs mt-2">{TIPO_SERVICIO_LABELS[c.servicioUsual] ?? c.servicioUsual}</p>
-                )}
-                {parseTiposEvento(c.tiposEvento).length > 0 && (
-                  <div className="mt-2">
-                    <EventoPills tiposEvento={parseTiposEvento(c.tiposEvento)} />
-                  </div>
-                )}
-                {c._count.prospecciones > 0 && (
-                  <span className="mt-2 inline-block text-[9px] px-1.5 py-0.5 rounded-full bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/20 font-medium">
-                    En ruta de prospección
-                  </span>
-                )}
-                {c.tratos[0] && (
-                  <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-                    <OrigenBadge origen={c.tratos[0].origenLead} />
-                    <EtapaBadge etapa={c.tratos[0].etapa} />
-                  </div>
-                )}
-              </Link>
-              <div className="mt-3 flex items-center gap-1.5">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-                <InlineVendedor clienteId={c.id} vendedor={c.vendedor} usuarios={usuarios} onChange={v => actualizarVendedor(c.id, v)} />
-              </div>
-              <div className="flex gap-4 mt-4 pt-3 border-t border-[#1a1a1a]">
-                <div className="text-center"><p className="text-white text-sm font-semibold">{c._count.tratos}</p><p className="text-[#555] text-[10px]">tratos</p></div>
-                <div className="text-center"><p className="text-white text-sm font-semibold">{c._count.proyectos}</p><p className="text-[#555] text-[10px]">proyectos</p></div>
-              </div>
-              <button onClick={() => convertirACliente(c)}
-                className="mt-3 w-full py-1.5 text-[10px] text-emerald-400 hover:text-emerald-300 border border-emerald-900/40 hover:border-emerald-700/60 rounded-lg transition-colors">
-                Convertir a cliente →
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* ── Tabla ─────────────────────────────────────────────────────── */}
+      <ContactList contactos={listaActual} {...tableProps} />
     </>
   );
 }
