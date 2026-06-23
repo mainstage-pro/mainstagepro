@@ -66,6 +66,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   for (const key of allowed) {
     if (key in body) data[key] = body[key] || null;
   }
+  // tiposEvento: accept JSON-stringified array or null — don't coerce empty string to null
+  if ("tiposEvento" in body) {
+    data.tiposEvento = body.tiposEvento ?? null;
+  }
 
   // Handle empresa: accept empresaId (FK) or plain empresa name
   if ("empresaId" in body) {

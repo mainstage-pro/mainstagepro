@@ -139,6 +139,7 @@ model Cliente {
   tipoCliente   String   @default("POR_DESCUBRIR") // B2B | B2C | POR_DESCUBRIR
   clasificacion String   @default("NUEVO")          // NUEVO | BASIC | REGULAR | PRIORITY
   servicioUsual String?  // RENTA | PRODUCCION_TECNICA | DIRECCION_TECNICA | MULTISERVICIO
+  tiposEvento   String?  // JSON: ["MUSICAL","SOCIAL","EMPRESARIAL","VARIOS"]
   telefono      String?
   correo        String?
   notas         String?

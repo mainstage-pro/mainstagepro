@@ -4,10 +4,19 @@ import ClientesClient from "./ClientesClient";
 export default async function ClientesPage() {
   const [clientes, usuarios] = await Promise.all([
     prisma.cliente.findMany({
-      include: {
-        _count: { select: { tratos: true, proyectos: true } },
-        vendedor: { select: { id: true, name: true } },
+      select: {
+        id: true,
+        nombre: true,
+        empresa: true,
+        correo: true,
+        tipoCliente: true,
+        clasificacion: true,
+        servicioUsual: true,
+        tiposEvento: true,
+        vendedorId: true,
         compania: { select: { id: true, nombre: true } },
+        vendedor: { select: { id: true, name: true } },
+        _count: { select: { tratos: true, proyectos: true } },
       },
       orderBy: { createdAt: "desc" },
     }),
