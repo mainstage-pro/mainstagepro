@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-const LETRAS = ["A", "B", "C", "D", "E"];
+// Genera letras: A, B, C, ..., Z, AA, AB, ..., AZ, BA, ... (hasta 50+)
+function generarLetra(index: number): string {
+  const ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  if (index < 26) return ALPHA[index];
+  const primera = ALPHA[Math.floor(index / 26) - 1];
+  const segunda = ALPHA[index % 26];
+  return `${primera}${segunda}`;
+}
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -23,14 +30,25 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const hermanas = await prisma.cotizacion.findMany({
     where: { grupoId },
     select: { opcionLetra: true },
+    orderBy: { createdAt: "asc" },
   });
+
   // Incluir la original si aún no tiene grupoId (aún no está en el grupo)
   const letrasUsadas = new Set(hermanas.map(h => h.opcionLetra));
   if (!original.grupoId) letrasUsadas.add(original.opcionLetra);
 
-  const siguienteLetra = LETRAS.find(l => !letrasUsadas.has(l));
-  if (!siguienteLetra) {
-    return NextResponse.json({ error: "Máximo de opciones alcanzado (A–E)" }, { status: 400 });
+  if (letrasUsadas.size >= 50) {
+    return NextResponse.json({ error: "Máximo de opciones alcanzado (50)" }, { status: 400 });
+  }
+
+  // Encontrar siguiente letra libre
+  let siguienteLetra = "B";
+  for (let i = 0; i < 50; i++) {
+    const candidata = generarLetra(i);
+    if (!letrasUsadas.has(candidata)) {
+      siguienteLetra = candidata;
+      break;
+    }
   }
 
   // Si la original aún no tiene grupoId, asignárselo
@@ -59,6 +77,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       tratoId: original.tratoId,
       clienteId: original.clienteId,
       creadaPorId: session.id,
+      // Nombre heredado (la nueva opción tendrá el mismo nombre de evento base)
+      nombreCotizacion: original.nombreCotizacion,
       // Datos del evento (heredados)
       nombreEvento: original.nombreEvento,
       tipoEvento: original.tipoEvento,
@@ -99,6 +119,11 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       incluirChofer: original.incluirChofer,
       montoIva: original.montoIva,
       granTotal: original.granTotal,
+      // Gastos de producción heredados
+      gastosProduccionActivo: original.gastosProduccionActivo,
+      gastosProduccionEsMonto: original.gastosProduccionEsMonto,
+      gastosProduccionPct: original.gastosProduccionPct,
+      gastosProduccionMonto: original.gastosProduccionMonto,
       costosTotalesEstimados: original.costosTotalesEstimados,
       utilidadEstimada: original.utilidadEstimada,
       porcentajeUtilidad: original.porcentajeUtilidad,

@@ -311,6 +311,8 @@ model Cotizacion {
   version          Int      @default(1)
   opcionLetra      String   @default("A") @map("opcion_letra")
   grupoId          String?  @map("grupo_id")
+  nombreCotizacion String?  @map("nombre_cotizacion")     // nombre editable: "Día 1 — Audio", "Escenario VIP", etc.
+  descripcionCotizacion String? @map("descripcion_cotizacion") @db.Text // descripción breve visible en resumen global
   tratoId          String?
   trato            Trato?   @relation(fields: [tratoId], references: [id])
   clienteId        String
@@ -362,6 +364,12 @@ model Cotizacion {
   incluirChofer          Boolean @default(false)  // Toggle: agregar servicio de chofer ($500)
   montoIva               Float @default(0)
   granTotal              Float @default(0)
+
+  // Gastos de Producción (comisión interna — se suma al granTotal)
+  gastosProduccionActivo  Boolean @default(false) @map("gastos_produccion_activo")
+  gastosProduccionEsMonto Boolean @default(false) @map("gastos_produccion_es_monto") // true = monto fijo, false = %
+  gastosProduccionPct     Float   @default(10)    @map("gastos_produccion_pct")     // % por defecto 10%
+  gastosProduccionMonto   Float   @default(0)     @map("gastos_produccion_monto")   // calculado o manual
 
   tipoBeneficio  String? // DESCUENTO_DIRECTO | SALDO_A_FAVOR
   montoBeneficio Float   @default(0)

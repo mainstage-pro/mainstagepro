@@ -34,6 +34,7 @@ interface OpcionHermana {
   opcionLetra: string;
   estado: string;
   granTotal: number;
+  nombreCotizacion?: string | null;
 }
 
 interface Cotizacion {
@@ -70,6 +71,14 @@ interface Cotizacion {
   aplicaIva: boolean;
   montoIva: number;
   granTotal: number;
+  // Multi-evento
+  nombreCotizacion: string | null;
+  descripcionCotizacion: string | null;
+  // Gastos de producción
+  gastosProduccionActivo: boolean;
+  gastosProduccionEsMonto: boolean;
+  gastosProduccionPct: number;
+  gastosProduccionMonto: number;
   costosTotalesEstimados: number;
   utilidadEstimada: number;
   porcentajeUtilidad: number;
@@ -84,6 +93,7 @@ interface Cotizacion {
   aprobacionNombre: string | null;
   cliente: { id: string; nombre: string; empresa: string | null; tipoCliente: string; telefono: string | null };
   trato: { id: string; tipoEvento: string; etapa: string; tradeCalificado: boolean; familyAndFriends: boolean; realizarRender: boolean; ideasReferencias: string | null; notas: string | null; lugarEstimado: string | null };
+  tratoId: string | null;
   creadaPor: { name: string } | null;
   lineas: Linea[];
   proyecto: { id: string; numeroProyecto: string; estado: string } | null;
@@ -164,6 +174,16 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
   const [opciones, setOpciones] = useState<OpcionHermana[]>([]);
   const [creandoOpcion, setCreandoOpcion] = useState(false);
+  // Nombre/descripción editable inline
+  const [editNombre, setEditNombre] = useState<string | null>(null);
+  const [editDescripcion, setEditDescripcion] = useState<string | null>(null);
+  const [savingMeta, setSavingMeta] = useState(false);
+  // Gastos de producción
+  const [gastosActivo, setGastosActivo] = useState(false);
+  const [gastosEsMonto, setGastosEsMonto] = useState(false);
+  const [gastosPct, setGastosPct] = useState(10);
+  const [gastosMonto, setGastosMonto] = useState(0);
+  const [savingGastos, setSavingGastos] = useState(false);
   const [noteEdit, setNoteEdit] = useState<{
     lineaId: string;
     tipo: string;
@@ -201,7 +221,19 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   useEffect(() => {
     fetch(`/api/cotizaciones/${id}`, { cache: "no-store" })
       .then((r) => r.json())
-      .then((d) => { setCot(d.cotizacion); setOpciones(d.opciones ?? []); setPresentacionToken(d.presentacionToken ?? null); setLoading(false); });
+      .then((d) => {
+        setCot(d.cotizacion);
+        setOpciones(d.opciones ?? []);
+        setPresentacionToken(d.presentacionToken ?? null);
+        setLoading(false);
+        // Inicializar estados de gastos de producción
+        if (d.cotizacion) {
+          setGastosActivo(d.cotizacion.gastosProduccionActivo ?? false);
+          setGastosEsMonto(d.cotizacion.gastosProduccionEsMonto ?? false);
+          setGastosPct(d.cotizacion.gastosProduccionPct ?? 10);
+          setGastosMonto(d.cotizacion.gastosProduccionMonto ?? 0);
+        }
+      });
   }, [id]);
 
   async function crearNuevaOpcion() {
@@ -217,6 +249,74 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       }
     } finally {
       setCreandoOpcion(false);
+    }
+  }
+
+  // Guardar nombre/descripción de la cotización (multi-evento)
+  async function saveMeta() {
+    if (!cot) return;
+    setSavingMeta(true);
+    try {
+      const res = await fetch(`/api/cotizaciones/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nombreCotizacion: editNombre !== null ? editNombre : cot.nombreCotizacion,
+          descripcionCotizacion: editDescripcion !== null ? editDescripcion : cot.descripcionCotizacion,
+        }),
+      });
+      if (res.ok) {
+        setCot(prev => prev ? {
+          ...prev,
+          nombreCotizacion: editNombre !== null ? editNombre : prev.nombreCotizacion,
+          descripcionCotizacion: editDescripcion !== null ? editDescripcion : prev.descripcionCotizacion,
+        } : prev);
+        setEditNombre(null);
+        setEditDescripcion(null);
+        toast.success("Nombre guardado");
+      } else {
+        toast.error("Error al guardar nombre");
+      }
+    } finally {
+      setSavingMeta(false);
+    }
+  }
+
+  // Guardar gastos de producción (toggle / valor)
+  async function saveGastos(overrides?: {
+    activo?: boolean;
+    esMonto?: boolean;
+    pct?: number;
+    monto?: number;
+  }) {
+    if (!cot) return;
+    setSavingGastos(true);
+    const activo = overrides?.activo ?? gastosActivo;
+    const esMonto = overrides?.esMonto ?? gastosEsMonto;
+    const pct = overrides?.pct ?? gastosPct;
+    const monto = overrides?.monto ?? gastosMonto;
+    try {
+      const res = await fetch(`/api/cotizaciones/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gastosProduccionActivo: activo,
+          gastosProduccionEsMonto: esMonto,
+          gastosProduccionPct: pct,
+          gastosProduccionMonto: monto,
+        }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        // Recargar cot para tener el granTotal actualizado
+        const cotActualizada = d.cotizacion;
+        if (cotActualizada) setCot(prev => prev ? { ...prev, ...cotActualizada } : prev);
+        toast.success("Gastos de producción guardados");
+      } else {
+        toast.error("Error al guardar");
+      }
+    } finally {
+      setSavingGastos(false);
     }
   }
 
@@ -529,7 +629,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     equiposPorCat[cat].push(l);
   }
 
-  const LETRAS_LABELS = ["A", "B", "C", "D", "E"];
+  const LETRAS_LABELS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
   const letrasUsadas = new Set(opciones.map(o => o.opcionLetra));
   const siguienteLetra = LETRAS_LABELS.find(l => !letrasUsadas.has(l));
   const tieneOpciones = opciones.length > 1 || (opciones.length === 1 && cot.grupoId);
@@ -660,7 +760,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               </span>
             </Link>
           ))}
-          {siguienteLetra && opciones.length < 5 && (
+          {siguienteLetra && opciones.length < 26 && (
             <button
               onClick={crearNuevaOpcion}
               disabled={creandoOpcion}
@@ -699,13 +799,44 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
         {/* Fila 2: título + total */}
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
+            {/* Nombre del evento del cotizador */}
             <h1 className="text-2xl font-bold text-white leading-tight">{cot.nombreEvento || "Sin nombre"}</h1>
-            <Link href={`/crm/clientes/${cot.cliente.id}`} className="text-[#B3985B] text-sm hover:underline">
+            {/* Nombre de cotización (multi-evento) — editable inline */}
+            {cot.tratoId && (
+              <div className="flex items-center gap-2 mt-1">
+                {editNombre !== null ? (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      autoFocus
+                      value={editNombre}
+                      onChange={e => setEditNombre(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') saveMeta(); if (e.key === 'Escape') setEditNombre(null); }}
+                      placeholder="Ej: Día 1 — Audio, Escenario VIP..."
+                      className="bg-[#1a1a1a] border border-[#B3985B]/50 rounded-md px-2 py-0.5 text-sm text-white w-48 focus:outline-none focus:border-[#B3985B]"
+                    />
+                    <button onClick={saveMeta} disabled={savingMeta} className="text-[10px] text-emerald-400 hover:text-emerald-300 disabled:opacity-50">{savingMeta ? '...' : '✓'}</button>
+                    <button onClick={() => setEditNombre(null)} className="text-[10px] text-gray-600 hover:text-gray-400">×</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setEditNombre(cot.nombreCotizacion ?? '')}
+                    className="flex items-center gap-1.5 text-xs text-[#B3985B]/70 hover:text-[#B3985B] border border-[#B3985B]/20 hover:border-[#B3985B]/50 rounded-md px-2 py-0.5 transition-colors"
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    {cot.nombreCotizacion || 'Nombre del evento…'}
+                  </button>
+                )}
+              </div>
+            )}
+            <Link href={`/crm/clientes/${cot.cliente.id}`} className="text-[#B3985B] text-sm hover:underline mt-0.5 block">
               {cot.cliente.nombre}{cot.cliente.empresa ? ` · ${cot.cliente.empresa}` : ""}
             </Link>
           </div>
           <div className="text-right shrink-0">
             <p className="text-2xl font-bold text-white tabular-nums">{formatCurrency(cot.granTotal)}</p>
+            {cot.gastosProduccionActivo && cot.gastosProduccionMonto > 0 && (
+              <p className="text-[10px] text-amber-400/70">Incl. gastos prod. {formatCurrency(cot.gastosProduccionMonto)}</p>
+            )}
             {cot.aplicaIva && <p className="text-gray-500 text-[11px]">IVA incluido</p>}
             <p className={`text-sm font-medium ${semaforoColor}`}>{semaforo} · {formatPct(pctVivo)} margen</p>
           </div>
@@ -777,7 +908,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
         {/* Fila 4: acciones secundarias */}
         <div className="flex items-center gap-4 flex-wrap">
-          {siguienteLetra && opciones.length < 5 && (
+          {siguienteLetra && opciones.length < 26 && (
             <button onClick={crearNuevaOpcion} disabled={creandoOpcion}
               className="flex items-center gap-1 text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/30 hover:border-[#B3985B]/60 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40">
               <span className="text-sm leading-none">+</span>
@@ -1582,6 +1713,102 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               <span className="text-gray-400">Margen</span>
               <span className={`font-semibold ${semaforoColor}`}>{formatPct(pctVivo)} — {semaforo}</span>
             </div>
+          </div>
+
+          {/* ── Gastos de Producción ─────────────────────────── */}
+          <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-sm">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Gastos de Producción</p>
+                <p className="text-[10px] text-gray-600 mt-0.5">Comisión interna sobre total del evento</p>
+              </div>
+              <button
+                onClick={() => {
+                  const newActivo = !gastosActivo;
+                  setGastosActivo(newActivo);
+                  saveGastos({ activo: newActivo });
+                }}
+                disabled={savingGastos}
+                className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${
+                  gastosActivo ? 'bg-[#B3985B]' : 'bg-[#333]'
+                } disabled:opacity-50`}
+              >
+                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
+                  gastosActivo ? 'translate-x-5' : 'translate-x-0.5'
+                }`} />
+              </button>
+            </div>
+            {gastosActivo && (
+              <div className="space-y-2.5 pt-2 border-t border-[#1a1a1a]">
+                {/* Modo: % vs monto fijo */}
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => { setGastosEsMonto(false); }}
+                    className={`flex-1 text-xs py-1 rounded-md border transition-colors ${
+                      !gastosEsMonto
+                        ? 'bg-[#B3985B]/10 border-[#B3985B]/40 text-[#B3985B]'
+                        : 'border-[#333] text-gray-500 hover:text-gray-300'
+                    }`}
+                  >
+                    Porcentaje
+                  </button>
+                  <button
+                    onClick={() => { setGastosEsMonto(true); }}
+                    className={`flex-1 text-xs py-1 rounded-md border transition-colors ${
+                      gastosEsMonto
+                        ? 'bg-[#B3985B]/10 border-[#B3985B]/40 text-[#B3985B]'
+                        : 'border-[#333] text-gray-500 hover:text-gray-300'
+                    }`}
+                  >
+                    Monto fijo
+                  </button>
+                </div>
+
+                {!gastosEsMonto ? (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] text-gray-500">Porcentaje</label>
+                      <span className="text-[11px] text-gray-400">{gastosPct}%</span>
+                    </div>
+                    <input
+                      type="range" min={1} max={30} step={0.5}
+                      value={gastosPct}
+                      onChange={e => setGastosPct(parseFloat(e.target.value))}
+                      className="w-full accent-[#B3985B]"
+                    />
+                    <p className="text-xs text-amber-400 font-medium text-right">
+                      = {formatCurrency(cot.total * gastosPct / 100)}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-gray-500 block">Monto fijo</label>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
+                      <input
+                        type="number" min={0} step={100}
+                        value={gastosMonto}
+                        onChange={e => setGastosMonto(parseFloat(e.target.value) || 0)}
+                        className="w-full bg-[#0a0a0a] border border-[#333] rounded-md pl-6 pr-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => saveGastos()}
+                  disabled={savingGastos}
+                  className="w-full py-1.5 rounded-lg bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] text-xs font-semibold hover:bg-[#B3985B]/20 transition-colors disabled:opacity-50"
+                >
+                  {savingGastos ? 'Guardando...' : 'Guardar gastos de producción'}
+                </button>
+
+                <div className="flex justify-between text-xs border-t border-[#1a1a1a] pt-2">
+                  <span className="text-gray-500">G. Producción aplicado</span>
+                  <span className="text-amber-400 font-medium">{formatCurrency(cot.gastosProduccionMonto)}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <Link href={`/crm/tratos/${cot.trato.id}`}

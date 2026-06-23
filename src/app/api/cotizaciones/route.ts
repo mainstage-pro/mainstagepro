@@ -10,7 +10,9 @@ export async function GET() {
   const cotizaciones = await prisma.cotizacion.findMany({
     select: {
       id: true, numeroCotizacion: true, estado: true, opcionLetra: true, grupoId: true,
-      granTotal: true, nombreEvento: true, tipoEvento: true, createdAt: true, mainstageTradeData: true,
+      granTotal: true, nombreEvento: true, nombreCotizacion: true, tipoEvento: true, fechaEvento: true,
+      createdAt: true, mainstageTradeData: true,
+      gastosProduccionActivo: true, gastosProduccionMonto: true, gastosProduccionPct: true,
       fechaVencimiento: true,
       cliente: { select: { id: true, nombre: true, empresa: true, tipoCliente: true } },
       trato: { select: { tipoEvento: true } },

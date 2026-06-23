@@ -40,8 +40,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       vendedor: { select: { id: true, name: true } },
       vendedorOrigen: { select: { id: true, name: true } },
       cotizaciones: {
-        select: { id: true, numeroCotizacion: true, estado: true, granTotal: true, createdAt: true, proyecto: { select: { id: true } } },
-        orderBy: { createdAt: "desc" },
+        select: {
+          id: true, numeroCotizacion: true, opcionLetra: true, grupoId: true, estado: true,
+          granTotal: true, nombreEvento: true, nombreCotizacion: true, fechaEvento: true,
+          lugarEvento: true, gastosProduccionActivo: true, gastosProduccionMonto: true,
+          createdAt: true, proyecto: { select: { id: true } },
+        },
+        orderBy: { createdAt: "asc" },
       },
       archivos: { orderBy: { createdAt: "asc" } },
     },

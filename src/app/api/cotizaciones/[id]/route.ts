@@ -148,7 +148,27 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       jornadasPlan,
       zonaEvento,
       numTecnicosZona,
+      // Multi-evento + Gastos de producción
+      nombreCotizacion,
+      descripcionCotizacion,
+      gastosProduccionActivo,
+      gastosProduccionEsMonto,
+      gastosProduccionPct,
+      gastosProduccionMonto,
     } = body;
+
+    // Calcular gastos de producción y ajustar granTotal
+    let gastosMontoCalculado = 0;
+    let granTotalFinal = granTotal ?? 0;
+    if (gastosProduccionActivo) {
+      if (gastosProduccionEsMonto) {
+        gastosMontoCalculado = gastosProduccionMonto ?? 0;
+      } else {
+        gastosMontoCalculado = Math.round((total ?? 0) * ((gastosProduccionPct ?? 10) / 100) * 100) / 100;
+      }
+      // granTotal ya incluye IVA si aplica — gastos van SOBRE el granTotal
+      granTotalFinal = (granTotal ?? 0) + gastosMontoCalculado;
+    }
 
     try {
       // Capture current granTotal before overwriting, so we can cascade later
@@ -210,11 +230,19 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             aplicaIva: aplicaIva ?? false,
             incluirChofer: incluirChofer ?? false,
             montoIva: montoIva ?? 0,
-            granTotal: granTotal ?? 0,
+            granTotal: granTotalFinal,
+            // Gastos de producción
+            gastosProduccionActivo: gastosProduccionActivo ?? false,
+            gastosProduccionEsMonto: gastosProduccionEsMonto ?? false,
+            gastosProduccionPct: gastosProduccionPct ?? 10,
+            gastosProduccionMonto: gastosMontoCalculado,
             costosTotalesEstimados: costosTotalesEstimados ?? 0,
             utilidadEstimada: utilidadEstimada ?? 0,
             porcentajeUtilidad: porcentajeUtilidad ?? 0,
             observaciones: observaciones ?? null,
+            // Multi-evento
+            nombreCotizacion: nombreCotizacion !== undefined ? (nombreCotizacion?.trim() || null) : undefined,
+            descripcionCotizacion: descripcionCotizacion !== undefined ? (descripcionCotizacion?.trim() || null) : undefined,
             lineas: {
               create: (lineas as Record<string, unknown>[]).map((l, i) => ({
                 tipo: l.tipo as string,
@@ -309,7 +337,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   // Actualización parcial normal (estado, observaciones, etc.)
   try {
-    const allowed = ["estado", "observaciones", "terminosComerciales", "fechaEnvio", "fechaVencimiento", "notasSecciones", "planPagos", "mainstageTradeData", "tradeToken", "descuentoFamilyFriendsPct"];
+    const allowed = ["estado", "observaciones", "terminosComerciales", "fechaEnvio", "fechaVencimiento", "notasSecciones", "planPagos", "mainstageTradeData", "tradeToken", "descuentoFamilyFriendsPct", "nombreCotizacion", "descripcionCotizacion", "gastosProduccionActivo", "gastosProduccionEsMonto", "gastosProduccionPct", "gastosProduccionMonto"];
     const data: Record<string, unknown> = {};
     for (const key of allowed) {
       if (key in body) {

@@ -85,7 +85,13 @@ interface Trato {
   responsable: { id: string; name: string } | null;
   vendedorId: string | null;
   vendedor: { id: string; name: string } | null;
-  cotizaciones: Array<{ id: string; numeroCotizacion: string; estado: string; granTotal: number; createdAt: string; proyecto: { id: string } | null }>;
+  cotizaciones: Array<{
+    id: string; numeroCotizacion: string; opcionLetra: string; grupoId: string | null;
+    estado: string; granTotal: number; nombreEvento: string | null; nombreCotizacion: string | null;
+    fechaEvento: string | null; lugarEvento: string | null;
+    gastosProduccionActivo: boolean; gastosProduccionMonto: number;
+    createdAt: string; proyecto: { id: string } | null;
+  }>;
   archivos: TratoArchivo[];
 }
 
@@ -1021,6 +1027,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const autoSaveScoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Paso activo del wizard de descubrimiento (persisted in localStorage)
   const [pasoActivo, setPasoActivo] = useState(1);
+  const [creandoCotizacion, setCreandoCotizacion] = useState(false);
 
   // Discovery state
   const [discForm, setDiscForm] = useState({
@@ -1234,6 +1241,31 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     const d = await patch({ canalAtencion: canal });
     if (d) setTrato(prev => prev ? { ...prev, canalAtencion: d.trato.canalAtencion } : prev);
     setSaving(false);
+  }
+
+  async function crearNuevaCotizacion() {
+    if (!trato) return;
+    const nombre = window.prompt(
+      "Nombre del evento (puedes cambiarlo después):",
+      `Evento ${trato.cotizaciones.filter(c => !c.grupoId || c.opcionLetra === "A").length + 1}`
+    );
+    if (nombre === null) return; // canceló
+    setCreandoCotizacion(true);
+    try {
+      const res = await fetch(`/api/tratos/${trato.id}/cotizaciones`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombreCotizacion: nombre || undefined }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        router.push(`/cotizaciones/nuevo?editId=${d.id}`);
+      } else {
+        toast.error(d.error ?? "Error al crear cotización");
+      }
+    } finally {
+      setCreandoCotizacion(false);
+    }
   }
 
   async function guardarNurturing(data: NurturingData, extra?: Record<string, unknown>) {
@@ -3169,45 +3201,153 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         clienteNombre={trato.cliente.nombre}
       />
 
-      {/* Cotizaciones */}
+      {/* Cotizaciones — Vista multi-evento */}
       <div className="bg-[#111] border border-[#222] rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Cotizaciones</h2>
-          <div className="flex items-center gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Cotizaciones del proyecto</h2>
+            <p className="text-[10px] text-gray-600 mt-0.5">{trato.cotizaciones.length} cotización{trato.cotizaciones.length !== 1 ? "es" : ""} · {fmt(trato.cotizaciones.reduce((s, c) => s + c.granTotal, 0))} total</p>
+          </div>
+          <div className="flex items-center gap-2">
             {trato.cotizaciones.length > 0 && (
-              <Link
-                href={`/contratos/${trato.id}`}
-                target="_blank"
-                className="text-xs text-[#B3985B] hover:underline"
-              >
-                Ver contrato →
-              </Link>
+              <>
+                <Link
+                  href={`/contratos/${trato.id}`}
+                  target="_blank"
+                  className="text-xs text-gray-500 hover:text-[#B3985B] hover:underline transition-colors"
+                >
+                  Contrato →
+                </Link>
+                {trato.cotizaciones.length >= 2 && (
+                  <Link
+                    href={`/cotizaciones/${trato.cotizaciones[0].id}/resumen-global`}
+                    className="text-xs text-[#B3985B]/70 hover:text-[#B3985B] border border-[#B3985B]/20 hover:border-[#B3985B]/50 rounded-md px-2 py-1 transition-colors"
+                  >
+                    Resumen global →
+                  </Link>
+                )}
+              </>
             )}
-            <Link href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
-              className="flex items-center gap-1 px-3 py-1.5 bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] text-xs font-semibold rounded-lg hover:bg-[#B3985B]/20 transition-colors">+ Nueva cotización</Link>
+            <button
+              onClick={crearNuevaCotizacion}
+              disabled={creandoCotizacion}
+              className="flex items-center gap-1 px-3 py-1.5 bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] text-xs font-semibold rounded-lg hover:bg-[#B3985B]/20 transition-colors disabled:opacity-40"
+            >
+              {creandoCotizacion ? "Creando..." : "+ Nuevo evento"}
+            </button>
           </div>
         </div>
+
         {trato.cotizaciones.length === 0 ? (
-          <p className="text-gray-500 text-sm">Sin cotizaciones aún.</p>
-        ) : (
-          <div className="space-y-2">
-            {trato.cotizaciones.map((c) => (
-              <Link key={c.id} href={`/cotizaciones/${c.id}`}
-                className="flex items-center justify-between p-3 rounded-lg bg-[#1a1a1a] hover:bg-[#222] transition-colors">
-                <div className="flex items-center gap-3">
-                  <span className="text-white text-sm font-mono">{c.numeroCotizacion}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${ESTADO_COT_COLORS[c.estado] || "bg-gray-700 text-gray-300"}`}>
-                    {c.estado}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <p className="text-white text-sm font-medium">{fmt(c.granTotal)}</p>
-                  <p className="text-gray-500 text-xs">{fmtDate(c.createdAt)}</p>
-                </div>
-              </Link>
-            ))}
+          <div className="text-center py-8">
+            <p className="text-gray-600 text-sm mb-3">Sin cotizaciones aún.</p>
+            <button
+              onClick={crearNuevaCotizacion}
+              disabled={creandoCotizacion}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] text-sm font-semibold rounded-lg hover:bg-[#B3985B]/20 transition-colors disabled:opacity-40"
+            >
+              + Crear primera cotización del proyecto
+            </button>
           </div>
-        )}
+        ) : (() => {
+          // Agrupar cotizaciones por grupoId (o por id si no tiene grupo)
+          const grupos = new Map<string, typeof trato.cotizaciones>();
+          for (const c of trato.cotizaciones) {
+            const key = c.grupoId ?? c.id;
+            if (!grupos.has(key)) grupos.set(key, []);
+            grupos.get(key)!.push(c);
+          }
+          return (
+            <div className="space-y-3">
+              {Array.from(grupos.entries()).map(([grupoKey, opciones], gi) => {
+                // Ordenar: A primero
+                const ordenadas = [...opciones].sort((a, b) => a.opcionLetra.localeCompare(b.opcionLetra));
+                const principal = ordenadas.find(o => o.opcionLetra === "A") ?? ordenadas[0];
+                const tieneOpciones = ordenadas.length > 1;
+                const eventoLabel = principal.nombreCotizacion || principal.nombreEvento || `Evento ${gi + 1}`;
+                const fechaLabel = principal.fechaEvento
+                  ? new Date(principal.fechaEvento).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" })
+                  : null;
+
+                return (
+                  <div key={grupoKey} className="border border-[#1e1e1e] rounded-xl overflow-hidden">
+                    {/* Header del evento */}
+                    <div className="flex items-center justify-between px-4 py-3 bg-[#151515]">
+                      <div className="min-w-0">
+                        <p className="text-white text-sm font-semibold truncate">{eventoLabel}</p>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          {fechaLabel && (
+                            <span className="text-gray-500 text-xs">📅 {fechaLabel}</span>
+                          )}
+                          {principal.lugarEvento && (
+                            <span className="text-gray-600 text-xs truncate max-w-[180px]">· 📍 {principal.lugarEvento}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-white text-sm font-semibold tabular-nums">
+                          {fmt(Math.max(...ordenadas.map(o => o.granTotal)))}
+                        </p>
+                        {tieneOpciones && (
+                          <p className="text-gray-600 text-[10px]">{ordenadas.length} opciones</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Opciones A / B / C... */}
+                    <div className="divide-y divide-[#1a1a1a]">
+                      {ordenadas.map(op => (
+                        <Link
+                          key={op.id}
+                          href={`/cotizaciones/${op.id}`}
+                          className="flex items-center justify-between px-4 py-2.5 hover:bg-[#1a1a1a] transition-colors"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            {tieneOpciones && (
+                              <span className="text-[10px] font-bold text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/30 w-5 h-5 rounded-full flex items-center justify-center shrink-0">
+                                {op.opcionLetra}
+                              </span>
+                            )}
+                            <span className="text-gray-500 text-xs font-mono">{op.numeroCotizacion}</span>
+                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${ESTADO_COT_COLORS[op.estado] || "bg-gray-700 text-gray-300"}`}>
+                              {op.estado}
+                            </span>
+                            {op.proyecto && (
+                              <span className="text-[10px] text-green-500 bg-green-900/20 border border-green-800/30 px-1.5 py-0.5 rounded-full">proyecto</span>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <p className="text-gray-300 text-xs font-medium tabular-nums">{fmt(op.granTotal)}</p>
+                            {op.gastosProduccionActivo && op.gastosProduccionMonto > 0 && (
+                              <p className="text-amber-500/60 text-[9px]">+{fmt(op.gastosProduccionMonto)} G.Prod</p>
+                            )}
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Totales globales */}
+              {trato.cotizaciones.length > 1 && (() => {
+                // Solo tomar el "mejor" de cada grupo para el total
+                const grupos2 = new Map<string, typeof trato.cotizaciones[0]>();
+                for (const c of trato.cotizaciones) {
+                  const key = c.grupoId ?? c.id;
+                  if (!grupos2.has(key)) grupos2.set(key, c);
+                }
+                const granTotal = Array.from(grupos2.values()).reduce((s, c) => s + c.granTotal, 0);
+                return (
+                  <div className="border-t border-[#222] pt-3 flex items-center justify-between">
+                    <p className="text-xs text-gray-500">Total proyecto ({grupos2.size} evento{grupos2.size !== 1 ? "s" : ""})</p>
+                    <p className="text-[#B3985B] font-bold text-base tabular-nums">{fmt(granTotal)}</p>
+                  </div>
+                );
+              })()}
+            </div>
+          );
+        })()}
       </div>
 
       </div> {/* end left column */}
