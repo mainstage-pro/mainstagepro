@@ -309,6 +309,11 @@ export default function TecnicosPage() {
     if (filterRol !== "TODOS" && (t.rol?.nombre ?? "Sin rol") !== filterRol) return false;
     if (filterDisciplina === 'SIN_CATEGORIA') {
       if ((t.disciplina ?? []).length > 0) return false;
+    } else if (filterDisciplina === 'DJ') {
+      // DJ tab: match by disciplina array OR by rol name (covers DJs not yet re-categorized)
+      const hasDJDisc = (t.disciplina ?? []).includes('DJ');
+      const hasDJRol  = (t.rol?.nombre ?? '').toLowerCase() === 'dj';
+      if (!hasDJDisc && !hasDJRol) return false;
     } else if (filterDisciplina !== 'TODOS') {
       if (!(t.disciplina ?? []).includes(filterDisciplina)) return false;
     }
@@ -481,7 +486,12 @@ export default function TecnicosPage() {
             ? tecnicos.filter(t => t.activo || showInactivos).length
             : tab.key === 'SIN_CATEGORIA'
               ? tecnicos.filter(t => (t.activo || showInactivos) && (t.disciplina ?? []).length === 0).length
-              : tecnicos.filter(t => (t.activo || showInactivos) && (t.disciplina ?? []).includes(tab.key)).length;
+              : tab.key === 'DJ'
+                ? tecnicos.filter(t => (t.activo || showInactivos) && (
+                    (t.disciplina ?? []).includes('DJ') ||
+                    (t.rol?.nombre ?? '').toLowerCase() === 'dj'
+                  )).length
+                : tecnicos.filter(t => (t.activo || showInactivos) && (t.disciplina ?? []).includes(tab.key)).length;
           return (
             <button
               key={tab.key}
