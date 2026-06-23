@@ -146,6 +146,9 @@ model Cliente {
   notas         String?
   categoriaKARE String?  @default("SIN_CATEGORIZAR") // KEEP | ATTAIN | RECOVER | EXPAND | SIN_CATEGORIZAR
   esProspecto   Boolean  @default(false)             // true mientras no haya tenido VENTA_CERRADA
+  // ── Origen del prospecto (se llena al capturar el lead, sin necesitar un Trato) ──
+  origenLead    String?  // META_ADS | GOOGLE_ADS | ORGANICO | REFERIDO | RECOMPRA | PROSPECCION | OTRO
+  campana       String?  // nombre de la campaña de origen (Meta Ads, Google Ads, etc.)
   vendedorId    String?
   vendedor      User?    @relation("ClientesVendedor", fields: [vendedorId], references: [id])
   createdAt     DateTime @default(now())

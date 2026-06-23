@@ -731,12 +731,26 @@ function SeguimientosPanel({ tratoId, etapa, tipoEvento, clienteNombre }: {
   return (
     <div className="bg-[#111] border border-[#222] rounded-xl p-5">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">
-          Seguimientos {segs.length > 0 && <span className="text-[#555] font-normal">({segs.length})</span>}
-        </h2>
-        <Link href="/ventas/seguimientos" className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors">
-          Ver todos →
-        </Link>
+        <div>
+          <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider flex items-center gap-2">
+            Seguimientos
+            {segs.length > 0 && <span className="text-[#555] font-normal text-xs normal-case tracking-normal">({segs.filter(s => !s.completado).length} pendientes)</span>}
+          </h2>
+          <p className="text-[10px] text-gray-700 mt-0.5">Manual · se generan cuando el vendedor los crea</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link href="/ventas/seguimientos" className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors">
+            Ver todos →
+          </Link>
+          {!showForm && (
+            <button
+              onClick={() => setShowForm(true)}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#B3985B]/15 border border-[#B3985B]/30 text-[#B3985B] text-xs font-medium hover:bg-[#B3985B]/25 transition-colors"
+            >
+              + Agregar
+            </button>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -786,10 +800,41 @@ function SeguimientosPanel({ tratoId, etapa, tipoEvento, clienteNombre }: {
 
       {showForm && (
         <div id="seguimiento-form" className="border border-[#2a2a2a] rounded-xl p-4 bg-[#0d0d0d] space-y-3">
-          <select value={formTipoKey} onChange={e => setFormTipoKey(e.target.value)} className="w-full bg-[#111] border border-[#222] text-sm text-white rounded-lg px-3 py-2">
-            <option value="">Selecciona un tipo...</option>
-            {tiposDisponibles.map(t => <option key={t.key} value={t.key}>{t.label}</option>)}
-          </select>
+          {/* Tipo de seguimiento — chips visuales */}
+          <div>
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Tipo de seguimiento</p>
+            <div className="grid grid-cols-1 gap-1.5">
+              {tiposDisponibles.map(t => (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setFormTipoKey(t.key)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-all ${
+                    formTipoKey === t.key
+                      ? "border-[#B3985B]/50 bg-[#B3985B]/10 text-[#B3985B]"
+                      : "border-[#1e1e1e] bg-[#111] text-gray-400 hover:border-[#2a2a2a] hover:text-gray-300"
+                  }`}
+                >
+                  <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${formTipoKey === t.key ? "bg-[#B3985B]" : "bg-[#333]"}`} />
+                  <span className="text-xs font-medium flex-1">{t.label}</span>
+                  {formTipoKey === t.key && <span className="text-[#B3985B] text-[10px]">✓</span>}
+                </button>
+              ))}
+              {tiposDisponibles.length === 0 && (
+                <p className="text-[11px] text-gray-700 italic">No hay tipos predefinidos para esta etapa. Escribe el título manualmente.</p>
+              )}
+            </div>
+          </div>
+          {/* Campo título manual si no hay tipos o se quiere personalizar */}
+          {(tiposDisponibles.length === 0 || formTipoKey === "") && (
+            <input
+              type="text"
+              value={formTipoKey}
+              onChange={e => setFormTipoKey(e.target.value)}
+              placeholder="Título del seguimiento…"
+              className="w-full bg-[#111] border border-[#222] text-sm text-white rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50"
+            />
+          )}
           {guiaTexto && (
             <div className="relative bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg p-3">
               {editandoGuia ? (
@@ -849,7 +894,7 @@ function SeguimientosPanel({ tratoId, etapa, tipoEvento, clienteNombre }: {
           </div>
         </div>
       )}
-      {!showForm && (
+      {!showForm && segs.length > 0 && (
         <button onClick={() => setShowForm(true)}
           className="text-xs text-[#555] hover:text-[#B3985B] transition-colors border border-dashed border-[#222] rounded-lg w-full py-2 hover:border-[#B3985B]/40">
           + Agregar nota o seguimiento manual

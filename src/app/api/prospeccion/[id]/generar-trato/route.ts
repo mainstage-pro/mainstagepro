@@ -33,12 +33,8 @@ export async function POST(
       return NextResponse.json({ error: "No encontrada" }, { status: 404 });
     }
 
-    if (prospeccion.etapa !== "LISTO_PARA_CERRAR") {
-      return NextResponse.json(
-        { error: "La prospeccion debe estar en etapa LISTO_PARA_CERRAR para generar un trato" },
-        { status: 422 }
-      );
-    }
+    // El vendedor puede generar un trato en cualquier etapa del proceso de prospección
+    // (la restricción anterior de LISTO_PARA_CERRAR fue eliminada intencionalmente)
 
     // Verify no trato already linked
     const tratoExistente = await prisma.trato.findFirst({

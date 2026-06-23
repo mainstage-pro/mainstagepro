@@ -170,15 +170,73 @@ function EtapaDropdown({ prospeccionId, etapaActual, onChanged }: {
 
 // ─── ProspeccionCard ─────────────────────────────────────────────────────────
 
+const CONTACTO_LABELS: Record<number, { label: string; desc: string }> = {
+  1: { label: "Contacto 1", desc: "Primer contacto — presentación inicial" },
+  2: { label: "Contacto 2", desc: "Seguimiento — verificar recepción" },
+  3: { label: "Contacto 3", desc: "Profundizar necesidad" },
+  4: { label: "Contacto 4", desc: "Presentar propuesta de valor" },
+  5: { label: "Contacto 5", desc: "Definición — ¿hay intención de compra?" },
+};
+
 function ProspeccionCard({ p, onEtapaChange, onDelete }: {
   p: Prospeccion;
   onEtapaChange: (id: string, etapa: string) => void;
   onDelete: (id: string) => void;
 }) {
+  const router = useRouter();
   const evtColors = TIPO_EVENTO_COLORS[p.tipoEvento] ?? TIPO_EVENTO_COLORS.VARIOS;
-  const prog = progreso(p);
   const proximoVencido = isVencido(p.fechaProximoContacto);
   const estadoBadge = ESTADO_BADGE[p.estado];
+
+  // 5-contact state — track locally for instant feedback
+  const [contactos, setContactos] = useState({
+    1: p.contacto1Hecho,
+    2: p.contacto2Hecho,
+    3: p.contacto3Hecho,
+    4: p.contacto4Hecho,
+    5: p.contacto5Hecho,
+  });
+  const [expandido, setExpandido] = useState(false);
+  const [savingContacto, setSavingContacto] = useState<number | null>(null);
+  const [abriendo, setAbriendo] = useState(false);
+
+  const prog = Object.values(contactos).filter(Boolean).length;
+
+  async function toggleContacto(n: number) {
+    const nuevo = !contactos[n as keyof typeof contactos];
+    setContactos(prev => ({ ...prev, [n]: nuevo }));
+    setSavingContacto(n);
+    try {
+      await fetch(`/api/prospeccion/${p.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [`contacto${n}Hecho`]: nuevo }),
+      });
+    } finally {
+      setSavingContacto(null);
+    }
+  }
+
+  async function abrirTrato() {
+    if (abriendo) return;
+    setAbriendo(true);
+    try {
+      const res = await fetch(`/api/prospeccion/${p.id}/generar-trato`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.trato?.id) {
+        router.push(`/crm/tratos/${data.trato.id}`);
+      } else if (res.status === 409 && data.tratoId) {
+        // Ya tiene trato — redirigir
+        router.push(`/crm/tratos/${data.tratoId}`);
+      } else {
+        alert(data.error ?? "Error al abrir el trato");
+      }
+    } finally {
+      setAbriendo(false);
+    }
+  }
+
+  const tieneTratoActivo = p.estado === "EN_TRATO" || !!p.trato;
 
   return (
     <div className="group bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3 hover:border-[#2a2a2a] hover:bg-[#141414] transition-all">
@@ -218,7 +276,7 @@ function ProspeccionCard({ p, onEtapaChange, onDelete }: {
             <span className="text-[10px] text-[#444]">{ORIGEN_LABELS[p.origen] ?? p.origen}</span>
           </div>
 
-          {/* Row 3: responsable + próximo contacto + progreso */}
+          {/* Row 3: responsable + próximo contacto + progreso dots (clickable) */}
           <div className="flex items-center gap-4 mt-2 text-xs text-[#6b7280]">
             {/* Responsable */}
             <span className="flex items-center gap-1">
@@ -232,20 +290,88 @@ function ProspeccionCard({ p, onEtapaChange, onDelete }: {
               {p.fechaProximoContacto ? formatFecha(p.fechaProximoContacto) : "Sin fecha"}
             </span>
 
-            {/* Progreso de contactos */}
-            <span className="flex items-center gap-1.5">
+            {/* Progreso de contactos — click to expand */}
+            <button
+              onClick={() => setExpandido(v => !v)}
+              className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+              title={expandido ? "Cerrar panel de contactos" : "Ver / marcar contactos"}
+            >
               <div className="flex gap-0.5">
                 {[1,2,3,4,5].map(n => (
-                  <div key={n} className={`w-2 h-2 rounded-full border ${n <= prog ? "bg-[#B3985B] border-[#B3985B]" : "bg-transparent border-[#333]"}`} />
+                  <div key={n} className={`w-2 h-2 rounded-full border transition-colors ${contactos[n as keyof typeof contactos] ? "bg-[#B3985B] border-[#B3985B]" : "bg-transparent border-[#333]"}`} />
                 ))}
               </div>
               <span className="text-[10px]">{prog}/5</span>
-            </span>
+              <svg className={`text-[#444] transition-transform ${expandido ? "rotate-180" : ""}`} width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="2 4 6 8 10 4" strokeLinecap="round"/></svg>
+            </button>
           </div>
+
+          {/* ── Panel expandible de 5 contactos ── */}
+          {expandido && (
+            <div className="mt-3 border border-[#1e1e1e] rounded-lg overflow-hidden">
+              {[1,2,3,4,5].map(n => {
+                const hecho = contactos[n as keyof typeof contactos];
+                const meta = CONTACTO_LABELS[n];
+                const isSaving = savingContacto === n;
+                return (
+                  <button
+                    key={n}
+                    onClick={() => toggleContacto(n)}
+                    disabled={isSaving}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left border-b border-[#1a1a1a] last:border-0 transition-colors ${
+                      hecho ? "bg-[#B3985B]/5 hover:bg-[#B3985B]/10" : "bg-[#0d0d0d] hover:bg-[#141414]"
+                    } ${isSaving ? "opacity-50" : ""}`}
+                  >
+                    {/* Checkbox visual */}
+                    <div className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-colors ${
+                      hecho ? "bg-[#B3985B] border-[#B3985B]" : "border-[#333] bg-transparent"
+                    }`}>
+                      {hecho && <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="black" strokeWidth="2.5"><polyline points="2 6 5 9 10 3" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-medium ${hecho ? "text-[#B3985B] line-through opacity-70" : "text-white"}`}>
+                        {meta.label}
+                      </p>
+                      <p className="text-[10px] text-[#555] truncate">{meta.desc}</p>
+                    </div>
+                    {isSaving && <div className="w-3 h-3 border border-gray-500 border-t-transparent rounded-full animate-spin shrink-0" />}
+                  </button>
+                );
+              })}
+
+              {/* Abrir Trato — solo si no tiene trato activo */}
+              <div className="px-3 py-2.5 bg-[#0a0a0a] border-t border-[#1e1e1e]">
+                {tieneTratoActivo ? (
+                  p.trato ? (
+                    <Link
+                      href={`/crm/tratos/${p.trato.id}`}
+                      className="flex items-center gap-2 text-xs text-purple-400 hover:text-purple-300 transition-colors"
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0" />
+                      Ver trato activo →
+                    </Link>
+                  ) : (
+                    <span className="text-xs text-purple-400 opacity-60">En trato (procesando…)</span>
+                  )
+                ) : (
+                  <button
+                    onClick={e => { e.stopPropagation(); abrirTrato(); }}
+                    disabled={abriendo}
+                    className="flex items-center gap-2 text-xs text-[#B3985B] hover:text-[#c9a96a] font-medium transition-colors disabled:opacity-50"
+                  >
+                    {abriendo
+                      ? <><div className="w-3 h-3 border border-[#B3985B] border-t-transparent rounded-full animate-spin" /> Abriendo…</>
+                      : <><span className="text-sm">🎯</span> Abrir Trato activo</>
+                    }
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+        {/* Actions — visible on hover */}
+        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity ml-2 shrink-0">
           <Link href={`/crm/prospeccion/${p.id}`}
             className="text-[#B3985B] text-xs hover:underline whitespace-nowrap">
             Ver →
@@ -259,6 +385,7 @@ function ProspeccionCard({ p, onEtapaChange, onDelete }: {
     </div>
   );
 }
+
 
 // ─── EtapaSection ────────────────────────────────────────────────────────────
 

@@ -73,9 +73,9 @@ function nextTuesday() {
 
 export default function NuevoTratoPage() {
   const router = useRouter();
-  // step 0 = gate, 1 = datos cliente + ruta, 2 = detalles servicio
-  const [step, setStep] = useState<0|1|2>(0);
-  const [tipoProspecto, setTipoProspecto] = useState<"ACTIVO"|"NURTURING"|"">("");
+  // step 1 = datos cliente + ruta, 2 = detalles servicio
+  // (el gate NURTURING fue eliminado — los prospectos en frío van al módulo Prospectos)
+  const [step, setStep] = useState<1|2>(1);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [usuarios, setUsuarios] = useState<{ id: string; name: string }[]>([]);
   const [modoCliente, setModoCliente] = useState<"existente"|"nuevo">("existente");
@@ -158,80 +158,44 @@ export default function NuevoTratoPage() {
 
   const clienteSel = clientes.find(c=>c.id===s1.clienteId);
 
-  // ── Step labels ──
-  const stepsActivo = ["Tipo", "¿Quién es?", "¿Qué busca?"] as const;
-  const stepsNurturing = ["Tipo", "¿Quién es?"] as const;
-  const steps = tipoProspecto === "NURTURING" ? stepsNurturing : stepsActivo;
+  // ── Step labels — solo flujo ACTIVO ──
+  const steps = ["¿Quién es?", "¿Qué busca?"] as const;
 
   return (
     <div className="p-3 md:p-6 max-w-2xl mx-auto">
       <div className="mb-6">
         <button onClick={()=>router.back()} className="text-gray-600 hover:text-white text-sm mb-2 transition-colors">← Atrás</button>
         <h1 className="text-xl font-bold text-white">Nuevo trato</h1>
-        {step > 0 && (
-          <div className="flex items-center gap-2 mt-3">
-            {steps.map((label, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <div className={`w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center transition-colors ${
-                  step === i ? "bg-[#B3985B] text-black" :
-                  step > i ? "bg-green-700 text-white" :
-                  "bg-[#1a1a1a] text-gray-500 border border-[#333]"
-                }`}>
-                  {step > i ? "✓" : i}
-                </div>
-                <span className={`text-xs ${step === i ? "text-white" : "text-gray-600"}`}>{label}</span>
-                {i < steps.length - 1 && <span className="text-gray-700 text-xs mx-1">→</span>}
+        <p className="text-gray-600 text-xs mt-1">Solo para oportunidades con cotización activa · Los prospectos nuevos van al módulo Prospectos</p>
+        <div className="flex items-center gap-2 mt-3">
+          {steps.map((label, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <div className={`w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center transition-colors ${
+                step === i + 1 ? "bg-[#B3985B] text-black" :
+                step > i + 1  ? "bg-green-700 text-white" :
+                "bg-[#1a1a1a] text-gray-500 border border-[#333]"
+              }`}>
+                {step > i + 1 ? "✓" : i + 1}
               </div>
-            ))}
-          </div>
-        )}
+              <span className={`text-xs ${step === i + 1 ? "text-white" : "text-gray-600"}`}>{label}</span>
+              {i < steps.length - 1 && <span className="text-gray-700 text-xs mx-1">→</span>}
+            </div>
+          ))}
+        </div>
       </div>
 
       {error && <div className="bg-red-900/20 border border-red-700 text-red-400 text-sm px-4 py-3 rounded-xl mb-4">{error}</div>}
 
-      {/* ── Step 0: Gate primario ── */}
-      {step === 0 && (
-        <div className="space-y-4">
-          <div className="bg-[#0a0a0a] border-2 border-[#B3985B]/30 rounded-xl p-6">
-            <div className="text-center mb-6">
-              <p className="text-white font-semibold text-lg">¿Cómo es este prospecto?</p>
-              <p className="text-gray-500 text-sm mt-1">Esta selección define toda la ruta de trabajo</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button
-                onClick={() => { setTipoProspecto("NURTURING"); setS1(p => ({ ...p, tipoLead: "OUTBOUND", origenLead: "" })); setStep(1); }}
-                className="border-2 border-emerald-700/50 bg-emerald-950/30 hover:bg-emerald-900/20 rounded-xl p-5 text-left transition-all group">
-                <div className="text-3xl mb-3">🌱</div>
-                <p className="text-emerald-300 font-semibold text-base group-hover:text-emerald-200 transition-colors">Prospecto en frío</p>
-                <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">Sin necesidad inmediata · Construir confianza a largo plazo · Seguimiento de valor</p>
-                <p className="text-emerald-700 text-xs mt-3 font-medium">Proceso de semanas o meses →</p>
-              </button>
-              <button
-                onClick={() => { setTipoProspecto("ACTIVO"); setS1(p => ({ ...p, tipoLead: "INBOUND" })); setStep(1); }}
-                className="border-2 border-[#B3985B]/50 bg-[#B3985B]/5 hover:bg-[#B3985B]/10 rounded-xl p-5 text-left transition-all group">
-                <div className="text-3xl mb-3">🎯</div>
-                <p className="text-[#B3985B] font-semibold text-base group-hover:text-[#c9a96a] transition-colors">Tiene necesidad concreta</p>
-                <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">Ya tiene un evento en mente · Hay que descubrir y cotizar · Proceso de venta activo</p>
-                <p className="text-[#B3985B]/60 text-xs mt-3 font-medium">Iniciar descubrimiento →</p>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── Step 0 eliminado — todos los tratos son ACTIVO ── */}
 
       {/* ── Step 1: Cliente ── */}
       {step === 1 && (
         <div className="space-y-4">
 
-          {/* Tipo elegido (recordatorio) */}
-          <div className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border text-sm font-medium ${
-            tipoProspecto === "NURTURING"
-              ? "border-emerald-700/40 bg-emerald-950/20 text-emerald-300"
-              : "border-[#B3985B]/40 bg-[#B3985B]/5 text-[#B3985B]"
-          }`}>
-            <span>{tipoProspecto === "NURTURING" ? "🌱" : "🎯"}</span>
-            <span>{tipoProspecto === "NURTURING" ? "Prospecto en frío — Nurturing" : "Tiene necesidad concreta — Descubrimiento activo"}</span>
-            <button onClick={() => { setStep(0); setTipoProspecto(""); }} className="ml-auto text-xs opacity-50 hover:opacity-100 transition-opacity">Cambiar</button>
+          {/* Indicador: trato ACTIVO */}
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-[#B3985B]/40 bg-[#B3985B]/5 text-[#B3985B] text-sm font-medium">
+            <span>🎯</span>
+            <span>Trato activo — hay necesidad concreta y cotización potencial</span>
           </div>
 
           {/* Cliente */}
@@ -298,82 +262,56 @@ export default function NuevoTratoPage() {
             )}
           </div>
 
-          {/* Ruta de entrada — solo si es ACTIVO */}
-          {tipoProspecto === "ACTIVO" && (
-            <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-              <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Ruta de entrada</h2>
-              <div className="space-y-2">
-                {RUTAS_CARDS.map(r=>(
-                  <button key={r.value} type="button" onClick={()=>setS1(p=>({...p,rutaEntrada:r.value}))} className={`w-full text-left p-4 rounded-xl border transition-all ${s1.rutaEntrada===r.value?"border-[#B3985B] bg-[#B3985B]/10":"border-[#2a2a2a] hover:border-[#3a3a3a]"}`}>
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{r.icon}</span>
-                      <div>
-                        <p className={`text-sm font-semibold ${s1.rutaEntrada===r.value?"text-[#B3985B]":"text-white"}`}>{r.label}</p>
-                        <p className="text-gray-500 text-xs mt-0.5">{r.desc}</p>
-                      </div>
+          {/* Ruta de entrada */}
+          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+            <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Ruta de entrada</h2>
+            <div className="space-y-2">
+              {RUTAS_CARDS.map(r=>(
+                <button key={r.value} type="button" onClick={()=>setS1(p=>({...p,rutaEntrada:r.value}))} className={`w-full text-left p-4 rounded-xl border transition-all ${s1.rutaEntrada===r.value?"border-[#B3985B] bg-[#B3985B]/10":"border-[#2a2a2a] hover:border-[#3a3a3a]"}`}>
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">{r.icon}</span>
+                    <div>
+                      <p className={`text-sm font-semibold ${s1.rutaEntrada===r.value?"text-[#B3985B]":"text-white"}`}>{r.label}</p>
+                      <p className="text-gray-500 text-xs mt-0.5">{r.desc}</p>
                     </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="mt-4 pt-4 border-t border-[#1a1a1a]">
+              <p className="text-xs text-gray-500 mb-2">Canal de comunicación</p>
+              <div className="flex flex-wrap gap-2">
+                {CANALES.map(c=>(
+                  <button key={c.value} type="button" onClick={()=>setS1(p=>({...p,canalAtencion:c.value}))} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${s1.canalAtencion===c.value?"border-[#B3985B] bg-[#B3985B]/10 text-white":"border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"}`}>
+                    <span>{c.icon}</span>{c.label}
                   </button>
                 ))}
               </div>
-              <div className="mt-4 pt-4 border-t border-[#1a1a1a]">
-                <p className="text-xs text-gray-500 mb-2">Canal de comunicación</p>
-                <div className="flex flex-wrap gap-2">
-                  {CANALES.map(c=>(
-                    <button key={c.value} type="button" onClick={()=>setS1(p=>({...p,canalAtencion:c.value}))} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${s1.canalAtencion===c.value?"border-[#B3985B] bg-[#B3985B]/10 text-white":"border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"}`}>
-                      <span>{c.icon}</span>{c.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
-          )}
+          </div>
 
           {/* Origen del lead */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Origen del lead</h2>
             <div className="grid grid-cols-2 gap-3">
-              {tipoProspecto === "NURTURING" ? (
-                <div className="col-span-2">
-                  <label className="text-xs text-gray-500 mb-2 block">¿Cómo lo encontraste? *</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {ORIGENES_OUTBOUND.map(o => (
-                      <button
-                        key={o.id}
-                        type="button"
-                        onClick={() => setS1(p => ({ ...p, origenLead: o.id }))}
-                        className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-center transition-all ${
-                          s1.origenLead === o.id
-                            ? "border-emerald-600 bg-emerald-950/40 text-emerald-300"
-                            : "border-[#2a2a2a] text-gray-500 hover:border-[#444] hover:text-gray-300"
-                        }`}
-                      >
-                        <span className="text-xl">{o.icon}</span>
-                        <span className="text-xs font-medium">{o.label}</span>
-                        <span className="text-[10px] text-gray-600 leading-tight">{o.desc}</span>
-                      </button>
-                    ))}
-                  </div>
+              <>
+                <div><label className="text-xs text-gray-500 mb-1 block">¿De dónde viene?</label>
+                  <Combobox
+                    value={s1.origenLead}
+                    onChange={v => setS1(p => ({ ...p, origenLead: v }))}
+                    options={ORIGEN_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
-              ) : (
-                <>
-                  <div><label className="text-xs text-gray-500 mb-1 block">¿De dónde viene?</label>
-                    <Combobox
-                      value={s1.origenLead}
-                      onChange={v => setS1(p => ({ ...p, origenLead: v }))}
-                      options={ORIGEN_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    />
-                  </div>
-                  <div><label className="text-xs text-gray-500 mb-1 block">Tipo de lead</label>
-                    <Combobox
-                      value={s1.tipoLead}
-                      onChange={v => setS1(p => ({ ...p, tipoLead: v }))}
-                      options={[{ value: "INBOUND", label: "Inbound (nos buscó)" }, { value: "OUTBOUND", label: "Outbound (prospección)" }]}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    />
-                  </div>
-                </>
-              )}
+                <div><label className="text-xs text-gray-500 mb-1 block">Tipo de lead</label>
+                  <Combobox
+                    value={s1.tipoLead}
+                    onChange={v => setS1(p => ({ ...p, tipoLead: v }))}
+                    options={[{ value: "INBOUND", label: "Inbound (nos buscó)" }, { value: "OUTBOUND", label: "Outbound (prospección)" }]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                </div>
+              </>
               <div className="col-span-2"><label className="text-xs text-gray-500 mb-1 block">Origen de venta (comisiones)</label>
                 <Combobox
                   value={s1.origenVenta}
@@ -450,28 +388,22 @@ export default function NuevoTratoPage() {
           </div>
 
           <div className="flex gap-3 justify-between pb-4">
-            <button onClick={()=>{setStep(0);setError("");}} className="px-5 py-2.5 rounded-xl border border-[#333] text-gray-400 hover:text-white text-sm transition-colors">← Volver</button>
-            {tipoProspecto === "NURTURING" ? (
-              <button onClick={crearNurturing} disabled={loading} className="px-6 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white font-semibold text-sm transition-colors disabled:opacity-50">
-                {loading ? "Creando..." : "Crear trato →"}
+            <button onClick={()=>{setError("");}} className="px-5 py-2.5 rounded-xl border border-[#333] text-gray-400 hover:text-white text-sm transition-colors" disabled>← Paso 1</button>
+            <div className="flex items-center gap-2">
+              <button onClick={()=>{if(validarCliente() && validarPrimerSeg()) crearActivo(true);}} disabled={loading}
+                className="px-4 py-2.5 rounded-xl border border-[#333] text-gray-400 hover:text-white text-sm transition-colors disabled:opacity-50">
+                {loading ? "Guardando..." : "Guardar sin detalles"}
               </button>
-            ) : (
-              <div className="flex items-center gap-2">
-                <button onClick={()=>{if(validarCliente() && validarPrimerSeg()) crearActivo(true);}} disabled={loading}
-                  className="px-4 py-2.5 rounded-xl border border-[#333] text-gray-400 hover:text-white text-sm transition-colors disabled:opacity-50">
-                  {loading ? "Guardando..." : "Guardar sin detalles"}
-                </button>
-                <button onClick={()=>{if(validarCliente() && validarPrimerSeg())setStep(2);}} className="px-6 py-2.5 rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-sm transition-colors">
-                  Siguiente → ¿Qué busca?
-                </button>
-              </div>
-            )}
+              <button onClick={()=>{if(validarCliente() && validarPrimerSeg())setStep(2);}} className="px-6 py-2.5 rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-sm transition-colors">
+                Siguiente → ¿Qué busca?
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* ── Step 2: Detalles del servicio (solo ACTIVO) ── */}
-      {step === 2 && tipoProspecto === "ACTIVO" && (
+      {/* ── Step 2: Detalles del servicio ── */}
+      {step === 2 && (
         <div className="space-y-5">
 
           {/* Tipo de servicio */}

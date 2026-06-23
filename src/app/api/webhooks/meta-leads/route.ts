@@ -14,12 +14,12 @@ function getField(fields: { name: string; values: string[] }[], ...keys: string[
 }
 
 function mapTipoEvento(respuesta: string | null): string {
-  if (!respuesta) return "OTRO";
+  if (!respuesta) return "VARIOS";
   const r = respuesta.toLowerCase();
   if (r.includes("boda") || r.includes("quinceañera") || r.includes("quince") || r.includes("graduaci")) return "SOCIAL";
   if (r.includes("empresarial") || r.includes("conferencia") || r.includes("corporativo"))              return "EMPRESARIAL";
   if (r.includes("concierto") || r.includes("festival") || r.includes("musical"))                       return "MUSICAL";
-  return "OTRO";
+  return "VARIOS";
 }
 
 // ── GET — verificación de webhook con Meta ──────────────────────────────────────
@@ -40,7 +40,6 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // Meta envía un array de entries — procesamos todos
     const entries = body?.entry ?? [];
     for (const entry of entries) {
       for (const change of entry?.changes ?? []) {
@@ -81,7 +80,6 @@ export async function POST(req: NextRequest) {
         const notaRaw    = tipoRaw ?? getField(fields, "descripcion", "descripción", "nota", "mensaje") ?? null;
 
         // ── 2. Buscar o crear cliente ─────────────────────────────────────────
-        let clienteId: string;
         const telefonoLimpio = telefono?.replace(/\D/g, "") ?? null;
 
         const existente = telefonoLimpio
@@ -90,9 +88,28 @@ export async function POST(req: NextRequest) {
             })
           : null;
 
+        let clienteId: string;
+
         if (existente) {
+          // Cliente ya existe — actualizar origenLead si no tenía
           clienteId = existente.id;
+          await prisma.cliente.update({
+            where: { id: clienteId },
+            data: {
+              esProspecto: true,
+              ...(existente.origenLead ? {} : { origenLead: "META_ADS" }),
+              ...(campana && !existente.campana ? { campana } : {}),
+            },
+          });
         } else {
+          // Crear nuevo cliente como prospecto
+          const notas = [
+            "📋 Lead generado desde Meta Ads Instant Form",
+            tipoRaw ? `Tipo de evento: ${tipoRaw}` : null,
+            ciudad ? `Ciudad: ${ciudad}` : null,
+            campana ? `Campaña: ${campana}` : null,
+          ].filter(Boolean).join("\n");
+
           const c = await prisma.cliente.create({
             data: {
               nombre,
@@ -100,73 +117,36 @@ export async function POST(req: NextRequest) {
               correo:   email    ?? null,
               tipoCliente:   "B2C",
               clasificacion: "NUEVO",
+              esProspecto:   true,
+              origenLead:    "META_ADS",
+              campana:       campana ?? null,
+              notas:         notas || null,
             },
           });
           clienteId = c.id;
         }
 
-        // ── 3. Crear trato en etapa LEAD ──────────────────────────────────────
-        const ahora      = new Date();
-        const fechaLabel = ahora.toLocaleDateString("es-MX", { day: "2-digit", month: "short" });
-
-        const nurturingInit = JSON.stringify({
-          etapa:       "PRIMER_CONTACTO",
-          temperatura: "FRIO",
-          log: [],
-          ...(campana ? { campana } : {}),
-          ...(ciudad  ? { city: ciudad } : {}),
+        // ── 3. Crear Prospeccion (ruta de 5 contactos) — si no tiene una activa ──
+        const prospeccionExistente = await prisma.prospeccion.findFirst({
+          where: { clienteId, estado: { in: ["ACTIVO", "SIN_ETAPA"] } },
         });
 
-        const notasPartes: string[] = ["📋 Lead generado desde Meta Ads Instant Form"];
-        if (tipoRaw) notasPartes.push(`Tipo de evento: ${tipoRaw}`);
-        if (ciudad)  notasPartes.push(`Ciudad: ${ciudad}`);
-        if (campana) notasPartes.push(`Campaña: ${campana}`);
+        if (!prospeccionExistente) {
+          await prisma.prospeccion.create({
+            data: {
+              tipo:       "NUEVO_PROSPECTO",
+              etapa:      "NUEVO_CONTACTO",
+              tipoEvento,
+              origen:     "META_ADS",
+              estado:     "ACTIVO",
+              notas:      notaRaw ? `${notaRaw}${ciudad ? `\nCiudad: ${ciudad}` : ""}` : null,
+              lugarEstimado: ciudad ?? null,
+              clienteId,
+            },
+          });
+        }
 
-        const trato = await prisma.trato.create({
-          data: {
-            clienteId,
-            tipoEvento,
-            tipoLead:       "INBOUND",
-            tipoProspecto:  "NURTURING",
-            origenLead:     "META_ADS",
-            origenVenta:    "PUBLICIDAD",
-            estatusContacto:"PENDIENTE",
-            etapa:          "LEAD",
-            clasificacion:  "PROSPECTO",
-            canalAtencion:  "FORMULARIO",
-            rutaEntrada:    "DESCUBRIR",
-            lugarEstimado:  ciudad ?? null,
-            notas:          notasPartes.join("\n"),
-            nombreEvento:   notaRaw || `Lead Meta Ads${campana ? ` · ${campana}` : ""} — ${fechaLabel}`,
-            nurturingData:  nurturingInit,
-            formRespuestas: JSON.stringify({
-              leadgenId,
-              adId: lead.ad_id ?? null,
-              fields: fields.map((f) => ({ pregunta: f.name, respuesta: f.values[0] ?? "" })),
-            }),
-          },
-        });
-
-        // ── 4. Seguimiento automático en 24h ──────────────────────────────────
-        const en24h = new Date(ahora.getTime() + 24 * 60 * 60 * 1000);
-
-        await prisma.seguimiento.create({
-          data: {
-            tratoId:        trato.id,
-            tipo:           "auto",
-            canal:          "whatsapp",
-            titulo:         `Primer contacto${campana ? ` — ${campana}` : ""}`,
-            numero:         0,
-            fechaProgramada:en24h,
-          },
-        });
-
-        await prisma.trato.update({
-          where: { id: trato.id },
-          data:  { fechaProximaAccion: en24h },
-        });
-
-        // ── 5. Notificar a admins ─────────────────────────────────────────────
+        // ── 4. Notificar a admins ─────────────────────────────────────────────
         try {
           const admins = await prisma.user.findMany({
             where:  { role: "ADMIN", active: true },
@@ -177,9 +157,9 @@ export async function POST(req: NextRequest) {
               data: admins.map((u) => ({
                 usuarioId: u.id,
                 tipo:      "TAREA",
-                titulo:    `⚡ Nuevo lead — ${nombre}`,
+                titulo:    `⚡ Nuevo prospecto — ${nombre}`,
                 mensaje:   `Meta Ads · ${tipoEvento}${ciudad ? ` · ${ciudad}` : ""}${campana ? ` · ${campana}` : ""}`,
-                url:       `/crm/tratos/${trato.id}`,
+                url:       `/crm/prospectos/${clienteId}`,
               })),
             });
           }
@@ -187,7 +167,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Meta requiere 200 rápido o reintenta
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[meta-leads webhook]", err);

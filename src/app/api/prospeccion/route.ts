@@ -73,7 +73,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const {
+      // ── Formato nuevo (LeadRapidoSheet / webhooks) ──────────────────────
       clienteId: bodyClienteId,
+      clienteNuevo,         // { nombre, telefono?, correo?, empresa? }
+      origenLead,           // META_ADS | ORGANICO | REFERIDO | ...
+      notasIniciales,       // texto libre del formulario
+      fechaEventoEstimada,  // YYYY-MM-DD
+      // ── Formato legacy (ProspeccionClient) ─────────────────────────────
       nombre,
       telefono,
       correo,
@@ -87,35 +93,49 @@ export async function POST(request: NextRequest) {
       fechaProximoContacto,
     } = body;
 
-    if (!tipo) {
-      return NextResponse.json({ error: "El campo 'tipo' es requerido" }, { status: 400 });
-    }
-    if (!tipoEvento) {
-      return NextResponse.json({ error: "El campo 'tipoEvento' es requerido" }, { status: 400 });
-    }
-    if (!origen) {
-      return NextResponse.json({ error: "El campo 'origen' es requerido" }, { status: 400 });
-    }
+    // Mapear origenLead → origen (valores del modelo Prospeccion)
+    const mapOrigenLead: Record<string, string> = {
+      META_ADS:   "META_ADS",
+      GOOGLE_ADS: "ORGANICO",
+      ORGANICO:   "ORGANICO",
+      REFERIDO:   "REFERIDO",
+      RECOMPRA:   "RECOMPRA",
+      PROSPECCION:"NETWORKING",
+      OTRO:       "OTRO",
+    };
+    const origenFinal: string = origen ?? (origenLead ? (mapOrigenLead[origenLead] ?? "MANUAL") : "MANUAL");
+    const tipoFinal: string   = tipo ?? "NUEVO_PROSPECTO";
+    const tipoEventoFinal: string = tipoEvento ?? "VARIOS";
 
     let clienteId: string;
 
     if (bodyClienteId) {
       clienteId = bodyClienteId;
-    } else if (nombre) {
+      // Actualizar atribución en el cliente si viene de un lead rápido
+      if (origenLead) {
+        await prisma.cliente.update({
+          where: { id: clienteId },
+          data:  { esProspecto: true, origenLead: origenLead },
+        });
+      }
+    } else if (clienteNuevo?.nombre || nombre) {
+      // Crear nuevo cliente
+      const clienteData = clienteNuevo ?? { nombre, telefono, correo, empresa };
       const nuevoCliente = await prisma.cliente.create({
         data: {
-          nombre,
-          telefono:   telefono   || null,
-          correo:     correo     || null,
-          empresa:    empresa    || null,
+          nombre:     clienteData.nombre.trim(),
+          telefono:   clienteData.telefono  || null,
+          correo:     clienteData.correo    || null,
+          empresa:    clienteData.empresa   || null,
           tipoCliente: "POR_DESCUBRIR",
           esProspecto: true,
+          origenLead:  origenLead ?? null,
         },
       });
       clienteId = nuevoCliente.id;
     } else {
       return NextResponse.json(
-        { error: "Se requiere clienteId o nombre para crear un cliente nuevo" },
+        { error: "Se requiere clienteId, clienteNuevo.nombre o nombre para crear un cliente" },
         { status: 400 }
       );
     }
@@ -123,13 +143,14 @@ export async function POST(request: NextRequest) {
     const prospeccion = await prisma.prospeccion.create({
       data: {
         clienteId,
-        tipo,
-        tipoEvento,
-        origen,
-        responsableId:        responsableId        || null,
-        etapa:                etapa                || "SIN_ETAPA",
-        estado:               "ACTIVO",
-        notas:                notas                || null,
+        tipo:          tipoFinal,
+        tipoEvento:    tipoEventoFinal,
+        origen:        origenFinal,
+        responsableId: responsableId || null,
+        etapa:         etapa ?? "NUEVO_CONTACTO",
+        estado:        "ACTIVO",
+        notas:         notas ?? notasIniciales ?? null,
+        fechaEventoEstimada: fechaEventoEstimada ? new Date(fechaEventoEstimada) : null,
         fechaProximoContacto: fechaProximoContacto ? new Date(fechaProximoContacto) : null,
       },
       include: {
@@ -155,3 +176,4 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Error al crear prospeccion" }, { status: 500 });
   }
 }
+
