@@ -157,24 +157,62 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
 
 
-  // ── Actualizar Prospección vinculada cuando cambia etapa del trato ──────────
-  if (body.etapa && ["VENTA_CERRADA", "VENTA_PERDIDA"].includes(body.etapa) && trato.prospeccionId) {
+  // ── Sincronizar esProspecto según etapa del trato ────────────────────────────
+  // Se ejecuta SIEMPRE que cambia etapa, sin importar si hay prospeccionId.
+  if (body.etapa) {
     if (body.etapa === "VENTA_CERRADA") {
-      // Marcar prospección como convertida y cliente como no-prospecto
-      await prisma.prospeccion.update({
-        where: { id: trato.prospeccionId },
-        data: { estado: "CONVERTIDO" },
+      // Si hay prospección vinculada, marcarla como convertida
+      if (trato.prospeccionId) {
+        await prisma.prospeccion.update({
+          where: { id: trato.prospeccionId },
+          data: { estado: "CONVERTIDO" },
+        });
+      }
+      // Verificar si el cliente tiene algún otro trato abierto (no cerrado ni perdido)
+      const otrosTratosAbiertos = await prisma.trato.count({
+        where: {
+          clienteId: trato.clienteId,
+          id: { not: trato.id },
+          etapa: { notIn: ["VENTA_CERRADA", "VENTA_PERDIDA"] },
+        },
       });
-      await prisma.cliente.update({
-        where: { id: trato.clienteId },
-        data: { esProspecto: false },
-      });
+      // Solo marcar como NO prospecto si no tiene tratos abiertos pendientes
+      if (otrosTratosAbiertos === 0) {
+        await prisma.cliente.update({
+          where: { id: trato.clienteId },
+          data: { esProspecto: false },
+        });
+      }
     } else if (body.etapa === "VENTA_PERDIDA") {
-      // Regresar la prospección a activa para poder re-trabajarla
-      await prisma.prospeccion.update({
-        where: { id: trato.prospeccionId },
-        data: { estado: "ACTIVO", etapa: "EN_EVALUACION" },
+      // Si hay prospección vinculada, reactivarla
+      if (trato.prospeccionId) {
+        await prisma.prospeccion.update({
+          where: { id: trato.prospeccionId },
+          data: { estado: "ACTIVO", etapa: "EN_EVALUACION" },
+        });
+      }
+      // Verificar si tiene alguna VENTA_CERRADA — si no, mantenerlo como prospecto
+      const tieneVentaCerrada = await prisma.trato.count({
+        where: { clienteId: trato.clienteId, etapa: "VENTA_CERRADA" },
       });
+      if (tieneVentaCerrada === 0) {
+        await prisma.cliente.update({
+          where: { id: trato.clienteId },
+          data: { esProspecto: true },
+        });
+      }
+    } else {
+      // Etapa abierta (LEAD, DESCUBRIMIENTO, OPORTUNIDAD) → asegurar que sea prospecto
+      // a menos que ya tenga al menos una VENTA_CERRADA en otro trato
+      const tieneVentaCerrada = await prisma.trato.count({
+        where: { clienteId: trato.clienteId, etapa: "VENTA_CERRADA" },
+      });
+      if (tieneVentaCerrada === 0) {
+        await prisma.cliente.update({
+          where: { id: trato.clienteId },
+          data: { esProspecto: true },
+        });
+      }
     }
   }
   // ────────────────────────────────────────────────────────────────────────────

@@ -27,6 +27,8 @@ interface Lead {
   esProspecto: boolean;
   vendedorId: string | null;
   vendedor: Vendedor | null;
+  // Trato más reciente (para mostrar origen y etapa)
+  tratos: { id: string; etapa: string; origenLead: string; nombreEvento: string | null }[];
   _count: { tratos: number; proyectos: number; prospecciones: number };
 }
 
@@ -49,6 +51,44 @@ const TIPO_CLIENTE_OPTIONS = Object.entries(TIPO_CLIENTE_LABELS).map(([v, l]) =>
 const CLASIFICACION_OPTIONS = Object.entries(CLASIFICACION_LABELS)
   .filter(([v]) => v !== "BASIC")
   .map(([v, l]) => ({ value: v, label: l }));
+
+const ORIGEN_LABELS: Record<string, string> = {
+  META_ADS:      "Meta Ads",
+  GOOGLE_ADS:    "Google Ads",
+  ORGANICO:      "Orgánico",
+  RECOMPRA:      "Recompra",
+  REFERIDO:      "Referido",
+  PROSPECCION:   "Prospección",
+  OTRO:          "Otro",
+};
+
+const ORIGEN_COLORS: Record<string, { bg: string; text: string }> = {
+  META_ADS:    { bg: "bg-blue-900/30",   text: "text-blue-400" },
+  GOOGLE_ADS:  { bg: "bg-red-900/30",    text: "text-red-400" },
+  ORGANICO:    { bg: "bg-gray-800/60",   text: "text-gray-500" },
+  RECOMPRA:    { bg: "bg-emerald-900/30", text: "text-emerald-400" },
+  REFERIDO:    { bg: "bg-yellow-900/30", text: "text-yellow-400" },
+  PROSPECCION: { bg: "bg-[#B3985B]/10",  text: "text-[#B3985B]" },
+  OTRO:        { bg: "bg-gray-800/60",   text: "text-gray-500" },
+};
+
+const ETAPA_LABELS: Record<string, string> = {
+  LEAD:           "Lead",
+  DESCUBRIMIENTO: "Descubrimiento",
+  OPORTUNIDAD:    "Oportunidad",
+  VENTA_CERRADA:  "Cerrado",
+  VENTA_PERDIDA:  "Perdido",
+};
+
+const ETAPA_COLORS: Record<string, string> = {
+  LEAD:           "text-sky-400",
+  DESCUBRIMIENTO: "text-purple-400",
+  OPORTUNIDAD:    "text-[#B3985B]",
+  VENTA_CERRADA:  "text-emerald-400",
+  VENTA_PERDIDA:  "text-red-500",
+};
+
+const ORIGEN_OPTIONS = Object.entries(ORIGEN_LABELS).map(([v, l]) => ({ value: v, label: l }));
 
 const TIPO_COLORS: Record<string, string> = {
   B2B: "bg-blue-900/40 text-blue-300",
@@ -116,6 +156,27 @@ function EventoPills({ tiposEvento }: { tiposEvento: string[] }) {
 }
 
 // ─── InlineDropdown ───────────────────────────────────────────────────────────
+
+function OrigenBadge({ origen }: { origen: string }) {
+  const col = ORIGEN_COLORS[origen] ?? { bg: "bg-gray-800/60", text: "text-gray-500" };
+  return (
+    <span className={`inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wide ${col.bg} ${col.text}`}>
+      {origen === "META_ADS" && (
+        <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.5 9.5c-.28 0-.5-.22-.5-.5V9c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2c0 .28-.22.5-.5.5S7 11.28 7 11V9c0-1.66 1.34-3 3-3h4c1.66 0 3 1.34 3 3v2c0 .28-.22.5-.5.5z"/></svg>
+      )}
+      {ORIGEN_LABELS[origen] ?? origen}
+    </span>
+  );
+}
+
+function EtapaBadge({ etapa }: { etapa: string }) {
+  return (
+    <span className={`text-[9px] font-medium ${ETAPA_COLORS[etapa] ?? "text-gray-500"}`}>
+      {ETAPA_LABELS[etapa] ?? etapa}
+    </span>
+  );
+}
+
 
 function InlineDropdown({ options, value, onChange, placeholder = "—", colorMap }: {
   options: { value: string; label: string }[];
@@ -439,6 +500,20 @@ function ProspectoRow({
         </div>
       </td>
 
+      {/* Origen del lead */}
+      <td className="px-3 py-3">
+        <div className="flex flex-col gap-0.5">
+          {c.tratos[0] ? (
+            <>
+              <OrigenBadge origen={c.tratos[0].origenLead} />
+              <EtapaBadge etapa={c.tratos[0].etapa} />
+            </>
+          ) : (
+            <span className="text-[#333] text-[10px]">—</span>
+          )}
+        </div>
+      </td>
+
       {/* Tipo de Cliente (inline) */}
       <td className="px-3 py-3">
         <InlineDropdown options={TIPO_CLIENTE_OPTIONS} value={inline.tipoCliente} onChange={v => patch("tipoCliente", v)} placeholder="Tipo"
@@ -528,8 +603,9 @@ export default function ProspectosClient({ leads: initial, usuarios }: { leads: 
   const [filtroEvento, setFiltroEvento] = useState("");
   const [filtroVendedor, setFiltroVendedor] = useState("");
   const [filtroRuta, setFiltroRuta] = useState("");
+  const [filtroOrigen, setFiltroOrigen] = useState("");
 
-  const hayFiltros = busqueda || filtroTipo || filtroClasificacion || filtroServicio || filtroEvento || filtroVendedor || filtroRuta;
+  const hayFiltros = busqueda || filtroTipo || filtroClasificacion || filtroServicio || filtroEvento || filtroVendedor || filtroRuta || filtroOrigen;
 
   const leadsFiltrados = useMemo(() => {
     const q = busqueda.toLowerCase().trim();
@@ -549,12 +625,16 @@ export default function ProspectosClient({ leads: initial, usuarios }: { leads: 
       }
       if (filtroRuta === "con" && c._count.prospecciones === 0) return false;
       if (filtroRuta === "sin" && c._count.prospecciones > 0) return false;
+      if (filtroOrigen) {
+        const origenTrato = c.tratos[0]?.origenLead ?? "";
+        if (origenTrato !== filtroOrigen) return false;
+      }
       return true;
     });
-  }, [leads, busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroRuta]);
+  }, [leads, busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroRuta, filtroOrigen]);
 
   function limpiarFiltros() {
-    setBusqueda(""); setFiltroTipo(""); setFiltroClasificacion(""); setFiltroServicio(""); setFiltroEvento(""); setFiltroVendedor(""); setFiltroRuta("");
+    setBusqueda(""); setFiltroTipo(""); setFiltroClasificacion(""); setFiltroServicio(""); setFiltroEvento(""); setFiltroVendedor(""); setFiltroRuta(""); setFiltroOrigen("");
   }
 
   // Empresa search effect
@@ -689,6 +769,7 @@ export default function ProspectosClient({ leads: initial, usuarios }: { leads: 
           <FilterSelect label="Responsable" value={filtroVendedor} onChange={setFiltroVendedor} options={vendedorOptions} />
           <FilterSelect label="Prospección" value={filtroRuta} onChange={setFiltroRuta}
             options={[{ value: "con", label: "En ruta" }, { value: "sin", label: "Sin ruta" }]} />
+          <FilterSelect label="Origen" value={filtroOrigen} onChange={setFiltroOrigen} options={ORIGEN_OPTIONS} />
           {hayFiltros && (
             <button onClick={limpiarFiltros}
               className="text-[10px] text-[#555] hover:text-red-400 border border-[#2a2a2a] hover:border-red-900/40 px-2.5 py-1.5 rounded-lg transition-colors">
@@ -719,7 +800,7 @@ export default function ProspectosClient({ leads: initial, usuarios }: { leads: 
           <table className="w-full min-w-[1000px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
-                {["Prospecto", "Empresa", "Tipo", "Clasificación", "Servicio", "Tipo de Evento", "Responsable", "Tratos", "Proyectos", ""].map(h => (
+                {["Prospecto", "Empresa", "Origen", "Tipo", "Clasificación", "Servicio", "Tipo de Evento", "Responsable", "Tratos", "Proyectos", ""].map(h => (
                   <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -776,6 +857,12 @@ export default function ProspectosClient({ leads: initial, usuarios }: { leads: 
                   <span className="mt-2 inline-block text-[9px] px-1.5 py-0.5 rounded-full bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/20 font-medium">
                     En ruta de prospección
                   </span>
+                )}
+                {c.tratos[0] && (
+                  <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                    <OrigenBadge origen={c.tratos[0].origenLead} />
+                    <EtapaBadge etapa={c.tratos[0].etapa} />
+                  </div>
                 )}
               </Link>
               <div className="mt-3 flex items-center gap-1.5">

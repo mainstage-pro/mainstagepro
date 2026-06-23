@@ -1,14 +1,14 @@
 import { prisma } from "@/lib/prisma";
-import LeadsClient from "./BaseDeDatosClient";
+import ProspectosClient from "./BaseDeDatosClient";
 
-export default async function LeadsPage() {
+export default async function ProspectosPage() {
   const [leads, usuarios] = await Promise.all([
-    // Solo los que son prospectos: tipoCliente POR_DESCUBRIR o esProspecto = true
+    // Prospectos: esProspecto=true O tienen tratos sin VENTA_CERRADA
     prisma.cliente.findMany({
       where: {
         OR: [
-          { tipoCliente: "POR_DESCUBRIR" },
           { esProspecto: true },
+          { tipoCliente: "POR_DESCUBRIR" },
         ],
       },
       select: {
@@ -25,6 +25,12 @@ export default async function LeadsPage() {
         vendedorId: true,
         compania: { select: { id: true, nombre: true } },
         vendedor: { select: { id: true, name: true } },
+        // Traer el trato más reciente para mostrar origenLead y etapa
+        tratos: {
+          select: { id: true, etapa: true, origenLead: true, nombreEvento: true },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
         _count: { select: { tratos: true, proyectos: true, prospecciones: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -38,7 +44,7 @@ export default async function LeadsPage() {
 
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto">
-      <LeadsClient leads={leads} usuarios={usuarios} />
+      <ProspectosClient leads={leads} usuarios={usuarios} />
     </div>
   );
 }
