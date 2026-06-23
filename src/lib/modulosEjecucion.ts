@@ -39,7 +39,6 @@ export const GRUPOS_MODULOS: { grupo: string; modulos: ModuloEjecucion[] }[] = [
     grupo: 'Ventas',
     modulos: [
       { ruta: '/ventas/seguimientos', nombre: 'Seguimientos' },
-      { ruta: '/ventas/cartera',      nombre: 'Cartera KARE' },
       { ruta: '/ventas/reporte',      nombre: 'Reporte de ventas' },
       { ruta: '/crm/tratos',          nombre: 'Tratos' },
       { ruta: '/crm/clientes',        nombre: 'Clientes' },

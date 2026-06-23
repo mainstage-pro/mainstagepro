@@ -61,7 +61,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { id } = await params;
   const body = await request.json();
 
-  const allowed = ["nombre", "tipoCliente", "clasificacion", "servicioUsual", "telefono", "correo", "notas", "vendedorId", "categoriaKARE"];
+  const allowed = ["nombre", "tipoCliente", "clasificacion", "servicioUsual", "telefono", "correo", "notas", "vendedorId"];
   const data: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) data[key] = body[key] || null;
