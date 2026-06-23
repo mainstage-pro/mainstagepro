@@ -66,6 +66,7 @@ model User {
   reportesArea           ReporteAreaSemanal[]   @relation("ReportesAreaAutor")
   incidenciasSemanales   IncidenciaSemanal[]    @relation("IncidenciasSemanalesUser")
   presentacionesVenta    PresentacionVenta[]    @relation("PresentacionesVentaCreadas")
+  prospecciones          Prospeccion[]          @relation("ProspeccionResponsable")
 
 
   @@map("users")
@@ -144,6 +145,7 @@ model Cliente {
   correo        String?
   notas         String?
   categoriaKARE String?  @default("SIN_CATEGORIZAR") // KEEP | ATTAIN | RECOVER | EXPAND | SIN_CATEGORIZAR
+  esProspecto   Boolean  @default(false)             // true mientras no haya tenido VENTA_CERRADA
   vendedorId    String?
   vendedor      User?    @relation("ClientesVendedor", fields: [vendedorId], references: [id])
   createdAt     DateTime @default(now())
@@ -155,6 +157,7 @@ model Cliente {
   cuentasCobrar   CuentaCobrar[]
   movimientos     MovimientoFinanciero[]
   preciosEquipos  PrecioClienteEquipo[]
+  prospecciones   Prospeccion[]
 
   @@map("clientes")
 }
@@ -252,6 +255,9 @@ model Trato {
   fechaCierre         DateTime?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
+
+  prospeccionId          String?    @unique
+  prospeccion            Prospeccion? @relation("TratoProspeccion", fields: [prospeccionId], references: [id])
 
   cotizaciones           Cotizacion[]
   proyecto               Proyecto?
@@ -3266,3 +3272,58 @@ model ImagenPV {
   @@map("imagenes_pv")
 }
 
+// ── Prospección ──────────────────────────────────────────────────────────────
+
+model Prospeccion {
+  id         String  @id @default(cuid())
+  tipo       String  // NUEVO_PROSPECTO | CLIENTE_PROPIO
+  etapa      String  @default("SIN_ETAPA")
+  // SIN_ETAPA | NUEVO_CONTACTO | EN_SEGUIMIENTO | INTERES_CONFIRMADO | EN_EVALUACION | LISTO_PARA_CERRAR
+  tipoEvento String  @default("VARIOS") // MUSICAL | SOCIAL | EMPRESARIAL | VARIOS
+  origen     String  @default("MANUAL") // META_ADS | MANUAL | REFERIDO | RECOMPRA | ORGANICO | NETWORKING | REDES_SOCIALES | OTRO
+  estado     String  @default("SIN_ETAPA")
+  // SIN_ETAPA | ACTIVO | EN_TRATO | CONVERTIDO | CANCELADO
+  notas      String?
+
+  // ── Ruta de 5 contactos ──────────────────────────────────────────────────
+  contacto1Fecha  DateTime?
+  contacto1Nota   String?
+  contacto1Hecho  Boolean   @default(false)
+
+  contacto2Fecha  DateTime?
+  contacto2Nota   String?
+  contacto2Hecho  Boolean   @default(false)
+
+  contacto3Fecha  DateTime?
+  contacto3Nota   String?
+  contacto3Hecho  Boolean   @default(false)
+
+  contacto4Fecha  DateTime?
+  contacto4Nota   String?
+  contacto4Hecho  Boolean   @default(false)
+
+  contacto5Fecha  DateTime?
+  contacto5Nota   String?
+  contacto5Hecho  Boolean   @default(false)
+
+  fechaProximoContacto DateTime?
+
+  // ── Información del evento (pre-trato) ───────────────────────────────────
+  tipoServicioInteres String?   // RENTA | PRODUCCION_TECNICA | DIRECCION_TECNICA
+  fechaEventoEstimada DateTime?
+  lugarEstimado       String?
+  presupuestoAprox    Float?
+  notasEvento         String?
+
+  // ── Relaciones ───────────────────────────────────────────────────────────
+  clienteId     String
+  cliente       Cliente   @relation(fields: [clienteId], references: [id])
+  responsableId String?
+  responsable   User?     @relation("ProspeccionResponsable", fields: [responsableId], references: [id])
+  trato         Trato?    @relation("TratoProspeccion")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("prospecciones")
+}

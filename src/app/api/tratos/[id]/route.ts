@@ -157,6 +157,28 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
 
 
+  // ── Actualizar Prospección vinculada cuando cambia etapa del trato ──────────
+  if (body.etapa && ["VENTA_CERRADA", "VENTA_PERDIDA"].includes(body.etapa) && trato.prospeccionId) {
+    if (body.etapa === "VENTA_CERRADA") {
+      // Marcar prospección como convertida y cliente como no-prospecto
+      await prisma.prospeccion.update({
+        where: { id: trato.prospeccionId },
+        data: { estado: "CONVERTIDO" },
+      });
+      await prisma.cliente.update({
+        where: { id: trato.clienteId },
+        data: { esProspecto: false },
+      });
+    } else if (body.etapa === "VENTA_PERDIDA") {
+      // Regresar la prospección a activa para poder re-trabajarla
+      await prisma.prospeccion.update({
+        where: { id: trato.prospeccionId },
+        data: { estado: "ACTIVO", etapa: "EN_EVALUACION" },
+      });
+    }
+  }
+  // ────────────────────────────────────────────────────────────────────────────
+
   // ── Cascade a cotizaciones y proyectos ──────────────────────────────────────
   const cotUpdate: Record<string, unknown> = {};
   const proyUpdate: Record<string, unknown> = {};

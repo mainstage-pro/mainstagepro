@@ -133,6 +133,7 @@ const NAV: NavSection[] = [
     section: "Ventas",
     items: [
       { key: "ventas-seguimientos",     label: "Seguimientos",           href: "/ventas/seguimientos", badge: "seguimientos" },
+      { key: "crm-prospeccion",         label: "Prospectos",              href: "/crm/prospeccion" },
       { key: "crm-tratos",              label: "Tratos",                  href: "/crm/tratos", badge: "leads" },
       { key: "crm-clientes",            label: "Clientes",                href: "/crm/clientes" },
       { key: "ventas-presentaciones",   label: "Presentaciones de Venta", href: "/ventas/presentaciones" },
@@ -218,7 +219,7 @@ function getActiveSectionKey(pathname: string): string | null {
   if (pathname.startsWith("/presentaciones") || pathname.startsWith("/admin") || pathname.startsWith("/juntas") || pathname.startsWith("/formularios") || pathname.startsWith("/capacitacion")) return "seccion-direccion";
   if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles")) return "seccion-administracion";
   if (pathname.startsWith("/marketing")) return "seccion-marketing";
-  if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas") || pathname.startsWith("/prospectos")) return "seccion-ventas";
+  if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas") || pathname.startsWith("/prospectos") || pathname.startsWith("/crm/prospeccion")) return "seccion-ventas";
   if (pathname.startsWith("/proyectos") || pathname.startsWith("/inventario") || pathname.startsWith("/operaciones") || pathname.startsWith("/catalogo")) return "seccion-produccion";
   return null;
 }
