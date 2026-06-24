@@ -217,6 +217,13 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   }
 
   useEffect(() => {
+    // ── Resetear estado inmediatamente al cambiar cotización ──────────────
+    // Esto evita que el input de fecha muestre/guarde datos de la cotización
+    // anterior mientras el fetch carga la nueva.
+    setCot(null);
+    setFechaInputVal("");
+    setLoading(true);
+    // ─────────────────────────────────────────────────────────────────────
     fetch(`/api/cotizaciones/${id}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
@@ -224,7 +231,6 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
         setOpciones(d.opciones ?? []);
         setPresentacionToken(d.presentacionToken ?? null);
         setLoading(false);
-        // Inicializar el input de fecha con el valor de la cotización
         setFechaInputVal(d.cotizacion?.fechaEvento ? d.cotizacion.fechaEvento.split("T")[0] : "");
       });
   }, [id]);
@@ -1690,6 +1696,22 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               </div>
             </div>
           </div>
+
+          {/* ── Gastos de Producción (comisión interna) ── */}
+          {cot.estado === "BORRADOR" && (
+            <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-sm">
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Comisión interna</p>
+              <p className="text-gray-400 text-xs mb-3 leading-relaxed">
+                Los gastos de producción se agregan como línea dentro del cotizador y se suman al total.
+              </p>
+              <Link
+                href={`/cotizaciones/nuevo?edit=${cot.id}`}
+                className="flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-lg bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] text-xs font-semibold hover:bg-[#B3985B]/20 transition-colors"
+              >
+                ✦ Editar y agregar comisión
+              </Link>
+            </div>
+          )}
 
           <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-sm space-y-2">
             <div className="flex justify-between text-gray-400">
