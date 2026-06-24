@@ -1729,7 +1729,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                   saveGastos({ activo: newActivo });
                 }}
                 disabled={savingGastos}
-                className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${
+                className={`relative shrink-0 w-10 h-5 rounded-full overflow-hidden transition-colors duration-200 ${
                   gastosActivo ? 'bg-[#B3985B]' : 'bg-[#333]'
                 } disabled:opacity-50`}
               >
