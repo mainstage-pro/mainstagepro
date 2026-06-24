@@ -189,7 +189,7 @@ export function ResumenGlobalPDF({ data, logoSrc }: { data: ResumenGlobalData; l
             <View key={ev.id} style={[s.tablaFila, i % 2 === 1 ? s.tablaFilaAlt : {}]}>
               <View style={{ flex: 3 }}>
                 <Text style={s.cellEvento}>{nombre}</Text>
-                {ev.lugarEvento && <Text style={s.cellSub}>📍 {ev.lugarEvento}</Text>}
+                {ev.lugarEvento && <Text style={s.cellSub}>{ev.lugarEvento}</Text>}
                 <Text style={[s.cellSub, { color: "#aaaaaa" }]}>{ev.numeroCotizacion}</Text>
               </View>
               <View style={{ flex: 1.5, alignItems: "center" }}>
