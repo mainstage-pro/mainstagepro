@@ -1028,6 +1028,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   // Paso activo del wizard de descubrimiento (persisted in localStorage)
   const [pasoActivo, setPasoActivo] = useState(1);
   const [creandoCotizacion, setCreandoCotizacion] = useState(false);
+  const [eliminandoCotizacion, setEliminandoCotizacion] = useState<string | null>(null);
 
   // Discovery state
   const [discForm, setDiscForm] = useState({
@@ -1265,6 +1266,22 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       }
     } finally {
       setCreandoCotizacion(false);
+    }
+  }
+
+  async function eliminarCotizacion(cotId: string, numCot: string) {
+    if (!confirm(`¿Eliminar ${numCot}? Esta acción no se puede deshacer.`)) return;
+    setEliminandoCotizacion(cotId);
+    try {
+      const res = await fetch(`/api/cotizaciones/${cotId}`, { method: "DELETE" });
+      if (res.ok) {
+        setTrato(prev => prev ? { ...prev, cotizaciones: prev.cotizaciones.filter(c => c.id !== cotId) } : prev);
+      } else {
+        const d = await res.json();
+        toast.error(d.error ?? "Error al eliminar");
+      }
+    } finally {
+      setEliminandoCotizacion(null);
     }
   }
 
@@ -1815,32 +1832,41 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                     {/* Opciones A / B / C... */}
                     <div className="divide-y divide-[#1a1a1a]">
                       {ordenadas.map(op => (
-                        <Link
-                          key={op.id}
-                          href={`/cotizaciones/${op.id}`}
-                          className="flex items-center justify-between px-4 py-2.5 hover:bg-[#1a1a1a] transition-colors"
-                        >
-                          <div className="flex items-center gap-2.5">
-                            {tieneOpciones && (
-                              <span className="text-[10px] font-bold text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/30 w-5 h-5 rounded-full flex items-center justify-center shrink-0">
-                                {op.opcionLetra}
+                        <div key={op.id} className="flex items-center hover:bg-[#1a1a1a] transition-colors group">
+                          <Link
+                            href={`/cotizaciones/${op.id}`}
+                            className="flex flex-1 items-center justify-between px-4 py-2.5 min-w-0"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              {tieneOpciones && (
+                                <span className="text-[10px] font-bold text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/30 w-5 h-5 rounded-full flex items-center justify-center shrink-0">
+                                  {op.opcionLetra}
+                                </span>
+                              )}
+                              <span className="text-gray-500 text-xs font-mono">{op.numeroCotizacion}</span>
+                              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${ESTADO_COT_COLORS[op.estado] || "bg-gray-700 text-gray-300"}`}>
+                                {op.estado}
                               </span>
-                            )}
-                            <span className="text-gray-500 text-xs font-mono">{op.numeroCotizacion}</span>
-                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${ESTADO_COT_COLORS[op.estado] || "bg-gray-700 text-gray-300"}`}>
-                              {op.estado}
-                            </span>
-                            {op.proyecto && (
-                              <span className="text-[10px] text-green-500 bg-green-900/20 border border-green-800/30 px-1.5 py-0.5 rounded-full">proyecto</span>
-                            )}
-                          </div>
-                          <div className="text-right">
-                            <p className="text-gray-300 text-xs font-medium tabular-nums">{fmt(op.granTotal)}</p>
-                            {op.gastosProduccionActivo && op.gastosProduccionMonto > 0 && (
-                              <p className="text-amber-500/60 text-[9px]">+{fmt(op.gastosProduccionMonto)} G.Prod</p>
-                            )}
-                          </div>
-                        </Link>
+                              {op.proyecto && (
+                                <span className="text-[10px] text-green-500 bg-green-900/20 border border-green-800/30 px-1.5 py-0.5 rounded-full">proyecto</span>
+                              )}
+                            </div>
+                            <div className="text-right">
+                              <p className="text-gray-300 text-xs font-medium tabular-nums">{fmt(op.granTotal)}</p>
+                              {op.gastosProduccionActivo && op.gastosProduccionMonto > 0 && (
+                                <p className="text-amber-500/60 text-[9px]">+{fmt(op.gastosProduccionMonto)} G.Prod</p>
+                              )}
+                            </div>
+                          </Link>
+                          <button
+                            onClick={() => eliminarCotizacion(op.id, op.numeroCotizacion)}
+                            disabled={eliminandoCotizacion === op.id}
+                            className="opacity-0 group-hover:opacity-100 mr-3 p-1.5 rounded text-red-500/60 hover:text-red-400 hover:bg-red-900/20 transition-all disabled:opacity-30 shrink-0"
+                            title="Eliminar cotización"
+                          >
+                            {eliminandoCotizacion === op.id ? "..." : "🗑"}
+                          </button>
+                        </div>
                       ))}
                     </div>
                   </div>

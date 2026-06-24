@@ -63,6 +63,24 @@ export default function ResumenGlobalPage({ params }: { params: Promise<{ id: st
   const { id } = use(params);
   const [data, setData] = useState<ResumenData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [descargandoGlobal, setDescargandoGlobal] = useState(false);
+
+  async function descargarPdfGlobal() {
+    setDescargandoGlobal(true);
+    try {
+      const res = await fetch(`/api/cotizaciones/${id}/resumen-global/pdf`);
+      if (!res.ok) { alert("Error al generar PDF"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = res.headers.get("Content-Disposition")?.split('filename="')[1]?.replace('"', '') ?? "cotizacion-global.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDescargandoGlobal(false);
+    }
+  }
 
   useEffect(() => {
     fetch(`/api/cotizaciones/${id}/resumen-global`)
@@ -118,12 +136,19 @@ export default function ResumenGlobalPage({ params }: { params: Promise<{ id: st
               )}
             </div>
           </div>
-          <div className="text-right shrink-0">
+          <div className="text-right shrink-0 flex flex-col items-end gap-2">
             <p className="text-3xl font-bold text-[#B3985B] tabular-nums">{fmt(totales.granTotalProyecto)}</p>
-            <p className="text-gray-500 text-xs mt-0.5">Gran total · {totales.numeroEventos} evento{totales.numeroEventos !== 1 ? "s" : ""}</p>
+            <p className="text-gray-500 text-xs mt-0.5">{totales.numeroEventos} evento{totales.numeroEventos !== 1 ? "s" : ""}</p>
             {totales.totalGastosProd > 0 && (
-              <p className="text-amber-400/60 text-[10px] mt-0.5">Incl. {fmt(totales.totalGastosProd)} G.Prod</p>
+              <p className="text-amber-400/60 text-[10px]">Incl. {fmt(totales.totalGastosProd)} G.Prod</p>
             )}
+            <button
+              onClick={descargarPdfGlobal}
+              disabled={descargandoGlobal}
+              className="mt-1 flex items-center gap-1.5 px-3 py-1.5 bg-[#B3985B]/10 border border-[#B3985B]/40 text-[#B3985B] text-xs font-semibold rounded-lg hover:bg-[#B3985B]/20 transition-colors disabled:opacity-40"
+            >
+              {descargandoGlobal ? "Generando..." : "↓ PDF Global"}
+            </button>
           </div>
         </div>
 
@@ -207,12 +232,22 @@ export default function ResumenGlobalPage({ params }: { params: Promise<{ id: st
                           <p className="text-amber-400/70 text-[10px]">G.Prod {gastosLabel}</p>
                         )}
                       </div>
-                      <Link
-                        href={`/cotizaciones/${ev.id}`}
-                        className="inline-block mt-1.5 text-[10px] text-[#B3985B]/60 hover:text-[#B3985B] transition-colors"
-                      >
-                        Ver detalle →
-                      </Link>
+                      <div className="flex items-center gap-2 mt-1.5 justify-end">
+                        <a
+                          href={`/api/cotizaciones/${ev.id}/pdf`}
+                          target="_blank"
+                          className="inline-block text-[10px] text-gray-500 hover:text-[#B3985B] transition-colors"
+                          title="Descargar PDF individual"
+                        >
+                          ↓ PDF
+                        </a>
+                        <Link
+                          href={`/cotizaciones/${ev.id}`}
+                          className="inline-block text-[10px] text-[#B3985B]/60 hover:text-[#B3985B] transition-colors"
+                        >
+                          Ver →
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 </div>

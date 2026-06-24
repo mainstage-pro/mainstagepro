@@ -359,6 +359,12 @@ function CotizadorForm() {
   const [incluirChofer, setIncluirChofer] = useState(false);
   const [observaciones, setObservaciones] = useState("");
 
+  // ── Auto-save (solo modo edición) ──
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [autoSaved, setAutoSaved] = useState(false);
+  // Prevent saving on first render (before data is loaded from server)
+  const isInitialized = useRef(false);
+
   // Disponibilidad de inventario para la fecha del evento
   const [dispMap, setDispMap] = useState<Record<string, { disponible: number; comprometido: number; total: number; eventos: Array<{ ref: string; nombre: string; estado: string }> }>>({});
   const [loadingDisp, setLoadingDisp] = useState(false);
@@ -525,6 +531,8 @@ function CotizadorForm() {
         }
         if (cot.zonaEvento) setZonaEvento(cot.zonaEvento as "LOCAL"|"BAJIO"|"NACIONAL");
         if (cot.numTecnicosZona) setNumTecnicosZona(cot.numTecnicosZona);
+        // Mark as initialized so auto-save can start on next change
+        setTimeout(() => { isInitialized.current = true; }, 500);
         return;
       }
 
@@ -1048,6 +1056,157 @@ function CotizadorForm() {
     }
   }, [resumen.debeAutoVolumen, volumenManualToggle, editId]);
 
+  // ── Auto-save con debounce (solo en modo edición, tras inicialización) ──
+  useEffect(() => {
+    if (!editId || !isInitialized.current) return;
+    setAutoSaved(false);
+    const timer = setTimeout(async () => {
+      const cId = resolvedClienteId || clienteId || manualClienteId;
+      if (!cId) return; // sin cliente no se puede guardar
+      setAutoSaving(true);
+      try {
+        const todasLineasAuto = [
+          ...lineasEquipo.map(l => {
+            const notasRaw = l.notas ?? '';
+            const deficitMatch = notasRaw.match(/\|?deficit:(\{.*\})$/);
+            let deficitFields = {};
+            let notasLimpia = notasRaw;
+            if (deficitMatch) {
+              try { deficitFields = JSON.parse(deficitMatch[1]); } catch { /* ignore */ }
+              notasLimpia = notasRaw.replace(/\|?deficit:\{.*\}$/, '');
+            }
+            return {
+              tipo: "EQUIPO_PROPIO", descripcion: l.descripcion, marca: l.marca, modelo: l.modelo,
+              cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
+              costoUnitario: 0, subtotal: l.subtotal,
+              esExterno: false, esIncluido: false, equipoId: l.equipoId,
+              notas: buildNotasValue(l.categoria, notasLimpia),
+              ...deficitFields,
+            };
+          }),
+          ...lineasExterno.map(l => ({
+            tipo: "EQUIPO_EXTERNO", descripcion: l.descripcion, marca: l.marca,
+            cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
+            costoUnitario: l.costoProveedor,
+            subtotal: l.subtotal, esExterno: true, esIncluido: false, equipoId: l.equipoId,
+            proveedorId: l.proveedorId ?? null,
+          })),
+          ...lineasOp.map(l => ({
+            tipo: "OPERACION_TECNICA", descripcion: l.descripcion,
+            nivel: l.nivel, jornada: l.jornada, cantidad: l.cantidad, dias: l.dias,
+            precioUnitario: l.precioUnitario, costoUnitario: l.precioUnitario,
+            subtotal: l.subtotal, esExterno: false, esIncluido: false, rolTecnicoId: l.rolTecnicoId,
+          })),
+          ...jornadasPlan.flatMap(j =>
+            j.slots
+              .filter(s => s.rolId && s.tarifa > 0)
+              .map(s => ({
+                tipo: "OPERACION_TECNICA",
+                descripcion: `${s.rolNombre} (${j.tipo === "MONTAJE" ? "Montaje" : j.tipo === "OPERACION" ? "Operación" : j.tipo === "DESMONTAJE" ? "Desmontaje" : j.tipo}${j.fecha ? ` · ${j.fecha}` : ""})`,
+                nivel: s.nivel, jornada: s.jornada,
+                cantidad: s.cantidad, dias: 1,
+                precioUnitario: s.tarifa, costoUnitario: s.tarifa,
+                subtotal: s.tarifa * s.cantidad,
+                esExterno: false, esIncluido: false,
+                rolTecnicoId: s.rolId,
+                notas: "from:jornada",
+              }))
+          ),
+          ...lineasDJ.map(l => ({
+            tipo: "DJ", descripcion: `DJ ${l.nivel} (${l.horas}h)`,
+            nivel: l.nivel, cantidad: l.horas, dias: 1,
+            precioUnitario: l.tarifa, costoUnitario: l.tarifa,
+            subtotal: l.subtotal, esExterno: false, esIncluido: false,
+          })),
+          ...lineasLog.map(l => ({
+            tipo: l.tipo, descripcion: l.concepto, cantidad: l.cantidad, dias: l.dias,
+            precioUnitario: l.precioUnitario, costoUnitario: l.precioUnitario,
+            subtotal: l.subtotal, esExterno: false, esIncluido: false,
+          })),
+          ...lineasOcasional.map(l => ({
+            tipo: "OTRO", descripcion: l.descripcion, cantidad: l.cantidad, dias: l.dias,
+            precioUnitario: l.precioUnitario, costoUnitario: 0,
+            subtotal: l.subtotal, esExterno: false, esIncluido: false,
+          })),
+          ...(resumen.bonusZonaTotal > 0 ? [{
+            tipo: "OPERACION_TECNICA",
+            descripcion: `Extra de zona ${zonaEvento === "BAJIO" ? "Bajío" : "Nacional"} · ${numTecnicosZona} técnico${numTecnicosZona !== 1 ? "s" : ""}`,
+            cantidad: numTecnicosZona, dias: 1,
+            precioUnitario: resumen.zonaBonus, costoUnitario: resumen.zonaBonus,
+            subtotal: resumen.bonusZonaTotal, esExterno: false, esIncluido: false,
+            notas: "zona:bonus",
+          }] : []),
+        ];
+
+        const autoPayload = {
+          clienteId: cId,
+          ...evento,
+          zonaEvento,
+          numTecnicosZona,
+          notasSecciones: Object.keys(notasSecciones).length > 0 ? JSON.stringify(notasSecciones) : null,
+          jornadasPlan: jornadasPlan.length > 0 ? jornadasPlan : null,
+          observaciones,
+          lineas: todasLineasAuto,
+          subtotalEquiposBruto: resumen.subtotalEquiposBruto,
+          descuentoVolumenPct: volumenActivo ? cfgPctVolumen / 100 : 0,
+          descuentoB2bPct: b2bActivo ? cfgPctB2b / 100 : 0,
+          descuentoMultidiaPct: dMultidiaPreservado,
+          descuentoEspecialPct: dEspecialPreservado,
+          descuentoEspecialNota: dEspecialNotaPreservada,
+          descuentoPatrocinioPct: dPatrocinioPreservado,
+          descuentoPatrocinioNota: dPatrocinioNotaPreservada,
+          descuentoFamilyFriendsPct: manualActivo && !manualEsMonto ? (parseFloat(manualValor) || 0) / 100 : 0,
+          descuentoFijoMonto: manualActivo && manualEsMonto ? (parseFloat(manualValor) || 0) : (dFijoPreservado || 0),
+          descuentoManualRazon: manualActivo ? manualRazon : null,
+          descuentoManualEsMonto: manualActivo && manualEsMonto,
+          descuentoTotalPct: resumen.descuentoTotalPct,
+          montoDescuento: resumen.montoDescuento,
+          montoBeneficio: resumen.montoDescuento,
+          subtotalEquiposNeto: resumen.subtotalEquiposNeto,
+          pagoAnticipadoActivo,
+          pagoAnticipadoFecha: pagoAnticipadoFecha || null,
+          pagoAnticipadoTexto: pagoAnticipadoActivo ? (pagoAnticipadoTexto || cfgTextoAnticipado.replace("{pct}", String(cfgPctAnticipado))) : null,
+          subtotalPaquetes: 0,
+          subtotalTerceros: resumen.subtotalExternos + resumen.subtotalOcasionales,
+          subtotalOperacion: resumen.subtotalOperacion + resumen.subtotalDJ,
+          subtotalTransporte: resumen.subtotalTransporte,
+          subtotalComidas: resumen.subtotalComidas,
+          subtotalHospedaje: resumen.subtotalHospedaje,
+          total: resumen.total,
+          aplicaIva,
+          incluirChofer,
+          montoIva: resumen.montoIva,
+          granTotal: resumen.granTotal,
+          costosTotalesEstimados: resumen.costos,
+          utilidadEstimada: resumen.utilidad,
+          porcentajeUtilidad: resumen.pctUtilidad,
+        };
+
+        await fetch(`/api/cotizaciones/${editId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(autoPayload),
+        });
+        setAutoSaved(true);
+        // Ocultar el indicador tras 3 segundos
+        setTimeout(() => setAutoSaved(false), 3000);
+      } catch {
+        // Silencioso — no interrumpir al usuario con errores de red
+      } finally {
+        setAutoSaving(false);
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    editId,
+    evento, observaciones, aplicaIva, incluirChofer,
+    lineasEquipo, lineasExterno, lineasOp, lineasDJ, lineasLog, lineasOcasional,
+    jornadasPlan, notasSecciones, zonaEvento, numTecnicosZona,
+    volumenActivo, b2bActivo, manualActivo, manualEsMonto, manualValor, manualRazon,
+    pagoAnticipadoActivo, pagoAnticipadoFecha, pagoAnticipadoTexto,
+  ]);
+
   // ── Guardar ──
   async function guardar() {
     const tId = resolvedTratoId || tratoId || manualTratoId;
@@ -1226,6 +1385,12 @@ function CotizadorForm() {
             {saving ? "Guardando..." : editId ? "Guardar cambios" : "Guardar borrador"}
           </button>
         </div>
+        {editId && (
+          <div className="text-xs text-right mt-1 min-h-[16px]">
+            {autoSaving && <span className="text-gray-500">Guardando automáticamente...</span>}
+            {!autoSaving && autoSaved && <span className="text-green-500">✓ Guardado automáticamente</span>}
+          </div>
+        )}
       </div>
 
       {/* Modal cargar plantilla */}
