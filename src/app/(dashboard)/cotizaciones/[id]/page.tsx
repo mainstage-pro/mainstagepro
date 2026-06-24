@@ -283,7 +283,9 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
   // Guardar fecha del evento inline (sin tocar lineas)
   async function saveFechaEvento(fecha: string) {
-    if (!cot) return;
+    // Doble guarda: cot debe existir Y coincidir con el id de la URL
+    // para evitar que un blur tardío guarde en la cotización equivocada
+    if (!cot || cot.id !== id) return;
     setSavingFecha(true);
     try {
       const res = await fetch(`/api/cotizaciones/${id}`, {
@@ -1119,6 +1121,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                 onChange={e => setFechaInputVal(e.target.value)}
                 onBlur={e => {
                   const val = e.target.value;
+                  // Verificar que cot sigue siendo la cotización correcta
+                  if (!cot || cot.id !== id) return;
                   const prev = cot.fechaEvento ? cot.fechaEvento.split("T")[0] : "";
                   if (val !== prev) saveFechaEvento(val);
                 }}
