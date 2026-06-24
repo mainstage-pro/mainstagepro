@@ -1090,15 +1090,17 @@ export default function CobrosPagosPage() {
           ))}
         </div>
         {/* Filter row */}
-        <div className="flex items-center gap-1.5 py-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-          {([["pendientes", "Pendientes"], ["liquidados", "Liquidados"], ["todos", "Todos"]] as const).map(([key, label]) => (
-            <button key={key} onClick={() => setFiltro(key)}
-              className={`shrink-0 text-xs px-3 py-1 rounded-lg transition-colors ${
-                filtro === key ? "bg-[#B3985B]/15 text-[#B3985B]" : "text-[#555] hover:text-white"
-              }`}>
-              {label}
-            </button>
-          ))}
+        <div className="flex items-center justify-between gap-2 py-2">
+          <div className="flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+            {([["pendientes", "Pendientes"], ["liquidados", "Liquidados"], ["todos", "Todos"]] as const).map(([key, label]) => (
+              <button key={key} onClick={() => setFiltro(key)}
+                className={`shrink-0 text-xs px-3 py-1 rounded-lg transition-colors ${
+                  filtro === key ? "bg-[#B3985B]/15 text-[#B3985B]" : "text-[#555] hover:text-white"
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
           {/* Sort button — only for CxC / CxP tabs */}
           {tab !== "directos" && (
             <div className="relative shrink-0">
@@ -1111,7 +1113,7 @@ export default function CobrosPagosPage() {
                 Ordenar
               </button>
               {showSortMenu && (
-                <div className="absolute left-0 top-full mt-1 z-30 bg-[#111] border border-[#2a2a2a] rounded-xl shadow-xl py-1 w-56"
+                <div className="absolute right-0 top-full mt-1 z-30 bg-[#111] border border-[#2a2a2a] rounded-xl shadow-xl py-1 w-56"
                   onMouseLeave={() => setShowSortMenu(false)}>
                   {([
                     ["fecha_asc",  "Fecha de cobro: más cercana"],
