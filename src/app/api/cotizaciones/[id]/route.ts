@@ -349,40 +349,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       }
     }
 
-    // Si vienen campos de gastos de producción → recalcular granTotal
-    const gastosKeys = ["gastosProduccionActivo", "gastosProduccionEsMonto", "gastosProduccionPct", "gastosProduccionMonto"];
-    const tieneGastos = gastosKeys.some(k => k in body);
-    if (tieneGastos) {
-      // Leer valores actuales de la cotización para hacer el cálculo
-      const current = await prisma.cotizacion.findUnique({
-        where: { id },
-        select: { total: true, granTotal: true, montoIva: true, aplicaIva: true,
-                  gastosProduccionActivo: true, gastosProduccionEsMonto: true,
-                  gastosProduccionPct: true, gastosProduccionMonto: true },
-      });
-      if (current) {
-        const activo    = "gastosProduccionActivo" in body  ? body.gastosProduccionActivo  : current.gastosProduccionActivo;
-        const esMonto   = "gastosProduccionEsMonto" in body ? body.gastosProduccionEsMonto : current.gastosProduccionEsMonto;
-        const pct       = "gastosProduccionPct" in body     ? body.gastosProduccionPct     : current.gastosProduccionPct;
-        const montoFijo = "gastosProduccionMonto" in body   ? body.gastosProduccionMonto   : current.gastosProduccionMonto;
-
-        let gastosCalculado = 0;
-        // granTotal base = total + IVA (sin gastos anteriores)
-        const totalBase = (current.total ?? 0) + (current.aplicaIva ? (current.montoIva ?? 0) : 0);
-
-        if (activo) {
-          gastosCalculado = esMonto
-            ? (montoFijo ?? 0)
-            : Math.round((current.total ?? 0) * ((pct ?? 10) / 100) * 100) / 100;
-        }
-
-        data.gastosProduccionActivo  = activo;
-        data.gastosProduccionEsMonto = esMonto;
-        data.gastosProduccionPct     = pct ?? 10;
-        data.gastosProduccionMonto   = gastosCalculado;
-        data.granTotal               = totalBase + gastosCalculado;
-      }
-    }
+    // NOTA: El recálculo de granTotal SOLO ocurre en el FULL SAVE (PUT).
+    // El PATCH parcial (fechaEvento, lugarEvento, estado, etc.) nunca toca granTotal.
 
     const cotizacion = await prisma.cotizacion.update({ where: { id }, data });
     if (body.estado) {

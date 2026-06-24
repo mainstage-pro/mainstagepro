@@ -1853,9 +1853,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                             </div>
                             <div className="text-right">
                               <p className="text-gray-300 text-xs font-medium tabular-nums">{fmt(op.granTotal)}</p>
-                              {op.gastosProduccionActivo && op.gastosProduccionMonto > 0 && (
-                                <p className="text-amber-500/60 text-[9px]">+{fmt(op.gastosProduccionMonto)} G.Prod</p>
-                              )}
                             </div>
                           </Link>
                           <button

@@ -95,15 +95,13 @@ export interface EventoResumenData {
   aplicaIva: boolean;
   montoIva: number;
   granTotal: number;
-  gastosProduccionActivo: boolean;
-  gastosProduccionMonto: number;
 }
 
 export interface ResumenGlobalData {
   cliente: { nombre: string; empresa: string | null; telefono?: string | null; correo?: string | null };
   trato: { nombreEvento: string | null; responsable?: { name: string } | null } | null;
   eventos: EventoResumenData[];
-  totales: { totalBruto: number; totalGastosProd: number; totalIva: number; granTotalProyecto: number; numeroEventos: number };
+  totales: { totalBruto: number; totalIva: number; granTotalProyecto: number; numeroEventos: number };
   vigenciaDias?: number;
   createdAt?: Date | string;
 }
@@ -197,9 +195,6 @@ export function ResumenGlobalPDF({ data, logoSrc }: { data: ResumenGlobalData; l
               </View>
               <View style={{ flex: 1.5, alignItems: "flex-end" }}>
                 <Text style={s.cellMonto}>{fmtMXN(ev.granTotal)}</Text>
-                {ev.gastosProduccionActivo && ev.gastosProduccionMonto > 0 && (
-                  <Text style={{ fontSize: 7.5, color: "#c97a10" }}>+{fmtMXN(ev.gastosProduccionMonto)} G.Prod</Text>
-                )}
                 {ev.aplicaIva && <Text style={{ fontSize: 7.5, color: LIGHT_GRAY }}>IVA incl.</Text>}
               </View>
             </View>
@@ -214,12 +209,6 @@ export function ResumenGlobalPDF({ data, logoSrc }: { data: ResumenGlobalData; l
                 <Text style={s.totalFilaMonto}>{fmtMXN(ev.granTotal)}</Text>
               </View>
             ))}
-            {totales.totalGastosProd > 0 && (
-              <View style={s.totalFila}>
-                <Text style={[s.totalFilaDes, { color: "#c97a10" }]}>Gastos de producción</Text>
-                <Text style={[s.totalFilaMonto, { color: "#c97a10" }]}>{fmtMXN(totales.totalGastosProd)}</Text>
-              </View>
-            )}
             <View style={{ borderTop: "1.5 solid " + GOLD, borderBottom: "1 solid #e0ddd8", flexDirection: "row", justifyContent: "space-between", paddingVertical: 7, paddingHorizontal: 8, backgroundColor: "#FFFDF7" }}>
               <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", color: BLACK }}>SUBTOTAL DEL PROYECTO</Text>
               <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: BLACK }}>{fmtMXN(totales.totalBruto)}</Text>

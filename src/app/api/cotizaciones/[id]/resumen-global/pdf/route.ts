@@ -52,8 +52,6 @@ export async function GET(
     aplicaIva: boolean;
     montoIva: number;
     granTotal: number;
-    gastosProduccionActivo: boolean;
-    gastosProduccionMonto: number;
     opcionLetra: string;
     grupoId: string | null;
     estado: string;
@@ -71,8 +69,6 @@ export async function GET(
     aplicaIva: true,
     montoIva: true,
     granTotal: true,
-    gastosProduccionActivo: true,
-    gastosProduccionMonto: true,
     opcionLetra: true,
     grupoId: true,
     estado: true,
@@ -111,7 +107,6 @@ export async function GET(
 
   // Calcular totales
   const totalBruto = eventos.reduce((s, e) => s + e.total, 0);
-  const totalGastosProd = eventos.filter(e => e.gastosProduccionActivo).reduce((s, e) => s + e.gastosProduccionMonto, 0);
   const totalIva = eventos.reduce((s, e) => s + (e.aplicaIva ? e.montoIva : 0), 0);
   const granTotalProyecto = eventos.reduce((s, e) => s + e.granTotal, 0);
 
@@ -138,10 +133,8 @@ export async function GET(
       aplicaIva: e.aplicaIva,
       montoIva: e.montoIva,
       granTotal: e.granTotal,
-      gastosProduccionActivo: e.gastosProduccionActivo,
-      gastosProduccionMonto: e.gastosProduccionMonto,
     })),
-    totales: { totalBruto, totalGastosProd, totalIva, granTotalProyecto, numeroEventos: grupos.size },
+    totales: { totalBruto, totalIva, granTotalProyecto, numeroEventos: grupos.size },
     vigenciaDias: cotizacion.vigenciaDias,
     createdAt: cotizacion.createdAt.toISOString(),
   };

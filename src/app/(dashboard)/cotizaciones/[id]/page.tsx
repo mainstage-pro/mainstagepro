@@ -180,6 +180,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [savingMeta, setSavingMeta] = useState(false);
   // Fecha del evento editable inline (independiente del trato)
   const [savingFecha, setSavingFecha] = useState(false);
+  // Estado local del input de fecha — se resetea con key={cot.id}
+  const [fechaInputVal, setFechaInputVal] = useState<string>("");
   const [noteEdit, setNoteEdit] = useState<{
     lineaId: string;
     tipo: string;
@@ -222,7 +224,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
         setOpciones(d.opciones ?? []);
         setPresentacionToken(d.presentacionToken ?? null);
         setLoading(false);
-        // (gastos de producción ahora son líneas normales, no estado especial)
+        // Inicializar el input de fecha con el valor de la cotización
+        setFechaInputVal(d.cotizacion?.fechaEvento ? d.cotizacion.fechaEvento.split("T")[0] : "");
       });
   }, [id]);
 
@@ -1103,9 +1106,11 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             <div>
               <p className="text-gray-500 text-xs mb-0.5">Fecha</p>
               <input
+                key={cot.id}
                 type="date"
-                defaultValue={cot.fechaEvento ? cot.fechaEvento.split("T")[0] : ""}
+                value={fechaInputVal}
                 disabled={savingFecha}
+                onChange={e => setFechaInputVal(e.target.value)}
                 onBlur={e => {
                   const val = e.target.value;
                   const prev = cot.fechaEvento ? cot.fechaEvento.split("T")[0] : "";
