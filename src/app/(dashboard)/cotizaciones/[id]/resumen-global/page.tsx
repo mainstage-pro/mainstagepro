@@ -213,8 +213,8 @@ export default function ResumenGlobalPage({ params }: { params: Promise<{ id: st
                       </div>
                       <div className="flex items-center gap-3 flex-wrap text-xs text-gray-500">
                         <span className="font-mono text-gray-700">{ev.numeroCotizacion}</span>
-                        {ev.fechaEvento && <span>📅 {fmtFecha(ev.fechaEvento)}</span>}
-                        {ev.lugarEvento && <span className="truncate max-w-[200px]">📍 {ev.lugarEvento}</span>}
+                        {ev.fechaEvento && <span>{fmtFecha(ev.fechaEvento)}</span>}
+                        {ev.lugarEvento && <span className="truncate max-w-[200px]">{ev.lugarEvento}</span>}
                       </div>
                       {ev.descripcionCotizacion && (
                         <p className="text-gray-600 text-xs mt-1.5 leading-relaxed">{ev.descripcionCotizacion}</p>
