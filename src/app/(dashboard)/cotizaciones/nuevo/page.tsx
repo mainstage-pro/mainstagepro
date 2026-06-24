@@ -326,6 +326,8 @@ function CotizadorForm() {
   const [selOcPrecio, setSelOcPrecio] = useState("");
   const [selOcCant, setSelOcCant] = useState("1");
   const [selOcDias, setSelOcDias] = useState("1");
+  // Gastos de producción (comisión interna — se agrega como línea OTRO)
+  const [selGastosMonto, setSelGastosMonto] = useState("");
 
   // ─── Descuentos ───────────────────────────────────────────────────────────────
   const [volumenActivo, setVolumenActivo]         = useState(false);
@@ -2270,7 +2272,55 @@ function CotizadorForm() {
             )}
           </Seccion>
 
-          {/* ── Operación técnica ── */}
+          {/* ── Gastos de Producción (comisión interna) ───────────── */}
+          <Seccion titulo="Gastos de Producción" hint="comisión interna · se agrega como concepto al total">
+            {/* Líneas de gastos ya agregadas */}
+            {lineasOcasional.filter(l => l.descripcion === "Gastos de Producción").length > 0 && (
+              <div className="border border-[#222] rounded-lg overflow-hidden mb-3">
+                {lineasOcasional.filter(l => l.descripcion === "Gastos de Producción").map(l => (
+                  <div key={l.id} className="flex items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
+                    <span className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide flex-1">Gastos de Producción</span>
+                    <span className="text-white text-sm font-medium">{formatCurrency(l.subtotal)}</span>
+                    <button onClick={() => setLineasOcasional(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none shrink-0">×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Formulario rápido */}
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <p className="text-[10px] text-[#555] mb-1 px-1">Monto de la comisión</p>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
+                  <input
+                    type="number" min="0" step="100"
+                    value={selGastosMonto}
+                    onChange={e => setSelGastosMonto(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg pl-7 pr-3 py-2 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  const monto = parseFloat(selGastosMonto) || 0;
+                  if (!monto) return;
+                  setLineasOcasional(prev => [...prev, {
+                    id: uid(), descripcion: "Gastos de Producción",
+                    cantidad: 1, dias: 1, precioUnitario: monto, subtotal: monto,
+                  }]);
+                  setSelGastosMonto("");
+                }}
+                disabled={!selGastosMonto || parseFloat(selGastosMonto) <= 0}
+                className="px-4 py-2 rounded-lg bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] text-sm font-semibold hover:bg-[#B3985B]/20 transition-colors disabled:opacity-40"
+              >
+                + Agregar
+              </button>
+            </div>
+            <p className="text-[10px] text-gray-600 mt-2">Este concepto se incluye en el total del cliente pero queda identificado internamente como comisión.</p>
+          </Seccion>
+
+
           <Seccion titulo="Operación técnica" hint="sin descuento · tarifas por día y tipo de operación">
             {/* Zona selector + técnicos */}
             <div className="flex items-center gap-2 mb-4 flex-wrap">

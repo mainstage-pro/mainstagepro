@@ -19,10 +19,6 @@ interface EventoResumen {
   aplicaIva: boolean;
   montoIva: number;
   granTotal: number;
-  gastosProduccionActivo: boolean;
-  gastosProduccionEsMonto: boolean;
-  gastosProduccionPct: number;
-  gastosProduccionMonto: number;
   proyecto: { id: string; numeroProyecto: string; estado: string } | null;
   createdAt: string;
 }
@@ -34,7 +30,6 @@ interface ResumenData {
   eventos: EventoResumen[];
   totales: {
     totalBruto: number;
-    totalGastosProd: number;
     totalIva: number;
     granTotalProyecto: number;
     numeroEventos: number;
@@ -139,9 +134,7 @@ export default function ResumenGlobalPage({ params }: { params: Promise<{ id: st
           <div className="text-right shrink-0 flex flex-col items-end gap-2">
             <p className="text-3xl font-bold text-[#B3985B] tabular-nums">{fmt(totales.granTotalProyecto)}</p>
             <p className="text-gray-500 text-xs mt-0.5">{totales.numeroEventos} evento{totales.numeroEventos !== 1 ? "s" : ""}</p>
-            {totales.totalGastosProd > 0 && (
-              <p className="text-amber-400/60 text-[10px]">Incl. {fmt(totales.totalGastosProd)} G.Prod</p>
-            )}
+
             <button
               onClick={descargarPdfGlobal}
               disabled={descargandoGlobal}
@@ -158,12 +151,7 @@ export default function ResumenGlobalPage({ params }: { params: Promise<{ id: st
             <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Subtotal</p>
             <p className="text-white font-semibold text-sm tabular-nums">{fmt(totales.totalBruto)}</p>
           </div>
-          {totales.totalGastosProd > 0 && (
-            <div className="bg-[#0d0d0d] rounded-lg p-3">
-              <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">G. Producción</p>
-              <p className="text-amber-400 font-semibold text-sm tabular-nums">{fmt(totales.totalGastosProd)}</p>
-            </div>
-          )}
+
           {totales.totalIva > 0 && (
             <div className="bg-[#0d0d0d] rounded-lg p-3">
               <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">IVA 16%</p>
@@ -189,11 +177,6 @@ export default function ResumenGlobalPage({ params }: { params: Promise<{ id: st
           <div className="divide-y divide-[#1a1a1a]">
             {eventos.map((ev, i) => {
               const nombre = ev.nombreCotizacion || ev.nombreEvento || `Evento ${i + 1}`;
-              const gastosLabel = ev.gastosProduccionActivo && ev.gastosProduccionMonto > 0
-                ? ev.gastosProduccionEsMonto
-                  ? fmt(ev.gastosProduccionMonto)
-                  : `${ev.gastosProduccionPct}% (${fmt(ev.gastosProduccionMonto)})`
-                : null;
 
               return (
                 <div key={ev.id} className="px-5 py-4 hover:bg-[#0d0d0d] transition-colors">
@@ -228,9 +211,6 @@ export default function ResumenGlobalPage({ params }: { params: Promise<{ id: st
                         {ev.aplicaIva && (
                           <p className="text-gray-600 text-[10px]">IVA {fmt(ev.montoIva)}</p>
                         )}
-                        {gastosLabel && (
-                          <p className="text-amber-400/70 text-[10px]">G.Prod {gastosLabel}</p>
-                        )}
                       </div>
                       <div className="flex items-center gap-2 mt-1.5 justify-end">
                         <a
@@ -260,9 +240,6 @@ export default function ResumenGlobalPage({ params }: { params: Promise<{ id: st
         <div className="px-5 py-4 bg-[#0a0a0a] border-t border-[#222] flex items-center justify-between">
           <div>
             <p className="text-xs text-gray-500">Gran total del proyecto</p>
-            {totales.totalGastosProd > 0 && (
-              <p className="text-[10px] text-amber-400/50 mt-0.5">Incluye {fmt(totales.totalGastosProd)} en gastos de producción</p>
-            )}
           </div>
           <p className="text-2xl font-bold text-[#B3985B] tabular-nums">{fmt(totales.granTotalProyecto)}</p>
         </div>

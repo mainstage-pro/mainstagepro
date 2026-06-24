@@ -62,10 +62,6 @@ export async function GET(
         aplicaIva: true,
         montoIva: true,
         granTotal: true,
-        gastosProduccionActivo: true,
-        gastosProduccionEsMonto: true,
-        gastosProduccionPct: true,
-        gastosProduccionMonto: true,
         proyecto: { select: { id: true, numeroProyecto: true, estado: true } },
         createdAt: true,
       },
@@ -89,10 +85,6 @@ export async function GET(
         aplicaIva: true,
         montoIva: true,
         granTotal: true,
-        gastosProduccionActivo: true,
-        gastosProduccionEsMonto: true,
-        gastosProduccionPct: true,
-        gastosProduccionMonto: true,
         proyecto: { select: { id: true, numeroProyecto: true, estado: true } },
         createdAt: true,
       },
@@ -118,10 +110,6 @@ export async function GET(
           aplicaIva: true,
           montoIva: true,
           granTotal: true,
-          gastosProduccionActivo: true,
-          gastosProduccionEsMonto: true,
-          gastosProduccionPct: true,
-          gastosProduccionMonto: true,
           proyecto: { select: { id: true, numeroProyecto: true, estado: true } },
           createdAt: true,
         },
@@ -162,7 +150,6 @@ export async function GET(
 
   // Calcular totales del resumen global
   const totalBruto = eventosPrincipales.reduce((s, c) => s + (c?.total ?? 0), 0);
-  const totalGastosProd = eventosPrincipales.reduce((s, c) => s + (c?.gastosProduccionMonto ?? 0), 0);
   const totalIva = eventosPrincipales.reduce((s, c) => s + (c?.montoIva ?? 0), 0);
   const granTotalProyecto = eventosPrincipales.reduce((s, c) => s + (c?.granTotal ?? 0), 0);
 
@@ -173,7 +160,6 @@ export async function GET(
     eventos: eventosPrincipales,
     totales: {
       totalBruto,
-      totalGastosProd,
       totalIva,
       granTotalProyecto,
       numeroEventos: eventosPrincipales.length,

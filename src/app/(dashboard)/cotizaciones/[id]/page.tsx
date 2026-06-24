@@ -178,12 +178,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [editNombre, setEditNombre] = useState<string | null>(null);
   const [editDescripcion, setEditDescripcion] = useState<string | null>(null);
   const [savingMeta, setSavingMeta] = useState(false);
-  // Gastos de producción
-  const [gastosActivo, setGastosActivo] = useState(false);
-  const [gastosEsMonto, setGastosEsMonto] = useState(false);
-  const [gastosPct, setGastosPct] = useState(10);
-  const [gastosMonto, setGastosMonto] = useState(0);
-  const [savingGastos, setSavingGastos] = useState(false);
+  // Fecha del evento editable inline (independiente del trato)
+  const [savingFecha, setSavingFecha] = useState(false);
   const [noteEdit, setNoteEdit] = useState<{
     lineaId: string;
     tipo: string;
@@ -226,13 +222,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
         setOpciones(d.opciones ?? []);
         setPresentacionToken(d.presentacionToken ?? null);
         setLoading(false);
-        // Inicializar estados de gastos de producción
-        if (d.cotizacion) {
-          setGastosActivo(d.cotizacion.gastosProduccionActivo ?? false);
-          setGastosEsMonto(d.cotizacion.gastosProduccionEsMonto ?? false);
-          setGastosPct(d.cotizacion.gastosProduccionPct ?? 10);
-          setGastosMonto(d.cotizacion.gastosProduccionMonto ?? 0);
-        }
+        // (gastos de producción ahora son líneas normales, no estado especial)
       });
   }, [id]);
 
@@ -282,41 +272,25 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     }
   }
 
-  // Guardar gastos de producción (toggle / valor)
-  async function saveGastos(overrides?: {
-    activo?: boolean;
-    esMonto?: boolean;
-    pct?: number;
-    monto?: number;
-  }) {
+  // Guardar fecha del evento inline (sin tocar lineas)
+  async function saveFechaEvento(fecha: string) {
     if (!cot) return;
-    setSavingGastos(true);
-    const activo = overrides?.activo ?? gastosActivo;
-    const esMonto = overrides?.esMonto ?? gastosEsMonto;
-    const pct = overrides?.pct ?? gastosPct;
-    const monto = overrides?.monto ?? gastosMonto;
+    setSavingFecha(true);
     try {
       const res = await fetch(`/api/cotizaciones/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          gastosProduccionActivo: activo,
-          gastosProduccionEsMonto: esMonto,
-          gastosProduccionPct: pct,
-          gastosProduccionMonto: monto,
-        }),
+        body: JSON.stringify({ fechaEvento: fecha || null }),
       });
       if (res.ok) {
         const d = await res.json();
-        // Recargar cot para tener el granTotal actualizado
-        const cotActualizada = d.cotizacion;
-        if (cotActualizada) setCot(prev => prev ? { ...prev, ...cotActualizada } : prev);
-        toast.success("Gastos de producción guardados");
+        if (d.cotizacion) setCot(prev => prev ? { ...prev, fechaEvento: d.cotizacion.fechaEvento } : prev);
+        toast.success("Fecha actualizada");
       } else {
-        toast.error("Error al guardar");
+        toast.error("Error al guardar la fecha");
       }
     } finally {
-      setSavingGastos(false);
+      setSavingFecha(false);
     }
   }
 
@@ -834,9 +808,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           </div>
           <div className="text-right shrink-0">
             <p className="text-2xl font-bold text-white tabular-nums">{formatCurrency(cot.granTotal)}</p>
-            {cot.gastosProduccionActivo && cot.gastosProduccionMonto > 0 && (
-              <p className="text-[10px] text-amber-400/70">Incl. gastos prod. {formatCurrency(cot.gastosProduccionMonto)}</p>
-            )}
+
             {cot.aplicaIva && <p className="text-gray-500 text-[11px]">IVA incluido</p>}
             <p className={`text-sm font-medium ${semaforoColor}`}>{semaforo} · {formatPct(pctVivo)} margen</p>
           </div>
@@ -1128,7 +1100,20 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
         <div className="md:col-span-2 space-y-4">
           {/* Info evento */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-            <div><p className="text-gray-500 text-xs mb-0.5">Fecha</p><p className="text-white">{fmtDate(cot.fechaEvento)}</p></div>
+            <div>
+              <p className="text-gray-500 text-xs mb-0.5">Fecha</p>
+              <input
+                type="date"
+                defaultValue={cot.fechaEvento ? cot.fechaEvento.split("T")[0] : ""}
+                disabled={savingFecha}
+                onBlur={e => {
+                  const val = e.target.value;
+                  const prev = cot.fechaEvento ? cot.fechaEvento.split("T")[0] : "";
+                  if (val !== prev) saveFechaEvento(val);
+                }}
+                className="bg-transparent text-white text-sm w-full focus:outline-none focus:text-[#B3985B] disabled:opacity-50 cursor-pointer"
+              />
+            </div>
             <div><p className="text-gray-500 text-xs mb-0.5">Tipo</p><p className="text-white">{cot.tipoEvento || "—"}</p></div>
             <div className="col-span-2"><p className="text-gray-500 text-xs mb-0.5">Lugar</p><p className="text-white">{cot.lugarEvento || "—"}</p></div>
           </div>
@@ -1715,101 +1700,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             </div>
           </div>
 
-          {/* ── Gastos de Producción ─────────────────────────── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Gastos de Producción</p>
-                <p className="text-[10px] text-gray-600 mt-0.5">Comisión interna sobre total del evento</p>
-              </div>
-              <button
-                onClick={() => {
-                  const newActivo = !gastosActivo;
-                  setGastosActivo(newActivo);
-                  saveGastos({ activo: newActivo });
-                }}
-                disabled={savingGastos}
-                className={`relative shrink-0 w-10 h-5 rounded-full overflow-hidden transition-colors duration-200 ${
-                  gastosActivo ? 'bg-[#B3985B]' : 'bg-[#333]'
-                } disabled:opacity-50`}
-              >
-                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${
-                  gastosActivo ? 'translate-x-5' : 'translate-x-0.5'
-                }`} />
-              </button>
-            </div>
-            {gastosActivo && (
-              <div className="space-y-2.5 pt-2 border-t border-[#1a1a1a]">
-                {/* Modo: % vs monto fijo */}
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => { setGastosEsMonto(false); }}
-                    className={`flex-1 text-xs py-1 rounded-md border transition-colors ${
-                      !gastosEsMonto
-                        ? 'bg-[#B3985B]/10 border-[#B3985B]/40 text-[#B3985B]'
-                        : 'border-[#333] text-gray-500 hover:text-gray-300'
-                    }`}
-                  >
-                    Porcentaje
-                  </button>
-                  <button
-                    onClick={() => { setGastosEsMonto(true); }}
-                    className={`flex-1 text-xs py-1 rounded-md border transition-colors ${
-                      gastosEsMonto
-                        ? 'bg-[#B3985B]/10 border-[#B3985B]/40 text-[#B3985B]'
-                        : 'border-[#333] text-gray-500 hover:text-gray-300'
-                    }`}
-                  >
-                    Monto fijo
-                  </button>
-                </div>
 
-                {!gastosEsMonto ? (
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[11px] text-gray-500">Porcentaje</label>
-                      <span className="text-[11px] text-gray-400">{gastosPct}%</span>
-                    </div>
-                    <input
-                      type="range" min={1} max={30} step={0.5}
-                      value={gastosPct}
-                      onChange={e => setGastosPct(parseFloat(e.target.value))}
-                      className="w-full accent-[#B3985B]"
-                    />
-                    <p className="text-xs text-amber-400 font-medium text-right">
-                      = {formatCurrency(cot.total * gastosPct / 100)}
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-1">
-                    <label className="text-[11px] text-gray-500 block">Monto fijo</label>
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
-                      <input
-                        type="number" min={0} step={100}
-                        value={gastosMonto}
-                        onChange={e => setGastosMonto(parseFloat(e.target.value) || 0)}
-                        className="w-full bg-[#0a0a0a] border border-[#333] rounded-md pl-6 pr-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <button
-                  onClick={() => saveGastos()}
-                  disabled={savingGastos}
-                  className="w-full py-1.5 rounded-lg bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] text-xs font-semibold hover:bg-[#B3985B]/20 transition-colors disabled:opacity-50"
-                >
-                  {savingGastos ? 'Guardando...' : 'Guardar gastos de producción'}
-                </button>
-
-                <div className="flex justify-between text-xs border-t border-[#1a1a1a] pt-2">
-                  <span className="text-gray-500">G. Producción aplicado</span>
-                  <span className="text-amber-400 font-medium">{formatCurrency(cot.gastosProduccionMonto)}</span>
-                </div>
-              </div>
-            )}
-          </div>
 
           <Link href={`/crm/tratos/${cot.trato.id}`}
             className="block bg-[#111] border border-[#222] rounded-xl p-4 text-sm hover:border-[#B3985B] transition-colors">

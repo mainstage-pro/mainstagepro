@@ -337,11 +337,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   // Actualización parcial normal (estado, observaciones, etc.)
   try {
-    const allowed = ["estado", "observaciones", "terminosComerciales", "fechaEnvio", "fechaVencimiento", "notasSecciones", "planPagos", "mainstageTradeData", "tradeToken", "descuentoFamilyFriendsPct", "nombreCotizacion", "descripcionCotizacion", "gastosProduccionActivo", "gastosProduccionEsMonto", "gastosProduccionPct", "gastosProduccionMonto"];
+    const allowed = ["estado", "observaciones", "terminosComerciales", "fechaEnvio", "fechaVencimiento", "notasSecciones", "planPagos", "mainstageTradeData", "tradeToken", "descuentoFamilyFriendsPct", "nombreCotizacion", "descripcionCotizacion", "gastosProduccionActivo", "gastosProduccionEsMonto", "gastosProduccionPct", "gastosProduccionMonto", "fechaEvento", "lugarEvento"];
     const data: Record<string, unknown> = {};
     for (const key of allowed) {
       if (key in body) {
-        if ((key === "fechaEnvio" || key === "fechaVencimiento") && body[key]) {
+        if ((key === "fechaEnvio" || key === "fechaVencimiento" || key === "fechaEvento") && body[key]) {
           data[key] = new Date(body[key]);
         } else {
           data[key] = body[key];
