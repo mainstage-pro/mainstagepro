@@ -6205,6 +6205,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
         )}
 
+        {/* ──── EQUIPOS tab ──── */}
+        {activeTab === "equipos" && (
+          <EquiposTab proyectoId={proyecto.id} />
+        )}
+
         {/* ──── FINANZAS tab ──── */}
         {activeTab === 'finanzas' && (
           <div id="section-finanzas" className="scroll-mt-14">
@@ -7871,11 +7876,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         </div>
       );
     })()}
-
-        {/* ──── EQUIPOS tab ──── */}
-        {activeTab === 'equipos' && (
-          <EquiposTab proyectoId={proyecto.id} />
-        )}
 
     {/* ── PDF Preview Modal ── */}
     {pdfPreview && (
