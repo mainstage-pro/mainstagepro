@@ -671,6 +671,363 @@ function VehiculoIdSelector({
   );
 }
 
+// ── EquiposTab ───────────────────────────────────────────────────────────────────────────────────
+
+type LineaEquipo = {
+  id: string;
+  tipo: string;
+  descripcion: string;
+  marca: string | null;
+  modelo: string | null;
+  cantidad: number;
+  dias: number;
+  precioUnitario: number;
+  costoExterno: number | null;
+  equipoId: string | null;
+  proveedorId: string | null;
+  proveedor: { id: string; nombre: string; empresa: string | null } | null;
+  clasificacion: 'PROPIO_DISPONIBLE' | 'PROPIO_CONFLICTO' | 'EXTERNO_INVENTARIO' | 'EXTERNO_MANUAL';
+  disponible: number;
+  comprometido: number;
+  conflictos: Array<{ ref: string; nombre: string; estado: string; fecha: string | null }>;
+  yaConfirmado: boolean;
+  cxp: { id: string; monto: number; estado: string } | null;
+};
+
+type ProveedorOpt = { id: string; nombre: string; empresa: string | null };
+
+const CLASIF_BADGE: Record<string, { bg: string; text: string; label: string }> = {
+  PROPIO_DISPONIBLE:  { bg: 'bg-emerald-900/20', text: 'text-emerald-400', label: '\u2705 Disponible' },
+  PROPIO_CONFLICTO:   { bg: 'bg-yellow-900/20', text: 'text-yellow-400',   label: '\u26A0\uFE0F Conflicto' },
+  EXTERNO_INVENTARIO: { bg: 'bg-blue-900/20',   text: 'text-blue-400',     label: '\uD83D\uDD35 Externo inventario' },
+  EXTERNO_MANUAL:     { bg: 'bg-[#1a1a1a]',     text: 'text-[#6b7280]',   label: '\u25A2 Externo (conseguir)' },
+};
+
+function fmxEquipo(n: number) {
+  return `$${n.toLocaleString('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+}
+
+function EquiposTab({ proyectoId }: { proyectoId: string }) {
+  const [data, setData] = React.useState<{ lineas: LineaEquipo[]; proveedores: ProveedorOpt[]; proyecto: { fechaEvento: string; fechaMontaje: string | null } } | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [confirmando, setConfirmando] = React.useState<string | null>(null); // lineaId en formulario de confirmación
+  const [saving, setSaving] = React.useState(false);
+  const [expandido, setExpandido] = React.useState<string | null>(null);
+
+  // Formulario de confirmación
+  const [confProveedorId, setConfProveedorId] = React.useState('');
+  const [confMonto, setConfMonto] = React.useState('');
+  const [confFecha, setConfFecha] = React.useState('');
+  const [confGenerarCxP, setConfGenerarCxP] = React.useState(true);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/proyectos/${proyectoId}/equipos-cotizacion`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const d = await res.json();
+      setData(d);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  React.useEffect(() => { load(); }, [proyectoId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function abrirConfirmacion(linea: LineaEquipo) {
+    setConfirmando(linea.id);
+    setConfProveedorId(linea.proveedorId ?? '');
+    setConfMonto(String(linea.costoExterno ?? linea.precioUnitario));
+    // Fecha default = fecha del evento
+    const fe = data?.proyecto.fechaEvento;
+    setConfFecha(fe ? fe.split('T')[0] : '');
+    setConfGenerarCxP(true);
+  }
+
+  async function confirmar() {
+    if (!confirmando || !confProveedorId || !confMonto) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/proyectos/${proyectoId}/equipos-cotizacion`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lineaId: confirmando,
+          proveedorId: confProveedorId,
+          monto: parseFloat(confMonto),
+          fechaCompromiso: confFecha || undefined,
+          generarCxP: confGenerarCxP,
+        }),
+      });
+      if (!res.ok) { alert('Error al confirmar'); return; }
+      setConfirmando(null);
+      await load();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-2 p-4">
+        {[...Array(5)].map((_, i) => <div key={i} className="h-12 bg-[#111] rounded-xl animate-pulse" />)}
+      </div>
+    );
+  }
+
+  if (!data || data.lineas.length === 0) {
+    return (
+      <div className="text-center py-16 text-[#333]">
+        <p className="text-4xl mb-3">\uD83D\uDCE6</p>
+        <p className="text-sm">Este proyecto no tiene equipos cotizados vinculados al inventario.</p>
+        <p className="text-xs text-[#444] mt-1">Agrega equipos desde la cotización para verlos aquí.</p>
+      </div>
+    );
+  }
+
+  const propios = data.lineas.filter(l => l.tipo === 'EQUIPO_PROPIO');
+  const externos = data.lineas.filter(l => l.tipo === 'EQUIPO_EXTERNO');
+  const propiosOk = propios.filter(l => l.clasificacion === 'PROPIO_DISPONIBLE').length;
+  const propiosConflicto = propios.filter(l => l.clasificacion === 'PROPIO_CONFLICTO').length;
+  const externosConfirmados = externos.filter(l => l.yaConfirmado).length;
+
+  const fmtFechaCorta = (iso: string | null) =>
+    iso ? new Date(iso + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '—';
+
+  const fechaRango = data.proyecto.fechaMontaje
+    ? `${fmtFechaCorta(data.proyecto.fechaMontaje.split('T')[0])} \u2192 ${fmtFechaCorta(data.proyecto.fechaEvento.split('T')[0])}`
+    : fmtFechaCorta(data.proyecto.fechaEvento.split('T')[0]);
+
+  return (
+    <div className="space-y-5">
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-semibold text-white">Equipos del proyecto</h2>
+          <p className="text-[#6b7280] text-xs mt-0.5">Disponibilidad verificada para: {fechaRango}</p>
+        </div>
+        <button onClick={load} className="text-xs text-[#555] hover:text-[#B3985B] transition-colors">\u21BB Actualizar</button>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-3">
+          <p className="text-[#6b7280] text-[10px] mb-1">Equipos propios</p>
+          <p className="text-white text-xl font-semibold">{propios.length}</p>
+          <p className="text-[#444] text-[10px]">{propiosOk} disponibles</p>
+        </div>
+        <div className={`border rounded-xl p-3 ${propiosConflicto > 0 ? 'bg-yellow-900/10 border-yellow-800/30' : 'bg-[#111] border-[#1e1e1e]'}`}>
+          <p className="text-[#6b7280] text-[10px] mb-1">Con conflicto</p>
+          <p className={`text-xl font-semibold ${propiosConflicto > 0 ? 'text-yellow-400' : 'text-white'}`}>{propiosConflicto}</p>
+          <p className="text-[#444] text-[10px]">Requieren gestión</p>
+        </div>
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-3">
+          <p className="text-[#6b7280] text-[10px] mb-1">Externos</p>
+          <p className="text-white text-xl font-semibold">{externos.length}</p>
+          <p className="text-[#444] text-[10px]">A conseguir / confirmar</p>
+        </div>
+        <div className={`border rounded-xl p-3 ${externosConfirmados === externos.length && externos.length > 0 ? 'bg-emerald-900/10 border-emerald-800/30' : 'bg-[#111] border-[#1e1e1e]'}`}>
+          <p className="text-[#6b7280] text-[10px] mb-1">Confirmados</p>
+          <p className={`text-xl font-semibold ${externosConfirmados > 0 ? 'text-emerald-400' : 'text-white'}`}>{externosConfirmados}/{externos.length}</p>
+          <p className="text-[#444] text-[10px]">CxP generadas</p>
+        </div>
+      </div>
+
+      {/* Tabla unificada */}
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
+                <th className="text-left px-4 py-2.5 font-medium">Equipo</th>
+                <th className="text-center px-3 py-2.5 font-medium w-24">Cant.</th>
+                <th className="text-center px-3 py-2.5 font-medium w-36">Status</th>
+                <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Proveedor</th>
+                <th className="text-right px-3 py-2.5 font-medium hidden md:table-cell w-28">Precio</th>
+                <th className="text-center px-3 py-2.5 font-medium w-28">Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {/* Propios */}
+              {propios.length > 0 && (
+                <tr className="border-t border-[#1a1a1a]">
+                  <td colSpan={6} className="px-4 py-1.5 bg-[#0d0d0d]">
+                    <span className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">Equipos Propios ({propios.length})</span>
+                  </td>
+                </tr>
+              )}
+              {propios.map(linea => {
+                const badge = CLASIF_BADGE[linea.clasificacion];
+                return (
+                  <React.Fragment key={linea.id}>
+                    <tr className="border-t border-[#161616] hover:bg-[#0d0d0d] transition-colors">
+                      <td className="px-4 py-2.5">
+                        <p className="text-white font-medium">{(linea.marca || linea.modelo) ? [linea.marca, linea.modelo].filter(Boolean).join(' \u00b7 ') : linea.descripcion}</p>
+                        {(linea.marca || linea.modelo) && <p className="text-[#555] text-[10px]">{linea.descripcion}</p>}
+                      </td>
+                      <td className="px-3 py-2.5 text-center text-white font-medium">{linea.cantidad}u \u00d7 {linea.dias}d</td>
+                      <td className="px-3 py-2.5 text-center">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${badge.bg} ${badge.text}`}>
+                          {badge.label}
+                        </span>
+                        {linea.clasificacion === 'PROPIO_CONFLICTO' && linea.conflictos.length > 0 && (
+                          <button onClick={() => setExpandido(expandido === linea.id ? null : linea.id)}
+                            className="ml-1 text-[10px] text-yellow-600 hover:text-yellow-400">ver</button>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 hidden md:table-cell">
+                        <span className="text-[11px] text-[#B3985B] font-medium">Mainstage Pro</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-right hidden md:table-cell">
+                        <span className="text-[#9ca3af] text-xs">{fmxEquipo(linea.precioUnitario)}/d</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        {linea.clasificacion === 'PROPIO_DISPONIBLE' && (
+                          <span className="text-emerald-500 text-[10px]">\u2713 Listo</span>
+                        )}
+                        {linea.clasificacion === 'PROPIO_CONFLICTO' && (
+                          <span className="text-yellow-500 text-[10px]">\u26A0 Verificar</span>
+                        )}
+                      </td>
+                    </tr>
+                    {expandido === linea.id && linea.conflictos.length > 0 && (
+                      <tr className="border-t border-[#1a1a1a] bg-yellow-900/5">
+                        <td colSpan={6} className="px-4 py-2">
+                          <p className="text-[10px] text-yellow-600 uppercase tracking-widest mb-1.5">Comprometido en:</p>
+                          <div className="space-y-1">
+                            {linea.conflictos.map((c, i) => (
+                              <div key={i} className="flex items-center gap-2 text-[11px]">
+                                <span className="font-mono text-[#555]">{c.ref}</span>
+                                <span className="text-white">{c.nombre}</span>
+                                <span className="text-[#444] ml-auto">{fmtFechaCorta(c.fecha)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+
+              {/* Externos */}
+              {externos.length > 0 && (
+                <tr className="border-t border-[#1a1a1a]">
+                  <td colSpan={6} className="px-4 py-1.5 bg-[#0d0d0d]">
+                    <span className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">Equipos Externos ({externos.length})</span>
+                  </td>
+                </tr>
+              )}
+              {externos.map(linea => {
+                const badge = CLASIF_BADGE[linea.clasificacion];
+                const esConfirmando = confirmando === linea.id;
+                return (
+                  <React.Fragment key={linea.id}>
+                    <tr className={`border-t border-[#161616] transition-colors ${esConfirmando ? 'bg-[#0d0d0d]' : 'hover:bg-[#0d0d0d]'}`}>
+                      <td className="px-4 py-2.5">
+                        <p className="text-white font-medium">{(linea.marca || linea.modelo) ? [linea.marca, linea.modelo].filter(Boolean).join(' \u00b7 ') : linea.descripcion}</p>
+                        {(linea.marca || linea.modelo) && <p className="text-[#555] text-[10px]">{linea.descripcion}</p>}
+                      </td>
+                      <td className="px-3 py-2.5 text-center text-white font-medium">{linea.cantidad}u \u00d7 {linea.dias}d</td>
+                      <td className="px-3 py-2.5 text-center">
+                        {linea.yaConfirmado ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-900/20 text-emerald-400">\u2713 Confirmado</span>
+                        ) : (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${badge.bg} ${badge.text}`}>
+                            {badge.label}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 hidden md:table-cell">
+                        {linea.proveedor ? (
+                          <span className="text-[11px] text-white">{linea.proveedor.nombre}</span>
+                        ) : (
+                          <span className="text-[#333] italic text-[11px]">Sin proveedor</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-right hidden md:table-cell">
+                        {linea.cxp ? (
+                          <span className="text-[#B3985B] font-semibold tabular-nums">{fmxEquipo(linea.cxp.monto)}</span>
+                        ) : linea.costoExterno != null ? (
+                          <span className="text-[#9ca3af] tabular-nums">{fmxEquipo(linea.costoExterno)}</span>
+                        ) : (
+                          <span className="text-[#333]">\u2014</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        {linea.yaConfirmado ? (
+                          <button onClick={() => abrirConfirmacion(linea)}
+                            className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors">Editar</button>
+                        ) : (
+                          <button onClick={() => abrirConfirmacion(linea)}
+                            className="text-[10px] bg-[#B3985B] hover:bg-[#c4aa6b] text-black font-semibold px-2.5 py-1 rounded-lg transition-colors">Confirmar</button>
+                        )}
+                      </td>
+                    </tr>
+
+                    {/* Formulario de confirmación inline */}
+                    {esConfirmando && (
+                      <tr className="border-t border-[#B3985B]/20 bg-[#0a0a0a]">
+                        <td colSpan={6} className="px-4 py-4">
+                          <div className="max-w-xl">
+                            <p className="text-xs font-semibold text-white mb-3">
+                              {linea.yaConfirmado ? 'Editar confirmaci\u00f3n' : 'Confirmar equipo externo'}: {linea.descripcion}
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                              <div>
+                                <label className="text-[10px] text-[#6b7280] uppercase tracking-wider block mb-1">Proveedor *</label>
+                                <select value={confProveedorId} onChange={e => setConfProveedorId(e.target.value)}
+                                  className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]/50">
+                                  <option value="">— Selecciona —</option>
+                                  {(data?.proveedores ?? []).map(p => (
+                                    <option key={p.id} value={p.id}>{p.nombre}{p.empresa ? ` \u00b7 ${p.empresa}` : ''}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-[#6b7280] uppercase tracking-wider block mb-1">Precio confirmado *</label>
+                                <div className="relative">
+                                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#555] text-xs">$</span>
+                                  <input type="number" value={confMonto} onChange={e => setConfMonto(e.target.value)} min={0}
+                                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg pl-6 pr-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                    placeholder="0" />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-[#6b7280] uppercase tracking-wider block mb-1">Fecha compromiso pago</label>
+                                <input type="date" value={confFecha} onChange={e => setConfFecha(e.target.value)}
+                                  className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]/50" />
+                              </div>
+                            </div>
+                            <label className="flex items-center gap-2 text-xs text-[#9ca3af] mb-3 cursor-pointer">
+                              <input type="checkbox" checked={confGenerarCxP} onChange={e => setConfGenerarCxP(e.target.checked)}
+                                className="accent-[#B3985B] w-3.5 h-3.5" />
+                              Generar cuenta por pagar al proveedor
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <button onClick={confirmar} disabled={saving || !confProveedorId || !confMonto}
+                                className="bg-[#B3985B] hover:bg-[#c4aa6b] disabled:opacity-40 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+                                {saving ? 'Guardando...' : linea.yaConfirmado ? 'Guardar cambios' : 'Confirmar equipo'}
+                              </button>
+                              <button onClick={() => setConfirmando(null)}
+                                className="border border-[#333] text-[#6b7280] hover:text-white text-xs px-3 py-2 rounded-lg transition-colors">Cancelar</button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProyectoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
@@ -1100,7 +1457,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Estado para confirmación de borrado
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
   const [borrando, setBorrando] = useState(false);
-  const [activeTab, setActiveTab] = useState<'resumen'|'operacion'|'extras'|'finanzas'>('resumen');
+  const [activeTab, setActiveTab] = useState<'resumen'|'operacion'|'extras'|'finanzas'|'equipos'>('resumen');
 
   // ── Pago a inversionistas por uso de equipos propios ──────────────────────
   type PagoSociosData = {
@@ -3074,6 +3431,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               { id: 'operacion', label: 'Operación' },
               { id: 'extras',    label: 'Extras' },
               { id: 'finanzas',  label: 'Finanzas' },
+              { id: 'equipos',   label: 'Equipos' },
             ] as const).map(item => (
               <button
                 key={item.id}
@@ -7498,6 +7856,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         </div>
       );
     })()}
+
+        {/* ──── EQUIPOS tab ──── */}
+        {activeTab === 'equipos' && (
+          <EquiposTab proyectoId={proyecto.id} />
+        )}
+
     {/* ── PDF Preview Modal ── */}
     {pdfPreview && (
       <PDFPreviewModal

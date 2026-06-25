@@ -53,7 +53,7 @@ function fmtFecha(iso: string) {
   });
 }
 
-const MAX_FECHAS = 3;
+const MAX_FECHAS = 8;
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function DisponibilidadPage() {
