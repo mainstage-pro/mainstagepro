@@ -27,7 +27,7 @@ export async function GET(
 
   const { id } = await params;
 
-  // ── Cargar proyecto con cotización y fechas ───────────────────────────────
+  // ── Cargar proyecto con cotización, fechas y datos financieros reales ───
   const proyecto = await prisma.proyecto.findUnique({
     where: { id },
     select: {
@@ -58,9 +58,9 @@ export async function GET(
           },
         },
       },
-      // CxPs ya generadas para este proyecto a socios
+      // Datos financieros reales para calcular margen real
+      cuentasCobrar: { select: { monto: true, montoCobrado: true } },
       cuentasPagar: {
-        where: { tipoAcreedor: "SOCIO" },
         select: {
           id: true,
           socioId: true,
@@ -69,8 +69,12 @@ export async function GET(
           fechaCompromiso: true,
           concepto: true,
           createdAt: true,
+          tipoAcreedor: true,
         },
       },
+      movimientos: { where: { tipo: "GASTO" }, select: { monto: true, tipo: true } },
+      equipos: { select: { costoExterno: true, cantidad: true } },
+      cierreFinanciero: { select: { margenReal: true, totalCobrado: true, totalGastado: true } },
     },
   });
 
@@ -83,12 +87,35 @@ export async function GET(
   const msPerDay = 1000 * 60 * 60 * 24;
   const diasEvento = Math.max(1, Math.round((fechaFin.getTime() - fechaInicio.getTime()) / msPerDay) + 1);
 
-  // ── Calcular viabilidad ───────────────────────────────────────────────────
-  const pctUtilidad = proyecto.cotizacion.porcentajeUtilidad ?? 0;
+  // ── Calcular viabilidad REAL (misma lógica que UI Gastos del proyecto) ────────
+  let pctUtilidad: number;
+  if (proyecto.cierreFinanciero && proyecto.cierreFinanciero.totalCobrado > 0) {
+    // Si ya hay cierre guardado, usar el margen real del cierre
+    pctUtilidad = proyecto.cierreFinanciero.margenReal / 100;
+  } else {
+    // Calcular en tiempo real: misma fórmula que el cierre API y la UI
+    const totalCobrado = proyecto.cuentasCobrar.reduce((s, c) => s + Number(c.montoCobrado ?? 0), 0);
+    const cxpNoTecPendiente = proyecto.cuentasPagar
+      .filter(c => c.tipoAcreedor !== "TECNICO" && c.estado !== "LIQUIDADO")
+      .reduce((s, c) => s + Number(c.monto), 0);
+    const gastosMovimientos = proyecto.movimientos
+      .filter(m => m.tipo === "GASTO")
+      .reduce((s, m) => s + Number(m.monto), 0);
+    const costoEquiposExternos = proyecto.equipos.reduce(
+      (s, e) => s + Number(e.costoExterno ?? 0) * Number(e.cantidad), 0
+    );
+    const totalGastado = cxpNoTecPendiente + gastosMovimientos + costoEquiposExternos;
+    const utilidadReal = totalCobrado - totalGastado;
+    pctUtilidad = totalCobrado > 0 ? utilidadReal / totalCobrado : proyecto.cotizacion.porcentajeUtilidad ?? 0;
+  }
+
   const tier = getTier(pctUtilidad);
   const lineasPropio = proyecto.cotizacion.lineas;
   const totalEquipoPropio = lineasPropio.reduce((s, l) => s + l.subtotal, 0);
   const montoInversionista = totalEquipoPropio * tier.pct;
+
+  // ── Filtrar solo CxPs de socios para el mapeo ──
+  const cxpsSocios = proyecto.cuentasPagar.filter(c => c.tipoAcreedor === "SOCIO" || c.socioId);
 
   // ── Cargar socios activos ─────────────────────────────────────────────────
   const socios = await prisma.socio.findMany({
@@ -103,8 +130,8 @@ export async function GET(
   });
 
   // Mapear CxPs existentes por socioId
-  const cxpPorSocio: Record<string, typeof proyecto.cuentasPagar[0]> = {};
-  for (const cxp of proyecto.cuentasPagar) {
+  const cxpPorSocio: Record<string, typeof cxpsSocios[0]> = {};
+  for (const cxp of cxpsSocios) {
     if (cxp.socioId) cxpPorSocio[cxp.socioId] = cxp;
   }
 

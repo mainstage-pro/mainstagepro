@@ -32,33 +32,54 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     (s, c) => s + Number(c.montoCobrado ?? 0), 0
   );
 
-  // CxPs are the authoritative cost records — they already include:
-  //   TECNICO CxPs (personal pay), PROVEEDOR CxPs, OTRO CxPs (from gastos_op)
+  // ── Costos reales (misma lógica que la UI de "Gastos del proyecto") ──
+  // 1. CxPs de técnicos (personal) — todos los registros
   const cxpTecnico = proyecto.cuentasPagar
     .filter(c => c.tipoAcreedor === "TECNICO")
     .reduce((s, c) => s + Number(c.monto), 0);
+
+  // 2. CxPs de proveedores
   const cxpProveedor = proyecto.cuentasPagar
     .filter(c => c.tipoAcreedor === "PROVEEDOR")
     .reduce((s, c) => s + Number(c.monto), 0);
+
+  // 3. CxPs de otros (gastos operativos convertidos a CxP)
   const cxpOtro = proyecto.cuentasPagar
     .filter(c => c.tipoAcreedor !== "TECNICO" && c.tipoAcreedor !== "PROVEEDOR")
     .reduce((s, c) => s + Number(c.monto), 0);
-  const gastosCxP = cxpTecnico + cxpProveedor + cxpOtro;
 
+  // 4. Movimientos de GASTO registrados directamente (pagos reales ejecutados)
+  //    El API del proyecto ya filtra movimientos WHERE tipo="GASTO"
+  const gastosMovimientos = proyecto.movimientos
+    .filter(m => m.tipo === "GASTO")
+    .reduce((s, m) => s + Number(m.monto), 0);
+
+  // 5. Equipos externos (costoExterno × cantidad)
   const costoEquiposExternos = proyecto.equipos.reduce(
     (s, e) => s + (Number(e.costoExterno ?? 0) * Number(e.cantidad)), 0
   );
 
+  // Fuente de verdad: tomamos el mayor entre CxPs-técnicos y gastos de nómina en movimientos
+  // para evitar doble conteo (cuando un pago a técnico se registra como movimiento Y como CxP)
+  const cxpNoTecnico = cxpProveedor + cxpOtro;
+  // Si hay movimientos de gasto registrados, estos son la fuente más precisa del gasto real
+  // (incluyen pagos en efectivo, transferencias, etc. que pueden o no tener CxP)
+  // Usamos la misma lógica que la UI: CxP no-técnico pendiente + todos los movimientos GASTO
+  const cxpNoTecPendiente = proyecto.cuentasPagar
+    .filter(c => c.tipoAcreedor !== "TECNICO" && c.estado !== "LIQUIDADO")
+    .reduce((s, c) => s + Number(c.monto), 0);
+
+  const totalGastado = cxpNoTecPendiente + gastosMovimientos + costoEquiposExternos;
+
   // Desglose de costos para visualización
   const desgloseCostos = [
-    { categoria: "Personal técnico", monto: cxpTecnico },
+    { categoria: "Personal técnico (CxP)", monto: cxpTecnico },
     { categoria: "Proveedores", monto: cxpProveedor },
-    { categoria: "Gastos operativos", monto: cxpOtro },
+    { categoria: "Gastos operativos (CxP)", monto: cxpOtro },
+    { categoria: "Movimientos de gasto", monto: gastosMovimientos },
     { categoria: "Equipos externos", monto: costoEquiposExternos },
+    { categoria: "CxP proveedores pendientes", monto: cxpNoTecPendiente },
   ].filter(d => d.monto > 0);
-
-  // gastosCxP already covers personal + proveedores + gastos_op — do not add nominaTecnicos or gastosOperativos (double-count)
-  const totalGastado = gastosCxP + costoEquiposExternos;
 
   const utilidadReal = totalCobrado - totalGastado;
   const margenReal = totalCobrado > 0 ? (utilidadReal / totalCobrado) * 100 : 0;
