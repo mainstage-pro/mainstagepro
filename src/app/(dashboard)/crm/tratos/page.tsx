@@ -114,8 +114,9 @@ const TIPO_SERVICIO_LABELS: Record<string, string> = {
 type OrdenTrato = 'urgencia' | 'fechaEvento' | 'fechaAgregado' | 'sinActividad';
 
 function groupTratosByMes(tratos: Trato[], ordenTrato: OrdenTrato = 'urgencia') {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Comparar por mes completo, no por día — junio no es "pasado" si aún estamos en junio
+  const now = new Date();
+  const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
   const map: Record<string, { label: string; yearMonth: string; tratos: Trato[]; isPast: boolean }> = {};
 
@@ -129,7 +130,8 @@ function groupTratosByMes(tratos: Trato[], ordenTrato: OrdenTrato = 'urgencia') 
     const year = d.getUTCFullYear();
     const month = d.getUTCMonth();
     const yearMonth = `${year}-${String(month + 1).padStart(2, '0')}`;
-    const isPast = d < today;
+    // Un mes es "pasado" solo si es ANTERIOR al mes actual completo
+    const isPast = yearMonth < currentYearMonth;
     const label = d.toLocaleDateString('es-MX', { month: 'long', year: 'numeric', timeZone: 'UTC' });
     if (!map[yearMonth]) map[yearMonth] = { label, yearMonth, tratos: [], isPast };
     map[yearMonth].tratos.push(t);
@@ -984,7 +986,20 @@ function CompactTratoRow({
           </span>
         </div>
 
-        {/* COL 3 — Seguimiento */}
+        {/* COL 3 — Fecha evento */}
+        <div className="hidden md:block w-[90px] shrink-0">
+          {t.fechaEventoEstimada ? (
+            <span className="text-[11px] text-[#888]">
+              {new Date(t.fechaEventoEstimada + 'T12:00:00Z').toLocaleDateString('es-MX', {
+                day: 'numeric', month: 'short', timeZone: 'UTC'
+              })}
+            </span>
+          ) : (
+            <span className="text-[11px] text-[#333]">—</span>
+          )}
+        </div>
+
+        {/* COL 4 — Seguimiento */}
         <div className="hidden md:block w-[110px] shrink-0">
           <span className={`text-[11px] ${seg.pill ? 'px-2 py-0.5 rounded-md' : ''} ${seg.cls}`}>
             {seg.label}
