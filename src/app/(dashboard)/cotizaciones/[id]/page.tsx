@@ -1717,17 +1717,96 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             </div>
           )}
 
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-sm space-y-2">
-            <div className="flex justify-between text-gray-400">
-              <span>Costos operativos</span><span>{formatCurrency(costoVivo)}</span>
+          {/* ── Viabilidad detallada ── */}
+          <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-sm">
+            {/* Título + semáforo */}
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider">Viabilidad</p>
+              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                semaforo === 'IDEAL'   ? 'bg-emerald-500/15 text-emerald-400' :
+                semaforo === 'REGULAR' ? 'bg-yellow-500/15 text-yellow-400' :
+                semaforo === 'MINIMO'  ? 'bg-orange-500/15 text-orange-400' :
+                                         'bg-red-500/15 text-red-400'
+              }`}>{semaforo}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Utilidad estimada</span>
-              <span className={utilidadViva >= 0 ? "text-green-400" : "text-red-400"}>{formatCurrency(utilidadViva)}</span>
+
+            {/* Barra proporcional: verde = libre, rojo = costos */}
+            <div className="mb-1">
+              <div className="h-3 bg-[#1a1a1a] rounded-full overflow-hidden flex gap-px">
+                {/* Segmento verde — ingresos libres */}
+                <div
+                  className="h-full rounded-l-full transition-all duration-500"
+                  style={{
+                    width: `${Math.max(0, Math.min(100, (utilidadViva / (cot.total || 1)) * 100))}%`,
+                    background: utilidadViva >= 0
+                      ? 'linear-gradient(90deg, #10b981, #34d399)'
+                      : 'transparent',
+                  }}
+                />
+                {/* Segmento rojo — costos */}
+                <div
+                  className="h-full rounded-r-full transition-all duration-500"
+                  style={{
+                    width: `${Math.max(0, Math.min(100, (costoVivo / (cot.total || 1)) * 100))}%`,
+                    background: 'linear-gradient(90deg, #f97316, #ef4444)',
+                  }}
+                />
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Margen</span>
-              <span className={`font-semibold ${semaforoColor}`}>{formatPct(pctVivo)} — {semaforo}</span>
+            {/* Leyenda de barra */}
+            <div className="flex items-center gap-3 mb-4 text-[10px] text-gray-500">
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block shrink-0"/>
+                Libre {formatPct(pctVivo)}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-orange-500 inline-block shrink-0"/>
+                Costos {formatPct(cot.total > 0 ? costoVivo / cot.total : 0)}
+              </span>
+            </div>
+
+            {/* Desglose por categoría */}
+            <div className="space-y-1.5 border-t border-[#1e1e1e] pt-3">
+              {subtotalEquipo > 0 && (
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-gray-500">Equipos propios</span>
+                  <span className="text-gray-400 tabular-nums">{formatCurrency(subtotalEquipo)}</span>
+                </div>
+              )}
+              {subtotalExterno > 0 && (
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-gray-500">Equipos externos</span>
+                  <span className="text-orange-400/80 tabular-nums">{formatCurrency(subtotalExterno)}</span>
+                </div>
+              )}
+              {subtotalOp > 0 && (
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-gray-500">Operación / DJ</span>
+                  <span className="text-orange-400/80 tabular-nums">{formatCurrency(subtotalOp)}</span>
+                </div>
+              )}
+              {subtotalLog > 0 && (
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-gray-500">Logística</span>
+                  <span className="text-orange-400/80 tabular-nums">{formatCurrency(subtotalLog)}</span>
+                </div>
+              )}
+              {subtotalOcasional > 0 && (
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-gray-500">Otros</span>
+                  <span className="text-orange-400/80 tabular-nums">{formatCurrency(subtotalOcasional)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-[11px] pt-1.5 border-t border-[#1e1e1e]">
+                <span className="text-gray-400">Total costos</span>
+                <span className="text-gray-300 tabular-nums font-medium">{formatCurrency(costoVivo)}</span>
+              </div>
+              <div className="flex justify-between text-[13px] pt-0.5">
+                <span className="text-gray-300 font-semibold">Utilidad estimada</span>
+                <span className={`font-bold tabular-nums ${utilidadViva >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {formatCurrency(utilidadViva)}
+                </span>
+              </div>
             </div>
           </div>
 

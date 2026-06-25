@@ -19,10 +19,18 @@ export async function GET(req: NextRequest) {
     },
     include: {
       cliente: { select: { id: true, nombre: true, empresa: true } },
-      cotizacion: { select: { granTotal: true, costosTotalesEstimados: true, utilidadEstimada: true } },
+      cotizacion: {
+        select: {
+          granTotal: true,
+          total: true,
+          costosTotalesEstimados: true,
+          utilidadEstimada: true,
+          lineas: {
+            select: { tipo: true, subtotal: true, esIncluido: true },
+          },
+        },
+      },
       cuentasCobrar: { select: { monto: true, montoCobrado: true, estado: true } },
-      // CxP already covers ALL costs: gastos operativos auto-create "OTRO" CxPs,
-      // personal fees create "TECNICO" CxPs — no need to also include gastosOperativos/personal
       cuentasPagar: { select: { monto: true } },
     },
     orderBy: { fechaEvento: "desc" },
@@ -32,13 +40,17 @@ export async function GET(req: NextRequest) {
   const datosProyectos = proyectos.map(p => {
     const granTotal = Number(p.cotizacion?.granTotal ?? 0);
     const cobrado = p.cuentasCobrar.reduce((s, c) => s + Number(c.montoCobrado ?? 0), 0);
-    // FIX: Use only cuentasPagar — it already aggregates all costs:
-    // - GastoOperativo creates a linked "OTRO" CuentaPagar automatically
-    // - Confirmed personal fees create a "TECNICO" CuentaPagar automatically
-    // Adding gastosOperativos + nomina separately = double/triple counting
     const costoTotal = p.cuentasPagar.reduce((s, c) => s + Number(c.monto), 0);
     const utilidad = cobrado - costoTotal;
     const margen = cobrado > 0 ? (utilidad / cobrado) * 100 : 0;
+
+    // ── Utilidad pronosticada (recalculada desde líneas, igual que sidebar) ──
+    const totalCot = Number(p.cotizacion?.total ?? 0);
+    const costoPronosticado = (p.cotizacion?.lineas ?? [])
+      .filter(l => !l.esIncluido && ["OPERACION_TECNICA", "DJ", "TRANSPORTE", "COMIDA", "HOSPEDAJE"].includes(l.tipo))
+      .reduce((s, l) => s + Number(l.subtotal), 0);
+    const utilidadPronosticada = totalCot > 0 ? totalCot - costoPronosticado : null;
+    const margenPronosticado = totalCot > 0 ? ((totalCot - costoPronosticado) / totalCot) * 100 : null;
 
     return {
       id: p.id,
@@ -56,6 +68,8 @@ export async function GET(req: NextRequest) {
       costoTotal,
       utilidad,
       margen,
+      utilidadPronosticada,
+      margenPronosticado,
       estado: p.estado,
     };
   });

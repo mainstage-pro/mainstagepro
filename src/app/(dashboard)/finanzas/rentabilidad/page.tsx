@@ -19,6 +19,8 @@ type Proyecto = {
   costoTotal: number;
   utilidad: number;
   margen: number;
+  utilidadPronosticada: number | null;
+  margenPronosticado: number | null;
   estado: string;
 };
 
@@ -220,9 +222,9 @@ export default function RentabilidadPage() {
               {proyectosFiltrados.length === 0 ? (
                 <p className="text-xs text-gray-600 text-center py-8">Sin resultados</p>
               ) : proyectosFiltrados.map(p => (
-                <div key={p.id} className="px-4 py-3 hover:bg-[#141414] transition-colors">
+                <div key={p.id} className="px-4 py-4 hover:bg-[#141414] transition-colors">
                   <div className="flex items-start gap-3">
-                    {/* Margen visual */}
+                    {/* Margen real visual */}
                     <div className="flex flex-col items-center shrink-0 w-14">
                       <span className={`text-sm font-bold tabular-nums ${margenColor(p.margen)}`}>{fmtPct(p.margen)}</span>
                       <div className="h-1 bg-[#1e1e1e] rounded-full w-full mt-1">
@@ -231,6 +233,7 @@ export default function RentabilidadPage() {
                           style={{ width: `${Math.max(0, Math.min(100, p.margen))}%` }}
                         />
                       </div>
+                      <span className="text-[9px] text-gray-600 mt-0.5">real</span>
                     </div>
 
                     {/* Info */}
@@ -241,6 +244,9 @@ export default function RentabilidadPage() {
                         {p.tipoEvento && (
                           <span className="text-[9px] bg-[#1e1e1e] text-gray-500 px-1.5 py-0.5 rounded">{p.tipoEvento}</span>
                         )}
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
+                          p.estado === 'COMPLETADO' ? 'bg-emerald-900/30 text-emerald-500' : 'bg-blue-900/30 text-blue-400'
+                        }`}>{p.estado === 'COMPLETADO' ? 'Completado' : 'En curso'}</span>
                       </div>
                       <div className="flex items-center gap-3 mt-0.5 flex-wrap">
                         <p className="text-[10px] text-gray-500">{p.clienteNombre}{p.clienteEmpresa ? ` · ${p.clienteEmpresa}` : ""}</p>
@@ -248,15 +254,65 @@ export default function RentabilidadPage() {
                           <p className="text-[10px] text-gray-600">{fmtFecha(p.fechaEvento)}</p>
                         )}
                       </div>
+
+                      {/* Pronosticado vs Real */}
+                      <div className="mt-2.5 grid grid-cols-2 gap-2">
+                        {/* Pronosticado */}
+                        <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2">
+                          <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-1">Pronosticado</p>
+                          {p.utilidadPronosticada !== null ? (
+                            <>
+                              <p className={`text-[12px] font-bold tabular-nums ${
+                                p.utilidadPronosticada >= 0 ? 'text-emerald-400' : 'text-red-400'
+                              }`}>{fmt(p.utilidadPronosticada)}</p>
+                              <p className="text-[10px] text-gray-500">
+                                {p.margenPronosticado !== null ? `${p.margenPronosticado.toFixed(1)}% margen` : ''}
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-[11px] text-gray-600">Sin cotización</p>
+                          )}
+                        </div>
+                        {/* Real */}
+                        <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2">
+                          <p className="text-[9px] text-gray-600 uppercase tracking-wider mb-1">Real</p>
+                          <p className={`text-[12px] font-bold tabular-nums ${
+                            p.utilidad >= 0 ? 'text-white' : 'text-red-400'
+                          }`}>{fmt(p.utilidad)}</p>
+                          <p className="text-[10px] text-gray-500">
+                            {p.margen.toFixed(1)}% margen
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Delta pronosticado vs real */}
+                      {p.utilidadPronosticada !== null && (
+                        <div className="mt-1.5 flex items-center gap-1.5">
+                          {(() => {
+                            const delta = p.utilidad - p.utilidadPronosticada;
+                            const isPositive = delta >= 0;
+                            return (
+                              <>
+                                <span className={`text-[10px] font-semibold tabular-nums ${
+                                  isPositive ? 'text-emerald-400' : 'text-red-400'
+                                }`}>
+                                  {isPositive ? '▲' : '▼'} {fmt(Math.abs(delta))}
+                                </span>
+                                <span className="text-[10px] text-gray-600">
+                                  {isPositive ? 'por encima' : 'por debajo'} del pronóstico
+                                </span>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
                     </div>
 
-                    {/* Números */}
+                    {/* Cobrado */}
                     <div className="text-right shrink-0 space-y-0.5">
+                      <p className="text-[10px] text-gray-600 uppercase tracking-wider">Cobrado</p>
                       <p className="text-sm font-bold text-emerald-400 tabular-nums">{fmt(p.cobrado)}</p>
-                      <p className="text-[11px] text-gray-600 tabular-nums">− {fmt(p.costoTotal)} costo</p>
-                      <p className={`text-[11px] font-semibold tabular-nums ${p.utilidad >= 0 ? "text-white" : "text-red-400"}`}>
-                        = {fmt(p.utilidad)}
-                      </p>
+                      <p className="text-[11px] text-gray-600 tabular-nums">− {fmt(p.costoTotal)} costos</p>
                     </div>
                   </div>
                 </div>
