@@ -369,6 +369,24 @@ export default function InventarioMaestroPage() {
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [kpis, setKpis] = useState<Kpis | null>(null);
   const [loading, setLoading] = useState(true);
+  const [savingInline, setSavingInline] = useState<string | null>(null); // equipoId
+
+  // Edición inline — guarda un campo sin abrir el modal
+  async function patchEquipo(id: string, campo: string, valor: string | number | null) {
+    setSavingInline(id);
+    try {
+      const res = await fetch(`/api/equipos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [campo]: valor }),
+      });
+      if (!res.ok) { toast.error("Error al guardar"); return; }
+      // Actualización optimista en el estado local
+      setEquipos(prev => prev.map(e => e.id === id ? { ...e, [campo]: valor } : e));
+    } finally {
+      setSavingInline(null);
+    }
+  }
 
   // Supplier management state
   const [showAddProveedor, setShowAddProveedor] = useState(false);
@@ -792,22 +810,87 @@ export default function InventarioMaestroPage() {
                                   </div>
                                 </div>
                               </td>
+                              {/* Tipo — select inline */}
                               <td className="px-3 py-2.5 text-center">
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${e.tipo === "PROPIO" ? "bg-[#1a1a1a] text-[#6b7280]" : "bg-blue-900/20 text-blue-400"}`}>
-                                  {e.tipo === "PROPIO" ? "Propio" : "Externo"}
-                                </span>
+                                <select
+                                  value={e.tipo}
+                                  disabled={savingInline === e.id}
+                                  onChange={ev => patchEquipo(e.id, "tipo", ev.target.value)}
+                                  onClick={ev => ev.stopPropagation()}
+                                  className={`bg-transparent border-none text-[10px] font-medium cursor-pointer focus:outline-none rounded px-1 py-0.5 transition-colors ${
+                                    e.tipo === "PROPIO" ? "text-[#6b7280]" : "text-blue-400"
+                                  } hover:bg-[#1e1e1e]`}
+                                >
+                                  <option value="PROPIO" className="bg-[#111] text-white">Propio</option>
+                                  <option value="EXTERNO" className="bg-[#111] text-white">Externo</option>
+                                </select>
                               </td>
+                              {/* Estado — select inline */}
                               <td className="px-3 py-2.5 text-center hidden sm:table-cell">
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${ESTADO_BADGE[e.estado] ?? "bg-[#1a1a1a] text-[#6b7280]"}`}>
-                                  {ESTADO_LABEL[e.estado] ?? e.estado}
-                                </span>
+                                <select
+                                  value={e.estado}
+                                  disabled={savingInline === e.id}
+                                  onChange={ev => patchEquipo(e.id, "estado", ev.target.value)}
+                                  onClick={ev => ev.stopPropagation()}
+                                  className={`bg-transparent border-none text-[10px] font-medium cursor-pointer focus:outline-none rounded px-1 py-0.5 hover:bg-[#1e1e1e] transition-colors ${
+                                    e.estado === 'ACTIVO' ? 'text-green-400' :
+                                    e.estado === 'EN_MANTENIMIENTO' ? 'text-yellow-400' : 'text-red-400'
+                                  }`}
+                                >
+                                  <option value="ACTIVO" className="bg-[#111] text-white">Activo</option>
+                                  <option value="EN_MANTENIMIENTO" className="bg-[#111] text-white">En mantenimiento</option>
+                                  <option value="DADO_DE_BAJA" className="bg-[#111] text-white">Dado de baja</option>
+                                </select>
                               </td>
-                              <td className="px-3 py-2.5 text-right text-white font-medium">{e.cantidadTotal}</td>
-                              <td className="px-4 py-2.5 text-right text-[#B3985B] font-medium">
-                                {e.precioRenta === 0 ? <span className="text-[#444]">Incluye</span> : fmx(e.precioRenta)}
+                              {/* Cantidad — input inline */}
+                              <td className="px-3 py-2.5 text-right">
+                                <input
+                                  type="number"
+                                  defaultValue={e.cantidadTotal}
+                                  min={1}
+                                  disabled={savingInline === e.id}
+                                  onClick={ev => ev.stopPropagation()}
+                                  onBlur={ev => {
+                                    const val = parseInt(ev.target.value) || 1;
+                                    if (val !== e.cantidadTotal) patchEquipo(e.id, "cantidadTotal", val);
+                                  }}
+                                  onKeyDown={ev => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); }}
+                                  className="w-12 bg-transparent text-white font-medium text-right text-xs border-b border-transparent hover:border-[#333] focus:border-[#B3985B]/50 focus:outline-none transition-colors disabled:opacity-50"
+                                />
                               </td>
+                              {/* Precio renta — input inline */}
+                              <td className="px-4 py-2.5 text-right">
+                                <input
+                                  type="number"
+                                  defaultValue={e.precioRenta}
+                                  min={0}
+                                  disabled={savingInline === e.id}
+                                  onClick={ev => ev.stopPropagation()}
+                                  onBlur={ev => {
+                                    const val = parseFloat(ev.target.value) || 0;
+                                    if (val !== e.precioRenta) patchEquipo(e.id, "precioRenta", val);
+                                  }}
+                                  onKeyDown={ev => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); }}
+                                  className="w-24 bg-transparent text-[#B3985B] font-medium text-right text-xs border-b border-transparent hover:border-[#333] focus:border-[#B3985B]/50 focus:outline-none transition-colors disabled:opacity-50"
+                                />
+                              </td>
+                              {/* Valor activo — input inline */}
                               <td className="px-4 py-2.5 text-right hidden lg:table-cell">
-                                {valorActivo != null ? <span className="text-[#9ca3af]">{fmx(valorActivo)}</span> : <span className="text-[#333]">—</span>}
+                                <input
+                                  type="number"
+                                  defaultValue={valorActivo ?? ""}
+                                  min={0}
+                                  placeholder="—"
+                                  disabled={savingInline === e.id}
+                                  onClick={ev => ev.stopPropagation()}
+                                  onBlur={ev => {
+                                    const raw = ev.target.value;
+                                    const val = raw === "" ? null : parseFloat(raw);
+                                    if (val !== valorActivo) patchEquipo(e.id, "costoInternoEstimado", val);
+                                  }}
+                                  onKeyDown={ev => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); }}
+                                  className="w-24 bg-transparent text-[#9ca3af] font-medium text-right text-xs border-b border-transparent hover:border-[#333] focus:border-[#B3985B]/50 focus:outline-none transition-colors placeholder-[#333] disabled:opacity-50"
+                                />
                               </td>
                               <td className="px-4 py-2.5 text-right hidden lg:table-cell">
                                 {valorFilaTotal != null ? <span className="text-white font-medium">{fmx(valorFilaTotal)}</span> : <span className="text-[#333]">—</span>}
