@@ -3987,7 +3987,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Datos del evento</p>
 
               {/* Tipo de evento + servicio — badges estáticos */}
-              <div className="flex flex-wrap gap-2 mb-4">
+              <div className="flex flex-wrap gap-2 mb-5">
                 {proyecto.tipoEvento && (() => {
                   const TE: Record<string, string> = { MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial", OTRO: "Otro" };
                   return <span className="px-2.5 py-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-gray-300 text-xs">{TE[proyecto.tipoEvento] ?? proyecto.tipoEvento}</span>;
@@ -4003,11 +4003,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                <div className="col-span-2">
-                  <Campo label="Lugar del evento" value={proyecto.lugarEvento} field="lugarEvento" onSave={guardarCampo} />
+              {!esRenta && (<>
+                {/* ── Subsección 1: Información general ── */}
+                <div className="flex items-center gap-3 mb-3">
+                  <p className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold whitespace-nowrap">Información general</p>
+                  <div className="flex-1 h-px bg-[#1e1e1e]" />
                 </div>
-                {!esRenta && (<>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3 mb-5">
+                  <div className="col-span-2">
+                    <Campo label="Lugar del evento" value={proyecto.lugarEvento} field="lugarEvento" onSave={guardarCampo} />
+                  </div>
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <p className="text-gray-500 text-xs">Encargado del lugar</p>
@@ -4029,11 +4034,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div className="col-span-1" />
                   <HourPicker label="Hora inicio del evento" value={proyecto.horaInicioEvento} field="horaInicioEvento" onSave={guardarCampo} />
                   <HourPicker label="Hora fin del evento" value={proyecto.horaFinEvento} field="horaFinEvento" onSave={guardarCampo} />
-                  <Campo label="Fecha de montaje" value={proyecto.fechaMontaje?.toString().substring(0, 10) ?? null} field="fechaMontaje" type="date" onSave={guardarCampo} />
-                  <HourPicker label="Hora de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" onSave={guardarCampo} />
-                  <Campo label="Duración montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? null} field="duracionMontajeHrs" type="number" onSave={guardarCampo} />
-                  <Campo label="Hora desmontaje/salida" value={proyecto.horaDesmontaje} field="horaDesmontaje" type="time" onSave={guardarCampo} />
-                  <div className="col-span-1" />
+                </div>
+
+                {/* ── Subsección 2: Información del venue ── */}
+                <div className="flex items-center gap-3 mb-3">
+                  <p className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold whitespace-nowrap">Información del venue</p>
+                  <div className="flex-1 h-px bg-[#1e1e1e]" />
+                </div>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3 mb-5">
                   <div className="col-span-2">
                     <Campo label="Dirección del venue" value={proyecto.direccionVenue} field="direccionVenue" onSave={guardarCampo} />
                   </div>
@@ -4043,6 +4051,18 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div className="col-span-2">
                     <Campo label="Indicaciones de acceso" value={proyecto.indicacionesAcceso} field="indicacionesAcceso" type="textarea" onSave={guardarCampo} />
                   </div>
+                </div>
+
+                {/* ── Subsección 3: Logística de montaje ── */}
+                <div className="flex items-center gap-3 mb-3">
+                  <p className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold whitespace-nowrap">Logística de montaje</p>
+                  <div className="flex-1 h-px bg-[#1e1e1e]" />
+                </div>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                  <Campo label="Fecha de montaje" value={proyecto.fechaMontaje?.toString().substring(0, 10) ?? null} field="fechaMontaje" type="date" onSave={guardarCampo} />
+                  <HourPicker label="Hora de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" onSave={guardarCampo} />
+                  <Campo label="Duración montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? null} field="duracionMontajeHrs" type="number" onSave={guardarCampo} />
+                  <Campo label="Hora desmontaje/salida" value={proyecto.horaDesmontaje} field="horaDesmontaje" type="time" onSave={guardarCampo} />
                   <Campo label="Punto de salida bodega" value={proyecto.puntoSalidaBodega} field="puntoSalidaBodega" type="text" onSave={guardarCampo} />
                   <HourPicker label="Hora salida bodega" value={proyecto.horaSalidaBodega} field="horaSalidaBodega" onSave={guardarCampo} />
                   {/* ── Llamado en bodega (fecha + hora) ── */}
@@ -4078,10 +4098,20 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       />
                     </div>
                   </div>
-                </>)}
-              </div>
+                </div>
+              </>)}
+
+              {/* Campos para RENTA (sin subsecciones) */}
+              {esRenta && (
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                  <div className="col-span-2">
+                    <Campo label="Lugar del evento" value={proyecto.lugarEvento} field="lugarEvento" onSave={guardarCampo} />
+                  </div>
+                </div>
+              )}
 
             </div>
+
             {/* Notas */}
             <div className="bg-[#111] border border-[#222] rounded-xl p-5 space-y-3">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Notas del proyecto</p>
