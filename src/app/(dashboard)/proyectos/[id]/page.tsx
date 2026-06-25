@@ -4558,12 +4558,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
           {/* ── Personal del evento (sección unificada) ── */}
           <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-            {/* Cabecera + botones */}
+            {/* ── Cabecera ── */}
             <div className="p-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
-                <div className="flex items-center gap-3">
-                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Personal técnico del evento</p>
-                </div>
+                <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Personal técnico del evento</p>
                 <div className="flex items-center gap-2">
                   {proyecto.personal.length > 0 && (
                     <button
@@ -4576,10 +4574,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   )}
                   <button onClick={() => setShowAddPersonal(v => !v)}
                     className="text-sm text-[#B3985B] hover:text-white transition-colors font-medium">
-                    {showAddPersonal ? "− Cancelar" : "+ Agregar técnico"}
+                    {showAddPersonal ? "− Cancelar" : "+ Nueva jornada"}
                   </button>
                 </div>
-              </div>{/* /header personal */}
+              </div>
+
+              {/* Broadcast panel */}
               {showBroadcast && (() => {
                 const fecha = new Date(proyecto.fechaEvento.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" });
                 const lugar = proyecto.lugarEvento ?? "lugar a confirmar";
@@ -4608,210 +4608,214 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 );
               })()}
 
+              {/* ── PASO 1: Crear jornada ── */}
               {showAddPersonal && (
-                <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Tipo de participación *</label>
-                    <Combobox
-                      value={selParticipacion}
-                      onChange={v => setSelParticipacion(v)}
-                      options={[{ value: "OPERACION", label: "⚡ Operación (día del evento)" }, { value: "MONTAJE", label: "🔧 Montaje (día previo)" }, { value: "DESMONTAJE", label: "📦 Desmontaje" }, { value: "TRANSPORTE", label: "🚛 Transporte" }, { value: "OTRO", label: "✦ Otro" }]}
-                      className="w-full bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
-                    />
+                <div className="mt-4 space-y-3">
+                  <div className="bg-[#0d0d0d] border border-[#B3985B]/30 rounded-xl p-4">
+                    <p className="text-[10px] text-[#B3985B] font-bold uppercase tracking-wider mb-3">Paso 1 — Define la jornada</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">Tipo de participación *</label>
+                        <Combobox
+                          value={selParticipacion}
+                          onChange={v => setSelParticipacion(v)}
+                          options={[{ value: "OPERACION", label: "⚡ Operación (día del evento)" }, { value: "MONTAJE", label: "🔧 Montaje (día previo)" }, { value: "DESMONTAJE", label: "📦 Desmontaje" }, { value: "TRANSPORTE", label: "🚛 Transporte" }, { value: "OTRO", label: "✦ Otro" }]}
+                          className="w-full bg-[#1a1a1a] border border-[#B3985B]/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">Día de la jornada *</label>
+                        <input
+                          type="date"
+                          value={selFechaJornada}
+                          onChange={e => setSelFechaJornada(e.target.value)}
+                          className="w-full bg-[#1a1a1a] border border-[#B3985B]/50 rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
+                        />
+                        {!selFechaJornada && proyecto.fechaEvento && (
+                          <button
+                            type="button"
+                            onClick={() => setSelFechaJornada(proyecto.fechaEvento!.substring(0, 10))}
+                            className="mt-1 text-[10px] text-gray-500 hover:text-[#B3985B] transition-colors"
+                          >
+                            Usar fecha del evento ({new Date(proyecto.fechaEvento!.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" })})
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Día de la jornada *</label>
-                    <input
-                      type="date"
-                      value={selFechaJornada}
-                      onChange={e => setSelFechaJornada(e.target.value)}
-                      className="w-full bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a96a]"
-                    />
-                    {!selFechaJornada && proyecto.fechaEvento && (
-                      <button
-                        type="button"
-                        onClick={() => setSelFechaJornada(proyecto.fechaEvento!.substring(0, 10))}
-                        className="mt-1 text-[10px] text-gray-500 hover:text-[#B3985B] transition-colors"
-                      >
-                        Usar fecha del evento ({new Date(proyecto.fechaEvento!.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" })})
-                      </button>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Técnico</label>
-                    <Combobox
-                      value={selTecnico}
-                      onChange={v => {
-                        if (v === "__nuevo__") { setShowNuevoTecnico(true); setSelTecnico(""); }
-                        else { setSelTecnico(v); setShowNuevoTecnico(false); }
-                      }}
-                      options={[{ value: "", label: "— Sin asignar —" }, { value: "__nuevo__", label: "＋ Nuevo técnico..." }, ...tecnicos.map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? "Sin rol"} · ${t.nivel}` }))]}
-                      className={`w-full bg-[#1a1a1a] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] ${disponibilidad && !disponibilidad.disponible ? "border-red-500/60" : "border-[#333]"}`}
-                    />
-                    {disponibilidad && !disponibilidad.disponible && (
-                      <p className="text-red-400 text-xs mt-1">
-                        ⚠ Conflicto: asignado en {disponibilidad.conflictos.map(c => c.nombre).join(", ")}
-                      </p>
-                    )}
-                    {disponibilidad?.disponible && selTecnico && (
-                      <p className="text-green-500 text-xs mt-1">✓ Disponible para esta fecha</p>
-                    )}
-                    {/* Mini-form nuevo técnico */}
-                    {showNuevoTecnico && (
-                      <div className="mt-2 p-3 bg-[#0d0d0d] border border-[#B3985B]/40 rounded-lg space-y-2">
-                        <p className="text-[#B3985B] text-xs font-semibold mb-2">Registrar nuevo técnico</p>
-                        <input value={nuevoTecNombre} onChange={e => setNuevoTecNombre(e.target.value)}
-                          placeholder="Nombre completo *"
-                          className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                        <input value={nuevoTecCelular} onChange={e => setNuevoTecCelular(e.target.value)}
-                          placeholder="Celular (WhatsApp)"
-                          className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                        <div className="flex gap-2">
+
+                  {/* ── PASO 2: Técnico dentro de la jornada ── */}
+                  {selParticipacion && selFechaJornada && (
+                    <div className="bg-[#0d0d0d] border border-[#222] rounded-xl p-4">
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-3">Paso 2 — Asigna el técnico</p>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        <div className="col-span-2 md:col-span-1">
+                          <label className="text-xs text-gray-500 block mb-1">Rol técnico</label>
                           <Combobox
-                            value={nuevoTecRolId}
-                            onChange={v => setNuevoTecRolId(v)}
-                            options={[{ value: "", label: "— Rol (opcional) —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
-                            className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none"
-                          />
-                          <Combobox
-                            value={nuevoTecNivel}
-                            onChange={v => setNuevoTecNivel(v)}
-                            options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
-                            className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none"
+                            value={selRol}
+                            onChange={v => setSelRol(v)}
+                            options={[{ value: "", label: "— Rol —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
+                            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                           />
                         </div>
-                        <div className="flex gap-2 pt-1">
-                          <button onClick={crearTecnicoInline} disabled={creandoTecnico || !nuevoTecNombre.trim()}
-                            className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold py-1.5 rounded-lg transition-colors">
-                            {creandoTecnico ? "Guardando..." : "Guardar y seleccionar"}
-                          </button>
-                          <button onClick={() => { setShowNuevoTecnico(false); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }}
-                            className="px-3 text-gray-500 hover:text-white text-xs transition-colors">
-                            Cancelar
+                        <div className="col-span-2 md:col-span-1">
+                          <label className="text-xs text-gray-500 block mb-1">Técnico</label>
+                          <Combobox
+                            value={selTecnico}
+                            onChange={v => {
+                              if (v === "__nuevo__") { setShowNuevoTecnico(true); setSelTecnico(""); }
+                              else { setSelTecnico(v); setShowNuevoTecnico(false); }
+                            }}
+                            options={[
+                              { value: "", label: "— Sin asignar —" },
+                              { value: "__nuevo__", label: "＋ Nuevo técnico..." },
+                              ...(() => {
+                                const selRolNombre = selRol ? roles.find(r => r.id === selRol)?.nombre : null;
+                                const coinciden = tecnicos.filter(t => !selRolNombre || t.rol?.nombre === selRolNombre);
+                                const resto     = tecnicos.filter(t => selRolNombre && t.rol?.nombre !== selRolNombre);
+                                return [...coinciden, ...resto].map(t => ({ value: t.id, label: `${t.nombre} · ${t.rol?.nombre ?? 'Sin rol'} · ${t.nivel}` }));
+                              })()
+                            ]}
+                            className={`w-full bg-[#1a1a1a] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] ${disponibilidad && !disponibilidad.disponible ? "border-red-500/60" : "border-[#333]"}`}
+                          />
+                          {disponibilidad && !disponibilidad.disponible && (
+                            <p className="text-red-400 text-xs mt-1">⚠ Conflicto en {disponibilidad.conflictos.map(c => c.nombre).join(", ")}</p>
+                          )}
+                          {disponibilidad?.disponible && selTecnico && (
+                            <p className="text-green-500 text-xs mt-1">✓ Disponible</p>
+                          )}
+                          {/* Mini-form nuevo técnico */}
+                          {showNuevoTecnico && (
+                            <div className="mt-2 p-3 bg-[#0d0d0d] border border-[#B3985B]/40 rounded-lg space-y-2">
+                              <p className="text-[#B3985B] text-xs font-semibold mb-2">Registrar nuevo técnico</p>
+                              <input value={nuevoTecNombre} onChange={e => setNuevoTecNombre(e.target.value)}
+                                placeholder="Nombre completo *"
+                                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                              <input value={nuevoTecCelular} onChange={e => setNuevoTecCelular(e.target.value)}
+                                placeholder="Celular (WhatsApp)"
+                                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+                              <div className="flex gap-2">
+                                <Combobox value={nuevoTecRolId} onChange={v => setNuevoTecRolId(v)}
+                                  options={[{ value: "", label: "— Rol (opcional) —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
+                                  className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                                <Combobox value={nuevoTecNivel} onChange={v => setNuevoTecNivel(v)}
+                                  options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+                                  className="w-20 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none" />
+                              </div>
+                              <div className="flex gap-2 pt-1">
+                                <button onClick={crearTecnicoInline} disabled={creandoTecnico || !nuevoTecNombre.trim()}
+                                  className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold py-1.5 rounded-lg transition-colors">
+                                  {creandoTecnico ? "Guardando..." : "Guardar y seleccionar"}
+                                </button>
+                                <button onClick={() => { setShowNuevoTecnico(false); setNuevoTecNombre(""); setNuevoTecCelular(""); setNuevoTecRolId(""); setNuevoTecNivel("A"); }}
+                                  className="px-3 text-gray-500 hover:text-white text-xs transition-colors">Cancelar</button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        {(!selRol || roles.find(r => r.id === selRol)?.tipoPago === "POR_JORNADA") && (
+                          <div>
+                            <label className="text-xs text-gray-500 block mb-1">Jornada</label>
+                            <Combobox
+                              value={selJornada}
+                              onChange={v => setSelJornada(v)}
+                              options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]}
+                              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
+                            />
+                          </div>
+                        )}
+                        {selRol && roles.find(r => r.id === selRol)?.tipoPago !== "POR_JORNADA" && (
+                          <div>
+                            <label className="text-xs text-gray-500 block mb-1">Nivel</label>
+                            <Combobox
+                              value={selNivel}
+                              onChange={v => setSelNivel(v)}
+                              options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
+                              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
+                            />
+                          </div>
+                        )}
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1">Tarifa acordada ($)</label>
+                          <input type="number" value={selTarifa} onChange={e => setSelTarifa(e.target.value)}
+                            placeholder="0"
+                            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="text-xs text-gray-500 block mb-1">Rol en el evento</label>
+                          <input value={selRolEnEvento} onChange={e => setSelRolEnEvento(e.target.value)}
+                            placeholder="Ej: Operador de audio, Iluminación, Montaje..."
+                            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                        </div>
+                        <div className="col-span-2 md:col-span-3">
+                          <label className="text-xs text-gray-500 block mb-1">Descripción · ¿qué hará en el evento?</label>
+                          <textarea
+                            value={selResp}
+                            onChange={e => setSelResp(e.target.value)}
+                            placeholder="Describe las actividades y responsabilidades..."
+                            rows={2}
+                            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
+                          />
+                        </div>
+                        <div className="col-span-2 md:col-span-3 flex justify-end">
+                          <button onClick={agregarPersonal} disabled={addingPersonal || (!selTecnico && !selRol)}
+                            className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-6 py-2 rounded-lg transition-colors">
+                            {addingPersonal ? "Agregando..." : "Agregar técnico a esta jornada"}
                           </button>
                         </div>
                       </div>
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Rol técnico</label>
-                    <Combobox
-                      value={selRol}
-                      onChange={v => setSelRol(v)}
-                      options={[{ value: "", label: "— Rol —" }, ...roles.map(r => ({ value: r.id, label: r.nombre }))]}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    />
-                  </div>
-                  {(!selRol || roles.find(r => r.id === selRol)?.tipoPago === "POR_JORNADA") && (
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Jornada</label>
-                      <Combobox
-                        value={selJornada}
-                        onChange={v => setSelJornada(v)}
-                        options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]}
-                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
-                      />
                     </div>
                   )}
-                  {selRol && roles.find(r => r.id === selRol)?.tipoPago !== "POR_JORNADA" && (
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Nivel</label>
-                      <Combobox
-                        value={selNivel}
-                        onChange={v => setSelNivel(v)}
-                        options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]}
-                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none"
-                      />
-                    </div>
-                  )}
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Tarifa acordada ($)</label>
-                    <input type="number" value={selTarifa} onChange={e => setSelTarifa(e.target.value)}
-                      placeholder="0"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-xs text-gray-500 block mb-1">Rol en el evento</label>
-                    <input value={selRolEnEvento} onChange={e => setSelRolEnEvento(e.target.value)}
-                      placeholder="Ej: Operador de audio, Iluminación, Montaje..."
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div className="col-span-2 md:col-span-3">
-                    <label className="text-xs text-gray-500 block mb-1">Descripción · ¿qué hará en el evento?</label>
-                    <textarea
-                      value={selResp}
-                      onChange={e => setSelResp(e.target.value)}
-                      placeholder="Describe las actividades y responsabilidades. Ej: Operador FOH, manejo de consola DiGiCo SD7, coordinación con backline..."
-                      rows={2}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
-                    />
-                  </div>
-                  <div className="flex items-end">
-                    <button onClick={agregarPersonal} disabled={addingPersonal || (!selTecnico && !selRol)}
-                      className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                      {addingPersonal ? "Agregando..." : "Agregar"}
-                    </button>
-                  </div>
                 </div>
               )}
             </div>
 
-            {/* ── Sugerencias de cotización ── */}
-            {proyecto.cotizacion && proyecto.cotizacion.lineas.some(l => l.tipo === "OPERACION_TECNICA") && (() => {
-              const lineas = proyecto.cotizacion!.lineas.filter(l => l.tipo === "OPERACION_TECNICA");
+            {/* ── Sugerencias de cotización — siempre visibles ── */}
+            {proyecto.cotizacion && (() => {
+              const lineas = (proyecto.cotizacion.lineas ?? []).filter(l => l.tipo === "OPERACION_TECNICA");
+              if (lineas.length === 0) return null;
               const presupuestoCotizado = lineas.reduce((s, l) => s + l.precioUnitario * l.cantidad, 0);
               const presupuestoAsignado = proyecto.personal.reduce((s, p) => s + (p.tarifaAcordada ?? 0), 0);
               const restante = presupuestoCotizado - presupuestoAsignado;
-                return (
-                  <div className="border-t border-[#1a1a1a]">
-                  <button
-                    onClick={() => setShowSugerencias(v => !v)}
-                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#161616] transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Sugerencias de cotización</span>
+              return (
+                <div className="border-t border-[#1a1a1a] px-4 py-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-[#B3985B] font-bold uppercase tracking-wider">Roles cotizados (referencia)</span>
                       <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded">{lineas.length} rol{lineas.length !== 1 ? "es" : ""}</span>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right hidden sm:block">
-                        <div className="text-[10px] text-gray-600">Presupuesto personal cotizado</div>
-                        <div className="text-xs font-semibold text-white">{fmt(presupuestoCotizado)}</div>
-                      </div>
-                      <div className={`text-xs font-semibold ${restante >= 0 ? "text-green-400" : "text-red-400"}`}>
-                        {restante >= 0 ? `${fmt(restante)} disponible` : `${fmt(Math.abs(restante))} sobre presupuesto`}
-                      </div>
-                      <span className="text-gray-600 text-xs">{showSugerencias ? "▲" : "▼"}</span>
+                    <div className={`text-xs font-semibold ${restante >= 0 ? "text-green-400" : "text-red-400"}`}>
+                      {restante >= 0 ? `${fmt(restante)} disponible` : `${fmt(Math.abs(restante))} sobre presupuesto`}
                     </div>
-                  </button>
-                  {showSugerencias && (
-                    <div className="border-t border-[#1a1a1a] divide-y divide-[#1a1a1a]">
-                      {lineas.map(linea => (
-                        <div key={linea.id} className="flex items-center gap-3 px-4 py-2.5">
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm text-white font-medium truncate">{linea.rolTecnico?.nombre ?? linea.descripcion}</div>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              {linea.nivel && <span className="text-[10px] text-gray-500">{linea.nivel}</span>}
-                              {linea.jornada && <span className="text-[10px] text-gray-500">· {linea.jornada === "CORTA" ? "0–8h" : linea.jornada === "MEDIA" ? "8–12h" : "12+h"}</span>}
-                              {linea.descripcion && linea.rolTecnico && <span className="text-[10px] text-gray-600 truncate">· {linea.descripcion}</span>}
-                            </div>
+                  </div>
+                  <div className="divide-y divide-[#1a1a1a]">
+                    {lineas.map(linea => (
+                      <div key={linea.id} className="flex items-center gap-3 py-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs text-white font-medium truncate">{linea.rolTecnico?.nombre ?? linea.descripcion}</div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {linea.nivel && <span className="text-[10px] text-gray-500">{linea.nivel}</span>}
+                            {linea.jornada && <span className="text-[10px] text-gray-500">· {linea.jornada === "CORTA" ? "0–8h" : linea.jornada === "MEDIA" ? "8–12h" : "12+h"}</span>}
+                            {linea.descripcion && linea.rolTecnico && <span className="text-[10px] text-gray-600 truncate">· {linea.descripcion}</span>}
                           </div>
-                          <div className="text-right shrink-0">
-                            <div className="text-xs text-[#B3985B] font-semibold">{fmt(linea.precioUnitario)}<span className="text-gray-600 font-normal"> × {linea.cantidad}</span></div>
-                          </div>
-                          <button
-                            onClick={() => agregarDesdeLinea(linea)}
-                            disabled={agregandoLinea === linea.id}
-                            className="shrink-0 text-xs bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#2a2a2a] text-gray-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                          >
-                            {agregandoLinea === linea.id ? "..." : `+ ${linea.cantidad} slot${linea.cantidad !== 1 ? "s" : ""}`}
-                          </button>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                        <div className="text-right shrink-0">
+                          <div className="text-xs text-[#B3985B] font-semibold">{fmt(linea.precioUnitario)}<span className="text-gray-600 font-normal"> × {linea.cantidad}</span></div>
+                        </div>
+                        <button
+                          onClick={() => agregarDesdeLinea(linea)}
+                          disabled={agregandoLinea === linea.id}
+                          className="shrink-0 text-xs bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#2a2a2a] text-gray-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          {agregandoLinea === linea.id ? "..." : `+ ${linea.cantidad} slot${linea.cantidad !== 1 ? "s" : ""}`}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               );
             })()}
+
 
             {/* Lista personal: fecha → tipo de participación */}
             {proyecto.personal.length === 0 ? (
