@@ -6943,7 +6943,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             const pagados = proyecto.movimientos;
             const totalPendiente = cxpGastos.reduce((s, c) => s + c.monto, 0);
             const totalPagado = pagados.reduce((s, m) => s + m.monto, 0);
-            const totalGastosProy = totalPendiente + totalPagado;
+            // Equipos externos con costo registrado (fuente: campo costoExterno en rider)
+            const costoEquipExt = (proyecto.equipos ?? []).reduce(
+              (s: number, e: { costoExterno: number | null; cantidad: number }) => s + (e.costoExterno ?? 0) * e.cantidad, 0
+            );
+            const totalGastosProy = totalPendiente + totalPagado + costoEquipExt;
 
             // Bloque 3: Desviacion
             const desviacion = totalGastosProy - estimadoTotal;
