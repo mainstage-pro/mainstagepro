@@ -697,10 +697,10 @@ type LineaEquipo = {
 type ProveedorOpt = { id: string; nombre: string; empresa: string | null };
 
 const CLASIF_BADGE: Record<string, { bg: string; text: string; label: string }> = {
-  PROPIO_DISPONIBLE:  { bg: 'bg-emerald-900/20', text: 'text-emerald-400', label: '\u2705 Disponible' },
-  PROPIO_CONFLICTO:   { bg: 'bg-yellow-900/20', text: 'text-yellow-400',   label: '\u26A0\uFE0F Conflicto' },
-  EXTERNO_INVENTARIO: { bg: 'bg-blue-900/20',   text: 'text-blue-400',     label: '\uD83D\uDD35 Externo inventario' },
-  EXTERNO_MANUAL:     { bg: 'bg-[#1a1a1a]',     text: 'text-[#6b7280]',   label: '\u25A2 Externo (conseguir)' },
+  PROPIO_DISPONIBLE:  { bg: 'bg-emerald-900/20 border border-emerald-800/30', text: 'text-emerald-400', label: '\u2713 Disponible' },
+  PROPIO_CONFLICTO:   { bg: 'bg-yellow-900/20 border border-yellow-800/30', text: 'text-yellow-400',   label: '\u26A0 Conflicto de fechas' },
+  EXTERNO_INVENTARIO: { bg: 'bg-blue-900/20 border border-blue-800/30',   text: 'text-blue-400',     label: '\u25CF Inventario externo' },
+  EXTERNO_MANUAL:     { bg: 'bg-[#1a1a1a] border border-[#2a2a2a]',     text: 'text-[#6b7280]',   label: '\u25A2 Conseguir proveedor' },
 };
 
 function fmxEquipo(n: number) {
@@ -710,9 +710,9 @@ function fmxEquipo(n: number) {
 function EquiposTab({ proyectoId }: { proyectoId: string }) {
   const [data, setData] = React.useState<{ lineas: LineaEquipo[]; proveedores: ProveedorOpt[]; proyecto: { fechaEvento: string; fechaMontaje: string | null } } | null>(null);
   const [loading, setLoading] = React.useState(true);
-  const [confirmando, setConfirmando] = React.useState<string | null>(null); // lineaId en formulario de confirmación
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [confirmando, setConfirmando] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
-  const [expandido, setExpandido] = React.useState<string | null>(null);
 
   // Formulario de confirmación
   const [confProveedorId, setConfProveedorId] = React.useState('');
@@ -722,11 +722,18 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
 
   async function load() {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await fetch(`/api/proyectos/${proyectoId}/equipos-cotizacion`, { cache: 'no-store' });
-      if (!res.ok) return;
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '');
+        setLoadError(`Error ${res.status}: ${txt.slice(0, 120) || 'Sin respuesta del servidor'}`);
+        return;
+      }
       const d = await res.json();
       setData(d);
+    } catch (e) {
+      setLoadError(`Error de conexión: ${(e as Error).message}`);
     } finally {
       setLoading(false);
     }
@@ -769,8 +776,19 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
 
   if (loading) {
     return (
-      <div className="space-y-2 p-4">
+      <div className="space-y-3 py-4">
+        <div className="h-4 w-48 bg-[#1a1a1a] rounded animate-pulse" />
         {[...Array(5)].map((_, i) => <div key={i} className="h-12 bg-[#111] rounded-xl animate-pulse" />)}
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="bg-red-900/10 border border-red-800/30 rounded-xl p-5 text-center">
+        <p className="text-red-400 text-sm font-medium mb-1">Error al cargar equipos</p>
+        <p className="text-[#555] text-xs font-mono">{loadError}</p>
+        <button onClick={load} className="mt-3 text-xs text-[#B3985B] hover:underline">Reintentar</button>
       </div>
     );
   }
@@ -871,10 +889,6 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${badge.bg} ${badge.text}`}>
                           {badge.label}
                         </span>
-                        {linea.clasificacion === 'PROPIO_CONFLICTO' && linea.conflictos.length > 0 && (
-                          <button onClick={() => setExpandido(expandido === linea.id ? null : linea.id)}
-                            className="ml-1 text-[10px] text-yellow-600 hover:text-yellow-400">ver</button>
-                        )}
                       </td>
                       <td className="px-3 py-2.5 hidden md:table-cell">
                         <span className="text-[11px] text-[#B3985B] font-medium">Mainstage Pro</span>
@@ -887,12 +901,13 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
                           <span className="text-emerald-500 text-[10px]">\u2713 Listo</span>
                         )}
                         {linea.clasificacion === 'PROPIO_CONFLICTO' && (
-                          <span className="text-yellow-500 text-[10px]">\u26A0 Verificar</span>
+                          <span className="text-yellow-500 text-[10px]">Resolver</span>
                         )}
                       </td>
                     </tr>
-                    {expandido === linea.id && linea.conflictos.length > 0 && (
-                      <tr className="border-t border-[#1a1a1a] bg-yellow-900/5">
+                    {/* Conflict detail — always shown inline when there is a conflict */}
+                    {linea.clasificacion === 'PROPIO_CONFLICTO' && linea.conflictos.length > 0 && (
+                      <tr className="border-t border-yellow-900/20 bg-yellow-900/5">
                         <td colSpan={6} className="px-4 py-2">
                           <p className="text-[10px] text-yellow-600 uppercase tracking-widest mb-1.5">Comprometido en:</p>
                           <div className="space-y-1">
