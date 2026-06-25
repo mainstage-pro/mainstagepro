@@ -369,7 +369,12 @@ export default function InventarioMaestroPage() {
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
   const [kpis, setKpis] = useState<Kpis | null>(null);
   const [loading, setLoading] = useState(true);
-  const [savingInline, setSavingInline] = useState<string | null>(null); // equipoId
+  const [savingInline, setSavingInline] = useState<string | null>(null);
+  const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
+
+  function startEdit(id: string, field: string) { setEditingCell({ id, field }); }
+  function stopEdit() { setEditingCell(null); }
+  function isEditing(id: string, field: string) { return editingCell?.id === id && editingCell?.field === field; }
 
   // Edición inline — guarda un campo sin abrir el modal
   async function patchEquipo(id: string, campo: string, valor: string | number | null) {
@@ -381,8 +386,27 @@ export default function InventarioMaestroPage() {
         body: JSON.stringify({ [campo]: valor }),
       });
       if (!res.ok) { toast.error("Error al guardar"); return; }
-      // Actualización optimista en el estado local
       setEquipos(prev => prev.map(e => e.id === id ? { ...e, [campo]: valor } : e));
+    } finally {
+      setSavingInline(null);
+    }
+  }
+
+  // Cambiar proveedor default — actualiza optimistamente el objeto proveedorDefault
+  async function changeProveedor(id: string, proveedorId: string) {
+    setSavingInline(id);
+    try {
+      const res = await fetch(`/api/equipos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proveedorDefaultId: proveedorId || null }),
+      });
+      if (!res.ok) { toast.error("Error al guardar"); return; }
+      const prov = proveedores.find(p => p.id === proveedorId) ?? null;
+      setEquipos(prev => prev.map(e => e.id === id
+        ? { ...e, proveedorDefault: prov ? { id: prov.id, nombre: prov.nombre, empresa: prov.empresa } : null }
+        : e
+      ));
     } finally {
       setSavingInline(null);
     }
@@ -790,158 +814,179 @@ export default function InventarioMaestroPage() {
                         {items.map(e => {
                           const valorActivo = e.costoInternoEstimado ?? null;
                           const valorFilaTotal = valorActivo != null ? valorActivo * e.cantidadTotal : null;
+                          const provNombre = e.tipo === 'PROPIO'
+                            ? null
+                            : (e.proveedorDefault?.nombre ?? e.proveedoresPrecios?.[0]?.proveedor?.nombre ?? null);
                           return (
                             <tr key={e.id} className="transition-colors group hover:bg-[#0d0d0d]">
+
+                              {/* Equipo */}
                               <td className="px-4 py-2.5">
                                 <div className="flex items-center gap-2.5 min-w-0">
                                   {e.imagenUrl ? (
                                     // eslint-disable-next-line @next/next/no-img-element
-                                    <img
-                                      src={e.imagenUrl} alt=""
-                                      className="w-8 h-8 object-contain rounded bg-[#0a0a0a] p-0.5 shrink-0 cursor-zoom-in hover:opacity-80 transition-opacity"
-                                      onClick={ev => { ev.stopPropagation(); setLightboxUrl(e.imagenUrl!); }}
-                                    />
+                                    <img src={e.imagenUrl} alt="" className="w-8 h-8 object-contain rounded bg-[#0a0a0a] p-0.5 shrink-0 cursor-zoom-in hover:opacity-80 transition-opacity" onClick={ev => { ev.stopPropagation(); setLightboxUrl(e.imagenUrl!); }} />
                                   ) : (
                                     <div className="w-8 h-8 rounded bg-[#1a1a1a] shrink-0" />
                                   )}
                                   <div className="min-w-0">
                                     <p className="text-white font-medium truncate">{(e.marca || e.modelo) ? [e.marca, e.modelo].filter(Boolean).join(" · ") : e.descripcion}</p>
-                                    {(e.marca || e.modelo) && (
-                                      <p className="text-[#555] text-xs truncate">{e.descripcion}</p>
-                                    )}
+                                    {(e.marca || e.modelo) && <p className="text-[#555] text-xs truncate">{e.descripcion}</p>}
                                   </div>
                                 </div>
                               </td>
-                              {/* Tipo — select inline */}
+
+                              {/* Tipo — click to edit */}
                               <td className="px-3 py-2.5 text-center">
-                                <select
-                                  value={e.tipo}
-                                  disabled={savingInline === e.id}
-                                  onChange={ev => patchEquipo(e.id, "tipo", ev.target.value)}
-                                  onClick={ev => ev.stopPropagation()}
-                                  className={`bg-transparent border-none text-[10px] font-medium cursor-pointer focus:outline-none rounded px-1 py-0.5 transition-colors ${
-                                    e.tipo === "PROPIO" ? "text-[#6b7280]" : "text-blue-400"
-                                  } hover:bg-[#1e1e1e]`}
-                                >
-                                  <option value="PROPIO" className="bg-[#111] text-white">Propio</option>
-                                  <option value="EXTERNO" className="bg-[#111] text-white">Externo</option>
-                                </select>
+                                {isEditing(e.id, 'tipo') ? (
+                                  <select autoFocus value={e.tipo} disabled={savingInline === e.id}
+                                    onChange={ev => { patchEquipo(e.id, "tipo", ev.target.value); stopEdit(); }}
+                                    onBlur={stopEdit} onClick={ev => ev.stopPropagation()}
+                                    className="bg-[#0d0d0d] border border-[#2a2a2a] rounded text-[10px] font-medium text-white focus:outline-none focus:border-[#B3985B]/50 px-1.5 py-0.5">
+                                    <option value="PROPIO" className="bg-[#111]">Propio</option>
+                                    <option value="EXTERNO" className="bg-[#111]">Externo</option>
+                                  </select>
+                                ) : (
+                                  <button onClick={ev => { ev.stopPropagation(); startEdit(e.id, 'tipo'); }}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-medium hover:opacity-75 transition-opacity ${e.tipo === "PROPIO" ? "bg-[#1a1a1a] text-[#6b7280]" : "bg-blue-900/20 text-blue-400"}`}>
+                                    {e.tipo === "PROPIO" ? "Propio" : "Externo"}
+                                  </button>
+                                )}
                               </td>
-                              {/* Estado — select inline */}
+
+                              {/* Estado — click to edit */}
                               <td className="px-3 py-2.5 text-center hidden sm:table-cell">
-                                <select
-                                  value={e.estado}
-                                  disabled={savingInline === e.id}
-                                  onChange={ev => patchEquipo(e.id, "estado", ev.target.value)}
-                                  onClick={ev => ev.stopPropagation()}
-                                  className={`bg-transparent border-none text-[10px] font-medium cursor-pointer focus:outline-none rounded px-1 py-0.5 hover:bg-[#1e1e1e] transition-colors ${
-                                    e.estado === 'ACTIVO' ? 'text-green-400' :
-                                    e.estado === 'EN_MANTENIMIENTO' ? 'text-yellow-400' : 'text-red-400'
-                                  }`}
-                                >
-                                  <option value="ACTIVO" className="bg-[#111] text-white">Activo</option>
-                                  <option value="EN_MANTENIMIENTO" className="bg-[#111] text-white">En mantenimiento</option>
-                                  <option value="DADO_DE_BAJA" className="bg-[#111] text-white">Dado de baja</option>
-                                </select>
+                                {isEditing(e.id, 'estado') ? (
+                                  <select autoFocus value={e.estado} disabled={savingInline === e.id}
+                                    onChange={ev => { patchEquipo(e.id, "estado", ev.target.value); stopEdit(); }}
+                                    onBlur={stopEdit} onClick={ev => ev.stopPropagation()}
+                                    className="bg-[#0d0d0d] border border-[#2a2a2a] rounded text-[10px] font-medium text-white focus:outline-none focus:border-[#B3985B]/50 px-1.5 py-0.5">
+                                    <option value="ACTIVO" className="bg-[#111]">Activo</option>
+                                    <option value="EN_MANTENIMIENTO" className="bg-[#111]">En mantenimiento</option>
+                                    <option value="DADO_DE_BAJA" className="bg-[#111]">Dado de baja</option>
+                                  </select>
+                                ) : (
+                                  <button onClick={ev => { ev.stopPropagation(); startEdit(e.id, 'estado'); }}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-medium hover:opacity-75 transition-opacity ${ESTADO_BADGE[e.estado] ?? "bg-[#1a1a1a] text-[#6b7280]"}`}>
+                                    {ESTADO_LABEL[e.estado] ?? e.estado}
+                                  </button>
+                                )}
                               </td>
-                              {/* Proveedor — Mainstage Pro o nombre del proveedor default */}
+
+                              {/* Proveedor — Mainstage Pro (dorado) o proveedor externo (blanco, clickeable) */}
                               <td className="px-3 py-2.5 hidden md:table-cell">
                                 {e.tipo === 'PROPIO' ? (
                                   <span className="text-[11px] text-[#B3985B] font-medium">Mainstage Pro</span>
+                                ) : isEditing(e.id, 'proveedorDefault') ? (
+                                  <select autoFocus defaultValue={e.proveedorDefault?.id ?? ""}
+                                    disabled={savingInline === e.id}
+                                    onChange={ev => { changeProveedor(e.id, ev.target.value); stopEdit(); }}
+                                    onBlur={stopEdit} onClick={ev => ev.stopPropagation()}
+                                    className="bg-[#0d0d0d] border border-[#2a2a2a] rounded text-[10px] text-white focus:outline-none focus:border-[#B3985B]/50 px-1.5 py-0.5 max-w-[150px]">
+                                    <option value="" className="bg-[#111]">— Sin proveedor —</option>
+                                    {proveedores.map(p => (
+                                      <option key={p.id} value={p.id} className="bg-[#111]">{p.nombre}{p.empresa ? ` · ${p.empresa}` : ''}</option>
+                                    ))}
+                                  </select>
                                 ) : (
-                                  <span className="text-[11px] text-[#6b7280]">
-                                    {e.proveedorDefault?.nombre
-                                      ?? e.proveedoresPrecios?.[0]?.proveedor?.nombre
-                                      ?? <span className="text-[#333]">Sin proveedor</span>}
-                                  </span>
+                                  <button onClick={ev => { ev.stopPropagation(); startEdit(e.id, 'proveedorDefault'); }}
+                                    className="text-[11px] text-left transition-colors hover:text-[#B3985B]">
+                                    {provNombre
+                                      ? <span className="text-white">{provNombre}</span>
+                                      : <span className="text-[#333] italic">+ agregar proveedor</span>}
+                                  </button>
                                 )}
                               </td>
-                              {/* Cantidad — input inline */}
+
+                              {/* Cantidad — click to edit */}
                               <td className="px-3 py-2.5 text-right">
-                                <input
-                                  type="number"
-                                  defaultValue={e.cantidadTotal}
-                                  min={1}
-                                  disabled={savingInline === e.id}
-                                  onClick={ev => ev.stopPropagation()}
-                                  onBlur={ev => {
-                                    const val = parseInt(ev.target.value) || 1;
-                                    if (val !== e.cantidadTotal) patchEquipo(e.id, "cantidadTotal", val);
-                                  }}
-                                  onKeyDown={ev => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); }}
-                                  className="w-12 bg-transparent text-white font-medium text-right text-xs border-b border-transparent hover:border-[#333] focus:border-[#B3985B]/50 focus:outline-none transition-colors disabled:opacity-50"
-                                />
-                              </td>
-                              {/* Precio público — input inline */}
-                              <td className="px-4 py-2.5 text-right">
-                                <input
-                                  type="number"
-                                  defaultValue={e.precioRenta}
-                                  min={0}
-                                  disabled={savingInline === e.id}
-                                  onClick={ev => ev.stopPropagation()}
-                                  onBlur={ev => {
-                                    const val = parseFloat(ev.target.value) || 0;
-                                    if (val !== e.precioRenta) patchEquipo(e.id, "precioRenta", val);
-                                  }}
-                                  onKeyDown={ev => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); }}
-                                  className="w-24 bg-transparent text-[#B3985B] font-medium text-right text-xs border-b border-transparent hover:border-[#333] focus:border-[#B3985B]/50 focus:outline-none transition-colors disabled:opacity-50"
-                                />
-                              </td>
-                              {/* P. Mainstage (costoProveedor) — solo EXTERNO, editable inline */}
-                              <td className="px-4 py-2.5 text-right hidden md:table-cell">
-                                {e.tipo === 'EXTERNO' ? (
-                                  <input
-                                    type="number"
-                                    defaultValue={e.costoProveedor ?? ""}
-                                    min={0}
-                                    placeholder="—"
+                                {isEditing(e.id, 'cantidadTotal') ? (
+                                  <input type="number" autoFocus defaultValue={e.cantidadTotal} min={1}
                                     disabled={savingInline === e.id}
                                     onClick={ev => ev.stopPropagation()}
-                                    onBlur={ev => {
-                                      const raw = ev.target.value;
-                                      const val = raw === "" ? null : parseFloat(raw);
-                                      if (val !== e.costoProveedor) patchEquipo(e.id, "costoProveedor", val);
-                                    }}
-                                    onKeyDown={ev => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); }}
-                                    className="w-24 bg-transparent text-emerald-400/80 font-medium text-right text-xs border-b border-transparent hover:border-[#333] focus:border-emerald-500/50 focus:outline-none transition-colors placeholder-[#333] disabled:opacity-50"
-                                  />
+                                    onBlur={ev => { const v = parseInt(ev.target.value) || 1; if (v !== e.cantidadTotal) patchEquipo(e.id, "cantidadTotal", v); stopEdit(); }}
+                                    onKeyDown={ev => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); if (ev.key === 'Escape') stopEdit(); }}
+                                    className="w-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-[#0d0d0d] border border-[#2a2a2a] rounded text-white font-medium text-right text-xs focus:outline-none focus:border-[#B3985B]/50 px-1 py-0.5 disabled:opacity-50" />
+                                ) : (
+                                  <button onClick={ev => { ev.stopPropagation(); startEdit(e.id, 'cantidadTotal'); }}
+                                    className="text-white font-medium text-xs hover:text-[#B3985B] transition-colors tabular-nums">
+                                    {e.cantidadTotal}
+                                  </button>
+                                )}
+                              </td>
+
+                              {/* Precio público — click to edit */}
+                              <td className="px-4 py-2.5 text-right">
+                                {isEditing(e.id, 'precioRenta') ? (
+                                  <input type="number" autoFocus defaultValue={e.precioRenta} min={0}
+                                    disabled={savingInline === e.id}
+                                    onClick={ev => ev.stopPropagation()}
+                                    onBlur={ev => { const v = parseFloat(ev.target.value) || 0; if (v !== e.precioRenta) patchEquipo(e.id, "precioRenta", v); stopEdit(); }}
+                                    onKeyDown={ev => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); if (ev.key === 'Escape') stopEdit(); }}
+                                    className="w-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-[#0d0d0d] border border-[#2a2a2a] rounded text-[#B3985B] font-medium text-right text-xs focus:outline-none focus:border-[#B3985B]/50 px-1 py-0.5 disabled:opacity-50" />
+                                ) : (
+                                  <button onClick={ev => { ev.stopPropagation(); startEdit(e.id, 'precioRenta'); }}
+                                    className="text-[#B3985B] font-medium text-xs hover:opacity-75 transition-opacity tabular-nums">
+                                    {fmx(e.precioRenta)}
+                                  </button>
+                                )}
+                              </td>
+
+                              {/* P. Mainstage — solo EXTERNO, click to edit */}
+                              <td className="px-4 py-2.5 text-right hidden md:table-cell">
+                                {e.tipo === 'EXTERNO' ? (
+                                  isEditing(e.id, 'costoProveedor') ? (
+                                    <input type="number" autoFocus defaultValue={e.costoProveedor ?? ""} min={0} placeholder="0"
+                                      disabled={savingInline === e.id}
+                                      onClick={ev => ev.stopPropagation()}
+                                      onBlur={ev => { const raw = ev.target.value; const v = raw === "" ? null : parseFloat(raw); if (v !== e.costoProveedor) patchEquipo(e.id, "costoProveedor", v); stopEdit(); }}
+                                      onKeyDown={ev => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); if (ev.key === 'Escape') stopEdit(); }}
+                                      className="w-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-[#0d0d0d] border border-[#2a2a2a] rounded text-emerald-400 font-medium text-right text-xs focus:outline-none focus:border-emerald-500/50 px-1 py-0.5 disabled:opacity-50" />
+                                  ) : (
+                                    <button onClick={ev => { ev.stopPropagation(); startEdit(e.id, 'costoProveedor'); }}
+                                      className="text-emerald-400/80 font-medium text-xs hover:text-emerald-400 transition-colors tabular-nums">
+                                      {e.costoProveedor != null ? fmx(e.costoProveedor) : <span className="text-[#333]">—</span>}
+                                    </button>
+                                  )
                                 ) : (
                                   <span className="text-[#333] text-xs">—</span>
                                 )}
                               </td>
-                              {/* Valor activo — input inline */}
+
+                              {/* Valor activo — click to edit */}
                               <td className="px-4 py-2.5 text-right hidden lg:table-cell">
-                                <input
-                                  type="number"
-                                  defaultValue={valorActivo ?? ""}
-                                  min={0}
-                                  placeholder="—"
-                                  disabled={savingInline === e.id}
-                                  onClick={ev => ev.stopPropagation()}
-                                  onBlur={ev => {
-                                    const raw = ev.target.value;
-                                    const val = raw === "" ? null : parseFloat(raw);
-                                    if (val !== valorActivo) patchEquipo(e.id, "costoInternoEstimado", val);
-                                  }}
-                                  onKeyDown={ev => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); }}
-                                  className="w-24 bg-transparent text-[#9ca3af] font-medium text-right text-xs border-b border-transparent hover:border-[#333] focus:border-[#B3985B]/50 focus:outline-none transition-colors placeholder-[#333] disabled:opacity-50"
-                                />
+                                {isEditing(e.id, 'costoInternoEstimado') ? (
+                                  <input type="number" autoFocus defaultValue={valorActivo ?? ""} min={0} placeholder="0"
+                                    disabled={savingInline === e.id}
+                                    onClick={ev => ev.stopPropagation()}
+                                    onBlur={ev => { const raw = ev.target.value; const v = raw === "" ? null : parseFloat(raw); if (v !== valorActivo) patchEquipo(e.id, "costoInternoEstimado", v); stopEdit(); }}
+                                    onKeyDown={ev => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); if (ev.key === 'Escape') stopEdit(); }}
+                                    className="w-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-[#0d0d0d] border border-[#2a2a2a] rounded text-[#9ca3af] font-medium text-right text-xs focus:outline-none focus:border-[#B3985B]/50 px-1 py-0.5 disabled:opacity-50" />
+                                ) : (
+                                  <button onClick={ev => { ev.stopPropagation(); startEdit(e.id, 'costoInternoEstimado'); }}
+                                    className="text-[#9ca3af] font-medium text-xs hover:opacity-75 transition-opacity tabular-nums">
+                                    {valorActivo != null ? fmx(valorActivo) : <span className="text-[#333]">—</span>}
+                                  </button>
+                                )}
                               </td>
+
+                              {/* Valor total (calculado) */}
                               <td className="px-4 py-2.5 text-right hidden lg:table-cell">
-                                {valorFilaTotal != null ? <span className="text-white font-medium">{fmx(valorFilaTotal)}</span> : <span className="text-[#333]">—</span>}
+                                {valorFilaTotal != null
+                                  ? <span className="text-white font-medium tabular-nums">{fmx(valorFilaTotal)}</span>
+                                  : <span className="text-[#333]">—</span>}
                               </td>
+
+                              {/* Accesorios */}
                               <td className="px-3 py-2.5 text-center hidden xl:table-cell">
                                 {e._count.accesorios > 0 ? <span className="text-[#B3985B] font-medium">{e._count.accesorios}</span> : <span className="text-[#333]">—</span>}
                               </td>
+
+                              {/* Acciones */}
                               <td className="px-3 py-2.5">
                                 <div className="opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2">
-                                  <button onClick={() => abrirEdit(e)}
-                                    className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors">
-                                    Editar
-                                  </button>
-                                  <button onClick={() => eliminar(e)} disabled={eliminando === e.id}
-                                    className="text-[10px] text-[#333] hover:text-red-400 transition-colors disabled:opacity-50">
+                                  <button onClick={() => abrirEdit(e)} className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors">Editar</button>
+                                  <button onClick={() => eliminar(e)} disabled={eliminando === e.id} className="text-[10px] text-[#333] hover:text-red-400 transition-colors disabled:opacity-50">
                                     {eliminando === e.id ? "..." : "Eliminar"}
                                   </button>
                                 </div>
