@@ -3819,27 +3819,21 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       })()}
 
       {/* ── KPIs rápidos ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-          <p className="text-gray-500 text-xs mb-1">Checklist</p>
-          <p className="text-white text-lg font-bold">{checkDone}<span className="text-gray-500 font-normal text-sm">/{checkTotal}</span></p>
-          <div className="h-1.5 bg-[#222] rounded-full mt-2 overflow-hidden">
-            <div className="h-full bg-[#B3985B] rounded-full transition-all" style={{ width: `${checkPct}%` }} />
-          </div>
+          <p className="text-gray-500 text-xs mb-1">{esRenta ? 'Equipos' : 'Personal'}</p>
+          {esRenta ? (
+            <>
+              <p className="text-white text-lg font-bold">{equiposTotal}<span className="text-gray-500 font-normal text-sm"> registrados</span></p>
+              <p className="text-gray-600 text-xs">en el proyecto</p>
+            </>
+          ) : (
+            <>
+              <p className="text-white text-lg font-bold">{personalConfirmado}<span className="text-gray-500 font-normal text-sm">/{proyecto.personal.length}</span></p>
+              <p className="text-gray-600 text-xs">confirmados</p>
+            </>
+          )}
         </div>
-        {esRenta ? (
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-            <p className="text-gray-500 text-xs mb-1">Equipos</p>
-            <p className="text-white text-lg font-bold">{equiposConf}<span className="text-gray-500 font-normal text-sm">/{equiposTotal}</span></p>
-            <p className="text-gray-600 text-xs">confirmados</p>
-          </div>
-        ) : (
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-            <p className="text-gray-500 text-xs mb-1">Personal</p>
-            <p className="text-white text-lg font-bold">{personalConfirmado}<span className="text-gray-500 font-normal text-sm">/{proyecto.personal.length}</span></p>
-            <p className="text-gray-600 text-xs">confirmados</p>
-          </div>
-        )}
         <div className="bg-[#111] border border-[#222] rounded-xl p-4">
           <p className="text-gray-500 text-xs mb-1">Cobrado</p>
           <p className="text-green-400 text-lg font-bold">{fmt(cobrado)}</p>
@@ -3877,22 +3871,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             txt: proyecto.personal.length === 0 ? "Sin asignar" : `${personalConfirmado}/${proyecto.personal.length} confirmados`,
           }] : []),
           {
-            label: "Equipos",
-            ok: equiposTotal > 0 && equiposConf === equiposTotal,
-            warn: equiposTotal > 0 && equiposConf < equiposTotal,
-            txt: equiposTotal === 0 ? "Sin asignar" : `${equiposConf}/${equiposTotal} confirmados`,
-          },
-          {
             label: "Anticipo",
             ok: anticipoCobrado,
             warn: !!(anticipo && !anticipoCobrado),
             txt: anticipo ? (anticipoCobrado ? "Cobrado" : "Pendiente") : "Sin esquema",
-          },
-          {
-            label: "Checklist",
-            ok: checkTotal > 0 && checkDone === checkTotal,
-            warn: checkTotal > 0 && checkDone < checkTotal,
-            txt: checkTotal === 0 ? "Sin items" : `${checkDone}/${checkTotal} listos`,
           },
         ];
         const allOk = items.every(i => i.ok);
