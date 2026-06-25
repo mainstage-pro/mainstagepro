@@ -194,6 +194,123 @@ function accesoriosPorEquipo(descripcion: string, categoria: string): string[] {
   return ["Cable de poder"];
 }
 
+// ─── TimePicker AM/PM ─────────────────────────────────────────────────────────
+function fmt24to12(val: string | null): string {
+  if (!val) return '';
+  const [hStr, mStr] = val.split(':');
+  let h = parseInt(hStr, 10);
+  const m = mStr ?? '00';
+  const period = h >= 12 ? 'PM' : 'AM';
+  if (h === 0) h = 12;
+  else if (h > 12) h -= 12;
+  return `${h}:${m} ${period}`;
+}
+function fmt12to24(h: number, m: number, period: 'AM' | 'PM'): string {
+  let hour = h;
+  if (period === 'AM' && h === 12) hour = 0;
+  else if (period === 'PM' && h !== 12) hour = h + 12;
+  return `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+function HourPicker({ label, value, field, onSave, noLabel = false }:
+  { label: string; value: string | null; field: string; onSave: (f: string, v: string) => void; noLabel?: boolean }) {
+  const [open, setOpen] = React.useState(false);
+  const [saved, setSaved] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  const parse = (v: string | null) => {
+    if (!v) return { h: 12, m: 0, p: 'AM' as const };
+    const [hStr, mStr] = v.split(':');
+    const h24 = parseInt(hStr, 10);
+    const m = parseInt(mStr ?? '0', 10);
+    const p: 'AM' | 'PM' = h24 >= 12 ? 'PM' : 'AM';
+    const h = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
+    return { h, m, p };
+  };
+  const init = parse(value);
+  const [selH, setSelH] = React.useState(init.h);
+  const [selM, setSelM] = React.useState(init.m);
+  const [selP, setSelP] = React.useState<'AM' | 'PM'>(init.p);
+
+  React.useEffect(() => {
+    const { h, m, p } = parse(value);
+    setSelH(h); setSelM(m); setSelP(p);
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  function pick(h: number, m: number, p: 'AM' | 'PM') {
+    setSelH(h); setSelM(m); setSelP(p);
+    onSave(field, fmt12to24(h, m, p));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+    setOpen(false);
+  }
+
+  const HOURS = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+  const MINS  = [0, 15, 30, 45];
+
+  return (
+    <div ref={ref} className="relative">
+      {!noLabel && (
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-gray-500 text-xs">{label}</label>
+          {saved && <span className="text-[10px] text-green-500/70">guardado</span>}
+        </div>
+      )}
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full text-left bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#B3985B]/50 rounded-lg px-3 py-2 text-sm transition-colors focus:outline-none focus:border-[#B3985B]">
+        {value
+          ? <span className="text-white font-medium">{fmt24to12(value)}</span>
+          : <span className="text-gray-600 italic">Seleccionar hora...</span>}
+      </button>
+      {open && (
+        <div className="absolute z-50 top-full mt-1 left-0 bg-[#111] border border-[#2a2a2a] rounded-xl shadow-2xl p-3 w-60">
+          {/* AM / PM */}
+          <div className="flex gap-1 mb-3">
+            {(['AM', 'PM'] as const).map(p => (
+              <button key={p} type="button" onClick={() => setSelP(p)}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${selP === p ? 'bg-[#B3985B] text-black' : 'bg-[#1a1a1a] text-gray-400 hover:text-white'}`}>
+                {p}
+              </button>
+            ))}
+          </div>
+          {/* Horas */}
+          <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">Hora</p>
+          <div className="grid grid-cols-6 gap-1 mb-3">
+            {HOURS.map(h => (
+              <button key={h} type="button" onClick={() => setSelH(h)}
+                className={`py-1.5 rounded-lg text-xs font-medium transition-all ${selH === h ? 'bg-[#B3985B] text-black' : 'bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#222]'}`}>
+                {h}
+              </button>
+            ))}
+          </div>
+          {/* Minutos */}
+          <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">Minutos</p>
+          <div className="grid grid-cols-4 gap-1 mb-3">
+            {MINS.map(m => (
+              <button key={m} type="button" onClick={() => setSelM(m)}
+                className={`py-1.5 rounded-lg text-xs font-medium transition-all ${selM === m ? 'bg-[#B3985B] text-black' : 'bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#222]'}`}>
+                :{String(m).padStart(2, '0')}
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={() => pick(selH, selM, selP)}
+            className="w-full py-2 bg-[#B3985B] hover:bg-[#c4aa6b] text-black text-xs font-semibold rounded-lg transition-colors">
+            Confirmar {selH}:{String(selM).padStart(2, '0')} {selP}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Componente campo editable ────────────────────────────────────────────────
 function Campo({ label, value, field, onSave, type = "text", multiline = false, noLabel = false }:
   { label: string; value: string | null; field: string; onSave: (f: string, v: string) => void; type?: string; multiline?: boolean; noLabel?: boolean }) {
@@ -3483,19 +3600,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         // ── Campos ponderados (suman 100) ───────────────────────────────────
         type WCheck = { ok: boolean; label: string; peso: number };
         const wChecks: WCheck[] = [
-          { ok: !!proyecto.lugarEvento,                                                                         label: "Lugar del evento",         peso: 7  },
-          { ok: !!proyecto.encargadoCliente && !!proyecto.encargadoClienteContacto,                             label: "Contacto del cliente",      peso: 7  },
-          { ok: !!proyecto.encargado,                                                                           label: "Responsable interno",       peso: 5  },
-          { ok: proyecto.equipos.length > 0,                                                                    label: "Equipo registrado",         peso: 10 },
-          { ok: proyecto.equipos.length > 0 && proyecto.equipos.every((e: { confirmado: boolean }) => e.confirmado), label: "Equipos confirmados",  peso: 8  },
-          { ok: checkPct2 >= 0.8,                                                                               label: "Checklist completado",      peso: 10 },
-          { ok: !!anticipoCxC && anticipoCxC.montoCobrado >= anticipoCxC.monto,                                 label: "Anticipo cobrado",         peso: 10 },
-          { ok: !!liquidacionCxC && liquidacionCxC.montoCobrado >= liquidacionCxC.monto,                        label: "Liquidación cobrada",      peso: 10 },
-          { ok: !!proyecto.cotizacion,                                                                          label: "Cotización generada",       peso: 8  },
-          { ok: proyecto.personal.length > 0,                                                                   label: "Personal asignado",        peso: 5  },
-          { ok: _salidaData.estado === "OK",                                                                    label: "Protocolo de salida OK",   peso: 8  },
-          { ok: _entradaData.estado === "OK",                                                                   label: "Protocolo de entrada OK",  peso: 7  },
-          { ok: !!(proyecto.horaMontaje && proyecto.horaInicio),                                                 label: "Horarios del evento",       peso: 5  },
+          { ok: !!proyecto.lugarEvento,                                                                    label: "Lugar del evento",      peso: 10 },
+          { ok: !!proyecto.encargadoCliente && !!proyecto.encargadoClienteContacto,                        label: "Contacto del cliente",  peso: 8  },
+          { ok: !!proyecto.encargado,                                                                      label: "Responsable interno",   peso: 5  },
+          { ok: proyecto.equipos.length > 0,                                                               label: "Equipo registrado",     peso: 10 },
+          { ok: !!proyecto.cotizacion,                                                                     label: "Cotización generada",  peso: 10 },
+          { ok: proyecto.personal.length > 0,                                                              label: "Personal asignado",    peso: 7  },
+          { ok: !!anticipoCxC && anticipoCxC.montoCobrado >= anticipoCxC.monto,                            label: "Anticipo cobrado",     peso: 15 },
+          { ok: !!liquidacionCxC && liquidacionCxC.montoCobrado >= liquidacionCxC.monto,                   label: "Liquidación cobrada",  peso: 15 },
+          { ok: checkPct2 >= 0.8,                                                                          label: "Checklist completado", peso: 10 },
+          { ok: !!proyecto.horaInicioEvento,                                                               label: "Horarios definidos",   peso: 5  },
+          { ok: _salidaData.estado === "OK",                                                               label: "Protocolo de salida",  peso: 5  },
         ];
 
         const pct = Math.round(wChecks.reduce((sum, c) => sum + (c.ok ? c.peso : 0), 0));
@@ -3560,30 +3675,32 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         const pendientes = wChecks.filter(c => !c.ok);
 
         return (
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4 space-y-4">
-            {/* Header */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="text-xs text-gray-500 uppercase tracking-wider shrink-0">Avance</span>
-                <span className="text-2xl font-bold tabular-nums shrink-0" style={{ color: barColor }}>{pct}%</span>
-                {proyecto.estado === "CANCELADO" && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-900/40 text-red-400 font-medium">Cancelado</span>
-                )}
-                {pendientes.length > 0 && proyecto.estado !== "CANCELADO" && (
-                  <span className="text-[10px] text-gray-600 truncate hidden sm:block">
-                    Faltan: {pendientes.slice(0, 3).map(p => p.label).join(", ")}{pendientes.length > 3 ? ` +${pendientes.length - 3}` : ""}
-                  </span>
-                )}
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+            {/* Header row */}
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl font-bold tabular-nums" style={{ color: barColor }}>{pct}%</span>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider leading-none">Avance del proyecto</p>
+                  {pendientes.length > 0 && proyecto.estado !== "CANCELADO" && (
+                    <p className="text-[11px] text-gray-600 mt-0.5">
+                      {pendientes.length} pendiente{pendientes.length > 1 ? 's' : ''}: {pendientes.slice(0, 2).map(p => p.label).join(', ')}{pendientes.length > 2 ? ` +${pendientes.length - 2}` : ''}
+                    </p>
+                  )}
+                  {pendientes.length === 0 && proyecto.estado !== "CANCELADO" && (
+                    <p className="text-[11px] text-emerald-500/70 mt-0.5">✓ Todo completado
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                {/* Botón destacado para cerrar cuando está pendiente */}
                 {proyecto.estado === "PENDIENTE_CIERRE" && (
                   <button
                     onClick={() => cambiarEstado("COMPLETADO")}
                     disabled={saving}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors disabled:opacity-40 mb-2"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#B3985B] text-black font-semibold text-xs hover:bg-[#c9a96a] transition-colors disabled:opacity-40"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
                     Cerrar proyecto
                   </button>
                 )}
@@ -3609,18 +3726,27 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             </div>
 
-            {/* Barra global */}
-            <div className="h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
+            {/* Progress bar */}
+            <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden mb-3">
               <div className="h-full rounded-full transition-all duration-700"
                 style={{ width: `${pct}%`, backgroundColor: barColor }} />
             </div>
 
-            {/* 3 áreas */}
-            <div className="flex gap-3 flex-wrap sm:flex-nowrap">
-              <AreaCard title="Información" checks={infoChecks} color="#60a5fa" />
-              <AreaCard title="Producción"  checks={prodChecks} color="#B3985B" />
-              <AreaCard title="Finanzas"    checks={finChecks}  color="#4ade80" />
-            </div>
+            {/* Compact checks — only show pending */}
+            {pendientes.length > 0 && proyecto.estado !== "CANCELADO" && (
+              <div className="flex flex-wrap gap-1.5">
+                {wChecks.map(c => (
+                  <span key={c.label}
+                    className={`text-[10px] px-2 py-0.5 rounded-full border ${
+                      c.ok
+                        ? 'bg-emerald-900/10 border-emerald-900/20 text-emerald-700'
+                        : 'bg-[#1a1a1a] border-[#2a2a2a] text-gray-500'
+                    }`}>
+                    {c.ok ? '✓' : '○'} {c.label}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         );
       })()}
@@ -3834,14 +3960,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <Campo label="Contacto del lugar" value={proyecto.encargadoLugarContacto} field="encargadoLugarContacto" onSave={guardarCampo} />
                   <Campo label="Fecha del evento" value={proyecto.fechaEvento?.substring(0, 10) ?? null} field="fechaEvento" type="date" onSave={guardarCampo} />
                   <div className="col-span-1" />
-                  <Campo label="Hora inicio del evento" value={proyecto.horaInicioEvento} field="horaInicioEvento" type="time" onSave={guardarCampo} />
-                  <Campo label="Hora fin del evento" value={proyecto.horaFinEvento} field="horaFinEvento" type="time" onSave={guardarCampo} />
+                  <HourPicker label="Hora inicio del evento" value={proyecto.horaInicioEvento} field="horaInicioEvento" onSave={guardarCampo} />
+                  <HourPicker label="Hora fin del evento" value={proyecto.horaFinEvento} field="horaFinEvento" onSave={guardarCampo} />
                   <Campo label="Fecha de montaje" value={proyecto.fechaMontaje?.toString().substring(0, 10) ?? null} field="fechaMontaje" type="date" onSave={guardarCampo} />
-                  <Campo label="Hora de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" type="time" onSave={guardarCampo} />
+                  <HourPicker label="Hora de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" onSave={guardarCampo} />
                   <Campo label="Duración montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? null} field="duracionMontajeHrs" type="number" onSave={guardarCampo} />
-                  {/* Horarios del día del evento */}
-                  <Campo label="Hora llegada/montaje (venue)" value={proyecto.horaMontaje} field="horaMontaje" type="time" onSave={guardarCampo} />
-                  <Campo label="Hora inicio del evento" value={proyecto.horaInicio} field="horaInicio" type="time" onSave={guardarCampo} />
                   <Campo label="Hora desmontaje/salida" value={proyecto.horaDesmontaje} field="horaDesmontaje" type="time" onSave={guardarCampo} />
                   <div className="col-span-1" />
                   <div className="col-span-2">
@@ -3854,7 +3977,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <Campo label="Indicaciones de acceso" value={proyecto.indicacionesAcceso} field="indicacionesAcceso" type="textarea" onSave={guardarCampo} />
                   </div>
                   <Campo label="Punto de salida bodega" value={proyecto.puntoSalidaBodega} field="puntoSalidaBodega" type="text" onSave={guardarCampo} />
-                  <Campo label="Hora salida bodega" value={proyecto.horaSalidaBodega} field="horaSalidaBodega" type="time" onSave={guardarCampo} />
+                  <HourPicker label="Hora salida bodega" value={proyecto.horaSalidaBodega} field="horaSalidaBodega" onSave={guardarCampo} />
                   {/* ── Llamado en bodega (fecha + hora) ── */}
                   <div className="col-span-2">
                     <label className="text-xs text-gray-500 block mb-1">Llamado en bodega</label>
