@@ -3561,7 +3561,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             {([
               { id: 'resumen',   label: 'Resumen' },
               { id: 'operacion', label: 'Operación' },
-              { id: 'extras',    label: 'Extras' },
+              { id: 'extras',    label: 'Producción' },
               { id: 'finanzas',  label: 'Finanzas' },
               { id: 'equipos',   label: 'Equipos' },
             ] as const).map(item => (
@@ -3731,22 +3731,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <div className="h-full rounded-full transition-all duration-700"
                 style={{ width: `${pct}%`, backgroundColor: barColor }} />
             </div>
-
-            {/* Compact checks — only show pending */}
-            {pendientes.length > 0 && proyecto.estado !== "CANCELADO" && (
-              <div className="flex flex-wrap gap-1.5">
-                {wChecks.map(c => (
-                  <span key={c.label}
-                    className={`text-[10px] px-2 py-0.5 rounded-full border ${
-                      c.ok
-                        ? 'bg-emerald-900/10 border-emerald-900/20 text-emerald-700'
-                        : 'bg-[#1a1a1a] border-[#2a2a2a] text-gray-500'
-                    }`}>
-                    {c.ok ? '✓' : '○'} {c.label}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
         );
       })()}
