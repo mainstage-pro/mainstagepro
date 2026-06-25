@@ -1589,7 +1589,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Estado para confirmación de borrado
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
   const [borrando, setBorrando] = useState(false);
-  const [activeTab, setActiveTab] = useState<'resumen'|'operacion'|'extras'|'finanzas'|'equipos'>('resumen');
+  const [activeTab, setActiveTab] = useState<'resumen'|'operacion'|'extras'|'finanzas'>('resumen');
 
   // ── Pago a inversionistas por uso de equipos propios ──────────────────────
   type PagoSociosData = {
@@ -3563,7 +3563,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               { id: 'operacion', label: 'Operación' },
               { id: 'extras',    label: 'Producción' },
               { id: 'finanzas',  label: 'Finanzas' },
-              { id: 'equipos',   label: 'Equipos' },
             ] as const).map(item => (
               <button
                 key={item.id}
@@ -3600,17 +3599,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         // ── Campos ponderados (suman 100) ───────────────────────────────────
         type WCheck = { ok: boolean; label: string; peso: number };
         const wChecks: WCheck[] = [
-          { ok: !!proyecto.lugarEvento,                                                                    label: "Lugar del evento",      peso: 10 },
-          { ok: !!proyecto.encargadoCliente && !!proyecto.encargadoClienteContacto,                        label: "Contacto del cliente",  peso: 8  },
-          { ok: !!proyecto.encargado,                                                                      label: "Responsable interno",   peso: 5  },
-          { ok: proyecto.equipos.length > 0,                                                               label: "Equipo registrado",     peso: 10 },
-          { ok: !!proyecto.cotizacion,                                                                     label: "Cotización generada",  peso: 10 },
-          { ok: proyecto.personal.length > 0,                                                              label: "Personal asignado",    peso: 7  },
-          { ok: !!anticipoCxC && anticipoCxC.montoCobrado >= anticipoCxC.monto,                            label: "Anticipo cobrado",     peso: 15 },
-          { ok: !!liquidacionCxC && liquidacionCxC.montoCobrado >= liquidacionCxC.monto,                   label: "Liquidación cobrada",  peso: 15 },
-          { ok: checkPct2 >= 0.8,                                                                          label: "Checklist completado", peso: 10 },
-          { ok: !!proyecto.horaInicioEvento,                                                               label: "Horarios definidos",   peso: 5  },
-          { ok: _salidaData.estado === "OK",                                                               label: "Protocolo de salida",  peso: 5  },
+          { ok: !!proyecto.lugarEvento,                                                               label: "Lugar del evento",     peso: 10 },
+          { ok: !!proyecto.encargado,                                                                  label: "Responsable interno",  peso: 5  },
+          { ok: proyecto.equipos.length > 0,                                                          label: "Equipo registrado",    peso: 10 },
+          { ok: !!proyecto.cotizacion,                                                                 label: "Cotización generada", peso: 12 },
+          { ok: proyecto.personal.length > 0,                                                         label: "Personal asignado",   peso: 8  },
+          { ok: !!anticipoCxC && anticipoCxC.montoCobrado >= anticipoCxC.monto,                       label: "Anticipo cobrado",    peso: 20 },
+          { ok: !!liquidacionCxC && liquidacionCxC.montoCobrado >= liquidacionCxC.monto,              label: "Liquidación cobrada", peso: 20 },
+          { ok: !!proyecto.horaInicioEvento,                                                          label: "Horarios definidos",  peso: 7  },
+          { ok: _salidaData.estado === "OK",                                                          label: "Protocolo de salida", peso: 8  },
         ];
 
         const pct = Math.round(wChecks.reduce((sum, c) => sum + (c.ok ? c.peso : 0), 0));
@@ -5530,6 +5527,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         {/* ──── EXTRAS tab ──── */}
         {activeTab === 'extras' && (
           <div id="section-extras" className="scroll-mt-14">
+            {/* ── Equipos del proyecto ── */}
+            <EquiposTab proyectoId={proyecto.id} />
+
       {(() => {
         const tipoEvento = (proyecto.tipoEvento || "").toUpperCase();
         const esMusical = tipoEvento.includes("MUSICAL") || tipoEvento.includes("CONCIERTO") || tipoEvento.includes("FESTIVAL");
@@ -6310,11 +6310,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         );
       })()}
           </div>
-        )}
-
-        {/* ──── EQUIPOS tab ──── */}
-        {activeTab === "equipos" && (
-          <EquiposTab proyectoId={proyecto.id} />
         )}
 
         {/* ──── FINANZAS tab ──── */}
