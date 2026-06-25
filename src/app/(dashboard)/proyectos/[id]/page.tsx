@@ -697,10 +697,10 @@ type LineaEquipo = {
 type ProveedorOpt = { id: string; nombre: string; empresa: string | null };
 
 const CLASIF_BADGE: Record<string, { bg: string; text: string; label: string }> = {
-  PROPIO_DISPONIBLE:  { bg: 'bg-emerald-900/20 border border-emerald-800/30', text: 'text-emerald-400', label: '\u2713 Disponible' },
-  PROPIO_CONFLICTO:   { bg: 'bg-yellow-900/20 border border-yellow-800/30', text: 'text-yellow-400',   label: '\u26A0 Conflicto de fechas' },
-  EXTERNO_INVENTARIO: { bg: 'bg-blue-900/20 border border-blue-800/30',   text: 'text-blue-400',     label: '\u25CF Inventario externo' },
-  EXTERNO_MANUAL:     { bg: 'bg-[#1a1a1a] border border-[#2a2a2a]',     text: 'text-[#6b7280]',   label: '\u25A2 Conseguir proveedor' },
+  PROPIO_DISPONIBLE:  { bg: 'bg-emerald-900/20 border border-emerald-800/30', text: 'text-emerald-400', label: '✓ Disponible' },
+  PROPIO_CONFLICTO:   { bg: 'bg-yellow-900/20 border border-yellow-800/30', text: 'text-yellow-400',   label: '⚠ Conflicto de fechas' },
+  EXTERNO_INVENTARIO: { bg: 'bg-blue-900/20 border border-blue-800/30',   text: 'text-blue-400',     label: '● Inventario externo' },
+  EXTERNO_MANUAL:     { bg: 'bg-[#1a1a1a] border border-[#2a2a2a]',     text: 'text-[#6b7280]',   label: '□ Conseguir proveedor' },
 };
 
 function fmxEquipo(n: number) {
@@ -796,7 +796,7 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
   if (!data || data.lineas.length === 0) {
     return (
       <div className="text-center py-16 text-[#333]">
-        <p className="text-4xl mb-3">\uD83D\uDCE6</p>
+        <p className="text-4xl mb-3">📦</p>
         <p className="text-sm">Este proyecto no tiene equipos cotizados vinculados al inventario.</p>
         <p className="text-xs text-[#444] mt-1">Agrega equipos desde la cotización para verlos aquí.</p>
       </div>
@@ -813,7 +813,7 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
     iso ? new Date(iso + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '—';
 
   const fechaRango = data.proyecto.fechaMontaje
-    ? `${fmtFechaCorta(data.proyecto.fechaMontaje.split('T')[0])} \u2192 ${fmtFechaCorta(data.proyecto.fechaEvento.split('T')[0])}`
+    ? `${fmtFechaCorta(data.proyecto.fechaMontaje.split('T')[0])} → ${fmtFechaCorta(data.proyecto.fechaEvento.split('T')[0])}`
     : fmtFechaCorta(data.proyecto.fechaEvento.split('T')[0]);
 
   return (
@@ -825,7 +825,7 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
           <h2 className="text-base font-semibold text-white">Equipos del proyecto</h2>
           <p className="text-[#6b7280] text-xs mt-0.5">Disponibilidad verificada para: {fechaRango}</p>
         </div>
-        <button onClick={load} className="text-xs text-[#555] hover:text-[#B3985B] transition-colors">\u21BB Actualizar</button>
+        <button onClick={load} className="text-xs text-[#555] hover:text-[#B3985B] transition-colors">↻ Actualizar</button>
       </div>
 
       {/* KPIs */}
@@ -881,10 +881,10 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
                   <React.Fragment key={linea.id}>
                     <tr className="border-t border-[#161616] hover:bg-[#0d0d0d] transition-colors">
                       <td className="px-4 py-2.5">
-                        <p className="text-white font-medium">{(linea.marca || linea.modelo) ? [linea.marca, linea.modelo].filter(Boolean).join(' \u00b7 ') : linea.descripcion}</p>
+                        <p className="text-white font-medium">{(linea.marca || linea.modelo) ? [linea.marca, linea.modelo].filter(Boolean).join(' · ') : linea.descripcion}</p>
                         {(linea.marca || linea.modelo) && <p className="text-[#555] text-[10px]">{linea.descripcion}</p>}
                       </td>
-                      <td className="px-3 py-2.5 text-center text-white font-medium">{linea.cantidad}u \u00d7 {linea.dias}d</td>
+                      <td className="px-3 py-2.5 text-center text-white font-medium">{linea.cantidad}u × {linea.dias}d</td>
                       <td className="px-3 py-2.5 text-center">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${badge.bg} ${badge.text}`}>
                           {badge.label}
@@ -898,7 +898,7 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
                       </td>
                       <td className="px-3 py-2.5 text-center">
                         {linea.clasificacion === 'PROPIO_DISPONIBLE' && (
-                          <span className="text-emerald-500 text-[10px]">\u2713 Listo</span>
+                          <span className="text-emerald-500 text-[10px]">✓ Listo</span>
                         )}
                         {linea.clasificacion === 'PROPIO_CONFLICTO' && (
                           <span className="text-yellow-500 text-[10px]">Resolver</span>
@@ -941,13 +941,13 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
                   <React.Fragment key={linea.id}>
                     <tr className={`border-t border-[#161616] transition-colors ${esConfirmando ? 'bg-[#0d0d0d]' : 'hover:bg-[#0d0d0d]'}`}>
                       <td className="px-4 py-2.5">
-                        <p className="text-white font-medium">{(linea.marca || linea.modelo) ? [linea.marca, linea.modelo].filter(Boolean).join(' \u00b7 ') : linea.descripcion}</p>
+                        <p className="text-white font-medium">{(linea.marca || linea.modelo) ? [linea.marca, linea.modelo].filter(Boolean).join(' · ') : linea.descripcion}</p>
                         {(linea.marca || linea.modelo) && <p className="text-[#555] text-[10px]">{linea.descripcion}</p>}
                       </td>
-                      <td className="px-3 py-2.5 text-center text-white font-medium">{linea.cantidad}u \u00d7 {linea.dias}d</td>
+                      <td className="px-3 py-2.5 text-center text-white font-medium">{linea.cantidad}u × {linea.dias}d</td>
                       <td className="px-3 py-2.5 text-center">
                         {linea.yaConfirmado ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-900/20 text-emerald-400">\u2713 Confirmado</span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-900/20 text-emerald-400">✓ Confirmado</span>
                         ) : (
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${badge.bg} ${badge.text}`}>
                             {badge.label}
@@ -996,7 +996,7 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
                                   className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]/50">
                                   <option value="">— Selecciona —</option>
                                   {(data?.proveedores ?? []).map(p => (
-                                    <option key={p.id} value={p.id}>{p.nombre}{p.empresa ? ` \u00b7 ${p.empresa}` : ''}</option>
+                                    <option key={p.id} value={p.id}>{p.nombre}{p.empresa ? ` · ${p.empresa}` : ''}</option>
                                   ))}
                                 </select>
                               </div>
