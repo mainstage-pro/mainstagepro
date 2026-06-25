@@ -194,6 +194,92 @@ function accesoriosPorEquipo(descripcion: string, categoria: string): string[] {
   return ["Cable de poder"];
 }
 
+// ─── InlinePicker: picker AM/PM compacto para tabla de cronograma ────────────
+function InlinePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  const parse = (v: string) => {
+    if (!v) return { h: 12, m: 0, p: 'AM' as const };
+    const [hStr, mStr] = v.split(':');
+    const h24 = parseInt(hStr, 10);
+    const m = parseInt(mStr ?? '0', 10);
+    const p: 'AM' | 'PM' = h24 >= 12 ? 'PM' : 'AM';
+    const h = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
+    return { h, m, p };
+  };
+  const { h: initH, m: initM, p: initP } = parse(value);
+  const [selH, setSelH] = React.useState(initH);
+  const [selM, setSelM] = React.useState(initM);
+  const [selP, setSelP] = React.useState<'AM' | 'PM'>(initP);
+
+  React.useEffect(() => {
+    const { h, m, p } = parse(value);
+    setSelH(h); setSelM(m); setSelP(p);
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  function pick(h: number, m: number, p: 'AM' | 'PM') {
+    setSelH(h); setSelM(m); setSelP(p);
+    onChange(fmt12to24(h, m, p));
+    setOpen(false);
+  }
+
+  const HOURS = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+  const MINS  = [0, 15, 30, 45];
+  const display = value ? fmt24to12(value) : '—';
+
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => setOpen(o => !o)}
+        className="w-full text-left bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] hover:border-[#B3985B]/40 rounded px-2 py-1 text-xs transition-colors focus:outline-none whitespace-nowrap">
+        <span className={value ? 'text-white' : 'text-gray-600'}>{display}</span>
+      </button>
+      {open && (
+        <div className="absolute z-50 top-full mt-0.5 left-0 bg-[#111] border border-[#2a2a2a] rounded-xl shadow-2xl p-2.5 w-52">
+          {/* AM/PM */}
+          <div className="flex gap-1 mb-2">
+            {(['AM', 'PM'] as const).map(p => (
+              <button key={p} type="button" onClick={() => setSelP(p)}
+                className={`flex-1 py-1 rounded-lg text-[10px] font-bold transition-all ${selP === p ? 'bg-[#B3985B] text-black' : 'bg-[#1a1a1a] text-gray-400 hover:text-white'}`}>
+                {p}
+              </button>
+            ))}
+          </div>
+          {/* Horas */}
+          <div className="grid grid-cols-6 gap-0.5 mb-2">
+            {HOURS.map(h => (
+              <button key={h} type="button"
+                onClick={() => { setSelH(h); }}
+                className={`py-1 rounded text-[10px] font-medium transition-all ${selH === h ? 'bg-[#B3985B] text-black' : 'bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#222]'}`}>
+                {h}
+              </button>
+            ))}
+          </div>
+          {/* Minutos — al seleccionar confirma automáticamente */}
+          <div className="grid grid-cols-4 gap-0.5">
+            {MINS.map(m => (
+              <button key={m} type="button"
+                onClick={() => pick(selH, m, selP)}
+                className={`py-1.5 rounded text-[10px] font-semibold transition-all ${selM === m ? 'bg-[#B3985B] text-black' : 'bg-[#1a1a1a] text-gray-400 hover:bg-[#B3985B]/80 hover:text-black'}`}>
+                :{String(m).padStart(2, '0')}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── TimePicker AM/PM ─────────────────────────────────────────────────────────
 function fmt24to12(val: string | null): string {
   if (!val) return '';
@@ -4446,7 +4532,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             <div className="p-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-3">
-                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Personal del evento</p>
+                  <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Personal técnico del evento</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {proyecto.personal.length > 0 && (
@@ -5176,99 +5262,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             );
           })()}
 
-          {/* ── Logística (solo producción técnica / dirección técnica) ── */}
-          {!esRenta && (
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Catering de producción</p>
-              <button
-                onClick={() => {
-                  const next = !proyecto.aplicaCatering;
-                  setProyecto(prev => prev ? { ...prev, aplicaCatering: next } : prev);
-                  fetch(`/api/proyectos/${proyecto.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ aplicaCatering: next }) });
-                }}
-                className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border transition-colors ${proyecto.aplicaCatering ? "border-[#B3985B]/40 bg-[#B3985B]/10 text-[#B3985B]" : "border-[#222] text-[#555] hover:border-[#333] hover:text-[#777]"}`}
-              >
-                <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${proyecto.aplicaCatering ? "bg-[#B3985B] border-[#B3985B]" : "border-[#555]"}`}>
-                  {proyecto.aplicaCatering && <span className="w-1.5 h-1.5 rounded-full bg-black" />}
-                </span>
-                {proyecto.aplicaCatering ? "Aplica" : "No aplica"}
-              </button>
-            </div>
-
-            {proyecto.aplicaCatering && <div>
-              {savingCatering && <p className="text-xs text-gray-600 mb-2">Guardando...</p>}
-              {catering.contactoTelefono && (
-                <div className="flex justify-end mb-3">
-                  <button onClick={abrirWhatsAppCatering}
-                    className="text-xs border border-green-800/50 text-green-500 hover:bg-green-900/20 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors font-medium">
-                    📲 Solicitar a proveedor
-                  </button>
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-3">
-                {/* Proveedor de catering */}
-                <div className="col-span-2">
-                  <label className="text-xs text-gray-500 block mb-1">Proveedor de catering</label>
-                  <Combobox
-                    value={catering.proveedorId}
-                    onChange={v => {
-                      const prov = proveedores.find(p => p.id === v);
-                      setCatering(prev => ({
-                        ...prev,
-                        proveedorId: v,
-                        contactoNombre: prov ? prov.nombre : prev.contactoNombre,
-                        contactoTelefono: prov?.telefono ?? prev.contactoTelefono,
-                      }));
-                    }}
-                    options={[{ value: "", label: "— Seleccionar proveedor —" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre + (p.giro ? ` · ${p.giro}` : "") }))]}
-                    className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Teléfono / WhatsApp del proveedor</label>
-                  <input value={catering.contactoTelefono}
-                    onChange={e => setCatering(p => ({ ...p, contactoTelefono: e.target.value }))}
-                    placeholder="Ej: 4421234567"
-                    className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                {/* Personas */}
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Elementos a alimentar</label>
-                  <input type="number" min="1" value={catering.personasCrew}
-                    onChange={e => setCatering(p => ({ ...p, personasCrew: e.target.value }))}
-                    placeholder="Ej: 8"
-                    className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                {/* Servicios por día */}
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Servicios por día</label>
-                  <input type="number" min="1" value={catering.comidasPorDia}
-                    onChange={e => setCatering(p => ({ ...p, comidasPorDia: e.target.value }))}
-                    placeholder="Ej: 2 (comida + cena)"
-                    className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div className="col-span-2">
-                  <label className="text-xs text-gray-500 block mb-1">Notas especiales (alergias, restricciones…)</label>
-                  <input value={catering.notas}
-                    onChange={e => setCatering(p => ({ ...p, notas: e.target.value }))}
-                    placeholder="Ej: 2 vegetarianos, sin gluten para técnico de iluminación"
-                    className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                {/* Confirmación con proveedor */}
-                <div className="col-span-2">
-                  <button onClick={() => { const next = { ...catering, confirmado: !catering.confirmado }; setCatering(next); guardarCatering(next); }}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm transition-colors ${catering.confirmado ? "border-green-700/40 bg-green-900/10 text-green-300" : "border-[#2a2a2a] text-gray-500 hover:border-[#333] hover:text-gray-400"}`}>
-                    <span>{catering.confirmado ? "✓ Pedido confirmado con el proveedor" : "Marcar como confirmado con el proveedor"}</span>
-                    <span className={`w-5 h-5 rounded-full border flex items-center justify-center text-xs font-bold flex-shrink-0 ${catering.confirmado ? "bg-green-600 border-green-600 text-white" : "border-[#555]"}`}>
-                      {catering.confirmado ? "✓" : ""}
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>}
-          </div>
-          )}
 
           {/* ── Cronograma (tabla) — solo producción técnica / dirección técnica ── */}
           {!esRenta && (
@@ -5314,13 +5307,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <tbody>
                     {cronoRows.map((row, i) => (
                       <tr key={i} className={`border-b border-[#1a1a1a] last:border-0 ${i % 2 === 1 ? "bg-[#0d0d0d]" : ""}`}>
-                        <td className="py-1 pr-2">
-                          <input type="time" value={row.horaInicio} onChange={e => updateCronoRow(i, "horaInicio", e.target.value)}
-                            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B] [color-scheme:dark]" />
+                        <td className="py-1 pr-2 w-[84px]">
+                          <InlinePicker value={row.horaInicio} onChange={v => updateCronoRow(i, "horaInicio", v)} />
                         </td>
-                        <td className="py-1 pr-2">
-                          <input type="time" value={row.horaFin} onChange={e => updateCronoRow(i, "horaFin", e.target.value)}
-                            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B] [color-scheme:dark]" />
+                        <td className="py-1 pr-2 w-[84px]">
+                          <InlinePicker value={row.horaFin} onChange={v => updateCronoRow(i, "horaFin", v)} />
                         </td>
                         <td className="py-1 pr-2">
                           <input value={row.actividad} onChange={e => updateCronoRow(i, "actividad", e.target.value)}
