@@ -1102,13 +1102,70 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [borrando, setBorrando] = useState(false);
   const [activeTab, setActiveTab] = useState<'resumen'|'operacion'|'extras'|'finanzas'>('resumen');
 
+  // ── Pago a inversionistas por uso de equipos propios ──────────────────────
+  type PagoSociosData = {
+    viabilidad: { pctUtilidad: number; pctFormateado: string; tier: { label: string; pct: number; pctFormateado: string; color: string } };
+    equipoPropio: { lineas: { id: string; descripcion: string; marca: string | null; cantidad: number; precioUnitario: number; subtotal: number }[]; total: number };
+    montoInversionista: number;
+    socios: { id: string; nombre: string; tipo: string; cxpExistente: { id: string; monto: number; estado: string; fechaCompromiso: string } | null }[];
+    tiers: { min: number; pct: number; label: string; color: string; activo: boolean }[];
+    diasEvento: number;
+  };
+  const [pagoSocios, setPagoSocios] = useState<PagoSociosData | null>(null);
+  const [loadingPagoSocios, setLoadingPagoSocios] = useState(false);
+  const [pctOverride, setPctOverride] = useState<string>("");
+  const [fechaCompromisoSocio, setFechaCompromisoSocio] = useState<string>("");
+  const [savingPagoSocio, setSavingPagoSocio] = useState<string | null>(null);
+  const [notasPagoSocio, setNotasPagoSocio] = useState<string>("");
+
+  async function loadPagoSocios() {
+    setLoadingPagoSocios(true);
+    try {
+      const res = await fetch(`/api/proyectos/${id}/pago-socios`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setPagoSocios(data);
+      // Pre-llenar % con el automático
+      setPctOverride((data.viabilidad.tier.pct * 100).toFixed(0));
+      // Pre-llenar fecha: evento + 15 días
+      if (data.proyecto?.fechaEvento) {
+        const d = new Date(data.proyecto.fechaEvento);
+        d.setDate(d.getDate() + 15);
+        setFechaCompromisoSocio(d.toISOString().slice(0, 10));
+      }
+    } finally {
+      setLoadingPagoSocios(false);
+    }
+  }
+
+  async function generarPagoSocio(socioId: string) {
+    if (!pagoSocios || !fechaCompromisoSocio) return;
+    const pct = (parseFloat(pctOverride) || 0) / 100;
+    const monto = pagoSocios.equipoPropio.total * pct;
+    if (monto <= 0) { toast.error("El monto calculado es $0 — revisa el porcentaje y equipos"); return; }
+    setSavingPagoSocio(socioId);
+    try {
+      const res = await fetch(`/api/proyectos/${id}/pago-socios`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ socioId, monto, fechaCompromiso: fechaCompromisoSocio, notas: notasPagoSocio || null, pctAplicado: pct }),
+      });
+      const d = await res.json();
+      if (!res.ok) { toast.error(d.error ?? "Error al generar cuenta por pagar"); return; }
+      toast.success("Cuenta por pagar generada correctamente");
+      await loadPagoSocios();
+    } finally {
+      setSavingPagoSocio(null);
+    }
+  }
+
+  const [vehiculos, setVehiculos] = useState<{ id: string; nombre: string; marca: string | null; modelo: string | null; placas: string | null }[]>([]);
+
   // Viabilidad
   const [viabilidad, setViabilidad] = useState<{
     viabilidadActiva: ViabilidadActiva | null;
     historico: ViabilidadHistoricoItem[];
   } | null>(null);
-
-  const [vehiculos, setVehiculos] = useState<{ id: string; nombre: string; marca: string | null; modelo: string | null; placas: string | null }[]>([]);
   const [usuariosActivos, setUsuariosActivos] = useState<{ id: string; name: string; area: string | null }[]>([]);
   type Responsables = { produccion: string; logistica: string; finanzas: string; marketing: string };
   const [responsables, setResponsables] = useState<Responsables>({ produccion: "", logistica: "", finanzas: "", marketing: "" });
@@ -1591,6 +1648,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       .then(d => { if (d) setViabilidad(d); })
       .catch(() => {});
   }, [id]);
+
+  // Cargar datos de pago a inversionistas al entrar a la pestaña finanzas
+  useEffect(() => {
+    if (activeTab === 'finanzas' && !pagoSocios && !loadingPagoSocios) {
+      loadPagoSocios();
+    }
+  }, [activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Section nav — now managed by activeTab state (real tabs, no scroll) ──
 
@@ -6635,6 +6699,201 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             );
           })()}
+
+          {/* ── Liquidación a inversionistas por uso de equipos propios ── */}
+          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+            <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">
+                Liquidación a inversionistas · Equipos propios
+              </h3>
+              <button onClick={loadPagoSocios} disabled={loadingPagoSocios}
+                className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors disabled:opacity-40">
+                {loadingPagoSocios ? "Calculando..." : "↻ Recalcular"}
+              </button>
+            </div>
+
+            {loadingPagoSocios ? (
+              <div className="p-5 space-y-2">
+                {[...Array(3)].map((_, i) => <div key={i} className="h-8 bg-[#1a1a1a] rounded animate-pulse" />)}
+              </div>
+            ) : !pagoSocios ? (
+              <div className="p-5 text-center">
+                <p className="text-gray-600 text-sm">Sin cotización asociada o sin equipos propios en la cotización.</p>
+              </div>
+            ) : (
+              <div className="p-5 space-y-5">
+
+                {/* Tabla de tiers */}
+                <div className="space-y-1">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Tabla de viabilidad → % al inversionista</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {pagoSocios.tiers.map(t => (
+                      <div key={t.min} className={`rounded-lg p-3 border text-center transition-all ${
+                        t.activo
+                          ? t.color === "emerald" ? "border-emerald-700/60 bg-emerald-900/20"
+                          : t.color === "green"   ? "border-green-700/60 bg-green-900/20"
+                          : t.color === "yellow"  ? "border-yellow-700/60 bg-yellow-900/20"
+                          : "border-[#2a2a2a] bg-[#0f0f0f]"
+                          : "border-[#1e1e1e] bg-[#0d0d0d] opacity-50"
+                      }`}>
+                        <p className={`text-xs font-bold mb-0.5 ${
+                          t.activo
+                            ? t.color === "emerald" ? "text-emerald-400"
+                            : t.color === "green"   ? "text-green-400"
+                            : t.color === "yellow"  ? "text-yellow-400"
+                            : "text-gray-500"
+                            : "text-gray-600"
+                        }`}>{(t.pct * 100).toFixed(0)}%</p>
+                        <p className="text-[10px] text-gray-500">{t.label}</p>
+                        {t.activo && <div className="mt-1 w-full h-0.5 rounded-full bg-current opacity-40" />}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Viabilidad + equipos */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4">
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Viabilidad de cotización</p>
+                    <div className="flex items-baseline gap-2">
+                      <p className="text-2xl font-bold text-white tabular-nums">{pagoSocios.viabilidad.pctFormateado}</p>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        pagoSocios.viabilidad.tier.color === "emerald" ? "bg-emerald-900/30 text-emerald-400"
+                        : pagoSocios.viabilidad.tier.color === "green"   ? "bg-green-900/30 text-green-400"
+                        : pagoSocios.viabilidad.tier.color === "yellow"  ? "bg-yellow-900/30 text-yellow-400"
+                        : "bg-gray-800/50 text-gray-500"
+                      }`}>{pagoSocios.viabilidad.tier.label}</span>
+                    </div>
+                    <p className="text-[10px] text-gray-600 mt-1">Porcentaje automático: {pagoSocios.viabilidad.tier.pctFormateado}</p>
+                  </div>
+
+                  <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4">
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">
+                      Equipos propios en cotización ({pagoSocios.equipoPropio.lineas.length})
+                    </p>
+                    <p className="text-2xl font-bold text-white tabular-nums">{fmt(pagoSocios.equipoPropio.total)}</p>
+                    <p className="text-[10px] text-gray-600 mt-1">Total generado por equipos propios</p>
+                  </div>
+                </div>
+
+                {/* Detalle equipos */}
+                {pagoSocios.equipoPropio.lineas.length > 0 && (
+                  <div className="border border-[#1e1e1e] rounded-xl overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-[#1a1a1a] text-gray-500">
+                          <th className="text-left px-4 py-2 font-medium">Equipo</th>
+                          <th className="text-right px-3 py-2 font-medium">Cant.</th>
+                          <th className="text-right px-3 py-2 font-medium">P. Unitario</th>
+                          <th className="text-right px-4 py-2 font-medium">Subtotal</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#161616]">
+                        {pagoSocios.equipoPropio.lineas.map(l => (
+                          <tr key={l.id} className="hover:bg-[#0d0d0d]">
+                            <td className="px-4 py-2 text-white">{l.descripcion}{l.marca ? ` · ${l.marca}` : ""}</td>
+                            <td className="px-3 py-2 text-right text-gray-400 tabular-nums">{l.cantidad}</td>
+                            <td className="px-3 py-2 text-right text-gray-400 tabular-nums">{fmt(l.precioUnitario)}</td>
+                            <td className="px-4 py-2 text-right text-[#B3985B] font-semibold tabular-nums">{fmt(l.subtotal)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr className="border-t border-[#222]">
+                          <td colSpan={3} className="px-4 py-2 text-right text-gray-500 text-xs">Total equipos propios</td>
+                          <td className="px-4 py-2 text-right text-white font-bold tabular-nums">{fmt(pagoSocios.equipoPropio.total)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+
+                {/* Configuración de pago */}
+                <div className="border border-[#B3985B]/20 rounded-xl p-4 space-y-4">
+                  <p className="text-[10px] text-[#B3985B] uppercase tracking-wider font-semibold">Generar cuenta por pagar</p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-[10px] text-gray-500 block mb-1">% al inversionista</label>
+                      <div className="relative">
+                        <input type="number" value={pctOverride} min={0} max={100} step={1}
+                          onChange={e => setPctOverride(e.target.value)}
+                          className="w-full [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-[#0d0d0d] border border-[#333] rounded-lg px-3 py-2 pr-7 text-white text-sm focus:outline-none focus:border-[#B3985B]/50" />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">%</span>
+                      </div>
+                      <p className="text-[10px] text-gray-600 mt-1">Automático: {pagoSocios.viabilidad.tier.pctFormateado}</p>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-500 block mb-1">Fecha de compromiso</label>
+                      <input type="date" value={fechaCompromisoSocio}
+                        onChange={e => setFechaCompromisoSocio(e.target.value)}
+                        className="w-full bg-[#0d0d0d] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-gray-500 block mb-1">Monto calculado</label>
+                      <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[#B3985B] text-sm font-bold tabular-nums">
+                        {fmt(pagoSocios.equipoPropio.total * ((parseFloat(pctOverride) || 0) / 100))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] text-gray-500 block mb-1">Notas (opcional)</label>
+                    <input value={notasPagoSocio} onChange={e => setNotasPagoSocio(e.target.value)}
+                      placeholder="Observaciones sobre el pago..."
+                      className="w-full bg-[#0d0d0d] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50 placeholder-gray-700" />
+                  </div>
+
+                  {/* Inversionistas */}
+                  {pagoSocios.socios.length === 0 ? (
+                    <div className="text-center py-4">
+                      <p className="text-gray-600 text-xs">No hay inversionistas activos registrados en el módulo de Socios.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {pagoSocios.socios.map(socio => {
+                        const monto = pagoSocios.equipoPropio.total * ((parseFloat(pctOverride) || 0) / 100);
+                        const cxp = socio.cxpExistente;
+                        return (
+                          <div key={socio.id} className="flex items-center gap-3 bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-4 py-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white text-sm font-medium">{socio.nombre}</p>
+                              <p className="text-gray-600 text-[10px]">Inversionista · {socio.tipo === "FISICA" ? "Persona física" : "Persona moral"}</p>
+                            </div>
+                            {cxp ? (
+                              <div className="text-right shrink-0">
+                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                  cxp.estado === "LIQUIDADO" ? "bg-green-900/30 text-green-400"
+                                  : cxp.estado === "PARCIAL"  ? "bg-yellow-900/30 text-yellow-400"
+                                  : "bg-orange-900/20 text-orange-400"
+                                }`}>{cxp.estado}</span>
+                                <p className="text-[10px] text-gray-500 mt-0.5">{fmt(cxp.monto)} generado</p>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-3 shrink-0">
+                                <div className="text-right">
+                                  <p className="text-[#B3985B] font-bold text-sm tabular-nums">{fmt(monto)}</p>
+                                  <p className="text-[10px] text-gray-600">{pctOverride}% de equipos propios</p>
+                                </div>
+                                <button
+                                  onClick={() => generarPagoSocio(socio.id)}
+                                  disabled={savingPagoSocio === socio.id || monto <= 0 || !fechaCompromisoSocio}
+                                  className="bg-[#B3985B] hover:bg-[#c4aa6b] disabled:opacity-40 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+                                >
+                                  {savingPagoSocio === socio.id ? "Generando..." : "Generar CxP"}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            )}
+          </div>
 
         </div>
         );
