@@ -3685,15 +3685,18 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         // ── Campos ponderados (suman 100) ───────────────────────────────────
         type WCheck = { ok: boolean; label: string; peso: number };
         const wChecks: WCheck[] = [
-          { ok: !!proyecto.lugarEvento,                                                               label: "Lugar del evento",     peso: 10 },
-          { ok: !!proyecto.encargado,                                                                  label: "Responsable interno",  peso: 5  },
-          { ok: proyecto.equipos.length > 0,                                                          label: "Equipo registrado",    peso: 10 },
-          { ok: !!proyecto.cotizacion,                                                                 label: "Cotización generada", peso: 12 },
-          { ok: proyecto.personal.length > 0,                                                         label: "Personal asignado",   peso: 8  },
-          { ok: !!anticipoCxC && anticipoCxC.montoCobrado >= anticipoCxC.monto,                       label: "Anticipo cobrado",    peso: 20 },
-          { ok: !!liquidacionCxC && liquidacionCxC.montoCobrado >= liquidacionCxC.monto,              label: "Liquidación cobrada", peso: 20 },
-          { ok: !!proyecto.horaInicioEvento,                                                          label: "Horarios definidos",  peso: 7  },
-          { ok: _salidaData.estado === "OK",                                                          label: "Protocolo de salida", peso: 8  },
+          { ok: !!proyecto.lugarEvento,                                                                       label: "Lugar del evento",       peso: 8  },
+          { ok: !!proyecto.encargado,                                                                          label: "Responsable interno",    peso: 4  },
+          { ok: proyecto.equipos.length > 0,                                                                  label: "Equipo registrado",      peso: 8  },
+          { ok: !!proyecto.cotizacion,                                                                         label: "Cotización generada",   peso: 10 },
+          { ok: proyecto.personal.length > 0,                                                                 label: "Personal asignado",     peso: 7  },
+          { ok: !!anticipoCxC && anticipoCxC.montoCobrado >= anticipoCxC.monto,                               label: "Anticipo cobrado",      peso: 18 },
+          { ok: !!liquidacionCxC && liquidacionCxC.montoCobrado >= liquidacionCxC.monto,                      label: "Liquidación cobrada",   peso: 18 },
+          { ok: !!proyecto.horaInicioEvento,                                                                   label: "Horarios definidos",    peso: 5  },
+          { ok: _salidaData.estado === "OK",                                                                   label: "Protocolo de salida",   peso: 7  },
+          { ok: !!(proyecto.direccionVenue || proyecto.linkMaps),                                              label: "Info del venue",        peso: 5  },
+          { ok: !!proyecto.fechaMontaje && !!proyecto.horaInicioMontaje,                                      label: "Logística de montaje",  peso: 5  },
+          { ok: !!proyecto.encargadoLugar || !!proyecto.encargadoCliente,                                     label: "Encargado del lugar",   peso: 5  },
         ];
 
         const pct = Math.round(wChecks.reduce((sum, c) => sum + (c.ok ? c.peso : 0), 0));
@@ -6339,9 +6342,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           .reduce((s, c) => s + c.monto, 0);
         const gastosProyPagados = proyecto.movimientos.reduce((s, m) => s + m.monto, 0);
         const gastosProyTotal = gastosProyPendientes + gastosProyPagados;
-        const costosTotales = gastosProyTotal; // gastos reales (movimientos) + CxP pendientes no-técnico
-        // costosPersonal se muestra como referencia informativa pero NO se suma al total
-        // (los pagos a personal ya están registrados como movimientos dentro de gastosProyTotal)
+        // Equipos externos: se suman siempre al costo real (igual que en el cierre)
+        const costoEquiposExternos = (proyecto.equipos ?? []).reduce(
+          (s: number, e: { costoExterno: number | null; cantidad: number }) => s + (e.costoExterno ?? 0) * e.cantidad, 0
+        );
+        const costosTotales = gastosProyTotal + costoEquiposExternos;
         const utilidadBruta = ingresoContratado - costosTotales;
         const margen = ingresoContratado > 0 ? (utilidadBruta / ingresoContratado) * 100 : 0;
 
@@ -7178,9 +7183,18 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         <p className={`text-[10px] mt-0.5 font-semibold ${proyecto.cierreFinanciero.margenReal >= 20 ? "text-green-500" : proyecto.cierreFinanciero.margenReal >= 0 ? "text-yellow-500" : "text-red-500"}`}>{proyecto.cierreFinanciero.margenReal.toFixed(1)}% margen</p>
                       </div>
                     </div>
-                    <p className="text-[10px] text-gray-700 text-right">
-                      Cerrado el {new Date(proyecto.cierreFinanciero.cerradoEn).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] text-gray-700">
+                        Cerrado el {new Date(proyecto.cierreFinanciero.cerradoEn).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}
+                      </p>
+                      <button
+                        onClick={async () => { await loadCierre(); setShowCierreModal(true); }}
+                        disabled={loadingCierre}
+                        className="text-[10px] text-gray-600 hover:text-[#B3985B] transition-colors disabled:opacity-40"
+                      >
+                        {loadingCierre ? "Calculando..." : "↻ Recalcular cierre"}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
