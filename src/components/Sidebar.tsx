@@ -152,8 +152,7 @@ const NAV: NavSection[] = [
         key: "inventario",
         label: "Inventario",
         children: [
-          { key: "inv-equipos", label: "Equipos", href: "/inventario/equipos" },
-          { key: "inv-maestro", label: "Inventario maestro", href: "/inventario/maestro" },
+          { key: "inv-maestro", label: "Inventario de Equipos", href: "/inventario/maestro" },
           { key: "inv-disponibilidad", label: "Disponibilidad", href: "/inventario/disponibilidad" },
           { key: "inv-recolecciones", label: "Recolecciones", href: "/inventario/recolecciones" },
           { key: "inv-mantenimiento", label: "Mantenimiento", href: "/inventario/mantenimiento" },

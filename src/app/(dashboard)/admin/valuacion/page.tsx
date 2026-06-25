@@ -36,6 +36,8 @@ function KpiCard({ label, value, sub, color = "text-white" }: { label: string; v
   );
 }
 
+const inlineCls = "w-28 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-[#0d0d0d] border border-[#2a2a2a] rounded text-right text-xs focus:outline-none focus:border-[#B3985B]/50 px-1.5 py-0.5 disabled:opacity-50";
+
 export default function ValuacionActivosPage() {
   const toast = useToast();
   const [equipos, setEquipos] = useState<Equipo[]>([]);
@@ -115,8 +117,6 @@ export default function ValuacionActivosPage() {
   const totalCostoExternos = externos.reduce((s, e) => s + (e.costoProveedor ?? 0) * e.cantidadTotal, 0);
   const totalRentaExternos = externos.reduce((s, e) => s + e.precioRenta * e.cantidadTotal, 0);
 
-  const inlineCls = "w-28 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-[#0d0d0d] border border-[#2a2a2a] rounded text-right text-xs focus:outline-none focus:border-[#B3985B]/50 px-1.5 py-0.5 disabled:opacity-50";
-
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-5">
 
@@ -164,43 +164,50 @@ export default function ValuacionActivosPage() {
         <div className="space-y-5">
           {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <KpiCard label="Equipos propios" value={String(propios.length)} sub={`${categorias.length} categorías`} />
+            <KpiCard label="Equipos propios" value={String(propios.length)} sub={`${porCategoriaPropios.length} categorías`} />
             <KpiCard label="Valor total del activo" value={fmx(totalValorPropio)} sub="Costo de adquisición" color="text-[#B3985B]" />
             <KpiCard label="Renta mensual potencial" value={fmx(totalRentaPropios)} sub="Precio renta × cantidad" color="text-emerald-400" />
           </div>
 
-          {/* Tabla por categoría */}
-          <div className="space-y-6">
-            {porCategoriaPropios.map(({ cat, items }) => {
-              const catValor = items.reduce((s, e) => s + (e.costoInternoEstimado ?? 0) * e.cantidadTotal, 0);
-              const catRenta = items.reduce((s, e) => s + e.precioRenta * e.cantidadTotal, 0);
-              return (
-                <div key={cat.id}>
-                  <div className="flex items-center gap-3 mb-2">
-                    <h2 className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">{cat.nombre}</h2>
-                    <span className="text-[#333] text-[10px]">({items.length})</span>
-                    <div className="flex-1 h-px bg-[#1a1a1a]" />
-                    {catValor > 0 && <span className="text-[10px] text-[#555]">Activo {fmx(catValor)}</span>}
-                    {catRenta > 0 && <span className="text-[10px] text-emerald-900">Renta pot. {fmx(catRenta)}</span>}
-                  </div>
-                  <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
-                            <th className="text-left px-4 py-2.5 font-medium">Equipo</th>
-                            <th className="text-right px-3 py-2.5 font-medium">Cant.</th>
-                            <th className="text-right px-4 py-2.5 font-medium">Valor unitario</th>
-                            <th className="text-right px-4 py-2.5 font-medium">Precio de renta</th>
-                            <th className="text-right px-4 py-2.5 font-medium">Subtotal valor</th>
+          {propios.length === 0 ? (
+            <p className="text-center text-[#333] text-sm py-12">No hay equipos propios registrados.</p>
+          ) : (
+            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
+                      <th className="text-left px-4 py-2.5 font-medium">Equipo</th>
+                      <th className="text-right px-4 py-2.5 font-medium w-16">Cant.</th>
+                      <th className="text-right px-4 py-2.5 font-medium w-36">Valor unitario</th>
+                      <th className="text-right px-4 py-2.5 font-medium w-36">Precio de renta</th>
+                      <th className="text-right px-4 py-2.5 font-medium w-36">Subtotal valor</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {porCategoriaPropios.map(({ cat, items }) => {
+                      const catValor = items.reduce((s, e) => s + (e.costoInternoEstimado ?? 0) * e.cantidadTotal, 0);
+                      const catRenta = items.reduce((s, e) => s + e.precioRenta * e.cantidadTotal, 0);
+                      return (
+                        <>
+                          {/* Separador de categoría */}
+                          <tr key={`cat-${cat.id}`} className="border-t border-[#1a1a1a]">
+                            <td colSpan={5} className="px-4 py-1.5 bg-[#0d0d0d]">
+                              <div className="flex items-center gap-3">
+                                <span className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">{cat.nombre}</span>
+                                <span className="text-[#333] text-[10px]">({items.length})</span>
+                                <div className="flex-1" />
+                                {catValor > 0 && <span className="text-[10px] text-[#555]">Activo {fmx(catValor)}</span>}
+                                {catRenta > 0 && <span className="text-[10px] text-emerald-900">Renta pot. {fmx(catRenta)}</span>}
+                              </div>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#161616]">
+                          {/* Equipos */}
                           {items.map(e => {
                             const valorUnitario = e.costoInternoEstimado;
                             const subtotal = valorUnitario != null ? valorUnitario * e.cantidadTotal : null;
                             return (
-                              <tr key={e.id} className="hover:bg-[#0d0d0d] transition-colors">
+                              <tr key={e.id} className="border-t border-[#161616] hover:bg-[#0d0d0d] transition-colors">
                                 <td className="px-4 py-2.5">
                                   <div className="flex items-center gap-2.5">
                                     {e.imagenUrl ? (
@@ -215,8 +222,7 @@ export default function ValuacionActivosPage() {
                                     </div>
                                   </div>
                                 </td>
-                                {/* Cantidad */}
-                                <td className="px-3 py-2.5 text-right">
+                                <td className="px-4 py-2.5 text-right">
                                   <span className="text-white font-medium tabular-nums">{e.cantidadTotal}</span>
                                 </td>
                                 {/* Valor unitario — editable */}
@@ -258,17 +264,14 @@ export default function ValuacionActivosPage() {
                               </tr>
                             );
                           })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Total global */}
-            {propios.length > 0 && (
-              <div className="bg-[#0d0d0d] border border-[#B3985B]/20 rounded-xl px-5 py-4 flex flex-wrap items-center justify-between gap-4">
+                        </>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {/* Total global */}
+              <div className="border-t border-[#222] px-4 py-3 flex flex-wrap items-center justify-between gap-4 bg-[#0d0d0d]">
                 <p className="text-[#6b7280] text-xs">{propios.length} equipos propios</p>
                 <div className="flex items-center gap-8 text-sm">
                   <div className="text-right">
@@ -281,8 +284,8 @@ export default function ValuacionActivosPage() {
                   </div>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
       ) : (
@@ -296,30 +299,34 @@ export default function ValuacionActivosPage() {
             <KpiCard label="Precio público potencial" value={fmx(totalRentaExternos)} sub="Lo que cobra Mainstage" color="text-[#B3985B]" />
           </div>
 
-          {/* Tabla por categoría */}
-          <div className="space-y-6">
-            {porCategoriaExternos.length === 0 ? (
-              <p className="text-center text-[#333] text-sm py-12">No hay equipos externos registrados.</p>
-            ) : porCategoriaExternos.map(({ cat, items }) => (
-              <div key={cat.id}>
-                <div className="flex items-center gap-3 mb-2">
-                  <h2 className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">{cat.nombre}</h2>
-                  <span className="text-[#333] text-[10px]">({items.length})</span>
-                  <div className="flex-1 h-px bg-[#1a1a1a]" />
-                </div>
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
-                          <th className="text-left px-4 py-2.5 font-medium">Equipo</th>
-                          <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Proveedor</th>
-                          <th className="text-right px-4 py-2.5 font-medium">P. Mainstage</th>
-                          <th className="text-right px-4 py-2.5 font-medium">Precio público</th>
-                          <th className="text-right px-4 py-2.5 font-medium hidden md:table-cell">Margen</th>
+          {externos.length === 0 ? (
+            <p className="text-center text-[#333] text-sm py-12">No hay equipos externos registrados.</p>
+          ) : (
+            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
+                      <th className="text-left px-4 py-2.5 font-medium">Equipo</th>
+                      <th className="text-left px-4 py-2.5 font-medium hidden md:table-cell">Proveedor</th>
+                      <th className="text-right px-4 py-2.5 font-medium w-36">P. Mainstage</th>
+                      <th className="text-right px-4 py-2.5 font-medium w-36">Precio público</th>
+                      <th className="text-right px-4 py-2.5 font-medium w-24 hidden md:table-cell">Margen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {porCategoriaExternos.map(({ cat, items }) => (
+                      <>
+                        {/* Separador de categoría */}
+                        <tr key={`cat-${cat.id}`} className="border-t border-[#1a1a1a]">
+                          <td colSpan={5} className="px-4 py-1.5 bg-[#0d0d0d]">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">{cat.nombre}</span>
+                              <span className="text-[#333] text-[10px]">({items.length})</span>
+                            </div>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#161616]">
+                        {/* Equipos */}
                         {items.map(e => {
                           const margen = e.precioRenta > 0 && e.costoProveedor != null
                             ? ((e.precioRenta - e.costoProveedor) / e.precioRenta) * 100
@@ -328,7 +335,7 @@ export default function ValuacionActivosPage() {
                             ?? e.proveedoresPrecios?.[0]?.proveedor?.nombre
                             ?? null;
                           return (
-                            <tr key={e.id} className="hover:bg-[#0d0d0d] transition-colors">
+                            <tr key={e.id} className="border-t border-[#161616] hover:bg-[#0d0d0d] transition-colors">
                               <td className="px-4 py-2.5">
                                 <div className="flex items-center gap-2.5">
                                   {e.imagenUrl ? (
@@ -343,7 +350,7 @@ export default function ValuacionActivosPage() {
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-3 py-2.5 hidden md:table-cell">
+                              <td className="px-4 py-2.5 hidden md:table-cell">
                                 <span className="text-[#6b7280] text-[11px]">{provNombre ?? <span className="text-[#333]">—</span>}</span>
                               </td>
                               {/* P. Mainstage — editable */}
@@ -387,16 +394,13 @@ export default function ValuacionActivosPage() {
                             </tr>
                           );
                         })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                      </>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ))}
-
-            {/* Total global externos */}
-            {externos.length > 0 && (
-              <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl px-5 py-4 flex flex-wrap items-center justify-between gap-4">
+              {/* Total global */}
+              <div className="border-t border-[#222] px-4 py-3 flex flex-wrap items-center justify-between gap-4 bg-[#0d0d0d]">
                 <p className="text-[#6b7280] text-xs">{externos.length} equipos externos</p>
                 <div className="flex items-center gap-8 text-sm">
                   <div className="text-right">
@@ -409,8 +413,8 @@ export default function ValuacionActivosPage() {
                   </div>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </div>

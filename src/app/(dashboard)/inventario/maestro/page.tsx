@@ -578,11 +578,17 @@ export default function InventarioMaestroPage() {
     );
   }, [equipos, busqueda]);
 
+  // ── Tab Propios / Externos ────────────────────────────────────────────────
+  const [tab, setTab] = useState<"propios" | "externos">("propios");
+  const propios = useMemo(() => equiposFiltrados.filter(e => e.tipo === "PROPIO"), [equiposFiltrados]);
+  const externos = useMemo(() => equiposFiltrados.filter(e => e.tipo === "EXTERNO"), [equiposFiltrados]);
+  const equiposTab = tab === "propios" ? propios : externos;
+
   const porCategoria = useMemo(() =>
     categorias
-      .map(cat => ({ cat, items: equiposFiltrados.filter(e => e.categoria.id === cat.id) }))
+      .map(cat => ({ cat, items: equiposTab.filter(e => e.categoria.id === cat.id) }))
       .filter(g => g.items.length > 0),
-    [categorias, equiposFiltrados]
+    [categorias, equiposTab]
   );
 
   async function handleAddProveedorPrecio(equipoId: string) {
@@ -625,7 +631,7 @@ export default function InventarioMaestroPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Inventario maestro</h1>
+          <h1 className="text-xl font-semibold text-white">Inventario de Equipos</h1>
           <p className="text-[#6b7280] text-sm mt-0.5">Gestión de equipos, categorías y proveedores</p>
         </div>
         <div className="flex items-center gap-2">
@@ -730,66 +736,78 @@ export default function InventarioMaestroPage() {
 
       {/* KPIs */}
       {kpis && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
             <p className="text-[#6b7280] text-xs mb-1">Total equipos</p>
             <p className="text-white text-2xl font-semibold">{kpis.totalEquipos}</p>
-            <p className="text-[#444] text-[10px] mt-0.5">{kpis.totalPropios} propios · {kpis.totalExternos} externos</p>
+            <p className="text-[#444] text-[10px] mt-0.5">{categorias.length} categorías</p>
           </div>
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-            <p className="text-[#6b7280] text-xs mb-1">Categorías</p>
-            <p className="text-white text-2xl font-semibold">{categorias.length}</p>
-            <p className="text-[#444] text-[10px] mt-0.5">Grupos de equipos</p>
+            <p className="text-[#6b7280] text-xs mb-1">Equipos propios</p>
+            <p className="text-[#B3985B] text-2xl font-semibold">{kpis.totalPropios}</p>
+            <p className="text-[#444] text-[10px] mt-0.5">Mainstage Pro</p>
+          </div>
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+            <p className="text-[#6b7280] text-xs mb-1">Equipos externos</p>
+            <p className="text-blue-400 text-2xl font-semibold">{kpis.totalExternos}</p>
+            <p className="text-[#444] text-[10px] mt-0.5">De proveedores</p>
           </div>
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
             <p className="text-[#6b7280] text-xs mb-1">En vista actual</p>
-            <p className="text-white text-2xl font-semibold">{equiposFiltrados.length}</p>
+            <p className="text-white text-2xl font-semibold">{equiposTab.length}</p>
             <p className="text-[#444] text-[10px] mt-0.5">Con filtros aplicados</p>
           </div>
         </div>
       )}
 
-      {/* Filtros */}
-      <div className="flex flex-wrap items-center gap-2">
-        <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar equipo..."
-          className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/40 w-44" />
-        <select value={filtroTipo} onChange={e => setFiltroTipo(e.target.value as typeof filtroTipo)}
-          className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-xs text-[#9ca3af] focus:outline-none">
-          <option value="">Tipo: todos</option>
-          <option value="PROPIO">Propios</option>
-          <option value="EXTERNO">Externos</option>
-        </select>
-        <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value as typeof filtroEstado)}
-          className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-xs text-[#9ca3af] focus:outline-none">
-          <option value="">Estado: todos</option>
-          <option value="ACTIVO">Activo</option>
-          <option value="EN_MANTENIMIENTO">En mantenimiento</option>
-          <option value="DADO_DE_BAJA">Dado de baja</option>
-        </select>
-        <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)}
-          className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-xs text-[#9ca3af] focus:outline-none">
-          <option value="">Categoría: todas</option>
-          {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-        </select>
-        <label className="flex items-center gap-1.5 text-xs text-[#6b7280] cursor-pointer">
-          <input type="checkbox" checked={filtroInactivos} onChange={e => setFiltroInactivos(e.target.checked)} className="accent-[#B3985B]" />
-          Incluir inactivos
-        </label>
-        <span className="text-xs text-[#444]">{equiposFiltrados.length} equipos</span>
-        <div className="ml-auto flex gap-0.5 bg-[#111] border border-[#222] rounded-lg p-0.5">
-          <button onClick={() => setVista("lista")} title="Vista lista"
-            className={`p-1.5 rounded transition-colors ${vista === "lista" ? "bg-[#2a2a2a] text-white" : "text-[#555] hover:text-white"}`}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
-              <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
-            </svg>
-          </button>
-          <button onClick={() => setVista("grid")} title="Vista cuadrícula"
-            className={`p-1.5 rounded transition-colors ${vista === "grid" ? "bg-[#2a2a2a] text-white" : "text-[#555] hover:text-white"}`}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
-              <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
-              <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
-            </svg>
-          </button>
+      {/* Tabs Propios / Externos */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-xl p-1">
+          {(["propios", "externos"] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+                tab === t ? "bg-[#B3985B] text-black" : "text-[#6b7280] hover:text-white"
+              }`}>
+              {t === "propios" ? `Equipos Propios (${propios.length})` : `Equipos Externos (${externos.length})`}
+            </button>
+          ))}
+        </div>
+
+        {/* Filtros secundarios */}
+        <div className="flex flex-wrap items-center gap-2">
+          <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar..."
+            className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/40 w-40" />
+          <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value as typeof filtroEstado)}
+            className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-xs text-[#9ca3af] focus:outline-none">
+            <option value="">Estado: todos</option>
+            <option value="ACTIVO">Activo</option>
+            <option value="EN_MANTENIMIENTO">En mantenimiento</option>
+            <option value="DADO_DE_BAJA">Dado de baja</option>
+          </select>
+          <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)}
+            className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-xs text-[#9ca3af] focus:outline-none">
+            <option value="">Categoría: todas</option>
+            {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+          </select>
+          <label className="flex items-center gap-1.5 text-xs text-[#6b7280] cursor-pointer">
+            <input type="checkbox" checked={filtroInactivos} onChange={e => setFiltroInactivos(e.target.checked)} className="accent-[#B3985B]" />
+            Inactivos
+          </label>
+          <div className="flex gap-0.5 bg-[#111] border border-[#222] rounded-lg p-0.5">
+            <button onClick={() => setVista("lista")} title="Vista lista"
+              className={`p-1.5 rounded transition-colors ${vista === "lista" ? "bg-[#2a2a2a] text-white" : "text-[#555] hover:text-white"}`}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+                <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+            <button onClick={() => setVista("grid")} title="Vista cuadrícula"
+              className={`p-1.5 rounded transition-colors ${vista === "grid" ? "bg-[#2a2a2a] text-white" : "text-[#555] hover:text-white"}`}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+                <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -798,9 +816,9 @@ export default function InventarioMaestroPage() {
         <div className="space-y-2">
           {[...Array(6)].map((_, i) => <div key={i} className="h-12 bg-[#111] rounded-lg animate-pulse" />)}
         </div>
-      ) : equiposFiltrados.length === 0 ? (
+      ) : equiposTab.length === 0 ? (
         <div className="text-center py-16 text-[#333]">
-          <p className="text-sm">Sin equipos con los filtros actuales.</p>
+          <p className="text-sm">Sin equipos {tab === "propios" ? "propios" : "externos"} con los filtros actuales.</p>
         </div>
       ) : vista === "grid" ? (
 
@@ -808,46 +826,40 @@ export default function InventarioMaestroPage() {
         <div className="space-y-8">
           {porCategoria.map(({ cat, items }) => (
             <div key={cat.id}>
-              <h2 className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold mb-3 pb-2 border-b border-[#1a1a1a]">
-                {cat.nombre} <span className="text-[#333] ml-1">({items.length})</span>
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                {items.map(e => {
-                  return (
-                    <div key={e.id}
-                      className="bg-[#111] border border-[#1a1a1a] hover:border-[#B3985B]/40 rounded-xl p-3 flex flex-col gap-2 transition-colors cursor-pointer group"
-                      onClick={() => abrirEdit(e)}>
-                      <div
-                        className="aspect-square rounded-lg overflow-hidden bg-[#0d0d0d] flex items-center justify-center"
-                        onClick={e.imagenUrl ? (ev => { ev.stopPropagation(); setLightboxUrl(e.imagenUrl!); }) : undefined}
-                        style={e.imagenUrl ? { cursor: "zoom-in" } : undefined}
-                      >
-                        {e.imagenUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={e.imagenUrl} alt={e.descripcion} className="w-full h-full object-contain p-2" />
-                        ) : (
-                          <svg className="w-8 h-8 text-[#2a2a2a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white text-xs font-medium leading-snug group-hover:text-[#B3985B] transition-colors line-clamp-2">
-                          {(e.marca || e.modelo) ? [e.marca, e.modelo].filter(Boolean).join(" · ") : e.descripcion}
-                        </p>
-                        {(e.marca || e.modelo) && (
-                          <p className="text-[#555] text-[10px] truncate mt-0.5">{e.descripcion}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center justify-between mt-1">
-                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${e.tipo === "PROPIO" ? "text-[#6b7280] bg-[#1a1a1a]" : "text-blue-400 bg-blue-900/20"}`}>
-                          {e.tipo === "PROPIO" ? "Propio" : "Externo"}
-                        </span>
-                        <span className="text-sm font-bold text-white">×{e.cantidadTotal}</span>
-                      </div>
+              <div className="flex items-center gap-3 mb-3">
+                <h2 className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">{cat.nombre}</h2>
+                <span className="text-[#333] text-[10px]">({items.length})</span>
+                <div className="flex-1 h-px bg-[#1a1a1a]" />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                {items.map(e => (
+                  <div key={e.id} className="group bg-[#111] border border-[#1e1e1e] rounded-xl p-3 cursor-pointer hover:border-[#B3985B]/30 transition-all" onClick={() => abrirEdit(e)}>
+                    <div className="aspect-square rounded-lg bg-[#0d0d0d] mb-2.5 flex items-center justify-center overflow-hidden">
+                      {e.imagenUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={e.imagenUrl} alt={e.descripcion} className="w-full h-full object-contain p-2" />
+                      ) : (
+                        <svg className="w-8 h-8 text-[#2a2a2a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      )}
                     </div>
-                  );
-                })}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-xs font-medium leading-snug group-hover:text-[#B3985B] transition-colors line-clamp-2">
+                        {(e.marca || e.modelo) ? [e.marca, e.modelo].filter(Boolean).join(" · ") : e.descripcion}
+                      </p>
+                      {(e.marca || e.modelo) && (
+                        <p className="text-[#555] text-[10px] truncate mt-0.5">{e.descripcion}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${e.tipo === "PROPIO" ? "text-[#6b7280] bg-[#1a1a1a]" : "text-blue-400 bg-blue-900/20"}`}>
+                        {e.tipo === "PROPIO" ? "Propio" : "Externo"}
+                      </span>
+                      <span className="text-sm font-bold text-white">×{e.cantidadTotal}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
@@ -855,164 +867,128 @@ export default function InventarioMaestroPage() {
 
       ) : (
 
-        /* ── Vista lista por categoría ── */
-        <div className="space-y-6">
-          {porCategoria.map(({ cat, items }) => {
-            return (
-              <div key={cat.id}>
-                <div className="flex items-center gap-3 mb-2">
-                  <h2 className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">
-                    {cat.nombre}
-                  </h2>
-                  <span className="text-[#333] text-[10px]">({items.length})</span>
-                  <div className="flex-1 h-px bg-[#1a1a1a]" />
-                </div>
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
-                          <th className="text-left px-4 py-2.5 font-medium">Equipo</th>
-                          <th className="text-center px-3 py-2.5 font-medium">Tipo</th>
-                          <th className="text-center px-3 py-2.5 font-medium hidden sm:table-cell">Estado</th>
-                          <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Proveedor</th>
-                          <th className="text-right px-3 py-2.5 font-medium">Cant.</th>
-                          <th className="text-center px-3 py-2.5 font-medium hidden xl:table-cell">Acc.</th>
-                          <th className="px-3 py-2.5" />
+        /* ── Vista lista — tabla única continua con separadores de categoría ── */
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
+                  <th className="text-left px-4 py-2.5 font-medium">Equipo</th>
+                  <th className="text-center px-3 py-2.5 font-medium hidden sm:table-cell">Estado</th>
+                  <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Proveedor</th>
+                  <th className="text-right px-3 py-2.5 font-medium">Cant.</th>
+                  <th className="text-center px-3 py-2.5 font-medium hidden xl:table-cell">Acc.</th>
+                  <th className="px-3 py-2.5" />
+                </tr>
+              </thead>
+              <tbody>
+                {porCategoria.map(({ cat, items }) => (
+                  <>
+                    <tr key={`cat-${cat.id}`} className="border-t border-[#1a1a1a]">
+                      <td colSpan={6} className="px-4 py-1.5 bg-[#0d0d0d]">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">{cat.nombre}</span>
+                          <span className="text-[#333] text-[10px]">({items.length})</span>
+                        </div>
+                      </td>
+                    </tr>
+                    {items.map(e => {
+                      const provNombre = e.tipo === "PROPIO"
+                        ? null
+                        : (e.proveedorDefault?.nombre ?? e.proveedoresPrecios?.[0]?.proveedor?.nombre ?? null);
+                      return (
+                        <tr key={e.id} className="border-t border-[#161616] transition-colors group hover:bg-[#0d0d0d]">
+                          <td className="px-4 py-2.5">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {e.imagenUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={e.imagenUrl} alt="" className="w-8 h-8 object-contain rounded bg-[#0a0a0a] p-0.5 shrink-0 cursor-zoom-in hover:opacity-80 transition-opacity" onClick={ev => { ev.stopPropagation(); setLightboxUrl(e.imagenUrl!); }} />
+                              ) : (
+                                <div className="w-8 h-8 rounded bg-[#1a1a1a] shrink-0" />
+                              )}
+                              <div className="min-w-0">
+                                <p className="text-white font-medium truncate">{(e.marca || e.modelo) ? [e.marca, e.modelo].filter(Boolean).join(" · ") : e.descripcion}</p>
+                                {(e.marca || e.modelo) && <p className="text-[#555] text-xs truncate">{e.descripcion}</p>}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2.5 text-center hidden sm:table-cell">
+                            {isEditing(e.id, "estado") ? (
+                              <select autoFocus value={e.estado} disabled={savingInline === e.id}
+                                onChange={ev => { patchEquipo(e.id, "estado", ev.target.value); stopEdit(); }}
+                                onBlur={stopEdit} onClick={ev => ev.stopPropagation()}
+                                className="bg-[#0d0d0d] border border-[#2a2a2a] rounded text-[10px] font-medium text-white focus:outline-none focus:border-[#B3985B]/50 px-1.5 py-0.5">
+                                <option value="ACTIVO" className="bg-[#111]">Activo</option>
+                                <option value="EN_MANTENIMIENTO" className="bg-[#111]">En mantenimiento</option>
+                                <option value="DADO_DE_BAJA" className="bg-[#111]">Dado de baja</option>
+                              </select>
+                            ) : (
+                              <button onClick={ev => { ev.stopPropagation(); startEdit(e.id, "estado"); }}
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-medium hover:opacity-75 transition-opacity ${ESTADO_BADGE[e.estado] ?? "bg-[#1a1a1a] text-[#6b7280]"}`}>
+                                {ESTADO_LABEL[e.estado] ?? e.estado}
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 hidden md:table-cell">
+                            {e.tipo === "PROPIO" ? (
+                              <span className="text-[11px] text-[#B3985B] font-medium">Mainstage Pro</span>
+                            ) : isEditing(e.id, "proveedorDefault") ? (
+                              <select autoFocus defaultValue={e.proveedorDefault?.id ?? ""}
+                                disabled={savingInline === e.id}
+                                onChange={ev => { changeProveedor(e.id, ev.target.value); stopEdit(); }}
+                                onBlur={stopEdit} onClick={ev => ev.stopPropagation()}
+                                className="bg-[#0d0d0d] border border-[#2a2a2a] rounded text-[10px] text-white focus:outline-none focus:border-[#B3985B]/50 px-1.5 py-0.5 max-w-[150px]">
+                                <option value="" className="bg-[#111]">— Sin proveedor —</option>
+                                {proveedores.map(p => (
+                                  <option key={p.id} value={p.id} className="bg-[#111]">{p.nombre}{p.empresa ? ` · ${p.empresa}` : ""}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <button onClick={ev => { ev.stopPropagation(); startEdit(e.id, "proveedorDefault"); }}
+                                className="text-[11px] text-left transition-colors hover:text-[#B3985B]">
+                                {provNombre
+                                  ? <span className="text-white">{provNombre}</span>
+                                  : <span className="text-[#333] italic">+ agregar</span>}
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-right">
+                            {isEditing(e.id, "cantidadTotal") ? (
+                              <input type="number" autoFocus defaultValue={e.cantidadTotal} min={1}
+                                disabled={savingInline === e.id}
+                                onClick={ev => ev.stopPropagation()}
+                                onBlur={ev => { const v = parseInt(ev.target.value) || 1; if (v !== e.cantidadTotal) patchEquipo(e.id, "cantidadTotal", v); stopEdit(); }}
+                                onKeyDown={ev => { if (ev.key === "Enter") (ev.target as HTMLInputElement).blur(); if (ev.key === "Escape") stopEdit(); }}
+                                className="w-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-[#0d0d0d] border border-[#2a2a2a] rounded text-white font-medium text-right text-xs focus:outline-none focus:border-[#B3985B]/50 px-1 py-0.5 disabled:opacity-50" />
+                            ) : (
+                              <button onClick={ev => { ev.stopPropagation(); startEdit(e.id, "cantidadTotal"); }}
+                                className="text-white font-medium text-xs hover:text-[#B3985B] transition-colors tabular-nums">
+                                {e.cantidadTotal}
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-center hidden xl:table-cell">
+                            {e._count.accesorios > 0 ? <span className="text-[#B3985B] font-medium">{e._count.accesorios}</span> : <span className="text-[#333]">—</span>}
+                          </td>
+                          <td className="px-3 py-2.5">
+                            <div className="opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2">
+                              <button onClick={() => abrirEdit(e)} className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors">Editar</button>
+                              <button onClick={() => eliminar(e)} disabled={eliminando === e.id} className="text-[10px] text-[#333] hover:text-red-400 transition-colors disabled:opacity-50">
+                                {eliminando === e.id ? "..." : "Eliminar"}
+                              </button>
+                            </div>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#161616]">
-                        {items.map(e => {
-                          const provNombre = e.tipo === 'PROPIO'
-                            ? null
-                            : (e.proveedorDefault?.nombre ?? e.proveedoresPrecios?.[0]?.proveedor?.nombre ?? null);
-                          return (
-                            <tr key={e.id} className="transition-colors group hover:bg-[#0d0d0d]">
-
-                              {/* Equipo */}
-                              <td className="px-4 py-2.5">
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                  {e.imagenUrl ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={e.imagenUrl} alt="" className="w-8 h-8 object-contain rounded bg-[#0a0a0a] p-0.5 shrink-0 cursor-zoom-in hover:opacity-80 transition-opacity" onClick={ev => { ev.stopPropagation(); setLightboxUrl(e.imagenUrl!); }} />
-                                  ) : (
-                                    <div className="w-8 h-8 rounded bg-[#1a1a1a] shrink-0" />
-                                  )}
-                                  <div className="min-w-0">
-                                    <p className="text-white font-medium truncate">{(e.marca || e.modelo) ? [e.marca, e.modelo].filter(Boolean).join(" · ") : e.descripcion}</p>
-                                    {(e.marca || e.modelo) && <p className="text-[#555] text-xs truncate">{e.descripcion}</p>}
-                                  </div>
-                                </div>
-                              </td>
-
-                              {/* Tipo — click to edit */}
-                              <td className="px-3 py-2.5 text-center">
-                                {isEditing(e.id, 'tipo') ? (
-                                  <select autoFocus value={e.tipo} disabled={savingInline === e.id}
-                                    onChange={ev => { patchEquipo(e.id, "tipo", ev.target.value); stopEdit(); }}
-                                    onBlur={stopEdit} onClick={ev => ev.stopPropagation()}
-                                    className="bg-[#0d0d0d] border border-[#2a2a2a] rounded text-[10px] font-medium text-white focus:outline-none focus:border-[#B3985B]/50 px-1.5 py-0.5">
-                                    <option value="PROPIO" className="bg-[#111]">Propio</option>
-                                    <option value="EXTERNO" className="bg-[#111]">Externo</option>
-                                  </select>
-                                ) : (
-                                  <button onClick={ev => { ev.stopPropagation(); startEdit(e.id, 'tipo'); }}
-                                    className={`px-1.5 py-0.5 rounded text-[10px] font-medium hover:opacity-75 transition-opacity ${e.tipo === "PROPIO" ? "bg-[#1a1a1a] text-[#6b7280]" : "bg-blue-900/20 text-blue-400"}`}>
-                                    {e.tipo === "PROPIO" ? "Propio" : "Externo"}
-                                  </button>
-                                )}
-                              </td>
-
-                              {/* Estado — click to edit */}
-                              <td className="px-3 py-2.5 text-center hidden sm:table-cell">
-                                {isEditing(e.id, 'estado') ? (
-                                  <select autoFocus value={e.estado} disabled={savingInline === e.id}
-                                    onChange={ev => { patchEquipo(e.id, "estado", ev.target.value); stopEdit(); }}
-                                    onBlur={stopEdit} onClick={ev => ev.stopPropagation()}
-                                    className="bg-[#0d0d0d] border border-[#2a2a2a] rounded text-[10px] font-medium text-white focus:outline-none focus:border-[#B3985B]/50 px-1.5 py-0.5">
-                                    <option value="ACTIVO" className="bg-[#111]">Activo</option>
-                                    <option value="EN_MANTENIMIENTO" className="bg-[#111]">En mantenimiento</option>
-                                    <option value="DADO_DE_BAJA" className="bg-[#111]">Dado de baja</option>
-                                  </select>
-                                ) : (
-                                  <button onClick={ev => { ev.stopPropagation(); startEdit(e.id, 'estado'); }}
-                                    className={`px-1.5 py-0.5 rounded text-[10px] font-medium hover:opacity-75 transition-opacity ${ESTADO_BADGE[e.estado] ?? "bg-[#1a1a1a] text-[#6b7280]"}`}>
-                                    {ESTADO_LABEL[e.estado] ?? e.estado}
-                                  </button>
-                                )}
-                              </td>
-
-                              {/* Proveedor — Mainstage Pro (dorado) o proveedor externo (blanco, clickeable) */}
-                              <td className="px-3 py-2.5 hidden md:table-cell">
-                                {e.tipo === 'PROPIO' ? (
-                                  <span className="text-[11px] text-[#B3985B] font-medium">Mainstage Pro</span>
-                                ) : isEditing(e.id, 'proveedorDefault') ? (
-                                  <select autoFocus defaultValue={e.proveedorDefault?.id ?? ""}
-                                    disabled={savingInline === e.id}
-                                    onChange={ev => { changeProveedor(e.id, ev.target.value); stopEdit(); }}
-                                    onBlur={stopEdit} onClick={ev => ev.stopPropagation()}
-                                    className="bg-[#0d0d0d] border border-[#2a2a2a] rounded text-[10px] text-white focus:outline-none focus:border-[#B3985B]/50 px-1.5 py-0.5 max-w-[150px]">
-                                    <option value="" className="bg-[#111]">— Sin proveedor —</option>
-                                    {proveedores.map(p => (
-                                      <option key={p.id} value={p.id} className="bg-[#111]">{p.nombre}{p.empresa ? ` · ${p.empresa}` : ''}</option>
-                                    ))}
-                                  </select>
-                                ) : (
-                                  <button onClick={ev => { ev.stopPropagation(); startEdit(e.id, 'proveedorDefault'); }}
-                                    className="text-[11px] text-left transition-colors hover:text-[#B3985B]">
-                                    {provNombre
-                                      ? <span className="text-white">{provNombre}</span>
-                                      : <span className="text-[#333] italic">+ agregar proveedor</span>}
-                                  </button>
-                                )}
-                              </td>
-
-                              {/* Cantidad — click to edit */}
-                              <td className="px-3 py-2.5 text-right">
-                                {isEditing(e.id, 'cantidadTotal') ? (
-                                  <input type="number" autoFocus defaultValue={e.cantidadTotal} min={1}
-                                    disabled={savingInline === e.id}
-                                    onClick={ev => ev.stopPropagation()}
-                                    onBlur={ev => { const v = parseInt(ev.target.value) || 1; if (v !== e.cantidadTotal) patchEquipo(e.id, "cantidadTotal", v); stopEdit(); }}
-                                    onKeyDown={ev => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); if (ev.key === 'Escape') stopEdit(); }}
-                                    className="w-12 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-[#0d0d0d] border border-[#2a2a2a] rounded text-white font-medium text-right text-xs focus:outline-none focus:border-[#B3985B]/50 px-1 py-0.5 disabled:opacity-50" />
-                                ) : (
-                                  <button onClick={ev => { ev.stopPropagation(); startEdit(e.id, 'cantidadTotal'); }}
-                                    className="text-white font-medium text-xs hover:text-[#B3985B] transition-colors tabular-nums">
-                                    {e.cantidadTotal}
-                                  </button>
-                                )}
-                              </td>
-
-                              {/* Accesorios */}
-                              <td className="px-3 py-2.5 text-center hidden xl:table-cell">
-                                {e._count.accesorios > 0 ? <span className="text-[#B3985B] font-medium">{e._count.accesorios}</span> : <span className="text-[#333]">—</span>}
-                              </td>
-
-                              {/* Acciones */}
-                              <td className="px-3 py-2.5">
-                                <div className="opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2">
-                                  <button onClick={() => abrirEdit(e)} className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors">Editar</button>
-                                  <button onClick={() => eliminar(e)} disabled={eliminando === e.id} className="text-[10px] text-[#333] hover:text-red-400 transition-colors disabled:opacity-50">
-                                    {eliminando === e.id ? "..." : "Eliminar"}
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Footer global */}
-          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl px-4 py-3 flex items-center justify-between">
-            <p className="text-[#555] text-xs">{equiposFiltrados.length} equipos mostrados</p>
-            <p className="text-[#444] text-xs">{categorias.length} categorías</p>
+                      );
+                    })}
+                  </>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="px-4 py-3 border-t border-[#1a1a1a] flex items-center justify-between">
+            <p className="text-[#555] text-xs">{equiposTab.length} equipos mostrados</p>
+            <p className="text-[#444] text-xs">{porCategoria.length} categorías</p>
           </div>
         </div>
       )}
