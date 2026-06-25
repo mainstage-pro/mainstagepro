@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 
+// Test de despliegue automático en Vercel
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface EmpresaItem {
