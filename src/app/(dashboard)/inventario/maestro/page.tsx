@@ -776,8 +776,10 @@ export default function InventarioMaestroPage() {
                           <th className="text-left px-4 py-2.5 font-medium">Equipo</th>
                           <th className="text-center px-3 py-2.5 font-medium">Tipo</th>
                           <th className="text-center px-3 py-2.5 font-medium hidden sm:table-cell">Estado</th>
+                          <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Proveedor</th>
                           <th className="text-right px-3 py-2.5 font-medium">Cant.</th>
-                          <th className="text-right px-4 py-2.5 font-medium">Precio renta</th>
+                          <th className="text-right px-4 py-2.5 font-medium">Precio público</th>
+                          <th className="text-right px-4 py-2.5 font-medium hidden md:table-cell">P. Mainstage</th>
                           <th className="text-right px-4 py-2.5 font-medium hidden lg:table-cell">Valor activo</th>
                           <th className="text-right px-4 py-2.5 font-medium hidden lg:table-cell">Valor total</th>
                           <th className="text-center px-3 py-2.5 font-medium hidden xl:table-cell">Acc.</th>
@@ -842,6 +844,18 @@ export default function InventarioMaestroPage() {
                                   <option value="DADO_DE_BAJA" className="bg-[#111] text-white">Dado de baja</option>
                                 </select>
                               </td>
+                              {/* Proveedor — Mainstage Pro o nombre del proveedor default */}
+                              <td className="px-3 py-2.5 hidden md:table-cell">
+                                {e.tipo === 'PROPIO' ? (
+                                  <span className="text-[11px] text-[#B3985B] font-medium">Mainstage Pro</span>
+                                ) : (
+                                  <span className="text-[11px] text-[#6b7280]">
+                                    {e.proveedorDefault?.nombre
+                                      ?? e.proveedoresPrecios?.[0]?.proveedor?.nombre
+                                      ?? <span className="text-[#333]">Sin proveedor</span>}
+                                  </span>
+                                )}
+                              </td>
                               {/* Cantidad — input inline */}
                               <td className="px-3 py-2.5 text-right">
                                 <input
@@ -858,7 +872,7 @@ export default function InventarioMaestroPage() {
                                   className="w-12 bg-transparent text-white font-medium text-right text-xs border-b border-transparent hover:border-[#333] focus:border-[#B3985B]/50 focus:outline-none transition-colors disabled:opacity-50"
                                 />
                               </td>
-                              {/* Precio renta — input inline */}
+                              {/* Precio público — input inline */}
                               <td className="px-4 py-2.5 text-right">
                                 <input
                                   type="number"
@@ -873,6 +887,28 @@ export default function InventarioMaestroPage() {
                                   onKeyDown={ev => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); }}
                                   className="w-24 bg-transparent text-[#B3985B] font-medium text-right text-xs border-b border-transparent hover:border-[#333] focus:border-[#B3985B]/50 focus:outline-none transition-colors disabled:opacity-50"
                                 />
+                              </td>
+                              {/* P. Mainstage (costoProveedor) — solo EXTERNO, editable inline */}
+                              <td className="px-4 py-2.5 text-right hidden md:table-cell">
+                                {e.tipo === 'EXTERNO' ? (
+                                  <input
+                                    type="number"
+                                    defaultValue={e.costoProveedor ?? ""}
+                                    min={0}
+                                    placeholder="—"
+                                    disabled={savingInline === e.id}
+                                    onClick={ev => ev.stopPropagation()}
+                                    onBlur={ev => {
+                                      const raw = ev.target.value;
+                                      const val = raw === "" ? null : parseFloat(raw);
+                                      if (val !== e.costoProveedor) patchEquipo(e.id, "costoProveedor", val);
+                                    }}
+                                    onKeyDown={ev => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); }}
+                                    className="w-24 bg-transparent text-emerald-400/80 font-medium text-right text-xs border-b border-transparent hover:border-[#333] focus:border-emerald-500/50 focus:outline-none transition-colors placeholder-[#333] disabled:opacity-50"
+                                  />
+                                ) : (
+                                  <span className="text-[#333] text-xs">—</span>
+                                )}
                               </td>
                               {/* Valor activo — input inline */}
                               <td className="px-4 py-2.5 text-right hidden lg:table-cell">
