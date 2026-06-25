@@ -34,14 +34,11 @@ type Kpis = {
   totalEquipos: number;
   totalPropios: number;
   totalExternos: number;
-  valorTotalActivo: number;
-  potencialRentaMensual: number;
 };
 
 type Form = {
   descripcion: string; marca: string; modelo: string; tipo: string;
   categoriaId: string; cantidadTotal: string; estado: string;
-  precioRenta: string; costoProveedor: string; costoInternoEstimado: string;
   proveedorDefaultId: string; notas: string;
   amperajeRequerido: string; voltajeRequerido: string;
 };
@@ -49,7 +46,6 @@ type Form = {
 const FORM_EMPTY: Form = {
   descripcion: "", marca: "", modelo: "", tipo: "PROPIO",
   categoriaId: "", cantidadTotal: "1", estado: "ACTIVO",
-  precioRenta: "0", costoProveedor: "", costoInternoEstimado: "",
   proveedorDefaultId: "", notas: "",
   amperajeRequerido: "", voltajeRequerido: "",
 };
@@ -318,30 +314,18 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
           </div>
         </div>
 
-        {/* Col 3 — financiero */}
+        {/* Col 3 — notas técnicas */}
         <div className="space-y-3">
-          <div className="bg-[#111] border border-[#B3985B]/20 rounded-xl p-4 space-y-3">
-            <p className="text-[10px] text-[#B3985B] uppercase tracking-widest font-semibold mb-1">Información financiera</p>
-            <FieldGroup label="Precio de renta (al cliente)">
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555] text-sm">$</span>
-                <FInput type="number" value={form.precioRenta} onChange={v => setForm(p => ({ ...p, precioRenta: v }))} className="pl-7" placeholder="0" />
-              </div>
-              <p className="text-[10px] text-[#555] mt-1">Precio que ve el cliente en cotizaciones</p>
-            </FieldGroup>
-            <FieldGroup label="Costo proveedor">
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555] text-sm">$</span>
-                <FInput type="number" value={form.costoProveedor} onChange={v => setForm(p => ({ ...p, costoProveedor: v }))} className="pl-7" placeholder="—" />
-              </div>
-              <p className="text-[10px] text-[#555] mt-1">Lo que cobramos al proveedor (equipo externo)</p>
-            </FieldGroup>
-            <FieldGroup label="Valor del activo">
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555] text-sm">$</span>
-                <FInput type="number" value={form.costoInternoEstimado} onChange={v => setForm(p => ({ ...p, costoInternoEstimado: v }))} className="pl-7" placeholder="—" />
-              </div>
-              <p className="text-[10px] text-[#555] mt-1">Costo de adquisición (equipo propio)</p>
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-3">
+            <p className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold mb-1">Notas adicionales</p>
+            <FieldGroup label="Notas">
+              <textarea
+                value={form.notas}
+                onChange={e => setForm(p => ({ ...p, notas: e.target.value }))}
+                rows={4}
+                placeholder="Notas internas, condiciones, observaciones..."
+                className="w-full bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]/40 resize-none placeholder-[#333]"
+              />
             </FieldGroup>
           </div>
         </div>
@@ -375,6 +359,50 @@ export default function InventarioMaestroPage() {
   function startEdit(id: string, field: string) { setEditingCell({ id, field }); }
   function stopEdit() { setEditingCell(null); }
   function isEditing(id: string, field: string) { return editingCell?.id === id && editingCell?.field === field; }
+
+  // Estado del panel de categorías
+  const [showCatPanel, setShowCatPanel] = useState(false);
+  const [newCatNombre, setNewCatNombre] = useState("");
+  const [savingCat, setSavingCat] = useState(false);
+  const [renamingCat, setRenamingCat] = useState<{ id: string; nombre: string } | null>(null);
+
+  async function createCategoria() {
+    if (!newCatNombre.trim()) return;
+    setSavingCat(true);
+    try {
+      const res = await fetch("/api/inventario/categorias", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre: newCatNombre.trim() }),
+      });
+      if (!res.ok) { const d = await res.json(); toast.error(d.error ?? "Error al crear"); return; }
+      const { categoria } = await res.json();
+      setCategorias(prev => [...prev, categoria]);
+      setNewCatNombre("");
+      toast.success("Categoría creada");
+    } finally { setSavingCat(false); }
+  }
+
+  async function deleteCategoria(id: string, nombre: string) {
+    const ok = await confirm({ message: `¿Eliminar la categoría "${nombre}"?`, danger: true, confirmText: "Eliminar" });
+    if (!ok) return;
+    const res = await fetch(`/api/inventario/categorias/${id}`, { method: "DELETE" });
+    if (!res.ok) { const d = await res.json(); toast.error(d.error ?? "No se puede eliminar"); return; }
+    setCategorias(prev => prev.filter(c => c.id !== id));
+    toast.success("Categoría eliminada");
+  }
+
+  async function saveRenameCategoria(id: string, nombre: string) {
+    if (!nombre.trim()) return;
+    const res = await fetch(`/api/inventario/categorias/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre: nombre.trim() }),
+    });
+    if (!res.ok) { toast.error("Error al renombrar"); return; }
+    setCategorias(prev => prev.map(c => c.id === id ? { ...c, nombre: nombre.trim() } : c));
+    setRenamingCat(null);
+  }
 
   // Edición inline — guarda un campo sin abrir el modal
   async function patchEquipo(id: string, campo: string, valor: string | number | null) {
@@ -469,9 +497,6 @@ export default function InventarioMaestroPage() {
       tipo: e.tipo, categoriaId: e.categoria.id,
       cantidadTotal: String(e.cantidadTotal),
       estado: e.estado,
-      precioRenta: String(e.precioRenta),
-      costoProveedor: e.costoProveedor != null ? String(e.costoProveedor) : "",
-      costoInternoEstimado: e.costoInternoEstimado != null ? String(e.costoInternoEstimado) : "",
       proveedorDefaultId: e.proveedorDefault?.id ?? "",
       notas: e.notas ?? "",
       amperajeRequerido: e.amperajeRequerido != null ? String(e.amperajeRequerido) : "",
@@ -501,9 +526,6 @@ export default function InventarioMaestroPage() {
       tipo: form.tipo, categoriaId: form.categoriaId,
       cantidadTotal: parseInt(form.cantidadTotal) || 1,
       estado: form.estado,
-      precioRenta: form.precioRenta !== "" ? parseFloat(form.precioRenta) : 0,
-      costoProveedor: form.costoProveedor !== "" ? form.costoProveedor : null,
-      costoInternoEstimado: form.costoInternoEstimado !== "" ? form.costoInternoEstimado : null,
       proveedorDefaultId: form.proveedorDefaultId || null,
       notas: form.notas || null,
       amperajeRequerido: form.amperajeRequerido !== "" ? parseFloat(form.amperajeRequerido) : null,
@@ -563,12 +585,6 @@ export default function InventarioMaestroPage() {
     [categorias, equiposFiltrados]
   );
 
-  const valorTotal = useMemo(() =>
-    equiposFiltrados.filter(e => e.tipo === "PROPIO")
-      .reduce((s, e) => s + (e.costoInternoEstimado ?? 0) * e.cantidadTotal, 0),
-    [equiposFiltrados]
-  );
-
   async function handleAddProveedorPrecio(equipoId: string) {
     if (!newProveedorId || !newProveedorPrecio) return;
     setSavingProveedor(true);
@@ -610,15 +626,21 @@ export default function InventarioMaestroPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-white">Inventario maestro</h1>
-          <p className="text-[#6b7280] text-sm mt-0.5">Fuente de verdad · precios, costos y valor del activo</p>
+          <p className="text-[#6b7280] text-sm mt-0.5">Gestión de equipos, categorías y proveedores</p>
         </div>
-        <button onClick={abrirNuevo}
-          className="bg-[#B3985B] hover:bg-[#c4aa6b] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-          + Nuevo equipo
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowCatPanel(true)}
+            className="border border-[#333] hover:border-[#B3985B]/40 text-[#6b7280] hover:text-[#B3985B] text-sm px-3 py-2 rounded-lg transition-colors">
+            + Categoría
+          </button>
+          <button onClick={abrirNuevo}
+            className="bg-[#B3985B] hover:bg-[#c4aa6b] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+            + Nuevo equipo
+          </button>
+        </div>
       </div>
 
-      {/* Modal nuevo/editar */}
+      {/* Modal nuevo/editar equipo */}
       <Modal
         open={panel !== null}
         onClose={cerrarPanel}
@@ -626,6 +648,68 @@ export default function InventarioMaestroPage() {
         maxWidth="max-w-5xl"
       >
         <FormPanel {...formPanelProps} />
+      </Modal>
+
+      {/* Modal gestión de categorías */}
+      <Modal open={showCatPanel} onClose={() => { setShowCatPanel(false); setNewCatNombre(""); setRenamingCat(null); }} title="Categorías de equipos" maxWidth="max-w-md">
+        <div className="space-y-4">
+          {/* Nueva categoría */}
+          <div className="flex gap-2">
+            <input
+              value={newCatNombre}
+              onChange={e => setNewCatNombre(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") createCategoria(); }}
+              placeholder="Nombre de nueva categoría..."
+              className="flex-1 bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/40"
+            />
+            <button onClick={createCategoria} disabled={savingCat || !newCatNombre.trim()}
+              className="bg-[#B3985B] hover:bg-[#c4aa6b] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+              {savingCat ? "..." : "Crear"}
+            </button>
+          </div>
+
+          {/* Lista de categorías */}
+          <div className="space-y-1 max-h-80 overflow-y-auto">
+            {categorias.length === 0 ? (
+              <p className="text-center text-[#444] text-sm py-6">Sin categorías aún.</p>
+            ) : categorias.map(cat => (
+              <div key={cat.id} className="flex items-center gap-2 bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-2 group">
+                {renamingCat?.id === cat.id ? (
+                  <>
+                    <input autoFocus
+                      value={renamingCat.nombre}
+                      onChange={e => setRenamingCat({ id: cat.id, nombre: e.target.value })}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") saveRenameCategoria(cat.id, renamingCat.nombre);
+                        if (e.key === "Escape") setRenamingCat(null);
+                      }}
+                      className="flex-1 bg-[#0d0d0d] border border-[#B3985B]/40 rounded px-2 py-0.5 text-sm text-white focus:outline-none"
+                    />
+                    <button onClick={() => saveRenameCategoria(cat.id, renamingCat.nombre)}
+                      className="text-[10px] text-[#B3985B] hover:text-white transition-colors">Guardar</button>
+                    <button onClick={() => setRenamingCat(null)}
+                      className="text-[10px] text-[#555] hover:text-white transition-colors">Cancelar</button>
+                  </>
+                ) : (
+                  <>
+                    <span className="flex-1 text-sm text-white">{cat.nombre}</span>
+                    <span className="text-[10px] text-[#444] mr-1">
+                      {equipos.filter(e => e.categoria.id === cat.id).length} equipos
+                    </span>
+                    <button onClick={() => setRenamingCat({ id: cat.id, nombre: cat.nombre })}
+                      className="opacity-0 group-hover:opacity-100 text-[10px] text-[#555] hover:text-[#B3985B] transition-all">
+                      Renombrar
+                    </button>
+                    <button onClick={() => deleteCategoria(cat.id, cat.nombre)}
+                      className="opacity-0 group-hover:opacity-100 text-[10px] text-[#333] hover:text-red-400 transition-all">
+                      Eliminar
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </Modal>
 
       {/* Lightbox */}
@@ -646,26 +730,21 @@ export default function InventarioMaestroPage() {
 
       {/* KPIs */}
       {kpis && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
             <p className="text-[#6b7280] text-xs mb-1">Total equipos</p>
             <p className="text-white text-2xl font-semibold">{kpis.totalEquipos}</p>
             <p className="text-[#444] text-[10px] mt-0.5">{kpis.totalPropios} propios · {kpis.totalExternos} externos</p>
           </div>
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-            <p className="text-[#6b7280] text-xs mb-1">Valor del inventario</p>
-            <p className="text-[#B3985B] text-2xl font-semibold">{fmx(kpis.valorTotalActivo)}</p>
-            <p className="text-[#444] text-[10px] mt-0.5">Costo activo equipos propios</p>
+            <p className="text-[#6b7280] text-xs mb-1">Categorías</p>
+            <p className="text-white text-2xl font-semibold">{categorias.length}</p>
+            <p className="text-[#444] text-[10px] mt-0.5">Grupos de equipos</p>
           </div>
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-            <p className="text-[#6b7280] text-xs mb-1">Renta mensual potencial</p>
-            <p className="text-green-400 text-2xl font-semibold">{fmx(kpis.potencialRentaMensual)}</p>
-            <p className="text-[#444] text-[10px] mt-0.5">Suma precio renta × cantidad</p>
-          </div>
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-            <p className="text-[#6b7280] text-xs mb-1">Valor filtrado</p>
-            <p className="text-white text-2xl font-semibold">{fmx(valorTotal)}</p>
-            <p className="text-[#444] text-[10px] mt-0.5">Propios en vista actual</p>
+            <p className="text-[#6b7280] text-xs mb-1">En vista actual</p>
+            <p className="text-white text-2xl font-semibold">{equiposFiltrados.length}</p>
+            <p className="text-[#444] text-[10px] mt-0.5">Con filtros aplicados</p>
           </div>
         </div>
       )}
@@ -761,8 +840,8 @@ export default function InventarioMaestroPage() {
                         )}
                       </div>
                       <div className="flex items-center justify-between mt-1">
-                        <span className="text-[#B3985B] text-xs font-semibold">
-                          {e.precioRenta === 0 ? <span className="text-[#444]">Incluye</span> : fmx(e.precioRenta)}
+                        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${e.tipo === "PROPIO" ? "text-[#6b7280] bg-[#1a1a1a]" : "text-blue-400 bg-blue-900/20"}`}>
+                          {e.tipo === "PROPIO" ? "Propio" : "Externo"}
                         </span>
                         <span className="text-sm font-bold text-white">×{e.cantidadTotal}</span>
                       </div>
@@ -779,8 +858,6 @@ export default function InventarioMaestroPage() {
         /* ── Vista lista por categoría ── */
         <div className="space-y-6">
           {porCategoria.map(({ cat, items }) => {
-            const catValor = items.filter(e => e.tipo === "PROPIO").reduce((s, e) => s + (e.costoInternoEstimado ?? 0) * e.cantidadTotal, 0);
-            const catRenta = items.reduce((s, e) => s + e.precioRenta * e.cantidadTotal, 0);
             return (
               <div key={cat.id}>
                 <div className="flex items-center gap-3 mb-2">
@@ -789,8 +866,6 @@ export default function InventarioMaestroPage() {
                   </h2>
                   <span className="text-[#333] text-[10px]">({items.length})</span>
                   <div className="flex-1 h-px bg-[#1a1a1a]" />
-                  {catValor > 0 && <span className="text-[10px] text-[#555]">Activo {fmx(catValor)}</span>}
-                  {catRenta > 0 && <span className="text-[10px] text-green-900">Renta pot. {fmx(catRenta)}</span>}
                 </div>
                 <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
                   <div className="overflow-x-auto">
@@ -802,18 +877,12 @@ export default function InventarioMaestroPage() {
                           <th className="text-center px-3 py-2.5 font-medium hidden sm:table-cell">Estado</th>
                           <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Proveedor</th>
                           <th className="text-right px-3 py-2.5 font-medium">Cant.</th>
-                          <th className="text-right px-4 py-2.5 font-medium">Precio público</th>
-                          <th className="text-right px-4 py-2.5 font-medium hidden md:table-cell">P. Mainstage</th>
-                          <th className="text-right px-4 py-2.5 font-medium hidden lg:table-cell">Valor activo</th>
-                          <th className="text-right px-4 py-2.5 font-medium hidden lg:table-cell">Valor total</th>
                           <th className="text-center px-3 py-2.5 font-medium hidden xl:table-cell">Acc.</th>
                           <th className="px-3 py-2.5" />
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#161616]">
                         {items.map(e => {
-                          const valorActivo = e.costoInternoEstimado ?? null;
-                          const valorFilaTotal = valorActivo != null ? valorActivo * e.cantidadTotal : null;
                           const provNombre = e.tipo === 'PROPIO'
                             ? null
                             : (e.proveedorDefault?.nombre ?? e.proveedoresPrecios?.[0]?.proveedor?.nombre ?? null);
@@ -915,68 +984,6 @@ export default function InventarioMaestroPage() {
                                 )}
                               </td>
 
-                              {/* Precio público — click to edit */}
-                              <td className="px-4 py-2.5 text-right">
-                                {isEditing(e.id, 'precioRenta') ? (
-                                  <input type="number" autoFocus defaultValue={e.precioRenta} min={0}
-                                    disabled={savingInline === e.id}
-                                    onClick={ev => ev.stopPropagation()}
-                                    onBlur={ev => { const v = parseFloat(ev.target.value) || 0; if (v !== e.precioRenta) patchEquipo(e.id, "precioRenta", v); stopEdit(); }}
-                                    onKeyDown={ev => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); if (ev.key === 'Escape') stopEdit(); }}
-                                    className="w-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-[#0d0d0d] border border-[#2a2a2a] rounded text-[#B3985B] font-medium text-right text-xs focus:outline-none focus:border-[#B3985B]/50 px-1 py-0.5 disabled:opacity-50" />
-                                ) : (
-                                  <button onClick={ev => { ev.stopPropagation(); startEdit(e.id, 'precioRenta'); }}
-                                    className="text-[#B3985B] font-medium text-xs hover:opacity-75 transition-opacity tabular-nums">
-                                    {fmx(e.precioRenta)}
-                                  </button>
-                                )}
-                              </td>
-
-                              {/* P. Mainstage — solo EXTERNO, click to edit */}
-                              <td className="px-4 py-2.5 text-right hidden md:table-cell">
-                                {e.tipo === 'EXTERNO' ? (
-                                  isEditing(e.id, 'costoProveedor') ? (
-                                    <input type="number" autoFocus defaultValue={e.costoProveedor ?? ""} min={0} placeholder="0"
-                                      disabled={savingInline === e.id}
-                                      onClick={ev => ev.stopPropagation()}
-                                      onBlur={ev => { const raw = ev.target.value; const v = raw === "" ? null : parseFloat(raw); if (v !== e.costoProveedor) patchEquipo(e.id, "costoProveedor", v); stopEdit(); }}
-                                      onKeyDown={ev => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); if (ev.key === 'Escape') stopEdit(); }}
-                                      className="w-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-[#0d0d0d] border border-[#2a2a2a] rounded text-emerald-400 font-medium text-right text-xs focus:outline-none focus:border-emerald-500/50 px-1 py-0.5 disabled:opacity-50" />
-                                  ) : (
-                                    <button onClick={ev => { ev.stopPropagation(); startEdit(e.id, 'costoProveedor'); }}
-                                      className="text-emerald-400/80 font-medium text-xs hover:text-emerald-400 transition-colors tabular-nums">
-                                      {e.costoProveedor != null ? fmx(e.costoProveedor) : <span className="text-[#333]">—</span>}
-                                    </button>
-                                  )
-                                ) : (
-                                  <span className="text-[#333] text-xs">—</span>
-                                )}
-                              </td>
-
-                              {/* Valor activo — click to edit */}
-                              <td className="px-4 py-2.5 text-right hidden lg:table-cell">
-                                {isEditing(e.id, 'costoInternoEstimado') ? (
-                                  <input type="number" autoFocus defaultValue={valorActivo ?? ""} min={0} placeholder="0"
-                                    disabled={savingInline === e.id}
-                                    onClick={ev => ev.stopPropagation()}
-                                    onBlur={ev => { const raw = ev.target.value; const v = raw === "" ? null : parseFloat(raw); if (v !== valorActivo) patchEquipo(e.id, "costoInternoEstimado", v); stopEdit(); }}
-                                    onKeyDown={ev => { if (ev.key === 'Enter') (ev.target as HTMLInputElement).blur(); if (ev.key === 'Escape') stopEdit(); }}
-                                    className="w-24 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-[#0d0d0d] border border-[#2a2a2a] rounded text-[#9ca3af] font-medium text-right text-xs focus:outline-none focus:border-[#B3985B]/50 px-1 py-0.5 disabled:opacity-50" />
-                                ) : (
-                                  <button onClick={ev => { ev.stopPropagation(); startEdit(e.id, 'costoInternoEstimado'); }}
-                                    className="text-[#9ca3af] font-medium text-xs hover:opacity-75 transition-opacity tabular-nums">
-                                    {valorActivo != null ? fmx(valorActivo) : <span className="text-[#333]">—</span>}
-                                  </button>
-                                )}
-                              </td>
-
-                              {/* Valor total (calculado) */}
-                              <td className="px-4 py-2.5 text-right hidden lg:table-cell">
-                                {valorFilaTotal != null
-                                  ? <span className="text-white font-medium tabular-nums">{fmx(valorFilaTotal)}</span>
-                                  : <span className="text-[#333]">—</span>}
-                              </td>
-
                               {/* Accesorios */}
                               <td className="px-3 py-2.5 text-center hidden xl:table-cell">
                                 {e._count.accesorios > 0 ? <span className="text-[#B3985B] font-medium">{e._count.accesorios}</span> : <span className="text-[#333]">—</span>}
@@ -1003,22 +1010,9 @@ export default function InventarioMaestroPage() {
           })}
 
           {/* Footer global */}
-          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl px-4 py-3 flex items-center justify-between">
             <p className="text-[#555] text-xs">{equiposFiltrados.length} equipos mostrados</p>
-            <div className="flex items-center gap-6 text-xs">
-              <div className="text-right hidden lg:block">
-                <p className="text-[#555]">Total valor del activo (vista)</p>
-                <p className="text-[#B3985B] font-semibold">
-                  {fmx(equiposFiltrados.reduce((s, e) => s + (e.costoInternoEstimado ?? 0) * e.cantidadTotal, 0))}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-[#555]">Renta potencial (vista)</p>
-                <p className="text-green-400 font-semibold">
-                  {fmx(equiposFiltrados.reduce((s, e) => s + e.precioRenta * e.cantidadTotal, 0))}
-                </p>
-              </div>
-            </div>
+            <p className="text-[#444] text-xs">{categorias.length} categorías</p>
           </div>
         </div>
       )}
