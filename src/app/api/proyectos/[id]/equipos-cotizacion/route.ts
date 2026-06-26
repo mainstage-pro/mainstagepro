@@ -176,11 +176,16 @@ export async function GET(
     let conflictos: Array<{ ref: string; nombre: string; estado: string; fecha: string | null }> = [];
 
     if (linea.tipo === "EQUIPO_PROPIO" && linea.equipoId && linea.equipo) {
+      // Propio con vínculo al inventario → verificar disponibilidad
       const info = comprometidoMap[linea.equipoId];
       comprometido = info?.cantidad ?? 0;
       disponible = linea.equipo.cantidadTotal - comprometido;
       conflictos = info?.refs ?? [];
       clasificacion = disponible >= linea.cantidad ? "PROPIO_DISPONIBLE" : "PROPIO_CONFLICTO";
+    } else if (linea.tipo === "EQUIPO_PROPIO") {
+      // Propio sin vínculo al inventario (cotizado manualmente) → siempre disponible, es nuestro
+      disponible = linea.cantidad;
+      clasificacion = "PROPIO_DISPONIBLE";
     } else if (linea.tipo === "EQUIPO_EXTERNO" && linea.equipoId) {
       clasificacion = "EXTERNO_INVENTARIO";
     } else {

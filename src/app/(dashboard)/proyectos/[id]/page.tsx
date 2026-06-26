@@ -1079,39 +1079,50 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
                 </tr>
               )}
               {propios.map(linea => {
-                const badge = CLASIF_BADGE[linea.clasificacion];
+                const isConflicto = linea.clasificacion === 'PROPIO_CONFLICTO';
                 return (
                   <React.Fragment key={linea.id}>
                     <tr className="border-t border-[#161616] hover:bg-[#0d0d0d] transition-colors">
                       <td className="px-4 py-2.5">
-                        <p className="text-white font-medium">{(linea.marca || linea.modelo) ? [linea.marca, linea.modelo].filter(Boolean).join(' · ') : linea.descripcion}</p>
+                        <p className="text-white font-medium text-sm">{(linea.marca || linea.modelo) ? [linea.marca, linea.modelo].filter(Boolean).join(' · ') : linea.descripcion}</p>
                         {(linea.marca || linea.modelo) && <p className="text-[#555] text-[10px]">{linea.descripcion}</p>}
                       </td>
-                      <td className="px-3 py-2.5 text-center text-white font-medium">{linea.cantidad}u × {linea.dias}d</td>
                       <td className="px-3 py-2.5 text-center">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${badge.bg} ${badge.text}`}>
-                          {badge.label}
-                        </span>
+                        <span className="text-white font-medium text-sm">{linea.cantidad}</span>
+                        <span className="text-[#555] text-[10px] block">{linea.dias}d</span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        {isConflicto ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-yellow-900/20 border border-yellow-800/30 text-yellow-400">
+                            ⚠ Conflicto
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-900/20 border border-emerald-800/30 text-emerald-400">
+                            ✓ Disponible
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-2.5 hidden md:table-cell">
                         <span className="text-[11px] text-[#B3985B] font-medium">Mainstage Pro</span>
+                        {linea.equipoId && (
+                          <span className="text-[10px] text-[#444] block">{linea.disponible} disp. en inventario</span>
+                        )}
                       </td>
                       <td className="px-3 py-2.5 text-right hidden md:table-cell">
                         <span className="text-[#9ca3af] text-xs">{fmxEquipo(linea.precioUnitario)}/d</span>
+                        <span className="text-[#444] text-[10px] block">{fmxEquipo(linea.precioUnitario * linea.dias * linea.cantidad)} total</span>
                       </td>
                       <td className="px-3 py-2.5 text-center">
-                        {linea.clasificacion === 'PROPIO_DISPONIBLE' && (
+                        {isConflicto ? (
+                          <span className="text-yellow-500 text-[10px]">Ver conflicto ↓</span>
+                        ) : (
                           <span className="text-emerald-500 text-[10px]">✓ Listo</span>
-                        )}
-                        {linea.clasificacion === 'PROPIO_CONFLICTO' && (
-                          <span className="text-yellow-500 text-[10px]">Resolver</span>
                         )}
                       </td>
                     </tr>
-                    {/* Conflict detail — always shown inline when there is a conflict */}
-                    {linea.clasificacion === 'PROPIO_CONFLICTO' && linea.conflictos.length > 0 && (
+                    {isConflicto && linea.conflictos.length > 0 && (
                       <tr className="border-t border-yellow-900/20 bg-yellow-900/5">
-                        <td colSpan={6} className="px-4 py-2">
+                        <td colSpan={6} className="px-4 py-2.5">
                           <p className="text-[10px] text-yellow-600 uppercase tracking-widest mb-1.5">Comprometido en:</p>
                           <div className="space-y-1">
                             {linea.conflictos.map((c, i) => (
@@ -1122,6 +1133,7 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
                               </div>
                             ))}
                           </div>
+                          <p className="text-[10px] text-yellow-700 mt-2">Coordina con el equipo para reasignar o renta externa.</p>
                         </td>
                       </tr>
                     )}
