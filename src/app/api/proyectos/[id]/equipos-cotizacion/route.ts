@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
+// ── Tipos de clasificación (5 estados) ─────────────────────────────────────
+export type ClasifEquipo =
+  | "PROPIO_INVENTARIO"   // En nuestro inventario, disponibilidad verificada
+  | "PROPIO_MANUAL"       // Marcado como propio pero sin vínculo al inventario
+  | "EXTERNO_INVENTARIO"  // En inventario externo/renta catalogado
+  | "EXTERNO_CONFIRMADO"  // Proveedor externo asignado + CxP generada
+  | "A_CONSEGUIR";        // Sin proveedor todavía
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -11,7 +19,6 @@ export async function GET(
 
   const { id } = await params;
 
-  // Obtener proyecto con cotización y equipos confirmados
   const proyecto = await prisma.proyecto.findUnique({
     where: { id },
     select: {
@@ -61,19 +68,19 @@ export async function GET(
   });
 
   if (!proyecto) return NextResponse.json({ error: "Proyecto no encontrado" }, { status: 404 });
-  if (!proyecto.cotizacion) return NextResponse.json({ lineas: [], proveedores: [], equiposConfirmados: [], cxps: [] });
+  if (!proyecto.cotizacion) return NextResponse.json({ lineas: [], proveedores: [] });
 
-  // Rango de fechas: desde fechaMontaje (o fechaEvento si no hay) hasta fechaEvento
+  // ── Rango de fechas del evento ─────────────────────────────────────────────
   const fechaInicio = proyecto.fechaMontaje ?? proyecto.fechaEvento;
   const fechaFin = new Date(proyecto.fechaEvento);
   fechaFin.setHours(23, 59, 59, 999);
 
-  // IDs de equipos PROPIOS con vínculo al inventario
+  // ── IDs de equipos propios vinculados al inventario ────────────────────────
   const propioEquipoIds = proyecto.cotizacion.lineas
-    .filter((l) => l.tipo === "EQUIPO_PROPIO" && l.equipoId)
+    .filter((l) => l.tipo === "EQUIPO_PROPIO" && l.equipoId && l.equipo?.tipo === "PROPIO")
     .map((l) => l.equipoId!);
 
-  // Comprometido en OTRAS cotizaciones (sin proyecto asignado) en el rango de fechas
+  // ── Conflictos en otras cotizaciones ──────────────────────────────────────
   const cotConflicto = propioEquipoIds.length > 0
     ? await prisma.cotizacion.findMany({
         where: {
@@ -99,7 +106,7 @@ export async function GET(
       })
     : [];
 
-  // Comprometido en OTROS proyectos activos en el rango
+  // ── Conflictos en otros proyectos ─────────────────────────────────────────
   const proyConflicto = propioEquipoIds.length > 0
     ? await prisma.proyecto.findMany({
         where: {
@@ -124,29 +131,28 @@ export async function GET(
       })
     : [];
 
-  // Acumular comprometido por equipoId
-  type ConflictoInfo = { cantidad: number; refs: Array<{ ref: string; nombre: string; estado: string; fecha: string | null }> };
-  const comprometidoMap: Record<string, ConflictoInfo> = {};
+  // ── Mapa de comprometido por equipoId ─────────────────────────────────────
+  const comprometidoMap: Record<string, { cantidad: number; refs: Array<{ ref: string; nombre: string; estado: string; fecha: string | null }> }> = {};
 
   for (const cot of cotConflicto) {
     for (const l of cot.lineas) {
       if (!l.equipoId) continue;
       if (!comprometidoMap[l.equipoId]) comprometidoMap[l.equipoId] = { cantidad: 0, refs: [] };
-      comprometidoMap[l.equipoId].cantidad += Math.round(l.cantidad);
+      comprometidoMap[l.equipoId].cantidad += l.cantidad;
       comprometidoMap[l.equipoId].refs.push({
         ref: cot.numeroCotizacion,
-        nombre: cot.nombreEvento ?? "Cotización",
+        nombre: cot.nombreEvento ?? "Sin nombre",
         estado: cot.estado,
         fecha: cot.fechaEvento ? cot.fechaEvento.toISOString().split("T")[0] : null,
       });
     }
   }
-
   for (const proy of proyConflicto) {
-    for (const pe of proy.equipos) {
-      if (!comprometidoMap[pe.equipoId]) comprometidoMap[pe.equipoId] = { cantidad: 0, refs: [] };
-      comprometidoMap[pe.equipoId].cantidad += pe.cantidad;
-      comprometidoMap[pe.equipoId].refs.push({
+    for (const e of proy.equipos) {
+      if (!e.equipoId) continue;
+      if (!comprometidoMap[e.equipoId]) comprometidoMap[e.equipoId] = { cantidad: 0, refs: [] };
+      comprometidoMap[e.equipoId].cantidad += e.cantidad;
+      comprometidoMap[e.equipoId].refs.push({
         ref: proy.numeroProyecto,
         nombre: proy.nombre,
         estado: proy.estado,
@@ -155,7 +161,7 @@ export async function GET(
     }
   }
 
-  // CxPs existentes de tipo PROVEEDOR para este proyecto (para saber cuáles ya generaron CxP)
+  // ── CxPs existentes para este proyecto ────────────────────────────────────
   const cxpsExistentes = await prisma.cuentaPagar.findMany({
     where: { proyectoId: id },
     select: {
@@ -168,42 +174,49 @@ export async function GET(
     },
   });
 
-  // Clasificar cada línea de cotización
+  // ── Clasificar cada línea ──────────────────────────────────────────────────
   const lineasClasificadas = proyecto.cotizacion.lineas.map((linea) => {
-    let clasificacion: "PROPIO_DISPONIBLE" | "PROPIO_CONFLICTO" | "EXTERNO_INVENTARIO" | "EXTERNO_MANUAL";
+    let clasificacion: ClasifEquipo;
     let disponible = 0;
     let comprometido = 0;
     let conflictos: Array<{ ref: string; nombre: string; estado: string; fecha: string | null }> = [];
 
-    if (linea.tipo === "EQUIPO_PROPIO" && linea.equipoId && linea.equipo) {
-      // Propio con vínculo al inventario → verificar disponibilidad
-      const info = comprometidoMap[linea.equipoId];
-      comprometido = info?.cantidad ?? 0;
-      disponible = linea.equipo.cantidadTotal - comprometido;
-      conflictos = info?.refs ?? [];
-      clasificacion = disponible >= linea.cantidad ? "PROPIO_DISPONIBLE" : "PROPIO_CONFLICTO";
-    } else if (linea.tipo === "EQUIPO_PROPIO") {
-      // Propio sin vínculo al inventario (cotizado manualmente) → siempre disponible, es nuestro
-      disponible = linea.cantidad;
-      clasificacion = "PROPIO_DISPONIBLE";
-    } else if (linea.tipo === "EQUIPO_EXTERNO" && linea.equipoId) {
-      clasificacion = "EXTERNO_INVENTARIO";
+    if (linea.tipo === "EQUIPO_PROPIO") {
+      if (linea.equipoId && linea.equipo) {
+        if (linea.equipo.tipo === "PROPIO") {
+          // Propio con vínculo al inventario → verificar disponibilidad
+          const info = comprometidoMap[linea.equipoId];
+          comprometido = info?.cantidad ?? 0;
+          disponible = linea.equipo.cantidadTotal - comprometido;
+          conflictos = info?.refs ?? [];
+          clasificacion = disponible >= linea.cantidad ? "PROPIO_INVENTARIO" : "PROPIO_INVENTARIO"; // conflicto se señala aparte
+        } else {
+          // Equipo en inventario pero de tipo EXTERNO → proveedor externo catalogado
+          clasificacion = "EXTERNO_INVENTARIO";
+        }
+      } else {
+        // Propio manual (sin vínculo al inventario)
+        clasificacion = "PROPIO_MANUAL";
+      }
     } else {
-      clasificacion = "EXTERNO_MANUAL";
+      // EQUIPO_EXTERNO
+      const cxpVinculadaCheck = cxpsExistentes.find((c) => {
+        try { return JSON.parse(c.notas ?? "{}").lineaId === linea.id; } catch { return false; }
+      });
+      const tieneProveedor = !!(linea.proveedorId || linea.proveedorRentaId);
+      if (tieneProveedor && cxpVinculadaCheck) {
+        clasificacion = "EXTERNO_CONFIRMADO";
+      } else {
+        clasificacion = "A_CONSEGUIR";
+      }
     }
 
-    // Verificar si ya tiene confirmación (CxP generada para esta línea)
+    // CxP vinculada (para externos)
     const cxpVinculada = cxpsExistentes.find((c) => {
-      try {
-        const nota = JSON.parse(c.notas ?? "{}");
-        return nota.lineaId === linea.id;
-      } catch {
-        return false;
-      }
+      try { return JSON.parse(c.notas ?? "{}").lineaId === linea.id; } catch { return false; }
     }) ?? null;
 
-    // Estado de confirmación del proveedor para EXTERNO
-    const yaConfirmado = !!(linea.proveedorId || linea.proveedorRentaId) && !!cxpVinculada;
+    const yaConfirmado = clasificacion === "EXTERNO_CONFIRMADO";
 
     return {
       id: linea.id,
@@ -217,6 +230,8 @@ export async function GET(
       precioUnitario: linea.precioUnitario,
       costoExterno: linea.costoExterno,
       equipoId: linea.equipoId,
+      equipoInventarioTipo: linea.equipo?.tipo ?? null,
+      cantidadTotal: linea.equipo?.cantidadTotal ?? null,
       proveedorId: linea.proveedorId ?? linea.proveedorRentaId,
       proveedor: linea.proveedor ?? linea.proveedorRenta,
       clasificacion,
@@ -228,7 +243,7 @@ export async function GET(
     };
   });
 
-  // Proveedores activos para selector
+  // ── Proveedores activos ────────────────────────────────────────────────────
   const proveedores = await prisma.proveedor.findMany({
     where: { activo: true },
     select: { id: true, nombre: true, empresa: true },
@@ -244,10 +259,10 @@ export async function GET(
     },
     lineas: lineasClasificadas,
     proveedores,
-    cxps: cxpsExistentes,
   });
 }
 
+// ── POST — Confirmar proveedor externo + generar CxP ─────────────────────────
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -269,7 +284,6 @@ export async function POST(
     return NextResponse.json({ error: "lineaId, proveedorId y monto son requeridos" }, { status: 400 });
   }
 
-  // Verificar que la línea pertenece a la cotización del proyecto
   const proyecto = await prisma.proyecto.findUnique({
     where: { id },
     select: { cotizacion: { select: { id: true } }, nombre: true, fechaEvento: true },
@@ -282,22 +296,16 @@ export async function POST(
   });
   if (!linea) return NextResponse.json({ error: "Línea no encontrada" }, { status: 404 });
 
-  // Verificar que no exista ya una CxP para esta línea
   const cxpExistente = await prisma.cuentaPagar.findFirst({
-    where: {
-      proyectoId: id,
-      notas: { contains: lineaId },
-    },
+    where: { proyectoId: id, notas: { contains: lineaId } },
   });
 
   if (cxpExistente && generarCxP) {
-    // Actualizar la CxP existente con el nuevo monto
     await prisma.cuentaPagar.update({
       where: { id: cxpExistente.id },
       data: { monto, proveedorId, fechaCompromiso: fechaCompromiso ? new Date(fechaCompromiso) : undefined },
     });
   } else if (generarCxP) {
-    // Crear nueva CxP
     await prisma.cuentaPagar.create({
       data: {
         tipoAcreedor: "PROVEEDOR",
@@ -313,18 +321,55 @@ export async function POST(
     });
   }
 
-  // Actualizar la línea de cotización con el proveedor y costo confirmados
   await prisma.cotizacionLinea.update({
     where: { id: lineaId },
     data: {
       costoExterno: monto,
-      // Para EXTERNO_MANUAL, guardamos en proveedorRentaId; para EXTERNO_INVENTARIO en proveedorId
       notasInternas: JSON.stringify({
         confirmadoEn: new Date().toISOString(),
         confirmadoPorId: session.id ?? null,
         proveedorConfirmadoId: proveedorId,
         monto,
       }),
+    },
+  });
+
+  return NextResponse.json({ ok: true });
+}
+
+// ── PATCH — Reclasificar línea (cambiar tipo: EQUIPO_PROPIO ↔ EQUIPO_EXTERNO) ─
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const { id } = await params;
+  const { lineaId, nuevoTipo } = await req.json() as { lineaId: string; nuevoTipo: "EQUIPO_PROPIO" | "EQUIPO_EXTERNO" };
+
+  if (!lineaId || !nuevoTipo) {
+    return NextResponse.json({ error: "lineaId y nuevoTipo son requeridos" }, { status: 400 });
+  }
+
+  const proyecto = await prisma.proyecto.findUnique({
+    where: { id },
+    select: { cotizacion: { select: { id: true } } },
+  });
+  if (!proyecto?.cotizacion) return NextResponse.json({ error: "Proyecto sin cotización" }, { status: 404 });
+
+  const linea = await prisma.cotizacionLinea.findFirst({
+    where: { id: lineaId, cotizacionId: proyecto.cotizacion.id },
+    select: { id: true, tipo: true },
+  });
+  if (!linea) return NextResponse.json({ error: "Línea no encontrada" }, { status: 404 });
+
+  await prisma.cotizacionLinea.update({
+    where: { id: lineaId },
+    data: {
+      tipo: nuevoTipo,
+      // Si se mueve a externo, limpiar vínculo al inventario propio
+      ...(nuevoTipo === "EQUIPO_EXTERNO" ? { equipoId: null } : {}),
     },
   });
 

@@ -874,7 +874,9 @@ function VehiculoIdSelector({
   );
 }
 
-// ── EquiposTab ───────────────────────────────────────────────────────────────────────────────────
+// ── EquiposTab ─────────────────────────────────────────────────────────────────────────────────────────
+
+type ClasifEquipo = 'PROPIO_INVENTARIO' | 'PROPIO_MANUAL' | 'EXTERNO_INVENTARIO' | 'EXTERNO_CONFIRMADO' | 'A_CONSEGUIR';
 
 type LineaEquipo = {
   id: string;
@@ -887,9 +889,11 @@ type LineaEquipo = {
   precioUnitario: number;
   costoExterno: number | null;
   equipoId: string | null;
+  equipoInventarioTipo: string | null;
+  cantidadTotal: number | null;
   proveedorId: string | null;
   proveedor: { id: string; nombre: string; empresa: string | null } | null;
-  clasificacion: 'PROPIO_DISPONIBLE' | 'PROPIO_CONFLICTO' | 'EXTERNO_INVENTARIO' | 'EXTERNO_MANUAL';
+  clasificacion: ClasifEquipo;
   disponible: number;
   comprometido: number;
   conflictos: Array<{ ref: string; nombre: string; estado: string; fecha: string | null }>;
@@ -899,11 +903,12 @@ type LineaEquipo = {
 
 type ProveedorOpt = { id: string; nombre: string; empresa: string | null };
 
-const CLASIF_BADGE: Record<string, { bg: string; text: string; label: string }> = {
-  PROPIO_DISPONIBLE:  { bg: 'bg-emerald-900/20 border border-emerald-800/30', text: 'text-emerald-400', label: '✓ Disponible' },
-  PROPIO_CONFLICTO:   { bg: 'bg-yellow-900/20 border border-yellow-800/30', text: 'text-yellow-400',   label: '⚠ Conflicto de fechas' },
-  EXTERNO_INVENTARIO: { bg: 'bg-blue-900/20 border border-blue-800/30',   text: 'text-blue-400',     label: '● Inventario externo' },
-  EXTERNO_MANUAL:     { bg: 'bg-[#1a1a1a] border border-[#2a2a2a]',     text: 'text-[#6b7280]',   label: '□ Conseguir proveedor' },
+const CLASIF_CFG: Record<ClasifEquipo, { bg: string; text: string; label: string; dot: string }> = {
+  PROPIO_INVENTARIO:  { bg: 'bg-emerald-900/20 border border-emerald-800/30', text: 'text-emerald-400', label: '\u2713 Nuestro', dot: 'bg-emerald-400' },
+  PROPIO_MANUAL:      { bg: 'bg-emerald-900/10 border border-emerald-900/20', text: 'text-emerald-600', label: '\u2713 Nuestro*', dot: 'bg-emerald-700' },
+  EXTERNO_INVENTARIO: { bg: 'bg-blue-900/20 border border-blue-800/30',       text: 'text-blue-400',   label: '\u25cf Catálogo externo', dot: 'bg-blue-400' },
+  EXTERNO_CONFIRMADO: { bg: 'bg-blue-900/20 border border-blue-800/30',       text: 'text-blue-400',   label: '\u2713 Proveedor OK', dot: 'bg-blue-400' },
+  A_CONSEGUIR:        { bg: 'bg-[#1a1a1a] border border-[#2a2a2a]',           text: 'text-[#6b7280]', label: '\u25a1 A conseguir', dot: 'bg-gray-600' },
 };
 
 function fmxEquipo(n: number) {
@@ -916,8 +921,10 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [confirmando, setConfirmando] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
+  const [reclasificando, setReclasificando] = React.useState<string | null>(null);
+  const [menuAbierto, setMenuAbierto] = React.useState<string | null>(null);
 
-  // Formulario de confirmación
+  // Formulario de confirmación de proveedor
   const [confProveedorId, setConfProveedorId] = React.useState('');
   const [confMonto, setConfMonto] = React.useState('');
   const [confFecha, setConfFecha] = React.useState('');
@@ -930,11 +937,10 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
       const res = await fetch(`/api/proyectos/${proyectoId}/equipos-cotizacion`, { cache: 'no-store' });
       if (!res.ok) {
         const txt = await res.text().catch(() => '');
-        setLoadError(`Error ${res.status}: ${txt.slice(0, 120) || 'Sin respuesta del servidor'}`);
+        setLoadError(`Error ${res.status}: ${txt.slice(0, 120) || 'Sin respuesta'}`);
         return;
       }
-      const d = await res.json();
-      setData(d);
+      setData(await res.json());
     } catch (e) {
       setLoadError(`Error de conexión: ${(e as Error).message}`);
     } finally {
@@ -942,13 +948,21 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
     }
   }
 
-  React.useEffect(() => { load(); }, [proyectoId]); // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => { load(); }, [proyectoId]); // eslint-disable-line
+
+  // Cerrar menú al hacer clic fuera
+  React.useEffect(() => {
+    if (!menuAbierto) return;
+    const handler = () => setMenuAbierto(null);
+    window.addEventListener('click', handler);
+    return () => window.removeEventListener('click', handler);
+  }, [menuAbierto]);
 
   function abrirConfirmacion(linea: LineaEquipo) {
     setConfirmando(linea.id);
+    setMenuAbierto(null);
     setConfProveedorId(linea.proveedorId ?? '');
     setConfMonto(String(linea.costoExterno ?? linea.precioUnitario));
-    // Fecha default = fecha del evento
     const fe = data?.proyecto.fechaEvento;
     setConfFecha(fe ? fe.split('T')[0] : '');
     setConfGenerarCxP(true);
@@ -961,67 +975,262 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
       const res = await fetch(`/api/proyectos/${proyectoId}/equipos-cotizacion`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lineaId: confirmando,
-          proveedorId: confProveedorId,
-          monto: parseFloat(confMonto),
-          fechaCompromiso: confFecha || undefined,
-          generarCxP: confGenerarCxP,
-        }),
+        body: JSON.stringify({ lineaId: confirmando, proveedorId: confProveedorId, monto: parseFloat(confMonto), fechaCompromiso: confFecha || undefined, generarCxP: confGenerarCxP }),
       });
       if (!res.ok) { alert('Error al confirmar'); return; }
       setConfirmando(null);
       await load();
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
 
-  if (loading) {
-    return (
-      <div className="space-y-3 py-4">
-        <div className="h-4 w-48 bg-[#1a1a1a] rounded animate-pulse" />
-        {[...Array(5)].map((_, i) => <div key={i} className="h-12 bg-[#111] rounded-xl animate-pulse" />)}
-      </div>
-    );
+  async function reclasificar(lineaId: string, nuevoTipo: 'EQUIPO_PROPIO' | 'EQUIPO_EXTERNO') {
+    setMenuAbierto(null);
+    setReclasificando(lineaId);
+    try {
+      const res = await fetch(`/api/proyectos/${proyectoId}/equipos-cotizacion`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lineaId, nuevoTipo }),
+      });
+      if (!res.ok) { alert('Error al reclasificar'); return; }
+      await load();
+    } finally { setReclasificando(null); }
   }
 
-  if (loadError) {
-    return (
-      <div className="bg-red-900/10 border border-red-800/30 rounded-xl p-5 text-center">
-        <p className="text-red-400 text-sm font-medium mb-1">Error al cargar equipos</p>
-        <p className="text-[#555] text-xs font-mono">{loadError}</p>
-        <button onClick={load} className="mt-3 text-xs text-[#B3985B] hover:underline">Reintentar</button>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="space-y-3 py-4">
+      <div className="h-4 w-48 bg-[#1a1a1a] rounded animate-pulse" />
+      {[...Array(5)].map((_, i) => <div key={i} className="h-12 bg-[#111] rounded-xl animate-pulse" />)}
+    </div>
+  );
 
-  if (!data || data.lineas.length === 0) {
-    return (
-      <div className="text-center py-16 text-[#333]">
-        <p className="text-4xl mb-3">📦</p>
-        <p className="text-sm">Este proyecto no tiene equipos cotizados vinculados al inventario.</p>
-        <p className="text-xs text-[#444] mt-1">Agrega equipos desde la cotización para verlos aquí.</p>
-      </div>
-    );
-  }
+  if (loadError) return (
+    <div className="bg-red-900/10 border border-red-800/30 rounded-xl p-5 text-center">
+      <p className="text-red-400 text-sm font-medium mb-1">Error al cargar equipos</p>
+      <p className="text-[#555] text-xs font-mono">{loadError}</p>
+      <button onClick={load} className="mt-3 text-xs text-[#B3985B] hover:underline">Reintentar</button>
+    </div>
+  );
 
-  const propios = data.lineas.filter(l => l.tipo === 'EQUIPO_PROPIO');
-  const externos = data.lineas.filter(l => l.tipo === 'EQUIPO_EXTERNO');
-  const propiosOk = propios.filter(l => l.clasificacion === 'PROPIO_DISPONIBLE').length;
-  const propiosConflicto = propios.filter(l => l.clasificacion === 'PROPIO_CONFLICTO').length;
-  const externosConfirmados = externos.filter(l => l.yaConfirmado).length;
+  if (!data || data.lineas.length === 0) return (
+    <div className="text-center py-16 text-[#333]">
+      <p className="text-4xl mb-3">📦</p>
+      <p className="text-sm">Este proyecto no tiene equipos cotizados vinculados al inventario.</p>
+      <p className="text-xs text-[#444] mt-1">Agrega equipos desde la cotización para verlos aquí.</p>
+    </div>
+  );
+
+  const propios     = data.lineas.filter(l => l.tipo === 'EQUIPO_PROPIO');
+  const externos    = data.lineas.filter(l => l.tipo === 'EQUIPO_EXTERNO' && l.clasificacion === 'EXTERNO_CONFIRMADO');
+  const aConseguir  = data.lineas.filter(l => l.tipo === 'EQUIPO_EXTERNO' && l.clasificacion !== 'EXTERNO_CONFIRMADO');
+  const conflictos  = propios.filter(l => l.conflictos.length > 0);
 
   const fmtFechaCorta = (iso: string | null) =>
     iso ? new Date(iso + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '—';
 
   const fechaRango = data.proyecto.fechaMontaje
-    ? `${fmtFechaCorta(data.proyecto.fechaMontaje.split('T')[0])} → ${fmtFechaCorta(data.proyecto.fechaEvento.split('T')[0])}`
+    ? `${fmtFechaCorta(data.proyecto.fechaMontaje.split('T')[0])} \u2192 ${fmtFechaCorta(data.proyecto.fechaEvento.split('T')[0])}`
     : fmtFechaCorta(data.proyecto.fechaEvento.split('T')[0]);
+
+  // Render de una fila de equipo (propios y externos comparten estructura)
+  function FilaEquipo({ linea, mostrarAccion }: { linea: LineaEquipo; mostrarAccion?: boolean }) {
+    const cfg = CLASIF_CFG[linea.clasificacion];
+    const esConflicto = linea.conflictos.length > 0;
+    const esConfirmando = confirmando === linea.id;
+    const esReclasificando = reclasificando === linea.id;
+    const menuOpen = menuAbierto === linea.id;
+
+    return (
+      <React.Fragment>
+        <tr className={`border-t border-[#161616] transition-colors ${esConfirmando ? 'bg-[#0d0d0d]' : 'hover:bg-[#0d0d0d]'}`}>
+          {/* Nombre */}
+          <td className="px-4 py-2.5">
+            <p className="text-white font-medium text-sm">
+              {(linea.marca || linea.modelo) ? [linea.marca, linea.modelo].filter(Boolean).join(' \u00b7 ') : linea.descripcion}
+            </p>
+            {(linea.marca || linea.modelo) && <p className="text-[#555] text-[10px]">{linea.descripcion}</p>}
+            {linea.clasificacion === 'PROPIO_MANUAL' && (
+              <p className="text-[10px] text-yellow-700 mt-0.5">⚠ Sin vínculo al inventario</p>
+            )}
+          </td>
+          {/* Cantidad */}
+          <td className="px-3 py-2.5 text-center">
+            <span className="text-white font-medium text-sm">{linea.cantidad}</span>
+            <span className="text-[#555] text-[10px] block">{linea.dias}d</span>
+          </td>
+          {/* Badge */}
+          <td className="px-3 py-2.5 text-center">
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${cfg.bg} ${cfg.text}`}>
+              {esConflicto && linea.tipo === 'EQUIPO_PROPIO'
+                ? <>⚠ Conflicto</>
+                : cfg.label
+              }
+            </span>
+          </td>
+          {/* Proveedor / fuente */}
+          <td className="px-3 py-2.5 hidden md:table-cell">
+            {linea.tipo === 'EQUIPO_PROPIO' ? (
+              <span className="text-[11px] text-[#B3985B] font-medium">
+                Mainstage Pro
+                {linea.cantidadTotal != null && (
+                  <span className="text-[#444] font-normal"> · {linea.disponible}/{linea.cantidadTotal} disp.</span>
+                )}
+              </span>
+            ) : linea.proveedor ? (
+              <span className="text-[11px] text-white">{linea.proveedor.nombre}</span>
+            ) : (
+              <span className="text-[#444] italic text-[11px]">Sin proveedor</span>
+            )}
+          </td>
+          {/* Precio */}
+          <td className="px-3 py-2.5 text-right hidden md:table-cell">
+            {linea.cxp ? (
+              <span className="text-[#B3985B] font-semibold tabular-nums text-xs">{fmxEquipo(linea.cxp.monto)}</span>
+            ) : linea.costoExterno != null ? (
+              <span className="text-[#9ca3af] tabular-nums text-xs">{fmxEquipo(linea.costoExterno)}</span>
+            ) : (
+              <span className="text-[#9ca3af] tabular-nums text-xs">{fmxEquipo(linea.precioUnitario * linea.dias)}/d</span>
+            )}
+          </td>
+          {/* Acción */}
+          <td className="px-3 py-2.5 text-center">
+            <div className="flex items-center justify-center gap-1.5">
+              {/* Botón de acción principal */}
+              {linea.tipo === 'EQUIPO_PROPIO' ? (
+                esConflicto
+                  ? <span className="text-yellow-500 text-[10px]">Ver conflicto ↓</span>
+                  : <span className="text-emerald-500 text-[10px]">✓ Listo</span>
+              ) : (
+                mostrarAccion && (
+                  <button
+                    onClick={() => abrirConfirmacion(linea)}
+                    className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg transition-colors ${
+                      linea.yaConfirmado
+                        ? 'text-[#555] hover:text-[#B3985B]'
+                        : 'bg-[#B3985B] hover:bg-[#c4aa6b] text-black'
+                    }`}
+                  >
+                    {linea.yaConfirmado ? 'Editar' : 'Confirmar'}
+                  </button>
+                )
+              )}
+              {/* Menú de reclasificación */}
+              <div className="relative">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setMenuAbierto(menuOpen ? null : linea.id); }}
+                  disabled={esReclasificando}
+                  className="text-[#333] hover:text-[#555] text-[10px] px-1 py-0.5 rounded transition-colors disabled:opacity-40"
+                  title="Reclasificar equipo"
+                >
+                  {esReclasificando ? '...' : '⋮'}
+                </button>
+                {menuOpen && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute right-0 top-full mt-1 z-50 bg-[#111] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[160px]"
+                  >
+                    <p className="text-[9px] text-[#444] uppercase tracking-wider px-3 pt-1.5 pb-1">Reclasificar como:</p>
+                    <button
+                      onClick={() => reclasificar(linea.id, 'EQUIPO_PROPIO')}
+                      className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-[#1a1a1a] transition-colors ${
+                        linea.tipo === 'EQUIPO_PROPIO' ? 'text-emerald-400' : 'text-[#9ca3af]'
+                      }`}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                      Equipo propio
+                      {linea.tipo === 'EQUIPO_PROPIO' && <span className="ml-auto text-[9px] text-[#444]">✓ actual</span>}
+                    </button>
+                    <button
+                      onClick={() => reclasificar(linea.id, 'EQUIPO_EXTERNO')}
+                      className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 hover:bg-[#1a1a1a] transition-colors ${
+                        linea.tipo === 'EQUIPO_EXTERNO' ? 'text-blue-400' : 'text-[#9ca3af]'
+                      }`}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+                      Externo / A conseguir
+                      {linea.tipo === 'EQUIPO_EXTERNO' && <span className="ml-auto text-[9px] text-[#444]">✓ actual</span>}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </td>
+        </tr>
+        {/* Conflicto detalle */}
+        {esConflicto && linea.tipo === 'EQUIPO_PROPIO' && (
+          <tr className="border-t border-yellow-900/20 bg-yellow-900/5">
+            <td colSpan={6} className="px-4 py-2.5">
+              <p className="text-[10px] text-yellow-600 uppercase tracking-widest mb-1.5">Comprometido en:</p>
+              <div className="space-y-1">
+                {linea.conflictos.map((c, i) => (
+                  <div key={i} className="flex items-center gap-2 text-[11px]">
+                    <span className="font-mono text-[#555]">{c.ref}</span>
+                    <span className="text-white">{c.nombre}</span>
+                    <span className="text-[#444] ml-auto">{fmtFechaCorta(c.fecha)}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-yellow-700 mt-2">Coordina con el equipo o usa el menú \u22ee para reclasificar como externo.</p>
+            </td>
+          </tr>
+        )}
+        {/* Formulario confirmación proveedor */}
+        {esConfirmando && (
+          <tr className="border-t border-[#B3985B]/20 bg-[#0a0a0a]">
+            <td colSpan={6} className="px-4 py-4">
+              <div className="max-w-xl">
+                <p className="text-xs font-semibold text-white mb-3">
+                  {linea.yaConfirmado ? 'Editar confirmaci\u00f3n' : 'Confirmar equipo externo'}: {linea.descripcion}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                  <div>
+                    <label className="text-[10px] text-[#6b7280] uppercase tracking-wider block mb-1">Proveedor *</label>
+                    <select value={confProveedorId} onChange={e => setConfProveedorId(e.target.value)}
+                      className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]/50">
+                      <option value="">— Selecciona —</option>
+                      {(data?.proveedores ?? []).map(p => (
+                        <option key={p.id} value={p.id}>{p.nombre}{p.empresa ? ` \u00b7 ${p.empresa}` : ''}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[#6b7280] uppercase tracking-wider block mb-1">Precio confirmado *</label>
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#555] text-xs">$</span>
+                      <input type="number" value={confMonto} onChange={e => setConfMonto(e.target.value)} min={0}
+                        className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg pl-6 pr-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]/50"
+                        placeholder="0" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[#6b7280] uppercase tracking-wider block mb-1">Fecha compromiso pago</label>
+                    <input type="date" value={confFecha} onChange={e => setConfFecha(e.target.value)}
+                      className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]/50" />
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 text-xs text-[#9ca3af] mb-3 cursor-pointer">
+                  <input type="checkbox" checked={confGenerarCxP} onChange={e => setConfGenerarCxP(e.target.checked)}
+                    className="accent-[#B3985B] w-3.5 h-3.5" />
+                  Generar cuenta por pagar al proveedor
+                </label>
+                <div className="flex items-center gap-2">
+                  <button onClick={confirmar} disabled={saving || !confProveedorId || !confMonto}
+                    className="bg-[#B3985B] hover:bg-[#c4aa6b] disabled:opacity-40 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+                    {saving ? 'Guardando...' : linea.yaConfirmado ? 'Guardar cambios' : 'Confirmar equipo'}
+                  </button>
+                  <button onClick={() => setConfirmando(null)}
+                    className="border border-[#333] text-[#6b7280] hover:text-white text-xs px-3 py-2 rounded-lg transition-colors">Cancelar</button>
+                </div>
+              </div>
+            </td>
+          </tr>
+        )}
+      </React.Fragment>
+    );
+  }
 
   return (
     <div className="space-y-5">
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -1032,231 +1241,118 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-3">
-          <p className="text-[#6b7280] text-[10px] mb-1">Equipos propios</p>
+          <p className="text-[#6b7280] text-[10px] mb-1">Propios</p>
           <p className="text-white text-xl font-semibold">{propios.length}</p>
-          <p className="text-[#444] text-[10px]">{propiosOk} disponibles</p>
-        </div>
-        <div className={`border rounded-xl p-3 ${propiosConflicto > 0 ? 'bg-yellow-900/10 border-yellow-800/30' : 'bg-[#111] border-[#1e1e1e]'}`}>
-          <p className="text-[#6b7280] text-[10px] mb-1">Con conflicto</p>
-          <p className={`text-xl font-semibold ${propiosConflicto > 0 ? 'text-yellow-400' : 'text-white'}`}>{propiosConflicto}</p>
-          <p className="text-[#444] text-[10px]">Requieren gestión</p>
+          <p className="text-[#444] text-[10px]">{conflictos.length > 0 ? `${conflictos.length} con conflicto` : 'Sin conflictos'}</p>
         </div>
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-3">
-          <p className="text-[#6b7280] text-[10px] mb-1">Externos</p>
-          <p className="text-white text-xl font-semibold">{externos.length}</p>
-          <p className="text-[#444] text-[10px]">A conseguir / confirmar</p>
+          <p className="text-[#6b7280] text-[10px] mb-1">Externos confirmados</p>
+          <p className="text-emerald-400 text-xl font-semibold">{externos.length}</p>
+          <p className="text-[#444] text-[10px]">Proveedor asignado</p>
         </div>
-        <div className={`border rounded-xl p-3 ${externosConfirmados === externos.length && externos.length > 0 ? 'bg-emerald-900/10 border-emerald-800/30' : 'bg-[#111] border-[#1e1e1e]'}`}>
-          <p className="text-[#6b7280] text-[10px] mb-1">Confirmados</p>
-          <p className={`text-xl font-semibold ${externosConfirmados > 0 ? 'text-emerald-400' : 'text-white'}`}>{externosConfirmados}/{externos.length}</p>
-          <p className="text-[#444] text-[10px]">CxP generadas</p>
-        </div>
-      </div>
-
-      {/* Tabla unificada */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
-                <th className="text-left px-4 py-2.5 font-medium">Equipo</th>
-                <th className="text-center px-3 py-2.5 font-medium w-24">Cant.</th>
-                <th className="text-center px-3 py-2.5 font-medium w-36">Status</th>
-                <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Proveedor</th>
-                <th className="text-right px-3 py-2.5 font-medium hidden md:table-cell w-28">Precio</th>
-                <th className="text-center px-3 py-2.5 font-medium w-28">Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              {/* Propios */}
-              {propios.length > 0 && (
-                <tr className="border-t border-[#1a1a1a]">
-                  <td colSpan={6} className="px-4 py-1.5 bg-[#0d0d0d]">
-                    <span className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">Equipos Propios ({propios.length})</span>
-                  </td>
-                </tr>
-              )}
-              {propios.map(linea => {
-                const isConflicto = linea.clasificacion === 'PROPIO_CONFLICTO';
-                return (
-                  <React.Fragment key={linea.id}>
-                    <tr className="border-t border-[#161616] hover:bg-[#0d0d0d] transition-colors">
-                      <td className="px-4 py-2.5">
-                        <p className="text-white font-medium text-sm">{(linea.marca || linea.modelo) ? [linea.marca, linea.modelo].filter(Boolean).join(' · ') : linea.descripcion}</p>
-                        {(linea.marca || linea.modelo) && <p className="text-[#555] text-[10px]">{linea.descripcion}</p>}
-                      </td>
-                      <td className="px-3 py-2.5 text-center">
-                        <span className="text-white font-medium text-sm">{linea.cantidad}</span>
-                        <span className="text-[#555] text-[10px] block">{linea.dias}d</span>
-                      </td>
-                      <td className="px-3 py-2.5 text-center">
-                        {isConflicto ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-yellow-900/20 border border-yellow-800/30 text-yellow-400">
-                            ⚠ Conflicto
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-900/20 border border-emerald-800/30 text-emerald-400">
-                            ✓ Disponible
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5 hidden md:table-cell">
-                        <span className="text-[11px] text-[#B3985B] font-medium">Mainstage Pro</span>
-                        {linea.equipoId && (
-                          <span className="text-[10px] text-[#444] block">{linea.disponible} disp. en inventario</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5 text-right hidden md:table-cell">
-                        <span className="text-[#9ca3af] text-xs">{fmxEquipo(linea.precioUnitario)}/d</span>
-                        <span className="text-[#444] text-[10px] block">{fmxEquipo(linea.precioUnitario * linea.dias * linea.cantidad)} total</span>
-                      </td>
-                      <td className="px-3 py-2.5 text-center">
-                        {isConflicto ? (
-                          <span className="text-yellow-500 text-[10px]">Ver conflicto ↓</span>
-                        ) : (
-                          <span className="text-emerald-500 text-[10px]">✓ Listo</span>
-                        )}
-                      </td>
-                    </tr>
-                    {isConflicto && linea.conflictos.length > 0 && (
-                      <tr className="border-t border-yellow-900/20 bg-yellow-900/5">
-                        <td colSpan={6} className="px-4 py-2.5">
-                          <p className="text-[10px] text-yellow-600 uppercase tracking-widest mb-1.5">Comprometido en:</p>
-                          <div className="space-y-1">
-                            {linea.conflictos.map((c, i) => (
-                              <div key={i} className="flex items-center gap-2 text-[11px]">
-                                <span className="font-mono text-[#555]">{c.ref}</span>
-                                <span className="text-white">{c.nombre}</span>
-                                <span className="text-[#444] ml-auto">{fmtFechaCorta(c.fecha)}</span>
-                              </div>
-                            ))}
-                          </div>
-                          <p className="text-[10px] text-yellow-700 mt-2">Coordina con el equipo para reasignar o renta externa.</p>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-
-              {/* Externos */}
-              {externos.length > 0 && (
-                <tr className="border-t border-[#1a1a1a]">
-                  <td colSpan={6} className="px-4 py-1.5 bg-[#0d0d0d]">
-                    <span className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">Equipos Externos ({externos.length})</span>
-                  </td>
-                </tr>
-              )}
-              {externos.map(linea => {
-                const badge = CLASIF_BADGE[linea.clasificacion];
-                const esConfirmando = confirmando === linea.id;
-                return (
-                  <React.Fragment key={linea.id}>
-                    <tr className={`border-t border-[#161616] transition-colors ${esConfirmando ? 'bg-[#0d0d0d]' : 'hover:bg-[#0d0d0d]'}`}>
-                      <td className="px-4 py-2.5">
-                        <p className="text-white font-medium">{(linea.marca || linea.modelo) ? [linea.marca, linea.modelo].filter(Boolean).join(' · ') : linea.descripcion}</p>
-                        {(linea.marca || linea.modelo) && <p className="text-[#555] text-[10px]">{linea.descripcion}</p>}
-                      </td>
-                      <td className="px-3 py-2.5 text-center text-white font-medium">{linea.cantidad}u × {linea.dias}d</td>
-                      <td className="px-3 py-2.5 text-center">
-                        {linea.yaConfirmado ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-900/20 text-emerald-400">✓ Confirmado</span>
-                        ) : (
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium ${badge.bg} ${badge.text}`}>
-                            {badge.label}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5 hidden md:table-cell">
-                        {linea.proveedor ? (
-                          <span className="text-[11px] text-white">{linea.proveedor.nombre}</span>
-                        ) : (
-                          <span className="text-[#333] italic text-[11px]">Sin proveedor</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5 text-right hidden md:table-cell">
-                        {linea.cxp ? (
-                          <span className="text-[#B3985B] font-semibold tabular-nums">{fmxEquipo(linea.cxp.monto)}</span>
-                        ) : linea.costoExterno != null ? (
-                          <span className="text-[#9ca3af] tabular-nums">{fmxEquipo(linea.costoExterno)}</span>
-                        ) : (
-                          <span className="text-[#333]">\u2014</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2.5 text-center">
-                        {linea.yaConfirmado ? (
-                          <button onClick={() => abrirConfirmacion(linea)}
-                            className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors">Editar</button>
-                        ) : (
-                          <button onClick={() => abrirConfirmacion(linea)}
-                            className="text-[10px] bg-[#B3985B] hover:bg-[#c4aa6b] text-black font-semibold px-2.5 py-1 rounded-lg transition-colors">Confirmar</button>
-                        )}
-                      </td>
-                    </tr>
-
-                    {/* Formulario de confirmación inline */}
-                    {esConfirmando && (
-                      <tr className="border-t border-[#B3985B]/20 bg-[#0a0a0a]">
-                        <td colSpan={6} className="px-4 py-4">
-                          <div className="max-w-xl">
-                            <p className="text-xs font-semibold text-white mb-3">
-                              {linea.yaConfirmado ? 'Editar confirmaci\u00f3n' : 'Confirmar equipo externo'}: {linea.descripcion}
-                            </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-                              <div>
-                                <label className="text-[10px] text-[#6b7280] uppercase tracking-wider block mb-1">Proveedor *</label>
-                                <select value={confProveedorId} onChange={e => setConfProveedorId(e.target.value)}
-                                  className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]/50">
-                                  <option value="">— Selecciona —</option>
-                                  {(data?.proveedores ?? []).map(p => (
-                                    <option key={p.id} value={p.id}>{p.nombre}{p.empresa ? ` · ${p.empresa}` : ''}</option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="text-[10px] text-[#6b7280] uppercase tracking-wider block mb-1">Precio confirmado *</label>
-                                <div className="relative">
-                                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#555] text-xs">$</span>
-                                  <input type="number" value={confMonto} onChange={e => setConfMonto(e.target.value)} min={0}
-                                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg pl-6 pr-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                    placeholder="0" />
-                                </div>
-                              </div>
-                              <div>
-                                <label className="text-[10px] text-[#6b7280] uppercase tracking-wider block mb-1">Fecha compromiso pago</label>
-                                <input type="date" value={confFecha} onChange={e => setConfFecha(e.target.value)}
-                                  className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]/50" />
-                              </div>
-                            </div>
-                            <label className="flex items-center gap-2 text-xs text-[#9ca3af] mb-3 cursor-pointer">
-                              <input type="checkbox" checked={confGenerarCxP} onChange={e => setConfGenerarCxP(e.target.checked)}
-                                className="accent-[#B3985B] w-3.5 h-3.5" />
-                              Generar cuenta por pagar al proveedor
-                            </label>
-                            <div className="flex items-center gap-2">
-                              <button onClick={confirmar} disabled={saving || !confProveedorId || !confMonto}
-                                className="bg-[#B3985B] hover:bg-[#c4aa6b] disabled:opacity-40 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
-                                {saving ? 'Guardando...' : linea.yaConfirmado ? 'Guardar cambios' : 'Confirmar equipo'}
-                              </button>
-                              <button onClick={() => setConfirmando(null)}
-                                className="border border-[#333] text-[#6b7280] hover:text-white text-xs px-3 py-2 rounded-lg transition-colors">Cancelar</button>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className={`border rounded-xl p-3 ${aConseguir.length > 0 ? 'bg-orange-900/10 border-orange-800/30' : 'bg-[#111] border-[#1e1e1e]'}`}>
+          <p className="text-[#6b7280] text-[10px] mb-1">A conseguir</p>
+          <p className={`text-xl font-semibold ${aConseguir.length > 0 ? 'text-orange-400' : 'text-white'}`}>{aConseguir.length}</p>
+          <p className="text-[#444] text-[10px]">{aConseguir.length > 0 ? 'Requieren atención' : 'Todo resuelto'}</p>
         </div>
       </div>
+
+      {/* Sección: A conseguir — siempre primera si hay pendientes */}
+      {aConseguir.length > 0 && (
+        <div className="bg-[#111] border border-orange-900/30 rounded-xl overflow-hidden">
+          <div className="px-4 py-2.5 bg-orange-900/10 border-b border-orange-900/20 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-orange-500" />
+              <span className="text-[10px] text-orange-400 uppercase tracking-widest font-semibold">A conseguir ({aConseguir.length})</span>
+            </div>
+            <span className="text-[10px] text-[#555]">Asigna proveedor + genera CxP</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
+                  <th className="text-left px-4 py-2 font-medium">Equipo</th>
+                  <th className="text-center px-3 py-2 font-medium w-20">Cant.</th>
+                  <th className="text-center px-3 py-2 font-medium w-32">Estado</th>
+                  <th className="text-left px-3 py-2 font-medium hidden md:table-cell">Proveedor</th>
+                  <th className="text-right px-3 py-2 font-medium hidden md:table-cell w-24">Precio ref.</th>
+                  <th className="text-center px-3 py-2 font-medium w-28">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {aConseguir.map(l => <FilaEquipo key={l.id} linea={l} mostrarAccion />)}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Sección: Externos confirmados */}
+      {externos.length > 0 && (
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="px-4 py-2.5 bg-blue-900/5 border-b border-blue-900/20 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-400" />
+            <span className="text-[10px] text-blue-400 uppercase tracking-widest font-semibold">Proveedor externo ({externos.length})</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
+                  <th className="text-left px-4 py-2 font-medium">Equipo</th>
+                  <th className="text-center px-3 py-2 font-medium w-20">Cant.</th>
+                  <th className="text-center px-3 py-2 font-medium w-32">Estado</th>
+                  <th className="text-left px-3 py-2 font-medium hidden md:table-cell">Proveedor</th>
+                  <th className="text-right px-3 py-2 font-medium hidden md:table-cell w-24">Monto CxP</th>
+                  <th className="text-center px-3 py-2 font-medium w-28">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {externos.map(l => <FilaEquipo key={l.id} linea={l} mostrarAccion />)}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Sección: Equipos propios */}
+      {propios.length > 0 && (
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="px-4 py-2.5 bg-emerald-900/5 border-b border-emerald-900/20 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span className="text-[10px] text-emerald-400 uppercase tracking-widest font-semibold">Equipo propio ({propios.length})</span>
+            {conflictos.length > 0 && (
+              <span className="ml-auto text-[10px] text-yellow-500">{conflictos.length} con conflicto de fechas</span>
+            )}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
+                  <th className="text-left px-4 py-2 font-medium">Equipo</th>
+                  <th className="text-center px-3 py-2 font-medium w-20">Cant.</th>
+                  <th className="text-center px-3 py-2 font-medium w-32">Estado</th>
+                  <th className="text-left px-3 py-2 font-medium hidden md:table-cell">Fuente</th>
+                  <th className="text-right px-3 py-2 font-medium hidden md:table-cell w-24">Precio/d</th>
+                  <th className="text-center px-3 py-2 font-medium w-28">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {propios.map(l => <FilaEquipo key={l.id} linea={l} />)}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <p className="text-[10px] text-[#333] text-right">
+        Usa el menú (⋮) en cada fila para reclasificar entre propio, externo o a conseguir.
+      </p>
     </div>
   );
 }
+
 
 export default function ProyectoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
