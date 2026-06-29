@@ -257,7 +257,7 @@ export default function TaskPanel({
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-[#1a1a1a] shrink-0">
         {/* Complete button */}
-        <button
+        <button type="button"
           onClick={() => onComplete(tarea.id)}
           className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-all ${
             isCompleted ? "bg-[#444] border-[#444]" : "border-[#444] hover:border-[#B3985B]"
@@ -279,7 +279,7 @@ export default function TaskPanel({
           </span>
         </div>
 
-        <button
+        <button type="button"
           onClick={handleSave}
           disabled={!dirty || saving}
           className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
@@ -290,12 +290,12 @@ export default function TaskPanel({
         >
           {saving ? "Guardando…" : "Guardar"}
         </button>
-        <button onClick={() => onDelete(tarea.id)} className="text-[#333] hover:text-red-400 transition-colors p-1">
+        <button type="button" onClick={() => onDelete(tarea.id)} className="text-[#333] hover:text-red-400 transition-colors p-1">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
           </svg>
         </button>
-        <button onClick={onClose} className="text-[#333] hover:text-white transition-colors p-1">
+        <button type="button" onClick={onClose} className="text-[#333] hover:text-white transition-colors p-1">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
           </svg>
@@ -331,7 +331,7 @@ export default function TaskPanel({
             <label className="text-[11px] text-[#444] uppercase tracking-wider">Prioridad</label>
             <div className="flex gap-1">
               {PRIOS.map(p => (
-                <button key={p.key}
+                <button type="button" key={p.key}
                   onClick={() => { setPrioridad(p.key); mark(); }}
                   title={p.label}
                   className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all ${
@@ -387,7 +387,7 @@ export default function TaskPanel({
           <div className="space-y-2">
             {/* Tabs selector */}
             <div className="flex rounded-lg overflow-hidden border border-[#1e1e1e] w-fit">
-              <button
+              <button type="button"
                 onClick={() => {
                   if (tarea.recurrencia) { onSave(tarea.id, { recurrencia: null }); }
                   setEditingRec(false);
@@ -406,7 +406,7 @@ export default function TaskPanel({
                 Fecha fija
               </button>
               <div className="w-px bg-[#1e1e1e]" />
-              <button
+              <button type="button"
                 onClick={() => setEditingRec(true)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-all ${
                   tarea.recurrencia || editingRec
@@ -437,7 +437,7 @@ export default function TaskPanel({
                   <path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
                 </svg>
                 <span className="text-xs text-[#B3985B] flex-1">{recDisplay}</span>
-                <button onClick={() => { onSave(tarea.id, { recurrencia: null }); }}
+                <button type="button" onClick={() => { onSave(tarea.id, { recurrencia: null }); }}
                   className="text-[#444] hover:text-red-400 transition-colors text-xs">✕</button>
               </div>
             )}
@@ -450,8 +450,8 @@ export default function TaskPanel({
                   placeholder="cada lunes · cada martes y jueves · cada mes…"
                   className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-xs text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]" />
                 <div className="flex gap-3 text-xs">
-                  <button onClick={applyRecurrencia} className="text-[#B3985B] hover:underline font-medium">Aplicar</button>
-                  <button onClick={() => setEditingRec(false)} className="text-[#555] hover:text-white">Cancelar</button>
+                  <button type="button" onClick={applyRecurrencia} className="text-[#B3985B] hover:underline font-medium">Aplicar</button>
+                  <button type="button" onClick={() => setEditingRec(false)} className="text-[#555] hover:text-white">Cancelar</button>
                 </div>
                 <p className="text-[10px] text-[#2a2a2a]">Ej: cada día · cada lunes · cada martes y jueves · cada tercer viernes</p>
               </div>
@@ -525,7 +525,7 @@ export default function TaskPanel({
                 />
                 ↑ Subir
               </label>
-              <button onClick={() => setAddingUrl(!addingUrl)} className="text-xs text-[#555] hover:text-[#B3985B] transition-colors">
+              <button type="button" onClick={() => setAddingUrl(!addingUrl)} className="text-xs text-[#555] hover:text-[#B3985B] transition-colors">
                 🔗 URL
               </button>
             </div>
@@ -538,8 +538,8 @@ export default function TaskPanel({
               <input value={nombreManual} onChange={e => setNombreManual(e.target.value)} placeholder="Nombre (opcional)"
                 className="w-full bg-transparent text-xs text-white placeholder-[#333] focus:outline-none" />
               <div className="flex gap-2">
-                <button onClick={adjuntarUrl} className="text-xs text-[#B3985B] hover:underline">Adjuntar</button>
-                <button onClick={() => setAddingUrl(false)} className="text-xs text-[#555] hover:text-white">Cancelar</button>
+                <button type="button" onClick={adjuntarUrl} className="text-xs text-[#B3985B] hover:underline">Adjuntar</button>
+                <button type="button" onClick={() => setAddingUrl(false)} className="text-xs text-[#555] hover:text-white">Cancelar</button>
               </div>
             </div>
           )}
@@ -555,7 +555,7 @@ export default function TaskPanel({
               <a href={a.url} target="_blank" rel="noopener noreferrer"
                 className="flex-1 text-xs text-[#888] hover:text-white truncate">{a.nombre}</a>
               {a.tamano && <span className="text-[11px] text-[#444]">{(a.tamano / 1024).toFixed(0)}KB</span>}
-              <button onClick={() => eliminarArchivo(a.id)}
+              <button type="button" onClick={() => eliminarArchivo(a.id)}
                 className="opacity-0 group-hover:opacity-100 text-[#333] hover:text-red-400 transition-all">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -582,7 +582,7 @@ export default function TaskPanel({
                   <span className="text-xs text-[#888]">{c.autor?.name ?? "Desconocido"}</span>
                   <span className="text-[11px] text-[#444]">{new Date(c.createdAt).toLocaleDateString("es-MX", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                   {(c.autor?.id === sessionId) && (
-                    <button onClick={() => eliminarComentario(c.id)}
+                    <button type="button" onClick={() => eliminarComentario(c.id)}
                       className="opacity-0 group-hover:opacity-100 text-[#333] hover:text-red-400 text-xs ml-auto transition-all">✕</button>
                   )}
                 </div>
@@ -597,7 +597,7 @@ export default function TaskPanel({
               placeholder="Agrega un comentario… (Enter para enviar)"
               className="flex-1 bg-[#0d0d0d] border border-[#1a1a1a] rounded px-3 py-2 text-sm text-white resize-none focus:outline-none focus:border-[#2a2a2a] placeholder-[#333]"
               rows={2} />
-            <button onClick={enviarComentario} disabled={!comentario.trim()}
+            <button type="button" onClick={enviarComentario} disabled={!comentario.trim()}
               className="px-3 py-2 bg-[#1a1a1a] text-[#B3985B] text-xs rounded hover:bg-[#222] transition-colors disabled:opacity-30">
               →
             </button>
