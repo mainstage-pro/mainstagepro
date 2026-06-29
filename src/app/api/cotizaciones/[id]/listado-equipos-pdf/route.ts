@@ -42,13 +42,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
     : null;
 
-  const iconPath = path.join(process.cwd(), "public", "logo-icon.png");
-  const logoIconSrc = fs.existsSync(iconPath)
-    ? `data:image/png;base64,${fs.readFileSync(iconPath).toString("base64")}`
-    : null;
-
   function resolveImg(url: string | null | undefined): string | null {
-    if (!url) return logoIconSrc;
+    if (!url) return null;
     if (url.startsWith("data:")) return url;
     if (url.startsWith("/")) {
       const filePath = path.join(process.cwd(), "public", url);
@@ -58,7 +53,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         return `data:${mime};base64,${fs.readFileSync(filePath).toString("base64")}`;
       }
     }
-    return logoIconSrc;
+    return null;
   }
 
   // Filtrar solo las líneas que son equipo y mapear a la estructura de equipos del Rider
@@ -111,20 +106,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     logoSrc,
   };
 
-  const pdfStream = await ReactPDF.renderToStream(
+  const pdfBuffer = await ReactPDF.renderToBuffer(
     React.createElement(RiderPDF, { data }) as React.ReactElement<React.ComponentProps<typeof Document>>
   );
-
-  const chunks: Uint8Array[] = [];
-  for await (const chunk of pdfStream) {
-    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
-  }
-  const pdfBuffer = Buffer.concat(chunks);
 
   const filename = `ListadoEquipos-${cotizacion.numeroCotizacion}${cotizacion.nombreEvento ? `-${cotizacion.nombreEvento.replace(/\s+/g, "-")}` : ""}.pdf`;
 
   const isPreview = req.nextUrl?.searchParams?.get("preview") === "1";
-  return new NextResponse(pdfBuffer, {
+  return new NextResponse(pdfBuffer as any, {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
