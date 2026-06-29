@@ -1,23 +1,24 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { getSession } from "@/lib/auth";
+import { prisma } from "./src/lib/prisma";
 import { renderToBuffer, Document } from "@react-pdf/renderer";
-import { RiderPDF, type RiderPDFData } from "@/components/RiderPDF";
+import { RiderPDF, type RiderPDFData } from "./src/components/RiderPDF";
 import React from "react";
 import fs from "fs";
 import path from "path";
 
-import { validarTokenPresentacion } from "@/lib/presentacion-token";
-
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+async function test() {
+  const cotizaciones = await prisma.cotizacion.findMany({
+    take: 5,
+    select: { id: true, numeroCotizacion: true }
+  });
   
-  const token = req.nextUrl.searchParams.get("token");
-  const session = await getSession();
-  
-  if (!session && !validarTokenPresentacion(id, token ?? undefined)) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (cotizaciones.length === 0) {
+    console.log("No cotizaciones found in database.");
+    return;
   }
+  
+  console.log("Found cotizaciones:", cotizaciones);
+  const id = cotizaciones[0].id;
+  console.log("Testing with cotizacion ID:", id);
 
   const cotizacion = await prisma.cotizacion.findUnique({
     where: { id },
@@ -35,7 +36,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     },
   });
 
-  if (!cotizacion) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
+  if (!cotizacion) {
+    console.log("Cotizacion not found in DB.");
+    return;
+  }
 
   const logoPath = path.join(process.cwd(), "public", "logo.png");
   const logoSrc = fs.existsSync(logoPath)
@@ -56,7 +60,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return null;
   }
 
-  // Filtrar solo las líneas que son equipo y mapear a la estructura de equipos del Rider
   const lineasEquipos = cotizacion.lineas.filter(l => 
     ["EQUIPO_PROPIO", "EQUIPO_EXTERNO", "PAQUETE"].includes(l.tipo)
   );
@@ -99,27 +102,22 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         imagenUrl: resolveImg(l.equipo?.imagenUrl),
         categoria: l.equipo?.categoria || { nombre: "Sin categoría" },
       },
-      riderAccesorios: [], // No aplica para cotizaciones
+      riderAccesorios: [],
     })),
-    equiposRiderExtra: [], // No aplica para cotizaciones
-    cotizacionLineas: [], // Ya pasamos todas las lineas a equipos para que se rendericen visualmente agrupadas
+    equiposRiderExtra: [],
+    cotizacionLineas: [],
     logoSrc,
   };
 
-  const pdfBuffer = await renderToBuffer(
-    React.createElement(RiderPDF, { data }) as React.ReactElement<React.ComponentProps<typeof Document>>
-  );
-
-  const filename = `ListadoEquipos-${cotizacion.numeroCotizacion}${cotizacion.nombreEvento ? `-${cotizacion.nombreEvento.replace(/\s+/g, "-")}` : ""}.pdf`;
-
-  const isPreview = req.nextUrl?.searchParams?.get("preview") === "1";
-  return new NextResponse(pdfBuffer as any, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `${isPreview ? "inline" : "attachment"}; filename="${filename}"`,
-      "Content-Length": String(pdfBuffer.length),
-      "Cache-Control": "no-store",
-    },
-  });
+  try {
+    console.log("Rendering PDF to buffer...");
+    const pdfBuffer = await renderToBuffer(
+      React.createElement(RiderPDF, { data }) as React.ReactElement<React.ComponentProps<typeof Document>>
+    );
+    console.log("PDF generated successfully. Size:", pdfBuffer.length, "bytes");
+  } catch (err) {
+    console.error("Error during PDF rendering:", err);
+  }
 }
+
+test().catch(console.error);
