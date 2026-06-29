@@ -49,13 +49,19 @@ function formatFecha(iso: string): { label: string; cls: string } {
   const d   = new Date(iso.substring(0, 10) + "T00:00:00");
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
   const man = new Date(hoy); man.setDate(hoy.getDate() + 1);
-  const sem = new Date(hoy); sem.setDate(hoy.getDate() + 7);
+  const pasMan = new Date(hoy); pasMan.setDate(hoy.getDate() + 2); // inicio de "después de mañana"
 
-  if (d < hoy)  return { label: d.toLocaleDateString("es-MX", { month: "short", day: "numeric" }), cls: "text-red-400 bg-red-950/30" };
-  if (d < man)  return { label: "Hoy",    cls: "text-emerald-400 bg-emerald-950/30" };
-  if (d < new Date(man.getTime() + 86400000)) return { label: "Mañana", cls: "text-yellow-400 bg-yellow-950/20" };
-  if (d <= sem) return { label: d.toLocaleDateString("es-MX", { weekday: "short" }), cls: "text-[#777] bg-[#111]" };
-  return { label: d.toLocaleDateString("es-MX", { month: "short", day: "numeric" }), cls: "text-[#666] bg-[#0f0f0f]" };
+  // Fin de la semana actual = el próximo domingo (o hoy mismo si es domingo)
+  const finSemana = new Date(hoy);
+  const diasHastaDomingo = (7 - hoy.getDay()) % 7; // 0 si hoy es domingo
+  finSemana.setDate(hoy.getDate() + (diasHastaDomingo === 0 ? 0 : diasHastaDomingo));
+  finSemana.setHours(23, 59, 59, 999);
+
+  if (d < hoy)     return { label: d.toLocaleDateString("es-MX", { month: "short", day: "numeric" }), cls: "text-red-400 bg-red-950/30" };
+  if (d < man)     return { label: "Hoy",    cls: "text-emerald-400 bg-emerald-950/30" };
+  if (d < pasMan)  return { label: "Mañana", cls: "text-yellow-400 bg-yellow-950/20" };
+  if (d <= finSemana) return { label: d.toLocaleDateString("es-MX", { weekday: "short" }), cls: "text-purple-400 bg-purple-950/20" };
+  return { label: d.toLocaleDateString("es-MX", { month: "short", day: "numeric" }), cls: "text-[#555] bg-[#0f0f0f]" };
 }
 
 interface Props {
