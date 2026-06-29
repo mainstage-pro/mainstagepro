@@ -108,6 +108,7 @@ function MantenimientoContent() {
   const urlEquipoId = searchParams.get("equipoId");
 
   const [equipos, setEquipos] = useState<Equipo[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [allRegistros, setAllRegistros] = useState<Registro[]>([]);
   const [unidades, setUnidades] = useState<Unidad[]>([]);
   const [selectedEquipoId, setSelectedEquipoId] = useState<string | null>(urlEquipoId);
@@ -153,6 +154,13 @@ function MantenimientoContent() {
     if (!maintMap[eid].lastDate) maintMap[eid].lastDate = r.fecha;
     if (r.proximoMantenimiento && !maintMap[eid].nextDate) maintMap[eid].nextDate = r.proximoMantenimiento;
   }
+
+  const filteredEquipos = equipos.filter(e => 
+    !searchQuery || 
+    e.descripcion.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (e.marca && e.marca.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (e.modelo && e.modelo.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   const cats = Array.from(
     new Map(equipos.map(e => [e.categoria.id, e.categoria])).values()
@@ -307,8 +315,18 @@ function MantenimientoContent() {
 
         {/* ── LEFT: Equipment directory ── */}
         <div className="w-full md:w-64 shrink-0 space-y-3">
+          <div className="relative">
+            <input 
+              type="text" 
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Buscar equipo..."
+              className="w-full bg-[#111] border border-[#1e1e1e] text-white text-xs rounded-xl px-9 py-2.5 focus:outline-none focus:border-[#B3985B] transition-colors"
+            />
+            <svg className="absolute left-3.5 top-2.5 text-gray-500" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          </div>
           {cats.map(cat => {
-            const catEqs = equipos.filter(e => e.categoria.id === cat.id && e.activo);
+            const catEqs = filteredEquipos.filter(e => e.categoria.id === cat.id && e.activo);
             if (!catEqs.length) return null;
             return (
               <div key={cat.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
