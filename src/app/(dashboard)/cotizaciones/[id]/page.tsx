@@ -157,6 +157,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [deleting, setDeleting] = useState(false);
   const [aprobando, setAprobando] = useState(false);
   const [sharingPdf, setSharingPdf] = useState(false);
+  const [sharingListado, setSharingListado] = useState(false);
   const [generandoLink, setGenerandoLink] = useState(false);
   const [linkAprobacion, setLinkAprobacion] = useState<string | null>(null);
   const [linkCopiado, setLinkCopiado] = useState(false);
@@ -522,6 +523,51 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     }
   }
 
+  async function shareListadoEquiposPdf() {
+    if (!cot) return;
+    setSharingListado(true);
+    try {
+      const pdfUrl = `/api/cotizaciones/${cot.id}/listado-equipos-pdf`;
+      const filename = `ListadoEquipos-${cot.numeroCotizacion}${cot.nombreEvento ? `-${cot.nombreEvento.replace(/\s+/g, "-")}` : ""}.pdf`;
+
+      const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      if (isMobile && typeof navigator !== "undefined" && navigator.canShare) {
+        const res = await fetch(pdfUrl);
+        const blob = await res.blob();
+        const file = new File([blob], filename, { type: "application/pdf" });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: filename });
+          return;
+        }
+        if (navigator.share) {
+          await navigator.share({ title: filename, url: window.location.origin + pdfUrl });
+          return;
+        }
+      }
+
+      const res = await fetch(pdfUrl);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      if (e instanceof Error && e.name !== "AbortError") {
+        const a = document.createElement("a");
+        a.href = `/api/cotizaciones/${cot.id}/listado-equipos-pdf`;
+        a.download = `ListadoEquipos-${cot.numeroCotizacion}.pdf`;
+        a.click();
+      }
+    } finally {
+      setSharingListado(false);
+    }
+  }
+
   async function handleWhatsAppConCotizacion() {
     if (!cot || !cot.cliente.telefono) return;
     setSendingWA(true);
@@ -858,6 +904,20 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               </svg>
             )}
             {sharingPdf ? "Descargando..." : "Descargar PDF"}
+          </button>
+          
+          <button onClick={shareListadoEquiposPdf} disabled={sharingListado}
+            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] hover:border-[#555] text-gray-300 hover:text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
+            {sharingListado ? (
+              <span className="w-3.5 h-3.5 border-2 border-[#555] border-t-white rounded-full animate-spin" />
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="3" y1="9" x2="21" y2="9"/>
+                <line x1="9" y1="21" x2="9" y2="9"/>
+              </svg>
+            )}
+            {sharingListado ? "Generando..." : "Listado equipos"}
           </button>
           {cot.cliente.telefono && (
             <div className="flex flex-col items-start gap-0.5">
