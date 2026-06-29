@@ -1,5 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import InventarioClient from "./InventarioClient";
+import { getPresentationMetadata } from "@/lib/metadata";
+
+export const metadata = getPresentationMetadata({
+  title: "Catálogo de Equipos e Inventario",
+  description: "Explora nuestro catálogo completo de audio, iluminación, video y escenarios profesionales de alta gama para todo tipo de eventos.",
+  path: "/presentacion/inventario",
+});
 
 export const dynamic = "force-dynamic";
 

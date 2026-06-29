@@ -4,8 +4,58 @@ import { validarTokenPresentacion } from "@/lib/presentacion-token";
 import { getConfigJSON } from "@/lib/config";
 import PresentacionClient from "./PresentacionClient";
 import PresentacionRentaClient from "./PresentacionRentaClient";
+import { getPresentationMetadata } from "@/lib/metadata";
+import { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ cotizacionId: string }>;
+  searchParams: Promise<{ token?: string }>;
+}): Promise<Metadata> {
+  const { cotizacionId } = await params;
+  const { token } = await searchParams;
+
+  const cotizacion = await prisma.cotizacion.findUnique({
+    where: { id: cotizacionId },
+    select: {
+      nombreEvento: true,
+      nombreCotizacion: true,
+      numeroCotizacion: true,
+      tipoServicio: true,
+      cliente: { select: { nombre: true } },
+      lineas: {
+        where: { NOT: { equipo: null } },
+        take: 1,
+        select: { equipo: { select: { imagenUrl: true } } },
+      },
+    },
+  });
+
+  if (!cotizacion) {
+    return getPresentationMetadata({
+      title: "Propuesta de Producción",
+      description: "Propuesta de producción y cotización de servicios para tu evento.",
+      path: `/presentacion/${cotizacionId}${token ? `?token=${token}` : ""}`,
+    });
+  }
+
+  const name = cotizacion.nombreEvento || cotizacion.nombreCotizacion || `Cotización ${cotizacion.numeroCotizacion}`;
+  const serviceType = cotizacion.tipoServicio === "RENTA" ? "Renta de Equipo" : "Producción Técnica";
+  const title = `Propuesta: ${name}`;
+  const description = `Propuesta personalizada de ${serviceType} para ${cotizacion.cliente.nombre}. Consulta el equipamiento y diseño propuesto por Mainstage Pro.`;
+  const image = cotizacion.lineas[0]?.equipo?.imagenUrl || null;
+
+  return getPresentationMetadata({
+    title,
+    description,
+    path: `/presentacion/${cotizacionId}${token ? `?token=${token}` : ""}`,
+    image,
+  });
+}
 
 export default async function PresentacionPage({
   params,
