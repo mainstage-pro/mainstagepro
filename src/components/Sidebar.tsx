@@ -330,7 +330,11 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
           const sectionLabel = resolveLabel(section.key, section.section, labels);
           const visibleItems = section.items.filter(item => {
             if (item.adminOnly && !isAdmin) return false;
-            return canAccess(item.key, isAdmin, userModuleKeys);
+            if (canAccess(item.key, isAdmin, userModuleKeys)) return true;
+            if (item.children) {
+              return item.children.some(c => (!c.adminOnly || isAdmin) && canAccess(c.key, isAdmin, userModuleKeys));
+            }
+            return false;
           });
           if (visibleItems.length === 0) return null;
 
