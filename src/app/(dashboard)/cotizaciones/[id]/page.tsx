@@ -486,7 +486,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
       if (isMobile && typeof navigator !== "undefined" && navigator.canShare) {
-        const res = await fetch(pdfUrl);
+        const res = await fetch(pdfUrl, { credentials: "include" });
+        if (!res.ok) throw new Error("Fetch failed: " + res.status);
         const blob = await res.blob();
         const file = new File([blob], filename, { type: "application/pdf" });
         if (navigator.canShare({ files: [file] })) {
@@ -501,7 +502,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       }
 
       // Desktop o fallback: descarga directa a carpeta de descargas
-      const res = await fetch(pdfUrl);
+      const res = await fetch(pdfUrl, { credentials: "include" });
+      if (!res.ok) throw new Error("Fetch failed: " + res.status);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -533,7 +535,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
       if (isMobile && typeof navigator !== "undefined" && navigator.canShare) {
-        const res = await fetch(pdfUrl);
+        const res = await fetch(pdfUrl, { credentials: "include" });
+        if (!res.ok) throw new Error("Fetch failed: " + res.status);
         const blob = await res.blob();
         const file = new File([blob], filename, { type: "application/pdf" });
         if (navigator.canShare({ files: [file] })) {
@@ -546,7 +549,8 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
         }
       }
 
-      const res = await fetch(pdfUrl);
+      const res = await fetch(pdfUrl, { credentials: "include" });
+      if (!res.ok) throw new Error("Fetch failed: " + res.status);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
