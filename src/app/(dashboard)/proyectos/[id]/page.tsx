@@ -99,6 +99,7 @@ interface Proyecto {
   proveedoresEvento: { id: string; nombreProveedor: string; servicioEquipo: string | null; telefonoProveedor: string | null }[];
   createdAt: string;
   updatedAt: string;
+  _canViewFinances?: boolean;
 }
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -3756,7 +3757,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               { id: 'resumen',   label: 'Resumen' },
               { id: 'operacion', label: 'Operación' },
               { id: 'extras',    label: 'Producción' },
-              { id: 'finanzas',  label: 'Finanzas' },
+              ...(proyecto?._canViewFinances ? [{ id: 'finanzas', label: 'Finanzas' } as const] : []),
             ] as const).map(item => (
               <button
                 key={item.id}
@@ -3796,11 +3797,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           { ok: !!proyecto.lugarEvento,                                                                       label: "Lugar del evento",       peso: 8  },
           { ok: !!proyecto.encargado,                                                                          label: "Responsable interno",    peso: 4  },
           { ok: proyecto.equipos.length > 0,                                                                  label: "Equipo registrado",      peso: 8  },
-          { ok: !!proyecto.cotizacion,                                                                         label: "Cotización generada",   peso: 10 },
+          ...(proyecto._canViewFinances ? [
+            { ok: !!proyecto.cotizacion,                                                                       label: "Cotización generada",   peso: 10 },
+            { ok: !!anticipoCxC && anticipoCxC.montoCobrado >= anticipoCxC.monto,                              label: "Anticipo cobrado",      peso: 18 },
+            { ok: !!liquidacionCxC && liquidacionCxC.montoCobrado >= liquidacionCxC.monto,                     label: "Liquidación cobrada",   peso: 18 },
+          ] : []),
           { ok: proyecto.personal.length > 0,                                                                 label: "Personal asignado",     peso: 7  },
-          { ok: !!anticipoCxC && anticipoCxC.montoCobrado >= anticipoCxC.monto,                               label: "Anticipo cobrado",      peso: 18 },
-          { ok: !!liquidacionCxC && liquidacionCxC.montoCobrado >= liquidacionCxC.monto,                      label: "Liquidación cobrada",   peso: 18 },
-          { ok: !!proyecto.horaInicioEvento,                                                                   label: "Horarios definidos",    peso: 5  },
           { ok: _salidaData.estado === "OK",                                                                   label: "Protocolo de salida",   peso: 7  },
           { ok: !!(proyecto.direccionVenue || proyecto.linkMaps),                                              label: "Info del venue",        peso: 5  },
           { ok: !!proyecto.fechaMontaje && !!proyecto.horaInicioMontaje,                                      label: "Logística de montaje",  peso: 5  },
@@ -3825,11 +3827,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           { ok: _salidaData.estado === "OK",                                         label: "Protocolo salida" },
           { ok: _entradaData.estado === "OK",                                        label: "Protocolo entrada" },
         ];
-        const finChecks: CheckItem[] = [
+        const finChecks: CheckItem[] = proyecto._canViewFinances ? [
           { ok: !!proyecto.cotizacion,                                                label: "Cotización" },
           { ok: !!anticipoCxC && anticipoCxC.montoCobrado >= anticipoCxC.monto,      label: "Anticipo cobrado" },
           { ok: !!liquidacionCxC && liquidacionCxC.montoCobrado >= liquidacionCxC.monto, label: "Liquidación cobrada" },
-        ];
+        ] : [];
 
         const allChecks = [...infoChecks, ...prodChecks, ...finChecks];
 
@@ -3945,11 +3947,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </>
           )}
         </div>
-        <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-          <p className="text-gray-500 text-xs mb-1">Cobrado</p>
-          <p className="text-green-400 text-lg font-bold">{fmt(cobrado)}</p>
-          <p className="text-gray-600 text-xs">de {fmt(totalCxC)}</p>
-        </div>
+        {proyecto._canViewFinances ? (
+          <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+            <p className="text-gray-500 text-xs mb-1">Cobrado</p>
+            <p className="text-green-400 text-lg font-bold">{fmt(cobrado)}</p>
+            <p className="text-gray-600 text-xs">de {fmt(totalCxC)}</p>
+          </div>
+        ) : (
+          <div className="bg-[#111] border border-[#222] rounded-xl p-4 flex flex-col justify-center items-center opacity-50">
+            <p className="text-gray-500 text-xs text-center">Finanzas ocultas</p>
+          </div>
+        )}
         <div className="bg-[#111] border border-[#222] rounded-xl p-4">
           <p className="text-gray-500 text-xs mb-1">Días</p>
           <p className={`text-lg font-bold ${diasRestantes < 0 ? "text-gray-500" : diasRestantes <= 7 ? "text-red-400" : diasRestantes <= 30 ? "text-yellow-400" : "text-white"}`}>

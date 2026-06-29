@@ -168,11 +168,24 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     tipoServicio: proyecto.tipoServicio ?? null,
     planProduccionAprobado: proyecto.planProduccionAprobado,
     recoleccionStatus: proyecto.recoleccionStatus,
-    checklist: proyecto.checklist,
-    equiposCount: (proyecto.equipos as unknown[])?.length ?? 0,
+    checklist: (proyecto as { checklist?: { completado: boolean; item: string; }[] }).checklist ?? [],
+    equiposCount: (proyecto as { equipos?: unknown[] }).equipos?.length ?? 0,
   });
 
-  return NextResponse.json({ proyecto: { ...proyecto, avance } });
+  const canViewFinances = session.role === "ADMIN" || session.name.toLowerCase().includes("daniel");
+
+  if (!canViewFinances) {
+    proyecto = {
+      ...proyecto,
+      cotizacion: null,
+      cuentasCobrar: [],
+      cuentasPagar: [],
+      movimientos: [],
+      cierreFinanciero: null,
+    } as unknown as typeof proyecto;
+  }
+
+  return NextResponse.json({ proyecto: { ...proyecto, avance, _canViewFinances: canViewFinances } });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
