@@ -218,6 +218,8 @@ export async function GET(
 
     const yaConfirmado = clasificacion === "EXTERNO_CONFIRMADO";
 
+    const canViewFinances = session.role === "ADMIN" || session.name.toLowerCase().includes("daniel");
+
     return {
       id: linea.id,
       tipo: linea.tipo,
@@ -227,8 +229,8 @@ export async function GET(
       modelo: linea.modelo,
       cantidad: linea.cantidad,
       dias: linea.dias,
-      precioUnitario: linea.precioUnitario,
-      costoExterno: linea.costoExterno,
+      precioUnitario: canViewFinances ? linea.precioUnitario : 0,
+      costoExterno: canViewFinances ? linea.costoExterno : null,
       equipoId: linea.equipoId,
       equipoInventarioTipo: linea.equipo?.tipo ?? null,
       cantidadTotal: linea.equipo?.cantidadTotal ?? null,
@@ -239,7 +241,7 @@ export async function GET(
       comprometido,
       conflictos,
       yaConfirmado,
-      cxp: cxpVinculada,
+      cxp: canViewFinances ? cxpVinculada : null,
     };
   });
 

@@ -39,21 +39,25 @@ export async function GET(req: NextRequest) {
   const proyectoId = req.nextUrl.searchParams.get("proyectoId");
   await ensureTable();
 
+  const canViewFinances = session.role === "ADMIN" || session.name.toLowerCase().includes("daniel");
+
   if (proyectoId) {
-    const gastos = await prisma.$queryRawUnsafe<GastoRow[]>(
+    let gastos = await prisma.$queryRawUnsafe<GastoRow[]>(
       `SELECT * FROM gastos_operativos WHERE "proyectoId" = $1 ORDER BY "createdAt" ASC`,
       proyectoId
     );
+    if (!canViewFinances) gastos = gastos.map(g => ({ ...g, monto: 0 }));
     return NextResponse.json({ gastos });
   }
 
-  const gastos = await prisma.$queryRawUnsafe<GastoRow[]>(`
+  let gastos = await prisma.$queryRawUnsafe<GastoRow[]>(`
     SELECT g.*, p.nombre AS "proyectoNombre", p."fechaEvento", p."numeroProyecto"
     FROM gastos_operativos g
     JOIN proyectos p ON p.id = g."proyectoId"
     WHERE g.entregado = false
     ORDER BY p."fechaEvento" ASC
   `);
+  if (!canViewFinances) gastos = gastos.map(g => ({ ...g, monto: 0 }));
   return NextResponse.json({ gastos });
 }
 

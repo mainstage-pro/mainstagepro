@@ -182,6 +182,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       cuentasPagar: [],
       movimientos: [],
       cierreFinanciero: null,
+      equipos: Array.isArray(proyecto.equipos) ? proyecto.equipos.map((eq: any) => ({
+        ...eq,
+        costoExterno: null,
+        precioUnitario: null,
+      })) : [],
+      personal: Array.isArray(proyecto.personal) ? proyecto.personal.map((p: any) => ({
+        ...p,
+        tarifaAcordada: null,
+        costo: null,
+      })) : [],
     } as unknown as typeof proyecto;
   }
 
