@@ -12,6 +12,7 @@ import NotificacionesBell from "@/components/NotificacionesBell";
 
 interface NavChild {
   key?: string;
+  accessKey?: string;
   label: string;
   href: string;
   adminOnly?: boolean;
@@ -19,6 +20,7 @@ interface NavChild {
 
 interface NavItem {
   key?: string;
+  accessKey?: string;
   label: string;
   href?: string;
   adminOnly?: boolean;
@@ -153,11 +155,11 @@ const NAV: NavSection[] = [
         label: "Inventario",
         children: [
           { key: "inv-maestro", label: "Inventario de Equipos", href: "/inventario/maestro" },
-          { key: "inv-disponibilidad", label: "Disponibilidad", href: "/inventario/disponibilidad" },
-          { key: "inv-recolecciones", label: "Recolecciones", href: "/inventario/recolecciones" },
-          { key: "inv-mantenimiento", label: "Mantenimiento", href: "/inventario/mantenimiento" },
-          { key: "inv-checklist", label: "Checklist semanal", href: "/inventario/checklist" },
-          { key: "inv-vehiculos", label: "Vehículos", href: "/inventario/vehiculos" },
+          { key: "inv-disponibilidad", accessKey: "inventario", label: "Disponibilidad", href: "/inventario/disponibilidad" },
+          { key: "inv-recolecciones", accessKey: "inventario", label: "Recolecciones", href: "/inventario/recolecciones" },
+          { key: "inv-mantenimiento", accessKey: "inventario", label: "Mantenimiento", href: "/inventario/mantenimiento" },
+          { key: "inv-checklist", accessKey: "inventario", label: "Checklist semanal", href: "/inventario/checklist" },
+          { key: "inv-vehiculos", accessKey: "inventario", label: "Vehículos", href: "/inventario/vehiculos" },
         ],
       },
       {
@@ -168,7 +170,7 @@ const NAV: NavSection[] = [
           // { key: "bd-empresas", label: "Empresas", href: "/catalogo/empresas?tipo=proveedor" },
           { key: "bd-proveedores", label: "Proveedores", href: "/catalogo/proveedores" },
           { key: "bd-tecnicos", label: "Técnicos freelance", href: "/catalogo/tecnicos" },
-          { key: "bd-venues", label: "Venues", href: "/catalogo/venues" },
+          { key: "bd-venues", accessKey: "catalogo", label: "Venues", href: "/catalogo/venues" },
         ],
       },
     ],
@@ -330,9 +332,9 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
           const sectionLabel = resolveLabel(section.key, section.section, labels);
           const visibleItems = section.items.filter(item => {
             if (item.adminOnly && !isAdmin) return false;
-            if (canAccess(item.key, isAdmin, userModuleKeys)) return true;
+            if (canAccess(item.accessKey ?? item.key, isAdmin, userModuleKeys)) return true;
             if (item.children) {
-              return item.children.some(c => (!c.adminOnly || isAdmin) && canAccess(c.key, isAdmin, userModuleKeys));
+              return item.children.some(c => (!c.adminOnly || isAdmin) && canAccess(c.accessKey ?? c.key, isAdmin, userModuleKeys));
             }
             return false;
           });
@@ -391,7 +393,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
                         </button>
                         {isOpen && (
                           <div className="ml-3 mt-0.5 space-y-0.5 border-l border-[#1f1f1f] pl-3">
-                            {item.children.filter(c => (!c.adminOnly || isAdmin) && canAccess(c.key, isAdmin, userModuleKeys)).map((child) => {
+                            {item.children.filter(c => (!c.adminOnly || isAdmin) && canAccess(c.accessKey ?? c.key, isAdmin, userModuleKeys)).map((child) => {
                               const childLabel = resolveLabel(child.key, child.label, labels);
                               return (
                                 <Link
