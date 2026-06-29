@@ -95,7 +95,7 @@ function ActionBtn({ title, onClick, children, active }: {
   children: React.ReactNode; active?: boolean;
 }) {
   return (
-    <button
+    <button type="button"
       title={title}
       onClick={onClick}
       className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all
@@ -311,7 +311,7 @@ export default function TaskItem({
           </svg>
         </div>
       ) : (
-        <button
+        <button type="button"
           onClick={handleComplete}
           className={`mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 flex items-center justify-center transition-all duration-150 ${
             isCompleted  ? "border-[#333] bg-[#1f1f1f]"
@@ -413,7 +413,7 @@ export default function TaskItem({
 
             {fecha && !isCompleted && (
               <span className="relative">
-                <button onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fecha"); }}
+                <button type="button" onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fecha"); }}
                   className={`inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium transition-all ${fecha.cls} ${onDateChange ? "hover:brightness-125 cursor-pointer" : "cursor-default"}`}>
                   <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -469,7 +469,7 @@ export default function TaskItem({
         )}
 
         {subtaskCount > 0 && (
-          <button onClick={toggleSubtareas}
+          <button type="button" onClick={toggleSubtareas}
             className={`flex items-center gap-1.5 mt-1.5 text-[12px] font-medium transition-colors ${
               expanded ? "text-[#B3985B]" : "text-[#3a3a3a] hover:text-[#B3985B]"
             }`}>
@@ -485,7 +485,7 @@ export default function TaskItem({
       {/* MÓVIL */}
       <div className="flex md:hidden items-center shrink-0" ref={mobileAssignRef} onClick={e => e.stopPropagation()}>
         <div className="relative">
-          <button onClick={() => setShowAssign(v => !v)} className="w-7 h-7 rounded-full flex items-center justify-center"
+          <button type="button" onClick={() => setShowAssign(v => !v)} className="w-7 h-7 rounded-full flex items-center justify-center"
             title={tarea.asignadoA ? tarea.asignadoA.name : "Asignar"}>
             {tarea.asignadoA ? (
               <span className="w-6 h-6 rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[11px] text-[#B3985B] flex items-center justify-center font-bold">
@@ -503,7 +503,7 @@ export default function TaskItem({
             <div className="absolute right-0 top-8 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[160px]">
               <p className="text-[10px] text-[#555] uppercase tracking-wider px-3 pt-1 pb-1.5">Asignar a</p>
               {tarea.asignadoA && (
-                <button onClick={() => { onAssign?.(tarea.id, null); setShowAssign(false); }}
+                <button type="button" onClick={() => { onAssign?.(tarea.id, null); setShowAssign(false); }}
                   className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-red-400 hover:bg-[#1f1f1f] transition-colors">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -513,7 +513,7 @@ export default function TaskItem({
               )}
               {users.length === 0 && !tarea.asignadoA && <p className="text-[11px] text-[#444] px-3 py-2">Sin usuarios disponibles</p>}
               {users.map(u => (
-                <button key={u.id} onClick={() => { onAssign?.(tarea.id, u.id); setShowAssign(false); }}
+                <button type="button" key={u.id} onClick={() => { onAssign?.(tarea.id, u.id); setShowAssign(false); }}
                   className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[#1f1f1f] ${tarea.asignadoA?.id === u.id ? "text-[#B3985B]" : "text-[#ccc]"}`}>
                   <span className="w-5 h-5 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] text-[10px] text-[#B3985B] flex items-center justify-center font-semibold shrink-0">
                     {u.name.charAt(0).toUpperCase()}
@@ -563,7 +563,7 @@ export default function TaskItem({
             <div className="absolute right-0 top-8 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[160px]">
               <p className="text-[10px] text-[#555] uppercase tracking-wider px-3 pt-1 pb-1.5">Asignar a</p>
               {tarea.asignadoA && (
-                <button onClick={() => { onAssign?.(tarea.id, null); setShowAssign(false); }}
+                <button type="button" onClick={() => { onAssign?.(tarea.id, null); setShowAssign(false); }}
                   className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-red-400 hover:bg-[#1f1f1f] transition-colors">
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -573,7 +573,7 @@ export default function TaskItem({
               )}
               {users.length === 0 && !tarea.asignadoA && <p className="text-[11px] text-[#444] px-3 py-2">Sin usuarios disponibles</p>}
               {users.map(u => (
-                <button key={u.id} onClick={() => { onAssign?.(tarea.id, u.id); setShowAssign(false); }}
+                <button type="button" key={u.id} onClick={() => { onAssign?.(tarea.id, u.id); setShowAssign(false); }}
                   className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[#1f1f1f] ${tarea.asignadoA?.id === u.id ? "text-[#B3985B]" : "text-[#ccc]"}`}>
                   <span className="w-5 h-5 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] text-[10px] text-[#B3985B] flex items-center justify-center font-semibold shrink-0">
                     {u.name.charAt(0).toUpperCase()}
@@ -602,14 +602,14 @@ export default function TaskItem({
           {showProyecto && (
             <div className="absolute right-0 top-8 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[190px] max-h-60 overflow-y-auto">
               <p className="text-[10px] text-[#555] uppercase tracking-wider px-3 pt-1 pb-1.5">Proyecto</p>
-              <button onClick={() => { onProjectChange?.(tarea.id, null); setShowProyecto(false); }}
+              <button type="button" onClick={() => { onProjectChange?.(tarea.id, null); setShowProyecto(false); }}
                 className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[#1f1f1f] ${!tarea.proyectoTarea ? "text-[#B3985B]" : "text-[#555] hover:text-[#bbb]"}`}>
                 <span className="w-3 h-3 rounded-sm bg-[#2a2a2a] shrink-0" />
                 Bandeja de entrada
                 {!tarea.proyectoTarea && <svg className="ml-auto shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>}
               </button>
               {projects.map(p => (
-                <button key={p.id} onClick={() => { onProjectChange?.(tarea.id, p.id); setShowProyecto(false); }}
+                <button type="button" key={p.id} onClick={() => { onProjectChange?.(tarea.id, p.id); setShowProyecto(false); }}
                   className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-[#1f1f1f] ${tarea.proyectoTarea?.id === p.id ? "text-[#B3985B]" : "text-[#ccc] hover:text-white"}`}>
                   <span className="w-3 h-3 rounded-sm shrink-0" style={{ backgroundColor: p.color ?? "#555" }} />
                   {p.nombre}
@@ -655,7 +655,7 @@ export default function TaskItem({
                   <p className="text-[10px] text-[#555] uppercase tracking-wider px-3 pt-0.5 pb-1.5">Prioridad</p>
                   <div className="flex items-center gap-1 px-3 pb-2">
                     {PRIO_OPTIONS.map(p => (
-                      <button key={p.key} title={p.label}
+                      <button type="button" key={p.key} title={p.label}
                         onClick={() => { onPriorityChange(tarea.id, p.key); setShowMore(false); }}
                         className={`flex-1 flex items-center justify-center py-1.5 rounded-lg border transition-all ${
                           tarea.prioridad === p.key ? "border-current bg-current/10" : "border-[#2a2a2a] hover:border-current/50 hover:bg-current/5"
@@ -670,7 +670,7 @@ export default function TaskItem({
                   <div className="border-t border-[#1f1f1f] my-1" />
                 </>
               )}
-              <button onClick={() => { onSelect(tarea.id); setShowMore(false); }}
+              <button type="button" onClick={() => { onSelect(tarea.id); setShowMore(false); }}
                 className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs text-[#aaa] hover:bg-[#1f1f1f] hover:text-white transition-colors">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -681,7 +681,7 @@ export default function TaskItem({
               <div className="border-t border-[#1f1f1f] my-1" />
               {onExtract && (
                 <>
-                  <button onClick={() => { onExtract(); setShowMore(false); }}
+                  <button type="button" onClick={() => { onExtract(); setShowMore(false); }}
                     className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                       <polyline points="17 11 12 6 7 11"/><line x1="12" y1="6" x2="12" y2="18"/><path d="M5 20h14"/>
@@ -693,7 +693,7 @@ export default function TaskItem({
               )}
               {onMoveToNoSection && tarea.seccion && (
                 <>
-                  <button onClick={() => { onMoveToNoSection(tarea.id); setShowMore(false); }}
+                  <button type="button" onClick={() => { onMoveToNoSection(tarea.id); setShowMore(false); }}
                     className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs text-[#aaa] hover:bg-[#1f1f1f] hover:text-white transition-colors">
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <polyline points="17 11 12 6 7 11"/><line x1="12" y1="6" x2="12" y2="18"/>
@@ -705,7 +705,7 @@ export default function TaskItem({
               )}
               {onMoveToSection && availableSections && availableSections.length > 0 && (
                 <>
-                  <button
+                  <button type="button"
                     onClick={() => setShowSecciones(v => !v)}
                     className="w-full text-left flex items-center justify-between gap-2.5 px-3 py-1.5 text-xs text-[#aaa] hover:bg-[#1f1f1f] hover:text-white transition-colors"
                   >
@@ -724,7 +724,7 @@ export default function TaskItem({
                   {showSecciones && (
                     <div className="mx-2 mb-1 bg-[#0d0d0d] rounded-lg overflow-hidden border border-[#1f1f1f]">
                       {availableSections.map(s => (
-                        <button key={s.id}
+                        <button type="button" key={s.id}
                           onClick={() => { onMoveToSection(tarea.id, s.id); setShowMore(false); setShowSecciones(false); }}
                           className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs text-[#ccc] hover:bg-[#1a1a1a] hover:text-white transition-colors"
                         >
@@ -739,7 +739,7 @@ export default function TaskItem({
                   <div className="border-t border-[#1f1f1f] my-1" />
                 </>
               )}
-              <button onClick={() => { onDelete(tarea.id); setShowMore(false); }}
+              <button type="button" onClick={() => { onDelete(tarea.id); setShowMore(false); }}
                 className="w-full text-left flex items-center gap-2.5 px-3 py-1.5 text-xs text-red-500 hover:bg-red-950/20 hover:text-red-400 transition-colors">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points="3 6 5 6 21 6"/>
