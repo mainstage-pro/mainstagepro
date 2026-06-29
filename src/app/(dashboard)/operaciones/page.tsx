@@ -1280,6 +1280,26 @@ export default function OperacionesPage() {
           />
         </nav>
 
+        {/* ── Áreas section ─────────────────────────────────────────────── */}
+        {allowedTaskAreas.length > 0 && (
+          <div className="mt-3 shrink-0">
+            <div className="px-3 py-1.5">
+              <span className="text-xs text-[#3a3a3a] font-semibold tracking-widest uppercase select-none">Áreas</span>
+            </div>
+            <nav className="px-2 space-y-0.5">
+              {allowedTaskAreas.map(area => (
+                <SideItem
+                  key={area}
+                  icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>}
+                  label={AREA_LABELS[area] ?? area}
+                  isActive={vistaKey === `area-${area}`}
+                  onClick={() => setVista({ tipo: "area", nombre: area })}
+                />
+              ))}
+            </nav>
+          </div>
+        )}
+
         {/* ── Proyectos section ──────────────────────────────────────────── */}
         <div className="mt-4 flex-1 min-h-0 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-3 py-1.5 shrink-0">
@@ -2375,6 +2395,27 @@ export default function OperacionesPage() {
                 ));
               })() : (
                 <>
+                  {allowedTaskAreas.length > 0 && (
+                    <div className="mb-2">
+                      <div className="flex items-center gap-2 px-4 py-2 mt-2">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                        <span className="text-[12px] text-[#555] font-semibold tracking-wide uppercase">Áreas</span>
+                      </div>
+                      {allowedTaskAreas.map(area => (
+                        <button key={area} onClick={() => { setVista({ tipo: "area", nombre: area }); setMobileProyectos(false); }}
+                          className={`w-full flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-colors ${vistaKey === `area-${area}` ? "text-[#B3985B] bg-[#B3985B]/5" : "text-white hover:bg-[#111]"}`}>
+                          {AREA_LABELS[area] ?? area}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {proyectosSinCarpeta.length > 0 && (
+                    <div className="flex items-center gap-2 px-4 py-2 mt-2">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
+                      <span className="text-[12px] text-[#555] font-semibold tracking-wide uppercase">Proyectos</span>
+                    </div>
+                  )}
                   {proyectosSinCarpeta.map(p => (
                     <button key={p.id} onClick={() => { setVista({ tipo: "proyecto", id: p.id }); setMobileProyectos(false); }}
                       className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${vistaKey === p.id ? "text-[#B3985B] bg-[#B3985B]/5" : "text-white hover:bg-[#111]"}`}>
