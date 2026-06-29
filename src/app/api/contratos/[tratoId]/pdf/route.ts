@@ -7,12 +7,21 @@ import React from "react";
 import fs from "fs";
 import path from "path";
 
+import { validarTokenPresentacion } from "@/lib/presentacion-token";
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ tratoId: string }> }
 ) {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const token = req.nextUrl.searchParams.get("token");
+  const cotizacionId = req.nextUrl.searchParams.get("cotizacionId");
+
+  if (!session) {
+    if (!token || !cotizacionId || !validarTokenPresentacion(cotizacionId, token)) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+  }
 
   const { tratoId } = await params;
 

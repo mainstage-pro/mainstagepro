@@ -7,11 +7,17 @@ import React from "react";
 import fs from "fs";
 import path from "path";
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+import { validarTokenPresentacion } from "@/lib/presentacion-token";
 
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  
+  const token = req.nextUrl.searchParams.get("token");
+  const session = await getSession();
+  
+  if (!session && !validarTokenPresentacion(id, token ?? undefined)) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
   const cotizacion = await prisma.cotizacion.findUnique({
     where: { id },

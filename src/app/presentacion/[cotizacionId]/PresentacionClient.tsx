@@ -357,7 +357,7 @@ function EquipoCard({ linea, delay = 0 }: { linea: Linea; delay?: number }) {
 interface TradeNivel { nivel: number; nombre: string; tagline: string; pct: number; destacado: boolean; beneficios: string[]; }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function PresentacionClient({ cotizacion, tradeNiveles }: { cotizacion: Cotizacion; tradeNiveles?: TradeNivel[] }) {
+export default function PresentacionClient({ cotizacion, tradeNiveles , token}: { cotizacion: Cotizacion; tradeNiveles?: TradeNivel[] ; token?: string}) {
   const TRADE_NIVELES: TradeNivel[] = tradeNiveles ?? [
     { nivel: 1, nombre: "Base",        tagline: "Visibilidad esencial",  pct: 5,  destacado: false, beneficios: ["Logo en materiales digitales del evento","1 mención en redes sociales","2 a 4 accesos al evento","Acceso a métricas de alcance post-evento"] },
     { nivel: 2, nombre: "Estratégico", tagline: "Máximo alcance",        pct: 10, destacado: true,  beneficios: ["Logo en materiales digitales y físicos","3 menciones en redes + etiqueta en contenido","4 a 8 accesos al evento","Repost en @mainstagepro","Reporte de métricas detallado"] },
@@ -904,7 +904,7 @@ export default function PresentacionClient({ cotizacion, tradeNiveles }: { cotiz
 
           <R delay={260}>
             <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <a href={`/api/cotizaciones/${cotizacion.id}/pdf`} target="_blank" rel="noreferrer"
+              <a href={`/api/cotizaciones/${cotizacion.id}/pdf${token ? `?token=${token}` : ""}`} target="_blank" rel="noreferrer"
                  className="flex items-center gap-2 text-white/25 hover:text-white/50 text-xs transition-colors">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 Cotización PDF · {cotizacion.numeroCotizacion}
@@ -912,7 +912,7 @@ export default function PresentacionClient({ cotizacion, tradeNiveles }: { cotiz
               {cotizacion.tratoId && (
                 <>
                   <span className="text-white/10 hidden sm:block">·</span>
-                  <a href={`/api/contratos/${cotizacion.tratoId}/pdf`} target="_blank" rel="noreferrer"
+                  <a href={`/api/contratos/${cotizacion.tratoId}/pdf${token ? `?token=${token}&cotizacionId=${cotizacion.id}` : ""}`} target="_blank" rel="noreferrer"
                      className="flex items-center gap-2 text-white/25 hover:text-white/50 text-xs transition-colors">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                     Descargar Contrato

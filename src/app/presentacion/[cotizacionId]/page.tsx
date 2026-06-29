@@ -59,8 +59,8 @@ export default async function PresentacionPage({
   const tradeNiveles = await getConfigJSON("trade.niveles", defaultNiveles);
 
   if (cotizacion.tipoServicio === "RENTA") {
-    return <PresentacionRentaClient cotizacion={data} />;
+    return <PresentacionRentaClient cotizacion={data} token={token} />;
   }
 
-  return <PresentacionClient cotizacion={data} tradeNiveles={tradeNiveles} />;
+  return <PresentacionClient cotizacion={data} tradeNiveles={tradeNiveles} token={token} />;
 }

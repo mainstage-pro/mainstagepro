@@ -319,7 +319,7 @@ function CategorySection({ cat, lineas, index }: { cat: string; lineas: Linea[];
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function PresentacionRentaClient({ cotizacion }: { cotizacion: Cotizacion }) {
+export default function PresentacionRentaClient({ cotizacion, token }: { cotizacion: Cotizacion; token?: string }) {
   const scrollY    = useScrollY();
   const [contractOpen, setContract] = useState(false);
 
