@@ -721,6 +721,14 @@ export default function TaskModal({
                     key={sub.id}
                     tarea={subtareaToItem(sub)}
                     isSelected={false}
+                    users={usuarios}
+                    onAssign={(id, userId) => {
+                      onSave(id, { asignadoAId: userId || null });
+                      setSubtareasLocal(prev => prev.map(s => s.id === id ? {
+                        ...s,
+                        asignadoA: userId ? (usuarios.find(u => u.id === userId) ?? null) : null
+                      } : s));
+                    }}
                     onComplete={() => {
                       onCompleteSubtarea(sub.id);
                       setSubtareasLocal(prev => prev.map(s => s.id === sub.id ? { ...s, estado: "COMPLETADA" } : s));
