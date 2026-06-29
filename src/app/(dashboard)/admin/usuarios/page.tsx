@@ -73,7 +73,7 @@ const MODULOS_POR_SECCION: { seccion: string; items: { key: string; label: strin
       { key: "proyectos",      label: "Proyectos",                          desc: "Gestión de eventos y proyectos" },
       { key: "ordenes-compra", label: "Órdenes de compra",                  desc: "Órdenes de compra a proveedores" },
       { key: "inventario",     label: "Inventario",                         desc: "Equipos, disponibilidad, recolecciones, mantenimiento" },
-      { key: "inv-maestro",    label: "Inventario maestro",                 desc: "Precios, costos y valor del activo" },
+      { key: "inv-maestro",    label: "Inventario de equipos",              desc: "Acceso al catálogo de equipos" },
       { key: "catalogo",       label: "Catálogo (proveedores y técnicos)",  desc: "Proveedores, técnicos freelance, venues" },
       { key: "bd-proveedores", label: "Proveedores",                        desc: "Catálogo de proveedores de equipo" },
       { key: "bd-tecnicos",    label: "Técnicos freelance",                 desc: "Catálogo de técnicos" },
