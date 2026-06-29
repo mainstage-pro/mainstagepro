@@ -16,7 +16,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const session = await getSession();
   
   if (!session && !validarTokenPresentacion(id, token ?? undefined)) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    const allCookies = req.cookies.getAll().map(c => ({ name: c.name, hasValue: !!c.value }));
+    return NextResponse.json({ 
+      error: "No autorizado", 
+      debug: {
+        hasSession: !!session,
+        hasToken: !!token,
+        cookies: allCookies,
+        nextAuthSecretSet: !!process.env.NEXTAUTH_SECRET,
+      }
+    }, { status: 401 });
   }
 
   const cotizacion = await prisma.cotizacion.findUnique({
