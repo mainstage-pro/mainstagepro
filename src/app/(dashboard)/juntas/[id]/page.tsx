@@ -114,6 +114,20 @@ function parseRespuesta(tipo: string, respuesta: string | null) {
   return respuesta;
 }
 
+// Normaliza el valor de RECONOCIMIENTO a string[] independiente del formato guardado
+function normalizarReconocimientos(parsed: unknown): string[] {
+  if (!parsed) return [""];
+  // Formato nuevo: array de strings
+  if (Array.isArray(parsed)) return parsed.length > 0 ? parsed : [""];
+  // Formato viejo: { rec1: "...", rec2: "..." }
+  if (typeof parsed === "object" && parsed !== null) {
+    const obj = parsed as Record<string, string>;
+    const vals = Object.keys(obj).sort().map((k) => obj[k]).filter(Boolean);
+    return vals.length > 0 ? vals : [""];
+  }
+  return [""];
+}
+
 // ─── Modal Agregar Tarea ──────────────────────────────────────────────────────
 
 function ModalAgregarTarea({ junta, usuarios, proyectos, onClose, onCreated }: {
@@ -322,12 +336,15 @@ function ItemAgenda({ item, juntaId, juntaArea, onUpdate }: {
   const tipoColor = TIPO_AGENDA_COLORS[item.tipo as TipoAgenda] ?? "text-gray-500";
   const tipoLabel = TIPO_AGENDA_LABELS[item.tipo as TipoAgenda] ?? item.tipo;
 
-  // For PRIORIDADES_SEMANA and RECONOCIMIENTO — structured state
+  // For RECONOCIMIENTO — dynamic list state
   const parsedInitial = parseRespuesta(item.tipo, item.respuesta);
   const [structured, setStructured] = useState<Record<string, string>>(
     typeof parsedInitial === "object" && parsedInitial !== null && !Array.isArray(parsedInitial)
       ? (parsedInitial as Record<string, string>)
       : {}
+  );
+  const [reconocimientos, setReconocimientos] = useState<string[]>(
+    item.tipo === "RECONOCIMIENTO" ? normalizarReconocimientos(parsedInitial) : []
   );
 
   // Proyectos for EVENTOS_SEMANA and PRIORIDADES_SEMANA
@@ -376,6 +393,35 @@ function ItemAgenda({ item, juntaId, juntaArea, onUpdate }: {
   function updateStructuredField(field: string, val: string) {
     const next = { ...structured, [field]: val };
     saveStructured(next);
+  }
+
+  // Guardar reconocimientos como JSON array
+  function saveReconocimientos(next: string[]) {
+    setReconocimientos(next);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      const json = JSON.stringify(next);
+      await fetch(`/api/juntas/${juntaId}/agenda/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ respuesta: json }),
+      });
+      onUpdate(item.id, { respuesta: json });
+    }, 800);
+  }
+
+  function updateReconocimiento(idx: number, val: string) {
+    const next = reconocimientos.map((r, i) => i === idx ? val : r);
+    saveReconocimientos(next);
+  }
+
+  function agregarReconocimiento() {
+    saveReconocimientos([...reconocimientos, ""]);
+  }
+
+  function eliminarReconocimiento(idx: number) {
+    if (reconocimientos.length <= 1) { saveReconocimientos([""]); return; }
+    saveReconocimientos(reconocimientos.filter((_, i) => i !== idx));
   }
 
   const inputCls = "w-full bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/50 transition-colors";
@@ -515,18 +561,33 @@ function ItemAgenda({ item, juntaId, juntaArea, onUpdate }: {
       case "RECONOCIMIENTO":
         return (
           <div className="space-y-2">
-            <input
-              placeholder="Reconocimiento 1 — Nombre + logro"
-              value={structured.rec1 ?? ""}
-              onChange={(e) => updateStructuredField("rec1", e.target.value)}
-              className={inputCls}
-            />
-            <input
-              placeholder="Reconocimiento 2 — Nombre + logro"
-              value={structured.rec2 ?? ""}
-              onChange={(e) => updateStructuredField("rec2", e.target.value)}
-              className={inputCls}
-            />
+            {reconocimientos.map((rec, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <input
+                  placeholder={`Reconocimiento ${idx + 1} — Nombre + logro`}
+                  value={rec}
+                  onChange={(e) => updateReconocimiento(idx, e.target.value)}
+                  className={`${inputCls} flex-1`}
+                />
+                {reconocimientos.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => eliminarReconocimiento(idx)}
+                    className="w-7 h-7 rounded-lg border border-[#2a2a2a] text-gray-600 hover:text-red-400 hover:border-red-900/40 flex items-center justify-center text-xs transition-colors shrink-0"
+                    title="Eliminar"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={agregarReconocimiento}
+              className="w-full border border-dashed border-[#2a2a2a] hover:border-[#B3985B]/40 rounded-lg py-2 text-[11px] text-gray-600 hover:text-[#B3985B] transition-colors flex items-center justify-center gap-1.5"
+            >
+              <span className="text-base leading-none">+</span> Agregar reconocimiento
+            </button>
           </div>
         );
 

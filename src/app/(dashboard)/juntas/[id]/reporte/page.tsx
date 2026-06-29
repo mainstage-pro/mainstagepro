@@ -67,6 +67,43 @@ const PRIORIDAD_COLORS: Record<string, string> = {
   BAJA:    "text-gray-500 bg-[#111] border-[#1e1e1e]",
 };
 
+// Normaliza el JSON de reconocimientos al mismo formato que usa la edición
+function normalizarReconocimientosReporte(json: string | null): string[] | null {
+  if (!json) return null;
+  try {
+    const parsed = JSON.parse(json);
+    if (Array.isArray(parsed)) return (parsed as string[]).filter(Boolean);
+    if (typeof parsed === "object" && parsed !== null) {
+      const obj = parsed as Record<string, string>;
+      return Object.keys(obj).sort().map((k) => obj[k]).filter(Boolean);
+    }
+  } catch {}
+  return null;
+}
+
+// Renderiza el cuerpo de un item de agenda de forma adecuada según su tipo
+function RespuestaAgenda({ tipo, respuesta }: { tipo: string; respuesta: string | null }) {
+  if (!respuesta) return <p className="text-gray-700 text-xs italic">Sin respuesta registrada</p>;
+
+  if (tipo === "RECONOCIMIENTO") {
+    const recs = normalizarReconocimientosReporte(respuesta);
+    if (recs && recs.length > 0) {
+      return (
+        <ul className="space-y-1.5">
+          {recs.map((r, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm">
+              <span className="text-[#B3985B] font-bold shrink-0">★</span>
+              <span className="text-gray-300">{r}</span>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+  }
+
+  return <p className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">{respuesta}</p>;
+}
+
 function SectionHeader({ label, count }: { label: string; count?: number }) {
   return (
     <div className="flex items-center gap-2 mb-3">
@@ -207,7 +244,7 @@ export default function ReporteJuntaPage({ params }: { params: Promise<{ id: str
                     </div>
                     {item.respuesta ? (
                       <div className="px-4 py-3">
-                        <p className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">{item.respuesta}</p>
+                        <RespuestaAgenda tipo={item.tipo} respuesta={item.respuesta} />
                       </div>
                     ) : (
                       <div className="px-4 py-3">
