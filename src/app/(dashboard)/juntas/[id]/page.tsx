@@ -1275,8 +1275,8 @@ export default function JuntaActivaPage({ params }: { params: Promise<{ id: stri
   async function handleCerrar() {
     const temasSinCubrir = junta?.temasAdicionales.filter((t) => !t.cubierto && !t.pasadoSiguienteSemana) ?? [];
     const msg = temasSinCubrir.length > 0
-      ? `¿Cerrar la junta? Hay ${temasSinCubrir.length} tema(s) sin cubrir. Se generará el resumen automático.`
-      : "¿Cerrar esta junta? Se generará el resumen automático.";
+      ? `¿Cerrar la junta? Hay ${temasSinCubrir.length} tema(s) sin cubrir que quedarán pendientes.`
+      : "¿Cerrar esta junta? Se generará el reporte con todo lo que registraste.";
     if (!confirm(msg)) return;
     setCerrando(true);
     await fetch(`/api/juntas/${id}/resumen`, { method: "POST" });

@@ -13,6 +13,14 @@ type AgendaItem = {
   completado: boolean;
 };
 
+type TemaAdicional = {
+  id: string;
+  titulo: string;
+  notas: string | null;
+  cubierto: boolean;
+  pasadoSiguienteSemana: boolean;
+};
+
 type TareaJunta = {
   id: string;
   titulo: string;
@@ -34,6 +42,7 @@ type Junta = {
   resumen: string | null;
   facilitador: { id: string; name: string };
   agendaItems: AgendaItem[];
+  temasAdicionales: TemaAdicional[];
   participantes: { user: { id: string; name: string } }[];
   tareas: TareaJunta[];
 };
@@ -44,7 +53,7 @@ function fmtFecha(iso: string) {
   });
 }
 function fmtHora(iso: string) {
-  return new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: true });
 }
 function fmtVenc(iso: string | null) {
   if (!iso) return "—";
@@ -52,30 +61,33 @@ function fmtVenc(iso: string | null) {
 }
 
 const PRIORIDAD_COLORS: Record<string, string> = {
-  URGENTE: "text-red-400", ALTA: "text-orange-400", MEDIA: "text-[#B3985B]", BAJA: "text-gray-500",
+  URGENTE: "text-red-400 bg-red-950/20 border-red-900/30",
+  ALTA:    "text-orange-400 bg-orange-950/20 border-orange-900/30",
+  MEDIA:   "text-[#B3985B] bg-yellow-950/10 border-yellow-900/20",
+  BAJA:    "text-gray-500 bg-[#111] border-[#1e1e1e]",
 };
+
+function SectionHeader({ label, count }: { label: string; count?: number }) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <p className="text-[10px] font-bold text-[#B3985B] uppercase tracking-widest">{label}</p>
+      {count !== undefined && (
+        <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-1.5 py-0.5 rounded-full">{count}</span>
+      )}
+    </div>
+  );
+}
 
 export default function ReporteJuntaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const [junta, setJunta]           = useState<Junta | null>(null);
-  const [loading, setLoading]       = useState(true);
-  const [generando, setGenerando]   = useState(false);
+  const [junta, setJunta] = useState<Junta | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`/api/juntas/${id}`)
       .then((r) => r.json())
       .then((d) => { setJunta(d.junta ?? null); setLoading(false); });
   }, [id]);
-
-  async function regenerarResumen() {
-    setGenerando(true);
-    const res = await fetch(`/api/juntas/${id}/resumen`, { method: "POST" });
-    if (res.ok) {
-      const { resumen } = await res.json();
-      setJunta((prev) => prev ? { ...prev, resumen } : prev);
-    }
-    setGenerando(false);
-  }
 
   if (loading) {
     return (
@@ -96,12 +108,33 @@ export default function ReporteJuntaPage({ params }: { params: Promise<{ id: str
   const colors    = AREA_COLORS[junta.area as AreaJunta] ?? AREA_COLORS.GLOBAL;
   const areaLabel = AREA_LABELS[junta.area as AreaJunta] ?? junta.area;
   const participantesStr = junta.participantes.map((p) => p.user.name).join(", ") || "—";
-  const itemsCubiertos = junta.agendaItems.filter((i) => i.completado).length;
+
+  const itemsCubiertos   = junta.agendaItems.filter((i) => i.completado);
+  const itemsSinCubrir   = junta.agendaItems.filter((i) => !i.completado);
+  const temasCubiertos   = junta.temasAdicionales?.filter((t) => t.cubierto) ?? [];
+  const temasNoCubiertos = junta.temasAdicionales?.filter((t) => !t.cubierto) ?? [];
+
+  // Parsear notas en secciones si usan "## Título" o "**Título**" como delimitadores
+  function parseNotas(notas: string): { titulo: string; contenido: string }[] {
+    // Si tiene saltos de línea con encabezados tipo "## X" o líneas en mayúsculas seguidas de contenido
+    const seccionRegex = /^#{1,3}\s+(.+)$/m;
+    if (seccionRegex.test(notas)) {
+      const bloques = notas.split(/^#{1,3}\s+/m).filter(Boolean);
+      return bloques.map((bloque) => {
+        const lineas = bloque.trim().split("\n");
+        return { titulo: lineas[0].trim(), contenido: lineas.slice(1).join("\n").trim() };
+      });
+    }
+    // Sin formato especial → devolver como bloque único sin título
+    return [{ titulo: "", contenido: notas }];
+  }
+
+  const notasSecciones = junta.notas ? parseNotas(junta.notas) : [];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-[#0a0a0a] text-white print:bg-white print:text-black">
       {/* Header */}
-      <div className="px-6 pt-6 pb-4 border-b border-[#1a1a1a] flex items-center gap-4 flex-wrap">
+      <div className="px-6 pt-6 pb-4 border-b border-[#1a1a1a] flex items-center gap-4 flex-wrap print:hidden">
         <Link href="/juntas" className="text-gray-600 hover:text-white text-sm transition-colors">
           ← Juntas
         </Link>
@@ -138,9 +171,9 @@ export default function ReporteJuntaPage({ params }: { params: Promise<{ id: str
         {/* Metadata */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: "Duración",      val: `${junta.duracionMin} min` },
-            { label: "Facilitador",   val: junta.facilitador.name },
-            { label: "Agenda cubierta", val: `${itemsCubiertos}/${junta.agendaItems.length}` },
+            { label: "Duración",        val: `${junta.duracionMin} min` },
+            { label: "Facilitador",     val: junta.facilitador.name },
+            { label: "Agenda cubierta", val: `${itemsCubiertos.length}/${junta.agendaItems.length}` },
             { label: "Tareas generadas", val: String(junta.tareas.length) },
           ].map((item) => (
             <div key={item.label} className="bg-[#111] border border-[#1a1a1a] rounded-xl p-3">
@@ -152,80 +185,96 @@ export default function ReporteJuntaPage({ params }: { params: Promise<{ id: str
 
         {participantesStr !== "—" && (
           <div>
-            <p className="text-xs text-gray-600 uppercase tracking-wider mb-2">Participantes</p>
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Participantes</p>
             <p className="text-gray-300 text-sm">{participantesStr}</p>
           </div>
         )}
 
-        {/* Resumen ejecutivo */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-bold text-[#B3985B] uppercase tracking-wider">Resumen ejecutivo</p>
-            <button
-              onClick={regenerarResumen}
-              disabled={generando}
-              className="text-[10px] text-gray-600 hover:text-[#B3985B] transition-colors disabled:opacity-50"
-            >
-              {generando ? "Generando..." : "Regenerar IA ↺"}
-            </button>
-          </div>
-          <div className="bg-[#111] border border-[#B3985B]/20 rounded-xl p-5">
-            {junta.resumen ? (
-              <p className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">{junta.resumen}</p>
-            ) : (
-              <div className="text-center py-4">
-                <p className="text-gray-600 text-sm mb-2">Sin resumen generado</p>
-                <button
-                  onClick={regenerarResumen}
-                  disabled={generando}
-                  className="text-xs text-[#B3985B] hover:underline disabled:opacity-50"
-                >
-                  {generando ? "Generando con IA..." : "Generar resumen →"}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Agenda cubierta */}
-        <div>
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Agenda y puntos cubiertos</p>
-          <div className="space-y-3">
-            {junta.agendaItems.map((item) => {
-              const tipoLabel = TIPO_AGENDA_LABELS[item.tipo as TipoAgenda] ?? item.tipo;
-              return (
-                <div key={item.id} className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden">
-                  <div className="flex items-center gap-3 px-4 py-3 border-b border-[#0d0d0d]">
-                    <span className={`text-[9px] font-bold uppercase tracking-wider ${
-                      item.completado ? "text-green-400" : "text-gray-600"
-                    }`}>
-                      {item.completado ? "✓" : "○"} {tipoLabel}
-                    </span>
-                    <p className={`text-sm font-medium ${item.completado ? "text-white" : "text-gray-500"}`}>
-                      {item.titulo}
-                    </p>
+        {/* ── Agenda cubierta ── */}
+        {itemsCubiertos.length > 0 && (
+          <div>
+            <SectionHeader label="Agenda cubierta" count={itemsCubiertos.length} />
+            <div className="space-y-3">
+              {itemsCubiertos.map((item) => {
+                const tipoLabel = TIPO_AGENDA_LABELS[item.tipo as TipoAgenda] ?? item.tipo;
+                return (
+                  <div key={item.id} className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden">
+                    <div className="flex items-center gap-3 px-4 py-3 border-b border-[#0d0d0d]">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-500">
+                        ✓ {tipoLabel}
+                      </span>
+                      <p className="text-sm font-medium text-white">{item.titulo}</p>
+                    </div>
+                    {item.respuesta ? (
+                      <div className="px-4 py-3">
+                        <p className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">{item.respuesta}</p>
+                      </div>
+                    ) : (
+                      <div className="px-4 py-3">
+                        <p className="text-gray-700 text-xs italic">Sin respuesta registrada</p>
+                      </div>
+                    )}
                   </div>
-                  {item.respuesta ? (
-                    <div className="px-4 py-3">
-                      <p className="text-gray-300 text-sm whitespace-pre-wrap">{item.respuesta}</p>
-                    </div>
-                  ) : (
-                    <div className="px-4 py-3">
-                      <p className="text-gray-700 text-xs italic">Sin respuesta registrada</p>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Tareas generadas */}
+        {/* ── Puntos no cubiertos ── */}
+        {itemsSinCubrir.length > 0 && (
+          <div>
+            <SectionHeader label="Puntos no cubiertos" count={itemsSinCubrir.length} />
+            <div className="bg-[#111] border border-yellow-900/20 rounded-xl overflow-hidden divide-y divide-[#1a1a1a]">
+              {itemsSinCubrir.map((item) => {
+                const tipoLabel = TIPO_AGENDA_LABELS[item.tipo as TipoAgenda] ?? item.tipo;
+                return (
+                  <div key={item.id} className="flex items-center gap-3 px-4 py-3">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-gray-600">
+                      ○ {tipoLabel}
+                    </span>
+                    <p className="text-sm text-gray-500">{item.titulo}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Temas adicionales cubiertos ── */}
+        {temasCubiertos.length > 0 && (
+          <div>
+            <SectionHeader label="Temas adicionales tratados" count={temasCubiertos.length} />
+            <div className="space-y-2">
+              {temasCubiertos.map((t) => (
+                <div key={t.id} className="bg-[#111] border border-[#1a1a1a] rounded-xl px-4 py-3">
+                  <p className="text-sm font-medium text-white">{t.titulo}</p>
+                  {t.notas && <p className="text-gray-400 text-sm mt-1 whitespace-pre-wrap leading-relaxed">{t.notas}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Temas no tratados ── */}
+        {temasNoCubiertos.length > 0 && (
+          <div>
+            <SectionHeader label="Temas que pasan a siguiente semana" count={temasNoCubiertos.length} />
+            <div className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden divide-y divide-[#0d0d0d]">
+              {temasNoCubiertos.map((t) => (
+                <div key={t.id} className="flex items-center gap-2 px-4 py-2.5">
+                  <span className="text-[10px] text-gray-600">→</span>
+                  <p className="text-sm text-gray-500">{t.titulo}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Tareas generadas ── */}
         {junta.tareas.length > 0 && (
           <div>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
-              Tareas generadas ({junta.tareas.length})
-            </p>
+            <SectionHeader label="Tareas generadas" count={junta.tareas.length} />
             <div className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden">
               <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-4 py-2 border-b border-[#0d0d0d]">
                 <span className="text-[10px] text-gray-600 uppercase">Tarea</span>
@@ -247,7 +296,7 @@ export default function ReporteJuntaPage({ params }: { params: Promise<{ id: str
                   <span className="text-xs text-gray-400 whitespace-nowrap">
                     {t.asignadoA?.name ?? "—"}
                   </span>
-                  <span className={`text-xs font-semibold whitespace-nowrap ${PRIORIDAD_COLORS[t.prioridad] ?? "text-gray-500"}`}>
+                  <span className={`text-[10px] font-semibold whitespace-nowrap px-1.5 py-0.5 rounded border ${PRIORIDAD_COLORS[t.prioridad] ?? "text-gray-500 bg-[#111] border-[#1e1e1e]"}`}>
                     {t.prioridad}
                   </span>
                   <span className="text-xs text-gray-500 whitespace-nowrap">
@@ -259,12 +308,25 @@ export default function ReporteJuntaPage({ params }: { params: Promise<{ id: str
           </div>
         )}
 
-        {/* Notas generales */}
+        {/* ── Notas generales ── */}
         {junta.notas && (
           <div>
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Notas generales</p>
-            <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-5">
-              <p className="text-gray-300 text-sm whitespace-pre-wrap">{junta.notas}</p>
+            <SectionHeader label="Notas de la junta" />
+            <div className="space-y-3">
+              {notasSecciones.map((sec, i) => (
+                <div key={i} className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden">
+                  {sec.titulo && (
+                    <div className="px-4 py-2.5 border-b border-[#0d0d0d] bg-[#0d0d0d]">
+                      <p className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">{sec.titulo}</p>
+                    </div>
+                  )}
+                  <div className="px-4 py-4">
+                    <p className="text-gray-300 text-sm whitespace-pre-wrap leading-relaxed">
+                      {sec.contenido || sec.titulo}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -272,7 +334,7 @@ export default function ReporteJuntaPage({ params }: { params: Promise<{ id: str
         {/* Footer */}
         <div className="border-t border-[#1a1a1a] pt-6 text-center">
           <p className="text-gray-700 text-xs">
-            Reporte generado · Mainstage Pro · {new Date().toLocaleDateString("es-MX")}
+            Reporte de junta · Mainstage Pro · {new Date().toLocaleDateString("es-MX")}
           </p>
           <Link href="/juntas" className="text-xs text-[#B3985B] hover:underline mt-1 inline-block">
             ← Ver todas las juntas
