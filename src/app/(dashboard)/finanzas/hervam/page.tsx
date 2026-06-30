@@ -541,6 +541,10 @@ function ActivosTab({ activos, onRefresh }: { activos: Activo[]; onRefresh: () =
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Estado para edición inline de valor actual
+  const [inlineEditId, setInlineEditId] = useState<string | null>(null);
+  const [inlineVal, setInlineVal] = useState("");
+  const [inlineSaving, setInlineSaving] = useState(false);
   const EMPTY = { nombre: "", descripcion: "", categoria: "EQUIPO", valorAdquisicion: "", valorActual: "", fechaAdquisicion: "", notas: "" };
   const [form, setForm] = useState(EMPTY);
 
@@ -569,6 +573,30 @@ function ActivosTab({ activos, onRefresh }: { activos: Activo[]; onRefresh: () =
     if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al guardar activo"); return; }
     await onRefresh();
     cancel();
+  }
+
+  async function saveInline(activo: Activo) {
+    const nuevoValor = parseFloat(inlineVal);
+    if (isNaN(nuevoValor) || nuevoValor < 0) { toast.error("Valor no válido"); return; }
+    setInlineSaving(true);
+    const res = await fetch(`/api/finanzas/hervam/activos/${activo.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre: activo.nombre, descripcion: activo.descripcion ?? "",
+        categoria: activo.categoria,
+        valorAdquisicion: activo.valorAdquisicion,
+        valorActual: nuevoValor,
+        fechaAdquisicion: activo.fechaAdquisicion ? activo.fechaAdquisicion.slice(0, 10) : "",
+        notas: activo.notas ?? "",
+      }),
+    });
+    setInlineSaving(false);
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al guardar"); return; }
+    setInlineEditId(null);
+    setInlineVal("");
+    await onRefresh();
+    toast.success("Valor actualizado");
   }
 
   async function eliminar(id: string) {
@@ -659,7 +687,62 @@ function ActivosTab({ activos, onRefresh }: { activos: Activo[]; onRefresh: () =
                         <span className="text-[10px] bg-[#1a1a1a] text-[#B3985B] px-1.5 py-0.5 rounded">{CAT_LABELS[a.categoria] ?? a.categoria}</span>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-400">{fmt(a.valorAdquisicion)}</td>
-                      <td className="px-4 py-3 text-sm text-white font-semibold">{fmt(a.valorActual)}</td>
+                      <td className="px-4 py-3 text-sm text-white font-semibold">
+                        {inlineEditId === a.id ? (
+                          // Input inline activo
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-gray-500 text-xs">$</span>
+                            <input
+                              autoFocus
+                              type="number"
+                              min="0"
+                              step="1"
+                              value={inlineVal}
+                              onChange={e => setInlineVal(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === "Enter") saveInline(a);
+                                if (e.key === "Escape") { setInlineEditId(null); setInlineVal(""); }
+                              }}
+                              className="w-28 bg-[#111] border border-[#B3985B]/60 rounded px-2 py-1 text-white text-sm text-right focus:outline-none focus:border-[#B3985B] tabular-nums"
+                            />
+                            <button
+                              onClick={() => saveInline(a)}
+                              disabled={inlineSaving}
+                              className="text-green-400 hover:text-green-300 disabled:opacity-50 text-lg leading-none"
+                              title="Guardar"
+                            >
+                              {inlineSaving ? (
+                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+                              ) : "✓"}
+                            </button>
+                            <button
+                              onClick={() => { setInlineEditId(null); setInlineVal(""); }}
+                              className="text-gray-500 hover:text-red-400 text-lg leading-none"
+                              title="Cancelar"
+                            >×</button>
+                          </div>
+                        ) : (
+                          // Vista normal con hover
+                          <div
+                            className="group flex items-center gap-1.5 cursor-pointer rounded px-1 -ml-1 hover:bg-[#B3985B]/10 transition-colors"
+                            title="Haz click para editar el valor actual"
+                            onClick={() => {
+                              setInlineEditId(a.id);
+                              setInlineVal(String(a.valorActual));
+                            }}
+                          >
+                            <span className="group-hover:text-[#B3985B] transition-colors tabular-nums">
+                              {fmt(a.valorActual)}
+                            </span>
+                            <svg
+                              className="w-3 h-3 text-transparent group-hover:text-[#B3985B] transition-colors shrink-0"
+                              fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.768-6.768a2 2 0 112.828 2.828L11.828 15.828a4 4 0 01-1.414.94l-3.414 1.138 1.138-3.414a4 4 0 01.94-1.414z" />
+                            </svg>
+                          </div>
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-semibold ${depPct > 30 ? "text-red-400" : depPct > 10 ? "text-yellow-400" : "text-green-400"}`}>
                           {depPct > 0 ? `-${fmtPct(depPct)}` : "—"}
