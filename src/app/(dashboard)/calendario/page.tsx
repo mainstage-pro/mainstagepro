@@ -84,6 +84,18 @@ export default function CalendarioPage() {
   const [reporteYear, setReporteYear] = useState(ahora.getFullYear());
   const [reporteData, setReporteData] = useState<ReporteData | null>(null);
   const [reporteLoading, setReporteLoading] = useState(false);
+  const [sessionRole, setSessionRole] = useState<string>("");
+  const [sessionArea, setSessionArea] = useState<string>("");
+
+  useEffect(() => {
+    fetch("/api/me")
+      .then(r => r.json())
+      .then(d => {
+        if (d.role) setSessionRole(d.role);
+        if (d.area) setSessionArea(d.area);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!reporteOpen) return;
@@ -389,7 +401,8 @@ export default function CalendarioPage() {
       </div>
 
       {/* ── Reporte de eventos (colapsable) ── */}
-      <div className="border border-[#1e1e1e] rounded-xl overflow-hidden">
+      {(sessionRole === "ADMIN" || (sessionArea && sessionArea !== "PRODUCCION")) && (
+        <div className="border border-[#1e1e1e] rounded-xl overflow-hidden">
         <button
           onClick={() => setReporteOpen(v => !v)}
           className="w-full flex items-center justify-between px-5 py-4 hover:bg-[#111] transition-colors"
@@ -530,6 +543,7 @@ export default function CalendarioPage() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
