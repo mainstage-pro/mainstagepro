@@ -2317,6 +2317,7 @@ model HervamActivo {
   categoria        String   @default("EQUIPO") // EQUIPO | VEHICULO | INMUEBLE | INTANGIBLE | OTRO
   valorAdquisicion Float    @default(0)
   valorActual      Float    @default(0)
+  precioRenta      Float    @default(0)  // Ingreso mensual estimado por renta del activo
   fechaAdquisicion DateTime?
   activo           Boolean  @default(true)
   notas            String?

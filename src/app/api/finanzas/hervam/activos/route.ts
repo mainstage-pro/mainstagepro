@@ -13,8 +13,9 @@ export async function GET() {
 
   const totalValorActual = activos.reduce((s, a) => s + a.valorActual, 0);
   const totalValorAdquisicion = activos.reduce((s, a) => s + a.valorAdquisicion, 0);
+  const totalPrecioRenta = activos.reduce((s, a) => s + (a.precioRenta ?? 0), 0);
 
-  return NextResponse.json({ activos, totalValorActual, totalValorAdquisicion });
+  return NextResponse.json({ activos, totalValorActual, totalValorAdquisicion, totalPrecioRenta });
 }
 
 export async function POST(req: NextRequest) {
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { nombre, descripcion, categoria, valorAdquisicion, valorActual, fechaAdquisicion, notas } = body;
+  const { nombre, descripcion, categoria, valorAdquisicion, valorActual, precioRenta, fechaAdquisicion, notas } = body;
 
   if (!nombre?.trim()) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
 
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest) {
       categoria: categoria || "EQUIPO",
       valorAdquisicion: parseFloat(valorAdquisicion) || 0,
       valorActual: parseFloat(valorActual) || 0,
+      precioRenta: parseFloat(precioRenta) || 0,
       fechaAdquisicion: fechaAdquisicion ? new Date(fechaAdquisicion) : null,
       notas: notas || null,
     },
