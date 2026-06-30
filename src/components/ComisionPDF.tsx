@@ -384,137 +384,144 @@ export function ComisionPDF({ cotizacion: cot, logoSrc }: Props) {
             <View style={s.dividerGoldLine} />
           </View>
 
-          {/* Equipos Mainstage */}
-          <SecHeader label="Equipos Mainstage" total={bruto} />
-          {lineasPropias.map((l, i) => (
-            <View key={l.id} style={i % 2 === 0 ? s.lineRow : s.lineRowAlt}>
-              <View style={s.lineLeft}>
-                <Text style={s.lineDesc}>{l.descripcion}{l.marca ? ` · ${l.marca}` : ""}</Text>
-                <Text style={s.lineSub}>{l.cantidad} u × {l.dias} día{l.dias !== 1 ? "s" : ""} @ {fmt(l.precioUnitario)}</Text>
-              </View>
-              <Text style={s.lineAmt}>{fmt(l.subtotal)}</Text>
-            </View>
-          ))}
-          {/* Subtotal bruto */}
-          <View style={s.secSubtotal}>
-            <Text style={s.secSubtotalLbl}>Subtotal equipos (bruto)</Text>
-            <Text style={s.secSubtotalAmt}>{fmt(bruto)}</Text>
-          </View>
-          {/* Descuento */}
-          {descMonto > 0 ? (
-            <View style={s.discountRow}>
-              <Text style={s.discountLbl}>Descuento aplicado ({descPct.toFixed(1)}%)</Text>
-              <Text style={s.discountAmt}>−{fmt(descMonto)}</Text>
-            </View>
-          ) : null}
-          {/* Neto */}
-          <View style={s.netoRow}>
-            <Text style={s.netoLbl}>Equipos netos (base de comisión)</Text>
-            <Text style={s.netoAmt}>{fmt(neto)}</Text>
-          </View>
-
-          {/* Equipo externo */}
-          {subtotalExt > 0 ? <>
-            <View style={s.spacer} />
-            <SecHeader label="Equipo de proveedor externo" total={subtotalExt} />
-            {lineasExternas.map((l, i) => (
+          {/* Equipos Mainstage — wrap=false mantiene header pegado a sus filas */}
+          <View wrap={false}>
+            <SecHeader label="Equipos Mainstage" total={bruto} />
+            {lineasPropias.map((l, i) => (
               <View key={l.id} style={i % 2 === 0 ? s.lineRow : s.lineRowAlt}>
                 <View style={s.lineLeft}>
-                  <Text style={s.lineDesc}>{l.descripcion}</Text>
-                  <Text style={s.lineSub}>{l.cantidad} u × {l.dias} día{l.dias !== 1 ? "s" : ""}</Text>
-                </View>
-                <Text style={s.lineAmt}>{fmt(l.subtotal)}</Text>
-              </View>
-            ))}
-          </> : null}
-
-          {/* Conceptos adicionales */}
-          {subtotalAd > 0 ? <>
-            <View style={s.spacer} />
-            <SecHeader label="Conceptos adicionales" total={subtotalAd} />
-            {lineasAdicionales.map((l, i) => (
-              <View key={l.id} style={i % 2 === 0 ? s.lineRow : s.lineRowAlt}>
-                <View style={s.lineLeft}>
-                  <Text style={s.lineDesc}>{l.descripcion}</Text>
+                  <Text style={s.lineDesc}>{l.descripcion}{l.marca ? ` · ${l.marca}` : ""}</Text>
                   <Text style={s.lineSub}>{l.cantidad} u × {l.dias} día{l.dias !== 1 ? "s" : ""} @ {fmt(l.precioUnitario)}</Text>
                 </View>
                 <Text style={s.lineAmt}>{fmt(l.subtotal)}</Text>
               </View>
             ))}
-          </> : null}
+            {/* Subtotal bruto */}
+            <View style={s.secSubtotal}>
+              <Text style={s.secSubtotalLbl}>Subtotal equipos (bruto)</Text>
+              <Text style={s.secSubtotalAmt}>{fmt(bruto)}</Text>
+            </View>
+            {/* Descuento */}
+            {descMonto > 0 ? (
+              <View style={s.discountRow}>
+                <Text style={s.discountLbl}>Descuento aplicado ({descPct.toFixed(1)}%)</Text>
+                <Text style={s.discountAmt}>−{fmt(descMonto)}</Text>
+              </View>
+            ) : null}
+            {/* Neto */}
+            <View style={s.netoRow}>
+              <Text style={s.netoLbl}>Equipos netos (base de comisión)</Text>
+              <Text style={s.netoAmt}>{fmt(neto)}</Text>
+            </View>
+          </View>
+
+          {/* Equipo externo */}
+          {subtotalExt > 0 ? (
+            <View wrap={false} style={{ marginTop: 14 }}>
+              <SecHeader label="Equipo de proveedor externo" total={subtotalExt} />
+              {lineasExternas.map((l, i) => (
+                <View key={l.id} style={i % 2 === 0 ? s.lineRow : s.lineRowAlt}>
+                  <View style={s.lineLeft}>
+                    <Text style={s.lineDesc}>{l.descripcion}</Text>
+                    <Text style={s.lineSub}>{l.cantidad} u × {l.dias} día{l.dias !== 1 ? "s" : ""}</Text>
+                  </View>
+                  <Text style={s.lineAmt}>{fmt(l.subtotal)}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          {/* Conceptos adicionales */}
+          {subtotalAd > 0 ? (
+            <View wrap={false} style={{ marginTop: 14 }}>
+              <SecHeader label="Conceptos adicionales" total={subtotalAd} />
+              {lineasAdicionales.map((l, i) => (
+                <View key={l.id} style={i % 2 === 0 ? s.lineRow : s.lineRowAlt}>
+                  <View style={s.lineLeft}>
+                    <Text style={s.lineDesc}>{l.descripcion}</Text>
+                    <Text style={s.lineSub}>{l.cantidad} u × {l.dias} día{l.dias !== 1 ? "s" : ""} @ {fmt(l.precioUnitario)}</Text>
+                  </View>
+                  <Text style={s.lineAmt}>{fmt(l.subtotal)}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
 
           {/* Operación y viáticos */}
-          {subtotalViaticos > 0 ? <>
-            <View style={s.spacer} />
-            <SecHeader label="Operación técnica y viáticos" total={subtotalViaticos} />
-            {subtotalOp > 0 ? <View style={s.lineRow}><Text style={s.lineDesc}>Operación técnica</Text><Text style={s.lineAmt}>{fmt(subtotalOp)}</Text></View> : null}
-            {subtotalTr > 0 ? <View style={s.lineRowAlt}><Text style={s.lineDesc}>Transporte / flete</Text><Text style={s.lineAmt}>{fmt(subtotalTr)}</Text></View> : null}
-            {subtotalCo > 0 ? <View style={s.lineRow}><Text style={s.lineDesc}>Viáticos — comidas</Text><Text style={s.lineAmt}>{fmt(subtotalCo)}</Text></View> : null}
-            {subtotalHo > 0 ? <View style={s.lineRowAlt}><Text style={s.lineDesc}>Viáticos — hospedaje</Text><Text style={s.lineAmt}>{fmt(subtotalHo)}</Text></View> : null}
-          </> : null}
-
-          {/* Totales finales */}
-          <View style={[s.spacer, { height: 16 }]} />
-          <View style={s.divisor} />
-          {cot.total !== cot.granTotal ? (
-            <View style={s.totalRow}>
-              <Text style={s.totalLbl}>Total antes de IVA</Text>
-              <Text style={s.totalAmt}>{fmt(cot.total)}</Text>
+          {subtotalViaticos > 0 ? (
+            <View wrap={false} style={{ marginTop: 14 }}>
+              <SecHeader label="Operación técnica y viáticos" total={subtotalViaticos} />
+              {subtotalOp > 0 ? <View style={s.lineRow}><Text style={s.lineDesc}>Operación técnica</Text><Text style={s.lineAmt}>{fmt(subtotalOp)}</Text></View> : null}
+              {subtotalTr > 0 ? <View style={s.lineRowAlt}><Text style={s.lineDesc}>Transporte / flete</Text><Text style={s.lineAmt}>{fmt(subtotalTr)}</Text></View> : null}
+              {subtotalCo > 0 ? <View style={s.lineRow}><Text style={s.lineDesc}>Viáticos — comidas</Text><Text style={s.lineAmt}>{fmt(subtotalCo)}</Text></View> : null}
+              {subtotalHo > 0 ? <View style={s.lineRowAlt}><Text style={s.lineDesc}>Viáticos — hospedaje</Text><Text style={s.lineAmt}>{fmt(subtotalHo)}</Text></View> : null}
             </View>
           ) : null}
-          {cot.aplicaIva ? (
-            <View style={s.totalRow}>
-              <Text style={s.totalLbl}>IVA (16%)</Text>
-              <Text style={s.totalAmt}>{fmt(cot.montoIva)}</Text>
-            </View>
-          ) : null}
-          <View style={s.grandRow}>
-            <Text style={s.grandLbl}>Gran Total cotización</Text>
-            <Text style={s.grandAmt}>{fmt(cot.granTotal)}</Text>
-          </View>
 
-          {/* ── Cálculo de Comisión ── */}
-          <View style={[s.dividerGold, { marginTop: 22 }]}>
-            <View style={s.dividerGoldLine} />
-            <Text style={s.dividerGoldText}>Cálculo de comisión</Text>
-            <View style={s.dividerGoldLine} />
-          </View>
-
-          <View style={s.comHeader}>
-            <Text style={s.comHeaderText}>Acuerdo de comisión por intermediación en venta de servicios</Text>
-          </View>
-          <View style={s.comRow}>
-            <Text style={s.comRowLbl}>Base para comisión (equipos Mainstage netos)</Text>
-            <Text style={s.comRowAmt}>{fmt(neto)}</Text>
-          </View>
-          <View style={s.comRow}>
-            <Text style={s.comRowLbl}>Porcentaje de comisión pactado</Text>
-            <Text style={s.comRowAmt}>10%</Text>
-          </View>
-          <View style={s.comTotal}>
-            <Text style={s.comTotalLbl}>Monto de comisión</Text>
-            <Text style={s.comTotalAmt}>{fmt(comision)}</Text>
-          </View>
-
-          {/* Firmas */}
-          <View style={s.firmaBlock}>
-            <View style={s.firmaCol}>
-              <View style={s.firmaLine} />
-              <Text style={s.firmaLbl}>Representante Mainstage Pro</Text>
-            </View>
-            <View style={s.firmaCol}>
-              <View style={s.firmaLine} />
-              <Text style={s.firmaLbl}>Comisionista / Agente</Text>
+          {/* Totales finales — no cortar entre el divisor y el gran total */}
+          <View wrap={false} style={{ marginTop: 16 }}>
+            <View style={s.divisor} />
+            {cot.total !== cot.granTotal ? (
+              <View style={s.totalRow}>
+                <Text style={s.totalLbl}>Total antes de IVA</Text>
+                <Text style={s.totalAmt}>{fmt(cot.total)}</Text>
+              </View>
+            ) : null}
+            {cot.aplicaIva ? (
+              <View style={s.totalRow}>
+                <Text style={s.totalLbl}>IVA (16%)</Text>
+                <Text style={s.totalAmt}>{fmt(cot.montoIva)}</Text>
+              </View>
+            ) : null}
+            <View style={s.grandRow}>
+              <Text style={s.grandLbl}>Gran Total cotización</Text>
+              <Text style={s.grandAmt}>{fmt(cot.granTotal)}</Text>
             </View>
           </View>
 
-          {/* Disclaimer */}
-          <View style={s.disclaimer}>
-            <Text style={s.disclaimerText}>
-              Este documento es estrictamente privado y confidencial entre las partes firmantes. Se prohíbe expresamente
-              su difusión, copia o compartición con terceros, incluyendo al cliente final. El incumplimiento de esta
-              cláusula puede resultar en la suspensión de cualquier relación comercial vigente o futura.
-            </Text>
+          {/* Bloque de comisión — no cortar */}
+          <View wrap={false} style={{ marginTop: 20 }}>
+            <View style={s.dividerGold}>
+              <View style={s.dividerGoldLine} />
+              <Text style={s.dividerGoldText}>Cálculo de comisión</Text>
+              <View style={s.dividerGoldLine} />
+            </View>
+            <View style={s.comHeader}>
+              <Text style={s.comHeaderText}>Acuerdo de comisión por intermediación en venta de servicios</Text>
+            </View>
+            <View style={s.comRow}>
+              <Text style={s.comRowLbl}>Base para comisión (equipos Mainstage netos)</Text>
+              <Text style={s.comRowAmt}>{fmt(neto)}</Text>
+            </View>
+            <View style={s.comRow}>
+              <Text style={s.comRowLbl}>Porcentaje de comisión pactado</Text>
+              <Text style={s.comRowAmt}>10%</Text>
+            </View>
+            <View style={s.comTotal}>
+              <Text style={s.comTotalLbl}>Monto de comisión</Text>
+              <Text style={s.comTotalAmt}>{fmt(comision)}</Text>
+            </View>
+          </View>
+
+          {/* Firmas + disclaimer — no cortar */}
+          <View wrap={false} style={{ marginTop: 4 }}>
+            <View style={s.firmaBlock}>
+              <View style={s.firmaCol}>
+                <View style={s.firmaLine} />
+                <Text style={s.firmaLbl}>Representante Mainstage Pro</Text>
+              </View>
+              <View style={s.firmaCol}>
+                <View style={s.firmaLine} />
+                <Text style={s.firmaLbl}>Comisionista / Agente</Text>
+              </View>
+            </View>
+            <View style={s.disclaimer}>
+              <Text style={s.disclaimerText}>
+                Este documento es estrictamente privado y confidencial entre las partes firmantes. Se prohíbe expresamente
+                su difusión, copia o compartición con terceros, incluyendo al cliente final. El incumplimiento de esta
+                cláusula puede resultar en la suspensión de cualquier relación comercial vigente o futura.
+              </Text>
+            </View>
           </View>
 
         </View>
