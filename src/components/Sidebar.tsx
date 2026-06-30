@@ -115,6 +115,7 @@ const NAV: NavSection[] = [
       },
       { key: "tabulador", label: "Tabulador Freelancers", href: "/catalogo/roles" },
       { key: "grupos-equipo", label: "Grupos de equipo", href: "/admin/grupos-equipo", adminOnly: true },
+      { key: "inventario-activos-admin", label: "Inventario de Activos", href: "/admin/valuacion", adminOnly: true },
 
     ],
   },

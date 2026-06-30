@@ -669,6 +669,7 @@ model Equipo {
   notas                String?
   imagenUrl            String?         // URL principal del equipo (ruta /inventario/equipos/... o base64)
   imagenesUrls         String?         // JSON array de URLs adicionales
+  propietario          String          @default("MAINSTAGE") // MAINSTAGE | HERVAM
   activo               Boolean         @default(true)
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
