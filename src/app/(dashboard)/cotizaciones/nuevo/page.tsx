@@ -326,8 +326,10 @@ function CotizadorForm() {
   const [selOcPrecio, setSelOcPrecio] = useState("");
   const [selOcCant, setSelOcCant] = useState("1");
   const [selOcDias, setSelOcDias] = useState("1");
-  // Gastos de producción (comisión interna — se agrega como línea OTRO)
-  const [selGastosMonto, setSelGastosMonto] = useState("");
+  // Comisi\u00f3n interna / Gastos de producci\u00f3n
+  const [gastosActivo, setGastosActivo] = useState(false);
+  const [gastosEsMonto, setGastosEsMonto] = useState(false); // false=%, true=$
+  const [gastosValor, setGastosValor] = useState("10"); // default 10%
 
   // ─── Descuentos ───────────────────────────────────────────────────────────────
   const [volumenActivo, setVolumenActivo]         = useState(false);
@@ -479,6 +481,16 @@ function CotizadorForm() {
           setPagoAnticipadoActivo(true);
           setPagoAnticipadoFecha(cot.pagoAnticipadoFecha ?? "");
           setPagoAnticipadoTexto(cot.pagoAnticipadoTexto ?? "");
+        }
+        // Comisión interna — leer de gastosProduccion* o de las líneas OTRO con descripción 'Gastos de Producción'
+        if (cot.gastosProduccionActivo) {
+          setGastosActivo(true);
+          setGastosEsMonto(cot.gastosProduccionEsMonto ?? false);
+          if (cot.gastosProduccionEsMonto && cot.gastosProduccionMonto > 0) {
+            setGastosValor(String(cot.gastosProduccionMonto));
+          } else if (!cot.gastosProduccionEsMonto && cot.gastosProduccionPct > 0) {
+            setGastosValor(String(Math.round(cot.gastosProduccionPct * 100)));
+          }
         }
         // Retrocompat: preservar descuentos legacy sin control de UI
         if ((cot.descuentoMultidiaPct ?? 0) > 0) setDMultidiaPreservado(cot.descuentoMultidiaPct);
@@ -1008,7 +1020,17 @@ function CotizadorForm() {
 
     const subtotalOcasionales = lineasOcasional.reduce((s, l) => s + l.subtotal, 0);
     const subtotalChofer = incluirChofer ? 500 : 0;
-    const total = subtotalEquiposNeto + subtotalExternos + subtotalOcasionales + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje + subtotalChofer;
+    const baseTotal = subtotalEquiposNeto + subtotalExternos + subtotalOcasionales + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje + subtotalChofer;
+
+    // Comisión interna / Gastos de producción
+    const gastosProduccionMonto = gastosActivo
+      ? (gastosEsMonto
+          ? (parseFloat(gastosValor) || 0)
+          : baseTotal * (parseFloat(gastosValor) || 0) / 100)
+      : 0;
+    const gastosProduccionPct = !gastosEsMonto ? (parseFloat(gastosValor) || 0) / 100 : 0;
+
+    const total = baseTotal + gastosProduccionMonto;
     const montoIva = aplicaIva ? total * IVA : 0;
     const granTotal = total + montoIva;
     const totalConPagoAnticipado = granTotal - montoPagoAnticipadoFinal;
@@ -1036,7 +1058,8 @@ function CotizadorForm() {
       montoVolumen, basePostVolumen, montoB2b, basePostB2b,
       montoManual, pctManualEfectivo,
       descuentoTotalPct, montoDescuento,
-      subtotalEquiposNeto, total, montoIva, granTotal,
+      subtotalEquiposNeto, gastosProduccionMonto, gastosProduccionPct, baseTotal,
+      total, montoIva, granTotal,
       montoPagoAnticipadoFinal, totalConPagoAnticipado,
       debeAutoVolumen,
       costos, utilidad, pctUtilidad, semaforo,
@@ -1046,7 +1069,8 @@ function CotizadorForm() {
     volumenActivo, b2bActivo, manualActivo, manualEsMonto, manualValor, pagoAnticipadoActivo,
     cfgUmbralVolumen, cfgPctVolumen, cfgPctB2b, cfgPctAnticipado, cfgMaxManual,
     dMultidiaPreservado, dEspecialPreservado, dPatrocinioPreservado, dFijoPreservado,
-    aplicaIva, incluirChofer, zonaEvento, numTecnicosZona]);
+    aplicaIva, incluirChofer, zonaEvento, numTecnicosZona,
+    gastosActivo, gastosEsMonto, gastosValor]);
 
   const sem = SEMAFORO_STYLE[resumen.semaforo];
 
@@ -1286,6 +1310,12 @@ function CotizadorForm() {
         precioUnitario: l.precioUnitario, costoUnitario: 0,
         subtotal: l.subtotal, esExterno: false, esIncluido: false,
       })),
+      // Comisión interna como línea OTRO al guardar
+      ...(gastosActivo && resumen.gastosProduccionMonto > 0 ? [{
+        tipo: "OTRO", descripcion: "Gastos de Producción", cantidad: 1, dias: 1,
+        precioUnitario: resumen.gastosProduccionMonto, costoUnitario: 0,
+        subtotal: resumen.gastosProduccionMonto, esExterno: false, esIncluido: false,
+      }] : []),
       ...(resumen.bonusZonaTotal > 0 ? [{
         tipo: "OPERACION_TECNICA",
         descripcion: `Extra de zona ${zonaEvento === "BAJIO" ? "Bajío" : "Nacional"} · ${numTecnicosZona} técnico${numTecnicosZona !== 1 ? "s" : ""}`,
@@ -1327,7 +1357,7 @@ function CotizadorForm() {
       pagoAnticipadoFecha:   pagoAnticipadoFecha || null,
       pagoAnticipadoTexto:   pagoAnticipadoActivo ? (pagoAnticipadoTexto || cfgTextoAnticipado.replace("{pct}", String(cfgPctAnticipado))) : null,
       subtotalPaquetes: 0,
-      subtotalTerceros: resumen.subtotalExternos + resumen.subtotalOcasionales,
+      subtotalTerceros: resumen.subtotalExternos + resumen.subtotalOcasionales + (gastosActivo ? resumen.gastosProduccionMonto : 0),
       subtotalOperacion: resumen.subtotalOperacion + resumen.subtotalDJ,
       subtotalTransporte: resumen.subtotalTransporte,
       subtotalComidas: resumen.subtotalComidas,
@@ -1337,9 +1367,14 @@ function CotizadorForm() {
       incluirChofer,
       montoIva: resumen.montoIva,
       granTotal: resumen.granTotal,
-      costosTotalesEstimados: resumen.costos,
+      costosTotal: resumen.costos,
       utilidadEstimada: resumen.utilidad,
       porcentajeUtilidad: resumen.pctUtilidad,
+      // Comisión interna
+      gastosProduccionActivo: gastosActivo,
+      gastosProduccionEsMonto: gastosEsMonto,
+      gastosProduccionPct: !gastosEsMonto ? (parseFloat(gastosValor) || 0) / 100 : 0,
+      gastosProduccionMonto: gastosActivo ? resumen.gastosProduccionMonto : 0,
     };
 
     try {
@@ -2272,56 +2307,7 @@ function CotizadorForm() {
             )}
           </Seccion>
 
-          {/* ── Gastos de Producción (comisión interna) ───────────── */}
-          <Seccion titulo="Gastos de Producción" hint="comisión interna · se agrega como concepto al total">
-            {/* Líneas de gastos ya agregadas */}
-            {lineasOcasional.filter(l => l.descripcion === "Gastos de Producción").length > 0 && (
-              <div className="border border-[#222] rounded-lg overflow-hidden mb-3">
-                {lineasOcasional.filter(l => l.descripcion === "Gastos de Producción").map(l => (
-                  <div key={l.id} className="flex items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
-                    <span className="text-[#B3985B] text-xs font-semibold uppercase tracking-wide flex-1">Gastos de Producción</span>
-                    <span className="text-white text-sm font-medium">{formatCurrency(l.subtotal)}</span>
-                    <button onClick={() => setLineasOcasional(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none shrink-0">×</button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {/* Formulario rápido */}
-            <div className="flex gap-2 items-end">
-              <div className="flex-1">
-                <p className="text-[10px] text-[#555] mb-1 px-1">Monto de la comisión</p>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">$</span>
-                  <input
-                    type="number" min="0" step="100"
-                    value={selGastosMonto}
-                    onChange={e => setSelGastosMonto(e.target.value)}
-                    placeholder="0.00"
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg pl-7 pr-3 py-2 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  const monto = parseFloat(selGastosMonto) || 0;
-                  if (!monto) return;
-                  setLineasOcasional(prev => [...prev, {
-                    id: uid(), descripcion: "Gastos de Producción",
-                    cantidad: 1, dias: 1, precioUnitario: monto, subtotal: monto,
-                  }]);
-                  setSelGastosMonto("");
-                }}
-                disabled={!selGastosMonto || parseFloat(selGastosMonto) <= 0}
-                className="px-4 py-2 rounded-lg bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] text-sm font-semibold hover:bg-[#B3985B]/20 transition-colors disabled:opacity-40"
-              >
-                + Agregar
-              </button>
-            </div>
-            <p className="text-[10px] text-gray-600 mt-2">Este concepto se incluye en el total del cliente pero queda identificado internamente como comisión.</p>
-          </Seccion>
-
-
-          <Seccion titulo="Operación técnica" hint="sin descuento · tarifas por día y tipo de operación">
+          <Seccion titulo="Operaci\u00f3n t\u00e9cnica" hint="sin descuento \u00b7 tarifas por d\u00eda y tipo de operaci\u00f3n">
             {/* Zona selector + técnicos */}
             <div className="flex items-center gap-2 mb-4 flex-wrap">
               <span className="text-xs text-gray-500">Zona del evento:</span>
@@ -2813,7 +2799,86 @@ function CotizadorForm() {
             </div>
           </Seccion>
 
-          {/* ── Observaciones ── */}
+          {/* \u2500\u2500 Comisi\u00f3n interna (Gastos de Producci\u00f3n) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
+          {(() => {
+            const base = resumen.total;
+            const montoCalc = gastosActivo
+              ? (gastosEsMonto
+                  ? (parseFloat(gastosValor) || 0)
+                  : base * (parseFloat(gastosValor) || 0) / 100)
+              : 0;
+            return (
+              <Seccion titulo="Comisi\u00f3n interna" hint="gastos de producci\u00f3n \u00b7 se agrega al total del cliente">
+                {/* Toggle */}
+                <div className="flex items-center justify-between mb-3">
+                  <label className="flex items-center gap-2.5 cursor-pointer" onClick={() => setGastosActivo(p => !p)}>
+                    <div className={`relative w-10 h-5 rounded-full transition-colors ${gastosActivo ? 'bg-[#B3985B]' : 'bg-[#333]'}`}>
+                      <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${gastosActivo ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </div>
+                    <span className={`text-sm select-none ${gastosActivo ? 'text-white' : 'text-gray-500'}`}>
+                      Agregar comisi\u00f3n interna
+                    </span>
+                  </label>
+                  {gastosActivo && montoCalc > 0 && (
+                    <span className="text-[#B3985B] font-bold text-base tabular-nums">{formatCurrency(montoCalc)}</span>
+                  )}
+                </div>
+
+                {gastosActivo && (
+                  <>
+                    {/* Modo % o $ */}
+                    <div className="flex gap-1 mb-3 bg-[#141414] border border-[#222] rounded-lg p-0.5 w-fit">
+                      <button type="button" onClick={() => setGastosEsMonto(false)}
+                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${!gastosEsMonto ? 'bg-[#B3985B] text-black' : 'text-gray-400 hover:text-white'}`}>
+                        Porcentaje %
+                      </button>
+                      <button type="button" onClick={() => setGastosEsMonto(true)}
+                        className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${gastosEsMonto ? 'bg-[#B3985B] text-black' : 'text-gray-400 hover:text-white'}`}>
+                        Monto $
+                      </button>
+                    </div>
+
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <p className="text-[10px] text-[#555] mb-1 px-1">
+                          {gastosEsMonto ? 'Monto fijo de comisi\u00f3n' : 'Porcentaje sobre el total de la cotizaci\u00f3n'}
+                        </p>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">{gastosEsMonto ? '$' : '%'}</span>
+                          <input
+                            type="number" min="0"
+                            step={gastosEsMonto ? "100" : "1"}
+                            value={gastosValor}
+                            onChange={e => setGastosValor(e.target.value)}
+                            placeholder={gastosEsMonto ? '0.00' : '10'}
+                            className="w-full bg-[#1a1a1a] border border-[#B3985B]/30 rounded-lg pl-7 pr-3 py-2 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]"
+                          />
+                        </div>
+                      </div>
+                      {!gastosEsMonto && (
+                        <button type="button" onClick={() => setGastosValor('10')}
+                          className={`px-3 py-2 rounded-lg text-xs border transition-colors ${gastosValor === '10' ? 'bg-[#B3985B] border-[#B3985B] text-black font-bold' : 'border-[#333] text-gray-400 hover:border-[#B3985B] hover:text-[#B3985B]'}`}>
+                          10%
+                        </button>
+                      )}
+                    </div>
+
+                    {!gastosEsMonto && (
+                      <p className="text-[10px] text-gray-600 mt-2">
+                        Base: {formatCurrency(base)} \u00b7 {gastosValor || 0}% \u2192{' '}
+                        <span className="text-[#B3985B] font-semibold">{formatCurrency(montoCalc)}</span>
+                      </p>
+                    )}
+                    <p className="text-[10px] text-gray-600 mt-1">
+                      Se agrega como \u201cGastos de Producci\u00f3n\u201d al total. No se muestra en el PDF del cliente.
+                    </p>
+                  </>
+                )}
+              </Seccion>
+            );
+          })()}
+
+          {/* \u2500\u2500 Observaciones \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
           <Seccion titulo="Observaciones">
             <textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} rows={3}
               className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
@@ -2872,6 +2937,7 @@ function CotizadorForm() {
               {resumen.subtotalComidas > 0 && <div className="flex justify-between text-gray-400"><span>Comidas</span><span>{formatCurrency(resumen.subtotalComidas)}</span></div>}
               {resumen.subtotalHospedaje > 0 && <div className="flex justify-between text-gray-400"><span>Hospedaje</span><span>{formatCurrency(resumen.subtotalHospedaje)}</span></div>}
               {resumen.subtotalChofer > 0 && <div className="flex justify-between text-gray-400"><span>Chofer de producción</span><span>{formatCurrency(resumen.subtotalChofer)}</span></div>}
+              {resumen.gastosProduccionMonto > 0 && <div className="flex justify-between text-[#B3985B]"><span>Gastos de producción ({gastosEsMonto ? '' : `${gastosValor}% · `}{formatCurrency(resumen.gastosProduccionMonto)})</span><span>{formatCurrency(resumen.gastosProduccionMonto)}</span></div>}
               <div className="flex justify-between text-white font-semibold border-t border-[#333] pt-2"><span>Subtotal</span><span>{formatCurrency(resumen.total)}</span></div>
               {aplicaIva && <div className="flex justify-between text-gray-400"><span>IVA 16%</span><span>{formatCurrency(resumen.montoIva)}</span></div>}
               <div className="flex justify-between text-[#B3985B] font-bold text-base border-t border-[#333] pt-2"><span>Total</span><span>{formatCurrency(resumen.granTotal)}</span></div>
