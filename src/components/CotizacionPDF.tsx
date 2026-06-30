@@ -723,24 +723,40 @@ function SubtotalDJ({ lineas }: { lineas: Linea[] }) {
   );
 }
 
-// Conceptos adicionales (OTRO): lista con descripción y subtotal
+// Conceptos adicionales (OTRO): misma estética que las demás secciones
 function TablaAdicionales({ lineas }: { lineas: Linea[] }) {
   const otros = lineas.filter(l => l.tipo === "OTRO");
   if (otros.length === 0) return null;
+  const subtotal = otros.reduce((s, l) => s + l.subtotal, 0);
   return (
-    <View style={{ marginHorizontal: 40, marginTop: 8 }}>
-      <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: GRAY, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 }}>Conceptos adicionales</Text>
+    <View>
+      {/* Título de sección — mismo estilo dorado */}
+      <View style={s.seccionTitulo}>
+        <View style={s.seccionLinea} />
+        <Text style={s.seccionNombre}>Conceptos adicionales</Text>
+      </View>
+      {/* Header tabla */}
+      <View style={s.tablaHeader}>
+        <Text style={[s.tablaHeaderTexto, { flex: 3 }]}>DESCRIPCIÓN</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1, textAlign: "center" }]}>CANT</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1, textAlign: "center" }]}>DÍAS</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1.2, textAlign: "right" }]}>P/U</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1.2, textAlign: "right" }]}>SUBTOTAL</Text>
+      </View>
       {otros.map((l, i) => (
-        <View key={l.id} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5, borderBottom: "1 solid #eeebe6", backgroundColor: i % 2 === 0 ? "#FDFCFA" : "#FFFFFF" }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 9, color: BLACK }}>{l.descripcion}</Text>
-            {(l.cantidad > 1 || l.dias > 1) && (
-              <Text style={{ fontSize: 7.5, color: GRAY }}>{l.cantidad} × {l.dias} día{l.dias !== 1 ? "s" : ""} × {fmtMXN(l.precioUnitario)}</Text>
-            )}
-          </View>
-          <Text style={{ fontSize: 9, color: BLACK, fontFamily: "Helvetica-Bold", marginLeft: 16 }}>{fmtMXN(l.subtotal)}</Text>
+        <View key={l.id} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5, paddingHorizontal: 40, borderBottom: "1 solid #eeebe6", backgroundColor: i % 2 === 0 ? "#FDFCFA" : "#FFFFFF" }}>
+          <Text style={{ fontSize: 9, color: BLACK, flex: 3 }}>{l.descripcion}</Text>
+          <Text style={{ fontSize: 9, color: GRAY, flex: 1, textAlign: "center" }}>{l.cantidad}</Text>
+          <Text style={{ fontSize: 9, color: GRAY, flex: 1, textAlign: "center" }}>{l.dias}</Text>
+          <Text style={{ fontSize: 9, color: GRAY, flex: 1.2, textAlign: "right" }}>{l.precioUnitario > 0 ? fmtMXN(l.precioUnitario) : "—"}</Text>
+          <Text style={{ fontSize: 9, color: BLACK, fontFamily: "Helvetica-Bold", flex: 1.2, textAlign: "right" }}>{fmtMXN(l.subtotal)}</Text>
         </View>
       ))}
+      {/* Subtotal fila */}
+      <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5, paddingHorizontal: 40, backgroundColor: "#F5F2ED" }}>
+        <Text style={{ fontSize: 8, color: GRAY, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.5 }}>Subtotal adicionales</Text>
+        <Text style={{ fontSize: 9, color: BLACK, fontFamily: "Helvetica-Bold" }}>{fmtMXN(subtotal)}</Text>
+      </View>
     </View>
   );
 }
