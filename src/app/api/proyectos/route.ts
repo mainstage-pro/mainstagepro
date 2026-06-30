@@ -52,6 +52,8 @@ export async function GET(req: Request) {
       },
       orderBy: { fechaEvento: "desc" },
     });
+    const canViewFinances = (session.role === "ADMIN" || session.name.toLowerCase().includes("daniel")) && session.area !== "PRODUCCION";
+
     const proyectosConAvance = proyectos.map(p => {
       const avance = calcularAvanceProyecto({
         tipoServicio: p.tipoServicio ?? null,
@@ -64,7 +66,12 @@ export async function GET(req: Request) {
         (c: { tipoPago: string; estado: string }) =>
           c.tipoPago === 'LIQUIDACION' && c.estado === 'COBRADA'
       );
-      return { ...p, avance, liquidacionCobrada };
+      return {
+        ...p,
+        avance,
+        liquidacionCobrada,
+        cotizacion: canViewFinances ? p.cotizacion : null,
+      };
     });
     return NextResponse.json({ proyectos: proyectosConAvance });
   } catch (e) {
