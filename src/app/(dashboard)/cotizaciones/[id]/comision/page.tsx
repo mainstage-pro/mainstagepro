@@ -124,29 +124,30 @@ export default function ComisionPage({ params }: { params: Promise<{ id: string 
 
   // ─── Cálculos ───────────────────────────────────────────────────────────────
 
-  const lineasPropias    = cot.lineas.filter((l) => l.tipo === "EQUIPO_PROPIO" && !l.esIncluido);
-  const lineasExternas   = cot.lineas.filter((l) => l.tipo === "EQUIPO_EXTERNO" && !l.esIncluido);
+  const lineasPropias    = cot.lineas.filter((l) => l.tipo === "EQUIPO_PROPIO"   && !l.esIncluido);
+  const lineasExternas   = cot.lineas.filter((l) => l.tipo === "EQUIPO_EXTERNO"  && !l.esIncluido);
+  const lineasAdicionales = cot.lineas.filter((l) => l.tipo === "OTRO"            && !l.esIncluido);
   const lineasOperacion  = cot.lineas.filter((l) => l.tipo === "OPERACION_TECNICA" && !l.esIncluido);
-  const lineasTransporte = cot.lineas.filter((l) => l.tipo === "TRANSPORTE"        && !l.esIncluido);
-  const lineasComidas    = cot.lineas.filter((l) => l.tipo === "COMIDA"            && !l.esIncluido);
-  const lineasHospedaje  = cot.lineas.filter((l) => l.tipo === "HOSPEDAJE"         && !l.esIncluido);
+  const lineasTransporte = cot.lineas.filter((l) => l.tipo === "TRANSPORTE"       && !l.esIncluido);
+  const lineasComidas    = cot.lineas.filter((l) => l.tipo === "COMIDA"           && !l.esIncluido);
+  const lineasHospedaje  = cot.lineas.filter((l) => l.tipo === "HOSPEDAJE"        && !l.esIncluido);
 
-  // Subtotales brutos
-  const brutoEquiposPropios = lineasPropias.reduce((s, l) => s + l.subtotal, 0);
-
-  // Aplicar descuento global de equipos al bruto de propios
-  // (el descuentoTotalPct aplica sobre equipos propios)
-  const descuentoEquipos  = brutoEquiposPropios * (cot.descuentoTotalPct / 100);
-  const netoEquiposPropios = brutoEquiposPropios - descuentoEquipos;
+  // Usar los valores ya calculados correctamente en BD
+  // descuentoTotalPct está en decimal (0.10 = 10%), montoDescuento en pesos
+  const brutoEquiposPropios = cot.subtotalEquiposBruto;   // suma de EQUIPO_PROPIO antes de descuento
+  const descuentoEquipos    = cot.montoDescuento;         // monto ya calculado en el cotizador
+  const netoEquiposPropios  = cot.subtotalEquiposNeto;    // neto ya calculado en el cotizador
+  const descuentoPct        = cot.descuentoTotalPct * 100; // convertir 0.10 → 10%
 
   // Comisión del 10% sobre los equipos propios netos (después de descuento)
   const comision = netoEquiposPropios * COMISION_PCT;
 
-  const subtotalExterno    = lineasExternas.reduce((s, l) => s + l.subtotal, 0);
-  const subtotalOperacion  = lineasOperacion.reduce((s, l) => s + l.subtotal, 0) || cot.subtotalOperacion;
+  const subtotalExterno    = lineasExternas.reduce((s, l)    => s + l.subtotal, 0);
+  const subtotalAdicionales = lineasAdicionales.reduce((s, l) => s + l.subtotal, 0);
+  const subtotalOperacion  = lineasOperacion.reduce((s, l)  => s + l.subtotal, 0) || cot.subtotalOperacion;
   const subtotalTransporte = lineasTransporte.reduce((s, l) => s + l.subtotal, 0) || cot.subtotalTransporte;
-  const subtotalComidas    = lineasComidas.reduce((s, l) => s + l.subtotal, 0) || cot.subtotalComidas;
-  const subtotalHospedaje  = lineasHospedaje.reduce((s, l) => s + l.subtotal, 0) || cot.subtotalHospedaje;
+  const subtotalComidas    = lineasComidas.reduce((s, l)    => s + l.subtotal, 0) || cot.subtotalComidas;
+  const subtotalHospedaje  = lineasHospedaje.reduce((s, l)  => s + l.subtotal, 0) || cot.subtotalHospedaje;
 
   // Agrupar equipos propios por categoría
   const equiposPorCat: Record<string, Linea[]> = {};
@@ -265,9 +266,9 @@ export default function ComisionPage({ params }: { params: Promise<{ id: string 
               <p className="text-xs font-semibold text-gray-300">Subtotal equipos (bruto)</p>
               <p className="text-xs font-semibold text-white tabular-nums">{fmt(brutoEquiposPropios)}</p>
             </div>
-            {cot.descuentoTotalPct > 0 && (
+            {descuentoEquipos > 0 && (
               <div className="flex items-center justify-between py-2 border-t border-[#1a1a1a]">
-                <p className="text-xs text-red-400">Descuento aplicado ({cot.descuentoTotalPct.toFixed(1)}%)</p>
+                <p className="text-xs text-red-400">Descuento aplicado ({descuentoPct.toFixed(1)}%)</p>
                 <p className="text-xs text-red-400 tabular-nums">−{fmt(descuentoEquipos)}</p>
               </div>
             )}
@@ -301,6 +302,30 @@ export default function ComisionPage({ params }: { params: Promise<{ id: string 
             </>
           )}
 
+          {/* Conceptos adicionales */}
+          {subtotalAdicionales > 0 && (
+            <>
+              <div className="px-5 py-3 border-t border-[#1e1e1e] bg-[#0e0e0e]">
+                <p className="text-[10px] font-semibold text-amber-400/70 uppercase tracking-widest">Conceptos adicionales</p>
+              </div>
+              <div className="px-5">
+                {lineasAdicionales.map((l) => (
+                  <div key={l.id} className="flex items-center justify-between py-1.5 border-b border-[#131313] last:border-0">
+                    <div>
+                      <p className="text-xs text-gray-400">{l.descripcion}</p>
+                      <p className="text-[10px] text-gray-600">{l.cantidad} u × {l.dias} día{l.dias !== 1 ? "s" : ""} @ {fmt(l.precioUnitario)}</p>
+                    </div>
+                    <p className="text-xs text-gray-400 tabular-nums">{fmt(l.subtotal)}</p>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between py-2 border-t border-[#1a1a1a]">
+                  <p className="text-xs text-gray-400">Subtotal adicionales</p>
+                  <p className="text-xs text-amber-400/80 tabular-nums">{fmt(subtotalAdicionales)}</p>
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Operación técnica y viáticos */}
           <div className="px-5 py-3 border-t border-[#1e1e1e] bg-[#0e0e0e]">
             <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Operación y viáticos</p>
@@ -314,6 +339,7 @@ export default function ComisionPage({ params }: { params: Promise<{ id: string 
               <p className="text-xs text-gray-600 py-3 italic">No aplica en esta cotización</p>
             )}
           </div>
+
 
           {/* Totales finales */}
           <div className="border-t border-[#2a2a2a]">
