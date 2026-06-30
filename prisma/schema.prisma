@@ -2314,7 +2314,8 @@ model HervamActivo {
   id               String   @id @default(cuid())
   nombre           String
   descripcion      String?
-  categoria        String   @default("EQUIPO") // EQUIPO | VEHICULO | INMUEBLE | INTANGIBLE | OTRO
+  categoria        String   @default("EQUIPO") // EQUIPO | VEHICULO | INMUEBLE | INTANGIBLE | OTRO | OFICINA
+  propietario      String   @default("MAINSTAGE") // MAINSTAGE | HERVAM
   valorAdquisicion Float    @default(0)
   valorActual      Float    @default(0)
   precioRenta      Float    @default(0)  // Ingreso mensual estimado por renta del activo

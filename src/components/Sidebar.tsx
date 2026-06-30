@@ -109,7 +109,7 @@ const NAV: NavSection[] = [
         key: "inversiones",
         label: "Inversiones y Socios",
         children: [
-          { key: "inversiones-capital", label: "Estructura de Capital", href: "/finanzas/hervam" },
+          { key: "inventario-activos", label: "Inventario de Activos", href: "/finanzas/hervam" },
           { key: "inversiones-socios", label: "Socios de Activos", href: "/socios" },
         ],
       },

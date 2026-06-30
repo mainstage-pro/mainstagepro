@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { nombre, descripcion, categoria, valorAdquisicion, valorActual, precioRenta, fechaAdquisicion, notas } = body;
+  const { nombre, descripcion, categoria, propietario, valorAdquisicion, valorActual, precioRenta, fechaAdquisicion, notas } = body;
 
   if (!nombre?.trim()) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
 
@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
       nombre: nombre.trim(),
       descripcion: descripcion || null,
       categoria: categoria || "EQUIPO",
+      propietario: propietario || "MAINSTAGE",
       valorAdquisicion: parseFloat(valorAdquisicion) || 0,
       valorActual: parseFloat(valorActual) || 0,
       precioRenta: parseFloat(precioRenta) || 0,

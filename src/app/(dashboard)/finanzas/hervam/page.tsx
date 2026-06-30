@@ -37,6 +37,7 @@ type Activo = {
   nombre: string;
   descripcion: string | null;
   categoria: string;
+  propietario: string;
   valorAdquisicion: number;
   valorActual: number;
   precioRenta: number;
@@ -169,9 +170,9 @@ export default function HervamPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">Estructura de Capital · HERVAM</h1>
+          <h1 className="text-xl font-semibold text-white">Inventario de Activos</h1>
           <p className="text-[#6b7280] text-sm mt-0.5">
-            Activos arrendados a Mainstage Pro · Rendimiento anual {configData?.config.tasaAnualRendimiento}%
+            Mainstage Pro · Equipos, accesorios y equipos de oficina
           </p>
         </div>
         <span className="text-[10px] text-[#B3985B] border border-[#B3985B]/30 bg-[#B3985B]/5 px-2.5 py-1 rounded-full font-semibold">
@@ -572,13 +573,94 @@ function ActivosTab({ activos, accesoriosProduccion, onRefresh }: {
   const activosProduccion = activos.filter(a => a.categoria !== "OFICINA");
   const activosOficina    = activos.filter(a => a.categoria === "OFICINA");
 
+  const totalValor = activos.reduce((s, a) => s + a.valorActual, 0);
+  const totalAccesoriosCount = accesoriosProduccion.reduce((s, e) => s + e.accesorios.length, 0);
+
+  const seccionesResumen = [
+    {
+      key: "produccion" as const,
+      label: "Equipos de Producci\u00f3n",
+      count: activosProduccion.length,
+      valor: activosProduccion.reduce((s, a) => s + a.valorActual, 0),
+      color: "bg-[#B3985B]",
+      textColor: "text-[#B3985B]",
+    },
+    {
+      key: "accesorios" as const,
+      label: "Accesorios de Producci\u00f3n",
+      count: totalAccesoriosCount,
+      valor: 0,
+      color: "bg-blue-500",
+      textColor: "text-blue-400",
+      noValor: true,
+    },
+    {
+      key: "oficina" as const,
+      label: "Equipos de Oficina",
+      count: activosOficina.length,
+      valor: activosOficina.reduce((s, a) => s + a.valorActual, 0),
+      color: "bg-purple-500",
+      textColor: "text-purple-400",
+    },
+  ];
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      {/* ── Reporte general ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {seccionesResumen.map(sec => {
+          const pct = !sec.noValor && totalValor > 0 ? (sec.valor / totalValor) * 100 : null;
+          return (
+            <button
+              key={sec.key}
+              onClick={() => setSubTab(sec.key)}
+              className={`bg-[#111] border rounded-xl p-4 text-left transition-all hover:scale-[1.02] ${
+                subTab === sec.key ? "border-[#B3985B]/50 shadow-lg shadow-[#B3985B]/5" : "border-[#1e1e1e] hover:border-[#2a2a2a]"
+              }`}
+            >
+              <p className="text-[10px] uppercase tracking-wider text-[#555] font-semibold mb-2">{sec.label}</p>
+              <p className={`text-2xl font-bold ${sec.textColor}`}>{sec.count}</p>
+              <p className="text-[11px] text-[#6b7280] mt-0.5">
+                {sec.noValor
+                  ? `en ${accesoriosProduccion.length} equipos`
+                  : new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(sec.valor)
+                }
+              </p>
+              {pct !== null && (
+                <div className="mt-3">
+                  <div className="flex justify-between text-[10px] text-[#444] mb-1">
+                    <span>del portafolio</span>
+                    <span className={sec.textColor}>{pct.toFixed(1)}%</span>
+                  </div>
+                  <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${sec.color}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                  </div>
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Valor total */}
+      {totalValor > 0 && (
+        <div className="flex items-center gap-3 px-1">
+          <div className="h-px flex-1 bg-[#1a1a1a]" />
+          <p className="text-[11px] text-[#555]">
+            Valor total de activos:&nbsp;
+            <span className="text-[#B3985B] font-semibold">
+              {new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(totalValor)}
+            </span>
+          </p>
+          <div className="h-px flex-1 bg-[#1a1a1a]" />
+        </div>
+      )}
+
       {/* Sub-pestañas */}
       <div className="flex gap-1 bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-1 w-fit">
         {([
-          { key: "produccion",  label: "Equipos de Producción" },
-          { key: "accesorios",  label: "Accesorios de Producción" },
+          { key: "produccion",  label: "Equipos de Producci\u00f3n" },
+          { key: "accesorios",  label: "Accesorios de Producci\u00f3n" },
           { key: "oficina",     label: "Equipos de Oficina" },
         ] as const).map(({ key, label }) => (
           <button key={key} onClick={() => setSubTab(key)}
@@ -746,7 +828,7 @@ function ActivosTable({ activos, categoriaDefault, onRefresh }: {
             <table className="w-full min-w-[600px]">
               <thead>
                 <tr className="border-b border-[#1e1e1e]">
-                  {["Activo", "Categoría", "V. Adquisición", "V. Actual", "Precio Renta", "Rentabilidad", "Depreciación", ""].map(h => (
+                  {["Activo", "Categoría", "V. Adquisición", "V. Actual", "Precio Renta", "Rentabilidad", "Depreciación", "Propietario", ""].map(h => (
                     <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
                   ))}
                 </tr>
@@ -831,10 +913,34 @@ function ActivosTable({ activos, categoriaDefault, onRefresh }: {
                           </div>
                         ) : <span className="text-[#333] text-xs">—</span>}
                       </td>
+                      {/* Depreciación */}
                       <td className="px-4 py-3">
                         <span className={`text-xs font-semibold ${depPct > 30 ? "text-red-400" : depPct > 10 ? "text-yellow-400" : "text-green-400"}`}>
                           {depPct > 0 ? `-${fmtPct(depPct)}` : "—"}
                         </span>
+                      </td>
+
+                      {/* Propietario toggle */}
+                      <td className="px-4 py-3">
+                        <button
+                          title={`Click para cambiar a ${a.propietario === "MAINSTAGE" ? "HERVAM" : "MAINSTAGE"}`}
+                          onClick={async () => {
+                            const nuevo = a.propietario === "MAINSTAGE" ? "HERVAM" : "MAINSTAGE";
+                            await fetch(`/api/finanzas/hervam/activos/${a.id}`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ propietario: nuevo }),
+                            });
+                            onRefresh();
+                          }}
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded border transition-all hover:scale-105 cursor-pointer ${
+                            a.propietario === "MAINSTAGE"
+                              ? "text-[#B3985B] bg-[#B3985B]/10 border-[#B3985B]/30 hover:bg-[#B3985B]/20"
+                              : "text-gray-400 bg-gray-800/20 border-gray-700/30 hover:bg-gray-700/30"
+                          }`}
+                        >
+                          {a.propietario === "MAINSTAGE" ? "Mainstage" : "HERVAM"}
+                        </button>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-2">
@@ -859,7 +965,7 @@ function ActivosTable({ activos, categoriaDefault, onRefresh }: {
                       }`}>{rentAnual.toFixed(1)}%</span>
                     )}
                   </td>
-                  <td colSpan={2} />
+                  <td colSpan={3} />
                 </tr>
               </tfoot>
             </table>

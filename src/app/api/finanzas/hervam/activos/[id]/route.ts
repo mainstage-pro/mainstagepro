@@ -15,6 +15,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ...(body.nombre !== undefined && { nombre: body.nombre }),
       ...(body.descripcion !== undefined && { descripcion: body.descripcion || null }),
       ...(body.categoria !== undefined && { categoria: body.categoria }),
+      ...(body.propietario !== undefined && { propietario: body.propietario }),
       ...(body.valorAdquisicion !== undefined && { valorAdquisicion: parseFloat(body.valorAdquisicion) }),
       ...(body.valorActual !== undefined && { valorActual: parseFloat(body.valorActual) }),
       ...(body.precioRenta !== undefined && { precioRenta: parseFloat(body.precioRenta) || 0 }),
