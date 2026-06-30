@@ -1202,9 +1202,18 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
               <div className="flex items-center justify-between px-4 pt-4 pb-2">
                 <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Equipos Mainstage</h3>
-                <Link href="/catalogo/equipos" className="text-[10px] text-[#6b7280] hover:text-[#B3985B] transition-colors">
-                  → Ir al catálogo
-                </Link>
+                <div className="flex items-center gap-3">
+                  <Link
+                    href={`/cotizaciones/${id}/comision`}
+                    target="_blank"
+                    className="text-[10px] font-semibold text-[#C9A84C] hover:text-[#e0b95a] border border-[#C9A84C]/30 hover:border-[#C9A84C]/60 bg-[#C9A84C]/5 hover:bg-[#C9A84C]/10 px-2.5 py-1 rounded-lg transition-all"
+                  >
+                    Comisión
+                  </Link>
+                  <Link href="/catalogo/equipos" className="text-[10px] text-[#6b7280] hover:text-[#B3985B] transition-colors">
+                    → Ir al catálogo
+                  </Link>
+                </div>
               </div>
               {Object.entries(equiposPorCat).map(([cat, lins]) => {
                 const subTotal = lins.reduce((s, l) => s + l.subtotal, 0);
