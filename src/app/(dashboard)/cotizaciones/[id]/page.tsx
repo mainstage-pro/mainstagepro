@@ -22,6 +22,8 @@ interface Linea {
   cantidad: number;
   dias: number;
   precioUnitario: number;
+  costoUnitario: number;
+  costoExterno: number | null;
   subtotal: number;
   esIncluido: boolean;
   notas: string | null;
@@ -631,10 +633,29 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   );
   if (!cot) return <div className="text-red-400 text-sm p-6">Cotización no encontrada</div>;
 
-  // Viabilidad recalculada en vivo (ignora valor guardado en BD)
-  const costoVivo = cot.lineas
+  // ─── Viabilidad recalculada en vivo ──────────────────────────────────────────
+  // Costos de operación técnica + logística (subtotal = precio = costo para Mainstage)
+  const costoOperacion = cot.lineas
     .filter(l => !l.esIncluido && ["OPERACION_TECNICA", "DJ", "TRANSPORTE", "COMIDA", "HOSPEDAJE"].includes(l.tipo))
     .reduce((s, l) => s + l.subtotal, 0);
+
+  // Costos de equipo externo (proveedor): usa costoExterno si existe, si no usa precioUnitario como costo
+  const costoExterno = cot.lineas
+    .filter(l => !l.esIncluido && l.tipo === "EQUIPO_EXTERNO")
+    .reduce((s, l) => {
+      const costoUnit = (l.costoExterno != null && l.costoExterno > 0) ? l.costoExterno : l.precioUnitario;
+      return s + costoUnit * l.cantidad * l.dias;
+    }, 0);
+
+  // Costos de conceptos adicionales (OTRO): al 100% (costoUnitario o precioUnitario)
+  const costoOtros = cot.lineas
+    .filter(l => !l.esIncluido && l.tipo === "OTRO")
+    .reduce((s, l) => {
+      const costoUnit = (l.costoUnitario > 0) ? l.costoUnitario : l.precioUnitario;
+      return s + costoUnit * l.cantidad * l.dias;
+    }, 0);
+
+  const costoVivo = costoOperacion + costoExterno + costoOtros;
   const utilidadViva = cot.total - costoVivo;
   const pctVivo = cot.total > 0 ? utilidadViva / cot.total : 0;
   const semaforo = pctVivo >= 0.55 ? "IDEAL" : pctVivo >= 0.40 ? "REGULAR" : pctVivo >= 0.25 ? "MINIMO" : "RIESGO";
@@ -1835,43 +1856,67 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               </span>
             </div>
 
-            {/* Desglose por categoría */}
+            {/* Desglose de costos */}
             <div className="space-y-1.5 border-t border-[#1e1e1e] pt-3">
               {subtotalEquipo > 0 && (
                 <div className="flex justify-between text-[11px]">
-                  <span className="text-gray-500">Equipos propios</span>
+                  <span className="text-gray-500">Ingresos — equipos propios</span>
                   <span className="text-gray-400 tabular-nums">{formatCurrency(subtotalEquipo)}</span>
                 </div>
               )}
               {subtotalExterno > 0 && (
                 <div className="flex justify-between text-[11px]">
-                  <span className="text-gray-500">Equipos externos</span>
-                  <span className="text-orange-400/80 tabular-nums">{formatCurrency(subtotalExterno)}</span>
-                </div>
-              )}
-              {subtotalOp > 0 && (
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-gray-500">Operación / DJ</span>
-                  <span className="text-orange-400/80 tabular-nums">{formatCurrency(subtotalOp)}</span>
-                </div>
-              )}
-              {subtotalLog > 0 && (
-                <div className="flex justify-between text-[11px]">
-                  <span className="text-gray-500">Logística</span>
-                  <span className="text-orange-400/80 tabular-nums">{formatCurrency(subtotalLog)}</span>
+                  <span className="text-gray-500">Ingresos — equipo externo</span>
+                  <span className="text-gray-400 tabular-nums">{formatCurrency(subtotalExterno)}</span>
                 </div>
               )}
               {subtotalOcasional > 0 && (
                 <div className="flex justify-between text-[11px]">
-                  <span className="text-gray-500">Otros</span>
-                  <span className="text-orange-400/80 tabular-nums">{formatCurrency(subtotalOcasional)}</span>
+                  <span className="text-gray-500">Ingresos — conceptos adicionales</span>
+                  <span className="text-gray-400 tabular-nums">{formatCurrency(subtotalOcasional)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-[11px] pt-1.5 border-t border-[#1e1e1e]">
-                <span className="text-gray-400">Total costos</span>
-                <span className="text-gray-300 tabular-nums font-medium">{formatCurrency(costoVivo)}</span>
+              {subtotalOp > 0 && (
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-gray-500">Ingresos — operación técnica</span>
+                  <span className="text-gray-400 tabular-nums">{formatCurrency(subtotalOp)}</span>
+                </div>
+              )}
+              {subtotalLog > 0 && (
+                <div className="flex justify-between text-[11px]">
+                  <span className="text-gray-500">Ingresos — logística</span>
+                  <span className="text-gray-400 tabular-nums">{formatCurrency(subtotalLog)}</span>
+                </div>
+              )}
+
+              {/* Costos */}
+              <div className="border-t border-[#1e1e1e] pt-2 mt-1 space-y-1.5">
+                <p className="text-[9px] text-gray-600 uppercase tracking-widest">Costos estimados</p>
+                {costoExterno > 0 && (
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-gray-500">Costo equipo externo</span>
+                    <span className="text-orange-400/80 tabular-nums">{formatCurrency(costoExterno)}</span>
+                  </div>
+                )}
+                {costoOtros > 0 && (
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-gray-500">Costo conceptos adicionales</span>
+                    <span className="text-orange-400/80 tabular-nums">{formatCurrency(costoOtros)}</span>
+                  </div>
+                )}
+                {costoOperacion > 0 && (
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-gray-500">Operación técnica y logística</span>
+                    <span className="text-orange-400/80 tabular-nums">{formatCurrency(costoOperacion)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-[11px] pt-1 border-t border-[#1e1e1e]">
+                  <span className="text-gray-400 font-medium">Total costos</span>
+                  <span className="text-gray-300 tabular-nums font-semibold">{formatCurrency(costoVivo)}</span>
+                </div>
               </div>
-              <div className="flex justify-between text-[13px] pt-0.5">
+
+              <div className="flex justify-between text-[13px] pt-1">
                 <span className="text-gray-300 font-semibold">Utilidad estimada</span>
                 <span className={`font-bold tabular-nums ${utilidadViva >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                   {formatCurrency(utilidadViva)}
