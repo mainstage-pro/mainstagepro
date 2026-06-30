@@ -59,6 +59,23 @@ type Pago = {
   pagadoEn: string | null;
 };
 
+type AccesorioItem = {
+  id: string;
+  nombre: string;
+  categoria: string | null;
+};
+
+type AccesoriosProduccionData = {
+  id: string;
+  descripcion: string;
+  marca: string | null;
+  modelo: string | null;
+  categoria: { nombre: string };
+  cantidadTotal: number;
+  precioRenta: number;
+  accesorios: AccesorioItem[];
+};
+
 // ─── CONSTANTES ───────────────────────────────────────────────────────────────
 const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 const CAT_LABELS: Record<string, string> = {
@@ -116,18 +133,21 @@ export default function HervamPage() {
   const [configData, setConfigData] = useState<ConfigData | null>(null);
   const [activos, setActivos] = useState<Activo[]>([]);
   const [pagos, setPagos] = useState<Pago[]>([]);
+  const [accesoriosProduccion, setAccesoriosProduccion] = useState<AccesoriosProduccionData[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const [cdRes, acRes, pgRes] = await Promise.all([
+    const [cdRes, acRes, pgRes, accRes] = await Promise.all([
       fetch("/api/finanzas/hervam/config"),
       fetch("/api/finanzas/hervam/activos"),
       fetch("/api/finanzas/hervam/pagos"),
+      fetch("/api/finanzas/hervam/accesorios-produccion"),
     ]);
-    const [cd, ac, pg] = await Promise.all([cdRes.json(), acRes.json(), pgRes.json()]);
+    const [cd, ac, pg, acc] = await Promise.all([cdRes.json(), acRes.json(), pgRes.json(), accRes.json()]);
     setConfigData(cd);
     setActivos(ac.activos ?? []);
     setPagos(pg.pagos ?? []);
+    setAccesoriosProduccion(acc.equipos ?? []);
     setLoading(false);
   }, []);
 
@@ -163,12 +183,17 @@ export default function HervamPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-[#1a1a1a]">
-        {(["resumen","activos","config","historial"] as const).map(t => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2 text-sm transition-colors capitalize border-b-2 -mb-px ${
-              tab === t ? "border-[#B3985B] text-[#B3985B]" : "border-transparent text-gray-500 hover:text-gray-300"
+        {([
+          { key: "resumen",   label: "Resumen" },
+          { key: "activos",   label: "Activos" },
+          { key: "config",    label: "Configuración" },
+          { key: "historial", label: "Historial" },
+        ] as const).map(({ key, label }) => (
+          <button key={key} onClick={() => setTab(key)}
+            className={`px-4 py-2 text-sm transition-colors border-b-2 -mb-px ${
+              tab === key ? "border-[#B3985B] text-[#B3985B]" : "border-transparent text-gray-500 hover:text-gray-300"
             }`}>
-            {t === "config" ? "Configuración" : t.charAt(0).toUpperCase() + t.slice(1)}
+            {label}
           </button>
         ))}
       </div>
@@ -178,7 +203,7 @@ export default function HervamPage() {
         <ResumenTab configData={configData} pagos={pagos} activos={activos} onRefresh={load} />
       )}
       {tab === "activos" && (
-        <ActivosTab activos={activos} onRefresh={load} />
+        <ActivosTab activos={activos} accesoriosProduccion={accesoriosProduccion} onRefresh={load} />
       )}
       {tab === "config" && configData && (
         <ConfigTab configData={configData} onRefresh={load} />
@@ -536,7 +561,54 @@ function ResumenTab({ configData, pagos, activos, onRefresh }: {
 }
 
 // ─── ACTIVOS TAB ─────────────────────────────────────────────────────────────
-function ActivosTab({ activos, onRefresh }: { activos: Activo[]; onRefresh: () => void }) {
+function ActivosTab({ activos, accesoriosProduccion, onRefresh }: {
+  activos: Activo[];
+  accesoriosProduccion: AccesoriosProduccionData[];
+  onRefresh: () => void;
+}) {
+  const [subTab, setSubTab] = useState<"produccion" | "accesorios" | "oficina">("produccion");
+
+  // Filtra activos según la sub-pestaña activa
+  const activosProduccion = activos.filter(a => a.categoria !== "OFICINA");
+  const activosOficina    = activos.filter(a => a.categoria === "OFICINA");
+
+  return (
+    <div className="space-y-4">
+      {/* Sub-pestañas */}
+      <div className="flex gap-1 bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-1 w-fit">
+        {([
+          { key: "produccion",  label: "Equipos de Producción" },
+          { key: "accesorios",  label: "Accesorios de Producción" },
+          { key: "oficina",     label: "Equipos de Oficina" },
+        ] as const).map(({ key, label }) => (
+          <button key={key} onClick={() => setSubTab(key)}
+            className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              subTab === key ? "bg-[#B3985B] text-black" : "text-[#6b7280] hover:text-white"
+            }`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {subTab === "produccion" && (
+        <ActivosTable activos={activosProduccion} categoriaDefault="EQUIPO" onRefresh={onRefresh} />
+      )}
+      {subTab === "accesorios" && (
+        <AccesoriosProduccionTab equipos={accesoriosProduccion} />
+      )}
+      {subTab === "oficina" && (
+        <ActivosTable activos={activosOficina} categoriaDefault="OFICINA" onRefresh={onRefresh} />
+      )}
+    </div>
+  );
+}
+
+// ─── TABLA ACTIVOS (reutilizada para Producción y Oficina) ────────────────────
+function ActivosTable({ activos, categoriaDefault, onRefresh }: {
+  activos: Activo[];
+  categoriaDefault: string;
+  onRefresh: () => void;
+}) {
   const confirm = useConfirm();
   const toast = useToast();
   const [showForm, setShowForm] = useState(false);
@@ -547,7 +619,7 @@ function ActivosTab({ activos, onRefresh }: { activos: Activo[]; onRefresh: () =
   const [inlineField, setInlineField] = useState<"valorActual" | "precioRenta">("valorActual");
   const [inlineVal, setInlineVal] = useState("");
   const [inlineSaving, setInlineSaving] = useState(false);
-  const EMPTY = { nombre: "", descripcion: "", categoria: "EQUIPO", valorAdquisicion: "", valorActual: "", precioRenta: "", fechaAdquisicion: "", notas: "" };
+  const EMPTY = { nombre: "", descripcion: "", categoria: categoriaDefault, valorAdquisicion: "", valorActual: "", precioRenta: "", fechaAdquisicion: "", notas: "" };
   const [form, setForm] = useState(EMPTY);
 
   function startEdit(a: Activo) {
@@ -794,6 +866,108 @@ function ActivosTab({ activos, onRefresh }: { activos: Activo[]; onRefresh: () =
           </>
         )}
       </div>
+    </div>
+  );
+}
+// ─── ACCESORIOS PRODUCCIÓN TAB ────────────────────────────────────────────────
+const ACC_CAT_COLORS: Record<string, string> = {
+  cable:        "text-blue-400 bg-blue-900/20 border-blue-700/30",
+  herramienta:  "text-yellow-400 bg-yellow-900/20 border-yellow-700/30",
+  consumible:   "text-green-400 bg-green-900/20 border-green-700/30",
+  soporte:      "text-purple-400 bg-purple-900/20 border-purple-700/30",
+  otro:         "text-gray-400 bg-gray-800/20 border-gray-700/30",
+};
+
+function AccesoriosProduccionTab({ equipos }: { equipos: AccesoriosProduccionData[] }) {
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  function toggle(id: string) {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  const totalAccesorios = equipos.reduce((s, e) => s + e.accesorios.length, 0);
+
+  if (equipos.length === 0) {
+    return (
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-10 text-center space-y-2">
+        <p className="text-gray-500 text-sm">No hay accesorios registrados en el inventario de producción</p>
+        <p className="text-[#444] text-xs">Ve a <span className="text-[#B3985B]">Inventario → Equipos</span> y agrega accesorios a los equipos para verlos aquí</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Header de contexto */}
+      <div className="flex items-center justify-between">
+        <p className="text-white text-sm font-semibold">{totalAccesorios} accesorios en {equipos.length} equipos</p>
+        <p className="text-[#444] text-xs">Datos sincronizados desde Inventario → Equipos</p>
+      </div>
+
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden divide-y divide-[#1a1a1a]">
+        {equipos.map(equipo => {
+          const isOpen = expanded.has(equipo.id);
+          const nombre = [equipo.marca, equipo.modelo, equipo.descripcion].filter(Boolean).join(" · ");
+          return (
+            <div key={equipo.id}>
+              {/* Fila del equipo */}
+              <button
+                onClick={() => toggle(equipo.id)}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#1a1a1a] transition-colors text-left group"
+              >
+                <div className="flex items-center gap-3">
+                  <svg
+                    className={`w-4 h-4 text-[#555] transition-transform shrink-0 ${isOpen ? "rotate-90" : ""}`}
+                    fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                  <div>
+                    <p className="text-white text-sm font-medium group-hover:text-[#B3985B] transition-colors">{nombre}</p>
+                    <p className="text-[#555] text-[10px]">{equipo.categoria.nombre}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/20 px-2 py-0.5 rounded-full font-semibold">
+                    {equipo.accesorios.length} {equipo.accesorios.length === 1 ? "accesorio" : "accesorios"}
+                  </span>
+                  {equipo.precioRenta > 0 && (
+                    <span className="text-[10px] text-gray-500">
+                      {new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(equipo.precioRenta)}/mes
+                    </span>
+                  )}
+                </div>
+              </button>
+
+              {/* Lista de accesorios expandida */}
+              {isOpen && (
+                <div className="bg-[#0d0d0d] border-t border-[#1a1a1a] divide-y divide-[#141414]">
+                  {equipo.accesorios.map(acc => (
+                    <div key={acc.id} className="flex items-center gap-3 px-10 py-2.5">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#2a2a2a] shrink-0" />
+                      <p className="text-gray-300 text-sm flex-1">{acc.nombre}</p>
+                      {acc.categoria && (
+                        <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border capitalize ${
+                          ACC_CAT_COLORS[acc.categoria] ?? "text-gray-500 bg-gray-800/20 border-gray-700/30"
+                        }`}>
+                          {acc.categoria}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="text-[#333] text-xs text-right">
+        Para gestionar accesorios ve a <span className="text-[#555]">Inventario → Maestro → Editar equipo → Accesorios</span>
+      </p>
     </div>
   );
 }
