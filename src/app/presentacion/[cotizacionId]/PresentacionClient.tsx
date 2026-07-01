@@ -379,19 +379,54 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token}: 
 
   const handlePrint = async () => {
     setPrinting(true);
-    // Scroll through page to trigger all IntersectionObserver animations
-    const total = document.body.scrollHeight;
-    const steps = 30;
-    for (let i = 0; i <= steps; i++) {
-      window.scrollTo(0, (i / steps) * total);
-      await new Promise(r => setTimeout(r, 60));
+    try {
+      // Scroll through page to trigger all IntersectionObserver animations
+      const total = document.body.scrollHeight;
+      const steps = 30;
+      for (let i = 0; i <= steps; i++) {
+        window.scrollTo(0, (i / steps) * total);
+        await new Promise(r => setTimeout(r, 60));
+      }
+      await new Promise(r => setTimeout(r, 900));
+      window.scrollTo(0, 0);
+      await new Promise(r => setTimeout(r, 300));
+
+      // Dynamic import to keep bundle small
+      const html2canvas = (await import("html2canvas")).default;
+      const { jsPDF }   = await import("jspdf");
+
+      const el = document.body;
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#000000",
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: document.documentElement.scrollWidth,
+        windowHeight: document.body.scrollHeight,
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.92);
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgH  = (canvas.height * pageW) / canvas.width;
+      let y = 0;
+      while (y < imgH) {
+        if (y > 0) pdf.addPage();
+        pdf.addImage(imgData, "JPEG", 0, -y, pageW, imgH);
+        y += pageH;
+      }
+      const filename = \`Propuesta-Mainstage.pdf\`;
+      pdf.save(filename);
+    } catch (err) {
+      console.error("PDF error:", err);
+      // Fallback: print dialog
+      window.print();
+    } finally {
+      setPrinting(false);
     }
-    // Wait for animations (0.75s duration + buffer)
-    await new Promise(r => setTimeout(r, 900));
-    window.scrollTo(0, 0);
-    await new Promise(r => setTimeout(r, 200));
-    window.print();
-    setPrinting(false);
   };
   const [tradeActionError, setTradeActionError] = useState<string | null>(null);
   const [granTotalActual, setGranTotalActual] = useState(cotizacion.granTotal);

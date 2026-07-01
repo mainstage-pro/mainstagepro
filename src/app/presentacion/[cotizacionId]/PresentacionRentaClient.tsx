@@ -326,18 +326,52 @@ export default function PresentacionRentaClient({ cotizacion, token }: { cotizac
 
   const handlePrint = async () => {
     setPrinting(true);
-    const total = document.body.scrollHeight;
-    const steps = 30;
-    for (let i = 0; i <= steps; i++) {
-      window.scrollTo(0, (i / steps) * total);
-      await new Promise(r => setTimeout(r, 60));
+    try {
+      const total = document.body.scrollHeight;
+      const steps = 30;
+      for (let i = 0; i <= steps; i++) {
+        window.scrollTo(0, (i / steps) * total);
+        await new Promise(r => setTimeout(r, 60));
+      }
+      await new Promise(r => setTimeout(r, 900));
+      window.scrollTo(0, 0);
+      await new Promise(r => setTimeout(r, 300));
+
+      const html2canvas = (await import("html2canvas")).default;
+      const { jsPDF }   = await import("jspdf");
+
+      const el = document.body;
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#000000",
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: document.documentElement.scrollWidth,
+        windowHeight: document.body.scrollHeight,
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.92);
+      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const imgH  = (canvas.height * pageW) / canvas.width;
+      let y = 0;
+      while (y < imgH) {
+        if (y > 0) pdf.addPage();
+        pdf.addImage(imgData, "JPEG", 0, -y, pageW, imgH);
+        y += pageH;
+      }
+      pdf.save(`Propuesta-Mainstage.pdf`);
+    } catch (err) {
+      console.error("PDF error:", err);
+      window.print();
+    } finally {
+      setPrinting(false);
     }
-    await new Promise(r => setTimeout(r, 900));
-    window.scrollTo(0, 0);
-    await new Promise(r => setTimeout(r, 200));
-    window.print();
-    setPrinting(false);
   };
+
 
   const tipoEvento  = cotizacion.trato?.tipoEvento ?? cotizacion.tipoEvento ?? "";
   const evento      = cotizacion.nombreEvento ?? tipoEvento ?? "Tu Evento";
