@@ -68,6 +68,8 @@ export default async function DashboardPage() {
     cuentasBancarias,
     // ── ESTA SEMANA ─────────────────────────────
     proyectosEstaSemana,
+    tratosAprobadosEstaSemana,
+
     // ── MARKETING ───────────────────────────────
     pubsPorEstado,
     pubsProximas,
@@ -175,6 +177,24 @@ export default async function DashboardPage() {
         personal: { where: { confirmado: false }, select: { id: true, tecnico: { select: { nombre: true } }, rolTecnico: { select: { nombre: true } } } },
       },
       orderBy: { fechaEvento: "asc" },
+    }),
+    // Cotizaciones APROBADAS sin proyecto — esta semana
+    prisma.trato.findMany({
+      where: {
+        proyecto: null,
+        cotizaciones: { some: { estado: "APROBADA", fechaEvento: { gte: inicioDeHoy, lte: en7dias, not: null } } },
+      },
+      select: {
+        id: true,
+        nombreEvento: true,
+        cliente: { select: { nombre: true } },
+        cotizaciones: {
+          where: { estado: "APROBADA", fechaEvento: { gte: inicioDeHoy, not: null } },
+          select: { fechaEvento: true },
+          orderBy: { fechaEvento: "asc" },
+          take: 1,
+        },
+      },
     }),
 
     // ── MARKETING ───────────────────────────────
@@ -402,7 +422,7 @@ export default async function DashboardPage() {
       {/* ══════════════════════════════════════════════════════════════════════
           ESTA SEMANA
       ══════════════════════════════════════════════════════════════════════ */}
-      {(proyectosEstaSemana.length > 0 || eventosRecientes.length > 0 || cxcVence7dias.length > 0 || cxpVence7dias.length > 0) && (
+      {(proyectosEstaSemana.length > 0 || eventosRecientes.length > 0 || tratosAprobadosEstaSemana.length > 0 || cxcVence7dias.length > 0 || cxpVence7dias.length > 0) && (
         <div className="space-y-3">
           <div className="flex items-center gap-3">
             <p className="text-[11px] font-bold text-[#B3985B] uppercase tracking-widest">Esta semana</p>
@@ -415,12 +435,12 @@ export default async function DashboardPage() {
               <div className="px-4 py-2.5 border-b border-[#1a1a1a] flex items-center justify-between">
                 <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider">Eventos</p>
                 <span className="text-[10px] text-[#B3985B] bg-[#B3985B]/10 px-2 py-0.5 rounded-full">
-                  {proyectosEstaSemana.length + eventosRecientes.length}
+                  {proyectosEstaSemana.length + eventosRecientes.length + tratosAprobadosEstaSemana.length}
                 </span>
               </div>
 
-              {/* ── Próximos ── */}
-              {proyectosEstaSemana.length === 0 && eventosRecientes.length === 0 ? (
+              {/* ── Próximos (proyectos) ── */}
+              {proyectosEstaSemana.length === 0 && eventosRecientes.length === 0 && tratosAprobadosEstaSemana.length === 0 ? (
                 <p className="text-gray-600 text-xs px-4 py-3">Sin eventos esta semana</p>
               ) : proyectosEstaSemana.map(p => {
                 const hoyStrEvt = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
@@ -439,6 +459,27 @@ export default async function DashboardPage() {
                     {sinConfirmar > 0 && (
                       <p className="text-orange-400 text-[10px] mt-0.5">⚠ {sinConfirmar} técnico{sinConfirmar !== 1 ? "s" : ""} sin confirmar</p>
                     )}
+                  </a>
+                );
+              })}
+
+              {/* ── Cotizaciones aprobadas sin proyecto ── */}
+              {tratosAprobadosEstaSemana.map(t => {
+                const cot = t.cotizaciones[0];
+                if (!cot?.fechaEvento) return null;
+                const hoyStrEvt = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+                const evStrEvt = cot.fechaEvento.toISOString().substring(0, 10);
+                const dias = Math.round((new Date(evStrEvt).getTime() - new Date(hoyStrEvt).getTime()) / 86400000);
+                return (
+                  <a key={t.id} href={`/crm/tratos/${t.id}`} className="block px-4 py-2.5 border-b border-[#111] hover:bg-[#151515] transition-colors last:border-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-white text-xs font-medium truncate">{t.nombreEvento ?? "Evento"}</p>
+                      <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${dias === 0 ? "bg-green-900/40 text-green-300" : dias === 1 ? "bg-yellow-900/40 text-yellow-300" : dias <= 3 ? "bg-yellow-900/30 text-yellow-400" : "bg-[#1e1e1e] text-gray-400"}`}>
+                        {dias === 0 ? "Hoy" : dias === 1 ? "Mañana" : `${dias}d`}
+                      </span>
+                    </div>
+                    <p className="text-gray-600 text-[10px] mt-0.5">{t.cliente.nombre}</p>
+                    <p className="text-amber-500/70 text-[10px] mt-0.5">○ Sin proyecto</p>
                   </a>
                 );
               })}
