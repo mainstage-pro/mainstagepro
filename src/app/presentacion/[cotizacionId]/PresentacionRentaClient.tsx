@@ -322,6 +322,22 @@ function CategorySection({ cat, lineas, index }: { cat: string; lineas: Linea[];
 export default function PresentacionRentaClient({ cotizacion, token }: { cotizacion: Cotizacion; token?: string }) {
   const scrollY    = useScrollY();
   const [contractOpen, setContract] = useState(false);
+  const [printing, setPrinting]       = useState(false);
+
+  const handlePrint = async () => {
+    setPrinting(true);
+    const total = document.body.scrollHeight;
+    const steps = 30;
+    for (let i = 0; i <= steps; i++) {
+      window.scrollTo(0, (i / steps) * total);
+      await new Promise(r => setTimeout(r, 60));
+    }
+    await new Promise(r => setTimeout(r, 900));
+    window.scrollTo(0, 0);
+    await new Promise(r => setTimeout(r, 200));
+    window.print();
+    setPrinting(false);
+  };
 
   const tipoEvento  = cotizacion.trato?.tipoEvento ?? cotizacion.tipoEvento ?? "";
   const evento      = cotizacion.nombreEvento ?? tipoEvento ?? "Tu Evento";
@@ -381,6 +397,24 @@ Mainstage Pro puede proveer soporte técnico básico vía WhatsApp durante el us
     <main className="bg-[#060606] text-white overflow-x-hidden"
           style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
 
+      {/* ── Botón PDF ── */}
+      {!printing && (
+        <button
+          onClick={handlePrint}
+          className="no-print fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#B3985B] hover:bg-[#c9a960] text-black text-xs font-bold px-4 py-2.5 rounded-full shadow-[0_4px_24px_rgba(179,152,91,0.35)] transition-all hover:scale-105 active:scale-95"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Descargar PDF
+        </button>
+      )}
+      {printing && (
+        <div className="no-print fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-black/80 text-white text-xs font-medium px-4 py-2.5 rounded-full border border-white/10">
+          <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          Preparando…
+        </div>
+      )}
+
+
       <style>{`
         @keyframes fadeUp { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:translateY(0); } }
         @keyframes scanline { from { transform:translateY(-100%); } to { transform:translateY(100vh); } }
@@ -388,6 +422,15 @@ Mainstage Pro puede proveer soporte técnico básico vía WhatsApp durante el us
         ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-track { background: #0a0a0a; }
         ::-webkit-scrollbar-thumb { background: rgba(179,152,91,0.35); border-radius: 2px; }
+      
+        @media print {
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+              animation-duration: 0s !important; animation-delay: 0s !important;
+              transition-duration: 0s !important; }
+          .no-print { display: none !important; }
+          nav { display: none !important; }
+          @page { size: A4 portrait; margin: 0; }
+        }
       `}</style>
 
       {/* ── NAV ── */}

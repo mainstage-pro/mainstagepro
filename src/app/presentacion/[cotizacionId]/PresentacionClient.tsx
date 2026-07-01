@@ -375,6 +375,24 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token}: 
   const [tradePctActual, setTradePctActual] = useState(tradeData.pct ?? 0);
   const [tradeConfirmando, setTradeConfirmando] = useState<number | null>(null);
   const [tradeSaving, setTradeSaving] = useState(false);
+  const [printing, setPrinting]       = useState(false);
+
+  const handlePrint = async () => {
+    setPrinting(true);
+    // Scroll through page to trigger all IntersectionObserver animations
+    const total = document.body.scrollHeight;
+    const steps = 30;
+    for (let i = 0; i <= steps; i++) {
+      window.scrollTo(0, (i / steps) * total);
+      await new Promise(r => setTimeout(r, 60));
+    }
+    // Wait for animations (0.75s duration + buffer)
+    await new Promise(r => setTimeout(r, 900));
+    window.scrollTo(0, 0);
+    await new Promise(r => setTimeout(r, 200));
+    window.print();
+    setPrinting(false);
+  };
   const [tradeActionError, setTradeActionError] = useState<string | null>(null);
   const [granTotalActual, setGranTotalActual] = useState(cotizacion.granTotal);
 
@@ -460,6 +478,15 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token}: 
           style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
 
       <style>{`
+
+        @media print {
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+              animation-duration: 0s !important; animation-delay: 0s !important;
+              transition-duration: 0s !important; }
+          .no-print { display: none !important; }
+          nav { display: none !important; }
+          @page { size: A4 portrait; margin: 0; }
+        }
         @keyframes kenBurns { from{transform:scale(1) translate(0,0)} to{transform:scale(1.07) translate(-1%,-0.8%)} }
         @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
         .animate-fadeUp { animation:fadeUp 1s cubic-bezier(0.16,1,0.3,1) forwards; opacity:0; }
@@ -469,6 +496,24 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token}: 
         ::-webkit-scrollbar-track { background:#000; }
         ::-webkit-scrollbar-thumb { background:rgba(179,152,91,0.3); border-radius:2px; }
       `}</style>
+
+
+      {/* ── Botón PDF ── */}
+      {!printing && (
+        <button
+          onClick={handlePrint}
+          className="no-print fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#B3985B] hover:bg-[#c9a960] text-black text-xs font-bold px-4 py-2.5 rounded-full shadow-[0_4px_24px_rgba(179,152,91,0.35)] transition-all hover:scale-105 active:scale-95"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Descargar PDF
+        </button>
+      )}
+      {printing && (
+        <div className="no-print fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-black/80 text-white text-xs font-medium px-4 py-2.5 rounded-full border border-white/10">
+          <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          Preparando…
+        </div>
+      )}
 
       {/* ── NAV ── */}
       <nav className="fixed top-0 inset-x-0 z-50 flex items-center justify-between px-6 sm:px-10 h-14"
