@@ -555,6 +555,16 @@ interface CotizacionData {
 
 // ─── Sub-componentes ─────────────────────────────────────────────────────────
 
+// Extrae la nota visible del usuario del campo notas de una linea
+// Formatos: "cat:Cat|nota:Texto", "nota:Texto", "cat:Cat" (sin nota), texto plano
+function getItemNota(notas: string | null): string | null {
+  if (!notas) return null;
+  if (notas.includes("|nota:")) return notas.split("|nota:")[1]?.trim() || null;
+  if (notas.startsWith("nota:")) return notas.slice(5).trim() || null;
+  if (notas.startsWith("cat:")) return null; // solo categoría, sin nota
+  return notas.trim() || null; // nota plana (legado)
+}
+
 function FilaEquipo({ l, i }: { l: Linea; i: number }) {
   return (
     <View style={[s.tablaFila, i % 2 === 1 ? s.tablaFilaAlt : {}]}>
@@ -564,7 +574,14 @@ function FilaEquipo({ l, i }: { l: Linea; i: number }) {
           <Image src={l.imagenUrl} style={{ width: 18, height: 18, objectFit: "contain" }} />
         ) : null}
       </View>
-      <Text style={[s.cellDesc, s.colDesc]}>{l.descripcion}</Text>
+      <View style={s.colDesc}>
+        <Text style={s.cellDesc}>{l.descripcion}</Text>
+        {getItemNota(l.notas) ? (
+          <Text style={{ fontSize: 7, color: GRAY, fontFamily: "Helvetica-Oblique", marginTop: 1.5 }}>
+            {getItemNota(l.notas)}
+          </Text>
+        ) : null}
+      </View>
       <Text style={[s.cellMarca, s.colMarca]}>{[l.marca, l.modelo].filter(Boolean).join(" ") || "—"}</Text>
       <Text style={[s.cellNum, s.colCant]}>{l.cantidad}</Text>
       <Text style={[s.cellNum, s.colDias]}>{l.dias}</Text>
@@ -709,7 +726,14 @@ function SubtotalDJ({ lineas }: { lineas: Linea[] }) {
       </View>
       {djLineas.map((l, i) => (
         <View key={l.id} style={[s.tablaFila, i % 2 === 1 ? s.tablaFilaAlt : {}]}>
-          <Text style={[s.cellDesc, { flex: 3 }]}>{l.descripcion}</Text>
+          <View style={{ flex: 3 }}>
+            <Text style={s.cellDesc}>{l.descripcion}</Text>
+            {getItemNota(l.notas) ? (
+              <Text style={{ fontSize: 7, color: GRAY, fontFamily: "Helvetica-Oblique", marginTop: 1.5 }}>
+                {getItemNota(l.notas)}
+              </Text>
+            ) : null}
+          </View>
           <Text style={[s.cellNum, { flex: 1, textAlign: "center" }]}>{l.cantidad}</Text>
           <Text style={[s.cellPrecio, { flex: 1.5, textAlign: "right" }]}>{fmtMXN(l.precioUnitario)}</Text>
           <Text style={[s.cellSubtotal, { flex: 1.5, textAlign: "right" }]}>{fmtMXN(l.subtotal)}</Text>
@@ -745,7 +769,14 @@ function TablaAdicionales({ lineas }: { lineas: Linea[] }) {
       </View>
       {otros.map((l, i) => (
         <View key={l.id} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5, paddingHorizontal: 40, borderBottom: "1 solid #eeebe6", backgroundColor: i % 2 === 0 ? "#FDFCFA" : "#FFFFFF" }}>
-          <Text style={{ fontSize: 9, color: BLACK, flex: 3 }}>{l.descripcion}</Text>
+          <View style={{ flex: 3 }}>
+            <Text style={{ fontSize: 9, color: BLACK }}>{l.descripcion}</Text>
+            {getItemNota(l.notas) ? (
+              <Text style={{ fontSize: 7, color: GRAY, fontFamily: "Helvetica-Oblique", marginTop: 1.5 }}>
+                {getItemNota(l.notas)}
+              </Text>
+            ) : null}
+          </View>
           <Text style={{ fontSize: 9, color: GRAY, flex: 1, textAlign: "center" }}>{l.cantidad}</Text>
           <Text style={{ fontSize: 9, color: GRAY, flex: 1, textAlign: "center" }}>{l.dias}</Text>
           <Text style={{ fontSize: 9, color: GRAY, flex: 1.2, textAlign: "right" }}>{l.precioUnitario > 0 ? fmtMXN(l.precioUnitario) : "—"}</Text>
