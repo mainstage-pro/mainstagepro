@@ -1382,30 +1382,84 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             </div>
           )}
 
-          {/* Operación técnica */}
-          {lineasOp.length > 0 && (
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-              <div className="px-4 pt-4 pb-2">
-                <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Operación técnica</h3>
-              </div>
-              {lineasOp.map((l) => (
-                <div key={l.id} className="flex justify-between items-start px-4 py-2 border-t border-[#1a1a1a] text-sm">
-                  <div>
-                    <span className="text-white">{l.descripcion}</span>
-                    <span className="text-gray-500 text-xs ml-2">
-                      {l.nivel && `${l.nivel} · `}{l.jornada && `${l.jornada} · `}×{l.cantidad}
-                    </span>
-                    <NoteField linea={l} />
-                  </div>
-                  <span className="text-white font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
+          {/* Operación técnica — agrupada por fecha */}
+          {lineasOp.length > 0 && (() => {
+            // Extraer fecha de descripciones como "Técnico FOH (Operación · 2026-07-03)"
+            function getOpFecha(desc: string): string {
+              const m = desc.match(/·\s*(\d{4}-\d{2}-\d{2})\s*\)?/);
+              return m ? m[1] : "__sin_fecha__";
+            }
+            function limpiarDesc(desc: string): string {
+              return desc.replace(/\s*·\s*\d{4}-\d{2}-\d{2}/, "").replace(/\(\s*\)/, "").trim();
+            }
+            function fmtFechaOp(f: string): string {
+              const [y, m, d] = f.split("-").map(Number);
+              return new Date(y, m - 1, d).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
+            }
+
+            const fechaMap = new Map<string, typeof lineasOp>();
+            for (const l of lineasOp) {
+              const key = getOpFecha(l.descripcion ?? "");
+              if (!fechaMap.has(key)) fechaMap.set(key, []);
+              fechaMap.get(key)!.push(l);
+            }
+            const fechas = Array.from(fechaMap.keys()).sort((a, b) => a === "__sin_fecha__" ? 1 : b === "__sin_fecha__" ? -1 : a.localeCompare(b));
+            const agrupar = fechas.length > 1 || (fechas.length === 1 && fechas[0] !== "__sin_fecha__");
+
+            return (
+              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                <div className="px-4 pt-4 pb-2">
+                  <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Operación técnica</h3>
                 </div>
-              ))}
-              <div className="flex justify-between items-center px-4 py-3 border-t border-[#333] bg-[#0d0d0d]">
-                <span className="text-xs text-gray-400 font-semibold uppercase">Subtotal operación</span>
-                <span className="text-white font-bold">{formatCurrency(subtotalOp)}</span>
+                {agrupar ? (
+                  fechas.map(fecha => {
+                    const ls = fechaMap.get(fecha)!;
+                    const subtotalFecha = ls.reduce((s, l) => s + l.subtotal, 0);
+                    return (
+                      <div key={fecha}>
+                        <div className="px-4 py-1.5 bg-[#0a0a0a] border-t border-[#1a1a1a] flex justify-between items-center">
+                          <span className="text-[#B3985B]/80 text-[10px] font-semibold uppercase tracking-wider">
+                            {fecha === "__sin_fecha__" ? "Sin fecha asignada" : fmtFechaOp(fecha)}
+                          </span>
+                          <span className="text-[#B3985B]/60 text-[10px]">{formatCurrency(subtotalFecha)}</span>
+                        </div>
+                        {ls.map((l) => (
+                          <div key={l.id} className="flex justify-between items-start px-4 py-2 border-t border-[#1a1a1a] text-sm">
+                            <div>
+                              <span className="text-white">{limpiarDesc(l.descripcion ?? "")}</span>
+                              <span className="text-gray-500 text-xs ml-2">
+                                {l.nivel && `${l.nivel} · `}{l.jornada && `${l.jornada} · `}×{l.cantidad}
+                              </span>
+                              <NoteField linea={l} />
+                            </div>
+                            <span className="text-white font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })
+                ) : (
+                  lineasOp.map((l) => (
+                    <div key={l.id} className="flex justify-between items-start px-4 py-2 border-t border-[#1a1a1a] text-sm">
+                      <div>
+                        <span className="text-white">{l.descripcion}</span>
+                        <span className="text-gray-500 text-xs ml-2">
+                          {l.nivel && `${l.nivel} · `}{l.jornada && `${l.jornada} · `}×{l.cantidad}
+                        </span>
+                        <NoteField linea={l} />
+                      </div>
+                      <span className="text-white font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
+                    </div>
+                  ))
+                )}
+                <div className="flex justify-between items-center px-4 py-3 border-t border-[#333] bg-[#0d0d0d]">
+                  <span className="text-xs text-gray-400 font-semibold uppercase">Subtotal operación</span>
+                  <span className="text-white font-bold">{formatCurrency(subtotalOp)}</span>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
+
 
           {/* Logística */}
           {lineasLog.length > 0 && cot.tipoServicio !== "RENTA" && (

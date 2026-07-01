@@ -418,8 +418,7 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token}: 
         pdf.addImage(imgData, "JPEG", 0, -y, pageW, imgH);
         y += pageH;
       }
-      const filename = \`Propuesta-Mainstage.pdf\`;
-      pdf.save(filename);
+      pdf.save("Propuesta-Mainstage.pdf");
     } catch (err) {
       console.error("PDF error:", err);
       // Fallback: print dialog
