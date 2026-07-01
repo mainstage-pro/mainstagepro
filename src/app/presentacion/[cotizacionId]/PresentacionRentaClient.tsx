@@ -431,22 +431,6 @@ Mainstage Pro puede proveer soporte técnico básico vía WhatsApp durante el us
     <main className="bg-[#060606] text-white overflow-x-hidden"
           style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
 
-      {/* ── Botón PDF ── */}
-      {!printing && (
-        <button
-          onClick={handlePrint}
-          className="no-print fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-[#B3985B] hover:bg-[#c9a960] text-black text-xs font-bold px-4 py-2.5 rounded-full shadow-[0_4px_24px_rgba(179,152,91,0.35)] transition-all hover:scale-105 active:scale-95"
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Descargar PDF
-        </button>
-      )}
-      {printing && (
-        <div className="no-print fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-black/80 text-white text-xs font-medium px-4 py-2.5 rounded-full border border-white/10">
-          <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-          Preparando…
-        </div>
-      )}
 
 
       <style>{`
