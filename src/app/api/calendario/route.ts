@@ -39,12 +39,11 @@ export async function GET(req: NextRequest) {
     horaInicioEvento: p.horaInicioEvento,
   }));
 
-  // ── 2. Tratos VENTA_CERRADA sin proyecto creado aún ──────────────────────
-  // Solo tratos que: etapa=VENTA_CERRADA, proyecto=null (sin proyecto vinculado),
-  // y tienen al menos una cotización APROBADA con fechaEvento en el mes solicitado
+  // ── 2. Tratos con cotización APROBADA sin proyecto creado aún ──────────────
+  // Cualquier trato sin proyecto vinculado que tenga al menos
+  // una cotización APROBADA con fechaEvento en el mes solicitado
   const tratos = await prisma.trato.findMany({
     where: {
-      etapa: "VENTA_CERRADA",
       proyecto: null,
       cotizaciones: {
         some: {

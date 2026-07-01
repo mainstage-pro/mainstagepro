@@ -49,10 +49,9 @@ export async function EventosWidget() {
       orderBy: { fechaEvento: "desc" },
       take: 5,
     }),
-    // Tratos VENTA_CERRADA sin proyecto aún, con cotización aprobada
+    // Tratos con cotización aprobada sin proyecto aún (cualquier etapa)
     prisma.trato.findMany({
       where: {
-        etapa: "VENTA_CERRADA",
         proyecto: null,
         cotizaciones: {
           some: {
