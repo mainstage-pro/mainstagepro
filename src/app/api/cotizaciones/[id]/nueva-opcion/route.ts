@@ -11,11 +11,17 @@ function generarLetra(index: number): string {
   return `${primera}${segunda}`;
 }
 
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+const TIPOS_EQUIPO = ["EQUIPO_PROPIO", "EQUIPO_EXTERNO"];
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
+
+  // modo: "completa" = copia todo | "vacia" = sin equipos (solo operación, logística, etc.)
+  const body = await req.json().catch(() => ({}));
+  const modo: "completa" | "vacia" = body.modo === "vacia" ? "vacia" : "completa";
 
   const original = await prisma.cotizacion.findUnique({
     where: { id },
@@ -67,6 +73,34 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const lastNum = last ? parseInt(last.numeroCotizacion.replace("COT-", "")) || 0 : 0;
   const numeroCotizacion = `COT-${String(lastNum + 1).padStart(4, "0")}`;
 
+  // Filtrar líneas según el modo
+  const lineasACopiar = modo === "vacia"
+    ? original.lineas.filter(l => !TIPOS_EQUIPO.includes(l.tipo))
+    : original.lineas;
+
+  // En modo vacío, resetear totales de equipos a 0
+  const totalesEquipo = modo === "vacia" ? {
+    subtotalEquiposBruto: 0,
+    subtotalEquiposNeto: 0,
+    descuentoVolumenPct: 0,
+    descuentoB2bPct: 0,
+    descuentoMultidiaPct: 0,
+    descuentoFamilyFriendsPct: 0,
+    descuentoFijoMonto: 0,
+    montoDescuento: 0,
+    descuentoTotalPct: 0,
+  } : {
+    subtotalEquiposBruto: original.subtotalEquiposBruto,
+    subtotalEquiposNeto: original.subtotalEquiposNeto,
+    descuentoVolumenPct: original.descuentoVolumenPct,
+    descuentoB2bPct: original.descuentoB2bPct,
+    descuentoMultidiaPct: original.descuentoMultidiaPct,
+    descuentoFamilyFriendsPct: original.descuentoFamilyFriendsPct,
+    descuentoFijoMonto: original.descuentoFijoMonto,
+    montoDescuento: original.montoDescuento,
+    descuentoTotalPct: original.descuentoTotalPct,
+  };
+
   const nueva = await prisma.cotizacion.create({
     data: {
       numeroCotizacion,
@@ -77,9 +111,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       tratoId: original.tratoId,
       clienteId: original.clienteId,
       creadaPorId: session.id,
-      // Nombre heredado (la nueva opción tendrá el mismo nombre de evento base)
       nombreCotizacion: original.nombreCotizacion,
-      // Datos del evento (heredados)
       nombreEvento: original.nombreEvento,
       tipoEvento: original.tipoEvento,
       tipoServicio: original.tipoServicio,
@@ -92,22 +124,13 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       diasTransporte: original.diasTransporte,
       diasHospedaje: original.diasHospedaje,
       diasComidas: original.diasComidas,
-      // Totales copiados (se actualizarán al editar)
-      subtotalEquiposBruto: original.subtotalEquiposBruto,
-      descuentoVolumenPct: original.descuentoVolumenPct,
-      descuentoB2bPct: original.descuentoB2bPct,
-      descuentoMultidiaPct: original.descuentoMultidiaPct,
+      ...totalesEquipo,
       descuentoPatrocinioPct: original.descuentoPatrocinioPct,
       descuentoPatrocinioNota: original.descuentoPatrocinioNota,
       descuentoEspecialPct: original.descuentoEspecialPct,
       descuentoEspecialNota: original.descuentoEspecialNota,
-      descuentoFamilyFriendsPct: original.descuentoFamilyFriendsPct,
-      descuentoFijoMonto: original.descuentoFijoMonto,
       descuentoManualRazon: original.descuentoManualRazon,
       descuentoManualEsMonto: original.descuentoManualEsMonto,
-      descuentoTotalPct: original.descuentoTotalPct,
-      montoDescuento: original.montoDescuento,
-      subtotalEquiposNeto: original.subtotalEquiposNeto,
       subtotalPaquetes: original.subtotalPaquetes,
       subtotalTerceros: original.subtotalTerceros,
       subtotalOperacion: original.subtotalOperacion,
@@ -119,7 +142,6 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       incluirChofer: original.incluirChofer,
       montoIva: original.montoIva,
       granTotal: original.granTotal,
-      // Gastos de producción heredados
       gastosProduccionActivo: original.gastosProduccionActivo,
       gastosProduccionEsMonto: original.gastosProduccionEsMonto,
       gastosProduccionPct: original.gastosProduccionPct,
@@ -135,9 +157,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       terminosComerciales: original.terminosComerciales,
       notasSecciones: original.notasSecciones,
       jornadasPlan: original.jornadasPlan,
-      // Copiar líneas
       lineas: {
-        create: original.lineas.map(l => ({
+        create: lineasACopiar.map(l => ({
           tipo: l.tipo,
           descripcion: l.descripcion,
           cantidad: l.cantidad,

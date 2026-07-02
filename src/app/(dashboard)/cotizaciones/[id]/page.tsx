@@ -177,6 +177,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
   const [opciones, setOpciones] = useState<OpcionHermana[]>([]);
   const [creandoOpcion, setCreandoOpcion] = useState(false);
+  const [modalOpcion, setModalOpcion] = useState(false);
   // Nombre/descripción editable inline
   const [editNombre, setEditNombre] = useState<string | null>(null);
   const [editDescripcion, setEditDescripcion] = useState<string | null>(null);
@@ -238,10 +239,15 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       });
   }, [id]);
 
-  async function crearNuevaOpcion() {
+  async function crearNuevaOpcion(modo: "completa" | "vacia") {
+    setModalOpcion(false);
     setCreandoOpcion(true);
     try {
-      const res = await fetch(`/api/cotizaciones/${id}/nueva-opcion`, { method: "POST" });
+      const res = await fetch(`/api/cotizaciones/${id}/nueva-opcion`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modo }),
+      });
       const d = await res.json();
       if (res.ok) {
         toast.success(`Opción ${d.opcionLetra} creada — ${d.numeroCotizacion}`);
@@ -818,10 +824,10 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           ))}
           {siguienteLetra && opciones.length < 26 && (
             <button
-              onClick={crearNuevaOpcion}
+              onClick={() => setModalOpcion(true)}
               disabled={creandoOpcion}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border border-dashed border-[#333] text-gray-600 hover:text-[#B3985B] hover:border-[#B3985B]/40 transition-colors disabled:opacity-40"
-              title={`Crear Opción ${siguienteLetra} (copia editable de esta cotización)`}
+              title={`Crear Opción ${siguienteLetra}`}
             >
               <span className="text-base leading-none">+</span>
               {creandoOpcion ? "Creando..." : `Opción ${siguienteLetra}`}
@@ -982,7 +988,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
         {/* Fila 4: acciones secundarias */}
         <div className="flex items-center gap-4 flex-wrap">
           {siguienteLetra && opciones.length < 26 && (
-            <button onClick={crearNuevaOpcion} disabled={creandoOpcion}
+            <button onClick={() => setModalOpcion(true)} disabled={creandoOpcion}
               className="flex items-center gap-1 text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/30 hover:border-[#B3985B]/60 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40">
               <span className="text-sm leading-none">+</span>
               {creandoOpcion ? "Creando..." : `Opción ${siguienteLetra}`}
@@ -2059,6 +2065,48 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               Enviar por WhatsApp
             </button>
           </div>
+        </div>
+      </div>
+    )}
+    {/* ══ Modal: modo nueva opción ══════════════════════════════════════════════════ */}
+    {modalOpcion && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setModalOpcion(false)}>
+        <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl w-full max-w-md mx-4 p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+          <h2 className="text-white font-semibold text-base mb-1">Nueva Opción {siguienteLetra}</h2>
+          <p className="text-gray-500 text-xs mb-6">¿Cómo quieres empezar el equipamiento de esta nueva opción?</p>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => crearNuevaOpcion("completa")}
+              className="group flex flex-col items-center gap-3 bg-[#181818] hover:bg-[#1e1e1e] border border-[#2a2a2a] hover:border-[#B3985B]/40 rounded-xl p-5 transition-all text-left"
+            >
+              <div className="w-10 h-10 rounded-lg bg-[#B3985B]/10 flex items-center justify-center text-[#B3985B] group-hover:bg-[#B3985B]/20 transition-colors">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <rect x="9" y="9" width="13" height="13" rx="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-white text-xs font-semibold mb-0.5">Copiar todo</p>
+                <p className="text-gray-600 text-[10px] leading-relaxed">Mismo equipamiento que la Opción {cot?.opcionLetra ?? "A"}</p>
+              </div>
+            </button>
+            <button
+              onClick={() => crearNuevaOpcion("vacia")}
+              className="group flex flex-col items-center gap-3 bg-[#181818] hover:bg-[#1e1e1e] border border-[#2a2a2a] hover:border-[#B3985B]/40 rounded-xl p-5 transition-all text-left"
+            >
+              <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-gray-400 group-hover:bg-white/10 transition-colors">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  <path d="M12 8v8M8 12h8"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-white text-xs font-semibold mb-0.5">Desde cero</p>
+                <p className="text-gray-600 text-[10px] leading-relaxed">Sin equipos — solo hereda operación y logística</p>
+              </div>
+            </button>
+          </div>
+          <button onClick={() => setModalOpcion(false)} className="mt-4 w-full text-xs text-gray-600 hover:text-gray-400 transition-colors py-1">Cancelar</button>
         </div>
       </div>
     )}
