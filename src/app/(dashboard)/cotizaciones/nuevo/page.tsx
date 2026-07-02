@@ -1895,6 +1895,35 @@ function CotizadorForm() {
                         <span className="text-[10px] font-semibold text-[#B3985B] uppercase tracking-wider">{cat}</span>
                         <span className="text-xs text-gray-400">{formatCurrency(subTotal)}</span>
                       </div>
+                      {/* Nota por categoría */}
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-[#080808] border-b border-[#111]">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="2" className="shrink-0"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        <input
+                          type="text"
+                          placeholder="Nota de categoría (aparece en el PDF)…"
+                          value={notasSecciones[cat] ?? ""}
+                          onChange={e => {
+                            const val = e.target.value;
+                            setNotasSecciones(prev => {
+                              const next = { ...prev };
+                              if (val.trim()) next[cat] = val;
+                              else delete next[cat];
+                              return next;
+                            });
+                          }}
+                          className="flex-1 bg-transparent text-xs text-[#6b7280] placeholder-[#333] focus:outline-none focus:text-[#B3985B]/80 transition-colors"
+                        />
+                        {notasSecciones[cat] && (
+                          <button
+                            onClick={() => setNotasSecciones(prev => { const n = { ...prev }; delete n[cat]; return n; })}
+                            className="text-[#333] hover:text-red-500 transition-colors shrink-0"
+                            title="Borrar nota"
+                          >
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          </button>
+                        )}
+                      </div>
+
                       {lins.map(l => {
                         const precioBase = equipos.find(e => e.id === l.equipoId)?.precioRenta ?? 0;
                         const tienePrecioEspecial = preciosCliente[l.equipoId] != null;
