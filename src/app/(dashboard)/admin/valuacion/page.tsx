@@ -253,6 +253,21 @@ export default function InventarioActivosPage() {
     }
   }
 
+  async function patchActivo(id: string, campo: string, valor: number) {
+    setSavingInline(id);
+    try {
+      const res = await fetch(`/api/finanzas/hervam/activos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [campo]: valor }),
+      });
+      if (!res.ok) { toast.error("Error al guardar"); return; }
+      setActivosOficina(prev => prev.map(a => a.id === id ? { ...a, [campo]: valor } : a));
+    } finally {
+      setSavingInline(null);
+    }
+  }
+
   async function descargarPDF() {
     try {
       const res = await fetch("/api/inventario/pdf", { cache: "no-store" });
@@ -969,62 +984,123 @@ export default function InventarioActivosPage() {
 
           {/* Tabla estilo inventario */}
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
+            <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-[#1e1e1e] bg-[#0a0a0a]">
-                  <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Art\u00edculo</th>
-                  <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Marca</th>
-                  <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Modelo</th>
-                  <th className="text-center px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Cant.</th>
-                  <th className="text-right px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Valor adq.</th>
-                  <th className="text-right px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Valor actual</th>
-                  <th className="w-16"></th>
+                <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
+                  <th className="text-left px-4 py-2.5 font-medium">Art\u00edculo</th>
+                  <th className="text-left px-4 py-2.5 font-medium hidden md:table-cell">Marca · Modelo</th>
+                  <th className="text-right px-4 py-2.5 font-medium w-16">Cant.</th>
+                  <th className="text-right px-4 py-2.5 font-medium w-36">Valor adq.</th>
+                  <th className="text-right px-4 py-2.5 font-medium w-36">Valor actual</th>
+                  <th className="text-right px-4 py-2.5 font-medium w-28">Depreci.</th>
+                  <th className="w-14"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#1a1a1a]">
+              <tbody>
                 {activosOficina
                   .filter(a => !busquedaOf || a.nombre.toLowerCase().includes(busquedaOf.toLowerCase()) || (a.marca ?? "").toLowerCase().includes(busquedaOf.toLowerCase()))
-                  .map(a => (
-                  <tr key={a.id} className="hover:bg-[#0d0d0d] transition-colors group">
-                    <td className="px-4 py-3">
-                      <p className="text-white font-medium text-sm">{a.nombre}</p>
-                      {a.notas && <p className="text-[#444] text-[10px] mt-0.5 truncate max-w-48">{a.notas}</p>}
-                    </td>
-                    <td className="px-4 py-3 text-gray-400 text-xs">{a.marca ?? <span className="text-[#333]">—</span>}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{a.modelo ?? <span className="text-[#333]">—</span>}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="inline-block bg-[#1a1a1a] text-gray-300 text-xs px-2 py-0.5 rounded-full">{a.cantidad}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right text-[#B3985B] text-sm font-medium">
-                      {a.valorAdquisicion > 0 ? fmx(a.valorAdquisicion) : <span className="text-[#333] text-xs">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-right text-blue-400 text-sm font-medium">
-                      {a.valorActual > 0 ? fmx(a.valorActual) : <span className="text-[#333] text-xs">—</span>}
-                    </td>
-                    <td className="px-3">
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
-                        <button onClick={() => abrirModalOf(a)}
-                          className="text-[#555] hover:text-[#B3985B] transition-colors p-1" title="Editar">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        </button>
-                        <button onClick={() => eliminarOficina(a.id)}
-                          className="text-[#333] hover:text-red-500 transition-colors p-1" title="Eliminar">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                  .map(a => {
+                    const dep = a.valorAdquisicion > 0 && a.valorActual > 0
+                      ? ((1 - a.valorActual / a.valorAdquisicion) * 100)
+                      : null;
+                    return (
+                      <tr key={a.id} className="border-t border-[#161616] hover:bg-[#0d0d0d] transition-colors group">
+                        {/* Nombre */}
+                        <td className="px-4 py-2.5">
+                          <p className="text-white font-medium">{a.nombre}</p>
+                          {a.notas && <p className="text-[#444] text-[10px] mt-0.5 truncate max-w-52">{a.notas}</p>}
+                        </td>
+                        {/* Marca · Modelo */}
+                        <td className="px-4 py-2.5 hidden md:table-cell">
+                          {(a.marca || a.modelo)
+                            ? <span className="text-[#6b7280]">{[a.marca, a.modelo].filter(Boolean).join(" \u00b7 ")}</span>
+                            : <span className="text-[#333]">—</span>}
+                        </td>
+                        {/* Cantidad — click to edit */}
+                        <td className="px-4 py-2.5 text-right">
+                          {isEditing(a.id, "cantidad") ? (
+                            <input type="number" autoFocus defaultValue={a.cantidad} min={1}
+                              disabled={savingInline === a.id}
+                              className={`${inlineCls} text-white w-16`}
+                              onBlur={ev => { const v = parseInt(ev.target.value) || 1; if (v !== a.cantidad) patchActivo(a.id, "cantidad", v); stopEdit(); }}
+                              onKeyDown={ev => { if (ev.key === "Enter") (ev.target as HTMLInputElement).blur(); if (ev.key === "Escape") stopEdit(); }} />
+                          ) : (
+                            <button onClick={() => startEdit(a.id, "cantidad")}
+                              className="inline-block bg-[#1a1a1a] text-gray-300 text-xs px-2.5 py-0.5 rounded-full hover:bg-[#2a2a2a] transition-colors tabular-nums">
+                              {a.cantidad}
+                            </button>
+                          )}
+                        </td>
+                        {/* Valor adquisición — click to edit */}
+                        <td className="px-4 py-2.5 text-right">
+                          {isEditing(a.id, "valorAdquisicion") ? (
+                            <input type="number" autoFocus defaultValue={a.valorAdquisicion || ""} min={0} placeholder="0"
+                              disabled={savingInline === a.id}
+                              className={`${inlineCls} text-[#B3985B]`}
+                              onBlur={ev => { const v = parseFloat(ev.target.value) || 0; if (v !== a.valorAdquisicion) patchActivo(a.id, "valorAdquisicion", v); stopEdit(); }}
+                              onKeyDown={ev => { if (ev.key === "Enter") (ev.target as HTMLInputElement).blur(); if (ev.key === "Escape") stopEdit(); }} />
+                          ) : (
+                            <button onClick={() => startEdit(a.id, "valorAdquisicion")}
+                              className="text-[#B3985B] font-medium hover:opacity-75 transition-opacity tabular-nums">
+                              {a.valorAdquisicion > 0 ? fmx(a.valorAdquisicion) : <span className="text-[#333]">—</span>}
+                            </button>
+                          )}
+                        </td>
+                        {/* Valor actual — click to edit */}
+                        <td className="px-4 py-2.5 text-right">
+                          {isEditing(a.id, "valorActual") ? (
+                            <input type="number" autoFocus defaultValue={a.valorActual || ""} min={0} placeholder="0"
+                              disabled={savingInline === a.id}
+                              className={`${inlineCls} text-blue-400`}
+                              onBlur={ev => { const v = parseFloat(ev.target.value) || 0; if (v !== a.valorActual) patchActivo(a.id, "valorActual", v); stopEdit(); }}
+                              onKeyDown={ev => { if (ev.key === "Enter") (ev.target as HTMLInputElement).blur(); if (ev.key === "Escape") stopEdit(); }} />
+                          ) : (
+                            <button onClick={() => startEdit(a.id, "valorActual")}
+                              className="text-blue-400 font-medium hover:opacity-75 transition-opacity tabular-nums">
+                              {a.valorActual > 0 ? fmx(a.valorActual) : <span className="text-[#333]">—</span>}
+                            </button>
+                          )}
+                        </td>
+                        {/* Depreciación (calculado) */}
+                        <td className="px-4 py-2.5 text-right">
+                          {dep != null ? (
+                            <span className={`font-medium tabular-nums ${
+                              dep >= 60 ? "text-red-400" : dep >= 30 ? "text-yellow-400" : "text-emerald-400"
+                            }`}>{pct(dep)}</span>
+                          ) : <span className="text-[#333]">—</span>}
+                        </td>
+                        {/* Acciones */}
+                        <td className="px-3">
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                            <button onClick={() => abrirModalOf(a)}
+                              className="text-[#555] hover:text-[#B3985B] transition-colors p-1" title="Editar">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
+                            <button onClick={() => eliminarOficina(a.id)}
+                              className="text-[#333] hover:text-red-500 transition-colors p-1" title="Eliminar">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                })}
               </tbody>
-              <tfoot>
-                <tr className="border-t border-[#2a2a2a] bg-[#0a0a0a]">
-                  <td colSpan={4} className="px-4 py-3 text-xs text-gray-500 font-semibold uppercase">Total</td>
-                  <td className="px-4 py-3 text-right text-[#B3985B] font-bold">{fmx(activosOficina.reduce((s, a) => s + a.valorAdquisicion, 0))}</td>
-                  <td className="px-4 py-3 text-right text-blue-400 font-bold">{fmx(activosOficina.reduce((s, a) => s + a.valorActual, 0))}</td>
-                  <td />
-                </tr>
-              </tfoot>
             </table>
+          </div>
+          {/* Footer de totales */}
+          <div className="border-t border-[#222] px-4 py-3 flex flex-wrap items-center justify-between gap-4 bg-[#0d0d0d]">
+            <p className="text-[#6b7280] text-xs">{activosOficina.length} activos de oficina</p>
+            <div className="flex items-center gap-8 text-sm">
+              <div className="text-right">
+                <p className="text-[10px] text-[#555] uppercase tracking-wider mb-0.5">Valor adquisici\u00f3n</p>
+                <p className="text-[#B3985B] font-bold text-base tabular-nums">{fmx(activosOficina.reduce((s, a) => s + a.valorAdquisicion, 0))}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-[#555] uppercase tracking-wider mb-0.5">Valor actual</p>
+                <p className="text-blue-400 font-bold text-base tabular-nums">{fmx(activosOficina.reduce((s, a) => s + a.valorActual, 0))}</p>
+              </div>
+            </div>
           </div>
         </div>
       )}
