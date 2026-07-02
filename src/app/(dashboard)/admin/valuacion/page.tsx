@@ -312,15 +312,36 @@ export default function InventarioActivosPage() {
     return order.filter(k => map.has(k)).map(k => ({ cat: k, items: map.get(k)! }));
   }, [accesoriosProd]);
 
-  // ── Agrupar accesorios por equipo origen
+  // ── Agrupar accesorios por equipo origen (incluye equipoId)
   const accesoriosPorEquipo = useMemo(() => {
-    const map = new Map<string, { equipoNombre: string; items: AccProduccion[] }>();
+    const map = new Map<string, { equipoId: string; equipoNombre: string; items: AccProduccion[] }>();
     accesoriosProd.forEach(a => {
-      if (!map.has(a.equipoId)) map.set(a.equipoId, { equipoNombre: a.equipoNombre, items: [] });
+      if (!map.has(a.equipoId)) map.set(a.equipoId, { equipoId: a.equipoId, equipoNombre: a.equipoNombre, items: [] });
       map.get(a.equipoId)!.items.push(a);
     });
     return Array.from(map.values()).sort((a, b) => a.equipoNombre.localeCompare(b.equipoNombre));
   }, [accesoriosProd]);
+
+  // ── Equipos propios SIN ningún accesorio registrado
+  const equiposSinAcc = useMemo(() => {
+    const conAcc = new Set(accesoriosProd.map(a => a.equipoId));
+    return equiposProd
+      .filter(eq => !conAcc.has(eq.id))
+      .map(eq => ({
+        equipoId: eq.id,
+        equipoNombre: [eq.marca, eq.modelo].filter(Boolean).join(" \u00b7 ") || eq.descripcion,
+        descripcion: eq.descripcion,
+        categoria: eq.categoria.nombre,
+      }))
+      .filter(eq => !busquedaAcc || eq.equipoNombre.toLowerCase().includes(busquedaAcc.toLowerCase()))
+      .sort((a, b) => a.equipoNombre.localeCompare(b.equipoNombre));
+  }, [equiposProd, accesoriosProd, busquedaAcc]);
+
+  function openModalParaEquipo(equipoId: string, equipoNombre: string) {
+    setFormAcc({ nombre: "", categoria: "", equipoId });
+    setEquipoBusq(equipoNombre);
+    setModalAcc(true);
+  }
 
   // ── Filtrado por búsqueda
   const accesoriosFiltrados = useMemo(() =>
@@ -698,9 +719,9 @@ export default function InventarioActivosPage() {
           {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <KpiCard label="Total accesorios" value={String(accesoriosProd.length)} sub="En biblioteca de equipos" />
-            <KpiCard label="Equipos con accesorios" value={String(accesoriosPorEquipo.length)} sub="De producci\u00f3n" color="text-[#B3985B]" />
+            <KpiCard label="Equipos con accesorios" value={String(accesoriosPorEquipo.length)} sub={`de ${equiposProd.length} en producci\u00f3n`} color="text-[#B3985B]" />
+            <KpiCard label="Sin accesorios" value={String(equiposSinAcc.length)} sub="Pendientes por registrar" color="text-red-400" />
             <KpiCard label="Cables" value={String(accesoriosProd.filter(a => a.categoria === "cable").length)} sub="Clasificados" color="text-blue-400" />
-            <KpiCard label="Soportes" value={String(accesoriosProd.filter(a => a.categoria === "soporte").length)} sub="Clasificados" color="text-emerald-400" />
           </div>
 
           {/* Toolbar */}
@@ -726,11 +747,10 @@ export default function InventarioActivosPage() {
             </button>
           </div>
 
-          {/* Tabla */}
-          {accesoriosProd.length === 0 ? (
+          {/* Tabla: siempre visible si hay equipos de produccion */}
+          {equiposProd.length === 0 ? (
             <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-12 text-center">
-              <p className="text-[#555] text-sm mb-1">No hay accesorios registrados.</p>
-              <p className="text-[#333] text-xs">Agr\u00e9galos desde la tarjeta de cada equipo en Inventario, o usa el bot\u00f3n de arriba.</p>
+              <p className="text-[#555] text-sm">No hay equipos propios en el inventario.</p>
             </div>
           ) : (
             <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
@@ -745,33 +765,78 @@ export default function InventarioActivosPage() {
                 </thead>
                 <tbody className="divide-y divide-[#1a1a1a]">
                   {agruparAcc === "equipo"
-                    ? accesoriosPorEquipo.filter(g => !busquedaAcc || g.items.some(a => a.nombre.toLowerCase().includes(busquedaAcc.toLowerCase()) || g.equipoNombre.toLowerCase().includes(busquedaAcc.toLowerCase()))).map(({ equipoNombre, items }) => (
-                        <>
-                          <tr key={`eq-${equipoNombre}`}>
-                            <td colSpan={4} className="px-4 py-2 bg-[#0d0d0d] border-b border-[#1e1e1e]">
-                              <span className="text-[11px] text-[#B3985B] font-semibold">{equipoNombre}</span>
-                              <span className="text-[#333] text-[10px] ml-2">({items.length})</span>
-                            </td>
-                          </tr>
-                          {items.filter(a => !busquedaAcc || a.nombre.toLowerCase().includes(busquedaAcc.toLowerCase())).map(a => (
-                            <tr key={a.id} className="hover:bg-[#0d0d0d] transition-colors group">
-                              <td className="px-4 py-2.5 pl-8 text-gray-300 font-medium">{a.nombre}</td>
-                              <td className="px-4 py-2.5">
-                                {a.categoria ? (
-                                  <span className={`text-xs ${ACC_CAT_COLOR[a.categoria] ?? "text-gray-500"}`}>{ACC_CAT_LABEL[a.categoria] ?? a.categoria}</span>
-                                ) : <span className="text-[#333] text-xs">—</span>}
-                              </td>
-                              <td className="px-4 py-2.5 hidden md:table-cell"></td>
-                              <td className="px-2">
-                                <button onClick={() => deleteAccesorio(a.equipoId, a.id)}
-                                  className="opacity-0 group-hover:opacity-100 text-[#333] hover:text-red-500 transition-all p-1">
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                                </button>
+                    ? (
+                      <>
+                        {accesoriosPorEquipo
+                          .filter(g => !busquedaAcc || g.items.some(a => a.nombre.toLowerCase().includes(busquedaAcc.toLowerCase()) || g.equipoNombre.toLowerCase().includes(busquedaAcc.toLowerCase())))
+                          .map(({ equipoId, equipoNombre, items }) => (
+                          <>
+                            <tr key={`eq-${equipoId}`}>
+                              <td colSpan={4} className="px-4 py-2 bg-[#0d0d0d] border-b border-[#1e1e1e]">
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <span className="text-[11px] text-[#B3985B] font-semibold">{equipoNombre}</span>
+                                    <span className="text-[#333] text-[10px] ml-2">({items.length})</span>
+                                  </div>
+                                  <button onClick={() => openModalParaEquipo(equipoId, equipoNombre)}
+                                    className="flex items-center gap-1 text-[10px] text-[#555] hover:text-[#B3985B] transition-colors pr-1">
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                    Agregar
+                                  </button>
+                                </div>
                               </td>
                             </tr>
-                          ))}
-                        </>
-                      ))
+                            {items.filter(a => !busquedaAcc || a.nombre.toLowerCase().includes(busquedaAcc.toLowerCase())).map(a => (
+                              <tr key={a.id} className="hover:bg-[#0d0d0d] transition-colors group">
+                                <td className="px-4 py-2.5 pl-8 text-gray-300 font-medium">{a.nombre}</td>
+                                <td className="px-4 py-2.5">
+                                  {a.categoria ? (
+                                    <span className={`text-xs ${ACC_CAT_COLOR[a.categoria] ?? "text-gray-500"}`}>{ACC_CAT_LABEL[a.categoria] ?? a.categoria}</span>
+                                  ) : <span className="text-[#333] text-xs">—</span>}
+                                </td>
+                                <td className="px-4 py-2.5 hidden md:table-cell"></td>
+                                <td className="px-2">
+                                  <button onClick={() => deleteAccesorio(a.equipoId, a.id)}
+                                    className="opacity-0 group-hover:opacity-100 text-[#333] hover:text-red-500 transition-all p-1">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </>
+                        ))}
+
+                        {/* Equipos sin accesorios — solo en vista Por equipo */}
+                        {equiposSinAcc.length > 0 && (
+                          <>
+                            <tr>
+                              <td colSpan={4} className="px-4 py-2 bg-[#0a0a0a] border-t-2 border-[#1e1e1e]">
+                                <span className="text-[10px] text-red-400/70 font-semibold uppercase tracking-wider">Sin accesorios registrados</span>
+                                <span className="text-[#333] text-[10px] ml-2">({equiposSinAcc.length})</span>
+                              </td>
+                            </tr>
+                            {equiposSinAcc.map(eq => (
+                              <tr key={eq.equipoId} className="hover:bg-[#0d0d0d] transition-colors group">
+                                <td className="px-4 py-2.5 pl-8" colSpan={2}>
+                                  <p className="text-[#555] text-sm font-medium">{eq.equipoNombre}</p>
+                                  {eq.equipoNombre !== eq.descripcion && <p className="text-[#333] text-[10px]">{eq.descripcion}</p>}
+                                </td>
+                                <td className="px-4 py-2.5 hidden md:table-cell">
+                                  <span className="text-[#2a2a2a] text-xs">{eq.categoria}</span>
+                                </td>
+                                <td className="px-2">
+                                  <button onClick={() => openModalParaEquipo(eq.equipoId, eq.equipoNombre)}
+                                    className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-[10px] text-[#555] hover:text-[#B3985B] border border-[#2a2a2a] hover:border-[#B3985B]/40 px-2 py-0.5 rounded transition-all whitespace-nowrap">
+                                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                                    + accesorio
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </>
+                        )}
+                      </>
+                    )
                     : accesoriosPorCat.map(({ cat, items }) => (
                         <>
                           <tr key={`cat-${cat}`}>
