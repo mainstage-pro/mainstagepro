@@ -30,6 +30,18 @@ type Accesorio = {
   categoria: { id: string; nombre: string } | null;
 };
 
+type HervamActivo = {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  categoria: string;
+  propietario: string;
+  valorAdquisicion: number;
+  valorActual: number;
+  precioRenta: number;
+  notas: string | null;
+};
+
 type Categoria = { id: string; nombre: string; orden: number };
 
 type EquipoOficina = {
@@ -72,6 +84,10 @@ export default function InventarioActivosPage() {
   const [tab, setTab] = useState<Tab>("resumen");
   const [savingInline, setSavingInline] = useState<string | null>(null);
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
+  const [activosOficina, setActivosOficina] = useState<HervamActivo[]>([]);
+  const [nuevaOficina, setNuevaOficina] = useState({ nombre: "", descripcion: "", notas: "" });
+  const [addingOficina, setAddingOficina] = useState(false);
+  const [savingOficina, setSavingOficina] = useState<string | null>(null);
 
   function startEdit(id: string, field: string) { setEditingCell({ id, field }); }
   function stopEdit() { setEditingCell(null); }
@@ -80,16 +96,58 @@ export default function InventarioActivosPage() {
   async function load() {
     setLoading(true);
     try {
-      const res = await fetch("/api/inventario/maestro");
-      const data = await res.json();
-      setEquipos(data.equipos ?? []);
-      setCategorias(data.categorias ?? []);
+      const [resEq, resOf] = await Promise.all([
+        fetch("/api/inventario/maestro"),
+        fetch("/api/finanzas/hervam/activos"),
+      ]);
+      const dataEq = await resEq.json();
+      const dataOf = await resOf.json();
+      setEquipos(dataEq.equipos ?? []);
+      setCategorias(dataEq.categorias ?? []);
+      setActivosOficina((dataOf.activos ?? []).filter((a: HervamActivo) => a.categoria === "OFICINA"));
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => { load(); }, []);
+
+  async function patchOficina(id: string, campo: string, valor: number | string | null) {
+    setSavingOficina(id);
+    try {
+      const res = await fetch(`/api/finanzas/hervam/activos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [campo]: valor }),
+      });
+      if (!res.ok) { toast.error("Error al guardar"); return; }
+      setActivosOficina(prev => prev.map(a => a.id === id ? { ...a, [campo]: valor } : a));
+    } finally {
+      setSavingOficina(null);
+    }
+  }
+
+  async function eliminarOficina(id: string) {
+    if (!confirm("¿Eliminar este activo?")) return;
+    await fetch(`/api/finanzas/hervam/activos/${id}`, { method: "DELETE" });
+    setActivosOficina(prev => prev.filter(a => a.id !== id));
+    toast.success("Eliminado");
+  }
+
+  async function crearOficina() {
+    if (!nuevaOficina.nombre.trim()) { toast.error("Nombre requerido"); return; }
+    const res = await fetch("/api/finanzas/hervam/activos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...nuevaOficina, categoria: "OFICINA", propietario: "MAINSTAGE", valorAdquisicion: 0, valorActual: 0 }),
+    });
+    if (!res.ok) { toast.error("Error al crear"); return; }
+    const d = await res.json();
+    setActivosOficina(prev => [...prev, d.activo]);
+    setNuevaOficina({ nombre: "", descripcion: "", notas: "" });
+    setAddingOficina(false);
+    toast.success("Activo agregado");
+  }
 
   async function patchEquipo(id: string, campo: string, valor: number | string | null) {
     setSavingInline(id);
@@ -151,7 +209,7 @@ export default function InventarioActivosPage() {
     { key: "resumen",     label: "Reporte General" },
     { key: "produccion",  label: `Equipos de Producción (${equiposProd.length})` },
     { key: "accesorios",  label: `Accesorios de Producción (${accesoriosProd.length})` },
-    { key: "oficina",     label: "Equipos de Oficina" },
+    { key: "oficina",     label: `Equipos de Oficina (${activosOficina.length})` },
   ];
 
   // ── Agrupar propios por categoría
@@ -506,15 +564,119 @@ export default function InventarioActivosPage() {
       ) : (
 
         /* ── EQUIPOS DE OFICINA ── */
-        <div className="space-y-5">
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-12 text-center">
-            <div className="w-12 h-12 bg-[#1a1a1a] rounded-xl flex items-center justify-center mx-auto mb-4">
-              <svg className="w-6 h-6 text-[#444]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
+        <div className="space-y-4">
+          {/* KPIs */}
+          <div className="grid grid-cols-3 gap-3">
+            <KpiCard label="Total activos" value={String(activosOficina.length)} sub="Equipos de oficina" />
+            <KpiCard label="Valor adquisición" color="text-[#B3985B]"
+              value={fmx(activosOficina.reduce((s, a) => s + a.valorAdquisicion, 0))}
+              sub="Costo histórico" />
+            <KpiCard label="Valor actual" color="text-blue-400"
+              value={fmx(activosOficina.reduce((s, a) => s + a.valorActual, 0))}
+              sub="Valuación estimada" />
+          </div>
+
+          {/* Tabla */}
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-[#1e1e1e]">
+              <h3 className="text-sm font-semibold text-white">Activos de Oficina</h3>
+              <button onClick={() => setAddingOficina(v => !v)}
+                className="flex items-center gap-1.5 text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/30 hover:border-[#B3985B]/60 px-3 py-1.5 rounded-lg transition-colors">
+                <span className="text-sm">+</span> Agregar activo
+              </button>
             </div>
-            <p className="text-[#6b7280] text-sm font-medium">Módulo disponible</p>
-            <p className="text-[#333] text-xs mt-1">Próximamente podrás registrar equipos de oficina aquí.</p>
+
+            {/* Form nuevo */}
+            {addingOficina && (
+              <div className="px-5 py-4 border-b border-[#1e1e1e] bg-[#0d0d0d] flex flex-wrap gap-3 items-end">
+                <div className="flex-1 min-w-40">
+                  <label className="text-[10px] text-gray-500 mb-1 block">Nombre *</label>
+                  <input value={nuevaOficina.nombre} onChange={e => setNuevaOficina(p => ({ ...p, nombre: e.target.value }))}
+                    placeholder="Ej: Silla ergonómica"
+                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/40" />
+                </div>
+                <div className="flex-1 min-w-40">
+                  <label className="text-[10px] text-gray-500 mb-1 block">Marca / Modelo</label>
+                  <input value={nuevaOficina.descripcion} onChange={e => setNuevaOficina(p => ({ ...p, descripcion: e.target.value }))}
+                    placeholder="Ej: Herman Miller"
+                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/40" />
+                </div>
+                <div className="w-56">
+                  <label className="text-[10px] text-gray-500 mb-1 block">Notas</label>
+                  <input value={nuevaOficina.notas} onChange={e => setNuevaOficina(p => ({ ...p, notas: e.target.value }))}
+                    placeholder="Cantidad, serie, etc."
+                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/40" />
+                </div>
+                <button onClick={crearOficina}
+                  className="px-4 py-1.5 bg-[#B3985B] hover:bg-[#c9a960] text-black text-sm font-semibold rounded-lg transition-colors">
+                  Guardar
+                </button>
+                <button onClick={() => setAddingOficina(false)} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">Cancelar</button>
+              </div>
+            )}
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[#1e1e1e] bg-[#0d0d0d]">
+                    <th className="text-left px-4 py-2.5 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Activo</th>
+                    <th className="text-left px-4 py-2.5 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Marca / Modelo</th>
+                    <th className="text-left px-4 py-2.5 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Notas</th>
+                    <th className="text-right px-4 py-2.5 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Valor adquisición</th>
+                    <th className="text-right px-4 py-2.5 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Valor actual</th>
+                    <th className="w-8"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1a1a1a]">
+                  {activosOficina.map(a => (
+                    <tr key={a.id} className="hover:bg-[#0d0d0d] transition-colors group">
+                      <td className="px-4 py-2.5 text-white font-medium">{a.nombre}</td>
+                      <td className="px-4 py-2.5 text-gray-400 text-xs">{a.descripcion ?? "—"}</td>
+                      <td className="px-4 py-2.5 text-gray-500 text-xs max-w-48 truncate">{a.notas ?? "—"}</td>
+                      <td className="px-4 py-2.5 text-right">
+                        <input
+                          type="number"
+                          defaultValue={a.valorAdquisicion || ""}
+                          placeholder="0"
+                          onBlur={e => patchOficina(a.id, "valorAdquisicion", parseFloat(e.target.value) || 0)}
+                          className={inlineCls + (savingOficina === a.id ? " opacity-50" : "")}
+                        />
+                      </td>
+                      <td className="px-4 py-2.5 text-right">
+                        <input
+                          type="number"
+                          defaultValue={a.valorActual || ""}
+                          placeholder="0"
+                          onBlur={e => patchOficina(a.id, "valorActual", parseFloat(e.target.value) || 0)}
+                          className={inlineCls + (savingOficina === a.id ? " opacity-50" : "")}
+                        />
+                      </td>
+                      <td className="px-2">
+                        <button onClick={() => eliminarOficina(a.id)}
+                          className="opacity-0 group-hover:opacity-100 text-[#333] hover:text-red-500 transition-all p-1">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                            <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t border-[#2a2a2a] bg-[#0d0d0d]">
+                    <td colSpan={3} className="px-4 py-2.5 text-xs text-gray-500 font-semibold uppercase">Total</td>
+                    <td className="px-4 py-2.5 text-right text-[#B3985B] font-bold text-sm">
+                      {fmx(activosOficina.reduce((s, a) => s + a.valorAdquisicion, 0))}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-blue-400 font-bold text-sm">
+                      {fmx(activosOficina.reduce((s, a) => s + a.valorActual, 0))}
+                    </td>
+                    <td />
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
           </div>
         </div>
       )}
