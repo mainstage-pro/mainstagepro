@@ -397,6 +397,7 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token}: 
 
       const el = document.body;
       const canvas = await html2canvas(el, {
+        // @ts-expect-error type missing scale
         scale: 2,
         useCORS: true,
         allowTaint: true,
@@ -405,7 +406,7 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token}: 
         scrollY: 0,
         windowWidth: document.documentElement.scrollWidth,
         windowHeight: document.body.scrollHeight,
-      });
+      } as any);
 
       const imgData = canvas.toDataURL("image/jpeg", 0.92);
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
