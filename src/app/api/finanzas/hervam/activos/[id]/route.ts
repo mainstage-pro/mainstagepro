@@ -12,15 +12,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const activo = await prisma.hervamActivo.update({
     where: { id },
     data: {
-      ...(body.nombre !== undefined && { nombre: body.nombre }),
-      ...(body.descripcion !== undefined && { descripcion: body.descripcion || null }),
-      ...(body.categoria !== undefined && { categoria: body.categoria }),
-      ...(body.propietario !== undefined && { propietario: body.propietario }),
-      ...(body.valorAdquisicion !== undefined && { valorAdquisicion: parseFloat(body.valorAdquisicion) }),
-      ...(body.valorActual !== undefined && { valorActual: parseFloat(body.valorActual) }),
-      ...(body.precioRenta !== undefined && { precioRenta: parseFloat(body.precioRenta) || 0 }),
+      ...(body.nombre      !== undefined && { nombre:           body.nombre.trim() }),
+      ...(body.marca       !== undefined && { marca:            body.marca?.trim() || null }),
+      ...(body.modelo      !== undefined && { modelo:           body.modelo?.trim() || null }),
+      ...(body.descripcion !== undefined && { descripcion:      body.descripcion?.trim() || null }),
+      ...(body.cantidad    !== undefined && { cantidad:         parseInt(body.cantidad) || 1 }),
+      ...(body.categoria   !== undefined && { categoria:        body.categoria }),
+      ...(body.propietario !== undefined && { propietario:      body.propietario }),
+      ...(body.valorAdquisicion !== undefined && { valorAdquisicion: parseFloat(body.valorAdquisicion) || 0 }),
+      ...(body.valorActual      !== undefined && { valorActual:      parseFloat(body.valorActual) || 0 }),
+      ...(body.precioRenta      !== undefined && { precioRenta:      parseFloat(body.precioRenta) || 0 }),
       ...(body.fechaAdquisicion !== undefined && { fechaAdquisicion: body.fechaAdquisicion ? new Date(body.fechaAdquisicion) : null }),
-      ...(body.notas !== undefined && { notas: body.notas || null }),
+      ...(body.notas       !== undefined && { notas:            body.notas?.trim() || null }),
     },
   });
 

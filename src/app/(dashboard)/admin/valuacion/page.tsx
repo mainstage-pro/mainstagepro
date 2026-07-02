@@ -33,7 +33,10 @@ type Accesorio = {
 type HervamActivo = {
   id: string;
   nombre: string;
+  marca: string | null;
+  modelo: string | null;
   descripcion: string | null;
+  cantidad: number;
   categoria: string;
   propietario: string;
   valorAdquisicion: number;
@@ -44,15 +47,8 @@ type HervamActivo = {
 
 type Categoria = { id: string; nombre: string; orden: number };
 
-type EquipoOficina = {
-  id: string;
-  nombre: string;
-  cantidad: number;
-  valorUnitario: number;
-  precioRenta: number;
-  propietario: string;
-  categoria: string;
-};
+const OFICINA_FORM_EMPTY = { nombre: "", marca: "", modelo: "", descripcion: "", cantidad: "1", notas: "", valorAdquisicion: "", valorActual: "" };
+type OficinaForm = typeof OFICINA_FORM_EMPTY;
 
 function fmx(n: number) {
   return `$${n.toLocaleString("es-MX", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -85,9 +81,10 @@ export default function InventarioActivosPage() {
   const [savingInline, setSavingInline] = useState<string | null>(null);
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
   const [activosOficina, setActivosOficina] = useState<HervamActivo[]>([]);
-  const [nuevaOficina, setNuevaOficina] = useState({ nombre: "", descripcion: "", notas: "" });
-  const [addingOficina, setAddingOficina] = useState(false);
-  const [savingOficina, setSavingOficina] = useState<string | null>(null);
+  const [busquedaOf, setBusquedaOf] = useState("");
+  const [modalOf, setModalOf] = useState<null | "nuevo" | HervamActivo>(null);
+  const [formOf, setFormOf] = useState<OficinaForm>(OFICINA_FORM_EMPTY);
+  const [savingOf, setSavingOf] = useState(false);
 
   function startEdit(id: string, field: string) { setEditingCell({ id, field }); }
   function stopEdit() { setEditingCell(null); }
@@ -112,41 +109,65 @@ export default function InventarioActivosPage() {
 
   useEffect(() => { load(); }, []);
 
-  async function patchOficina(id: string, campo: string, valor: number | string | null) {
-    setSavingOficina(id);
-    try {
-      const res = await fetch(`/api/finanzas/hervam/activos/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [campo]: valor }),
+  function abrirModalOf(activo?: HervamActivo) {
+    if (activo) {
+      setFormOf({
+        nombre: activo.nombre,
+        marca: activo.marca ?? "",
+        modelo: activo.modelo ?? "",
+        descripcion: activo.descripcion ?? "",
+        cantidad: String(activo.cantidad),
+        notas: activo.notas ?? "",
+        valorAdquisicion: activo.valorAdquisicion ? String(activo.valorAdquisicion) : "",
+        valorActual: activo.valorActual ? String(activo.valorActual) : "",
       });
-      if (!res.ok) { toast.error("Error al guardar"); return; }
-      setActivosOficina(prev => prev.map(a => a.id === id ? { ...a, [campo]: valor } : a));
+      setModalOf(activo);
+    } else {
+      setFormOf(OFICINA_FORM_EMPTY);
+      setModalOf("nuevo");
+    }
+  }
+
+  async function guardarOficina() {
+    if (!formOf.nombre.trim()) { toast.error("Nombre requerido"); return; }
+    setSavingOf(true);
+    try {
+      const payload = {
+        nombre: formOf.nombre.trim(),
+        marca: formOf.marca.trim() || null,
+        modelo: formOf.modelo.trim() || null,
+        descripcion: formOf.descripcion.trim() || null,
+        cantidad: parseInt(formOf.cantidad) || 1,
+        notas: formOf.notas.trim() || null,
+        valorAdquisicion: parseFloat(formOf.valorAdquisicion) || 0,
+        valorActual: parseFloat(formOf.valorActual) || 0,
+        categoria: "OFICINA",
+        propietario: "MAINSTAGE",
+      };
+      if (modalOf === "nuevo") {
+        const res = await fetch("/api/finanzas/hervam/activos", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        if (!res.ok) { toast.error("Error al crear"); return; }
+        const d = await res.json();
+        setActivosOficina(prev => [...prev, d.activo].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+        toast.success("Activo agregado");
+      } else if (modalOf && typeof modalOf !== "string") {
+        const res = await fetch(`/api/finanzas/hervam/activos/${modalOf.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        if (!res.ok) { toast.error("Error al guardar"); return; }
+        const d = await res.json();
+        setActivosOficina(prev => prev.map(a => a.id === d.activo.id ? d.activo : a));
+        toast.success("Guardado");
+      }
+      setModalOf(null);
     } finally {
-      setSavingOficina(null);
+      setSavingOf(false);
     }
   }
 
   async function eliminarOficina(id: string) {
-    if (!confirm("¿Eliminar este activo?")) return;
+    if (!confirm("\u00bfEliminar este activo?")) return;
     await fetch(`/api/finanzas/hervam/activos/${id}`, { method: "DELETE" });
     setActivosOficina(prev => prev.filter(a => a.id !== id));
     toast.success("Eliminado");
-  }
-
-  async function crearOficina() {
-    if (!nuevaOficina.nombre.trim()) { toast.error("Nombre requerido"); return; }
-    const res = await fetch("/api/finanzas/hervam/activos", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...nuevaOficina, categoria: "OFICINA", propietario: "MAINSTAGE", valorAdquisicion: 0, valorActual: 0 }),
-    });
-    if (!res.ok) { toast.error("Error al crear"); return; }
-    const d = await res.json();
-    setActivosOficina(prev => [...prev, d.activo]);
-    setNuevaOficina({ nombre: "", descripcion: "", notas: "" });
-    setAddingOficina(false);
-    toast.success("Activo agregado");
   }
 
   async function patchEquipo(id: string, campo: string, valor: number | string | null) {
@@ -565,118 +586,160 @@ export default function InventarioActivosPage() {
 
         /* ── EQUIPOS DE OFICINA ── */
         <div className="space-y-4">
+
+          {/* Modal agregar / editar */}
+          {modalOf !== null && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }}>
+              <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-2xl w-full max-w-lg shadow-2xl">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e1e1e]">
+                  <h2 className="text-white font-semibold">{modalOf === "nuevo" ? "Agregar activo" : "Editar activo"}</h2>
+                  <button onClick={() => setModalOf(null)} className="text-gray-500 hover:text-white transition-colors">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+                <div className="px-6 py-5 space-y-4">
+                  {/* Row 1 */}
+                  <div>
+                    <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Art\u00edculo *</label>
+                    <input value={formOf.nombre} onChange={e => setFormOf(p => ({ ...p, nombre: e.target.value }))}
+                      placeholder="Ej: Silla ergon\u00f3mica"
+                      className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+                  </div>
+                  {/* Row 2: marca + modelo */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Marca</label>
+                      <input value={formOf.marca} onChange={e => setFormOf(p => ({ ...p, marca: e.target.value }))}
+                        placeholder="Ej: Sony"
+                        className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Modelo</label>
+                      <input value={formOf.modelo} onChange={e => setFormOf(p => ({ ...p, modelo: e.target.value }))}
+                        placeholder="Ej: A7 IV"
+                        className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                  </div>
+                  {/* Row 3: cantidad + valor adq + valor actual */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Cantidad</label>
+                      <input type="number" min="1" value={formOf.cantidad} onChange={e => setFormOf(p => ({ ...p, cantidad: e.target.value }))}
+                        className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Valor adquisici\u00f3n</label>
+                      <input type="number" value={formOf.valorAdquisicion} onChange={e => setFormOf(p => ({ ...p, valorAdquisicion: e.target.value }))}
+                        placeholder="0"
+                        className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Valor actual</label>
+                      <input type="number" value={formOf.valorActual} onChange={e => setFormOf(p => ({ ...p, valorActual: e.target.value }))}
+                        placeholder="0"
+                        className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]/50" />
+                    </div>
+                  </div>
+                  {/* Notes */}
+                  <div>
+                    <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Notas</label>
+                    <input value={formOf.notas} onChange={e => setFormOf(p => ({ ...p, notas: e.target.value }))}
+                      placeholder="N\u00famero de serie, ubicaci\u00f3n, etc."
+                      className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+                  </div>
+                </div>
+                <div className="px-6 py-4 border-t border-[#1e1e1e] flex gap-2 justify-end">
+                  <button onClick={() => setModalOf(null)} className="px-4 py-2 text-sm text-gray-500 hover:text-white transition-colors">Cancelar</button>
+                  <button onClick={guardarOficina} disabled={savingOf}
+                    className="px-5 py-2 bg-[#B3985B] hover:bg-[#c9a960] disabled:opacity-50 text-black text-sm font-semibold rounded-lg transition-colors">
+                    {savingOf ? "Guardando..." : "Guardar"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* KPIs */}
-          <div className="grid grid-cols-3 gap-3">
-            <KpiCard label="Total activos" value={String(activosOficina.length)} sub="Equipos de oficina" />
-            <KpiCard label="Valor adquisición" color="text-[#B3985B]"
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <KpiCard label="Total art\u00edculos" value={String(activosOficina.length)} sub="Equipos de oficina" />
+            <KpiCard label="Total unidades" value={String(activosOficina.reduce((s,a) => s + a.cantidad, 0))} sub="Conteo f\u00edsico" />
+            <KpiCard label="Valor adquisici\u00f3n" color="text-[#B3985B]"
               value={fmx(activosOficina.reduce((s, a) => s + a.valorAdquisicion, 0))}
-              sub="Costo histórico" />
+              sub="Costo hist\u00f3rico" />
             <KpiCard label="Valor actual" color="text-blue-400"
               value={fmx(activosOficina.reduce((s, a) => s + a.valorActual, 0))}
-              sub="Valuación estimada" />
+              sub="Valuaci\u00f3n estimada" />
           </div>
 
-          {/* Tabla */}
+          {/* Barra superior: búsqueda + agregar */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <input value={busquedaOf} onChange={e => setBusquedaOf(e.target.value)} placeholder="Buscar activo..."
+              className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/40 w-56" />
+            <button onClick={() => abrirModalOf()}
+              className="flex items-center gap-2 px-4 py-2 bg-[#B3985B] hover:bg-[#c9a960] text-black text-sm font-semibold rounded-lg transition-colors">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Agregar activo
+            </button>
+          </div>
+
+          {/* Tabla estilo inventario */}
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-3 border-b border-[#1e1e1e]">
-              <h3 className="text-sm font-semibold text-white">Activos de Oficina</h3>
-              <button onClick={() => setAddingOficina(v => !v)}
-                className="flex items-center gap-1.5 text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/30 hover:border-[#B3985B]/60 px-3 py-1.5 rounded-lg transition-colors">
-                <span className="text-sm">+</span> Agregar activo
-              </button>
-            </div>
-
-            {/* Form nuevo */}
-            {addingOficina && (
-              <div className="px-5 py-4 border-b border-[#1e1e1e] bg-[#0d0d0d] flex flex-wrap gap-3 items-end">
-                <div className="flex-1 min-w-40">
-                  <label className="text-[10px] text-gray-500 mb-1 block">Nombre *</label>
-                  <input value={nuevaOficina.nombre} onChange={e => setNuevaOficina(p => ({ ...p, nombre: e.target.value }))}
-                    placeholder="Ej: Silla ergonómica"
-                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/40" />
-                </div>
-                <div className="flex-1 min-w-40">
-                  <label className="text-[10px] text-gray-500 mb-1 block">Marca / Modelo</label>
-                  <input value={nuevaOficina.descripcion} onChange={e => setNuevaOficina(p => ({ ...p, descripcion: e.target.value }))}
-                    placeholder="Ej: Herman Miller"
-                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/40" />
-                </div>
-                <div className="w-56">
-                  <label className="text-[10px] text-gray-500 mb-1 block">Notas</label>
-                  <input value={nuevaOficina.notas} onChange={e => setNuevaOficina(p => ({ ...p, notas: e.target.value }))}
-                    placeholder="Cantidad, serie, etc."
-                    className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/40" />
-                </div>
-                <button onClick={crearOficina}
-                  className="px-4 py-1.5 bg-[#B3985B] hover:bg-[#c9a960] text-black text-sm font-semibold rounded-lg transition-colors">
-                  Guardar
-                </button>
-                <button onClick={() => setAddingOficina(false)} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">Cancelar</button>
-              </div>
-            )}
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[#1e1e1e] bg-[#0d0d0d]">
-                    <th className="text-left px-4 py-2.5 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Activo</th>
-                    <th className="text-left px-4 py-2.5 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Marca / Modelo</th>
-                    <th className="text-left px-4 py-2.5 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Notas</th>
-                    <th className="text-right px-4 py-2.5 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Valor adquisición</th>
-                    <th className="text-right px-4 py-2.5 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Valor actual</th>
-                    <th className="w-8"></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#1a1a1a]">
-                  {activosOficina.map(a => (
-                    <tr key={a.id} className="hover:bg-[#0d0d0d] transition-colors group">
-                      <td className="px-4 py-2.5 text-white font-medium">{a.nombre}</td>
-                      <td className="px-4 py-2.5 text-gray-400 text-xs">{a.descripcion ?? "—"}</td>
-                      <td className="px-4 py-2.5 text-gray-500 text-xs max-w-48 truncate">{a.notas ?? "—"}</td>
-                      <td className="px-4 py-2.5 text-right">
-                        <input
-                          type="number"
-                          defaultValue={a.valorAdquisicion || ""}
-                          placeholder="0"
-                          onBlur={e => patchOficina(a.id, "valorAdquisicion", parseFloat(e.target.value) || 0)}
-                          className={inlineCls + (savingOficina === a.id ? " opacity-50" : "")}
-                        />
-                      </td>
-                      <td className="px-4 py-2.5 text-right">
-                        <input
-                          type="number"
-                          defaultValue={a.valorActual || ""}
-                          placeholder="0"
-                          onBlur={e => patchOficina(a.id, "valorActual", parseFloat(e.target.value) || 0)}
-                          className={inlineCls + (savingOficina === a.id ? " opacity-50" : "")}
-                        />
-                      </td>
-                      <td className="px-2">
-                        <button onClick={() => eliminarOficina(a.id)}
-                          className="opacity-0 group-hover:opacity-100 text-[#333] hover:text-red-500 transition-all p-1">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                            <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                          </svg>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#1e1e1e] bg-[#0a0a0a]">
+                  <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Art\u00edculo</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Marca</th>
+                  <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Modelo</th>
+                  <th className="text-center px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Cant.</th>
+                  <th className="text-right px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Valor adq.</th>
+                  <th className="text-right px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Valor actual</th>
+                  <th className="w-16"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#1a1a1a]">
+                {activosOficina
+                  .filter(a => !busquedaOf || a.nombre.toLowerCase().includes(busquedaOf.toLowerCase()) || (a.marca ?? "").toLowerCase().includes(busquedaOf.toLowerCase()))
+                  .map(a => (
+                  <tr key={a.id} className="hover:bg-[#0d0d0d] transition-colors group">
+                    <td className="px-4 py-3">
+                      <p className="text-white font-medium text-sm">{a.nombre}</p>
+                      {a.notas && <p className="text-[#444] text-[10px] mt-0.5 truncate max-w-48">{a.notas}</p>}
+                    </td>
+                    <td className="px-4 py-3 text-gray-400 text-xs">{a.marca ?? <span className="text-[#333]">—</span>}</td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">{a.modelo ?? <span className="text-[#333]">—</span>}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-block bg-[#1a1a1a] text-gray-300 text-xs px-2 py-0.5 rounded-full">{a.cantidad}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-[#B3985B] text-sm font-medium">
+                      {a.valorAdquisicion > 0 ? fmx(a.valorAdquisicion) : <span className="text-[#333] text-xs">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-right text-blue-400 text-sm font-medium">
+                      {a.valorActual > 0 ? fmx(a.valorActual) : <span className="text-[#333] text-xs">—</span>}
+                    </td>
+                    <td className="px-3">
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                        <button onClick={() => abrirModalOf(a)}
+                          className="text-[#555] hover:text-[#B3985B] transition-colors p-1" title="Editar">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                         </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t border-[#2a2a2a] bg-[#0d0d0d]">
-                    <td colSpan={3} className="px-4 py-2.5 text-xs text-gray-500 font-semibold uppercase">Total</td>
-                    <td className="px-4 py-2.5 text-right text-[#B3985B] font-bold text-sm">
-                      {fmx(activosOficina.reduce((s, a) => s + a.valorAdquisicion, 0))}
+                        <button onClick={() => eliminarOficina(a.id)}
+                          className="text-[#333] hover:text-red-500 transition-colors p-1" title="Eliminar">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                        </button>
+                      </div>
                     </td>
-                    <td className="px-4 py-2.5 text-right text-blue-400 font-bold text-sm">
-                      {fmx(activosOficina.reduce((s, a) => s + a.valorActual, 0))}
-                    </td>
-                    <td />
                   </tr>
-                </tfoot>
-              </table>
-            </div>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-[#2a2a2a] bg-[#0a0a0a]">
+                  <td colSpan={4} className="px-4 py-3 text-xs text-gray-500 font-semibold uppercase">Total</td>
+                  <td className="px-4 py-3 text-right text-[#B3985B] font-bold">{fmx(activosOficina.reduce((s, a) => s + a.valorAdquisicion, 0))}</td>
+                  <td className="px-4 py-3 text-right text-blue-400 font-bold">{fmx(activosOficina.reduce((s, a) => s + a.valorActual, 0))}</td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
       )}

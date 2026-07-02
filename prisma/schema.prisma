@@ -2314,7 +2314,10 @@ model CierreFinanciero {
 model HervamActivo {
   id               String   @id @default(cuid())
   nombre           String
+  marca            String?
+  modelo           String?
   descripcion      String?
+  cantidad         Int      @default(1)
   categoria        String   @default("EQUIPO") // EQUIPO | VEHICULO | INMUEBLE | INTANGIBLE | OTRO | OFICINA
   propietario      String   @default("MAINSTAGE") // MAINSTAGE | HERVAM
   valorAdquisicion Float    @default(0)

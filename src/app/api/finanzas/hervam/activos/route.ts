@@ -23,21 +23,29 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { nombre, descripcion, categoria, propietario, valorAdquisicion, valorActual, precioRenta, fechaAdquisicion, notas } = body;
+  const {
+    nombre, marca, modelo, descripcion, cantidad,
+    categoria, propietario,
+    valorAdquisicion, valorActual, precioRenta,
+    fechaAdquisicion, notas,
+  } = body;
 
   if (!nombre?.trim()) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
 
   const activo = await prisma.hervamActivo.create({
     data: {
       nombre: nombre.trim(),
-      descripcion: descripcion || null,
+      marca: marca?.trim() || null,
+      modelo: modelo?.trim() || null,
+      descripcion: descripcion?.trim() || null,
+      cantidad: parseInt(cantidad) || 1,
       categoria: categoria || "EQUIPO",
       propietario: propietario || "MAINSTAGE",
       valorAdquisicion: parseFloat(valorAdquisicion) || 0,
       valorActual: parseFloat(valorActual) || 0,
       precioRenta: parseFloat(precioRenta) || 0,
       fechaAdquisicion: fechaAdquisicion ? new Date(fechaAdquisicion) : null,
-      notas: notas || null,
+      notas: notas?.trim() || null,
     },
   });
 
