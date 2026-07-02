@@ -104,6 +104,8 @@ export default function InventarioActivosPage() {
   const [formAcc, setFormAcc] = useState({ nombre: "", categoria: "", equipoId: "" });
   const [savingAcc, setSavingAcc] = useState(false);
   const [agruparAcc, setAgruparAcc] = useState<"categoria" | "equipo">("equipo");
+  const [equipoBusq, setEquipoBusq] = useState("");   // combobox search text
+  const [equipoOpen, setEquipoOpen] = useState(false); // dropdown visible
 
   function startEdit(id: string, field: string) { setEditingCell({ id, field }); }
   function stopEdit() { setEditingCell(null); }
@@ -158,6 +160,7 @@ export default function InventarioActivosPage() {
       });
       setModalAcc(false);
       setFormAcc({ nombre: "", categoria: "", equipoId: "" });
+      setEquipoBusq("");
       toast.success("Accesorio agregado");
     } finally {
       setSavingAcc(false);
@@ -613,7 +616,7 @@ export default function InventarioActivosPage() {
               <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-2xl w-full max-w-md shadow-2xl">
                 <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e1e1e]">
                   <h2 className="text-white font-semibold">Agregar accesorio</h2>
-                  <button onClick={() => setModalAcc(false)} className="text-gray-500 hover:text-white transition-colors">
+                  <button onClick={() => { setModalAcc(false); setEquipoBusq(""); }} className="text-gray-500 hover:text-white transition-colors">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>
                 </div>
@@ -639,19 +642,50 @@ export default function InventarioActivosPage() {
                   </div>
                   <div>
                     <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Equipo al que pertenece *</label>
-                    <select value={formAcc.equipoId} onChange={e => setFormAcc(p => ({ ...p, equipoId: e.target.value }))}
-                      className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]/50">
-                      <option value="">Selecciona un equipo...</option>
-                      {equiposProd.sort((a,b) => (a.descripcion).localeCompare(b.descripcion)).map(eq => (
-                        <option key={eq.id} value={eq.id}>
-                          {[eq.marca, eq.modelo].filter(Boolean).join(" \u00b7 ") || eq.descripcion}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <input
+                        value={equipoBusq}
+                        onChange={e => { setEquipoBusq(e.target.value); setEquipoOpen(true); if (!e.target.value) setFormAcc(p => ({ ...p, equipoId: "" })); }}
+                        onFocus={() => setEquipoOpen(true)}
+                        placeholder="Escribe para buscar equipo..."
+                        autoComplete="off"
+                        className={`w-full bg-[#111] border rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none transition-colors ${
+                          formAcc.equipoId ? "border-[#B3985B]/50" : "border-[#2a2a2a] focus:border-[#B3985B]/50"
+                        }`}
+                      />
+                      {formAcc.equipoId && (
+                        <button onClick={() => { setFormAcc(p => ({ ...p, equipoId: "" })); setEquipoBusq(""); setEquipoOpen(false); }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-[#555] hover:text-white transition-colors">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                      )}
+                      {equipoOpen && equipoBusq && (() => {
+                        const opts = equiposProd
+                          .map(eq => ({ id: eq.id, label: [eq.marca, eq.modelo].filter(Boolean).join(" \u00b7 ") || eq.descripcion, sub: eq.descripcion }))
+                          .filter(o => o.label.toLowerCase().includes(equipoBusq.toLowerCase()) || o.sub.toLowerCase().includes(equipoBusq.toLowerCase()))
+                          .sort((a, b) => a.label.localeCompare(b.label));
+                        return opts.length > 0 ? (
+                          <div className="absolute z-10 mt-1 w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg shadow-xl overflow-hidden max-h-52 overflow-y-auto">
+                            {opts.map(o => (
+                              <button key={o.id} type="button"
+                                onMouseDown={e => { e.preventDefault(); setFormAcc(p => ({ ...p, equipoId: o.id })); setEquipoBusq(o.label); setEquipoOpen(false); }}
+                                className="w-full text-left px-3 py-2.5 hover:bg-[#1a1a1a] transition-colors border-b border-[#1a1a1a] last:border-0">
+                                <p className="text-white text-sm">{o.label}</p>
+                                {o.label !== o.sub && <p className="text-[#555] text-[10px] mt-0.5">{o.sub}</p>}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="absolute z-10 mt-1 w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-3 text-[#444] text-xs">
+                            Sin resultados para &ldquo;{equipoBusq}&rdquo;
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </div>
                 </div>
                 <div className="px-6 py-4 border-t border-[#1e1e1e] flex gap-2 justify-end">
-                  <button onClick={() => setModalAcc(false)} className="px-4 py-2 text-sm text-gray-500 hover:text-white transition-colors">Cancelar</button>
+                  <button onClick={() => { setModalAcc(false); setEquipoBusq(""); }} className="px-4 py-2 text-sm text-gray-500 hover:text-white transition-colors">Cancelar</button>
                   <button onClick={crearAccesorio} disabled={savingAcc}
                     className="px-5 py-2 bg-[#B3985B] hover:bg-[#c9a960] disabled:opacity-50 text-black text-sm font-semibold rounded-lg transition-colors">
                     {savingAcc ? "Guardando..." : "Guardar"}
