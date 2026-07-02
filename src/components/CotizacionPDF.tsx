@@ -646,6 +646,13 @@ function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSeccio
                 <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, textTransform: "uppercase" }}>{cat}</Text>
                 <Text style={{ fontSize: 7.5, color: GRAY, fontFamily: "Helvetica-Bold" }}>{fmtMXN(catSubtotal)}</Text>
               </View>
+              {nota ? (
+                <View style={{ paddingHorizontal: 40, paddingVertical: 5, backgroundColor: "#FDFCFA", borderBottom: "1 solid #eeebe6" }}>
+                  <Text style={{ fontSize: 8, color: GRAY, fontFamily: "Helvetica-Oblique", lineHeight: 1.4 }}>
+                    {nota}
+                  </Text>
+                </View>
+              ) : null}
               {lins.map((l, i) => <FilaEquipo key={l.id} l={l} i={i} />)}
               {catIncluidas.map((l) => (
                 <View key={l.id} style={s.tablaIncluido}>
@@ -658,13 +665,6 @@ function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSeccio
                   <Text style={[s.cellIncluido, s.colSubtotal, { textAlign: "right" }]}>—</Text>
                 </View>
               ))}
-              {nota ? (
-                <View style={{ paddingHorizontal: 40, paddingVertical: 5, backgroundColor: "#FDFCFA", borderBottom: "1 solid #eeebe6" }}>
-                  <Text style={{ fontSize: 8, color: GRAY, fontFamily: "Helvetica-Oblique", lineHeight: 1.4 }}>
-                    Nota: {nota}
-                  </Text>
-                </View>
-              ) : null}
             </View>
           );
         })
