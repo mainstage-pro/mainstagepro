@@ -39,7 +39,8 @@ export async function GET(req: NextRequest) {
   const proyectoId = req.nextUrl.searchParams.get("proyectoId");
   await ensureTable();
 
-  const canViewFinances = session.role === "ADMIN" || session.name.toLowerCase().includes("daniel");
+  const allowedNames = ["mauricio", "emiliano", "carlos"];
+  const canViewFinances = allowedNames.some(name => session.name.toLowerCase().includes(name));
 
   if (proyectoId) {
     let gastos = await prisma.$queryRawUnsafe<GastoRow[]>(

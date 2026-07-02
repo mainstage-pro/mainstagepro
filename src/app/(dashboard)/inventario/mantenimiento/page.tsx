@@ -373,7 +373,7 @@ function MantenimientoContent() {
         </div>
 
         {/* ── RIGHT: Detail ── */}
-        <div className="flex-1 min-w-0 space-y-4 md:sticky md:top-4 self-start">
+        <div className="flex-1 min-w-0 space-y-4 md:sticky md:top-4 self-start md:max-h-[calc(100vh-2rem)] overflow-y-auto [&::-webkit-scrollbar]:hidden">
           {!selectedEquipo ? (
             <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-12 text-center">
               <p className="text-gray-500 text-sm">Selecciona un equipo de la lista</p>

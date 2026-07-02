@@ -172,7 +172,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     equiposCount: (proyecto as { equipos?: unknown[] }).equipos?.length ?? 0,
   });
 
-  const canViewFinances = (session.role === "ADMIN" || session.name.toLowerCase().includes("daniel")) && session.area !== "PRODUCCION";
+  const allowedNames = ["mauricio", "emiliano", "carlos"];
+  const canViewFinances = allowedNames.some(name => session.name.toLowerCase().includes(name));
 
   if (!canViewFinances) {
     proyecto = {

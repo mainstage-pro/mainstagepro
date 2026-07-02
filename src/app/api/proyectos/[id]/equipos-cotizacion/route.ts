@@ -218,7 +218,8 @@ export async function GET(
 
     const yaConfirmado = clasificacion === "EXTERNO_CONFIRMADO";
 
-    const canViewFinances = session.role === "ADMIN" || session.name.toLowerCase().includes("daniel");
+    const allowedNames = ["mauricio", "emiliano", "carlos"];
+    const canViewFinances = allowedNames.some(name => session.name.toLowerCase().includes(name));
 
     return {
       id: linea.id,

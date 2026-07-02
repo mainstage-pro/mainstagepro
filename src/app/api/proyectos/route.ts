@@ -52,7 +52,8 @@ export async function GET(req: Request) {
       },
       orderBy: { fechaEvento: "desc" },
     });
-    const canViewFinances = (session.role === "ADMIN" || session.name.toLowerCase().includes("daniel")) && session.area !== "PRODUCCION";
+    const allowedNames = ["mauricio", "emiliano", "carlos"];
+    const canViewFinances = allowedNames.some(name => session.name.toLowerCase().includes(name));
 
     const proyectosConAvance = proyectos.map(p => {
       const avance = calcularAvanceProyecto({

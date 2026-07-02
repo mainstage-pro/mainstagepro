@@ -54,7 +54,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!trato) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-  return NextResponse.json({ trato });
+  const allowedNames = ["mauricio", "emiliano", "carlos"];
+  const canViewFinances = allowedNames.some(name => session.name.toLowerCase().includes(name));
+
+  if (!canViewFinances) {
+    trato.cotizaciones = [];
+    trato.presupuestoEstimado = null;
+  }
+
+  return NextResponse.json({ trato: { ...trato, _canViewFinances: canViewFinances } });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

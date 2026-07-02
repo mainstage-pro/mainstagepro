@@ -93,6 +93,7 @@ interface Trato {
     createdAt: string; proyecto: { id: string } | null;
   }>;
   archivos: TratoArchivo[];
+  _canViewFinances?: boolean;
 }
 
 // ─── Catálogos / Constantes ───────────────────────────────────────────────────
@@ -1743,6 +1744,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* Cotizaciones — Vista multi-evento */}
+      {trato._canViewFinances !== false && (
       <div className="bg-[#111] border border-[#222] rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -1896,6 +1898,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           );
         })()}
       </div>
+      )}
 
       {/* ══ GATE PRIMARIO ══ */}
       {!skipGate && !trato.canalAtencion && trato.tipoProspecto !== "NURTURING" && (
