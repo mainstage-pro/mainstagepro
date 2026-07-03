@@ -12,7 +12,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "fecha", "tipoId", "formato", "objetivo", "descripcion", "copy",
     "enFacebook", "enInstagram", "enTiktok", "enYoutube",
     "materialLink", "portadaUrl", "portadaUrlB", "colaboradores", "estado", "comentarios",
-    "alcance", "impresiones", "interacciones", "seguidoresGanados",
+    "alcance", "impresiones", "interacciones", "seguidoresGanados", "pruebaPubUrl",
   ];
   const data: Record<string, unknown> = {};
   for (const key of allowed) {

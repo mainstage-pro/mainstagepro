@@ -1494,6 +1494,7 @@ model Publicacion {
   impresiones    Int?
   interacciones  Int?
   seguidoresGanados Int?
+  pruebaPubUrl   String?        // URL del archivo de prueba de publicación (apelación)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
