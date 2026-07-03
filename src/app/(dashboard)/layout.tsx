@@ -20,13 +20,13 @@ export default async function DashboardLayout({
   let userModuleKeys: string[] | null = null;
 
   const AREA_MODULES: Record<string, string[]> = {
-    ADMINISTRACION: ["plan-trabajo", "crm-clientes", "crm-tratos", "finanzas", "rrhh", "ats", "rrhh-onboarding", "proyectos", "operaciones", "calendario", "inversiones", "tabulador", "tareas-administracion"],
-    MARKETING:      ["plan-trabajo", "crm-clientes", "crm-tratos", "contenido-organico", "publicidad", "calendario", "presentaciones", "operaciones", "mkt-levantamientos", "mkt-kanban", "mkt-metricas", "tareas-marketing"],
-    VENTAS:         ["plan-trabajo", "crm-clientes", "crm-tratos", "cotizaciones", "comisiones", "calendario", "operaciones", "tareas-ventas"],
-    PRODUCCION:     ["plan-trabajo", "crm-clientes", "crm-tratos", "proyectos", "operaciones", "inventario", "bd-proveedores", "bd-tecnicos", "catalogo", "calendario", "tareas-produccion"],
-    RRHH:           ["plan-trabajo", "rrhh", "ats", "rrhh-onboarding", "operaciones", "calendario", "tareas-rrhh"],
-    DIRECCION:      ["plan-trabajo", "semaforo", "reportes", "presentaciones", "calendario", "juntas", "operaciones", "tareas-direccion"],
-    GENERAL:        ["plan-trabajo", "crm-clientes", "crm-tratos", "cotizaciones", "calendario", "operaciones"],
+    ADMINISTRACION: ["dashboard", "plan-trabajo", "operaciones", "calendario", "finanzas", "rrhh", "ats", "inversiones", "tabulador", "tareas-administracion"],
+    MARKETING:      ["dashboard", "plan-trabajo", "operaciones", "calendario", "mkt-contenido", "mkt-publicidad", "mkt-resultados", "tareas-marketing"],
+    VENTAS:         ["dashboard", "plan-trabajo", "operaciones", "calendario", "ventas-seguimientos", "crm-prospeccion", "crm-tratos", "crm-base-de-datos", "ventas-presentaciones", "ventas-reporte", "tareas-ventas"],
+    PRODUCCION:     ["dashboard", "plan-trabajo", "operaciones", "calendario", "proyectos", "inventario", "inv-maestro", "catalogo", "bd-proveedores", "bd-tecnicos", "tareas-produccion"],
+    RRHH:           ["dashboard", "plan-trabajo", "operaciones", "calendario", "rrhh", "ats", "tareas-rrhh"],
+    DIRECCION:      ["dashboard", "plan-trabajo", "operaciones", "calendario", "juntas", "presentaciones", "capacitacion", "tareas-direccion"],
+    GENERAL:        ["dashboard", "plan-trabajo", "operaciones", "calendario"],
   };
 
   try {

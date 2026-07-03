@@ -50,51 +50,64 @@ const MODULOS_POR_SECCION: { seccion: string; items: { key: string; label: strin
   {
     seccion: "GLOBAL",
     items: [
-      { key: "dashboard",      label: "Dashboard CEO",               desc: "Panel principal y métricas" },
-      { key: "operaciones",    label: "Módulo de tareas",            desc: "Visible globalmente para todos" },
-      { key: "presentaciones", label: "Presentaciones",              desc: "Presentaciones de ventas" },
-      { key: "calendario",     label: "Calendario de eventos",       desc: "Vista y reportes de eventos" },
+      { key: "dashboard",      label: "Dashboard",                   desc: "Mi Dashboard principal" },
+      { key: "plan-trabajo",   label: "Plan de Trabajo",             desc: "Plan de trabajo y tareas personales" },
+      { key: "operaciones",    label: "Módulo de Tareas",            desc: "Tareas globales y operativas" },
+      { key: "calendario",     label: "Calendario de Eventos",       desc: "Vista y reportes de eventos" },
     ],
   },
   {
-    seccion: "VENTAS",
+    seccion: "DIRECCIÓN",
     items: [
-      { key: "crm-clientes",            label: "Clientes",                 desc: "Base de datos de clientes" },
-      { key: "prospectos",              label: "Prospectos en frío",       desc: "Prospección y seguimiento outbound" },
-      { key: "crm-tratos",              label: "Tratos",                   desc: "Pipeline de oportunidades" },
-      { key: "cotizaciones",            label: "Cotizaciones",             desc: "Crear y gestionar cotizaciones" },
-      { key: "cotizaciones-plantillas", label: "Plantillas de cotización", desc: "Plantillas base para crear cotizaciones" },
-      { key: "comisiones",              label: "Comisiones / Ventas",      desc: "Pipeline, metas, vendedores, reportes" },
-    ],
-  },
-  {
-    seccion: "PRODUCCIÓN",
-    items: [
-      { key: "proyectos",      label: "Proyectos",                          desc: "Gestión de eventos y proyectos" },
-      { key: "ordenes-compra", label: "Órdenes de compra",                  desc: "Órdenes de compra a proveedores" },
-      { key: "inventario",     label: "Inventario",                         desc: "Equipos, disponibilidad, recolecciones, mantenimiento" },
-      { key: "inv-maestro",    label: "Inventario de equipos",              desc: "Acceso al catálogo de equipos" },
-      { key: "catalogo",       label: "Catálogo (proveedores y técnicos)",  desc: "Proveedores, técnicos freelance, venues" },
-      { key: "bd-proveedores", label: "Proveedores",                        desc: "Catálogo de proveedores de equipo" },
-      { key: "bd-tecnicos",    label: "Técnicos freelance",                 desc: "Catálogo de técnicos" },
+      { key: "juntas",         label: "Juntas",                      desc: "Minutas y acuerdos de juntas" },
+      { key: "presentaciones", label: "Presentaciones",              desc: "Presentaciones de ventas y dirección" },
+      { key: "capacitacion",   label: "Capacitación",                desc: "Portal de capacitación" },
+      { key: "formularios",    label: "Formularios",                 desc: "Gestión de formularios" },
+      { key: "admin-usuarios", label: "Usuarios y Accesos",          desc: "Gestión de usuarios y sus permisos" },
+      { key: "admin-actividad",label: "Log de Actividad",            desc: "Registro de actividad de usuarios" },
+      { key: "configuracion",  label: "Configuración",               desc: "Configuración global del sistema" },
     ],
   },
   {
     seccion: "ADMINISTRACIÓN",
     items: [
-      { key: "finanzas",         label: "Finanzas",                 desc: "Cobros, pagos, movimientos, reporte, rentabilidad" },
-      { key: "inversiones",      label: "Inversiones y Socios",     desc: "Estructura de capital y socios de activos" },
-      { key: "tabulador",        label: "Tabulador Freelancers",    desc: "Roles técnicos y tarifas" },
-      { key: "rrhh",             label: "Recursos Humanos",         desc: "Personal interno, nómina, asistencia, evaluaciones" },
-      { key: "ats",              label: "Reclutamiento",            desc: "Candidatos y puestos" },
-      { key: "rrhh-onboarding",  label: "Onboarding",              desc: "Planes de integración y capacitación" },
+      { key: "finanzas",         label: "Finanzas (Todo)",           desc: "Cobros, pagos, movimientos, reportes" },
+      { key: "rrhh",             label: "Recursos Humanos (Todo)",   desc: "Personal, nómina, asistencia, onboarding" },
+      { key: "ats",              label: "Reclutamiento",             desc: "Candidatos y puestos ideales" },
+      { key: "inversiones",      label: "Inversiones y Socios",      desc: "Gestión de socios de activos" },
+      { key: "tabulador",        label: "Tabulador Freelancers",     desc: "Roles técnicos y tarifas" },
+      { key: "grupos-equipo",    label: "Grupos de equipo",          desc: "Administración de grupos de equipo" },
+      { key: "inventario-activos-admin", label: "Valuación de Activos", desc: "Inventario de activos de administración" },
     ],
   },
   {
     seccion: "MARKETING",
     items: [
-      { key: "contenido-organico", label: "Contenido orgánico",  desc: "Calendario, tipos de contenido, reportes" },
-      { key: "publicidad",         label: "Publicidad / Campañas", desc: "Campañas de Meta Ads" },
+      { key: "mkt-contenido",    label: "Contenido",                 desc: "Estrategia y calendario de contenido" },
+      { key: "mkt-publicidad",   label: "Publicidad",                desc: "Campañas y pauta" },
+      { key: "mkt-resultados",   label: "Resultados",                desc: "Métricas y resultados de marketing" },
+    ],
+  },
+  {
+    seccion: "VENTAS",
+    items: [
+      { key: "ventas-seguimientos",   label: "Seguimientos",         desc: "Seguimientos de tratos" },
+      { key: "crm-prospeccion",       label: "Pipeline",             desc: "Pipeline de prospección" },
+      { key: "crm-tratos",            label: "Tratos",               desc: "Pipeline de tratos" },
+      { key: "crm-base-de-datos",     label: "Base de Datos",        desc: "Base de datos CRM" },
+      { key: "ventas-presentaciones", label: "Presentaciones Venta", desc: "Presentaciones para clientes" },
+      { key: "ventas-reporte",        label: "Reporte de Ventas",    desc: "Métricas y reportes de ventas" },
+    ],
+  },
+  {
+    seccion: "PRODUCCIÓN",
+    items: [
+      { key: "proyectos",      label: "Proyectos de evento",         desc: "Gestión de proyectos" },
+      { key: "inventario",     label: "Inventario (Módulos)",        desc: "Disponibilidad, recolecciones, mantenimiento" },
+      { key: "inv-maestro",    label: "Inventario Maestro",          desc: "Catálogo maestro de equipos" },
+      { key: "catalogo",       label: "Catálogo Venues",             desc: "Catálogo de venues" },
+      { key: "bd-proveedores", label: "Proveedores",                 desc: "Directorio de proveedores" },
+      { key: "bd-tecnicos",    label: "Técnicos freelance",          desc: "Directorio de técnicos" },
     ],
   },
   {
@@ -113,12 +126,13 @@ const MODULOS_POR_SECCION: { seccion: string; items: { key: string; label: strin
 const ALL_MODULE_KEYS = MODULOS_POR_SECCION.flatMap(s => s.items.map(i => i.key));
 
 const AREA_MODULE_PRESETS: Record<string, string[]> = {
-  ADMINISTRACION: ["finanzas", "rrhh", "ats", "rrhh-onboarding", "proyectos", "operaciones", "calendario", "tareas-administracion"],
-  MARKETING: ["contenido-organico", "publicidad", "calendario", "presentaciones", "operaciones", "tareas-marketing"],
-  VENTAS: ["crm-clientes", "crm-tratos", "cotizaciones", "comisiones", "calendario", "operaciones", "tareas-ventas"],
-  PRODUCCION: ["proyectos", "operaciones", "inventario", "bd-proveedores", "bd-tecnicos", "tabulador", "calendario", "tareas-produccion"],
-  RRHH: ["rrhh", "ats", "rrhh-onboarding", "operaciones", "calendario", "tareas-rrhh"],
-  DIRECCION: ["semaforo", "presentaciones", "calendario", "juntas", "operaciones", "tareas-direccion"],
+  ADMINISTRACION: ["dashboard", "plan-trabajo", "operaciones", "calendario", "finanzas", "rrhh", "ats", "inversiones", "tabulador", "tareas-administracion"],
+  MARKETING:      ["dashboard", "plan-trabajo", "operaciones", "calendario", "mkt-contenido", "mkt-publicidad", "mkt-resultados", "tareas-marketing"],
+  VENTAS:         ["dashboard", "plan-trabajo", "operaciones", "calendario", "ventas-seguimientos", "crm-prospeccion", "crm-tratos", "crm-base-de-datos", "ventas-presentaciones", "ventas-reporte", "tareas-ventas"],
+  PRODUCCION:     ["dashboard", "plan-trabajo", "operaciones", "calendario", "proyectos", "inventario", "inv-maestro", "catalogo", "bd-proveedores", "bd-tecnicos", "tareas-produccion"],
+  RRHH:           ["dashboard", "plan-trabajo", "operaciones", "calendario", "rrhh", "ats", "tareas-rrhh"],
+  DIRECCION:      ["dashboard", "plan-trabajo", "operaciones", "calendario", "juntas", "presentaciones", "capacitacion", "tareas-direccion"],
+  GENERAL:        ["dashboard", "plan-trabajo", "operaciones", "calendario"],
 };
 
 const EMPTY = { name: "", email: "", password: "", role: "USER", area: "GENERAL" };
@@ -140,6 +154,7 @@ export default function UsuariosPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [proyectosList, setProyectosList] = useState<{ id: string; nombre: string; numeroProyecto: string }[]>([]);
   const [loadingProyectos, setLoadingProyectos] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Vista
   const [viewTab, setViewTab] = useState<"usuarios" | "modulos">("usuarios");
@@ -153,6 +168,10 @@ export default function UsuariosPage() {
     const res = await fetch("/api/admin/usuarios");
     const data = await res.json();
     setUsers(data.users ?? []);
+    try {
+      const meRes = await fetch("/api/me");
+      if (meRes.ok) setCurrentUser(await meRes.json());
+    } catch {}
   }
 
   useEffect(() => { load(); }, []);
@@ -290,7 +309,7 @@ export default function UsuariosPage() {
 
   async function save() {
     if (!form.name || !form.email) { setError("Nombre y correo son obligatorios"); return; }
-    if (!editing && !form.password) { setError("La contraseña es obligatoria para nuevos usuarios"); return; }
+    if (!editing && isCurrentAdmin && !form.password) { setError("La contraseña es obligatoria para nuevos usuarios"); return; }
     setSaving(true); setError("");
     const body: Record<string, string> = { name: form.name, email: form.email, role: form.role, area: form.area };
     if (form.password) body.password = form.password;
@@ -368,6 +387,7 @@ export default function UsuariosPage() {
   }
 
   const nonAdminUsers = users.filter(u => u.role !== "ADMIN" && u.active);
+  const isCurrentAdmin = currentUser?.role === "ADMIN";
 
   return (
     <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
@@ -402,12 +422,14 @@ export default function UsuariosPage() {
               className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]"
               placeholder="ana@mainstagepro.mx" />
           </div>
-          <div>
-            <label className="text-xs text-[#6b7280] mb-1 block">Contraseña {editing ? "(vacío = sin cambio)" : "*"}</label>
-            <input type="password" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-              className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]"
-              placeholder="Mínimo 6 caracteres" />
-          </div>
+          {isCurrentAdmin && (
+            <div>
+              <label className="text-xs text-[#6b7280] mb-1 block">Contraseña {editing ? "(vacío = sin cambio)" : "*"}</label>
+              <input type="password" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+                className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+                placeholder="Mínimo 6 caracteres" />
+            </div>
+          )}
           <div>
             <label className="text-xs text-[#6b7280] mb-1 block">Tipo de acceso</label>
             <Combobox value={form.role} onChange={v => setForm(p => ({ ...p, role: v }))}
@@ -499,10 +521,12 @@ export default function UsuariosPage() {
                       className="text-xs text-[#B3985B] hover:text-white px-2 py-1 border border-[#333] rounded transition-colors">
                       Editar
                     </button>
-                    <button onClick={() => resetPassword(u)}
-                      className="text-xs text-[#6b7280] hover:text-white px-2 py-1 border border-[#333] rounded transition-colors">
-                      Contraseña
-                    </button>
+                    {isCurrentAdmin && (
+                      <button onClick={() => resetPassword(u)}
+                        className="text-xs text-[#6b7280] hover:text-white px-2 py-1 border border-[#333] rounded transition-colors">
+                        Contraseña
+                      </button>
+                    )}
                     <button onClick={() => toggleActive(u)}
                       className="text-xs text-[#6b7280] hover:text-white px-2 py-1 border border-[#333] rounded transition-colors">
                       {u.active ? "Desactivar" : "Activar"}
