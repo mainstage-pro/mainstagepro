@@ -919,18 +919,10 @@ export default function ResultadosMarketingPage() {
             />
 
             {/* Botones */}
-            <div className="flex items-center justify-between gap-3 no-print">
+            <div className="flex items-center gap-3 no-print">
               <button onClick={() => saveReporteOrganico(rpOrganicoForm)} disabled={savingRpOrg}
                 className="px-4 py-2 bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg hover:border-[#444] transition-colors disabled:opacity-50">
                 {savingRpOrg ? "Guardando…" : "💾 Guardar análisis"}
-              </button>
-              <button onClick={() => window.print()}
-                className="px-5 py-2 bg-[#B3985B] hover:bg-[#c9a960] text-black text-sm font-semibold rounded-lg transition-colors flex items-center gap-2">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                  <rect x="6" y="14" width="12" height="8"/>
-                </svg>
-                Descargar PDF
               </button>
             </div>
           </div>
@@ -1053,18 +1045,10 @@ export default function ResultadosMarketingPage() {
               saving={savingRpRes}
             />
 
-            <div className="flex items-center justify-between gap-3 no-print">
+            <div className="flex items-center gap-3 no-print">
               <button onClick={() => saveReporteResultados(rpResultadosForm)} disabled={savingRpRes}
                 className="px-4 py-2 bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg hover:border-[#444] transition-colors disabled:opacity-50">
                 {savingRpRes ? "Guardando…" : "💾 Guardar análisis"}
-              </button>
-              <button onClick={() => window.print()}
-                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-lg transition-colors flex items-center gap-2">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                  <rect x="6" y="14" width="12" height="8"/>
-                </svg>
-                Descargar PDF
               </button>
             </div>
           </div>
@@ -1155,18 +1139,10 @@ export default function ResultadosMarketingPage() {
               saving={savingRpCampEj}
             />
 
-            <div className="flex items-center justify-between gap-3 no-print">
+            <div className="flex items-center gap-3 no-print">
               <button onClick={() => saveReporteCampEj(rpCampEjForm)} disabled={savingRpCampEj}
                 className="px-4 py-2 bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg hover:border-[#444] transition-colors disabled:opacity-50">
                 {savingRpCampEj ? "Guardando…" : "💾 Guardar comentarios"}
-              </button>
-              <button onClick={() => window.print()}
-                className="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm font-semibold rounded-lg transition-colors flex items-center gap-2">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                  <rect x="6" y="14" width="12" height="8"/>
-                </svg>
-                Descargar PDF
               </button>
             </div>
           </div>
@@ -1261,18 +1237,10 @@ export default function ResultadosMarketingPage() {
               saving={savingRpCampRes}
             />
 
-            <div className="flex items-center justify-between gap-3 no-print">
+            <div className="flex items-center gap-3 no-print">
               <button onClick={() => saveReporteCampRes(rpCampResForm)} disabled={savingRpCampRes}
                 className="px-4 py-2 bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg hover:border-[#444] transition-colors disabled:opacity-50">
                 {savingRpCampRes ? "Guardando…" : "💾 Guardar análisis"}
-              </button>
-              <button onClick={() => window.print()}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-lg transition-colors flex items-center gap-2">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                  <rect x="6" y="14" width="12" height="8"/>
-                </svg>
-                Descargar PDF
               </button>
             </div>
           </div>
