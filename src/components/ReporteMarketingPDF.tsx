@@ -511,7 +511,7 @@ const TIPO_COVER_DESC: Record<string, string> = {
 
 function CoverPage({ data, gen }: { data: ReporteMarketingData; gen: string }) {
   return (
-    <Page size="A4" style={s.coverPage}>
+    <Page size="A4" orientation="landscape" style={s.coverPage}>
       {/* Fondo negro total */}
       <View style={{ flex: 1, paddingHorizontal: 48, paddingTop: 60, paddingBottom: 80 }}>
         {/* Logo / Marca */}
@@ -588,7 +588,7 @@ function PaginaEjecucionOrganica({ d, gen }: { d: ReporteMarketingData; gen: str
   const noPublicadasList = pubs.filter(p => p.estado !== "PUBLICADO");
 
   return (
-    <Page size="A4" style={s.page}>
+    <Page size="A4" orientation="landscape" style={s.page}>
       <PageHeader logoSrc={d.logoSrc} titulo="REPORTE DE MARKETING" subtitulo={`Ejecución Orgánica — ${d.mesLabel}`} />
 
       <View style={s.mesStrip}>
@@ -752,7 +752,7 @@ function PaginaResultadosOrganicos({ d, gen }: { d: ReporteMarketingData; gen: s
   })).filter(x => x.value > 0);
 
   return (
-    <Page size="A4" style={s.page}>
+    <Page size="A4" orientation="landscape" style={s.page}>
       <PageHeader logoSrc={d.logoSrc} titulo="REPORTE DE MARKETING" subtitulo={`Resultados Orgánicos — ${d.mesLabel}`} />
 
       <View style={s.mesStrip}>
@@ -916,7 +916,7 @@ function PaginaEjecucionCampanas({ d, gen }: { d: ReporteMarketingData; gen: str
   const canalBar   = Object.entries(canalCount).map(([label, value]) => ({ label, value, color: GOLD }));
 
   return (
-    <Page size="A4" style={s.page}>
+    <Page size="A4" orientation="landscape" style={s.page}>
       <PageHeader logoSrc={d.logoSrc} titulo="REPORTE DE MARKETING" subtitulo={`Ejecución de Campañas — ${d.mesLabel}`} />
 
       <View style={s.mesStrip}>
@@ -1048,7 +1048,7 @@ function PaginaResultadosCampanas({ d, gen }: { d: ReporteMarketingData; gen: st
   const impBar = ejs.map(e => ({ label: e.nombre.slice(0, 10), value: e.impresiones ?? 0, color: "#a855f7" }));
 
   return (
-    <Page size="A4" style={s.page}>
+    <Page size="A4" orientation="landscape" style={s.page}>
       <PageHeader logoSrc={d.logoSrc} titulo="REPORTE DE MARKETING" subtitulo={`Resultados de Campañas — ${d.mesLabel}`} />
 
       <View style={s.mesStrip}>
