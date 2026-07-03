@@ -1,7 +1,23 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getSession } from "@/lib/auth";
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  // ⚠️ RUTA DESTRUCTIVA — requiere autenticación de administrador
+  const session = await getSession();
+  if (!session || session.user?.role !== "ADMIN") {
+    return NextResponse.json({ error: "No autorizado — se requiere rol ADMIN" }, { status: 401 });
+  }
+
+  // Además requiere SEED_SECRET para doble protección
+  const seedSecret = process.env.SEED_SECRET;
+  if (seedSecret) {
+    const { secret } = await req.json().catch(() => ({}));
+    if (secret !== seedSecret) {
+      return NextResponse.json({ error: "Secret inválido" }, { status: 401 });
+    }
+  }
+
   try {
     // Obtener categorías existentes
     const cats = await prisma.categoriaEquipo.findMany();
