@@ -225,7 +225,7 @@ export async function POST() {
 // PUT: elimina todo y recrea (útil para actualizar)
 export async function PUT() {
   const session = await getSession();
-  if (!session || session.user?.role !== "ADMIN") return NextResponse.json({ error: "No autorizado — se requiere rol ADMIN" }, { status: 401 });
+  if (!session || session.role !== "ADMIN") return NextResponse.json({ error: "No autorizado — se requiere rol ADMIN" }, { status: 401 });
 
   await prisma.tipoCampana.deleteMany({});
   await prisma.tipoCampana.createMany({ data: TIPOS });

@@ -5,7 +5,7 @@ import { getSession } from "@/lib/auth";
 export async function POST(req: NextRequest) {
   // ⚠️ RUTA DESTRUCTIVA — requiere autenticación de administrador
   const session = await getSession();
-  if (!session || session.user?.role !== "ADMIN") {
+  if (!session || session.role !== "ADMIN") {
     return NextResponse.json({ error: "No autorizado — se requiere rol ADMIN" }, { status: 401 });
   }
 
