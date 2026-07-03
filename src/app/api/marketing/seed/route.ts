@@ -206,7 +206,7 @@ export async function POST() {
 // Forzar recarga (eliminar todos y recrear)
 export async function PUT() {
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (!session || session.user?.role !== "ADMIN") return NextResponse.json({ error: "No autorizado — se requiere rol ADMIN" }, { status: 401 });
 
   await prisma.tipoContenido.deleteMany({});
   await prisma.tipoContenido.createMany({ data: TIPOS });

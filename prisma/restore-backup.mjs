@@ -1,9 +1,15 @@
 import { PrismaClient } from '@prisma/client';
 import https from 'https';
+import { config } from 'dotenv';
+config(); // carga .env automáticamente
 
-const DB_URL = "postgresql://neondb_owner:npg_0qjmIyDp6kHc@ep-noisy-firefly-an5vzlqv.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
-const BLOB_TOKEN = "vercel_blob_rw_h3qMXgZ93fcFNngh_ioJunblc6q8eKI0HabA104BajeuMO8";
-const BACKUP_URL = "https://h3qmxgz93fcfnngh.public.blob.vercel-storage.com/backups/mainstage-pro-2026-06-30.json";
+// ⚠️ CREDENCIALES — usar variables de entorno, NUNCA hardcodear aquí
+const DB_URL     = process.env.DIRECT_URL || process.env.DATABASE_URL;
+const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN;
+const BACKUP_URL = process.env.RESTORE_BACKUP_URL; // ej: https://.../.../backup.json
+
+if (!DB_URL)     { console.error('❌ Falta DIRECT_URL o DATABASE_URL en .env'); process.exit(1); }
+if (!BACKUP_URL) { console.error('❌ Falta RESTORE_BACKUP_URL en .env'); process.exit(1); }
 
 const p = new PrismaClient({ datasources: { db: { url: DB_URL } } });
 
@@ -32,7 +38,7 @@ async function restoreMany(model, items, label) {
 }
 
 async function main() {
-  console.log('📦 Descargando backup...');
+  console.log('📦 Descargando backup desde:', BACKUP_URL);
   const backup = await fetchJson(BACKUP_URL);
   console.log('📊 Backup del:', backup.meta?.generadoEn);
 
