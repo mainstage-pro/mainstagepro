@@ -278,6 +278,27 @@ export default function ResultadosMarketingPage() {
   const toast = useToast();
   const [mes, setMes] = useState(getMesAnterior());
   const [tab, setTab] = useState<TabKey>("ejecucion-organica");
+  const [downloadingPDF, setDownloadingPDF] = useState(false);
+
+  async function handleDescargarPDF() {
+    setDownloadingPDF(true);
+    try {
+      const r = await fetch(`/api/marketing/pdf?mes=${mes}&tipo=${tab}`);
+      if (!r.ok) { toast.error("Error al generar el PDF"); return; }
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const cd = r.headers.get("Content-Disposition") ?? "";
+      const match = cd.match(/filename="([^"]+)"/);
+      a.download = match?.[1] ?? `Reporte-Marketing-${tab}-${mes}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch { toast.error("Error al generar el PDF"); }
+    finally { setDownloadingPDF(false); }
+  }
 
   // ── Tab 1: Ejecución Orgánica
   const [publicaciones, setPublicaciones] = useState<Publicacion[]>([]);
@@ -569,15 +590,6 @@ export default function ResultadosMarketingPage() {
 
   return (
     <>
-      {/* Print styles */}
-      <style>{`
-        @media print {
-          body { background: white !important; color: #111 !important; }
-          .no-print { display: none !important; }
-          .print-white { background: white !important; border-color: #e5e5e5 !important; }
-          @page { margin: 15mm; size: A4; }
-        }
-      `}</style>
 
       {/* Modal de apelación */}
       {apelacion && (() => {
@@ -683,7 +695,7 @@ export default function ResultadosMarketingPage() {
       <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-0">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between flex-wrap gap-3 mb-5 no-print">
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
           <div>
             <h1 className="text-xl font-semibold text-white">Resultados de Marketing</h1>
             <p className="text-[#555] text-xs mt-0.5">Reporte mensual operativo</p>
@@ -696,16 +708,22 @@ export default function ResultadosMarketingPage() {
               onChange={e => setMes(e.target.value)}
               className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-[#B3985B]/50"
             />
+            <button
+              onClick={handleDescargarPDF}
+              disabled={downloadingPDF}
+              className="flex items-center gap-2 px-4 py-1.5 bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors"
+            >
+              {downloadingPDF ? (
+                <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              )}
+              {downloadingPDF ? "Generando…" : "Descargar PDF"}
+            </button>
           </div>
         </div>
 
-        {/* Print-only header */}
-        <div className="hidden print:block mb-6">
-          <div className="border-b-2 border-[#B3985B] pb-3 mb-4">
-            <h1 className="text-2xl font-bold text-gray-900">Resultados de Marketing — {mesLabel(mes)}</h1>
-            <p className="text-gray-500 text-sm">{TABS.find(t => t.key === tab)?.label}</p>
-          </div>
-        </div>
+
 
         {/* ── Tab Bar ────────────────────────────────────────────────────── */}
         <div className="border-b border-[#1a1a1a] -mx-4 md:-mx-6 px-4 md:px-6 flex gap-0 mb-6 overflow-x-auto no-print">
