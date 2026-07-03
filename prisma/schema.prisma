@@ -2532,6 +2532,66 @@ model MetricaOrganica {
   @@map("metricas_organicas")
 }
 
+// ─── REPORTES DE MARKETING ────────────────────────────────────────────────────
+
+model ReporteContenidoOrganico {
+  id                   String   @id @default(cuid())
+  mes                  String   // YYYY-MM
+  comentariosGenerales String?  // Resumen ejecutivo de la ejecución del mes
+  logros               String?  // Logros y destacados del mes
+  estado               String   @default("BORRADOR") // BORRADOR | COMPLETADO
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([mes])
+  @@map("reportes_contenido_organico")
+}
+
+model ReporteResultadosOrganicos {
+  id                 String   @id @default(cuid())
+  mes                String   // YYYY-MM
+  analisis           String?  // Análisis objetivo del resultado orgánico
+  propuesta1         String?
+  propuesta2         String?
+  propuesta3         String?
+  comentariosFinales String?
+  estado             String   @default("BORRADOR")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([mes])
+  @@map("reportes_resultados_organicos")
+}
+
+model ReporteCampanasEjecucion {
+  id                   String   @id @default(cuid())
+  mes                  String   // YYYY-MM
+  comentariosEjecucion String?
+  comentariosFinales   String?
+  estado               String   @default("BORRADOR")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([mes])
+  @@map("reportes_campanas_ejecucion")
+}
+
+model ReporteCampanasResultados {
+  id                 String   @id @default(cuid())
+  mes                String   // YYYY-MM
+  analisis           String?
+  propuesta1         String?
+  propuesta2         String?
+  propuesta3         String?
+  comentariosFinales String?
+  estado             String   @default("BORRADOR")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([mes])
+  @@map("reportes_campanas_resultados")
+}
+
 // ─── ACTIVOS POR EVENTO ───────────────────────────────────────────────────────
 
 model ActivoEvento {
