@@ -18,9 +18,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
     if (!pago) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
+    const fechaPago = body.fechaPago ? new Date(body.fechaPago) : new Date();
+
     const movimiento = await prisma.movimientoFinanciero.create({
       data: {
-        fecha: body.fechaPago ? new Date(body.fechaPago) : new Date(),
+        fecha: fechaPago,
         tipo: "GASTO",
         concepto: pago.concepto ?? `Nómina ${pago.periodo} — ${pago.personal.nombre}`,
         monto: pago.monto,
@@ -34,12 +36,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       where: { id: pagoId },
       data: {
         estado: "PAGADO",
-        fechaPago: body.fechaPago ? new Date(body.fechaPago) : new Date(),
+        fechaPago,
         metodoPago: body.metodoPago ?? pago.metodoPago,
         movimientoId: movimiento.id,
       },
       include: { cuentaOrigen: { select: { nombre: true } } },
     });
+
+    // Sincronizar CuentaPagar si existe
+    if (pago.cuentaPagarId) {
+      await prisma.cuentaPagar.update({
+        where: { id: pago.cuentaPagarId },
+        data: {
+          estado: "PAGADO",
+          montoPagado: pago.monto,
+          fechaPagoReal: fechaPago,
+        },
+      });
+    }
 
     return NextResponse.json({ pago: updated });
   }

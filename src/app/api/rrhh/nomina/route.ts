@@ -65,16 +65,40 @@ export async function POST(req: NextRequest) {
                         tipoPeriodo === "QUINCENAL" ? `Quincena ${periodo}` :
                         `Nómina ${periodo}`;
 
-  await prisma.pagoNomina.createMany({
-    data: nuevos.map(e => ({
-      personalId: e.id,
-      periodo,
-      tipoPeriodo,
-      monto: e.salario!,
-      concepto: `${conceptoLabel} — ${e.nombre}`,
-      estado: "PENDIENTE",
-    })),
-  });
+  // Fecha compromiso: fecha del período como referencia (o hoy si no es parseable)
+  const fechaCompromiso = (() => {
+    const d = new Date(periodo + (periodo.length === 10 ? "T12:00:00" : ""));
+    return isNaN(d.getTime()) ? new Date() : d;
+  })();
 
-  return NextResponse.json({ created: nuevos.length, skipped: yaExisteIds.size });
+  let creados = 0;
+  for (const e of nuevos) {
+    // Crear CuentaPagar primero
+    const cxp = await prisma.cuentaPagar.create({
+      data: {
+        tipoAcreedor: "PERSONAL_INTERNO",
+        concepto: `${conceptoLabel} — ${e.nombre}`,
+        monto: e.salario!,
+        fechaCompromiso,
+        esNomina: true,
+        notas: `Generado desde módulo de nómina. Período: ${periodo} · Tipo: ${tipoPeriodo}`,
+      },
+    });
+
+    // Crear PagoNomina vinculado
+    await prisma.pagoNomina.create({
+      data: {
+        personalId: e.id,
+        periodo,
+        tipoPeriodo,
+        monto: e.salario!,
+        concepto: `${conceptoLabel} — ${e.nombre}`,
+        estado: "PENDIENTE",
+        cuentaPagarId: cxp.id,
+      },
+    });
+    creados++;
+  }
+
+  return NextResponse.json({ created: creados, skipped: yaExisteIds.size });
 }

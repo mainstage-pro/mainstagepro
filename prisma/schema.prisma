@@ -1066,9 +1066,11 @@ model CuentaPagar {
   cuotas          CuotaPago[]
   cuotaDeuda      CuotaDeuda?     @relation("CuotaDeudaCxP")
   cuotaReparto    CuotaReparto?   @relation("CuotaRepatoCxP")
+  pagoNomina      PagoNomina?     @relation("PagoNominaCxP")
   // tipo extra para identificar origen en cobros-pagos
   esDeuda         Boolean  @default(false) // true si viene de PasivoDeuda
   esReparto       Boolean  @default(false) // true si viene de RepartoUtilidad
+  esNomina        Boolean  @default(false) // true si viene de nómina de personal interno
 
   @@map("cuentas_pagar")
 }
@@ -1314,7 +1316,7 @@ model PagoNomina {
   id             String               @id @default(cuid())
   personalId     String
   personal       PersonalInterno      @relation(fields: [personalId], references: [id])
-  periodo        String               // "2026-04"
+  periodo        String               // "2026-04" o "2026-WXX"
   tipoPeriodo    String               @default("MENSUAL") // MENSUAL | QUINCENAL | SEMANAL | EVENTO
   monto          Float
   concepto       String?
@@ -1325,6 +1327,8 @@ model PagoNomina {
   cuentaOrigen   CuentaBancaria?      @relation(fields: [cuentaOrigenId], references: [id])
   movimientoId   String?              @unique
   movimiento     MovimientoFinanciero? @relation(fields: [movimientoId], references: [id])
+  cuentaPagarId  String?              @unique
+  cuentaPagar    CuentaPagar?         @relation("PagoNominaCxP", fields: [cuentaPagarId], references: [id])
   notas          String?
   createdAt      DateTime             @default(now())
 
