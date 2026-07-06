@@ -4,6 +4,22 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts'
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const MESES_PDF = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"]
+function defaultMesPDF() {
+  const d = new Date(), p = new Date(d.getFullYear(), d.getMonth() - 1, 1)
+  return `${p.getFullYear()}-${String(p.getMonth() + 1).padStart(2, '0')}`
+}
+function navMesPDF(mes: string, delta: number) {
+  const [y, m] = mes.split('-').map(Number)
+  const d = new Date(y, m - 1 + delta, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+function mesLabelPDF(mes: string) {
+  const [y, m] = mes.split('-')
+  return `${MESES_PDF[parseInt(m) - 1]} ${y}`
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type SemanaData = { semana: string; label: string; total: number; completadas: number; pct: number }
@@ -66,6 +82,12 @@ export function VistaRendimiento() {
   const [data, setData] = useState<Data | null>(null)
   const [loading, setLoading] = useState(true)
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set())
+  const [mesPdf, setMesPdf] = useState(defaultMesPDF)
+  const [generandoPdf, setGenerandoPdf] = useState(false)
+
+  const hoy = new Date()
+  const mesActualStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`
+  const canNext = mesPdf < mesActualStr
 
   useEffect(() => {
     fetch('/api/operaciones/rendimiento')
@@ -73,6 +95,23 @@ export function VistaRendimiento() {
       .then(d => { setData(d); setLoading(false) })
       .catch(() => setLoading(false))
   }, [])
+
+  async function downloadPdf() {
+    setGenerandoPdf(true)
+    try {
+      const res = await fetch(`/api/operaciones/reporte-mensual/pdf?mes=${mesPdf}`)
+      if (!res.ok) { alert('Error al generar PDF'); return }
+      const blob = await res.blob()
+      const url  = URL.createObjectURL(blob)
+      const a   = document.createElement('a')
+      a.href = url
+      a.download = `Reporte-Tareas-${mesPdf}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setGenerandoPdf(false)
+    }
+  }
 
   function toggleUser(id: string) {
     setExpandedUsers(prev => {
@@ -104,17 +143,36 @@ export function VistaRendimiento() {
     <div className="p-6 max-w-5xl space-y-6 overflow-y-auto h-full">
 
       {/* ── Header ── */}
-      <div>
-        <p className="text-[10px] text-[#B3985B] uppercase tracking-[0.2em] font-semibold">Módulo de tareas</p>
-        <h1 className="text-xl font-bold text-white mt-1">Rendimiento operativo</h1>
-        <p className="text-xs text-[#444] mt-1">
-          Solo se miden tareas con responsable asignado. La fecha solo aplica para el análisis semanal.
-          {data.noMedibles > 0 && (
-            <span className="ml-2 text-[#555]">
-              · {data.noMedibles} tarea{data.noMedibles !== 1 ? 's' : ''} sin responsable (no medibles)
-            </span>
-          )}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] text-[#B3985B] uppercase tracking-[0.2em] font-semibold">Módulo de tareas</p>
+          <h1 className="text-xl font-bold text-white mt-1">Rendimiento operativo</h1>
+          <p className="text-xs text-[#444] mt-1">
+            Solo se miden tareas con responsable asignado. La fecha solo aplica para el análisis semanal.
+            {data.noMedibles > 0 && (
+              <span className="ml-2 text-[#555]">
+                · {data.noMedibles} tarea{data.noMedibles !== 1 ? 's' : ''} sin responsable (no medibles)
+              </span>
+            )}
+          </p>
+        </div>
+
+        {/* PDF Report Button */}
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1 bg-[#080808] border border-[#1e1e1e] rounded-xl p-1">
+            <button onClick={() => setMesPdf(m => navMesPDF(m, -1))}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-600 hover:text-white hover:bg-[#1a1a1a] transition-colors text-sm">←</button>
+            <span className="text-white text-xs font-medium px-2 min-w-[110px] text-center">{mesLabelPDF(mesPdf)}</span>
+            <button onClick={() => canNext && setMesPdf(m => navMesPDF(m, 1))} disabled={!canNext}
+              className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-600 hover:text-white hover:bg-[#1a1a1a] transition-colors text-sm disabled:opacity-30 disabled:cursor-not-allowed">→</button>
+          </div>
+          <button onClick={downloadPdf} disabled={generandoPdf}
+            className="flex items-center gap-1.5 px-3 py-2 bg-[#B3985B] hover:bg-[#c9a96a] text-black font-bold text-xs rounded-xl transition-all active:scale-95 disabled:opacity-60 whitespace-nowrap">
+            {generandoPdf ? (
+              <><div className="w-3 h-3 border-2 border-black border-t-transparent rounded-full animate-spin" />Generando...</>
+            ) : '⬇ PDF Mensual'}
+          </button>
+        </div>
       </div>
 
       {/* ── KPI Cards ── */}

@@ -3509,3 +3509,46 @@ model CuotaReparto {
 
   @@map("cuotas_reparto")
 }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MÓDULO: ESTADO DE RESULTADOS — ANÁLISIS DIRECTIVO
+// ══════════════════════════════════════════════════════════════════════════════
+
+model ReporteERAnalisis {
+  id                          String   @id @default(cuid())
+  mes                         String   @unique // "2026-07"
+
+  // ── Análisis narrativo ────────────────────────────────────────────────────
+  analisisFinanciero          String?  @db.Text
+  analisisOperativo           String?  @db.Text
+  analisisMercado             String?  @db.Text
+
+  // ── Preguntas estratégicas de dirección ──────────────────────────────────
+  queLogramos                 String?  @db.Text  // ¿Qué logramos este mes?
+  queNoLogramos               String?  @db.Text  // ¿Qué no logramos y por qué?
+  queCambiariamos             String?  @db.Text  // ¿Qué cambiaríamos si pudiéramos?
+  decisionesUrgentes          String?  @db.Text  // ¿Qué decisiones urgentes hay que tomar?
+  proyeccionSiguiente         String?  @db.Text  // Proyección y enfoque del siguiente mes
+
+  // ── 5 propuestas de mejora ────────────────────────────────────────────────
+  propuesta1                  String?  @db.Text
+  propuesta2                  String?  @db.Text
+  propuesta3                  String?  @db.Text
+  propuesta4                  String?  @db.Text
+  propuesta5                  String?  @db.Text
+
+  // ── Comentarios finales ───────────────────────────────────────────────────
+  comentariosFinales          String?  @db.Text
+
+  // ── Cuenta fiscal (ISR planning) ─────────────────────────────────────────
+  saldoCuentaFiscalAnterior   Float?   // Saldo CUFIN/CUCA mes anterior
+  saldoCuentaFiscalActual     Float?   // Saldo estimado mes actual
+  isrRetenidoMes              Float?   // ISR pagado/retenido en el mes
+
+  // ── Metadata ─────────────────────────────────────────────────────────────
+  actualizadoPorId            String?
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  @@map("reporte_er_analisis")
+}
