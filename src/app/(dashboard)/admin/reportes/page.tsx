@@ -932,7 +932,6 @@ type Tab = "balance" | "flujo" | "asistencias";
 export default function ReportesAdminPage() {
   const [tab, setTab] = useState<Tab>("balance");
   const [mes, setMes] = useState(defaultMes);
-  const [showPDFModal, setShowPDFModal] = useState(false);
   const [pdfState, setPdfState] = useState<PDFState>(PDF_DEFAULT);
 
   // Shared data for print layout
@@ -981,10 +980,10 @@ export default function ReportesAdminPage() {
             </div>
             {/* Botón PDF ejecutivo */}
             <button
-              onClick={() => setShowPDFModal(true)}
+              onClick={() => window.print()}
               className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-lg shadow-[#B3985B]/20"
             >
-              <span>📄</span> Reporte Ejecutivo PDF
+              <span>📄</span> Descargar PDF
             </button>
           </div>
         </div>
@@ -1012,82 +1011,88 @@ export default function ReportesAdminPage() {
           {tab === "flujo" && <TabFlujo mes={mes} onDataLoad={onFlujoLoad} />}
           {tab === "asistencias" && <TabAsistencias mes={mes} onDataLoad={onAsistLoad} />}
         </div>
-      </div>
 
-      {/* ── PDF MODAL ── */}
-      {showPDFModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 no-print" style={{ background: 'rgba(0,0,0,0.85)' }}>
-          <div className="bg-[#0f0f0f] border border-[#222] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
-              <div>
-                <h2 className="text-white font-semibold text-base">Preparar Reporte Ejecutivo</h2>
-                <p className="text-[#555] text-xs mt-0.5">Completa el análisis antes de imprimir · {mesLabel(mes)}</p>
-              </div>
-              <button onClick={() => setShowPDFModal(false)} className="text-[#444] hover:text-white text-xl leading-none transition-colors">✕</button>
+        {/* ── ANÁLISIS INLINE (siempre visible) ── */}
+        <div className="no-print mt-8 space-y-4">
+          <div className="flex items-center gap-3 pb-2 border-b border-[#1e1e1e]">
+            <span className="text-[#B3985B] text-xs font-semibold uppercase tracking-widest">Análisis ejecutivo</span>
+            <span className="text-[#333] text-xs">· Se incluye en el PDF</span>
+          </div>
+
+          {/* Responsable */}
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+            <label className="block text-[10px] text-[#6b7280] uppercase tracking-wider mb-1.5">Elaborado por</label>
+            <input
+              value={pdfState.responsable}
+              onChange={e => setPdfState(p => ({ ...p, responsable: e.target.value }))}
+              placeholder="Nombre del responsable"
+              className="w-full bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 text-white text-sm focus:border-[#B3985B]/50 outline-none transition-colors"
+            />
+          </div>
+
+          {/* Análisis del período */}
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div className="px-5 py-3 border-b border-[#1e1e1e]">
+              <h3 className="text-sm font-semibold text-[#B3985B]">Análisis del período</h3>
             </div>
-            <div className="px-6 py-5 space-y-5">
-              {/* Responsable */}
-              <div>
-                <label className="text-[#B3985B] text-[10px] uppercase tracking-wider font-semibold block mb-1.5">Elaborado por</label>
-                <input
-                  value={pdfState.responsable}
-                  onChange={e => setPdfState(p => ({ ...p, responsable: e.target.value }))}
-                  placeholder="Nombre del responsable"
-                  className="w-full bg-[#151515] border border-[#222] rounded-lg px-3 py-2 text-white text-sm focus:border-[#B3985B] outline-none transition-colors"
-                />
-              </div>
-              {/* Análisis */}
-              <div>
-                <label className="text-[#B3985B] text-[10px] uppercase tracking-wider font-semibold block mb-1.5">Análisis del período</label>
-                <textarea
-                  value={pdfState.analisis}
-                  onChange={e => setPdfState(p => ({ ...p, analisis: e.target.value }))}
-                  placeholder="Describe el desempeño financiero del período, puntos clave, anomalías..."
-                  rows={4}
-                  className="w-full bg-[#151515] border border-[#222] rounded-lg px-3 py-2 text-white text-sm resize-none focus:border-[#B3985B] outline-none transition-colors"
-                />
-              </div>
-              {/* 3 propuestas */}
+            <div className="p-5">
+              <textarea
+                value={pdfState.analisis}
+                onChange={e => setPdfState(p => ({ ...p, analisis: e.target.value }))}
+                placeholder="Describe el desempeño financiero del período, puntos clave, anomalías..."
+                rows={4}
+                className="w-full bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/40 resize-none leading-relaxed"
+              />
+            </div>
+          </div>
+
+          {/* 3 Propuestas */}
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div className="px-5 py-3 border-b border-[#1e1e1e]">
+              <h3 className="text-sm font-semibold text-purple-400">Propuestas de mejora</h3>
+            </div>
+            <div className="p-5 space-y-4">
               {([1, 2, 3] as const).map(n => (
-                <div key={n} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                <div key={n} className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
                   <p className="text-purple-400 text-[10px] uppercase tracking-wider font-semibold mb-3">Propuesta {n}</p>
                   <input
                     value={pdfState[`propuesta${n}Titulo`]}
                     onChange={e => setPdfState(p => ({ ...p, [`propuesta${n}Titulo`]: e.target.value }))}
                     placeholder="Título de la propuesta"
-                    className="w-full bg-[#151515] border border-[#222] rounded-lg px-3 py-2 text-white text-sm mb-2 focus:border-[#B3985B] outline-none transition-colors"
+                    className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-sm mb-2 focus:border-[#B3985B]/40 outline-none transition-colors"
                   />
                   <textarea
                     value={pdfState[`propuesta${n}Desc`]}
                     onChange={e => setPdfState(p => ({ ...p, [`propuesta${n}Desc`]: e.target.value }))}
                     placeholder="Descripción y acciones concretas..."
                     rows={2}
-                    className="w-full bg-[#151515] border border-[#222] rounded-lg px-3 py-2 text-white text-sm resize-none focus:border-[#B3985B] outline-none transition-colors"
+                    className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-sm resize-none focus:border-[#B3985B]/40 outline-none transition-colors"
                   />
                 </div>
               ))}
-              {/* Comentarios finales */}
-              <div>
-                <label className="text-[#B3985B] text-[10px] uppercase tracking-wider font-semibold block mb-1.5">Comentarios finales</label>
-                <textarea
-                  value={pdfState.comentariosFinales}
-                  onChange={e => setPdfState(p => ({ ...p, comentariosFinales: e.target.value }))}
-                  placeholder="Conclusiones, próximos pasos, compromisos..."
-                  rows={3}
-                  className="w-full bg-[#151515] border border-[#222] rounded-lg px-3 py-2 text-white text-sm resize-none focus:border-[#B3985B] outline-none transition-colors"
-                />
-              </div>
-              {/* Botón imprimir */}
-              <button
-                onClick={() => { setShowPDFModal(false); setTimeout(() => window.print(), 100); }}
-                className="w-full bg-[#B3985B] hover:bg-[#c9a96a] text-black font-bold py-3 rounded-xl text-sm transition-colors"
-              >
-                Imprimir / Descargar PDF
-              </button>
+            </div>
+          </div>
+
+          {/* Comentarios finales */}
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div className="px-5 py-3 border-b border-[#1e1e1e]">
+              <h3 className="text-sm font-semibold text-[#B3985B]">Comentarios finales</h3>
+            </div>
+            <div className="p-5">
+              <textarea
+                value={pdfState.comentariosFinales}
+                onChange={e => setPdfState(p => ({ ...p, comentariosFinales: e.target.value }))}
+                placeholder="Conclusiones, próximos pasos, compromisos..."
+                rows={3}
+                className="w-full bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/40 resize-none leading-relaxed"
+              />
             </div>
           </div>
         </div>
-      )}
+
+      </div>
+
+
 
       {/* ── PRINT LAYOUT — visible SOLO al imprimir ── */}
       <div className="print-layout" id="print-report" style={{ background: 'white', color: 'black', padding: '0', fontFamily: 'system-ui, sans-serif' }}>

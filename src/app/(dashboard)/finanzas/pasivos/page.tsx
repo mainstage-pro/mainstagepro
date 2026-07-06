@@ -83,13 +83,15 @@ function PlanPagosModal({ pasivo, onClose, onSaved }: PlanModalProps) {
     if (pasivo.cuotas.length > 0) {
       return pasivo.cuotas.map(c => ({ monto: String(c.monto), fecha: c.fechaVencimiento.slice(0, 10) }));
     }
-    return [{ monto: String(pasivo.montoTotal), fecha: hoy() }];
+    const restante = pasivo.montoTotal - pasivo.montoPagado;
+    return [{ monto: String(restante), fecha: hoy() }];
   });
   const [saving, setSaving] = useState(false);
 
   function updateNum(n: number) {
     setNumCuotas(n);
-    const montoEq = pasivo.montoTotal / n;
+    const restante = pasivo.montoTotal - pasivo.montoPagado;
+    const montoEq = restante / n;
     setDraft(Array.from({ length: n }, (_, i) => {
       const d = new Date();
       d.setMonth(d.getMonth() + i);
@@ -122,7 +124,10 @@ function PlanPagosModal({ pasivo, onClose, onSaved }: PlanModalProps) {
       <div className="bg-[#0e0e0e] border border-[#2a2a2a] rounded-2xl w-full max-w-lg mx-4 shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="p-5 border-b border-[#1e1e1e]">
           <h2 className="text-white font-semibold text-base">Plan de pagos — {pasivo.nombre}</h2>
-          <p className="text-gray-500 text-xs mt-1">Total: {fmt(pasivo.montoTotal)}</p>
+          <p className="text-gray-500 text-xs mt-1">
+            Restante: {fmt(pasivo.montoTotal - pasivo.montoPagado)}
+            <span className="text-[#333] ml-2">· Total deuda: {fmt(pasivo.montoTotal)}</span>
+          </p>
         </div>
         <div className="p-5 space-y-4">
           {/* Num cuotas */}
@@ -160,9 +165,9 @@ function PlanPagosModal({ pasivo, onClose, onSaved }: PlanModalProps) {
           {/* Total */}
           <div className="flex justify-between text-xs pt-2 border-t border-[#1e1e1e]">
             <span className="text-gray-500">Total del plan:</span>
-            <span className={`font-semibold ${Math.abs(draft.reduce((s, r) => s + (parseFloat(r.monto) || 0), 0) - pasivo.montoTotal) > 1 ? "text-red-400" : "text-green-400"}`}>
+            <span className={`font-semibold ${Math.abs(draft.reduce((s, r) => s + (parseFloat(r.monto) || 0), 0) - (pasivo.montoTotal - pasivo.montoPagado)) > 1 ? "text-red-400" : "text-green-400"}`}>
               {fmt(draft.reduce((s, r) => s + (parseFloat(r.monto) || 0), 0))}
-              {" "}/ {fmt(pasivo.montoTotal)}
+              {" "}/ {fmt(pasivo.montoTotal - pasivo.montoPagado)}
             </span>
           </div>
         </div>
