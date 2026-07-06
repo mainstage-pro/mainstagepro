@@ -56,6 +56,8 @@ const NAV: NavSection[] = [
     key: "seccion-direccion",
     section: "Dirección",
     items: [
+      { key: "dir-estado-resultados", label: "Estado de Resultados", href: "/direccion/estado-resultados", adminOnly: true },
+      { key: "dir-reporte-tareas", label: "Reporte de Tareas", href: "/direccion/reporte-tareas", adminOnly: true },
       { key: "juntas", label: "Juntas", href: "/juntas" },
       { key: "presentaciones", label: "Presentaciones", href: "/presentaciones" },
       { key: "capacitacion", label: "Capacitación", href: "/capacitacion", icon: GraduationCap },
@@ -80,6 +82,12 @@ const NAV: NavSection[] = [
           { key: "finanzas-movimientos", label: "Movimientos", href: "/finanzas/movimientos" },
           { key: "finanzas-caja-chica", label: "Caja chica", href: "/finanzas/caja-chica" },
           { key: "finanzas-reporte", label: "Estado de Resultados", href: "/finanzas/reporte" },
+          { key: "finanzas-flujo", label: "Flujo de Efectivo", href: "/finanzas/flujo", adminOnly: true },
+          { key: "finanzas-cxc", label: "Cuentas por Cobrar", href: "/finanzas/cxc", adminOnly: true },
+          { key: "finanzas-cxp", label: "Cuentas por Pagar", href: "/finanzas/cxp", adminOnly: true },
+          { key: "finanzas-rentabilidad", label: "Rentabilidad", href: "/finanzas/rentabilidad", adminOnly: true },
+          { key: "finanzas-cuentas", label: "Cuentas bancarias", href: "/finanzas/cuentas", adminOnly: true },
+          { key: "finanzas-categorias", label: "Categorías de gastos", href: "/finanzas/categorias", adminOnly: true },
           { key: "finanzas-pasivos", label: "Pasivos y Deudas", href: "/finanzas/pasivos", adminOnly: true },
           { key: "finanzas-repartos", label: "Reparto de Utilidades", href: "/finanzas/repartos", adminOnly: true },
           { key: "inv-analisis", label: "Análisis de uso de equipo", href: "/inventario/analisis" },
@@ -229,7 +237,7 @@ function getInitialOpen(pathname: string): Set<string> {
 }
 
 function getActiveSectionKey(pathname: string): string | null {
-  if (pathname.startsWith("/presentaciones") || pathname.startsWith("/admin") || pathname.startsWith("/juntas") || pathname.startsWith("/formularios") || pathname.startsWith("/capacitacion")) return "seccion-direccion";
+  if (pathname.startsWith("/presentaciones") || pathname.startsWith("/admin") || pathname.startsWith("/juntas") || pathname.startsWith("/formularios") || pathname.startsWith("/capacitacion") || pathname.startsWith("/direccion")) return "seccion-direccion";
   if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles") || pathname.startsWith("/admin/reportes")) return "seccion-administracion";
   if (pathname.startsWith("/marketing")) return "seccion-marketing";
   if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas") || pathname.startsWith("/prospectos") || pathname.startsWith("/crm/prospeccion")) return "seccion-ventas";
