@@ -671,9 +671,7 @@ export default function InventarioActivosPage() {
 
             </div>
           );
-        })()
-
-      ) : tab === "produccion" ? (
+        })()) : tab === "produccion" ? (
 
         /* ── EQUIPOS DE PRODUCCIÓN ── */
         <div className="space-y-5">
