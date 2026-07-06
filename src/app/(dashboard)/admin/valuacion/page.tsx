@@ -373,6 +373,22 @@ export default function InventarioActivosPage() {
     [accesoriosProd, busquedaAcc]
   );
 
+  // ── Resumen: vars computadas fuera del JSX para evitar IIFE
+  const resumenTotalOficina = activosOficina.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0);
+  const resumenTotalIntangibles = activosIntangibles.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0);
+  const resumenTotalPropios = resumenTotalOficina + resumenTotalIntangibles;
+  const resumenGrandTotal = valorTotalProd + resumenTotalPropios;
+  const RESUMEN_COLORS = ["bg-amber-500","bg-blue-500","bg-emerald-500","bg-purple-500","bg-rose-500","bg-cyan-500","bg-orange-500","bg-teal-500","bg-indigo-500","bg-pink-500","bg-lime-500","bg-sky-500","bg-violet-500"];
+  const resumenCatValores = [...porCategoriaProd]
+    .map(g => ({
+      nombre: g.cat.nombre,
+      cantidad: g.items.reduce((s, e) => s + e.cantidadTotal, 0),
+      valor: g.items.reduce((s, e) => s + (e.costoInternoEstimado ?? 0) * e.cantidadTotal, 0),
+      renta: g.items.reduce((s, e) => s + e.precioRenta * e.cantidadTotal, 0),
+    }))
+    .sort((a, b) => b.valor - a.valor);
+  const resumenMaxValorCat = Math.max(...resumenCatValores.map(c => c.valor), 1);
+
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-5">
 
@@ -413,25 +429,7 @@ export default function InventarioActivosPage() {
           {[...Array(6)].map((_, i) => <div key={i} className="h-12 bg-[#111] rounded-lg animate-pulse" />)}
         </div>
 
-      ) : tab === "resumen" ? (() => {
-          const totalOficina = activosOficina.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0);
-          const totalIntangibles = activosIntangibles.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0);
-          const totalPropios = totalOficina + totalIntangibles;
-          const grandTotal = valorTotalProd + totalPropios;
-
-          const catValores = porCategoriaProd
-            .map(g => ({
-              nombre: g.cat.nombre,
-              cantidad: g.items.reduce((s, e) => s + e.cantidadTotal, 0),
-              valor: g.items.reduce((s, e) => s + (e.costoInternoEstimado ?? 0) * e.cantidadTotal, 0),
-              renta: g.items.reduce((s, e) => s + e.precioRenta * e.cantidadTotal, 0),
-            }))
-            .sort((a, b) => b.valor - a.valor);
-          const maxValorCat = Math.max(...catValores.map(c => c.valor), 1);
-
-          const COLORS = ["bg-amber-500","bg-blue-500","bg-emerald-500","bg-purple-500","bg-rose-500","bg-cyan-500","bg-orange-500","bg-teal-500","bg-indigo-500","bg-pink-500","bg-lime-500","bg-sky-500","bg-violet-500"];
-
-          return (
+      ) : tab === "resumen" ? (
             <div className="space-y-5">
 
               {/* ── KPIs por tipo de activo ── */}
@@ -471,8 +469,8 @@ export default function InventarioActivosPage() {
                     </div>
                     <span className="text-xl">🪑</span>
                   </div>
-                  {totalOficina > 0
-                    ? <p className="text-2xl font-bold text-[#B3985B] tabular-nums">{fmx(totalOficina)}</p>
+                  {resumenTotalOficina > 0
+                    ? <p className="text-2xl font-bold text-[#B3985B] tabular-nums">{fmx(resumenTotalOficina)}</p>
                     : <p className="text-2xl font-bold text-[#444]">—</p>}
                   <p className="text-[10px] text-[#555] mt-1">{activosOficina.length} activos registrados</p>
                   <button onClick={() => setTab("oficina")} className="mt-3 pt-3 border-t border-[#1e1e1e] w-full text-left text-[10px] text-[#444] hover:text-[#B3985B] transition-colors">Ver detalle →</button>
@@ -488,8 +486,8 @@ export default function InventarioActivosPage() {
                     </div>
                     <span className="text-xl">💡</span>
                   </div>
-                  {totalIntangibles > 0
-                    ? <p className="text-2xl font-bold text-purple-400 tabular-nums">{fmx(totalIntangibles)}</p>
+                  {resumenTotalIntangibles > 0
+                    ? <p className="text-2xl font-bold text-purple-400 tabular-nums">{fmx(resumenTotalIntangibles)}</p>
                     : <p className="text-2xl font-bold text-[#444]">—</p>}
                   <p className="text-[10px] text-[#555] mt-1">{activosIntangibles.length} activos · software y PI</p>
                   <button onClick={() => setTab("intangibles")} className="mt-3 pt-3 border-t border-[#1e1e1e] w-full text-left text-[10px] text-[#444] hover:text-[#B3985B] transition-colors">Ver detalle →</button>
@@ -509,10 +507,10 @@ export default function InventarioActivosPage() {
                     <span className="text-[10px] text-[#444] border border-[#222] px-2 py-0.5 rounded-full">Por adquisición</span>
                   </div>
                   <div className="p-4 space-y-3">
-                    {catValores.length === 0 ? (
+                    {resumenCatValores.length === 0 ? (
                       <p className="text-[#444] text-sm text-center py-6">Sin datos de valor registrados</p>
-                    ) : catValores.map((c, i) => {
-                      const pctBar = (c.valor / maxValorCat) * 100;
+                    ) : resumenCatValores.map((c, i) => {
+                      const pctBar = (c.valor / resumenMaxValorCat) * 100;
                       return (
                         <div key={c.nombre}>
                           <div className="flex items-center justify-between mb-1">
@@ -523,7 +521,7 @@ export default function InventarioActivosPage() {
                             </div>
                           </div>
                           <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-                            <div className={`h-full ${COLORS[i % COLORS.length]} rounded-full transition-all duration-700`} style={{ width: `${pctBar}%` }} />
+                            <div className={`h-full ${RESUMEN_COLORS[i % COLORS.length]} rounded-full transition-all duration-700`} style={{ width: `${pctBar}%` }} />
                           </div>
                           {c.renta > 0 && <p className="text-[10px] text-emerald-500/70 mt-0.5">Renta: {fmx(c.renta)}/mes</p>}
                         </div>
@@ -539,18 +537,18 @@ export default function InventarioActivosPage() {
                     <p className="text-[10px] text-[#555] mt-0.5">Distribución por tipo de activo</p>
                   </div>
                   <div className="p-4">
-                    {grandTotal > 0 ? (
+                    {resumenGrandTotal > 0 ? (
                       <>
                         <div className="flex h-4 rounded-full overflow-hidden gap-0.5 mb-5">
-                          {valorTotalProd > 0 && <div className="bg-amber-500/80 transition-all" style={{ width: `${(valorTotalProd / grandTotal) * 100}%` }} />}
-                          {totalOficina > 0 && <div className="bg-[#B3985B]/80 transition-all" style={{ width: `${(totalOficina / grandTotal) * 100}%` }} />}
-                          {totalIntangibles > 0 && <div className="bg-purple-500/80 transition-all" style={{ width: `${(totalIntangibles / grandTotal) * 100}%` }} />}
+                          {valorTotalProd > 0 && <div className="bg-amber-500/80 transition-all" style={{ width: `${(valorTotalProd / resumenGrandTotal) * 100}%` }} />}
+                          {resumenTotalOficina > 0 && <div className="bg-[#B3985B]/80 transition-all" style={{ width: `${(totalOficina / resumenGrandTotal) * 100}%` }} />}
+                          {resumenTotalIntangibles > 0 && <div className="bg-purple-500/80 transition-all" style={{ width: `${(totalIntangibles / resumenGrandTotal) * 100}%` }} />}
                         </div>
                         <div className="space-y-3">
                           {[
                             { label: "Equipos de Producción", nota: "Administrado", valor: valorTotalProd, dot: "bg-amber-500", text: "text-amber-400" },
-                            { label: "Oficina y Mobiliario",  nota: "Propio",       valor: totalOficina,    dot: "bg-[#B3985B]", text: "text-[#B3985B]" },
-                            { label: "Activos Intangibles",   nota: "Propio",       valor: totalIntangibles, dot: "bg-purple-500", text: "text-purple-400" },
+                            { label: "Oficina y Mobiliario",  nota: "Propio",       valor: resumenTotalOficina,    dot: "bg-[#B3985B]", text: "text-[#B3985B]" },
+                            { label: "Activos Intangibles",   nota: "Propio",       valor: resumenTotalIntangibles, dot: "bg-purple-500", text: "text-purple-400" },
                           ].filter(s => s.valor > 0).map(s => (
                             <div key={s.label} className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
@@ -562,7 +560,7 @@ export default function InventarioActivosPage() {
                               </div>
                               <div className="text-right">
                                 <p className={`text-sm font-semibold ${s.text}`}>{fmx(s.valor)}</p>
-                                <p className="text-[10px] text-[#444]">{pct((s.valor / grandTotal) * 100)}</p>
+                                <p className="text-[10px] text-[#444]">{pct((s.valor / resumenGrandTotal) * 100)}</p>
                               </div>
                             </div>
                           ))}
@@ -570,13 +568,13 @@ export default function InventarioActivosPage() {
                         <div className="mt-4 pt-4 border-t border-[#1e1e1e] flex items-center justify-between">
                           <div>
                             <p className="text-[10px] text-[#555] uppercase tracking-wider">Portafolio total</p>
-                            <p className="text-[10px] text-[#444] mt-0.5">Activos propios: {totalPropios > 0 ? fmx(totalPropios) : "—"}</p>
+                            <p className="text-[10px] text-[#444] mt-0.5">Activos propios: {resumenTotalPropios > 0 ? fmx(resumenTotalPropios) : "—"}</p>
                           </div>
-                          <p className="text-xl font-bold text-[#B3985B] tabular-nums">{fmx(grandTotal)}</p>
+                          <p className="text-xl font-bold text-[#B3985B] tabular-nums">{fmx(resumenGrandTotal)}</p>
                         </div>
                         <div className="mt-3 bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2 flex items-center justify-between">
                           <p className="text-[10px] text-[#555]">Solo activos propios Mainstage</p>
-                          <p className="text-sm font-semibold text-[#B3985B]">{totalPropios > 0 ? fmx(totalPropios) : "—"}</p>
+                          <p className="text-sm font-semibold text-[#B3985B]">{resumenTotalPropios > 0 ? fmx(resumenTotalPropios) : "—"}</p>
                         </div>
                       </>
                     ) : (
@@ -624,7 +622,7 @@ export default function InventarioActivosPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      {totalOficina > 0 ? <p className="text-sm font-semibold text-[#B3985B]">{fmx(totalOficina)}</p> : <p className="text-xs text-[#444] italic">sin valorar</p>}
+                      {resumenTotalOficina > 0 ? <p className="text-sm font-semibold text-[#B3985B]">{fmx(resumenTotalOficina)}</p> : <p className="text-xs text-[#444] italic">sin valorar</p>}
                       <button onClick={() => setTab("oficina")} className="text-[10px] text-[#444] hover:text-[#B3985B] transition-colors">Ver detalle →</button>
                     </div>
                   </div>
@@ -653,25 +651,25 @@ export default function InventarioActivosPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      {totalIntangibles > 0 ? <p className="text-sm font-semibold text-purple-400">{fmx(totalIntangibles)}</p> : <p className="text-xs text-[#444] italic">sin valorar</p>}
+                      {resumenTotalIntangibles > 0 ? <p className="text-sm font-semibold text-purple-400">{fmx(resumenTotalIntangibles)}</p> : <p className="text-xs text-[#444] italic">sin valorar</p>}
                       <button onClick={() => setTab("intangibles")} className="text-[10px] text-[#444] hover:text-[#B3985B] transition-colors">Ver detalle →</button>
                     </div>
                   </div>
-                  {grandTotal > 0 && (
+                  {resumenGrandTotal > 0 && (
                     <div className="flex items-center justify-between px-4 py-3 bg-[#0d0d0d]">
                       <div>
                         <p className="text-xs text-[#555] font-medium uppercase tracking-wider">Portafolio total</p>
-                        <p className="text-[10px] text-[#444] mt-0.5">Activos propios: {totalPropios > 0 ? fmx(totalPropios) : "—"}</p>
+                        <p className="text-[10px] text-[#444] mt-0.5">Activos propios: {resumenTotalPropios > 0 ? fmx(resumenTotalPropios) : "—"}</p>
                       </div>
-                      <p className="text-lg font-bold text-[#B3985B] tabular-nums">{fmx(grandTotal)}</p>
+                      <p className="text-lg font-bold text-[#B3985B] tabular-nums">{fmx(resumenGrandTotal)}</p>
                     </div>
                   )}
                 </div>
               </div>
 
             </div>
-          );
-        })()) : tab === "produccion" ? (
+
+      ) : tab === "produccion" ? (
 
         /* ── EQUIPOS DE PRODUCCIÓN ── */
         <div className="space-y-5">
