@@ -29,6 +29,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         metodoPago: body.metodoPago ?? pago.metodoPago,
         cuentaOrigenId: body.cuentaOrigenId ?? pago.cuentaOrigenId ?? null,
         creadoPor: session.name,
+        // Categoría: Sueldos y salarios
+        categoriaId: "cmr9nhpiz0000opai3qpnztdb",
       },
     });
 
