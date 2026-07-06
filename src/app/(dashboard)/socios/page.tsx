@@ -107,12 +107,7 @@ export default function SociosConstitutivosPage() {
             {constitutivos.length} socios · Escenario Principal S.A. de C.V.
           </p>
         </div>
-        <Link
-          href="/socios/activos"
-          className="text-xs text-[#B3985B] hover:underline border border-[#B3985B]/30 px-3 py-1.5 rounded-lg"
-        >
-          Socios de Activos →
-        </Link>
+
       </div>
 
       {/* Estructura societaria — barra visual */}
@@ -278,10 +273,6 @@ export default function SociosConstitutivosPage() {
       <div className="mt-8 p-4 bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl">
         <p className="text-xs text-[#555]">
           Este módulo muestra únicamente los socios del acta constitutiva de Escenario Principal S.A. de C.V.
-          Para gestionar socios con activos en inventario, visita{" "}
-          <Link href="/socios/activos" className="text-[#B3985B] hover:underline">
-            Socios de Activos
-          </Link>.
         </p>
       </div>
     </div>

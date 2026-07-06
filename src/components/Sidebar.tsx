@@ -113,7 +113,6 @@ const NAV: NavSection[] = [
         children: [
           { key: "inventario-activos", label: "Inventario de Activos", href: "/admin/valuacion" },
           { key: "socios-constitutivos", label: "Socios Constitutivos", href: "/socios" },
-          { key: "socios-activos", label: "Socios de Activos", href: "/socios/activos" },
         ],
       },
       { key: "tabulador", label: "Tabulador Freelancers", href: "/catalogo/roles" },
