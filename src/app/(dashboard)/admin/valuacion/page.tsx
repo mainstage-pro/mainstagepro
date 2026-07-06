@@ -413,114 +413,265 @@ export default function InventarioActivosPage() {
           {[...Array(6)].map((_, i) => <div key={i} className="h-12 bg-[#111] rounded-lg animate-pulse" />)}
         </div>
 
-      ) : tab === "resumen" ? (
+      ) : tab === "resumen" ? (() => {
+          const totalOficina = activosOficina.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0);
+          const totalIntangibles = activosIntangibles.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0);
+          const totalPropios = totalOficina + totalIntangibles;
+          const grandTotal = valorTotalProd + totalPropios;
 
-        /* ── REPORTE GENERAL ── */
-        <div className="space-y-6">
+          const catValores = porCategoriaProd
+            .map(g => ({
+              nombre: g.cat.nombre,
+              cantidad: g.items.reduce((s, e) => s + e.cantidadTotal, 0),
+              valor: g.items.reduce((s, e) => s + (e.costoInternoEstimado ?? 0) * e.cantidadTotal, 0),
+              renta: g.items.reduce((s, e) => s + e.precioRenta * e.cantidadTotal, 0),
+            }))
+            .sort((a, b) => b.valor - a.valor);
+          const maxValorCat = Math.max(...catValores.map(c => c.valor), 1);
 
-          {/* ── KPIs SUPERIORES ── */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <KpiCard label="Equipos de Producción" value={String(equiposProd.length)} sub={`${porCategoriaProd.length} categorías`} />
-            <KpiCard label="Valor activo producción" value={fmx(valorTotalProd)} sub="Costo de adquisición" color="text-[#B3985B]" />
-            <KpiCard label="Renta mensual potencial" value={fmx(rentaTotalProd)} sub="Precio renta × cantidad" color="text-emerald-400" />
-            <KpiCard label="Rentabilidad anual" value={pct(rentabilidadProm)} sub="Renta × 12 / valor" color="text-blue-400" />
-          </div>
+          const COLORS = ["bg-amber-500","bg-blue-500","bg-emerald-500","bg-purple-500","bg-rose-500","bg-cyan-500","bg-orange-500","bg-teal-500","bg-indigo-500","bg-pink-500","bg-lime-500","bg-sky-500","bg-violet-500"];
 
-          {/* ── RESUMEN CONSOLIDADO DE ACTIVOS ── */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-[#1e1e1e]">
-              <p className="text-white text-sm font-medium">Inventario General de Activos</p>
-              <p className="text-[#555] text-xs mt-0.5">Activos administrados y operados por Mainstage Pro</p>
+          return (
+            <div className="space-y-5">
+
+              {/* ── KPIs por tipo de activo ── */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+
+                {/* Producción — ADMINISTRADO */}
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 relative overflow-hidden">
+                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-amber-500/60" />
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="text-[10px] text-amber-500/80 uppercase tracking-widest font-semibold">Administrado por Mainstage</p>
+                      <p className="text-sm text-white/80 mt-0.5">Equipos de Producción</p>
+                    </div>
+                    <span className="text-xl">🎛</span>
+                  </div>
+                  <p className="text-2xl font-bold text-amber-400 tabular-nums">{fmx(valorTotalProd)}</p>
+                  <p className="text-[10px] text-[#555] mt-1">Valor de adquisición · {equiposProd.length} equipos</p>
+                  <div className="mt-3 pt-3 border-t border-[#1e1e1e] grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[10px] text-[#555]">Renta mensual</p>
+                      <p className="text-sm font-semibold text-emerald-400">{fmx(rentaTotalProd)}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-[#555]">Rentabilidad</p>
+                      <p className="text-sm font-semibold text-blue-400">{pct(rentabilidadProm)} anual</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Oficina — PROPIO */}
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 relative overflow-hidden">
+                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#B3985B]/60" />
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="text-[10px] text-[#B3985B] uppercase tracking-widest font-semibold">Activo Propio Mainstage</p>
+                      <p className="text-sm text-white/80 mt-0.5">Oficina y Mobiliario</p>
+                    </div>
+                    <span className="text-xl">🪑</span>
+                  </div>
+                  {totalOficina > 0
+                    ? <p className="text-2xl font-bold text-[#B3985B] tabular-nums">{fmx(totalOficina)}</p>
+                    : <p className="text-2xl font-bold text-[#444]">—</p>}
+                  <p className="text-[10px] text-[#555] mt-1">{activosOficina.length} activos registrados</p>
+                  <button onClick={() => setTab("oficina")} className="mt-3 pt-3 border-t border-[#1e1e1e] w-full text-left text-[10px] text-[#444] hover:text-[#B3985B] transition-colors">Ver detalle →</button>
+                </div>
+
+                {/* Intangibles — PROPIO */}
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 relative overflow-hidden">
+                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-purple-500/60" />
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <p className="text-[10px] text-purple-400 uppercase tracking-widest font-semibold">Activo Propio Mainstage</p>
+                      <p className="text-sm text-white/80 mt-0.5">Activos Intangibles</p>
+                    </div>
+                    <span className="text-xl">💡</span>
+                  </div>
+                  {totalIntangibles > 0
+                    ? <p className="text-2xl font-bold text-purple-400 tabular-nums">{fmx(totalIntangibles)}</p>
+                    : <p className="text-2xl font-bold text-[#444]">—</p>}
+                  <p className="text-[10px] text-[#555] mt-1">{activosIntangibles.length} activos · software y PI</p>
+                  <button onClick={() => setTab("intangibles")} className="mt-3 pt-3 border-t border-[#1e1e1e] w-full text-left text-[10px] text-[#444] hover:text-[#B3985B] transition-colors">Ver detalle →</button>
+                </div>
+              </div>
+
+              {/* ── Gráfica por categoría + Composición del portafolio ── */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+                {/* Gráfica horizontal — valor por categoría de producción */}
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[#1e1e1e] flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-white">Valor por categoría</p>
+                      <p className="text-[10px] text-[#555] mt-0.5">Equipos de producción administrados</p>
+                    </div>
+                    <span className="text-[10px] text-[#444] border border-[#222] px-2 py-0.5 rounded-full">Por adquisición</span>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    {catValores.length === 0 ? (
+                      <p className="text-[#444] text-sm text-center py-6">Sin datos de valor registrados</p>
+                    ) : catValores.map((c, i) => {
+                      const pctBar = (c.valor / maxValorCat) * 100;
+                      return (
+                        <div key={c.nombre}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-white/70 truncate max-w-[160px]">{c.nombre}</span>
+                            <div className="text-right shrink-0 ml-2">
+                              <span className="text-xs font-semibold text-white/90">{fmx(c.valor)}</span>
+                              <span className="text-[10px] text-[#555] ml-2">{c.cantidad} u</span>
+                            </div>
+                          </div>
+                          <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                            <div className={`h-full ${COLORS[i % COLORS.length]} rounded-full transition-all duration-700`} style={{ width: `${pctBar}%` }} />
+                          </div>
+                          {c.renta > 0 && <p className="text-[10px] text-emerald-500/70 mt-0.5">Renta: {fmx(c.renta)}/mes</p>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Composición del portafolio */}
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-[#1e1e1e]">
+                    <p className="text-sm font-medium text-white">Composición del portafolio</p>
+                    <p className="text-[10px] text-[#555] mt-0.5">Distribución por tipo de activo</p>
+                  </div>
+                  <div className="p-4">
+                    {grandTotal > 0 ? (
+                      <>
+                        <div className="flex h-4 rounded-full overflow-hidden gap-0.5 mb-5">
+                          {valorTotalProd > 0 && <div className="bg-amber-500/80 transition-all" style={{ width: `${(valorTotalProd / grandTotal) * 100}%` }} />}
+                          {totalOficina > 0 && <div className="bg-[#B3985B]/80 transition-all" style={{ width: `${(totalOficina / grandTotal) * 100}%` }} />}
+                          {totalIntangibles > 0 && <div className="bg-purple-500/80 transition-all" style={{ width: `${(totalIntangibles / grandTotal) * 100}%` }} />}
+                        </div>
+                        <div className="space-y-3">
+                          {[
+                            { label: "Equipos de Producción", nota: "Administrado", valor: valorTotalProd, dot: "bg-amber-500", text: "text-amber-400" },
+                            { label: "Oficina y Mobiliario",  nota: "Propio",       valor: totalOficina,    dot: "bg-[#B3985B]", text: "text-[#B3985B]" },
+                            { label: "Activos Intangibles",   nota: "Propio",       valor: totalIntangibles, dot: "bg-purple-500", text: "text-purple-400" },
+                          ].filter(s => s.valor > 0).map(s => (
+                            <div key={s.label} className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-2.5 h-2.5 rounded-sm ${s.dot}`} />
+                                <div>
+                                  <p className="text-xs text-white/80">{s.label}</p>
+                                  <p className="text-[10px] text-[#555]">{s.nota}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className={`text-sm font-semibold ${s.text}`}>{fmx(s.valor)}</p>
+                                <p className="text-[10px] text-[#444]">{pct((s.valor / grandTotal) * 100)}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-4 pt-4 border-t border-[#1e1e1e] flex items-center justify-between">
+                          <div>
+                            <p className="text-[10px] text-[#555] uppercase tracking-wider">Portafolio total</p>
+                            <p className="text-[10px] text-[#444] mt-0.5">Activos propios: {totalPropios > 0 ? fmx(totalPropios) : "—"}</p>
+                          </div>
+                          <p className="text-xl font-bold text-[#B3985B] tabular-nums">{fmx(grandTotal)}</p>
+                        </div>
+                        <div className="mt-3 bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2 flex items-center justify-between">
+                          <p className="text-[10px] text-[#555]">Solo activos propios Mainstage</p>
+                          <p className="text-sm font-semibold text-[#B3985B]">{totalPropios > 0 ? fmx(totalPropios) : "—"}</p>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center py-10">
+                        <p className="text-[#444] text-sm">Sin datos de valor registrados</p>
+                        <p className="text-[#333] text-xs mt-1">Agrega costos en cada sección</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Tabla consolidada ── */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-[#1e1e1e]">
+                  <p className="text-sm font-medium text-white">Inventario consolidado</p>
+                  <p className="text-[#555] text-xs mt-0.5">Resumen por sección</p>
+                </div>
+                <div className="divide-y divide-[#1a1a1a]">
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">🎛</span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-white/90">Equipos de Producción</p>
+                          <span className="text-[9px] bg-amber-900/30 text-amber-500 border border-amber-800/30 px-1.5 py-0.5 rounded-full font-medium">Administrado</span>
+                        </div>
+                        <p className="text-xs text-[#555]">{equiposProd.length} equipos · {porCategoriaProd.length} categorías · renta {fmx(rentaTotalProd)}/mes</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-amber-400">{fmx(valorTotalProd)}</p>
+                      <button onClick={() => setTab("produccion")} className="text-[10px] text-[#444] hover:text-[#B3985B] transition-colors">Ver detalle →</button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">🪑</span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-white/90">Equipos y Mobiliario de Oficina</p>
+                          <span className="text-[9px] bg-[#B3985B]/10 text-[#B3985B] border border-[#B3985B]/20 px-1.5 py-0.5 rounded-full font-medium">Propio</span>
+                        </div>
+                        <p className="text-xs text-[#555]">{activosOficina.length} activos registrados</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      {totalOficina > 0 ? <p className="text-sm font-semibold text-[#B3985B]">{fmx(totalOficina)}</p> : <p className="text-xs text-[#444] italic">sin valorar</p>}
+                      <button onClick={() => setTab("oficina")} className="text-[10px] text-[#444] hover:text-[#B3985B] transition-colors">Ver detalle →</button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">🔌</span>
+                      <div>
+                        <p className="text-sm text-white/90">Accesorios de Producción</p>
+                        <p className="text-xs text-[#555]">{accesoriosProd.length} accesorios catalogados</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-[#444] italic">sin valorar</p>
+                      <button onClick={() => setTab("accesorios")} className="text-[10px] text-[#444] hover:text-[#B3985B] transition-colors">Ver detalle →</button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-lg">💡</span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-white/90">Activos Intangibles</p>
+                          <span className="text-[9px] bg-purple-900/30 text-purple-400 border border-purple-800/30 px-1.5 py-0.5 rounded-full font-medium">Propio</span>
+                        </div>
+                        <p className="text-xs text-[#555]">{activosIntangibles.length} activos · software y PI</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      {totalIntangibles > 0 ? <p className="text-sm font-semibold text-purple-400">{fmx(totalIntangibles)}</p> : <p className="text-xs text-[#444] italic">sin valorar</p>}
+                      <button onClick={() => setTab("intangibles")} className="text-[10px] text-[#444] hover:text-[#B3985B] transition-colors">Ver detalle →</button>
+                    </div>
+                  </div>
+                  {grandTotal > 0 && (
+                    <div className="flex items-center justify-between px-4 py-3 bg-[#0d0d0d]">
+                      <div>
+                        <p className="text-xs text-[#555] font-medium uppercase tracking-wider">Portafolio total</p>
+                        <p className="text-[10px] text-[#444] mt-0.5">Activos propios: {totalPropios > 0 ? fmx(totalPropios) : "—"}</p>
+                      </div>
+                      <p className="text-lg font-bold text-[#B3985B] tabular-nums">{fmx(grandTotal)}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
             </div>
-            <div className="divide-y divide-[#1a1a1a]">
-              {/* Oficina */}
-              <div className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-lg">🪑</span>
-                  <div>
-                    <p className="text-sm text-white/90">Equipos y Mobiliario de Oficina</p>
-                    <p className="text-xs text-[#555]">{activosOficina.length} activos</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  {activosOficina.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0) > 0 ? (
-                    <p className="text-sm font-semibold text-[#B3985B]">
-                      {fmx(activosOficina.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0))}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-[#444] italic">sin valorar</p>
-                  )}
-                  <button onClick={() => setTab("oficina")} className="text-[10px] text-[#444] hover:text-[#B3985B] transition-colors">Ver detalle →</button>
-                </div>
-              </div>
-              {/* Producción */}
-              <div className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-lg">🎛</span>
-                  <div>
-                    <p className="text-sm text-white/90">Equipos de Producción</p>
-                    <p className="text-xs text-[#555]">{equiposProd.length} equipos · renta potencial {fmx(rentaTotalProd)}/mes</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  {valorTotalProd > 0 ? (
-                    <p className="text-sm font-semibold text-[#B3985B]">{fmx(valorTotalProd)}</p>
-                  ) : (
-                    <p className="text-xs text-[#444] italic">sin valorar</p>
-                  )}
-                  <button onClick={() => setTab("produccion")} className="text-[10px] text-[#444] hover:text-[#B3985B] transition-colors">Ver detalle →</button>
-                </div>
-              </div>
-              {/* Accesorios */}
-              <div className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-lg">🔌</span>
-                  <div>
-                    <p className="text-sm text-white/90">Accesorios de Producción</p>
-                    <p className="text-xs text-[#555]">{accesoriosProd.length} accesorios catalogados</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-[#444] italic">sin valorar</p>
-                  <button onClick={() => setTab("accesorios")} className="text-[10px] text-[#444] hover:text-[#B3985B] transition-colors">Ver detalle →</button>
-                </div>
-              </div>
-              {/* Intangibles */}
-              <div className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-lg">💡</span>
-                  <div>
-                    <p className="text-sm text-white/90">Activos Intangibles</p>
-                    <p className="text-xs text-[#555]">{activosIntangibles.length} activos · software y propiedad intelectual</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  {activosIntangibles.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0) > 0 ? (
-                    <p className="text-sm font-semibold text-[#B3985B]">
-                      {fmx(activosIntangibles.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0))}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-[#444] italic">sin valorar</p>
-                  )}
-                  <button onClick={() => setTab("intangibles")} className="text-[10px] text-[#444] hover:text-[#B3985B] transition-colors">Ver detalle →</button>
-                </div>
-              </div>
-            </div>
-            {/* ── GRAN TOTAL ── */}
-            {(() => {
-              const totalOficina = activosOficina.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0);
-              const totalIntangibles = activosIntangibles.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0);
-              const grandTotal = valorTotalProd + totalOficina + totalIntangibles;
-              return grandTotal > 0 ? (
-                <div className="border-t border-[#2a2a2a] px-4 py-3 flex items-center justify-between">
-                  <p className="text-xs text-[#555] font-medium uppercase tracking-wider">Total activos Mainstage Pro</p>
-                  <p className="text-lg font-bold text-[#B3985B] tabular-nums">{fmx(grandTotal)}</p>
-                </div>
-              ) : null;
-            })()}
-          </div>
-
-        </div>
+          );
+        })()
 
       ) : tab === "produccion" ? (
 
