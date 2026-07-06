@@ -160,6 +160,26 @@ function PanelAgendaReporte({
 
   switch (item.tipo) {
 
+    case "MODALIDAD": {
+      if (!respuesta) return <p className="text-gray-700 text-xs italic">Sin modalidad registrada</p>;
+      const MOD_MAP: Record<string, { emoji: string; label: string; sub: string }> = {
+        PRESENCIAL: { emoji: "🟢", label: "Presencial",      sub: "Todos en el mismo espacio" },
+        VIRTUAL:    { emoji: "🔵", label: "Virtual",         sub: "Por videollamada" },
+        DOCUMENTO:  { emoji: "📄", label: "Solo documento",  sub: "Se comparte sin junta en vivo" },
+      };
+      const mod = MOD_MAP[respuesta];
+      if (!mod) return <p className="text-gray-300 text-sm">{respuesta}</p>;
+      return (
+        <div className="inline-flex items-center gap-2 bg-[#141414] border border-[#222] rounded-lg px-3 py-2">
+          <span className="text-base">{mod.emoji}</span>
+          <div>
+            <p className="text-sm text-white font-medium">{mod.label}</p>
+            <p className="text-[10px] text-gray-600">{mod.sub}</p>
+          </div>
+        </div>
+      );
+    }
+
     case "RECONOCIMIENTO": {
       const recs = normalizarReconocimientos(respuesta);
       if (recs && recs.length > 0) {
@@ -428,17 +448,23 @@ export default function ReporteJuntaPage({ params }: { params: Promise<{ id: str
           </div>
         )}
 
-        {/* ── Agenda cubierta (TODOS los items con sus paneles) ── */}
-        {itemsCubiertos.length > 0 && (
-          <div>
-            <SectionHeader label="Agenda cubierta" count={itemsCubiertos.length} />
-            <div className="space-y-3">
-              {itemsCubiertos.map((item) => {
+        {/* ── Agenda completa en orden (con contenido) ── */}
+        <div>
+          <SectionHeader label="Agenda" count={junta.agendaItems.length} />
+          <div className="space-y-3">
+            {[...junta.agendaItems]
+              .sort((a, b) => a.orden - b.orden)
+              .map((item) => {
                 const tipoLabel = TIPO_AGENDA_LABELS[item.tipo as TipoAgenda] ?? item.tipo;
+                const tieneContenido = !!item.respuesta;
                 return (
                   <div key={item.id} className="bg-[#111] border border-[#1a1a1a] rounded-xl overflow-hidden">
                     <div className="flex items-center gap-3 px-4 py-3 border-b border-[#0d0d0d]">
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-500">✓ {tipoLabel}</span>
+                      <span className={`text-[9px] font-bold uppercase tracking-wider shrink-0 ${
+                        item.completado ? 'text-emerald-500' : 'text-gray-600'
+                      }`}>
+                        {item.completado ? '✓' : '○'} {tipoLabel}
+                      </span>
                       <p className="text-sm font-medium text-white">{item.titulo}</p>
                     </div>
                     <div className="px-4 py-3">
@@ -450,28 +476,10 @@ export default function ReporteJuntaPage({ params }: { params: Promise<{ id: str
                     </div>
                   </div>
                 );
-              })}
-            </div>
+              })
+            }
           </div>
-        )}
-
-        {/* ── Agenda no cubierta ── */}
-        {itemsSinCubrir.length > 0 && (
-          <div>
-            <SectionHeader label="Puntos no cubiertos" count={itemsSinCubrir.length} />
-            <div className="bg-[#111] border border-yellow-900/20 rounded-xl overflow-hidden divide-y divide-[#1a1a1a]">
-              {itemsSinCubrir.map((item) => {
-                const tipoLabel = TIPO_AGENDA_LABELS[item.tipo as TipoAgenda] ?? item.tipo;
-                return (
-                  <div key={item.id} className="flex items-center gap-3 px-4 py-3">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-gray-600">○ {tipoLabel}</span>
-                    <p className="text-sm text-gray-500">{item.titulo}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        </div>
 
         {/* ── Temas adicionales cubiertos ── */}
         {temasCubiertos.length > 0 && (
