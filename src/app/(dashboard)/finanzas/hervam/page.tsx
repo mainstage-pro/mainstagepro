@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
@@ -130,25 +130,51 @@ function Inp({ label, hint, value, onChange, type = "text", prefix }: {
 
 // ─── PÁGINA PRINCIPAL ─────────────────────────────────────────────────────────
 export default function HervamPage() {
-  const [tab, setTab] = useState<"resumen" | "activos" | "config" | "historial">("resumen");
+  const [tab, setTab] = useState<"resumen" | "activos" | "historial">("resumen");
   const [configData, setConfigData] = useState<ConfigData | null>(null);
   const [activos, setActivos] = useState<Activo[]>([]);
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [accesoriosProduccion, setAccesoriosProduccion] = useState<AccesoriosProduccionData[]>([]);
+  const [inventarioTotales, setInventarioTotales] = useState<{
+    equiposProduccion: { count: number; costoEstimado: number; precioRenta: number };
+    accesorios: { count: number };
+  } | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const resumenActivos = useMemo(() => {
+    const categorias: Record<string, { propietario: string; total: number; count: number }> = {};
+    for (const a of activos) {
+      if (!categorias[a.categoria]) {
+        categorias[a.categoria] = {
+          propietario: 'Mainstage Pro',
+          total: 0,
+          count: 0,
+        };
+      }
+      categorias[a.categoria].total += (a.valorActual || a.valorAdquisicion || 0);
+      categorias[a.categoria].count += 1;
+    }
+    const totalHervam = Object.values(categorias).reduce((s, c) => s + c.total, 0);
+    return { categorias, totalHervam };
+  }, [activos]);
+
   const load = useCallback(async () => {
-    const [cdRes, acRes, pgRes, accRes] = await Promise.all([
+    const [cdRes, acRes, pgRes, accRes, invRes] = await Promise.all([
       fetch("/api/finanzas/hervam/config"),
       fetch("/api/finanzas/hervam/activos"),
       fetch("/api/finanzas/hervam/pagos"),
       fetch("/api/finanzas/hervam/accesorios-produccion"),
+      fetch("/api/finanzas/hervam/inventario-totales"),
     ]);
-    const [cd, ac, pg, acc] = await Promise.all([cdRes.json(), acRes.json(), pgRes.json(), accRes.json()]);
+    const [cd, ac, pg, acc, inv] = await Promise.all([
+      cdRes.json(), acRes.json(), pgRes.json(), accRes.json(),
+      invRes.ok ? invRes.json() : Promise.resolve(null),
+    ]);
     setConfigData(cd);
     setActivos(ac.activos ?? []);
     setPagos(pg.pagos ?? []);
     setAccesoriosProduccion(acc.equipos ?? []);
+    setInventarioTotales(inv);
     setLoading(false);
   }, []);
 
@@ -187,7 +213,6 @@ export default function HervamPage() {
         {([
           { key: "resumen",   label: "Resumen" },
           { key: "activos",   label: "Activos" },
-          { key: "config",    label: "Configuración" },
           { key: "historial", label: "Historial" },
         ] as const).map(({ key, label }) => (
           <button key={key} onClick={() => setTab(key)}
@@ -204,10 +229,112 @@ export default function HervamPage() {
         <ResumenTab configData={configData} pagos={pagos} activos={activos} onRefresh={load} />
       )}
       {tab === "activos" && (
-        <ActivosTab activos={activos} accesoriosProduccion={accesoriosProduccion} onRefresh={load} />
-      )}
-      {tab === "config" && configData && (
-        <ConfigTab configData={configData} onRefresh={load} />
+        <div className="space-y-0">
+          {/* ── Panel Resumen Consolidado de Activos ─────────────────────────────── */}
+          <div className="bg-[#111] border border-[#222] rounded-xl p-5 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-white font-semibold text-sm">Inventario General de Activos</h2>
+                <p className="text-[#666] text-xs mt-0.5">Activos administrados por Mainstage Pro</p>
+              </div>
+            </div>
+
+            {/* ─ Activos propios de Mainstage (HERVAM) ─ */}
+            <p className="text-[10px] uppercase tracking-wider text-[#B3985B] font-semibold mb-2">Activos de Mainstage Pro</p>
+            <div className="divide-y divide-[#1e1e1e] mb-4">
+              {Object.entries(resumenActivos.categorias).map(([cat, data]) => {
+                const labels: Record<string, string> = {
+                  INTANGIBLE: 'Activos Intangibles',
+                  OFICINA: 'Equipos y Mobiliario de Oficina',
+                  OTRO: 'Otros Activos',
+                };
+                const icons: Record<string, string> = {
+                  INTANGIBLE: '💻', OFICINA: '🪑', OTRO: '📦',
+                };
+                return (
+                  <div key={cat} className="flex items-center justify-between py-2.5">
+                    <div className="flex items-center gap-3">
+                      <span className="text-base">{icons[cat] ?? '📦'}</span>
+                      <div>
+                        <div className="text-sm text-white/90">{labels[cat] ?? cat}</div>
+                        <div className="text-xs text-[#555]">{data.count} activos · Mainstage Pro</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      {data.total > 0 ? (
+                        <span className="text-sm font-medium text-white">
+                          {data.total.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 })}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-[#444] italic">sin valorar</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {Object.keys(resumenActivos.categorias).length === 0 && (
+                <p className="text-xs text-[#555] italic py-2">Sin activos registrados</p>
+              )}
+            </div>
+
+            {/* ─ Activos de socios administrados por Mainstage ─ */}
+            <p className="text-[10px] uppercase tracking-wider text-purple-400 font-semibold mb-2">Activos administrados y operados por Mainstage</p>
+            <div className="divide-y divide-[#1e1e1e] mb-4">
+              {/* Equipos de producción */}
+              <div className="flex items-center justify-between py-2.5">
+                <div className="flex items-center gap-3">
+                  <span className="text-base">🎛</span>
+                  <div>
+                    <div className="text-sm text-white/90">Equipos de Producción</div>
+                    <div className="text-xs text-[#555]">
+                      {inventarioTotales ? `${inventarioTotales.equiposProduccion.count} equipos` : '—'}
+                      {' · '}
+                      <span className="text-[#555]">precio renta:{' '}
+                        {inventarioTotales
+                          ? inventarioTotales.equiposProduccion.precioRenta.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 })
+                          : '—'}/mes
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  {inventarioTotales && inventarioTotales.equiposProduccion.costoEstimado > 0 ? (
+                    <div>
+                      <span className="text-sm font-medium text-purple-300">
+                        {inventarioTotales.equiposProduccion.costoEstimado.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 })}
+                      </span>
+                      <div className="text-[10px] text-[#555]">costo estimado</div>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-[#444] italic">sin valorar</span>
+                  )}
+                </div>
+              </div>
+              {/* Accesorios de producción */}
+              <div className="flex items-center justify-between py-2.5">
+                <div className="flex items-center gap-3">
+                  <span className="text-base">🔌</span>
+                  <div>
+                    <div className="text-sm text-white/90">Accesorios de Producción</div>
+                    <div className="text-xs text-[#555]">
+                      {inventarioTotales ? `${inventarioTotales.accesorios.count} accesorios` : '—'}
+                    </div>
+                  </div>
+                </div>
+                <span className="text-xs text-[#444] italic">sin valorar</span>
+              </div>
+            </div>
+
+            {/* ─ Totales ─ */}
+            <div className="border-t border-[#2a2a2a] pt-3 flex justify-between items-center">
+              <span className="text-xs text-[#555] font-medium">Total activos Mainstage Pro</span>
+              <span className="text-base font-bold text-[#B3985B]">
+                {resumenActivos.totalHervam.toLocaleString('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 })}
+              </span>
+            </div>
+          </div>
+          <ActivosTab activos={activos} accesoriosProduccion={accesoriosProduccion} onRefresh={load} />
+        </div>
       )}
       {tab === "historial" && configData && (
         <HistorialTab pagos={pagos} configData={configData} onRefresh={load} />

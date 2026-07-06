@@ -52,6 +52,10 @@
     {
       "path": "/api/cron/sincronizar-estados-proyectos",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/repartos-semanales",
+      "schedule": "0 10 * * 1"
     }
   ]
 }

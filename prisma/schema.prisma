@@ -826,6 +826,7 @@ model Proveedor {
   equiposPortal    EquipoProveedor[]
   equiposPrecios   EquipoProveedorPrecio[] @relation("ProveedorEquiposPrecios")
   lineasRenta      CotizacionLinea[]      @relation("ProveedorRentaLineas")
+  pasivosDeuda     PasivoDeuda[]
 
   @@map("proveedores")
 }
@@ -1063,6 +1064,11 @@ model CuentaPagar {
 
   abonos          AbonoPago[]
   cuotas          CuotaPago[]
+  cuotaDeuda      CuotaDeuda?     @relation("CuotaDeudaCxP")
+  cuotaReparto    CuotaReparto?   @relation("CuotaRepatoCxP")
+  // tipo extra para identificar origen en cobros-pagos
+  esDeuda         Boolean  @default(false) // true si viene de PasivoDeuda
+  esReparto       Boolean  @default(false) // true si viene de RepartoUtilidad
 
   @@map("cuentas_pagar")
 }
@@ -2400,6 +2406,14 @@ model Socio {
   contratoFin    DateTime?
   pctSocio       Float     @default(70)
   pctMainstage   Float     @default(30)
+  // ── Estructura societaria ─────────────────────────────────────────────────
+  razonSocial       String?  // Nombre legal de la empresa (ej. "Escenario Principal S.A. de C.V.")
+  pctParticipacion  Float?   // % de participación en la sociedad (ej. 90.0 o 10.0)
+  esRepresentante   Boolean  @default(false) // Si es el representante legal
+  // ── Reparto de utilidades ────────────────────────────────────────────────
+  esRepartoUtilidades Boolean @default(false) // Si recibe reparto (no nómina)
+  montoRepartoSemanal Float?  // Monto fijo semanal de reparto (ej. 4000)
+  personalInternoId   String? @unique // Referencia al PersonalInterno que se migró
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -2408,6 +2422,7 @@ model Socio {
   checklist    SocioRequisitoItem[]
   cuentasPagar CuentaPagar[]
   hervamConfig HervamConfig[]
+  repartos     RepartoUtilidad[]
 
   @@map("socios")
 }
@@ -3407,4 +3422,86 @@ model Prospeccion {
   updatedAt DateTime @updatedAt
 
   @@map("prospecciones")
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MÓDULO: PASIVOS / DEUDAS ESTRUCTURALES
+// ══════════════════════════════════════════════════════════════════════════════
+
+model PasivoDeuda {
+  id               String    @id @default(cuid())
+  nombre           String    // "Crédito Bancomer", "Adeudo Proveedor Audio"
+  proveedorId      String?
+  proveedor        Proveedor? @relation(fields: [proveedorId], references: [id])
+  acreedorNombre   String?   // Nombre libre si no es proveedor del catálogo
+  descripcion      String?
+  montoTotal       Float
+  montoPagado      Float     @default(0)
+  categoria        String    @default("PROVEEDOR") // PROVEEDOR | BANCARIO | FISCAL | SOCIO | OTRO
+  estado           String    @default("ACTIVO")     // ACTIVO | LIQUIDADO | REFINANCIADO
+  fechaAdquisicion DateTime
+  tasaInteres      Float?    // % anual si aplica
+  notas            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  cuotas CuotaDeuda[]
+
+  @@map("pasivos_deuda")
+}
+
+model CuotaDeuda {
+  id               String      @id @default(cuid())
+  pasivoDeudaId    String
+  pasivoDeuda      PasivoDeuda @relation(fields: [pasivoDeudaId], references: [id], onDelete: Cascade)
+  numeroCuota      Int         // 1, 2, 3...
+  monto            Float
+  fechaVencimiento DateTime
+  estado           String      @default("PENDIENTE") // PENDIENTE | PAGADO | VENCIDO
+  cuentaPagarId    String?     @unique
+  cuentaPagar      CuentaPagar? @relation("CuotaDeudaCxP", fields: [cuentaPagarId], references: [id], onDelete: SetNull)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@map("cuotas_deuda")
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// MÓDULO: REPARTO DE UTILIDADES
+// ══════════════════════════════════════════════════════════════════════════════
+
+model RepartoUtilidad {
+  id              String   @id @default(cuid())
+  nombre          String   // "Reparto semanal Susana", "Dividendo Mauricio"
+  socioId         String?
+  socio           Socio?   @relation(fields: [socioId], references: [id])
+  beneficiario    String   // nombre del beneficiario (redundante para historial)
+  descripcion     String?
+  montoBase       Float    // Monto fijo por período
+  tipoPeriodo     String   @default("SEMANAL") // SEMANAL | QUINCENAL | MENSUAL | UNICO
+  baseCalculo     String   @default("FIJO")    // FIJO | PCT_UTILIDAD | PCT_APORTACION
+  pctCalculo      Float?   // % si baseCalculo != FIJO
+  activo          Boolean  @default(true)
+  notas           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  cuotas CuotaReparto[]
+
+  @@map("repartos_utilidad")
+}
+
+model CuotaReparto {
+  id              String          @id @default(cuid())
+  repartoId       String
+  reparto         RepartoUtilidad @relation(fields: [repartoId], references: [id], onDelete: Cascade)
+  periodo         String          // "2026-07" o "2026-W28"
+  monto           Float
+  estado          String          @default("PENDIENTE") // PENDIENTE | PAGADO
+  cuentaPagarId   String?         @unique
+  cuentaPagar     CuentaPagar?    @relation("CuotaRepatoCxP", fields: [cuentaPagarId], references: [id], onDelete: SetNull)
+  fechaGenerada   DateTime        @default(now())
+  createdAt       DateTime        @default(now())
+
+  @@map("cuotas_reparto")
 }

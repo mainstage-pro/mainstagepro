@@ -54,7 +54,10 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: "desc" },
       },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [
+      { fechaEventoEstimada: "asc" },
+      { createdAt: "desc" },
+    ],
   });
 
   return NextResponse.json({ tratos });

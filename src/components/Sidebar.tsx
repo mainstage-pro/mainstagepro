@@ -80,6 +80,8 @@ const NAV: NavSection[] = [
           { key: "finanzas-movimientos", label: "Movimientos", href: "/finanzas/movimientos" },
           { key: "finanzas-caja-chica", label: "Caja chica", href: "/finanzas/caja-chica" },
           { key: "finanzas-reporte", label: "Estado de Resultados", href: "/finanzas/reporte" },
+          { key: "finanzas-pasivos", label: "Pasivos y Deudas", href: "/finanzas/pasivos" },
+          { key: "finanzas-repartos", label: "Reparto de Utilidades", href: "/finanzas/repartos" },
           { key: "inv-analisis", label: "Análisis de uso de equipo", href: "/inventario/analisis" },
         ],
       },
@@ -110,12 +112,14 @@ const NAV: NavSection[] = [
         label: "Inversiones y Socios",
         children: [
           { key: "inventario-activos", label: "Inventario de Activos", href: "/finanzas/hervam" },
-          { key: "inversiones-socios", label: "Socios de Activos", href: "/socios" },
+          { key: "socios-constitutivos", label: "Socios Constitutivos", href: "/socios" },
+          { key: "socios-activos", label: "Socios de Activos", href: "/socios/activos" },
         ],
       },
       { key: "tabulador", label: "Tabulador Freelancers", href: "/catalogo/roles" },
       { key: "grupos-equipo", label: "Grupos de equipo", href: "/admin/grupos-equipo", adminOnly: true },
       { key: "inventario-activos-admin", label: "Inventario de Activos", href: "/admin/valuacion", adminOnly: true },
+      { key: "admin-reportes", label: "Reportes de Administración", href: "/admin/reportes" },
 
     ],
   },
@@ -215,13 +219,14 @@ function getInitialOpen(pathname: string): Set<string> {
   if (pathname.startsWith("/calendario")) open.add("calendario");
   if (pathname.startsWith("/inventario")) open.add("inventario");
   if (pathname.startsWith("/catalogo")) open.add("catalogo");
+
   // marketing section has no collapsible groups anymore
   return open;
 }
 
 function getActiveSectionKey(pathname: string): string | null {
   if (pathname.startsWith("/presentaciones") || pathname.startsWith("/admin") || pathname.startsWith("/juntas") || pathname.startsWith("/formularios") || pathname.startsWith("/capacitacion")) return "seccion-direccion";
-  if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles")) return "seccion-administracion";
+  if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles") || pathname.startsWith("/admin/reportes")) return "seccion-administracion";
   if (pathname.startsWith("/marketing")) return "seccion-marketing";
   if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas") || pathname.startsWith("/prospectos") || pathname.startsWith("/crm/prospeccion")) return "seccion-ventas";
   if (pathname.startsWith("/proyectos") || pathname.startsWith("/inventario") || pathname.startsWith("/produccion") || pathname.startsWith("/operaciones") || pathname.startsWith("/catalogo")) return "seccion-produccion";

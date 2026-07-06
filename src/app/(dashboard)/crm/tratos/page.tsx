@@ -113,19 +113,16 @@ const TIPO_SERVICIO_LABELS: Record<string, string> = {
 
 type OrdenTrato = 'urgencia' | 'fechaEvento' | 'fechaAgregado' | 'sinActividad';
 
-function groupTratosByMes(tratos: Trato[], ordenTrato: OrdenTrato = 'urgencia') {
-  // Comparar por mes completo, no por día — junio no es "pasado" si aún estamos en junio
+function groupTratosByMes(tratos: Trato[], ordenTrato: OrdenTrato = 'fechaEvento') {
+  // SIEMPRE agrupar por fecha del evento (no por createdAt), de más próximo a más lejano
   const now = new Date();
   const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
   const map: Record<string, { label: string; yearMonth: string; tratos: Trato[]; isPast: boolean }> = {};
 
   for (const t of tratos) {
-    // Decide which date to group by based on sort order
-    const ref =
-      ordenTrato === 'fechaAgregado' || ordenTrato === 'sinActividad'
-        ? t.createdAt
-        : (t.fechaEventoEstimada ?? t.createdAt);
+    // Siempre usar fechaEventoEstimada para agrupar. Si no tiene fecha, va al mes actual como referencia.
+    const ref = t.fechaEventoEstimada ?? t.createdAt;
     const d = new Date(ref.substring(0, 10) + 'T12:00:00Z');
     const year = d.getUTCFullYear();
     const month = d.getUTCMonth();
@@ -148,29 +145,27 @@ function groupTratosByMes(tratos: Trato[], ordenTrato: OrdenTrato = 'urgencia') 
           const dB = b.fechaProximaAccion ? (Date.now() - new Date(b.fechaProximaAccion).getTime()) / 86400000 : 9999;
           return dB - dA;
         }
-        case 'fechaEvento': {
+        case 'urgencia': {
+          if (!a.fechaProximaAccion && !b.fechaProximaAccion) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          if (!a.fechaProximaAccion) return 1;
+          if (!b.fechaProximaAccion) return -1;
+          return a.fechaProximaAccion.localeCompare(b.fechaProximaAccion);
+        }
+        case 'fechaEvento':
+        default: {
           // Ascending: soonest event first within the group
           if (!a.fechaEventoEstimada && !b.fechaEventoEstimada) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
           if (!a.fechaEventoEstimada) return 1;
           if (!b.fechaEventoEstimada) return -1;
           return a.fechaEventoEstimada.localeCompare(b.fechaEventoEstimada);
         }
-        case 'urgencia':
-        default: {
-          if (!a.fechaProximaAccion && !b.fechaProximaAccion) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-          if (!a.fechaProximaAccion) return 1;
-          if (!b.fechaProximaAccion) return -1;
-          return a.fechaProximaAccion.localeCompare(b.fechaProximaAccion);
-        }
       }
     });
   }
 
-  // All orders: groups sorted newest month first (desc)
+  // SIEMPRE ascendente: el mes más próximo primero, los pasados al final
   const future = Object.values(map).filter(g => !g.isPast).sort((a, b) =>
-    ordenTrato === 'fechaEvento'
-      ? a.yearMonth.localeCompare(b.yearMonth)  // fechaEvento: future groups ascending (soonest first)
-      : b.yearMonth.localeCompare(a.yearMonth)  // all others: newest first
+    a.yearMonth.localeCompare(b.yearMonth)  // más próximo primero
   );
   const past = Object.values(map).filter(g => g.isPast).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
 
@@ -1263,10 +1258,10 @@ export default function TratosPage() {
     return "lista";
   });
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-  const [orden, setOrden] = useState<"evento_asc" | "evento_desc" | "creacion_desc" | "creacion_asc">("creacion_desc");
+  const [orden, setOrden] = useState<"evento_asc" | "evento_desc" | "creacion_desc" | "creacion_asc">("evento_asc");
   const [agrupacion, setAgrupacion] = useState<"todos" | "mes" | "semana">("todos");
   const [gruposOpen, setGruposOpen] = useState<Record<string, boolean>>({});
-  const [ordenTrato, setOrdenTrato] = useState<OrdenTrato>('fechaAgregado');
+  const [ordenTrato, setOrdenTrato] = useState<OrdenTrato>('fechaEvento');
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const [showNueva, setShowNueva] = useState(false);
   const toast = useToast();
@@ -1476,15 +1471,27 @@ export default function TratosPage() {
       (t.lugarEstimado ?? "").toLowerCase().includes(q);
     return matchEtapa && matchFrio && matchBusqueda;
   }).sort((a: Trato, b: Trato) => {
-    if (orden === "evento_asc")   return new Date(a.fechaEventoEstimada ?? "9999").getTime() - new Date(b.fechaEventoEstimada ?? "9999").getTime();
+    // Ordenar siempre del evento más próximo al más lejano por defecto
     if (orden === "evento_desc")  return new Date(b.fechaEventoEstimada ?? "0").getTime() - new Date(a.fechaEventoEstimada ?? "0").getTime();
     if (orden === "creacion_asc") return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    if (orden === "creacion_desc") return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    // evento_asc (default): sin fecha van al final
+    const aMs = a.fechaEventoEstimada ? new Date(a.fechaEventoEstimada).getTime() : Number.MAX_SAFE_INTEGER;
+    const bMs = b.fechaEventoEstimada ? new Date(b.fechaEventoEstimada).getTime() : Number.MAX_SAFE_INTEGER;
+    return aMs - bMs;
   });
 
-  // Tratos próximos: sin fecha o fecha >= hoy. Archivados: fecha pasada.
-  const tratosProximos  = tratosFiltrados.filter(t => !t.fechaEventoEstimada || t.fechaEventoEstimada >= hoy);
-  const tratosArchivados = tratosFiltrados.filter(t => !!t.fechaEventoEstimada && t.fechaEventoEstimada < hoy)
+  // Próximos: sin fecha o fecha del evento >= hoy (siempre más próximo primero)
+  const tratosProximos = tratosFiltrados
+    .filter(t => !t.fechaEventoEstimada || t.fechaEventoEstimada >= hoy)
+    .sort((a, b) => {
+      const aMs = a.fechaEventoEstimada ? new Date(a.fechaEventoEstimada).getTime() : Number.MAX_SAFE_INTEGER;
+      const bMs = b.fechaEventoEstimada ? new Date(b.fechaEventoEstimada).getTime() : Number.MAX_SAFE_INTEGER;
+      return aMs - bMs;
+    });
+  // Archivados: fecha del evento ya pasó, del más reciente al más antiguo
+  const tratosArchivados = tratosFiltrados
+    .filter(t => !!t.fechaEventoEstimada && t.fechaEventoEstimada < hoy)
     .sort((a, b) => new Date(b.fechaEventoEstimada!).getTime() - new Date(a.fechaEventoEstimada!).getTime());
 
   // Agrupación por mes o semana

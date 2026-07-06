@@ -1,304 +1,289 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
-import { useConfirm } from "@/components/Confirm";
-import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
-import { Modal } from "@/components/Modal";
 
 type Socio = {
   id: string;
   nombre: string;
   tipo: string;
   status: string;
-  pctSocio: number;
-  pctMainstage: number;
+  pctParticipacion: number | null;
+  razonSocial: string | null;
+  esRepresentante: boolean;
+  esRepartoUtilidades: boolean;
+  montoRepartoSemanal: number | null;
+  esFundador: boolean;
   ciudad: string | null;
   email: string | null;
   telefono: string | null;
-  contratoFin: string | null;
   createdAt: string;
-  activos: { id: string; precioDia: number }[];
-  checklist: { completado: boolean }[];
-  _count: { activos: number; reportes: number };
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  EN_REVISION: "En revisión", ACTIVO: "Activo", SUSPENDIDO: "Suspendido", INACTIVO: "Inactivo",
-};
-const STATUS_COLORS: Record<string, string> = {
-  EN_REVISION: "text-yellow-400 bg-yellow-900/20 border-yellow-700/40",
-  ACTIVO: "text-green-400 bg-green-900/20 border-green-700/40",
-  SUSPENDIDO: "text-orange-400 bg-orange-900/20 border-orange-700/40",
-  INACTIVO: "text-gray-500 bg-gray-800/20 border-gray-700/40",
+type RepartoHistorial = {
+  id: string;
+  nombre: string;
+  beneficiario: string;
+  montoBase: number;
+  tipoPeriodo: string;
+  activo: boolean;
+  cuotas: { id: string; periodo: string; monto: number; estado: string; fechaGenerada: string }[];
 };
 
-const EMPTY = { nombre: "", tipo: "FISICA", telefono: "", email: "", ciudad: "", pctSocio: "70", pctMainstage: "30" };
+function fmt(n: number) {
+  return n.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 });
+}
 
-export default function SociosPage() {
-  const confirm = useConfirm();
+function Initials({ name }: { name: string }) {
+  const parts = name.split(" ").slice(0, 2);
+  return <>{parts.map(p => p[0]).join("").toUpperCase()}</>;
+}
+
+export default function SociosConstitutivosPage() {
   const toast = useToast();
   const [socios, setSocios] = useState<Socio[]>([]);
+  const [repartos, setRepartos] = useState<RepartoHistorial[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filtro, setFiltro] = useState("TODOS");
-  const [search, setSearch] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState(EMPTY);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const cargar = async () => {
     setLoading(true);
-    const r = await fetch("/api/socios", { cache: "no-store" });
-    const d = await r.json();
-    setSocios(d.socios || []);
+    const [sr, rr] = await Promise.all([
+      fetch("/api/socios", { cache: "no-store" }),
+      fetch("/api/finanzas/repartos", { cache: "no-store" }),
+    ]);
+    const sd = await sr.json().catch(() => ({ socios: [] }));
+    const rd = await rr.json().catch(() => ({ repartos: [] }));
+    setSocios(sd.socios || []);
+    setRepartos(rd.repartos || []);
     setLoading(false);
   };
 
   useEffect(() => { cargar(); }, []);
 
-  const set = (k: string, v: string) => {
-    setForm((p) => {
-      const n: Record<string, string> = { ...p, [k]: v };
-      if (k === "pctSocio") n.pctMainstage = String(100 - parseFloat(v || "0"));
-      if (k === "pctMainstage") n.pctSocio = String(100 - parseFloat(v || "0"));
-      return n as typeof EMPTY;
-    });
-  };
+  // Solo socios con pctParticipacion (constitutivos), ordenados por % desc
+  const constitutivos = useMemo(
+    () => socios
+      .filter(s => s.pctParticipacion != null)
+      .sort((a, b) => (b.pctParticipacion ?? 0) - (a.pctParticipacion ?? 0)),
+    [socios]
+  );
 
-  const eliminarSocio = async (s: Socio) => {
-    if (!await confirm({ message: `¿Eliminar el socio "${s.nombre}"? Esta acción eliminará también sus activos y registros asociados.`, danger: true, confirmText: "Eliminar" })) return;
-    setDeletingId(s.id);
-    const dr = await fetch(`/api/socios/${s.id}`, { method: "DELETE" });
-    if (dr.ok) {
-      setSocios(prev => prev.filter(x => x.id !== s.id));
-    } else {
-      toast.error("Error al eliminar socio");
+  const totalPct = constitutivos.reduce((s, x) => s + (x.pctParticipacion ?? 0), 0);
+
+  // Repartos activos por socio
+  const repartosPorSocio = useMemo(() => {
+    const map: Record<string, RepartoHistorial[]> = {};
+    for (const r of repartos) {
+      // match by beneficiario name against socios
+      const socio = constitutivos.find(s =>
+        r.beneficiario.toLowerCase().includes(s.nombre.split(" ")[0].toLowerCase()) ||
+        s.nombre.toLowerCase().includes(r.beneficiario.split(" ")[0].toLowerCase())
+      );
+      if (socio) {
+        if (!map[socio.id]) map[socio.id] = [];
+        map[socio.id].push(r);
+      }
     }
-    setDeletingId(null);
-  };
+    return map;
+  }, [repartos, constitutivos]);
 
-  const crear = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    const r = await fetch("/api/socios", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    if (!r.ok) {
-      const d = await r.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al crear socio");
-      setSaving(false);
-      return;
-    }
-    setForm(EMPTY);
-    setShowForm(false);
-    setSaving(false);
-    cargar();
-  };
-
-  const filtrados = socios.filter((s) => {
-    if (filtro !== "TODOS" && s.status !== filtro) return false;
-    if (search && !s.nombre.toLowerCase().includes(search.toLowerCase()) &&
-        !(s.ciudad ?? "").toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
-
-  const totalActivos = socios.reduce((s, x) => s + x._count.activos, 0);
+  if (loading) {
+    return (
+      <div className="p-6 max-w-4xl mx-auto flex items-center justify-center h-64">
+        <div className="text-gray-500 text-sm">Cargando socios...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-3 md:p-6 max-w-6xl mx-auto">
+    <div className="p-3 md:p-6 max-w-4xl mx-auto">
+
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-start justify-between mb-8">
         <div>
-          <h1 className="text-xl font-semibold text-white">Socios de Activos</h1>
-          <p className="text-[#6b7280] text-sm">
-            {socios.filter((s) => s.status === "ACTIVO").length} activos
-            {socios.filter((s) => s.status === "EN_REVISION").length > 0 &&
-              ` · ${socios.filter((s) => s.status === "EN_REVISION").length} en revisión`}
+          <h1 className="text-xl font-semibold text-white">Socios Constitutivos</h1>
+          <p className="text-[#6b7280] text-sm mt-0.5">
+            {constitutivos.length} socios · Escenario Principal S.A. de C.V.
           </p>
         </div>
-        <button onClick={() => setShowForm(true)}
-            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-            + Nuevo socio
-          </button>
+        <Link
+          href="/socios/activos"
+          className="text-xs text-[#B3985B] hover:underline border border-[#B3985B]/30 px-3 py-1.5 rounded-lg"
+        >
+          Socios de Activos →
+        </Link>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-        {[
-          { label: "Socios activos", value: socios.filter((s) => s.status === "ACTIVO").length, sub: `${socios.length} registrados` },
-          { label: "Equipos en inventario", value: totalActivos, sub: "activos operando" },
-          { label: "En revisión", value: socios.filter((s) => s.status === "EN_REVISION").length, sub: "pendientes de activar" },
-        ].map((s) => (
-          <div key={s.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-            <p className="text-[10px] uppercase tracking-wider text-[#555] font-semibold mb-1">{s.label}</p>
-            <p className="text-2xl font-bold text-white">{s.value}</p>
-            <p className="text-[11px] text-[#6b7280] mt-0.5">{s.sub}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Formulario nuevo socio */}
-      <Modal open={showForm} onClose={() => { setShowForm(false); setForm(EMPTY); }} title="Nuevo socio">
-        <form onSubmit={crear} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Nombre completo *</label>
-              <input value={form.nombre} required onChange={(e) => set("nombre", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="Nombre del socio" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Tipo de persona</label>
-              <Combobox
-                value={form.tipo}
-                onChange={v => set("tipo", v)}
-                options={[{ value: "FISICA", label: "Persona Física" }, { value: "MORAL", label: "Persona Moral" }]}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+      {/* Estructura societaria — barra visual */}
+      <div className="bg-[#0e0e0e] border border-[#B3985B]/20 rounded-xl p-5 mb-6">
+        <p className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-wider mb-4">
+          Estructura de participación
+        </p>
+        <div className="flex h-3 rounded-full overflow-hidden mb-3 gap-0.5">
+          {constitutivos.map((s, i) => {
+            const colors = ["bg-[#B3985B]", "bg-purple-500", "bg-blue-500", "bg-green-500"];
+            return (
+              <div
+                key={s.id}
+                className={`${colors[i % colors.length]} transition-all`}
+                style={{ width: `${s.pctParticipacion}%` }}
+                title={`${s.nombre}: ${s.pctParticipacion}%`}
               />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Teléfono</label>
-              <input value={form.telefono} onChange={(e) => set("telefono", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="55 1234 5678" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Email</label>
-              <input value={form.email} onChange={(e) => set("email", e.target.value)} type="email"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="correo@ejemplo.com" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 mb-1 block">Ciudad</label>
-              <input value={form.ciudad} onChange={(e) => set("ciudad", e.target.value)}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                placeholder="Ciudad de México" />
-            </div>
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <label className="text-xs text-gray-500 mb-1 block">% Socio</label>
-                <input type="number" min="0" max="100" value={form.pctSocio} onChange={(e) => set("pctSocio", e.target.value)}
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-              </div>
-              <div className="flex-1">
-                <label className="text-xs text-gray-500 mb-1 block">% Mainstage</label>
-                <input type="number" min="0" max="100" value={form.pctMainstage} onChange={(e) => set("pctMainstage", e.target.value)}
-                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 mt-4">
-            <button type="submit" disabled={saving || !form.nombre.trim()}
-              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
-              {saving ? "Guardando..." : "Crear socio"}
-            </button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Filtros y búsqueda */}
-      <div className="flex flex-wrap items-center gap-3 mb-5">
-          <input value={search} onChange={(e) => setSearch(e.target.value)}
-            className="bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B] w-52"
-            placeholder="Buscar socio..." />
-          {["TODOS", "EN_REVISION", "ACTIVO", "SUSPENDIDO", "INACTIVO"].map((f) => (
-            <button key={f} onClick={() => setFiltro(f)}
-              className={`text-xs px-3 py-2 rounded-lg border transition-colors ${
-                filtro === f ? "border-[#B3985B] text-[#B3985B]" : "border-[#222] text-gray-500 hover:text-white"
-              }`}>
-              {f === "TODOS" ? "Todos" : STATUS_LABEL[f]}
-            </button>
-          ))}
+            );
+          })}
         </div>
-
-      {/* Lista */}
-      {loading ? (
-        <div className="text-center py-16 text-gray-600 text-sm">Cargando socios...</div>
-      ) : filtrados.length === 0 ? (
-        <div className="text-center py-16 text-gray-600">
-          <p className="text-sm">{search || filtro !== "TODOS" ? "Sin resultados." : "No hay socios registrados."}</p>
-          {!search && filtro === "TODOS" && (
-            <button onClick={() => setShowForm(true)} className="mt-2 text-[#B3985B] text-sm hover:underline">
-              Registrar el primero
-            </button>
-          )}
+        <div className="flex flex-wrap gap-4">
+          {constitutivos.map((s, i) => {
+            const colors = ["text-[#B3985B]", "text-purple-400", "text-blue-400", "text-green-400"];
+            return (
+              <div key={s.id} className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${["bg-[#B3985B]", "bg-purple-500", "bg-blue-500", "bg-green-500"][i % 4]}`} />
+                <span className="text-xs text-white/80">{s.nombre}</span>
+                <span className={`text-xs font-bold ${colors[i % colors.length]}`}>{s.pctParticipacion}%</span>
+              </div>
+            );
+          })}
         </div>
-      ) : (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
-          <table className="w-full min-w-[600px]">
-            <thead>
-              <tr className="border-b border-[#1e1e1e]">
-                {["Socio", "Status", "Equipos", "Split", "Requisitos", ""].map((h) => (
-                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#1a1a1a]">
-              {filtrados.map((s) => {
-                const completados = s.checklist.filter((c) => c.completado).length;
-                const total = s.checklist.length;
-                const pct = total > 0 ? Math.round((completados / total) * 100) : 0;
-                const vence = s.contratoFin
-                  ? (new Date(s.contratoFin).getTime() - Date.now()) / 86400000 < 30
-                  : false;
-                return (
-                  <tr key={s.id} className="hover:bg-[#1a1a1a] transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[#1e1e1e] border border-[#262626] flex items-center justify-center shrink-0">
-                          <span className="text-[#B3985B] text-[10px] font-bold">
-                            {s.nombre.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()}
+        {totalPct !== 100 && (
+          <p className="text-[10px] text-yellow-500/70 mt-2">⚠ Suma de participaciones: {totalPct}% (debe ser 100%)</p>
+        )}
+      </div>
+
+      {/* Tarjetas de socios */}
+      <div className="space-y-4">
+        {constitutivos.map((s, i) => {
+          const colorsAccent = ["[#B3985B]", "purple-400", "blue-400", "green-400"];
+          const accent = colorsAccent[i % colorsAccent.length];
+          const rSocio = repartosPorSocio[s.id] ?? [];
+          const rActivo = rSocio.find(r => r.activo);
+          const ultimasCuotas = rActivo?.cuotas
+            .sort((a, b) => b.fechaGenerada.localeCompare(a.fechaGenerada))
+            .slice(0, 4) ?? [];
+
+          return (
+            <div key={s.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              {/* Top: info principal */}
+              <div className="flex items-start gap-4 p-5">
+                {/* Avatar */}
+                <div className={`w-12 h-12 rounded-full bg-[#1a1a1a] border border-${accent}/40 flex items-center justify-center shrink-0`}>
+                  <span className={`text-${accent} text-sm font-bold`}>
+                    <Initials name={s.nombre} />
+                  </span>
+                </div>
+
+                {/* Datos */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2 flex-wrap">
+                    <div>
+                      <h2 className="text-white font-semibold text-base">{s.nombre}</h2>
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
+                        {s.esRepresentante && (
+                          <span className="text-[10px] bg-[#B3985B]/10 text-[#B3985B] border border-[#B3985B]/30 px-2 py-0.5 rounded-full font-medium">
+                            Representante Legal
                           </span>
-                        </div>
-                        <div>
-                          <p className="text-white text-sm font-medium">{s.nombre}</p>
-                          <p className="text-[#555] text-xs">
-                            {s.tipo === "FISICA" ? "Persona Física" : "Persona Moral"}
-                            {s.ciudad && ` · ${s.ciudad}`}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col gap-1">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border w-fit ${STATUS_COLORS[s.status]}`}>
-                          {STATUS_LABEL[s.status]}
-                        </span>
-                        {vence && (
-                          <span className="text-[10px] text-red-400">Contrato por vencer</span>
+                        )}
+                        {s.esFundador && (
+                          <span className="text-[10px] bg-white/5 text-white/50 border border-white/10 px-2 py-0.5 rounded-full">
+                            Fundador/a
+                          </span>
+                        )}
+                        {s.ciudad && (
+                          <span className="text-[10px] text-[#555]">{s.ciudad}</span>
                         )}
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-white text-sm font-semibold">{s._count.activos}</td>
-                    <td className="px-4 py-3">
-                      <p className="text-white text-sm">{s.pctSocio}% / {s.pctMainstage}%</p>
-                      <p className="text-[#555] text-[10px]">Socio / Mainstage</p>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="text-[#6b7280] text-xs mb-1">{completados}/{total}</p>
-                      <div className="w-20 h-1 bg-[#1e1e1e] rounded-full">
-                        <div className={`h-full rounded-full transition-all ${pct === 100 ? "bg-green-500" : "bg-[#B3985B]"}`}
-                          style={{ width: `${pct}%` }} />
+                    </div>
+                    {/* % participación */}
+                    <div className="text-right">
+                      <div className={`text-2xl font-bold text-${accent}`}>
+                        {s.pctParticipacion}%
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-3">
-                        <Link href={`/socios/${s.id}`} className="text-[#B3985B] text-xs hover:underline">
-                          Ver detalle →
-                        </Link>
-                        <button onClick={() => eliminarSocio(s)} disabled={deletingId === s.id}
-                          className="text-gray-600 hover:text-red-400 transition-colors disabled:opacity-30" title="Eliminar socio">
-                          {deletingId === s.id ? "…" : "✕"}
-                        </button>
+                      <div className="text-[10px] text-[#555]">participación</div>
+                    </div>
+                  </div>
+
+                  {/* Contacto */}
+                  <div className="flex flex-wrap gap-4 mt-3">
+                    {s.email && (
+                      <a href={`mailto:${s.email}`} className="text-xs text-[#555] hover:text-white transition-colors">
+                        ✉ {s.email}
+                      </a>
+                    )}
+                    {s.telefono && (
+                      <a href={`tel:${s.telefono}`} className="text-xs text-[#555] hover:text-white transition-colors">
+                        ☎ {s.telefono}
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Reparto semanal */}
+              {(s.esRepartoUtilidades || rActivo) && (
+                <div className="border-t border-[#1a1a1a] px-5 py-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-xs text-white/70 font-medium">Pago semanal automático</p>
+                      <p className="text-[10px] text-[#555] mt-0.5">Generado cada lunes · Ligado a Cuentas por Pagar</p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-white">
+                        {rActivo ? fmt(rActivo.montoBase) : fmt(s.montoRepartoSemanal ?? 0)}
                       </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+                      <div className="text-[10px] text-[#555]">por semana</div>
+                    </div>
+                  </div>
+
+                  {/* Historial últimas cuotas */}
+                  {ultimasCuotas.length > 0 && (
+                    <div className="space-y-1.5">
+                      {ultimasCuotas.map(c => (
+                        <div key={c.id} className="flex items-center justify-between">
+                          <span className="text-[11px] text-[#555]">{c.periodo}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-white/60">{fmt(c.monto)}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                              c.estado === "PAGADO" ? "bg-green-900/30 text-green-400" :
+                              c.estado === "PENDIENTE" ? "bg-yellow-900/30 text-yellow-400" :
+                              "bg-gray-800 text-gray-500"
+                            }`}>
+                              {c.estado}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Footer: sin reparto */}
+              {!s.esRepartoUtilidades && !rActivo && (
+                <div className="border-t border-[#1a1a1a] px-5 py-3">
+                  <p className="text-xs text-[#444] italic">Sin pago periódico configurado</p>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {constitutivos.length === 0 && (
+          <div className="text-center py-16 text-gray-600 text-sm">
+            No hay socios constitutivos registrados.
+          </div>
+        )}
+      </div>
+
+      {/* Nota informativa al pie */}
+      <div className="mt-8 p-4 bg-[#0a0a0a] border border-[#1a1a1a] rounded-xl">
+        <p className="text-xs text-[#555]">
+          Este módulo muestra únicamente los socios del acta constitutiva de Escenario Principal S.A. de C.V.
+          Para gestionar socios con activos en inventario, visita{" "}
+          <Link href="/socios/activos" className="text-[#B3985B] hover:underline">
+            Socios de Activos
+          </Link>.
+        </p>
+      </div>
     </div>
   );
 }
