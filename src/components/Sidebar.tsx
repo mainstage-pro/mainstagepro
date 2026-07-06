@@ -174,6 +174,7 @@ const NAV: NavSection[] = [
           { key: "bd-venues", accessKey: "catalogo", label: "Venues", href: "/catalogo/venues" },
         ],
       },
+      { key: "reporte-produccion", label: "Reporte de Producción", href: "/produccion/reporte" },
     ],
   },
 ];
@@ -223,7 +224,7 @@ function getActiveSectionKey(pathname: string): string | null {
   if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles")) return "seccion-administracion";
   if (pathname.startsWith("/marketing")) return "seccion-marketing";
   if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas") || pathname.startsWith("/prospectos") || pathname.startsWith("/crm/prospeccion")) return "seccion-ventas";
-  if (pathname.startsWith("/proyectos") || pathname.startsWith("/inventario") || pathname.startsWith("/operaciones") || pathname.startsWith("/catalogo")) return "seccion-produccion";
+  if (pathname.startsWith("/proyectos") || pathname.startsWith("/inventario") || pathname.startsWith("/produccion") || pathname.startsWith("/operaciones") || pathname.startsWith("/catalogo")) return "seccion-produccion";
   return null;
 }
 

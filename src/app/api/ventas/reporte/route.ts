@@ -57,11 +57,20 @@ export async function GET(request: NextRequest) {
   const tratos = await prisma.trato.findMany({
     where: {
       etapa: "VENTA_CERRADA",
-      fechaCierre: { gte: mesStart, lt: mesEnd },
-      // vendedorId introduced later: fall back to responsableId for older tratos
-      OR: [
-        { vendedorId: vendedorId },
-        { vendedorId: null, responsableId: vendedorId },
+      // Captura: (a) fechaCierre explícita en el mes, (b) sin fechaCierre pero etapaCambiadaEn en el mes
+      AND: [
+        {
+          OR: [
+            { fechaCierre: { gte: mesStart, lt: mesEnd } },
+            { fechaCierre: null, etapaCambiadaEn: { gte: mesStart, lt: mesEnd } },
+          ],
+        },
+        {
+          OR: [
+            { vendedorId: vendedorId },
+            { vendedorId: null, responsableId: vendedorId },
+          ],
+        },
       ],
     },
     include: {

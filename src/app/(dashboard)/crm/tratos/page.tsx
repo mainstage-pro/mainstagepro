@@ -980,10 +980,27 @@ function CompactTratoRow({
         </div>
 
         {/* COL 2 — Tipo de evento */}
-        <div className="hidden sm:block w-[100px] shrink-0">
+        <div className="hidden sm:block w-[90px] shrink-0">
           <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-medium ${TIPO_BADGE_CLS[t.tipoEvento] ?? TIPO_BADGE_CLS.OTRO}`}>
             {TIPO_LABEL_SHORT[t.tipoEvento] ?? t.tipoEvento}
           </span>
+        </div>
+
+        {/* COL 2b — Tipo de servicio */}
+        <div className="hidden md:block w-[90px] shrink-0">
+          {t.tipoServicio ? (
+            <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-medium ${
+              t.tipoServicio === 'RENTA'
+                ? 'bg-amber-900/30 text-amber-400 border border-amber-800/30'
+                : t.tipoServicio === 'PRODUCCION_TECNICA'
+                ? 'bg-blue-900/30 text-blue-400 border border-blue-800/30'
+                : 'bg-violet-900/30 text-violet-400 border border-violet-800/30'
+            }`}>
+              {TIPO_SERVICIO_LABELS[t.tipoServicio] ?? t.tipoServicio}
+            </span>
+          ) : (
+            <span className="text-[11px] text-[#333]">—</span>
+          )}
         </div>
 
         {/* COL 3 — Fecha evento */}
@@ -1620,31 +1637,6 @@ export default function TratosPage() {
               </div>
             );
           })()}
-
-          {/* ── Tab navigation ── */}
-          <div className="flex border-b border-[#111] mb-4 overflow-x-auto">
-            {ALL_ETAPAS.map(({ key, label, color }) => {
-              const count = key === 'TODOS' ? tratos.length : tratos.filter(t => t.etapa === key).length;
-              return (
-                <button
-                  key={key}
-                  onClick={() => { setFiltroEtapa(key); setFiltroTipoEvento(null); }}
-                  className={`relative flex items-center gap-1.5 px-3 py-2.5 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
-                    filtroEtapa === key ? 'text-[#B3985B]' : 'text-gray-600 hover:text-gray-400'
-                  }`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                  <span>{label}</span>
-                  <span className={`text-[10px] tabular-nums ${
-                    filtroEtapa === key ? 'text-[#B3985B]/60' : 'text-gray-700'
-                  }`}>({count})</span>
-                  {filtroEtapa === key && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#B3985B] rounded-full" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
 
           {/* ── Filtro tipo de evento ── */}
           <div className="flex items-center gap-2 mb-2 flex-wrap">

@@ -1,139 +1,181 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { Combobox } from "@/components/Combobox";
-import { useToast } from "@/components/Toast";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Cell, PieChart, Pie, Legend,
+} from "recharts";
 
-interface Vendedor { id: string; name: string }
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface Vendedor { id: string; name: string; fechaInicioVendedor: string | null }
+
+interface OrigenItem   { origen: string;  count: number; monto: number; pct: number }
+interface TipoItem     { tipo: string;    count: number; monto: number; pct: number }
+interface ClienteTop   { nombre: string;  empresa: string | null; monto: number; eventos: number }
+interface MesHistorico { mes: string; label: string; count: number; monto: number }
+
+interface VendedorItem { id: string; nombre: string; eventos: number; monto: number }
+interface ZonaItem     { zona: string; count: number; monto: number; pct: number }
+interface MotivoPerdida { motivo: string; count: number; pct: number }
+
+interface ReporteMensual {
+  periodo: { mes: string; label: string }
+  ventasTotal: { count: number; monto: number }
+  ticketPromedio: number
+  crecimientoMensual: number | null
+  porTipoEvento: TipoItem[]
+  porTipoServicio: TipoItem[]
+  cotizaciones: { totalCreadas: number; ventasCerradas: number; conProyecto: number; sinProyecto: number }
+  tratosPerdidos: { count: number; montoEstimadoPerdido: number; motivosPerdida: MotivoPerdida[] }
+  top3Clientes: ClienteTop[]
+  top5Clientes: ClienteTop[]
+  clientesRecurrentes: { count: number }
+  clientesNuevos: { count: number; lista: { nombre: string; empresa: string | null }[] }
+  porServicio: {
+    rentas:    { count: number; monto: number; pct: number }
+    produccion:{ count: number; monto: number; pct: number }
+    otro:      { count: number; monto: number; pct: number }
+  }
+  origenLeads: OrigenItem[]
+  porVendedor: VendedorItem[]
+  porZona: ZonaItem[]
+  porMesHistorico: (MesHistorico & { perdidos: number })[]
+}
+
 interface DetalleComision {
-  tratoId: string;
-  cliente: { nombre: string; empresa: string | null };
-  nombreEvento: string | null;
-  fechaCierre: string | null;
-  origenVenta: string;
-  notaOrigen: string;
-  vendedorOrigen: { id: string; name: string } | null;
-  numeroCotizacion: string | null;
-  granTotal: number;
-  baseCalculo: number;
-  pctComision: number;
-  montoComision: number;
-  liquidado100: boolean;
-  tienAnticipo: boolean;
-  estadoPago: string;
+  tratoId: string
+  cliente: { nombre: string; empresa: string | null }
+  nombreEvento: string | null
+  fechaCierre: string | null
+  origenVenta: string
+  numeroCotizacion: string | null
+  granTotal: number
+  baseCalculo: number
+  pctComision: number
+  montoComision: number
+  liquidado100: boolean
+  estadoPago: string
+  esDelegado?: boolean
+  cotizadorNombre?: string | null
 }
-interface Resumen {
-  totalTratos: number;
-  baseLiquidada: number;
-  totalComisiones: number;
-  alcanzaPiso: boolean;
-  montoBono: number;
-  totalAPagar: number;
+interface ResumenVendedor {
+  totalTratos: number
+  baseLiquidada: number
+  totalComisiones: number
+  alcanzaPiso: boolean
+  montoBono: number
+  totalAPagar: number
 }
-interface PagoRegistrado {
-  id: string;
-  mes: string;
-  montoTotal: number;
-  notas: string | null;
-  pagadoEn: string;
-}
-interface Config {
-  metaMes1: number; metaMes2: number; metaMes3: number; metaMesNormal: number;
-  pctClientePropio: number; pctPublicidad: number;
-  pctAsignadoVendedor: number; pctAsignadoOrigen: number; pctBono: number;
+interface ReporteVendedorData {
+  vendedor: { id: string; name: string }
+  mes: string
+  mesTrabajo: number
+  piso: number
+  config: { pctClientePropio: number; pctPublicidad: number; pctAsignadoVendedor: number; pctBono: number }
+  detalles: DetalleComision[]
+  resumen: ResumenVendedor
+  totalCotizaciones: number
+  comisionPendiente: number
+  pagosRegistrados: { id: string; mes: string; montoTotal: number; notas: string | null; pagadoEn: string }[]
 }
 
-// ── Resumen tab types ────────────────────────────────────────────────────────
-interface FunnelItem { etapa: string; count: number; }
-interface VentaCerrada { clienteNombre: string; nombreEvento: string | null; monto: number | null; origenLead: string; fechaCierre: string; }
-interface TratoPerdido { clienteNombre: string; etapa: string; fecha: string; }
-
-interface ResumenVentasData {
-  resumen: {
-    leadsCaptados: number;
-    ventasCerradas: number;
-    tratosPerdidos: number;
-    ingresosCerrados: number;
-    ticketPromedio: number;
-    tasaConversion: number;
-  };
-  funnel: FunnelItem[];
-  ventasCerradasDetalle: VentaCerrada[];
-  perdidasDetalle: TratoPerdido[];
-}
-// ────────────────────────────────────────────────────────────────────────────
-
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 function fmt(n: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
 }
+function fmtK(n: number) {
+  if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
+  if (n >= 1000) return `${(n / 1000).toFixed(0)}k`;
+  return String(n);
+}
+function pct(a: number, b: number) { return b > 0 ? Math.round((a / b) * 100) : 0; }
 function fmtDate(s: string | null) {
   if (!s) return "—";
   const [y, m, d] = s.substring(0, 10).split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
 }
+function getMesAnterior() {
+  const now = new Date();
+  const y = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+  const m = now.getMonth() === 0 ? 12 : now.getMonth();
+  return `${y}-${String(m).padStart(2, "0")}`;
+}
 
-const ESTADO_COLOR: Record<string, string> = {
-  LIQUIDADO: "bg-green-900/30 text-green-400",
-  PARCIAL: "bg-yellow-900/30 text-yellow-400",
-  PENDIENTE: "bg-gray-800 text-gray-400",
+const ORIGEN_LABEL: Record<string, string> = {
+  META_ADS: "Meta Ads", GOOGLE_ADS: "Google Ads", ORGANICO: "Orgánico",
+  RECOMPRA: "Recompra", REFERIDO: "Referido", PROSPECCION: "Prospección", OTRO: "Otro",
 };
-const ORIGEN_COLOR: Record<string, string> = {
-  CLIENTE_PROPIO: "bg-purple-900/30 text-purple-300",
-  PUBLICIDAD: "bg-blue-900/30 text-blue-300",
-  ASIGNADO: "bg-orange-900/30 text-orange-300",
+const TIPO_EVENTO_LABEL: Record<string, string> = {
+  MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial", OTRO: "Otro",
+};
+const TIPO_SERVICIO_LABEL: Record<string, string> = {
+  RENTA: "Renta de Equipo", PRODUCCION_TECNICA: "Producción Técnica",
+  DIRECCION_TECNICA: "Dirección Técnica", OTRO: "Otro",
+};
+const ORIGEN_VENTA_LABEL: Record<string, string> = {
+  CLIENTE_PROPIO: "Cliente Propio", PUBLICIDAD: "Publicidad", ASIGNADO: "Asignado",
+};
+const ESTADO_CONFIG: Record<string, { label: string; cls: string }> = {
+  LIQUIDADO: { label: "Liquidado", cls: "bg-green-900/40 text-green-400 border border-green-800/40" },
+  PARCIAL:   { label: "Anticipo",  cls: "bg-yellow-900/40 text-yellow-400 border border-yellow-800/40" },
+  PENDIENTE: { label: "Pendiente", cls: "bg-zinc-800 text-zinc-400 border border-zinc-700" },
 };
 
-export default function ReporteComisionesPage() {
-  const toast = useToast();
+const CHART_COLORS = ["#B3985B","#60a5fa","#4ade80","#a855f7","#f97316","#14b8a6","#f43f5e"];
+
+// Tooltip dark
+function DarkTooltip({ active, payload, label, formatter }: {
+  active?: boolean; payload?: { name: string; value: number; fill?: string }[]; label?: string;
+  formatter?: (v: number) => string;
+}) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-xs shadow-xl">
+      {label && <p className="text-gray-400 mb-1.5 font-semibold">{label}</p>}
+      {payload.map(p => (
+        <div key={p.name} className="flex items-center gap-2 mb-0.5">
+          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.fill ?? "#B3985B" }} />
+          <span className="text-gray-400">{p.name}:</span>
+          <span className="text-white font-semibold">{formatter ? formatter(p.value) : p.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+export default function ReporteVentasPage() {
   const searchParams = useSearchParams();
-  const [session, setSession] = useState<{ id: string; role: string } | null>(null);
+  const [session, setSession] = useState<{ id: string; role: string; name?: string } | null>(null);
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
+  const [activeTab, setActiveTab] = useState<"resultados" | "comisiones">("resultados");
+
+  // ── Tab 1 state ─────────────────────────────────────────────────────────────
+  const [mes1, setMes1] = useState(getMesAnterior());
+  const [reporte, setReporte] = useState<ReporteMensual | null>(null);
+  const [loadingMensual, setLoadingMensual] = useState(false);
+  const [loadingPdf1, setLoadingPdf1] = useState(false);
+  const [showEjecutivo, setShowEjecutivo] = useState(false);
+  const [analisis1, setAnalisis1] = useState("");
+  const [propuestas1, setPropuestas1] = useState("");
+  const [comentarios1, setComentarios1] = useState("");
+  const [notasLoaded, setNotasLoaded] = useState(false);
+
+  // ── Tab 2 state ─────────────────────────────────────────────────────────────
+  const [mes2, setMes2] = useState(searchParams.get("mes") ?? getMesAnterior());
   const [vendedorId, setVendedorId] = useState(searchParams.get("vendedorId") ?? "");
-  const [mes, setMes] = useState(searchParams.get("mes") ?? new Date().toISOString().slice(0, 7));
-  const [data, setData] = useState<{
-    vendedor: Vendedor;
-    mesTrabajo: number;
-    piso: number;
-    config: Config;
-    detalles: DetalleComision[];
-    resumen: Resumen;
-    pagosRegistrados: PagoRegistrado[];
-  } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [registrandoPago, setRegistrandoPago] = useState(false);
+  const [reporteVendedor, setReporteVendedor] = useState<ReporteVendedorData | null>(null);
+  const [loadingVendedor, setLoadingVendedor] = useState(false);
+  const [loadingPdf2, setLoadingPdf2] = useState(false);
+  const [analisis2, setAnalisis2] = useState("");
+  const [propuestas2, setPropuestas2] = useState("");
+  const [comentarios2, setComentarios2] = useState("");
   const [notasPago, setNotasPago] = useState("");
+  const [registrandoPago, setRegistrandoPago] = useState(false);
+  const [toastMsg, setToastMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
-  // ── Tab state ────────────────────────────────────────────────────────────────
-  const [activeReporteTab, setActiveReporteTab] = useState<'resumen' | 'comisiones'>('resumen');
-
-  // ── Resumen tab state ────────────────────────────────────────────────────────
-  const [resumenDesde, setResumenDesde] = useState(() => {
-    const d = new Date(); d.setDate(1);
-    return d.toISOString().split('T')[0];
-  });
-  const [resumenHasta, setResumenHasta] = useState(() => {
-    const d = new Date(); const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
-    return last.toISOString().split('T')[0];
-  });
-  const [resumenData, setResumenData] = useState<ResumenVentasData | null>(null);
-  const [resumenLoading, setResumenLoading] = useState(false);
-
-  async function cargarResumen(desde: string, hasta: string) {
-    setResumenLoading(true);
-    try {
-      const res = await fetch(`/api/ventas/pipeline-reporte?desde=${desde}&hasta=${hasta}`);
-      const data = await res.json();
-      setResumenData(data);
-    } finally {
-      setResumenLoading(false);
-    }
-  }
-
-  useEffect(() => { cargarResumen(resumenDesde, resumenHasta); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  // ────────────────────────────────────────────────────────────────────────────
-
+  // ── Init ─────────────────────────────────────────────────────────────────────
   useEffect(() => {
     fetch("/api/auth/me").then(r => r.json()).then(d => {
       if (d.user) {
@@ -144,438 +186,911 @@ export default function ReporteComisionesPage() {
     fetch("/api/vendedores").then(r => r.json()).then(d => setVendedores(d.vendedores ?? []));
   }, []);
 
-  const cargar = useCallback(() => {
-    const vid = vendedorId || (session?.role !== "ADMIN" ? session?.id : "");
-    if (!vid || !mes) return;
-    setLoading(true);
-    fetch(`/api/ventas/reporte?mes=${mes}&vendedorId=${vid}`)
-      .then(r => r.json())
-      .then(d => { setData(d); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [vendedorId, mes, session]);
+  function toast(type: "ok" | "err", text: string) {
+    setToastMsg({ type, text });
+    setTimeout(() => setToastMsg(null), 3500);
+  }
 
-  useEffect(() => { cargar(); }, [cargar]);
+  // ── Tab 1 ─────────────────────────────────────────────────────────────────────
+  const cargarMensual = useCallback(async () => {
+    setLoadingMensual(true);
+    try {
+      const res = await fetch(`/api/ventas/reporte-mensual?mes=${mes1}`);
+      const d = await res.json();
+      setReporte(d);
+    } finally {
+      setLoadingMensual(false);
+    }
+  }, [mes1]);
+  useEffect(() => { cargarMensual(); }, [cargarMensual]);
+
+  // Load notes from localStorage when mes1 changes
+  useEffect(() => {
+    setNotasLoaded(false);
+    try {
+      setAnalisis1(localStorage.getItem(`ventas-reporte-${mes1}-analisis`) ?? "");
+      setPropuestas1(localStorage.getItem(`ventas-reporte-${mes1}-propuestas`) ?? "");
+      setComentarios1(localStorage.getItem(`ventas-reporte-${mes1}-comentarios`) ?? "");
+    } catch { /**/ }
+    setNotasLoaded(true);
+  }, [mes1]);
+
+  async function descargarPdf1() {
+    setLoadingPdf1(true);
+    try {
+      const res = await fetch("/api/ventas/reporte-mensual/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mes: mes1, analisis: analisis1, propuestas: propuestas1, comentarios: comentarios1 }),
+      });
+      if (!res.ok) { toast("err", "Error al generar PDF"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `Reporte-Ventas-${mes1}.pdf`; a.click();
+      URL.revokeObjectURL(url);
+    } finally { setLoadingPdf1(false); }
+  }
+
+  // ── Tab 2 ─────────────────────────────────────────────────────────────────────
+  const cargarVendedor = useCallback(async () => {
+    const vid = vendedorId || (session?.role !== "ADMIN" ? session?.id : "");
+    if (!vid || !mes2) return;
+    setLoadingVendedor(true);
+    try {
+      const res = await fetch(`/api/ventas/reporte?mes=${mes2}&vendedorId=${vid}`);
+      const base = await res.json();
+      const pendiente = (base.detalles ?? []).filter((d: DetalleComision) => !d.liquidado100 && d.baseCalculo > 0)
+        .reduce((s: number, d: DetalleComision) => s + (d.baseCalculo * d.pctComision) / 100, 0);
+      setReporteVendedor({ ...base, totalCotizaciones: base.totalCotizaciones ?? base.resumen?.totalTratos ?? 0, comisionPendiente: pendiente });
+    } finally { setLoadingVendedor(false); }
+  }, [vendedorId, mes2, session]);
+  useEffect(() => { cargarVendedor(); }, [cargarVendedor]);
+
+  async function descargarPdf2() {
+    const vid = vendedorId || session?.id;
+    if (!vid) return;
+    setLoadingPdf2(true);
+    try {
+      const res = await fetch("/api/ventas/reporte-vendedor-pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mes: mes2, vendedorId: vid, analisis: analisis2, propuestas: propuestas2, comentarios: comentarios2 }),
+      });
+      if (!res.ok) { toast("err", "Error al generar PDF"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Reporte-${reporteVendedor?.vendedor?.name?.replace(/\s+/g, "-") ?? "Vendedor"}-${mes2}.pdf`;
+      a.click(); URL.revokeObjectURL(url);
+    } finally { setLoadingPdf2(false); }
+  }
 
   async function registrarPago() {
-    if (!data || !vendedorId) return;
+    if (!reporteVendedor || !vendedorId) return;
     setRegistrandoPago(true);
     const res = await fetch("/api/ventas/reporte", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        vendedorId,
-        mes,
-        montoTotal: data.resumen.totalAPagar,
-        notas: notasPago || null,
-      }),
+      body: JSON.stringify({ vendedorId, mes: mes2, montoTotal: reporteVendedor.resumen.totalAPagar, notas: notasPago || null }),
     });
     setRegistrandoPago(false);
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al registrar pago");
-      return;
-    }
-    setNotasPago("");
-    cargar();
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast("err", d.error ?? "Error al registrar"); return; }
+    toast("ok", "Pago registrado"); setNotasPago(""); cargarVendedor();
   }
 
+  async function corregirVendedor(tratoId: string, nuevoVid: string) {
+    const res = await fetch(`/api/tratos/${tratoId}/vendedor`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vendedorId: nuevoVid }),
+    });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast("err", d.error ?? "Error"); return; }
+    toast("ok", "Vendedor actualizado"); cargarVendedor();
+  }
+
+  const isAdmin = session?.role === "ADMIN";
+  const conversionPct = reporte ? pct(reporte.cotizaciones.ventasCerradas, reporte.cotizaciones.totalCreadas) : 0;
+
+  // Persist analysis notes in localStorage
+  const STOR = (k: string) => `ventas-reporte-${mes1}-${k}`;
+  function loadNota(k: string) { try { return localStorage.getItem(STOR(k)) ?? ""; } catch { return ""; } }
+  function saveNota(k: string, v: string) { try { localStorage.setItem(STOR(k), v); } catch { /**/ } }
+
+  // ─── RENDER ───────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
-      {/* Header + Tab bar */}
-      <div className="px-6 pt-8 pb-0 border-b border-[#111]">
-        <h1 className="text-2xl font-bold tracking-tight mb-4">Reportes de Ventas</h1>
-        <div className="flex gap-1">
-          {[{ key: 'resumen', label: 'Resumen del período' }, { key: 'comisiones', label: 'Comisiones' }].map(t => (
-            <button key={t.key}
-              id={`reporte-tab-${t.key}`}
-              onClick={() => setActiveReporteTab(t.key as 'resumen' | 'comisiones')}
-              className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
-                activeReporteTab === t.key ? 'text-[#B3985B]' : 'text-gray-500 hover:text-gray-300'
-              }`}
-            >
-              {t.label}
-              {activeReporteTab === t.key && (
-                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#B3985B] rounded-full" />
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
+    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
 
-      {/* Tab: Resumen */}
-      {activeReporteTab === 'resumen' && (
-        <div className="px-6 py-6 max-w-5xl">
-          {/* Period selector */}
-          <div className="flex flex-wrap gap-1.5 mb-6">
-            {[
-              { label: 'Este mes', fn: () => { const d = new Date(); const desde = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`; const last = new Date(d.getFullYear(), d.getMonth()+1, 0); const hasta = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(last.getDate()).padStart(2,'0')}`; setResumenDesde(desde); setResumenHasta(hasta); cargarResumen(desde, hasta); }},
-              { label: 'Mes anterior', fn: () => { const d = new Date(); d.setMonth(d.getMonth()-1); const desde = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`; const last = new Date(d.getFullYear(), d.getMonth()+1, 0); const hasta = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(last.getDate()).padStart(2,'0')}`; setResumenDesde(desde); setResumenHasta(hasta); cargarResumen(desde, hasta); }},
-              { label: 'Q1', fn: () => { const y = new Date().getFullYear(); const d=`${y}-01-01`; const h=`${y}-03-31`; setResumenDesde(d); setResumenHasta(h); cargarResumen(d,h); }},
-              { label: 'Q2', fn: () => { const y = new Date().getFullYear(); const d=`${y}-04-01`; const h=`${y}-06-30`; setResumenDesde(d); setResumenHasta(h); cargarResumen(d,h); }},
-              { label: 'Q3', fn: () => { const y = new Date().getFullYear(); const d=`${y}-07-01`; const h=`${y}-09-30`; setResumenDesde(d); setResumenHasta(h); cargarResumen(d,h); }},
-              { label: 'Q4', fn: () => { const y = new Date().getFullYear(); const d=`${y}-10-01`; const h=`${y}-12-31`; setResumenDesde(d); setResumenHasta(h); cargarResumen(d,h); }},
-              { label: 'Este año', fn: () => { const y = new Date().getFullYear(); const d=`${y}-01-01`; const h=`${y}-12-31`; setResumenDesde(d); setResumenHasta(h); cargarResumen(d,h); }},
-            ].map(p => (
-              <button key={p.label} id={`periodo-${p.label.toLowerCase().replace(/ /g,'-')}`} onClick={p.fn}
-                className="px-3 py-1.5 bg-[#111] border border-[#222] text-gray-400 hover:text-white hover:border-[#333] rounded-lg text-xs font-semibold transition-colors">
-                {p.label}
-              </button>
-            ))}
-            <div className="flex items-center gap-2">
-              <input type="date" value={resumenDesde} onChange={e => setResumenDesde(e.target.value)} className="bg-[#111] border border-[#222] text-white text-xs px-2 py-1.5 rounded-lg" />
-              <span className="text-gray-600">→</span>
-              <input type="date" value={resumenHasta} onChange={e => setResumenHasta(e.target.value)} className="bg-[#111] border border-[#222] text-white text-xs px-2 py-1.5 rounded-lg" />
-              <button id="aplicar-periodo-btn" onClick={() => cargarResumen(resumenDesde, resumenHasta)} className="px-3 py-1.5 bg-[#B3985B] text-black text-xs font-semibold rounded-lg">Aplicar</button>
-            </div>
-          </div>
-
-          {resumenLoading ? (
-            <div className="flex items-center gap-2 text-gray-600"><div className="w-3 h-3 border border-gray-600 border-t-transparent rounded-full animate-spin" />Calculando...</div>
-          ) : resumenData ? (
-            <ResumenVentasView data={resumenData} />
-          ) : null}
+      {/* Toast */}
+      {toastMsg && (
+        <div className={`fixed bottom-4 right-4 z-50 px-4 py-3 rounded-xl text-sm font-medium shadow-xl
+          ${toastMsg.type === "ok" ? "bg-green-900 text-green-300 border border-green-700" : "bg-red-900 text-red-300 border border-red-700"}`}>
+          {toastMsg.text}
         </div>
       )}
 
-      {/* Tab: Comisiones — original content */}
-      {activeReporteTab === 'comisiones' && (
-        <div className="p-3 md:p-6 space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <Link href="/ventas" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">← Ventas</Link>
-              <h2 className="text-xl font-bold text-white mt-1">Reporte de Comisiones</h2>
-            </div>
-            {session?.role === "ADMIN" && (
-              <Link href="/ventas/config" className="text-xs text-[#B3985B] hover:text-white transition-colors">
-                Configurar parámetros →
-              </Link>
-            )}
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-xl font-semibold text-white">Reporte de Ventas</h1>
+          <p className="text-[#6b7280] text-sm">Resultados mensuales · análisis de rendimiento</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={() => setShowEjecutivo(true)}
+            className="flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] active:scale-95 text-black text-xs font-semibold px-3 py-2 rounded-lg transition-all">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            Reporte ejecutivo
+          </button>
+          <div className="flex items-center gap-1.5 bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-1.5">
+            <svg className="w-3.5 h-3.5 text-[#6b7280]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            <input type="month" value={mes1} onChange={e => setMes1(e.target.value)}
+              className="bg-transparent text-white text-xs focus:outline-none" />
           </div>
+        </div>
+      </div>
 
-          {/* Filtros */}
-          <div className="flex items-center gap-4 bg-[#111] border border-[#222] rounded-xl p-4">
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">Mes</label>
-              <input
-                type="month"
-                value={mes}
-                onChange={e => setMes(e.target.value)}
-                className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-              />
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-[#1a1a1a]">
+        {([
+          { key: "resultados" as const, label: "Resultados del Mes" },
+          { key: "comisiones" as const, label: "Comisiones por Vendedor" },
+        ]).map(t => (
+          <button key={t.key} id={`tab-${t.key}`} onClick={() => setActiveTab(t.key)}
+            className={`px-4 py-2 text-xs font-medium transition-colors relative pb-3 ${
+              activeTab === t.key ? "text-[#B3985B]" : "text-[#6b7280] hover:text-white"
+            }`}>
+            {t.label}
+            {activeTab === t.key && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#B3985B] rounded-full" />}
+          </button>
+        ))}
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          TAB 1 — RESULTADOS
+      ══════════════════════════════════════════════════════════════════════ */}
+      {activeTab === "resultados" && (
+        loadingMensual ? (
+          <div className="py-16 text-center">
+            <div className="inline-flex items-center gap-3 text-[#555] text-sm">
+              <svg className="w-5 h-5 animate-spin text-[#B3985B]" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+              Cargando reporte...
             </div>
-            {session?.role === "ADMIN" && (
-              <div>
-                <label className="text-xs text-gray-500 block mb-1">Vendedor</label>
-                <Combobox
-                  value={vendedorId}
-                  onChange={setVendedorId}
-                  options={[{ value: "", label: "— Selecciona vendedor —" }, ...vendedores.map(v => ({ value: v.id, label: v.name }))]}
-                  className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                />
-              </div>
-            )}
           </div>
-
-          {loading && <div className="text-gray-500 text-sm text-center py-10">Calculando...</div>}
-
-          {data && !loading && (
-            <>
-              {/* Info vendedor + piso */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-                  <p className="text-xs text-gray-500 mb-1">Vendedor</p>
-                  <p className="text-white font-semibold">{data.vendedor.name}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Mes {data.mesTrabajo} de operación
-                  </p>
-                </div>
-                <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-                  <p className="text-xs text-gray-500 mb-1">Piso del mes (ramp-up)</p>
-                  <p className="text-white font-semibold text-lg">{fmt(data.piso)}</p>
-                  <p className={`text-xs mt-1 font-medium ${data.resumen.alcanzaPiso ? "text-green-400" : "text-red-400"}`}>
-                    {data.resumen.alcanzaPiso ? "✓ Alcanzado" : "✗ No alcanzado"} · base liquidada: {fmt(data.resumen.baseLiquidada)}
-                  </p>
-                </div>
-                <div className={`bg-[#111] border rounded-xl p-4 ${data.pagosRegistrados.length > 0 ? "border-green-700" : "border-[#222]"}`}>
-                  <p className="text-xs text-gray-500 mb-1">Total a pagar</p>
-                  <p className="text-[#B3985B] font-bold text-xl">{fmt(data.resumen.totalAPagar)}</p>
-                  {data.pagosRegistrados.length > 0 && (
-                    <p className="text-green-400 text-xs mt-1">
-                      ✓ Pagado · {fmtDate(data.pagosRegistrados[0].pagadoEn)}
-                    </p>
+        ) : !reporte ? null : (
+          <>
+            {/* ── SECCIÓN 1: KPIs principales ─────────────────────────────── */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {/* Ventas totales */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 col-span-2 md:col-span-1">
+                <p className="text-[#555] text-[10px] uppercase tracking-widest mb-1">Ingresos del mes</p>
+                <p className="text-3xl font-bold text-[#B3985B] leading-none">{fmt(reporte.ventasTotal.monto)}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-[#6b7280] text-[11px]">{reporte.ventasTotal.count} ventas cerradas</span>
+                  {reporte.crecimientoMensual !== null && (
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                      reporte.crecimientoMensual >= 0 ? "bg-green-900/40 text-green-400" : "bg-red-900/40 text-red-400"
+                    }`}>
+                      {reporte.crecimientoMensual >= 0 ? "+" : ""}{reporte.crecimientoMensual.toFixed(1)}% vs mes ant.
+                    </span>
                   )}
                 </div>
               </div>
 
-              {/* Desglose */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
-                  <p className="text-2xl font-bold text-white">{data.resumen.totalTratos}</p>
-                  <p className="text-xs text-gray-500 mt-1">Tratos cerrados</p>
-                </div>
-                <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
-                  <p className="text-2xl font-bold text-white">{fmt(data.resumen.baseLiquidada)}</p>
-                  <p className="text-xs text-gray-500 mt-1">Base liquidada (equipos)</p>
-                </div>
-                <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
-                  <p className="text-2xl font-bold text-white">{fmt(data.resumen.totalComisiones)}</p>
-                  <p className="text-xs text-gray-500 mt-1">Comisión base</p>
-                </div>
-                <div className={`bg-[#111] border rounded-xl p-4 text-center ${data.resumen.alcanzaPiso ? "border-green-800" : "border-[#222]"}`}>
-                  <p className={`text-2xl font-bold ${data.resumen.alcanzaPiso ? "text-green-400" : "text-gray-600"}`}>
-                    {fmt(data.resumen.montoBono)}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Bono {data.config.pctBono}% {data.resumen.alcanzaPiso ? "✓" : "(no aplica)"}
-                  </p>
-                </div>
+              {/* Ticket promedio */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                <p className="text-[#555] text-[10px] uppercase tracking-widest mb-1">Ticket promedio</p>
+                <p className="text-2xl font-bold text-white">{fmt(reporte.ticketPromedio)}</p>
+                <p className="text-[#444] text-[10px] mt-1.5">por venta cerrada</p>
               </div>
 
-              {/* Tabla de tratos */}
-              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-                <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">
-                    Tratos cerrados en {mes}
-                  </h2>
-                  <span className="text-xs text-gray-500">Base = monto equipos rentados c/descuento · solo libera cuando 100% liquidado</span>
-                </div>
+              {/* Conversión */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                <p className="text-[#555] text-[10px] uppercase tracking-widest mb-1">Tasa de conversión</p>
+                <p className="text-2xl font-bold text-green-400">{conversionPct}%</p>
+                <p className="text-[#444] text-[10px] mt-1.5">{reporte.cotizaciones.ventasCerradas} de {reporte.cotizaciones.totalCreadas} cotiz.</p>
+              </div>
 
-                {data.detalles.length === 0 ? (
-                  <p className="text-gray-500 text-sm text-center py-8">Sin tratos cerrados en este mes</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[600px] text-sm">
-                      <thead>
-                        <tr className="border-b border-[#1a1a1a]">
-                          {["Evento / Cliente", "Cierre", "Origen", "Cotización", "Gran Total", "Base Equipos", "%", "Comisión", "Estado"].map(h => (
-                            <th key={h} className="text-left text-xs text-gray-500 px-4 py-2 font-normal">{h}</th>
+              {/* Perdidos */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                <p className="text-[#555] text-[10px] uppercase tracking-widest mb-1">Ventas perdidas</p>
+                <p className="text-2xl font-bold text-red-400">{reporte.tratosPerdidos.count}</p>
+                <p className="text-[#444] text-[10px] mt-1.5">{reporte.tratosPerdidos.montoEstimadoPerdido > 0 ? `~${fmt(reporte.tratosPerdidos.montoEstimadoPerdido)} estimado` : "este período"}</p>
+              </div>
+            </div>
+
+            {/* ── SECCIÓN 2: Tendencia + Clientes ─────────────────────────── */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Gráfica tendencia — ocupa 2 columnas */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 md:col-span-2">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-white font-semibold text-sm">Tendencia — últimos 6 meses</h2>
+                  <div className="flex items-center gap-3 text-[10px] text-[#555]">
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-[#B3985B] inline-block" />Ventas</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-red-900/60 inline-block" />Perdidos</span>
+                  </div>
+                </div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={reporte.porMesHistorico} margin={{ top: 5, right: 5, left: -20, bottom: 0 }} barGap={4}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fill: "#555", fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: "#555", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={fmtK} />
+                    <Tooltip content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      return (
+                        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-xs shadow-2xl">
+                          <p className="text-[#888] mb-2 font-semibold">{label}</p>
+                          {payload.map((p, i) => (
+                            <div key={i} className="flex items-center gap-2 mb-1">
+                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.fill }} />
+                              <span className="text-[#888]">{p.name}:</span>
+                              <span className="text-white font-bold">{p.name === "Ventas" ? fmt(p.value as number) : p.value}</span>
+                            </div>
                           ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.detalles.map((d, i) => (
-                          <tr key={d.tratoId} className={`border-b border-[#1a1a1a] hover:bg-[#161616] ${i % 2 === 0 ? "" : "bg-[#0e0e0e]"}`}>
-                            <td className="px-4 py-3">
-                              <Link href={`/crm/tratos/${d.tratoId}`} className="text-white hover:text-[#B3985B] transition-colors font-medium">
-                                {d.nombreEvento || d.cliente.nombre}
-                              </Link>
-                              <p className="text-gray-500 text-xs">{d.cliente.nombre}{d.cliente.empresa ? ` · ${d.cliente.empresa}` : ""}</p>
-                            </td>
-                            <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">{fmtDate(d.fechaCierre)}</td>
-                            <td className="px-4 py-3">
-                              <span className={`text-xs px-2 py-0.5 rounded ${ORIGEN_COLOR[d.origenVenta] ?? "bg-gray-800 text-gray-400"}`}>
-                                {d.notaOrigen}
-                              </span>
-                              {d.vendedorOrigen && (
-                                <p className="text-gray-600 text-[10px] mt-0.5">orig: {d.vendedorOrigen.name}</p>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-gray-400 text-xs">{d.numeroCotizacion ?? "—"}</td>
-                            <td className="px-4 py-3 text-gray-300 text-xs">{fmt(d.granTotal)}</td>
-                            <td className="px-4 py-3 text-white text-xs font-medium">{fmt(d.baseCalculo)}</td>
-                            <td className="px-4 py-3 text-gray-400 text-xs">{d.pctComision}%</td>
-                            <td className="px-4 py-3">
-                              <span className={`font-semibold ${d.liquidado100 ? "text-[#B3985B]" : "text-gray-600"}`}>
-                                {d.liquidado100 ? fmt(d.montoComision) : "—"}
-                              </span>
-                              {!d.liquidado100 && (
-                                <p className="text-gray-600 text-[10px]">pendiente {fmt((d.baseCalculo * d.pctComision) / 100)}</p>
-                              )}
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className={`text-xs px-2 py-0.5 rounded ${ESTADO_COLOR[d.estadoPago] ?? ""}`}>
-                                {d.estadoPago === "LIQUIDADO" ? "Liquidado" : d.estadoPago === "PARCIAL" ? "Parcial" : "Pendiente"}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="border-t border-[#333] bg-[#0d0d0d]">
-                          <td colSpan={5} className="px-4 py-3 text-gray-500 text-xs">Total</td>
-                          <td className="px-4 py-3 text-white font-semibold text-sm">{fmt(data.resumen.baseLiquidada)}</td>
-                          <td></td>
-                          <td className="px-4 py-3 text-[#B3985B] font-bold">{fmt(data.resumen.totalComisiones)}</td>
-                          <td></td>
-                        </tr>
-                      </tfoot>
-                    </table>
-                  </div>
-                )}
+                          <p className="text-[#555] text-[10px] mt-1">{(payload[0] as {payload: {count:number}}).payload.count} eventos cerrados</p>
+                        </div>
+                      );
+                    }} cursor={{ fill: "#ffffff04" }} />
+                    <Bar dataKey="monto" name="Ventas" fill="#B3985B" radius={[4,4,0,0]} maxBarSize={36}>
+                      {reporte.porMesHistorico.map((m) => (
+                        <Cell key={m.mes} fill={m.mes === mes1 ? "#B3985B" : "rgba(179,152,91,0.3)"} />
+                      ))}
+                    </Bar>
+                    <Bar dataKey="perdidos" name="Perdidos" fill="rgba(220,38,38,0.5)" radius={[4,4,0,0]} maxBarSize={36} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
 
-              {/* Resumen pago */}
-              <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-                <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider mb-4">Resumen de pago</h2>
-                <div className="space-y-2 max-w-sm">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Comisión base</span>
-                    <span className="text-white">{fmt(data.resumen.totalComisiones)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">
-                      Bono {data.config.pctBono}% {!data.resumen.alcanzaPiso && <span className="text-red-500 text-xs">(no aplica)</span>}
-                    </span>
-                    <span className={data.resumen.alcanzaPiso ? "text-green-400" : "text-gray-600"}>
-                      {fmt(data.resumen.montoBono)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm border-t border-[#333] pt-2 font-semibold">
-                    <span className="text-white">Total a pagar</span>
-                    <span className="text-[#B3985B] text-lg">{fmt(data.resumen.totalAPagar)}</span>
-                  </div>
-                </div>
-
-                {/* Historial de pagos */}
-                {data.pagosRegistrados.length > 0 && (
-                  <div className="mt-4 space-y-1">
-                    <p className="text-xs text-gray-500 mb-2">Pagos registrados este mes:</p>
-                    {data.pagosRegistrados.map(p => (
-                      <div key={p.id} className="flex items-center gap-3 text-xs text-gray-400">
-                        <span className="text-green-400">✓</span>
-                        <span>{fmt(p.montoTotal)}</span>
-                        <span>·</span>
-                        <span>{fmtDate(p.pagadoEn)}</span>
-                        {p.notas && <span className="text-gray-600">· {p.notas}</span>}
+              {/* Top 5 clientes */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+                <h2 className="text-white font-semibold text-sm mb-4">Top clientes del mes</h2>
+                {reporte.top5Clientes.length === 0 ? (
+                  <p className="text-[#444] text-xs text-center py-8">Sin datos</p>
+                ) : (
+                  <div className="space-y-3">
+                    {reporte.top5Clientes.map((c, i) => (
+                      <div key={i}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-[10px] font-bold w-4 text-center" style={{ color: i === 0 ? "#B3985B" : i === 1 ? "#9ca3af" : i === 2 ? "#b45309" : "#374151" }}>#{i+1}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-[11px] font-medium truncate">{c.nombre}</p>
+                            <p className="text-[#555] text-[9px] truncate">{c.empresa ?? ""} · {c.eventos} ev.</p>
+                          </div>
+                          <span className="text-[#B3985B] text-[11px] font-bold shrink-0">{fmt(c.monto)}</span>
+                        </div>
+                        <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden ml-6">
+                          <div className="h-full rounded-full" style={{ width: `${pct(c.monto, reporte.top5Clientes[0]?.monto || 1)}%`, backgroundColor: i === 0 ? "#B3985B" : "#374151" }} />
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
 
-                {/* Registrar pago (solo admin) */}
-                {session?.role === "ADMIN" && data.resumen.totalAPagar > 0 && (
-                  <div className="mt-4 pt-4 border-t border-[#1a1a1a]">
-                    <p className="text-xs text-gray-500 mb-2">Registrar pago de comisiones</p>
-                    <div className="flex gap-3 items-end">
-                      <input
-                        value={notasPago}
-                        onChange={e => setNotasPago(e.target.value)}
-                        placeholder="Nota (opcional)"
-                        className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] flex-1"
-                      />
-                      <button
-                        onClick={registrarPago}
-                        disabled={registrandoPago}
-                        className="px-4 py-2 bg-[#B3985B] text-black text-sm font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors disabled:opacity-50 whitespace-nowrap"
-                      >
-                        {registrandoPago ? "Registrando..." : `Marcar pagado ${fmt(data.resumen.totalAPagar)}`}
+            {/* ── SECCIÓN 3: Mix de negocio ────────────────────────────────── */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+              {/* Tipo de evento */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+                <h2 className="text-white font-semibold text-sm mb-4">Tipo de evento</h2>
+                {reporte.porTipoEvento.length === 0
+                  ? <p className="text-[#444] text-xs text-center py-6">Sin datos</p>
+                  : (
+                  <div className="space-y-3">
+                    {reporte.porTipoEvento.map((item, i) => (
+                      <div key={item.tipo}>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <span className="text-gray-300 text-[11px] font-medium">{TIPO_EVENTO_LABEL[item.tipo] ?? item.tipo}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[#555] text-[10px]">{item.count} ev.</span>
+                            <span className="text-[10px] font-bold" style={{ color: CHART_COLORS[i % CHART_COLORS.length] }}>{item.pct.toFixed(0)}%</span>
+                          </div>
+                        </div>
+                        <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${item.pct}%`, backgroundColor: CHART_COLORS[i % CHART_COLORS.length], opacity: 0.8 }} />
+                        </div>
+                        <p className="text-[#444] text-[9px] mt-0.5">{fmt(item.monto)}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Mix servicios con donut */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+                <h2 className="text-white font-semibold text-sm mb-2">Mix de servicios</h2>
+                {reporte.porTipoServicio.length === 0
+                  ? <p className="text-[#444] text-xs text-center py-6">Sin datos</p>
+                  : (
+                  <>
+                    <ResponsiveContainer width="100%" height={130}>
+                      <PieChart>
+                        <Pie data={reporte.porTipoServicio} cx="50%" cy="50%" innerRadius={35} outerRadius={55}
+                          dataKey="monto" paddingAngle={3}>
+                          {reporte.porTipoServicio.map((_, i) => (
+                            <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} stroke="transparent" />
+                          ))}
+                        </Pie>
+                        <Tooltip content={({ active, payload }) => {
+                          if (!active || !payload?.length) return null;
+                          const item = (payload[0].payload as TipoItem);
+                          return (
+                            <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2.5 py-2 text-[10px] shadow-xl">
+                              <p className="text-white font-semibold">{TIPO_SERVICIO_LABEL[item.tipo] ?? item.tipo}</p>
+                              <p className="text-[#888]">{item.count} eventos · {item.pct.toFixed(0)}%</p>
+                              <p className="text-[#B3985B]">{fmt(item.monto)}</p>
+                            </div>
+                          );
+                        }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="space-y-2">
+                      {reporte.porTipoServicio.map((item, i) => (
+                        <div key={item.tipo} className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+                            <span className="text-[#aaa] text-[11px]">{TIPO_SERVICIO_LABEL[item.tipo] ?? item.tipo}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-white text-[11px] font-semibold">{item.pct.toFixed(0)}%</span>
+                            <span className="text-[#555] text-[10px] ml-1.5">{fmt(item.monto)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Origen de leads — barras horizontales */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+                <h2 className="text-white font-semibold text-sm mb-4">Origen de leads</h2>
+                {reporte.origenLeads.length === 0
+                  ? <p className="text-[#444] text-xs text-center py-6">Sin datos</p>
+                  : (
+                  <div className="space-y-3">
+                    {reporte.origenLeads.map((item, i) => (
+                      <div key={item.origen}>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <span className="text-gray-300 text-[11px] font-medium">{ORIGEN_LABEL[item.origen] ?? item.origen}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[#555] text-[10px]">{item.count}</span>
+                            <span className="text-[10px] font-bold" style={{ color: CHART_COLORS[i % CHART_COLORS.length] }}>{item.pct.toFixed(0)}%</span>
+                          </div>
+                        </div>
+                        <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${item.pct}%`, backgroundColor: CHART_COLORS[i % CHART_COLORS.length], opacity: 0.8 }} />
+                        </div>
+                        <p className="text-[#444] text-[9px] mt-0.5">{fmt(item.monto)}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── SECCIÓN 4: Funnel + Vendedores + Perdidos ────────────────── */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+              {/* Funnel de conversión */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+                <h2 className="text-white font-semibold text-sm mb-4">Embudo de conversión</h2>
+                <div className="space-y-2">
+                  {[
+                    { label: "Cotizaciones creadas", value: reporte.cotizaciones.totalCreadas, color: "#4b5563", pctVal: 100 },
+                    { label: "Ventas cerradas",      value: reporte.cotizaciones.ventasCerradas, color: "#B3985B",
+                      pctVal: pct(reporte.cotizaciones.ventasCerradas, reporte.cotizaciones.totalCreadas) },
+                    { label: "Con proyecto",          value: reporte.cotizaciones.conProyecto,  color: "#4ade80",
+                      pctVal: pct(reporte.cotizaciones.conProyecto, reporte.cotizaciones.totalCreadas) },
+                    { label: "Perdidos",              value: reporte.tratosPerdidos.count, color: "#f87171",
+                      pctVal: pct(reporte.tratosPerdidos.count, reporte.cotizaciones.totalCreadas) },
+                  ].map((k, i) => (
+                    <div key={k.label}>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[#9ca3af] text-[11px]">{k.label}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-white text-sm">{k.value}</span>
+                          <span className="text-[10px]" style={{ color: k.color }}>{k.pctVal}%</span>
+                        </div>
+                      </div>
+                      <div className="h-2 bg-[#1a1a1a] rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all" style={{ width: `${k.pctVal}%`, backgroundColor: k.color, opacity: i === 0 ? 0.5 : 0.8 }} />
+                      </div>
+                    </div>
+                  ))}
+                  <div className="pt-3 mt-1 border-t border-[#1a1a1a] flex justify-between items-center">
+                    <span className="text-[#555] text-[10px] uppercase tracking-wider">Conversión global</span>
+                    <span className="text-[#B3985B] text-lg font-bold">{conversionPct}%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Rendimiento por vendedor */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+                <h2 className="text-white font-semibold text-sm mb-4">Rendimiento por vendedor</h2>
+                {reporte.porVendedor.length === 0
+                  ? <p className="text-[#444] text-xs text-center py-6">Sin datos</p>
+                  : (
+                  <div className="space-y-3">
+                    {reporte.porVendedor.map((v, i) => (
+                      <div key={v.id}>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <span className="text-gray-300 text-[11px] font-medium truncate max-w-[100px]">{v.nombre}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[#555] text-[10px]">{v.eventos} ev.</span>
+                            <span className="text-[#B3985B] text-[11px] font-bold">{fmt(v.monto)}</span>
+                          </div>
+                        </div>
+                        <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{
+                            width: `${pct(v.monto, reporte.porVendedor[0]?.monto || 1)}%`,
+                            backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
+                            opacity: 0.8,
+                          }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Análisis de pérdidas */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-white font-semibold text-sm">Motivos de pérdida</h2>
+                  <span className="text-red-400 text-xl font-bold">{reporte.tratosPerdidos.count}</span>
+                </div>
+                {reporte.tratosPerdidos.count === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-6 gap-2">
+                    <div className="w-8 h-8 rounded-full bg-green-900/30 flex items-center justify-center">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4ade80" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <p className="text-green-400 text-xs font-medium">Sin pérdidas este mes</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {reporte.tratosPerdidos.motivosPerdida.slice(0, 5).map((m, i) => (
+                      <div key={m.motivo}>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[#9ca3af] text-[11px] truncate max-w-[130px]">{m.motivo}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-white text-[11px] font-bold">{m.count}</span>
+                            <span className="text-red-400 text-[10px]">{m.pct.toFixed(0)}%</span>
+                          </div>
+                        </div>
+                        <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                          <div className="h-full rounded-full bg-red-600/60" style={{ width: `${m.pct}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── SECCIÓN 5: Clientes + Zonas ─────────────────────────────── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Clientes nuevos vs recurrentes */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-white font-semibold text-sm">Nuevos vs recurrentes</h2>
+                  <div className="flex items-center gap-3 text-[10px]">
+                    <span className="flex items-center gap-1 text-blue-400"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block"/>Nuevos {reporte.clientesNuevos.count}</span>
+                    <span className="flex items-center gap-1 text-[#B3985B]"><span className="w-2 h-2 rounded-full bg-[#B3985B] inline-block"/>Recurrentes {reporte.clientesRecurrentes.count}</span>
+                  </div>
+                </div>
+                {/* Visual split */}
+                <div className="flex gap-1.5 mb-4 h-3 rounded-full overflow-hidden">
+                  {reporte.clientesNuevos.count + reporte.clientesRecurrentes.count > 0 ? (
+                    <>
+                      <div className="bg-blue-500/70 rounded-l-full" style={{ flex: reporte.clientesNuevos.count }} />
+                      <div className="bg-[#B3985B]/70 rounded-r-full" style={{ flex: reporte.clientesRecurrentes.count }} />
+                    </>
+                  ) : <div className="flex-1 bg-[#1a1a1a] rounded-full" />}
+                </div>
+                {reporte.clientesNuevos.lista.length > 0 && (
+                  <>
+                    <p className="text-[#555] text-[10px] uppercase tracking-wider mb-2">Clientes que llegaron por primera vez</p>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {reporte.clientesNuevos.lista.slice(0, 8).map((c, i) => (
+                        <div key={i} className="flex items-center gap-1.5 bg-[#0f0f0f] border border-[#1a1a1a] rounded-lg px-2 py-1.5">
+                          <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-white text-[10px] font-medium truncate">{c.nombre}</p>
+                            {c.empresa && <p className="text-[#444] text-[9px] truncate">{c.empresa}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Zonas */}
+              {reporte.porZona.length > 0 ? (
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+                  <h2 className="text-white font-semibold text-sm mb-4">Distribución por zona</h2>
+                  <div className="space-y-3">
+                    {reporte.porZona.map((z, i) => (
+                      <div key={z.zona}>
+                        <div className="flex justify-between items-center mb-1.5">
+                          <span className="text-[#ccc] text-[11px] font-medium">{z.zona}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[#555] text-[10px]">{z.count} ev.</span>
+                            <span className="text-[11px] font-bold" style={{ color: CHART_COLORS[i % CHART_COLORS.length] }}>{z.pct.toFixed(0)}%</span>
+                          </div>
+                        </div>
+                        <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                          <div className="h-full rounded-full" style={{ width: `${z.pct}%`, backgroundColor: CHART_COLORS[i % CHART_COLORS.length], opacity: 0.8 }} />
+                        </div>
+                        <p className="text-[#444] text-[9px] mt-0.5">{fmt(z.monto)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+                  <h2 className="text-white font-semibold text-sm mb-4">Cotizaciones → Proyectos</h2>
+                  <div className="space-y-4">
+                    {[
+                      { label: "Cotizaciones enviadas", value: reporte.cotizaciones.totalCreadas, color: "#4b5563", pctVal: 100 },
+                      { label: "Ventas cerradas", value: reporte.cotizaciones.ventasCerradas, color: "#B3985B", pctVal: pct(reporte.cotizaciones.ventasCerradas, reporte.cotizaciones.totalCreadas) },
+                      { label: "Con proyecto ejecutado", value: reporte.cotizaciones.conProyecto, color: "#4ade80", pctVal: pct(reporte.cotizaciones.conProyecto, reporte.cotizaciones.totalCreadas) },
+                    ].map(k => (
+                      <div key={k.label}>
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-gray-400 text-[11px]">{k.label}</span>
+                          <span className="text-white font-bold text-sm">{k.value}</span>
+                        </div>
+                        <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+                          <div className="h-full rounded-full opacity-80" style={{ width: `${k.pctVal}%`, backgroundColor: k.color }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── SECCIÓN 6: Notas del responsable + PDF ───────────────────── */}
+            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-1 h-4 rounded-full bg-[#B3985B]" />
+                <h2 className="text-white font-semibold text-sm">Análisis del responsable de ventas</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+                {[
+                  { label: "Análisis de resultados", value: analisis1, set: setAnalisis1, placeholder: "¿Qué pasó este mes? Describe los factores clave de los resultados obtenidos...", key: "analisis", rows: 5 },
+                  { label: "Propuestas de mejora",   value: propuestas1, set: setPropuestas1, placeholder: "1. ...\n2. ...\n3. ...", key: "propuestas", rows: 5 },
+                  { label: "Comentarios finales",    value: comentarios1, set: setComentarios1, placeholder: "Observaciones adicionales, contexto externo, etc...", key: "comentarios", rows: 5 },
+                ].map(f => (
+                  <div key={f.label}>
+                    <label className="text-[#555] text-[10px] uppercase tracking-widest block mb-1.5">{f.label}</label>
+                    <textarea
+                      value={f.value}
+                      onChange={e => {
+                        f.set(e.target.value);
+                        try { localStorage.setItem(`ventas-reporte-${mes1}-${f.key}`, e.target.value); } catch { /**/ }
+                      }}
+                      rows={f.rows}
+                      placeholder={f.placeholder}
+                      className="w-full bg-[#0a0a0a] border border-[#1e1e1e] rounded-xl px-3 py-2.5 text-xs text-white placeholder-[#2a2a2a] focus:outline-none focus:border-[#B3985B]/40 resize-none leading-relaxed transition-colors"
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-[#333] text-[10px]">Las notas se guardan automáticamente en este dispositivo</p>
+                <button onClick={descargarPdf1} disabled={loadingPdf1} id="btn-pdf-mensual"
+                  className="flex items-center gap-2 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black text-xs font-semibold px-4 py-2.5 rounded-lg transition-all shadow-lg shadow-[#B3985B]/20">
+                  {loadingPdf1 ? (
+                    <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                  ) : (
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                  )}
+                  {loadingPdf1 ? "Generando PDF..." : "Descargar Reporte PDF"}
+                </button>
+              </div>
+            </div>
+          </>
+        )
+      )}
+
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          TAB 2 — COMISIONES POR VENDEDOR
+      ══════════════════════════════════════════════════════════════════════ */}
+      {activeTab === "comisiones" && (
+        <>
+          {/* Filtros */}
+          <div className="flex flex-wrap items-center gap-3">
+            {isAdmin && (
+              <select value={vendedorId} onChange={e => setVendedorId(e.target.value)} id="select-vendedor"
+                className="bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]/40 min-w-44">
+                <option value="">Seleccionar vendedor...</option>
+                {vendedores.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+              </select>
+            )}
+            <div className="flex items-center gap-1.5 bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-1.5">
+              <input type="month" value={mes2} onChange={e => setMes2(e.target.value)}
+                className="bg-transparent text-white text-xs focus:outline-none" />
+            </div>
+          </div>
+
+          {loadingVendedor ? (
+            <div className="py-12 text-center text-gray-600 text-sm">Cargando...</div>
+          ) : !reporteVendedor ? (
+            <div className="py-12 text-center text-gray-700 text-sm">{isAdmin ? "Selecciona un vendedor" : "Cargando..."}</div>
+          ) : (
+            <>
+              {/* Header vendedor */}
+              <div className="flex items-center justify-between bg-[#111] border border-[#1e1e1e] rounded-xl px-5 py-4">
+                <div>
+                  <p className="text-white font-semibold">{reporteVendedor.vendedor.name}</p>
+                  <p className="text-[#6b7280] text-xs mt-0.5">Mes #{reporteVendedor.mesTrabajo} · Meta: {fmt(reporteVendedor.piso)}</p>
+                </div>
+                {reporteVendedor.resumen.alcanzaPiso && (
+                  <div className="bg-green-900/30 border border-green-800/40 rounded-lg px-3 py-2 text-center">
+                    <p className="text-green-400 text-[10px] font-bold">✓ META ALCANZADA</p>
+                    <p className="text-green-400/60 text-[10px]">Bono: {fmt(reporteVendedor.resumen.montoBono)}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* KPI cards vendedor */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {[
+                  { label: "Cotizaciones",      value: String(reporteVendedor.totalCotizaciones), color: "text-white" },
+                  { label: "Eventos cerrados",  value: String(reporteVendedor.detalles.length),  color: "text-white",
+                    sub: `${reporteVendedor.totalCotizaciones > 0 ? ((reporteVendedor.detalles.length / reporteVendedor.totalCotizaciones) * 100).toFixed(0) : 0}% conv.` },
+                  { label: "Base liquidada",    value: fmt(reporteVendedor.resumen.baseLiquidada), color: "text-[#B3985B]" },
+                  { label: "Comisión generada", value: fmt(reporteVendedor.resumen.totalComisiones), color: "text-green-400" },
+                  { label: "Total a pagar",     value: fmt(reporteVendedor.resumen.totalAPagar), color: "text-[#B3985B]",
+                    sub: reporteVendedor.resumen.alcanzaPiso ? `+ bono ${reporteVendedor.config.pctBono}%` : undefined },
+                ].map(k => (
+                  <div key={k.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                    <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">{k.label}</p>
+                    <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
+                    {k.sub && <p className="text-gray-700 text-[10px] mt-0.5">{k.sub}</p>}
+                  </div>
+                ))}
+              </div>
+
+              {/* Tabla de eventos */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                <div className="px-5 py-3.5 border-b border-[#1a1a1a] flex items-center justify-between">
+                  <h2 className="text-white font-semibold text-sm">Detalle de eventos</h2>
+                  <p className="text-gray-600 text-xs">{reporteVendedor.detalles.length} eventos</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-[#1a1a1a]">
+                        {["Evento / Cliente","Cierre","Origen","Total","Base","% / Comisión","Estado","Vendedor"].map(h => (
+                          <th key={h} className="px-4 py-3 text-left text-[10px] text-[#6b7280] uppercase tracking-wider font-semibold whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {reporteVendedor.detalles.length === 0 ? (
+                        <tr><td colSpan={8} className="px-4 py-8 text-center text-[#444]">Sin eventos cerrados</td></tr>
+                      ) : reporteVendedor.detalles.map((d, i) => {
+                        const estadoCfg = ESTADO_CONFIG[d.estadoPago] ?? ESTADO_CONFIG.PENDIENTE;
+                        return (
+                          <tr key={d.tratoId} className={`border-b border-[#111] ${i % 2 === 0 ? "" : "bg-[#0d0d0d]"} hover:bg-[#161616] transition-colors`}>
+                            <td className="px-4 py-3">
+                              <p className="text-white font-medium">{d.nombreEvento ?? "Sin nombre"}</p>
+                              <p className="text-[#6b7280] text-[10px] mt-0.5">{d.cliente.nombre}{d.cliente.empresa ? ` · ${d.cliente.empresa}` : ""}</p>
+                            </td>
+                            <td className="px-4 py-3 text-[#9ca3af] whitespace-nowrap">{fmtDate(d.fechaCierre)}</td>
+                            <td className="px-4 py-3 text-[#9ca3af]">{ORIGEN_VENTA_LABEL[d.origenVenta] ?? d.origenVenta}</td>
+                            <td className="px-4 py-3 text-[#B3985B] font-semibold">{fmt(d.granTotal)}</td>
+                            <td className="px-4 py-3 text-[#9ca3af]">{fmt(d.baseCalculo)}</td>
+                            <td className="px-4 py-3">
+                              <p className="text-[#9ca3af]">{d.pctComision}%</p>
+                              <p className="text-[#B3985B] font-bold mt-0.5">{d.montoComision > 0 ? fmt(d.montoComision) : "—"}</p>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`text-[10px] px-2 py-1 rounded-md font-medium ${estadoCfg.cls}`}>{estadoCfg.label}</span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {d.esDelegado ? (
+                                <div>
+                                  <span className="text-[10px] px-2 py-1 rounded-md font-medium bg-yellow-900/30 text-yellow-400 border border-yellow-800/30">Delegado ⚠</span>
+                                  {d.cotizadorNombre && <p className="text-[#444] text-[10px] mt-1">Cotizó: {d.cotizadorNombre}</p>}
+                                  {isAdmin && (
+                                    <select defaultValue="" className="mt-1 bg-[#0a0a0a] border border-[#222] rounded text-[10px] text-white px-1 py-0.5 focus:outline-none"
+                                      onChange={e => { if (e.target.value) corregirVendedor(d.tratoId, e.target.value); }}>
+                                      <option value="">Corregir...</option>
+                                      {vendedores.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                                    </select>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-[10px] px-2 py-1 rounded-md font-medium bg-green-900/30 text-green-400 border border-green-800/30">Vendedor ✓</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Resumen pago + Registrar pago */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 border-l-2 border-l-[#B3985B]">
+                  <h2 className="text-white font-semibold text-sm mb-4">Resumen de pago</h2>
+                  <div className="space-y-2.5">
+                    <div className="flex justify-between text-xs"><span className="text-gray-500">Comisión base</span><span className="text-white font-medium">{fmt(reporteVendedor.resumen.totalComisiones)}</span></div>
+                    {reporteVendedor.resumen.alcanzaPiso && (
+                      <div className="flex justify-between text-xs"><span className="text-gray-500">Bono meta ({reporteVendedor.config.pctBono}%)</span><span className="text-green-400 font-medium">+ {fmt(reporteVendedor.resumen.montoBono)}</span></div>
+                    )}
+                    <div className="border-t border-[#1a1a1a] pt-2.5 flex justify-between">
+                      <span className="text-white text-xs font-semibold">Total a pagar</span>
+                      <span className="text-[#B3985B] text-base font-bold">{fmt(reporteVendedor.resumen.totalAPagar)}</span>
+                    </div>
+                    {reporteVendedor.comisionPendiente > 0 && (
+                      <div className="flex justify-between text-xs pt-1 border-t border-[#1a1a1a]">
+                        <span className="text-yellow-400/80">Pendiente por liquidar</span>
+                        <span className="text-yellow-400 font-medium">{fmt(reporteVendedor.comisionPendiente)}</span>
+                      </div>
+                    )}
+                    {reporteVendedor.pagosRegistrados?.length > 0 && (
+                      <div className="pt-3 border-t border-[#1a1a1a]">
+                        <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-2">Pagos registrados</p>
+                        {reporteVendedor.pagosRegistrados.map(p => (
+                          <div key={p.id} className="flex justify-between items-center mb-1.5">
+                            <div>
+                              <p className="text-green-400 text-xs font-medium">{fmt(p.montoTotal)}</p>
+                              {p.notas && <p className="text-[#444] text-[10px]">{p.notas}</p>}
+                            </div>
+                            <p className="text-[#444] text-[10px]">{fmtDate(p.pagadoEn)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {isAdmin && (
+                  <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+                    <h2 className="text-white font-semibold text-sm mb-4">Registrar pago</h2>
+                    <div className="space-y-3">
+                      <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg px-4 py-3">
+                        <p className="text-[#6b7280] text-[10px] mb-0.5">Monto a registrar</p>
+                        <p className="text-[#B3985B] text-xl font-bold">{fmt(reporteVendedor.resumen.totalAPagar)}</p>
+                      </div>
+                      <input value={notasPago} onChange={e => setNotasPago(e.target.value)} placeholder="Notas del pago (opcional)"
+                        className="w-full bg-[#0a0a0a] border border-[#222] rounded-lg px-3 py-2 text-xs text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/40" />
+                      <button onClick={registrarPago} disabled={registrandoPago || reporteVendedor.resumen.totalAPagar === 0} id="btn-registrar-pago"
+                        className="w-full bg-green-900 hover:bg-green-800 disabled:opacity-40 text-white text-xs font-semibold py-2.5 rounded-lg transition-colors">
+                        {registrandoPago ? "Registrando..." : "Marcar como pagado"}
                       </button>
                     </div>
                   </div>
                 )}
               </div>
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
-// ── ResumenVentasView component ───────────────────────────────────────────────
-function ResumenVentasView({ data }: { data: ResumenVentasData }) {
-  const { resumen, funnel, ventasCerradasDetalle, perdidasDetalle } = data;
-  const fmtCurrency = (n: number) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n);
-  const maxFunnel = Math.max(...funnel.map(f => f.count), 1);
-
-  return (
-    <div className="space-y-6">
-      {/* Metric cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-        {[
-          { label: 'Leads captados', value: resumen.leadsCaptados, format: 'num' },
-          { label: 'Ventas cerradas', value: resumen.ventasCerradas, format: 'num' },
-          { label: 'Tratos perdidos', value: resumen.tratosPerdidos, format: 'num' },
-          { label: 'Tasa de cierre', value: resumen.tasaConversion, format: 'pct' },
-          { label: 'Ingresos cerrados', value: resumen.ingresosCerrados, format: 'currency' },
-          { label: 'Ticket promedio', value: resumen.ticketPromedio, format: 'currency' },
-        ].map(m => (
-          <div key={m.label} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4">
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">{m.label}</p>
-            <p className="text-2xl font-bold tabular-nums text-white">
-              {m.format === 'currency' ? fmtCurrency(m.value) : m.format === 'pct' ? `${m.value.toFixed(1)}%` : m.value}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      {/* Funnel */}
-      <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-4">Funnel del período</p>
-        <div className="space-y-3">
-          {funnel.map(f => (
-            <div key={f.etapa} className="flex items-center gap-3">
-              <span className="text-xs text-gray-500 w-28 shrink-0">{f.etapa}</span>
-              <div className="flex-1 h-6 bg-[#111] rounded-lg overflow-hidden">
-                <div
-                  className="h-full bg-[#B3985B]/60 rounded-lg transition-all duration-500 flex items-center px-2"
-                  style={{ width: `${(f.count / maxFunnel) * 100}%` }}
-                >
-                  {f.count > 0 && <span className="text-[10px] font-bold text-black">{f.count}</span>}
+              {/* Análisis + PDF */}
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+                <h2 className="text-white font-semibold text-sm mb-4">Análisis del responsable de ventas</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  {[
+                    { label: "Análisis de resultados", value: analisis2, set: setAnalisis2, placeholder: "Análisis de resultados del vendedor..." },
+                    { label: "3 propuestas de mejora", value: propuestas2, set: setPropuestas2, placeholder: "1. ...\n2. ...\n3. ..." },
+                    { label: "Comentarios finales",    value: comentarios2, set: setComentarios2, placeholder: "Observaciones adicionales..." },
+                  ].map(f => (
+                    <div key={f.label}>
+                      <label className="text-gray-600 text-[10px] uppercase tracking-wider block mb-1.5">{f.label}</label>
+                      <textarea value={f.value} onChange={e => f.set(e.target.value)} rows={4} placeholder={f.placeholder}
+                        className="w-full bg-[#0f0f0f] border border-[#222] rounded-lg px-3 py-2 text-xs text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/40 resize-none leading-relaxed" />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-end">
+                  <button onClick={descargarPdf2} disabled={loadingPdf2} id="btn-pdf-vendedor"
+                    className="flex items-center gap-2 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-all">
+                    {loadingPdf2 ? (
+                      <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                    ) : (
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                    )}
+                    {loadingPdf2 ? "Generando..." : "Descargar PDF"}
+                  </button>
                 </div>
               </div>
-              <span className="text-xs font-bold tabular-nums text-white w-8 text-right">{f.count}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Ventas cerradas */}
-      {ventasCerradasDetalle.length > 0 && (
-        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-[#1a1a1a]">
-            <p className="text-[10px] uppercase tracking-wider text-gray-500">Ventas cerradas del período</p>
-          </div>
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-[#111]">
-                <th className="px-4 py-2 text-left text-gray-600 font-medium">Cliente</th>
-                <th className="px-4 py-2 text-left text-gray-600 font-medium">Evento</th>
-                <th className="px-4 py-2 text-right text-gray-600 font-medium">Monto</th>
-                <th className="px-4 py-2 text-left text-gray-600 font-medium">Origen</th>
-                <th className="px-4 py-2 text-left text-gray-600 font-medium">Fecha cierre</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ventasCerradasDetalle.map((v, i) => (
-                <tr key={i} className="border-b border-[#0d0d0d] hover:bg-[#111] transition-colors">
-                  <td className="px-4 py-2 text-white">{v.clienteNombre}</td>
-                  <td className="px-4 py-2 text-gray-400">{v.nombreEvento ?? '—'}</td>
-                  <td className="px-4 py-2 text-right text-emerald-400 font-medium">{v.monto ? fmtCurrency(v.monto) : '—'}</td>
-                  <td className="px-4 py-2 text-gray-500">{v.origenLead}</td>
-                  <td className="px-4 py-2 text-gray-400">{new Date(v.fechaCierre).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            </>
+          )}
+        </>
       )}
 
-      {/* Perdidos */}
-      {perdidasDetalle.length > 0 && (
-        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-[#1a1a1a]">
-            <p className="text-[10px] uppercase tracking-wider text-gray-500">Tratos perdidos del período</p>
+      {/* ══════════════════════════════════════════════════════════════════════
+          MODAL REPORTE EJECUTIVO
+      ══════════════════════════════════════════════════════════════════════ */}
+      {showEjecutivo && reporte && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)" }}>
+          <div className="bg-[#0f0f0f] border border-[#222] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
+              <div>
+                <h2 className="text-white font-semibold text-base">Reporte ejecutivo</h2>
+                <p className="text-[#555] text-xs mt-0.5">{reporte.periodo.label}</p>
+              </div>
+              <button onClick={() => setShowEjecutivo(false)} className="text-[#444] hover:text-white transition-colors">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(179,152,91,0.3) transparent" }}>
+              {/* Headline */}
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { label: "Ventas generadas", value: fmt(reporte.ventasTotal.monto), sub: `${reporte.ventasTotal.count} eventos` },
+                  { label: "Ticket promedio",  value: fmt(reporte.ticketPromedio),    sub: "por evento" },
+                  { label: "Conversión",        value: `${conversionPct}%`,           sub: "cotiz. → cierre" },
+                ].map(k => (
+                  <div key={k.label} className="bg-[#151515] border border-[#1e1e1e] rounded-xl p-3 text-center">
+                    <p className="text-white text-xl font-bold">{k.value}</p>
+                    <p className="text-[#B3985B] text-[9px] font-semibold uppercase tracking-wider mt-0.5">{k.label}</p>
+                    <p className="text-[#444] text-[9px] mt-0.5">{k.sub}</p>
+                  </div>
+                ))}
+              </div>
+              {/* Servicio split */}
+              <div className="bg-[#151515] border border-[#1e1e1e] rounded-xl p-4">
+                <p className="text-[#555] text-[10px] font-semibold uppercase tracking-wider mb-3">Mix de servicios</p>
+                <div className="flex gap-4">
+                  {[
+                    { label: "Renta",       val: reporte.porServicio.rentas,    color: "#B3985B" },
+                    { label: "Producción",  val: reporte.porServicio.produccion,color: "#60a5fa" },
+                    ...(reporte.porServicio.otro.count > 0 ? [{ label: "Otro", val: reporte.porServicio.otro, color: "#6b7280" }] : []),
+                  ].map(s => (
+                    <div key={s.label} className="flex-1 text-center">
+                      <p className="text-xl font-bold" style={{ color: s.color }}>{s.val.pct.toFixed(0)}%</p>
+                      <p className="text-[#555] text-[10px]">{s.label}</p>
+                      <p className="text-[#333] text-[9px]">{s.val.count} ev.</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* Top origen */}
+              {reporte.origenLeads[0] && (
+                <div className="flex items-center justify-between bg-[#151515] border border-[#1e1e1e] rounded-xl px-4 py-3">
+                  <div>
+                    <p className="text-[#555] text-[10px] uppercase tracking-wider">Origen #1</p>
+                    <p className="text-white font-semibold mt-0.5">{ORIGEN_LABEL[reporte.origenLeads[0].origen] ?? reporte.origenLeads[0].origen}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[#B3985B] text-xl font-bold">{reporte.origenLeads[0].count}</p>
+                    <p className="text-[#444] text-[9px]">{reporte.origenLeads[0].pct.toFixed(0)}% de ventas</p>
+                  </div>
+                </div>
+              )}
+              {/* Top cliente */}
+              {reporte.top3Clientes[0] && (
+                <div className="flex items-center justify-between bg-[#151515] border border-[#1e1e1e] rounded-xl px-4 py-3">
+                  <div>
+                    <p className="text-[#555] text-[10px] uppercase tracking-wider">Cliente del mes</p>
+                    <p className="text-white font-semibold mt-0.5">{reporte.top3Clientes[0].nombre}</p>
+                    {reporte.top3Clientes[0].empresa && <p className="text-[#555] text-[10px]">{reporte.top3Clientes[0].empresa}</p>}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[#B3985B] text-xl font-bold">{fmt(reporte.top3Clientes[0].monto)}</p>
+                    <p className="text-[#444] text-[9px]">{reporte.top3Clientes[0].eventos} eventos</p>
+                  </div>
+                </div>
+              )}
+              <p className="text-[#333] text-[10px] text-center">Generado el {new Date().toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}</p>
+            </div>
           </div>
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-[#111]">
-                <th className="px-4 py-2 text-left text-gray-600 font-medium">Cliente</th>
-                <th className="px-4 py-2 text-left text-gray-600 font-medium">Etapa donde se perdió</th>
-                <th className="px-4 py-2 text-left text-gray-600 font-medium">Fecha</th>
-              </tr>
-            </thead>
-            <tbody>
-              {perdidasDetalle.map((p, i) => (
-                <tr key={i} className="border-b border-[#0d0d0d] hover:bg-[#111] transition-colors">
-                  <td className="px-4 py-2 text-white">{p.clienteNombre}</td>
-                  <td className="px-4 py-2 text-red-400">{p.etapa}</td>
-                  <td className="px-4 py-2 text-gray-400">{new Date(p.fecha).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       )}
     </div>

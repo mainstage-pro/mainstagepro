@@ -671,6 +671,7 @@ model Equipo {
   imagenesUrls         String?         // JSON array de URLs adicionales
   propietario          String          @default("MAINSTAGE") // MAINSTAGE | HERVAM
   activo               Boolean         @default(true)
+  fechaBaja            DateTime?       // Fecha en que se dió de baja (estado = DADO_DE_BAJA)
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
 
@@ -1239,6 +1240,8 @@ model MantenimientoEquipo {
   comentarios          String?
   proximoMantenimiento DateTime?
   fotoEvidencia        String?       // base64 data URL
+  costoReparacion      Float?        // Costo del servicio o reparación ($)
+  descripcionReparacion String?      // Descripción adicional del gasto de reparación
   createdAt            DateTime      @default(now())
 
   @@map("mantenimientos_equipos")
