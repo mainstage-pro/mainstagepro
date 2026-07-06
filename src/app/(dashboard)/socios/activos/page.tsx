@@ -30,7 +30,7 @@ export default function SociosActivosPage() {
           Su configuración y operación se definirá próximamente.
         </p>
         <Link
-          href="/finanzas/hervam"
+          href="/admin/valuacion"
           className="mt-6 text-[#B3985B] hover:underline text-sm"
         >
           Ver inventario de activos →

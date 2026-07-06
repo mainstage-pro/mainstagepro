@@ -1031,7 +1031,7 @@ function TabActivosHervam({ activos }: { activos: HervamActivo[] }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Activos declarados HERVAM · {activos.length} registros</p>
-        <a href="/finanzas/hervam" className="text-xs text-[#555] hover:text-[#B3985B] transition-colors">
+        <a href="/admin/valuacion" className="text-xs text-[#555] hover:text-[#B3985B] transition-colors">
           Administrar en Estructura de Capital →
         </a>
       </div>
@@ -1050,7 +1050,7 @@ function TabActivosHervam({ activos }: { activos: HervamActivo[] }) {
       {activos.length === 0 ? (
         <div className="text-center py-12 text-gray-600 text-sm">
           Sin activos registrados.{" "}
-          <a href="/finanzas/hervam" className="text-[#B3985B] hover:underline">Agregar en Estructura de Capital</a>
+          <a href="/admin/valuacion" className="text-[#B3985B] hover:underline">Agregar en Estructura de Capital</a>
         </div>
       ) : (
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
@@ -1111,7 +1111,7 @@ function TabPagosHervam({ pagos }: { pagos: HervamPago[] }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Historial de pagos · HERVAM</p>
-        <a href="/finanzas/hervam" className="text-xs text-[#555] hover:text-[#B3985B] transition-colors">
+        <a href="/admin/valuacion" className="text-xs text-[#555] hover:text-[#B3985B] transition-colors">
           Registrar en Estructura de Capital →
         </a>
       </div>
@@ -1200,9 +1200,9 @@ export default function SocioDetallePage() {
     setSocio(s || null);
     if (s?.esFundador) {
       const [cfg, act, pag] = await Promise.all([
-        fetch("/api/finanzas/hervam/config").then(r => r.json()),
-        fetch("/api/finanzas/hervam/activos").then(r => r.json()),
-        fetch("/api/finanzas/hervam/pagos").then(r => r.json()),
+        fetch("/api/admin/valuacion/config").then(r => r.json()),
+        fetch("/api/admin/valuacion/activos").then(r => r.json()),
+        fetch("/api/admin/valuacion/pagos").then(r => r.json()),
       ]);
       setHervamConfig(cfg);
       setHervamActivos(act.activos || []);
@@ -1268,7 +1268,7 @@ export default function SocioDetallePage() {
           </Link>
         )}
         {isFundador && (
-          <Link href="/finanzas/hervam"
+          <Link href="/admin/valuacion"
             className="shrink-0 text-xs border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/10 px-3 py-2 rounded-lg transition-colors">
             Estructura de Capital ↗
           </Link>

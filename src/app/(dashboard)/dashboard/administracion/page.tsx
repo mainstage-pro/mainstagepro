@@ -233,7 +233,7 @@ export default async function DashboardAdminPage() {
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Capital HERVAM · {mes}</p>
-            <Link href="/finanzas/hervam" className="text-xs text-[#B3985B] hover:underline">Ver →</Link>
+            <Link href="/admin/valuacion" className="text-xs text-[#B3985B] hover:underline">Ver →</Link>
           </div>
           {hervamPagoMes ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

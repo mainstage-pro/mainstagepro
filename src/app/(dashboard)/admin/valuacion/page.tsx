@@ -82,7 +82,7 @@ function KpiCard({ label, value, sub, color = "text-white" }: { label: string; v
 
 const inlineCls = "w-28 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none bg-[#0d0d0d] border border-[#2a2a2a] rounded text-right text-xs focus:outline-none focus:border-[#B3985B]/50 px-1.5 py-0.5 disabled:opacity-50";
 
-type Tab = "resumen" | "produccion" | "accesorios" | "oficina";
+type Tab = "resumen" | "produccion" | "accesorios" | "oficina" | "intangibles";
 
 export default function InventarioActivosPage() {
   const toast = useToast();
@@ -93,6 +93,7 @@ export default function InventarioActivosPage() {
   const [savingInline, setSavingInline] = useState<string | null>(null);
   const [editingCell, setEditingCell] = useState<{ id: string; field: string } | null>(null);
   const [activosOficina, setActivosOficina] = useState<HervamActivo[]>([]);
+  const [activosIntangibles, setActivosIntangibles] = useState<HervamActivo[]>([]);
   const [busquedaOf, setBusquedaOf] = useState("");
   const [modalOf, setModalOf] = useState<null | "nuevo" | HervamActivo>(null);
   const [formOf, setFormOf] = useState<OficinaForm>(OFICINA_FORM_EMPTY);
@@ -124,7 +125,9 @@ export default function InventarioActivosPage() {
       const dataAcc = await resAcc.json();
       setEquipos(dataEq.equipos ?? []);
       setCategorias(dataEq.categorias ?? []);
-      setActivosOficina((dataOf.activos ?? []).filter((a: HervamActivo) => a.categoria === "OFICINA"));
+      const todosActivos: HervamActivo[] = dataOf.activos ?? [];
+      setActivosOficina(todosActivos.filter((a: HervamActivo) => a.categoria === "OFICINA"));
+      setActivosIntangibles(todosActivos.filter((a: HervamActivo) => a.categoria === "INTANGIBLE"));
       // Flatten accessories from all production equipment
       const flat: AccProduccion[] = [];
       for (const eq of (dataAcc.equipos ?? [])) {
@@ -305,6 +308,7 @@ export default function InventarioActivosPage() {
     { key: "produccion",  label: `Equipos de Producci\u00f3n (${equiposProd.length})` },
     { key: "accesorios",  label: `Accesorios de Producci\u00f3n (${accesoriosProd.length})` },
     { key: "oficina",     label: `Equipos de Oficina (${activosOficina.length})` },
+    { key: "intangibles", label: `Activos Intangibles (${activosIntangibles.length})` },
   ];
 
   // ── Agrupar propios por categoría
@@ -481,7 +485,39 @@ export default function InventarioActivosPage() {
                   <button onClick={() => setTab("accesorios")} className="text-[10px] text-[#444] hover:text-[#B3985B] transition-colors">Ver detalle →</button>
                 </div>
               </div>
+              {/* Intangibles */}
+              <div className="flex items-center justify-between px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">💡</span>
+                  <div>
+                    <p className="text-sm text-white/90">Activos Intangibles</p>
+                    <p className="text-xs text-[#555]">{activosIntangibles.length} activos · software y propiedad intelectual</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  {activosIntangibles.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0) > 0 ? (
+                    <p className="text-sm font-semibold text-[#B3985B]">
+                      {fmx(activosIntangibles.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0))}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-[#444] italic">sin valorar</p>
+                  )}
+                  <button onClick={() => setTab("intangibles")} className="text-[10px] text-[#444] hover:text-[#B3985B] transition-colors">Ver detalle →</button>
+                </div>
+              </div>
             </div>
+            {/* ── GRAN TOTAL ── */}
+            {(() => {
+              const totalOficina = activosOficina.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0);
+              const totalIntangibles = activosIntangibles.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0);
+              const grandTotal = valorTotalProd + totalOficina + totalIntangibles;
+              return grandTotal > 0 ? (
+                <div className="border-t border-[#2a2a2a] px-4 py-3 flex items-center justify-between">
+                  <p className="text-xs text-[#555] font-medium uppercase tracking-wider">Total activos Mainstage Pro</p>
+                  <p className="text-lg font-bold text-[#B3985B] tabular-nums">{fmx(grandTotal)}</p>
+                </div>
+              ) : null;
+            })()}
           </div>
 
         </div>
@@ -877,7 +913,7 @@ export default function InventarioActivosPage() {
           )}
         </div>
 
-      ) : (
+      ) : tab === "oficina" ? (
 
         /* ── EQUIPOS DE OFICINA ── */
         <div className="space-y-4">
@@ -1098,6 +1134,71 @@ export default function InventarioActivosPage() {
             </div>
           </div>
         </div>
+
+      ) : (
+
+        /* ── ACTIVOS INTANGIBLES ── */
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <KpiCard label="Total intangibles" value={String(activosIntangibles.length)} sub="Software y propiedad intelectual" />
+            <KpiCard label="Valor total" color="text-[#B3985B]"
+              value={fmx(activosIntangibles.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0))}
+              sub="Valuación estimada" />
+            <KpiCard label="Valor adquisición"
+              value={fmx(activosIntangibles.reduce((s, a) => s + a.valorAdquisicion, 0))}
+              sub="Costo histórico" />
+          </div>
+
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-[#1e1e1e]">
+              <p className="text-white text-sm font-medium">Activos Intangibles</p>
+              <p className="text-[#555] text-xs mt-0.5">Software propietario y propiedad intelectual de Mainstage Pro</p>
+            </div>
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
+                  <th className="text-left px-4 py-2.5 font-medium">Activo</th>
+                  <th className="text-left px-4 py-2.5 font-medium hidden md:table-cell">Descripción</th>
+                  <th className="text-right px-4 py-2.5 font-medium w-36">Valor adq.</th>
+                  <th className="text-right px-4 py-2.5 font-medium w-36">Valor actual</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activosIntangibles.length === 0 ? (
+                  <tr><td colSpan={4} className="text-center text-[#333] text-sm py-10">Sin activos intangibles registrados.</td></tr>
+                ) : activosIntangibles.map(a => (
+                  <tr key={a.id} className="border-t border-[#161616] hover:bg-[#0d0d0d] transition-colors">
+                    <td className="px-4 py-3">
+                      <p className="text-white font-medium">{a.nombre}</p>
+                      {a.notas && <p className="text-[#444] text-[10px] mt-0.5">{a.notas}</p>}
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell text-[#6b7280]">{a.descripcion ?? "—"}</td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-[#B3985B] font-medium tabular-nums">
+                        {a.valorAdquisicion > 0 ? fmx(a.valorAdquisicion) : <span className="text-[#333]">—</span>}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="text-blue-400 font-medium tabular-nums">
+                        {a.valorActual > 0 ? fmx(a.valorActual) : <span className="text-[#333]">—</span>}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="border-t border-[#222] px-4 py-3 flex items-center justify-between bg-[#0d0d0d]">
+              <p className="text-[#6b7280] text-xs">{activosIntangibles.length} activos intangibles</p>
+              <div className="text-right">
+                <p className="text-[10px] text-[#555] uppercase tracking-wider mb-0.5">Valor total</p>
+                <p className="text-[#B3985B] font-bold text-base tabular-nums">
+                  {fmx(activosIntangibles.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0))}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
       )}
     </div>
   );
