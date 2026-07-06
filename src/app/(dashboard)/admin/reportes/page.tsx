@@ -479,6 +479,60 @@ function TabBalance({ mes, onDataLoad }: { mes: string; onDataLoad?: (d: Balance
   );
 }
 
+// ── Acordeón de categoría con estado de cuenta ───────────────────────────────
+type MovRow = { id: string; fecha: string; concepto: string; monto: number; categoria: string; cuenta?: string | null; metodoPago?: string; proveedor?: string | null; cliente?: string | null };
+
+function CatAccordion({ nombre, total, movimientos, color, bgAccent, borderAccent }: {
+  nombre: string; total: number; movimientos: MovRow[];
+  color: string; bgAccent: string; borderAccent: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={`border ${borderAccent} rounded-xl overflow-hidden`}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={`w-full flex items-center justify-between px-4 py-3 ${bgAccent} hover:opacity-90 transition-opacity`}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <span className={`text-sm transition-transform duration-200 ${open ? 'rotate-90' : ''}`}>›</span>
+          <div className="text-left min-w-0">
+            <p className={`text-xs font-semibold ${color} truncate`}>{nombre}</p>
+            <p className="text-[10px] text-gray-600 mt-0.5">{movimientos.length} movimiento{movimientos.length !== 1 ? 's' : ''}</p>
+          </div>
+        </div>
+        <span className={`text-sm font-bold tabular-nums shrink-0 ${color}`}>{fmt(total)}</span>
+      </button>
+      {open && (
+        <div className="bg-[#0a0a0a]">
+          <div className="grid grid-cols-[72px_1fr_auto] gap-2 px-4 py-2 border-b border-[#1a1a1a]">
+            <span className="text-[9px] text-gray-700 uppercase tracking-wider">Fecha</span>
+            <span className="text-[9px] text-gray-700 uppercase tracking-wider">Concepto</span>
+            <span className="text-[9px] text-gray-700 uppercase tracking-wider text-right">Importe</span>
+          </div>
+          {movimientos.map(m => (
+            <div key={m.id} className="grid grid-cols-[72px_1fr_auto] gap-2 px-4 py-2.5 border-b border-[#111] last:border-0 hover:bg-[#111] transition-colors">
+              <span className="text-[10px] text-gray-600 tabular-nums">{fmtDate(m.fecha)}</span>
+              <div className="min-w-0">
+                <p className="text-xs text-white truncate">{m.concepto}</p>
+                {(m.cuenta || m.proveedor || m.cliente) && (
+                  <p className="text-[10px] text-gray-600 truncate">
+                    {m.cliente ?? m.proveedor ?? ''}{m.cuenta ? ` · ${m.cuenta}` : ''}
+                  </p>
+                )}
+              </div>
+              <span className={`text-xs font-semibold tabular-nums shrink-0 ${color}`}>{fmt(m.monto)}</span>
+            </div>
+          ))}
+          <div className="flex items-center justify-between px-4 py-2 border-t border-[#1e1e1e] bg-[#0d0d0d]">
+            <span className="text-[9px] text-gray-600 uppercase tracking-wider">Subtotal {nombre}</span>
+            <span className={`text-xs font-bold tabular-nums ${color}`}>{fmt(total)}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── PESTAÑA: FLUJO DE CAJA ────────────────────────────────────────────────────
 function TabFlujo({ mes, onDataLoad }: { mes: string; onDataLoad?: (d: FlujoData) => void }) {
   const [data, setData] = useState<FlujoData | null>(null);
@@ -588,53 +642,93 @@ function TabFlujo({ mes, onDataLoad }: { mes: string; onDataLoad?: (d: FlujoData
         </div>
       </Section>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* ENTRADAS */}
-        <Section title={`Entradas · ${fmt(data.entradas.total)}`}>
-          <div className="space-y-4">
-            <MiniBarChart items={data.entradas.porCategoria} total={data.entradas.total} color={CHART_COLORS.green} />
-            <button onClick={() => toggle("entradas")} className="text-[#B3985B] text-xs hover:underline screen-only">
-              {expandedSection === "entradas" ? "▲ Ocultar detalle" : `▼ Ver ${data.entradas.detalle.length} movimientos`}
-            </button>
-            {expandedSection === "entradas" && (
-              <div className="space-y-1 max-h-64 overflow-y-auto">
-                {data.entradas.detalle.map(m => (
-                  <div key={m.id} className="flex justify-between text-xs py-1 border-b border-[#1a1a1a]">
-                    <div className="flex-1 min-w-0">
-                      <span className="text-gray-400 block truncate">{m.concepto}</span>
-                      <span className="text-gray-600 text-[10px]">{fmtDate(m.fecha)} · {m.categoria}</span>
-                    </div>
-                    <span className="text-green-400 font-medium ml-2 flex-shrink-0">{fmt(m.monto)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+      {/* ── ENTRADAS por categoría (estado de cuenta) ── */}
+      <Section title={`Entradas · ${fmt(data.entradas.total)}`}>
+        <div className="space-y-3">
+          <MiniBarChart items={data.entradas.porCategoria} total={data.entradas.total} color={CHART_COLORS.green} />
+          <div className="space-y-2 pt-1">
+            {data.entradas.porCategoria
+              .filter(cat => cat.nombre !== 'Sin categoría')
+              .map(cat => (
+                <CatAccordion
+                  key={cat.nombre}
+                  nombre={cat.nombre}
+                  total={cat.total}
+                  movimientos={data.entradas.detalle.filter(m => m.categoria === cat.nombre)}
+                  color="text-green-400"
+                  bgAccent="bg-green-900/10"
+                  borderAccent="border-green-900/20"
+                />
+              ))
+            }
           </div>
-        </Section>
+          {/* Sin categorizar — entradas */}
+          {data.entradas.detalle.filter(m => !m.categoria || m.categoria === 'Sin categoría').length > 0 && (
+            <div className="border border-yellow-900/30 rounded-xl overflow-hidden mt-2">
+              <div className="flex items-center justify-between px-4 py-3 bg-yellow-900/10">
+                <div>
+                  <p className="text-xs font-semibold text-yellow-400">⚠ Sin categorizar</p>
+                  <p className="text-[10px] text-gray-600">{data.entradas.detalle.filter(m => !m.categoria || m.categoria === 'Sin categoría').length} movimiento(s)</p>
+                </div>
+                <span className="text-sm font-bold tabular-nums text-yellow-400">
+                  {fmt(data.entradas.detalle.filter(m => !m.categoria || m.categoria === 'Sin categoría').reduce((s, m) => s + m.monto, 0))}
+                </span>
+              </div>
+              {data.entradas.detalle.filter(m => !m.categoria || m.categoria === 'Sin categoría').map(m => (
+                <div key={m.id} className="grid grid-cols-[72px_1fr_auto] gap-2 px-4 py-2.5 border-b border-[#111] last:border-0 bg-[#0a0a0a]">
+                  <span className="text-[10px] text-gray-600">{fmtDate(m.fecha)}</span>
+                  <p className="text-xs text-white truncate">{m.concepto}</p>
+                  <span className="text-xs font-semibold text-green-400 tabular-nums">{fmt(m.monto)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Section>
 
-        {/* SALIDAS */}
-        <Section title={`Salidas operativas · ${fmt(data.salidas.operativas.total)}`}>
-          <div className="space-y-4">
-            <MiniBarChart items={data.salidas.operativas.porCategoria} total={data.salidas.operativas.total} color={CHART_COLORS.red} />
-            <button onClick={() => toggle("salidas")} className="text-[#B3985B] text-xs hover:underline screen-only">
-              {expandedSection === "salidas" ? "▲ Ocultar detalle" : `▼ Ver ${data.salidas.operativas.detalle.length} movimientos`}
-            </button>
-            {expandedSection === "salidas" && (
-              <div className="space-y-1 max-h-64 overflow-y-auto">
-                {data.salidas.operativas.detalle.map(m => (
-                  <div key={m.id} className="flex justify-between text-xs py-1 border-b border-[#1a1a1a]">
-                    <div className="flex-1 min-w-0">
-                      <span className="text-gray-400 block truncate">{m.concepto}</span>
-                      <span className="text-gray-600 text-[10px]">{fmtDate(m.fecha)} · {m.categoria}</span>
-                    </div>
-                    <span className="text-red-400 font-medium ml-2 flex-shrink-0">{fmt(m.monto)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+      {/* ── SALIDAS por categoría (estado de cuenta) ── */}
+      <Section title={`Salidas operativas · ${fmt(data.salidas.operativas.total)}`}>
+        <div className="space-y-3">
+          <MiniBarChart items={data.salidas.operativas.porCategoria} total={data.salidas.operativas.total} color={CHART_COLORS.red} />
+          <div className="space-y-2 pt-1">
+            {data.salidas.operativas.porCategoria
+              .filter(cat => cat.nombre !== 'Sin categoría')
+              .map(cat => (
+                <CatAccordion
+                  key={cat.nombre}
+                  nombre={cat.nombre}
+                  total={cat.total}
+                  movimientos={data.salidas.operativas.detalle.filter(m => m.categoria === cat.nombre)}
+                  color="text-red-400"
+                  bgAccent="bg-red-900/10"
+                  borderAccent="border-red-900/20"
+                />
+              ))
+            }
           </div>
-        </Section>
-      </div>
+          {/* Sin categorizar — salidas */}
+          {data.salidas.operativas.detalle.filter(m => !m.categoria || m.categoria === 'Sin categoría').length > 0 && (
+            <div className="border border-yellow-900/30 rounded-xl overflow-hidden mt-2">
+              <div className="flex items-center justify-between px-4 py-3 bg-yellow-900/10">
+                <div>
+                  <p className="text-xs font-semibold text-yellow-400">⚠ Sin categorizar</p>
+                  <p className="text-[10px] text-gray-600">{data.salidas.operativas.detalle.filter(m => !m.categoria || m.categoria === 'Sin categoría').length} movimiento(s) sin categoría</p>
+                </div>
+                <span className="text-sm font-bold tabular-nums text-yellow-400">
+                  {fmt(data.salidas.operativas.detalle.filter(m => !m.categoria || m.categoria === 'Sin categoría').reduce((s, m) => s + m.monto, 0))}
+                </span>
+              </div>
+              {data.salidas.operativas.detalle.filter(m => !m.categoria || m.categoria === 'Sin categoría').map(m => (
+                <div key={m.id} className="grid grid-cols-[72px_1fr_auto] gap-2 px-4 py-2.5 border-b border-[#111] last:border-0 bg-[#0a0a0a]">
+                  <span className="text-[10px] text-gray-600">{fmtDate(m.fecha)}</span>
+                  <p className="text-xs text-white truncate">{m.concepto}</p>
+                  <span className="text-xs font-semibold text-red-400 tabular-nums">{fmt(m.monto)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </Section>
 
       {/* Compromisos estructurales */}
       {(data.salidas.retiros.total > 0 || data.salidas.deudasPagadas.total > 0 || data.salidas.repartosPagados.total > 0) && (
