@@ -521,7 +521,7 @@ export default function InventarioActivosPage() {
                             </div>
                           </div>
                           <div className="h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-                            <div className={`h-full ${RESUMEN_COLORS[i % COLORS.length]} rounded-full transition-all duration-700`} style={{ width: `${pctBar}%` }} />
+                            <div className={`h-full ${RESUMEN_COLORS[i % RESUMEN_COLORS.length]} rounded-full transition-all duration-700`} style={{ width: `${pctBar}%` }} />
                           </div>
                           {c.renta > 0 && <p className="text-[10px] text-emerald-500/70 mt-0.5">Renta: {fmx(c.renta)}/mes</p>}
                         </div>
@@ -541,8 +541,8 @@ export default function InventarioActivosPage() {
                       <>
                         <div className="flex h-4 rounded-full overflow-hidden gap-0.5 mb-5">
                           {valorTotalProd > 0 && <div className="bg-amber-500/80 transition-all" style={{ width: `${(valorTotalProd / resumenGrandTotal) * 100}%` }} />}
-                          {resumenTotalOficina > 0 && <div className="bg-[#B3985B]/80 transition-all" style={{ width: `${(totalOficina / resumenGrandTotal) * 100}%` }} />}
-                          {resumenTotalIntangibles > 0 && <div className="bg-purple-500/80 transition-all" style={{ width: `${(totalIntangibles / resumenGrandTotal) * 100}%` }} />}
+                          {resumenTotalOficina > 0 && <div className="bg-[#B3985B]/80 transition-all" style={{ width: `${(resumenTotalOficina / resumenGrandTotal) * 100}%` }} />}
+                          {resumenTotalIntangibles > 0 && <div className="bg-purple-500/80 transition-all" style={{ width: `${(resumenTotalIntangibles / resumenGrandTotal) * 100}%` }} />}
                         </div>
                         <div className="space-y-3">
                           {[
