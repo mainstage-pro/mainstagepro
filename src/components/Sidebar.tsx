@@ -81,7 +81,6 @@ const NAV: NavSection[] = [
           { key: "finanzas-pagos-personal", label: "Pagos a personal", href: "/finanzas/pagos-personal" },
           { key: "finanzas-movimientos", label: "Movimientos", href: "/finanzas/movimientos" },
           { key: "finanzas-caja-chica", label: "Caja chica", href: "/finanzas/caja-chica" },
-          { key: "finanzas-reporte", label: "Estado de Resultados", href: "/finanzas/reporte" },
           { key: "finanzas-pasivos", label: "Pasivos y Deudas", href: "/finanzas/pasivos", adminOnly: true },
           { key: "finanzas-repartos", label: "Reparto de Utilidades", href: "/finanzas/repartos", adminOnly: true },
           { key: "inv-analisis", label: "Análisis de uso de equipo", href: "/inventario/analisis" },
