@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   outputFileTracingExcludes: {
@@ -37,7 +38,27 @@ const nextConfig: NextConfig = {
       { source: "/plan-trabajo/kpis",            destination: "/plan-trabajo/rendimiento",          permanent: true },
     ];
   },
-
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // Subir source maps a Sentry para ver el código real en los errores (no minificado)
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  // Solo subir source maps si el token está configurado
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  // No mostrar logs de Sentry durante el build
+  silent: !process.env.CI,
+  // Subir source maps en producción
+  widenClientFileUpload: true,
+  // No envolver páginas con Sentry automáticamente (lo hacemos manual)
+  autoInstrumentServerFunctions: true,
+  autoInstrumentMiddleware: true,
+  // Tunnel para evitar bloqueadores de ads
+  tunnelRoute: "/monitoring",
+  // Subir y eliminar source maps del bundle público después del upload
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
+  // Desactivar el tree-shaking de Sentry para asegurar que todo funcione
+  disableLogger: true,
+});
