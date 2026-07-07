@@ -105,13 +105,13 @@ function TrendBadge({ curr, prev, inverse = false }: { curr: number; prev: numbe
   );
 }
 
-function KpiCard({ label, value, sub, color = "text-white", border = "border-[#1a1a1a]",
-  bgColor = "bg-[#080808]", ring, trend }: {
+function KpiCard({ label, value, sub, color = "text-white", border = "border-[#1e1e1e]",
+  bgColor = "bg-[#111]", ring, trend }: {
   label: string; value: string; sub?: string; color?: string; border?: string;
   bgColor?: string; ring?: number; trend?: React.ReactNode;
 }) {
   return (
-    <div className={`${bgColor} border ${border} rounded-2xl p-5 flex flex-col gap-2 relative overflow-hidden
+    <div className={`${bgColor} border ${border} rounded-xl p-5 flex flex-col gap-2 relative overflow-hidden
       group transition-all hover:border-[#B3985B]/20`}>
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
         style={{ background: "radial-gradient(ellipse at top left, rgba(179,152,91,0.04), transparent)" }} />
@@ -366,19 +366,19 @@ export default function EstadoResultadosDireccionPage() {
         <KpiCard label="Utilidad Neta" value={fmtShort(data.utilidadNeta)}
           sub="Después de ISR y finanzas"
           color="text-[#B3985B]"
-          bgColor="bg-[#0b0901]"
-          border="border-[#B3985B]/25"
+          bgColor="bg-[#111]"
+          border="border-[#B3985B]/30"
           ring={data.margenNetoPct}
         />
         <KpiCard label="Por Cobrar" value={fmtShort(totalPorCobrar)}
           sub={`${data.proyectos.filter(p => p.porCobrar > 0).length} clientes pendientes`}
           color={totalPorCobrar > 0 ? "text-amber-400" : "text-green-400"}
-          border={totalPorCobrar > 0 ? "border-amber-900/30" : "border-[#1a1a1a]"}
+          border={totalPorCobrar > 0 ? "border-amber-900/30" : "border-[#1e1e1e]"}
         />
       </div>
 
       {/* ── TAB NAV ────────────────────────────────────────────────────────────── */}
-      <div className="flex gap-1 bg-[#060606] border border-[#1a1a1a] rounded-xl p-1 w-fit overflow-x-auto">
+      <div className="border-b border-[#1a1a1a] flex gap-0">
         {([
           { key: "resumen",   label: "P&L" },
           { key: "proyectos", label: `Proyectos (${data.cantidadProyectos})` },
@@ -386,8 +386,11 @@ export default function EstadoResultadosDireccionPage() {
           { key: "analisis",  label: "📝 Análisis Directivo" },
         ] as const).map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap
-              ${activeTab === t.key ? "bg-[#B3985B] text-black shadow-sm" : "text-gray-500 hover:text-white hover:bg-[#111]"}`}>
+            className={`px-4 py-2.5 text-sm border-b-2 transition-colors whitespace-nowrap ${
+              activeTab === t.key
+                ? 'border-[#B3985B] text-white font-medium'
+                : 'border-transparent text-white/40 hover:text-white/70'
+            }`}>
             {t.label}
           </button>
         ))}
@@ -399,8 +402,8 @@ export default function EstadoResultadosDireccionPage() {
       {activeTab === "resumen" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Waterfall */}
-          <div className="lg:col-span-2 bg-[#060606] border border-[#1a1a1a] rounded-2xl overflow-hidden">
-            <div className="px-5 py-4 border-b border-[#111] flex items-center justify-between">
+          <div className="lg:col-span-2 bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
+            <div className="px-5 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Cascada de Utilidades</p>
               <p className="text-[9px] text-gray-700">Base devengado · {mesLabel(mes)}</p>
             </div>
@@ -478,8 +481,8 @@ export default function EstadoResultadosDireccionPage() {
           <div className="space-y-4">
             {/* Comparativo */}
             {comp && (
-              <div className="bg-[#060606] border border-[#1a1a1a] rounded-2xl overflow-hidden">
-                <div className="px-4 py-3 border-b border-[#111]">
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-[#1a1a1a]">
                   <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">vs. {mesLabel(comp.mes)}</p>
                 </div>
                 <div className="divide-y divide-[#0d0d0d]">
@@ -502,7 +505,7 @@ export default function EstadoResultadosDireccionPage() {
             )}
 
             {/* Estructura de costos */}
-            <div className="bg-[#060606] border border-[#1a1a1a] rounded-2xl p-4 space-y-3">
+            <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-4 space-y-3">
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Estructura de Costos</p>
               {[
                 { label: "Costos Directos", value: data.totalCostosDirectos, color: "#dc2626" },
@@ -563,7 +566,7 @@ export default function EstadoResultadosDireccionPage() {
       {activeTab === "proyectos" && (
         <div className="space-y-4">
           {data.proyectos.length === 0 ? (
-            <div className="bg-[#060606] border border-[#1a1a1a] rounded-2xl p-20 text-center">
+            <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-20 text-center">
               <p className="text-gray-600 text-sm">Sin proyectos ejecutados en {mesLabel(mes)}</p>
               <p className="text-gray-700 text-xs mt-2">Los proyectos se reconocen por su fecha de evento</p>
             </div>
@@ -576,13 +579,13 @@ export default function EstadoResultadosDireccionPage() {
                   { label: "Utilidad Bruta", value: fmt(data.utilidadBruta), color: data.utilidadBruta >= 0 ? "text-green-400" : "text-red-400" },
                   { label: "Por Cobrar", value: fmt(totalPorCobrar), color: totalPorCobrar > 0 ? "text-amber-400" : "text-green-400" },
                 ].map(k => (
-                  <div key={k.label} className="bg-[#060606] border border-[#1a1a1a] rounded-xl p-4">
+                  <div key={k.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
                     <p className="text-[9px] text-gray-600 uppercase tracking-widest">{k.label}</p>
                     <p className={`text-lg font-bold tabular-nums mt-1 ${k.color}`}>{k.value}</p>
                   </div>
                 ))}
               </div>
-              <div className="bg-[#060606] border border-[#1a1a1a] rounded-2xl overflow-hidden">
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-[#040404]">
@@ -654,7 +657,7 @@ export default function EstadoResultadosDireccionPage() {
           {/* Gastos por categoría */}
           <div className="space-y-3">
             <SectionDivider title="Gastos Operativos por Categoría" />
-            <div className="bg-[#060606] border border-[#1a1a1a] rounded-2xl overflow-hidden">
+            <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
               {data.gastosPorCategoria.length === 0 ? (
                 <p className="text-gray-600 text-sm text-center py-10">Sin gastos operativos en {mesLabel(mes)}</p>
               ) : (
@@ -693,7 +696,7 @@ export default function EstadoResultadosDireccionPage() {
           <div className="space-y-4">
             <div className="space-y-3">
               <SectionDivider title="Nómina del Período" />
-              <div className="bg-[#060606] border border-[#1a1a1a] rounded-2xl overflow-hidden">
+              <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
                 {data.nominaItems.length === 0 ? (
                   <p className="text-gray-600 text-sm text-center py-10">Sin registros de nómina en {mes}</p>
                 ) : (
@@ -730,7 +733,7 @@ export default function EstadoResultadosDireccionPage() {
             {data.cuotasDeuda.length > 0 && (
               <div className="space-y-3">
                 <SectionDivider title="Costos Financieros" />
-                <div className="bg-[#060606] border border-[#1a1a1a] rounded-2xl overflow-hidden divide-y divide-[#0a0a0a]">
+                <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden divide-y divide-[#0a0a0a]">
                   {data.cuotasDeuda.map(c => (
                     <div key={c.id} className="flex items-center justify-between px-4 py-3">
                       <div>
@@ -786,7 +789,7 @@ export default function EstadoResultadosDireccionPage() {
           </div>
 
           {/* 1. Análisis del Período */}
-          <div className="bg-[#060606] border border-[#1a1a1a] rounded-2xl p-6 space-y-5">
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-6 space-y-5">
             <SectionDivider title="1. Análisis del Período" />
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
               <AnalisisTextarea label="Análisis Financiero"
@@ -805,7 +808,7 @@ export default function EstadoResultadosDireccionPage() {
           </div>
 
           {/* 2. Retrospectiva */}
-          <div className="bg-[#060606] border border-[#1a1a1a] rounded-2xl p-6 space-y-5">
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-6 space-y-5">
             <SectionDivider title="2. Retrospectiva Mensual" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <AnalisisTextarea label="¿Qué logramos este mes?"
@@ -832,7 +835,7 @@ export default function EstadoResultadosDireccionPage() {
           </div>
 
           {/* 3. Propuestas de Mejora */}
-          <div className="bg-[#060606] border border-[#1a1a1a] rounded-2xl p-6 space-y-5">
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-6 space-y-5">
             <SectionDivider title="3. Propuestas de Mejora" />
             <p className="text-[10px] text-gray-600">
               5 acciones concretas para mejorar la rentabilidad, eficiencia o posición de la empresa el próximo mes.
@@ -898,7 +901,7 @@ export default function EstadoResultadosDireccionPage() {
           </div>
 
           {/* 5. Cierre Directivo */}
-          <div className="bg-[#060606] border border-[#1a1a1a] rounded-2xl p-6 space-y-5">
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-6 space-y-5">
             <SectionDivider title="4. Cierre Directivo" />
             <AnalisisTextarea label="Comentarios Finales de Dirección"
               question="Reflexiones finales, contexto importante, mensajes al equipo directivo para el cierre de este período."

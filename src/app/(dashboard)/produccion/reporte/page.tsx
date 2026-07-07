@@ -941,7 +941,7 @@ export default function ReporteProduccionPage() {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold text-white">Reporte de Producción</h1>
-          <p className="text-[#6b7280] text-sm">Informe mensual operativo · {data ? formatMes(data.mes) : formatMes(mes)}</p>
+          <p className="text-[#555] text-xs mt-0.5">Informe mensual operativo · {data ? formatMes(data.mes) : formatMes(mes)}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <input
@@ -953,7 +953,7 @@ export default function ReporteProduccionPage() {
           <button
             onClick={handleDescargarPDF}
             disabled={downloadingPDF || loading || !data}
-            className="flex items-center gap-2 px-4 py-2 bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-50 disabled:cursor-not-allowed text-black text-xs font-semibold rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-1.5 bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors"
           >
             {downloadingPDF ? (
               <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
@@ -966,15 +966,15 @@ export default function ReporteProduccionPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1 overflow-x-auto">
+      <div className="border-b border-[#1a1a1a] flex gap-0 overflow-x-auto">
         {TABS.map(t => (
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`flex-1 min-w-max px-4 py-2 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
+            className={`px-4 py-2.5 text-sm border-b-2 transition-colors whitespace-nowrap ${
               tab === t.key
-                ? "bg-[#B3985B] text-black font-semibold"
-                : "text-[#6b7280] hover:text-white"
+                ? 'border-[#B3985B] text-white font-medium'
+                : 'border-transparent text-white/40 hover:text-white/70'
             }`}
           >
             {t.label}

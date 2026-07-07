@@ -313,7 +313,7 @@ export default function ReporteVentasPage() {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold text-white">Reporte de Ventas</h1>
-          <p className="text-[#6b7280] text-sm">Resultados mensuales · análisis de rendimiento</p>
+          <p className="text-[#555] text-xs">Resultados mensuales · análisis de rendimiento</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button onClick={() => setShowEjecutivo(true)}
@@ -335,17 +335,18 @@ export default function ReporteVentasPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-[#1a1a1a]">
+      <div className="border-b border-[#1a1a1a] flex gap-0">
         {([
           { key: "resultados" as const, label: "Resultados del Mes" },
           { key: "comisiones" as const, label: "Comisiones por Vendedor" },
         ]).map(t => (
           <button key={t.key} id={`tab-${t.key}`} onClick={() => setActiveTab(t.key)}
-            className={`px-4 py-2 text-xs font-medium transition-colors relative pb-3 ${
-              activeTab === t.key ? "text-[#B3985B]" : "text-[#6b7280] hover:text-white"
+            className={`px-4 py-2.5 text-sm border-b-2 transition-colors ${
+              activeTab === t.key
+                ? 'border-[#B3985B] text-white font-medium'
+                : 'border-transparent text-white/40 hover:text-white/70'
             }`}>
             {t.label}
-            {activeTab === t.key && <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#B3985B] rounded-full" />}
           </button>
         ))}
       </div>
@@ -787,15 +788,12 @@ export default function ReporteVentasPage() {
               <div className="flex items-center justify-between">
                 <p className="text-[#333] text-[10px]">Las notas se guardan automáticamente en este dispositivo</p>
                 <button onClick={descargarPdf1} disabled={loadingPdf1} id="btn-pdf-mensual"
-                  className="flex items-center gap-2 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black text-xs font-semibold px-4 py-2.5 rounded-lg transition-all shadow-lg shadow-[#B3985B]/20">
-                  {loadingPdf1 ? (
-                    <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                  ) : (
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                  )}
-                  {loadingPdf1 ? "Generando PDF..." : "Descargar Reporte PDF"}
+                  className="flex items-center gap-2 px-4 py-1.5 bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors">
+                  {loadingPdf1
+                    ? <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                    : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 15V3M7 10l5 5 5-5M20 21H4"/></svg>
+                  }
+                  {loadingPdf1 ? 'Generando…' : 'Descargar PDF'}
                 </button>
               </div>
             </div>
@@ -997,15 +995,12 @@ export default function ReporteVentasPage() {
                 </div>
                 <div className="flex justify-end">
                   <button onClick={descargarPdf2} disabled={loadingPdf2} id="btn-pdf-vendedor"
-                    className="flex items-center gap-2 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-all">
-                    {loadingPdf2 ? (
-                      <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-                    ) : (
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                    )}
-                    {loadingPdf2 ? "Generando..." : "Descargar PDF"}
+                    className="flex items-center gap-2 px-4 py-1.5 bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors">
+                    {loadingPdf2
+                      ? <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                      : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 15V3M7 10l5 5 5-5M20 21H4"/></svg>
+                    }
+                    {loadingPdf2 ? 'Generando…' : 'Descargar PDF'}
                   </button>
                 </div>
               </div>

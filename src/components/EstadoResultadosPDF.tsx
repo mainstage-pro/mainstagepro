@@ -23,7 +23,7 @@ const AMBER   = "#d97706";
 const AMBER_LT= "#fef3c7";
 const BLUE    = "#2563eb";
 const BLUE_LT = "#dbeafe";
-const CREAM   = "#FAFAF8";
+const CREAM   = "#F7F5F0";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 export interface ERProyecto {
@@ -108,8 +108,8 @@ const s = StyleSheet.create({
   page: {
     fontFamily: "Helvetica",
     backgroundColor: WHITE,
-    paddingTop: 0,
-    paddingBottom: 48,
+    paddingTop: 36,
+    paddingBottom: 56,
     paddingHorizontal: 0,
     fontSize: 8,
     color: BLACK,
@@ -121,6 +121,7 @@ const s = StyleSheet.create({
     paddingTop: 22,
     paddingBottom: 18,
     paddingHorizontal: 36,
+    marginTop: -36,
     flexDirection: "row",
     alignItems: "flex-end",
     justifyContent: "space-between",
@@ -149,12 +150,16 @@ const s = StyleSheet.create({
     padding: 10,
     borderWidth: 1,
     borderColor: GRAY5,
+    borderLeftWidth: 3,
+    borderLeftColor: GOLD,
   },
   kpiCardHighlight: {
     flex: 1,
     backgroundColor: BLACK,
     borderRadius: 6,
     padding: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: GOLD,
   },
   kpiLabel: { fontSize: 6.5, color: GRAY3, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 4 },
   kpiLabelLight: { fontSize: 6.5, color: GRAY4, letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 4 },

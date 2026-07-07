@@ -159,7 +159,7 @@ export function VistaRendimiento() {
 
         {/* PDF Report Button */}
         <div className="flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-1 bg-[#080808] border border-[#1e1e1e] rounded-xl p-1">
+          <div className="flex items-center gap-1 bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-1">
             <button onClick={() => setMesPdf(m => navMesPDF(m, -1))}
               className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-600 hover:text-white hover:bg-[#1a1a1a] transition-colors text-sm">←</button>
             <span className="text-white text-xs font-medium px-2 min-w-[110px] text-center">{mesLabelPDF(mesPdf)}</span>
@@ -177,21 +177,21 @@ export function VistaRendimiento() {
 
       {/* ── KPI Cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-4">
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
           <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-2">Total medibles</p>
           <p className="text-2xl font-bold text-white tabular-nums">{data.totalMedibles}</p>
         </div>
-        <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-4">
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
           <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-2">Completadas</p>
           <p className="text-2xl font-bold text-white tabular-nums">{data.totalCompletadas}</p>
         </div>
-        <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-4">
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
           <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-2">% completado</p>
           <p className={`text-2xl font-bold tabular-nums ${
             data.pctGeneral >= 80 ? 'text-green-400' : data.pctGeneral >= 50 ? 'text-[#B3985B]' : 'text-red-400'
           }`}>{data.pctGeneral}%</p>
         </div>
-        <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-4">
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
           <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-2">Esta semana</p>
           <p className="text-2xl font-bold text-white tabular-nums">
             {semanaActual?.completadas ?? 0}/{semanaActual?.total ?? 0}
@@ -201,7 +201,7 @@ export function VistaRendimiento() {
       </div>
 
       {/* ── Weekly Bar Chart ── */}
-      <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-5">
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-5">
         <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-4">Últimas 8 semanas (con fecha)</p>
         {data.semanas.every(s => s.total === 0) ? (
           <p className="text-[#333] text-sm text-center py-8">Sin datos de semanas anteriores</p>
@@ -234,7 +234,7 @@ export function VistaRendimiento() {
               const isExpanded = expandedUsers.has(u.id)
               const isMe = u.id === data.currentUserId
               return (
-                <div key={u.id} className="rounded-xl border border-[#1a1a1a] overflow-hidden">
+                <div key={u.id} className="rounded-xl border border-[#1e1e1e] overflow-hidden">
 
                   {/* ── Row header ── */}
                   <button
