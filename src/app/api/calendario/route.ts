@@ -2,6 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
+type Nivel = 'tentativo' | 'confirmado' | 'operativo';
+
+function nivelProyecto(estado: string): Nivel {
+  if (['PRODUCCION', 'EN_CURSO', 'EN_PRODUCCION'].includes(estado)) return 'operativo';
+  if (estado === 'CONFIRMADO') return 'confirmado';
+  return 'tentativo';
+}
+
+function nivelTrato(confirmadaEn: Date | null, etapa: string): Nivel {
+  if (confirmadaEn) return 'confirmado';
+  if (['LEAD', 'DESCUBRIMIENTO', 'OPORTUNIDAD'].includes(etapa)) return 'tentativo';
+  return 'tentativo';
+}
+
 export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -19,7 +33,7 @@ export async function GET(req: NextRequest) {
   const inicio = new Date(year, month, 1);
   const fin    = new Date(year, month + 1, 0, 23, 59, 59);
 
-  // ── 1. Proyectos existentes (igual que antes) ─────────────────────────────
+  // ── 1. Proyectos existentes ───────────────────────────────────────────────
   const proyectos = await prisma.proyecto.findMany({
     where: { fechaEvento: { gte: inicio, lte: fin }, estado: { not: "CANCELADO" } },
     include: { cliente: { select: { nombre: true } } },
@@ -32,6 +46,7 @@ export async function GET(req: NextRequest) {
     titulo: p.nombre,
     subtitulo: p.cliente.nombre,
     estado: p.estado,
+    nivel: nivelProyecto(p.estado),
     url: `/proyectos/${p.id}`,
     tipoEvento: p.tipoEvento,
     tipoServicio: p.tipoServicio,
@@ -40,8 +55,6 @@ export async function GET(req: NextRequest) {
   }));
 
   // ── 2. Tratos con cotización APROBADA sin proyecto creado aún ──────────────
-  // Cualquier trato sin proyecto vinculado que tenga al menos
-  // una cotización APROBADA con fechaEvento en el mes solicitado
   const tratos = await prisma.trato.findMany({
     where: {
       proyecto: null,
@@ -66,6 +79,10 @@ export async function GET(req: NextRequest) {
   });
 
   const eventosTrato = tratos.flatMap(t => {
+    const nivel = nivelTrato(
+      (t as unknown as { confirmadaEn?: Date | null }).confirmadaEn ?? null,
+      (t as unknown as { etapa?: string }).etapa ?? 'LEAD',
+    );
     return t.cotizaciones
       .filter(c => c.fechaEvento)
       .map(c => ({
@@ -74,6 +91,7 @@ export async function GET(req: NextRequest) {
         titulo: t.nombreEvento || (c as unknown as Record<string, unknown>).nombreEvento as string || "Evento",
         subtitulo: t.cliente?.nombre || "",
         estado: "VENTA_CERRADA" as const,
+        nivel,
         url: `/crm/tratos/${t.id}`,
         tipoEvento: t.tipoEvento,
         tipoServicio: null,

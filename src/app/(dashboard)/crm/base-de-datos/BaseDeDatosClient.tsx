@@ -27,6 +27,7 @@ interface Contacto {
   tiposEvento: string | null;
   esProspecto: boolean;
   origenLead: string | null;
+  notas?: string | null;
   vendedorId: string | null;
   vendedor: Vendedor | null;
   tratos: { id: string; etapa: string; origenLead: string; nombreEvento: string | null }[];
@@ -358,7 +359,7 @@ function ContactoRow({
   onConvertir, onReclasificar,
   empresaPopoverOpen, onEmpresaClick, empresaMode, setEmpresaMode,
   empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
-  onVincularEmpresa, onCloseEmpresa,
+  onVincularEmpresa, onCloseEmpresa, onOpenDrawer,
 }: {
   c: Contacto;
   usuarios: Vendedor[];
@@ -379,6 +380,7 @@ function ContactoRow({
   empresaSearching: boolean;
   onVincularEmpresa: (id: string, nombre: string) => void;
   onCloseEmpresa: () => void;
+  onOpenDrawer: () => void;
 }) {
   const toast = useToast();
   const [saving, setSaving] = useState(false);
@@ -409,13 +411,25 @@ function ContactoRow({
   const eventosActuales = parseTiposEvento(c.tiposEvento);
 
   return (
-    <tr className="border-b border-[#111] hover:bg-[#141414] transition-colors group">
+    <tr className="border-b border-[#111] hover:bg-[#141414] transition-colors group cursor-pointer" onClick={onOpenDrawer}>
       {/* Nombre */}
       <td className="px-4 py-3">
         <div className="flex flex-col gap-0.5 min-w-[160px]">
-          <Link href={`/crm/clientes/${c.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">
-            {c.nombre}
-          </Link>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Link href={`/crm/clientes/${c.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">
+              {c.nombre}
+            </Link>
+            {c.clasificacion && !['PROSPECTO', ''].includes(c.clasificacion) && (
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium border ${
+                c.clasificacion === 'VIP' ? 'bg-amber-900/40 text-amber-300 border-amber-800/30' :
+                c.clasificacion === 'FRECUENTE' ? 'bg-purple-900/40 text-purple-300 border-purple-800/30' :
+                c.clasificacion === 'NUEVO' ? 'bg-blue-900/40 text-blue-300 border-blue-800/30' :
+                c.clasificacion === 'PRIORITY' ? 'bg-[#B3985B]/20 text-[#B3985B] border-[#B3985B]/30' :
+                c.clasificacion === 'REGULAR' ? 'bg-yellow-900/40 text-yellow-300 border-yellow-800/30' :
+                'bg-[#1e1e1e] text-gray-400 border-[#2a2a2a]'
+              }`}>{c.clasificacion}</span>
+            )}
+          </div>
           {c.correo && (
             <span className="flex items-center gap-1 mt-0.5">
               <p className="text-[#555] text-xs truncate max-w-[150px]">{c.correo}</p>
@@ -820,6 +834,7 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
   const [sinClasificar, setSinClasificar] = useState<Contacto[]>(initSin);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [clienteSel, setClienteSel] = useState<Contacto | null>(null);
 
   // Empresa popover
   const [empresaPopoverId, setEmpresaPopoverId] = useState<string | null>(null);
@@ -1146,6 +1161,61 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
 
       {/* ── Tabla ─────────────────────────────────────────────────────── */}
       <ContactList contactos={listaActual} {...tableProps} />
+
+      {/* ── Drawer de detalle ───────────────────────────────────────────── */}
+      {clienteSel && (
+        <div className="fixed inset-0 z-40 flex" onClick={() => setClienteSel(null)}>
+          <div className="flex-1" />
+          <div className="w-80 bg-[#111] border-l border-[#222] h-full overflow-y-auto p-5"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-semibold">{clienteSel.nombre}</h3>
+              <button onClick={() => setClienteSel(null)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+            </div>
+            {(clienteSel.compania?.nombre ?? clienteSel.empresa) && (
+              <p className="text-gray-400 text-sm mb-4">{clienteSel.compania?.nombre ?? clienteSel.empresa}</p>
+            )}
+            <div className="space-y-2">
+              {clienteSel.telefono && (
+                <a href={`https://wa.me/${clienteSel.telefono.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-3 py-2 bg-[#1a1a1a] rounded-lg text-sm text-white hover:bg-[#222] transition-colors">
+                  <span>&#128241;</span>{clienteSel.telefono}
+                </a>
+              )}
+              {clienteSel.correo && (
+                <a href={`mailto:${clienteSel.correo}`}
+                  className="flex items-center gap-2 px-3 py-2 bg-[#1a1a1a] rounded-lg text-sm text-white hover:bg-[#222] transition-colors">
+                  <span>&#9993;</span>{clienteSel.correo}
+                </a>
+              )}
+            </div>
+            {clienteSel.clasificacion && (
+              <div className="mt-4 pt-4 border-t border-[#1e1e1e]">
+                <p className="text-xs text-gray-500 mb-1">Clasificación</p>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  clienteSel.clasificacion === 'VIP' ? 'bg-amber-900/40 text-amber-300' :
+                  clienteSel.clasificacion === 'FRECUENTE' ? 'bg-purple-900/40 text-purple-300' :
+                  clienteSel.clasificacion === 'PRIORITY' ? 'bg-[#B3985B]/20 text-[#B3985B]' :
+                  clienteSel.clasificacion === 'REGULAR' ? 'bg-yellow-900/40 text-yellow-300' :
+                  'bg-blue-900/40 text-blue-300'
+                }`}>{clienteSel.clasificacion}</span>
+              </div>
+            )}
+            {clienteSel.notas && (
+              <div className="mt-4 pt-4 border-t border-[#1e1e1e]">
+                <p className="text-xs text-gray-500 mb-1">Notas</p>
+                <p className="text-sm text-gray-300">{clienteSel.notas}</p>
+              </div>
+            )}
+            <div className="mt-6">
+              <a href={`/crm/clientes/${clienteSel.id}`}
+                className="w-full block text-center py-2 rounded-lg bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] text-sm hover:bg-[#B3985B]/20 transition-colors">
+                Ver perfil completo →
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

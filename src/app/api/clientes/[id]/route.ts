@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       vendedor: { select: { id: true, name: true } },
       compania: { select: { id: true, nombre: true } },
       tratos: {
-        select: { id: true, etapa: true, tipoEvento: true, fechaEventoEstimada: true, presupuestoEstimado: true, createdAt: true },
+        select: { id: true, etapa: true, tipoEvento: true, fechaEventoEstimada: true, presupuestoEstimado: true, createdAt: true, updatedAt: true },
         orderBy: { createdAt: "desc" },
       },
       cotizaciones: {

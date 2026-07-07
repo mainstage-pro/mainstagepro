@@ -140,6 +140,7 @@ const NAV: NavSection[] = [
     key: "seccion-ventas",
     section: "Ventas",
     items: [
+      { key: "crm-alertas",             label: "🚨 Alertas",              href: "/crm/alertas" },
       { key: "ventas-seguimientos",     label: "Seguimientos",           href: "/ventas/seguimientos", badge: "seguimientos" },
       { key: "crm-prospeccion",         label: "Pipeline",               href: "/crm/prospeccion" },
       { key: "crm-tratos",              label: "Tratos",                  href: "/crm/tratos", badge: "leads" },

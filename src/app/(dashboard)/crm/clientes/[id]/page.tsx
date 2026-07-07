@@ -49,7 +49,7 @@ interface Cliente {
   vendedorId: string | null;
   vendedor: Vendedor | null;
   createdAt: string;
-  tratos: Array<{ id: string; etapa: string; tipoEvento: string; fechaEventoEstimada: string | null; presupuestoEstimado: number | null; createdAt: string }>;
+  tratos: Array<{ id: string; etapa: string; tipoEvento: string; fechaEventoEstimada: string | null; presupuestoEstimado: number | null; createdAt: string; updatedAt?: string }>;
   cotizaciones: Array<{ id: string; numeroCotizacion: string; estado: string; granTotal: number; createdAt: string }>;
   proyectos: Array<{ id: string; numeroProyecto: string; nombre: string; estado: string; fechaEvento: string }>;
 }
@@ -945,6 +945,35 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
           <p className="text-gray-400 text-xs mt-1">Proyectos</p>
         </div>
       </div>
+
+      {/* ── Métricas Cliente 360 ────────────────────────────────────────────── */}
+      {(() => {
+        const valorTotal = (cliente.cotizaciones ?? [])
+          .filter((c: { estado: string; granTotal: number }) => ['APROBADA', 'CONTRATADA'].includes(c.estado))
+          .reduce((sum: number, c: { granTotal: number }) => sum + (c.granTotal ?? 0), 0);
+        const ultimaInteraccion = (cliente.tratos ?? [])
+          .sort((a: { updatedAt?: string; createdAt: string }, b: { updatedAt?: string; createdAt: string }) =>
+            new Date(b.updatedAt ?? b.createdAt).getTime() - new Date(a.updatedAt ?? a.createdAt).getTime()
+          )[0]?.updatedAt ?? null;
+        return (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-[#1a1a1a] rounded-lg p-3">
+              <p className="text-gray-500 text-xs mb-1">Valor total cerrado</p>
+              <p className="text-[#B3985B] text-sm font-bold">
+                {valorTotal > 0 ? `$${valorTotal.toLocaleString('es-MX')}` : '—'}
+              </p>
+            </div>
+            <div className="bg-[#1a1a1a] rounded-lg p-3">
+              <p className="text-gray-500 text-xs mb-1">Última interacción</p>
+              <p className="text-white text-sm font-medium">
+                {ultimaInteraccion
+                  ? new Date(ultimaInteraccion).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })
+                  : '—'}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Tratos ─────────────────────────────────────────────────────────── */}
       {cliente.tratos.length > 0 && (

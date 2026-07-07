@@ -17,6 +17,11 @@ export async function GET() {
       active: true,
       fechaInicioVendedor: true,
       createdAt: true,
+      _count: {
+        select: {
+          tratos: true,
+        },
+      },
     },
     orderBy: { name: "asc" },
   });

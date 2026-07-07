@@ -1180,6 +1180,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     contactoVenueNombre: "",
     contactoVenueTelefono: "",
     rentaNotas: "",
+    contactoDecisorNombre: "",
+    contactoDecisorCargo: "",
   });
 
   // Track whether initial load is done to avoid auto-saving on first render
@@ -1333,6 +1335,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             contactoVenueNombre:    t.contactoVenueNombre ?? "",
             contactoVenueTelefono:  t.contactoVenueTelefono ?? "",
             rentaNotas:             rentaData.notas ?? "",
+            contactoDecisorNombre:  t.contactoDecisorNombre ?? "",
+            contactoDecisorCargo:   t.contactoDecisorCargo ?? "",
           }));
         }
         setLoading(false);
@@ -1488,6 +1492,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           })
         : (discForm.ideasReferencias || null),
     };
+    payload.contactoDecisorNombre = discForm.contactoDecisorNombre || null;
+    payload.contactoDecisorCargo = discForm.contactoDecisorCargo || null;
     if (completar) {
       payload.descubrimientoCompleto = true;
       payload.etapa = "OPORTUNIDAD";
@@ -2738,6 +2744,26 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                     className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                   />
                   <span className="text-xs text-gray-500">día(s) · se pre-llena en la cotización</span>
+                </div>
+              </div>
+
+              {/* Contacto decisor */}
+              <div className="sm:col-span-2">
+                <label className="text-xs text-gray-400 block mb-1">Contacto decisor (opcional)</label>
+                <p className="text-[10px] text-gray-600 mb-2">¿Quién toma la decisión final? — útil cuando el contacto inicial no es el decisor</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    value={discForm.contactoDecisorNombre}
+                    onChange={e => setDiscForm(p => ({ ...p, contactoDecisorNombre: e.target.value }))}
+                    placeholder="Nombre del decisor"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                  <input
+                    value={discForm.contactoDecisorCargo}
+                    onChange={e => setDiscForm(p => ({ ...p, contactoDecisorCargo: e.target.value }))}
+                    placeholder="Cargo / rol"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
                 </div>
               </div>
 

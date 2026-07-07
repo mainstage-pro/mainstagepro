@@ -11,6 +11,9 @@ interface Vendedor {
   email: string;
   fechaInicioVendedor: string | null;
   createdAt: string;
+  _count?: {
+    tratos: number;
+  };
 }
 
 function mesDeTrabajoLabel(fecha: string | null) {
@@ -144,6 +147,9 @@ export default function VendedoresPage() {
                   <p className="text-white font-medium truncate">{v.name}</p>
                   <p className="text-gray-500 text-xs truncate">{v.email}</p>
                   <p className="text-gray-600 text-xs mt-0.5">{mesDeTrabajoLabel(v.fechaInicioVendedor)}</p>
+                  {v._count && v._count.tratos > 0 && (
+                    <p className="text-[#B3985B] text-xs mt-0.5">{v._count.tratos} tratos activos</p>
+                  )}
                 </div>
               </div>
               <div className="flex gap-2 shrink-0">

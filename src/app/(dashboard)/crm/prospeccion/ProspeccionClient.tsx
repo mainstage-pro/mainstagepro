@@ -106,6 +106,15 @@ function isVencido(iso: string | null): boolean {
   return new Date(iso) < new Date();
 }
 
+function necesitaAlerta(p: Prospeccion): boolean {
+  if (p.estado === 'CANCELADO' || p.estado === 'CONVERTIDO' || p.estado === 'EN_TRATO') return false;
+  // Sin fecha de próximo contacto → siempre alerta
+  if (!p.fechaProximoContacto) return true;
+  // Vencida hace 5+ días
+  const diasVencido = Math.floor((Date.now() - new Date(p.fechaProximoContacto).getTime()) / 86400000);
+  return diasVencido >= 5;
+}
+
 // ─── EtapaDropdown ───────────────────────────────────────────────────────────
 
 function EtapaDropdown({ prospeccionId, etapaActual, onChanged }: {
@@ -187,6 +196,7 @@ function ProspeccionCard({ p, onEtapaChange, onDelete }: {
   const evtColors = TIPO_EVENTO_COLORS[p.tipoEvento] ?? TIPO_EVENTO_COLORS.VARIOS;
   const proximoVencido = isVencido(p.fechaProximoContacto);
   const estadoBadge = ESTADO_BADGE[p.estado];
+  const alerta = necesitaAlerta(p);
 
   // 5-contact state — track locally for instant feedback
   const [contactos, setContactos] = useState({
@@ -239,7 +249,11 @@ function ProspeccionCard({ p, onEtapaChange, onDelete }: {
   const tieneTratoActivo = p.estado === "EN_TRATO" || !!p.trato;
 
   return (
-    <div className="group bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3 hover:border-[#2a2a2a] hover:bg-[#141414] transition-all">
+    <div className={`group bg-[#111] rounded-xl px-4 py-3 transition-all ${
+  alerta
+    ? 'border border-red-900/60 hover:border-red-800/60 bg-red-950/10'
+    : 'border border-[#1e1e1e] hover:border-[#2a2a2a] hover:bg-[#141414]'
+}`}>
       <div className="flex items-start gap-3">
         {/* Avatar */}
         <div className="w-8 h-8 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center shrink-0 mt-0.5">
@@ -255,6 +269,9 @@ function ProspeccionCard({ p, onEtapaChange, onDelete }: {
             </Link>
             {p.cliente.empresa && (
               <span className="text-[#555] text-xs truncate hidden sm:block">· {p.cliente.empresa}</span>
+            )}
+            {alerta && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-red-900/40 text-red-400 border border-red-800/40 animate-pulse shrink-0">⚠ Sin contacto</span>
             )}
             {estadoBadge && (
               <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${estadoBadge.className}`}>

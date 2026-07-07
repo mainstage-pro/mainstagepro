@@ -34,12 +34,21 @@ interface ReporteData {
   porMes: { mes: string; count: number }[];
 }
 
+type Nivel = 'tentativo' | 'confirmado' | 'operativo';
+
+const NIVEL_COLOR: Record<Nivel, { bar: string; dot: string; text: string; bg: string }> = {
+  tentativo:  { bar: 'border-l-amber-600',   dot: 'bg-amber-500',   text: 'text-amber-300',   bg: 'bg-amber-900/30'  },
+  confirmado: { bar: 'border-l-emerald-500', dot: 'bg-emerald-500', text: 'text-emerald-300', bg: 'bg-emerald-900/30' },
+  operativo:  { bar: 'border-l-blue-500',    dot: 'bg-blue-500',    text: 'text-blue-300',    bg: 'bg-blue-900/30'   },
+};
+
 interface Evento {
   id: string;
   dia: number;
   titulo: string;
   subtitulo: string;
   estado: string;
+  nivel: Nivel;
   url: string;
   tipoEvento: string | null;
   tipoServicio: string | null;
@@ -181,6 +190,13 @@ export default function CalendarioPage() {
         </div>
       </div>
 
+      {/* Leyenda de niveles */}
+      <div className="flex items-center gap-4 mb-1">
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-amber-500"/><span className="text-xs text-gray-400">Tentativo</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"/><span className="text-xs text-gray-400">Confirmado</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-blue-500"/><span className="text-xs text-gray-400">Operativo</span></div>
+      </div>
+
       <div className="flex gap-4">
         {/* Grilla */}
         <div className="flex-1 min-w-0">
@@ -223,11 +239,11 @@ export default function CalendarioPage() {
                           ) : (
                             <div className="space-y-0.5">
                               {evs.slice(0, 3).map(e => {
-                                const colors = ESTADO_COLORS[e.estado] ?? { bar: "border-l-gray-600", text: "text-gray-400" };
+                                const nc = NIVEL_COLOR[e.nivel ?? 'tentativo'] ?? NIVEL_COLOR.tentativo;
                                 return (
                                   <div
                                     key={e.id}
-                                    className={`px-1 py-0.5 rounded text-[10px] truncate leading-tight bg-[#1a1a1a] border-l-2 ${colors.bar} ${colors.text}`}
+                                    className={`px-1 py-0.5 rounded text-[10px] truncate leading-tight bg-[#1a1a1a] border-l-2 ${nc.bar} ${nc.text}`}
                                     title={`${e.titulo} — ${e.subtitulo}`}
                                   >
                                     {e.titulo}
@@ -264,18 +280,18 @@ export default function CalendarioPage() {
               ) : (
                 <div className="divide-y divide-[#1a1a1a] max-h-[60vh] overflow-y-auto">
                   {(eventosPanel ?? []).map(e => {
-                    const colors = ESTADO_COLORS[e.estado] ?? { dot: "bg-gray-500", text: "text-gray-400" };
+                    const nc = NIVEL_COLOR[e.nivel ?? 'tentativo'] ?? NIVEL_COLOR.tentativo;
                     return (
                       <Link key={e.id} href={e.url}
                         className="flex items-start gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors">
-                        <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${colors.dot}`} />
+                        <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${nc.dot}`} />
                         <div className="min-w-0 flex-1">
                           <p className="text-white text-sm font-medium truncate">{e.titulo}</p>
                           <p className="text-gray-500 text-xs truncate">{e.subtitulo}</p>
                           {e.lugarEvento && <p className="text-gray-600 text-[10px] truncate mt-0.5">{e.lugarEvento}</p>}
                           {e.horaInicioEvento && <p className="text-[#B3985B] text-[10px] mt-0.5">{e.horaInicioEvento}</p>}
                           <div className="flex items-center gap-1.5 mt-1">
-                            <span className={`text-[10px] ${colors.text}`}>{ESTADO_LABELS[e.estado] ?? e.estado}</span>
+                            <span className={`text-[10px] ${nc.text}`}>{ESTADO_LABELS[e.estado] ?? e.estado}</span>
                             {e.estado === "VENTA_CERRADA" && (
                               <span className="text-[10px] bg-amber-900/30 text-amber-400 px-1.5 py-0.5 rounded font-medium">Sin proyecto</span>
                             )}
@@ -303,7 +319,7 @@ export default function CalendarioPage() {
                 const proximos = sorted.filter(e => !esPasado(e.dia));
                 const pasados  = sorted.filter(e =>  esPasado(e.dia));
                   const renderItem = (e: Evento, dimmed: boolean) => {
-                  const colors = ESTADO_COLORS[e.estado] ?? { dot: "bg-gray-500", text: "text-gray-400" };
+                  const nc = NIVEL_COLOR[e.nivel ?? 'tentativo'] ?? NIVEL_COLOR.tentativo;
                   return (
                     <Link key={e.id} href={e.url}
                       className={`flex items-start gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors ${dimmed ? "opacity-50" : ""}`}>
@@ -315,7 +331,7 @@ export default function CalendarioPage() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${colors.dot}`} />
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${nc.dot}`} />
                           <p className="text-xs font-medium truncate text-white">{e.titulo}</p>
                         </div>
                         <p className="text-gray-500 text-[11px] truncate">{e.subtitulo}</p>
@@ -360,7 +376,7 @@ export default function CalendarioPage() {
                 const proximos = sorted.filter(e => !esPasado(e.dia));
                 const pasados  = sorted.filter(e =>  esPasado(e.dia));
                 const renderItem = (e: Evento, dimmed: boolean) => {
-                  const colors = ESTADO_COLORS[e.estado] ?? { dot: "bg-gray-500" };
+                  const nc = NIVEL_COLOR[e.nivel ?? 'tentativo'] ?? NIVEL_COLOR.tentativo;
                   return (
                     <Link key={e.id} href={e.url}
                       className={`flex items-center gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors ${dimmed ? "opacity-50" : ""}`}>
@@ -368,7 +384,7 @@ export default function CalendarioPage() {
                         <p className={`text-base font-bold leading-none ${dimmed ? "text-gray-500" : "text-[#B3985B]"}`}>{e.dia}</p>
                         <p className="text-gray-600 text-[10px]">{new Date(year, month, e.dia).toLocaleDateString("es-MX", { weekday: "short" })}</p>
                       </div>
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${colors.dot}`} />
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${nc.dot}`} />
                       <div className="min-w-0 flex-1">
                         <p className="text-white text-sm truncate">{e.titulo}</p>
                         <p className="text-gray-500 text-xs truncate">{e.subtitulo}</p>
