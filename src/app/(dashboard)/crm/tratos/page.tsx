@@ -1098,7 +1098,18 @@ function CompactTratoRow({
           )}
         </div>
 
-        {/* ── COL 4 · Tipo evento ─────── 90px ────── */}
+        {/* ── COL 3b · Tipo de servicio ─── 85px ────── */}
+        <div className="hidden md:block w-[85px] shrink-0 pr-3">
+          {t.tipoServicio ? (
+            <span className="text-[11px] text-[#555] truncate block">
+              {TIPO_SERVICIO_LABELS[t.tipoServicio] ?? t.tipoServicio}
+            </span>
+          ) : (
+            <span className="text-[11px] text-[#222]">&mdash;</span>
+          )}
+        </div>
+
+        {/* ── COL 4 · Tipo evento ─────── 90px ────── */}}
         <div className="hidden sm:flex w-[90px] shrink-0 pr-3">
           <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${tipoStyle.bg} ${tipoStyle.text}`}>
             {TIPO_LABEL_SHORT[t.tipoEvento] ?? t.tipoEvento}
@@ -2099,6 +2110,8 @@ export default function TratosPage() {
                         <div className="hidden lg:block flex-[2] min-w-0 pr-4">Proyecto / Evento</div>
                         {/* Fecha */}
                         <div className="w-[130px] shrink-0 pr-4">Fecha evento</div>
+                        {/* Servicio */}
+                        <div className="hidden md:block w-[85px] shrink-0 pr-3">Servicio</div>
                         {/* Tipo */}
                         <div className="hidden sm:block w-[90px] shrink-0 pr-3">Tipo</div>
                         {/* Responsable */}
