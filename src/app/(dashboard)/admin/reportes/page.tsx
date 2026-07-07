@@ -159,12 +159,12 @@ function KpiCard({
 }) {
   return (
     <div
-      className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 transition-all hover:border-[#2a2a2a]"
-      style={borderColor ? { borderTop: `3px solid ${borderColor}` } : undefined}
+      className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 transition-all hover:border-[#2a2a2a]"
+      style={borderColor ? { borderLeft: `3px solid ${borderColor}` } : undefined}
     >
-      <p className="text-[#555] text-[10px] uppercase tracking-wider mb-1">{label}</p>
-      <p className={`text-3xl font-bold ${color}`}>{value}</p>
-      {sub && <p className="text-[#444] text-xs mt-1">{sub}</p>}
+      <p className="text-[#6b7280] text-xs mb-1">{label}</p>
+      <p className={`text-2xl font-bold tabular-nums ${color}`}>{value}</p>
+      {sub && <p className="text-[#555] text-[10px] mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -172,7 +172,7 @@ function KpiCard({
 function Section({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="bg-[#0e0e0e] border border-[#1e1e1e] rounded-2xl overflow-hidden">
+    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
       <button
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-[#151515] transition-colors"
@@ -1027,6 +1027,23 @@ export default function ReportesAdminPage() {
   const [tab, setTab] = useState<Tab>("balance");
   const [mes, setMes] = useState(defaultMes);
   const [pdfState, setPdfState] = useState<PDFState>(PDF_DEFAULT);
+  const [downloading, setDownloading] = useState(false);
+
+  async function handleDownloadPDF() {
+    setDownloading(true);
+    try {
+      const res = await fetch(`/api/admin/reportes/pdf?mes=${mes}&tab=${tab}`);
+      if (!res.ok) { alert('Error al generar el PDF'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Reporte-Admin-${tab}-${mes}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch { alert('Error al generar el PDF'); }
+    finally { setDownloading(false); }
+  }
 
   // Shared data for print layout
   const [balanceData, setBalanceData] = useState<BalanceData | null>(null);
@@ -1072,24 +1089,29 @@ export default function ReportesAdminPage() {
                 title="Seleccionar mes"
               />
             </div>
-            {/* Botón PDF ejecutivo */}
+            {/* Botón PDF */}
             <button
-              onClick={() => window.print()}
-              className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-lg shadow-[#B3985B]/20"
+              onClick={handleDownloadPDF}
+              disabled={downloading}
+              className="flex items-center gap-2 px-4 py-1.5 bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors"
             >
-              <span>📄</span> Descargar PDF
+              {downloading
+                ? <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 15V3M7 10l5 5 5-5M20 21H4"/></svg>
+              }
+              {downloading ? 'Generando…' : 'Descargar PDF'}
             </button>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-xl p-1 no-print w-fit">
+        <div className="border-b border-[#1a1a1a] flex gap-0 no-print">
           {TABS.map(t => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
-              className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                tab === t.key ? "bg-[#B3985B] text-black shadow-sm" : "text-[#6b7280] hover:text-white"
+              className={`flex items-center gap-2 px-5 py-2.5 text-sm border-b-2 transition-colors ${
+                tab === t.key ? 'border-[#B3985B] text-white font-medium' : 'border-transparent text-white/40 hover:text-white/70'
               }`}
             >
               <span>{t.icon}</span>

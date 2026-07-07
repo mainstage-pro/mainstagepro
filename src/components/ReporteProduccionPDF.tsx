@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  Document, Page, Text, View, StyleSheet, Image,
+  Document, Page, Text, View, StyleSheet,
 } from "@react-pdf/renderer";
 
 // ─── Paleta ───────────────────────────────────────────────────────────────────
@@ -15,22 +15,25 @@ const RED   = "#dc2626";
 const AMBER = "#d97706";
 const BLUE  = "#2563eb";
 
+const CREAM  = "#F7F5F0";
+const CREAM2 = "#FFFBF2";
+
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   page: {
     fontFamily: "Helvetica",
     backgroundColor: WHITE,
     paddingTop: 36,
-    paddingBottom: 56,
+    paddingBottom: 52,
     paddingHorizontal: 0,
     fontSize: 9,
-    color: BLACK,
+    color: DARK,
   },
   header: {
     backgroundColor: BLACK,
     paddingHorizontal: 40,
-    paddingTop: 30,
-    paddingBottom: 25,
+    paddingTop: 28,
+    paddingBottom: 22,
     marginTop: -36,
     flexDirection: "row",
     justifyContent: "space-between",
@@ -38,88 +41,102 @@ const s = StyleSheet.create({
   },
   headerLeft: { flexDirection: "column" },
   logo: { width: 110, marginBottom: 6 },
-  headerTitle: { fontSize: 13, fontFamily: "Helvetica-Bold", color: WHITE, marginBottom: 2 },
-  headerSub:   { fontSize: 8, color: LIGHT },
+  brand:      { fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2, marginBottom: 3 },
+  tagline:    { fontSize: 7, color: LIGHT, letterSpacing: 1 },
+  headerTitle: { fontSize: 13, fontFamily: "Helvetica-Bold", color: WHITE, marginBottom: 3, textAlign: "right" },
+  headerSub:   { fontSize: 8, color: LIGHT, textAlign: "right" },
   headerRight: { alignItems: "flex-end" },
-  badge: {
-    backgroundColor: GOLD,
-    borderRadius: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    marginBottom: 4,
-  },
-  badgeText: { fontSize: 7, fontFamily: "Helvetica-Bold", color: BLACK, letterSpacing: 0.5 },
-  mesText:   { fontSize: 9, color: LIGHT },
 
-  body: { paddingHorizontal: 40, paddingTop: 20 },
+  goldBar:  { height: 3, backgroundColor: GOLD },
+  mesStrip: {
+    backgroundColor: CREAM,
+    paddingHorizontal: 40,
+    paddingVertical: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottom: "1 solid #e0ddd8",
+  },
+  mesLabel: { fontSize: 10, fontFamily: "Helvetica-Bold", color: DARK },
+  mesGen:   { fontSize: 8, color: LIGHT, fontFamily: "Helvetica-Oblique" },
+
+  body: { paddingHorizontal: 40, paddingTop: 16 },
 
   sectionTitle: {
-    fontSize: 10,
-    fontFamily: "Helvetica-Bold",
-    color: BLACK,
-    marginBottom: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    paddingBottom: 5,
     marginTop: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-    paddingBottom: 3,
+    borderBottom: "1 solid #e0ddd8",
+  },
+  sectionLine:  { height: 2, width: 18, backgroundColor: GOLD, marginRight: 7 },
+  sectionLabel: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: GOLD,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
   },
 
-  // KPI grid
-  kpiRow: { flexDirection: "row", gap: 8, marginBottom: 10 },
+  // KPI grid (Marketing style)
+  kpiRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
   kpiCard: {
     flex: 1,
-    backgroundColor: "#f9fafb",
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-    borderRadius: 4,
-    padding: 8,
+    backgroundColor: CREAM,
+    borderLeft: "3 solid " + GOLD,
+    padding: 10,
+    borderRadius: 2,
   },
-  kpiLabel: { fontSize: 6.5, color: LIGHT, marginBottom: 2, textTransform: "uppercase" },
-  kpiValue: { fontSize: 14, fontFamily: "Helvetica-Bold", color: BLACK },
+  kpiLabel: { fontSize: 7, color: LIGHT, marginBottom: 3, textTransform: "uppercase", letterSpacing: 0.8 },
+  kpiValue: { fontSize: 18, fontFamily: "Helvetica-Bold", color: DARK },
+  kpiSub:   { fontSize: 7, color: LIGHT, marginTop: 2 },
 
-  // Tabla
+  // Tabla (Marketing style)
   table: { marginBottom: 10 },
-  tableHeader: { flexDirection: "row", backgroundColor: "#f3f4f6", borderRadius: 3, padding: 5, marginBottom: 2 },
-  tableHeaderText: { fontSize: 7, fontFamily: "Helvetica-Bold", color: GRAY, flex: 1 },
-  tableRow: { flexDirection: "row", padding: 5, borderBottomWidth: 1, borderBottomColor: "#f3f4f6" },
-  tableCell: { fontSize: 7.5, color: BLACK, flex: 1, lineHeight: 1.4 },
-  tableCellSm: { fontSize: 7, color: GRAY, flex: 0.7 },
+  tableHeader: { flexDirection: "row", backgroundColor: BLACK, paddingVertical: 5, paddingHorizontal: 10 },
+  tableHeaderText: { fontSize: 7, fontFamily: "Helvetica-Bold", color: LIGHT, flex: 1, letterSpacing: 0.8, textTransform: "uppercase" },
+  tableRow:     { flexDirection: "row", paddingVertical: 4.5, paddingHorizontal: 10, borderBottom: "1 solid #f0ede8" },
+  tableRowAlt:  { flexDirection: "row", paddingVertical: 4.5, paddingHorizontal: 10, borderBottom: "1 solid #f0ede8", backgroundColor: CREAM },
+  tableCell:    { fontSize: 7.5, color: GRAY, flex: 1 },
+  tableCellB:   { fontSize: 7.5, color: DARK, fontFamily: "Helvetica-Bold", flex: 1 },
+  tableCellSm:  { fontSize: 7, color: GRAY, flex: 0.7 },
 
-  // Pills
+  // Pills (updated for light bg)
   pillGreen:  { backgroundColor: "#dcfce7", borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 },
   pillRed:    { backgroundColor: "#fee2e2", borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 },
   pillAmber:  { backgroundColor: "#fef3c7", borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 },
   pillGray:   { backgroundColor: "#f3f4f6", borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 },
   pillText:   { fontSize: 6.5, fontFamily: "Helvetica-Bold" },
 
-  // Notas
+  // Notas / Análisis
   notaBox: {
-    backgroundColor: "#fffbf2",
-    borderWidth: 1,
-    borderColor: "#fde68a",
-    borderRadius: 4,
+    backgroundColor: CREAM2,
+    borderLeft: "3 solid " + GOLD,
+    borderRadius: 2,
     padding: 8,
     marginBottom: 6,
   },
-  notaLabel: { fontSize: 6.5, fontFamily: "Helvetica-Bold", color: AMBER, marginBottom: 2, textTransform: "uppercase" },
+  notaLabel: { fontSize: 6.5, fontFamily: "Helvetica-Bold", color: GOLD, marginBottom: 2, textTransform: "uppercase", letterSpacing: 0.8 },
   notaText:  { fontSize: 7.5, color: GRAY, lineHeight: 1.5 },
 
-  // Footer
+  // Footer (Marketing style — barra negra fija en la parte inferior)
   footer: {
     position: "absolute",
-    bottom: 20,
-    left: 40,
-    right: 40,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 36,
+    backgroundColor: BLACK,
+    paddingHorizontal: 40,
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
-    paddingTop: 6,
   },
-  footerText: { fontSize: 6.5, color: LIGHT },
+  footerText: { fontSize: 7, color: LIGHT },
 
-  separator: { height: 1, backgroundColor: "#e5e7eb", marginVertical: 8 },
-  emptyText: { fontSize: 8, color: LIGHT, fontStyle: "italic" },
+  separator: { height: 1, backgroundColor: "#e0ddd8", marginVertical: 8 },
+  emptyText: { fontSize: 8, color: LIGHT, fontFamily: "Helvetica-Oblique" },
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -135,28 +152,46 @@ function fmtPeso(n: number) {
   return n.toLocaleString("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 0 });
 }
 
-// ─── Header compartido ────────────────────────────────────────────────────────
-function PdfHeader({ logoSrc, mesLabel, seccion }: { logoSrc: string | null; mesLabel: string; seccion: string }) {
+// ─── Header + Footer compartidos (Marketing style) ───────────────────────────
+function PdfHeader({ mesLabel, seccion }: { mesLabel: string; seccion: string }) {
+  const gen = new Date().toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
   return (
-    <View style={s.header}>
-      <View style={s.headerLeft}>
-        {logoSrc && <Image src={logoSrc} style={s.logo} />}
-        <Text style={s.headerTitle}>Reporte de Producción</Text>
-        <Text style={s.headerSub}>{seccion}</Text>
+    <>
+      <View style={s.header}>
+        <View style={s.headerLeft}>
+          <Text style={s.brand}>MAINSTAGE</Text>
+          <Text style={s.tagline}>PRODUCCIÓN · DIRECCIÓN GENERAL</Text>
+        </View>
+        <View style={s.headerRight}>
+          <Text style={s.headerTitle}>Reporte de Producción</Text>
+          <Text style={s.headerSub}>{seccion}</Text>
+          <Text style={[s.headerSub, { color: GOLD, marginTop: 4 }]}>{mesLabel}</Text>
+        </View>
       </View>
-      <View style={s.headerRight}>
-        <View style={s.badge}><Text style={s.badgeText}>PRODUCCIÓN</Text></View>
-        <Text style={s.mesText}>{mesLabel}</Text>
+      <View style={s.goldBar} />
+      <View style={s.mesStrip}>
+        <Text style={s.mesLabel}>{mesLabel} · {seccion}</Text>
+        <Text style={s.mesGen}>Generado el {gen}</Text>
       </View>
-    </View>
+    </>
   );
 }
 
 function PdfFooter({ mes, seccion }: { mes: string; seccion: string }) {
   return (
     <View style={s.footer} fixed>
-      <Text style={s.footerText}>Mainstage Pro · Reporte de Producción · {fmtMes(mes)}</Text>
-      <Text style={s.footerText}>{seccion} · Confidencial</Text>
+      <Text style={s.footerText}>Reporte de Producción · {seccion}</Text>
+      <Text style={s.footerText}>{fmtMes(mes)} · Confidencial</Text>
+      <Text style={s.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+    </View>
+  );
+}
+
+function SectionTitle({ label }: { label: string }) {
+  return (
+    <View style={s.sectionTitle}>
+      <View style={s.sectionLine} />
+      <Text style={s.sectionLabel}>{label}</Text>
     </View>
   );
 }
@@ -223,7 +258,7 @@ function SeccionChecklistPDF({ data }: { data: NonNullable<ReporteProduccionPDFD
   return (
     <>
       {/* KPIs */}
-      <Text style={s.sectionTitle}>Indicadores del mes</Text>
+      <SectionTitle label="Indicadores del mes" />
       <View style={s.kpiRow}>
         {[
           { label: "Semanas totales", value: data.kpis.semanasTotales },
@@ -239,7 +274,7 @@ function SeccionChecklistPDF({ data }: { data: NonNullable<ReporteProduccionPDFD
       </View>
 
       {/* Tabla de semanas */}
-      <Text style={s.sectionTitle}>Detalle por semana</Text>
+      <SectionTitle label="Detalle por semana" />
       <View style={s.table}>
         <View style={s.tableHeader}>
           <Text style={[s.tableHeaderText, { flex: 1.4 }]}>Semana</Text>
@@ -262,7 +297,7 @@ function SeccionChecklistPDF({ data }: { data: NonNullable<ReporteProduccionPDFD
       {/* Faltantes */}
       {data.checklists.some(c => c.alertas.length > 0) && (
         <>
-          <Text style={s.sectionTitle}>Equipos faltantes</Text>
+          <SectionTitle label="Equipos faltantes" />
           <View style={s.table}>
             <View style={s.tableHeader}>
               <Text style={[s.tableHeaderText, { flex: 1.5 }]}>Semana</Text>
@@ -311,7 +346,7 @@ function SeccionEquiposPDF({ data }: { data: NonNullable<ReporteProduccionPDFDat
   const TIPO_COLOR: Record<string, string> = { PREVENTIVO: BLUE, CORRECTIVO: RED, ESTETICO: "#7c3aed", FUNCIONAL: AMBER };
   return (
     <>
-      <Text style={s.sectionTitle}>Indicadores del mes</Text>
+      <SectionTitle label="Indicadores del mes" />
       <View style={s.kpiRow}>
         {[
           { label: "Revisiones del mes",  value: data.kpis.totalRevisiones },
@@ -332,7 +367,7 @@ function SeccionEquiposPDF({ data }: { data: NonNullable<ReporteProduccionPDFDat
         </View>
       )}
 
-      <Text style={s.sectionTitle}>Registro de revisiones</Text>
+      <SectionTitle label="Registro de revisiones" />
       {data.equiposPorEquipo.length === 0 ? (
         <Text style={s.emptyText}>No hay revisiones en este mes.</Text>
       ) : (
@@ -378,7 +413,7 @@ function SeccionInventarioPDF({ data }: { data: NonNullable<ReporteProduccionPDF
   const totalGeneral = Object.values(data.estadoActual).reduce((a, v) => a + v, 0);
   return (
     <>
-      <Text style={s.sectionTitle}>Indicadores del mes</Text>
+      <SectionTitle label="Indicadores del mes" />
       <View style={s.kpiRow}>
         {[
           { label: "Altas",      value: `+${data.kpis.altas}`,  color: GREEN },
@@ -394,7 +429,7 @@ function SeccionInventarioPDF({ data }: { data: NonNullable<ReporteProduccionPDF
       </View>
 
       {/* Estado actual */}
-      <Text style={s.sectionTitle}>Estado actual del inventario</Text>
+      <SectionTitle label="Estado actual del inventario" />
       <View style={[s.kpiRow, { marginBottom: 12 }]}>
         {Object.entries(data.estadoActual).map(([estado, qty]) => (
           <View key={estado} style={s.kpiCard}>
@@ -407,7 +442,7 @@ function SeccionInventarioPDF({ data }: { data: NonNullable<ReporteProduccionPDF
 
       {data.altas.length > 0 && (
         <>
-          <Text style={s.sectionTitle}>Altas del mes ({data.altas.length})</Text>
+          <SectionTitle label="Altas del mes ({data.altas.length})" />
           <View style={s.table}>
             <View style={s.tableHeader}>
               <Text style={[s.tableHeaderText, { flex: 2 }]}>Equipo</Text>
@@ -429,7 +464,7 @@ function SeccionInventarioPDF({ data }: { data: NonNullable<ReporteProduccionPDF
 
       {data.bajas.length > 0 && (
         <>
-          <Text style={s.sectionTitle}>Bajas del mes ({data.bajas.length})</Text>
+          <SectionTitle label="Bajas del mes ({data.bajas.length})" />
           <View style={s.table}>
             <View style={s.tableHeader}>
               <Text style={[s.tableHeaderText, { flex: 2 }]}>Equipo</Text>
@@ -458,7 +493,7 @@ function SeccionInventarioPDF({ data }: { data: NonNullable<ReporteProduccionPDF
 function SeccionVehiculosPDF({ data }: { data: NonNullable<ReporteProduccionPDFData["vehiculos"]> }) {
   return (
     <>
-      <Text style={s.sectionTitle}>Indicadores del mes</Text>
+      <SectionTitle label="Indicadores del mes" />
       <View style={s.kpiRow}>
         {[
           { label: "Total registros", value: data.totalRegistros },
@@ -514,7 +549,7 @@ function SeccionProyectosPDF({ data }: { data: NonNullable<ReporteProduccionPDFD
   const ESTADO_COLOR: Record<string, string> = { COMPLETADO: GREEN, EN_PROGRESO: BLUE, CANCELADO: RED, PENDIENTE: AMBER };
   return (
     <>
-      <Text style={s.sectionTitle}>Indicadores del mes</Text>
+      <SectionTitle label="Indicadores del mes" />
       <View style={s.kpiRow}>
         {[
           { label: "Total proyectos",   value: data.kpis.total },
@@ -529,7 +564,7 @@ function SeccionProyectosPDF({ data }: { data: NonNullable<ReporteProduccionPDFD
         ))}
       </View>
 
-      <Text style={s.sectionTitle}>Detalle de proyectos</Text>
+      <SectionTitle label="Detalle de proyectos" />
       <View style={s.table}>
         <View style={s.tableHeader}>
           <Text style={s.tableHeaderText}>#</Text>
@@ -572,7 +607,7 @@ export function ReporteProduccionPDF({ data }: { data: ReporteProduccionPDFData 
   return (
     <Document title={`Reporte Producción · ${seccionLabel} · ${data.mesLabel}`} author="Mainstage Pro">
       <Page size="A4" orientation="landscape" style={s.page}>
-        <PdfHeader logoSrc={data.logoSrc} mesLabel={data.mesLabel} seccion={seccionLabel} />
+        <PdfHeader mesLabel={data.mesLabel} seccion={seccionLabel} />
         <View style={s.body}>
           {data.seccion === "checklist"  && data.checklist  && <SeccionChecklistPDF  data={data.checklist} />}
           {data.seccion === "equipos"    && data.equipos    && <SeccionEquiposPDF    data={data.equipos} />}
