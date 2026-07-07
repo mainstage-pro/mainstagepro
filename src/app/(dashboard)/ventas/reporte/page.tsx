@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { ReporteAnalisisSection } from '@/components/ui/ReporteAnalisisSection';
 import { useSearchParams } from "next/navigation";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -158,7 +159,9 @@ export default function ReporteVentasPage() {
   const [loadingPdf1, setLoadingPdf1] = useState(false);
   const [showEjecutivo, setShowEjecutivo] = useState(false);
   const [analisis1, setAnalisis1] = useState("");
-  const [propuestas1, setPropuestas1] = useState("");
+  const [propuesta1_1, setPropuesta1_1] = useState("");
+  const [propuesta2_1, setPropuesta2_1] = useState("");
+  const [propuesta3_1, setPropuesta3_1] = useState("");
   const [comentarios1, setComentarios1] = useState("");
   const [notasLoaded, setNotasLoaded] = useState(false);
 
@@ -169,7 +172,9 @@ export default function ReporteVentasPage() {
   const [loadingVendedor, setLoadingVendedor] = useState(false);
   const [loadingPdf2, setLoadingPdf2] = useState(false);
   const [analisis2, setAnalisis2] = useState("");
-  const [propuestas2, setPropuestas2] = useState("");
+  const [propuesta1_2, setPropuesta1_2] = useState("");
+  const [propuesta2_2, setPropuesta2_2] = useState("");
+  const [propuesta3_2, setPropuesta3_2] = useState("");
   const [comentarios2, setComentarios2] = useState("");
   const [notasPago, setNotasPago] = useState("");
   const [registrandoPago, setRegistrandoPago] = useState(false);
@@ -209,7 +214,9 @@ export default function ReporteVentasPage() {
     setNotasLoaded(false);
     try {
       setAnalisis1(localStorage.getItem(`ventas-reporte-${mes1}-analisis`) ?? "");
-      setPropuestas1(localStorage.getItem(`ventas-reporte-${mes1}-propuestas`) ?? "");
+      setPropuesta1_1(localStorage.getItem(`ventas-reporte-${mes1}-propuesta1`) ?? "");
+      setPropuesta2_1(localStorage.getItem(`ventas-reporte-${mes1}-propuesta2`) ?? "");
+      setPropuesta3_1(localStorage.getItem(`ventas-reporte-${mes1}-propuesta3`) ?? "");
       setComentarios1(localStorage.getItem(`ventas-reporte-${mes1}-comentarios`) ?? "");
     } catch { /**/ }
     setNotasLoaded(true);
@@ -221,7 +228,7 @@ export default function ReporteVentasPage() {
       const res = await fetch("/api/ventas/reporte-mensual/pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mes: mes1, analisis: analisis1, propuestas: propuestas1, comentarios: comentarios1 }),
+        body: JSON.stringify({ mes: mes1, analisis: analisis1, propuesta1: propuesta1_1, propuesta2: propuesta2_1, propuesta3: propuesta3_1, comentarios: comentarios1 }),
       });
       if (!res.ok) { toast("err", "Error al generar PDF"); return; }
       const blob = await res.blob();
@@ -255,7 +262,7 @@ export default function ReporteVentasPage() {
       const res = await fetch("/api/ventas/reporte-vendedor-pdf", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mes: mes2, vendedorId: vid, analisis: analisis2, propuestas: propuestas2, comentarios: comentarios2 }),
+        body: JSON.stringify({ mes: mes2, vendedorId: vid, analisis: analisis2, propuesta1: propuesta1_2, propuesta2: propuesta2_2, propuesta3: propuesta3_2, comentarios: comentarios2 }),
       });
       if (!res.ok) { toast("err", "Error al generar PDF"); return; }
       const blob = await res.blob();
@@ -758,44 +765,27 @@ export default function ReporteVentasPage() {
               )}
             </div>
 
-            {/* ── SECCIÓN 6: Análisis + PDF ────────────────────────────── */}
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-              <div className="px-5 py-3 border-b border-[#1e1e1e] flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-[#B3985B]">Análisis del responsable de ventas</h3>
-              </div>
-              <div className="p-5 space-y-4">
-                {[
-                  { label: "Análisis de resultados", value: analisis1, set: setAnalisis1, placeholder: "¿Qué pasó este mes? Describe los factores clave de los resultados obtenidos...", key: "analisis", rows: 5 },
-                  { label: "Propuestas de mejora",   value: propuestas1, set: setPropuestas1, placeholder: "1. ...\n2. ...\n3. ...", key: "propuestas", rows: 4 },
-                  { label: "Comentarios finales",    value: comentarios1, set: setComentarios1, placeholder: "Observaciones adicionales, contexto externo, etc...", key: "comentarios", rows: 3 },
-                ].map(f => (
-                  <div key={f.label}>
-                    <label className="block text-[10px] text-[#6b7280] uppercase tracking-wider mb-1.5">{f.label}</label>
-                    <textarea
-                      value={f.value}
-                      onChange={e => {
-                        f.set(e.target.value);
-                        try { localStorage.setItem(`ventas-reporte-${mes1}-${f.key}`, e.target.value); } catch { /**/ }
-                      }}
-                      rows={f.rows}
-                      placeholder={f.placeholder}
-                      className="w-full bg-[#0a0a0a] border border-[#1e1e1e] rounded-xl px-3 py-2.5 text-xs text-white placeholder-[#2a2a2a] focus:outline-none focus:border-[#B3985B]/40 resize-none leading-relaxed transition-colors"
-                    />
-                  </div>
-                ))}
-              </div>
-              <div className="flex items-center justify-between">
-                <p className="text-[#333] text-[10px]">Las notas se guardan automáticamente en este dispositivo</p>
-                <button onClick={descargarPdf1} disabled={loadingPdf1} id="btn-pdf-mensual"
-                  className="flex items-center gap-2 px-4 py-1.5 bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors">
-                  {loadingPdf1
-                    ? <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                    : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 15V3M7 10l5 5 5-5M20 21H4"/></svg>
-                  }
-                  {loadingPdf1 ? 'Generando…' : 'Descargar PDF'}
-                </button>
-              </div>
-            </div>
+            {/* ── SECCIÓN 6: Análisis + PDF ── */}
+            <ReporteAnalisisSection
+              analisis={analisis1}    onAnalisis={v => { setAnalisis1(v); try { localStorage.setItem(`ventas-reporte-${mes1}-analisis`, v); } catch{} }}
+              propuesta1={propuesta1_1} onPropuesta1={v => { setPropuesta1_1(v); try { localStorage.setItem(`ventas-reporte-${mes1}-propuesta1`, v); } catch{} }}
+              propuesta2={propuesta2_1} onPropuesta2={v => { setPropuesta2_1(v); try { localStorage.setItem(`ventas-reporte-${mes1}-propuesta2`, v); } catch{} }}
+              propuesta3={propuesta3_1} onPropuesta3={v => { setPropuesta3_1(v); try { localStorage.setItem(`ventas-reporte-${mes1}-propuesta3`, v); } catch{} }}
+              comentarios={comentarios1} onComentarios={v => { setComentarios1(v); try { localStorage.setItem(`ventas-reporte-${mes1}-comentarios`, v); } catch{} }}
+              footer={
+                <>
+                  <p className="text-[#333] text-[10px]">Las notas se guardan automáticamente en este dispositivo</p>
+                  <button onClick={descargarPdf1} disabled={loadingPdf1} id="btn-pdf-mensual"
+                    className="flex items-center gap-2 px-4 py-1.5 bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors">
+                    {loadingPdf1
+                      ? <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                      : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 15V3M7 10l5 5 5-5M20 21H4"/></svg>
+                    }
+                    {loadingPdf1 ? 'Generando…' : 'Descargar PDF'}
+                  </button>
+                </>
+              }
+            />
           </>
         )
       )}
@@ -977,32 +967,26 @@ export default function ReporteVentasPage() {
               </div>
 
               {/* Análisis + PDF */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-                <h2 className="text-white font-semibold text-sm mb-4">Análisis del responsable de ventas</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  {[
-                    { label: "Análisis de resultados", value: analisis2, set: setAnalisis2, placeholder: "Análisis de resultados del vendedor..." },
-                    { label: "3 propuestas de mejora", value: propuestas2, set: setPropuestas2, placeholder: "1. ...\n2. ...\n3. ..." },
-                    { label: "Comentarios finales",    value: comentarios2, set: setComentarios2, placeholder: "Observaciones adicionales..." },
-                  ].map(f => (
-                    <div key={f.label}>
-                      <label className="text-gray-600 text-[10px] uppercase tracking-wider block mb-1.5">{f.label}</label>
-                      <textarea value={f.value} onChange={e => f.set(e.target.value)} rows={4} placeholder={f.placeholder}
-                        className="w-full bg-[#0f0f0f] border border-[#222] rounded-lg px-3 py-2 text-xs text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/40 resize-none leading-relaxed" />
-                    </div>
-                  ))}
-                </div>
-                <div className="flex justify-end">
-                  <button onClick={descargarPdf2} disabled={loadingPdf2} id="btn-pdf-vendedor"
-                    className="flex items-center gap-2 px-4 py-1.5 bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors">
-                    {loadingPdf2
-                      ? <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-                      : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 15V3M7 10l5 5 5-5M20 21H4"/></svg>
-                    }
-                    {loadingPdf2 ? 'Generando…' : 'Descargar PDF'}
-                  </button>
-                </div>
-              </div>
+              <ReporteAnalisisSection
+                analisis={analisis2}    onAnalisis={v => { setAnalisis2(v); try { localStorage.setItem(`ventas-comisiones-${mes2}-analisis`, v); } catch{} }}
+                propuesta1={propuesta1_2} onPropuesta1={v => { setPropuesta1_2(v); try { localStorage.setItem(`ventas-comisiones-${mes2}-propuesta1`, v); } catch{} }}
+                propuesta2={propuesta2_2} onPropuesta2={v => { setPropuesta2_2(v); try { localStorage.setItem(`ventas-comisiones-${mes2}-propuesta2`, v); } catch{} }}
+                propuesta3={propuesta3_2} onPropuesta3={v => { setPropuesta3_2(v); try { localStorage.setItem(`ventas-comisiones-${mes2}-propuesta3`, v); } catch{} }}
+                comentarios={comentarios2} onComentarios={v => { setComentarios2(v); try { localStorage.setItem(`ventas-comisiones-${mes2}-comentarios`, v); } catch{} }}
+                footer={
+                  <>
+                    <p className="text-[#333] text-[10px]">Las notas se guardan automáticamente en este dispositivo</p>
+                    <button onClick={descargarPdf2} disabled={loadingPdf2} id="btn-pdf-vendedor"
+                      className="flex items-center gap-2 px-4 py-1.5 bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors">
+                      {loadingPdf2
+                        ? <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+                        : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 15V3M7 10l5 5 5-5M20 21H4"/></svg>
+                      }
+                      {loadingPdf2 ? 'Generando…' : 'Descargar PDF'}
+                    </button>
+                  </>
+                }
+              />
             </>
           )}
         </>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { ReporteAnalisisSection } from '@/components/ui/ReporteAnalisisSection';
 import Link from "next/link";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -165,22 +166,7 @@ function ProgressBar({ value, color }: { value: number; color: string }) {
   );
 }
 
-function Textarea({ storageKey, label, placeholder }: { storageKey: string; label: string; placeholder: string }) {
-  const [val, setVal] = useState("");
-  useEffect(() => { setVal(localStorage.getItem(storageKey) ?? ""); }, [storageKey]);
-  return (
-    <div className="space-y-1.5">
-      <label className="block text-[10px] text-[#6b7280] uppercase tracking-wider mb-1">{label}</label>
-      <textarea
-        rows={3}
-        value={val}
-        onChange={e => { setVal(e.target.value); localStorage.setItem(storageKey, e.target.value); }}
-        placeholder={placeholder}
-        className="w-full bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/40 resize-none leading-relaxed"
-      />
-    </div>
-  );
-}
+
 
 // ─── TABS ─────────────────────────────────────────────────────────────────────
 
@@ -197,6 +183,20 @@ const TABS = [
 function SeccionChecklist({ data, mes }: { data: ReporteData["checklistSemanal"]; mes: string }) {
   const { checklists, kpis } = data;
   const [selected, setSelected] = useState<string | null>(null);
+
+  // ── Análisis (localStorage) ──
+  const [analisis, setAnalisis] = useState('');
+  const [propuesta1, setPropuesta1] = useState('');
+  const [propuesta2, setPropuesta2] = useState('');
+  const [propuesta3, setPropuesta3] = useState('');
+  const [comentarios, setComentarios] = useState('');
+  useEffect(() => {
+    setAnalisis(   localStorage.getItem(`rp-checklist-analisis-${mes}`)    ?? '');
+    setPropuesta1( localStorage.getItem(`rp-checklist-prop1-${mes}`)       ?? '');
+    setPropuesta2( localStorage.getItem(`rp-checklist-prop2-${mes}`)       ?? '');
+    setPropuesta3( localStorage.getItem(`rp-checklist-prop3-${mes}`)       ?? '');
+    setComentarios(localStorage.getItem(`rp-checklist-comentarios-${mes}`) ?? '');
+  }, [mes]);
   const allAlertas = checklists.flatMap(c => c.alertas.map(a => ({ ...a, semana: c.semana })));
   const selectedCl = checklists.find(c => c.id === selected);
 
@@ -298,17 +298,13 @@ function SeccionChecklist({ data, mes }: { data: ReporteData["checklistSemanal"]
         </div>
       )}
 
-      {/* Comentarios */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-        <div className="px-5 py-3 border-b border-[#1e1e1e] flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-[#B3985B]">Análisis y comentarios</h3>
-        </div>
-        <div className="p-5 space-y-4">
-        <Textarea storageKey={`rp-checklist-analisis-${mes}`} label="Análisis de cumplimiento" placeholder="Estado general del checklist semanal…" />
-        <Textarea storageKey={`rp-checklist-propuesta-${mes}`} label="Propuestas de mejora" placeholder="¿Qué ajustar en el proceso de bodega?" />
-        <Textarea storageKey={`rp-checklist-comentarios-${mes}`} label="Comentarios finales" placeholder="Observaciones adicionales…" />
-        </div>
-      </div>
+      <ReporteAnalisisSection
+        analisis={analisis}     onAnalisis={v => { setAnalisis(v); localStorage.setItem(`rp-checklist-analisis-${mes}`, v); }}
+        propuesta1={propuesta1} onPropuesta1={v => { setPropuesta1(v); localStorage.setItem(`rp-checklist-prop1-${mes}`, v); }}
+        propuesta2={propuesta2} onPropuesta2={v => { setPropuesta2(v); localStorage.setItem(`rp-checklist-prop2-${mes}`, v); }}
+        propuesta3={propuesta3} onPropuesta3={v => { setPropuesta3(v); localStorage.setItem(`rp-checklist-prop3-${mes}`, v); }}
+        comentarios={comentarios} onComentarios={v => { setComentarios(v); localStorage.setItem(`rp-checklist-comentarios-${mes}`, v); }}
+      />
     </div>
   );
 }
@@ -320,6 +316,20 @@ function SeccionMantenimiento({ data, mes, onActualizar }: { data: ReporteData["
   const [expanded, setExpanded] = useState<string | null>(null);
   const [costoEdit, setCostoEdit] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
+
+  // ── Análisis (localStorage) ──
+  const [analisis, setAnalisis] = useState('');
+  const [propuesta1, setPropuesta1] = useState('');
+  const [propuesta2, setPropuesta2] = useState('');
+  const [propuesta3, setPropuesta3] = useState('');
+  const [comentarios, setComentarios] = useState('');
+  useEffect(() => {
+    setAnalisis(   localStorage.getItem(`rp-mant-analisis-${mes}`)    ?? '');
+    setPropuesta1( localStorage.getItem(`rp-mant-prop1-${mes}`)       ?? '');
+    setPropuesta2( localStorage.getItem(`rp-mant-prop2-${mes}`)       ?? '');
+    setPropuesta3( localStorage.getItem(`rp-mant-prop3-${mes}`)       ?? '');
+    setComentarios(localStorage.getItem(`rp-mant-comentarios-${mes}`) ?? '');
+  }, [mes]);
 
   const patch = async (id: string, body: object) => {
     setSaving(id);
@@ -453,16 +463,13 @@ function SeccionMantenimiento({ data, mes, onActualizar }: { data: ReporteData["
         </div>
       )}
 
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-        <div className="px-5 py-3 border-b border-[#1e1e1e] flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-[#B3985B]">Análisis y comentarios</h3>
-        </div>
-        <div className="p-5 space-y-4">
-        <Textarea storageKey={`rp-mant-analisis-${mes}`} label="Análisis de mantenimiento" placeholder="Estado general de los equipos, tendencias de fallas…" />
-        <Textarea storageKey={`rp-mant-propuestas-${mes}`} label="Propuestas de mejora" placeholder="Acciones preventivas, compras sugeridas…" />
-        <Textarea storageKey={`rp-mant-comentarios-${mes}`} label="Comentarios finales" placeholder="Observaciones adicionales…" />
-        </div>
-      </div>
+      <ReporteAnalisisSection
+        analisis={analisis}     onAnalisis={v => { setAnalisis(v); localStorage.setItem(`rp-mant-analisis-${mes}`, v); }}
+        propuesta1={propuesta1} onPropuesta1={v => { setPropuesta1(v); localStorage.setItem(`rp-mant-prop1-${mes}`, v); }}
+        propuesta2={propuesta2} onPropuesta2={v => { setPropuesta2(v); localStorage.setItem(`rp-mant-prop2-${mes}`, v); }}
+        propuesta3={propuesta3} onPropuesta3={v => { setPropuesta3(v); localStorage.setItem(`rp-mant-prop3-${mes}`, v); }}
+        comentarios={comentarios} onComentarios={v => { setComentarios(v); localStorage.setItem(`rp-mant-comentarios-${mes}`, v); }}
+      />
     </div>
   );
 }
@@ -471,6 +478,20 @@ function SeccionMantenimiento({ data, mes, onActualizar }: { data: ReporteData["
 
 function SeccionInventario({ data, mes }: { data: ReporteData["inventario"]; mes: string }) {
   const { altas, bajas, estadoActual, kpis } = data;
+
+  // ── Análisis (localStorage) ──
+  const [analisis, setAnalisis] = useState('');
+  const [propuesta1, setPropuesta1] = useState('');
+  const [propuesta2, setPropuesta2] = useState('');
+  const [propuesta3, setPropuesta3] = useState('');
+  const [comentarios, setComentarios] = useState('');
+  useEffect(() => {
+    setAnalisis(   localStorage.getItem(`rp-inv-analisis-${mes}`)    ?? '');
+    setPropuesta1( localStorage.getItem(`rp-inv-prop1-${mes}`)       ?? '');
+    setPropuesta2( localStorage.getItem(`rp-inv-prop2-${mes}`)       ?? '');
+    setPropuesta3( localStorage.getItem(`rp-inv-prop3-${mes}`)       ?? '');
+    setComentarios(localStorage.getItem(`rp-inv-comentarios-${mes}`) ?? '');
+  }, [mes]);
   const totalActivo = estadoActual["ACTIVO"] ?? 0;
   const totalMant   = estadoActual["EN_MANTENIMIENTO"] ?? 0;
   const totalBaja   = estadoActual["DADO_DE_BAJA"] ?? 0;
@@ -582,15 +603,13 @@ function SeccionInventario({ data, mes }: { data: ReporteData["inventario"]; mes
         </div>
       </div>
 
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-        <div className="px-5 py-3 border-b border-[#1e1e1e] flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-[#B3985B]">Análisis y comentarios</h3>
-        </div>
-        <div className="p-5 space-y-4">
-        <Textarea storageKey={`rp-inv-analisis-${mes}`} label="Análisis de movimientos" placeholder="Contexto de las altas y bajas, adquisiciones, mermas…" />
-        <Textarea storageKey={`rp-inv-comentarios-${mes}`} label="Comentarios finales" placeholder="Observaciones adicionales…" />
-        </div>
-      </div>
+      <ReporteAnalisisSection
+        analisis={analisis}     onAnalisis={v => { setAnalisis(v); localStorage.setItem(`rp-inv-analisis-${mes}`, v); }}
+        propuesta1={propuesta1} onPropuesta1={v => { setPropuesta1(v); localStorage.setItem(`rp-inv-prop1-${mes}`, v); }}
+        propuesta2={propuesta2} onPropuesta2={v => { setPropuesta2(v); localStorage.setItem(`rp-inv-prop2-${mes}`, v); }}
+        propuesta3={propuesta3} onPropuesta3={v => { setPropuesta3(v); localStorage.setItem(`rp-inv-prop3-${mes}`, v); }}
+        comentarios={comentarios} onComentarios={v => { setComentarios(v); localStorage.setItem(`rp-inv-comentarios-${mes}`, v); }}
+      />
     </div>
   );
 }
@@ -600,6 +619,20 @@ function SeccionInventario({ data, mes }: { data: ReporteData["inventario"]; mes
 function SeccionVehiculos({ data, mes }: { data: ReporteData["vehiculos"]; mes: string }) {
   const { vehiculos, totalRegistros, totalCosto } = data;
   const barData = vehiculos.map(v => ({ nombre: v.vehiculo.nombre, costo: v.costoTotal, registros: v.registros.length }));
+
+  // ── Análisis (localStorage) ──
+  const [analisis, setAnalisis] = useState('');
+  const [propuesta1, setPropuesta1] = useState('');
+  const [propuesta2, setPropuesta2] = useState('');
+  const [propuesta3, setPropuesta3] = useState('');
+  const [comentarios, setComentarios] = useState('');
+  useEffect(() => {
+    setAnalisis(   localStorage.getItem(`rp-vehiculos-analisis-${mes}`)    ?? '');
+    setPropuesta1( localStorage.getItem(`rp-vehiculos-prop1-${mes}`)       ?? '');
+    setPropuesta2( localStorage.getItem(`rp-vehiculos-prop2-${mes}`)       ?? '');
+    setPropuesta3( localStorage.getItem(`rp-vehiculos-prop3-${mes}`)       ?? '');
+    setComentarios(localStorage.getItem(`rp-vehiculos-comentarios-${mes}`) ?? '');
+  }, [mes]);
 
   const TIPO_COLOR: Record<string, "green" | "red" | "blue" | "gray"> = {
     SERVICIO: "green", REPARACION: "red", REVISION: "blue", ACCIDENTE: "red", OTRO: "gray",
@@ -678,15 +711,13 @@ function SeccionVehiculos({ data, mes }: { data: ReporteData["vehiculos"]; mes: 
         </div>
       ))}
 
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-        <div className="px-5 py-3 border-b border-[#1e1e1e] flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-[#B3985B]">Análisis y comentarios</h3>
-        </div>
-        <div className="p-5 space-y-4">
-        <Textarea storageKey={`rp-vehiculos-analisis-${mes}`} label="Análisis de flota" placeholder="Estado de los vehículos, servicios próximos…" />
-        <Textarea storageKey={`rp-vehiculos-comentarios-${mes}`} label="Comentarios finales" placeholder="Observaciones adicionales…" />
-        </div>
-      </div>
+      <ReporteAnalisisSection
+        analisis={analisis}     onAnalisis={v => { setAnalisis(v); localStorage.setItem(`rp-vehiculos-analisis-${mes}`, v); }}
+        propuesta1={propuesta1} onPropuesta1={v => { setPropuesta1(v); localStorage.setItem(`rp-vehiculos-prop1-${mes}`, v); }}
+        propuesta2={propuesta2} onPropuesta2={v => { setPropuesta2(v); localStorage.setItem(`rp-vehiculos-prop2-${mes}`, v); }}
+        propuesta3={propuesta3} onPropuesta3={v => { setPropuesta3(v); localStorage.setItem(`rp-vehiculos-prop3-${mes}`, v); }}
+        comentarios={comentarios} onComentarios={v => { setComentarios(v); localStorage.setItem(`rp-vehiculos-comentarios-${mes}`, v); }}
+      />
     </div>
   );
 }
@@ -696,6 +727,20 @@ function SeccionVehiculos({ data, mes }: { data: ReporteData["vehiculos"]; mes: 
 function SeccionProyectos({ data, mes }: { data: ReporteData["proyectos"]; mes: string }) {
   const { lista, kpis } = data;
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  // ── Análisis (localStorage) ──
+  const [analisis, setAnalisis] = useState('');
+  const [propuesta1, setPropuesta1] = useState('');
+  const [propuesta2, setPropuesta2] = useState('');
+  const [propuesta3, setPropuesta3] = useState('');
+  const [comentarios, setComentarios] = useState('');
+  useEffect(() => {
+    setAnalisis(   localStorage.getItem(`rp-proy-analisis-${mes}`)    ?? '');
+    setPropuesta1( localStorage.getItem(`rp-proy-prop1-${mes}`)       ?? '');
+    setPropuesta2( localStorage.getItem(`rp-proy-prop2-${mes}`)       ?? '');
+    setPropuesta3( localStorage.getItem(`rp-proy-prop3-${mes}`)       ?? '');
+    setComentarios(localStorage.getItem(`rp-proy-comentarios-${mes}`) ?? '');
+  }, [mes]);
 
   function estadoBadgeColor(estado: string): "green" | "blue" | "amber" | "gray" {
     if (estado === "COMPLETADO") return "green";
@@ -883,16 +928,13 @@ function SeccionProyectos({ data, mes }: { data: ReporteData["proyectos"]; mes: 
         ))}
       </div>
 
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-        <div className="px-5 py-3 border-b border-[#1e1e1e] flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-[#B3985B]">Análisis y comentarios</h3>
-        </div>
-        <div className="p-5 space-y-4">
-        <Textarea storageKey={`rp-proy-analisis-${mes}`} label="Análisis de resultados del mes" placeholder="Desempeño general, proyectos destacados, áreas de mejora…" />
-        <Textarea storageKey={`rp-proy-propuestas-${mes}`} label="Propuestas de mejora operativa" placeholder="Acciones para mejorar coordinación, entrega, post-evento…" />
-        <Textarea storageKey={`rp-proy-comentarios-${mes}`} label="Comentarios finales del mes" placeholder="Cierre y perspectiva para el próximo mes…" />
-        </div>
-      </div>
+      <ReporteAnalisisSection
+        analisis={analisis}     onAnalisis={v => { setAnalisis(v); localStorage.setItem(`rp-proy-analisis-${mes}`, v); }}
+        propuesta1={propuesta1} onPropuesta1={v => { setPropuesta1(v); localStorage.setItem(`rp-proy-prop1-${mes}`, v); }}
+        propuesta2={propuesta2} onPropuesta2={v => { setPropuesta2(v); localStorage.setItem(`rp-proy-prop2-${mes}`, v); }}
+        propuesta3={propuesta3} onPropuesta3={v => { setPropuesta3(v); localStorage.setItem(`rp-proy-prop3-${mes}`, v); }}
+        comentarios={comentarios} onComentarios={v => { setComentarios(v); localStorage.setItem(`rp-proy-comentarios-${mes}`, v); }}
+      />
     </div>
   );
 }

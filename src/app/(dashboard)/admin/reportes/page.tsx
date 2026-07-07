@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { ReporteAnalisisSection } from '@/components/ui/ReporteAnalisisSection';
 import {
   BarChart as RBarChart,
   Bar,
@@ -132,23 +133,16 @@ const CHART_COLORS = {
 // ── PDF State ─────────────────────────────────────────────────────────────────
 interface PDFState {
   analisis: string;
-  propuesta1Titulo: string;
-  propuesta1Desc: string;
-  propuesta2Titulo: string;
-  propuesta2Desc: string;
-  propuesta3Titulo: string;
-  propuesta3Desc: string;
+  propuesta1: string;
+  propuesta2: string;
+  propuesta3: string;
   comentariosFinales: string;
   responsable: string;
-  [key: string]: string;
 }
 const PDF_DEFAULT: PDFState = {
   analisis: '',
-  propuesta1Titulo: '', propuesta1Desc: '',
-  propuesta2Titulo: '', propuesta2Desc: '',
-  propuesta3Titulo: '', propuesta3Desc: '',
-  comentariosFinales: '',
-  responsable: '',
+  propuesta1: '', propuesta2: '', propuesta3: '',
+  comentariosFinales: '', responsable: '',
 };
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
@@ -1130,70 +1124,25 @@ export default function ReportesAdminPage() {
 
         {/* ── ANÁLISIS INLINE (siempre visible) ── */}
         <div className="no-print mt-8">
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
-            <div className="px-5 py-3 border-b border-[#1e1e1e] flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-[#B3985B]">Análisis ejecutivo</h3>
-              <span className="text-[#333] text-[10px]">Se incluye en el PDF</span>
-            </div>
-            <div className="p-5 space-y-4">
-
-              {/* Responsable */}
-              <div>
-                <label className="block text-[10px] text-[#6b7280] uppercase tracking-wider mb-1.5">Elaborado por</label>
-                <input
-                  value={pdfState.responsable}
-                  onChange={e => setPdfState(p => ({ ...p, responsable: e.target.value }))}
-                  placeholder="Nombre del responsable"
-                  className="w-full bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/40 transition-colors"
-                />
-              </div>
-
-              {/* Análisis del período */}
-              <div>
-                <label className="block text-[10px] text-[#6b7280] uppercase tracking-wider mb-1.5">Análisis del período</label>
-                <textarea
-                  value={pdfState.analisis}
-                  onChange={e => setPdfState(p => ({ ...p, analisis: e.target.value }))}
-                  placeholder="Describe el desempeño financiero del período, puntos clave, anomalías..."
-                  rows={4}
-                  className="w-full bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/40 resize-none leading-relaxed"
-                />
-              </div>
-
-              {/* Propuestas */}
-              {([1, 2, 3] as const).map(n => (
-                <div key={n}>
-                  <label className="block text-[10px] text-[#6b7280] uppercase tracking-wider mb-1.5">Propuesta de mejora {n}</label>
-                  <input
-                    value={pdfState[`propuesta${n}Titulo`]}
-                    onChange={e => setPdfState(p => ({ ...p, [`propuesta${n}Titulo`]: e.target.value }))}
-                    placeholder="Título de la propuesta"
-                    className="w-full bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/40 mb-1.5 transition-colors"
-                  />
-                  <textarea
-                    value={pdfState[`propuesta${n}Desc`]}
-                    onChange={e => setPdfState(p => ({ ...p, [`propuesta${n}Desc`]: e.target.value }))}
-                    placeholder="Descripción y acciones concretas..."
-                    rows={2}
-                    className="w-full bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/40 resize-none leading-relaxed"
-                  />
-                </div>
-              ))}
-
-              {/* Comentarios finales */}
-              <div>
-                <label className="block text-[10px] text-[#6b7280] uppercase tracking-wider mb-1.5">Comentarios finales</label>
-                <textarea
-                  value={pdfState.comentariosFinales}
-                  onChange={e => setPdfState(p => ({ ...p, comentariosFinales: e.target.value }))}
-                  placeholder="Conclusiones, próximos pasos, compromisos..."
-                  rows={3}
-                  className="w-full bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/40 resize-none leading-relaxed"
-                />
-              </div>
-
-            </div>
+          {/* Responsable — campo adicional solo en admin */}
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 mb-4">
+            <label className="block text-[10px] text-[#6b7280] uppercase tracking-wider mb-1.5">Elaborado por</label>
+            <input
+              value={pdfState.responsable}
+              onChange={e => setPdfState(p => ({ ...p, responsable: e.target.value }))}
+              placeholder="Nombre del responsable"
+              className="w-full bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/40 transition-colors"
+            />
           </div>
+          <ReporteAnalisisSection
+            title="Análisis ejecutivo"
+            analisis={pdfState.analisis}       onAnalisis={v => setPdfState(p => ({ ...p, analisis: v }))}
+            propuesta1={pdfState.propuesta1}   onPropuesta1={v => setPdfState(p => ({ ...p, propuesta1: v }))}
+            propuesta2={pdfState.propuesta2}   onPropuesta2={v => setPdfState(p => ({ ...p, propuesta2: v }))}
+            propuesta3={pdfState.propuesta3}   onPropuesta3={v => setPdfState(p => ({ ...p, propuesta3: v }))}
+            comentarios={pdfState.comentariosFinales} onComentarios={v => setPdfState(p => ({ ...p, comentariosFinales: v }))}
+            footer={<span className="text-[#333] text-[10px]">Se incluye en el PDF generado</span>}
+          />
         </div>
 
       </div>
@@ -1385,11 +1334,8 @@ export default function ReportesAdminPage() {
             {([1, 2, 3] as const).map(n => (
               <div key={n} style={{ border: '1px solid #e5e5e5', borderRadius: 8, padding: 12 }}>
                 <div style={{ fontSize: 10, color: '#888', marginBottom: 4 }}>Propuesta {n}</div>
-                <div style={{ fontSize: 12, fontWeight: 'bold', color: '#000', marginBottom: 6 }}>
-                  {pdfState[`propuesta${n}Titulo`] || 'Sin título'}
-                </div>
                 <div style={{ fontSize: 11, color: '#444', whiteSpace: 'pre-wrap' }}>
-                  {pdfState[`propuesta${n}Desc`] || '—'}
+                  {pdfState[`propuesta${n}` as 'propuesta1' | 'propuesta2' | 'propuesta3'] || '—'}
                 </div>
               </div>
             ))}
