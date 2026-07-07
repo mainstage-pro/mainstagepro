@@ -14,6 +14,39 @@ import { BadgeDias } from "@/components/ui/BadgeDias";
 import { NuevoTratoDropdown } from "@/components/NuevoTratoDropdown";
 import { diasTrato } from "@/lib/contadores";
 
+type Usuario = { id: string; name: string; area?: string };
+
+// ── Hook: anchos de columnas persistidos en localStorage ──────────────────────
+const COL_DEFAULTS: Record<string, number> = {
+  proyecto: 160,
+  fecha:    130,
+  tipo:      90,
+  responsable: 110,
+  seguimiento: 110,
+  etapa:     130,
+};
+
+function useColumnWidths() {
+  const KEY = 'tratos-col-widths-v1';
+  const [widths, setWidths] = useState<Record<string, number>>(() => {
+    if (typeof window === 'undefined') return { ...COL_DEFAULTS };
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) ?? '{}');
+      return { ...COL_DEFAULTS, ...saved };
+    } catch { return { ...COL_DEFAULTS }; }
+  });
+
+  const setWidth = (col: string, w: number) => {
+    setWidths(prev => {
+      const next = { ...prev, [col]: Math.max(50, w) };
+      localStorage.setItem(KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+  const reset = (col: string) => setWidth(col, COL_DEFAULTS[col]);
+  return { widths, setWidth, reset };
+}
+
 type Cotizacion = {
   id: string;
   numeroCotizacion: string;
@@ -946,20 +979,38 @@ function CompactTratoRow({
   onEliminar,
   onCambiarEtapa,
   onQuickNote,
+  onCambiarResponsable,
   deletingId,
   isExpanded,
   onToggle,
+  usuarios,
+  colWidths,
 }: {
   trato: Trato;
   onEliminar: () => void;
   onCambiarEtapa: (nuevaEtapa: string) => void;
   onQuickNote: () => void;
+  onCambiarResponsable: (responsableId: string | null) => void;
   deletingId: string | null;
   isExpanded: boolean;
   onToggle: () => void;
+  usuarios: Usuario[];
+  colWidths: Record<string, number>;
 }) {
   const router = useRouter();
   const wa = waUrl(t);
+  const [respOpen, setRespOpen] = useState(false);
+  const respRef = useRef<HTMLDivElement>(null);
+
+  // Cerrar dropdown responsable al click fuera
+  useEffect(() => {
+    if (!respOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (respRef.current && !respRef.current.contains(e.target as Node)) setRespOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [respOpen]);
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   const getSeguimientoBadge = (fecha: string | null) => {
@@ -975,14 +1026,14 @@ function CompactTratoRow({
     return new Date(iso.substring(0, 10) + 'T12:00:00Z').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', timeZone: 'UTC' });
   }
 
-  // Fecha completa del evento: Lunes 14 Jul 2025
+  // Fecha completa del evento
   const fechaCompletaEvento = t.fechaEventoEstimada
     ? new Date(t.fechaEventoEstimada.substring(0, 10) + 'T12:00:00Z').toLocaleDateString('es-MX', {
         weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC',
       })
     : null;
 
-  // Proyecto vinculado (primera cotización aprobada con proyecto)
+  // Proyecto vinculado
   const proyectoVinculado = t.cotizaciones.find(c => c.proyecto)?.proyecto ?? null;
   const nombreProyecto = proyectoVinculado?.nombre ?? t.nombreEvento ?? null;
 
@@ -1057,20 +1108,10 @@ function CompactTratoRow({
           )}
         </div>
 
-        {/* ── COL 2 · Fecha del evento ─── 130px ─────────── */}
-        <div className="hidden md:block w-[130px] shrink-0 pr-4">
-          {fechaCompletaEvento ? (
-            <span className="text-[12px] text-[#777] font-medium capitalize leading-tight block truncate">
-              {fechaCompletaEvento}
-            </span>
-          ) : (
-            <span className="text-[11px] text-[#2a2a2a]">&mdash;</span>
-          )}
-        </div>
-
-        {/* ── COL 3 · Proyecto / Evento ─── flex-[2] ──────── */}
+        {/* ── COL 2 · Proyecto / Evento ─── ancho variable ── */}
         <div
-          className="hidden lg:block flex-[2] min-w-0 pr-4 cursor-pointer"
+          className="hidden lg:block min-w-0 pr-4 cursor-pointer shrink-0"
+          style={{ width: colWidths.proyecto }}
           onClick={() => router.push(`/crm/tratos/${t.id}`)}
         >
           {nombreProyecto ? (
@@ -1080,15 +1121,78 @@ function CompactTratoRow({
           )}
         </div>
 
-        {/* ── COL 4 · Tipo evento ─────── 90px ───────────── */}
-        <div className="hidden sm:flex w-[90px] shrink-0 pr-3">
+        {/* ── COL 3 · Fecha del evento ─── ancho variable ── */}
+        <div className="hidden md:block shrink-0 pr-4" style={{ width: colWidths.fecha }}>
+          {fechaCompletaEvento ? (
+            <span className="text-[12px] text-[#777] font-medium capitalize leading-tight block truncate">
+              {fechaCompletaEvento}
+            </span>
+          ) : (
+            <span className="text-[11px] text-[#2a2a2a]">&mdash;</span>
+          )}
+        </div>
+
+        {/* ── COL 4 · Tipo evento ─────── ancho variable ── */}
+        <div className="hidden sm:flex shrink-0 pr-3" style={{ width: colWidths.tipo }}>
           <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${tipoStyle.bg} ${tipoStyle.text}`}>
             {TIPO_LABEL_SHORT[t.tipoEvento] ?? t.tipoEvento}
           </span>
         </div>
 
-        {/* ── COL 5 · Seguimiento ─────── 110px ──────────── */}
-        <div className="hidden lg:flex w-[110px] shrink-0 pr-3 items-center">
+        {/* ── COL 5 · Responsable ─────── ancho variable ── */}
+        <div
+          ref={respRef}
+          className="hidden lg:flex shrink-0 pr-3 items-center relative"
+          style={{ width: colWidths.responsable }}
+          onClick={e => e.stopPropagation()}
+        >
+          <button
+            onClick={() => setRespOpen(o => !o)}
+            className="flex items-center gap-1 text-[11px] text-[#444] hover:text-gray-300 transition-colors truncate max-w-full"
+            title="Cambiar responsable"
+          >
+            {t.responsable ? (
+              <>
+                <span className="w-4 h-4 rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 flex items-center justify-center text-[8px] text-[#B3985B] shrink-0 font-bold">
+                  {t.responsable.name.charAt(0).toUpperCase()}
+                </span>
+                <span className="truncate">{t.responsable.name.split(' ')[0]}</span>
+              </>
+            ) : (
+              <span className="text-[#2a2a2a] text-[11px] hover:text-[#555] transition-colors">— asignar</span>
+            )}
+          </button>
+          {respOpen && (
+            <div className="absolute top-full left-0 mt-1 z-50 bg-[#111] border border-[#2a2a2a] rounded-xl shadow-xl overflow-hidden min-w-[140px]">
+              {t.responsable && (
+                <button
+                  onClick={() => { onCambiarResponsable(null); setRespOpen(false); }}
+                  className="w-full text-left px-3 py-1.5 text-[11px] text-red-500/70 hover:bg-[#1a1a1a] transition-colors border-b border-[#1e1e1e]"
+                >
+                  Sin asignar
+                </button>
+              )}
+              {usuarios.map(u => (
+                <button
+                  key={u.id}
+                  onClick={() => { onCambiarResponsable(u.id); setRespOpen(false); }}
+                  className={`w-full text-left px-3 py-1.5 text-[11px] hover:bg-[#1a1a1a] transition-colors flex items-center gap-2 ${
+                    t.responsable?.id === u.id ? 'text-[#B3985B]' : 'text-gray-400'
+                  }`}
+                >
+                  <span className="w-4 h-4 rounded-full bg-[#B3985B]/15 border border-[#B3985B]/20 flex items-center justify-center text-[8px] text-[#B3985B] shrink-0 font-bold">
+                    {u.name.charAt(0).toUpperCase()}
+                  </span>
+                  <span className="truncate">{u.name}</span>
+                  {t.responsable?.id === u.id && <span className="ml-auto text-[9px]">✓</span>}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── COL 6 · Seguimiento ─────── ancho variable ── */}
+        <div className="hidden lg:flex shrink-0 pr-3 items-center" style={{ width: colWidths.seguimiento }}>
           {seg.variant === 'none' ? (
             <button
               onClick={e => { e.stopPropagation(); onQuickNote(); }}
@@ -1103,8 +1207,8 @@ function CompactTratoRow({
           )}
         </div>
 
-        {/* ── COL 6 · Etapa ───────────── 130px ──────────── */}
-        <div className="hidden sm:flex items-center gap-1.5 w-[130px] shrink-0 pr-3">
+        {/* ── COL 7 · Etapa ───────────── ancho variable ── */}
+        <div className="hidden sm:flex items-center gap-1.5 shrink-0 pr-3" style={{ width: colWidths.etapa }}>
           <span className={`w-2 h-2 rounded-full shrink-0 ${etapaStyle.dot}`} />
           <select
             value={t.etapa}
@@ -1119,8 +1223,8 @@ function CompactTratoRow({
           </select>
         </div>
 
-        {/* ── COL 7 · Acciones (hover) ── 72px ───────────── */}
-        <div className="flex items-center gap-1 w-[72px] shrink-0 justify-end pr-3 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* ── COL 8 · Acciones (hover) ── 56px ───────────── */}
+        <div className="flex items-center gap-1 w-[56px] shrink-0 justify-end pr-3 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={e => { e.stopPropagation(); onQuickNote(); }}
             className="text-[11px] text-[#B3985B]/60 hover:text-[#B3985B] border border-[#1e1e1e] hover:border-[#B3985B]/30 rounded-md px-1.5 py-0.5 transition-colors whitespace-nowrap"
@@ -1148,6 +1252,37 @@ function CompactTratoRow({
 
       {isExpanded && <CotizacionesSublista trato={t} />}
     </>
+  );
+}
+
+// ── ResizeHandle: divisor invisible que activa cursor col-resize al hover ──────
+function ResizeHandle({ onResize, onReset }: { onResize: (dx: number) => void; onReset: () => void }) {
+  const dragging = useRef(false);
+  const startX = useRef(0);
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    dragging.current = true;
+    startX.current = e.clientX;
+    const onMove = (ev: MouseEvent) => {
+      if (!dragging.current) return;
+      onResize(ev.clientX - startX.current);
+      startX.current = ev.clientX;
+    };
+    const onUp = () => { dragging.current = false; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      onDoubleClick={onReset}
+      className="absolute right-0 top-0 h-full w-3 cursor-col-resize flex items-center justify-center group/handle z-10"
+      title="Arrastra para redimensionar · Doble click para restablecer"
+    >
+      <div className="w-px h-3/4 bg-[#2a2a2a] opacity-0 group-hover/handle:opacity-100 transition-opacity rounded-full" />
+    </div>
   );
 }
 
@@ -1337,6 +1472,8 @@ export default function TratosPage() {
   const [showNueva, setShowNueva] = useState(false);
   const toast = useToast();
   const confirm = useConfirm();
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const { widths: colWidths, setWidth: setColWidth, reset: resetColWidth } = useColumnWidths();
 
   // Quick Contactado state
   const [quickNoteId, setQuickNoteId] = useState<string | null>(null);
@@ -1402,7 +1539,22 @@ export default function TratosPage() {
       const list: Trato[] = data.tratos ?? [];
       setTratos(list);
     }).finally(() => setLoading(false));
+    fetch("/api/usuarios-activos").then(r => r.json()).then(d => setUsuarios(d.usuarios ?? []));
   }, []);
+
+  async function cambiarResponsable(tratoId: string, responsableId: string | null) {
+    // Optimistic update
+    setTratos(prev => prev.map(t => {
+      if (t.id !== tratoId) return t;
+      const u = responsableId ? usuarios.find(u => u.id === responsableId) ?? null : null;
+      return { ...t, responsable: u ? { id: u.id, name: u.name } : null };
+    }));
+    await fetch(`/api/tratos/${tratoId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ responsableId: responsableId ?? null }),
+    });
+  }
 
   async function eliminar(id: string, nombre: string) {
     const ok = await confirm({ message: `¿Eliminar el trato de "${nombre}"? Esta acción no se puede deshacer.`, danger: true, confirmText: "Eliminar" });
@@ -1912,10 +2064,13 @@ export default function TratosPage() {
                   trato={t}
                   onEliminar={() => eliminar(t.id, t.cliente.nombre)}
                   onCambiarEtapa={nuevaEtapa => cambiarEtapa(t.id, nuevaEtapa)}
+                  onCambiarResponsable={uid => cambiarResponsable(t.id, uid)}
                   onQuickNote={() => { setQuickNoteId(t.id); setQuickNoteText(''); }}
                   deletingId={deletingId}
                   isExpanded={expandedRowId === t.id}
                   onToggle={() => setExpandedRowId(expandedRowId === t.id ? null : t.id)}
+                  usuarios={usuarios}
+                  colWidths={colWidths}
                 />
               );
 
@@ -1971,20 +2126,40 @@ export default function TratosPage() {
                       <div className="hidden md:flex items-center border-b border-[#111] px-0 py-1.5 mb-0.5 text-[9px] uppercase tracking-[0.14em] text-[#3a3a3a]">
                         {/* toggle placeholder */}
                         <div className="w-10 shrink-0" />
-                        {/* Cliente */}
-                        <div className="flex-[3] min-w-0 pr-4">Cliente</div>
-                        {/* Fecha */}
-                        <div className="w-[130px] shrink-0 pr-4">Fecha del evento</div>
+                        {/* Cliente — flex, ocupa el resto */}
+                        <div className="flex-1 min-w-0 pr-4">Cliente</div>
                         {/* Proyecto */}
-                        <div className="hidden lg:block flex-[2] min-w-0 pr-4">Proyecto</div>
+                        <div className="hidden lg:block relative pr-4 shrink-0" style={{ width: colWidths.proyecto }}>
+                          Proyecto
+                          <ResizeHandle onResize={dx => setColWidth('proyecto', colWidths.proyecto + dx)} onReset={() => resetColWidth('proyecto')} />
+                        </div>
+                        {/* Fecha */}
+                        <div className="relative pr-4 shrink-0" style={{ width: colWidths.fecha }}>
+                          Fecha evento
+                          <ResizeHandle onResize={dx => setColWidth('fecha', colWidths.fecha + dx)} onReset={() => resetColWidth('fecha')} />
+                        </div>
                         {/* Tipo */}
-                        <div className="hidden sm:block w-[90px] shrink-0 pr-3">Tipo</div>
+                        <div className="hidden sm:block relative pr-3 shrink-0" style={{ width: colWidths.tipo }}>
+                          Tipo
+                          <ResizeHandle onResize={dx => setColWidth('tipo', colWidths.tipo + dx)} onReset={() => resetColWidth('tipo')} />
+                        </div>
+                        {/* Responsable */}
+                        <div className="hidden lg:block relative pr-3 shrink-0" style={{ width: colWidths.responsable }}>
+                          Responsable
+                          <ResizeHandle onResize={dx => setColWidth('responsable', colWidths.responsable + dx)} onReset={() => resetColWidth('responsable')} />
+                        </div>
                         {/* Seguimiento */}
-                        <div className="hidden lg:block w-[110px] shrink-0 pr-3">Seguimiento</div>
+                        <div className="hidden lg:block relative pr-3 shrink-0" style={{ width: colWidths.seguimiento }}>
+                          Seguimiento
+                          <ResizeHandle onResize={dx => setColWidth('seguimiento', colWidths.seguimiento + dx)} onReset={() => resetColWidth('seguimiento')} />
+                        </div>
                         {/* Etapa */}
-                        <div className="hidden sm:block w-[130px] shrink-0 pr-3">Etapa</div>
+                        <div className="hidden sm:block relative pr-3 shrink-0" style={{ width: colWidths.etapa }}>
+                          Etapa
+                          <ResizeHandle onResize={dx => setColWidth('etapa', colWidths.etapa + dx)} onReset={() => resetColWidth('etapa')} />
+                        </div>
                         {/* Acciones */}
-                        <div className="w-[72px] shrink-0" />
+                        <div className="w-[56px] shrink-0" />
                       </div>
                     )}
 

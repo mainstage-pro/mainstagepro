@@ -3661,7 +3661,64 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           {trato.cliente.correo && <p className="text-gray-600 text-xs mt-1">{trato.cliente.correo}</p>}
         </div>
 
+        {/* Responsable card */}
+        {(() => {
+          const patchResponsable = async (uid: string | null) => {
+            const u = uid ? usuarios.find(u => u.id === uid) ?? null : null;
+            setTrato(prev => prev ? { ...prev, responsableId: uid, responsable: u ? { id: u.id, name: u.name } : null } : prev);
+            await fetch(`/api/tratos/${trato.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ responsableId: uid }),
+            });
+          };
+          return (
+            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+              <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Responsable</p>
+              {trato.responsable ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-[#B3985B]/15 border border-[#B3985B]/30 flex items-center justify-center text-[11px] text-[#B3985B] font-bold shrink-0">
+                    {trato.responsable.name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-white text-sm font-medium flex-1 truncate">{trato.responsable.name}</span>
+                  {usuarios.length > 0 && (
+                    <select
+                      value={trato.responsable.id}
+                      onChange={e => patchResponsable(e.target.value || null)}
+                      onClick={e => e.stopPropagation()}
+                      className="bg-transparent border-none text-[10px] text-gray-600 hover:text-gray-400 focus:outline-none cursor-pointer transition-colors"
+                      title="Cambiar responsable"
+                    >
+                      {usuarios.map(u => (
+                        <option key={u.id} value={u.id} className="bg-[#111] text-white">{u.name}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  {usuarios.length > 0 ? (
+                    <select
+                      value=""
+                      onChange={e => { if (e.target.value) patchResponsable(e.target.value); }}
+                      className="w-full bg-[#0d0d0d] border border-[#222] rounded-lg px-2 py-1.5 text-[12px] text-gray-500 focus:outline-none focus:border-[#B3985B]/40 cursor-pointer"
+                    >
+                      <option value="">— Sin asignar —</option>
+                      {usuarios.map(u => (
+                        <option key={u.id} value={u.id} className="bg-[#111] text-white">{u.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="text-gray-700 text-xs">Sin asignar</span>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {/* Event info */}
+
         {(() => {
           // ── Fecha autoritativa: priorizar la primera cotización si existe
           const cotPrincipal = trato.cotizaciones[0];
