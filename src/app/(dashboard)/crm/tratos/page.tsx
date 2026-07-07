@@ -131,64 +131,89 @@ function calcularUrgencia(t: { fechaProximaAccion?: string | null; fechaEventoEs
   return score;
 }
 
+// Retorna grupos por mes pero el mes actual se divide en:
+//   - próximos/hoy  (fechaEventoEstimada >= hoy o sin fecha)
+//   - pasados del mes (fechaEventoEstimada < hoy pero mismo mes)
+// Los meses anteriores al actual van agrupados al final como "archivados".
 function groupTratosByMes(tratos: Trato[], ordenTrato: OrdenTrato = 'fechaEvento') {
-  // SIEMPRE agrupar por fecha del evento (no por createdAt), de más próximo a más lejano
   const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
   const currentYearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-  const map: Record<string, { label: string; yearMonth: string; tratos: Trato[]; isPast: boolean }> = {};
+  type MesGroup = { label: string; yearMonth: string; tratos: Trato[]; isPast: boolean; isIntraMonthPast?: boolean };
+  const map: Record<string, MesGroup> = {};
+  // Bucket especial para los del mes actual que ya pasaron
+  const intraPastBucket: Trato[] = [];
 
   for (const t of tratos) {
-    // Siempre usar fechaEventoEstimada para agrupar. Si no tiene fecha, va al mes actual como referencia.
-    const ref = t.fechaEventoEstimada ?? t.createdAt;
+    const ref = t.fechaEventoEstimada ?? null;
+    if (!ref) {
+      // Sin fecha: va al bucket del mes actual como próximo
+      const yearMonth = currentYearMonth;
+      const label = now.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+      if (!map[yearMonth]) map[yearMonth] = { label, yearMonth, tratos: [], isPast: false };
+      map[yearMonth].tratos.push(t);
+      continue;
+    }
     const d = new Date(ref.substring(0, 10) + 'T12:00:00Z');
     const year = d.getUTCFullYear();
     const month = d.getUTCMonth();
     const yearMonth = `${year}-${String(month + 1).padStart(2, '0')}`;
-    // Un mes es "pasado" solo si es ANTERIOR al mes actual completo
     const isPast = yearMonth < currentYearMonth;
+    // Evento del mes actual pero ya pasó → va al bucket de pasados del mes
+    const isIntraMonthPast = yearMonth === currentYearMonth && ref < todayStr;
+    if (isIntraMonthPast) {
+      intraPastBucket.push(t);
+      continue;
+    }
     const label = d.toLocaleDateString('es-MX', { month: 'long', year: 'numeric', timeZone: 'UTC' });
     if (!map[yearMonth]) map[yearMonth] = { label, yearMonth, tratos: [], isPast };
     map[yearMonth].tratos.push(t);
   }
 
-  // Sort each group internally according to the selected order
-  for (const g of Object.values(map)) {
-    g.tratos.sort((a, b) => {
-      switch (ordenTrato) {
-        case 'fechaAgregado':
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        case 'sinActividad': {
-          const dA = a.fechaProximaAccion ? (Date.now() - new Date(a.fechaProximaAccion).getTime()) / 86400000 : 9999;
-          const dB = b.fechaProximaAccion ? (Date.now() - new Date(b.fechaProximaAccion).getTime()) / 86400000 : 9999;
-          return dB - dA;
-        }
-        case 'urgencia': {
-          return calcularUrgencia(b) - calcularUrgencia(a);
-        }
-        case 'fechaEvento':
-        default: {
-          // Ascending: soonest event first within the group
-          if (!a.fechaEventoEstimada && !b.fechaEventoEstimada) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-          if (!a.fechaEventoEstimada) return 1;
-          if (!b.fechaEventoEstimada) return -1;
-          return a.fechaEventoEstimada.localeCompare(b.fechaEventoEstimada);
-        }
+  const sortGroup = (list: Trato[]) => list.sort((a, b) => {
+    switch (ordenTrato) {
+      case 'fechaAgregado':
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      case 'sinActividad': {
+        const dA = a.fechaProximaAccion ? (Date.now() - new Date(a.fechaProximaAccion).getTime()) / 86400000 : 9999;
+        const dB = b.fechaProximaAccion ? (Date.now() - new Date(b.fechaProximaAccion).getTime()) / 86400000 : 9999;
+        return dB - dA;
       }
-    });
-  }
+      case 'urgencia':
+        return calcularUrgencia(b) - calcularUrgencia(a);
+      case 'fechaEvento':
+      default: {
+        if (!a.fechaEventoEstimada && !b.fechaEventoEstimada) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        if (!a.fechaEventoEstimada) return 1;
+        if (!b.fechaEventoEstimada) return -1;
+        return a.fechaEventoEstimada.localeCompare(b.fechaEventoEstimada);
+      }
+    }
+  });
 
-  // SIEMPRE ascendente: el mes más próximo primero, los pasados al final
-  const future = Object.values(map).filter(g => !g.isPast).sort((a, b) =>
-    a.yearMonth.localeCompare(b.yearMonth)  // más próximo primero
-  );
-  const past = Object.values(map).filter(g => g.isPast).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
+  for (const g of Object.values(map)) sortGroup(g.tratos);
+  sortGroup(intraPastBucket);
 
-  const all = [
+  const future = Object.values(map).filter(g => !g.isPast).sort((a, b) => a.yearMonth.localeCompare(b.yearMonth));
+  const past   = Object.values(map).filter(g =>  g.isPast).sort((a, b) => b.yearMonth.localeCompare(a.yearMonth));
+
+  // Construimos el grupo especial de pasados del mes actual
+  const intraPastGroup: MesGroup | null = intraPastBucket.length > 0 ? {
+    label: now.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }) + ' — eventos pasados',
+    yearMonth: currentYearMonth + '-PAST',
+    tratos: intraPastBucket,
+    isPast: false,
+    isIntraMonthPast: true,
+  } : null;
+
+  // Orden final: futuros primero (mes actual primero), luego pasados del mes actual, luego meses anteriores
+  const all: MesGroup[] = [
     ...future,
+    ...(intraPastGroup ? [intraPastGroup] : []),
     ...past,
   ];
-  return { future, past, all };
+  return { future, past, all, intraPastGroup };
 }
 
 
@@ -915,7 +940,7 @@ function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, e
   );
 }
 
-// ── Compact Trato Row ────────────────────────────────────────────────────────────
+// ── Compact Trato Row — Rediseño ────────────────────────────────────────────────
 function CompactTratoRow({
   trato: t,
   onEliminar,
@@ -936,146 +961,177 @@ function CompactTratoRow({
   const router = useRouter();
   const wa = waUrl(t);
 
+  // ── Helpers ──────────────────────────────────────────────────────────────────
   const getSeguimientoBadge = (fecha: string | null) => {
-    if (!fecha) return { label: 'Sin seguimiento', cls: 'text-[#3a3a3a]', pill: false };
+    if (!fecha) return { label: 'Sin seguimiento', variant: 'none' as const };
     const diff = Math.floor((new Date(fecha).getTime() - Date.now()) / 86400000);
-    if (diff < 0) return { label: `Vencido ${Math.abs(diff)}d`, cls: 'bg-red-500/15 text-red-400', pill: true };
-    if (diff === 0) return { label: 'Hoy', cls: 'bg-yellow-500/15 text-yellow-400', pill: true };
-    const label = new Date(fecha.substring(0, 10) + 'T12:00:00Z').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', timeZone: 'UTC' });
-    return { label, cls: 'bg-[#1e1e1e] text-[#555]', pill: true };
+    if (diff < 0)  return { label: `Vencido ${Math.abs(diff)}d`, variant: 'danger' as const };
+    if (diff === 0) return { label: 'Hoy',                        variant: 'today' as const };
+    if (diff <= 3)  return { label: fmtFechaCorta(fecha),         variant: 'soon' as const };
+    return           { label: fmtFechaCorta(fecha),               variant: 'ok' as const };
   };
 
-  const TIPO_BADGE_CLS: Record<string, string> = {
-    MUSICAL: 'bg-[#1E3A5F] text-[#60A5FA]',
-    SOCIAL: 'bg-[#3D1F5B] text-[#C084FC]',
-    EMPRESARIAL: 'bg-[#1A3A2A] text-[#4ADE80]',
-    OTRO: 'bg-[#222] text-[#9CA3AF]',
+  function fmtFechaCorta(iso: string) {
+    return new Date(iso.substring(0, 10) + 'T12:00:00Z').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  }
+
+  // Fecha completa del evento: Lunes 14 Jul 2025
+  const fechaCompletaEvento = t.fechaEventoEstimada
+    ? new Date(t.fechaEventoEstimada.substring(0, 10) + 'T12:00:00Z').toLocaleDateString('es-MX', {
+        weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC',
+      })
+    : null;
+
+  // Proyecto vinculado (primera cotización aprobada con proyecto)
+  const proyectoVinculado = t.cotizaciones.find(c => c.proyecto)?.proyecto ?? null;
+  const nombreProyecto = proyectoVinculado?.nombre ?? t.nombreEvento ?? null;
+
+  const TIPO_BADGE: Record<string, { bg: string; text: string; dot: string }> = {
+    MUSICAL:     { bg: 'bg-indigo-900/30',  text: 'text-indigo-400',  dot: 'bg-indigo-400' },
+    SOCIAL:      { bg: 'bg-rose-900/30',    text: 'text-rose-400',    dot: 'bg-rose-400' },
+    EMPRESARIAL: { bg: 'bg-teal-900/30',    text: 'text-teal-400',    dot: 'bg-teal-400' },
+    OTRO:        { bg: 'bg-gray-800/50',    text: 'text-gray-500',    dot: 'bg-gray-600' },
   };
   const TIPO_LABEL_SHORT: Record<string, string> = {
     MUSICAL: 'Musical', SOCIAL: 'Social', EMPRESARIAL: 'Empresarial', OTRO: 'Otro',
   };
-  const ETAPA_DOT_COLOR: Record<string, string> = {
-    LEAD: '#F59E0B', DESCUBRIMIENTO: '#3B82F6', OPORTUNIDAD: '#8B5CF6',
-    VENTA_CERRADA: '#10B981', VENTA_PERDIDA: '#EF4444',
+  const ETAPA_STYLE: Record<string, { dot: string; text: string; bg: string }> = {
+    LEAD:           { dot: 'bg-amber-400',   text: 'text-amber-400',   bg: 'bg-amber-900/20' },
+    DESCUBRIMIENTO: { dot: 'bg-blue-400',    text: 'text-blue-400',    bg: 'bg-blue-900/20' },
+    OPORTUNIDAD:    { dot: 'bg-violet-400',  text: 'text-violet-400',  bg: 'bg-violet-900/20' },
+    VENTA_CERRADA:  { dot: 'bg-emerald-400', text: 'text-emerald-400', bg: 'bg-emerald-900/20' },
+    VENTA_PERDIDA:  { dot: 'bg-red-400',     text: 'text-red-400',     bg: 'bg-red-900/20' },
   };
+  const SEG_VARIANT_CLS: Record<string, string> = {
+    none:   'text-[#333]',
+    danger: 'text-red-400 bg-red-900/15 px-2 py-0.5 rounded-md',
+    today:  'text-yellow-400 bg-yellow-900/15 px-2 py-0.5 rounded-md',
+    soon:   'text-amber-400/80 bg-amber-900/10 px-2 py-0.5 rounded-md',
+    ok:     'text-[#555] bg-[#181818] px-2 py-0.5 rounded-md',
+  };
+
+  const tipoStyle = TIPO_BADGE[t.tipoEvento] ?? TIPO_BADGE.OTRO;
+  const etapaStyle = ETAPA_STYLE[t.etapa] ?? { dot: 'bg-gray-600', text: 'text-gray-500', bg: 'bg-gray-800/20' };
   const seg = getSeguimientoBadge(t.fechaProximaAccion);
 
   return (
     <>
-      {/* Main row */}
-      <div className="group flex items-center gap-3 px-4 py-3 hover:bg-[#0d0d0d] border-b border-[#0f0f0f] last:border-0 transition-colors">
-        {/* Expand toggle */}
+      <div className="group flex items-center gap-0 border-b border-[#0f0f0f] last:border-0 hover:bg-[#0b0b0b] transition-colors">
+
+        {/* ── Expand toggle ──────────────────────────────────────────────────── */}
         <button
           onClick={e => { e.stopPropagation(); onToggle(); }}
-          className="shrink-0 text-gray-700 hover:text-gray-400 transition-colors p-0.5"
+          className="shrink-0 px-3 self-stretch flex items-center text-[#252525] hover:text-gray-500 transition-colors"
           title="Ver cotizaciones"
         >
-          <svg className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
         </button>
 
-        {/* COL 1 — Identidad */}
+        {/* ── COL 1 · Cliente / Proyecto — flex-grow ────────────────────────── */}
         <div
-          className="flex-1 min-w-0 cursor-pointer"
+          className="flex-1 min-w-0 py-3 pr-3 cursor-pointer"
           onClick={() => router.push(`/crm/tratos/${t.id}`)}
         >
-          <p className="text-[14px] text-white font-medium leading-tight truncate">
-            {t.nombreEvento || t.cliente.nombre}
-          </p>
-          <p className="text-[12px] text-[#666] mt-0.5 truncate">
-            {t.nombreEvento ? t.cliente.nombre : (t.cliente.empresa ?? '')}
-          </p>
-          {t.nombreEvento && t.cliente.empresa && (
-            <p className="text-[11px] text-[#444] truncate">{t.cliente.empresa}</p>
+          {/* Nombre del cliente — grande y prominente */}
+          <div className="flex items-center gap-2 min-w-0">
+            {/* dot tipo evento */}
+            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${tipoStyle.dot}`} />
+            <span className="text-[15px] text-white font-semibold leading-tight truncate">
+              {t.cliente.nombre}
+            </span>
+            {/* WhatsApp — junto al nombre */}
+            {wa && (
+              <a
+                href={wa}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                className="shrink-0 text-green-700 hover:text-green-400 transition-colors ml-0.5"
+                title="WhatsApp"
+              >
+                <WaIcon />
+              </a>
+            )}
+          </div>
+          {/* Nombre del proyecto / evento — secundario */}
+          {nombreProyecto && (
+            <p className="text-[12px] text-[#666] mt-0.5 truncate leading-snug">
+              {nombreProyecto}
+            </p>
+          )}
+          {t.cliente.empresa && (
+            <p className="text-[11px] text-[#3a3a3a] mt-0.5 truncate">{t.cliente.empresa}</p>
           )}
         </div>
 
-        {/* COL 2 — Tipo de evento */}
-        <div className="hidden sm:block w-[90px] shrink-0">
-          <span className={`inline-flex px-2 py-0.5 rounded text-[11px] font-medium ${TIPO_BADGE_CLS[t.tipoEvento] ?? TIPO_BADGE_CLS.OTRO}`}>
+        {/* ── COL 2 · Tipo evento — 80px ─────────────────────────────────────── */}
+        <div className="hidden sm:flex w-[80px] shrink-0 justify-start">
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${tipoStyle.bg} ${tipoStyle.text}`}>
             {TIPO_LABEL_SHORT[t.tipoEvento] ?? t.tipoEvento}
           </span>
         </div>
 
-        {/* COL 2b — Tipo de servicio */}
-        <div className="hidden md:block w-[90px] shrink-0">
-          {t.tipoServicio ? (
-            <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-medium ${
-              t.tipoServicio === 'RENTA'
-                ? 'bg-amber-900/30 text-amber-400 border border-amber-800/30'
-                : t.tipoServicio === 'PRODUCCION_TECNICA'
-                ? 'bg-blue-900/30 text-blue-400 border border-blue-800/30'
-                : 'bg-violet-900/30 text-violet-400 border border-violet-800/30'
-            }`}>
-              {TIPO_SERVICIO_LABELS[t.tipoServicio] ?? t.tipoServicio}
-            </span>
+        {/* ── COL 3 · Fecha completa del evento — 140px ─────────────────────── */}
+        <div className="hidden md:block w-[140px] shrink-0">
+          {fechaCompletaEvento ? (
+            <div className="text-right">
+              <span className="text-[12px] text-[#888] font-medium capitalize">
+                {fechaCompletaEvento}
+              </span>
+            </div>
           ) : (
-            <span className="text-[11px] text-[#333]">—</span>
+            <span className="text-[11px] text-[#2a2a2a]">&mdash;</span>
           )}
         </div>
 
-        {/* COL 3 — Fecha evento */}
-        <div className="hidden md:block w-[90px] shrink-0">
-          {t.fechaEventoEstimada ? (
-            <span className="text-[11px] text-[#888]">
-              {new Date(t.fechaEventoEstimada.substring(0, 10) + 'T12:00:00Z').toLocaleDateString('es-MX', {
-                day: 'numeric', month: 'short', timeZone: 'UTC'
-              })}
-            </span>
+        {/* ── COL 4 · Seguimiento — 120px ───────────────────────────────────── */}
+        <div className="hidden lg:flex w-[120px] shrink-0 justify-start">
+          {seg.variant === 'none' ? (
+            <button
+              onClick={e => { e.stopPropagation(); onQuickNote(); }}
+              className="text-[10px] text-[#2a2a2a] hover:text-[#B3985B] border border-[#1e1e1e] hover:border-[#B3985B]/30 rounded-md px-2 py-1 transition-colors whitespace-nowrap"
+            >
+              + Agendar
+            </button>
           ) : (
-            <span className="text-[11px] text-[#333]">—</span>
+            <span className={`text-[11px] ${SEG_VARIANT_CLS[seg.variant]}`}>
+              {seg.label}
+            </span>
           )}
         </div>
 
-        {/* COL 4 — Seguimiento */}
-        <div className="hidden md:block w-[110px] shrink-0">
-          <span className={`text-[11px] ${seg.pill ? 'px-2 py-0.5 rounded-md' : ''} ${seg.cls}`}>
-            {seg.label}
-          </span>
-        </div>
-
-        {/* COL 4 — Etapa */}
-        <div className="hidden sm:flex items-center gap-1.5 w-[140px] shrink-0">
-          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: ETAPA_DOT_COLOR[t.etapa] ?? '#6B7280' }} />
+        {/* ── COL 5 · Etapa — 130px ─────────────────────────────────────────── */}
+        <div className="hidden sm:flex items-center gap-1.5 w-[130px] shrink-0">
+          <span className={`w-2 h-2 rounded-full shrink-0 ${etapaStyle.dot}`} />
           <select
             value={t.etapa}
             onChange={e => { e.stopPropagation(); onCambiarEtapa(e.target.value); }}
             onClick={e => e.stopPropagation()}
-            className="flex-1 min-w-0 bg-transparent border-none text-gray-500 text-[11px] focus:outline-none cursor-pointer hover:text-white transition-colors"
+            className={`flex-1 min-w-0 bg-transparent border-none text-[11px] focus:outline-none cursor-pointer transition-colors ${etapaStyle.text}`}
             title="Cambiar etapa"
           >
             {ALL_ETAPAS.filter(e => e.key !== 'TODOS').map(e => (
-              <option key={e.key} value={e.key} className="bg-[#111]">{e.label}</option>
+              <option key={e.key} value={e.key} className="bg-[#111] text-white">{e.label}</option>
             ))}
           </select>
         </div>
 
-        {/* COL 5 — Acciones (solo en hover) */}
-        <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        {/* ── COL 6 · Acciones rápidas — en hover ───────────────────────────── */}
+        <div className="flex items-center gap-1 px-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
           <button
             onClick={e => { e.stopPropagation(); onQuickNote(); }}
-            className="text-[11px] text-[#B3985B] border border-[#B3985B]/30 rounded-md px-2 py-1 hover:bg-[#B3985B]/10 transition-colors whitespace-nowrap"
+            className="text-[11px] text-[#B3985B]/60 hover:text-[#B3985B] border border-[#1e1e1e] hover:border-[#B3985B]/30 rounded-md px-2 py-1 transition-colors whitespace-nowrap"
+            title="Agregar seguimiento"
           >
-            + Seguimiento
+            + Seg.
           </button>
-          {wa && (
-            <a
-              href={wa}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={e => e.stopPropagation()}
-              className="text-green-700 hover:text-green-500 transition-colors p-1"
-              title="WhatsApp"
-            >
-              <WaIcon />
-            </a>
-          )}
           <button
             onClick={e => { e.stopPropagation(); onEliminar(); }}
             disabled={deletingId === t.id}
-            className="text-[#2a2a2a] hover:text-red-500/60 transition-colors disabled:opacity-40 p-1"
-            title="Eliminar"
+            className="text-[#222] hover:text-red-500/50 transition-colors disabled:opacity-40 p-1.5 rounded"
+            title="Eliminar trato"
           >
             {deletingId === t.id ? (
               <span className="text-[10px] text-gray-600">...</span>
@@ -1089,10 +1145,7 @@ function CompactTratoRow({
         </div>
       </div>
 
-      {/* Accordion panel */}
-      {isExpanded && (
-        <CotizacionesSublista trato={t} />
-      )}
+      {isExpanded && <CotizacionesSublista trato={t} />}
     </>
   );
 }
@@ -1645,43 +1698,116 @@ export default function TratosPage() {
       {vista === "lista" && (
         <div className="space-y-4">
 
-          {/* ── Pipeline overview cards ── */}
+          {/* ── Pipeline — Funnel visual ── */}
           {(() => {
-            const counts = {
-              leads: tratos.filter(t => t.etapa === 'LEAD').length,
-              descubrimiento: tratos.filter(t => t.etapa === 'DESCUBRIMIENTO').length,
-              oportunidades: tratos.filter(t => t.etapa === 'OPORTUNIDAD').length,
-              cerradas: tratos.filter(t => t.etapa === 'VENTA_CERRADA').length,
-              perdidas: tratos.filter(t => t.etapa === 'VENTA_PERDIDA').length,
-            };
-            const cards = [
-              { color: '#F59E0B', label: 'Leads',         count: counts.leads,          filter: 'LEAD',           borderClass: '' },
-              { color: '#3B82F6', label: 'Descubrimiento', count: counts.descubrimiento, filter: 'DESCUBRIMIENTO', borderClass: '' },
-              { color: '#8B5CF6', label: 'Oportunidades',  count: counts.oportunidades,  filter: 'OPORTUNIDAD',    borderClass: '' },
-              { color: '#10B981', label: 'Cerradas',       count: counts.cerradas,       filter: 'VENTA_CERRADA',  borderClass: 'border-green-900/30' },
-              { color: '#EF4444', label: 'Perdidas',       count: counts.perdidas,       filter: 'VENTA_PERDIDA',  borderClass: 'border-red-900/30' },
+            const all = tratos;
+            const pipeline = [
+              {
+                filter: 'TODOS',
+                label: 'Todos',
+                count: all.length,
+                color: '#6B7280',
+                activeGrad: 'from-gray-800/60 to-gray-900/40',
+                activeBorder: 'border-gray-600/40',
+                activeDot: 'bg-gray-400',
+                inactiveDot: 'bg-gray-700',
+              },
+              {
+                filter: 'LEAD',
+                label: 'Leads',
+                count: all.filter(t => t.etapa === 'LEAD').length,
+                color: '#F59E0B',
+                activeGrad: 'from-amber-900/50 to-amber-950/30',
+                activeBorder: 'border-amber-500/40',
+                activeDot: 'bg-amber-400',
+                inactiveDot: 'bg-amber-900/60',
+              },
+              {
+                filter: 'DESCUBRIMIENTO',
+                label: 'Descubrimiento',
+                count: all.filter(t => t.etapa === 'DESCUBRIMIENTO').length,
+                color: '#3B82F6',
+                activeGrad: 'from-blue-900/50 to-blue-950/30',
+                activeBorder: 'border-blue-500/40',
+                activeDot: 'bg-blue-400',
+                inactiveDot: 'bg-blue-900/60',
+              },
+              {
+                filter: 'OPORTUNIDAD',
+                label: 'Oportunidad',
+                count: all.filter(t => t.etapa === 'OPORTUNIDAD').length,
+                color: '#8B5CF6',
+                activeGrad: 'from-violet-900/50 to-violet-950/30',
+                activeBorder: 'border-violet-500/40',
+                activeDot: 'bg-violet-400',
+                inactiveDot: 'bg-violet-900/60',
+              },
+              {
+                filter: 'VENTA_CERRADA',
+                label: 'Cerradas',
+                count: all.filter(t => t.etapa === 'VENTA_CERRADA').length,
+                color: '#10B981',
+                activeGrad: 'from-emerald-900/50 to-emerald-950/30',
+                activeBorder: 'border-emerald-500/40',
+                activeDot: 'bg-emerald-400',
+                inactiveDot: 'bg-emerald-900/60',
+              },
+              {
+                filter: 'VENTA_PERDIDA',
+                label: 'Perdidas',
+                count: all.filter(t => t.etapa === 'VENTA_PERDIDA').length,
+                color: '#EF4444',
+                activeGrad: 'from-red-900/40 to-red-950/30',
+                activeBorder: 'border-red-500/30',
+                activeDot: 'bg-red-400',
+                inactiveDot: 'bg-red-900/50',
+              },
             ];
+            const maxCount = Math.max(...pipeline.slice(1).map(p => p.count), 1);
             return (
-              <div className="grid grid-cols-3 lg:grid-cols-5 gap-2 mb-4">
-                {cards.map(card => (
-                  <button
-                    key={card.filter}
-                    onClick={() => setFiltroEtapa(card.filter)}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all ${
-                      filtroEtapa === card.filter
-                        ? 'bg-[#1a1a1a] border-[#B3985B]/40'
-                        : `bg-[#0d0d0d] ${card.borderClass || 'border-[#1a1a1a]'} hover:border-[#2a2a2a]`
-                    }`}
-                  >
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: card.color }} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] text-gray-500 truncate">{card.label}</p>
-                      <p className={`text-xl font-bold tabular-nums ${
-                        card.count > 0 ? 'text-white' : 'text-gray-700'
-                      }`}>{card.count}</p>
-                    </div>
-                  </button>
-                ))}
+              <div className="grid grid-cols-3 lg:grid-cols-6 gap-1.5 mb-5">
+                {pipeline.map((card, idx) => {
+                  const isActive = filtroEtapa === card.filter;
+                  const pct = idx === 0 ? 100 : Math.max(4, Math.round((card.count / maxCount) * 100));
+                  return (
+                    <button
+                      key={card.filter}
+                      onClick={() => setFiltroEtapa(card.filter)}
+                      className={`relative flex flex-col items-start px-3 pt-3 pb-2.5 rounded-xl border text-left transition-all overflow-hidden ${
+                        isActive
+                          ? `bg-gradient-to-b ${card.activeGrad} ${card.activeBorder} shadow-sm`
+                          : 'bg-[#0d0d0d] border-[#181818] hover:border-[#252525] hover:bg-[#111]'
+                      }`}
+                    >
+                      {/* Funnel fill bar — bottom aligned */}
+                      {idx > 0 && (
+                        <div
+                          className={`absolute bottom-0 left-0 right-0 transition-all duration-300 ${
+                            isActive ? card.inactiveDot.replace('bg-', 'bg-').replace('/60', '/20') : 'bg-white/[0.025]'
+                          }`}
+                          style={{ height: `${pct}%`, opacity: isActive ? 0.3 : 0.15 }}
+                        />
+                      )}
+                      <div className="relative z-10 w-full">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${isActive ? card.activeDot : card.inactiveDot}`} />
+                          <span className={`text-[10px] font-medium uppercase tracking-wider truncate ${
+                            isActive ? 'text-gray-300' : 'text-gray-600'
+                          }`}>
+                            {card.label}
+                          </span>
+                        </div>
+                        <p className={`text-2xl font-bold tabular-nums leading-none ${
+                          isActive
+                            ? 'text-white'
+                            : card.count > 0 ? 'text-gray-400' : 'text-[#2a2a2a]'
+                        }`}>
+                          {card.count}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             );
           })()}
@@ -1775,10 +1901,9 @@ export default function TratosPage() {
               );
             }
 
-            // ── Unified month grouping — respects ordenTrato ────────────
+            // ── Agrupación por mes con separación de pasados del mes actual ──
             {
               const { all } = groupTratosByMes(tabTratos, ordenTrato);
-
 
               const renderRow = (t: Trato) => (
                 <CompactTratoRow
@@ -1794,25 +1919,78 @@ export default function TratosPage() {
               );
 
               type MesGroup = ReturnType<typeof groupTratosByMes>['all'][0];
-              const renderGroup = (g: MesGroup) => (
-                <div key={g.yearMonth} className={g.isPast ? 'opacity-60' : ''}>
-                  <div className="flex items-center gap-2 mb-2 px-1">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-600">
-                      {g.label} ({g.tratos.length})
-                    </span>
-                    {g.isPast && (
-                      <span className="text-[9px] text-gray-700 uppercase tracking-wider">pasado</span>
+
+              const renderGroup = (g: MesGroup) => {
+                const isPastMonth = g.isPast;
+                const isIntraPast = !!(g as MesGroup & { isIntraMonthPast?: boolean }).isIntraMonthPast;
+
+                return (
+                  <div key={g.yearMonth}>
+                    {/* ── Encabezado de grupo ───────────────────────────────── */}
+                    <div className={`flex items-center gap-3 mb-2 px-1 ${
+                      isPastMonth ? 'opacity-50' : isIntraPast ? 'opacity-70' : ''
+                    }`}>
+                      {isIntraPast ? (
+                        /* Pasados del mes actual — separador especial */
+                        <>
+                          <div className="w-1.5 h-1.5 rounded-full bg-gray-700 shrink-0" />
+                          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-600 whitespace-nowrap">
+                            {g.label}
+                          </span>
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-gray-800/80 text-gray-600 border border-gray-700/30 uppercase tracking-wider">
+                            {g.tratos.length} evento{g.tratos.length !== 1 ? 's' : ''} pasado{g.tratos.length !== 1 ? 's' : ''}
+                          </span>
+                        </>
+                      ) : (
+                        /* Mes futuro o pasado anterior */
+                        <>
+                          <span className={`text-[11px] font-semibold uppercase tracking-[0.12em] capitalize ${
+                            isPastMonth ? 'text-gray-700' : 'text-gray-500'
+                          }`}>
+                            {g.label}
+                          </span>
+                          <span className="text-[9px] text-gray-700 tabular-nums">
+                            {g.tratos.length}
+                          </span>
+                          {isPastMonth && (
+                            <span className="text-[9px] text-gray-800 uppercase tracking-wider">archivado</span>
+                          )}
+                        </>
+                      )}
+                      <div className={`flex-1 border-t ${
+                        isIntraPast ? 'border-[#1a1a1a] border-dashed' :
+                        isPastMonth ? 'border-[#111]' :
+                        'border-[#1e1e1e]'
+                      }`} />
+                    </div>
+
+                    {/* ── Tabla de tratos ───────────────────────────────────── */}
+                    {/* Header de columnas — solo visible en el primer grupo fuera del intra-past */}
+                    {!isPastMonth && !isIntraPast && g === all.find(x => !(x as MesGroup & { isIntraMonthPast?: boolean }).isIntraMonthPast && !x.isPast) && (
+                      <div className="hidden md:flex items-center gap-0 px-3 py-1.5 mb-0.5 text-[9px] uppercase tracking-[0.14em] text-gray-700 border-b border-[#111]">
+                        <div className="w-4 shrink-0" />{/* toggle space */}
+                        <div className="flex-1 min-w-0 pl-1">Cliente / Proyecto</div>
+                        <div className="hidden sm:block w-[80px] shrink-0">Tipo</div>
+                        <div className="w-[140px] shrink-0 text-right">Fecha del evento</div>
+                        <div className="hidden lg:block w-[120px] shrink-0">Seguimiento</div>
+                        <div className="hidden sm:block w-[130px] shrink-0">Etapa</div>
+                        <div className="w-[80px] shrink-0" />{/* actions space */}
+                      </div>
                     )}
-                    <div className="flex-1 border-t border-[#1a1a1a]" />
+
+                    <div className={`rounded-xl border overflow-hidden ${
+                      isIntraPast ? 'border-[#181818] opacity-60' :
+                      isPastMonth ? 'border-[#141414] opacity-50' :
+                      'border-[#1e1e1e]'
+                    }`}>
+                      {g.tratos.map(renderRow)}
+                    </div>
                   </div>
-                  <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
-                    {g.tratos.map(renderRow)}
-                  </div>
-                </div>
-              );
+                );
+              };
 
               return (
-                <div className="space-y-5">
+                <div className="space-y-6">
                   {all.map(renderGroup)}
                 </div>
               );
