@@ -1,29 +1,23 @@
 import React from "react";
 import {
-  Document, Page, Text, View, StyleSheet,
+  Document, Page, Text, View, StyleSheet, Svg,
+  Rect, Line,
 } from "@react-pdf/renderer";
 
-// ─── Paleta ───────────────────────────────────────────────────────────────────
-const BLACK   = "#0a0a0a";
-const WHITE   = "#FFFFFF";
+// ─── Paleta (misma que ReporteMarketingPDF) ───────────────────────────────────
 const GOLD    = "#B3985B";
-const GRAY1   = "#111111";
-const GRAY2   = "#333333";
-const GRAY3   = "#555555";
-const GRAY4   = "#888888";
-const GRAY5   = "#cccccc";
+const BLACK   = "#0a0a0a";
+const DARK    = "#111111";
+const GRAY    = "#4a4a4a";
+const LIGHT   = "#888888";
+const WHITE   = "#FFFFFF";
+const CREAM   = "#F7F5F0";
+const CREAM2  = "#FFFBF2";
 const GREEN   = "#16a34a";
-const GREEN_LT= "#dcfce7";
 const RED     = "#dc2626";
-const RED_LT  = "#fee2e2";
 const AMBER   = "#d97706";
-const AMBER_LT= "#fef3c7";
 const BLUE    = "#2563eb";
-const BLUE_LT = "#dbeafe";
 const VIOLET  = "#7c3aed";
-const VIOLET_LT = "#ede9fe";
-const CREAM   = "#FAFAF8";
-const GRAY_LT = "#f5f5f5";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface TareasReporteData {
@@ -61,27 +55,21 @@ export interface TareasReporteData {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-const getMesLabel = (mes: string) => {
-  const [y, m] = mes.split("-");
-  return `${MESES[parseInt(m) - 1]} ${y}`;
-};
 
 const PRIO_COLOR: Record<string, string> = {
-  URGENTE: RED, ALTA: AMBER, MEDIA: GOLD, BAJA: GRAY3,
+  URGENTE: RED, ALTA: AMBER, MEDIA: GOLD, BAJA: LIGHT,
 };
 const PRIO_LABEL: Record<string, string> = {
   URGENTE: "Urgente", ALTA: "Alta", MEDIA: "Media", BAJA: "Baja",
-};
-const ESTADO_COLOR: Record<string, string> = {
-  COMPLETADA:  GREEN, EN_PROGRESO: BLUE, PENDIENTE: GRAY3, CANCELADA: RED,
-};
-const ESTADO_LABEL: Record<string, string> = {
-  COMPLETADA: "Completada", EN_PROGRESO: "En progreso", PENDIENTE: "Pendiente", CANCELADA: "Cancelada",
 };
 const AREA_LABEL: Record<string, string> = {
   VENTAS: "Ventas", ADMINISTRACION: "Administración", PRODUCCION: "Producción",
   MARKETING: "Marketing", RRHH: "RRHH", GENERAL: "General", DIRECCION: "Dirección",
 };
+
+function perfColor(pct: number): string {
+  return pct >= 80 ? GREEN : pct >= 50 ? AMBER : RED;
+}
 
 function fmtFecha(s: string | null): string {
   if (!s) return "—";
@@ -89,471 +77,588 @@ function fmtFecha(s: string | null): string {
   return d.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
 }
 
-function perfColor(pct: number): string {
-  return pct >= 80 ? GREEN : pct >= 50 ? AMBER : RED;
-}
-
-function perfBg(pct: number): string {
-  return pct >= 80 ? GREEN_LT : pct >= 50 ? AMBER_LT : RED_LT;
-}
-
-// ─── Estilos ──────────────────────────────────────────────────────────────────
+// ─── Estilos (misma estructura que ReporteMarketingPDF) ───────────────────────
 const s = StyleSheet.create({
+  // Página
   page: {
     fontFamily: "Helvetica",
     backgroundColor: WHITE,
-    paddingTop: 0,
-    paddingBottom: 48,
+    paddingTop: 36,
+    paddingBottom: 52,
     paddingHorizontal: 0,
-    fontSize: 8,
-    color: BLACK,
+    fontSize: 9,
+    color: DARK,
   },
+
+  // Header — igual que Marketing
   header: {
     backgroundColor: BLACK,
-    paddingTop: 22,
-    paddingBottom: 18,
-    paddingHorizontal: 36,
+    paddingHorizontal: 40,
+    paddingTop: 28,
+    paddingBottom: 22,
+    marginTop: -36,
     flexDirection: "row",
-    alignItems: "flex-end",
     justifyContent: "space-between",
+    alignItems: "flex-end",
   },
-  headerBrand: { fontSize: 11, color: GOLD, fontFamily: "Helvetica-Bold", letterSpacing: 2 },
-  headerTitle: { fontSize: 18, color: WHITE, fontFamily: "Helvetica-Bold", marginTop: 3 },
-  headerSub:   { fontSize: 8, color: GRAY4, marginTop: 2 },
+  headerLeft: { flexDirection: "column" },
+  brand: {
+    fontSize: 16,
+    fontFamily: "Helvetica-Bold",
+    color: GOLD,
+    letterSpacing: 2,
+    marginBottom: 3,
+  },
+  tagline: { fontSize: 7, color: LIGHT, letterSpacing: 1 },
   headerRight: { alignItems: "flex-end" },
-  headerMes:   { fontSize: 20, color: GOLD, fontFamily: "Helvetica-Bold" },
+  headerTitle: {
+    fontSize: 13,
+    fontFamily: "Helvetica-Bold",
+    color: WHITE,
+    marginBottom: 3,
+    textAlign: "right",
+  },
+  headerSub: { fontSize: 8, color: LIGHT, textAlign: "right" },
 
-  body:       { paddingHorizontal: 36, paddingTop: 22 },
-  cols2:      { flexDirection: "row", gap: 14, marginBottom: 16 },
-  col:        { flex: 1 },
-  mb4:        { marginBottom: 4 },
-  mb8:        { marginBottom: 8 },
-  mb12:       { marginBottom: 12 },
-  mb16:       { marginBottom: 16 },
+  // Barra dorada (signature line igual que Marketing)
+  goldBar: { height: 3, backgroundColor: GOLD },
 
+  // Strip de periodo
+  mesStrip: {
+    backgroundColor: CREAM,
+    paddingHorizontal: 40,
+    paddingVertical: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottom: "1 solid #e0ddd8",
+  },
+  mesLabel: { fontSize: 10, fontFamily: "Helvetica-Bold", color: DARK },
+  mesGen:   { fontSize: 8, color: LIGHT, fontFamily: "Helvetica-Oblique" },
+
+  // Sección
+  section: { paddingHorizontal: 40, marginTop: 16 },
   sectionTitle: {
-    fontSize: 7.5, color: GOLD, fontFamily: "Helvetica-Bold",
-    letterSpacing: 1, textTransform: "uppercase",
-    marginBottom: 8, borderBottomWidth: 1, borderBottomColor: GOLD, paddingBottom: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    paddingBottom: 5,
+    borderBottom: "1 solid #e0ddd8",
+  },
+  sectionLine:  { height: 2, width: 18, backgroundColor: GOLD, marginRight: 7 },
+  sectionLabel: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: GOLD,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
   },
 
-  // KPI strip
-  kpiStrip: { flexDirection: "row", gap: 8, marginBottom: 18 },
+  // KPI cards (igual que Marketing — CREAM con border gold izquierdo)
+  kpiRow: { flexDirection: "row", gap: 8, marginBottom: 14, paddingHorizontal: 40, marginTop: 14 },
   kpiCard: {
-    flex: 1, backgroundColor: CREAM, borderRadius: 6,
-    padding: 10, borderWidth: 1, borderColor: GRAY5,
+    flex: 1,
+    backgroundColor: CREAM,
+    borderLeft: "3 solid " + GOLD,
+    padding: 10,
+    borderRadius: 2,
   },
-  kpiLabel:  { fontSize: 6.5, color: GRAY3, letterSpacing: 0.5, marginBottom: 4, textTransform: "uppercase" },
-  kpiValue:  { fontSize: 16, color: BLACK, fontFamily: "Helvetica-Bold" },
-  kpiGold:   { fontSize: 16, color: GOLD,  fontFamily: "Helvetica-Bold" },
-  kpiSub:    { fontSize: 6.5, color: GRAY4, marginTop: 3 },
+  kpiCardAlert: {
+    flex: 1,
+    backgroundColor: "#fff5f5",
+    borderLeft: "3 solid " + RED,
+    padding: 10,
+    borderRadius: 2,
+  },
+  kpiCardWarning: {
+    flex: 1,
+    backgroundColor: "#fffbeb",
+    borderLeft: "3 solid " + AMBER,
+    padding: 10,
+    borderRadius: 2,
+  },
+  kpiLabel: { fontSize: 7, color: LIGHT, marginBottom: 3, textTransform: "uppercase", letterSpacing: 0.8 },
+  kpiValue: { fontSize: 20, fontFamily: "Helvetica-Bold", color: DARK },
+  kpiSub:   { fontSize: 7, color: LIGHT, marginTop: 2 },
 
-  // Table
-  tableHeader: {
-    flexDirection: "row", backgroundColor: BLACK,
-    paddingHorizontal: 8, paddingVertical: 5,
-    borderTopLeftRadius: 4, borderTopRightRadius: 4,
-  },
-  tableHeaderCell: { fontSize: 6.5, color: GRAY4, fontFamily: "Helvetica-Bold", letterSpacing: 0.5 },
-  tableRow: {
-    flexDirection: "row", paddingHorizontal: 8, paddingVertical: 4.5,
-    borderBottomWidth: 1, borderBottomColor: "#f0f0f0",
-  },
-  tableRowAlt: {
-    flexDirection: "row", paddingHorizontal: 8, paddingVertical: 4.5,
-    backgroundColor: CREAM, borderBottomWidth: 1, borderBottomColor: "#f0f0f0",
-  },
-  tableTotal: {
-    flexDirection: "row", paddingHorizontal: 8, paddingVertical: 5,
-    backgroundColor: GRAY_LT, borderTopWidth: 1.5, borderTopColor: GRAY2,
-    borderBottomLeftRadius: 4, borderBottomRightRadius: 4,
-  },
-  cell:      { fontSize: 7.5, color: BLACK },
-  cellGray:  { fontSize: 7.5, color: GRAY3 },
-  cellBold:  { fontSize: 7.5, color: BLACK, fontFamily: "Helvetica-Bold" },
-  cellGold:  { fontSize: 7.5, color: GOLD,  fontFamily: "Helvetica-Bold" },
-  cellGreen: { fontSize: 7.5, color: GREEN, fontFamily: "Helvetica-Bold" },
-  cellRed:   { fontSize: 7.5, color: RED,   fontFamily: "Helvetica-Bold" },
-  cellAmber: { fontSize: 7.5, color: AMBER, fontFamily: "Helvetica-Bold" },
+  // Layout 2 cols
+  cols2: { flexDirection: "row", paddingHorizontal: 40, gap: 16, marginTop: 4 },
+  col:   { flex: 1 },
 
-  // Waterfall
-  waterfallRow: { flexDirection: "row", alignItems: "center", marginBottom: 5, gap: 6 },
-  waterfallLabel: { fontSize: 7, color: GRAY2, width: 100 },
-  waterfallValue: { fontSize: 7.5, fontFamily: "Helvetica-Bold", width: 32, textAlign: "right" },
-  barTrack: { height: 5, backgroundColor: "#e5e5e5", borderRadius: 3, flex: 1 },
+  // Tabla universal
+  tableWrap: { marginTop: 4 },
+  thead: {
+    flexDirection: "row",
+    backgroundColor: BLACK,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+  },
+  theadCell: {
+    fontSize: 7,
+    fontFamily: "Helvetica-Bold",
+    color: LIGHT,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  trow:     { flexDirection: "row", paddingVertical: 4.5, paddingHorizontal: 10, borderBottom: "1 solid #f0ede8" },
+  trowAlt:  { flexDirection: "row", paddingVertical: 4.5, paddingHorizontal: 10, borderBottom: "1 solid #f0ede8", backgroundColor: CREAM },
+  tcell:    { fontSize: 7.5, color: GRAY },
+  tcellB:   { fontSize: 7.5, color: DARK, fontFamily: "Helvetica-Bold" },
+  tcellGreen: { fontSize: 7.5, color: GREEN, fontFamily: "Helvetica-Bold" },
+  tcellRed:   { fontSize: 7.5, color: RED, fontFamily: "Helvetica-Bold" },
+  tcellAmber: { fontSize: 7.5, color: AMBER },
+
+  // Progress bar container
+  barBg:    { height: 5, backgroundColor: "#e5e5e5", borderRadius: 3, marginTop: 2 },
   barFill:  { height: 5, borderRadius: 3 },
 
-  // Badge
-  badge: {
-    borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1.5,
-    fontSize: 6.5, fontFamily: "Helvetica-Bold",
-  },
-
-  // Footer
+  // Pie de página
   footer: {
-    position: "absolute", bottom: 20, left: 36, right: 36,
-    flexDirection: "row", justifyContent: "space-between",
-    borderTopWidth: 0.5, borderTopColor: GRAY5, paddingTop: 6,
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 36,
+    backgroundColor: BLACK,
+    paddingHorizontal: 40,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  footerText: { fontSize: 6, color: GRAY4 },
+  footerText: { fontSize: 7, color: LIGHT },
 
-  // Alert
-  alertBox: {
-    flexDirection: "row", gap: 8, padding: 8, borderRadius: 5,
-    borderWidth: 1, marginBottom: 10, alignItems: "flex-start",
+  // Cards de colaborador
+  userCard: {
+    backgroundColor: CREAM2,
+    borderRadius: 4,
+    padding: 8,
+    borderTopWidth: 2,
+    marginBottom: 0,
   },
-  alertIcon: { fontSize: 10, width: 14 },
-  alertText: { fontSize: 7, flex: 1, lineHeight: 1.5 },
+  userCardName:  { fontSize: 8, fontFamily: "Helvetica-Bold", color: DARK },
+  userCardSub:   { fontSize: 6.5, color: LIGHT, marginBottom: 4 },
+  userTaskRow:   { flexDirection: "row", alignItems: "flex-start", gap: 4, paddingVertical: 2.5, borderTop: "0.5 solid #e0ddd8" },
+  userTaskDot:   { width: 5, height: 5, borderRadius: 3, marginTop: 2 },
+  userTaskText:  { fontSize: 6.5, color: GRAY, flex: 1, lineHeight: 1.4 },
+  userTaskFecha: { fontSize: 6, color: LIGHT, marginTop: 1 },
 });
 
-// ─── Página 1: Resumen Ejecutivo ──────────────────────────────────────────────
-function Pagina1({ data }: { data: TareasReporteData }) {
-  const maxSem = Math.max(...data.semanas.map((s) => s.total), 1);
+// ─── Componentes reutilizables ────────────────────────────────────────────────
 
+function SectionTitle({ label }: { label: string }) {
   return (
-    <Page size="A4" orientation="landscape" style={s.page}>
-      {/* Header */}
-      <View style={s.header}>
-        <View>
-          <Text style={s.headerBrand}>MAINSTAGE</Text>
-          <Text style={s.headerTitle}>Reporte de Tareas</Text>
-          <Text style={s.headerSub}>Rendimiento del Equipo · Dirección General</Text>
-        </View>
-        <View style={s.headerRight}>
-          <Text style={s.headerMes}>{data.mesLabel}</Text>
-          <Text style={{ fontSize: 7, color: GRAY4, marginTop: 3 }}>
-            {data.totalMes} tareas en el período
-          </Text>
-        </View>
-      </View>
-
-      <View style={s.body}>
-        {/* KPI Strip */}
-        <View style={s.kpiStrip}>
-          <View style={[s.kpiCard, { borderColor: pct_color_border(data.pctGeneral) }]}>
-            <Text style={s.kpiLabel}>Cumplimiento General</Text>
-            <Text style={[s.kpiGold, { color: perfColor(data.pctGeneral) }]}>{data.pctGeneral}%</Text>
-            <Text style={s.kpiSub}>{data.completadasMes} de {data.totalMes} tareas</Text>
-          </View>
-          <View style={s.kpiCard}>
-            <Text style={s.kpiLabel}>Completadas</Text>
-            <Text style={[s.kpiValue, { color: GREEN }]}>{data.completadasMes}</Text>
-            <Text style={s.kpiSub}>En el período</Text>
-          </View>
-          <View style={s.kpiCard}>
-            <Text style={s.kpiLabel}>En Progreso</Text>
-            <Text style={[s.kpiValue, { color: BLUE }]}>{data.enProgresoMes}</Text>
-            <Text style={s.kpiSub}>Actualmente activas</Text>
-          </View>
-          <View style={s.kpiCard}>
-            <Text style={s.kpiLabel}>Pendientes</Text>
-            <Text style={[s.kpiValue, { color: GRAY3 }]}>{data.pendientesMes}</Text>
-            <Text style={s.kpiSub}>Sin iniciar</Text>
-          </View>
-          <View style={[s.kpiCard, { borderColor: data.totalAtrasadas > 0 ? "#f87171" : GRAY5 }]}>
-            <Text style={s.kpiLabel}>Atrasadas</Text>
-            <Text style={[s.kpiValue, { color: data.totalAtrasadas > 0 ? RED : GRAY3 }]}>{data.totalAtrasadas}</Text>
-            <Text style={s.kpiSub}>Vencidas sin completar</Text>
-          </View>
-        </View>
-
-        <View style={s.cols2}>
-          {/* Col 1: Tendencia semanal */}
-          <View style={[s.col, { flex: 1 }]}>
-            <Text style={s.sectionTitle}>Tendencia Semanal</Text>
-
-            {data.semanas.map((sem, i) => (
-              <View key={i} style={s.waterfallRow}>
-                <Text style={[s.waterfallLabel, { width: 90 }]}>{sem.label}</Text>
-                <Text style={[s.waterfallValue, { color: perfColor(sem.pct), width: 28 }]}>
-                  {sem.pct}%
-                </Text>
-                <View style={{ flex: 1, justifyContent: "center" }}>
-                  <View style={s.barTrack}>
-                    <View style={[s.barFill, {
-                      width: sem.total > 0 ? `${(sem.completadas / Math.max(...data.semanas.map(s => s.total), 1)) * 100}%` : 0,
-                      backgroundColor: perfColor(sem.pct),
-                    }]} />
-                  </View>
-                </View>
-                <Text style={[s.cellGray, { width: 40, textAlign: "right", fontSize: 6.5 }]}>
-                  {sem.completadas}/{sem.total}
-                </Text>
-              </View>
-            ))}
-
-            {/* Por prioridad */}
-            <View style={{ marginTop: 12 }}>
-              <Text style={s.sectionTitle}>Por Prioridad</Text>
-              {data.prioridades.map((p) => (
-                <View key={p.prioridad} style={s.waterfallRow}>
-                  <Text style={[s.waterfallLabel, { width: 60, color: PRIO_COLOR[p.prioridad] ?? GRAY3, fontFamily: "Helvetica-Bold" }]}>
-                    {PRIO_LABEL[p.prioridad] ?? p.prioridad}
-                  </Text>
-                  <Text style={[s.waterfallValue, { color: perfColor(p.pct) }]}>{p.pct}%</Text>
-                  <View style={{ flex: 1, justifyContent: "center" }}>
-                    <View style={s.barTrack}>
-                      <View style={[s.barFill, {
-                        width: `${p.pct}%`,
-                        backgroundColor: PRIO_COLOR[p.prioridad] ?? GRAY3,
-                      }]} />
-                    </View>
-                  </View>
-                  <Text style={[s.cellGray, { width: 40, textAlign: "right", fontSize: 6.5 }]}>
-                    {p.completadas}/{p.total}
-                  </Text>
-                </View>
-              ))}
-            </View>
-
-            {/* Por área */}
-            <View style={{ marginTop: 12 }}>
-              <Text style={s.sectionTitle}>Por Área</Text>
-              {data.areas.slice(0, 8).map((a) => (
-                <View key={a.area} style={s.waterfallRow}>
-                  <Text style={[s.waterfallLabel, { width: 90 }]}>{AREA_LABEL[a.area] ?? a.area}</Text>
-                  <Text style={[s.waterfallValue, { color: perfColor(a.pct) }]}>{a.pct}%</Text>
-                  <View style={{ flex: 1, justifyContent: "center" }}>
-                    <View style={s.barTrack}>
-                      <View style={[s.barFill, { width: `${a.pct}%`, backgroundColor: perfColor(a.pct) }]} />
-                    </View>
-                  </View>
-                  <Text style={[s.cellGray, { width: 40, textAlign: "right", fontSize: 6.5 }]}>
-                    {a.completadas}/{a.total}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          {/* Col 2: Rendimiento por persona */}
-          <View style={[s.col, { flex: 1.3 }]}>
-            <Text style={s.sectionTitle}>Rendimiento por Persona</Text>
-
-            <View style={s.tableHeader}>
-              <Text style={[s.tableHeaderCell, { flex: 1.4 }]}>Colaborador</Text>
-              <Text style={[s.tableHeaderCell, { width: 35, textAlign: "right" }]}>Total</Text>
-              <Text style={[s.tableHeaderCell, { width: 35, textAlign: "right" }]}>Comp.</Text>
-              <Text style={[s.tableHeaderCell, { width: 35, textAlign: "right" }]}>Pend.</Text>
-              <Text style={[s.tableHeaderCell, { width: 35, textAlign: "right" }]}>Atras.</Text>
-              <Text style={[s.tableHeaderCell, { width: 40, textAlign: "right" }]}>%</Text>
-            </View>
-
-            {data.usuarios.slice(0, 15).map((u, i) => (
-              <View key={u.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
-                <View style={{ flex: 1.4 }}>
-                  <Text style={s.cellBold}>{u.name}</Text>
-                  <Text style={[s.cellGray, { fontSize: 6.5 }]}>{AREA_LABEL[u.area ?? ""] ?? u.area}</Text>
-                </View>
-                <Text style={[s.cell, { width: 35, textAlign: "right" }]}>{u.total}</Text>
-                <Text style={[s.cellGreen, { width: 35, textAlign: "right" }]}>{u.completadas}</Text>
-                <Text style={[s.cellGray, { width: 35, textAlign: "right" }]}>{u.pendientes + u.enProgreso}</Text>
-                <Text style={[u.atrasadas > 0 ? s.cellRed : s.cellGray, { width: 35, textAlign: "right" }]}>
-                  {u.atrasadas > 0 ? u.atrasadas : "—"}
-                </Text>
-                <Text style={[s.cellBold, { width: 40, textAlign: "right", color: perfColor(u.pct) }]}>
-                  {u.pct}%
-                </Text>
-              </View>
-            ))}
-
-            <View style={s.tableTotal}>
-              <Text style={[s.cellBold, { flex: 1.4 }]}>TOTALES</Text>
-              <Text style={[s.cellBold, { width: 35, textAlign: "right" }]}>{data.totalMes}</Text>
-              <Text style={[s.cellGreen, { width: 35, textAlign: "right" }]}>{data.completadasMes}</Text>
-              <Text style={[s.cellGray, { width: 35, textAlign: "right" }]}>{data.pendientesMes + data.enProgresoMes}</Text>
-              <Text style={[data.totalAtrasadas > 0 ? s.cellRed : s.cellGray, { width: 35, textAlign: "right" }]}>
-                {data.totalAtrasadas}
-              </Text>
-              <Text style={[s.cellGold, { width: 40, textAlign: "right" }]}>{data.pctGeneral}%</Text>
-            </View>
-
-            {/* Alertas */}
-            {data.totalAtrasadas > 0 && (
-              <View style={[s.alertBox, { backgroundColor: RED_LT, borderColor: "#fca5a5", marginTop: 8 }]}>
-                <Text style={[s.alertIcon, { color: RED }]}>⚠</Text>
-                <Text style={[s.alertText, { color: "#991b1b" }]}>
-                  {data.totalAtrasadas} tarea{data.totalAtrasadas !== 1 ? "s" : ""} vencida{data.totalAtrasadas !== 1 ? "s" : ""} sin completar. Requiere atención inmediata de dirección.
-                </Text>
-              </View>
-            )}
-            {data.sinResponsable > 0 && (
-              <View style={[s.alertBox, { backgroundColor: AMBER_LT, borderColor: "#fcd34d" }]}>
-                <Text style={[s.alertIcon, { color: AMBER }]}>ℹ</Text>
-                <Text style={[s.alertText, { color: "#92400e" }]}>
-                  {data.sinResponsable} tarea{data.sinResponsable !== 1 ? "s" : ""} sin responsable asignado. Se excluyen del cálculo de rendimiento.
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-      </View>
-
-      <View style={s.footer} fixed>
-        <Text style={s.footerText}>Reporte de Tareas · Dirección General</Text>
-        <Text style={s.footerText}>{data.mesLabel} · Confidencial</Text>
-        <Text style={s.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
-      </View>
-    </Page>
+    <View style={s.sectionTitle}>
+      <View style={s.sectionLine} />
+      <Text style={s.sectionLabel}>{label}</Text>
+    </View>
   );
 }
 
-// ─── Página 2: Detalle por colaborador + Urgentes incompletas ─────────────────
-function Pagina2({ data }: { data: TareasReporteData }) {
-  const usuariosConPendientes = data.usuarios.filter(
-    (u) => u.tareasPendientesDetalle.length > 0 || u.atrasadas > 0
+function PageHeader({
+  title, sub, rightMain, rightSub
+}: { title: string; sub: string; rightMain?: string; rightSub?: string }) {
+  const now = new Date();
+  const gen = now.toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
+  return (
+    <>
+      <View style={s.header}>
+        <View style={s.headerLeft}>
+          <Text style={s.brand}>MAINSTAGE</Text>
+          <Text style={s.tagline}>PRODUCCIÓN · DIRECCIÓN GENERAL</Text>
+        </View>
+        <View style={s.headerRight}>
+          <Text style={s.headerTitle}>{title}</Text>
+          <Text style={s.headerSub}>{sub}</Text>
+          {rightMain && <Text style={[s.headerSub, { color: GOLD, marginTop: 4, fontSize: 9 }]}>{rightMain}</Text>}
+          {rightSub && <Text style={[s.headerSub, { marginTop: 2 }]}>{rightSub}</Text>}
+        </View>
+      </View>
+      <View style={s.goldBar} />
+      <View style={s.mesStrip}>
+        <Text style={s.mesLabel}>{sub}</Text>
+        <Text style={s.mesGen}>Generado el {gen}</Text>
+      </View>
+    </>
   );
+}
+
+function ProgressBarSvg({ pct, width = 100 }: { pct: number; width?: number }) {
+  const fill = Math.max(0, Math.min(100, pct));
+  const fillW = (fill / 100) * width;
+  const color = perfColor(pct);
+  return (
+    <Svg width={width} height={6}>
+      <Rect x={0} y={0} width={width} height={6} rx={3} fill="#e5e5e5" />
+      {fillW > 0 && <Rect x={0} y={0} width={fillW} height={6} rx={3} fill={color} />}
+    </Svg>
+  );
+}
+
+function WeekBarChart({ semanas }: { semanas: { label: string; total: number; completadas: number; pct: number }[] }) {
+  const maxVal = Math.max(...semanas.map(s => s.total), 1);
+  const W = 180; // total width
+  const H = 70;
+  const barW = semanas.length > 0 ? Math.floor((W - (semanas.length - 1) * 4) / semanas.length) : 30;
+
+  return (
+    <Svg width={W} height={H + 20}>
+      {semanas.map((sem, i) => {
+        const x = i * (barW + 4);
+        const totalH = Math.max(2, Math.round((sem.total / maxVal) * H));
+        const compH  = Math.max(0, Math.round((sem.completadas / maxVal) * H));
+        const totalY = H - totalH;
+        const compY  = H - compH;
+
+        return (
+          <React.Fragment key={i}>
+            {/* Total bar (background) */}
+            <Rect x={x} y={totalY} width={barW} height={totalH} rx={2} fill="#e5e5e5" />
+            {/* Completed bar (foreground) */}
+            {compH > 0 && <Rect x={x} y={compY} width={barW} height={compH} rx={2} fill={perfColor(sem.pct)} />}
+            {/* Pct label */}
+            <Text
+              style={{ fontSize: 6, color: LIGHT, textAlign: "center" }}
+              x={x + barW / 2}
+              y={totalY - 4}
+            >
+              {sem.pct}%
+            </Text>
+            {/* Week label */}
+            <Text
+              style={{ fontSize: 5.5, color: LIGHT }}
+              x={x}
+              y={H + 8}
+            >
+              {sem.label.replace("Sem ", "S")}
+            </Text>
+          </React.Fragment>
+        );
+      })}
+      {/* Baseline */}
+      <Line x1={0} y1={H} x2={W} y2={H} strokeWidth={0.5} stroke="#d0cdc8" />
+    </Svg>
+  );
+}
+
+function PageFooter({ left }: { left: string }) {
+  return (
+    <View style={s.footer} fixed>
+      <Text style={s.footerText}>{left}</Text>
+      <Text style={s.footerText}>Dirección General · Confidencial</Text>
+      <Text style={s.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+    </View>
+  );
+}
+
+// ─── PÁGINA 1: Resumen Ejecutivo ──────────────────────────────────────────────
+function Pagina1({ data }: { data: TareasReporteData }) {
+  const hasSemanas = data.semanas.length > 0;
 
   return (
     <Page size="A4" orientation="landscape" style={s.page}>
-      <View style={s.header}>
-        <View>
-          <Text style={s.headerBrand}>MAINSTAGE</Text>
-          <Text style={s.headerTitle}>Tareas Pendientes por Colaborador</Text>
-          <Text style={s.headerSub}>{data.mesLabel} · Dirección General</Text>
+      <PageHeader
+        title="Reporte de Rendimiento de Tareas"
+        sub={data.mesLabel}
+        rightMain={`${data.pctGeneral}% completado`}
+        rightSub={`${data.totalMes} tareas en el período`}
+      />
+
+      {/* KPI Strip */}
+      <View style={s.kpiRow}>
+        <View style={s.kpiCard}>
+          <Text style={s.kpiLabel}>Total de Tareas</Text>
+          <Text style={s.kpiValue}>{data.totalMes}</Text>
+          <Text style={s.kpiSub}>{data.sinResponsable > 0 ? `${data.sinResponsable} sin responsable` : "Todas asignadas"}</Text>
         </View>
-        <View style={s.headerRight}>
-          <Text style={[s.headerMes, { fontSize: 14 }]}>
-            {data.pendientesMes + data.enProgresoMes} pendientes
-          </Text>
+        <View style={s.kpiCard}>
+          <Text style={s.kpiLabel}>Completadas</Text>
+          <Text style={[s.kpiValue, { color: GREEN }]}>{data.completadasMes}</Text>
+          <Text style={s.kpiSub}>{data.enProgresoMes} en progreso</Text>
+        </View>
+        <View style={[s.kpiCard, { borderLeftColor: perfColor(data.pctGeneral) }]}>
+          <Text style={s.kpiLabel}>Cumplimiento</Text>
+          <Text style={[s.kpiValue, { color: perfColor(data.pctGeneral) }]}>{data.pctGeneral}%</Text>
+          <Text style={s.kpiSub}>{data.pctGeneral >= 80 ? "Excelente rendimiento" : data.pctGeneral >= 50 ? "Rendimiento medio" : "Requiere atención"}</Text>
+        </View>
+        <View style={data.totalAtrasadas > 0 ? s.kpiCardAlert : s.kpiCard}>
+          <Text style={s.kpiLabel}>Atrasadas</Text>
+          <Text style={[s.kpiValue, { color: data.totalAtrasadas > 0 ? RED : GREEN }]}>{data.totalAtrasadas}</Text>
+          <Text style={s.kpiSub}>{data.totalAtrasadas > 0 ? "Vencidas sin completar" : "Sin tareas vencidas"}</Text>
+        </View>
+        <View style={data.pendientesMes > 0 ? s.kpiCardWarning : s.kpiCard}>
+          <Text style={s.kpiLabel}>Pendientes</Text>
+          <Text style={[s.kpiValue, { color: AMBER }]}>{data.pendientesMes}</Text>
+          <Text style={s.kpiSub}>Sin completar al cierre</Text>
         </View>
       </View>
 
-      <View style={s.body}>
-        <View style={s.cols2}>
-          {/* Urgentes incompletas */}
-          {data.urgentesIncompletas.length > 0 && (
-            <View style={s.col}>
-              <Text style={[s.sectionTitle, { color: RED }]}>🚨 Urgentes Sin Completar</Text>
+      {/* Dos columnas: tabla colaboradores | prioridades + semanas */}
+      <View style={s.cols2}>
 
-              <View style={[s.tableHeader, { backgroundColor: "#7f1d1d" }]}>
-                <Text style={[s.tableHeaderCell, { flex: 1 }]}>Tarea</Text>
-                <Text style={[s.tableHeaderCell, { width: 70 }]}>Asignado a</Text>
-                <Text style={[s.tableHeaderCell, { width: 45, textAlign: "right" }]}>Estado</Text>
-                <Text style={[s.tableHeaderCell, { width: 40, textAlign: "right" }]}>Vence</Text>
-              </View>
-
-              {data.urgentesIncompletas.map((t, i) => (
-                <View key={t.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.cellBold}>{t.titulo}</Text>
-                    {t.proyecto && <Text style={[s.cellGray, { fontSize: 6.5 }]}>{t.proyecto}</Text>}
-                  </View>
-                  <Text style={[s.cellGray, { width: 70 }]}>{t.asignadoA}</Text>
-                  <Text style={[s.cell, { width: 45, textAlign: "right", color: ESTADO_COLOR[t.estado] ?? GRAY3 }]}>
-                    {ESTADO_LABEL[t.estado] ?? t.estado}
-                  </Text>
-                  <Text style={[s.cell, { width: 40, textAlign: "right", color: t.vence ? RED : GRAY3 }]}>
-                    {fmtFecha(t.vence)}
-                  </Text>
-                </View>
-              ))}
+        {/* Columna izquierda: Rendimiento por colaborador */}
+        <View style={[s.col, { flex: 1.6 }]}>
+          <SectionTitle label="Rendimiento por Colaborador" />
+          <View style={s.tableWrap}>
+            <View style={s.thead}>
+              <Text style={[s.theadCell, { flex: 1 }]}>Colaborador</Text>
+              <Text style={[s.theadCell, { width: 55 }]}>Área</Text>
+              <Text style={[s.theadCell, { width: 32, textAlign: "right" }]}>Total</Text>
+              <Text style={[s.theadCell, { width: 38, textAlign: "right" }]}>Complet.</Text>
+              <Text style={[s.theadCell, { width: 32, textAlign: "right" }]}>Pendient.</Text>
+              <Text style={[s.theadCell, { width: 28, textAlign: "right" }]}>Atras.</Text>
+              <Text style={[s.theadCell, { width: 30, textAlign: "right" }]}>%</Text>
+              <Text style={[s.theadCell, { width: 72 }]}>  Progreso</Text>
             </View>
-          )}
-
-          {/* Atrasadas */}
-          {data.tareasAtrasadasDetalle.length > 0 && (
-            <View style={s.col}>
-              <Text style={[s.sectionTitle, { color: AMBER }]}>⏰ Tareas Atrasadas</Text>
-
-              <View style={[s.tableHeader, { backgroundColor: "#78350f" }]}>
-                <Text style={[s.tableHeaderCell, { flex: 1 }]}>Tarea</Text>
-                <Text style={[s.tableHeaderCell, { width: 60 }]}>Responsable</Text>
-                <Text style={[s.tableHeaderCell, { width: 40 }]}>Prioridad</Text>
-                <Text style={[s.tableHeaderCell, { width: 40, textAlign: "right" }]}>Venció</Text>
-              </View>
-
-              {data.tareasAtrasadasDetalle.slice(0, 14).map((t, i) => (
-                <View key={t.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.cellBold}>{t.titulo}</Text>
-                    {t.proyecto && <Text style={[s.cellGray, { fontSize: 6.5 }]}>{t.proyecto}</Text>}
+            {data.usuarios.map((u, i) => {
+              const row = i % 2 === 0 ? s.trow : s.trowAlt;
+              const pc = perfColor(u.pct);
+              return (
+                <View key={u.id} style={row}>
+                  <Text style={[s.tcellB, { flex: 1 }]}>{u.name}</Text>
+                  <Text style={[s.tcell, { width: 55 }]}>{AREA_LABEL[u.area ?? ""] ?? (u.area ?? "—")}</Text>
+                  <Text style={[s.tcell, { width: 32, textAlign: "right" }]}>{u.total}</Text>
+                  <Text style={[s.tcellGreen, { width: 38, textAlign: "right" }]}>{u.completadas}</Text>
+                  <Text style={[s.tcell, { width: 32, textAlign: "right" }]}>{u.pendientes}</Text>
+                  <Text style={[u.atrasadas > 0 ? s.tcellRed : s.tcell, { width: 28, textAlign: "right" }]}>{u.atrasadas > 0 ? u.atrasadas : "—"}</Text>
+                  <Text style={[{ fontSize: 7.5, color: pc, fontFamily: "Helvetica-Bold", width: 30, textAlign: "right" }]}>{u.pct}%</Text>
+                  <View style={{ width: 72, paddingLeft: 6, paddingTop: 3 }}>
+                    <ProgressBarSvg pct={u.pct} width={65} />
                   </View>
-                  <Text style={[s.cellGray, { width: 60 }]}>{t.asignadoA}</Text>
-                  <Text style={[s.cell, { width: 40, color: PRIO_COLOR[t.prioridad] ?? GRAY3 }]}>
-                    {PRIO_LABEL[t.prioridad] ?? t.prioridad}
-                  </Text>
-                  <Text style={[s.cellRed, { width: 40, textAlign: "right" }]}>{fmtFecha(t.vence)}</Text>
                 </View>
-              ))}
-            </View>
-          )}
+              );
+            })}
+          </View>
         </View>
 
-        {/* Pendientes por colaborador */}
-        {usuariosConPendientes.length > 0 && (
-          <View>
-            <Text style={s.sectionTitle}>Pendientes por Colaborador</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-              {usuariosConPendientes.slice(0, 8).map((u) => (
-                <View key={u.id} style={{
-                  width: "31%", backgroundColor: CREAM, borderRadius: 6,
-                  padding: 8, borderWidth: 1, borderColor: GRAY5,
-                  borderTopWidth: 2, borderTopColor: perfColor(u.pct),
-                }}>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 5 }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.cellBold, { fontSize: 8 }]}>{u.name}</Text>
-                      <Text style={[s.cellGray, { fontSize: 6.5 }]}>{u.completadas}/{u.total} · {u.pct}%</Text>
+        {/* Columna derecha: Por prioridad + semanas */}
+        <View style={[s.col, { flex: 1 }]}>
+
+          {/* Por prioridad */}
+          <SectionTitle label="Por Prioridad" />
+          <View style={s.tableWrap}>
+            {data.prioridades.filter(p => p.total > 0).map((p, i) => (
+              <View key={p.prioridad} style={[i % 2 === 0 ? s.trow : s.trowAlt, { alignItems: "center" }]}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: PRIO_COLOR[p.prioridad] ?? LIGHT, marginRight: 6, marginTop: 1 }} />
+                <Text style={[s.tcellB, { flex: 1 }]}>{PRIO_LABEL[p.prioridad] ?? p.prioridad}</Text>
+                <Text style={[s.tcell, { width: 28, textAlign: "right" }]}>{p.completadas}/{p.total}</Text>
+                <Text style={[{ fontSize: 7.5, color: perfColor(p.pct), fontFamily: "Helvetica-Bold", width: 30, textAlign: "right" }]}>{p.pct}%</Text>
+                <View style={{ width: 55, paddingLeft: 6, paddingTop: 3 }}>
+                  <ProgressBarSvg pct={p.pct} width={48} />
+                </View>
+              </View>
+            ))}
+          </View>
+
+          {/* Por área */}
+          {data.areas.length > 0 && (
+            <>
+              <View style={{ marginTop: 12 }}>
+                <SectionTitle label="Por Área" />
+              </View>
+              <View style={s.tableWrap}>
+                {data.areas.filter(a => a.total > 0).map((a, i) => (
+                  <View key={a.area} style={[i % 2 === 0 ? s.trow : s.trowAlt, { alignItems: "center" }]}>
+                    <Text style={[s.tcell, { flex: 1 }]}>{AREA_LABEL[a.area] ?? a.area}</Text>
+                    <Text style={[s.tcell, { width: 28, textAlign: "right" }]}>{a.completadas}/{a.total}</Text>
+                    <Text style={[{ fontSize: 7.5, color: perfColor(a.pct), fontFamily: "Helvetica-Bold", width: 30, textAlign: "right" }]}>{a.pct}%</Text>
+                    <View style={{ width: 55, paddingLeft: 6, paddingTop: 3 }}>
+                      <ProgressBarSvg pct={a.pct} width={48} />
                     </View>
-                    <Text style={[s.cellBold, { color: perfColor(u.pct), fontSize: 12 }]}>{u.pct}%</Text>
                   </View>
-                  {u.tareasPendientesDetalle.slice(0, 4).map((t, j) => (
-                    <View key={t.id} style={{
-                      flexDirection: "row", alignItems: "flex-start", gap: 3,
-                      paddingVertical: 2, borderTopWidth: j === 0 ? 0.5 : 0, borderTopColor: GRAY5,
-                    }}>
-                      <View style={{
-                        width: 5, height: 5, borderRadius: 3,
-                        backgroundColor: PRIO_COLOR[t.prioridad] ?? GRAY3,
-                        marginTop: 2,
-                      }} />
-                      <Text style={[s.cellGray, { flex: 1, fontSize: 6.5, lineHeight: 1.4 }]}>
-                        {t.titulo}
-                      </Text>
-                      {t.vence && (
-                        <Text style={[{ fontSize: 6, color: GRAY4, marginTop: 1 }]}>{fmtFecha(t.vence)}</Text>
-                      )}
+                ))}
+              </View>
+            </>
+          )}
+
+          {/* Tendencia semanal */}
+          {hasSemanas && (
+            <>
+              <View style={{ marginTop: 12 }}>
+                <SectionTitle label="Tendencia Semanal" />
+              </View>
+              <View style={{ paddingTop: 4, flexDirection: "row", gap: 16, alignItems: "flex-start" }}>
+                <WeekBarChart semanas={data.semanas} />
+                <View style={{ flex: 1 }}>
+                  {data.semanas.map((sem, i) => (
+                    <View key={i} style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 4 }}>
+                      <Text style={[s.tcell, { fontSize: 7 }]}>{sem.label}</Text>
+                      <Text style={[{ fontSize: 7, color: perfColor(sem.pct), fontFamily: "Helvetica-Bold" }]}>{sem.pct}%</Text>
                     </View>
                   ))}
-                  {u.tareasPendientesDetalle.length > 4 && (
-                    <Text style={[s.cellGray, { fontSize: 6, marginTop: 3 }]}>
-                      +{u.tareasPendientesDetalle.length - 4} más
-                    </Text>
-                  )}
                 </View>
-              ))}
-            </View>
-          </View>
-        )}
+              </View>
+            </>
+          )}
+        </View>
       </View>
 
-      <View style={s.footer} fixed>
-        <Text style={s.footerText}>Reporte de Tareas · Pendientes por Colaborador</Text>
-        <Text style={s.footerText}>{data.mesLabel} · Confidencial</Text>
-        <Text style={s.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
-      </View>
+      <PageFooter left="Rendimiento Mensual de Tareas" />
     </Page>
   );
 }
 
-// ─── Helpers internos ─────────────────────────────────────────────────────────
-function pct_color_border(pct: number): string {
-  return pct >= 80 ? "#86efac" : pct >= 50 ? "#fcd34d" : "#fca5a5";
+// ─── PÁGINA 2: Tareas No Realizadas ──────────────────────────────────────────
+function Pagina2({ data }: { data: TareasReporteData }) {
+  const usuariosConPendientes = data.usuarios.filter(u => u.tareasPendientesDetalle.length > 0);
+  const totalPendientes = data.pendientesMes + data.enProgresoMes;
+
+  return (
+    <Page size="A4" orientation="landscape" style={s.page}>
+      <PageHeader
+        title="Tareas No Realizadas al Cierre del Período"
+        sub={data.mesLabel}
+        rightMain={`${totalPendientes} tareas sin completar`}
+        rightSub={data.totalAtrasadas > 0 ? `${data.totalAtrasadas} con vencimiento superado` : undefined}
+      />
+
+      <View style={s.cols2}>
+
+        {/* Columna izquierda: Urgentes + Atrasadas */}
+        <View style={s.col}>
+
+          {/* Urgentes sin completar */}
+          {data.urgentesIncompletas.length > 0 && (
+            <>
+              <SectionTitle label="🚨  Urgentes Sin Completar" />
+              <View style={[s.tableWrap, { marginBottom: 14 }]}>
+                <View style={[s.thead, { backgroundColor: "#7f1d1d" }]}>
+                  <Text style={[s.theadCell, { flex: 1 }]}>Tarea</Text>
+                  <Text style={[s.theadCell, { width: 70 }]}>Asignado a</Text>
+                  <Text style={[s.theadCell, { width: 45 }]}>Estado</Text>
+                  <Text style={[s.theadCell, { width: 40, textAlign: "right" }]}>Vence</Text>
+                </View>
+                {data.urgentesIncompletas.map((t, i) => (
+                  <View key={t.id} style={i % 2 === 0 ? s.trow : s.trowAlt}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.tcellB}>{t.titulo}</Text>
+                      {t.proyecto && <Text style={[s.tcell, { fontSize: 6.5, color: LIGHT }]}>{t.proyecto}</Text>}
+                    </View>
+                    <Text style={[s.tcell, { width: 70 }]}>{t.asignadoA}</Text>
+                    <Text style={[{ fontSize: 7.5, color: AMBER, width: 45 }]}>{t.estado === "EN_PROGRESO" ? "En progreso" : "Pendiente"}</Text>
+                    <Text style={[s.tcellRed, { width: 40, textAlign: "right" }]}>{fmtFecha(t.vence)}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          {/* Tareas atrasadas */}
+          {data.tareasAtrasadasDetalle.length > 0 && (
+            <>
+              <SectionTitle label="⏰  Tareas con Vencimiento Superado" />
+              <View style={s.tableWrap}>
+                <View style={[s.thead, { backgroundColor: "#78350f" }]}>
+                  <Text style={[s.theadCell, { flex: 1 }]}>Tarea</Text>
+                  <Text style={[s.theadCell, { width: 65 }]}>Responsable</Text>
+                  <Text style={[s.theadCell, { width: 42 }]}>Prioridad</Text>
+                  <Text style={[s.theadCell, { width: 42, textAlign: "right" }]}>Venció</Text>
+                </View>
+                {data.tareasAtrasadasDetalle.slice(0, 16).map((t, i) => (
+                  <View key={t.id} style={i % 2 === 0 ? s.trow : s.trowAlt}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.tcellB}>{t.titulo}</Text>
+                      {t.proyecto && <Text style={[s.tcell, { fontSize: 6.5, color: LIGHT }]}>{t.proyecto}</Text>}
+                    </View>
+                    <Text style={[s.tcell, { width: 65 }]}>{t.asignadoA}</Text>
+                    <Text style={[{ fontSize: 7.5, color: PRIO_COLOR[t.prioridad] ?? LIGHT, width: 42 }]}>
+                      {PRIO_LABEL[t.prioridad] ?? t.prioridad}
+                    </Text>
+                    <Text style={[s.tcellRed, { width: 42, textAlign: "right" }]}>{fmtFecha(t.vence)}</Text>
+                  </View>
+                ))}
+                {data.tareasAtrasadasDetalle.length > 16 && (
+                  <View style={[s.trow, { backgroundColor: CREAM }]}>
+                    <Text style={[s.tcell, { flex: 1, fontFamily: "Helvetica-Oblique" }]}>
+                      +{data.tareasAtrasadasDetalle.length - 16} tareas adicionales con vencimiento superado
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </>
+          )}
+
+          {data.urgentesIncompletas.length === 0 && data.tareasAtrasadasDetalle.length === 0 && (
+            <View style={{ padding: 20, backgroundColor: CREAM, borderRadius: 4, alignItems: "center" }}>
+              <Text style={[s.tcell, { color: GREEN, fontFamily: "Helvetica-Bold", fontSize: 10 }]}>✓</Text>
+              <Text style={[s.tcellB, { marginTop: 4 }]}>Sin urgentes ni tareas vencidas</Text>
+              <Text style={[s.tcell, { marginTop: 2 }]}>Excelente gestión en el período</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Columna derecha: Pendientes por colaborador */}
+        <View style={s.col}>
+          {usuariosConPendientes.length > 0 && (
+            <>
+              <SectionTitle label="Pendientes por Colaborador" />
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {usuariosConPendientes.slice(0, 9).map(u => (
+                  <View key={u.id} style={[s.userCard, {
+                    width: "31%",
+                    borderTopColor: perfColor(u.pct),
+                  }]}>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.userCardName}>{u.name}</Text>
+                        <Text style={s.userCardSub}>{u.completadas}/{u.total} completadas</Text>
+                      </View>
+                      <Text style={[{ fontSize: 13, fontFamily: "Helvetica-Bold", color: perfColor(u.pct) }]}>{u.pct}%</Text>
+                    </View>
+                    <ProgressBarSvg pct={u.pct} width={100} />
+                    <View style={{ marginTop: 5 }}>
+                      {u.tareasPendientesDetalle.slice(0, 5).map((t, j) => (
+                        <View key={t.id} style={[s.userTaskRow, { borderTopWidth: j === 0 ? 0 : 0.5 }]}>
+                          <View style={[s.userTaskDot, { backgroundColor: PRIO_COLOR[t.prioridad] ?? LIGHT }]} />
+                          <Text style={s.userTaskText}>{t.titulo}</Text>
+                          {t.vence && <Text style={s.userTaskFecha}>{fmtFecha(t.vence)}</Text>}
+                        </View>
+                      ))}
+                      {u.tareasPendientesDetalle.length > 5 && (
+                        <Text style={[s.userCardSub, { marginTop: 3 }]}>+{u.tareasPendientesDetalle.length - 5} más</Text>
+                      )}
+                    </View>
+                  </View>
+                ))}
+              </View>
+              {usuariosConPendientes.length > 9 && (
+                <Text style={[s.tcell, { marginTop: 8, fontFamily: "Helvetica-Oblique" }]}>
+                  +{usuariosConPendientes.length - 9} colaboradores adicionales con tareas pendientes
+                </Text>
+              )}
+            </>
+          )}
+
+          {usuariosConPendientes.length === 0 && (
+            <View style={{ padding: 20, backgroundColor: CREAM, borderRadius: 4, alignItems: "center" }}>
+              <Text style={[s.tcell, { color: GREEN, fontFamily: "Helvetica-Bold", fontSize: 10 }]}>✓</Text>
+              <Text style={[s.tcellB, { marginTop: 4 }]}>Todos los colaboradores al día</Text>
+              <Text style={[s.tcell, { marginTop: 2 }]}>Sin tareas pendientes en el período</Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      <PageFooter left="Tareas No Realizadas" />
+    </Page>
+  );
 }
 
 // ─── Documento ────────────────────────────────────────────────────────────────
 export function TareasReportePDF({ data }: { data: TareasReporteData }) {
+  const hasPage2 =
+    data.urgentesIncompletas.length > 0 ||
+    data.tareasAtrasadasDetalle.length > 0 ||
+    data.usuarios.some(u => u.tareasPendientesDetalle.length > 0) ||
+    data.pendientesMes > 0;
+
   return (
     <Document
       title={`Reporte de Tareas — ${data.mesLabel}`}
       author="Mainstage"
-      subject="Reporte Mensual de Tareas · Dirección General"
+      subject="Rendimiento Mensual de Tareas · Dirección General"
     >
       <Pagina1 data={data} />
-      {(data.urgentesIncompletas.length > 0 || data.tareasAtrasadasDetalle.length > 0 || data.usuarios.some(u => u.tareasPendientesDetalle.length > 0)) && (
-        <Pagina2 data={data} />
-      )}
+      {hasPage2 && <Pagina2 data={data} />}
     </Document>
   );
 }

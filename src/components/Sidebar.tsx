@@ -57,7 +57,6 @@ const NAV: NavSection[] = [
     section: "Dirección",
     items: [
       { key: "dir-estado-resultados", label: "Estado de Resultados", href: "/direccion/estado-resultados", adminOnly: true },
-      { key: "dir-reporte-tareas", label: "Reporte de Tareas", href: "/direccion/reporte-tareas", adminOnly: true },
       { key: "juntas", label: "Juntas", href: "/juntas" },
       { key: "presentaciones", label: "Presentaciones", href: "/presentaciones" },
       { key: "capacitacion", label: "Capacitación", href: "/capacitacion", icon: GraduationCap },
