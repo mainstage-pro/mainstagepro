@@ -758,20 +758,19 @@ export default function ReporteVentasPage() {
               )}
             </div>
 
-            {/* ── SECCIÓN 6: Notas del responsable + PDF ───────────────────── */}
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-1 h-4 rounded-full bg-[#B3985B]" />
-                <h2 className="text-white font-semibold text-sm">Análisis del responsable de ventas</h2>
+            {/* ── SECCIÓN 6: Análisis + PDF ────────────────────────────── */}
+            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div className="px-5 py-3 border-b border-[#1e1e1e] flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-[#B3985B]">Análisis del responsable de ventas</h3>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+              <div className="p-5 space-y-4">
                 {[
                   { label: "Análisis de resultados", value: analisis1, set: setAnalisis1, placeholder: "¿Qué pasó este mes? Describe los factores clave de los resultados obtenidos...", key: "analisis", rows: 5 },
-                  { label: "Propuestas de mejora",   value: propuestas1, set: setPropuestas1, placeholder: "1. ...\n2. ...\n3. ...", key: "propuestas", rows: 5 },
-                  { label: "Comentarios finales",    value: comentarios1, set: setComentarios1, placeholder: "Observaciones adicionales, contexto externo, etc...", key: "comentarios", rows: 5 },
+                  { label: "Propuestas de mejora",   value: propuestas1, set: setPropuestas1, placeholder: "1. ...\n2. ...\n3. ...", key: "propuestas", rows: 4 },
+                  { label: "Comentarios finales",    value: comentarios1, set: setComentarios1, placeholder: "Observaciones adicionales, contexto externo, etc...", key: "comentarios", rows: 3 },
                 ].map(f => (
                   <div key={f.label}>
-                    <label className="text-[#555] text-[10px] uppercase tracking-widest block mb-1.5">{f.label}</label>
+                    <label className="block text-[10px] text-[#6b7280] uppercase tracking-wider mb-1.5">{f.label}</label>
                     <textarea
                       value={f.value}
                       onChange={e => {

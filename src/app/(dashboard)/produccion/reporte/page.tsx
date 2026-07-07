@@ -169,14 +169,14 @@ function Textarea({ storageKey, label, placeholder }: { storageKey: string; labe
   const [val, setVal] = useState("");
   useEffect(() => { setVal(localStorage.getItem(storageKey) ?? ""); }, [storageKey]);
   return (
-    <div className="space-y-1">
-      <p className="text-[10px] font-semibold text-[#555] uppercase tracking-wider">{label}</p>
+    <div className="space-y-1.5">
+      <label className="block text-[10px] text-[#6b7280] uppercase tracking-wider mb-1">{label}</label>
       <textarea
         rows={3}
         value={val}
         onChange={e => { setVal(e.target.value); localStorage.setItem(storageKey, e.target.value); }}
         placeholder={placeholder}
-        className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg text-gray-300 text-xs p-3 resize-y outline-none focus:border-[#B3985B] placeholder-[#333] font-sans"
+        className="w-full bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/40 resize-none leading-relaxed"
       />
     </div>
   );
@@ -299,11 +299,15 @@ function SeccionChecklist({ data, mes }: { data: ReporteData["checklistSemanal"]
       )}
 
       {/* Comentarios */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
-        <p className="text-white text-sm font-semibold">Análisis y comentarios</p>
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-[#1e1e1e] flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-[#B3985B]">Análisis y comentarios</h3>
+        </div>
+        <div className="p-5 space-y-4">
         <Textarea storageKey={`rp-checklist-analisis-${mes}`} label="Análisis de cumplimiento" placeholder="Estado general del checklist semanal…" />
         <Textarea storageKey={`rp-checklist-propuesta-${mes}`} label="Propuestas de mejora" placeholder="¿Qué ajustar en el proceso de bodega?" />
         <Textarea storageKey={`rp-checklist-comentarios-${mes}`} label="Comentarios finales" placeholder="Observaciones adicionales…" />
+        </div>
       </div>
     </div>
   );
@@ -449,11 +453,15 @@ function SeccionMantenimiento({ data, mes, onActualizar }: { data: ReporteData["
         </div>
       )}
 
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
-        <p className="text-white text-sm font-semibold">Análisis y comentarios</p>
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-[#1e1e1e] flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-[#B3985B]">Análisis y comentarios</h3>
+        </div>
+        <div className="p-5 space-y-4">
         <Textarea storageKey={`rp-mant-analisis-${mes}`} label="Análisis de mantenimiento" placeholder="Estado general de los equipos, tendencias de fallas…" />
         <Textarea storageKey={`rp-mant-propuestas-${mes}`} label="Propuestas de mejora" placeholder="Acciones preventivas, compras sugeridas…" />
         <Textarea storageKey={`rp-mant-comentarios-${mes}`} label="Comentarios finales" placeholder="Observaciones adicionales…" />
+        </div>
       </div>
     </div>
   );
@@ -574,10 +582,14 @@ function SeccionInventario({ data, mes }: { data: ReporteData["inventario"]; mes
         </div>
       </div>
 
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
-        <p className="text-white text-sm font-semibold">Análisis y comentarios</p>
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-[#1e1e1e] flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-[#B3985B]">Análisis y comentarios</h3>
+        </div>
+        <div className="p-5 space-y-4">
         <Textarea storageKey={`rp-inv-analisis-${mes}`} label="Análisis de movimientos" placeholder="Contexto de las altas y bajas, adquisiciones, mermas…" />
         <Textarea storageKey={`rp-inv-comentarios-${mes}`} label="Comentarios finales" placeholder="Observaciones adicionales…" />
+        </div>
       </div>
     </div>
   );
@@ -666,10 +678,14 @@ function SeccionVehiculos({ data, mes }: { data: ReporteData["vehiculos"]; mes: 
         </div>
       ))}
 
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
-        <p className="text-white text-sm font-semibold">Análisis y comentarios</p>
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-[#1e1e1e] flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-[#B3985B]">Análisis y comentarios</h3>
+        </div>
+        <div className="p-5 space-y-4">
         <Textarea storageKey={`rp-vehiculos-analisis-${mes}`} label="Análisis de flota" placeholder="Estado de los vehículos, servicios próximos…" />
         <Textarea storageKey={`rp-vehiculos-comentarios-${mes}`} label="Comentarios finales" placeholder="Observaciones adicionales…" />
+        </div>
       </div>
     </div>
   );
@@ -867,11 +883,15 @@ function SeccionProyectos({ data, mes }: { data: ReporteData["proyectos"]; mes: 
         ))}
       </div>
 
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
-        <p className="text-white text-sm font-semibold">Análisis y comentarios</p>
+      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-[#1e1e1e] flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-[#B3985B]">Análisis y comentarios</h3>
+        </div>
+        <div className="p-5 space-y-4">
         <Textarea storageKey={`rp-proy-analisis-${mes}`} label="Análisis de resultados del mes" placeholder="Desempeño general, proyectos destacados, áreas de mejora…" />
         <Textarea storageKey={`rp-proy-propuestas-${mes}`} label="Propuestas de mejora operativa" placeholder="Acciones para mejorar coordinación, entrega, post-evento…" />
         <Textarea storageKey={`rp-proy-comentarios-${mes}`} label="Comentarios finales del mes" placeholder="Cierre y perspectiva para el próximo mes…" />
+        </div>
       </div>
     </div>
   );
