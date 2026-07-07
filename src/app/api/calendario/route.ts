@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
   }));
 
   // ── 2. Tratos con cotización APROBADA sin proyecto creado aún ──────────────
-  const tratos = await prisma.trato.findMany({
+  const tratosConCot = await prisma.trato.findMany({
     where: {
       proyecto: null,
       cotizaciones: {
@@ -78,7 +78,10 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  const eventosTrato = tratos.flatMap(t => {
+  // IDs de tratos ya cubiertos por cotización APROBADA (para no duplicar en fuente 3)
+  const idsConCotAprobada = new Set(tratosConCot.map(t => t.id));
+
+  const eventosTratoCot = tratosConCot.flatMap(t => {
     const nivel = nivelTrato(
       (t as unknown as { confirmadaEn?: Date | null }).confirmadaEn ?? null,
       (t as unknown as { etapa?: string }).etapa ?? 'LEAD',
@@ -100,8 +103,41 @@ export async function GET(req: NextRequest) {
       }));
   });
 
+  // ── 3. Tratos seguros (confirmadaEn != null) sin cotización APROBADA ───────
+  // Sección 3 del documento: tratos con confirmación verbal que aún no tienen cotización
+  const tratosConfirmados = await prisma.trato.findMany({
+    where: {
+      proyecto: null,
+      confirmadaEn: { not: null },
+      fechaEventoEstimada: { gte: inicio, lte: fin, not: null },
+      // Excluir los que ya tienen cotización APROBADA (cubiertos por fuente 2)
+      id: { notIn: [...idsConCotAprobada] },
+    },
+    include: {
+      cliente: { select: { nombre: true } },
+    },
+    orderBy: { fechaEventoEstimada: "asc" },
+  });
+
+  const eventosTratosConfirmados = tratosConfirmados
+    .filter(t => t.fechaEventoEstimada)
+    .map(t => ({
+      id: t.id,
+      dia: new Date(t.fechaEventoEstimada!.toISOString().substring(0, 10) + "T12:00:00Z").getUTCDate(),
+      titulo: t.nombreEvento || "Evento confirmado",
+      subtitulo: t.cliente?.nombre || "",
+      estado: "VENTA_CERRADA" as const,
+      nivel: 'confirmado' as Nivel,
+      url: `/crm/tratos/${t.id}`,
+      tipoEvento: t.tipoEvento,
+      tipoServicio: null,
+      lugarEvento: t.lugarEstimado,
+      horaInicioEvento: null,
+    }));
+
   // ── Merge y ordenar por día ───────────────────────────────────────────────
-  const eventos = [...eventosProyecto, ...eventosTrato].sort((a, b) => a.dia - b.dia);
+  const eventos = [...eventosProyecto, ...eventosTratoCot, ...eventosTratosConfirmados]
+    .sort((a, b) => a.dia - b.dia);
 
   return NextResponse.json({ eventos });
 }

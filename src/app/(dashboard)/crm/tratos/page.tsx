@@ -4,7 +4,7 @@ import React from "react";
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ETAPA_LABELS, TIPO_EVENTO_LABELS, ORIGEN_LEAD_LABELS } from "@/lib/constants";
+import { ETAPA_LABELS, TIPO_EVENTO_LABELS, ORIGEN_LEAD_LABELS, ORIGEN_LEAD_OPTIONS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/cotizador";
 import { useToast } from "@/components/Toast";
 import { Combobox } from "@/components/Combobox";
@@ -391,7 +391,7 @@ function NuevaOportunidadModal({ onClose, onCreated, onLeadCreated }: {
   const [modoModal, setModoModal] = useState<'oportunidad' | 'lead-rapido' | 'prospeccion-fria'>('oportunidad');
   const [form, setForm] = useState<NuevaOportunidadForm>({ ...FORM_EMPTY });
   const [leadRapidoForm, setLeadRapidoForm] = useState({
-    nombre: '', telefono: '', origenLead: 'ORGANICO', tipoEvento: '',
+    nombre: '', telefono: '', origenLead: 'META_ADS', tipoEvento: '',
     notasIniciales: '', fechaProximaAccion: '',
   });
   const [prospeccionForm, setProspeccionForm] = useState({
@@ -481,7 +481,7 @@ function NuevaOportunidadModal({ onClose, onCreated, onLeadCreated }: {
     try {
       const body: Record<string, unknown> = {
         clienteNuevo: { nombre: prospeccionForm.nombre.trim(), telefono: prospeccionForm.telefono || null },
-        origenLead: 'ORGANICO',
+        origenLead: 'META_ADS',
         tipoEvento: prospeccionForm.tipoEvento || 'OTRO',
         notas: prospeccionForm.motivo.trim() || null,
         tipo: 'CLIENTE_PROPIO',
@@ -638,12 +638,9 @@ function NuevaOportunidadModal({ onClose, onCreated, onLeadCreated }: {
                   <label className="text-xs text-[#6b7280] block mb-1">¿De dónde llegó? *</label>
                   <select value={leadRapidoForm.origenLead} onChange={e => setLeadRapidoForm(p => ({ ...p, origenLead: e.target.value }))}
                     className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                    <option value="ORGANICO">Orgánico</option>
-                    <option value="META_ADS">Meta Ads</option>
-                    <option value="GOOGLE_ADS">Google Ads</option>
-                    <option value="REFERIDO">Referido</option>
-                    <option value="RECOMPRA">Recompra</option>
-                    <option value="OTRO">Otro</option>
+                    {ORIGEN_LEAD_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
                   </select>
                 </div>
                 <div>

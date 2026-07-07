@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, use, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FORM_KEY_LABELS } from "@/lib/form-labels";
 import TimePicker from "@/components/ui/TimePicker";
@@ -159,10 +159,10 @@ const CANALES = [
 
 // Pasos del wizard de descubrimiento
 const PASOS_DISCOVERY_FULL = [
-  { id: 1, icon: "📋", label: "Básico" },
-  { id: 2, icon: "✨", label: "Servicios" },
-  { id: 3, icon: "📊", label: "Detalles" },
-  { id: 4, icon: "📸", label: "Contenido" },
+  { id: 1, icon: "📋", label: "Info base" },
+  { id: 2, icon: "✨", label: "Servicios y equipos" },
+  { id: 3, icon: "📊", label: "Referencias" },
+  { id: 4, icon: "📸", label: "Detalles finales" },
 ];
 const PASOS_DISCOVERY_RENTA = [
   { id: 1, icon: "📋", label: "Básico" },
@@ -979,6 +979,7 @@ function SeguimientosPanel({ tratoId, telefono, showModal, setShowModal }: {
 export default function TratoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const toast = useToast();
   const confirm = useConfirm();
   const { celebrate, Toast: CelebrationToastEl } = useCelebration();
@@ -1163,12 +1164,19 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     autoSaveScouting(scoutingForm);
   }, [scoutingForm]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Persist active step in localStorage
+  // Persist active step in localStorage — query param ?paso=N takes priority on first load
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const saved = localStorage.getItem(`trato-paso-${id}`);
-    if (saved) setPasoActivo(parseInt(saved) || 1);
-  }, [id]);
+    const pasoFromUrl = searchParams.get("paso");
+    if (pasoFromUrl) {
+      // Query param tiene prioridad: ir al paso indicado
+      setPasoActivo(parseInt(pasoFromUrl) || 1);
+    } else {
+      // Sin query param: restaurar desde localStorage
+      const saved = localStorage.getItem(`trato-paso-${id}`);
+      if (saved) setPasoActivo(parseInt(saved) || 1);
+    }
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (typeof window !== "undefined") localStorage.setItem(`trato-paso-${id}`, String(pasoActivo));
   }, [pasoActivo, id]);
@@ -2901,6 +2909,20 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 )}
               </div>
             )}
+
+              {/* Asistentes estimados — visible en paso 2 para producción técnica */}
+              {discForm.tipoServicio !== "RENTA" && (
+                <div className="pt-2 border-t border-[#1a1a1a]">
+                  <label className="text-xs text-gray-400 block mb-1">Asistentes estimados</label>
+                  <input
+                    type="number" min="1"
+                    value={discForm.asistentesEstimados}
+                    onChange={e => setDiscForm(p => ({ ...p, asistentesEstimados: e.target.value }))}
+                    placeholder="Número aproximado de invitados"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                </div>
+              )}
 
               {/* Referencias y archivos del cliente — solo en paso 2 para RENTA; en paso 3 para producción */}
               {discForm.tipoServicio === "RENTA" && <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">

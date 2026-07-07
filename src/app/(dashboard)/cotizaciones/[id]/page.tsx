@@ -863,6 +863,12 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           <div className="min-w-0">
             {/* Nombre del evento del cotizador */}
             <h1 className="text-xl font-semibold text-white leading-tight">{cot.nombreEvento || "Sin nombre"}</h1>
+            {/* Fecha larga del evento */}
+            {cot.fechaEvento && (
+              <p className="text-xs text-gray-400 mt-0.5 capitalize">
+                {new Date(cot.fechaEvento).toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+              </p>
+            )}
             {/* Nombre de cotización (multi-evento) — editable inline */}
             {cot.tratoId && (
               <div className="flex items-center gap-2 mt-1">
@@ -902,8 +908,80 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           </div>
         </div>
 
-        {/* Fila 3: acciones principales */}
+        {/* Fila 3: acciones principales — orden: Listado → Presentación → Contrato → Comisión → PDF → WhatsApp → Editar → Marcar enviada */}
         <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-[#1a1a1a]">
+          {/* Listado equipos */}
+          <button onClick={shareListadoEquiposPdf} disabled={sharingListado}
+            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] hover:border-[#555] text-gray-300 hover:text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
+            {sharingListado ? (
+              <span className="w-3.5 h-3.5 border-2 border-[#555] border-t-white rounded-full animate-spin" />
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="3" y1="9" x2="21" y2="9"/>
+                <line x1="9" y1="21" x2="9" y2="9"/>
+              </svg>
+            )}
+            {sharingListado ? "Generando..." : "Listado equipos"}
+          </button>
+          {/* Presentación */}
+          <a href={`/presentacion/${cot.id}${presentacionToken ? `?token=${presentacionToken}` : ""}`} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#B3985B]/30 hover:border-[#B3985B]/60 text-[#B3985B] text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+            </svg>
+            Presentación
+          </a>
+          {/* Contrato */}
+          <Link href={`/contratos/${cot.trato.id}`} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] hover:border-[#555] text-gray-300 hover:text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+            </svg>
+            Contrato
+          </Link>
+          {/* Comisión */}
+          <Link
+            href={`/cotizaciones/${id}/comision`}
+            target="_blank"
+            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#c9a96a]/30 hover:border-[#c9a96a]/60 text-[#c9a96a] text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+            </svg>
+            Comisión
+          </Link>
+          {/* PDF */}
+          <button onClick={sharePdf} disabled={sharingPdf}
+            className="flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-60 text-black text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
+            {sharingPdf ? (
+              <span className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+              </svg>
+            )}
+            {sharingPdf ? "Descargando..." : "Descargar PDF"}
+          </button>
+          {/* WhatsApp */}
+          {cot.cliente.telefono && (
+            <button
+              onClick={handleWhatsAppConCotizacion}
+              disabled={sendingWA}
+              className="flex items-center gap-1.5 bg-green-700 hover:bg-green-600 disabled:opacity-60 text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors"
+            >
+              {sendingWA ? (
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                  <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.12 1.524 5.855L0 24l6.29-1.498A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.899 0-3.68-.5-5.225-1.378l-.375-.224-3.884.925.98-3.774-.244-.389A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+                </svg>
+              )}
+              {sendingWA ? "Preparando..." : "WhatsApp"}
+            </button>
+          )}
+          {/* Editar — solo en BORRADOR */}
           {cot.estado === "BORRADOR" && (
             <Link href={`/cotizaciones/${cot.id}/editar`}
               className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
@@ -911,6 +989,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               Editar
             </Link>
           )}
+          {/* Marcar como enviada — al final */}
           {cot.estado === 'BORRADOR' && (
             <button
               onClick={async () => {
@@ -931,72 +1010,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               ✉ Marcar como enviada
             </button>
           )}
-          <a href={`/presentacion/${cot.id}${presentacionToken ? `?token=${presentacionToken}` : ""}`} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#B3985B]/30 hover:border-[#B3985B]/60 text-[#B3985B] text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
-            </svg>
-            Presentación
-          </a>
-          <Link href={`/contratos/${cot.trato.id}`} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] hover:border-[#555] text-gray-300 hover:text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
-            </svg>
-            Contrato
-          </Link>
-          <button onClick={sharePdf} disabled={sharingPdf}
-            className="flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-60 text-black text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
-            {sharingPdf ? (
-              <span className="w-3.5 h-3.5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-            ) : (
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-              </svg>
-            )}
-            {sharingPdf ? "Descargando..." : "Descargar PDF"}
-          </button>
-          
-          <button onClick={shareListadoEquiposPdf} disabled={sharingListado}
-            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] hover:border-[#555] text-gray-300 hover:text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
-            {sharingListado ? (
-              <span className="w-3.5 h-3.5 border-2 border-[#555] border-t-white rounded-full animate-spin" />
-            ) : (
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                <line x1="3" y1="9" x2="21" y2="9"/>
-                <line x1="9" y1="21" x2="9" y2="9"/>
-              </svg>
-            )}
-            {sharingListado ? "Generando..." : "Listado equipos"}
-          </button>
-          <Link
-            href={`/cotizaciones/${id}/comision`}
-            target="_blank"
-            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#c9a96a]/30 hover:border-[#c9a96a]/60 text-[#c9a96a] text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
-            </svg>
-            Comisión
-          </Link>
-          {cot.cliente.telefono && (
-            <button
-              onClick={handleWhatsAppConCotizacion}
-              disabled={sendingWA}
-              className="flex items-center gap-1.5 bg-green-700 hover:bg-green-600 disabled:opacity-60 text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors"
-            >
-              {sendingWA ? (
-                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                  <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.12 1.524 5.855L0 24l6.29-1.498A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.899 0-3.68-.5-5.225-1.378l-.375-.224-3.884.925.98-3.774-.244-.389A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
-                </svg>
-              )}
-              {sendingWA ? "Preparando..." : "WhatsApp"}
-            </button>
-          )}
+          {/* Crear proyecto — solo cuando está APROBADA */}
           {cot.estado === "APROBADA" && !cot.proyecto && (
             <button onClick={aprobar} disabled={aprobando}
               className="flex items-center gap-1.5 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
@@ -1088,49 +1102,25 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           </div>
         )}
 
-        {/* Links copiables — siempre visibles */}
-        <div className="border-t border-[#1a1a1a] pt-3 space-y-2">
-          <p className="text-[10px] text-[#555] uppercase tracking-wider font-semibold">Links</p>
-          {presentacionToken && (() => {
-            const presUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/presentacion/${cot.id}?token=${presentacionToken}`;
-            const tel = cot.cliente.telefono?.replace(/\D/g, "");
-            const waMsg = `Hola ${cot.cliente.nombre.split(" ")[0]}, te comparto la presentación de tu cotización${cot.nombreEvento ? ` para ${cot.nombreEvento}` : ""}:\n\n${presUrl}`;
-            return (
-              <div className="flex gap-2 items-center">
-                <span className="text-[10px] text-gray-600 w-20 shrink-0">Presentación</span>
-                <input readOnly value={presUrl} className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-gray-400 text-xs font-mono truncate" />
-                <button onClick={async () => { await navigator.clipboard.writeText(presUrl); setPresCopiado(true); setTimeout(() => setPresCopiado(false), 2000); }}
-                  className="shrink-0 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 text-xs px-3 py-1.5 rounded-lg transition-colors">
-                  {presCopiado ? "✓" : "Copiar"}
-                </button>
-                {tel && (
-                  <a href={`https://wa.me/52${tel}?text=${encodeURIComponent(waMsg)}`}
-                    target="_blank" rel="noopener noreferrer"
-                    className="shrink-0 bg-green-800 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1">
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                      <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.12 1.524 5.855L0 24l6.29-1.498A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.899 0-3.68-.5-5.225-1.378l-.375-.224-3.884.925.98-3.774-.244-.389A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
-                    </svg>
-                    WA
-                  </a>
-                )}
-              </div>
-            );
-          })()}
-          {(linkAprobacion || cot.aprobacionToken) && (() => {
-            const aprobUrl = linkAprobacion ?? `${typeof window !== "undefined" ? window.location.origin : ""}/aprobacion/cotizacion/${cot.aprobacionToken}`;
-            return (
-              <div className="flex gap-2 items-center">
-                <span className="text-[10px] text-gray-600 w-20 shrink-0">Aprobación</span>
-                <input readOnly value={aprobUrl} className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-gray-400 text-xs font-mono truncate" />
-                <button onClick={async () => { await navigator.clipboard.writeText(aprobUrl); setLinkCopiado(true); setTimeout(() => setLinkCopiado(false), 2000); }}
-                  className="shrink-0 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 text-xs px-3 py-1.5 rounded-lg transition-colors">
-                  {linkCopiado ? "✓" : "Copiar"}
-                </button>
-              </div>
-            );
-          })()}
-        </div>
+        {/* Links copiables — solo Aprobación (Presentación se eliminó de aquí) */}
+        {(linkAprobacion || cot.aprobacionToken) && (
+          <div className="border-t border-[#1a1a1a] pt-3 space-y-2">
+            <p className="text-[10px] text-[#555] uppercase tracking-wider font-semibold">Links</p>
+            {(() => {
+              const aprobUrl = linkAprobacion ?? `${typeof window !== "undefined" ? window.location.origin : ""}/aprobacion/cotizacion/${cot.aprobacionToken}`;
+              return (
+                <div className="flex gap-2 items-center">
+                  <span className="text-[10px] text-gray-600 w-20 shrink-0">Aprobación</span>
+                  <input readOnly value={aprobUrl} className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-gray-400 text-xs font-mono truncate" />
+                  <button onClick={async () => { await navigator.clipboard.writeText(aprobUrl); setLinkCopiado(true); setTimeout(() => setLinkCopiado(false), 2000); }}
+                    className="shrink-0 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 text-xs px-3 py-1.5 rounded-lg transition-colors">
+                    {linkCopiado ? "✓" : "Copiar"}
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
+        )}
 
         {/* Badge aprobada */}
         {cot.estado === "APROBADA" && cot.aprobacionNombre && (
@@ -1158,7 +1148,14 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
       {/* Estado flujo */}
       <div className="bg-[#111] border border-[#222] rounded-xl p-4">
-        <p className="text-xs text-gray-500 mb-3 uppercase tracking-wider">Estado</p>
+        <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider">Estado</p>
+        {/* Fecha larga del evento debajo del bloque Estado */}
+        {cot.fechaEvento && (
+          <p className="text-xs text-gray-600 mb-3 capitalize">
+            {new Date(cot.fechaEvento).toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          </p>
+        )}
+        {!cot.fechaEvento && <div className="mb-3" />}
         <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
           {ESTADOS_FLUJO.map((e) => (
             <button key={e} disabled={saving || e === cot.estado} onClick={() => cambiarEstado(e)}

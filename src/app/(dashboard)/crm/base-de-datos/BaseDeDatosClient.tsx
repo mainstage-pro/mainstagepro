@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
-import { TIPO_CLIENTE_LABELS, CLASIFICACION_LABELS } from "@/lib/constants";
+import { TIPO_CLIENTE_LABELS, CLASIFICACION_LABELS, ORIGEN_LEAD_OPTIONS, ORIGEN_LEAD_LABELS } from "@/lib/constants";
 import { CopyButton } from "@/components/CopyButton";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
@@ -45,15 +45,10 @@ interface Props {
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
-const ORIGEN_OPTIONS = [
-  { value: "META_ADS",       label: "Meta Ads" },
-  { value: "REDES_SOCIALES", label: "Redes Sociales" },
-  { value: "REFERIDO",       label: "Referido" },
-  { value: "RECOMPRA",       label: "Recompra" },
-  { value: "PROSPECCION",    label: "Prospección" },
-];
+const ORIGEN_OPTIONS = ORIGEN_LEAD_OPTIONS;
 
-const ORIGEN_LABELS: Record<string, string> = Object.fromEntries(ORIGEN_OPTIONS.map(o => [o.value, o.label]));
+// ORIGEN_LEAD_LABELS incluye legacy values para mostrar registros históricos correctamente
+const ORIGEN_LABELS: Record<string, string> = ORIGEN_LEAD_LABELS;
 
 const ORIGEN_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   META_ADS:       { bg: "bg-blue-950/60",    text: "text-blue-400",    border: "border-blue-800/30"    },

@@ -62,15 +62,28 @@ export const ESTADO_PROYECTO_COLORS: Record<string, string> = {
 };
 
 // Origen del lead
+// Valores activos para nuevos formularios: META_ADS, REDES_SOCIALES, REFERIDO, RECOMPRA, PROSPECCION
+// Valores legacy (solo para mostrar registros históricos): GOOGLE_ADS, ORGANICO, OTRO
 export const ORIGEN_LEAD_LABELS: Record<string, string> = {
-  META_ADS: "Meta Ads",
-  GOOGLE_ADS: "Google Ads",
-  ORGANICO: "Orgánico",
-  RECOMPRA: "Recompra",
-  REFERIDO: "Referido",
-  PROSPECCION: "Prospección",
-  OTRO: "Otro",
+  META_ADS:      "Meta Ads",
+  REDES_SOCIALES: "Redes Sociales",
+  REFERIDO:      "Referido",
+  RECOMPRA:      "Recompra",
+  PROSPECCION:   "Prospección",
+  // Legacy — solo para mostrar registros históricos, no ofrecer como opción nueva
+  GOOGLE_ADS:    "Google Ads",
+  ORGANICO:      "Orgánico",
+  OTRO:          "Otro",
 };
+
+// Opciones activas para formularios (no incluye valores legacy)
+export const ORIGEN_LEAD_OPTIONS: { value: string; label: string }[] = [
+  { value: "META_ADS",       label: "Meta Ads" },
+  { value: "REDES_SOCIALES", label: "Redes Sociales" },
+  { value: "REFERIDO",       label: "Referido" },
+  { value: "RECOMPRA",       label: "Recompra" },
+  { value: "PROSPECCION",    label: "Prospección" },
+];
 
 // Tipo de servicio
 export const TIPO_SERVICIO_LABELS: Record<string, string> = {

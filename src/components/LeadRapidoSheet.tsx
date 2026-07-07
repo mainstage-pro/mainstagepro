@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useToast } from '@/components/Toast';
+import { ORIGEN_LEAD_OPTIONS } from '@/lib/constants';
+
 
 interface Props {
   open: boolean;
@@ -18,15 +20,12 @@ interface ClienteSugerencia {
   clasificacion: string;
 }
 
-const ORIGEN_OPTIONS = [
-  { value: 'ORGANICO',   label: 'Orgánico (directo / web)' },
-  { value: 'META_ADS',   label: 'Meta Ads (Facebook / Instagram)' },
-  { value: 'GOOGLE_ADS', label: 'Google Ads' },
-  { value: 'REFERIDO',   label: 'Referido' },
-  { value: 'RECOMPRA',   label: 'Recompra / cliente anterior' },
-  { value: 'PROSPECCION',label: 'Prospección activa' },
-  { value: 'OTRO',       label: 'Otro' },
-];
+// Opciones de origen importadas de constants (fuente única de verdad)
+const ORIGEN_OPTIONS = ORIGEN_LEAD_OPTIONS.map(o => ({
+  ...o,
+  label: o.label, // mantener compatibilidad con el render de tarjetas
+}));
+
 
 const TIPO_EVENTO_OPTIONS = [
   { value: '',           label: '— Sin definir —' },
@@ -52,7 +51,7 @@ export function LeadRapidoSheet({ open, onOpenChange, onLeadCreated }: Props) {
     nombre:         '',
     telefono:       '',
     correo:         '',
-    origenLead:     'ORGANICO',
+    origenLead:     'META_ADS',
     tipoEvento:     '',
     fechaEvento:    '',
     notasIniciales: '',
@@ -96,7 +95,7 @@ export function LeadRapidoSheet({ open, onOpenChange, onLeadCreated }: Props) {
 
   function reset() {
     setCreado(null);
-    setForm({ nombre: '', telefono: '', correo: '', origenLead: 'ORGANICO', tipoEvento: '', fechaEvento: '', notasIniciales: '' });
+    setForm({ nombre: '', telefono: '', correo: '', origenLead: 'META_ADS', tipoEvento: '', fechaEvento: '', notasIniciales: '' });
     setFechaSinDefinir(false);
     setBusqueda('');
     setSugerencias([]);

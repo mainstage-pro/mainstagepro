@@ -2,6 +2,7 @@ import React from "react";
 import {
   Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
+import { ORIGEN_LEAD_LABELS } from "@/lib/constants";
 
 // ─── Paleta Marketing-standard ────────────────────────────────────────────────
 const GOLD   = "#B3985B";   // acento principal, borders KPI, secciones
@@ -26,10 +27,8 @@ function fmt(n: number) {
 }
 function fmtPct(n: number) { return `${n.toFixed(1)}%`; }
 
-const ORIGEN_LABEL: Record<string, string> = {
-  META_ADS: "Meta Ads", GOOGLE_ADS: "Google Ads", ORGANICO: "Orgánico",
-  RECOMPRA: "Recompra", REFERIDO: "Referido", PROSPECCION: "Prospección", OTRO: "Otro",
-};
+const ORIGEN_LABEL = ORIGEN_LEAD_LABELS;
+
 const TIPO_EVENTO_LABEL: Record<string, string> = {
   MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial", OTRO: "Otro",
 };

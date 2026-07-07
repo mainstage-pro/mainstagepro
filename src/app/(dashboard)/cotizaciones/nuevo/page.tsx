@@ -349,7 +349,7 @@ function CotizadorForm() {
   const [cfgUmbralVolumen, setCfgUmbralVolumen]   = useState(30000);
   const [cfgPctVolumen, setCfgPctVolumen]         = useState(10);
   const [cfgPctB2b, setCfgPctB2b]               = useState(10);
-  const [cfgPctAnticipado, setCfgPctAnticipado]   = useState(5);
+  const [cfgPctAnticipado, setCfgPctAnticipado]   = useState(10);
   const [cfgMaxManual, setCfgMaxManual]           = useState(30);
   const [cfgTextoAnticipado, setCfgTextoAnticipado] = useState("Si realizas el pago total del servicio antes de la fecha límite, aplicamos un descuento adicional del {pct}% sobre equipos Mainstage.");
   // Descuentos preservados de cotizaciones antiguas (sin control de UI)
@@ -583,13 +583,8 @@ function CotizadorForm() {
     });
   }, [clienteId, tratoId]);
 
-  // Auto-activar B2B si el cliente es B2B y el usuario no lo ha tocado manualmente
-  useEffect(() => {
-    // En modo edición, no auto-activar B2B: ya viene cargado desde la cotización
-    if (!b2bManualToggle && tipoCliente === "B2B" && !editId) {
-      setB2bActivo(true);
-    }
-  }, [tipoCliente, b2bManualToggle, editId]);
+  // Auto-activación B2B desactivada intencionalmente:
+  // El vendedor decide manualmente si aplica descuento B2B para cada cotización.
 
   // Auto-calcular cantidad de comidas = total técnicos en cotización
   useEffect(() => {

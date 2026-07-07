@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Combobox } from "@/components/Combobox";
+import { ORIGEN_LEAD_OPTIONS } from "@/lib/constants";
 
 interface Cliente {
   id: string; nombre: string; empresa: string | null; clasificacion: string; telefono: string | null;
@@ -42,21 +43,6 @@ const CANALES = [
   { value: "REUNION",  label: "Reunión",  icon: "👥" },
 ];
 
-const ORIGEN_OPTIONS = [
-  { value: "ORGANICO",   label: "Orgánico / Directo" },
-  { value: "META_ADS",   label: "Meta Ads" },
-  { value: "GOOGLE_ADS", label: "Google Ads" },
-  { value: "RECOMPRA",   label: "Recompra" },
-  { value: "REFERIDO",   label: "Referido" },
-  { value: "OTRO",       label: "Otro" },
-];
-
-const ORIGENES_OUTBOUND = [
-  { id: "REDES_SOCIALES", icon: "📱", label: "Redes sociales",  desc: "Instagram DM, LinkedIn, WhatsApp" },
-  { id: "BASE_DATOS",     icon: "📋", label: "Base de datos",   desc: "Lista, directorio, búsqueda" },
-  { id: "NETWORKING",     icon: "🤝", label: "Networking",      desc: "Evento, referencia interna, contacto personal" },
-];
-
 const ORIGEN_VENTA_OPTIONS = [
   { value: "CLIENTE_PROPIO", label: "Cliente propio (10% comisión)" },
   { value: "PUBLICIDAD",     label: "Lead por publicidad (5%)" },
@@ -65,7 +51,7 @@ const ORIGEN_VENTA_OPTIONS = [
 
 function nextTuesday() {
   const d = new Date();
-  const day = d.getDay(); // 0=Sun,1=Mon,...,6=Sat
+  const day = d.getDay();
   const daysUntilTuesday = (2 - day + 7) % 7 || 7;
   d.setDate(d.getDate() + daysUntilTuesday);
   return d.toISOString().substring(0, 10);
@@ -73,8 +59,6 @@ function nextTuesday() {
 
 export default function NuevoTratoPage() {
   const router = useRouter();
-  // step 1 = datos cliente + ruta, 2 = detalles servicio
-  // (el gate NURTURING fue eliminado — los prospectos en frío van al módulo Prospectos)
   const [step, setStep] = useState<1|2>(1);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [usuarios, setUsuarios] = useState<{ id: string; name: string }[]>([]);
@@ -85,15 +69,21 @@ export default function NuevoTratoPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // ── Trato seguro ─────────────────────────────────────────────────────────────
+  const [tratoSeguro, setTratoSeguro] = useState(false);
+  const [seguroNombre, setSeguroNombre] = useState("");
+  const [seguroFecha, setSeguroFecha] = useState("");
+
   const [s1, setS1] = useState({
     clienteId: "", clasificacionOriginal: "PROSPECTO",
     rutaEntrada: "DESCUBRIR",
     canalAtencion: "WHATSAPP",
-    origenLead: "ORGANICO", tipoLead: "INBOUND", origenVenta: "CLIENTE_PROPIO",
-    vendedorId: "",  // "" = yo (el usuario logueado)
+    origenLead: "META_ADS", tipoLead: "INBOUND", origenVenta: "CLIENTE_PROPIO",
+    vendedorId: "",
   });
   const [clienteNuevo, setClienteNuevo] = useState({ nombre:"", empresa:"", tipoCliente:"POR_DESCUBRIR", clasificacion:"NUEVO", telefono:"", correo:"" });
-  const [s2, setS2] = useState({ tipoServicio:"", tipoEvento:"MUSICAL", nombreEvento:"", fechaEventoEstimada:"", lugarEstimado:"", asistentesEstimados:"", notas:"" });
+  // asistentesEstimados se quitó del flujo de creación (se captura en el wizard, paso "Servicios y equipos")
+  const [s2, setS2] = useState({ tipoServicio:"", tipoEvento:"MUSICAL", nombreEvento:"", fechaEventoEstimada:"", lugarEstimado:"", notas:"" });
 
   useEffect(() => {
     fetch("/api/clientes").then(r=>r.json()).then(d=>setClientes(d.clientes||[]));
@@ -133,14 +123,40 @@ export default function NuevoTratoPage() {
       ...(sinDetalles ? {} : s2),
       vendedorId: s1.vendedorId || undefined,
       tipoProspecto: "ACTIVO",
-      asistentesEstimados: s2.asistentesEstimados ? parseInt(s2.asistentesEstimados) : null,
     };
     if (modoCliente==="nuevo") { delete payload.clienteId; payload.clienteNuevo = clienteNuevo; }
     try {
       const res = await fetch("/api/tratos", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
       if (!res.ok) { const d=await res.json(); setError(d.error||"Error al crear"); setLoading(false); return; }
       const { trato } = await res.json();
-      router.push(`/crm/tratos/${trato.id}`);
+      // Sección 5: navegar al paso 2 del wizard de brief técnico directamente
+      router.push(`/crm/tratos/${trato.id}?paso=2`);
+    } catch { setError("Error de conexión"); setLoading(false); }
+  }
+
+  async function crearTratoSeguro() {
+    if (!validarCliente()) return;
+    if (!seguroNombre.trim()) { setError("El nombre del proyecto es requerido"); return; }
+    if (!seguroFecha) { setError("La fecha del evento es requerida"); return; }
+    setError(""); setLoading(true);
+    const payload: Record<string,unknown> = {
+      ...s1,
+      vendedorId: s1.vendedorId || undefined,
+      tipoProspecto: "ACTIVO",
+      etapa: "VENTA_CERRADA",
+      nombreEvento: seguroNombre.trim(),
+      fechaEventoEstimada: seguroFecha,
+      confirmadaEn: new Date().toISOString(),
+      metodoConfirmacion: "VERBAL",
+      fechaCierre: new Date().toISOString(),
+    };
+    if (modoCliente==="nuevo") { delete payload.clienteId; payload.clienteNuevo = clienteNuevo; }
+    try {
+      const res = await fetch("/api/tratos", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+      if (!res.ok) { const d=await res.json(); setError(d.error||"Error al crear"); setLoading(false); return; }
+      const { trato } = await res.json();
+      // Trato seguro: ir al wizard paso 2 para completar detalles técnicos
+      router.push(`/crm/tratos/${trato.id}?paso=2`);
     } catch { setError("Error de conexión"); setLoading(false); }
   }
 
@@ -174,16 +190,65 @@ export default function NuevoTratoPage() {
 
       {error && <div className="bg-red-900/20 border border-red-700 text-red-400 text-sm px-4 py-3 rounded-xl mb-4">{error}</div>}
 
-      {/* ── Step 0 eliminado — todos los tratos son ACTIVO ── */}
-
       {/* ── Step 1: Cliente ── */}
       {step === 1 && (
         <div className="space-y-4">
 
-          {/* Indicador: trato ACTIVO */}
-          <div className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-[#B3985B]/40 bg-[#B3985B]/5 text-[#B3985B] text-sm font-medium">
-            <span>🎯</span>
-            <span>Trato activo — hay necesidad concreta y cotización potencial</span>
+          {/* ── Trato en proceso vs Trato seguro ── */}
+          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+            <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Estado del trato</h2>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setTratoSeguro(false)}
+                className={`w-full text-left p-4 rounded-xl border transition-all ${!tratoSeguro ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] hover:border-[#3a3a3a]"}`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🎯</span>
+                  <div>
+                    <p className={`text-sm font-semibold ${!tratoSeguro ? "text-[#B3985B]" : "text-white"}`}>Trato en proceso</p>
+                    <p className="text-gray-500 text-xs mt-0.5">Hay interés pero aún no hay confirmación. Se continúa con el flujo de cotización normal.</p>
+                  </div>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTratoSeguro(true)}
+                className={`w-full text-left p-4 rounded-xl border transition-all ${tratoSeguro ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] hover:border-[#3a3a3a]"}`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">✅</span>
+                  <div>
+                    <p className={`text-sm font-semibold ${tratoSeguro ? "text-[#B3985B]" : "text-white"}`}>Trato seguro</p>
+                    <p className="text-gray-500 text-xs mt-0.5">El cliente ya confirmó verbalmente. Se marca como venta cerrada de inmediato y aparece en el calendario.</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            {/* Campos adicionales para trato seguro */}
+            {tratoSeguro && (
+              <div className="mt-4 pt-4 border-t border-[#1e1e1e] space-y-3">
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Nombre del proyecto / evento *</label>
+                  <input
+                    value={seguroNombre}
+                    onChange={e => setSeguroNombre(e.target.value)}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                    placeholder="Ej: Boda García · Festival Verano 2026"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Fecha del evento *</label>
+                  <input
+                    type="date"
+                    value={seguroFecha}
+                    onChange={e => setSeguroFecha(e.target.value)}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Cliente */}
@@ -250,35 +315,37 @@ export default function NuevoTratoPage() {
             )}
           </div>
 
-          {/* Ruta de entrada */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-            <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Ruta de entrada</h2>
-            <div className="space-y-2">
-              {RUTAS_CARDS.map(r=>(
-                <button key={r.value} type="button" onClick={()=>setS1(p=>({...p,rutaEntrada:r.value}))} className={`w-full text-left p-4 rounded-xl border transition-all ${s1.rutaEntrada===r.value?"border-[#B3985B] bg-[#B3985B]/10":"border-[#2a2a2a] hover:border-[#3a3a3a]"}`}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{r.icon}</span>
-                    <div>
-                      <p className={`text-sm font-semibold ${s1.rutaEntrada===r.value?"text-[#B3985B]":"text-white"}`}>{r.label}</p>
-                      <p className="text-gray-500 text-xs mt-0.5">{r.desc}</p>
+          {/* Ruta de entrada — solo si trato en proceso */}
+          {!tratoSeguro && (
+            <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+              <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Ruta de entrada</h2>
+              <div className="space-y-2">
+                {RUTAS_CARDS.map(r=>(
+                  <button key={r.value} type="button" onClick={()=>setS1(p=>({...p,rutaEntrada:r.value}))} className={`w-full text-left p-4 rounded-xl border transition-all ${s1.rutaEntrada===r.value?"border-[#B3985B] bg-[#B3985B]/10":"border-[#2a2a2a] hover:border-[#3a3a3a]"}`}>
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{r.icon}</span>
+                      <div>
+                        <p className={`text-sm font-semibold ${s1.rutaEntrada===r.value?"text-[#B3985B]":"text-white"}`}>{r.label}</p>
+                        <p className="text-gray-500 text-xs mt-0.5">{r.desc}</p>
+                      </div>
                     </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-            <div className="mt-4 pt-4 border-t border-[#1a1a1a]">
-              <p className="text-xs text-gray-500 mb-2">Canal de comunicación</p>
-              <div className="flex flex-wrap gap-2">
-                {CANALES.map(c=>(
-                  <button key={c.value} type="button" onClick={()=>setS1(p=>({...p,canalAtencion:c.value}))} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${s1.canalAtencion===c.value?"border-[#B3985B] bg-[#B3985B]/10 text-white":"border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"}`}>
-                    <span>{c.icon}</span>{c.label}
                   </button>
                 ))}
               </div>
+              <div className="mt-4 pt-4 border-t border-[#1a1a1a]">
+                <p className="text-xs text-gray-500 mb-2">Canal de comunicación</p>
+                <div className="flex flex-wrap gap-2">
+                  {CANALES.map(c=>(
+                    <button key={c.value} type="button" onClick={()=>setS1(p=>({...p,canalAtencion:c.value}))} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${s1.canalAtencion===c.value?"border-[#B3985B] bg-[#B3985B]/10 text-white":"border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"}`}>
+                      <span>{c.icon}</span>{c.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Origen del lead */}
+          {/* Origen del lead — importado de constants, opciones simplificadas */}
           <div className="bg-[#111] border border-[#222] rounded-xl p-5">
             <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Origen del lead</h2>
             <div className="grid grid-cols-2 gap-3">
@@ -287,7 +354,7 @@ export default function NuevoTratoPage() {
                   <Combobox
                     value={s1.origenLead}
                     onChange={v => setS1(p => ({ ...p, origenLead: v }))}
-                    options={ORIGEN_OPTIONS.map(o => ({ value: o.value, label: o.label }))}
+                    options={ORIGEN_LEAD_OPTIONS}
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                   />
                 </div>
@@ -326,13 +393,25 @@ export default function NuevoTratoPage() {
           <div className="flex gap-3 justify-between pb-4">
             <button onClick={()=>{setError("");}} className="px-5 py-2.5 rounded-xl border border-[#333] text-gray-400 hover:text-white text-sm transition-colors" disabled>← Paso 1</button>
             <div className="flex items-center gap-2">
-              <button onClick={()=>{if(validarCliente()) crearActivo(true);}} disabled={loading}
-                className="px-4 py-2.5 rounded-xl border border-[#333] text-gray-400 hover:text-white text-sm transition-colors disabled:opacity-50">
-                {loading ? "Guardando..." : "Guardar sin detalles"}
-              </button>
-              <button onClick={()=>{if(validarCliente())setStep(2);}} className="px-6 py-2.5 rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-sm transition-colors">
-                Siguiente → ¿Qué busca?
-              </button>
+              {tratoSeguro ? (
+                <button
+                  onClick={() => crearTratoSeguro()}
+                  disabled={loading}
+                  className="px-6 py-2.5 rounded-xl bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors disabled:opacity-50"
+                >
+                  {loading ? "Creando..." : "✅ Confirmar trato →"}
+                </button>
+              ) : (
+                <>
+                  <button onClick={()=>{if(validarCliente()) crearActivo(true);}} disabled={loading}
+                    className="px-4 py-2.5 rounded-xl border border-[#333] text-gray-400 hover:text-white text-sm transition-colors disabled:opacity-50">
+                    {loading ? "Guardando..." : "Guardar sin detalles"}
+                  </button>
+                  <button onClick={()=>{if(validarCliente())setStep(2);}} className="px-6 py-2.5 rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-sm transition-colors">
+                    Siguiente → ¿Qué busca?
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -378,7 +457,7 @@ export default function NuevoTratoPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2"><label className="text-xs text-gray-500 mb-1 block">Nombre del evento / proyecto</label><input value={s2.nombreEvento} onChange={e=>setS2(p=>({...p,nombreEvento:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" placeholder="Ej: Boda García · Festival Verano 2025 · Lanzamiento Nike"/></div>
               <div><label className="text-xs text-gray-500 mb-1 block">Fecha estimada</label><input type="date" value={s2.fechaEventoEstimada} onChange={e=>setS2(p=>({...p,fechaEventoEstimada:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"/></div>
-              <div><label className="text-xs text-gray-500 mb-1 block">Asistentes estimados</label><input type="number" value={s2.asistentesEstimados} onChange={e=>setS2(p=>({...p,asistentesEstimados:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" placeholder="Ej: 300"/></div>
+              {/* Asistentes estimados fue movido al wizard de brief técnico, paso "Servicios y equipos" */}
               <div className="col-span-2"><label className="text-xs text-gray-500 mb-1 block">Ciudad / Venue</label><input value={s2.lugarEstimado} onChange={e=>setS2(p=>({...p,lugarEstimado:e.target.value}))} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" placeholder="Ej: Querétaro · Foro Independencia"/></div>
             </div>
           </div>
