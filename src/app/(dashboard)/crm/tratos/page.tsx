@@ -947,6 +947,7 @@ function CompactTratoRow({
   trato: t,
   onEliminar,
   onCambiarEtapa,
+  onCambiarServicio,
   onQuickNote,
   onCambiarResponsable,
   deletingId,
@@ -957,6 +958,7 @@ function CompactTratoRow({
   trato: Trato;
   onEliminar: () => void;
   onCambiarEtapa: (nuevaEtapa: string) => void;
+  onCambiarServicio: (servicio: string | null) => void;
   onQuickNote: () => void;
   onCambiarResponsable: (responsableId: string | null) => void;
   deletingId: string | null;
@@ -1099,14 +1101,19 @@ function CompactTratoRow({
         </div>
 
         {/* ── COL 3b · Tipo de servicio ─── 85px ────── */}
-        <div className="hidden md:block w-[85px] shrink-0 pr-3">
-          {t.tipoServicio ? (
-            <span className="text-[11px] text-[#555] truncate block">
-              {TIPO_SERVICIO_LABELS[t.tipoServicio] ?? t.tipoServicio}
-            </span>
-          ) : (
-            <span className="text-[11px] text-[#222]">&mdash;</span>
-          )}
+        <div className="hidden md:block w-[85px] shrink-0 pr-3" onClick={e => e.stopPropagation()}>
+          <select
+            value={t.tipoServicio ?? ''}
+            onChange={e => onCambiarServicio(e.target.value || null)}
+            onClick={e => e.stopPropagation()}
+            className="w-full bg-transparent border-none text-[11px] focus:outline-none cursor-pointer text-[#555] hover:text-gray-300 transition-colors"
+            title="Tipo de servicio"
+          >
+            <option value="" className="bg-[#111] text-[#555]">—</option>
+            <option value="PRODUCCION_TECNICA" className="bg-[#111] text-white">Producción</option>
+            <option value="RENTA" className="bg-[#111] text-white">Renta</option>
+            <option value="DIRECCION_TECNICA" className="bg-[#111] text-white">Dirección</option>
+          </select>
         </div>
 
         {/* ── COL 4 · Tipo evento ─────── 90px ────── */}
@@ -1514,10 +1521,14 @@ export default function TratosPage() {
   }
 
   useEffect(() => {
-    fetch("/api/tratos").then(r => r.json()).then(data => {
-      const list: Trato[] = data.tratos ?? [];
-      setTratos(list);
-    }).finally(() => setLoading(false));
+    // Sync fechaProximaAccion primero (limpia seguimientos vencidos borrados) → luego carga datos frescos
+    const load = async () => {
+      try { await fetch("/api/admin/sync-fechas", { method: "POST" }); } catch { /* ignore */ }
+      const data = await fetch("/api/tratos").then(r => r.json());
+      setTratos(data.tratos ?? []);
+      setLoading(false);
+    };
+    load();
     fetch("/api/usuarios-activos").then(r => r.json()).then(d => setUsuarios(d.usuarios ?? []));
   }, []);
 
@@ -2043,6 +2054,14 @@ export default function TratosPage() {
                   trato={t}
                   onEliminar={() => eliminar(t.id, t.cliente.nombre)}
                   onCambiarEtapa={nuevaEtapa => cambiarEtapa(t.id, nuevaEtapa)}
+                  onCambiarServicio={async (servicio) => {
+                    setTratos(prev => prev.map(x => x.id === t.id ? { ...x, tipoServicio: servicio } : x));
+                    await fetch(`/api/tratos/${t.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ tipoServicio: servicio }),
+                    });
+                  }}
                   onCambiarResponsable={uid => cambiarResponsable(t.id, uid)}
                   onQuickNote={() => { setQuickNoteId(t.id); setQuickNoteText(''); }}
                   deletingId={deletingId}
@@ -2053,6 +2072,22 @@ export default function TratosPage() {
               );
 
               type MesGroup = ReturnType<typeof groupTratosByMes>['all'][0];
+
+              // ── Header de columnas siempre visible ────────────────────────────
+              const colHeader = (
+                <div className="hidden md:flex items-center border-b border-[#0f0f0f] bg-[#0a0a0a] px-0 py-2 mb-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#333]">
+                  <div className="w-10 shrink-0" />
+                  <div className="flex-[3] min-w-0 pr-4">Cliente</div>
+                  <div className="hidden lg:block flex-[2] min-w-0 pr-4">Proyecto / Evento</div>
+                  <div className="w-[130px] shrink-0 pr-4">Fecha evento</div>
+                  <div className="hidden md:block w-[85px] shrink-0 pr-3">Servicio</div>
+                  <div className="hidden sm:block w-[90px] shrink-0 pr-3">Tipo</div>
+                  <div className="hidden lg:block w-[110px] shrink-0 pr-3">Responsable</div>
+                  <div className="hidden lg:block w-[110px] shrink-0 pr-3">Seguimiento</div>
+                  <div className="hidden sm:block w-[130px] shrink-0 pr-3">Etapa</div>
+                  <div className="w-[72px] shrink-0" />
+                </div>
+              );
 
               const renderGroup = (g: MesGroup) => {
                 const isPastMonth = g.isPast;
@@ -2099,31 +2134,6 @@ export default function TratosPage() {
                     </div>
 
                     {/* ── Tabla de tratos ───────────────────────────────────── */}
-                    {/* Header de columnas — solo visible en el primer grupo activo */}
-                    {!isPastMonth && !isIntraPast && g === all.find(x => !(x as MesGroup & { isIntraMonthPast?: boolean }).isIntraMonthPast && !x.isPast) && (
-                      <div className="hidden md:flex items-center border-b border-[#0f0f0f] bg-[#0a0a0a] px-0 py-2 mb-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#333]">
-                        {/* toggle placeholder */}
-                        <div className="w-10 shrink-0" />
-                        {/* Cliente */}
-                        <div className="flex-[3] min-w-0 pr-4">Cliente</div>
-                        {/* Proyecto */}
-                        <div className="hidden lg:block flex-[2] min-w-0 pr-4">Proyecto / Evento</div>
-                        {/* Fecha */}
-                        <div className="w-[130px] shrink-0 pr-4">Fecha evento</div>
-                        {/* Servicio */}
-                        <div className="hidden md:block w-[85px] shrink-0 pr-3">Servicio</div>
-                        {/* Tipo */}
-                        <div className="hidden sm:block w-[90px] shrink-0 pr-3">Tipo</div>
-                        {/* Responsable */}
-                        <div className="hidden lg:block w-[110px] shrink-0 pr-3">Responsable</div>
-                        {/* Seguimiento */}
-                        <div className="hidden lg:block w-[110px] shrink-0 pr-3">Seguimiento</div>
-                        {/* Etapa */}
-                        <div className="hidden sm:block w-[130px] shrink-0 pr-3">Etapa</div>
-                        {/* Acciones */}
-                        <div className="w-[72px] shrink-0" />
-                      </div>
-                    )}
 
                     <div className={`rounded-xl border overflow-hidden ${
                       isIntraPast ? 'border-[#181818] opacity-60' :
@@ -2138,6 +2148,7 @@ export default function TratosPage() {
 
               return (
                 <div className="space-y-6">
+                  {colHeader}
                   {all.map(renderGroup)}
                 </div>
               );
