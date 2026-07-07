@@ -177,7 +177,259 @@ function EtapaDropdown({ prospeccionId, etapaActual, onChanged }: {
   );
 }
 
-// ─── ProspeccionRow ───────────────────────────────────────────────────────────────
+// ─── FechaProximoDropdown ──────────────────────────────────────────────────────────────
+
+function FechaProximoDropdown({ prospeccionId, fechaActual, vencido, onChanged }: {
+  prospeccionId: string;
+  fechaActual: string | null;
+  vencido: boolean;
+  onChanged: (nuevaFecha: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [valor, setValor] = useState(fechaActual ? fechaActual.substring(0, 10) : "");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+
+  async function guardar() {
+    setSaving(true);
+    const iso = valor ? new Date(`${valor}T12:00:00`).toISOString() : null;
+    await fetch(`/api/prospeccion/${prospeccionId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fechaProximoContacto: iso }),
+    });
+    onChanged(iso);
+    setSaving(false);
+    setOpen(false);
+  }
+
+  return (
+    <div ref={ref} className="relative w-full" onClick={e => e.stopPropagation()}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className={`group/fecha flex items-center gap-1 w-full text-left transition-colors ${
+          vencido ? "text-red-400 hover:text-red-300" : fechaActual ? "text-[#777] hover:text-white" : "text-[#2a2a2a] hover:text-[#555]"
+        }`}
+      >
+        <span className="text-[12px] font-medium">{fechaActual ? formatFecha(fechaActual) : "— sin fecha"}</span>
+        <svg className="w-2.5 h-2.5 opacity-0 group-hover/fecha:opacity-100 transition-opacity shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        {vencido && <span className="text-[9px] text-red-500/60 block leading-none mt-0.5">vencido</span>}
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl p-3 min-w-[200px]">
+          <p className="text-[9px] text-[#555] uppercase tracking-wider mb-2">Próximo contacto</p>
+          <input
+            type="date"
+            value={valor}
+            onChange={e => setValor(e.target.value)}
+            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B] mb-2"
+          />
+          <div className="flex gap-1.5">
+            {valor && (
+              <button onClick={() => { setValor(""); }}
+                className="text-[10px] text-[#555] hover:text-red-400 px-2 py-1 rounded border border-[#1e1e1e] transition-colors">
+                Quitar
+              </button>
+            )}
+            <button onClick={guardar} disabled={saving}
+              className="flex-1 text-[10px] bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold px-2 py-1 rounded transition-colors disabled:opacity-40">
+              {saving ? "…" : "Guardar"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── ResponsableDropdown ─────────────────────────────────────────────────────────────
+
+function ResponsableDropdown({ prospeccionId, responsableActual, usuarios, onChanged }: {
+  prospeccionId: string;
+  responsableActual: { id: string; name: string } | null;
+  usuarios: Usuario[];
+  onChanged: (responsable: { id: string; name: string } | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+
+  async function asignar(u: Usuario | null) {
+    setSaving(true);
+    await fetch(`/api/prospeccion/${prospeccionId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ responsableId: u?.id ?? null }),
+    });
+    onChanged(u);
+    setSaving(false);
+    setOpen(false);
+  }
+
+  return (
+    <div ref={ref} className="relative w-full" onClick={e => e.stopPropagation()}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        disabled={saving}
+        className="group/resp flex items-center gap-1.5 w-full text-left transition-colors disabled:opacity-50"
+      >
+        {responsableActual ? (
+          <>
+            <span className="w-4 h-4 rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 flex items-center justify-center text-[8px] text-[#B3985B] shrink-0 font-bold">
+              {responsableActual.name.charAt(0).toUpperCase()}
+            </span>
+            <span className="text-[11px] text-[#888] truncate group-hover/resp:text-white transition-colors">
+              {responsableActual.name.split(" ")[0]}
+            </span>
+            <svg className="w-2.5 h-2.5 text-[#444] opacity-0 group-hover/resp:opacity-100 transition-opacity shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </>
+        ) : (
+          <span className="text-[11px] text-[#2a2a2a] group-hover/resp:text-[#555] transition-colors">— asignar</span>
+        )}
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[170px]">
+          <p className="text-[9px] text-[#444] uppercase tracking-wider px-3 py-1.5">Responsable</p>
+          {responsableActual && (
+            <button onClick={() => asignar(null)}
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs text-left text-[#555] hover:bg-[#1a1a1a] hover:text-red-400 transition-colors">
+              <span className="w-4 h-4 rounded-full border border-[#333] flex items-center justify-center text-[9px]">✕</span>
+              Sin asignar
+            </button>
+          )}
+          {usuarios.map(u => (
+            <button key={u.id} onClick={() => asignar(u)}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors hover:bg-[#1a1a1a] ${
+                responsableActual?.id === u.id ? "text-[#B3985B]" : "text-gray-300"
+              }`}>
+              <span className="w-4 h-4 rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 flex items-center justify-center text-[8px] text-[#B3985B] shrink-0 font-bold">
+                {u.name.charAt(0).toUpperCase()}
+              </span>
+              {u.name.split(" ").slice(0, 2).join(" ")}
+              {responsableActual?.id === u.id && <span className="ml-auto text-[#B3985B]">✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── ModalNuevoSeguimiento ─────────────────────────────────────────────────────────────
+
+const CANAL_ICON: Record<string, string> = { whatsapp: "📱", llamada: "📞", reunion: "🤝" };
+const CANAL_LABEL: Record<string, string> = { whatsapp: "WhatsApp", llamada: "Llamada", reunion: "Reunión" };
+
+function ModalNuevoSeguimiento({ tratoId, clienteNombre, onClose, onCreated }: {
+  tratoId: string;
+  clienteNombre: string;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [titulo, setTitulo] = useState("");
+  const [canal, setCanal] = useState("whatsapp");
+  const [fecha, setFecha] = useState(() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().substring(0, 10); });
+  const [hora, setHora] = useState("10:00");
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    if (!titulo) return;
+    setSaving(true);
+    await fetch("/api/seguimientos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tratoId,
+        titulo,
+        canal,
+        fechaProgramada: new Date(`${fecha}T${hora}:00`).toISOString(),
+      }),
+    });
+    setSaving(false);
+    onCreated();
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="bg-[#111] border border-[#222] rounded-2xl p-5 w-full max-w-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-white font-semibold text-sm">Nuevo seguimiento</h3>
+            <p className="text-[#555] text-[11px] mt-0.5">{clienteNombre}</p>
+          </div>
+          <button onClick={onClose} className="text-[#555] hover:text-white transition-colors">✕</button>
+        </div>
+        <div className="space-y-3">
+          <div>
+            <label className="text-[#555] text-[10px] uppercase tracking-wider block mb-1.5">Título *</label>
+            <input autoFocus value={titulo} onChange={e => setTitulo(e.target.value)}
+              placeholder="ej: Llamar para confirmar interés"
+              onKeyDown={e => e.key === "Enter" && save()}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="col-span-2">
+              <label className="text-[#555] text-[10px] uppercase tracking-wider block mb-1.5">Fecha</label>
+              <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+            </div>
+            <div>
+              <label className="text-[#555] text-[10px] uppercase tracking-wider block mb-1.5">Hora</label>
+              <input type="time" value={hora} onChange={e => setHora(e.target.value)}
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+            </div>
+          </div>
+          <div>
+            <label className="text-[#555] text-[10px] uppercase tracking-wider block mb-1.5">Canal</label>
+            <div className="flex gap-1.5">
+              {["whatsapp", "llamada", "reunion"].map(c => (
+                <button key={c} onClick={() => setCanal(c)}
+                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-semibold border transition-colors ${
+                    canal === c ? "bg-[#B3985B] border-[#B3985B] text-black" : "bg-[#0d0d0d] border-[#2a2a2a] text-[#666] hover:text-white"
+                  }`}>
+                  {CANAL_ICON[c]} {CANAL_LABEL[c]}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button onClick={onClose}
+              className="flex-1 py-2 rounded-xl text-xs font-semibold border border-[#2a2a2a] text-[#555] hover:text-white transition-colors">
+              Cancelar
+            </button>
+            <button onClick={save} disabled={saving || !titulo}
+              className="flex-1 py-2 rounded-xl text-xs font-semibold bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black transition-colors">
+              {saving ? "Creando…" : "Crear seguimiento"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ProspeccionRow ─────────────────────────────────────────────────────────────────────
 
 const CONTACTO_LABELS: Record<number, { label: string; desc: string }> = {
   1: { label: "Contacto 1", desc: "Primer contacto — presentación inicial" },
@@ -187,17 +439,21 @@ const CONTACTO_LABELS: Record<number, { label: string; desc: string }> = {
   5: { label: "Contacto 5", desc: "Definición — ¿hay intención de compra?" },
 };
 
-function ProspeccionRow({ p, onEtapaChange, onDelete }: {
+function ProspeccionRow({ p, usuarios, onEtapaChange, onDelete, onUpdate }: {
   p: Prospeccion;
+  usuarios: Usuario[];
   onEtapaChange: (id: string, etapa: string) => void;
   onDelete: (id: string) => void;
+  onUpdate: (id: string, patch: Partial<Prospeccion>) => void;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const evtColors = TIPO_EVENTO_COLORS[p.tipoEvento] ?? TIPO_EVENTO_COLORS.VARIOS;
-  const proximoVencido = isVencido(p.fechaProximoContacto);
   const estadoBadge = ESTADO_BADGE[p.estado];
   const alerta = necesitaAlerta(p);
 
+  const [fechaProximo, setFechaProximo] = useState(p.fechaProximoContacto);
+  const [responsable, setResponsable] = useState(p.responsable);
   const [contactos, setContactos] = useState({
     1: p.contacto1Hecho, 2: p.contacto2Hecho, 3: p.contacto3Hecho,
     4: p.contacto4Hecho, 5: p.contacto5Hecho,
@@ -205,8 +461,10 @@ function ProspeccionRow({ p, onEtapaChange, onDelete }: {
   const [expandido, setExpandido] = useState(false);
   const [savingContacto, setSavingContacto] = useState<number | null>(null);
   const [abriendo, setAbriendo] = useState(false);
+  const [modalSeguimiento, setModalSeguimiento] = useState(false);
 
   const prog = Object.values(contactos).filter(Boolean).length;
+  const proximoVencido = isVencido(fechaProximo);
 
   async function toggleContacto(n: number) {
     const nuevo = !contactos[n as keyof typeof contactos];
@@ -281,28 +539,26 @@ function ProspeccionRow({ p, onEtapaChange, onDelete }: {
           </span>
         </div>
         <div className="hidden lg:block w-[130px] shrink-0 pr-3">
-          {p.fechaProximoContacto ? (
-            <span className={`text-[12px] font-medium leading-tight block ${
-              proximoVencido ? "text-red-400" : "text-[#777]"
-            }`}>
-              {formatFecha(p.fechaProximoContacto)}
-              {proximoVencido && <span className="block text-[10px] text-red-500/60 mt-0.5">vencido</span>}
-            </span>
-          ) : (
-            <span className="text-[12px] text-[#2a2a2a]">— sin fecha</span>
-          )}
+          <FechaProximoDropdown
+            prospeccionId={p.id}
+            fechaActual={fechaProximo}
+            vencido={proximoVencido}
+            onChanged={nueva => {
+              setFechaProximo(nueva);
+              onUpdate(p.id, { fechaProximoContacto: nueva });
+            }}
+          />
         </div>
-        <div className="hidden lg:flex w-[110px] shrink-0 pr-3 items-center gap-1.5">
-          {p.responsable ? (
-            <>
-              <span className="w-4 h-4 rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 flex items-center justify-center text-[8px] text-[#B3985B] shrink-0 font-bold">
-                {p.responsable.name.charAt(0).toUpperCase()}
-              </span>
-              <span className="text-[11px] text-[#888] truncate">{p.responsable.name.split(" ")[0]}</span>
-            </>
-          ) : (
-            <span className="text-[11px] text-[#2a2a2a]">— sin asignar</span>
-          )}
+        <div className="hidden lg:flex w-[110px] shrink-0 pr-3 items-center">
+          <ResponsableDropdown
+            prospeccionId={p.id}
+            responsableActual={responsable}
+            usuarios={usuarios}
+            onChanged={nuevo => {
+              setResponsable(nuevo);
+              onUpdate(p.id, { responsable: nuevo });
+            }}
+          />
         </div>
         <div className="hidden xl:flex w-[76px] shrink-0 pr-3 items-center gap-1.5">
           <div className="flex gap-0.5">
@@ -369,27 +625,52 @@ function ProspeccionRow({ p, onEtapaChange, onDelete }: {
                   </button>
                 );
               })}
-              <div className="px-4 py-2.5 bg-[#0a0a0a] border-t border-[#1e1e1e] flex items-center justify-between">
+              <div className="px-4 py-2.5 bg-[#0a0a0a] border-t border-[#1e1e1e] flex items-center justify-between gap-2 flex-wrap">
                 <span className="text-[10px] text-[#444]">{prog} de 5 completados</span>
-                {tieneTratoActivo ? (
-                  p.trato ? (
-                    <Link href={`/crm/tratos/${p.trato.id}`} className="flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 transition-colors">
-                      <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0" /> Ver trato →
-                    </Link>
-                  ) : <span className="text-xs text-purple-400 opacity-60">En trato…</span>
-                ) : (
-                  <button onClick={e => { e.stopPropagation(); abrirTrato(); }} disabled={abriendo}
-                    className="flex items-center gap-2 text-xs text-[#B3985B] hover:text-[#c9a96a] font-medium transition-colors disabled:opacity-50">
-                    {abriendo
-                      ? <><div className="w-3 h-3 border border-[#B3985B] border-t-transparent rounded-full animate-spin" /> Abriendo…</>
-                      : <><span className="text-sm">🎯</span> Abrir Trato</>
-                    }
-                  </button>
-                )}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Botón + Seguimiento */}
+                  {p.trato && (
+                    <button
+                      onClick={e => { e.stopPropagation(); setModalSeguimiento(true); }}
+                      className="flex items-center gap-1.5 text-xs text-[#555] hover:text-[#B3985B] border border-[#1e1e1e] hover:border-[#B3985B]/30 rounded-md px-2 py-1 transition-colors">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                        <line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/>
+                      </svg>
+                      + Seguimiento
+                    </button>
+                  )}
+                  {tieneTratoActivo ? (
+                    p.trato ? (
+                      <Link href={`/crm/tratos/${p.trato.id}`} className="flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 transition-colors">
+                        <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0" /> Ver trato →
+                      </Link>
+                    ) : <span className="text-xs text-purple-400 opacity-60">En trato…</span>
+                  ) : (
+                    <button onClick={e => { e.stopPropagation(); abrirTrato(); }} disabled={abriendo}
+                      className="flex items-center gap-2 text-xs text-[#B3985B] hover:text-[#c9a96a] font-medium transition-colors disabled:opacity-50">
+                      {abriendo
+                        ? <><div className="w-3 h-3 border border-[#B3985B] border-t-transparent rounded-full animate-spin" /> Abriendo…</>
+                        : <><span className="text-sm">🎯</span> Abrir Trato</>
+                      }
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal: nuevo seguimiento */}
+      {modalSeguimiento && p.trato && (
+        <ModalNuevoSeguimiento
+          tratoId={p.trato.id}
+          clienteNombre={p.cliente.nombre}
+          onClose={() => setModalSeguimiento(false)}
+          onCreated={() => toast.success("Seguimiento creado ✓")}
+        />
       )}
     </>
   );
@@ -869,8 +1150,12 @@ export default function ProspeccionClient({
             <ProspeccionRow
               key={p.id}
               p={p}
+              usuarios={usuarios}
               onEtapaChange={handleEtapaChange}
               onDelete={handleDelete}
+              onUpdate={(id, patch) => setProspecciones(prev =>
+                prev.map(x => x.id === id ? { ...x, ...patch } : x)
+              )}
             />
           ))}
         </div>
