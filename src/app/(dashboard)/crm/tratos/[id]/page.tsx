@@ -99,7 +99,15 @@ interface Trato {
     estado: string; granTotal: number; nombreEvento: string | null; nombreCotizacion: string | null;
     fechaEvento: string | null; lugarEvento: string | null;
     gastosProduccionActivo: boolean; gastosProduccionMonto: number;
-    createdAt: string; proyecto: { id: string } | null;
+    createdAt: string;
+    proyecto: {
+      id: string;
+      numeroProyecto: string;
+      nombre: string;
+      estado: string;
+      fechaEvento: string | null;
+      lugarEvento: string | null;
+    } | null;
   }>;
   archivos: TratoArchivo[];
   _canViewFinances?: boolean;
@@ -739,15 +747,17 @@ const TIPO_SEG = [
   { key: "email",    label: "Email",    icon: "📧" },
 ];
 
-function SeguimientosPanel({ tratoId, telefono }: {
+function SeguimientosPanel({ tratoId, telefono, showModal, setShowModal }: {
   tratoId: string;
   telefono: string | null;
+  showModal: boolean;
+  setShowModal: (v: boolean) => void;
 }) {
   const confirm = useConfirm();
   const [segs, setSegs] = useState<SeguimientoItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
   const [tipo, setTipo] = useState("whatsapp");
+
   const [fecha, setFecha] = useState(() => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); });
   const [nota, setNota] = useState("");
   const [saving, setSaving] = useState(false);
@@ -903,7 +913,7 @@ function SeguimientosPanel({ tratoId, telefono }: {
 
       {/* Modal: Agendar seguimiento */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
+        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70" onClick={() => setShowModal(false)} />
           <div className="relative bg-[#111] border border-[#2a2a2a] rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4">
             <div className="flex items-center justify-between">
@@ -982,6 +992,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const [modalPerdida, setModalPerdida] = useState(false);
   const [razonPerdida, setRazonPerdida] = useState("");
   const [notasPerdida, setNotasPerdida] = useState("");
+
+  // Estado para modal de seguimientos (elevado al padre para evitar problemas con ref)
+  const [showSegModal, setShowSegModal] = useState(false);
 
   // Archivos del briefing
   const [archivos, setArchivos] = useState<TratoArchivo[]>([]);
@@ -1803,13 +1816,30 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      {/* Cotizaciones — Vista multi-evento */}
+      {/* ═══ DIVIDER: PROPUESTA ECONÓMICA ══════════════════════════════ */}
       {trato._canViewFinances !== false && (
-      <div className="bg-[#111] border border-[#222] rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Cotizaciones del proyecto</h2>
-            <p className="text-[10px] text-gray-600 mt-0.5">{trato.cotizaciones.length} cotización{trato.cotizaciones.length !== 1 ? "es" : ""} · {fmt(trato.cotizaciones.reduce((s, c) => s + c.granTotal, 0))} total</p>
+        <div className="flex items-center gap-3 px-1">
+          <div className="w-5 h-5 rounded-md bg-[#B3985B]/15 border border-[#B3985B]/25 flex items-center justify-center shrink-0">
+            <span className="text-[10px]">💰</span>
+          </div>
+          <span className="text-[10px] font-bold text-[#B3985B]/60 uppercase tracking-[0.12em]">Propuesta Económica</span>
+          <div className="flex-1 h-px bg-gradient-to-r from-[#B3985B]/20 to-transparent" />
+        </div>
+      )}
+
+      {/* ─── SECCIÓN: COTIZACIONES ─────────────────────────────────────── */}
+      {trato._canViewFinances !== false && (
+      <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden">
+        {/* Header de sección */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#141414]">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-[#B3985B]/10 border border-[#B3985B]/20 flex items-center justify-center shrink-0">
+              <span className="text-sm">💰</span>
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white tracking-tight">Cotizaciones del proyecto</h2>
+              <p className="text-[10px] text-gray-600 mt-0.5">{trato.cotizaciones.length} cotización{trato.cotizaciones.length !== 1 ? "es" : ""} · {fmt(trato.cotizaciones.reduce((s, c) => s + c.granTotal, 0))} total</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {trato.cotizaciones.length > 0 && (
@@ -1839,7 +1869,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               {creandoCotizacion ? "Creando..." : "+ Nuevo evento"}
             </button>
           </div>
-        </div>
+        </div>{/* end header */}
+        <div className="p-5">
 
         {trato.cotizaciones.length === 0 ? (
           <div className="text-center py-8">
@@ -1957,12 +1988,35 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           );
         })()}
+        </div>
       </div>
       )}
 
-      {/* ══ GATE PRIMARIO ══ */}
+
+      {/* ═══ DIVIDER: PROCESO COMERCIAL ══════════════════════════════ */}
+      <div className="flex items-center gap-3 px-1">
+        <div className="w-5 h-5 rounded-md bg-blue-900/20 border border-blue-700/20 flex items-center justify-center shrink-0">
+          <span className="text-[10px]">🔍</span>
+        </div>
+        <span className="text-[10px] font-bold text-blue-400/50 uppercase tracking-[0.12em]">Proceso Comercial</span>
+        <div className="flex-1 h-px bg-gradient-to-r from-blue-800/20 to-transparent" />
+      </div>
+
+      {/* ─── SECCIÓN: TIPO DE PROSPECTO (GATE PRIMARIO) ─────────────── */}
+
       {!skipGate && !trato.canalAtencion && trato.tipoProspecto !== "NURTURING" && (
-        <div className="bg-[#0a0a0a] border-2 border-[#B3985B]/30 rounded-xl p-6">
+        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center gap-3 px-5 py-4 border-b border-[#141414]">
+            <div className="w-8 h-8 rounded-lg bg-violet-900/20 border border-violet-800/30 flex items-center justify-center shrink-0">
+              <span className="text-sm">🎯</span>
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white tracking-tight">¿Cómo atienes este lead?</h2>
+              <p className="text-[10px] text-gray-600 mt-0.5">Selecciona el tipo de prospecto para definir la ruta de trabajo</p>
+            </div>
+          </div>
+          <div className="p-6">
           {!showCanales ? (
             <>
               <div className="text-center mb-6">
@@ -2018,29 +2072,11 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               Saltar este paso y cotizar directamente →
             </button>
           </div>
+          </div>
         </div>
       )}
 
-      {/* ── Tipo de prospecto (read-only badge) ── */}
-      {(trato.canalAtencion || trato.tipoProspecto === "NURTURING") && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-[#111] border border-[#1e1e1e] rounded-lg">
-          {trato.tipoProspecto === "NURTURING" ? (
-            <span className="text-xs text-emerald-400">🌱 Prospecto en frío</span>
-          ) : (
-            <span className="text-xs text-[#B3985B]">Tiene necesidad concreta</span>
-          )}
-          <button
-            onClick={async () => {
-              const next = trato.tipoProspecto === "NURTURING" ? "ACTIVO" : "NURTURING";
-              const d = await patch({ tipoProspecto: next });
-              if (d) setTrato(p => p ? { ...p, tipoProspecto: d.trato.tipoProspecto } : p);
-            }}
-            className="ml-auto text-[10px] text-gray-600 hover:text-gray-400 transition-colors"
-          >
-            cambiar
-          </button>
-        </div>
-      )}
+
 
       {trato.etapa === "VENTA_PERDIDA" && trato.motivoPerdida && (
         <p className="text-xs text-red-400/80 bg-red-900/10 border border-red-900/30 rounded-xl px-4 py-2">
@@ -2194,12 +2230,16 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               onSave={(val) => patch({ nombreEvento: val }).then(d => { if (d) setTrato(prev => prev ? { ...prev, nombreEvento: d.trato.nombreEvento } : prev); })}
             />
           </div>
-          {trato.fechaEventoEstimada && (
-            <div className="mb-3 bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3">
-              <p className="text-xs text-gray-500 mb-1">Fecha del evento</p>
-              <p className="text-sm text-white">{fmtFechaEvento(trato.fechaEventoEstimada)}</p>
-            </div>
-          )}
+          {(() => {
+            const fechaAuth = trato.cotizaciones[0]?.fechaEvento ?? trato.fechaEventoEstimada;
+            if (!fechaAuth) return null;
+            return (
+              <div className="mb-3 bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3">
+                <p className="text-xs text-gray-500 mb-1">Fecha del evento</p>
+                <p className="text-sm text-white">{fmtFechaEvento(fechaAuth)}</p>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -2531,6 +2571,17 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         );
       })()}
+
+      {/* ═══ DIVIDER: LEVANTAMIENTO TÉCNICO ══════════════════════════════ */}
+      {trato.tipoProspecto !== "NURTURING" && trato.canalAtencion && (
+        <div className="flex items-center gap-3 px-1">
+          <div className="w-5 h-5 rounded-md bg-violet-900/20 border border-violet-700/20 flex items-center justify-center shrink-0">
+            <span className="text-[10px]">🎯</span>
+          </div>
+          <span className="text-[10px] font-bold text-violet-400/50 uppercase tracking-[0.12em]">Levantamiento Técnico</span>
+          <div className="flex-1 h-px bg-gradient-to-r from-violet-800/20 to-transparent" />
+        </div>
+      )}
 
       {/* ── WIZARD DE DESCUBRIMIENTO ── */}
       {trato.tipoProspecto !== "NURTURING" && trato.canalAtencion && profundidad !== "INFO" && (
@@ -3540,27 +3591,45 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
-      {/* ── Seguimientos ── */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm">📅</span>
-            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Seguimientos</h2>
+      {/* ═══ DIVIDER: SEGUIMIENTO COMERCIAL ═════════════════════════ */}
+      <div className="flex items-center gap-3 px-1">
+        <div className="w-5 h-5 rounded-md bg-blue-900/20 border border-blue-700/20 flex items-center justify-center shrink-0">
+          <span className="text-[10px]">📅</span>
+        </div>
+        <span className="text-[10px] font-bold text-blue-400/50 uppercase tracking-[0.12em]">Agenda & Seguimiento</span>
+        <div className="flex-1 h-px bg-gradient-to-r from-blue-800/20 to-transparent" />
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────────
+          SECCIÓN: SEGUIMIENTOS
+      ───────────────────────────────────────────────────────────────── */}
+      <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden">
+        {/* Header de sección */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#141414]">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-900/20 border border-blue-800/30 flex items-center justify-center shrink-0">
+              <span className="text-sm">📅</span>
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white tracking-tight">Seguimientos</h2>
+              <p className="text-[10px] text-gray-600 mt-0.5">Historial y próximas acciones</p>
+            </div>
           </div>
           <button
-            onClick={() => {
-              const panel = document.getElementById('seg-modal-trigger');
-              if (panel) (panel as HTMLButtonElement).click();
-            }}
+            onClick={() => setShowSegModal(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-[#B3985B] text-black text-xs font-bold rounded-lg hover:bg-[#c9a96a] transition-colors"
           >
             + Agendar
           </button>
         </div>
-        <SeguimientosPanel
-          tratoId={trato.id}
-          telefono={trato.cliente.telefono ?? null}
-        />
+        <div className="p-5">
+          <SeguimientosPanel
+            tratoId={trato.id}
+            telefono={trato.cliente.telefono ?? null}
+            showModal={showSegModal}
+            setShowModal={setShowSegModal}
+          />
+        </div>
       </div>
 
       </div> {/* end left column */}
@@ -3593,33 +3662,47 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
 
         {/* Event info */}
-        {(trato.fechaEventoEstimada || trato.lugarEstimado || trato.presupuestoEstimado) && (
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-2">
-            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Evento</p>
-            {trato.fechaEventoEstimada && (
-              <div className="flex items-start gap-2">
-                <span className="text-gray-700 text-xs shrink-0">📅</span>
-                <p className="text-gray-300 text-xs">
-                  {fmtFechaEvento(trato.fechaEventoEstimada)}
-                </p>
+        {(() => {
+          // ── Fecha autoritativa: priorizar la primera cotización si existe
+          const cotPrincipal = trato.cotizaciones[0];
+          const fechaAutoritativa = cotPrincipal?.fechaEvento ?? trato.fechaEventoEstimada;
+          const fechaDesde = cotPrincipal?.fechaEvento ? 'cotizacion' : 'estimada';
+          const lugarAutoritativo = cotPrincipal?.lugarEvento ?? trato.lugarEstimado;
+          const hayInfo = fechaAutoritativa || lugarAutoritativo || trato.presupuestoEstimado;
+          if (!hayInfo) return null;
+          return (
+            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-2">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] text-gray-600 uppercase tracking-wider">Evento</p>
+                {fechaDesde === 'cotizacion' && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-900/20 border border-emerald-800/30 text-emerald-400">Confirmado</span>
+                )}
               </div>
-            )}
-            {trato.lugarEstimado && (
-              <div className="flex items-start gap-2">
-                <span className="text-gray-700 text-xs shrink-0">📍</span>
-                <p className="text-gray-300 text-xs">{trato.lugarEstimado}</p>
-              </div>
-            )}
-            {trato.presupuestoEstimado && (
-              <div className="flex items-start gap-2">
-                <span className="text-gray-700 text-xs shrink-0">💰</span>
-                <p className="text-[#B3985B] text-xs font-medium">
-                  {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(trato.presupuestoEstimado)}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+              {fechaAutoritativa && (
+                <div className="flex items-start gap-2">
+                  <span className="text-gray-700 text-xs shrink-0">📅</span>
+                  <p className="text-gray-300 text-xs">
+                    {fmtFechaEvento(fechaAutoritativa)}
+                  </p>
+                </div>
+              )}
+              {lugarAutoritativo && (
+                <div className="flex items-start gap-2">
+                  <span className="text-gray-700 text-xs shrink-0">📍</span>
+                  <p className="text-gray-300 text-xs">{lugarAutoritativo}</p>
+                </div>
+              )}
+              {trato.presupuestoEstimado && (
+                <div className="flex items-start gap-2">
+                  <span className="text-gray-700 text-xs shrink-0">💰</span>
+                  <p className="text-[#B3985B] text-xs font-medium">
+                    {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(trato.presupuestoEstimado)}
+                  </p>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Registro del trato */}
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3 flex items-center gap-2">
@@ -3630,23 +3713,110 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           </span>
         </div>
 
-        {/* Proyecto vinculado */}
+        {/* Proyecto vinculado — rich card con stepper de estado */}
         {(() => {
           const cotConProy = trato.cotizaciones.find(c => c.proyecto);
-          if (!cotConProy?.proyecto) return null;
+          const proy = cotConProy?.proyecto;
+          if (!proy) return null;
+
+          const PASOS = [
+            { key: 'PLANEACION', label: 'Plan.' },
+            { key: 'CONFIRMADO', label: 'Conf.' },
+            { key: 'ACTIVO',     label: 'Prod.' },
+            { key: 'EN_CURSO',   label: 'Curso' },
+            { key: 'COMPLETADO', label: 'Listo' },
+          ];
+          const ESTADO_COLORS: Record<string, { pill: string; dot: string }> = {
+            PLANEACION:  { pill: 'text-amber-400 bg-amber-900/20 border-amber-800/30',       dot: 'bg-amber-400' },
+            CONFIRMADO:  { pill: 'text-emerald-400 bg-emerald-900/20 border-emerald-800/30', dot: 'bg-emerald-400' },
+            ACTIVO:      { pill: 'text-blue-400 bg-blue-900/20 border-blue-800/30',          dot: 'bg-blue-400' },
+            EN_CURSO:    { pill: 'text-violet-400 bg-violet-900/20 border-violet-800/30',    dot: 'bg-violet-400' },
+            COMPLETADO:  { pill: 'text-gray-400 bg-gray-800/20 border-gray-700/30',          dot: 'bg-gray-400' },
+            CANCELADO:   { pill: 'text-red-400 bg-red-900/20 border-red-800/30',             dot: 'bg-red-400' },
+          };
+          const ec = ESTADO_COLORS[proy.estado] ?? ESTADO_COLORS.PLANEACION;
+          const pasoActual = PASOS.findIndex(p => p.key === proy.estado);
+          const labelActual = proy.estado === 'ACTIVO' ? 'Producción' : proy.estado === 'EN_CURSO' ? 'En curso' : proy.estado === 'PLANEACION' ? 'Planeación' : proy.estado === 'CONFIRMADO' ? 'Confirmado' : proy.estado === 'COMPLETADO' ? 'Completado' : proy.estado;
+
+          const fechaProy = proy.fechaEvento
+            ? new Date(proy.fechaEvento.substring(0, 10) + 'T12:00:00Z').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
+            : null;
+
           return (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] text-gray-600 uppercase tracking-wider">Proyecto vinculado</p>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-900/20 text-emerald-500 border border-emerald-800/30">Activo</span>
+            <div className="bg-[#080d09] border border-emerald-900/40 rounded-2xl overflow-hidden">
+              {/* Accent strip */}
+              <div className="h-[2px] w-full bg-gradient-to-r from-emerald-700/70 via-emerald-600/30 to-transparent" />
+              {/* Header */}
+              <div className="px-4 pt-3 pb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-md bg-emerald-900/30 border border-emerald-800/30 flex items-center justify-center">
+                    <span className="text-[11px]">🎬</span>
+                  </div>
+                  <p className="text-[10px] text-emerald-500/60 uppercase tracking-wider font-bold">Proyecto</p>
+                </div>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium border ${ec.pill}`}>
+                  {labelActual}
+                </span>
               </div>
-              <p className="text-white text-xs font-medium mb-3">{trato.nombreEvento || trato.cliente.nombre}</p>
-              <a
-                href={`/proyectos/${cotConProy.proyecto.id}`}
-                className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 hover:text-white hover:border-[#3a3a3a] text-xs transition-colors"
-              >
-                Ir al proyecto →
-              </a>
+              {/* Name */}
+              <div className="px-4 pb-2">
+                <p className="text-white text-sm font-semibold leading-tight">{proy.nombre || trato.nombreEvento || trato.cliente.nombre}</p>
+                <p className="text-gray-600 text-[10px] mt-0.5 font-mono">{proy.numeroProyecto}</p>
+              </div>
+              {/* Progress stepper */}
+              {proy.estado !== 'CANCELADO' && (
+                <div className="px-4 pb-3">
+                  <div className="flex items-start w-full">
+                    {PASOS.map((paso, i) => {
+                      const done = i < pasoActual;
+                      const active = i === pasoActual;
+                      return (
+                        <div key={paso.key} className="flex items-start flex-1">
+                          <div className="flex flex-col items-center gap-1 flex-1">
+                            <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${
+                              active ? `${ec.dot} border-transparent` :
+                              done ? 'bg-emerald-800/50 border-emerald-700/40' :
+                              'bg-[#1a1a1a] border-[#252525]'
+                            }`}>
+                              {done && <span className="text-emerald-400 text-[7px] leading-none">✓</span>}
+                            </div>
+                            <span className={`text-[7px] font-medium text-center w-full px-0.5 truncate ${active ? 'text-emerald-400' : done ? 'text-emerald-700/60' : 'text-gray-700'}`}>
+                              {paso.label}
+                            </span>
+                          </div>
+                          {i < PASOS.length - 1 && (
+                            <div className={`h-px mt-[7px] shrink-0 w-2 ${done ? 'bg-emerald-700/40' : 'bg-[#1e1e1e]'}`} />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {/* Meta */}
+              <div className="px-4 pb-3 space-y-1">
+                {fechaProy && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-emerald-900/60 text-[10px]">📅</span>
+                    <p className="text-gray-500 text-[10px]">{fechaProy}</p>
+                  </div>
+                )}
+                {proy.lugarEvento && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-emerald-900/60 text-[10px]">📍</span>
+                    <p className="text-gray-500 text-[10px] truncate">{proy.lugarEvento}</p>
+                  </div>
+                )}
+              </div>
+              {/* CTA */}
+              <div className="px-3 pb-3">
+                <a
+                  href={`/proyectos/${proy.id}`}
+                  className="flex items-center justify-center gap-1.5 w-full py-2 rounded-xl bg-emerald-900/15 border border-emerald-800/30 text-emerald-400 hover:bg-emerald-900/25 hover:border-emerald-700/50 text-xs font-semibold transition-all"
+                >
+                  Ver proyecto completo →
+                </a>
+              </div>
             </div>
           );
         })()}

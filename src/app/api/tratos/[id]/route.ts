@@ -44,7 +44,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           id: true, numeroCotizacion: true, opcionLetra: true, grupoId: true, estado: true,
           granTotal: true, nombreEvento: true, nombreCotizacion: true, fechaEvento: true,
           lugarEvento: true, gastosProduccionActivo: true, gastosProduccionMonto: true,
-          createdAt: true, proyecto: { select: { id: true } },
+          createdAt: true,
+          proyecto: {
+            select: {
+              id: true, numeroProyecto: true, nombre: true, estado: true,
+              fechaEvento: true, lugarEvento: true,
+            },
+          },
         },
         orderBy: { createdAt: "asc" },
       },
