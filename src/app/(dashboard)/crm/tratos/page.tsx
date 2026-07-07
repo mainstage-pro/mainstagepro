@@ -924,7 +924,7 @@ function CompactTratoRow({
     const diff = Math.floor((new Date(fecha).getTime() - Date.now()) / 86400000);
     if (diff < 0) return { label: `Vencido ${Math.abs(diff)}d`, cls: 'bg-red-500/15 text-red-400', pill: true };
     if (diff === 0) return { label: 'Hoy', cls: 'bg-yellow-500/15 text-yellow-400', pill: true };
-    const label = new Date(fecha + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+    const label = new Date(fecha.substring(0, 10) + 'T12:00:00Z').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', timeZone: 'UTC' });
     return { label, cls: 'bg-[#1e1e1e] text-[#555]', pill: true };
   };
 
@@ -1002,7 +1002,7 @@ function CompactTratoRow({
         <div className="hidden md:block w-[90px] shrink-0">
           {t.fechaEventoEstimada ? (
             <span className="text-[11px] text-[#888]">
-              {new Date(t.fechaEventoEstimada + 'T12:00:00Z').toLocaleDateString('es-MX', {
+              {new Date(t.fechaEventoEstimada.substring(0, 10) + 'T12:00:00Z').toLocaleDateString('es-MX', {
                 day: 'numeric', month: 'short', timeZone: 'UTC'
               })}
             </span>
@@ -1149,7 +1149,7 @@ function LeadsView({ leads, activeSeguimientoPopover, seguimientoPendiente, segu
                       proxVencida ? 'text-red-400' : proxHoy ? 'text-yellow-400' : 'text-emerald-400'
                     }`}>
                       <span>{proxVencida ? '⚠' : proxHoy ? '📅' : '✓'}</span>
-                      <span>{new Date(t.fechaProximaAccion + 'T12:00:00').toLocaleDateString('es-MX', { day: '2-digit', month: 'short' })}</span>
+                      <span>{new Date(t.fechaProximaAccion.substring(0, 10) + 'T12:00:00Z').toLocaleDateString('es-MX', { day: '2-digit', month: 'short', timeZone: 'UTC' })}</span>
                     </span>
                   ) : (
                     <span className="text-[10px] text-gray-600">Sin seguimiento</span>
@@ -1503,7 +1503,7 @@ export default function TratosPage() {
   }
 
   function grupoSemana(fecha: string) {
-    const d = new Date(fecha + "T12:00:00");
+    const d = new Date(fecha.substring(0, 10) + "T12:00:00Z");
     const dow = d.getDay() === 0 ? 6 : d.getDay() - 1;
     const lunes = new Date(d); lunes.setDate(d.getDate() - dow);
     const dom   = new Date(lunes); dom.setDate(lunes.getDate() + 6);
