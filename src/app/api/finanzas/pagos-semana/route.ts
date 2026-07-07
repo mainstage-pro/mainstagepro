@@ -13,7 +13,7 @@ import { getSession } from "@/lib/auth";
 export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
+  try {
   const tipo = req.nextUrl.searchParams.get("tipo"); // TECNICO | PROVEEDOR | null = ambos
 
   const where: Record<string, unknown> = {
@@ -74,4 +74,8 @@ export async function GET(req: NextRequest) {
   }));
 
   return NextResponse.json({ semanas: resultado });
+  } catch (error) {
+    console.error("[pagos-semana GET]", error);
+    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+  }
 }

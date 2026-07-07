@@ -62,6 +62,10 @@
       "schedule": "0 10 * * 1"
     },
     {
+      "path": "/api/cron/reporte-semanal",
+      "schedule": "30 11 * * 1"
+    },
+    {
       "path": "/api/cron/nomina-semanal",
       "schedule": "30 10 * * 1"
     }

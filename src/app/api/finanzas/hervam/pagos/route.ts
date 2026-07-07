@@ -32,12 +32,15 @@ function calcular(config: {
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-
-  const pagos = await prisma.hervamPago.findMany({
-    orderBy: [{ anio: "desc" }, { mes: "desc" }],
-  });
-
-  return NextResponse.json({ pagos });
+  try {
+    const pagos = await prisma.hervamPago.findMany({
+      orderBy: [{ anio: "desc" }, { mes: "desc" }],
+    });
+    return NextResponse.json({ pagos });
+  } catch (error) {
+    console.error("[HERVAM/pagos GET]", error);
+    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {
