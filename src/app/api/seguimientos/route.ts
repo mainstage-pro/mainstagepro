@@ -2,6 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
+// ── Helper: recalculate and save fechaProximaAccion on the trato ─────────────
+// Sets it to the earliest pending (not completed) seguimiento, or null if none.
+export async function syncFechaProximaAccion(tratoId: string) {
+  const next = await prisma.seguimiento.findFirst({
+    where: { tratoId, completado: false },
+    orderBy: { fechaProgramada: "asc" },
+    select: { fechaProgramada: true },
+  });
+  await prisma.trato.update({
+    where: { id: tratoId },
+    data: { fechaProximaAccion: next?.fechaProgramada ?? null },
+  });
+}
+
 export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -75,6 +89,9 @@ export async function POST(req: NextRequest) {
       trato: { select: { id: true, nombreEvento: true, cliente: { select: { nombre: true } } } },
     },
   });
+
+  // Sync fechaProximaAccion so the tratos list reflects the new seguimiento
+  await syncFechaProximaAccion(tratoId);
 
   return NextResponse.json({ seguimiento });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { syncFechaProximaAccion } from "@/app/api/seguimientos/route";
 
 let _revColReady = false;
 async function ensureRequiereRevision() {
@@ -57,6 +58,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
+  // Sync fechaProximaAccion whenever a seguimiento is completed or its date changes
+  if ("completado" in body || "fechaProgramada" in body) {
+    await syncFechaProximaAccion(seguimiento.trato.id);
+  }
+
   return NextResponse.json({ seguimiento });
 }
 
@@ -65,6 +71,16 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
+
+  // Read tratoId before deleting
+  const seg = await prisma.seguimiento.findUnique({ where: { id }, select: { tratoId: true } });
+
   await prisma.seguimiento.delete({ where: { id } });
+
+  // Sync fechaProximaAccion — will set to null if no pending seguimientos remain
+  if (seg?.tratoId) {
+    await syncFechaProximaAccion(seg.tratoId);
+  }
+
   return NextResponse.json({ ok: true });
 }
