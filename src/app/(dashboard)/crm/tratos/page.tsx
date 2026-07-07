@@ -16,38 +16,6 @@ import { diasTrato } from "@/lib/contadores";
 
 type Usuario = { id: string; name: string; area?: string };
 
-// ── Hook: anchos de columnas persistidos en localStorage ──────────────────────
-const COL_DEFAULTS: Record<string, number> = {
-  cliente:    220,
-  proyecto:   160,
-  fecha:      130,
-  tipo:        90,
-  responsable: 110,
-  seguimiento: 110,
-  etapa:       130,
-};
-
-function useColumnWidths() {
-  const KEY = 'tratos-col-widths-v1';
-  const [widths, setWidths] = useState<Record<string, number>>(() => {
-    if (typeof window === 'undefined') return { ...COL_DEFAULTS };
-    try {
-      const saved = JSON.parse(localStorage.getItem(KEY) ?? '{}');
-      return { ...COL_DEFAULTS, ...saved };
-    } catch { return { ...COL_DEFAULTS }; }
-  });
-
-  const setWidth = (col: string, w: number) => {
-    setWidths(prev => {
-      const next = { ...prev, [col]: Math.max(50, w) };
-      localStorage.setItem(KEY, JSON.stringify(next));
-      return next;
-    });
-  };
-  const reset = (col: string) => setWidth(col, COL_DEFAULTS[col]);
-  return { widths, setWidth, reset };
-}
-
 type Cotizacion = {
   id: string;
   numeroCotizacion: string;
@@ -985,7 +953,6 @@ function CompactTratoRow({
   isExpanded,
   onToggle,
   usuarios,
-  colWidths,
 }: {
   trato: Trato;
   onEliminar: () => void;
@@ -996,7 +963,6 @@ function CompactTratoRow({
   isExpanded: boolean;
   onToggle: () => void;
   usuarios: Usuario[];
-  colWidths: Record<string, number>;
 }) {
   const router = useRouter();
   const wa = waUrl(t);
@@ -1081,10 +1047,9 @@ function CompactTratoRow({
           </svg>
         </button>
 
-        {/* ── COL 1 · Cliente + Empresa  ─── ancho variable ── */}
+        {/* ── COL 1 · Cliente + Empresa  ─── flex-[3] ──── */}
         <div
-          className="shrink-0 min-w-0 py-3 pr-4 cursor-pointer"
-          style={{ width: colWidths.cliente }}
+          className="flex-[3] min-w-0 py-3 pr-4 cursor-pointer"
           onClick={() => router.push(`/crm/tratos/${t.id}`)}
         >
           <div className="flex items-center gap-1.5 min-w-0">
@@ -1110,10 +1075,9 @@ function CompactTratoRow({
           )}
         </div>
 
-        {/* ── COL 2 · Proyecto / Evento ─── ancho variable ── */}
+        {/* ── COL 2 · Proyecto / Evento ─── flex-[2] ──── */}
         <div
-          className="hidden lg:block min-w-0 pr-4 cursor-pointer shrink-0"
-          style={{ width: colWidths.proyecto }}
+          className="hidden lg:block flex-[2] min-w-0 pr-4 cursor-pointer"
           onClick={() => router.push(`/crm/tratos/${t.id}`)}
         >
           {nombreProyecto ? (
@@ -1123,8 +1087,8 @@ function CompactTratoRow({
           )}
         </div>
 
-        {/* ── COL 3 · Fecha del evento ─── ancho variable ── */}
-        <div className="hidden md:block shrink-0 pr-4" style={{ width: colWidths.fecha }}>
+        {/* ── COL 3 · Fecha del evento ─── 130px ───── */}
+        <div className="hidden md:block w-[130px] shrink-0 pr-4">
           {fechaCompletaEvento ? (
             <span className="text-[12px] text-[#777] font-medium capitalize leading-tight block truncate">
               {fechaCompletaEvento}
@@ -1134,18 +1098,17 @@ function CompactTratoRow({
           )}
         </div>
 
-        {/* ── COL 4 · Tipo evento ─────── ancho variable ── */}
-        <div className="hidden sm:flex shrink-0 pr-3" style={{ width: colWidths.tipo }}>
+        {/* ── COL 4 · Tipo evento ─────── 90px ────── */}
+        <div className="hidden sm:flex w-[90px] shrink-0 pr-3">
           <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${tipoStyle.bg} ${tipoStyle.text}`}>
             {TIPO_LABEL_SHORT[t.tipoEvento] ?? t.tipoEvento}
           </span>
         </div>
 
-        {/* ── COL 5 · Responsable ─────── ancho variable ── */}
+        {/* ── COL 5 · Responsable ─────── 110px ────── */}
         <div
           ref={respRef}
-          className="hidden lg:flex shrink-0 pr-3 items-center relative"
-          style={{ width: colWidths.responsable }}
+          className="hidden lg:flex w-[110px] shrink-0 pr-3 items-center relative"
           onClick={e => e.stopPropagation()}
         >
           <button
@@ -1193,8 +1156,8 @@ function CompactTratoRow({
           )}
         </div>
 
-        {/* ── COL 6 · Seguimiento ─────── ancho variable ── */}
-        <div className="hidden lg:flex shrink-0 pr-3 items-center" style={{ width: colWidths.seguimiento }}>
+        {/* ── COL 6 · Seguimiento ─────── 110px ────── */}
+        <div className="hidden lg:flex w-[110px] shrink-0 pr-3 items-center">
           {seg.variant === 'none' ? (
             <button
               onClick={e => { e.stopPropagation(); onQuickNote(); }}
@@ -1209,8 +1172,8 @@ function CompactTratoRow({
           )}
         </div>
 
-        {/* ── COL 7 · Etapa ───────────── ancho variable ── */}
-        <div className="hidden sm:flex items-center gap-1.5 shrink-0 pr-3" style={{ width: colWidths.etapa }}>
+        {/* ── COL 7 · Etapa ───────────── 130px ────── */}
+        <div className="hidden sm:flex items-center gap-1.5 w-[130px] shrink-0 pr-3">
           <span className={`w-2 h-2 rounded-full shrink-0 ${etapaStyle.dot}`} />
           <select
             value={t.etapa}
@@ -1475,7 +1438,6 @@ export default function TratosPage() {
   const toast = useToast();
   const confirm = useConfirm();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
-  const { widths: colWidths, setWidth: setColWidth, reset: resetColWidth } = useColumnWidths();
 
   // Quick Contactado state
   const [quickNoteId, setQuickNoteId] = useState<string | null>(null);
@@ -2072,7 +2034,6 @@ export default function TratosPage() {
                   isExpanded={expandedRowId === t.id}
                   onToggle={() => setExpandedRowId(expandedRowId === t.id ? null : t.id)}
                   usuarios={usuarios}
-                  colWidths={colWidths}
                 />
               );
 
@@ -2129,42 +2090,21 @@ export default function TratosPage() {
                         {/* toggle placeholder */}
                         <div className="w-10 shrink-0" />
                         {/* Cliente */}
-                        <div className="relative pr-4 shrink-0" style={{ width: colWidths.cliente }}>
-                          Cliente
-                          <ResizeHandle onResize={dx => setColWidth('cliente', colWidths.cliente + dx)} onReset={() => resetColWidth('cliente')} />
-                        </div>
+                        <div className="flex-[3] min-w-0 pr-4">Cliente</div>
                         {/* Proyecto */}
-                        <div className="hidden lg:block relative pr-4 shrink-0" style={{ width: colWidths.proyecto }}>
-                          Proyecto
-                          <ResizeHandle onResize={dx => setColWidth('proyecto', colWidths.proyecto + dx)} onReset={() => resetColWidth('proyecto')} />
-                        </div>
+                        <div className="hidden lg:block flex-[2] min-w-0 pr-4">Proyecto</div>
                         {/* Fecha */}
-                        <div className="relative pr-4 shrink-0" style={{ width: colWidths.fecha }}>
-                          Fecha evento
-                          <ResizeHandle onResize={dx => setColWidth('fecha', colWidths.fecha + dx)} onReset={() => resetColWidth('fecha')} />
-                        </div>
+                        <div className="w-[130px] shrink-0 pr-4">Fecha evento</div>
                         {/* Tipo */}
-                        <div className="hidden sm:block relative pr-3 shrink-0" style={{ width: colWidths.tipo }}>
-                          Tipo
-                          <ResizeHandle onResize={dx => setColWidth('tipo', colWidths.tipo + dx)} onReset={() => resetColWidth('tipo')} />
-                        </div>
+                        <div className="hidden sm:block w-[90px] shrink-0 pr-3">Tipo</div>
                         {/* Responsable */}
-                        <div className="hidden lg:block relative pr-3 shrink-0" style={{ width: colWidths.responsable }}>
-                          Responsable
-                          <ResizeHandle onResize={dx => setColWidth('responsable', colWidths.responsable + dx)} onReset={() => resetColWidth('responsable')} />
-                        </div>
+                        <div className="hidden lg:block w-[110px] shrink-0 pr-3">Responsable</div>
                         {/* Seguimiento */}
-                        <div className="hidden lg:block relative pr-3 shrink-0" style={{ width: colWidths.seguimiento }}>
-                          Seguimiento
-                          <ResizeHandle onResize={dx => setColWidth('seguimiento', colWidths.seguimiento + dx)} onReset={() => resetColWidth('seguimiento')} />
-                        </div>
+                        <div className="hidden lg:block w-[110px] shrink-0 pr-3">Seguimiento</div>
                         {/* Etapa */}
-                        <div className="hidden sm:block relative pr-3 shrink-0" style={{ width: colWidths.etapa }}>
-                          Etapa
-                          <ResizeHandle onResize={dx => setColWidth('etapa', colWidths.etapa + dx)} onReset={() => resetColWidth('etapa')} />
-                        </div>
+                        <div className="hidden sm:block w-[130px] shrink-0 pr-3">Etapa</div>
                         {/* Acciones */}
-                        <div className="w-[56px] shrink-0" />
+                        <div className="w-[72px] shrink-0" />
                       </div>
                     )}
 
