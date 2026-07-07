@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { TIPO_CLIENTE_LABELS, CLASIFICACION_LABELS, TIPO_SERVICIO_LABELS } from "@/lib/constants";
+import { TIPO_CLIENTE_LABELS, CLASIFICACION_LABELS } from "@/lib/constants";
 import { CopyButton } from "@/components/CopyButton";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────────────────────────────
 
-type Tab = "clientes" | "prospectos" | "sin-clasificar";
+type Tab = "resumen" | "clientes" | "prospectos" | "sin-clasificar";
+type EstadoActividad = "ACTIVO" | "EN_PROCESO" | "INACTIVO";
 
 interface Vendedor { id: string; name: string }
 
@@ -30,22 +30,65 @@ interface Contacto {
   notas?: string | null;
   vendedorId: string | null;
   vendedor: Vendedor | null;
+  createdAt: string;
   tratos: { id: string; etapa: string; origenLead: string; nombreEvento: string | null }[];
   _count: { tratos: number; proyectos: number; prospecciones: number; cotizaciones: number };
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+interface Props {
+  clientes: Contacto[];
+  prospectos: Contacto[];
+  sinClasificar: Contacto[];
+  usuarios: Vendedor[];
+  actividadMap: Record<string, EstadoActividad>;
+}
+
+// ─── Constants ─────────────────────────────────────────────────────────────────
+
+const ORIGEN_OPTIONS = [
+  { value: "META_ADS",       label: "Meta Ads" },
+  { value: "REDES_SOCIALES", label: "Redes Sociales" },
+  { value: "REFERIDO",       label: "Referido" },
+  { value: "RECOMPRA",       label: "Recompra" },
+  { value: "PROSPECCION",    label: "Prospección" },
+];
+
+const ORIGEN_LABELS: Record<string, string> = Object.fromEntries(ORIGEN_OPTIONS.map(o => [o.value, o.label]));
+
+const ORIGEN_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  META_ADS:       { bg: "bg-blue-950/60",    text: "text-blue-400",    border: "border-blue-800/30"    },
+  REDES_SOCIALES: { bg: "bg-pink-950/60",    text: "text-pink-400",    border: "border-pink-800/30"    },
+  REFERIDO:       { bg: "bg-amber-950/60",   text: "text-amber-400",   border: "border-amber-800/30"   },
+  RECOMPRA:       { bg: "bg-emerald-950/60", text: "text-emerald-400", border: "border-emerald-800/30" },
+  PROSPECCION:    { bg: "bg-[#B3985B]/10",   text: "text-[#B3985B]",   border: "border-[#B3985B]/30"   },
+};
 
 const TIPO_CLIENTE_OPTIONS = Object.entries(TIPO_CLIENTE_LABELS).map(([v, l]) => ({ value: v, label: l }));
-const CLASIFICACION_OPTIONS = Object.entries(CLASIFICACION_LABELS)
-  .filter(([v]) => v !== "BASIC")
-  .map(([v, l]) => ({ value: v, label: l }));
+
+const CLASIFICACION_OPTIONS = [
+  { value: "NUEVO",    label: "Nuevo" },
+  { value: "REGULAR",  label: "Regular" },
+  { value: "PRIORITY", label: "Priority" },
+  { value: "EVITABLE", label: "Evitable" },
+];
+
+const CLAS_COLORS: Record<string, { text: string; bg: string; border: string }> = {
+  PROSPECTO: { text: "text-purple-300", bg: "bg-purple-950/50", border: "border-purple-800/30" },
+  NUEVO:     { text: "text-sky-400",    bg: "bg-sky-950/50",    border: "border-sky-800/30"    },
+  REGULAR:   { text: "text-yellow-400", bg: "bg-yellow-950/50", border: "border-yellow-800/30" },
+  PRIORITY:  { text: "text-[#C9A84C]",  bg: "bg-[#B3985B]/10",  border: "border-[#B3985B]/30"  },
+  BASIC:     { text: "text-blue-400",   bg: "bg-blue-950/50",   border: "border-blue-800/30"   },
+  EVITABLE:  { text: "text-red-400",    bg: "bg-red-950/50",    border: "border-red-800/30"    },
+};
 
 const SERVICIO_OPTIONS = [
   { value: "RENTA",              label: "Renta de Equipo" },
-  { value: "PRODUCCION_TECNICA", label: "Producción Técnica" },
-  { value: "DIRECCION_TECNICA",  label: "Dirección Técnica" },
+  { value: "PRODUCCION_TECNICA", label: "Prod. Técnica" },
+  { value: "DIRECCION_TECNICA",  label: "Dir. Técnica" },
 ];
+const SERVICIO_COLORS: Record<string, string> = {
+  RENTA: "#3B82F6", PRODUCCION_TECNICA: "#F59E0B", DIRECCION_TECNICA: "#8B5CF6",
+};
 
 const TIPOS_EVENTO_OPTIONS = [
   { value: "MUSICAL",     label: "Musical" },
@@ -53,53 +96,23 @@ const TIPOS_EVENTO_OPTIONS = [
   { value: "EMPRESARIAL", label: "Empresarial" },
   { value: "VARIOS",      label: "Varios" },
 ];
-
-const ORIGEN_OPTIONS = [
-  { value: "META_ADS",    label: "Meta Ads" },
-  { value: "GOOGLE_ADS",  label: "Google Ads" },
-  { value: "ORGANICO",    label: "Orgánico" },
-  { value: "REFERIDO",    label: "Referido" },
-  { value: "RECOMPRA",    label: "Recompra" },
-  { value: "PROSPECCION", label: "Prospección" },
-  { value: "MANUAL",      label: "Manual" },
-  { value: "OTRO",        label: "Otro" },
-];
-
-const ORIGEN_LABELS: Record<string, string> = Object.fromEntries(ORIGEN_OPTIONS.map(o => [o.value, o.label]));
-const ORIGEN_COLORS: Record<string, { bg: string; text: string }> = {
-  META_ADS:    { bg: "bg-blue-900/30",    text: "text-blue-400" },
-  GOOGLE_ADS:  { bg: "bg-red-900/30",     text: "text-red-400" },
-  ORGANICO:    { bg: "bg-gray-800/60",    text: "text-gray-500" },
-  RECOMPRA:    { bg: "bg-emerald-900/30", text: "text-emerald-400" },
-  REFERIDO:    { bg: "bg-yellow-900/30",  text: "text-yellow-400" },
-  PROSPECCION: { bg: "bg-[#B3985B]/10",   text: "text-[#B3985B]" },
-  MANUAL:      { bg: "bg-gray-800/60",    text: "text-gray-500" },
-  OTRO:        { bg: "bg-gray-800/60",    text: "text-gray-500" },
-};
-
-const ETAPA_LABELS: Record<string, string> = {
-  LEAD: "Lead", DESCUBRIMIENTO: "Descubrimiento", OPORTUNIDAD: "Oportunidad",
-  VENTA_CERRADA: "Cerrado", VENTA_PERDIDA: "Perdido",
-};
-const ETAPA_COLORS: Record<string, string> = {
-  LEAD: "text-sky-400", DESCUBRIMIENTO: "text-purple-400", OPORTUNIDAD: "text-[#B3985B]",
-  VENTA_CERRADA: "text-emerald-400", VENTA_PERDIDA: "text-red-500",
-};
-
-const TIPO_COLORS: Record<string, string> = {
-  B2B: "bg-blue-900/40 text-blue-300",
-  B2C: "bg-purple-900/40 text-purple-300",
-  POR_DESCUBRIR: "bg-gray-800 text-gray-400",
-};
-const CLAS_COLORS: Record<string, string> = {
-  PROSPECTO: "text-purple-400", NUEVO: "text-[#6b7280]",
-  REGULAR: "text-yellow-400", PRIORITY: "text-[#B3985B]", BASIC: "text-blue-400",
-};
 const EVENTO_COLORS: Record<string, string> = {
   MUSICAL: "#3B82F6", SOCIAL: "#10B981", EMPRESARIAL: "#F59E0B", VARIOS: "#8B5CF6",
 };
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+const TIPO_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  B2B:          { bg: "bg-blue-950/50",   text: "text-blue-300",   border: "border-blue-800/30"   },
+  B2C:          { bg: "bg-purple-950/50", text: "text-purple-300", border: "border-purple-800/30" },
+  POR_DESCUBRIR:{ bg: "bg-[#111]",        text: "text-[#555]",     border: "border-[#222]"        },
+};
+
+const ESTADO_ACT_CFG: Record<EstadoActividad, { label: string; dot: string; text: string; bg: string; border: string }> = {
+  ACTIVO:     { label: "Activo",     dot: "#10B981", text: "text-emerald-400", bg: "bg-emerald-950/40", border: "border-emerald-800/30" },
+  EN_PROCESO: { label: "En proceso", dot: "#F59E0B", text: "text-amber-400",   bg: "bg-amber-950/40",   border: "border-amber-800/30"   },
+  INACTIVO:   { label: "Inactivo",   dot: "#374151", text: "text-[#444]",      bg: "bg-[#111]",         border: "border-[#1e1e1e]"      },
+};
+
+// ─── Helpers ───────────────────────────────────────────────────────────────────
 
 function parseTiposEvento(raw: string | null): string[] {
   if (!raw) return [];
@@ -108,75 +121,97 @@ function parseTiposEvento(raw: string | null): string[] {
 function stringifyTiposEvento(arr: string[]): string | null {
   return arr.length ? JSON.stringify(arr) : null;
 }
+function parseServicios(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const p = JSON.parse(raw);
+    return Array.isArray(p) ? p : [raw];
+  } catch { return [raw]; }
+}
+function stringifyServicios(arr: string[]): string | null {
+  return arr.length ? JSON.stringify(arr) : null;
+}
+function formatRelativo(iso: string): string {
+  const d = new Date(iso);
+  const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (diff === 0) return "Hoy";
+  if (diff === 1) return "Ayer";
+  if (diff < 7) return `${diff}d`;
+  if (diff < 30) return `${Math.floor(diff / 7)}sem`;
+  return d.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+}
+function inicial(name: string) { return (name?.charAt(0) ?? "?").toUpperCase(); }
 
-// ─── Small display components ─────────────────────────────────────────────────
+// ─── OrigenBadge ─────────────────────────────────────────────────────────────
 
 function OrigenBadge({ origen }: { origen: string }) {
-  const col = ORIGEN_COLORS[origen] ?? { bg: "bg-gray-800/60", text: "text-gray-500" };
+  const col = ORIGEN_COLORS[origen] ?? { bg: "bg-[#1a1a1a]", text: "text-[#555]", border: "border-[#2a2a2a]" };
   return (
-    <span className={`inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wide ${col.bg} ${col.text}`}>
+    <span className={`inline-flex items-center text-[9px] px-1.5 py-0.5 rounded-full font-semibold uppercase tracking-wide border ${col.bg} ${col.text} ${col.border} whitespace-nowrap`}>
       {ORIGEN_LABELS[origen] ?? origen}
     </span>
   );
 }
 
-function EtapaBadge({ etapa }: { etapa: string }) {
+// ─── EstadoActividadBadge ─────────────────────────────────────────────────────
+
+function EstadoActividadBadge({ estado }: { estado: EstadoActividad }) {
+  const cfg = ESTADO_ACT_CFG[estado];
   return (
-    <span className={`text-[9px] font-medium ${ETAPA_COLORS[etapa] ?? "text-gray-500"}`}>
-      {ETAPA_LABELS[etapa] ?? etapa}
-    </span>
+    <div className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-medium whitespace-nowrap ${cfg.bg} ${cfg.text} ${cfg.border}`}>
+      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: cfg.dot }} />
+      {cfg.label}
+    </div>
   );
 }
 
-// ─── InlineDropdown — autosave on change ─────────────────────────────────────
+// ─── InlineDropdown ───────────────────────────────────────────────────────────
 
 function InlineDropdown({ options, value, onChange, placeholder = "—", colorMap }: {
   options: { value: string; label: string }[];
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
-  colorMap?: Record<string, string>;
+  colorMap?: Record<string, { text: string; bg: string; border: string }>;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (!open) return;
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
   }, [open]);
 
   const current = options.find(o => o.value === value);
+  const cfg = colorMap && current ? colorMap[current.value] : null;
 
   return (
-    <div ref={ref} className="relative inline-block">
+    <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
       <button type="button" onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-1 px-2 py-1 rounded-md border border-transparent hover:border-[#B3985B]/40 hover:bg-[#B3985B]/5 transition-all group">
-        {current ? (
-          <span className={`text-xs font-medium ${colorMap ? "" : "text-[#ccc]"}`}
-            style={colorMap && current ? { color: colorMap[current.value] } : undefined}>
-            {current.label}
-          </span>
-        ) : <span className="text-xs text-[#444]">{placeholder}</span>}
-        <svg className="text-[#444] group-hover:text-[#B3985B] transition-colors" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
+        className={`flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium transition-all cursor-pointer ${
+          cfg ? `${cfg.bg} ${cfg.text} ${cfg.border} hover:brightness-110` : "border-transparent text-[#555] hover:text-[#aaa] hover:border-[#2a2a2a] hover:bg-[#1a1a1a]"
+        }`}>
+        {current ? <span>{current.label}</span> : <span className="text-[#2a2a2a]">{placeholder}</span>}
+        <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" className="opacity-50 shrink-0"><polyline points="2 4 6 8 10 4"/></svg>
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[150px]">
-          {options.map(opt => (
-            <button key={opt.value} type="button"
-              onClick={() => { onChange(opt.value); setOpen(false); }}
-              className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-[#1a1a1a] ${value === opt.value ? "text-[#B3985B]" : "text-gray-300"}`}>
-              {opt.label}{value === opt.value && <span className="ml-2 text-[#B3985B]">✓</span>}
-            </button>
-          ))}
+        <div className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[140px]">
+          {options.map(opt => {
+            const oc = colorMap?.[opt.value];
+            return (
+              <button key={opt.value} type="button"
+                onClick={() => { onChange(opt.value); setOpen(false); }}
+                className={`w-full flex items-center gap-2 text-left px-3 py-2 text-[11px] transition-colors hover:bg-[#1e1e1e] ${value === opt.value ? "text-[#B3985B]" : "text-gray-300"}`}>
+                {oc && <span className={`w-2 h-2 rounded-full border ${oc.bg} ${oc.border}`} />}
+                {opt.label}
+                {value === opt.value && <span className="ml-auto text-[#B3985B] text-[10px]">✓</span>}
+              </button>
+            );
+          })}
           {value && (
             <button type="button" onClick={() => { onChange(""); setOpen(false); }}
-              className="w-full text-left px-3 py-2 text-xs text-[#555] hover:text-red-400 hover:bg-[#1a1a1a] transition-colors border-t border-[#222]">
+              className="w-full text-left px-3 py-2 text-[11px] text-[#444] hover:text-red-400 hover:bg-[#1e1e1e] transition-colors border-t border-[#1e1e1e] mt-0.5">
               Quitar
             </button>
           )}
@@ -188,7 +223,7 @@ function InlineDropdown({ options, value, onChange, placeholder = "—", colorMa
 
 // ─── InlineMultiSelect ────────────────────────────────────────────────────────
 
-function InlineMultiSelect({ options, values, onChange, placeholder = "—", maxSelect = 3, colorMap }: {
+function InlineMultiSelect({ options, values, onChange, placeholder = "—", maxSelect = 4, colorMap }: {
   options: { value: string; label: string }[];
   values: string[];
   onChange: (v: string[]) => void;
@@ -198,54 +233,48 @@ function InlineMultiSelect({ options, values, onChange, placeholder = "—", max
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (!open) return;
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
   }, [open]);
 
   function toggle(v: string) {
-    if (values.includes(v)) { onChange(values.filter(x => x !== v)); }
-    else { if (values.length >= maxSelect) return; onChange([...values, v]); }
+    if (values.includes(v)) onChange(values.filter(x => x !== v));
+    else if (values.length < maxSelect) onChange([...values, v]);
   }
 
   return (
-    <div ref={ref} className="relative inline-block">
+    <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
       <button type="button" onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-1 px-2 py-1 rounded-md border border-transparent hover:border-[#B3985B]/40 hover:bg-[#B3985B]/5 transition-all group">
-        {values.length === 0 ? (
-          <span className="text-xs text-[#444]">{placeholder}</span>
-        ) : (
-          <div className="flex flex-wrap gap-0.5">
-            {values.map(v => {
-              const opt = options.find(o => o.value === v);
-              return (
-                <span key={v} className="text-[9px] px-1.5 py-0.5 rounded-full font-medium text-white"
-                  style={{ backgroundColor: colorMap?.[v] ?? "#6b7280" }}>
-                  {opt?.label ?? v}
-                </span>
-              );
-            })}
-          </div>
-        )}
-        <svg className="text-[#444] group-hover:text-[#B3985B] transition-colors shrink-0" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
+        className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-transparent text-[11px] hover:border-[#2a2a2a] hover:bg-[#1a1a1a] transition-all cursor-pointer">
+        {values.length === 0
+          ? <span className="text-[#2a2a2a]">{placeholder}</span>
+          : <div className="flex flex-wrap gap-0.5">
+              {values.map(v => {
+                const opt = options.find(o => o.value === v);
+                return (
+                  <span key={v} className="text-[9px] px-1.5 py-0.5 rounded-full font-medium text-white leading-tight"
+                    style={{ backgroundColor: colorMap?.[v] ?? "#6b7280" }}>
+                    {opt?.label ?? v}
+                  </span>
+                );
+              })}
+            </div>
+        }
+        <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" className="opacity-50 shrink-0"><polyline points="2 4 6 8 10 4"/></svg>
       </button>
       {open && (
         <div className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[160px]">
-          <p className="text-[9px] text-[#555] uppercase tracking-wider px-3 py-1.5">Máx. {maxSelect}</p>
+          <p className="text-[9px] text-[#444] uppercase tracking-wider px-3 py-1.5">Selecciona hasta {maxSelect}</p>
           {options.map(opt => {
             const active = values.includes(opt.value);
             const disabled = !active && values.length >= maxSelect;
             return (
               <button key={opt.value} type="button" onClick={() => toggle(opt.value)} disabled={disabled}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs transition-colors ${disabled ? "opacity-30 cursor-not-allowed" : "hover:bg-[#1a1a1a]"} ${active ? "text-white" : "text-gray-400"}`}>
-                <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-all ${active ? "border-transparent" : "border-[#444]"}`}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-colors ${disabled ? "opacity-30 cursor-not-allowed" : "hover:bg-[#1e1e1e]"} ${active ? "text-white" : "text-gray-400"}`}>
+                <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-all ${active ? "border-transparent" : "border-[#333]"}`}
                   style={active ? { backgroundColor: colorMap?.[opt.value] ?? "#B3985B" } : undefined}>
                   {active && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>}
                 </span>
@@ -255,7 +284,7 @@ function InlineMultiSelect({ options, values, onChange, placeholder = "—", max
           })}
           {values.length > 0 && (
             <button type="button" onClick={() => onChange([])}
-              className="w-full text-left px-3 py-2 text-xs text-[#555] hover:text-red-400 hover:bg-[#1a1a1a] transition-colors border-t border-[#222]">
+              className="w-full text-left px-3 py-2 text-[11px] text-[#444] hover:text-red-400 hover:bg-[#1e1e1e] transition-colors border-t border-[#1e1e1e] mt-0.5">
               Quitar todo
             </button>
           )}
@@ -276,52 +305,55 @@ function InlineVendedor({ clienteId, vendedor, usuarios, onChange }: {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     if (!open) return;
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
   }, [open]);
 
   async function select(u: Vendedor | null) {
-    setOpen(false);
-    setSaving(true);
+    setOpen(false); setSaving(true);
     await fetch(`/api/clientes/${clienteId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ vendedorId: u?.id ?? null }),
     });
-    onChange(u);
-    setSaving(false);
+    onChange(u); setSaving(false);
   }
 
   return (
-    <div ref={ref} className="relative inline-block">
+    <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
       <button type="button" onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-transparent hover:border-[#B3985B]/40 hover:bg-[#B3985B]/5 transition-all group text-xs">
-        {saving
-          ? <span className="text-[#555] animate-pulse">…</span>
-          : vendedor
-          ? <span className="text-gray-300">{vendedor.name}</span>
-          : <span className="text-[#444]">Sin asignar</span>}
-        <svg className="text-[#444] group-hover:text-[#B3985B] transition-colors" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
+        className="flex items-center gap-1.5 text-[11px] group cursor-pointer">
+        {saving ? <span className="text-[#444] animate-pulse text-[11px]">…</span>
+          : vendedor ? (
+            <>
+              <span className="w-5 h-5 rounded-full bg-[#B3985B]/15 border border-[#B3985B]/25 flex items-center justify-center text-[8px] text-[#B3985B] font-bold shrink-0">
+                {inicial(vendedor.name)}
+              </span>
+              <span className="text-[#666] group-hover:text-[#999] transition-colors truncate max-w-[70px]">
+                {vendedor.name.split(" ")[0]}
+              </span>
+            </>
+          ) : <span className="text-[#2a2a2a] group-hover:text-[#444] transition-colors">Sin asignar</span>
+        }
       </button>
       {open && (
         <div className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[160px]">
+          <p className="text-[9px] text-[#444] uppercase tracking-wider px-3 py-1.5">Responsable</p>
           {usuarios.map(u => (
             <button key={u.id} type="button" onClick={() => select(u)}
-              className={`w-full text-left px-3 py-2 text-xs transition-colors hover:bg-[#1a1a1a] ${u.id === vendedor?.id ? "text-[#B3985B]" : "text-gray-300"}`}>
-              {u.name}{u.id === vendedor?.id && <span className="ml-2">✓</span>}
+              className={`w-full flex items-center gap-2 text-left px-3 py-2 text-[11px] transition-colors hover:bg-[#1e1e1e] ${u.id === vendedor?.id ? "text-[#B3985B]" : "text-gray-300"}`}>
+              <span className="w-4 h-4 rounded-full bg-[#B3985B]/15 border border-[#B3985B]/25 flex items-center justify-center text-[8px] text-[#B3985B] font-bold shrink-0">
+                {inicial(u.name)}
+              </span>
+              {u.name.split(" ").slice(0, 2).join(" ")}
+              {u.id === vendedor?.id && <span className="ml-auto text-[10px]">✓</span>}
             </button>
           ))}
           {vendedor && (
             <button type="button" onClick={() => select(null)}
-              className="w-full text-left px-3 py-2 text-xs text-[#555] hover:text-red-400 hover:bg-[#1a1a1a] transition-colors border-t border-[#222]">
+              className="w-full text-left px-3 py-2 text-[11px] text-[#444] hover:text-red-400 hover:bg-[#1e1e1e] transition-colors border-t border-[#1e1e1e]">
               Quitar asignación
             </button>
           )}
@@ -338,156 +370,138 @@ function FilterSelect({ label, value, onChange, options }: {
   options: { value: string; label: string }[];
 }) {
   return (
-    <select
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      className={`text-xs px-2.5 py-1.5 rounded-lg border transition-colors focus:outline-none bg-[#111] cursor-pointer ${
-        value ? "border-[#B3985B]/40 text-[#B3985B]" : "border-[#2a2a2a] text-[#555]"
-      }`}
-    >
+    <select value={value} onChange={e => onChange(e.target.value)}
+      className={`text-[11px] px-2.5 py-1.5 rounded-lg border transition-colors focus:outline-none bg-[#0d0d0d] cursor-pointer ${
+        value ? "border-[#B3985B]/40 text-[#B3985B]" : "border-[#1a1a1a] text-[#444]"
+      }`}>
       <option value="">{label}</option>
       {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   );
 }
 
-// ─── ContactoRow — one row in the table with full inline autosave ──────────
+// ─── ContactoRow ─────────────────────────────────────────────────────────────
 
 function ContactoRow({
-  c, usuarios, tab,
+  c, usuarios, tab, actividadMap,
   onSaved, onVendedorChange, onDelete, deleting,
   onConvertir, onReclasificar,
   empresaPopoverOpen, onEmpresaClick, empresaMode, setEmpresaMode,
   empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
-  onVincularEmpresa, onCloseEmpresa, onOpenDrawer,
+  onVincularEmpresa, onCloseEmpresa,
 }: {
-  c: Contacto;
-  usuarios: Vendedor[];
-  tab: Tab;
+  c: Contacto; usuarios: Vendedor[]; tab: Tab;
+  actividadMap: Record<string, EstadoActividad>;
   onSaved: (updated: Partial<Contacto>) => void;
   onVendedorChange: (v: Vendedor | null) => void;
-  onDelete: () => void;
-  deleting: boolean;
+  onDelete: () => void; deleting: boolean;
   onConvertir: () => void;
   onReclasificar: (esProspecto: boolean) => void;
-  empresaPopoverOpen: boolean;
-  onEmpresaClick: () => void;
-  empresaMode: "view" | "search";
-  setEmpresaMode: (m: "view" | "search") => void;
-  empresaSearch: string;
-  setEmpresaSearch: (s: string) => void;
+  empresaPopoverOpen: boolean; onEmpresaClick: () => void;
+  empresaMode: "view" | "search"; setEmpresaMode: (m: "view" | "search") => void;
+  empresaSearch: string; setEmpresaSearch: (s: string) => void;
   empresaResults: { id: string; nombre: string }[];
   empresaSearching: boolean;
   onVincularEmpresa: (id: string, nombre: string) => void;
   onCloseEmpresa: () => void;
-  onOpenDrawer: () => void;
 }) {
   const toast = useToast();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function patch(campo: Record<string, unknown>) {
-    if (timerRef.current) clearTimeout(timerRef.current);
     setSaving(true);
     const res = await fetch(`/api/clientes/${c.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(campo),
     });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al guardar");
-      setSaving(false);
-      return;
-    }
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al guardar"); setSaving(false); return; }
     const d = await res.json();
     onSaved(d.cliente ?? campo);
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
+    setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 1500);
   }
 
   const eventosActuales = parseTiposEvento(c.tiposEvento);
+  const serviciosActuales = parseServicios(c.servicioUsual);
+  const estadoActividad = actividadMap[c.id] ?? "INACTIVO";
 
   return (
-    <tr className="border-b border-[#111] hover:bg-[#141414] transition-colors group cursor-pointer" onClick={onOpenDrawer}>
+    <tr className="border-b border-[#0f0f0f] hover:bg-[#111] transition-colors group">
       {/* Nombre */}
-      <td className="px-4 py-3">
-        <div className="flex flex-col gap-0.5 min-w-[160px]">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <Link href={`/crm/clientes/${c.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">
+      <td className="px-4 py-2.5 align-middle overflow-hidden">
+        <div className="flex flex-col gap-0.5">
+          <div className="flex items-center gap-1.5">
+            <Link href={`/crm/clientes/${c.id}`}
+              onClick={e => e.stopPropagation()}
+              className="text-[13px] text-white font-semibold leading-tight hover:text-[#B3985B] transition-colors truncate max-w-[155px] block">
               {c.nombre}
             </Link>
-            {c.clasificacion && !['PROSPECTO', ''].includes(c.clasificacion) && (
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium border ${
-                c.clasificacion === 'VIP' ? 'bg-amber-900/40 text-amber-300 border-amber-800/30' :
-                c.clasificacion === 'FRECUENTE' ? 'bg-purple-900/40 text-purple-300 border-purple-800/30' :
-                c.clasificacion === 'NUEVO' ? 'bg-blue-900/40 text-blue-300 border-blue-800/30' :
-                c.clasificacion === 'PRIORITY' ? 'bg-[#B3985B]/20 text-[#B3985B] border-[#B3985B]/30' :
-                c.clasificacion === 'REGULAR' ? 'bg-yellow-900/40 text-yellow-300 border-yellow-800/30' :
-                'bg-[#1e1e1e] text-gray-400 border-[#2a2a2a]'
-              }`}>{c.clasificacion}</span>
+            {c.telefono && (
+              <a href={`https://wa.me/${c.telefono.replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-900/20 border border-emerald-800/30 text-emerald-500/70 hover:text-emerald-400 hover:bg-emerald-900/40 transition-all shrink-0 opacity-0 group-hover:opacity-100"
+                title="WhatsApp">
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
+              </a>
             )}
           </div>
           {c.correo && (
-            <span className="flex items-center gap-1 mt-0.5">
-              <p className="text-[#555] text-xs truncate max-w-[150px]">{c.correo}</p>
+            <span className="flex items-center gap-0.5">
+              <p className="text-[10px] text-[#3a3a3a] truncate max-w-[155px]">{c.correo}</p>
               <CopyButton value={c.correo} size="xs" />
             </span>
           )}
-          {c.telefono && (
-            <span className="flex items-center gap-1">
-              <p className="text-[#444] text-xs">{c.telefono}</p>
-              <CopyButton value={c.telefono} size="xs" />
+          {(saving || saved) && (
+            <span className={`text-[9px] ${saving ? "text-[#444] animate-pulse" : "text-emerald-600"}`}>
+              {saving ? "Guardando…" : "✓ Guardado"}
             </span>
           )}
-          {/* Indicador de guardado */}
-          {saving && <span className="text-[9px] text-[#555] animate-pulse">Guardando…</span>}
-          {saved && !saving && <span className="text-[9px] text-emerald-500">✓ Guardado</span>}
         </div>
       </td>
 
       {/* Empresa */}
-      <td className="px-4 py-3">
-        <div className="relative">
-          <button onClick={onEmpresaClick} className="text-left focus:outline-none">
-            {c.compania ? (
-              <span className="text-sm text-[#B3985B] hover:text-[#C9A84C] transition-colors cursor-pointer">{c.compania.nombre}</span>
-            ) : (
-              <span className="text-xs text-gray-700 hover:text-gray-400 transition-colors cursor-pointer">+ Vincular</span>
-            )}
+      <td className="px-3 py-2.5 align-middle overflow-hidden">
+        <div className="relative" data-empresa-popover>
+          <button onClick={e => { e.stopPropagation(); onEmpresaClick(); }} className="text-left focus:outline-none w-full">
+            {c.compania
+              ? <span className="text-[12px] text-[#B3985B] hover:text-[#C9A84C] transition-colors truncate block">{c.compania.nombre}</span>
+              : c.empresa
+              ? <span className="text-[12px] text-[#555] truncate block">{c.empresa}</span>
+              : <span className="text-[11px] text-[#252525] hover:text-[#444] transition-colors">+ Vincular</span>
+            }
           </button>
           {empresaPopoverOpen && (
-            <div className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-2" style={{ width: 260 }} onClick={e => e.stopPropagation()}>
+            <div className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-2" style={{ width: 240 }} onClick={e => e.stopPropagation()}>
               {empresaMode === "view" && c.compania ? (
                 <>
-                  <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 pb-2">Empresa</p>
+                  <p className="text-[9px] text-[#444] uppercase tracking-wider px-3 pb-2">Empresa</p>
                   <a href={`/catalogo/empresas/${c.compania.id}`} target="_blank" rel="noreferrer"
-                    className="flex items-center justify-between px-3 py-2 text-sm text-gray-300 hover:bg-[#1a1a1a] transition-colors" onClick={onCloseEmpresa}>
-                    <span>Ver empresa</span><span className="text-gray-600">→</span>
+                    className="flex items-center justify-between px-3 py-2 text-[11px] text-gray-300 hover:bg-[#1e1e1e] transition-colors" onClick={onCloseEmpresa}>
+                    <span>Ver empresa</span><span className="text-[#444]">→</span>
                   </a>
                   <button onClick={() => { setEmpresaMode("search"); setEmpresaSearch(""); }}
-                    className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-300 hover:bg-[#1a1a1a] transition-colors">
-                    <span>Cambiar empresa</span>
+                    className="w-full flex items-center px-3 py-2 text-[11px] text-gray-300 hover:bg-[#1e1e1e] transition-colors">
+                    Cambiar empresa
                   </button>
                 </>
               ) : (
                 <>
-                  <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 pb-2">Vincular empresa</p>
+                  <p className="text-[9px] text-[#444] uppercase tracking-wider px-3 pb-2">Vincular empresa</p>
                   <div className="px-3 pb-2">
                     <input autoFocus value={empresaSearch} onChange={e => setEmpresaSearch(e.target.value)}
                       placeholder="Buscar empresa..."
-                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-gray-700 focus:outline-none focus:border-[#C9A84C]/30" />
+                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-[11px] text-white placeholder:text-[#333] focus:outline-none focus:border-[#B3985B]/40" />
                   </div>
-                  <div className="max-h-[200px] overflow-y-auto">
-                    {empresaSearching && <p className="text-xs text-gray-600 px-3 py-2">Buscando...</p>}
+                  <div className="max-h-[160px] overflow-y-auto">
+                    {empresaSearching && <p className="text-[11px] text-[#444] px-3 py-2">Buscando…</p>}
                     {!empresaSearching && empresaResults.length === 0 && empresaSearch.trim() && (
-                      <p className="text-xs text-gray-600 px-3 py-2">Sin resultados</p>
+                      <p className="text-[11px] text-[#444] px-3 py-2">Sin resultados</p>
                     )}
                     {empresaResults.map(emp => (
                       <button key={emp.id} onClick={() => onVincularEmpresa(emp.id, emp.nombre)}
-                        className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-[#1a1a1a] transition-colors">
+                        className="w-full text-left px-3 py-2 text-[11px] text-gray-300 hover:bg-[#1e1e1e] transition-colors">
                         {emp.nombre}
                       </button>
                     ))}
@@ -500,86 +514,92 @@ function ContactoRow({
       </td>
 
       {/* Origen */}
-      <td className="px-3 py-3">
-        <div className="flex flex-col gap-0.5">
-          {c.origenLead ? (
-            <OrigenBadge origen={c.origenLead} />
-          ) : c.tratos[0] ? (
-            <>
-              <OrigenBadge origen={c.tratos[0].origenLead} />
-              <EtapaBadge etapa={c.tratos[0].etapa} />
-            </>
-          ) : (
-            <span className="text-[#333] text-[10px]">—</span>
-          )}
-        </div>
+      <td className="px-3 py-2.5 align-middle overflow-hidden">
+        {c.origenLead
+          ? <OrigenBadge origen={c.origenLead} />
+          : c.tratos[0]?.origenLead
+          ? <OrigenBadge origen={c.tratos[0].origenLead} />
+          : <span className="text-[#1e1e1e] text-[11px]">—</span>
+        }
       </td>
 
-      {/* Tipo (autosave) */}
-      <td className="px-3 py-3">
+      {/* Tipo */}
+      <td className="px-3 py-2.5 align-middle overflow-hidden">
         <InlineDropdown options={TIPO_CLIENTE_OPTIONS} value={c.tipoCliente}
-          onChange={v => patch({ tipoCliente: v })} placeholder="Tipo" />
+          onChange={v => patch({ tipoCliente: v })} placeholder="Tipo"
+          colorMap={TIPO_COLORS} />
       </td>
 
-      {/* Clasificación (autosave) */}
-      <td className="px-3 py-3">
+      {/* Clasificación */}
+      <td className="px-3 py-2.5 align-middle overflow-hidden">
         <InlineDropdown options={CLASIFICACION_OPTIONS} value={c.clasificacion}
-          onChange={v => patch({ clasificacion: v })} placeholder="Clasificación"
-          colorMap={Object.fromEntries(Object.entries(CLAS_COLORS).map(([k, css]) => [k, css]))} />
+          onChange={v => patch({ clasificacion: v })} placeholder="Clasif."
+          colorMap={CLAS_COLORS} />
       </td>
 
-      {/* Servicio (autosave) */}
-      <td className="px-3 py-3">
-        <InlineDropdown options={SERVICIO_OPTIONS} value={c.servicioUsual ?? ""}
-          onChange={v => patch({ servicioUsual: v || null })} placeholder="Servicio" />
+      {/* Servicio (multi) */}
+      <td className="px-3 py-2.5 align-middle overflow-hidden">
+        <InlineMultiSelect options={SERVICIO_OPTIONS} values={serviciosActuales}
+          onChange={v => patch({ servicioUsual: stringifyServicios(v) })}
+          placeholder="Servicio" maxSelect={3} colorMap={SERVICIO_COLORS} />
       </td>
 
-      {/* Tipos de Evento (autosave) */}
-      <td className="px-3 py-3">
+      {/* Tipo de Evento (multi) */}
+      <td className="px-3 py-2.5 align-middle overflow-hidden">
         <InlineMultiSelect options={TIPOS_EVENTO_OPTIONS} values={eventosActuales}
-          onChange={v => patch({ tiposEvento: stringifyTiposEvento(v) })} placeholder="Evento" maxSelect={3} colorMap={EVENTO_COLORS} />
+          onChange={v => patch({ tiposEvento: stringifyTiposEvento(v) })}
+          placeholder="Tipo evento" maxSelect={3} colorMap={EVENTO_COLORS} />
+      </td>
+
+      {/* Actividad */}
+      <td className="px-3 py-2.5 align-middle overflow-hidden">
+        <EstadoActividadBadge estado={estadoActividad} />
       </td>
 
       {/* Responsable */}
-      <td className="px-3 py-3">
+      <td className="px-3 py-2.5 align-middle overflow-hidden">
         <InlineVendedor clienteId={c.id} vendedor={c.vendedor} usuarios={usuarios} onChange={onVendedorChange} />
       </td>
 
-      {/* Contadores */}
-      <td className="px-3 py-3 text-sm text-[#9ca3af] text-center">{c._count.tratos}</td>
-      <td className="px-3 py-3 text-sm text-[#9ca3af] text-center">{c._count.proyectos}</td>
+      {/* Tratos */}
+      <td className="px-3 py-2.5 text-center align-middle">
+        <span className="text-[12px] text-[#555]">{c._count.tratos || "—"}</span>
+      </td>
 
       {/* Acciones */}
-      <td className="px-3 py-3 text-right">
-        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      <td className="px-3 py-2.5 align-middle">
+        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {tab === "prospectos" && (
-            <button onClick={onConvertir}
-              className="text-[10px] px-2 py-1 rounded-md text-emerald-400 hover:text-emerald-300 border border-emerald-900/40 hover:border-emerald-700/60 transition-colors whitespace-nowrap">
+            <button onClick={e => { e.stopPropagation(); onConvertir(); }}
+              className="text-[9px] px-1.5 py-0.5 rounded border border-emerald-800/40 text-emerald-500 hover:bg-emerald-900/20 transition-colors whitespace-nowrap">
               → Cliente
             </button>
           )}
           {tab === "clientes" && (
-            <button onClick={() => onReclasificar(true)}
-              className="text-[10px] px-2 py-1 rounded-md text-purple-400 hover:text-purple-300 border border-purple-900/40 hover:border-purple-700/60 transition-colors whitespace-nowrap">
-              → Prospecto
+            <button onClick={e => { e.stopPropagation(); onReclasificar(true); }}
+              className="text-[9px] px-1.5 py-0.5 rounded border border-purple-800/40 text-purple-400 hover:bg-purple-900/20 transition-colors whitespace-nowrap">
+              → Prosp.
             </button>
           )}
           {tab === "sin-clasificar" && (
             <>
-              <button onClick={() => onReclasificar(false)}
-                className="text-[10px] px-2 py-1 rounded-md text-[#B3985B] hover:text-[#C9A84C] border border-[#B3985B]/30 hover:border-[#B3985B]/60 transition-colors whitespace-nowrap">
+              <button onClick={e => { e.stopPropagation(); onReclasificar(false); }}
+                className="text-[9px] px-1.5 py-0.5 rounded border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors">
                 → Cliente
               </button>
-              <button onClick={() => onReclasificar(true)}
-                className="text-[10px] px-2 py-1 rounded-md text-purple-400 hover:text-purple-300 border border-purple-900/40 hover:border-purple-700/60 transition-colors whitespace-nowrap">
-                → Prospecto
+              <button onClick={e => { e.stopPropagation(); onReclasificar(true); }}
+                className="text-[9px] px-1.5 py-0.5 rounded border border-purple-800/40 text-purple-400 hover:bg-purple-900/20 transition-colors">
+                → Prosp.
               </button>
             </>
           )}
-          <Link href={`/crm/clientes/${c.id}`} className="text-[#B3985B] text-xs hover:underline">Ver</Link>
-          <button onClick={onDelete} disabled={deleting}
-            className="text-gray-600 hover:text-red-400 transition-colors disabled:opacity-30" title="Eliminar">
-            {deleting ? "…" : "✕"}
+          <Link href={`/crm/clientes/${c.id}`} onClick={e => e.stopPropagation()}
+            className="p-0.5 rounded text-[#333] hover:text-[#B3985B] transition-colors" title="Ver perfil">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </Link>
+          <button onClick={e => { e.stopPropagation(); onDelete(); }} disabled={deleting}
+            className="p-0.5 rounded text-[#2a2a2a] hover:text-red-500/60 transition-colors disabled:opacity-30" title="Eliminar">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>
         </div>
       </td>
@@ -587,7 +607,7 @@ function ContactoRow({
   );
 }
 
-// ─── ModalNuevoContacto ───────────────────────────────────────────────────────
+// ─── ModalNuevoContacto ────────────────────────────────────────────────────────
 
 function ModalNuevoContacto({ onClose, onCreado, usuarios }: {
   onClose: () => void;
@@ -597,25 +617,20 @@ function ModalNuevoContacto({ onClose, onCreado, usuarios }: {
   const toast = useToast();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    nombre: "",
-    telefono: "",
-    correo: "",
-    empresa: "",
+    nombre: "", telefono: "", correo: "", empresa: "",
     tipoCliente: "POR_DESCUBRIR",
     clasificacion: "PROSPECTO",
-    origenLead: "MANUAL",
+    origenLead: "META_ADS",
     notas: "",
-    esCliente: false, // toggle: "Ya es cliente (migrado)"
+    esCliente: false,
   });
-
   function setF(k: string, v: unknown) { setForm(p => ({ ...p, [k]: v })); }
 
   async function crear() {
     if (!form.nombre.trim()) { toast.error("El nombre es requerido"); return; }
     setSaving(true);
     const res = await fetch("/api/clientes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         nombre: form.nombre.trim(),
         telefono: form.telefono.trim() || null,
@@ -628,102 +643,87 @@ function ModalNuevoContacto({ onClose, onCreado, usuarios }: {
         esProspecto: !form.esCliente,
       }),
     });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al crear");
-      setSaving(false);
-      return;
-    }
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al crear"); setSaving(false); return; }
     const d = await res.json();
     onCreado(d.cliente);
     toast.success(`${form.nombre.trim()} registrado correctamente`);
     onClose();
   }
 
+  const inputCls = "w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50 placeholder-[#333] transition-colors";
+  const labelCls = "block text-[10px] text-[#555] mb-1.5 uppercase tracking-wider";
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-[#0f0f0f] border border-[#222] rounded-2xl w-full max-w-lg shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-[#0d0d0d] border border-[#1e1e1e] rounded-2xl w-full max-w-lg shadow-2xl max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
           <h3 className="text-white font-semibold text-sm">Nuevo contacto</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+          <button onClick={onClose} className="text-[#444] hover:text-white text-xl leading-none transition-colors">×</button>
         </div>
-
         <div className="p-6 space-y-4">
-          {/* Toggle: Prospecto vs Cliente migrado */}
-          <div className="flex items-center gap-3 p-3 rounded-xl border border-[#1e1e1e] bg-[#0d0d0d]">
-            <button
-              onClick={() => setF("esCliente", false)}
-              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${!form.esCliente ? "bg-purple-900/40 text-purple-300 border border-purple-800/40" : "text-[#555] hover:text-gray-400"}`}>
+          <div className="flex gap-2 p-1.5 bg-[#111] border border-[#1a1a1a] rounded-xl">
+            <button onClick={() => setF("esCliente", false)}
+              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${!form.esCliente ? "bg-purple-900/40 text-purple-300 border border-purple-800/40" : "text-[#444] hover:text-gray-400"}`}>
               Prospecto nuevo
             </button>
-            <button
-              onClick={() => setF("esCliente", true)}
-              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${form.esCliente ? "bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/30" : "text-[#555] hover:text-gray-400"}`}>
-              Ya es cliente (migrado)
+            <button onClick={() => setF("esCliente", true)}
+              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${form.esCliente ? "bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/30" : "text-[#444] hover:text-gray-400"}`}>
+              Ya es cliente
             </button>
           </div>
-
-          <p className="text-[10px] text-[#444]">
-            {form.esCliente
-              ? "Se registrará como cliente confirmado. Úsalo para contactos que ya te han comprado pero no están en el sistema."
-              : "Se registrará como prospecto. Cuando se apruebe una cotización, se convertirá automáticamente en cliente."}
+          <p className="text-[10px] text-[#333]">
+            {form.esCliente ? "Contacto que ya ha comprado pero no está registrado." : "Se registrará como prospecto. Se convierte a cliente al aprobar una cotización."}
           </p>
-
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="block text-[10px] text-gray-500 mb-1.5">Nombre <span className="text-red-500">*</span></label>
-              <input value={form.nombre} onChange={e => setF("nombre", e.target.value)} placeholder="Nombre completo"
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] placeholder-[#444]" />
+              <label className={labelCls}>Nombre <span className="text-red-500">*</span></label>
+              <input value={form.nombre} onChange={e => setF("nombre", e.target.value)} placeholder="Nombre completo" className={inputCls} />
             </div>
             <div>
-              <label className="block text-[10px] text-gray-500 mb-1.5">Teléfono</label>
-              <input value={form.telefono} onChange={e => setF("telefono", e.target.value)} placeholder="55 1234 5678"
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] placeholder-[#444]" />
+              <label className={labelCls}>Teléfono</label>
+              <input value={form.telefono} onChange={e => setF("telefono", e.target.value)} placeholder="55 1234 5678" className={inputCls} />
             </div>
             <div>
-              <label className="block text-[10px] text-gray-500 mb-1.5">Correo</label>
-              <input type="email" value={form.correo} onChange={e => setF("correo", e.target.value)} placeholder="correo@ejemplo.com"
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] placeholder-[#444]" />
+              <label className={labelCls}>Correo</label>
+              <input type="email" value={form.correo} onChange={e => setF("correo", e.target.value)} placeholder="correo@ejemplo.com" className={inputCls} />
             </div>
             <div>
-              <label className="block text-[10px] text-gray-500 mb-1.5">Empresa</label>
-              <input value={form.empresa} onChange={e => setF("empresa", e.target.value)} placeholder="Empresa (opcional)"
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] placeholder-[#444]" />
+              <label className={labelCls}>Empresa</label>
+              <input value={form.empresa} onChange={e => setF("empresa", e.target.value)} placeholder="Empresa (opcional)" className={inputCls} />
             </div>
             <div>
-              <label className="block text-[10px] text-gray-500 mb-1.5">Origen</label>
+              <label className={labelCls}>Origen del lead</label>
               <select value={form.origenLead} onChange={e => setF("origenLead", e.target.value)}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50 transition-colors">
                 {ORIGEN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[10px] text-gray-500 mb-1.5">Tipo de cliente</label>
+              <label className={labelCls}>Tipo de cliente</label>
               <select value={form.tipoCliente} onChange={e => setF("tipoCliente", e.target.value)}
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
+                className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50 transition-colors">
                 {TIPO_CLIENTE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
             {form.esCliente && (
               <div>
-                <label className="block text-[10px] text-gray-500 mb-1.5">Clasificación</label>
+                <label className={labelCls}>Clasificación inicial</label>
                 <select value={form.clasificacion} onChange={e => setF("clasificacion", e.target.value)}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]">
-                  {CLASIFICACION_OPTIONS.filter(o => o.value !== "PROSPECTO").map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50 transition-colors">
+                  {CLASIFICACION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
             )}
             <div className="col-span-2">
-              <label className="block text-[10px] text-gray-500 mb-1.5">Notas</label>
+              <label className={labelCls}>Notas</label>
               <textarea value={form.notas} onChange={e => setF("notas", e.target.value)} rows={2} placeholder="Información adicional…"
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none placeholder-[#444]" />
+                className={`${inputCls} resize-none`} />
             </div>
           </div>
         </div>
-
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#1a1a1a]">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-[#2a2a2a] text-[#555] text-sm hover:text-white hover:border-[#444] transition-colors">
             Cancelar
           </button>
           <button onClick={crear} disabled={saving || !form.nombre.trim()}
@@ -736,62 +736,73 @@ function ModalNuevoContacto({ onClose, onCreado, usuarios }: {
   );
 }
 
-// ─── ContactList — reusable table for all 3 tabs ───────────────────────────
+// ─── ContactList ──────────────────────────────────────────────────────────────
 
 function ContactList({
-  contactos, usuarios, tab,
+  contactos, usuarios, tab, actividadMap,
   onSaved, onVendedorChange, onDelete, deletingId, onConvertir, onReclasificar,
   empresaPopoverId, setEmpresaPopoverId, empresaMode, setEmpresaMode,
   empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
-  handleVincularEmpresa, closeEmpresaPopover, onOpenDrawer,
+  handleVincularEmpresa, closeEmpresaPopover,
 }: {
-  contactos: Contacto[];
-  usuarios: Vendedor[];
-  tab: Tab;
+  contactos: Contacto[]; usuarios: Vendedor[]; tab: Tab;
+  actividadMap: Record<string, EstadoActividad>;
   onSaved: (id: string, updated: Partial<Contacto>) => void;
   onVendedorChange: (id: string, v: Vendedor | null) => void;
-  onDelete: (c: Contacto) => void;
-  deletingId: string | null;
+  onDelete: (c: Contacto) => void; deletingId: string | null;
   onConvertir: (c: Contacto) => void;
   onReclasificar: (c: Contacto, esProspecto: boolean) => void;
-  empresaPopoverId: string | null;
-  setEmpresaPopoverId: (id: string | null) => void;
-  empresaMode: "view" | "search";
-  setEmpresaMode: (m: "view" | "search") => void;
-  empresaSearch: string;
-  setEmpresaSearch: (s: string) => void;
+  empresaPopoverId: string | null; setEmpresaPopoverId: (id: string | null) => void;
+  empresaMode: "view" | "search"; setEmpresaMode: (m: "view" | "search") => void;
+  empresaSearch: string; setEmpresaSearch: (s: string) => void;
   empresaResults: { id: string; nombre: string }[];
   empresaSearching: boolean;
   handleVincularEmpresa: (cid: string, empId: string, empNombre: string) => void;
   closeEmpresaPopover: () => void;
-  onOpenDrawer: (c: Contacto) => void;
 }) {
   if (contactos.length === 0) return (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center">
-      <p className="text-[#6b7280] text-sm">No hay registros en esta sección</p>
+    <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl py-16 text-center">
+      <p className="text-[#333] text-sm">No hay registros en esta sección</p>
     </div>
   );
 
+  const HEADERS = ["Nombre", "Empresa", "Origen", "Tipo", "Clasificación", "Servicio", "Tipo de Evento", "Actividad", "Responsable", "Tratos", ""];
+
   return (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
-      <table className="w-full min-w-[1100px]">
+    <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-x-auto">
+      <table className="w-full table-fixed" style={{ minWidth: 1200 }}>
+        <colgroup>
+          <col style={{ width: 215 }} />
+          <col style={{ width: 125 }} />
+          <col style={{ width: 105 }} />
+          <col style={{ width: 90 }}  />
+          <col style={{ width: 105 }} />
+          <col style={{ width: 125 }} />
+          <col style={{ width: 135 }} />
+          <col style={{ width: 95 }}  />
+          <col style={{ width: 110 }} />
+          <col style={{ width: 55 }}  />
+          <col style={{ width: 85 }}  />
+        </colgroup>
         <thead>
-          <tr className="border-b border-[#1e1e1e]">
-            {["Contacto", "Empresa", "Origen", "Tipo", "Clasificación", "Servicio", "Evento", "Responsable", "Tratos", "Proyectos", ""].map(h => (
-              <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium whitespace-nowrap">{h}</th>
+          <tr className="border-b border-[#111]">
+            {HEADERS.map((h, i) => (
+              <th key={i} className={`text-left text-[9px] uppercase tracking-[0.12em] text-[#333] px-4 py-2.5 font-semibold whitespace-nowrap ${i >= 2 ? "px-3" : ""}`}>
+                {h}
+              </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-[#111]">
+        <tbody>
           {contactos.map(c => (
             <ContactoRow
-              key={c.id} c={c} usuarios={usuarios} tab={tab}
+              key={c.id} c={c} usuarios={usuarios} tab={tab} actividadMap={actividadMap}
               onSaved={updated => onSaved(c.id, updated)}
               onVendedorChange={v => onVendedorChange(c.id, v)}
               onDelete={() => onDelete(c)}
               deleting={deletingId === c.id}
               onConvertir={() => onConvertir(c)}
-              onReclasificar={esProspecto => onReclasificar(c, esProspecto)}
+              onReclasificar={esp => onReclasificar(c, esp)}
               empresaPopoverOpen={empresaPopoverId === c.id}
               onEmpresaClick={() => {
                 if (empresaPopoverId === c.id) { setEmpresaPopoverId(null); return; }
@@ -799,15 +810,11 @@ function ContactList({
                 setEmpresaSearch("");
                 setEmpresaPopoverId(c.id);
               }}
-              empresaMode={empresaMode}
-              setEmpresaMode={setEmpresaMode}
-              empresaSearch={empresaSearch}
-              setEmpresaSearch={setEmpresaSearch}
-              empresaResults={empresaResults}
-              empresaSearching={empresaSearching}
+              empresaMode={empresaMode} setEmpresaMode={setEmpresaMode}
+              empresaSearch={empresaSearch} setEmpresaSearch={setEmpresaSearch}
+              empresaResults={empresaResults} empresaSearching={empresaSearching}
               onVincularEmpresa={(empId, empNombre) => handleVincularEmpresa(c.id, empId, empNombre)}
               onCloseEmpresa={closeEmpresaPopover}
-              onOpenDrawer={() => onOpenDrawer(c)}
             />
           ))}
         </tbody>
@@ -816,58 +823,275 @@ function ContactList({
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── ResumenTab ───────────────────────────────────────────────────────────────
 
-interface Props {
-  clientes: Contacto[];
-  prospectos: Contacto[];
-  sinClasificar: Contacto[];
-  usuarios: Vendedor[];
+function DistBar({ label, count, total, color, list }: { label: string; count: number; total: number; color: string; list: Contacto[] }) {
+  const [open, setOpen] = useState(false);
+  const pct = total ? Math.round((count / total) * 100) : 0;
+  return (
+    <div className="group/bar">
+      <div className="flex items-center gap-2 py-1.5 cursor-pointer" onClick={() => setOpen(v => !v)}>
+        <span className="text-[11px] text-[#666] w-[110px] truncate shrink-0">{label}</span>
+        <div className="flex-1 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+        </div>
+        <span className="text-[10px] text-[#555] w-[28px] text-right shrink-0">{count}</span>
+        <span className="text-[9px] text-[#333] w-[28px] text-right shrink-0">{pct}%</span>
+        <svg className={`w-3 h-3 text-[#333] shrink-0 transition-transform ${open ? "rotate-180" : ""}`} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="2 4 6 8 10 4"/></svg>
+      </div>
+      {open && list.length > 0 && (
+        <div className="ml-[114px] mb-2 border-l border-[#1a1a1a] pl-3 space-y-0.5">
+          {list.slice(0, 10).map(c => (
+            <Link key={c.id} href={`/crm/clientes/${c.id}`}
+              className="block text-[10px] text-[#555] hover:text-[#B3985B] transition-colors truncate">
+              {c.nombre}
+            </Link>
+          ))}
+          {list.length > 10 && <p className="text-[9px] text-[#333]">+{list.length - 10} más</p>}
+        </div>
+      )}
+    </div>
+  );
 }
 
-export default function BaseDeDatosClient({ clientes: initClientes, prospectos: initProspectos, sinClasificar: initSin, usuarios }: Props) {
+function ResumenTab({ clientes, prospectos, actividadMap, usuarios }: {
+  clientes: Contacto[]; prospectos: Contacto[];
+  actividadMap: Record<string, EstadoActividad>;
+  usuarios: Vendedor[];
+}) {
+  const todos = useMemo(() => [...clientes, ...prospectos], [clientes, prospectos]);
+
+  const activosC    = useMemo(() => todos.filter(c => actividadMap[c.id] === "ACTIVO"),     [todos, actividadMap]);
+  const enProcesoC  = useMemo(() => todos.filter(c => actividadMap[c.id] === "EN_PROCESO"), [todos, actividadMap]);
+  const inactivosC  = useMemo(() => todos.filter(c => actividadMap[c.id] === "INACTIVO"),   [todos, actividadMap]);
+
+  const topClientes = useMemo(() => [...clientes].sort((a, b) => b._count.tratos - a._count.tratos).slice(0, 8), [clientes]);
+  const recientes   = useMemo(() => [...todos].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 10), [todos]);
+
+  // Distribuciones
+  const porClasif    = useMemo(() => {
+    const m = new Map<string, Contacto[]>();
+    for (const c of todos) { if (!m.has(c.clasificacion)) m.set(c.clasificacion, []); m.get(c.clasificacion)!.push(c); }
+    return Array.from(m.entries()).sort((a, b) => b[1].length - a[1].length);
+  }, [todos]);
+
+  const porOrigen    = useMemo(() => {
+    const m = new Map<string, Contacto[]>();
+    for (const c of todos) { const o = c.origenLead ?? "SIN_ORIGEN"; if (!m.has(o)) m.set(o, []); m.get(o)!.push(c); }
+    return Array.from(m.entries()).sort((a, b) => b[1].length - a[1].length);
+  }, [todos]);
+
+  const porEvento    = useMemo(() => {
+    const m = new Map<string, Contacto[]>();
+    for (const c of todos) {
+      for (const e of parseTiposEvento(c.tiposEvento)) { if (!m.has(e)) m.set(e, []); m.get(e)!.push(c); }
+    }
+    return Array.from(m.entries()).sort((a, b) => b[1].length - a[1].length);
+  }, [todos]);
+
+  const porServicio  = useMemo(() => {
+    const m = new Map<string, Contacto[]>();
+    for (const c of todos) {
+      for (const s of parseServicios(c.servicioUsual)) { if (!m.has(s)) m.set(s, []); m.get(s)!.push(c); }
+    }
+    return Array.from(m.entries()).sort((a, b) => b[1].length - a[1].length);
+  }, [todos]);
+
+  const porResponsable = useMemo(() => {
+    const m = new Map<string, { name: string; list: Contacto[] }>();
+    for (const c of todos) {
+      const key = c.vendedor?.id ?? "__none__";
+      const name = c.vendedor?.name ?? "Sin asignar";
+      if (!m.has(key)) m.set(key, { name, list: [] });
+      m.get(key)!.list.push(c);
+    }
+    return Array.from(m.entries()).sort((a, b) => b[1].list.length - a[1].list.length);
+  }, [todos]);
+
+  const statCards = [
+    { label: "Activos", sub: "evento cerrado este mes", count: activosC.length, dot: "#10B981", bg: "from-emerald-900/30 to-[#0d0d0d]", border: "border-emerald-800/20", text: "text-emerald-400", list: activosC },
+    { label: "En proceso", sub: "cotización pendiente este mes", count: enProcesoC.length, dot: "#F59E0B", bg: "from-amber-900/20 to-[#0d0d0d]", border: "border-amber-800/20", text: "text-amber-400", list: enProcesoC },
+    { label: "Inactivos", sub: "sin actividad este mes", count: inactivosC.length, dot: "#374151", bg: "from-[#111] to-[#0d0d0d]", border: "border-[#1a1a1a]", text: "text-[#555]", list: inactivosC },
+  ];
+
+  const [expandedStat, setExpandedStat] = useState<number | null>(null);
+
+  return (
+    <div className="space-y-5">
+      {/* Estado de actividad — mes actual */}
+      <div>
+        <p className="text-[9px] uppercase tracking-[0.14em] text-[#333] mb-3">Actividad — mes actual</p>
+        <div className="grid grid-cols-3 gap-3">
+          {statCards.map((s, i) => (
+            <div key={i} className={`bg-gradient-to-b ${s.bg} border ${s.border} rounded-xl p-5 cursor-pointer transition-all hover:brightness-110`}
+              onClick={() => setExpandedStat(expandedStat === i ? null : i)}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.dot }} />
+                <span className="text-[11px] text-[#666] font-medium">{s.label}</span>
+              </div>
+              <p className={`text-4xl font-bold ${s.text} leading-none mb-1`}>{s.count}</p>
+              <p className="text-[10px] text-[#333]">{s.sub}</p>
+              {expandedStat === i && s.list.length > 0 && (
+                <div className="mt-4 pt-3 border-t border-[#1a1a1a] space-y-1">
+                  {s.list.slice(0, 6).map(c => (
+                    <Link key={c.id} href={`/crm/clientes/${c.id}`}
+                      className="block text-[10px] text-[#555] hover:text-[#B3985B] transition-colors truncate">
+                      {c.nombre}
+                    </Link>
+                  ))}
+                  {s.list.length > 6 && <p className="text-[9px] text-[#333]">+{s.list.length - 6} más…</p>}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Dos columnas: top clientes + recientes */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Mejores clientes */}
+        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+          <p className="text-[9px] uppercase tracking-[0.14em] text-[#333] mb-4">Mejores clientes</p>
+          {topClientes.length === 0
+            ? <p className="text-[#333] text-xs">Sin datos</p>
+            : <div className="space-y-1.5">
+                {topClientes.map((c, i) => (
+                  <div key={c.id} className="flex items-center gap-3">
+                    <span className="text-[10px] text-[#2a2a2a] w-4 shrink-0 text-right">{i + 1}</span>
+                    <Link href={`/crm/clientes/${c.id}`}
+                      className="flex-1 text-[12px] text-[#777] hover:text-[#B3985B] transition-colors truncate">
+                      {c.nombre}
+                    </Link>
+                    <span className="text-[10px] text-[#444] shrink-0">{c._count.tratos} tratos</span>
+                    <EstadoActividadBadge estado={actividadMap[c.id] ?? "INACTIVO"} />
+                  </div>
+                ))}
+              </div>
+          }
+        </div>
+
+        {/* Registros recientes */}
+        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+          <p className="text-[9px] uppercase tracking-[0.14em] text-[#333] mb-4">Registros recientes</p>
+          {recientes.length === 0
+            ? <p className="text-[#333] text-xs">Sin datos</p>
+            : <div className="space-y-1.5">
+                {recientes.map(c => (
+                  <div key={c.id} className="flex items-center gap-3">
+                    <span className="text-[10px] text-[#333] shrink-0 w-[30px]">{formatRelativo(c.createdAt)}</span>
+                    <Link href={`/crm/clientes/${c.id}`}
+                      className="flex-1 text-[12px] text-[#777] hover:text-[#B3985B] transition-colors truncate">
+                      {c.nombre}
+                    </Link>
+                    {c.origenLead && <OrigenBadge origen={c.origenLead} />}
+                    {c.vendedor && (
+                      <span className="text-[9px] text-[#444] shrink-0 truncate max-w-[50px]">{c.vendedor.name.split(" ")[0]}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+          }
+        </div>
+      </div>
+
+      {/* Distribuciones */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Por clasificación */}
+        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+          <p className="text-[9px] uppercase tracking-[0.14em] text-[#333] mb-4">Por clasificación</p>
+          {porClasif.map(([clas, list]) => {
+            const cfg = CLAS_COLORS[clas];
+            return <DistBar key={clas} label={CLASIFICACION_LABELS[clas] ?? clas} count={list.length} total={todos.length} color={cfg?.text?.replace("text-", "").replace("[", "").replace("]", "") ?? "#6b7280"} list={list} />;
+          })}
+          {porClasif.length === 0 && <p className="text-[#333] text-xs">Sin datos</p>}
+        </div>
+
+        {/* Por origen */}
+        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+          <p className="text-[9px] uppercase tracking-[0.14em] text-[#333] mb-4">Por origen de lead</p>
+          {porOrigen.map(([orig, list]) => {
+            const colors = ["#3B82F6", "#EC4899", "#F59E0B", "#10B981", "#B3985B", "#8B5CF6"];
+            const idx = ORIGEN_OPTIONS.findIndex(o => o.value === orig);
+            return <DistBar key={orig} label={ORIGEN_LABELS[orig] ?? orig} count={list.length} total={todos.length} color={colors[idx] ?? "#6b7280"} list={list} />;
+          })}
+          {porOrigen.length === 0 && <p className="text-[#333] text-xs">Sin datos</p>}
+        </div>
+
+        {/* Por tipo de evento */}
+        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+          <p className="text-[9px] uppercase tracking-[0.14em] text-[#333] mb-4">Por tipo de evento</p>
+          {porEvento.map(([ev, list]) => (
+            <DistBar key={ev} label={TIPOS_EVENTO_OPTIONS.find(o => o.value === ev)?.label ?? ev} count={list.length} total={todos.length} color={EVENTO_COLORS[ev] ?? "#6b7280"} list={list} />
+          ))}
+          {porEvento.length === 0 && <p className="text-[#333] text-xs">Sin datos registrados de tipo evento</p>}
+        </div>
+
+        {/* Por servicio */}
+        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+          <p className="text-[9px] uppercase tracking-[0.14em] text-[#333] mb-4">Por servicio habitual</p>
+          {porServicio.map(([sv, list]) => (
+            <DistBar key={sv} label={SERVICIO_OPTIONS.find(o => o.value === sv)?.label ?? sv} count={list.length} total={todos.length} color={SERVICIO_COLORS[sv] ?? "#6b7280"} list={list} />
+          ))}
+          {porServicio.length === 0 && <p className="text-[#333] text-xs">Sin servicios registrados</p>}
+        </div>
+      </div>
+
+      {/* Por responsable */}
+      <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+        <p className="text-[9px] uppercase tracking-[0.14em] text-[#333] mb-4">Por responsable</p>
+        <div className="space-y-0.5">
+          {porResponsable.map(([id, { name, list }]) => (
+            <DistBar key={id} label={name} count={list.length} total={todos.length} color={id === "__none__" ? "#374151" : "#B3985B"} list={list} />
+          ))}
+          {porResponsable.length === 0 && <p className="text-[#333] text-xs">Sin datos</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main component ────────────────────────────────────────────────────────────
+
+export default function BaseDeDatosClient({ clientes: initClientes, prospectos: initProspectos, sinClasificar: initSin, usuarios, actividadMap }: Props) {
   const confirm = useConfirm();
   const toast = useToast();
-  const router = useRouter();
 
   const [tab, setTab] = useState<Tab>("clientes");
-  const [clientes, setClientes] = useState<Contacto[]>(initClientes);
-  const [prospectos, setProspectos] = useState<Contacto[]>(initProspectos);
+  const [clientes, setClientes]         = useState<Contacto[]>(initClientes);
+  const [prospectos, setProspectos]     = useState<Contacto[]>(initProspectos);
   const [sinClasificar, setSinClasificar] = useState<Contacto[]>(initSin);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [showModal, setShowModal] = useState(false);
-  const [clienteSel, setClienteSel] = useState<Contacto | null>(null);
+  const [deletingId, setDeletingId]     = useState<string | null>(null);
+  const [showModal, setShowModal]       = useState(false);
 
   // Empresa popover
   const [empresaPopoverId, setEmpresaPopoverId] = useState<string | null>(null);
-  const [empresaMode, setEmpresaMode] = useState<"view" | "search">("view");
-  const [empresaSearch, setEmpresaSearch] = useState("");
-  const [empresaResults, setEmpresaResults] = useState<{ id: string; nombre: string }[]>([]);
+  const [empresaMode, setEmpresaMode]           = useState<"view" | "search">("view");
+  const [empresaSearch, setEmpresaSearch]       = useState("");
+  const [empresaResults, setEmpresaResults]     = useState<{ id: string; nombre: string }[]>([]);
   const [empresaSearching, setEmpresaSearching] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Filters
-  const [busqueda, setBusqueda] = useState("");
-  const [filtroTipo, setFiltroTipo] = useState("");
+  const [busqueda, setBusqueda]                     = useState("");
+  const [filtroTipo, setFiltroTipo]                 = useState("");
   const [filtroClasificacion, setFiltroClasificacion] = useState("");
-  const [filtroServicio, setFiltroServicio] = useState("");
-  const [filtroEvento, setFiltroEvento] = useState("");
-  const [filtroVendedor, setFiltroVendedor] = useState("");
-  const [filtroOrigen, setFiltroOrigen] = useState("");
+  const [filtroServicio, setFiltroServicio]         = useState("");
+  const [filtroEvento, setFiltroEvento]             = useState("");
+  const [filtroVendedor, setFiltroVendedor]         = useState("");
+  const [filtroOrigen, setFiltroOrigen]             = useState("");
+  const [filtroActividad, setFiltroActividad]       = useState("");
 
-  const hayFiltros = busqueda || filtroTipo || filtroClasificacion || filtroServicio || filtroEvento || filtroVendedor || filtroOrigen;
+  const hayFiltros = busqueda || filtroTipo || filtroClasificacion || filtroServicio || filtroEvento || filtroVendedor || filtroOrigen || filtroActividad;
   function limpiarFiltros() {
     setBusqueda(""); setFiltroTipo(""); setFiltroClasificacion(""); setFiltroServicio("");
-    setFiltroEvento(""); setFiltroVendedor(""); setFiltroOrigen("");
+    setFiltroEvento(""); setFiltroVendedor(""); setFiltroOrigen(""); setFiltroActividad("");
   }
 
   const vendedorOptions = usuarios.map(u => ({ value: u.id, label: u.name }));
 
-  // Empresa search effect
+  // Empresa search
   useEffect(() => {
-    if (!empresaSearch.trim() || empresaSearch.length < 2) {
-      setEmpresaResults([]); return;
-    }
+    if (!empresaSearch.trim() || empresaSearch.length < 2) { setEmpresaResults([]); return; }
     if (searchTimer.current) clearTimeout(searchTimer.current);
     setEmpresaSearching(true);
     searchTimer.current = setTimeout(async () => {
@@ -881,41 +1105,25 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
   }, [empresaSearch]);
 
   function closeEmpresaPopover() {
-    setEmpresaPopoverId(null);
-    setEmpresaMode("view");
-    setEmpresaSearch("");
-    setEmpresaResults([]);
+    setEmpresaPopoverId(null); setEmpresaMode("view"); setEmpresaSearch(""); setEmpresaResults([]);
   }
-
-  // Click outside to close empresa popover
   useEffect(() => {
     if (!empresaPopoverId) return;
-    function handler(e: MouseEvent) {
-      const target = e.target as HTMLElement;
-      if (!target.closest("[data-empresa-popover]")) closeEmpresaPopover();
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    const h = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest("[data-empresa-popover]")) closeEmpresaPopover(); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
   }, [empresaPopoverId]);
 
-  // ── Helpers para actualizar state local ─────────────────────────────────────
-
-  function getSetters(source: Tab) {
-    if (source === "clientes") return { get: clientes, set: setClientes };
-    if (source === "prospectos") return { get: prospectos, set: setProspectos };
-    return { get: sinClasificar, set: setSinClasificar };
-  }
+  // ── State updaters ───────────────────────────────────────────────────────────
 
   function actualizarCampos(id: string, updated: Partial<Contacto>) {
     const apply = (prev: Contacto[]) => prev.map(c => c.id === id ? { ...c, ...updated } : c);
     setClientes(apply); setProspectos(apply); setSinClasificar(apply);
   }
-
   function actualizarVendedor(id: string, v: Vendedor | null) {
     const apply = (prev: Contacto[]) => prev.map(c => c.id === id ? { ...c, vendedor: v, vendedorId: v?.id ?? null } : c);
     setClientes(apply); setProspectos(apply); setSinClasificar(apply);
   }
-
   function removerDe(id: string, source: Tab) {
     const apply = (prev: Contacto[]) => prev.filter(c => c.id !== id);
     if (source === "clientes") setClientes(apply);
@@ -923,13 +1131,12 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
     else setSinClasificar(apply);
   }
 
-  // ── Vincular empresa ────────────────────────────────────────────────────────
+  // ── Empresa ──────────────────────────────────────────────────────────────────
 
   async function handleVincularEmpresa(cid: string, empId: string, empNombre: string) {
     closeEmpresaPopover();
     const res = await fetch(`/api/clientes/${cid}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ empresaId: empId }),
     });
     if (!res.ok) { toast.error("Error al vincular empresa"); return; }
@@ -937,34 +1144,23 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
     actualizarCampos(cid, { compania: d.cliente?.compania ?? { id: empId, nombre: empNombre }, empresa: empNombre });
   }
 
-  // ── Convertir prospecto → cliente ────────────────────────────────────────
+  // ── Convertir / Reclasificar ─────────────────────────────────────────────────
 
   async function convertirACliente(c: Contacto) {
-    const ok = await confirm({
-      message: `¿Confirmar que "${c.nombre}" ya es un cliente? Esto lo moverá a la pestaña de Clientes.`,
-      confirmText: "Convertir a Cliente",
-    });
+    const ok = await confirm({ message: `¿Confirmar que "${c.nombre}" ya es cliente?`, confirmText: "Convertir a Cliente" });
     if (!ok) return;
     const res = await fetch(`/api/clientes/${c.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ esProspecto: false, clasificacion: c.clasificacion === "PROSPECTO" ? "NUEVO" : c.clasificacion }),
     });
     if (!res.ok) { toast.error("Error al convertir"); return; }
     const d = await res.json();
-    removerDe(c.id, tab);
-    setClientes(prev => [d.cliente, ...prev]);
-    toast.success(`${c.nombre} movido a Clientes`);
-    setTab("clientes");
+    removerDe(c.id, tab); setClientes(prev => [d.cliente, ...prev]);
+    toast.success(`${c.nombre} movido a Clientes`); setTab("clientes");
   }
-
-  // ── Reclasificar (sin-clasificar o cliente → prospecto y viceversa) ─────
-
   async function reclasificar(c: Contacto, esProspecto: boolean) {
-    const label = esProspecto ? "Prospecto" : "Cliente";
     const res = await fetch(`/api/clientes/${c.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ esProspecto, clasificacion: !esProspecto && c.clasificacion === "PROSPECTO" ? "NUEVO" : c.clasificacion }),
     });
     if (!res.ok) { toast.error("Error al reclasificar"); return; }
@@ -972,137 +1168,104 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
     removerDe(c.id, tab);
     if (esProspecto) setProspectos(prev => [d.cliente, ...prev]);
     else setClientes(prev => [d.cliente, ...prev]);
-    toast.success(`${c.nombre} movido a ${label}s`);
+    toast.success(`${c.nombre} movido a ${esProspecto ? "Prospectos" : "Clientes"}`);
   }
-
-  // ── Eliminar ────────────────────────────────────────────────────────────────
-
   async function eliminar(c: Contacto) {
-    const ok = await confirm({
-      message: `¿Eliminar a "${c.nombre}"? Esta acción no se puede deshacer.`,
-      danger: true,
-      confirmText: "Eliminar",
-    });
+    const ok = await confirm({ message: `¿Eliminar a "${c.nombre}"? Esta acción no se puede deshacer.`, danger: true, confirmText: "Eliminar" });
     if (!ok) return;
     setDeletingId(c.id);
     const res = await fetch(`/api/clientes/${c.id}`, { method: "DELETE" });
     if (!res.ok) { toast.error("Error al eliminar"); setDeletingId(null); return; }
-    removerDe(c.id, tab);
-    setDeletingId(null);
-    toast.success("Contacto eliminado");
+    removerDe(c.id, tab); setDeletingId(null); toast.success("Contacto eliminado");
   }
-
-  // ── Nuevo contacto creado ─────────────────────────────────────────────────
-
   function onCreado(c: Contacto) {
-    if (c.esProspecto) {
-      setProspectos(prev => [c, ...prev]);
-      setTab("prospectos");
-    } else {
-      setClientes(prev => [c, ...prev]);
-      setTab("clientes");
-    }
+    if (c.esProspecto) { setProspectos(prev => [c, ...prev]); setTab("prospectos"); }
+    else { setClientes(prev => [c, ...prev]); setTab("clientes"); }
   }
 
-  // ── Filtrado ─────────────────────────────────────────────────────────────
+  // ── Filtrado ─────────────────────────────────────────────────────────────────
 
   function filtrar(lista: Contacto[]): Contacto[] {
     const q = busqueda.toLowerCase().trim();
     return lista.filter(c => {
-      const empresaNombre = c.compania?.nombre ?? c.empresa ?? "";
-      if (q && !c.nombre.toLowerCase().includes(q) && !empresaNombre.toLowerCase().includes(q)
+      const emp = c.compania?.nombre ?? c.empresa ?? "";
+      if (q && !c.nombre.toLowerCase().includes(q) && !emp.toLowerCase().includes(q)
         && !(c.correo ?? "").toLowerCase().includes(q) && !(c.telefono ?? "").includes(q)) return false;
       if (filtroTipo && c.tipoCliente !== filtroTipo) return false;
       if (filtroClasificacion && c.clasificacion !== filtroClasificacion) return false;
-      if (filtroServicio && c.servicioUsual !== filtroServicio) return false;
-      if (filtroEvento) {
-        const evs = parseTiposEvento(c.tiposEvento);
-        if (!evs.includes(filtroEvento)) return false;
-      }
+      if (filtroServicio && !parseServicios(c.servicioUsual).includes(filtroServicio)) return false;
+      if (filtroEvento && !parseTiposEvento(c.tiposEvento).includes(filtroEvento)) return false;
       if (filtroVendedor && c.vendedorId !== filtroVendedor) return false;
       if (filtroOrigen) {
-        const origen = c.origenLead ?? c.tratos[0]?.origenLead;
-        if (origen !== filtroOrigen) return false;
+        const orig = c.origenLead ?? c.tratos[0]?.origenLead;
+        if (orig !== filtroOrigen) return false;
       }
+      if (filtroActividad && (actividadMap[c.id] ?? "INACTIVO") !== filtroActividad) return false;
       return true;
     });
   }
 
-  const clientesFiltrados = useMemo(() => filtrar(clientes), [clientes, busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroOrigen]);
-  const prospectosFiltrados = useMemo(() => filtrar(prospectos), [prospectos, busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroOrigen]);
-  const sinClasificarFiltrados = useMemo(() => filtrar(sinClasificar), [sinClasificar, busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroOrigen]);
+  const clientesFiltrados    = useMemo(() => filtrar(clientes),      [clientes,      busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroOrigen, filtroActividad]);
+  const prospectosFiltrados  = useMemo(() => filtrar(prospectos),    [prospectos,    busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroOrigen, filtroActividad]);
+  const sinClasifFiltrados   = useMemo(() => filtrar(sinClasificar), [sinClasificar, busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroOrigen, filtroActividad]);
 
-  const listaActual = tab === "clientes" ? clientesFiltrados : tab === "prospectos" ? prospectosFiltrados : sinClasificarFiltrados;
+  const listaActual = tab === "clientes" ? clientesFiltrados : tab === "prospectos" ? prospectosFiltrados : sinClasifFiltrados;
 
-  // ── Shared table props ────────────────────────────────────────────────────
+  // ── Shared table props ────────────────────────────────────────────────────────
 
   const tableProps = {
-    usuarios,
-    tab,
-    onSaved: actualizarCampos,
-    onVendedorChange: actualizarVendedor,
-    onDelete: eliminar,
-    deletingId,
-    onConvertir: convertirACliente,
-    onReclasificar: reclasificar,
-    empresaPopoverId,
-    setEmpresaPopoverId,
-    empresaMode,
-    setEmpresaMode,
-    empresaSearch,
-    setEmpresaSearch,
-    empresaResults,
-    empresaSearching,
-    handleVincularEmpresa,
-    closeEmpresaPopover,
-    onOpenDrawer: setClienteSel,
+    usuarios, tab, actividadMap,
+    onSaved: actualizarCampos, onVendedorChange: actualizarVendedor, onDelete: eliminar, deletingId,
+    onConvertir: convertirACliente, onReclasificar: reclasificar,
+    empresaPopoverId, setEmpresaPopoverId, empresaMode, setEmpresaMode,
+    empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
+    handleVincularEmpresa, closeEmpresaPopover,
   };
+
+  // ─── Counts ──────────────────────────────────────────────────────────────────
+  const activosTotal    = useMemo(() => [...clientes, ...prospectos].filter(c => actividadMap[c.id] === "ACTIVO").length,     [clientes, prospectos, actividadMap]);
+  const enProcesoTotal  = useMemo(() => [...clientes, ...prospectos].filter(c => actividadMap[c.id] === "EN_PROCESO").length, [clientes, prospectos, actividadMap]);
+
+  const tabs: { key: Tab; label: string; count: number; color: string }[] = [
+    { key: "resumen",        label: "Resumen",        count: 0,                      color: "text-[#B3985B]"  },
+    { key: "clientes",       label: "Clientes",       count: clientes.length,        color: "text-[#B3985B]"  },
+    { key: "prospectos",     label: "Prospectos",     count: prospectos.length,      color: "text-purple-300" },
+    { key: "sin-clasificar", label: "Sin Clasificar", count: sinClasificar.length,   color: "text-amber-400"  },
+  ];
 
   return (
     <>
-      {showModal && (
-        <ModalNuevoContacto onClose={() => setShowModal(false)} onCreado={onCreado} usuarios={usuarios} />
-      )}
+      {showModal && <ModalNuevoContacto onClose={() => setShowModal(false)} onCreado={onCreado} usuarios={usuarios} />}
 
-      {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-white">Base de Datos</h1>
-          <p className="text-[#555] text-xs mt-0.5">
-            {clientes.length} cliente{clientes.length !== 1 ? "s" : ""} · {prospectos.length} prospecto{prospectos.length !== 1 ? "s" : ""}
+          <p className="text-[#333] text-xs mt-1">
+            {clientes.length} cliente{clientes.length !== 1 ? "s" : ""}
+            {" · "}{prospectos.length} prospecto{prospectos.length !== 1 ? "s" : ""}
             {sinClasificar.length > 0 && ` · ${sinClasificar.length} sin clasificar`}
+            {" · "}<span className="text-emerald-600/80">{activosTotal} activos</span>
+            {" · "}<span className="text-amber-600/80">{enProcesoTotal} en proceso</span>
           </p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
+        <button onClick={() => setShowModal(true)}
           className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors shrink-0">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Nuevo contacto
         </button>
       </div>
 
-      {/* ── Tabs ──────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1 mb-5 bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-1 w-fit">
-        {([
-          { key: "clientes",       label: "Clientes",        count: clientes.length,       color: "text-[#B3985B]" },
-          { key: "prospectos",     label: "Prospectos",      count: prospectos.length,      color: "text-purple-300" },
-          { key: "sin-clasificar", label: "Sin Clasificar",  count: sinClasificar.length,   color: "text-amber-400" },
-        ] as const).map(t => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+      {/* ── Tabs ─────────────────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-1 mb-5 bg-[#0a0a0a] border border-[#151515] rounded-xl p-1 w-fit">
+        {tabs.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              tab === t.key
-                ? "bg-[#1a1a1a] text-white shadow-sm"
-                : "text-[#555] hover:text-gray-400"
+              tab === t.key ? "bg-[#1a1a1a] text-white shadow-sm" : "text-[#3a3a3a] hover:text-[#666]"
             }`}>
             {t.label}
             {t.count > 0 && (
-              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
-                tab === t.key
-                  ? `${t.color} bg-[#111]`
-                  : "text-[#444] bg-[#1a1a1a]"
-              }`}>
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${tab === t.key ? `${t.color} bg-[#111]` : "text-[#333] bg-[#111]"}`}>
                 {t.count}
               </span>
             )}
@@ -1110,114 +1273,69 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
         ))}
       </div>
 
-      {/* Descripción de Sin Clasificar */}
-      {tab === "sin-clasificar" && sinClasificar.length > 0 && (
-        <div className="mb-4 p-3 rounded-xl bg-amber-900/10 border border-amber-900/30 flex items-start gap-3">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" className="mt-0.5 shrink-0">
-            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-          </svg>
-          <p className="text-amber-400/80 text-xs">
-            Estos contactos aparecen duplicados en la base de datos (mismo teléfono o correo). Usa los botones <strong className="text-[#B3985B]">→ Cliente</strong> o <strong className="text-purple-300">→ Prospecto</strong> para clasificarlos, o elimina el duplicado.
-          </p>
-        </div>
+      {/* ── Resumen ──────────────────────────────────────────────────────────── */}
+      {tab === "resumen" && (
+        <ResumenTab clientes={clientes} prospectos={prospectos} actividadMap={actividadMap} usuarios={usuarios} />
       )}
 
-      {/* ── Filtros ───────────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-3 mb-5">
-        <div className="relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#444]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          <input
-            value={busqueda} onChange={e => setBusqueda(e.target.value)}
-            placeholder="Buscar por nombre, correo, teléfono o empresa…"
-            className="w-full pl-9 pr-4 py-2 bg-[#111] border border-[#2a2a2a] rounded-lg text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#B3985B]/50 transition-colors" />
-          {busqueda && (
-            <button onClick={() => setBusqueda("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white transition-colors">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          )}
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <FilterSelect label="Tipo" value={filtroTipo} onChange={setFiltroTipo} options={TIPO_CLIENTE_OPTIONS} />
-          <FilterSelect label="Clasificación" value={filtroClasificacion} onChange={setFiltroClasificacion} options={CLASIFICACION_OPTIONS} />
-          <FilterSelect label="Servicio" value={filtroServicio} onChange={setFiltroServicio} options={SERVICIO_OPTIONS} />
-          <FilterSelect label="Evento" value={filtroEvento} onChange={setFiltroEvento} options={TIPOS_EVENTO_OPTIONS} />
-          <FilterSelect label="Responsable" value={filtroVendedor} onChange={setFiltroVendedor} options={vendedorOptions} />
-          <FilterSelect label="Origen" value={filtroOrigen} onChange={setFiltroOrigen} options={ORIGEN_OPTIONS} />
-          {hayFiltros && (
-            <button onClick={limpiarFiltros}
-              className="text-[10px] text-[#555] hover:text-red-400 border border-[#2a2a2a] hover:border-red-900/40 px-2.5 py-1.5 rounded-lg transition-colors">
-              Limpiar filtros
-            </button>
-          )}
-          <span className="ml-auto text-[10px] text-[#444]">
-            {listaActual.length} resultado{listaActual.length !== 1 ? "s" : ""}
-          </span>
-        </div>
-      </div>
-
-      <p className="text-[10px] text-[#333] mb-3">
-        ✎ Haz clic en cualquier campo para editar · Se guarda automáticamente al seleccionar
-      </p>
-
-      {/* ── Tabla ─────────────────────────────────────────────────────── */}
-      <ContactList contactos={listaActual} {...tableProps} />
-
-      {/* ── Drawer de detalle ───────────────────────────────────────────── */}
-      {clienteSel && (
-        <div className="fixed inset-0 z-40 flex" onClick={() => setClienteSel(null)}>
-          <div className="flex-1" />
-          <div className="w-80 bg-[#111] border-l border-[#222] h-full overflow-y-auto p-5"
-            onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white font-semibold">{clienteSel.nombre}</h3>
-              <button onClick={() => setClienteSel(null)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+      {/* ── Lista ────────────────────────────────────────────────────────────── */}
+      {tab !== "resumen" && (
+        <>
+          {tab === "sin-clasificar" && sinClasificar.length > 0 && (
+            <div className="mb-4 p-3 rounded-xl bg-amber-950/20 border border-amber-900/20 flex items-start gap-2.5">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" className="mt-0.5 shrink-0">
+                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+              <p className="text-amber-400/70 text-[11px]">
+                Estos contactos tienen el mismo teléfono o correo que otro registro. Clasifícalos o elimina el duplicado.
+              </p>
             </div>
-            {(clienteSel.compania?.nombre ?? clienteSel.empresa) && (
-              <p className="text-gray-400 text-sm mb-4">{clienteSel.compania?.nombre ?? clienteSel.empresa}</p>
-            )}
-            <div className="space-y-2">
-              {clienteSel.telefono && (
-                <a href={`https://wa.me/${clienteSel.telefono.replace(/\D/g,'')}`} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-3 py-2 bg-[#1a1a1a] rounded-lg text-sm text-white hover:bg-[#222] transition-colors">
-                  <span>&#128241;</span>{clienteSel.telefono}
-                </a>
-              )}
-              {clienteSel.correo && (
-                <a href={`mailto:${clienteSel.correo}`}
-                  className="flex items-center gap-2 px-3 py-2 bg-[#1a1a1a] rounded-lg text-sm text-white hover:bg-[#222] transition-colors">
-                  <span>&#9993;</span>{clienteSel.correo}
-                </a>
+          )}
+
+          {/* Filtros */}
+          <div className="flex flex-col gap-3 mb-5">
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#333]" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
+                placeholder="Buscar por nombre, correo, teléfono o empresa…"
+                className="w-full pl-9 pr-4 py-2 bg-[#0a0a0a] border border-[#151515] rounded-lg text-sm text-white placeholder-[#2a2a2a] focus:outline-none focus:border-[#B3985B]/30 transition-colors" />
+              {busqueda && (
+                <button onClick={() => setBusqueda("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#333] hover:text-white transition-colors">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
               )}
             </div>
-            {clienteSel.clasificacion && (
-              <div className="mt-4 pt-4 border-t border-[#1e1e1e]">
-                <p className="text-xs text-gray-500 mb-1">Clasificación</p>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  clienteSel.clasificacion === 'VIP' ? 'bg-amber-900/40 text-amber-300' :
-                  clienteSel.clasificacion === 'FRECUENTE' ? 'bg-purple-900/40 text-purple-300' :
-                  clienteSel.clasificacion === 'PRIORITY' ? 'bg-[#B3985B]/20 text-[#B3985B]' :
-                  clienteSel.clasificacion === 'REGULAR' ? 'bg-yellow-900/40 text-yellow-300' :
-                  'bg-blue-900/40 text-blue-300'
-                }`}>{clienteSel.clasificacion}</span>
-              </div>
-            )}
-            {clienteSel.notas && (
-              <div className="mt-4 pt-4 border-t border-[#1e1e1e]">
-                <p className="text-xs text-gray-500 mb-1">Notas</p>
-                <p className="text-sm text-gray-300">{clienteSel.notas}</p>
-              </div>
-            )}
-            <div className="mt-6">
-              <a href={`/crm/clientes/${clienteSel.id}`}
-                className="w-full block text-center py-2 rounded-lg bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] text-sm hover:bg-[#B3985B]/20 transition-colors">
-                Ver perfil completo →
-              </a>
+            <div className="flex items-center gap-2 flex-wrap">
+              <FilterSelect label="Tipo" value={filtroTipo} onChange={setFiltroTipo} options={TIPO_CLIENTE_OPTIONS} />
+              <FilterSelect label="Clasificación" value={filtroClasificacion} onChange={setFiltroClasificacion}
+                options={[{ value: "NUEVO", label: "Nuevo" }, { value: "REGULAR", label: "Regular" }, { value: "PRIORITY", label: "Priority" }, { value: "EVITABLE", label: "Evitable" }, { value: "PROSPECTO", label: "Prospecto" }]} />
+              <FilterSelect label="Servicio" value={filtroServicio} onChange={setFiltroServicio} options={SERVICIO_OPTIONS} />
+              <FilterSelect label="Tipo de evento" value={filtroEvento} onChange={setFiltroEvento} options={TIPOS_EVENTO_OPTIONS} />
+              <FilterSelect label="Responsable" value={filtroVendedor} onChange={setFiltroVendedor} options={vendedorOptions} />
+              <FilterSelect label="Origen" value={filtroOrigen} onChange={setFiltroOrigen} options={ORIGEN_OPTIONS} />
+              <FilterSelect label="Actividad" value={filtroActividad} onChange={setFiltroActividad}
+                options={[{ value: "ACTIVO", label: "Activo" }, { value: "EN_PROCESO", label: "En proceso" }, { value: "INACTIVO", label: "Inactivo" }]} />
+              {hayFiltros && (
+                <button onClick={limpiarFiltros}
+                  className="text-[10px] text-[#444] hover:text-red-400 border border-[#1a1a1a] hover:border-red-900/40 px-2.5 py-1.5 rounded-lg transition-colors">
+                  Limpiar filtros
+                </button>
+              )}
+              <span className="ml-auto text-[10px] text-[#2a2a2a]">
+                {listaActual.length} resultado{listaActual.length !== 1 ? "s" : ""}
+              </span>
             </div>
           </div>
-        </div>
+
+          <p className="text-[10px] text-[#222] mb-3">
+            ✎ Haz clic en cualquier campo para editar — se guarda automáticamente
+          </p>
+
+          <ContactList contactos={listaActual} {...tableProps} />
+        </>
       )}
     </>
   );

@@ -86,6 +86,7 @@ export const CLASIFICACION_LABELS: Record<string, string> = {
   REGULAR: "Regular",
   PRIORITY: "Priority",
   BASIC: "Basic", // legacy — migrado a REGULAR
+  EVITABLE: "Evitable",
 };
 
 // Tipo cliente
