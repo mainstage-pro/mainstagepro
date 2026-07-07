@@ -1254,14 +1254,18 @@ function ResizeHandle({ onResize, onReset }: { onResize: (dx: number) => void; o
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 const ORIGEN_COLORS: Record<string, string> = {
-  META_ADS: 'bg-blue-900/40 text-blue-400 border-blue-700/30',
-  GOOGLE_ADS: 'bg-sky-900/40 text-sky-400 border-sky-700/30',
-  ORGANICO: 'bg-emerald-900/40 text-emerald-400 border-emerald-700/30',
-  REFERIDO: 'bg-yellow-900/40 text-yellow-400 border-yellow-700/30',
-  PROSPECCION: 'bg-violet-900/40 text-violet-400 border-violet-700/30',
-  RECOMPRA: 'bg-amber-900/40 text-amber-400 border-amber-700/30',
-  OTRO: 'bg-gray-800 text-gray-400 border-gray-700/30',
+  META_ADS:       'bg-blue-900/40 text-blue-400 border-blue-700/30',
+  REDES_SOCIALES: 'bg-pink-900/40 text-pink-400 border-pink-700/30',
+  REFERIDO:       'bg-yellow-900/40 text-yellow-400 border-yellow-700/30',
+  PROSPECCION:    'bg-[#B3985B]/10 text-[#B3985B] border-[#B3985B]/30',
+  RECOMPRA:       'bg-emerald-900/40 text-emerald-400 border-emerald-700/30',
+  // Legacy — mantener por datos existentes
+  GOOGLE_ADS: 'bg-sky-900/30 text-sky-600 border-sky-900/20',
+  ORGANICO:   'bg-emerald-900/20 text-emerald-700 border-emerald-900/20',
+  OTRO:       'bg-gray-800/50 text-gray-600 border-gray-700/20',
+  MANUAL:     'bg-gray-800/50 text-gray-600 border-gray-700/20',
 };
+
 
 const TEMP_COLORS: Record<string, string> = {
   FRIO: 'bg-blue-900/30 text-blue-400',
@@ -2086,13 +2090,13 @@ export default function TratosPage() {
                     {/* ── Tabla de tratos ───────────────────────────────────── */}
                     {/* Header de columnas — solo visible en el primer grupo activo */}
                     {!isPastMonth && !isIntraPast && g === all.find(x => !(x as MesGroup & { isIntraMonthPast?: boolean }).isIntraMonthPast && !x.isPast) && (
-                      <div className="hidden md:flex items-center border-b border-[#111] px-0 py-1.5 mb-0.5 text-[9px] uppercase tracking-[0.14em] text-[#3a3a3a]">
+                      <div className="hidden md:flex items-center border-b border-[#0f0f0f] bg-[#0a0a0a] px-0 py-2 mb-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#333]">
                         {/* toggle placeholder */}
                         <div className="w-10 shrink-0" />
                         {/* Cliente */}
                         <div className="flex-[3] min-w-0 pr-4">Cliente</div>
                         {/* Proyecto */}
-                        <div className="hidden lg:block flex-[2] min-w-0 pr-4">Proyecto</div>
+                        <div className="hidden lg:block flex-[2] min-w-0 pr-4">Proyecto / Evento</div>
                         {/* Fecha */}
                         <div className="w-[130px] shrink-0 pr-4">Fecha evento</div>
                         {/* Tipo */}

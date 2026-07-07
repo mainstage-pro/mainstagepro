@@ -78,8 +78,10 @@ const TIPO_EVENTO_LABELS: Record<string, string> = {
 };
 
 const ORIGEN_LABELS: Record<string, string> = {
-  META_ADS: "Meta Ads", MANUAL: "Manual", REFERIDO: "Referido", RECOMPRA: "Recompra",
-  ORGANICO: "Orgánico", NETWORKING: "Networking", REDES_SOCIALES: "Redes Sociales", OTRO: "Otro",
+  META_ADS: "Meta Ads", REDES_SOCIALES: "Redes Sociales", REFERIDO: "Referido",
+  RECOMPRA: "Recompra", PROSPECCION: "Prospección",
+  // Legacy
+  MANUAL: "Manual", ORGANICO: "Orgánico", NETWORKING: "Networking", OTRO: "Otro",
 };
 
 const ESTADO_BADGE: Record<string, { label: string; className: string }> = {
@@ -1135,14 +1137,14 @@ export default function ProspeccionClient({
       ) : (
         <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden">
           {/* Header row */}
-          <div className="hidden md:flex items-center border-b border-[#111] px-0 py-1.5 text-[9px] uppercase tracking-[0.14em] text-[#3a3a3a]">
+          <div className="hidden md:flex items-center border-b border-[#0f0f0f] bg-[#0a0a0a] px-0 py-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#333]">
             <div className="w-10 shrink-0" />
             <div className="flex-[3] min-w-0 pr-4">Nombre</div>
-            <div className="hidden sm:block w-[160px] shrink-0 pr-3">Clasificación</div>
+            <div className="hidden sm:block w-[160px] shrink-0 pr-3">Etapa</div>
             <div className="hidden md:block w-[105px] shrink-0 pr-3">Tipo evento</div>
             <div className="hidden lg:block w-[130px] shrink-0 pr-3">Próx. contacto</div>
             <div className="hidden lg:block w-[110px] shrink-0 pr-3">Responsable</div>
-            <div className="hidden xl:block w-[76px] shrink-0 pr-3">Ruta</div>
+            <div className="hidden xl:block w-[76px] shrink-0 pr-3">Ruta 5C</div>
             <div className="w-[72px] shrink-0" />
           </div>
           {/* Rows */}
