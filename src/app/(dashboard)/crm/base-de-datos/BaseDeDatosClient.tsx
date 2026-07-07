@@ -245,23 +245,23 @@ function InlineMultiSelect({ options, values, onChange, placeholder = "—", max
     else if (values.length < maxSelect) onChange([...values, v]);
   }
 
+  const displayLabel = values.length === 0
+    ? null
+    : values.length === 1
+    ? (options.find(o => o.value === values[0])?.label ?? values[0])
+    : `${values.length} selec.`;
+
   return (
     <div ref={ref} className="relative" onClick={e => e.stopPropagation()}>
       <button type="button" onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-transparent text-[11px] hover:border-[#2a2a2a] hover:bg-[#1a1a1a] transition-all cursor-pointer">
-        {values.length === 0
-          ? <span className="text-[#2a2a2a]">{placeholder}</span>
-          : <div className="flex flex-wrap gap-0.5">
-              {values.map(v => {
-                const opt = options.find(o => o.value === v);
-                return (
-                  <span key={v} className="text-[9px] px-1.5 py-0.5 rounded-full font-medium text-white leading-tight"
-                    style={{ backgroundColor: colorMap?.[v] ?? "#6b7280" }}>
-                    {opt?.label ?? v}
-                  </span>
-                );
-              })}
-            </div>
+        className={`flex items-center gap-1 px-1.5 py-0.5 rounded border text-[11px] font-medium transition-all cursor-pointer ${
+          values.length > 0
+            ? "border-transparent text-gray-300 hover:border-[#2a2a2a] hover:bg-[#1a1a1a]"
+            : "border-transparent text-[#555] hover:text-[#aaa] hover:border-[#2a2a2a] hover:bg-[#1a1a1a]"
+        }`}>
+        {displayLabel
+          ? <span>{displayLabel}</span>
+          : <span className="text-[#2a2a2a]">{placeholder}</span>
         }
         <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" className="opacity-50 shrink-0"><polyline points="2 4 6 8 10 4"/></svg>
       </button>
@@ -428,7 +428,7 @@ function ContactoRow({
   return (
     <tr className="border-b border-[#0f0f0f] hover:bg-[#111] transition-colors group">
       {/* Nombre */}
-      <td className="px-4 py-2.5 align-middle overflow-hidden">
+      <td className="px-4 py-2.5 align-middle overflow-visible">
         <div className="flex flex-col gap-0.5">
           <div className="flex items-center gap-1.5">
             <Link href={`/crm/clientes/${c.id}`}
@@ -462,7 +462,7 @@ function ContactoRow({
       </td>
 
       {/* Empresa */}
-      <td className="px-3 py-2.5 align-middle overflow-hidden">
+      <td className="px-3 py-2.5 align-middle overflow-visible">
         <div className="relative" data-empresa-popover>
           <button onClick={e => { e.stopPropagation(); onEmpresaClick(); }} className="text-left focus:outline-none w-full">
             {c.compania
@@ -513,51 +513,41 @@ function ContactoRow({
         </div>
       </td>
 
-      {/* Origen */}
-      <td className="px-3 py-2.5 align-middle overflow-hidden">
-        {c.origenLead
-          ? <OrigenBadge origen={c.origenLead} />
-          : c.tratos[0]?.origenLead
-          ? <OrigenBadge origen={c.tratos[0].origenLead} />
-          : <span className="text-[#1e1e1e] text-[11px]">—</span>
-        }
-      </td>
-
       {/* Tipo */}
-      <td className="px-3 py-2.5 align-middle overflow-hidden">
+      <td className="px-3 py-2.5 align-middle overflow-visible">
         <InlineDropdown options={TIPO_CLIENTE_OPTIONS} value={c.tipoCliente}
           onChange={v => patch({ tipoCliente: v })} placeholder="Tipo"
           colorMap={TIPO_COLORS} />
       </td>
 
       {/* Clasificación */}
-      <td className="px-3 py-2.5 align-middle overflow-hidden">
+      <td className="px-3 py-2.5 align-middle overflow-visible">
         <InlineDropdown options={CLASIFICACION_OPTIONS} value={c.clasificacion}
           onChange={v => patch({ clasificacion: v })} placeholder="Clasif."
           colorMap={CLAS_COLORS} />
       </td>
 
       {/* Servicio (multi) */}
-      <td className="px-3 py-2.5 align-middle overflow-hidden">
+      <td className="px-3 py-2.5 align-middle overflow-visible">
         <InlineMultiSelect options={SERVICIO_OPTIONS} values={serviciosActuales}
           onChange={v => patch({ servicioUsual: stringifyServicios(v) })}
           placeholder="Servicio" maxSelect={3} colorMap={SERVICIO_COLORS} />
       </td>
 
       {/* Tipo de Evento (multi) */}
-      <td className="px-3 py-2.5 align-middle overflow-hidden">
+      <td className="px-3 py-2.5 align-middle overflow-visible">
         <InlineMultiSelect options={TIPOS_EVENTO_OPTIONS} values={eventosActuales}
           onChange={v => patch({ tiposEvento: stringifyTiposEvento(v) })}
           placeholder="Tipo evento" maxSelect={3} colorMap={EVENTO_COLORS} />
       </td>
 
       {/* Actividad */}
-      <td className="px-3 py-2.5 align-middle overflow-hidden">
+      <td className="px-3 py-2.5 align-middle overflow-visible">
         <EstadoActividadBadge estado={estadoActividad} />
       </td>
 
       {/* Responsable */}
-      <td className="px-3 py-2.5 align-middle overflow-hidden">
+      <td className="px-3 py-2.5 align-middle overflow-visible">
         <InlineVendedor clienteId={c.id} vendedor={c.vendedor} usuarios={usuarios} onChange={onVendedorChange} />
       </td>
 
@@ -766,23 +756,22 @@ function ContactList({
     </div>
   );
 
-  const HEADERS = ["Nombre", "Empresa", "Origen", "Tipo", "Clasificación", "Servicio", "Tipo de Evento", "Actividad", "Responsable", "Tratos", ""];
+  const HEADERS = ["Nombre", "Empresa", "Tipo", "Clasificación", "Servicio", "Tipo de Evento", "Actividad", "Responsable", "Tratos", ""];
 
   return (
-    <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-x-auto">
-      <table className="w-full table-fixed" style={{ minWidth: 1200 }}>
+    <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl" style={{ overflowX: "auto" }}>
+      <table className="w-full table-fixed" style={{ minWidth: 1100 }}>
         <colgroup>
-          <col style={{ width: 215 }} />
-          <col style={{ width: 125 }} />
-          <col style={{ width: 105 }} />
+          <col style={{ width: 220 }} />
+          <col style={{ width: 140 }} />
+          <col style={{ width: 100 }} />
+          <col style={{ width: 115 }} />
+          <col style={{ width: 130 }} />
+          <col style={{ width: 140 }} />
+          <col style={{ width: 100 }} />
+          <col style={{ width: 120 }} />
+          <col style={{ width: 60 }}  />
           <col style={{ width: 90 }}  />
-          <col style={{ width: 105 }} />
-          <col style={{ width: 125 }} />
-          <col style={{ width: 135 }} />
-          <col style={{ width: 95 }}  />
-          <col style={{ width: 110 }} />
-          <col style={{ width: 55 }}  />
-          <col style={{ width: 85 }}  />
         </colgroup>
         <thead>
           <tr className="border-b border-[#111]">
@@ -1078,13 +1067,12 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
   const [filtroServicio, setFiltroServicio]         = useState("");
   const [filtroEvento, setFiltroEvento]             = useState("");
   const [filtroVendedor, setFiltroVendedor]         = useState("");
-  const [filtroOrigen, setFiltroOrigen]             = useState("");
   const [filtroActividad, setFiltroActividad]       = useState("");
 
-  const hayFiltros = busqueda || filtroTipo || filtroClasificacion || filtroServicio || filtroEvento || filtroVendedor || filtroOrigen || filtroActividad;
+  const hayFiltros = busqueda || filtroTipo || filtroClasificacion || filtroServicio || filtroEvento || filtroVendedor || filtroActividad;
   function limpiarFiltros() {
     setBusqueda(""); setFiltroTipo(""); setFiltroClasificacion(""); setFiltroServicio("");
-    setFiltroEvento(""); setFiltroVendedor(""); setFiltroOrigen(""); setFiltroActividad("");
+    setFiltroEvento(""); setFiltroVendedor(""); setFiltroActividad("");
   }
 
   const vendedorOptions = usuarios.map(u => ({ value: u.id, label: u.name }));
@@ -1196,18 +1184,14 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
       if (filtroServicio && !parseServicios(c.servicioUsual).includes(filtroServicio)) return false;
       if (filtroEvento && !parseTiposEvento(c.tiposEvento).includes(filtroEvento)) return false;
       if (filtroVendedor && c.vendedorId !== filtroVendedor) return false;
-      if (filtroOrigen) {
-        const orig = c.origenLead ?? c.tratos[0]?.origenLead;
-        if (orig !== filtroOrigen) return false;
-      }
       if (filtroActividad && (actividadMap[c.id] ?? "INACTIVO") !== filtroActividad) return false;
       return true;
     });
   }
 
-  const clientesFiltrados    = useMemo(() => filtrar(clientes),      [clientes,      busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroOrigen, filtroActividad]);
-  const prospectosFiltrados  = useMemo(() => filtrar(prospectos),    [prospectos,    busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroOrigen, filtroActividad]);
-  const sinClasifFiltrados   = useMemo(() => filtrar(sinClasificar), [sinClasificar, busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroOrigen, filtroActividad]);
+  const clientesFiltrados    = useMemo(() => filtrar(clientes),      [clientes,      busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroActividad]);
+  const prospectosFiltrados  = useMemo(() => filtrar(prospectos),    [prospectos,    busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroActividad]);
+  const sinClasifFiltrados   = useMemo(() => filtrar(sinClasificar), [sinClasificar, busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroActividad]);
 
   const listaActual = tab === "clientes" ? clientesFiltrados : tab === "prospectos" ? prospectosFiltrados : sinClasifFiltrados;
 
@@ -1315,7 +1299,6 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
               <FilterSelect label="Servicio" value={filtroServicio} onChange={setFiltroServicio} options={SERVICIO_OPTIONS} />
               <FilterSelect label="Tipo de evento" value={filtroEvento} onChange={setFiltroEvento} options={TIPOS_EVENTO_OPTIONS} />
               <FilterSelect label="Responsable" value={filtroVendedor} onChange={setFiltroVendedor} options={vendedorOptions} />
-              <FilterSelect label="Origen" value={filtroOrigen} onChange={setFiltroOrigen} options={ORIGEN_OPTIONS} />
               <FilterSelect label="Actividad" value={filtroActividad} onChange={setFiltroActividad}
                 options={[{ value: "ACTIVO", label: "Activo" }, { value: "EN_PROCESO", label: "En proceso" }, { value: "INACTIVO", label: "Inactivo" }]} />
               {hayFiltros && (

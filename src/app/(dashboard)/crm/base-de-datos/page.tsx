@@ -100,7 +100,7 @@ export default async function BaseDeDatosPage() {
   }
 
   return (
-    <div className="p-3 md:p-6 max-w-[1600px] mx-auto">
+    <div className="p-3 md:p-6">
       <BaseDeDatosClient
         clientes={clientes}
         prospectos={prospectos}
