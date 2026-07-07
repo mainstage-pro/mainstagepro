@@ -440,7 +440,7 @@ function EtapaSection({ etapa, prospecciones, onEtapaChange, onDelete, defaultCo
         <div className="space-y-2 pl-1">
           {prospecciones.length === 0 ? (
             <div className="text-center py-4 text-[#444] text-xs border border-[#1a1a1a] border-dashed rounded-xl">
-              Sin prospectos en esta etapa
+              Sin contactos en esta etapa
             </div>
           ) : (
             prospecciones.map(p => (
@@ -561,10 +561,10 @@ function ModalNuevoProspecto({ usuarios, tipo, onClose, onCreated }: {
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e1e1e]">
           <div>
             <h2 className="text-white font-semibold text-sm">
-              {tipo === "NUEVO_PROSPECTO" ? "Nuevo Prospecto" : "Agregar Cliente Propio"}
+              {tipo === "NUEVO_PROSPECTO" ? "Nuevo Contacto" : "Agregar Cliente Existente"}
             </h2>
             <p className="text-[#555] text-xs mt-0.5">
-              {tipo === "NUEVO_PROSPECTO" ? "Contacto nuevo en la ruta de prospección" : "Cliente existente a prospectar"}
+              {tipo === "NUEVO_PROSPECTO" ? "Contacto nuevo en la ruta de prospección" : "Cliente existente al que buscamos cerrar una nueva venta"}
             </p>
           </div>
           <button onClick={onClose} className="text-[#555] hover:text-white transition-colors">
@@ -577,13 +577,13 @@ function ModalNuevoProspecto({ usuarios, tipo, onClose, onCreated }: {
           {/* Search existing client */}
           <div>
             <label className="text-[10px] text-[#555] uppercase tracking-wider block mb-1.5">
-              {tipo === "CLIENTE_PROPIO" ? "Buscar cliente *" : "Buscar contacto existente"}
+              {tipo === "CLIENTE_PROPIO" ? "Buscar cliente existente *" : "Buscar contacto existente"}
             </label>
             <div className="relative">
               <input
                 value={clienteSeleccionado ? clienteSeleccionado.nombre : search}
                 onChange={e => { setSearch(e.target.value); setClienteSeleccionado(null); }}
-                placeholder={tipo === "CLIENTE_PROPIO" ? "Nombre del cliente B2C o B2B..." : "Buscar por nombre..."}
+                placeholder={tipo === "CLIENTE_PROPIO" ? "Nombre del cliente..." : "Buscar por nombre..."}
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50"
               />
               {clienteSeleccionado && (
@@ -623,7 +623,7 @@ function ModalNuevoProspecto({ usuarios, tipo, onClose, onCreated }: {
                     value={form.nombre}
                     onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))}
                     className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50"
-                    placeholder="Nombre del prospecto"
+                    placeholder="Nombre del contacto"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -699,7 +699,7 @@ function ModalNuevoProspecto({ usuarios, tipo, onClose, onCreated }: {
               onChange={e => setForm(f => ({ ...f, notas: e.target.value }))}
               rows={2}
               className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50 resize-none"
-              placeholder="Notas iniciales sobre el prospecto..."
+              placeholder="Notas iniciales sobre el contacto..."
             />
           </div>
 
@@ -711,7 +711,7 @@ function ModalNuevoProspecto({ usuarios, tipo, onClose, onCreated }: {
             </button>
             <button type="submit" disabled={saving || (tipo === "CLIENTE_PROPIO" && !clienteSeleccionado)}
               className="flex-1 px-4 py-2 text-sm bg-[#B3985B] text-black font-semibold rounded-lg hover:bg-[#C9A84C] disabled:opacity-50 transition-colors">
-              {saving ? "Creando..." : "Crear prospecto"}
+              {saving ? "Creando..." : tipo === "NUEVO_PROSPECTO" ? "Crear contacto" : "Agregar cliente existente"}
             </button>
           </div>
         </form>
@@ -802,11 +802,11 @@ export default function ProspeccionClient({
   }
 
   async function handleDelete(id: string) {
-    if (!await confirm({ message: "¿Eliminar este prospecto? Esta acción no se puede deshacer.", danger: true, confirmText: "Eliminar" })) return;
+    if (!await confirm({ message: "¿Eliminar este contacto? Esta acción no se puede deshacer.", danger: true, confirmText: "Eliminar" })) return;
     const r = await fetch(`/api/prospeccion/${id}`, { method: "DELETE" });
     if (r.ok) {
       setProspecciones(prev => prev.filter(p => p.id !== id));
-      toast.success("Prospecto eliminado");
+      toast.success("Contacto eliminado");
     } else {
       const d = await r.json().catch(() => ({}));
       toast.error(d.error ?? "Error al eliminar");
@@ -815,7 +815,7 @@ export default function ProspeccionClient({
 
   function handleCreated(p: Prospeccion) {
     setProspecciones(prev => [p, ...prev]);
-    toast.success("Prospecto creado");
+    toast.success("Contacto creado");
   }
 
   const hayFiltros = busqueda || filtroEvento || filtroResponsable || filtroOrigen;
@@ -842,7 +842,7 @@ export default function ProspeccionClient({
         <div>
           <h1 className="text-xl font-semibold text-white">Prospección</h1>
           <p className="text-[#6b7280] text-sm">
-            {filtradas.length} {hayFiltros ? <><span className="text-[#444]">de {prospecciones.filter(p => p.tipo === activeTab).length}</span></> : ""} prospectos activos
+            {filtradas.length} {hayFiltros ? <><span className="text-[#444]">de {prospecciones.filter(p => p.tipo === activeTab).length}</span></> : ""} contactos activos
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -856,7 +856,7 @@ export default function ProspeccionClient({
             onClick={() => setShowModal(true)}
             className="bg-[#B3985B] hover:bg-[#C9A84C] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors"
           >
-            + Nuevo prospecto
+            {activeTab === "NUEVO_PROSPECTO" ? "+ Nuevo contacto" : "+ Cliente existente"}
           </button>
         </div>
       </div>
@@ -864,8 +864,8 @@ export default function ProspeccionClient({
       {/* ── Tabs ── */}
       <div className="flex gap-0 mb-5 bg-[#111] border border-[#1e1e1e] rounded-xl p-1 w-fit">
         {([
-          { key: "NUEVO_PROSPECTO", label: "Prospectos Nuevos", count: totalNuevo },
-          { key: "CLIENTE_PROPIO", label: "Clientes Propios", count: totalPropio },
+          { key: "NUEVO_PROSPECTO", label: "Contactos Nuevos", count: totalNuevo },
+          { key: "CLIENTE_PROPIO", label: "Clientes Existentes", count: totalPropio },
         ] as const).map(tab => (
           <button
             key={tab.key}
@@ -917,7 +917,7 @@ export default function ProspeccionClient({
 
       {/* ── Content ── */}
       {loading ? (
-        <div className="py-20 text-center text-[#444] text-sm">Cargando prospectos…</div>
+        <div className="py-20 text-center text-[#444] text-sm">Cargando contactos…</div>
       ) : (
         <div>
           {ETAPAS_ORDEN.map((etapa, i) => (
@@ -933,11 +933,11 @@ export default function ProspeccionClient({
           {filtradas.length === 0 && !loading && (
             <div className="py-20 text-center border border-[#1a1a1a] border-dashed rounded-xl">
               <p className="text-[#444] text-sm">
-                {hayFiltros ? "Sin resultados para los filtros aplicados" : `No hay ${activeTab === "NUEVO_PROSPECTO" ? "prospectos nuevos" : "clientes propios"} activos`}
+                {hayFiltros ? "Sin resultados para los filtros aplicados" : `No hay ${activeTab === "NUEVO_PROSPECTO" ? "contactos nuevos" : "clientes existentes"} activos`}
               </p>
               <button onClick={() => setShowModal(true)}
                 className="mt-4 text-[#B3985B] text-xs hover:underline">
-                + Agregar {activeTab === "NUEVO_PROSPECTO" ? "prospecto" : "cliente propio"}
+                + Agregar {activeTab === "NUEVO_PROSPECTO" ? "contacto" : "cliente existente"}
               </button>
             </div>
           )}
