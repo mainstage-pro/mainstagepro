@@ -743,7 +743,7 @@ function ContactList({
   onSaved, onVendedorChange, onDelete, deletingId, onConvertir, onReclasificar,
   empresaPopoverId, setEmpresaPopoverId, empresaMode, setEmpresaMode,
   empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
-  handleVincularEmpresa, closeEmpresaPopover,
+  handleVincularEmpresa, closeEmpresaPopover, onOpenDrawer,
 }: {
   contactos: Contacto[];
   usuarios: Vendedor[];
@@ -764,6 +764,7 @@ function ContactList({
   empresaSearching: boolean;
   handleVincularEmpresa: (cid: string, empId: string, empNombre: string) => void;
   closeEmpresaPopover: () => void;
+  onOpenDrawer: (c: Contacto) => void;
 }) {
   if (contactos.length === 0) return (
     <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center">
@@ -806,6 +807,7 @@ function ContactList({
               empresaSearching={empresaSearching}
               onVincularEmpresa={(empId, empNombre) => handleVincularEmpresa(c.id, empId, empNombre)}
               onCloseEmpresa={closeEmpresaPopover}
+              onOpenDrawer={() => onOpenDrawer(c)}
             />
           ))}
         </tbody>
@@ -1053,6 +1055,7 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
     empresaSearching,
     handleVincularEmpresa,
     closeEmpresaPopover,
+    onOpenDrawer: setClienteSel,
   };
 
   return (
