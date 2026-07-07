@@ -421,7 +421,7 @@ function ContactoRow({
   const estadoActividad = actividadMap[c.id] ?? "INACTIVO";
 
   return (
-    <tr className="border-b border-[#0f0f0f] hover:bg-[#111] transition-colors group">
+    <tr className="border-b border-[#0f0f0f] hover:bg-[#111] transition-colors group cursor-pointer" onClick={() => { window.location.href = `/crm/clientes/${c.id}`; }}>
       {/* Nombre */}
       <td className="px-4 py-2.5 align-middle overflow-visible">
         <div className="flex flex-col gap-0.5">
@@ -555,16 +555,22 @@ function ContactoRow({
       <td className="px-3 py-2.5 align-middle">
         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           {tab === "prospectos" && (
-            <button onClick={e => { e.stopPropagation(); onConvertir(); }}
-              className="text-[9px] px-1.5 py-0.5 rounded border border-emerald-800/40 text-emerald-500 hover:bg-emerald-900/20 transition-colors whitespace-nowrap">
-              → Cliente
-            </button>
+            <>
+              <button onClick={e => { e.stopPropagation(); onConvertir(); }}
+                className="text-[9px] px-1.5 py-0.5 rounded border border-emerald-800/40 text-emerald-500 hover:bg-emerald-900/20 transition-colors whitespace-nowrap">
+                → Cliente
+              </button>
+              <a href={`/crm/tratos?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
+                className="text-[9px] px-1.5 py-0.5 rounded border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors whitespace-nowrap">
+                + Trato
+              </a>
+            </>
           )}
           {tab === "clientes" && (
-            <button onClick={e => { e.stopPropagation(); onReclasificar(true); }}
-              className="text-[9px] px-1.5 py-0.5 rounded border border-purple-800/40 text-purple-400 hover:bg-purple-900/20 transition-colors whitespace-nowrap">
-              → Prosp.
-            </button>
+            <a href={`/crm/tratos?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
+              className="text-[9px] px-1.5 py-0.5 rounded border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors whitespace-nowrap">
+              + Trato
+            </a>
           )}
           {tab === "sin-clasificar" && (
             <>
@@ -572,10 +578,10 @@ function ContactoRow({
                 className="text-[9px] px-1.5 py-0.5 rounded border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors">
                 → Cliente
               </button>
-              <button onClick={e => { e.stopPropagation(); onReclasificar(true); }}
-                className="text-[9px] px-1.5 py-0.5 rounded border border-purple-800/40 text-purple-400 hover:bg-purple-900/20 transition-colors">
-                → Prosp.
-              </button>
+              <a href={`/crm/tratos?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
+                className="text-[9px] px-1.5 py-0.5 rounded border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors">
+                + Trato
+              </a>
             </>
           )}
           <Link href={`/crm/clientes/${c.id}`} onClick={e => e.stopPropagation()}

@@ -286,11 +286,14 @@ function CotizacionesSublista({ trato }: { trato: Trato }) {
   };
 
   return (
-    <div className="bg-[#0d0d0d] border-t border-[#1a1a1a] px-4 py-3 space-y-3">
+    <div className="bg-[#0a0a0a] border-t border-[#1a1a1a] px-4 py-3 space-y-3">
 
       {/* ── Cotizaciones ────────────────────────────────────────────────── */}
       <div>
-        <p className="text-[10px] uppercase tracking-wider text-gray-700 mb-2">Cotizaciones</p>
+        <div className="flex items-center gap-2 mb-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#B3985B] shrink-0" />
+          <p className="text-[10px] uppercase tracking-wider text-[#B3985B]/70 font-semibold">Cotizaciones</p>
+        </div>
         {cots.length === 0 ? (
           <div className="flex items-center justify-between">
             <p className="text-[#555] text-xs italic">Sin cotizaciones — agrega una para avanzar</p>
@@ -337,8 +340,11 @@ function CotizacionesSublista({ trato }: { trato: Trato }) {
 
       {/* ── Proyecto de evento ───────────────────────────────────────────── */}
       {proyectos.length > 0 ? (
-        <div className="border-t border-[#1a1a1a] pt-3">
-          <p className="text-[10px] uppercase tracking-wider text-gray-700 mb-2">Proyecto de evento</p>
+        <div className="border-t border-[#1e1e1e] pt-3">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+            <p className="text-[10px] uppercase tracking-wider text-emerald-500/70 font-semibold">Proyecto de evento</p>
+          </div>
           <div className="space-y-1.5">
             {proyectos.map(p => (
               <Link
@@ -357,9 +363,12 @@ function CotizacionesSublista({ trato }: { trato: Trato }) {
           </div>
         </div>
       ) : cots.length > 0 ? (
-        <div className="border-t border-[#1a1a1a] pt-3">
-          <p className="text-[10px] uppercase tracking-wider text-gray-700 mb-1">Proyecto de evento</p>
-          <p className="text-[#444] text-xs italic">Se creará al aprobar una cotización</p>
+        <div className="border-t border-[#1e1e1e] pt-3">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-800 shrink-0" />
+            <p className="text-[10px] uppercase tracking-wider text-emerald-800 font-semibold">Proyecto de evento</p>
+          </div>
+          <p className="text-[#444] text-xs italic pl-3.5">Se creará al aprobar una cotización</p>
         </div>
       ) : null}
 
@@ -1838,6 +1847,58 @@ export default function TratosPage() {
       {vista === "lista" && (
         <div className="space-y-4">
 
+          {/* ── Dashboard resumen del pipeline ── */}
+          {(() => {
+            const activos = tratos.filter(t => !['VENTA_CERRADA', 'VENTA_PERDIDA'].includes(t.etapa));
+            const cerradas = tratos.filter(t => t.etapa === 'VENTA_CERRADA');
+            const perdidas = tratos.filter(t => t.etapa === 'VENTA_PERDIDA');
+            const sinSeguimiento = activos.filter(t => !t.fechaProximaAccion);
+            const hoyStr = new Date().toISOString().split('T')[0];
+            const vencidos = activos.filter(t => t.fechaProximaAccion && t.fechaProximaAccion < hoyStr);
+            const valorPipeline = activos.reduce((s, t) => s + (t.presupuestoEstimado ?? 0), 0);
+            const valorCerrado = cerradas.reduce((s, t) => {
+              const ap = t.cotizaciones?.find(c => c.estado === 'APROBADA');
+              return s + (ap?.granTotal ?? t.presupuestoEstimado ?? 0);
+            }, 0);
+            const fmtM = (n: number) => n >= 1000000 ? `$${(n/1000000).toFixed(1)}M` : n >= 1000 ? `$${(n/1000).toFixed(0)}k` : `$${n.toFixed(0)}`;
+            return (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-2 p-3 bg-[#080808] border border-[#141414] rounded-xl">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[9px] uppercase tracking-wider text-[#444] font-semibold">Activos</span>
+                  <span className="text-xl font-bold text-white tabular-nums">{activos.length}</span>
+                  <span className="text-[10px] text-[#555]">{tratos.length} total</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[9px] uppercase tracking-wider text-[#444] font-semibold">Valor pipeline</span>
+                  <span className="text-xl font-bold text-[#B3985B] tabular-nums">{fmtM(valorPipeline)}</span>
+                  <span className="text-[10px] text-[#555]">{activos.filter(t => t.presupuestoEstimado).length} con monto</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[9px] uppercase tracking-wider text-[#444] font-semibold">Cerradas</span>
+                  <span className="text-xl font-bold text-emerald-400 tabular-nums">{cerradas.length}</span>
+                  <span className="text-[10px] text-[#555]">{valorCerrado > 0 ? fmtM(valorCerrado) : '—'}</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[9px] uppercase tracking-wider text-[#444] font-semibold">Perdidas</span>
+                  <span className="text-xl font-bold text-red-400/70 tabular-nums">{perdidas.length}</span>
+                  <span className="text-[10px] text-[#555]">
+                    {tratos.length > 0 ? `${Math.round((cerradas.length / Math.max(cerradas.length + perdidas.length, 1)) * 100)}% cierre` : '—'}
+                  </span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[9px] uppercase tracking-wider text-[#444] font-semibold">Sin seguimiento</span>
+                  <span className={`text-xl font-bold tabular-nums ${sinSeguimiento.length > 0 ? 'text-orange-400' : 'text-[#333]'}`}>{sinSeguimiento.length}</span>
+                  <span className="text-[10px] text-[#555]">de activos</span>
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[9px] uppercase tracking-wider text-[#444] font-semibold">Vencidos</span>
+                  <span className={`text-xl font-bold tabular-nums ${vencidos.length > 0 ? 'text-red-400' : 'text-[#333]'}`}>{vencidos.length}</span>
+                  <span className="text-[10px] text-[#555]">seguim. vencidos</span>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* ── Pipeline — Funnel visual ── */}
           {(() => {
             const all = tratos;
@@ -1886,6 +1947,7 @@ export default function TratosPage() {
                 filter: 'VENTA_CERRADA',
                 label: 'Cerradas',
                 count: all.filter(t => t.etapa === 'VENTA_CERRADA').length,
+                activeCount: all.filter(t => !['VENTA_CERRADA', 'VENTA_PERDIDA'].includes(t.etapa)).length,
                 color: '#10B981',
                 activeGrad: 'from-emerald-900/50 to-emerald-950/30',
                 activeBorder: 'border-emerald-500/40',
@@ -1944,6 +2006,13 @@ export default function TratosPage() {
                         }`}>
                           {card.count}
                         </p>
+                        {'activeCount' in card && card.activeCount !== undefined && (
+                          <p className={`text-[9px] mt-1 tabular-nums ${
+                            isActive ? 'text-emerald-400/60' : 'text-[#333]'
+                          }`}>
+                            {card.activeCount} activos
+                          </p>
+                        )}
                       </div>
                     </button>
                   );
