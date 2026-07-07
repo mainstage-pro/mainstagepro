@@ -1993,14 +1993,14 @@ export default function OperacionesPage() {
                       <span className="text-[11px] font-medium select-none">
                         {noSecDropOver
                           ? selectedIds.has(draggingId) && selectedIds.size > 1
-                            ? `\u2192 Mover ${selectedIds.size} tareas \u2014 sin secci\u00f3n`
-                            : "\u2192 Quitar de secci\u00f3n"
-                          : "\u2191 Soltar aqu\u00ed para quitar de secci\u00f3n"}
+                            ? `→ Mover ${selectedIds.size} tareas — sin sección`
+                            : "→ Quitar de sección"
+                          : "↑ Soltar aquí para quitar de sección"}
                       </span>
                     </div>
                   )}
 
-                  {/* \u2500\u2500 Tareas sin secci\u00f3n \u2500\u2500 */}
+                  {/* ── Tareas sin sección ── */}
                   {groupProyTareas(applyProyFilter(proyectoDetalle.tareas)).map(group => (
                     <div key={group.label}>
                       {group.label && (

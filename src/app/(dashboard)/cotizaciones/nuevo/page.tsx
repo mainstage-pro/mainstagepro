@@ -326,7 +326,7 @@ function CotizadorForm() {
   const [selOcPrecio, setSelOcPrecio] = useState("");
   const [selOcCant, setSelOcCant] = useState("1");
   const [selOcDias, setSelOcDias] = useState("1");
-  // Comisi\u00f3n interna / Gastos de producci\u00f3n
+  // Comisión interna / Gastos de producción
   const [gastosActivo, setGastosActivo] = useState(false);
   const [gastosEsMonto, setGastosEsMonto] = useState(false); // false=%, true=$
   const [gastosValor, setGastosValor] = useState("10"); // default 10%
@@ -2331,7 +2331,7 @@ function CotizadorForm() {
             )}
           </Seccion>
 
-          <Seccion titulo="Operaci\u00f3n t\u00e9cnica" hint="sin descuento \u00b7 tarifas por d\u00eda y tipo de operaci\u00f3n">
+          <Seccion titulo="Operación técnica" hint="sin descuento · tarifas por día y tipo de operación">
             {/* Zona selector + técnicos */}
             <div className="flex items-center gap-2 mb-4 flex-wrap">
               <span className="text-xs text-gray-500">Zona del evento:</span>
@@ -2823,7 +2823,7 @@ function CotizadorForm() {
             </div>
           </Seccion>
 
-          {/* \u2500\u2500 Comisi\u00f3n interna (Gastos de Producci\u00f3n) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
+          {/* ── Comisión interna (Gastos de Producción) ────────────── */}
           {(() => {
             const base = resumen.total;
             const montoCalc = gastosActivo
@@ -2832,7 +2832,7 @@ function CotizadorForm() {
                   : base * (parseFloat(gastosValor) || 0) / 100)
               : 0;
             return (
-              <Seccion titulo="Comisi\u00f3n interna" hint="gastos de producci\u00f3n \u00b7 se agrega al total del cliente">
+              <Seccion titulo="Comisión interna" hint="gastos de producción · se agrega al total del cliente">
                 {/* Toggle */}
                 <div className="flex items-center justify-between mb-3">
                   <label className="flex items-center gap-2.5 cursor-pointer" onClick={() => setGastosActivo(p => !p)}>
@@ -2840,7 +2840,7 @@ function CotizadorForm() {
                       <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${gastosActivo ? 'translate-x-5' : 'translate-x-0'}`} />
                     </div>
                     <span className={`text-sm select-none ${gastosActivo ? 'text-white' : 'text-gray-500'}`}>
-                      Agregar comisi\u00f3n interna
+                      Agregar comisión interna
                     </span>
                   </label>
                   {gastosActivo && montoCalc > 0 && (
@@ -2865,7 +2865,7 @@ function CotizadorForm() {
                     <div className="flex gap-2 items-end">
                       <div className="flex-1">
                         <p className="text-[10px] text-[#555] mb-1 px-1">
-                          {gastosEsMonto ? 'Monto fijo de comisi\u00f3n' : 'Porcentaje sobre el total de la cotizaci\u00f3n'}
+                          {gastosEsMonto ? 'Monto fijo de comisión' : 'Porcentaje sobre el total de la cotización'}
                         </p>
                         <div className="relative">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">{gastosEsMonto ? '$' : '%'}</span>
@@ -2889,12 +2889,12 @@ function CotizadorForm() {
 
                     {!gastosEsMonto && (
                       <p className="text-[10px] text-gray-600 mt-2">
-                        Base: {formatCurrency(base)} \u00b7 {gastosValor || 0}% \u2192{' '}
+                        Base: {formatCurrency(base)} · {gastosValor || 0}% →{' '}
                         <span className="text-[#B3985B] font-semibold">{formatCurrency(montoCalc)}</span>
                       </p>
                     )}
                     <p className="text-[10px] text-gray-600 mt-1">
-                      Se agrega como \u201cGastos de Producci\u00f3n\u201d al total. No se muestra en el PDF del cliente.
+                      Se agrega como "Gastos de Producción" al total. No se muestra en el PDF del cliente.
                     </p>
                   </>
                 )}
@@ -2902,7 +2902,7 @@ function CotizadorForm() {
             );
           })()}
 
-          {/* \u2500\u2500 Observaciones \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
+          {/* ── Observaciones ────────────────────────── */}
           <Seccion titulo="Observaciones">
             <textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} rows={3}
               className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
@@ -3177,7 +3177,7 @@ function CascadeEquipoSelect({
               onClick={handleClear}
               onKeyDown={e => e.key === 'Enter' && handleClear(e as unknown as React.MouseEvent)}
               className="text-gray-600 hover:text-gray-300 text-sm leading-none px-0.5 cursor-pointer transition-colors"
-            >\u00d7</span>
+            >×</span>
           )}
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
             className={`text-gray-600 transition-transform ${open ? 'rotate-180' : ''}`}>
@@ -3289,7 +3289,7 @@ function CascadeEquipoSelect({
                 </div>
               </>
             ) : (
-              <p className="text-gray-600 text-xs px-4 py-6 text-center">Pasa el cursor sobre una categor\u00eda</p>
+              <p className="text-gray-600 text-xs px-4 py-6 text-center">Pasa el cursor sobre una categoría</p>
             )}
           </div>
         </div>

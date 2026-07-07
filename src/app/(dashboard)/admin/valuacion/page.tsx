@@ -39,7 +39,7 @@ type AccProduccion = {
 };
 
 const ACC_CATS = ["cable", "herramienta", "consumible", "soporte", "otro"] as const;
-const ACC_CAT_LABEL: Record<string, string> = { cable: "Cable", herramienta: "Herramienta", consumible: "Consumible", soporte: "Soporte", otro: "Otro", "sin-categoria": "Sin categor\u00eda" };
+const ACC_CAT_LABEL: Record<string, string> = { cable: "Cable", herramienta: "Herramienta", consumible: "Consumible", soporte: "Soporte", otro: "Otro", "sin-categoria": "Sin categoría" };
 const ACC_CAT_COLOR: Record<string, string> = { cable: "text-blue-400", herramienta: "text-orange-400", consumible: "text-purple-400", soporte: "text-green-400", otro: "text-gray-500", "sin-categoria": "text-[#555]" };
 
 type HervamActivo = {
@@ -131,7 +131,7 @@ export default function InventarioActivosPage() {
       // Flatten accessories from all production equipment
       const flat: AccProduccion[] = [];
       for (const eq of (dataAcc.equipos ?? [])) {
-        const eqNombre = [eq.marca, eq.modelo].filter(Boolean).join(" \u00b7 ") || eq.descripcion;
+        const eqNombre = [eq.marca, eq.modelo].filter(Boolean).join(" · ") || eq.descripcion;
         for (const acc of (eq.accesorios ?? [])) {
           flat.push({ id: acc.id, nombre: acc.nombre, categoria: acc.categoria, equipoId: eq.id, equipoNombre: eqNombre });
         }
@@ -154,7 +154,7 @@ export default function InventarioActivosPage() {
       if (!res.ok) { toast.error("Error al guardar"); return; }
       const d = await res.json();
       const eq = equiposProd.find(e => e.id === formAcc.equipoId);
-      const eqNombre = eq ? ([eq.marca, eq.modelo].filter(Boolean).join(" \u00b7 ") || eq.descripcion) : "";
+      const eqNombre = eq ? ([eq.marca, eq.modelo].filter(Boolean).join(" · ") || eq.descripcion) : "";
       // If already exists, accesorio is returned without creating new — update or add
       setAccesoriosAPI(prev => {
         const exists = prev.find(a => a.id === d.accesorio.id);
@@ -171,7 +171,7 @@ export default function InventarioActivosPage() {
   }
 
   async function deleteAccesorio(equipoId: string, accId: string) {
-    if (!confirm("\u00bfEliminar este accesorio de la biblioteca del equipo?")) return;
+    if (!confirm("¿Eliminar este accesorio de la biblioteca del equipo?")) return;
     await fetch(`/api/equipos/${equipoId}/accesorios/${accId}`, { method: "DELETE" });
     setAccesoriosAPI(prev => prev.filter(a => a.id !== accId));
     toast.success("Eliminado");
@@ -234,7 +234,7 @@ export default function InventarioActivosPage() {
   }
 
   async function eliminarOficina(id: string) {
-    if (!confirm("\u00bfEliminar este activo?")) return;
+    if (!confirm("¿Eliminar este activo?")) return;
     await fetch(`/api/finanzas/hervam/activos/${id}`, { method: "DELETE" });
     setActivosOficina(prev => prev.filter(a => a.id !== id));
     toast.success("Eliminado");
@@ -305,8 +305,8 @@ export default function InventarioActivosPage() {
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "resumen",     label: "Reporte General" },
-    { key: "produccion",  label: `Equipos de Producci\u00f3n (${equiposProd.length})` },
-    { key: "accesorios",  label: `Accesorios de Producci\u00f3n (${accesoriosProd.length})` },
+    { key: "produccion",  label: `Equipos de Producción (${equiposProd.length})` },
+    { key: "accesorios",  label: `Accesorios de Producción (${accesoriosProd.length})` },
     { key: "oficina",     label: `Equipos de Oficina (${activosOficina.length})` },
     { key: "intangibles", label: `Activos Intangibles (${activosIntangibles.length})` },
   ];
@@ -348,7 +348,7 @@ export default function InventarioActivosPage() {
       .filter(eq => !conAcc.has(eq.id))
       .map(eq => ({
         equipoId: eq.id,
-        equipoNombre: [eq.marca, eq.modelo].filter(Boolean).join(" \u00b7 ") || eq.descripcion,
+        equipoNombre: [eq.marca, eq.modelo].filter(Boolean).join(" · ") || eq.descripcion,
         descripcion: eq.descripcion,
         categoria: eq.categoria.nombre,
       }))
@@ -842,7 +842,7 @@ export default function InventarioActivosPage() {
                       className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50" />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Categor\u00eda</label>
+                    <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Categoría</label>
                     <div className="flex flex-wrap gap-2">
                       {ACC_CATS.map(cat => (
                         <button key={cat} onClick={() => setFormAcc(p => ({ ...p, categoria: p.categoria === cat ? "" : cat }))}
@@ -875,7 +875,7 @@ export default function InventarioActivosPage() {
                       )}
                       {equipoOpen && equipoBusq && (() => {
                         const opts = equiposProd
-                          .map(eq => ({ id: eq.id, label: [eq.marca, eq.modelo].filter(Boolean).join(" \u00b7 ") || eq.descripcion, sub: eq.descripcion }))
+                          .map(eq => ({ id: eq.id, label: [eq.marca, eq.modelo].filter(Boolean).join(" · ") || eq.descripcion, sub: eq.descripcion }))
                           .filter(o => o.label.toLowerCase().includes(equipoBusq.toLowerCase()) || o.sub.toLowerCase().includes(equipoBusq.toLowerCase()))
                           .sort((a, b) => a.label.localeCompare(b.label));
                         return opts.length > 0 ? (
@@ -912,7 +912,7 @@ export default function InventarioActivosPage() {
           {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <KpiCard label="Total accesorios" value={String(accesoriosProd.length)} sub="En biblioteca de equipos" />
-            <KpiCard label="Equipos con accesorios" value={String(accesoriosPorEquipo.length)} sub={`de ${equiposProd.length} en producci\u00f3n`} color="text-[#B3985B]" />
+            <KpiCard label="Equipos con accesorios" value={String(accesoriosPorEquipo.length)} sub={`de ${equiposProd.length} en producción`} color="text-[#B3985B]" />
             <KpiCard label="Sin accesorios" value={String(equiposSinAcc.length)} sub="Pendientes por registrar" color="text-red-400" />
             <KpiCard label="Cables" value={String(accesoriosProd.filter(a => a.categoria === "cable").length)} sub="Clasificados" color="text-blue-400" />
           </div>
@@ -928,7 +928,7 @@ export default function InventarioActivosPage() {
                     className={`px-3 py-1 rounded text-xs font-medium transition-all ${
                       agruparAcc === g ? "bg-[#B3985B] text-black" : "text-[#555] hover:text-white"
                     }`}>
-                    {g === "equipo" ? "Por equipo" : "Por categor\u00eda"}
+                    {g === "equipo" ? "Por equipo" : "Por categoría"}
                   </button>
                 ))}
               </div>
@@ -951,7 +951,7 @@ export default function InventarioActivosPage() {
                 <thead>
                   <tr className="border-b border-[#1e1e1e] bg-[#0a0a0a]">
                     <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Accesorio</th>
-                    <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">{agruparAcc === "equipo" ? "Categor\u00eda" : "Equipo origen"}</th>
+                    <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">{agruparAcc === "equipo" ? "Categoría" : "Equipo origen"}</th>
                     <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold hidden md:table-cell">{agruparAcc === "equipo" ? "Equipo" : ""}</th>
                     <th className="w-10"></th>
                   </tr>
@@ -1078,9 +1078,9 @@ export default function InventarioActivosPage() {
                 <div className="px-6 py-5 space-y-4">
                   {/* Row 1 */}
                   <div>
-                    <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Art\u00edculo *</label>
+                    <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Artículo *</label>
                     <input value={formOf.nombre} onChange={e => setFormOf(p => ({ ...p, nombre: e.target.value }))}
-                      placeholder="Ej: Silla ergon\u00f3mica"
+                      placeholder="Ej: Silla ergonómica"
                       className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50" />
                   </div>
                   {/* Row 2: marca + modelo */}
@@ -1106,7 +1106,7 @@ export default function InventarioActivosPage() {
                         className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]/50" />
                     </div>
                     <div>
-                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Valor adquisici\u00f3n</label>
+                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Valor adquisición</label>
                       <input type="number" value={formOf.valorAdquisicion} onChange={e => setFormOf(p => ({ ...p, valorAdquisicion: e.target.value }))}
                         placeholder="0"
                         className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]/50" />
@@ -1122,7 +1122,7 @@ export default function InventarioActivosPage() {
                   <div>
                     <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Notas</label>
                     <input value={formOf.notas} onChange={e => setFormOf(p => ({ ...p, notas: e.target.value }))}
-                      placeholder="N\u00famero de serie, ubicaci\u00f3n, etc."
+                      placeholder="Número de serie, ubicación, etc."
                       className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50" />
                   </div>
                 </div>
@@ -1139,14 +1139,14 @@ export default function InventarioActivosPage() {
 
           {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <KpiCard label="Total art\u00edculos" value={String(activosOficina.length)} sub="Equipos de oficina" />
-            <KpiCard label="Total unidades" value={String(activosOficina.reduce((s,a) => s + a.cantidad, 0))} sub="Conteo f\u00edsico" />
-            <KpiCard label="Valor adquisici\u00f3n" color="text-[#B3985B]"
+            <KpiCard label="Total artículos" value={String(activosOficina.length)} sub="Equipos de oficina" />
+            <KpiCard label="Total unidades" value={String(activosOficina.reduce((s,a) => s + a.cantidad, 0))} sub="Conteo físico" />
+            <KpiCard label="Valor adquisición" color="text-[#B3985B]"
               value={fmx(activosOficina.reduce((s, a) => s + a.valorAdquisicion, 0))}
-              sub="Costo hist\u00f3rico" />
+              sub="Costo histórico" />
             <KpiCard label="Valor actual" color="text-blue-400"
               value={fmx(activosOficina.reduce((s, a) => s + a.valorActual, 0))}
-              sub="Valuaci\u00f3n estimada" />
+              sub="Valuación estimada" />
           </div>
 
           {/* Barra superior: búsqueda + agregar */}
@@ -1165,7 +1165,7 @@ export default function InventarioActivosPage() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
-                  <th className="text-left px-4 py-2.5 font-medium">Art\u00edculo</th>
+                  <th className="text-left px-4 py-2.5 font-medium">Artículo</th>
                   <th className="text-left px-4 py-2.5 font-medium hidden md:table-cell">Marca · Modelo</th>
                   <th className="text-right px-4 py-2.5 font-medium w-16">Cant.</th>
                   <th className="text-right px-4 py-2.5 font-medium w-36">Valor adq.</th>
@@ -1191,7 +1191,7 @@ export default function InventarioActivosPage() {
                         {/* Marca · Modelo */}
                         <td className="px-4 py-2.5 hidden md:table-cell">
                           {(a.marca || a.modelo)
-                            ? <span className="text-[#6b7280]">{[a.marca, a.modelo].filter(Boolean).join(" \u00b7 ")}</span>
+                            ? <span className="text-[#6b7280]">{[a.marca, a.modelo].filter(Boolean).join(" · ")}</span>
                             : <span className="text-[#333]">—</span>}
                         </td>
                         {/* Cantidad — click to edit */}
@@ -1271,7 +1271,7 @@ export default function InventarioActivosPage() {
             <p className="text-[#6b7280] text-xs">{activosOficina.length} activos de oficina</p>
             <div className="flex items-center gap-8 text-sm">
               <div className="text-right">
-                <p className="text-[10px] text-[#555] uppercase tracking-wider mb-0.5">Valor adquisici\u00f3n</p>
+                <p className="text-[10px] text-[#555] uppercase tracking-wider mb-0.5">Valor adquisición</p>
                 <p className="text-[#B3985B] font-bold text-base tabular-nums">{fmx(activosOficina.reduce((s, a) => s + a.valorAdquisicion, 0))}</p>
               </div>
               <div className="text-right">

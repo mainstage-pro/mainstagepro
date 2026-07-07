@@ -10,7 +10,7 @@ export const DISCIPLINA_COLORS: Record<string, string> = {
 
 export const DISCIPLINA_LABELS: Record<string, string> = {
   AUDIO:       'Audio',
-  ILUMINACION: 'Iluminaci\u00f3n',
+  ILUMINACION: 'Iluminación',
   VIDEO:       'Video',
   RIGGING:     'Rigging',
   STAGE:       'Stage',

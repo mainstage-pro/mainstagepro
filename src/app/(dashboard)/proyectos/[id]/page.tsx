@@ -1030,7 +1030,7 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
     iso ? new Date(iso + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '—';
 
   const fechaRango = data.proyecto.fechaMontaje
-    ? `${fmtFechaCorta(data.proyecto.fechaMontaje.split('T')[0])} \u2192 ${fmtFechaCorta(data.proyecto.fechaEvento.split('T')[0])}`
+    ? `${fmtFechaCorta(data.proyecto.fechaMontaje.split('T')[0])} → ${fmtFechaCorta(data.proyecto.fechaEvento.split('T')[0])}`
     : fmtFechaCorta(data.proyecto.fechaEvento.split('T')[0]);
 
   // Render de una fila de equipo (propios y externos comparten estructura)
@@ -1047,7 +1047,7 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
           {/* Nombre */}
           <td className="px-4 py-2.5">
             <p className="text-white font-medium text-sm">
-              {(linea.marca || linea.modelo) ? [linea.marca, linea.modelo].filter(Boolean).join(' \u00b7 ') : linea.descripcion}
+              {(linea.marca || linea.modelo) ? [linea.marca, linea.modelo].filter(Boolean).join(' · ') : linea.descripcion}
             </p>
             {(linea.marca || linea.modelo) && <p className="text-[#555] text-[10px]">{linea.descripcion}</p>}
             {linea.clasificacion === 'PROPIO_MANUAL' && (
@@ -1181,7 +1181,7 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
             <td colSpan={6} className="px-4 py-4">
               <div className="max-w-xl">
                 <p className="text-xs font-semibold text-white mb-3">
-                  {linea.yaConfirmado ? 'Editar confirmaci\u00f3n' : 'Confirmar equipo externo'}: {linea.descripcion}
+                  {linea.yaConfirmado ? 'Editar confirmación' : 'Confirmar equipo externo'}: {linea.descripcion}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
                   <div>
@@ -1190,7 +1190,7 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
                       className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#B3985B]/50">
                       <option value="">— Selecciona —</option>
                       {(data?.proveedores ?? []).map(p => (
-                        <option key={p.id} value={p.id}>{p.nombre}{p.empresa ? ` \u00b7 ${p.empresa}` : ''}</option>
+                        <option key={p.id} value={p.id}>{p.nombre}{p.empresa ? ` · ${p.empresa}` : ''}</option>
                       ))}
                     </select>
                   </div>
