@@ -94,6 +94,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "diasServicio",
     "serviciosInteres", "ideasReferencias", "etapaContratacion", "continuarPor",
     "descubrimientoCompleto",
+    // Selección de equipos del inventario
+    "equiposInteres",
     // Horarios del evento
     "horaInicioEvento", "horaFinEvento", "duracionMontajeHrs",
     // Logística del venue
@@ -129,6 +131,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         data[key] = Boolean(body[key]);
       } else if (key === "tradeNivel") {
         data[key] = body[key] !== null && body[key] !== "" ? parseInt(body[key]) : null;
+      } else if (key === "equiposInteres") {
+        // El cliente envía esto ya como string JSON — almacenar directo
+        data[key] = body[key] || null;
       } else {
         data[key] = body[key] || null;
       }

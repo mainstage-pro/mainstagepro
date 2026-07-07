@@ -150,6 +150,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     trato.id
   );
 
+  // Guardar equiposInteres si el cliente los seleccionó
+  const equiposInteres = body._equiposInteres ?? null;
+
   // Actualizar campos mergeados por separado (Prisma update)
   await prisma.trato.update({
     where: { id: trato.id },
@@ -166,6 +169,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       ...(horaTermino   != null && { horaTerminoMontaje:  horaTermino }),
       ...(venueNombre   != null && { contactoVenueNombre: venueNombre }),
       ...(venueTelefono != null && { contactoVenueTelefono: venueTelefono }),
+      ...(equiposInteres != null && { equiposInteres }),
     },
   });
 

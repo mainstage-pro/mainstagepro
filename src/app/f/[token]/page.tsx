@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
+import { SelectorEquiposInventario, type SeleccionEquipos } from '@/components/SelectorEquiposInventario';
 
 // ─── Tipos de preguntas ───────────────────────────────────────────────────────
 type PreguntaTipo = "text" | "number" | "date" | "select" | "radio" | "checkbox" | "textarea";
@@ -408,6 +409,7 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
   const [guardando, setGuardando] = useState(false);
   const [seccionActual, setSeccionActual] = useState(0);
   const [error, setError] = useState("");
+  const [equiposInteres, setEquiposInteres] = useState<SeleccionEquipos>({ categorias: [], equipos: [] });
 
   useEffect(() => {
     fetch(`/api/f/${token}`)
@@ -486,7 +488,10 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
       const res = await fetch(`/api/f/${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(respuestas),
+        body: JSON.stringify({
+          ...respuestas,
+          _equiposInteres: JSON.stringify(equiposInteres),
+        }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -676,6 +681,25 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
             </div>
           ))}
         </div>
+
+        {/* Selector de equipos — siempre visible en la última sección */}
+        {esUltima && (
+          <div className="pt-4 border-t border-[#1e1e1e] space-y-3">
+            <div>
+              <h3 className="text-white font-semibold text-base">Equipos de interés</h3>
+              <p className="text-gray-500 text-xs mt-1">
+                ¿Ya tienes en mente los equipos que necesitas? Selecciona los que te interesan
+                o marca la categoría si no sabes aún qué equipo específico.
+                <br/>
+                <span className="text-gray-600">(Opcional — lo podemos definir juntos después)</span>
+              </p>
+            </div>
+            <SelectorEquiposInventario
+              value={equiposInteres}
+              onChange={setEquiposInteres}
+            />
+          </div>
+        )}
 
         {error && <p className="text-red-400 text-sm bg-red-900/20 border border-red-800 rounded-xl px-4 py-3">{error}</p>}
 

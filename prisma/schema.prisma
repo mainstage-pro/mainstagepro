@@ -209,6 +209,7 @@ model Trato {
   rutaEntrada            String?   // DESCUBRIR | RIDER_DIRECTO
   continuarPor           String?   // WHATSAPP | LLAMADA | REUNION | COTIZACION
   descubrimientoCompleto Boolean   @default(false)
+  equiposInteres         String?   // JSON: { categorias: string[], equipos: string[] }
   // ──────────────────────────────────────────────────────────────────────────
 
   lugarEstimado       String?

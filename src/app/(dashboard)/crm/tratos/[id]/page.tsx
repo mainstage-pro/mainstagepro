@@ -13,6 +13,7 @@ import { useCelebration } from "@/components/CelebrationToast";
 import { Combobox } from "@/components/Combobox";
 import { BackButton } from "@/components/BackButton";
 import { SEGUIMIENTO_TIPOS, SEGUIMIENTO_TIPO_LABELS, getWaMensajePrimerContacto } from '@/lib/seguimientoTypes';
+import { SelectorEquiposInventario, type SeleccionEquipos } from '@/components/SelectorEquiposInventario';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface TratoArchivo {
@@ -57,6 +58,7 @@ interface Trato {
   diasServicio: number | null;
   asistentesEstimados: number | null;
   serviciosInteres: string | null;
+  equiposInteres: string | null;
   ideasReferencias: string | null;
   etapaContratacion: string | null;
   continuarPor: string | null;
@@ -1168,6 +1170,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     ideasReferencias: "",
     notas: "",
     serviciosInteres: [] as string[],
+    equiposInteres: "",
     familyAndFriends: false,
     realizarRender: false,
     tradeAplica: false,
@@ -1334,6 +1337,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             ideasReferencias: t.tipoServicio !== "RENTA" ? (t.ideasReferencias ?? "") : "",
             notas: t.notas ?? "",
             serviciosInteres: t.serviciosInteres ? JSON.parse(t.serviciosInteres) : [],
+            equiposInteres: t.equiposInteres ?? "",
             familyAndFriends: t.familyAndFriends ?? false,
             realizarRender: t.realizarRender ?? false,
             tradeAplica: t.tradeCalificado ?? false,
@@ -1498,6 +1502,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       contactoVenueNombre:  discForm.contactoVenueNombre || null,
       contactoVenueTelefono:discForm.contactoVenueTelefono || null,
       serviciosInteres: JSON.stringify(discForm.serviciosInteres),
+      equiposInteres: discForm.equiposInteres || null,
       ideasReferencias: isRenta
         ? JSON.stringify({
             modalidadServicio:  discForm.rentaModalidadServicio || null,
@@ -1559,6 +1564,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         contactoVenueNombre: form.contactoVenueNombre || null,
         contactoVenueTelefono: form.contactoVenueTelefono || null,
         serviciosInteres: JSON.stringify(form.serviciosInteres),
+        equiposInteres: form.equiposInteres || null,
         ideasReferencias: isRenta
           ? JSON.stringify({
               modalidadServicio: form.rentaModalidadServicio || null,
@@ -3091,29 +3097,22 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             ) : (
               <div className="space-y-4">
+                {/* ── Selector de equipos del inventario ─────────────────── */}
                 <div>
-                  <label className="text-xs text-gray-400 uppercase tracking-wider block mb-2">Categorías de equipo / inventario</label>
-                  {['Audio', 'Iluminación', 'Video / Pantallas', 'Estructuras', 'Energía', 'DJ / Música'].map(grupo => {
-                    const items = CATEGORIAS_BASE.filter(c => c.grupo === grupo);
-                    return (
-                      <div key={grupo} className="mb-3 last:mb-0">
-                        <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">{grupo}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {items.map(srv => (
-                            <button key={srv.id} onClick={() => toggleServicio(srv.id)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
-                                discForm.serviciosInteres.includes(srv.id)
-                                  ? 'border-[#B3985B] text-black bg-[#B3985B]'
-                                  : 'border-[#2a2a2a] text-gray-300 hover:border-[#555] hover:text-white'
-                              }`}>
-                              {srv.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
+                  <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1">Categorías de equipo / inventario</label>
+                  <p className="text-[11px] text-gray-600 mb-3">Selecciona las categorías de tu interés. Puedes marcar ☐ la categoría si no sabes aún qué equipo necesitas — lo definimos después. O despliega ▸ para elegir equipos específicos.</p>
+                  <SelectorEquiposInventario
+                    value={(() => {
+                      try { return discForm.equiposInteres ? JSON.parse(discForm.equiposInteres as string) : { categorias: [], equipos: [] }; }
+                      catch { return { categorias: [], equipos: [] }; }
+                    })()}
+                    onChange={(sel: SeleccionEquipos) => {
+                      setDiscForm(p => ({ ...p, equiposInteres: JSON.stringify(sel) }));
+                    }}
+                  />
                 </div>
+
+                {/* ── Add-ons específicos del evento ─────────────────────── */}
                 {(EXTRAS_EVENTO[discForm.tipoEvento] ?? EXTRAS_EVENTO.OTRO).length > 0 && (
                   <div>
                     <p className="text-[10px] text-[#555] uppercase tracking-widest mb-2 font-semibold">Add-ons específicos del evento</p>
