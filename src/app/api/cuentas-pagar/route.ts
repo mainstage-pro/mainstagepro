@@ -44,11 +44,15 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ cxp });
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  const { searchParams } = new URL(req.url);
+  const socioId = searchParams.get("socioId");
+
   const cuentas = await prisma.cuentaPagar.findMany({
+    where: socioId ? { socioId } : undefined,
     include: {
       tecnico: { select: { id: true, nombre: true, celular: true } },
       proveedor: { select: { id: true, nombre: true, telefono: true } },

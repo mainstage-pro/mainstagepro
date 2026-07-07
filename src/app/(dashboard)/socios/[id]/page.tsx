@@ -63,6 +63,15 @@ type HervamPago = {
   montoPagado: number; estado: string; modoPago: string | null;
   notas: string | null; pagadoEn: string | null; createdAt: string;
 };
+type CxPSocio = {
+  id: string;
+  concepto: string;
+  monto: number;
+  fechaCompromiso: string;
+  estado: string; // PENDIENTE | VENCIDO | LIQUIDADO | PARCIAL
+  tipoAcreedor: string;
+  notas: string | null;
+};
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
 const fmt = (n: number) =>
@@ -1168,8 +1177,113 @@ function TabPagosHervam({ pagos }: { pagos: HervamPago[] }) {
 }
 
 // ─── Página principal ─────────────────────────────────────────────────────────
+// ─── Tab: Compromisos (Cuentas por Pagar del socio) ─────────────────────────
+function TabCuentasPagar({ socio }: { socio: Socio }) {
+  const [cxps, setCxps] = useState<CxPSocio[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`/api/cuentas-pagar?socioId=${socio.id}`, { cache: "no-store" })
+      .then(r => r.json())
+      .then(d => { setCxps(Array.isArray(d) ? d : []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [socio.id]);
+
+  const CXP_ESTADO: Record<string, { label: string; className: string }> = {
+    VENCIDO:   { label: "Vencido",   className: "bg-red-900/30 text-red-400 border-red-800/30" },
+    PENDIENTE: { label: "Pendiente", className: "bg-amber-900/20 text-amber-400 border-amber-800/30" },
+    PARCIAL:   { label: "Parcial",   className: "bg-blue-900/20 text-blue-400 border-blue-800/30" },
+    LIQUIDADO: { label: "Liquidado", className: "bg-green-900/20 text-green-400 border-green-800/30" },
+    PAGADO:    { label: "Pagado",    className: "bg-green-900/20 text-green-400 border-green-800/30" },
+  };
+
+  const totalPendiente = cxps
+    .filter(c => c.estado === "PENDIENTE" || c.estado === "VENCIDO")
+    .reduce((s, c) => s + c.monto, 0);
+
+  if (loading) return <div className="py-12 text-center text-gray-600 text-sm">Cargando compromisos...</div>;
+
+  return (
+    <div>
+      {/* Resumen */}
+      {cxps.length > 0 && (
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+            <p className="text-[#6b7280] text-xs mb-1">Total registros</p>
+            <p className="text-white text-2xl font-bold tabular-nums">{cxps.length}</p>
+          </div>
+          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+            <p className="text-[#6b7280] text-xs mb-1">Por pagar</p>
+            <p className="text-amber-400 text-2xl font-bold tabular-nums">{fmt(totalPendiente)}</p>
+          </div>
+          <div className="bg-[#111] border border-red-900/20 rounded-xl p-4">
+            <p className="text-[#6b7280] text-xs mb-1">Vencidos</p>
+            <p className="text-red-400 text-2xl font-bold tabular-nums">
+              {cxps.filter(c => c.estado === "VENCIDO").length}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Tabla */}
+      {cxps.length === 0 ? (
+        <div className="py-16 text-center border border-dashed border-[#1e1e1e] rounded-xl">
+          <p className="text-gray-600 text-sm">Sin compromisos registrados</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[#1a1a1a]">
+                <th className="text-left text-xs text-gray-600 font-medium py-2 pr-4">Fecha límite</th>
+                <th className="text-left text-xs text-gray-600 font-medium py-2 pr-4">Concepto</th>
+                <th className="text-right text-xs text-gray-600 font-medium py-2 pr-4">Monto</th>
+                <th className="text-left text-xs text-gray-600 font-medium py-2">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cxps.map(c => {
+                const badge = CXP_ESTADO[c.estado] ?? { label: c.estado, className: "bg-[#1e1e1e] text-gray-400 border-[#2a2a2a]" };
+                const fecha = new Date(c.fechaCompromiso);
+                const esVencida = c.estado === "VENCIDO";
+                return (
+                  <tr key={c.id} className={`border-b border-[#111] hover:bg-[#0f0f0f] transition-colors ${
+                    esVencida ? "bg-red-950/10" : ""
+                  }`}>
+                    <td className={`py-3 pr-4 text-sm font-medium ${ esVencida ? "text-red-400" : "text-white"}`}>
+                      {fecha.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}
+                    </td>
+                    <td className="py-3 pr-4 text-gray-300 text-sm">
+                      {c.concepto}
+                      {c.notas && <p className="text-[10px] text-gray-600 mt-0.5">{c.notas}</p>}
+                    </td>
+                    <td className={`py-3 pr-4 text-right font-semibold tabular-nums ${
+                      esVencida ? "text-red-400" : "text-white"
+                    }`}>
+                      {fmt(c.monto)}
+                    </td>
+                    <td className="py-3">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${badge.className}`}>
+                        {badge.label}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <p className="text-[10px] text-gray-700 mt-6">
+        Los compromisos recurrentes se generan mensualmente. Para registrar nuevos, ir a Finanzas → Cobros y Pagos.
+      </p>
+    </div>
+  );
+}
+
 const TABS_STD = ["perfil", "activos", "rentas", "reportes", "mantenimiento"] as const;
-const TABS_FUNDADOR = ["perfil", "capital", "activos_hervam", "pagos_hervam"] as const;
+const TABS_FUNDADOR = ["perfil", "capital", "activos_hervam", "pagos_hervam", "compromisos"] as const;
 type TabStd = (typeof TABS_STD)[number];
 type TabFundador = (typeof TABS_FUNDADOR)[number];
 const TAB_LABEL_STD: Record<TabStd, string> = {
@@ -1179,6 +1293,7 @@ const TAB_LABEL_STD: Record<TabStd, string> = {
 const TAB_LABEL_FUNDADOR: Record<TabFundador, string> = {
   perfil: "Perfil", capital: "Capital · HERVAM",
   activos_hervam: "Activos declarados", pagos_hervam: "Historial de pagos",
+  compromisos: "Compromisos",
 };
 
 export default function SocioDetallePage() {
@@ -1192,6 +1307,8 @@ export default function SocioDetallePage() {
   const [hervamActivos, setHervamActivos] = useState<HervamActivo[]>([]);
   const [hervamPagos, setHervamPagos] = useState<HervamPago[]>([]);
 
+  const [cxpSocio, setCxpSocio] = useState<CxPSocio[]>([]);
+
   const cargar = useCallback(async () => {
     setLoading(true);
     const r = await fetch(`/api/socios/${id}`, { cache: "no-store" });
@@ -1199,14 +1316,16 @@ export default function SocioDetallePage() {
     const s: Socio = d.socio;
     setSocio(s || null);
     if (s?.esFundador) {
-      const [cfg, act, pag] = await Promise.all([
+      const [cfg, act, pag, cxpData] = await Promise.all([
         fetch("/api/admin/valuacion/config").then(r => r.json()),
         fetch("/api/admin/valuacion/activos").then(r => r.json()),
         fetch("/api/admin/valuacion/pagos").then(r => r.json()),
+        fetch(`/api/cuentas-pagar?socioId=${s.id}`, { cache: "no-store" }).then(r => r.json()),
       ]);
       setHervamConfig(cfg);
       setHervamActivos(act.activos || []);
       setHervamPagos((pag.pagos || []).sort((a: HervamPago, b: HervamPago) => b.anio - a.anio || b.mes - a.mes));
+      setCxpSocio(Array.isArray(cxpData) ? cxpData : []);
     }
     setLoading(false);
   }, [id]);
@@ -1221,6 +1340,8 @@ export default function SocioDetallePage() {
   const isFundador = socio.esFundador;
   const tabs = isFundador ? TABS_FUNDADOR : TABS_STD;
   const tabLabels = isFundador ? TAB_LABEL_FUNDADOR : TAB_LABEL_STD;
+  const cxpVencidas = cxpSocio.filter(c => c.estado === "VENCIDO").length;
+  const cxpPendientes = cxpSocio.filter(c => c.estado === "PENDIENTE" || c.estado === "VENCIDO").length;
 
   return (
     <div className="p-3 md:p-6 max-w-6xl mx-auto">
@@ -1306,6 +1427,16 @@ export default function SocioDetallePage() {
                   {hervamPagos.length}
                 </span>
               )}
+              {t === "compromisos" && cxpVencidas > 0 && (
+                <span className="ml-1.5 text-[10px] bg-red-900/30 text-red-400 border border-red-800/30 rounded-full px-1.5 py-0.5">
+                  {cxpVencidas} vencido{cxpVencidas > 1 ? "s" : ""}
+                </span>
+              )}
+              {t === "compromisos" && cxpVencidas === 0 && cxpPendientes > 0 && (
+                <span className="ml-1.5 text-[10px] bg-amber-900/20 text-amber-400 border border-amber-800/30 rounded-full px-1.5 py-0.5">
+                  {cxpPendientes}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -1326,6 +1457,8 @@ export default function SocioDetallePage() {
         )}
         {isFundador && tab === "activos_hervam" && <TabActivosHervam activos={hervamActivos} />}
         {isFundador && tab === "pagos_hervam" && <TabPagosHervam pagos={hervamPagos} />}
+        {isFundador && tab === "compromisos" && <TabCuentasPagar socio={socio} />}
+
       </div>
     </div>
   );
