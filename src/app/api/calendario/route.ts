@@ -137,9 +137,50 @@ export async function GET(req: NextRequest) {
       horaInicioEvento: null,
     }));
 
+  // IDs ya cubiertos (cotización aprobada o confirmado)
+  const idsCubiertos = new Set([
+    ...idsConCotAprobada,
+    ...tratosConfirmados.map(t => t.id),
+  ]);
+
+  // ── 4. Tratos activos (LEAD / DESCUBRIMIENTO / OPORTUNIDAD) con fecha estimada ──
+  // Se muestran como eventos tentativos para que el equipo vea la carga potencial
+  const tratosActivos = await prisma.trato.findMany({
+    where: {
+      proyecto: null,
+      etapa: { in: ['LEAD', 'DESCUBRIMIENTO', 'OPORTUNIDAD'] },
+      fechaEventoEstimada: { gte: inicio, lte: fin, not: null },
+      id: { notIn: [...idsCubiertos] },
+    },
+    include: {
+      cliente: { select: { nombre: true } },
+    },
+    orderBy: { fechaEventoEstimada: 'asc' },
+  });
+
+  const eventosTratosActivos = tratosActivos
+    .filter(t => t.fechaEventoEstimada)
+    .map(t => ({
+      id: t.id,
+      dia: new Date(t.fechaEventoEstimada!.toISOString().substring(0, 10) + 'T12:00:00Z').getUTCDate(),
+      titulo: t.nombreEvento || 'Evento tentativo',
+      subtitulo: t.cliente?.nombre || '',
+      estado: t.etapa as string,
+      nivel: 'tentativo' as Nivel,
+      url: `/crm/tratos/${t.id}`,
+      tipoEvento: t.tipoEvento,
+      tipoServicio: null,
+      lugarEvento: t.lugarEstimado,
+      horaInicioEvento: null,
+    }));
+
   // ── Merge y ordenar por día ───────────────────────────────────────────────
-  const eventos = [...eventosProyecto, ...eventosTratoCot, ...eventosTratosConfirmados]
-    .sort((a, b) => a.dia - b.dia);
+  const eventos = [
+    ...eventosProyecto,
+    ...eventosTratoCot,
+    ...eventosTratosConfirmados,
+    ...eventosTratosActivos,
+  ].sort((a, b) => a.dia - b.dia);
 
   return NextResponse.json({ eventos });
 }

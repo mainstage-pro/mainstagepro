@@ -146,6 +146,10 @@ const ESTADO_COT_COLORS: Record<string, string> = {
   APROBADA: "bg-green-900/50 text-green-300", RECHAZADA: "bg-red-900/50 text-red-300",
   VENCIDA: "bg-gray-800 text-gray-500",
 };
+const ESTADO_COT_LABELS: Record<string, string> = {
+  BORRADOR: "Borrador", ENVIADA: "Enviada", APROBADA: "Aprobada",
+  RECHAZADA: "Rechazada", VENCIDA: "Vencida",
+};
 
 // Canales de atención
 const CANALES = [
@@ -2001,7 +2005,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                               )}
                               <span className="text-gray-500 text-xs font-mono">{op.numeroCotizacion}</span>
                               <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-medium ${ESTADO_COT_COLORS[op.estado] || "bg-gray-700 text-gray-300"}`}>
-                                {op.estado}
+                                {ESTADO_COT_LABELS[op.estado] ?? op.estado}
                               </span>
                               {op.proyecto && (
                                 <span className="text-[10px] text-green-500 bg-green-900/20 border border-green-800/30 px-1.5 py-0.5 rounded-full">proyecto</span>
