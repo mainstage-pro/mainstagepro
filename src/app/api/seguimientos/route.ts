@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
         select: {
           id: true,
           nombreEvento: true,
-          fechaEvento: true,
+          fechaEventoEstimada: true,
           cliente: { select: { nombre: true, empresa: true } },
         },
       },

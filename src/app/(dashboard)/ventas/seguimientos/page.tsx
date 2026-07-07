@@ -20,7 +20,7 @@ type Seguimiento = {
   trato: {
     id: string;
     nombreEvento: string | null;
-    fechaEvento: string | null;
+    fechaEventoEstimada: string | null;
     cliente: { nombre: string; empresa: string | null };
   };
 };
@@ -320,7 +320,7 @@ function SeguimientoRow({ s, onComplete, onReprogramar, onDelete }: {
 
       {/* COL 5 · Fecha del evento */}
       <div className="hidden xl:block w-[95px] shrink-0 pr-3 py-2.5">
-        <span className="text-[11px] text-[#555]">{fmtFechaCorta(s.trato.fechaEvento)}</span>
+        <span className="text-[11px] text-[#555]">{fmtFechaCorta(s.trato.fechaEventoEstimada)}</span>
       </div>
 
       {/* COL 6 · Estado */}
@@ -484,21 +484,21 @@ export default function SeguimientosPage() {
     return true;
   });
 
-  // ── Agrupación por mes de fechaEvento ───────────────────────────────────────
+  // ── Agrupación por mes de fechaEventoEstimada ───────────────────────────────────────
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-  const conFecha = filtrados.filter(s => s.trato.fechaEvento);
-  const sinFecha = filtrados.filter(s => !s.trato.fechaEvento);
+  const conFecha = filtrados.filter(s => s.trato.fechaEventoEstimada);
+  const sinFecha = filtrados.filter(s => !s.trato.fechaEventoEstimada);
 
   const grupos = new Map<string, { label: string; activos: Seguimiento[]; pasados: Seguimiento[] }>();
   for (const s of conFecha) {
-    const key = mesKey(s.trato.fechaEvento!);
-    if (!grupos.has(key)) grupos.set(key, { label: fmtMes(s.trato.fechaEvento!), activos: [], pasados: [] });
+    const key = mesKey(s.trato.fechaEventoEstimada!);
+    if (!grupos.has(key)) grupos.set(key, { label: fmtMes(s.trato.fechaEventoEstimada!), activos: [], pasados: [] });
     const g = grupos.get(key)!;
-    new Date(s.trato.fechaEvento!) >= hoy ? g.activos.push(s) : g.pasados.push(s);
+    new Date(s.trato.fechaEventoEstimada!) >= hoy ? g.activos.push(s) : g.pasados.push(s);
   }
   for (const g of grupos.values()) {
-    g.activos.sort((a, b) => new Date(a.trato.fechaEvento!).getTime() - new Date(b.trato.fechaEvento!).getTime());
-    g.pasados.sort((a, b) => new Date(b.trato.fechaEvento!).getTime() - new Date(a.trato.fechaEvento!).getTime());
+    g.activos.sort((a, b) => new Date(a.trato.fechaEventoEstimada!).getTime() - new Date(b.trato.fechaEventoEstimada!).getTime());
+    g.pasados.sort((a, b) => new Date(b.trato.fechaEventoEstimada!).getTime() - new Date(a.trato.fechaEventoEstimada!).getTime());
   }
   const gruposOrdenados = Array.from(grupos.entries()).sort(([a], [b]) => a.localeCompare(b));
 
