@@ -444,11 +444,11 @@ function ItemAgenda({ item, juntaId, juntaArea, onUpdate }: {
                 onClick={() => handleRespuestaChange(m.key)}
                 className={`flex-1 min-w-[140px] rounded-xl border p-3 text-left transition-all ${
                   respuesta === m.key
-                    ? "bg-[#C9A84C]/10 border-[#C9A84C]/50"
+                    ? "bg-[#c9a96a]/10 border-[#c9a96a]/50"
                     : "bg-[#0d0d0d] border-[#1a1a1a] hover:border-[#2a2a2a]"
                 }`}
               >
-                <p className={`text-xs font-medium ${respuesta === m.key ? "text-[#C9A84C]" : "text-gray-400"}`}>
+                <p className={`text-xs font-medium ${respuesta === m.key ? "text-[#c9a96a]" : "text-gray-400"}`}>
                   {m.emoji} {m.label}
                 </p>
                 <p className="text-[10px] text-gray-600 mt-0.5">{m.sub}</p>
@@ -528,13 +528,13 @@ function ItemAgenda({ item, juntaId, juntaArea, onUpdate }: {
                 <div className="space-y-1.5">
                   {proyectosAgenda.proximos.slice(0, 6).map((p) => (
                     <div key={p.id} className="flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#C9A84C] shrink-0 mt-1.5" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#c9a96a] shrink-0 mt-1.5" />
                       <div className="flex-1 min-w-0">
                         <p className="text-white text-xs leading-snug">{p.nombre}</p>
                         {p.cliente && (
                           <p className="text-gray-500 text-[10px]">{p.cliente.nombre}{p.cliente.empresa ? ` · ${p.cliente.empresa}` : ''}</p>
                         )}
-                        <p className="text-[#C9A84C] text-[10px]">
+                        <p className="text-[#c9a96a] text-[10px]">
                           {new Date(p.fechaEvento!).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'America/Mexico_City' })}
                         </p>
                       </div>
@@ -548,7 +548,7 @@ function ItemAgenda({ item, juntaId, juntaArea, onUpdate }: {
             )}
             {/* Notas */}
             <textarea
-              className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-700 resize-none focus:outline-none focus:border-[#C9A84C]/40"
+              className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-700 resize-none focus:outline-none focus:border-[#c9a96a]/40"
               rows={3}
               placeholder={item.placeholder ?? 'Notas sobre eventos próximos:'}
               value={respuesta}
@@ -1100,7 +1100,7 @@ function PanelProyectosGlobal({
     if (sinProyecto) return <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-900/30 text-amber-400">Sin proyecto</span>;
     const map: Record<string, string> = {
       PLANEACION: 'bg-[#1e1e1e] text-gray-400',
-      CONFIRMADO: 'bg-[#C9A84C]/15 text-[#C9A84C]',
+      CONFIRMADO: 'bg-[#c9a96a]/15 text-[#c9a96a]',
       EN_CURSO: 'bg-green-900/30 text-green-400',
       COMPLETADO: 'bg-green-900/20 text-green-600',
       VENTA_CERRADA: 'bg-amber-900/30 text-amber-400',
@@ -1136,7 +1136,7 @@ function PanelProyectosGlobal({
                     {p.cliente.nombre}{p.cliente.empresa ? ` · ${p.cliente.empresa}` : ''}
                   </p>
                 )}
-                {p.fechaEvento && <p className="text-[#C9A84C] text-[10px] mt-0.5">{fmtFechaEvento(p.fechaEvento)}</p>}
+                {p.fechaEvento && <p className="text-[#c9a96a] text-[10px] mt-0.5">{fmtFechaEvento(p.fechaEvento)}</p>}
                 {p.lugarEvento && <p className="text-gray-600 text-[10px]">{p.lugarEvento}</p>}
               </div>
             ))}
@@ -1220,19 +1220,19 @@ function PanelQuickTarea({ juntaId, participantes }: { juntaId: string; particip
           onChange={(e) => setQuickTarea((p) => ({ ...p, titulo: e.target.value }))}
           onKeyDown={(e) => { if (e.key === "Enter") crearTareaRapida(); }}
           placeholder="Título de la tarea *"
-          className="w-full border border-[#1e1e1e] bg-[#0d0d0d] focus:border-[#C9A84C]/50 focus:outline-none rounded-lg px-3 py-2 text-sm text-white placeholder-gray-700"
+          className="w-full border border-[#1e1e1e] bg-[#0d0d0d] focus:border-[#c9a96a]/50 focus:outline-none rounded-lg px-3 py-2 text-sm text-white placeholder-gray-700"
         />
         <textarea
           value={quickTarea.descripcion}
           onChange={(e) => setQuickTarea((p) => ({ ...p, descripcion: e.target.value }))}
           placeholder="Descripción (opcional)"
           rows={2}
-          className="w-full border border-[#1e1e1e] bg-[#0d0d0d] focus:border-[#C9A84C]/50 focus:outline-none rounded-lg px-3 py-2 text-sm text-white placeholder-gray-700 resize-none"
+          className="w-full border border-[#1e1e1e] bg-[#0d0d0d] focus:border-[#c9a96a]/50 focus:outline-none rounded-lg px-3 py-2 text-sm text-white placeholder-gray-700 resize-none"
         />
         <select
           value={asignadoAId}
           onChange={(e) => setAsignadoAId(e.target.value)}
-          className="w-full border border-[#1e1e1e] bg-[#0d0d0d] focus:border-[#C9A84C]/50 focus:outline-none rounded-lg px-3 py-2 text-sm text-white"
+          className="w-full border border-[#1e1e1e] bg-[#0d0d0d] focus:border-[#c9a96a]/50 focus:outline-none rounded-lg px-3 py-2 text-sm text-white"
         >
           <option value="">— Sin asignar —</option>
           {participantes.map((p) => (
@@ -1244,12 +1244,12 @@ function PanelQuickTarea({ juntaId, participantes }: { juntaId: string; particip
             type="date"
             value={quickTarea.fechaVencimiento}
             onChange={(e) => setQuickTarea((p) => ({ ...p, fechaVencimiento: e.target.value }))}
-            className="flex-1 border border-[#1e1e1e] bg-[#0d0d0d] focus:border-[#C9A84C]/50 focus:outline-none rounded-lg px-2 py-1.5 text-sm text-white [color-scheme:dark]"
+            className="flex-1 border border-[#1e1e1e] bg-[#0d0d0d] focus:border-[#c9a96a]/50 focus:outline-none rounded-lg px-2 py-1.5 text-sm text-white [color-scheme:dark]"
           />
           <select
             value={quickTarea.prioridad}
             onChange={(e) => setQuickTarea((p) => ({ ...p, prioridad: e.target.value }))}
-            className="border border-[#1e1e1e] bg-[#0d0d0d] focus:border-[#C9A84C]/50 focus:outline-none rounded-lg px-2 py-1.5 text-sm text-white"
+            className="border border-[#1e1e1e] bg-[#0d0d0d] focus:border-[#c9a96a]/50 focus:outline-none rounded-lg px-2 py-1.5 text-sm text-white"
           >
             <option value="BAJA">Baja</option>
             <option value="MEDIA">Media</option>
@@ -1260,7 +1260,7 @@ function PanelQuickTarea({ juntaId, participantes }: { juntaId: string; particip
         <button
           onClick={crearTareaRapida}
           disabled={savingQuickTarea || !quickTarea.titulo.trim()}
-          className="w-full bg-[#B3985B] hover:bg-[#c9a96e] text-black font-semibold text-xs px-4 py-2 rounded-lg transition-colors disabled:opacity-40"
+          className="w-full bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-xs px-4 py-2 rounded-lg transition-colors disabled:opacity-40"
         >
           {savingQuickTarea ? "Guardando..." : "+ Agregar tarea"}
         </button>

@@ -93,7 +93,7 @@ export function UndoToastContainer() {
         {/* Countdown bar */}
         <div className="h-[3px] bg-[#1a1a1a]">
           <div
-            className="h-full bg-[#C9A84C]"
+            className="h-full bg-[#c9a96a]"
             style={{ width: `${progress}%`, transition: 'none' }}
           />
         </div>
@@ -105,7 +105,7 @@ export function UndoToastContainer() {
           <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={handleUndo}
-              className="text-[#C9A84C] text-xs font-semibold hover:text-[#d4b060] transition-colors"
+              className="text-[#c9a96a] text-xs font-semibold hover:text-[#d4b060] transition-colors"
             >
               Deshacer
             </button>

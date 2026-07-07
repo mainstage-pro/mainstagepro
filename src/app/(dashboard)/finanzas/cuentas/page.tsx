@@ -131,7 +131,7 @@ export default function CuentasPage() {
   }
 
   return (
-    <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-white">Cuentas Bancarias</h1>
@@ -276,7 +276,7 @@ export default function CuentasPage() {
                 Cancelar
               </button>
               <button onClick={guardarSaldoInicial} disabled={guardandoSaldo || !saldoMonto}
-                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors">
+                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c9a96a] disabled:opacity-40 transition-colors">
                 {guardandoSaldo ? "Guardando…" : "Registrar"}
               </button>
             </div>

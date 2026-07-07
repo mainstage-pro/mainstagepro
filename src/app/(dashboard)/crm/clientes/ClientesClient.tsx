@@ -475,7 +475,7 @@ function ClienteRow({
         <div className="relative">
           <button onClick={onEmpresaClick} className="text-left focus:outline-none">
             {c.compania ? (
-              <span className="text-sm text-[#B3985B] hover:text-[#C9A84C] transition-colors cursor-pointer">{c.compania.nombre}</span>
+              <span className="text-sm text-[#B3985B] hover:text-[#c9a96a] transition-colors cursor-pointer">{c.compania.nombre}</span>
             ) : (
               <span className="text-xs text-gray-700 hover:text-gray-400 transition-colors cursor-pointer">+ Vincular</span>
             )}
@@ -505,7 +505,7 @@ function ClienteRow({
                   <div className="px-3 pb-2">
                     <input autoFocus value={empresaSearch} onChange={e => setEmpresaSearch(e.target.value)}
                       placeholder="Buscar empresa..."
-                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-gray-700 focus:outline-none focus:border-[#C9A84C]/30" />
+                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-gray-700 focus:outline-none focus:border-[#c9a96a]/30" />
                   </div>
                   <div className="max-h-[200px] overflow-y-auto">
                     {empresaSearching && <p className="text-xs text-gray-600 px-3 py-2">Buscando...</p>}
@@ -756,7 +756,7 @@ export default function ClientesClient({ clientes: initial, usuarios }: { client
             </button>
           </div>
           <Link href="/crm/clientes/nuevo"
-            className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
+            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
             + Nuevo cliente
           </Link>
         </div>
@@ -770,7 +770,7 @@ export default function ClientesClient({ clientes: initial, usuarios }: { client
           </svg>
           <input type="text" placeholder="Buscar por nombre, empresa o correo…"
             value={busqueda} onChange={e => setBusqueda(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 bg-[#111] border border-[#2a2a2a] rounded-lg text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#B3985B]/50 focus:ring-1 focus:ring-[#B3985B]/20 transition-colors" />
+            className="w-full pl-9 pr-4 py-1.5 bg-[#111] border border-[#2a2a2a] rounded-lg text-sm text-white placeholder:text-[#555] focus:outline-none focus:border-[#B3985B]/50 focus:ring-1 focus:ring-[#B3985B]/20 transition-colors" />
           {busqueda && (
             <button onClick={() => setBusqueda("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#555] hover:text-white transition-colors">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>

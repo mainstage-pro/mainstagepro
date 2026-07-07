@@ -411,7 +411,7 @@ export default async function DashboardPage() {
   const tratosEnRevision    = Number(tratosRevisionRaw[0]?.count ?? 0);
 
   return (
-    <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-8">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between">

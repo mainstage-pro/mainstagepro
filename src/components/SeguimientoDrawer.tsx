@@ -131,7 +131,7 @@ export function SeguimientoDrawer({ open, onClose, tratoId, tratoNombre, onSaved
               onChange={e => setNota(e.target.value)}
               placeholder="¿Qué se va a hacer o qué pasó?"
               rows={4}
-              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[13px] text-white placeholder-[#444] resize-none focus:outline-none focus:border-[#B3985B]/60"
+              className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-[13px] text-white placeholder:text-[#444] resize-none focus:outline-none focus:border-[#B3985B]/60"
             />
           </div>
         </div>
@@ -140,7 +140,7 @@ export function SeguimientoDrawer({ open, onClose, tratoId, tratoNombre, onSaved
           <button
             onClick={handleSave}
             disabled={loading || !fecha}
-            className="w-full py-3 rounded-xl bg-[#B3985B] text-black font-semibold text-[14px] hover:bg-[#C9A84C] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full py-3 rounded-xl bg-[#B3985B] text-black font-semibold text-[14px] hover:bg-[#c9a96a] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? 'Guardando...' : 'Guardar seguimiento'}
           </button>

@@ -76,7 +76,7 @@ const CLAS_COLORS: Record<string, { text: string; bg: string; border: string }> 
   PROSPECTO: { text: "text-purple-300", bg: "bg-purple-950/50", border: "border-purple-800/30" },
   NUEVO:     { text: "text-sky-400",    bg: "bg-sky-950/50",    border: "border-sky-800/30"    },
   REGULAR:   { text: "text-yellow-400", bg: "bg-yellow-950/50", border: "border-yellow-800/30" },
-  PRIORITY:  { text: "text-[#C9A84C]",  bg: "bg-[#B3985B]/10",  border: "border-[#B3985B]/30"  },
+  PRIORITY:  { text: "text-[#B3985B]",  bg: "bg-[#B3985B]/10",  border: "border-[#B3985B]/30"  },
   BASIC:     { text: "text-blue-400",   bg: "bg-blue-950/50",   border: "border-blue-800/30"   },
   EVITABLE:  { text: "text-red-400",    bg: "bg-red-950/50",    border: "border-red-800/30"    },
 };
@@ -466,7 +466,7 @@ function ContactoRow({
         <div className="relative" data-empresa-popover>
           <button onClick={e => { e.stopPropagation(); onEmpresaClick(); }} className="text-left focus:outline-none w-full">
             {c.compania
-              ? <span className="text-[12px] text-[#B3985B] hover:text-[#C9A84C] transition-colors truncate block">{c.compania.nombre}</span>
+              ? <span className="text-[12px] text-[#B3985B] hover:text-[#c9a96a] transition-colors truncate block">{c.compania.nombre}</span>
               : c.empresa
               ? <span className="text-[12px] text-[#555] truncate block">{c.empresa}</span>
               : <span className="text-[11px] text-[#252525] hover:text-[#444] transition-colors">+ Vincular</span>
@@ -1224,7 +1224,7 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-white">Base de Datos</h1>
+          <h1 className="text-xl font-semibold text-white">Base de Datos</h1>
           <p className="text-[#333] text-xs mt-1">
             {clientes.length} cliente{clientes.length !== 1 ? "s" : ""}
             {" · "}{prospectos.length} prospecto{prospectos.length !== 1 ? "s" : ""}
@@ -1285,7 +1285,7 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
               </svg>
               <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
                 placeholder="Buscar por nombre, correo, teléfono o empresa…"
-                className="w-full pl-9 pr-4 py-2 bg-[#0a0a0a] border border-[#151515] rounded-lg text-sm text-white placeholder-[#2a2a2a] focus:outline-none focus:border-[#B3985B]/30 transition-colors" />
+                className="w-full pl-9 pr-4 py-2 bg-[#0a0a0a] border border-[#151515] rounded-lg text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/30 transition-colors" />
               {busqueda && (
                 <button onClick={() => setBusqueda("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#333] hover:text-white transition-colors">
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>

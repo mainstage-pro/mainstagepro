@@ -258,7 +258,7 @@ export default function PresentacionesVentaPage() {
         {/* Header */}
         <div className="flex items-start justify-between gap-4 mb-8 flex-wrap">
           <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight mb-1">Presentaciones de Venta</h1>
+            <h1 className="text-xl font-semibold text-white tracking-tight mb-1">Presentaciones de Venta</h1>
             <p className="text-sm" style={{ color: "#6b7280" }}>
               Genera presentaciones profesionales con IA para tus paquetes y ofertas
             </p>

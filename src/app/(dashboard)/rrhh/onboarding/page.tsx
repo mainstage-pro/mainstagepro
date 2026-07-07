@@ -56,7 +56,7 @@ export default function OnboardingPage() {
   const otros = planes.filter(p => p.estado !== "EN_CURSO");
 
   return (
-    <div className="p-3 md:p-6 max-w-5xl mx-auto">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Planes de integración</h1>
@@ -65,7 +65,7 @@ export default function OnboardingPage() {
           </p>
         </div>
         <Link href="/rrhh/onboarding/nuevo"
-          className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
+          className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
           + Nuevo plan
         </Link>
       </div>
@@ -80,7 +80,7 @@ export default function OnboardingPage() {
           <p className="text-gray-400 font-medium mb-1">Sin planes de integración</p>
           <p className="text-gray-600 text-sm mb-4">Crea el primer plan para un nuevo colaborador.</p>
           <Link href="/rrhh/onboarding/nuevo"
-            className="inline-block bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">
+            className="inline-block bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">
             Crear plan con IA
           </Link>
         </div>

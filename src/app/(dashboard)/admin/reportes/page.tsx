@@ -1066,7 +1066,7 @@ export default function ReportesAdminPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
           <div>
             <p className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest mb-1">Administración</p>
-            <h1 className="text-2xl font-bold text-white">Reportes de Administración</h1>
+            <h1 className="text-xl font-semibold text-white">Reportes de Administración</h1>
             <p className="text-gray-500 text-sm mt-0.5">Escenario Principal S.A. de C.V. · Consolidado ejecutivo</p>
           </div>
           <div className="flex items-center gap-3">
@@ -1087,7 +1087,7 @@ export default function ReportesAdminPage() {
             <button
               onClick={handleDownloadPDF}
               disabled={downloading}
-              className="flex items-center gap-2 px-4 py-1.5 bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-1.5 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors"
             >
               {downloading
                 ? <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>

@@ -248,13 +248,13 @@ export default function ProyectosPage() {
   );
 
   return (
-    <div className="p-3 md:p-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6">
 
       {/* Header */}
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-white">Proyectos de evento</h1>
-          <p className="text-[#6b7280] text-sm">
+          <p className="text-sm text-[#6b7280] mt-0.5">
             {loading ? 'Cargando...' : `${proyectos.length} proyectos`}
           </p>
         </div>
@@ -267,14 +267,14 @@ export default function ProyectosPage() {
         </svg>
         <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
           placeholder="Buscar por cliente, número o venue..."
-          className="w-full bg-[#111] border border-[#1e1e1e] rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+          className="w-full bg-[#111] border border-[#1e1e1e] rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50 transition-colors" />
         {busqueda && (
           <button onClick={() => setBusqueda('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white text-xs">✕</button>
         )}
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-[#111] mb-4 overflow-x-auto">
+      <div className="flex border-b border-[#1e1e1e] mb-4 overflow-x-auto">
         {TABS.map(({ key, label }) => {
           const count = tabCount(key);
           return (
@@ -282,7 +282,9 @@ export default function ProyectosPage() {
               key={key}
               onClick={() => setTabActivo(key)}
               className={`relative flex items-center gap-1 px-3 py-2 sm:px-4 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 ${
-                tabActivo === key ? 'text-white' : 'text-gray-600 hover:text-gray-400'
+                tabActivo === key
+                  ? 'relative px-4 py-2.5 text-sm font-medium text-white whitespace-nowrap'
+                  : 'relative px-4 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-400 whitespace-nowrap'
               }`}
             >
               <span className="hidden sm:inline">{label}</span>

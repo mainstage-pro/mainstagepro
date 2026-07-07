@@ -76,10 +76,10 @@ function Row({ label, value, sub, bold, gold, indent }: {
   return (
     <div className={`flex items-center justify-between py-2.5 border-b border-[#1a1a1a] last:border-0 ${indent ? "pl-4" : ""}`}>
       <div>
-        <p className={`text-sm ${bold ? "font-semibold text-white" : "text-gray-300"} ${gold ? "text-[#C9A84C]" : ""}`}>{label}</p>
+        <p className={`text-sm ${bold ? "font-semibold text-white" : "text-gray-300"} ${gold ? "text-[#c9a96a]" : ""}`}>{label}</p>
         {sub && <p className="text-[10px] text-gray-600 mt-0.5">{sub}</p>}
       </div>
-      <p className={`text-sm tabular-nums ${bold ? "font-bold text-white" : "text-gray-400"} ${gold ? "text-[#C9A84C] font-bold" : ""}`}>{value}</p>
+      <p className={`text-sm tabular-nums ${bold ? "font-bold text-white" : "text-gray-400"} ${gold ? "text-[#c9a96a] font-bold" : ""}`}>{value}</p>
     </div>
   );
 }
@@ -196,7 +196,7 @@ export default function ComisionPage({ params }: { params: Promise<{ id: string 
           <div className="flex items-start justify-between gap-4 mb-6">
             <div>
               <p className="text-[10px] font-bold text-[#B3985B] uppercase tracking-widest mb-1">Documento privado</p>
-              <h2 className="text-2xl font-bold text-white leading-tight">
+              <h2 className="text-xl font-semibold text-white leading-tight">
                 Acuerdo de Comisión
               </h2>
               <p className="text-gray-500 text-sm mt-1">por intermediación en venta de servicios</p>
@@ -355,7 +355,7 @@ export default function ComisionPage({ params }: { params: Promise<{ id: string 
               {cot.aplicaIva && <Row label="IVA (16%)" value={fmt(cot.montoIva)} />}
               <div className="flex items-center justify-between pt-3 border-t border-[#333]">
                 <p className="text-base font-bold text-white">Gran Total cotización</p>
-                <p className="text-xl font-bold text-[#C9A84C] tabular-nums">{fmt(cot.granTotal)}</p>
+                <p className="text-xl font-bold text-[#c9a96a] tabular-nums">{fmt(cot.granTotal)}</p>
               </div>
             </div>
           </div>
@@ -374,7 +374,7 @@ export default function ComisionPage({ params }: { params: Promise<{ id: string 
                   {fmt(netoEquiposPropios)} × 10%
                 </p>
               </div>
-              <p className="text-3xl font-bold text-[#C9A84C] tabular-nums">{fmt(comision)}</p>
+              <p className="text-3xl font-bold text-[#c9a96a] tabular-nums">{fmt(comision)}</p>
             </div>
           </div>
           <div className="px-5 py-3 bg-[#0b0b0b] border-t border-[#1e1e1e]">

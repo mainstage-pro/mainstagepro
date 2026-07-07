@@ -29,7 +29,7 @@ export function NuevoTratoDropdown({ onLeadCreated }: Props) {
       <div ref={dropdownRef} className="relative">
         <button
           onClick={() => setDropdownOpen(v => !v)}
-          className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5"
+          className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5"
         >
           + Nueva oportunidad
           <svg className={`w-3 h-3 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">

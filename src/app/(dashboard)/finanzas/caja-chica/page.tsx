@@ -143,7 +143,7 @@ function ModalEditar({
             <button
               type="submit"
               disabled={guardando}
-              className="flex-1 bg-[#B3985B] hover:bg-[#b8963e] disabled:opacity-50 text-black text-sm font-semibold py-2.5 rounded-lg transition-colors"
+              className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black text-sm font-semibold py-2.5 rounded-lg transition-colors"
             >
               {guardando ? "Guardando…" : "Guardar cambios"}
             </button>
@@ -273,7 +273,7 @@ export default function CajaChicaPage() {
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white">Caja Chica</h1>
+          <h1 className="text-xl font-semibold text-white">Caja Chica</h1>
           <p className="text-gray-500 text-sm mt-0.5">Gastos operativos y emergencias de oficina</p>
         </div>
         <div className="flex items-center gap-2">
@@ -285,7 +285,7 @@ export default function CajaChicaPage() {
           </button>
           <button
             onClick={() => formTipo === "GASTO" ? setFormTipo(null) : abrirForm("GASTO")}
-            className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
           >
             {formTipo === "GASTO" ? "Cancelar" : "+ Registrar gasto"}
           </button>
@@ -412,7 +412,7 @@ export default function CajaChicaPage() {
             <button
               type="submit"
               disabled={guardando}
-              className={`disabled:opacity-50 text-sm font-semibold px-5 py-2 rounded-lg transition-colors ${formTipo === "RECARGA" ? "bg-green-700 hover:bg-green-600 text-white" : "bg-[#B3985B] hover:bg-[#b8963e] text-black"}`}
+              className={`disabled:opacity-50 text-sm font-semibold px-5 py-2 rounded-lg transition-colors ${formTipo === "RECARGA" ? "bg-green-700 hover:bg-green-600 text-white" : "bg-[#B3985B] hover:bg-[#c9a96a] text-black"}`}
             >
               {guardando ? "Guardando..." : formTipo === "RECARGA" ? "Registrar recarga" : "Registrar gasto"}
             </button>

@@ -103,7 +103,7 @@ function TagList({ label, items, setItems, placeholder }: {
           placeholder={placeholder}
           className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-gray-700 focus:outline-none focus:border-[#B3985B] transition-colors"
         />
-        <button type="button" onClick={add} className="px-3 py-2.5 bg-[#B3985B] hover:bg-[#c9a96e] text-black text-sm font-bold rounded-xl transition-colors">+</button>
+        <button type="button" onClick={add} className="px-3 py-2.5 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-bold rounded-xl transition-colors">+</button>
       </div>
       {items.length > 0 ? (
         <ul className="space-y-1.5">
@@ -520,7 +520,7 @@ export default function ReportePostEventoPage() {
           <div className="pb-8 space-y-3">
             <button
               type="submit" disabled={submitting}
-              className="w-full bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-colors text-sm"
+              className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-colors text-sm"
             >
               {submitting ? "Enviando..." : "Enviar reporte ✓"}
             </button>

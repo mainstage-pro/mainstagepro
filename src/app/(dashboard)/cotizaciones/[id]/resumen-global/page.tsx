@@ -117,7 +117,7 @@ export default function ResumenGlobalPage({ params }: { params: Promise<{ id: st
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Resumen Global del Proyecto</p>
-            <h1 className="text-2xl font-bold text-white leading-tight">
+            <h1 className="text-xl font-semibold text-white leading-tight">
               {trato?.nombreEvento || cliente.nombre}
             </h1>
             <div className="flex items-center gap-2 mt-1 flex-wrap">

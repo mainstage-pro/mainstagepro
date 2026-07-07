@@ -151,14 +151,14 @@ export default function MovimientosPage() {
   );
 
   return (
-    <div className="p-3 md:p-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div>
           <h1 className="text-xl font-semibold text-white">Movimientos</h1>
           <p className="text-[#6b7280] text-sm">{movimientosFiltrados.length} movimientos{cuentaFiltro ? ` · ${cuentas.find(c => c.id === cuentaFiltro)?.nombre}` : " · todas las cuentas"}</p>
         </div>
         <a href="/finanzas/movimientos/nuevo"
-          className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
+          className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
           + Registrar movimiento
         </a>
       </div>
@@ -463,7 +463,7 @@ export default function MovimientosPage() {
                 Cancelar
               </button>
               <button onClick={guardarEdicion} disabled={guardando || !editForm.concepto || !editForm.monto}
-                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors">
+                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c9a96a] disabled:opacity-40 transition-colors">
                 {guardando ? "Guardando..." : "Guardar cambios"}
               </button>
             </div>

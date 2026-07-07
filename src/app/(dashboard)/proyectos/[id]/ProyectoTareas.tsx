@@ -576,7 +576,7 @@ function ProyectoTaskModal({
                   }
                 }}
                 placeholder="Título de la tarea"
-                className="w-full bg-transparent text-white text-xl font-semibold resize-none focus:outline-none placeholder-[#2a2a2a] leading-snug"
+                className="w-full bg-transparent text-white text-xl font-semibold resize-none focus:outline-none placeholder:text-[#444] leading-snug"
                 rows={titulo.split("\n").length || 1}
               />
 
@@ -585,7 +585,7 @@ function ProyectoTaskModal({
                 value={descripcion}
                 onChange={e => { setDescripcion(e.target.value); mark(); }}
                 placeholder="Añade una descripción…"
-                className="w-full bg-transparent text-sm text-[#777] resize-none focus:outline-none placeholder-[#2a2a2a] leading-relaxed"
+                className="w-full bg-transparent text-sm text-[#777] resize-none focus:outline-none placeholder:text-[#444] leading-relaxed"
                 rows={3}
               />
 
@@ -630,7 +630,7 @@ function ProyectoTaskModal({
                       onKeyDown={addSubtarea}
                       placeholder="Agregar subtarea…"
                       disabled={addingSubtarea}
-                      className="flex-1 bg-transparent text-sm text-white placeholder-[#2a2a2a] focus:outline-none"
+                      className="flex-1 bg-transparent text-sm text-white placeholder:text-[#444] focus:outline-none"
                     />
                   </div>
                 </div>
@@ -643,7 +643,7 @@ function ProyectoTaskModal({
                   value={notas}
                   onChange={e => { setNotas(e.target.value); mark(); }}
                   placeholder="Notas adicionales…"
-                  className="w-full bg-[#080808] border border-[#1a1a1a] rounded-xl px-3 py-2.5 text-sm text-[#888] resize-none focus:outline-none focus:border-[#2a2a2a] placeholder-[#2a2a2a] leading-relaxed"
+                  className="w-full bg-[#080808] border border-[#1a1a1a] rounded-xl px-3 py-2.5 text-sm text-[#888] resize-none focus:outline-none focus:border-[#2a2a2a] placeholder:text-[#444] leading-relaxed"
                   rows={4}
                 />
               </div>
@@ -735,7 +735,7 @@ function ProyectoTaskModal({
                       onChange={e => setComentario(e.target.value)}
                       onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviarComentario(); } }}
                       placeholder="Escribe un comentario… (Enter para enviar)"
-                      className="flex-1 bg-[#080808] border border-[#1a1a1a] rounded-xl px-3 py-2 text-sm text-white resize-none focus:outline-none focus:border-[#2a2a2a] placeholder-[#2a2a2a]"
+                      className="flex-1 bg-[#080808] border border-[#1a1a1a] rounded-xl px-3 py-2 text-sm text-white resize-none focus:outline-none focus:border-[#2a2a2a] placeholder:text-[#444]"
                       rows={2}
                     />
                     <button
@@ -841,7 +841,7 @@ function ProyectoTaskModal({
                 <button
                   onClick={() => handleCreate().then(onClose)}
                   disabled={creating || !titulo.trim()}
-                  className="w-full py-2.5 rounded-xl bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-40 text-black font-semibold text-sm transition-colors"
+                  className="w-full py-2.5 rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black font-semibold text-sm transition-colors"
                 >
                   {creating ? "Creando…" : "Crear tarea"}
                 </button>
@@ -946,7 +946,7 @@ export default function ProyectoTareas({ proyectoId, proyectoNombre = "Proyecto"
           </div>
           <button
             onClick={openNew}
-            className="flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96e] text-black text-xs font-semibold px-3 py-2 rounded-xl transition-colors"
+            className="flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold px-3 py-2 rounded-xl transition-colors"
           >
             <span className="text-base leading-none">+</span>
             Nueva tarea

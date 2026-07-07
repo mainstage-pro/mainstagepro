@@ -58,13 +58,13 @@ function fmtPct(n: number) {
 }
 function margenColor(m: number) {
   if (m >= 40) return "text-emerald-400";
-  if (m >= 25) return "text-[#C9A84C]";
+  if (m >= 25) return "text-[#c9a96a]";
   if (m >= 10) return "text-yellow-400";
   return "text-red-400";
 }
 function margenBg(m: number) {
   if (m >= 40) return "bg-emerald-500";
-  if (m >= 25) return "bg-[#C9A84C]";
+  if (m >= 25) return "bg-[#c9a96a]";
   if (m >= 10) return "bg-yellow-400";
   return "bg-red-500";
 }
@@ -117,7 +117,7 @@ export default function RentabilidadPage() {
           <select
             value={meses}
             onChange={e => setMeses(e.target.value)}
-            className="bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#C9A84C]/50"
+            className="bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#c9a96a]/50"
           >
             <option value="3">Últimos 3 meses</option>
             <option value="6">Últimos 6 meses</option>
@@ -129,7 +129,7 @@ export default function RentabilidadPage() {
 
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="w-6 h-6 border-2 border-[#C9A84C]/30 border-t-[#C9A84C] rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-[#c9a96a]/30 border-t-[#c9a96a] rounded-full animate-spin" />
         </div>
       ) : data ? (
         <div className="px-6 py-6 space-y-6">
@@ -138,7 +138,7 @@ export default function RentabilidadPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="bg-[#111] border border-[#1e1e1e] rounded-xl px-5 py-4">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Proyectos</p>
-              <p className="text-2xl font-bold text-white">{data.kpis.totalProyectos}</p>
+              <p className="text-xl font-semibold text-white">{data.kpis.totalProyectos}</p>
             </div>
             <div className="bg-[#111] border border-[#1e1e1e] rounded-xl px-5 py-4">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Ingresos cobrados</p>
@@ -198,7 +198,7 @@ export default function RentabilidadPage() {
               placeholder="Buscar evento o cliente..."
               value={buscar}
               onChange={e => setBuscar(e.target.value)}
-              className="bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#C9A84C]/40 w-64"
+              className="bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#c9a96a]/40 w-64"
             />
             <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1">
               {(["fecha", "margen", "utilidad"] as const).map(o => (

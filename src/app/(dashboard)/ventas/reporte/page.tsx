@@ -306,7 +306,7 @@ export default function ReporteVentasPage() {
 
   // ─── RENDER ───────────────────────────────────────────────────────────────────
   return (
-    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
 
       {/* Toast */}
       {toastMsg && (
@@ -392,7 +392,7 @@ export default function ReporteVentasPage() {
               {/* Ticket promedio */}
               <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
                 <p className="text-[#555] text-[10px] uppercase tracking-widest mb-1">Ticket promedio</p>
-                <p className="text-2xl font-bold text-white">{fmt(reporte.ticketPromedio)}</p>
+                <p className="text-xl font-semibold text-white">{fmt(reporte.ticketPromedio)}</p>
                 <p className="text-[#444] text-[10px] mt-1.5">por venta cerrada</p>
               </div>
 
@@ -776,7 +776,7 @@ export default function ReporteVentasPage() {
                 <>
                   <p className="text-[#333] text-[10px]">Las notas se guardan automáticamente en este dispositivo</p>
                   <button onClick={descargarPdf1} disabled={loadingPdf1} id="btn-pdf-mensual"
-                    className="flex items-center gap-2 px-4 py-1.5 bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors">
+                    className="flex items-center gap-2 px-4 py-1.5 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors">
                     {loadingPdf1
                       ? <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                       : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 15V3M7 10l5 5 5-5M20 21H4"/></svg>
@@ -977,7 +977,7 @@ export default function ReporteVentasPage() {
                   <>
                     <p className="text-[#333] text-[10px]">Las notas se guardan automáticamente en este dispositivo</p>
                     <button onClick={descargarPdf2} disabled={loadingPdf2} id="btn-pdf-vendedor"
-                      className="flex items-center gap-2 px-4 py-1.5 bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors">
+                      className="flex items-center gap-2 px-4 py-1.5 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors">
                       {loadingPdf2
                         ? <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
                         : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M12 15V3M7 10l5 5 5-5M20 21H4"/></svg>

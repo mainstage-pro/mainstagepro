@@ -69,7 +69,7 @@ function formatFecha(iso: string | null): { label: string; color: string } | nul
   const diff = Math.round((d.getTime() - today.getTime()) / 86400000)
   if (diff < 0)  return { label: 'Vencida', color: '#ef4444' }
   if (diff === 0) return { label: 'Hoy',    color: '#22c55e' }
-  if (diff === 1) return { label: 'Mañana', color: '#C9A84C' }
+  if (diff === 1) return { label: 'Mañana', color: '#c9a96a' }
   return {
     label: d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }),
     color: '#6b7280',
@@ -79,7 +79,7 @@ function formatFecha(iso: string | null): { label: string; color: string } | nul
 const PRIO_COLOR: Record<string, string> = {
   URGENTE: '#f87171',
   ALTA:    '#fb923c',
-  MEDIA:   '#C9A84C',
+  MEDIA:   '#c9a96a',
   BAJA:    '#6b7280',
 }
 
@@ -264,7 +264,7 @@ export default function QuickAccessPanel() {
           onClick={() => setOpen(o => !o)}
           className={`flex flex-col items-center gap-1.5 px-2 py-4 rounded-l-xl border-l border-t border-b transition-all duration-200 backdrop-blur-sm ${
             open
-              ? 'bg-[#C9A84C]/10 border-[#C9A84C]/30 text-[#C9A84C]'
+              ? 'bg-[#c9a96a]/10 border-[#c9a96a]/30 text-[#c9a96a]'
               : 'bg-[#0d0d0d]/90 border-[#1e1e1e] text-gray-600 hover:text-white hover:border-[#2a2a2a] hover:bg-[#111]'
           }`}
           title="Vista rapida (Cmd+Shift+P)"
@@ -294,7 +294,7 @@ export default function QuickAccessPanel() {
               onClick={() => setTab('midia')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 tab === 'midia'
-                  ? 'bg-[#C9A84C]/10 text-[#C9A84C]'
+                  ? 'bg-[#c9a96a]/10 text-[#c9a96a]'
                   : 'text-gray-600 hover:text-gray-300 hover:bg-[#111]'
               }`}
             >
@@ -304,7 +304,7 @@ export default function QuickAccessPanel() {
               onClick={() => setTab('tareas')}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 tab === 'tareas'
-                  ? 'bg-[#C9A84C]/10 text-[#C9A84C]'
+                  ? 'bg-[#c9a96a]/10 text-[#c9a96a]'
                   : 'text-gray-600 hover:text-gray-300 hover:bg-[#111]'
               }`}
             >
@@ -339,7 +339,7 @@ export default function QuickAccessPanel() {
                   </div>
                   <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-[#C9A84C] rounded-full transition-all duration-500"
+                      className="h-full bg-[#c9a96a] rounded-full transition-all duration-500"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -382,7 +382,7 @@ export default function QuickAccessPanel() {
                                 onClick={e => { e.stopPropagation(); handleToggleMiDia(inst.id, inst.estado) }}
                                 className={`mt-0.5 w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center transition-all ${
                                   inst.estado === 'COMPLETADA'
-                                    ? 'bg-[#C9A84C] border-[#C9A84C]'
+                                    ? 'bg-[#c9a96a] border-[#c9a96a]'
                                     : 'border-[#333] group-hover:border-[#555]'
                                 }`}
                                 style={inst.estado !== 'COMPLETADA' ? {
@@ -483,7 +483,7 @@ export default function QuickAccessPanel() {
                           <div key={inst.id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-[#0f0f0f] transition-colors">
                             <button
                               onClick={() => handleToggleMiDia(inst.id, inst.estado)}
-                              className="w-4 h-4 rounded-full bg-[#C9A84C] shrink-0 flex items-center justify-center"
+                              className="w-4 h-4 rounded-full bg-[#c9a96a] shrink-0 flex items-center justify-center"
                             >
                               <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3" strokeLinecap="round">
                                 <path d="M20 6L9 17l-5-5"/>
@@ -502,7 +502,7 @@ export default function QuickAccessPanel() {
               <div className="mt-6 pt-4 border-t border-[#0f0f0f]">
                 <a
                   href="/plan-trabajo/hoy"
-                  className="flex items-center justify-center gap-1.5 text-xs text-gray-600 hover:text-[#C9A84C] transition-colors"
+                  className="flex items-center justify-center gap-1.5 text-xs text-gray-600 hover:text-[#c9a96a] transition-colors"
                 >
                   Ver módulo completo
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -688,7 +688,7 @@ export default function QuickAccessPanel() {
               <div className="mt-6 pt-4 border-t border-[#0f0f0f]">
                 <a
                   href="/operaciones?vista=hoy"
-                  className="flex items-center justify-center gap-1.5 text-xs text-gray-600 hover:text-[#C9A84C] transition-colors"
+                  className="flex items-center justify-center gap-1.5 text-xs text-gray-600 hover:text-[#c9a96a] transition-colors"
                 >
                   Ver módulo de tareas
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

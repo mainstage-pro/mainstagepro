@@ -122,7 +122,7 @@ export default function PresentacionesPage() {
       {/* Header */}
       <div className="mb-10">
         <p className="text-xs text-white/30 uppercase tracking-widest mb-2">Dirección</p>
-        <h1 className="text-2xl font-bold text-white">Presentaciones</h1>
+        <h1 className="text-xl font-semibold text-white">Presentaciones</h1>
         <p className="text-white/40 text-sm mt-1">
           Acceso directo a todas las presentaciones públicas del negocio.
         </p>

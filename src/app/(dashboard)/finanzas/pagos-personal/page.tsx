@@ -288,7 +288,7 @@ export default function PagosPersonalPage() {
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-white">Pagos a Personal</h1>
+          <h1 className="text-xl font-semibold text-white">Pagos a Personal</h1>
           <p className="text-gray-500 text-sm mt-0.5">Ciclo semanal · miércoles de pago</p>
         </div>
         <div className="flex items-center gap-2 bg-[#111] border border-[#222] rounded-xl px-3 py-2">
@@ -311,12 +311,12 @@ export default function PagosPersonalPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-[#111] border border-[#222] rounded-xl p-4">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Proyectos</p>
-            <p className="text-2xl font-bold text-white">{data.proyectos.length}</p>
+            <p className="text-xl font-semibold text-white">{data.proyectos.length}</p>
             <p className="text-xs text-gray-600 mt-0.5">{fmtDate(data.desde, { weekday: undefined })} – {fmtDate(data.hasta, { weekday: undefined })}</p>
           </div>
           <div className="bg-[#111] border border-[#222] rounded-xl p-4">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Presupuesto operación</p>
-            <p className="text-2xl font-bold text-white">{fmt(totalPresupuestado)}</p>
+            <p className="text-xl font-semibold text-white">{fmt(totalPresupuestado)}</p>
             <p className="text-xs text-gray-600 mt-0.5">cotizado</p>
           </div>
           <div className="bg-[#111] border border-[#222] rounded-xl p-4">
@@ -755,7 +755,7 @@ export default function PagosPersonalPage() {
               <button
                 onClick={confirmarPago}
                 disabled={guardando || !pagoFecha || (singleRow ? totalEntradas <= 0 : false)}
-                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors"
+                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c9a96a] disabled:opacity-40 transition-colors"
               >
                 {guardando
                   ? "Registrando..."

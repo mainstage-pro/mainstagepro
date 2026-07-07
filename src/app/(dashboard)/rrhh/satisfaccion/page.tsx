@@ -148,7 +148,7 @@ export default function SatisfaccionPage() {
             <p className="text-[#555] text-[11px] mt-0.5 uppercase tracking-wider">Promedio</p>
           </div>
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 text-center">
-            <p className="text-2xl font-bold text-white">{respondidas.length}/{encuestas.length}</p>
+            <p className="text-xl font-semibold text-white">{respondidas.length}/{encuestas.length}</p>
             <p className="text-[#555] text-[11px] mt-0.5 uppercase tracking-wider">Respondidas</p>
           </div>
           <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 text-center">

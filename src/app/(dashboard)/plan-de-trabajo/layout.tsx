@@ -17,7 +17,7 @@ export default function PlanDeTrabajoLayout({ children }: { children: React.Reac
       <div className="px-6 pt-8 pb-0 border-b border-[#1a1a1a]">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-[10px] text-[#C9A84C] uppercase tracking-[0.2em] font-semibold">Sistema Operativo v2.0</p>
+            <p className="text-[10px] text-[#c9a96a] uppercase tracking-[0.2em] font-semibold">Sistema Operativo v2.0</p>
             <h1 className="text-2xl font-bold tracking-tight">Plan de Trabajo</h1>
           </div>
         </div>

@@ -87,16 +87,16 @@ export default function ProspectosPage() {
   };
 
   return (
-    <div className="p-3 md:p-6 max-w-4xl mx-auto pb-12">
+    <div className="p-4 md:p-6 pb-12">
 
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-bold text-white">Prospectos en frío</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Outbound · nurturing · construcción de relaciones</p>
+          <h1 className="text-xl font-semibold text-white">Prospectos en frío</h1>
+          <p className="text-sm text-[#6b7280] mt-0.5">Outbound · nurturing · construcción de relaciones</p>
         </div>
         <Link href="/prospectos/nuevo"
-          className="px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white font-semibold text-sm transition-colors">
+          className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
           + Nuevo prospecto
         </Link>
       </div>
@@ -112,11 +112,11 @@ export default function ProspectosPage() {
           <button key={f.id} onClick={() => setFiltroTemp(f.id)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
               filtroTemp === f.id
-                ? "border-emerald-600/60 bg-emerald-900/30 text-emerald-300"
-                : "border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"
+                ? "border-[#B3985B]/40 bg-[#B3985B]/5 text-[#B3985B]"
+                : "border-[#333] text-gray-500 hover:text-white hover:border-[#555]"
             }`}>
             {f.label}
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filtroTemp === f.id ? "bg-emerald-800/60 text-emerald-400" : "bg-[#1a1a1a] text-gray-600"}`}>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${filtroTemp === f.id ? "bg-[#B3985B]/10 text-[#B3985B]" : "bg-[#1a1a1a] text-gray-600"}`}>
               {counts[f.id as keyof typeof counts]}
             </span>
           </button>
@@ -136,7 +136,7 @@ export default function ProspectosPage() {
           <p className="text-white font-semibold mb-1">Sin prospectos {filtroTemp !== "TODOS" ? `con temperatura ${TEMPERATURA_CONFIG[filtroTemp]?.label.toLowerCase()}` : "aún"}</p>
           <p className="text-gray-500 text-sm mb-5">Registra el primer prospecto para arrancar el proceso de nurturing</p>
           <Link href="/prospectos/nuevo"
-            className="inline-flex px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white font-semibold text-sm transition-colors">
+            className="inline-flex bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
             + Nuevo prospecto
           </Link>
         </div>
@@ -152,7 +152,7 @@ export default function ProspectosPage() {
             return (
               <div key={p.id} className="relative group">
                 <button onClick={() => router.push(`/crm/tratos/${p.id}`)}
-                  className="w-full text-left bg-[#111] border border-[#1e1e1e] hover:border-emerald-900/60 rounded-xl px-4 py-3.5 transition-colors group/row">
+                  className="w-full text-left bg-[#111] border border-[#1e1e1e] hover:border-[#B3985B]/20 rounded-xl px-4 py-3.5 transition-colors group/row">
                   <div className="flex items-center gap-3">
 
                     {/* Temperatura dot */}
@@ -161,7 +161,7 @@ export default function ProspectosPage() {
                     {/* Nombre + empresa */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-white font-medium text-sm group-hover/row:text-emerald-200 transition-colors">
+                        <span className="text-white font-medium text-sm group-hover/row:text-[#c9a96a] transition-colors">
                           {p.cliente.nombre}
                         </span>
                         {p.cliente.empresa && (

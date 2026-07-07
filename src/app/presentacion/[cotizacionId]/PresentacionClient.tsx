@@ -882,7 +882,7 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token}: 
                         onClick={() => setTradeConfirmando(n.nivel)}
                         className={`relative text-left rounded-2xl border p-4 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] ${
                           n.destacado
-                            ? "border-[#B3985B] bg-[rgba(179,152,91,0.06)] hover:border-[#c4aa6b]"
+                            ? "border-[#B3985B] bg-[rgba(179,152,91,0.06)] hover:border-[#c9a96a]"
                             : "border-white/10 bg-white/[0.02] hover:border-white/20"
                         }`}
                       >

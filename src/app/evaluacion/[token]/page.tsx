@@ -305,7 +305,7 @@ export default function EvaluacionPage() {
             <button
               type="submit"
               disabled={!completo || enviando}
-              className="w-full bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-colors text-sm"
+              className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-colors text-sm"
             >
               {enviando ? "Enviando..." : "Enviar evaluación ✓"}
             </button>

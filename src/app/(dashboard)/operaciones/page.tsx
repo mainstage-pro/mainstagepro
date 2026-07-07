@@ -1237,7 +1237,7 @@ export default function OperacionesPage() {
               value={busqueda}
               onChange={e => setBusqueda(e.target.value)}
               placeholder="Buscar tarea…"
-              className="w-full pl-7 pr-6 py-1.5 bg-[#0d0d0d] border border-[#181818] rounded-lg text-xs text-white placeholder-[#2a2a2a] focus:outline-none focus:border-[#B3985B]/30 transition-colors"
+              className="w-full pl-7 pr-6 py-1.5 bg-[#0d0d0d] border border-[#181818] rounded-lg text-xs text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/30 transition-colors"
             />
             {busqueda && (
               <button onClick={() => setBusqueda("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-[#333] hover:text-[#777] transition-colors">
@@ -2355,7 +2355,7 @@ export default function OperacionesPage() {
                   value={busqueda}
                   onChange={e => setBusqueda(e.target.value)}
                   placeholder="Buscar tarea por nombre…"
-                  className="w-full pl-9 pr-8 py-2 bg-[#111] border border-[#1e1e1e] rounded-xl text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/40 transition-colors"
+                  className="w-full pl-9 pr-8 py-2 bg-[#111] border border-[#1e1e1e] rounded-xl text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/40 transition-colors"
                 />
                 {busqueda && (
                   <button onClick={() => setBusqueda("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white transition-colors">

@@ -124,9 +124,9 @@ export default function NuevoMovimientoPage() {
   const tipoColor = form.tipo === "INGRESO" ? "text-green-400" : form.tipo === "GASTO" ? "text-red-400" : "text-blue-400";
 
   return (
-    <div className="p-3 md:p-6 max-w-2xl mx-auto">
+    <div className="p-4 md:p-6 max-w-2xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Registrar Movimiento</h1>
+        <h1 className="text-xl font-semibold text-white">Registrar Movimiento</h1>
         <p className="text-gray-400 text-sm mt-1">Ingreso, gasto o movimiento entre cuentas</p>
       </div>
 

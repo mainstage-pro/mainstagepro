@@ -460,7 +460,7 @@ export default function ReporteSemanalLandingPage() {
             <div className="flex flex-col sm:flex-row gap-2.5">
               <a
                 href="/plan-trabajo/hoy"
-                className="flex-1 flex items-center justify-center gap-2 bg-[#B3985B] hover:bg-[#c9a96e] text-black font-bold py-3 rounded-xl transition-all text-sm shadow-lg shadow-[#B3985B]/10 hover:shadow-[#B3985B]/20"
+                className="flex-1 flex items-center justify-center gap-2 bg-[#B3985B] hover:bg-[#c9a96a] text-black font-bold py-3 rounded-xl transition-all text-sm shadow-lg shadow-[#B3985B]/10 hover:shadow-[#B3985B]/20"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -539,7 +539,7 @@ export default function ReporteSemanalLandingPage() {
             <button
               type="button"
               onClick={() => setPrivacyDismissed(true)}
-              className="w-full bg-[#B3985B] hover:bg-[#c9a96e] text-black font-bold py-3.5 rounded-xl transition-colors text-sm"
+              className="w-full bg-[#B3985B] hover:bg-[#c9a96a] text-black font-bold py-3.5 rounded-xl transition-colors text-sm"
             >
               Entendido — Comenzar reporte ✓
             </button>
@@ -904,7 +904,7 @@ export default function ReporteSemanalLandingPage() {
           {/* Submit */}
           <div className="pb-8 space-y-3">
             <button type="submit" disabled={enviando}
-              className="w-full bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-colors text-sm">
+              className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-colors text-sm">
               {enviando ? "Enviando reporte..." : `Enviar reporte — Semana ${semana} ✓`}
             </button>
             <div className="flex items-center justify-center">

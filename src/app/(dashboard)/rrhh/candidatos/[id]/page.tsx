@@ -266,7 +266,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
   const lbl = "block text-xs text-gray-500 mb-1";
 
   return (
-    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
       <div className="mb-2"><BackButton /></div>
       {/* Header */}
       <div className="flex items-start gap-4 flex-wrap">

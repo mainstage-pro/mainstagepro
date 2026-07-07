@@ -33,7 +33,7 @@ export default async function ProspeccionDetallePage({
   if (!prospeccion) notFound();
 
   return (
-    <div className="p-3 md:p-6 max-w-4xl mx-auto">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto">
       <ProspeccionDetalle prospeccion={prospeccion as Parameters<typeof ProspeccionDetalle>[0]["prospeccion"]} usuarios={usuarios} />
     </div>
   );

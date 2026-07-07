@@ -375,7 +375,7 @@ export default function TaskItem({
               {dots.map((filled, i) => (
                 <span key={i}
                   className="w-1.5 h-1.5 rounded-full shrink-0 transition-colors"
-                  style={{ backgroundColor: filled ? "#C9A84C" : "#1e1e1e" }}
+                  style={{ backgroundColor: filled ? "#c9a96a" : "#1e1e1e" }}
                 />
               ))}
             </div>

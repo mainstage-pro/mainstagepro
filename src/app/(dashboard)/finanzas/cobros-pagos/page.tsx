@@ -840,7 +840,7 @@ export default function CobrosPagosPage() {
   const ESTADO_SEM: Record<string, string> = { PENDIENTE: "text-yellow-400", LIQUIDADO: "text-green-400", VENCIDO: "text-red-400", PARCIAL: "text-blue-400" };
 
   return (
-    <div className="p-3 md:p-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto">
 
       {/* Page-level tabs */}
       <div className="flex gap-1 mb-6 border-b border-[#1a1a1a] pb-0">
@@ -1016,7 +1016,7 @@ export default function CobrosPagosPage() {
           </button>
           <button
             onClick={() => { setNuevoForm({ ...NUEVO_REGISTRO_EMPTY }); setEmpresaQuery(""); setShowNuevo(true); }}
-            className="px-3 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] transition-colors">
+            className="px-3 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c9a96a] transition-colors">
             + Nuevo registro
           </button>
         </div>
@@ -1319,7 +1319,7 @@ export default function CobrosPagosPage() {
                 {c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO" && (
                   <>
                     <button onClick={() => openModal(c, "cobro")}
-                      className="flex items-center gap-1.5 text-xs font-medium text-black bg-[#B3985B] hover:bg-[#d4b068] px-3 py-1.5 rounded-lg transition-colors">
+                      className="flex items-center gap-1.5 text-xs font-medium text-black bg-[#B3985B] hover:bg-[#c9a96a] px-3 py-1.5 rounded-lg transition-colors">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                       </svg>
@@ -1554,7 +1554,7 @@ export default function CobrosPagosPage() {
                   {c.estado !== "LIQUIDADO" && (
                     <>
                       <button onClick={() => openModal(c, "pago")}
-                        className="flex items-center gap-1.5 text-xs font-medium text-black bg-[#B3985B] hover:bg-[#d4b068] px-3 py-1.5 rounded-lg transition-colors">
+                        className="flex items-center gap-1.5 text-xs font-medium text-black bg-[#B3985B] hover:bg-[#c9a96a] px-3 py-1.5 rounded-lg transition-colors">
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                         </svg>
@@ -1746,7 +1746,7 @@ export default function CobrosPagosPage() {
                     <a
                       href={plan.tipo === 'cxc' ? `/api/cuentas-cobrar/${plan.cuentaId}/plan/pdf` : `/api/cuentas-pagar/${plan.cuentaId}/plan/pdf`}
                       target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-xs text-[#B3985B] hover:text-[#d4b068] transition-colors"
+                      className="flex items-center gap-1.5 text-xs text-[#B3985B] hover:text-[#c9a96a] transition-colors"
                     >
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -1954,7 +1954,7 @@ export default function CobrosPagosPage() {
 
             <div className="flex gap-3">
               <button onClick={confirmar} disabled={confirmando}
-                className="flex-1 bg-[#B3985B] hover:bg-[#d4b068] disabled:opacity-50 text-black text-sm font-semibold py-2.5 rounded-xl transition-colors">
+                className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black text-sm font-semibold py-2.5 rounded-xl transition-colors">
                 {confirmando ? "Guardando..." : "Registrar abono"}
               </button>
               <button onClick={() => setModal(null)}
@@ -2044,7 +2044,7 @@ export default function CobrosPagosPage() {
             </div>
             <div className="flex gap-3">
               <button onClick={guardarEdit} disabled={guardandoEdit}
-                className="flex-1 bg-[#B3985B] hover:bg-[#d4b068] disabled:opacity-50 text-black text-sm font-semibold py-2.5 rounded-xl transition-colors">
+                className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black text-sm font-semibold py-2.5 rounded-xl transition-colors">
                 {guardandoEdit ? "Guardando..." : "Guardar cambios"}
               </button>
               <button onClick={() => setEditModal(null)}
@@ -2285,7 +2285,7 @@ export default function CobrosPagosPage() {
                                     setGuardandoTecnico(false);
                                   }
                                 }}
-                                className="flex-1 py-2 rounded-lg bg-[#B3985B] text-black text-xs font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors"
+                                className="flex-1 py-2 rounded-lg bg-[#B3985B] text-black text-xs font-semibold hover:bg-[#c9a96a] disabled:opacity-40 transition-colors"
                               >
                                 {guardandoTecnico ? "Guardando…" : "Registrar técnico"}
                               </button>
@@ -2400,7 +2400,7 @@ export default function CobrosPagosPage() {
                 Cancelar
               </button>
               <button onClick={guardarNuevo} disabled={guardandoNuevo || !nuevoForm.concepto || !nuevoForm.monto}
-                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors">
+                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c9a96a] disabled:opacity-40 transition-colors">
                 {guardandoNuevo ? "Guardando…" : "Guardar"}
               </button>
             </div>
@@ -2491,7 +2491,7 @@ export default function CobrosPagosPage() {
                       <button
                         onClick={() => generarReciboTecnico(grupo.key)}
                         disabled={seleccionados.size === 0}
-                        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c9a96a] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>

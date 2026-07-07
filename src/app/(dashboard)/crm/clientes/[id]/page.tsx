@@ -350,7 +350,7 @@ function PanelPrecios({
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
           placeholder="Buscar por nombre, marca o modelo…"
-          className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg pl-8 pr-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50"
+          className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg pl-8 pr-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50"
         />
         {busqueda && (
           <button
@@ -685,7 +685,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
   if (!cliente) return <div className="text-red-400 text-sm">Cliente no encontrado</div>;
 
   return (
-    <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
       <div className="mb-2">
         <BackButton />
       </div>
@@ -693,7 +693,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-xl md:text-2xl font-bold text-white truncate">{cliente.nombre}</h1>
+          <h1 className="text-xl md:text-xl font-semibold text-white truncate">{cliente.nombre}</h1>
           {(cliente.compania ?? cliente.empresa) && (
             <p className="text-gray-400 text-sm mt-0.5">
               {cliente.compania?.nombre ?? cliente.empresa}
@@ -879,7 +879,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
                 href={`/catalogo/empresas/${cliente.compania.id}`}
                 target="_blank"
                 rel="noreferrer"
-                className="text-sm text-[#B3985B] hover:text-[#C9A84C] transition-colors"
+                className="text-sm text-[#B3985B] hover:text-[#c9a96a] transition-colors"
               >
                 {cliente.compania.nombre}
               </a>
@@ -933,15 +933,15 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
       {/* ── Stats ──────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-white">{cliente.tratos.length}</p>
+          <p className="text-xl font-semibold text-white">{cliente.tratos.length}</p>
           <p className="text-gray-400 text-xs mt-1">Tratos</p>
         </div>
         <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-white">{cliente.cotizaciones.length}</p>
+          <p className="text-xl font-semibold text-white">{cliente.cotizaciones.length}</p>
           <p className="text-gray-400 text-xs mt-1">Cotizaciones</p>
         </div>
         <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
-          <p className="text-2xl font-bold text-white">{cliente.proyectos.length}</p>
+          <p className="text-xl font-semibold text-white">{cliente.proyectos.length}</p>
           <p className="text-gray-400 text-xs mt-1">Proyectos</p>
         </div>
       </div>

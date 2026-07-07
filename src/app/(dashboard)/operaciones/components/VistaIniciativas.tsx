@@ -267,7 +267,7 @@ function IniciativaCard({
               onChange={e => setNuevoSub(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") addSub(); }}
               placeholder="+ Agregar subtarea"
-              className="flex-1 bg-transparent text-[12px] text-[#aaa] placeholder-[#2a2a2a] focus:outline-none"
+              className="flex-1 bg-transparent text-[12px] text-[#aaa] placeholder:text-[#444] focus:outline-none"
             />
             {nuevoSub && (
               <button

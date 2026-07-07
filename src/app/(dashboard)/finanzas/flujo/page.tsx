@@ -255,13 +255,13 @@ export default function FlujoPage() {
       <div className="border-b border-[#1a1a1a] px-6 py-5">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-lg font-bold text-white">Flujo de Efectivo</h1>
-            <p className="text-xs text-gray-500 mt-0.5">Movimientos realizados + compromisos del período</p>
+            <h1 className="text-xl font-semibold text-white">Flujo de Efectivo</h1>
+            <p className="text-xs text-[#6b7280] mt-0.5">Movimientos realizados + compromisos del período</p>
           </div>
           <select
             value={mes}
             onChange={e => setMes(e.target.value)}
-            className="bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#C9A84C]/50"
+            className="bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]/50"
           >
             {MESES.map(m => (
               <option key={m.val} value={m.val}>{m.label}</option>
@@ -272,7 +272,7 @@ export default function FlujoPage() {
 
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="w-6 h-6 border-2 border-[#C9A84C]/30 border-t-[#C9A84C] rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-[#B3985B]/30 border-t-[#B3985B] rounded-full animate-spin" />
         </div>
       ) : data ? (
         <div className="px-6 py-6 space-y-6">
@@ -290,7 +290,7 @@ export default function FlujoPage() {
             <MetricCard
               label="Flujo neto proyectado"
               value={fmt(data.flujoNetoProyectado)}
-              color={data.flujoNetoProyectado >= 0 ? "text-[#C9A84C]" : "text-red-400"}
+              color={data.flujoNetoProyectado >= 0 ? "text-[#B3985B]" : "text-red-400"}
               sub="Incl. compromisos pendientes"
             />
           </div>
@@ -325,8 +325,8 @@ export default function FlujoPage() {
                 <button
                   key={t}
                   onClick={() => setTab(t)}
-                  className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
-                    tab === t ? "bg-[#1e1e1e] text-white" : "text-gray-500 hover:text-gray-300"
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    tab === t ? "bg-[#B3985B] text-black" : "text-[#6b7280] hover:text-white"
                   }`}
                 >
                   {labels[t]}

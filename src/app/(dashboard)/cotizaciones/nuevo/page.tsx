@@ -1402,10 +1402,10 @@ function CotizadorForm() {
   }
 
   return (
-    <div className="p-3 md:p-6 max-w-6xl mx-auto">
+    <div className="p-4 md:p-6 max-w-6xl mx-auto">
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">{editId ? "Editar Cotización" : "Nueva Cotización"}</h1>
+          <h1 className="text-xl font-semibold text-white">{editId ? "Editar Cotización" : "Nueva Cotización"}</h1>
           {clienteNombre && <p className="text-[#B3985B] text-sm mt-0.5">{clienteNombre}</p>}
         </div>
         <div className="flex gap-3">
@@ -3061,7 +3061,7 @@ function CotizadorForm() {
                   setDeficitProveedorId('');
                   setDeficitProveedorTexto('');
                 }}
-                className="flex-1 bg-[#B3985B] hover:bg-[#c9a96e] text-black text-sm font-bold py-2.5 rounded-xl transition-colors">
+                className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-bold py-2.5 rounded-xl transition-colors">
                 Confirmar
               </button>
               <button type="button" onClick={() => { setDeficitInfo(null); setDeficitProveedorId(''); setDeficitProveedorTexto(''); }}

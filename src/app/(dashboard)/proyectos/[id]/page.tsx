@@ -389,7 +389,7 @@ function HourPicker({ label, value, field, onSave, noLabel = false }:
             ))}
           </div>
           <button type="button" onClick={() => pick(selH, selM, selP)}
-            className="w-full py-2 bg-[#B3985B] hover:bg-[#c4aa6b] text-black text-xs font-semibold rounded-lg transition-colors">
+            className="w-full py-2 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold rounded-lg transition-colors">
             Confirmar {selH}:{String(selM).padStart(2, '0')} {selP}
           </button>
         </div>
@@ -862,7 +862,7 @@ function VehiculoIdSelector({
                   <button type="button" onClick={() => setShowNew(false)}
                     className="flex-1 text-xs text-gray-500 hover:text-gray-300 py-1.5 rounded-lg border border-[#222] transition-colors">Cancelar</button>
                   <button type="button" onClick={handleCrear} disabled={!newNombre.trim() || saving}
-                    className="flex-1 text-xs font-semibold bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-50 text-black py-1.5 rounded-lg transition-colors">
+                    className="flex-1 text-xs font-semibold bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black py-1.5 rounded-lg transition-colors">
                     {saving ? "Guardando..." : "Registrar y usar"}
                   </button>
                 </div>
@@ -1108,7 +1108,7 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
                     className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg transition-colors ${
                       linea.yaConfirmado
                         ? 'text-[#555] hover:text-[#B3985B]'
-                        : 'bg-[#B3985B] hover:bg-[#c4aa6b] text-black'
+                        : 'bg-[#B3985B] hover:bg-[#c9a96a] text-black'
                     }`}
                   >
                     {linea.yaConfirmado ? 'Editar' : 'Confirmar'}
@@ -1216,7 +1216,7 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
                 </label>
                 <div className="flex items-center gap-2">
                   <button onClick={confirmar} disabled={saving || !confProveedorId || !confMonto}
-                    className="bg-[#B3985B] hover:bg-[#c4aa6b] disabled:opacity-40 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+                    className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
                     {saving ? 'Guardando...' : linea.yaConfirmado ? 'Guardar cambios' : 'Confirmar equipo'}
                   </button>
                   <button onClick={() => setConfirmando(null)}
@@ -3548,7 +3548,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       )}
       <button
         onClick={() => { setLoading(true); load(); }}
-        className="px-4 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] transition-colors">
+        className="px-4 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c9a96a] transition-colors">
         Reintentar
       </button>
       <a href="/proyectos" className="text-white/30 text-xs hover:text-white/60 transition-colors">← Volver a proyectos</a>
@@ -3572,7 +3572,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
   return (
     <>
-    <div className="p-3 md:p-6 max-w-6xl mx-auto pb-12">
+    <div className="p-4 md:p-6 max-w-6xl mx-auto pb-12">
       <div className="mb-2"><BackButton /></div>
 
       {/* ── Header ── */}
@@ -3592,7 +3592,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </span>
             )}
           </div>
-          <h1 className="text-xl md:text-2xl font-bold text-white">{proyecto.nombre}</h1>
+          <h1 className="text-xl md:text-xl font-semibold text-white">{proyecto.nombre}</h1>
           <Link href={`/crm/clientes/${proyecto.cliente.id}`} className="text-[#B3985B] text-sm hover:underline">
             {proyecto.cliente.nombre}{proyecto.cliente.empresa ? ` · ${proyecto.cliente.empresa}` : ""}
           </Link>
@@ -7016,7 +7016,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         </div>
                         {hayPendientes && (
                           <button onClick={marcarTodosPagado}
-                            className="text-xs bg-[#B3985B] hover:bg-[#c4aa6b] text-black font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                            className="text-xs bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold px-3 py-1.5 rounded-lg transition-colors">
                             Marcar todos pagado
                           </button>
                         )}
@@ -7377,7 +7377,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4">
                     <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Viabilidad de cotización</p>
                     <div className="flex items-baseline gap-2">
-                      <p className="text-2xl font-bold text-white tabular-nums">{pagoSocios.viabilidad.pctFormateado}</p>
+                      <p className="text-xl font-semibold text-white tabular-nums">{pagoSocios.viabilidad.pctFormateado}</p>
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                         pagoSocios.viabilidad.tier.color === "emerald" ? "bg-emerald-900/30 text-emerald-400"
                         : pagoSocios.viabilidad.tier.color === "green"   ? "bg-green-900/30 text-green-400"
@@ -7392,7 +7392,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">
                       Equipos propios en cotización ({pagoSocios.equipoPropio.lineas.length})
                     </p>
-                    <p className="text-2xl font-bold text-white tabular-nums">{fmt(pagoSocios.equipoPropio.total)}</p>
+                    <p className="text-xl font-semibold text-white tabular-nums">{fmt(pagoSocios.equipoPropio.total)}</p>
                     <p className="text-[10px] text-gray-600 mt-1">Total generado por equipos propios</p>
                   </div>
                 </div>
@@ -7499,7 +7499,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                 <button
                                   onClick={() => generarPagoSocio(socio.id)}
                                   disabled={savingPagoSocio === socio.id || monto <= 0 || !fechaCompromisoSocio}
-                                  className="bg-[#B3985B] hover:bg-[#c4aa6b] disabled:opacity-40 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+                                  className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
                                 >
                                   {savingPagoSocio === socio.id ? "Generando..." : "Generar CxP"}
                                 </button>
@@ -7748,7 +7748,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </button>
               <button onClick={async () => { const ok = await agregarGastoProy(); if (ok) setShowGastoModal(false); }}
                 disabled={addingGasto || !gastoConcepto.trim() || !gastoMonto}
-                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors">
+                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c9a96a] disabled:opacity-40 transition-colors">
                 {addingGasto ? "Guardando..." : gastoEstado === "PENDIENTE" ? "Registrar gasto pendiente" : "Registrar pago"}
               </button>
             </div>
@@ -7852,7 +7852,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 Cancelar
               </button>
               <button onClick={guardarEdicionGasto} disabled={savingGasto || !editGastoForm.concepto || !editGastoForm.monto}
-                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors">
+                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c9a96a] disabled:opacity-40 transition-colors">
                 {savingGasto ? "Guardando..." : "Guardar cambios"}
               </button>
             </div>
@@ -8109,7 +8109,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   href={`/api/proyectos/${proyecto.id}/brief-imagen`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 bg-[#B3985B] hover:bg-[#c9a96e] text-black text-xs font-semibold py-2.5 rounded-xl transition-colors text-center"
+                  className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold py-2.5 rounded-xl transition-colors text-center"
                 >
                   🖼️ Descargar imagen
                 </a>

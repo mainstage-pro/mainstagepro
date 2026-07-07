@@ -41,14 +41,14 @@ interface Sesion {
 const BLOQUE_COLORS: Record<string, string> = {
   A: "#6366F1", B: "#10B981", C: "#F59E0B",
   D: "#3B82F6", E: "#8B5CF6", F: "#EC4899",
-  G: "#EF4444", H: "#14B8A6", I: "#C9A84C",
+  G: "#EF4444", H: "#14B8A6", I: "#c9a96a",
 };
 
 const ESTADO_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   pendiente:        { label: "Pendiente",       color: "#6b7280", bg: "#1a1a1a" },
   "en-preparacion": { label: "En preparación",  color: "#F59E0B", bg: "#1c1500" },
   lista:            { label: "Lista",            color: "#22c55e", bg: "#0a1f0a" },
-  impartida:        { label: "Impartida",        color: "#C9A84C", bg: "#1a1200" },
+  impartida:        { label: "Impartida",        color: "#c9a96a", bg: "#1a1200" },
 };
 
 function padNum(n: number) { return String(n).padStart(2, "0"); }
@@ -94,7 +94,7 @@ function SortablePoint({
       </button>
 
       {/* Index */}
-      <span className="text-[10px] font-mono shrink-0 w-5 text-right" style={{ color: "#C9A84C" }}>
+      <span className="text-[10px] font-mono shrink-0 w-5 text-right" style={{ color: "#c9a96a" }}>
         {padNum(index + 1)}
       </span>
 
@@ -106,7 +106,7 @@ function SortablePoint({
           onChange={(e) => setVal(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => { if (e.key === "Enter") commit(); if (e.key === "Escape") { setVal(text); setEditing(false); } }}
-          className="flex-1 bg-[#222] border border-[#C9A84C]/50 rounded px-2 py-0.5 text-white text-sm focus:outline-none"
+          className="flex-1 bg-[#222] border border-[#c9a96a]/50 rounded px-2 py-0.5 text-white text-sm focus:outline-none"
           autoFocus
         />
       ) : (
@@ -248,7 +248,7 @@ function PresentationModal({
       <div className="flex items-center justify-between px-4 py-2 shrink-0" style={{ background: "#080808", borderBottom: "1px solid #1a1a1a" }}>
         <button
           onClick={onDownload}
-          className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border transition-colors hover:border-[#C9A84C] hover:text-[#C9A84C]"
+          className="flex items-center gap-2 text-xs px-3 py-1.5 rounded-lg border transition-colors hover:border-[#c9a96a] hover:text-[#c9a96a]"
           style={{ borderColor: "#333", color: "#6b7280" }}
         >
           ↓ Descargar HTML
@@ -602,7 +602,7 @@ export default function CapacitacionDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#0a0a0a" }}>
-        <div className="w-6 h-6 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-[#c9a96a] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -669,8 +669,8 @@ export default function CapacitacionDetailPage() {
                   {estadoCfg.label}
                 </span>
               </div>
-              <h1 className="text-2xl font-bold text-white leading-tight mb-1">
-                <span style={{ color: "#C9A84C" }}>{padNum(sesion.numero)}.</span> {sesion.titulo}
+              <h1 className="text-xl font-semibold text-white leading-tight mb-1">
+                <span style={{ color: "#c9a96a" }}>{padNum(sesion.numero)}.</span> {sesion.titulo}
               </h1>
               <p className="text-sm" style={{ color: "#6b7280" }}>{sesion.descripcion}</p>
             </div>
@@ -680,11 +680,11 @@ export default function CapacitacionDetailPage() {
               onClick={handleGenerate}
               disabled={generating}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 disabled:opacity-60 hover:opacity-90 active:scale-95 shrink-0"
-              style={{ background: generating ? "#1a1200" : "#C9A84C", color: generating ? "#C9A84C" : "#000" }}
+              style={{ background: generating ? "#1a1200" : "#c9a96a", color: generating ? "#c9a96a" : "#000" }}
             >
               {generating ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-[#C9A84C] border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-[#c9a96a] border-t-transparent rounded-full animate-spin" />
                   Generando...
                 </>
               ) : (
@@ -712,7 +712,7 @@ export default function CapacitacionDetailPage() {
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-sm font-semibold text-white">Puntos de la sesión</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full" style={{ background: "#1a1a1a", color: "#C9A84C" }}>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full" style={{ background: "#1a1a1a", color: "#c9a96a" }}>
                       {puntos.length}
                     </span>
                     <SaveIndicator state={puntosSave} />
@@ -748,7 +748,7 @@ export default function CapacitacionDetailPage() {
                     <div className="mt-3 flex items-center gap-3 px-3">
                       <button
                         onClick={handleAddPunto}
-                        className="text-xs font-medium transition-colors hover:text-[#C9A84C]"
+                        className="text-xs font-medium transition-colors hover:text-[#c9a96a]"
                         style={{ color: "#6b7280" }}
                       >
                         + Agregar punto
@@ -800,7 +800,7 @@ export default function CapacitacionDetailPage() {
                       value={notas}
                       onChange={(e) => handleNotasChange(e.target.value)}
                       placeholder={"Ej: En el festival de Querétaro del año pasado tuvimos un caso con el rider que...\n/ Quiero que el equipo entienda que este punto es especialmente crítico porque...\n/ Una anécdota que ilustra bien este tema es..."}
-                      className="w-full bg-[#0d0d0d] border rounded-xl px-4 py-3 text-sm text-white placeholder:text-[#333] resize-none focus:outline-none focus:border-[#C9A84C]/50 transition-colors leading-relaxed"
+                      className="w-full bg-[#0d0d0d] border rounded-xl px-4 py-3 text-sm text-white placeholder:text-[#333] resize-none focus:outline-none focus:border-[#c9a96a]/50 transition-colors leading-relaxed"
                       style={{ borderColor: "#1e1e1e", minHeight: 180 }}
                       rows={8}
                     />
@@ -830,7 +830,7 @@ export default function CapacitacionDetailPage() {
                     <ul className="space-y-2">
                       {sesion.objetivos.map((o, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm" style={{ color: "#6b7280" }}>
-                          <span style={{ color: "#C9A84C" }} className="shrink-0 mt-0.5">◆</span>
+                          <span style={{ color: "#c9a96a" }} className="shrink-0 mt-0.5">◆</span>
                           {o}
                         </li>
                       ))}
@@ -853,7 +853,7 @@ export default function CapacitacionDetailPage() {
                     type="date"
                     value={fecha}
                     onChange={(e) => setFecha(e.target.value)}
-                    className="w-full bg-[#0d0d0d] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#C9A84C]/50"
+                    className="w-full bg-[#0d0d0d] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a96a]/50"
                     style={{ borderColor: "#262626" }}
                   />
                 </div>
@@ -877,7 +877,7 @@ export default function CapacitacionDetailPage() {
                   <input
                     value={impartidor}
                     onChange={(e) => setImpartidor(e.target.value)}
-                    className="w-full bg-[#0d0d0d] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#C9A84C]/50"
+                    className="w-full bg-[#0d0d0d] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a96a]/50"
                     style={{ borderColor: "#262626" }}
                   />
                 </div>
@@ -901,7 +901,7 @@ export default function CapacitacionDetailPage() {
                   onClick={saveConfig}
                   disabled={savingConfig}
                   className="w-full py-2 rounded-lg text-sm font-semibold transition-all disabled:opacity-60"
-                  style={{ background: "#1a1a1a", color: "#C9A84C", border: "1px solid #333" }}
+                  style={{ background: "#1a1a1a", color: "#c9a96a", border: "1px solid #333" }}
                 >
                   {savingConfig ? "Guardando..." : "Guardar configuración"}
                 </button>
@@ -928,7 +928,7 @@ export default function CapacitacionDetailPage() {
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-semibold text-white">Versión {v.version}</span>
                             {i === 0 && (
-                              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: "#1a1200", color: "#C9A84C" }}>
+                              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded" style={{ background: "#1a1200", color: "#c9a96a" }}>
                                 Actual
                               </span>
                             )}
@@ -949,7 +949,7 @@ export default function CapacitacionDetailPage() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => viewVersion(v)}
-                            className="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors hover:border-[#C9A84C] hover:text-[#C9A84C]"
+                            className="flex-1 py-1.5 rounded-lg text-xs font-medium transition-colors hover:border-[#c9a96a] hover:text-[#c9a96a]"
                             style={{ border: "1px solid #262626", color: "#6b7280" }}
                           >
                             Ver

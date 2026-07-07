@@ -189,7 +189,7 @@ export default function RepartosPage() {
   const totalPendiente = repartos.reduce((s, r) => s + r.cuotas.filter(c => c.estado === "PENDIENTE").reduce((a, c) => a + c.monto, 0), 0);
 
   return (
-    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>

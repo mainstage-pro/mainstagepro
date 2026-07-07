@@ -129,12 +129,12 @@ export default function VentasPage() {
   const mesActual = new Date().toISOString().slice(0, 7);
 
   return (
-    <div className="p-3 md:p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Ventas</h1>
-          <p className="text-gray-400 text-sm mt-1">Pipeline, rendimiento y comisiones</p>
+          <h1 className="text-xl font-semibold text-white">Ventas</h1>
+          <p className="text-sm text-[#6b7280] mt-0.5">Pipeline, rendimiento y comisiones</p>
         </div>
         <div className="flex gap-2">
           <Link
@@ -147,13 +147,13 @@ export default function VentasPage() {
             <>
               <Link
                 href="/ventas/vendedores"
-                className="px-4 py-2 rounded-lg border border-[#333] text-gray-300 text-sm hover:text-white hover:border-[#555] transition-colors"
+                className="border border-[#333] text-gray-400 hover:text-white hover:border-[#555] text-sm px-4 py-2 rounded-lg transition-colors"
               >
                 Vendedores
               </Link>
               <Link
                 href="/ventas/config"
-                className="px-4 py-2 rounded-lg border border-[#333] text-gray-300 text-sm hover:text-white hover:border-[#555] transition-colors"
+                className="border border-[#333] text-gray-400 hover:text-white hover:border-[#555] text-sm px-4 py-2 rounded-lg transition-colors"
               >
                 Configuración
               </Link>
@@ -191,7 +191,7 @@ export default function VentasPage() {
         ].map(s => (
           <div key={s.label} className="bg-[#111] border border-[#222] rounded-xl p-4">
             <p className="text-xs text-gray-500 mb-1">{s.label}</p>
-            <p className="text-2xl font-bold text-white">{s.value}</p>
+            <p className="text-xl font-semibold text-white">{s.value}</p>
             <p className="text-xs text-gray-600 mt-0.5">{s.sub}</p>
           </div>
         ))}

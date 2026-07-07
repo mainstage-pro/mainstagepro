@@ -319,7 +319,7 @@ export default function HistorialPage() {
               onClick={() => setUsuarioId('todos')}
               className={`text-[10px] px-2 py-1 rounded-lg border transition-all ${
                 usuarioId === 'todos'
-                  ? 'bg-[#C9A84C]/15 border-[#C9A84C]/40 text-[#C9A84C]'
+                  ? 'bg-[#c9a96a]/15 border-[#c9a96a]/40 text-[#c9a96a]'
                   : 'border-[#1e1e1e] text-[#444] hover:text-[#777]'
               }`}
             >
@@ -372,7 +372,7 @@ export default function HistorialPage() {
           <select
             value={filtroArea}
             onChange={e => setFiltroArea(e.target.value)}
-            className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-2 py-1.5 text-xs text-[#666] focus:outline-none focus:border-[#C9A84C]/30"
+            className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-2 py-1.5 text-xs text-[#666] focus:outline-none focus:border-[#c9a96a]/30"
           >
             <option value="">Todas las áreas</option>
             {AREAS_PLAN.map(a => <option key={a} value={a}>{a}</option>)}
@@ -431,7 +431,7 @@ export default function HistorialPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4">
                   <p className="text-[9px] text-[#444] uppercase tracking-wider mb-1">Completadas</p>
-                  <p className="text-xl font-bold text-white tabular-nums">
+                  <p className="text-xl font-semibold text-white tabular-nums">
                     {resumen.completadas}<span className="text-sm text-[#444] ml-1">/{resumen.total}</span>
                   </p>
                 </div>
@@ -443,13 +443,13 @@ export default function HistorialPage() {
                 </div>
                 <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4">
                   <p className="text-[9px] text-[#444] uppercase tracking-wider mb-1">Críticas completadas</p>
-                  <p className="text-xl font-bold text-white tabular-nums">
+                  <p className="text-xl font-semibold text-white tabular-nums">
                     {resumen.criticasCompletadas}<span className="text-sm text-[#444] ml-1">/{resumen.criticasTotal}</span>
                   </p>
                 </div>
                 <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4">
                   <p className="text-[9px] text-[#444] uppercase tracking-wider mb-1">Racha</p>
-                  <p className="text-xl font-bold text-white tabular-nums">
+                  <p className="text-xl font-semibold text-white tabular-nums">
                     {resumen.racha}
                     <span className="text-sm text-[#444] ml-1">día{resumen.racha !== 1 ? 's' : ''}</span>
                   </p>
@@ -479,7 +479,7 @@ export default function HistorialPage() {
                     </span>
                     <span className="text-[10px] text-[#333]">· {dia.instancias.length} compromisos</span>
                     {hoy && (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded border border-[#C9A84C]/30 bg-[#C9A84C]/10 text-[#C9A84C] font-semibold">HOY</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded border border-[#c9a96a]/30 bg-[#c9a96a]/10 text-[#c9a96a] font-semibold">HOY</span>
                     )}
                     {!hoy && !pasado && (
                       <span className="text-[9px] px-1.5 py-0.5 rounded border border-[#2a2a2a] text-[#444]">PRÓXIMO</span>

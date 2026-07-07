@@ -50,7 +50,7 @@ export default function AgendaPage() {
   }, []);
 
   if (loading) return (
-    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-4">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
       <div className="h-8 w-48 bg-[#1a1a1a] rounded-lg animate-pulse" />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {[1,2,3,4].map(i => <div key={i} className="h-40 bg-[#111] border border-[#1e1e1e] rounded-xl animate-pulse" />)}
@@ -72,7 +72,7 @@ export default function AgendaPage() {
   });
 
   return (
-    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
 
       {/* Header */}
       <div>

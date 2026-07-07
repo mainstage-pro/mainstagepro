@@ -998,7 +998,7 @@ export default function ReporteProduccionPage() {
   }
 
   return (
-    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
@@ -1015,7 +1015,7 @@ export default function ReporteProduccionPage() {
           <button
             onClick={handleDescargarPDF}
             disabled={downloadingPDF || loading || !data}
-            className="flex items-center gap-2 px-4 py-1.5 bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-1.5 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 disabled:cursor-not-allowed text-black text-sm font-semibold rounded-lg transition-colors"
           >
             {downloadingPDF ? (
               <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>

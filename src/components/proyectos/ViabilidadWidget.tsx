@@ -98,7 +98,7 @@ export function ViabilidadWidget({
                 <div className="flex items-center gap-2">
                   <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${hCfg.dot}`} />
                   <span className="text-xs text-gray-400">{h.numero} v{h.version}</span>
-                  {h.esActiva && <span className="text-[8px] text-[#C9A84C] border border-[#C9A84C]/30 px-1.5 py-0.5 rounded-full">Activa</span>}
+                  {h.esActiva && <span className="text-[8px] text-[#c9a96a] border border-[#c9a96a]/30 px-1.5 py-0.5 rounded-full">Activa</span>}
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`text-xs font-semibold ${hCfg.color}`}>{(h.pctUtilidad * 100).toFixed(1)}%</span>

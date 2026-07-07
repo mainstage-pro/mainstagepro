@@ -947,7 +947,7 @@ function SeguimientosPanel({ tratoId, telefono, showModal, setShowModal }: {
               <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Nota <span className="normal-case text-gray-700">(opcional)</span></p>
               <textarea value={nota} onChange={e => setNota(e.target.value)} rows={2}
                 placeholder="¿Qué se va a hacer?"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-xl px-3 py-2.5 resize-none placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-xl px-3 py-2.5 resize-none placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50" />
             </div>
 
             <div className="flex gap-2 pt-1">
@@ -1744,7 +1744,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   })();
 
   return (
-    <div className="p-3 md:p-6 max-w-6xl mx-auto pb-12">
+    <div className="p-4 md:p-6 max-w-6xl mx-auto pb-12">
       <div className="mb-2"><BackButton /></div>
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 mt-4">
       {/* ── LEFT COLUMN ── */}
@@ -1768,7 +1768,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#B3985B]/20 text-[#B3985B]">✓ Descubrimiento</span>
               )}
             </div>
-            <h1 className="text-xl font-bold text-white truncate">{trato.cliente.nombre}</h1>
+            <h1 className="text-xl font-semibold text-white truncate">{trato.cliente.nombre}</h1>
             {trato.cliente.empresa && <p className="text-gray-500 text-sm">{trato.cliente.empresa}</p>}
             {trato.nombreEvento && <p className="text-gray-400 text-sm italic mt-0.5">"{trato.nombreEvento}"</p>}
             {notaInicial && <p className="text-gray-600 text-xs mt-1.5 line-clamp-2">{notaInicial}</p>}
@@ -3265,7 +3265,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   onChange={e => setScoutingForm(p => ({ ...p, [sec.key]: e.target.value }))}
                   rows={sec.rows}
                   placeholder={sec.placeholder}
-                  className="w-full bg-[#0d0d0d] border border-[#1e1e1e] hover:border-[#2a2a2a] focus:border-[#B3985B]/40 rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none placeholder-[#3a3a3a] transition-colors leading-relaxed"
+                  className="w-full bg-[#0d0d0d] border border-[#1e1e1e] hover:border-[#2a2a2a] focus:border-[#B3985B]/40 rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none placeholder:text-[#444] transition-colors leading-relaxed"
                 />
               </div>
             ))}

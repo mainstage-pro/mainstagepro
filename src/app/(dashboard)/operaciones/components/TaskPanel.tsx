@@ -309,7 +309,7 @@ export default function TaskPanel({
           ref={titleRef}
           value={titulo}
           onChange={e => { setTitulo(e.target.value); mark(); autoResize(e.target); }}
-          className="w-full bg-transparent text-white text-lg font-medium resize-none overflow-hidden focus:outline-none placeholder-[#444] leading-snug"
+          className="w-full bg-transparent text-white text-lg font-medium resize-none overflow-hidden focus:outline-none placeholder:text-[#444] leading-snug"
           placeholder="Título de la tarea"
           rows={1}
         />

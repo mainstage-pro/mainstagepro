@@ -53,7 +53,7 @@ export default function PlantillasPage() {
   }
 
   return (
-    <div className="p-3 md:p-6 max-w-5xl mx-auto">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Plantillas de cotización</h1>
@@ -61,7 +61,7 @@ export default function PlantillasPage() {
             {loading ? "Cargando..." : `${plantillas.length} plantilla${plantillas.length !== 1 ? "s" : ""} activa${plantillas.length !== 1 ? "s" : ""}`}
           </p>
         </div>
-        <Link href="/crm/tratos" className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
+        <Link href="/crm/tratos" className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
           Ir a Tratos →
         </Link>
       </div>

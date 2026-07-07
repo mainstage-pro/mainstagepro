@@ -241,11 +241,11 @@ export default function VenuesPage() {
   if (loading) return <div className="text-gray-400 text-sm">Cargando...</div>;
 
   return (
-    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-5 pb-12">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5 pb-12">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Venues</h1>
+          <h1 className="text-xl font-semibold text-white">Venues</h1>
           <p className="text-gray-400 text-sm mt-0.5">Base de datos de recintos y espacios de eventos</p>
         </div>
         <button onClick={openNew} className="px-4 py-2 bg-[#B3985B] text-black font-semibold rounded-lg text-sm hover:bg-[#c9a96a] transition-colors">

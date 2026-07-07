@@ -278,7 +278,7 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
                   </div>
                   <div className="flex gap-2">
                     <button type="button" onClick={() => onAddProveedor(equipoActual.id)} disabled={savingProveedor}
-                      className="flex-1 bg-[#B3985B] hover:bg-[#c9a96e] text-black text-xs font-semibold py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                      className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold py-1.5 rounded-lg transition-colors disabled:opacity-50">
                       {savingProveedor ? 'Guardando...' : 'Agregar'}
                     </button>
                     <button type="button" onClick={() => setShowAddProveedor(false)}
@@ -302,7 +302,7 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
                     onClick={() => setForm(p => ({ ...p, voltajeRequerido: val }))}
                     className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
                       form.voltajeRequerido === val
-                        ? val === "" ? "bg-[#1a1a1a] border-[#333] text-gray-400" : "bg-[#B3985B]/15 border-[#B3985B]/60 text-[#C9A84C]"
+                        ? val === "" ? "bg-[#1a1a1a] border-[#333] text-gray-400" : "bg-[#B3985B]/15 border-[#B3985B]/60 text-[#B3985B]"
                         : "bg-[#0d0d0d] border-[#2a2a2a] text-gray-600 hover:border-[#444] hover:text-gray-400"
                     }`}
                   >
@@ -333,7 +333,7 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
 
       <div className="flex items-center gap-3 pt-2 border-t border-[#1a1a1a]">
         <button onClick={onSave} disabled={saving || !form.descripcion || !form.categoriaId}
-          className="px-5 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold disabled:opacity-40 hover:bg-[#c4aa6b] transition-colors">
+          className="px-5 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold disabled:opacity-40 hover:bg-[#c9a96a] transition-colors">
           {saving ? "Guardando..." : panel === "nuevo" ? "Crear equipo" : "Guardar cambios"}
         </button>
         <button onClick={onClose} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
@@ -626,7 +626,7 @@ export default function InventarioMaestroPage() {
   };
 
   return (
-    <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-5">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-5">
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -640,7 +640,7 @@ export default function InventarioMaestroPage() {
             + Categoría
           </button>
           <button onClick={abrirNuevo}
-            className="bg-[#B3985B] hover:bg-[#c4aa6b] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
             + Nuevo equipo
           </button>
         </div>
@@ -666,10 +666,10 @@ export default function InventarioMaestroPage() {
               onChange={e => setNewCatNombre(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") createCategoria(); }}
               placeholder="Nombre de nueva categoría..."
-              className="flex-1 bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/40"
+              className="flex-1 bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/40"
             />
             <button onClick={createCategoria} disabled={savingCat || !newCatNombre.trim()}
-              className="bg-[#B3985B] hover:bg-[#c4aa6b] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
               {savingCat ? "..." : "Crear"}
             </button>
           </div>
@@ -776,7 +776,7 @@ export default function InventarioMaestroPage() {
         {/* Filtros secundarios */}
         <div className="flex flex-wrap items-center gap-2">
           <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar..."
-            className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/40 w-40" />
+            className="bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50 transition-colors w-40" />
           <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value as typeof filtroEstado)}
             className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-xs text-[#9ca3af] focus:outline-none">
             <option value="">Estado: todos</option>

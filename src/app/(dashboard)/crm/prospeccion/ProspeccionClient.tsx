@@ -67,7 +67,7 @@ const ETAPA_COLORS: Record<string, { bg: string; text: string; border: string; d
 };
 
 const TIPO_EVENTO_COLORS: Record<string, { bg: string; text: string }> = {
-  MUSICAL:     { bg: "bg-[#C9A84C]/15", text: "text-[#C9A84C]" },
+  MUSICAL:     { bg: "bg-[#c9a96a]/15", text: "text-[#c9a96a]" },
   SOCIAL:      { bg: "bg-purple-900/30", text: "text-purple-300" },
   EMPRESARIAL: { bg: "bg-blue-900/30",  text: "text-blue-300" },
   VARIOS:      { bg: "bg-gray-800",     text: "text-gray-400" },
@@ -926,7 +926,7 @@ function ModalNuevoProspecto({ usuarios, tipo, onClose, onCreated }: {
               Cancelar
             </button>
             <button type="submit" disabled={saving || (tipo === "CLIENTE_PROPIO" && !clienteSeleccionado)}
-              className="flex-1 px-4 py-2 text-sm bg-[#B3985B] text-black font-semibold rounded-lg hover:bg-[#C9A84C] disabled:opacity-50 transition-colors">
+              className="flex-1 px-4 py-2 text-sm bg-[#B3985B] text-black font-semibold rounded-lg hover:bg-[#c9a96a] disabled:opacity-50 transition-colors">
               {saving ? "Creando..." : tipo === "NUEVO_PROSPECTO" ? "Crear contacto" : "Agregar cliente existente"}
             </button>
           </div>
@@ -1061,7 +1061,7 @@ export default function ProspeccionClient({
           </button>
           <button
             onClick={() => setShowModal(true)}
-            className="bg-[#B3985B] hover:bg-[#C9A84C] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors"
+            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
           >
             {activeTab === "NUEVO_PROSPECTO" ? "+ Nuevo contacto" : "+ Cliente existente"}
           </button>
@@ -1099,7 +1099,7 @@ export default function ProspeccionClient({
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555] pointer-events-none" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input type="text" placeholder="Buscar por nombre o empresa…"
             value={busqueda} onChange={e => setBusqueda(e.target.value)}
-            className="w-full pl-8 pr-4 py-1.5 bg-[#111] border border-[#2a2a2a] rounded-lg text-xs text-white placeholder-[#555] focus:outline-none focus:border-[#B3985B]/50 transition-colors" />
+            className="w-full pl-8 pr-4 py-1.5 bg-[#111] border border-[#2a2a2a] rounded-lg text-xs text-white placeholder:text-[#555] focus:outline-none focus:border-[#B3985B]/50 transition-colors" />
           {busqueda && <button onClick={() => setBusqueda("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-[#555] hover:text-white"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>}
         </div>
         <Combobox value={filtroEvento} onChange={setFiltroEvento}

@@ -8,7 +8,7 @@ import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { Modal } from "@/components/Modal";
 
-const STAR_COLOR = '#C9A84C'
+const STAR_COLOR = '#c9a96a'
 
 const GIROS_OPCIONES = [
   'Renta de equipo',
@@ -350,7 +350,7 @@ export default function ProveedoresPage() {
   const inactivos = filtered.filter(p => !p.activo);
 
   return (
-    <div className="p-3 md:p-6 max-w-6xl mx-auto">
+    <div className="p-4 md:p-6 max-w-6xl mx-auto">
       {/* Backdrop for popovers */}
       {(prioPopover || giroPopover) && (
         <div className="fixed inset-0 z-40" onClick={() => { setPrioPopover(null); setGiroPopover(null) }} />
@@ -515,7 +515,7 @@ export default function ProveedoresPage() {
       {/* Category tabs */}
       <div className="flex items-center gap-1 overflow-x-auto pb-1 mb-4" style={{ scrollbarWidth: 'none' }}>
         {([
-          { key: 'TODOS', label: 'Todos', color: '#C9A84C' },
+          { key: 'TODOS', label: 'Todos', color: '#c9a96a' },
           ...girosUnicos.map((g: string) => ({ key: g, label: g, color: '#6B7280' })),
           { key: 'SIN_CATEGORIA', label: 'Sin categoría', color: '#4B5563' },
         ] as { key: string; label: string; color: string }[]).map(tab => {
@@ -728,7 +728,7 @@ export default function ProveedoresPage() {
                                     if (e.key === 'Enter') handleSetGiro(p.id, (e.target as HTMLInputElement).value)
                                     if (e.key === 'Escape') { setGiroManual(null); setGiroPopover(null) }
                                   }}
-                                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-[#C9A84C]/40"
+                                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-[#c9a96a]/40"
                                   placeholder="Escribir giro..."
                                 />
                               </div>

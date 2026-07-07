@@ -250,7 +250,7 @@ export default function MetasPage() {
         <div className="flex items-start justify-between mb-8">
           <div>
             <p className="text-xs text-[#B3985B] uppercase tracking-widest mb-1">Ventas · Outbound</p>
-            <h1 className="text-2xl font-bold text-white">Metas de prospección</h1>
+            <h1 className="text-xl font-semibold text-white">Metas de prospección</h1>
             <p className="text-sm text-gray-500 mt-0.5 capitalize">{mesActual}</p>
           </div>
           <Link href="/crm/tratos/nuevo?tipo=OUTBOUND"

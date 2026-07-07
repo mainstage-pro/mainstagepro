@@ -194,14 +194,14 @@ const MobileQuickAdd = forwardRef<MobileQuickAddHandle, Props>(function MobileQu
               onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
               placeholder="Nombre de la tarea"
               inputMode="text"
-              className="w-full bg-transparent text-white text-[17px] placeholder-[#3a3a3a] focus:outline-none resize-none leading-snug"
+              className="w-full bg-transparent text-white text-[17px] placeholder:text-[#444] focus:outline-none resize-none leading-snug"
               rows={titulo.split("\n").length || 1}
             />
             <textarea
               value={descripcion}
               onChange={e => setDescripcion(e.target.value)}
               placeholder="Descripción"
-              className="w-full bg-transparent text-[#555] text-sm placeholder-[#2a2a2a] focus:outline-none resize-none leading-snug mt-1"
+              className="w-full bg-transparent text-[#555] text-sm placeholder:text-[#444] focus:outline-none resize-none leading-snug mt-1"
               rows={1}
             />
           </div>

@@ -41,7 +41,7 @@ export default function RecurrenciaInput({ value, onChange }: Props) {
           onChange={e => { setTexto(e.target.value); setError(""); }}
           onKeyDown={e => { if (e.key === "Enter") confirmar(); if (e.key === "Escape") { setEditing(false); setError(""); } }}
           placeholder="cada lunes, cada martes y jueves, cada mes…"
-          className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]"
+          className="w-full bg-[#111] border border-[#2a2a2a] rounded px-2 py-1 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]"
         />
         {error && <p className="text-red-400 text-xs">{error}</p>}
         <div className="flex gap-2">

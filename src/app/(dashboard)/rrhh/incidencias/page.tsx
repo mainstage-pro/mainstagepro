@@ -102,7 +102,7 @@ export default function IncidenciasPage() {
   const totalDescuentos = incidencias.filter(i=>i.tipo.esDescuento).reduce((s,i)=>s+(i.montoCalculado??0),0);
 
   return (
-    <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-5">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold text-white">Incidencias</h1>

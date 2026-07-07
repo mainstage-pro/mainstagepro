@@ -179,7 +179,7 @@ function AccesoriosSection({ equipoId, initial }: { equipoId: string; initial: A
             onChange={e => setNewNombre(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter") addAccesorio(); if (e.key === "Escape") setAdding(false); }}
             placeholder="Nombre del accesorio..."
-            className="w-full bg-[#111] border border-[#222] rounded px-3 py-1.5 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50"
+            className="w-full bg-[#111] border border-[#222] rounded px-3 py-1.5 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50"
           />
           <div className="flex flex-wrap gap-1.5">
             {CATEGORIAS_ACC.map(cat => (
@@ -358,7 +358,7 @@ function NotasSection({ equipoId, initial }: { equipoId: string; initial: Equipo
           onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) addNota(); }}
           placeholder="Escribe una nota sobre este equipo…"
           rows={3}
-          className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-white text-sm placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50 resize-none transition-colors"
+          className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-white text-sm placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50 resize-none transition-colors"
         />
         <div className="flex items-center justify-between mt-2">
           <span className="text-[10px] text-[#3a3a3a]">⌘ + Enter para guardar</span>
@@ -435,7 +435,7 @@ export default function EquipoFichaPage() {
   }
 
   return (
-    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
       <div className="mb-2"><BackButton /></div>
 
       {/* Header */}

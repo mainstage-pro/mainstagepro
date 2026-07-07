@@ -126,7 +126,7 @@ export default function VehiculosPage() {
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-white">Vehículos</h1>
+          <h1 className="text-xl font-semibold text-white">Vehículos</h1>
           <p className="text-gray-500 text-sm mt-0.5">Flota de transporte disponible para producción</p>
         </div>
         <button onClick={openNew}

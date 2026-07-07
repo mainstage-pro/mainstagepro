@@ -277,7 +277,7 @@ export default function ConfiguracionPage() {
   const hasDirty = configEntries.some(e => configDraft[e.key] !== e.value);
 
   return (
-    <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-5">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-5">
       <div>
         <h1 className="text-xl font-semibold text-white">Configuración</h1>
         <p className="text-[#6b7280] text-sm">Personalización y parámetros del sistema</p>

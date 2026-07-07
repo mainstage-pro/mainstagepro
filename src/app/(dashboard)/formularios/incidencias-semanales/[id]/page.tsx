@@ -147,7 +147,7 @@ export default function IncidenciaDetallePage() {
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div>
                 <p className="text-[10px] text-[#B3985B] uppercase tracking-widest font-semibold mb-1">Incidencias Semanales</p>
-                <h1 className="text-xl font-bold text-white">Semana {registro.semana} · {registro.anio}</h1>
+                <h1 className="text-xl font-semibold text-white">Semana {registro.semana} · {registro.anio}</h1>
                 <p className="text-gray-500 text-xs mt-1">{fmtDate(registro.createdAt)}</p>
               </div>
               <div className="text-right space-y-1">

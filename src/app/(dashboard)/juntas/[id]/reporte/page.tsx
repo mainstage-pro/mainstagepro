@@ -236,13 +236,13 @@ function PanelAgendaReporte({
               <div className="space-y-1.5">
                 {proximos.slice(0, 6).map((p) => (
                   <div key={p.id} className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#C9A84C] shrink-0 mt-1.5" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#c9a96a] shrink-0 mt-1.5" />
                     <div className="flex-1 min-w-0">
                       <p className="text-white text-xs leading-snug">{p.nombre}</p>
                       {p.cliente && (
                         <p className="text-gray-500 text-[10px]">{p.cliente.nombre}{p.cliente.empresa ? ` · ${p.cliente.empresa}` : ""}</p>
                       )}
-                      <p className="text-[#C9A84C] text-[10px]">
+                      <p className="text-[#c9a96a] text-[10px]">
                         {p.fechaEvento ? new Date(p.fechaEvento).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" }) : ""}
                       </p>
                     </div>

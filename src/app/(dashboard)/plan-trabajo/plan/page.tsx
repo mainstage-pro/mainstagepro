@@ -191,7 +191,7 @@ function ResponsableBtn({
                 }}
                 className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
                   tarea.tipoAsignacion === 'todos'
-                    ? 'text-[#C9A84C] bg-[#C9A84C]/5'
+                    ? 'text-[#c9a96a] bg-[#c9a96a]/5'
                     : 'text-gray-400 hover:bg-[#111] hover:text-white'
                 }`}
               >
@@ -210,7 +210,7 @@ function ResponsableBtn({
                   }}
                   className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
                     tarea.tipoAsignacion === 'area' && tarea.areaAsignada === area
-                      ? 'text-[#C9A84C] bg-[#C9A84C]/5'
+                      ? 'text-[#c9a96a] bg-[#c9a96a]/5'
                       : 'text-gray-400 hover:bg-[#111] hover:text-white'
                   }`}
                 >
@@ -243,7 +243,7 @@ function ResponsableBtn({
               onClick={e => { e.stopPropagation(); onCambiar(u.id); setOpen(false) }}
               className={`w-full text-left flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${
                 tarea.responsable?.id === u.id && tarea.tipoAsignacion === 'individual'
-                  ? 'text-[#C9A84C] bg-[#C9A84C]/5'
+                  ? 'text-[#c9a96a] bg-[#c9a96a]/5'
                   : 'text-gray-400 hover:bg-[#111] hover:text-white'
               }`}
             >
@@ -364,7 +364,7 @@ function TareaModal({
     }
   }
 
-  const inputCls = 'w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#C9A84C] transition-colors'
+  const inputCls = 'w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a96a] transition-colors'
   const labelCls = 'text-[10px] text-gray-600 uppercase tracking-wider block mb-1'
 
   return (
@@ -407,7 +407,7 @@ function TareaModal({
                 onClick={() => toggleDia(d)}
                 className={`w-9 h-9 rounded-lg text-sm font-bold transition-colors ${
                   form.diasSemana.includes(d)
-                    ? 'bg-[#C9A84C] text-black'
+                    ? 'bg-[#c9a96a] text-black'
                     : 'bg-[#1a1a1a] text-gray-600 hover:text-gray-300'
                 }`}
               >
@@ -469,7 +469,7 @@ function TareaModal({
                     }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
                       form.semanaDeMes.includes(v)
-                        ? 'bg-[#C9A84C] text-black border-[#C9A84C]'
+                        ? 'bg-[#c9a96a] text-black border-[#c9a96a]'
                         : 'bg-transparent text-gray-500 border-[#2a2a2a] hover:border-[#3a3a3a] hover:text-gray-300'
                     }`}
                   >
@@ -597,7 +597,7 @@ function TareaModal({
                     onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
                     placeholder={placeholder}
                     rows={rows}
-                    className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#C9A84C] resize-none transition-colors"
+                    className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#c9a96a] resize-none transition-colors"
                   />
                 </div>
               ))}
@@ -615,7 +615,7 @@ function TareaModal({
               type="checkbox"
               checked={form.esAccionCampo}
               onChange={e => setForm(p => ({ ...p, esAccionCampo: e.target.checked }))}
-              className="w-3.5 h-3.5 rounded accent-[#C9A84C]"
+              className="w-3.5 h-3.5 rounded accent-[#c9a96a]"
             />
             <span className="text-xs text-[#777]">Es acción en campo (no requiere módulo en plataforma)</span>
           </label>
@@ -631,7 +631,7 @@ function TareaModal({
                   : ''
                 setForm(p => ({ ...p, moduloDestino: ruta, moduloTexto: nombre }))
               }}
-              className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2 text-sm text-[#999] focus:outline-none focus:border-[#C9A84C]/30"
+              className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2 text-sm text-[#999] focus:outline-none focus:border-[#c9a96a]/30"
             >
               <option value="">Sin módulo asignado</option>
               {GRUPOS_MODULOS.map(grupo => (
@@ -656,7 +656,7 @@ function TareaModal({
           <button
             onClick={handleSave}
             disabled={saving || !form.nombre.trim()}
-            className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-black text-sm font-semibold hover:bg-[#d4b060] disabled:opacity-40 transition-colors"
+            className="flex-1 py-2.5 rounded-xl bg-[#c9a96a] text-black text-sm font-semibold hover:bg-[#d4b060] disabled:opacity-40 transition-colors"
           >
             {saving ? 'Guardando...' : (isEdit ? 'Guardar cambios' : 'Crear compromiso')}
           </button>
@@ -706,7 +706,7 @@ function DiasBtn({
             key={d}
             className={`text-[9px] w-4 h-4 rounded flex items-center justify-center font-bold transition-colors ${
               tarea.diasSemana.includes(d)
-                ? 'bg-[#C9A84C]/20 text-[#C9A84C]'
+                ? 'bg-[#c9a96a]/20 text-[#c9a96a]'
                 : 'bg-[#1a1a1a] text-gray-700'
             }`}
           >
@@ -725,7 +725,7 @@ function DiasBtn({
                 onClick={e => { e.stopPropagation(); toggleDia(d) }}
                 className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
                   tarea.diasSemana.includes(d)
-                    ? 'bg-[#C9A84C] text-black'
+                    ? 'bg-[#c9a96a] text-black'
                     : 'bg-[#1a1a1a] text-gray-500 hover:text-gray-300'
                 }`}
               >
@@ -806,7 +806,7 @@ function FrecuenciaBtn({
               onClick={e => { e.stopPropagation(); onCambiar(op.value); }}
               className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
                 tarea.frecuencia === op.value
-                  ? 'text-[#C9A84C] bg-[#C9A84C]/5'
+                  ? 'text-[#c9a96a] bg-[#c9a96a]/5'
                   : 'text-gray-400 hover:bg-[#111] hover:text-white'
               }`}
             >
@@ -837,7 +837,7 @@ function FrecuenciaBtn({
                         onSemanaDeMesChange(next)
                       }}
                       className={`w-8 h-7 rounded-lg text-[10px] font-bold transition-colors ${
-                        active ? 'bg-[#C9A84C] text-black' : 'bg-[#1a1a1a] text-gray-500 hover:text-gray-300'
+                        active ? 'bg-[#c9a96a] text-black' : 'bg-[#1a1a1a] text-gray-500 hover:text-gray-300'
                       }`}
                     >
                       {l}
@@ -899,9 +899,9 @@ function TemplateRow({
         className={`border-b border-[#111] transition-colors group ${
           expanded ? 'bg-[#0d0d0d]' : 'hover:bg-[#0a0a0a]'
         }${onDragStart ? ' cursor-grab active:cursor-grabbing' : ' cursor-pointer'}${
-          dragOverIndicator === 'above' ? ' border-t-2 border-t-[#C9A84C]' : ''
+          dragOverIndicator === 'above' ? ' border-t-2 border-t-[#c9a96a]' : ''
         }${
-          dragOverIndicator === 'below' ? ' border-b-2 border-b-[#C9A84C]' : ''
+          dragOverIndicator === 'below' ? ' border-b-2 border-b-[#c9a96a]' : ''
         }`}
         onClick={() => setExpanded(v => !v)}
         draggable={!!onDragStart}
@@ -944,7 +944,7 @@ function TemplateRow({
             <span className={`text-[9px] ${imp.color}`}>{imp.label}</span>
             <span className={`text-[9px] px-1.5 py-0.5 rounded-full border ${ctx.cls}`}>{ctx.label}</span>
             {t.tipo === 'ENTREGABLE' && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#C9A84C]/30 text-[#C9A84C]">Entregable</span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#c9a96a]/30 text-[#c9a96a]">Entregable</span>
             )}
           </div>
         </td>
@@ -1023,8 +1023,8 @@ function TemplateRow({
                 </div>
               )}
               {t.estandarMinimo && (
-                <div className="bg-[#C9A84C]/5 border border-[#C9A84C]/20 rounded-lg p-3">
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#C9A84C] mb-1.5">Estándar mínimo</p>
+                <div className="bg-[#c9a96a]/5 border border-[#c9a96a]/20 rounded-lg p-3">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#c9a96a] mb-1.5">Estándar mínimo</p>
                   <p className="text-xs text-gray-300 leading-relaxed">{t.estandarMinimo}</p>
                 </div>
               )}
@@ -1050,7 +1050,7 @@ function TemplateRow({
             </div>
             <div className="ml-3 mt-3 flex items-center gap-3 flex-wrap">
               {t.kpiNombre && (
-                <span className="text-[10px] text-[#C9A84C] border border-[#C9A84C]/30 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] text-[#c9a96a] border border-[#c9a96a]/30 px-2 py-0.5 rounded-full">
                   KPI: {t.kpiNombre}
                 </span>
               )}
@@ -1399,7 +1399,7 @@ function VistaPorPersona({
             <section key={d} className="mb-8">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-[10px] font-bold tracking-wider text-gray-600 uppercase">{full}</span>
-                <span className="text-[10px] text-[#C9A84C]">{tareasDia.length}</span>
+                <span className="text-[10px] text-[#c9a96a]">{tareasDia.length}</span>
               </div>
               <table className="w-full">
                 <tbody>
@@ -1933,7 +1933,7 @@ export default function PlanPage() {
                           </div>
                           {count > 0 && (
                             <span className={`text-[9px] font-semibold shrink-0 tabular-nums ${
-                              isActive ? 'text-[#C9A84C]' : 'text-gray-700'
+                              isActive ? 'text-[#c9a96a]' : 'text-gray-700'
                             }`}>
                               {count}
                             </span>
@@ -1992,7 +1992,7 @@ export default function PlanPage() {
                     placeholder="Buscar compromiso..."
                     value={busqueda}
                     onChange={e => setBusqueda(e.target.value)}
-                    className="bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#C9A84C] w-44"
+                    className="bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#c9a96a] w-44"
                   />
                   <select
                     value={filtroImpacto}
@@ -2039,7 +2039,7 @@ export default function PlanPage() {
                       onDrop={e => { e.preventDefault(); if (dragState) handleMoveTemplate(dragState.templateId, group.subArea.id) }}
                       className={`transition-colors duration-150 ${
                         dragOverSubAreaId === group.subArea.id && dragState?.fromSubAreaId !== group.subArea.id
-                          ? 'bg-[#C9A84C]/5 outline outline-1 outline-[#C9A84C]/20 outline-offset-[-1px]'
+                          ? 'bg-[#c9a96a]/5 outline outline-1 outline-[#c9a96a]/20 outline-offset-[-1px]'
                           : ''
                       }`}
                     >
@@ -2055,15 +2055,15 @@ export default function PlanPage() {
                       >
                         <td colSpan={6} className="px-4 py-2.5">
                           <div className="flex items-center gap-3">
-                            <div className="w-0.5 h-4 rounded-full bg-[#C9A84C]/40" />
-                            <span className="text-[11px] text-[#C9A84C] uppercase tracking-[0.12em] font-semibold">
+                            <div className="w-0.5 h-4 rounded-full bg-[#c9a96a]/40" />
+                            <span className="text-[11px] text-[#c9a96a] uppercase tracking-[0.12em] font-semibold">
                               {group.subArea.nombre}
                             </span>
                             <span className="text-[10px] text-gray-700">{filtered.length}</span>
                             {isAdmin && (
                               <button
                                 onClick={e => { e.stopPropagation(); handleOpenModal({ areaId: area.id, subAreaId: group.subArea.id, subAreaNombre: group.subArea.nombre }) }}
-                                className="text-[10px] text-gray-700 hover:text-[#C9A84C] transition-colors flex items-center gap-1"
+                                className="text-[10px] text-gray-700 hover:text-[#c9a96a] transition-colors flex items-center gap-1"
                               >
                                 + Agregar compromiso
                               </button>
@@ -2124,11 +2124,11 @@ export default function PlanPage() {
                         if (e.key === 'Escape') { setAddingSubareaForAreaId(null); setNewSubareaName('') }
                       }}
                       placeholder="Nombre del departamento..."
-                      className="bg-transparent border-b border-[#C9A84C]/40 text-sm text-white focus:outline-none flex-1 py-1 placeholder:text-gray-700"
+                      className="bg-transparent border-b border-[#c9a96a]/40 text-sm text-white focus:outline-none flex-1 py-1 placeholder:text-gray-700"
                     />
                     <button
                       onClick={() => handleAddSubarea(area.id)}
-                      className="text-xs text-[#C9A84C] hover:text-[#C9A84C]/80 font-medium px-2 py-1 transition-colors"
+                      className="text-xs text-[#c9a96a] hover:text-[#c9a96a]/80 font-medium px-2 py-1 transition-colors"
                     >
                       Agregar
                     </button>

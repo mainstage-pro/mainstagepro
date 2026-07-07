@@ -218,10 +218,10 @@ export default function RecoleccionesPage() {
   );
 
   return (
-    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Recolección de equipo</h1>
+        <h1 className="text-xl font-semibold text-white">Recolección de equipo</h1>
         <p className="text-gray-500 text-sm mt-0.5">Protocolo de salida y entrada para equipos en renta</p>
       </div>
 

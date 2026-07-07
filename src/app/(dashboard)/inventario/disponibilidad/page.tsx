@@ -115,11 +115,11 @@ export default function DisponibilidadPage() {
   const totalSobredemanda = resultado?.equipos.filter((e) => e.sobredemanda > 0).length ?? 0;
 
   return (
-    <div className="p-3 md:p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Disponibilidad de equipos</h1>
+        <h1 className="text-xl font-semibold text-white">Disponibilidad de equipos</h1>
         <p className="text-gray-500 text-sm mt-1">
           Consulta qué equipos propios están comprometidos en cotizaciones y proyectos activos para fechas específicas.
         </p>

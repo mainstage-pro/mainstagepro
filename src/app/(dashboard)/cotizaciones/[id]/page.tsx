@@ -628,7 +628,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   }
 
   if (loading) return (
-    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-4">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
       <div className="h-8 w-64 bg-[#1a1a1a] rounded-lg animate-pulse" />
       <div className="h-5 w-48 bg-[#1a1a1a] rounded animate-pulse" />
       <div className="h-12 w-full bg-[#1a1a1a] rounded-xl animate-pulse" />
@@ -862,7 +862,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             {/* Nombre del evento del cotizador */}
-            <h1 className="text-2xl font-bold text-white leading-tight">{cot.nombreEvento || "Sin nombre"}</h1>
+            <h1 className="text-xl font-semibold text-white leading-tight">{cot.nombreEvento || "Sin nombre"}</h1>
             {/* Nombre de cotización (multi-evento) — editable inline */}
             {cot.tratoId && (
               <div className="flex items-center gap-2 mt-1">
@@ -895,7 +895,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             </Link>
           </div>
           <div className="text-right shrink-0">
-            <p className="text-2xl font-bold text-white tabular-nums">{formatCurrency(cot.granTotal)}</p>
+            <p className="text-xl font-semibold text-white tabular-nums">{formatCurrency(cot.granTotal)}</p>
 
             {cot.aplicaIva && <p className="text-gray-500 text-[11px]">IVA incluido</p>}
             <p className={`text-sm font-medium ${semaforoColor}`}>{semaforo} · {formatPct(pctVivo)} margen</p>
@@ -973,7 +973,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           <Link
             href={`/cotizaciones/${id}/comision`}
             target="_blank"
-            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#C9A84C]/30 hover:border-[#C9A84C]/60 text-[#C9A84C] text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#c9a96a]/30 hover:border-[#c9a96a]/60 text-[#c9a96a] text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors"
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>

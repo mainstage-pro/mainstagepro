@@ -120,7 +120,7 @@ export default function ReporteSemanalHistorialPage() {
             <span className="text-gray-700 text-[10px]">/</span>
             <span className="text-[10px] text-gray-500">Reporte General Semanal</span>
           </div>
-          <h1 className="text-2xl font-bold text-white">Archivo de Reportes</h1>
+          <h1 className="text-xl font-semibold text-white">Archivo de Reportes</h1>
           <p className="text-gray-500 text-sm mt-1">
             {reportes.length > 0
               ? `${reportes.length} reporte${reportes.length !== 1 ? "s" : ""} registrado${reportes.length !== 1 ? "s" : ""}`
@@ -129,7 +129,7 @@ export default function ReporteSemanalHistorialPage() {
         </div>
         <Link
           href="/formularios/reporte-semanal/nuevo"
-          className="shrink-0 flex items-center gap-1.5 text-xs font-semibold bg-[#B3985B] hover:bg-[#c9a96e] text-black px-4 py-2 rounded-lg transition-colors"
+          className="shrink-0 flex items-center gap-1.5 text-xs font-semibold bg-[#B3985B] hover:bg-[#c9a96a] text-black px-4 py-2 rounded-lg transition-colors"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -224,7 +224,7 @@ export default function ReporteSemanalHistorialPage() {
           </p>
           <Link
             href="/formularios/reporte-semanal/nuevo"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[#B3985B] hover:bg-[#c9a96e] text-black px-4 py-2 rounded-lg transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[#B3985B] hover:bg-[#c9a96a] text-black px-4 py-2 rounded-lg transition-colors"
           >
             Llenar el primero
           </Link>

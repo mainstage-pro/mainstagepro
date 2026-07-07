@@ -90,7 +90,7 @@ const PRIOS: { key: string; label: string; color: string }[] = [
   { key: "BAJA",    label: "Baja",    color: "#6b7280" },
 ];
 
-const DORADO = "#C9A84C";
+const DORADO = "#c9a96a";
 
 function FlagIcon({ color, filled }: { color: string; filled: boolean }) {
   return (
@@ -147,7 +147,7 @@ function SortablePaso({ paso, idx, onChange, onDelete }: {
         ref={textareaRef}
         value={paso.texto}
         onChange={e => { onChange(paso._id, e.target.value); autoResize(e.target); }}
-        className="flex-1 bg-transparent text-sm text-[#ccc] resize-none focus:outline-none placeholder-[#2a2a2a] min-h-[18px]"
+        className="flex-1 bg-transparent text-sm text-[#ccc] resize-none focus:outline-none placeholder:text-[#444] min-h-[18px]"
         rows={1}
         placeholder="Describe este paso…"
       />
@@ -593,7 +593,7 @@ export default function TaskModal({
                 value={titulo}
                 onChange={e => { setTitulo(e.target.value); mark(); autoResize(e.target); }}
                 placeholder="Título de la tarea"
-                className="w-full bg-transparent text-white text-xl font-semibold resize-none overflow-hidden focus:outline-none placeholder-[#2a2a2a] leading-snug"
+                className="w-full bg-transparent text-white text-xl font-semibold resize-none overflow-hidden focus:outline-none placeholder:text-[#444] leading-snug"
                 rows={1}
               />
 
@@ -607,7 +607,7 @@ export default function TaskModal({
                   value={descripcion}
                   onChange={e => { setDescripcion(e.target.value); mark(); autoResize(e.target); }}
                   placeholder="Añade una descripción…"
-                  className="w-full bg-transparent text-sm text-[#777] resize-none overflow-hidden focus:outline-none placeholder-[#2a2a2a] leading-relaxed"
+                  className="w-full bg-transparent text-sm text-[#777] resize-none overflow-hidden focus:outline-none placeholder:text-[#444] leading-relaxed"
                   rows={1}
                 />
               </div>
@@ -632,7 +632,7 @@ export default function TaskModal({
                           autoResize(e.target);
                         }}
                         placeholder="¿Qué impacto positivo tiene completar esta tarea?"
-                        className="w-full bg-[#080808] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-[#aaa] resize-none focus:outline-none focus:border-[#2a2a2a] placeholder-[#2a2a2a] leading-relaxed"
+                        className="w-full bg-[#080808] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-[#aaa] resize-none focus:outline-none focus:border-[#2a2a2a] placeholder:text-[#444] leading-relaxed"
                         rows={2}
                       />
                     </div>
@@ -650,7 +650,7 @@ export default function TaskModal({
                           autoResize(e.target);
                         }}
                         placeholder="¿Qué consecuencia tiene no ejecutarla o retrasarla?"
-                        className="w-full bg-[#080808] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-[#aaa] resize-none focus:outline-none focus:border-[#2a2a2a] placeholder-[#2a2a2a] leading-relaxed"
+                        className="w-full bg-[#080808] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-[#aaa] resize-none focus:outline-none focus:border-[#2a2a2a] placeholder:text-[#444] leading-relaxed"
                         rows={2}
                       />
                     </div>
@@ -668,7 +668,7 @@ export default function TaskModal({
                           debounceSave("dondeSeEjecuta", e.target.value);
                         }}
                         placeholder="Módulo, herramienta, plataforma o espacio físico"
-                        className="w-full bg-[#080808] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-[#aaa] focus:outline-none focus:border-[#2a2a2a] placeholder-[#2a2a2a]"
+                        className="w-full bg-[#080808] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-[#aaa] focus:outline-none focus:border-[#2a2a2a] placeholder:text-[#444]"
                       />
                     </div>
                   </div>
@@ -847,7 +847,7 @@ export default function TaskModal({
                     onChange={e => setComentario(e.target.value)}
                     onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviarComentario(); } }}
                     placeholder="Escribe un comentario… (Enter para enviar)"
-                    className="flex-1 bg-[#080808] border border-[#1a1a1a] rounded-xl px-3 py-2 text-sm text-white resize-none focus:outline-none focus:border-[#2a2a2a] placeholder-[#2a2a2a]"
+                    className="flex-1 bg-[#080808] border border-[#1a1a1a] rounded-xl px-3 py-2 text-sm text-white resize-none focus:outline-none focus:border-[#2a2a2a] placeholder:text-[#444]"
                     rows={2}
                   />
                   <button

@@ -92,7 +92,7 @@ export default function EvaluacionDetailPage() {
   const fecha = new Date(_fy, _fm - 1, _fd).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 
   return (
-    <div className="p-3 md:p-6 max-w-3xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6">
       <div className="mb-2"><BackButton /></div>
       {/* Header */}
       <div className="flex items-start justify-between gap-3">

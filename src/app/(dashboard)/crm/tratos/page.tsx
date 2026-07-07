@@ -613,7 +613,7 @@ function NuevaOportunidadModal({ onClose, onCreated, onLeadCreated }: {
             <div className="flex gap-3 pt-1">
               <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">Cancelar</button>
               <button onClick={submit} disabled={saving || !form.clienteId}
-                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors">
+                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c9a96a] disabled:opacity-40 transition-colors">
                 {saving ? "Creando..." : "Crear oportunidad"}
               </button>
             </div>
@@ -673,7 +673,7 @@ function NuevaOportunidadModal({ onClose, onCreated, onLeadCreated }: {
             <div className="flex gap-3 pt-1">
               <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">Cancelar</button>
               <button onClick={submitLeadRapido} disabled={savingLead || !leadRapidoForm.nombre.trim()}
-                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4aa6b] disabled:opacity-40 transition-colors">
+                className="flex-1 py-2.5 rounded-xl bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c9a96a] disabled:opacity-40 transition-colors">
                 {savingLead ? 'Registrando...' : 'Registrar lead'}
               </button>
             </div>
@@ -1109,7 +1109,7 @@ function CompactTratoRow({
           )}
         </div>
 
-        {/* ── COL 4 · Tipo evento ─────── 90px ────── */}}
+        {/* ── COL 4 · Tipo evento ─────── 90px ────── */}
         <div className="hidden sm:flex w-[90px] shrink-0 pr-3">
           <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${tipoStyle.bg} ${tipoStyle.text}`}>
             {TIPO_LABEL_SHORT[t.tipoEvento] ?? t.tipoEvento}
@@ -1779,7 +1779,7 @@ export default function TratosPage() {
   });
 
   return (
-    <div className="p-3 md:p-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
@@ -1789,7 +1789,7 @@ export default function TratosPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-0.5">
+          <div className="flex items-center bg-[#111] border border-[#1e1e1e] rounded-lg p-0.5">
             <button onClick={() => toggleVista("lista")}
               className={`px-2.5 py-1.5 rounded-md text-xs transition-colors ${vista === "lista" ? "bg-[#2a2a2a] text-white" : "text-[#555] hover:text-white"}`}
               title="Vista lista">
@@ -1820,7 +1820,7 @@ export default function TratosPage() {
         </svg>
         <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
           placeholder="Buscar por cliente, empresa, evento..."
-          className="w-full bg-[#111] border border-[#1e1e1e] rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+          className="w-full bg-[#111] border border-[#1e1e1e] rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50 transition-colors" />
         {busqueda && (
           <button onClick={() => setBusqueda("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white text-xs">✕</button>
         )}
@@ -1946,7 +1946,7 @@ export default function TratosPage() {
 
           {/* ── Filtro tipo de evento ── */}
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span className="text-[10px] text-gray-600 uppercase tracking-wider">Tipo:</span>
+            <span className="text-[10px] text-[#555] uppercase tracking-wider font-medium">Tipo:</span>
             {([null, 'MUSICAL', 'SOCIAL', 'EMPRESARIAL', 'OTRO'] as const).map(tipo => (
               <button
                 key={tipo ?? 'todos'}
@@ -1964,7 +1964,7 @@ export default function TratosPage() {
 
           {/* ── Ordering pills ── */}
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-[10px] text-gray-700 uppercase tracking-wider shrink-0">Orden:</span>
+            <span className="text-[10px] text-[#555] uppercase tracking-wider font-medium shrink-0">Orden:</span>
             {([
               { key: 'urgencia', label: 'Urgencia' },
               { key: 'fechaEvento', label: 'Fecha evento' },
@@ -2024,7 +2024,7 @@ export default function TratosPage() {
 
             if (tabTratos.length === 0) {
               return (
-                <div className="text-center py-20 text-gray-700">
+                <div className="text-center py-20 text-[#555]">
                   <p className="text-3xl mb-3">📭</p>
                   <p className="text-sm">
                     {busqueda ? `Sin resultados para "${busqueda}"` : `No hay tratos en ${ALL_ETAPAS.find(e => e.key === filtroEtapa)?.label ?? filtroEtapa}`}

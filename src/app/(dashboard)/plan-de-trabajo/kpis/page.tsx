@@ -144,7 +144,7 @@ function ModalRegistrar({
               onChange={e => setValor(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleSave() }}
               placeholder="0"
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#C9A84C] transition-colors"
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#c9a96a] transition-colors"
             />
           </div>
           <div>
@@ -154,7 +154,7 @@ function ModalRegistrar({
               onChange={e => setNota(e.target.value)}
               rows={2}
               placeholder="Observaciones..."
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2 text-sm text-white placeholder-gray-700 focus:outline-none focus:border-[#C9A84C] resize-none transition-colors"
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-3 py-2 text-sm text-white placeholder-gray-700 focus:outline-none focus:border-[#c9a96a] resize-none transition-colors"
             />
           </div>
           <div className="flex gap-3 pt-1">
@@ -164,7 +164,7 @@ function ModalRegistrar({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-black font-semibold text-sm hover:bg-[#d4b060] disabled:opacity-50 transition-colors"
+              className="flex-1 py-2.5 rounded-xl bg-[#c9a96a] text-black font-semibold text-sm hover:bg-[#d4b060] disabled:opacity-50 transition-colors"
             >
               {saving ? 'Guardando...' : 'Guardar'}
             </button>
@@ -208,7 +208,7 @@ function KpiCard({ kpi, onRegistrar }: { kpi: KPIConValor; onRegistrar: (k: KPIC
       {kpi.valorActual === null && (
         <button
           onClick={e => { e.stopPropagation(); onRegistrar(kpi) }}
-          className="w-full mt-3 py-1.5 rounded-lg border border-[#C9A84C]/30 text-[#C9A84C] text-xs hover:bg-[#C9A84C]/10 transition-colors"
+          className="w-full mt-3 py-1.5 rounded-lg border border-[#c9a96a]/30 text-[#c9a96a] text-xs hover:bg-[#c9a96a]/10 transition-colors"
         >
           + Registrar valor
         </button>
@@ -255,7 +255,7 @@ function HistoricoTab({ allKpis }: { allKpis: KPIConValor[] }) {
         <select
           value={selectedSlug}
           onChange={e => setSelectedSlug(e.target.value)}
-          className="bg-[#111] border border-[#2a2a2a] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#C9A84C] min-w-56"
+          className="bg-[#111] border border-[#2a2a2a] rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-[#c9a96a] min-w-56"
         >
           <option value="">Selecciona un KPI…</option>
           {allKpis.map(k => (
@@ -309,7 +309,7 @@ function HistoricoTab({ allKpis }: { allKpis: KPIConValor[] }) {
                 />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#111', border: '1px solid #222', borderRadius: 10, color: '#fff' }}
-                  itemStyle={{ color: '#C9A84C' }}
+                  itemStyle={{ color: '#c9a96a' }}
                   formatter={(val) => [
                     typeof val === 'number' ? formatValor(val, kpiSel?.meta ?? '') : '—',
                     'Valor',
@@ -326,9 +326,9 @@ function HistoricoTab({ allKpis }: { allKpis: KPIConValor[] }) {
                 <Line
                   type="monotone"
                   dataKey="valor"
-                  stroke="#C9A84C"
+                  stroke="#c9a96a"
                   strokeWidth={2}
-                  dot={{ r: 4, fill: '#C9A84C', strokeWidth: 0 }}
+                  dot={{ r: 4, fill: '#c9a96a', strokeWidth: 0 }}
                   activeDot={{ r: 6, fill: '#d4b060' }}
                   connectNulls={false}
                 />
@@ -357,7 +357,7 @@ function HistoricoTab({ allKpis }: { allKpis: KPIConValor[] }) {
                       <td className="px-4 py-2.5 text-sm text-white">
                         {r.mes ? MESES[r.mes] : r.trimestre ? `Q${r.trimestre}` : `S${r.semana ?? ''}`} {r.anio}
                       </td>
-                      <td className="px-4 py-2.5 text-sm font-semibold text-[#C9A84C]">
+                      <td className="px-4 py-2.5 text-sm font-semibold text-[#c9a96a]">
                         {formatValor(r.valor, r.meta)}
                       </td>
                       <td className="px-4 py-2.5 text-xs text-gray-500">{r.meta}</td>

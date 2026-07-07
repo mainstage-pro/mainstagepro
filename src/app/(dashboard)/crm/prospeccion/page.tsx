@@ -16,7 +16,7 @@ export default async function ProspeccionPage() {
   ]);
 
   return (
-    <div className="p-3 md:p-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto">
       <ProspeccionClient usuarios={usuarios} serverCounts={counts} />
     </div>
   );

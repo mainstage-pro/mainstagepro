@@ -143,7 +143,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
   const fechaLabel = _fecha.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
   return (
-    <div className="p-3 md:p-6 max-w-3xl mx-auto space-y-5">
+    <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-5">
       <div className="mb-2"><BackButton /></div>
       {/* Header */}
       <div className="flex items-start justify-between gap-3">

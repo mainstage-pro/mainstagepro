@@ -390,7 +390,7 @@ export default function UsuariosPage() {
   const isCurrentAdmin = currentUser?.role === "ADMIN";
 
   return (
-    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -399,7 +399,7 @@ export default function UsuariosPage() {
           <p className="text-[#6b7280] text-sm">{users.length} usuarios registrados</p>
         </div>
         <button onClick={startCreate}
-            className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
+            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
             + Nuevo usuario
           </button>
       </div>
@@ -454,7 +454,7 @@ export default function UsuariosPage() {
         {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
         <div className="flex gap-3 mt-4">
           <button onClick={save} disabled={saving}
-            className="bg-[#B3985B] hover:bg-[#b8963e] disabled:opacity-50 text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
+            className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
             {saving ? "Guardando..." : "Guardar"}
           </button>
         </div>
@@ -546,7 +546,7 @@ export default function UsuariosPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         {u.area && AREA_MODULE_PRESETS[u.area] && (
                           <button onClick={() => setDraftAreaPreset(u.id, u.area!)}
-                            className="text-xs text-[#B3985B] hover:text-[#c9a96e] border border-[#B3985B]/40 px-2 py-1 rounded transition-colors">
+                            className="text-xs text-[#B3985B] hover:text-[#c9a96a] border border-[#B3985B]/40 px-2 py-1 rounded transition-colors">
                             Preset {AREA_LABELS[u.area] ?? u.area}
                           </button>
                         )}
@@ -573,7 +573,7 @@ export default function UsuariosPage() {
                           disabled={!dirty || isApplying}
                           className={`text-sm font-semibold px-4 py-1.5 rounded transition-colors flex items-center gap-2 ${
                             dirty
-                              ? "bg-[#B3985B] hover:bg-[#b8963e] text-black"
+                              ? "bg-[#B3985B] hover:bg-[#c9a96a] text-black"
                               : "bg-[#1a1a1a] text-[#444] cursor-not-allowed"
                           } disabled:opacity-60`}>
                           {isApplying ? (

@@ -278,7 +278,7 @@ function MantenimientoContent() {
   if (loading) return <SkeletonPage rows={6} cols={5} />;
 
   return (
-    <div className="p-3 md:p-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-start justify-between mb-5 gap-3">
         <div>

@@ -124,7 +124,7 @@ export default function OnboardingDetallePage({ params }: { params: Promise<{ id
   }
 
   if (loading) return (
-    <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-4">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-4">
       <div className="h-8 w-64 bg-[#1a1a1a] rounded-lg animate-pulse" />
       <div className="h-4 w-48 bg-[#1a1a1a] rounded animate-pulse" />
       <div className="space-y-3">
@@ -148,7 +148,7 @@ export default function OnboardingDetallePage({ params }: { params: Promise<{ id
   const candidato = plan.postulacion?.candidato;
 
   return (
-    <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
       <div className="mb-2"><BackButton /></div>
 
       {/* Header */}

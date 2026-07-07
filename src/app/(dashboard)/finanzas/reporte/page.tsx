@@ -631,7 +631,7 @@ export default function FinanzasReportePage() {
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
             <p className="text-[10px] text-[#B3985B] uppercase tracking-[0.2em] font-bold mb-1">Finanzas</p>
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-xl font-semibold text-white">
               {tab==="devengado" ? "Estado de Resultados" : "Flujo de Efectivo"}
             </h1>
             <p className="text-gray-500 text-sm mt-1">{mesLabel(mes)}</p>

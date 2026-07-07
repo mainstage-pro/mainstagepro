@@ -140,7 +140,7 @@ export default function NuevoOnboardingPage() {
   }
 
   return (
-    <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-white">Nuevo plan de integración</h1>
         <p className="text-gray-500 text-sm">Completa la información del puesto y usa la IA para generar el plan completo.</p>
@@ -200,7 +200,7 @@ export default function NuevoOnboardingPage() {
         <button
           onClick={generarConIA}
           disabled={generando || !puesto.trim()}
-          className="w-full bg-[#B3985B] hover:bg-[#b8963e] disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+          className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
         >
           {generando ? (
             <>
@@ -301,7 +301,7 @@ export default function NuevoOnboardingPage() {
               Regenerar
             </button>
             <button onClick={guardarPlan} disabled={guardando || !nombre.trim()}
-              className="flex-1 bg-[#B3985B] hover:bg-[#b8963e] disabled:opacity-50 text-black font-semibold py-2.5 rounded-lg transition-colors">
+              className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold py-2.5 rounded-lg transition-colors">
               {guardando ? "Guardando..." : "Guardar plan →"}
             </button>
           </div>

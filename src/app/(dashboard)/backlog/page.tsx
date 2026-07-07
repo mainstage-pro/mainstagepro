@@ -71,7 +71,7 @@ function ModalCaptura({ onSave, onClose }: { onSave: (item: BacklogItem) => void
           onChange={e => setTitulo(e.target.value)}
           onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) handleSave(); }}
           placeholder="¿Qué hay que hacer o explorar?"
-          className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/50"
+          className="w-full bg-[#0a0a0a] border border-[#2a2a2a] rounded-lg px-3 py-2.5 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50"
         />
 
         <select value={area} onChange={e => setArea(e.target.value)}
@@ -83,7 +83,7 @@ function ModalCaptura({ onSave, onClose }: { onSave: (item: BacklogItem) => void
         <div className="flex justify-end gap-2 pt-1">
           <button onClick={onClose} className="px-4 py-2 text-sm text-[#555] hover:text-white transition-colors">Cancelar</button>
           <button onClick={handleSave} disabled={saving || !titulo.trim()}
-            className="px-4 py-2 bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold rounded-lg transition-colors disabled:opacity-40">
+            className="px-4 py-2 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold rounded-lg transition-colors disabled:opacity-40">
             {saving ? "Guardando..." : "Capturar"}
           </button>
         </div>
@@ -199,7 +199,7 @@ function ModalProcesar({ item, users, juntas, onDone, onClose }: {
         <div className="flex justify-end gap-2">
           <button onClick={onClose} className="px-4 py-2 text-sm text-[#555] hover:text-white transition-colors">Cancelar</button>
           <button onClick={handleProcesar} disabled={saving}
-            className="px-4 py-2 bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold rounded-lg transition-colors disabled:opacity-40">
+            className="px-4 py-2 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold rounded-lg transition-colors disabled:opacity-40">
             {saving ? "Procesando..." : "Procesar →"}
           </button>
         </div>
@@ -249,7 +249,7 @@ export default function BacklogPage() {
           <p className="text-[#555] text-sm mt-1">Captura ideas y pendientes — procesar los viernes</p>
         </div>
         <button onClick={() => setCaptura(true)}
-          className="shrink-0 bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          className="shrink-0 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
           + Capturar
         </button>
       </div>

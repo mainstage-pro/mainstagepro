@@ -45,7 +45,7 @@ export default function IncidenciasHistorialPage() {
             <span className="text-gray-700">/</span>
             <span className="text-gray-500">Incidencias Semanales</span>
           </div>
-          <h1 className="text-2xl font-bold text-white">Incidencias Semanales</h1>
+          <h1 className="text-xl font-semibold text-white">Incidencias Semanales</h1>
           <p className="text-gray-500 text-sm mt-1">
             {registros.length > 0
               ? `${registros.length} registro${registros.length !== 1 ? "s" : ""}`
@@ -54,7 +54,7 @@ export default function IncidenciasHistorialPage() {
         </div>
         <Link
           href="/formularios/incidencias-semanales/nuevo"
-          className="shrink-0 flex items-center gap-1.5 text-xs font-semibold bg-[#B3985B] hover:bg-[#c9a96e] text-black px-4 py-2 rounded-lg transition-colors"
+          className="shrink-0 flex items-center gap-1.5 text-xs font-semibold bg-[#B3985B] hover:bg-[#c9a96a] text-black px-4 py-2 rounded-lg transition-colors"
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -80,7 +80,7 @@ export default function IncidenciasHistorialPage() {
           <p className="text-gray-500 text-sm mb-6">Crea tu primer registro de incidencias semanales.</p>
           <Link
             href="/formularios/incidencias-semanales/nuevo"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[#B3985B] hover:bg-[#c9a96e] text-black px-4 py-2 rounded-lg transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[#B3985B] hover:bg-[#c9a96a] text-black px-4 py-2 rounded-lg transition-colors"
           >
             Crear primer registro
           </Link>

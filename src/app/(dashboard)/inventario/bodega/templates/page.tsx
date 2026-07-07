@@ -93,7 +93,7 @@ export default function TemplatesPage() {
   })).filter(g => g.items.length > 0);
 
   return (
-    <div className="p-3 md:p-6 max-w-3xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-white">Catálogo de items — Bodega</h1>

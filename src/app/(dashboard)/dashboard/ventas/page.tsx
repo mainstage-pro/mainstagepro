@@ -129,7 +129,7 @@ export default async function DashboardVentasPage() {
               ⚡ {cotizacionesVencen3dias.length} cots. vencen en 3 días
             </span>
           )}
-          <Link href="/crm/tratos/nuevo" className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
+          <Link href="/crm/tratos/nuevo" className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
             + Nuevo trato
           </Link>
         </div>

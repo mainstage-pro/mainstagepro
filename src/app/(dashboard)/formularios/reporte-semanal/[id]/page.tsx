@@ -160,7 +160,7 @@ export default function ReporteDetalleePage() {
               Reporte General Semanal
             </p>
             {/* Nombre como título principal */}
-            <h1 className="text-xl font-bold text-white">Reporte de {reporte.user.name}</h1>
+            <h1 className="text-xl font-semibold text-white">Reporte de {reporte.user.name}</h1>
             <p className="text-gray-500 text-xs mt-1">
               Semana {reporte.semana} · {reporte.anio}
               {reporte.user.area && <span className="ml-2 text-gray-600">· {reporte.user.area}</span>}

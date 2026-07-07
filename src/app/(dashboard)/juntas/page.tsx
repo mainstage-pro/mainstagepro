@@ -420,24 +420,24 @@ export default function JuntasPage() {
   const semanaLabel = `${lunes.toLocaleDateString("es-MX", { day: "numeric", month: "short" })} – ${viernes.toLocaleDateString("es-MX", { day: "numeric", month: "short" })}`;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="text-white">
       {/* Header */}
-      <div className="px-6 pt-8 pb-6 border-b border-[#1a1a1a]">
+      <div className="p-4 md:p-6 border-b border-[#1a1a1a]">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Juntas</h1>
-            <p className="text-gray-500 text-sm mt-1">Semana: {semanaLabel}</p>
+            <h1 className="text-xl font-semibold text-white">Juntas</h1>
+            <p className="text-[#6b7280] text-sm mt-0.5">Semana: {semanaLabel}</p>
           </div>
           <div className="flex items-center gap-3">
             <Link
               href="/juntas/preparar"
-              className="flex items-center gap-2 border border-[#2a2a2a] text-gray-300 hover:text-white hover:border-[#444] font-medium px-4 py-2.5 rounded-xl text-sm transition-colors"
+              className="flex items-center gap-2 border border-[#333] text-gray-400 hover:text-white hover:border-[#555] font-medium px-4 py-2 rounded-lg text-sm transition-colors"
             >
               Preparar semana
             </Link>
             <button
               onClick={() => setModalOpen(true)}
-              className="flex items-center gap-2 bg-[#B3985B] text-black font-semibold px-4 py-2.5 rounded-xl text-sm hover:bg-[#c9a96a] transition-colors"
+              className="flex items-center gap-2 bg-[#B3985B] text-black font-semibold px-4 py-2 rounded-lg text-sm hover:bg-[#c9a96a] transition-colors"
             >
               <span className="text-base leading-none">+</span> Nueva junta
             </button>
@@ -448,11 +448,11 @@ export default function JuntasPage() {
       {loading ? (
         <div className="flex items-center justify-center py-24 text-gray-600 text-sm">Cargando juntas...</div>
       ) : (
-        <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <div className="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
           {/* ── Columna izquierda: Próximas ── */}
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Próximas / En curso</p>
+            <p className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider mb-3">Próximas / En curso</p>
             {proximas.length === 0 ? (
               <div className="bg-[#0d0d0d] border border-dashed border-[#1a1a1a] rounded-xl p-8 text-center">
                 <p className="text-gray-600 text-sm">No hay juntas programadas</p>
@@ -475,7 +475,7 @@ export default function JuntasPage() {
           {/* ── Columna derecha: Historial ── */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs text-gray-500 uppercase tracking-wider">Archivo</p>
+              <p className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Archivo</p>
               <select
                 value={filtroArea}
                 onChange={(e) => setFiltroArea(e.target.value)}

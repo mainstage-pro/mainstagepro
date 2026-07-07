@@ -99,14 +99,14 @@ function CopyLinkButton({ href, label }: { href: string; label: string }) {
 
 export default function FormulariosPage() {
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <p className="text-[10px] text-[#B3985B] uppercase tracking-[0.2em] font-semibold mb-1">
+      <div className="mb-6">
+        <p className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider mb-1">
           Módulo
         </p>
-        <h1 className="text-2xl font-bold text-white">Formularios</h1>
-        <p className="text-gray-500 text-sm mt-1">
+        <h1 className="text-xl font-semibold text-white">Formularios</h1>
+        <p className="text-sm text-[#6b7280] mt-0.5">
           Centro de formularios operativos del equipo Mainstage Pro.
         </p>
       </div>
@@ -153,7 +153,7 @@ export default function FormulariosPage() {
                     <div className="flex items-center gap-2 mt-3">
                       <Link
                         href={f.hrefNuevo}
-                        className="flex items-center gap-1.5 text-xs font-semibold bg-[#B3985B] hover:bg-[#c9a96e] text-black px-3 py-1.5 rounded-lg transition-colors"
+                        className="flex items-center gap-1.5 text-xs font-semibold bg-[#B3985B] hover:bg-[#c9a96a] text-black px-3 py-1.5 rounded-lg transition-colors"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />

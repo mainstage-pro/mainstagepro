@@ -492,7 +492,7 @@ export default function QuickAdd({
                 <input value={recTexto} onChange={e => { setRecTexto(e.target.value); setRecError(""); }}
                   onKeyDown={e => { if (e.key === "Enter") applyRec(recTexto); if (e.key === "Escape") setPanel(null); }}
                   placeholder="cada lunes · cada martes y jueves…"
-                  className="flex-1 bg-[#0f0f0f] border border-[#1e1e1e] rounded px-2 py-1 text-[12px] text-white placeholder-[#2a2a2a] focus:outline-none focus:border-[#B3985B]/40" />
+                  className="flex-1 bg-[#0f0f0f] border border-[#1e1e1e] rounded px-2 py-1 text-[12px] text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/40" />
                 <button type="button" onClick={() => applyRec(recTexto)}
                   className="px-2 py-1 bg-[#161616] hover:bg-[#1e1e1e] text-[#666] hover:text-white text-[12px] rounded transition-all">OK</button>
               </div>

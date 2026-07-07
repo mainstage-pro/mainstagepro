@@ -107,7 +107,7 @@ export default function EmpresaDetallePage() {
   const currentTab: Tab = activeTabs.includes(tab) ? tab : (activeTabs[0] ?? "clientes");
 
   return (
-    <div className="p-3 md:p-6 max-w-5xl mx-auto">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto">
       {/* Header */}
       <div className="mb-6">
         <button onClick={() => router.back()} className="text-xs text-[#555] hover:text-gray-300 transition-colors mb-3 flex items-center gap-1">

@@ -1048,7 +1048,7 @@ function TabActivosHervam({ activos }: { activos: HervamActivo[] }) {
       <div className="grid grid-cols-2 gap-3 mb-2">
         <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
           <p className="text-[10px] uppercase tracking-wider text-[#555] font-semibold mb-1">Valor de adquisición</p>
-          <p className="text-xl font-bold text-white">{fmt(totalValorAdq)}</p>
+          <p className="text-xl font-semibold text-white">{fmt(totalValorAdq)}</p>
         </div>
         <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
           <p className="text-[10px] uppercase tracking-wider text-[#555] font-semibold mb-1">Valor actual declarado</p>
@@ -1344,7 +1344,7 @@ export default function SocioDetallePage() {
   const cxpPendientes = cxpSocio.filter(c => c.estado === "PENDIENTE" || c.estado === "VENCIDO").length;
 
   return (
-    <div className="p-3 md:p-6 max-w-6xl mx-auto">
+    <div className="p-4 md:p-6 max-w-6xl mx-auto">
       <div className="mb-2"><BackButton /></div>
       {/* Header */}
       <div className="flex items-start gap-4 mb-6">

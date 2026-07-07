@@ -351,18 +351,18 @@ export default function TiposCampanaPage() {
   const inactivos = tipos.filter(t => !t.activo);
 
   return (
-    <div className="p-3 md:p-6 max-w-4xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <p className="text-xs text-white/30 uppercase tracking-widest mb-1">Publicidad</p>
+          <p className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider mb-1">Publicidad</p>
           <h1 className="text-xl font-semibold text-white">Tipos de campaña</h1>
-          <p className="text-white/40 text-sm mt-0.5">Plantillas de campañas Meta Ads para programar en el calendario.</p>
+          <p className="text-[#6b7280] text-sm mt-0.5">Plantillas de campañas Meta Ads para programar en el calendario.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Link href="/marketing/campanas/calendario"
-            className="text-xs px-3 py-1.5 rounded-lg border border-white/10 text-white/50 hover:text-white hover:border-white/20 transition-colors">
+            className="text-xs px-3 py-1.5 rounded-lg border border-[#333] text-gray-400 hover:text-white hover:border-[#555] transition-colors">
             Ver calendario →
           </Link>
           {tipos.length === 0 && (
@@ -372,7 +372,7 @@ export default function TiposCampanaPage() {
             </button>
           )}
           <button onClick={() => { cancelForm(); setShowForm(true); }}
-            className="text-xs font-semibold px-4 py-2 rounded-lg bg-[#B3985B] text-black hover:opacity-85 transition-opacity">
+            className="text-xs font-semibold px-4 py-2 rounded-lg bg-[#B3985B] text-black hover:bg-[#c9a96a] transition-colors">
             + Nueva campaña
           </button>
         </div>
@@ -568,7 +568,7 @@ export default function TiposCampanaPage() {
 
           <div className="flex gap-2 justify-end pt-1">
             <button onClick={save} disabled={saving || !form.nombre.trim()}
-              className="text-xs font-semibold px-5 py-2 rounded-lg bg-[#B3985B] text-black hover:opacity-85 disabled:opacity-50 transition-opacity">
+              className="text-xs font-semibold px-5 py-2 rounded-lg bg-[#B3985B] text-black hover:bg-[#c9a96a] disabled:opacity-50 transition-colors">
               {saving ? "Guardando…" : editId ? "Guardar cambios" : "Crear campaña"}
             </button>
           </div>

@@ -69,7 +69,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full bg-[#111] border border-[#262626] rounded-md px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#B3985B] transition-colors placeholder-[#444]"
+              className="w-full bg-[#111] border border-[#262626] rounded-md px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#B3985B] transition-colors placeholder:text-[#444]"
               placeholder="correo@ejemplo.com"
             />
           </div>
@@ -95,7 +95,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-[#B3985B] hover:bg-[#b8963e] disabled:opacity-50 text-black font-semibold rounded-md py-2.5 text-sm transition-colors"
+            className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold rounded-md py-2.5 text-sm transition-colors"
           >
             {loading ? "Ingresando..." : "Ingresar"}
           </button>

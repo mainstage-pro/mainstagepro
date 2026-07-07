@@ -298,7 +298,7 @@ export default function GruposEquipoPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="p-3 md:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
 
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
@@ -381,7 +381,7 @@ export default function GruposEquipoPage() {
       <div className="flex flex-wrap items-center gap-2">
         <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
           placeholder="Buscar grupo…"
-          className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-sm text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/40 w-44" />
+          className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/40 w-44" />
         <select value={filtroEvento} onChange={e => setFiltroEvento(e.target.value)}
           className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-xs text-[#9ca3af] focus:outline-none focus:border-[#B3985B]/40">
           <option value="">Evento: todos</option>

@@ -335,3 +335,123 @@ input[type="number"]::-webkit-inner-spin-button {
 .text-gray-300 { color: #e2e6ea }
 .text-gray-200 { color: #edf0f3 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAINSTAGE PRO — DESIGN SYSTEM TOKENS
+   Clases canónicas para toda la plataforma.
+   Úsalas directamente en JSX: className="ms-card ms-page" etc.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@layer components {
+
+  /* ── Page wrappers ──────────────────────────────────────────────────────── */
+  /* Módulos de lista/tabla — sin max-width */
+  .ms-page          { @apply p-4 md:p-6; }
+  /* Módulos de formulario / detalle — centrado y contenido */
+  .ms-page-form     { @apply p-4 md:p-6 max-w-5xl mx-auto; }
+  .ms-page-narrow   { @apply p-4 md:p-6 max-w-3xl mx-auto; }
+
+  /* ── Tipografía de página ────────────────────────────────────────────────── */
+  .ms-h1            { @apply text-xl font-semibold text-white; }
+  .ms-subtitle      { @apply text-sm text-[#6b7280]; }
+  .ms-section-label { @apply text-xs font-semibold text-[#B3985B] uppercase tracking-wider; }
+  .ms-label         { @apply text-[10px] text-gray-500 uppercase tracking-wider font-medium; }
+  .ms-meta          { @apply text-[11px] text-gray-500; }
+  .ms-micro         { @apply text-[10px] text-[#555]; }
+
+  /* ── Cards / Contenedores ───────────────────────────────────────────────── */
+  .ms-card          { @apply bg-[#111] border border-[#1e1e1e] rounded-xl; }
+  .ms-card-deep     { @apply bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl; }
+  .ms-card-inset    { @apply bg-[#1a1a1a] border border-[#252525] rounded-lg; }
+
+  /* ── Botones ─────────────────────────────────────────────────────────────── */
+  .ms-btn-primary   {
+    @apply bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold
+           px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .ms-btn-secondary {
+    @apply border border-[#333] text-gray-400 hover:text-white hover:border-[#555]
+           text-sm px-4 py-2 rounded-lg transition-colors;
+  }
+  .ms-btn-ghost     {
+    @apply text-[#B3985B] hover:bg-[#B3985B]/10 text-sm px-3 py-1.5 rounded-lg transition-colors;
+  }
+  .ms-btn-danger    {
+    @apply bg-red-900/20 border border-red-800/40 text-red-400 hover:bg-red-900/30
+           text-sm px-4 py-2 rounded-lg transition-colors;
+  }
+  .ms-btn-icon      {
+    @apply p-1.5 rounded-lg border border-[#222] text-gray-500 hover:text-white
+           hover:border-[#444] transition-colors;
+  }
+
+  /* ── Tabs ────────────────────────────────────────────────────────────────── */
+  .ms-tabs          { @apply flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-xl p-1; }
+  .ms-tab           {
+    @apply px-4 py-2 rounded-lg text-sm font-medium transition-all
+           text-[#6b7280] hover:text-white cursor-pointer;
+  }
+  .ms-tab-active    {
+    @apply px-4 py-2 rounded-lg text-sm font-medium transition-all
+           bg-[#B3985B] text-black cursor-pointer;
+  }
+  /* Tabs underline (para páginas de detalle) */
+  .ms-tabs-line     { @apply flex border-b border-[#111] overflow-x-auto; }
+  .ms-tab-line      {
+    @apply relative px-4 py-2.5 text-sm font-medium transition-colors
+           text-gray-600 hover:text-gray-400 whitespace-nowrap cursor-pointer;
+  }
+  .ms-tab-line-active {
+    @apply relative px-4 py-2.5 text-sm font-medium text-white whitespace-nowrap cursor-pointer;
+  }
+
+  /* ── Inputs y Selects ───────────────────────────────────────────────────── */
+  /* Input de búsqueda con icono (usa pl-9 pr-4) */
+  .ms-input-search  {
+    @apply w-full bg-[#111] border border-[#1e1e1e] rounded-lg pl-9 pr-4 py-2
+           text-sm text-white placeholder:text-[#444]
+           focus:outline-none focus:border-[#B3985B]/50 transition-colors;
+  }
+  /* Input de formulario estándar */
+  .ms-input         {
+    @apply w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2
+           text-white text-sm focus:outline-none focus:border-[#B3985B] transition-colors
+           placeholder:text-[#444];
+  }
+  /* Input inline (filtros, celdas de tabla) */
+  .ms-input-inline  {
+    @apply bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-1.5
+           text-sm text-white focus:outline-none focus:border-[#B3985B]/50 transition-colors;
+  }
+  /* Textarea */
+  .ms-textarea      {
+    @apply w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2
+           text-white text-sm focus:outline-none focus:border-[#B3985B] transition-colors
+           placeholder:text-[#444] resize-none;
+  }
+
+  /* ── Table / Lista headers ──────────────────────────────────────────────── */
+  .ms-th            {
+    @apply text-left text-[10px] uppercase tracking-wider text-[#555]
+           px-4 py-3 font-medium whitespace-nowrap;
+  }
+  .ms-thead         { @apply bg-[#0a0a0a] border-b border-[#111]; }
+
+  /* ── Badges ─────────────────────────────────────────────────────────────── */
+  .ms-badge         { @apply text-[10px] px-2 py-0.5 rounded-full font-medium border; }
+  .ms-badge-gold    { @apply bg-[#B3985B]/10 text-[#B3985B] border-[#B3985B]/30; }
+  .ms-badge-green   { @apply bg-green-900/30 text-green-400 border-green-800/30; }
+  .ms-badge-amber   { @apply bg-amber-900/30 text-amber-400 border-amber-800/30; }
+  .ms-badge-red     { @apply bg-red-900/30 text-red-400 border-red-800/30; }
+  .ms-badge-blue    { @apply bg-blue-900/30 text-blue-400 border-blue-800/30; }
+  .ms-badge-purple  { @apply bg-purple-900/30 text-purple-400 border-purple-800/30; }
+  .ms-badge-gray    { @apply bg-[#1a1a1a] text-[#555] border-[#2a2a2a]; }
+
+  /* ── Dividers ────────────────────────────────────────────────────────────── */
+  .ms-divider       { @apply border-t border-[#111]; }
+  .ms-divider-mid   { @apply border-t border-[#1e1e1e]; }
+
+  /* ── Modales / Dialogs ───────────────────────────────────────────────────── */
+  .ms-modal-overlay { @apply fixed inset-0 z-50 flex items-center justify-center p-4; }
+  .ms-modal         { @apply bg-[#111] border border-[#222] rounded-2xl w-full max-h-[90vh] overflow-y-auto; }
+
+}

@@ -77,13 +77,13 @@ export default function NuevoProspectoPage() {
   }
 
   return (
-    <div className="p-3 md:p-6 max-w-xl mx-auto">
+    <div className="p-4 md:p-6 max-w-xl mx-auto">
       <div className="mb-6">
         <button onClick={() => router.back()} className="text-gray-600 hover:text-white text-sm mb-2 transition-colors">← Atrás</button>
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-emerald-700/20 flex items-center justify-center text-lg">🌱</div>
           <div>
-            <h1 className="text-xl font-bold text-white">Nuevo prospecto en frío</h1>
+            <h1 className="text-xl font-semibold text-white">Nuevo prospecto en frío</h1>
             <p className="text-gray-500 text-xs">Outbound · proceso de nurturing a largo plazo</p>
           </div>
         </div>
@@ -121,7 +121,7 @@ export default function NuevoProspectoPage() {
                 onFocus={() => setClienteDropdown(true)}
                 onBlur={() => setTimeout(() => setClienteDropdown(false), 150)}
                 placeholder="Buscar cliente por nombre o empresa..."
-                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-600 placeholder-[#555]"
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-600 placeholder:text-[#555]"
               />
               {clienteDropdown && (
                 <div className="absolute z-50 w-full mt-1 bg-[#161616] border border-[#2a2a2a] rounded-lg shadow-xl max-h-52 overflow-y-auto">

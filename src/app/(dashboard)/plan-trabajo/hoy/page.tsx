@@ -173,7 +173,7 @@ function CircularProgress({ pct, completadas, total }: { pct: number; completada
           <circle
             cx="64" cy="64" r={r}
             fill="none"
-            stroke="#C9A84C"
+            stroke="#c9a96a"
             strokeWidth="8"
             strokeLinecap="round"
             strokeDasharray={circ}
@@ -183,7 +183,7 @@ function CircularProgress({ pct, completadas, total }: { pct: number; completada
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-bold text-white tabular-nums">{pct}%</span>
+          <span className="text-xl font-semibold text-white tabular-nums">{pct}%</span>
           <span className="text-[10px] text-gray-600">{completadas}/{total}</span>
         </div>
       </div>
@@ -214,7 +214,7 @@ function DayPanel({ pct, completadas, total }: { pct: number; completadas: numbe
           </div>
           {pct >= 80 && (
             <div className="mt-2 pt-2 border-t border-[#1a1a1a]">
-              <p className="text-xs text-[#C9A84C]">
+              <p className="text-xs text-[#c9a96a]">
                 {pct === 100 ? '🏆 Día perfecto' : '⚡ Casi listo'}
               </p>
             </div>
@@ -295,13 +295,13 @@ function MiDiaItem({
                 : noRealizado
                 ? 'bg-[#2a1a1a] border-[#5a2a2a] hover:border-red-800'
                 : toggling
-                ? 'border-[#C9A84C] animate-pulse'
-                : 'border-[#C9A84C] hover:bg-[#C9A84C]/20 hover:shadow-[0_0_0_3px_rgba(201,168,76,0.18)]'
+                ? 'border-[#c9a96a] animate-pulse'
+                : 'border-[#c9a96a] hover:bg-[#c9a96a]/20 hover:shadow-[0_0_0_3px_rgba(201,168,76,0.18)]'
             }`}
           >
             {completada && <span className="text-white text-[10px] font-bold">✓</span>}
             {noRealizado && <span className="text-red-800 text-[10px] font-bold">✗</span>}
-            {!completada && !noRealizado && !toggling && <span className="w-2 h-2 rounded-full bg-[#C9A84C]/50" />}
+            {!completada && !noRealizado && !toggling && <span className="w-2 h-2 rounded-full bg-[#c9a96a]/50" />}
           </button>
         </td>
 
@@ -324,7 +324,7 @@ function MiDiaItem({
               }`}>{imp.label}</span>
             )}
             {!noRealizado && t.tipo === 'ENTREGABLE' && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#C9A84C]/30 text-[#C9A84C]">Entregable</span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#c9a96a]/30 text-[#c9a96a]">Entregable</span>
             )}
             {!noRealizado && t.cuando && !expanded && (
               <span className="text-[10px] text-gray-600 truncate max-w-[160px]">{t.cuando}</span>
@@ -334,7 +334,7 @@ function MiDiaItem({
               <button
                 type="button"
                 onClick={e => { e.stopPropagation(); router.push(t.moduloDestino!.split('#')[0]) }}
-                className="text-[9px] text-[#C9A84C] hover:underline"
+                className="text-[9px] text-[#c9a96a] hover:underline"
               >
                 → {t.moduloTexto}
               </button>
@@ -359,7 +359,7 @@ function MiDiaItem({
                 key={d}
                 className={`text-[8px] w-3.5 h-3.5 rounded flex items-center justify-center font-bold ${
                   (t.diasSemana ?? []).includes(d)
-                    ? 'bg-[#C9A84C]/20 text-[#C9A84C]'
+                    ? 'bg-[#c9a96a]/20 text-[#c9a96a]'
                     : 'bg-[#111] text-gray-700'
                 }`}
               >
@@ -437,8 +437,8 @@ function MiDiaItem({
                 </div>
               )}
               {t.estandarMinimo && (
-                <div className="bg-[#C9A84C]/5 border border-[#C9A84C]/20 rounded-lg p-3">
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#C9A84C] mb-1.5">Estándar mínimo</p>
+                <div className="bg-[#c9a96a]/5 border border-[#c9a96a]/20 rounded-lg p-3">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#c9a96a] mb-1.5">Estándar mínimo</p>
                   <p className="text-xs text-gray-300 leading-relaxed">{t.estandarMinimo}</p>
                 </div>
               )}
@@ -453,7 +453,7 @@ function MiDiaItem({
                   <button
                     type="button"
                     onClick={e => { e.stopPropagation(); router.push(t.moduloDestino!.split('#')[0]) }}
-                    className="inline-flex items-center gap-1.5 text-sm text-[#C9A84C] hover:underline"
+                    className="inline-flex items-center gap-1.5 text-sm text-[#c9a96a] hover:underline"
                   >
                     {t.moduloTexto} →
                   </button>
@@ -708,8 +708,8 @@ export default function MiDiaPage() {
     <div className="p-4 md:p-6 max-w-5xl">
       {/* ── Personalized Greeting ── */}
       <div className="mb-5">
-        <p className="text-[10px] text-[#C9A84C] uppercase tracking-[0.2em] font-semibold">{fmtFechaLarga(fechaActual)}</p>
-        <p className="text-xl font-bold text-white mt-1">
+        <p className="text-[10px] text-[#c9a96a] uppercase tracking-[0.2em] font-semibold">{fmtFechaLarga(fechaActual)}</p>
+        <p className="text-xl font-semibold text-white mt-1">
           {getGreeting()}{userName ? `, ${userName}` : ''} 👋
         </p>
         <p className="text-xs text-gray-500 mt-2 leading-relaxed max-w-xl italic">
@@ -719,7 +719,7 @@ export default function MiDiaPage() {
           <div className="mt-3 flex items-center gap-3">
             <div className="flex-1 h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
               <div
-                className="h-full bg-[#C9A84C] rounded-full transition-all duration-700"
+                className="h-full bg-[#c9a96a] rounded-full transition-all duration-700"
                 style={{ width: `${pct}%` }}
               />
             </div>
@@ -735,7 +735,7 @@ export default function MiDiaPage() {
             onClick={() => setViendoUsuarioId(null)}
             className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
               viendoUsuarioId === null
-                ? 'bg-[#C9A84C]/10 border-[#C9A84C]/30 text-[#C9A84C]'
+                ? 'bg-[#c9a96a]/10 border-[#c9a96a]/30 text-[#c9a96a]'
                 : 'border-[#1e1e1e] text-gray-500 hover:text-gray-300 hover:border-[#333]'
             }`}
           >
@@ -747,7 +747,7 @@ export default function MiDiaPage() {
               onClick={() => setViendoUsuarioId(u.id)}
               className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
                 viendoUsuarioId === u.id
-                  ? 'bg-[#C9A84C]/10 border-[#C9A84C]/30 text-[#C9A84C]'
+                  ? 'bg-[#c9a96a]/10 border-[#c9a96a]/30 text-[#c9a96a]'
                   : 'border-[#1e1e1e] text-gray-500 hover:text-gray-300 hover:border-[#333]'
               }`}
             >
@@ -795,22 +795,22 @@ export default function MiDiaPage() {
                   onClick={() => setFechaActual(new Date(dia))}
                   className={`flex-1 flex flex-col items-center py-2 px-1 rounded-xl transition-all ${
                     isSelected
-                      ? 'bg-[#C9A84C]/10 border border-[#C9A84C]/30'
+                      ? 'bg-[#c9a96a]/10 border border-[#c9a96a]/30'
                       : 'border border-transparent hover:border-[#1e1e1e] hover:bg-[#0d0d0d]'
                   }`}
                 >
                   <span className={`text-[10px] font-semibold leading-tight ${
-                    isSelected ? 'text-[#C9A84C]' : isToday ? 'text-white' : 'text-gray-500'
+                    isSelected ? 'text-[#c9a96a]' : isToday ? 'text-white' : 'text-gray-500'
                   }`}>
                     {diaNombre}
                   </span>
                   <span className={`text-[10px] mt-0.5 ${
-                    isSelected ? 'text-[#C9A84C]/80' : isToday ? 'text-gray-300' : 'text-gray-600'
+                    isSelected ? 'text-[#c9a96a]/80' : isToday ? 'text-gray-300' : 'text-gray-600'
                   }`}>
                     {dia.getDate()} de {mesAbrev}
                   </span>
                   <span className={`text-[9px] mt-1 font-mono ${
-                    isSelected ? 'text-[#C9A84C]/60' : 'text-gray-700'
+                    isSelected ? 'text-[#c9a96a]/60' : 'text-gray-700'
                   }`}>
                     {loadingConteos ? '·' : (conteo !== undefined ? `${conteo} compromiso${conteo !== 1 ? 's' : ''}` : '–')}
                   </span>
@@ -907,7 +907,7 @@ export default function MiDiaPage() {
               <button
                 onClick={handleGenerar}
                 disabled={generando}
-                className="bg-[#C9A84C] text-black font-semibold px-6 py-3 rounded-xl text-sm hover:bg-[#d4b060] disabled:opacity-50 transition-colors"
+                className="bg-[#c9a96a] text-black font-semibold px-6 py-3 rounded-xl text-sm hover:bg-[#d4b060] disabled:opacity-50 transition-colors"
               >
                 {generando ? 'Generando...' : 'Generar compromisos →'}
               </button>
@@ -976,8 +976,8 @@ export default function MiDiaPage() {
                           >
                             <td colSpan={7} className="px-4 py-2.5">
                               <div className="flex items-center gap-3">
-                                <div className="w-0.5 h-4 rounded-full bg-[#C9A84C]/40" />
-                                <span className="text-[11px] text-[#C9A84C] uppercase tracking-[0.12em] font-semibold">
+                                <div className="w-0.5 h-4 rounded-full bg-[#c9a96a]/40" />
+                                <span className="text-[11px] text-[#c9a96a] uppercase tracking-[0.12em] font-semibold">
                                   {subNombre}
                                 </span>
                                 <span className="text-[10px] text-gray-700">{subareas[subNombre].length}</span>

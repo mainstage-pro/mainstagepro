@@ -288,7 +288,7 @@ export default function IncidenciasLandingPage() {
             </div>
 
             <button onClick={() => setPrivacyDismissed(true)}
-              className="w-full bg-[#B3985B] hover:bg-[#c9a96e] text-black font-bold py-3.5 rounded-xl transition-colors text-sm">
+              className="w-full bg-[#B3985B] hover:bg-[#c9a96a] text-black font-bold py-3.5 rounded-xl transition-colors text-sm">
               Entendido — Comenzar registro ✓
             </button>
           </div>
@@ -363,7 +363,7 @@ export default function IncidenciasLandingPage() {
               <p className="text-center text-gray-700 text-xs">Agrega al menos una incidencia para poder guardar el registro</p>
             )}
             <button type="submit" disabled={guardando || total === 0}
-              className="w-full bg-[#B3985B] hover:bg-[#c9a96e] disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-colors text-sm">
+              className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 disabled:cursor-not-allowed text-black font-bold py-3.5 rounded-xl transition-colors text-sm">
               {guardando ? "Guardando..." : total === 0 ? "Agrega al menos una incidencia" : `Guardar registro — ${total} incidencia${total !== 1 ? "s" : ""} ✓`}
             </button>
             <div className="flex items-center justify-center">

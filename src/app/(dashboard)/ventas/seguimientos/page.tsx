@@ -518,7 +518,7 @@ export default function SeguimientosPage() {
   ] as const;
 
   return (
-    <div className="p-3 md:p-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto">
 
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
@@ -535,7 +535,7 @@ export default function SeguimientosPage() {
           </p>
         </div>
         <button onClick={() => setShowModal(true)}
-          className="bg-[#B3985B] hover:bg-[#C9A84C] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
+          className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
           + Seguimiento
         </button>
       </div>
@@ -574,7 +574,7 @@ export default function SeguimientosPage() {
           </svg>
           <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
             placeholder="Buscar cliente o proyecto…"
-            className="w-full pl-7 pr-8 py-1.5 bg-[#111] border border-[#2a2a2a] rounded-lg text-xs text-white placeholder-[#555] focus:outline-none focus:border-[#B3985B]/50" />
+            className="w-full pl-9 pr-8 py-2 bg-[#111] border border-[#1e1e1e] rounded-lg text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50 transition-colors" />
           {busqueda && (
             <button onClick={() => setBusqueda("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-[#555] hover:text-white">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>

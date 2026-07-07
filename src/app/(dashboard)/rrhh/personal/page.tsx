@@ -65,7 +65,7 @@ export default function PersonalPage() {
   const totalPendiente = pagosPendientes.reduce((s, p) => s + p.monto, 0);
 
   return (
-    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold text-white">Personal Interno</h1>
@@ -77,7 +77,7 @@ export default function PersonalPage() {
             <button
               onClick={() => setView("list")}
               title="Vista lista"
-              className={`p-1.5 rounded-md transition-colors ${view === "list" ? "bg-[#B3985B] text-black" : "text-gray-500 hover:text-gray-300"}`}
+              className={`p-1.5 rounded-lg transition-colors ${view === "list" ? "bg-[#B3985B] text-black" : "text-gray-500 hover:text-gray-300"}`}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <rect x="1" y="3" width="14" height="2" rx="1" fill="currentColor"/>
@@ -88,7 +88,7 @@ export default function PersonalPage() {
             <button
               onClick={() => setView("card")}
               title="Vista tarjetas"
-              className={`p-1.5 rounded-md transition-colors ${view === "card" ? "bg-[#B3985B] text-black" : "text-gray-500 hover:text-gray-300"}`}
+              className={`p-1.5 rounded-lg transition-colors ${view === "card" ? "bg-[#B3985B] text-black" : "text-gray-500 hover:text-gray-300"}`}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <rect x="1" y="1" width="6" height="6" rx="1.5" fill="currentColor"/>

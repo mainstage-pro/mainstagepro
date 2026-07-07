@@ -146,7 +146,7 @@ export function VistaRendimiento() {
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div>
           <p className="text-[10px] text-[#B3985B] uppercase tracking-[0.2em] font-semibold">Módulo de tareas</p>
-          <h1 className="text-xl font-bold text-white mt-1">Rendimiento operativo</h1>
+          <h1 className="text-xl font-semibold text-white mt-1">Rendimiento operativo</h1>
           <p className="text-xs text-[#444] mt-1">
             Solo se miden tareas con responsable asignado. La fecha solo aplica para el análisis semanal.
             {data.noMedibles > 0 && (
@@ -179,11 +179,11 @@ export function VistaRendimiento() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
           <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-2">Total medibles</p>
-          <p className="text-2xl font-bold text-white tabular-nums">{data.totalMedibles}</p>
+          <p className="text-xl font-semibold text-white tabular-nums">{data.totalMedibles}</p>
         </div>
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
           <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-2">Completadas</p>
-          <p className="text-2xl font-bold text-white tabular-nums">{data.totalCompletadas}</p>
+          <p className="text-xl font-semibold text-white tabular-nums">{data.totalCompletadas}</p>
         </div>
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
           <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-2">% completado</p>
@@ -193,7 +193,7 @@ export function VistaRendimiento() {
         </div>
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
           <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-2">Esta semana</p>
-          <p className="text-2xl font-bold text-white tabular-nums">
+          <p className="text-xl font-semibold text-white tabular-nums">
             {semanaActual?.completadas ?? 0}/{semanaActual?.total ?? 0}
           </p>
           <p className="text-xs text-[#444] mt-1">{semanaActual?.pct ?? 0}% completado</p>

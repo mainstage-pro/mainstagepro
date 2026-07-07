@@ -60,7 +60,7 @@ function DisciplinaPill({ disc, size = 'sm' }: { disc: string; size?: 'sm' | 'xs
   );
 }
 
-const STAR_COLOR = '#C9A84C';
+const STAR_COLOR = '#c9a96a';
 
 function StarRating({ value, onChange, size = 16 }: {
   value: number;
@@ -330,7 +330,7 @@ export default function TecnicosPage() {
   const inactivos = filtered.filter(t => !t.activo);
 
   return (
-    <div className="p-3 md:p-6 max-w-6xl mx-auto">
+    <div className="p-4 md:p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold text-white">Técnicos</h1>
@@ -481,7 +481,7 @@ export default function TecnicosPage() {
           { key: 'SIN_CATEGORIA', label: 'Sin categoría' },
         ] as { key: string; label: string }[]).map(tab => {
           const isActive = filterDisciplina === tab.key;
-          const tabColor = tab.key === 'TODOS' ? '#C9A84C' : tab.key === 'SIN_CATEGORIA' ? '#6B7280' : (DISCIPLINA_COLORS[tab.key] ?? '#6b7280');
+          const tabColor = tab.key === 'TODOS' ? '#c9a96a' : tab.key === 'SIN_CATEGORIA' ? '#6B7280' : (DISCIPLINA_COLORS[tab.key] ?? '#6b7280');
           const count = tab.key === 'TODOS'
             ? tecnicos.filter(t => t.activo || showInactivos).length
             : tab.key === 'SIN_CATEGORIA'
@@ -599,7 +599,7 @@ export default function TecnicosPage() {
                 <tr key={t.id} className="group even:bg-[#080808] hover:bg-[#111] transition-colors duration-150">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-xs font-bold text-[#C9A84C] shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-xs font-bold text-[#c9a96a] shrink-0">
                         {t.nombre.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
@@ -633,7 +633,7 @@ export default function TecnicosPage() {
                               key={r.id}
                               onClick={() => { saveInlineField(t.id, 'rolId', r.id); setInlineEdit(null); }}
                               className={`w-full text-left px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                                t.rolId === r.id ? 'bg-[#C9A84C]/10 text-[#C9A84C]' : 'text-gray-300 hover:bg-[#1a1a1a]'
+                                t.rolId === r.id ? 'bg-[#c9a96a]/10 text-[#c9a96a]' : 'text-gray-300 hover:bg-[#1a1a1a]'
                               }`}
                             >
                               {r.nombre}

@@ -62,7 +62,7 @@ const NIVELES = [
     pct: 10,
     destacado: true,
     tagline: "Alianza visible con contenido",
-    color: { border: "#B3985B", borderHover: "#c4aa6b", bg: "rgba(179,152,91,0.06)", accent: "#B3985B", badge: "rgba(179,152,91,0.15)" },
+    color: { border: "#B3985B", borderHover: "#c9a96a", bg: "rgba(179,152,91,0.06)", accent: "#B3985B", badge: "rgba(179,152,91,0.15)" },
     beneficios: [
       "Todo lo incluido en Nivel Base",
       "Logo en cartel principal y mesa de control visible del evento",

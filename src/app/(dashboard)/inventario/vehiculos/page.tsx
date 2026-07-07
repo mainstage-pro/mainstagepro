@@ -318,7 +318,7 @@ export default function VehiculosPage() {
   const proximos = vehiculos.filter(v => alertaServicio(v) === "proximo");
 
   return (
-    <div className="p-3 md:p-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>

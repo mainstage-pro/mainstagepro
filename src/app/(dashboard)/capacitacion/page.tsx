@@ -27,14 +27,14 @@ interface Sesion {
 const BLOQUE_COLORS: Record<string, string> = {
   A: "#6366F1", B: "#10B981", C: "#F59E0B",
   D: "#3B82F6", E: "#8B5CF6", F: "#EC4899",
-  G: "#EF4444", H: "#14B8A6", I: "#C9A84C",
+  G: "#EF4444", H: "#14B8A6", I: "#c9a96a",
 };
 
 const ESTADO_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   pendiente:        { label: "Pendiente",       color: "#6b7280", bg: "#1a1a1a" },
   "en-preparacion": { label: "En preparación",  color: "#F59E0B", bg: "#1c1500" },
   lista:            { label: "Lista",            color: "#22c55e", bg: "#0a1f0a" },
-  impartida:        { label: "Impartida",        color: "#C9A84C", bg: "#1a1200" },
+  impartida:        { label: "Impartida",        color: "#c9a96a", bg: "#1a1200" },
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -76,7 +76,7 @@ function SesionCard({ s }: { s: Sesion }) {
               {s.bloque}
             </span>
             {s.versionActual !== null && (
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: "#C9A84C22", color: "#C9A84C" }}>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded" style={{ background: "#c9a96a22", color: "#c9a96a" }}>
                 v{s.versionActual}
               </span>
             )}
@@ -84,8 +84,8 @@ function SesionCard({ s }: { s: Sesion }) {
 
           {/* Número + título */}
           <div>
-            <p className="text-[11px] font-mono mb-1" style={{ color: "#C9A84C" }}>{padNum(s.numero)}</p>
-            <h3 className="text-sm font-semibold leading-snug text-white group-hover:text-[#C9A84C] transition-colors line-clamp-2">
+            <p className="text-[11px] font-mono mb-1" style={{ color: "#c9a96a" }}>{padNum(s.numero)}</p>
+            <h3 className="text-sm font-semibold leading-snug text-white group-hover:text-[#c9a96a] transition-colors line-clamp-2">
               {s.titulo}
             </h3>
           </div>
@@ -118,7 +118,7 @@ function SesionCard({ s }: { s: Sesion }) {
         <div className="px-4 pb-4">
           <div
             className="w-full py-1.5 rounded-lg text-xs font-medium text-center transition-all duration-200 opacity-0 group-hover:opacity-100"
-            style={{ background: "#C9A84C", color: "#000" }}
+            style={{ background: "#c9a96a", color: "#000" }}
           >
             Preparar sesión →
           </div>
@@ -166,7 +166,7 @@ function CalendarioItem({ s, onDateChange }: { s: Sesion; onDateChange: (id: str
       className="flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors hover:border-[#333]"
       style={{ background: "#111", borderColor: "#1e1e1e" }}
     >
-      <span className="text-xs font-mono w-5 shrink-0" style={{ color: "#C9A84C" }}>{padNum(s.numero)}</span>
+      <span className="text-xs font-mono w-5 shrink-0" style={{ color: "#c9a96a" }}>{padNum(s.numero)}</span>
       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: bloqueColor }} />
       <span className="flex-1 text-sm text-white truncate">{s.titulo}</span>
       {editing ? (
@@ -177,13 +177,13 @@ function CalendarioItem({ s, onDateChange }: { s: Sesion; onDateChange: (id: str
           onChange={(e) => setValue(e.target.value)}
           onBlur={(e) => save(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") save(value); if (e.key === "Escape") setEditing(false); }}
-          className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#C9A84C]"
+          className="bg-[#1a1a1a] border border-[#333] rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-[#c9a96a]"
         />
       ) : (
         <button
           onClick={() => setEditing(true)}
-          className="text-xs px-3 py-1 rounded-lg border transition-colors hover:border-[#C9A84C] hover:text-[#C9A84C]"
-          style={{ borderColor: "#262626", color: s.fechaProgramada ? "#C9A84C" : "#374151" }}
+          className="text-xs px-3 py-1 rounded-lg border transition-colors hover:border-[#c9a96a] hover:text-[#c9a96a]"
+          style={{ borderColor: "#262626", color: s.fechaProgramada ? "#c9a96a" : "#374151" }}
         >
           {s.fechaProgramada ? formatDate(s.fechaProgramada) : "Sin programar"}
         </button>
@@ -234,14 +234,14 @@ export default function CapacitacionPage() {
         <div className="mb-8">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <h1 className="text-2xl font-bold text-white tracking-tight mb-1">Capacitación</h1>
+              <h1 className="text-xl font-semibold text-white tracking-tight mb-1">Capacitación</h1>
               <p className="text-sm" style={{ color: "#6b7280" }}>
                 Módulo Fundacional · 24 sesiones · Miércoles 10:00 am
               </p>
             </div>
             <span
               className="text-sm font-semibold px-3 py-1.5 rounded-full border"
-              style={{ background: "#1a1200", color: "#C9A84C", borderColor: "#C9A84C44" }}
+              style={{ background: "#1a1200", color: "#c9a96a", borderColor: "#c9a96a44" }}
             >
               {loading ? "—" : completadas} / 24 completadas
             </span>
@@ -252,7 +252,7 @@ export default function CapacitacionPage() {
             <div className="mt-4 h-1 rounded-full overflow-hidden" style={{ background: "#1a1a1a" }}>
               <div
                 className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${(completadas / 24) * 100}%`, background: "#C9A84C" }}
+                style={{ width: `${(completadas / 24) * 100}%`, background: "#c9a96a" }}
               />
             </div>
           )}

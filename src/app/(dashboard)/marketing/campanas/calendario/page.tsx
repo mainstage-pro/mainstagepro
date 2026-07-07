@@ -240,7 +240,7 @@ export default function CalendarioCampanasPage() {
   const presupuestoTotal = ejecuciones.reduce((s, e) => s + (e.presupuesto ?? 0), 0);
 
   return (
-    <div className="p-3 md:p-6 max-w-5xl mx-auto space-y-5">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
@@ -252,7 +252,7 @@ export default function CalendarioCampanasPage() {
             Tipos de campaña →
           </Link>
           <button onClick={startNew}
-            className="text-xs font-semibold px-4 py-2 rounded-lg bg-[#B3985B] text-black hover:opacity-85 transition-opacity">
+            className="text-xs font-semibold px-4 py-2 rounded-lg bg-[#B3985B] text-black hover:bg-[#c9a96a] transition-colors">
             + Programar campaña
           </button>
         </div>
@@ -463,7 +463,7 @@ export default function CalendarioCampanasPage() {
           <div className="text-3xl opacity-20">📅</div>
           <p className="text-white/40 text-sm">Sin campañas en {mesLabel(mes)}</p>
           <button onClick={startNew}
-            className="text-xs px-4 py-2 rounded-lg bg-[#B3985B] text-black font-semibold hover:opacity-85 transition-opacity">
+            className="text-xs px-4 py-2 rounded-lg bg-[#B3985B] text-black font-semibold hover:bg-[#c9a96a] transition-colors">
             + Programar primera campaña
           </button>
           {tipos.length === 0 && (

@@ -59,7 +59,7 @@ export default function PipelinePage() {
   const vencidos = tratos.filter(t => t.fechaProximaAccion && new Date(t.fechaProximaAccion) < new Date()).length;
 
   return (
-    <div className="p-3 md:p-6 h-full flex flex-col gap-4">
+    <div className="p-4 md:p-6 h-full flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
@@ -70,7 +70,7 @@ export default function PipelinePage() {
             {vencidos > 0 && <p className="text-red-400 text-xs">⚠ {vencidos} seguimiento{vencidos !== 1 ? "s" : ""} vencido{vencidos !== 1 ? "s" : ""}</p>}
           </div>
         </div>
-        <Link href="/crm/tratos/nuevo" className="bg-[#B3985B] hover:bg-[#b8963e] text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
+        <Link href="/crm/tratos/nuevo" className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
           + Nuevo trato
         </Link>
       </div>

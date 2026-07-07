@@ -176,7 +176,7 @@ function MiDiaItem({
                 {ctx.label}
               </span>
               {t.tipo === 'ENTREGABLE' && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#C9A84C]/30 text-[#C9A84C] bg-[#C9A84C]/5">
+                <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#c9a96a]/30 text-[#c9a96a] bg-[#c9a96a]/5">
                   📄 Entregable
                 </span>
               )}
@@ -199,7 +199,7 @@ function MiDiaItem({
                     key={d}
                     className={`text-[8px] w-3.5 h-3.5 rounded flex items-center justify-center font-bold ${
                       (t.diasSemana ?? []).includes(d)
-                        ? 'bg-[#C9A84C]/20 text-[#C9A84C]'
+                        ? 'bg-[#c9a96a]/20 text-[#c9a96a]'
                         : 'bg-[#1a1a1a] text-gray-700'
                     }`}
                   >
@@ -249,8 +249,8 @@ function MiDiaItem({
                 </div>
               )}
               {t.estandarMinimo && (
-                <div className="bg-[#C9A84C]/5 border border-[#C9A84C]/20 rounded-lg p-3">
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#C9A84C] mb-1.5">Estándar mínimo</p>
+                <div className="bg-[#c9a96a]/5 border border-[#c9a96a]/20 rounded-lg p-3">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#c9a96a] mb-1.5">Estándar mínimo</p>
                   <p className="text-xs text-gray-300 leading-relaxed">{t.estandarMinimo}</p>
                 </div>
               )}
@@ -266,7 +266,7 @@ function MiDiaItem({
               <a
                 href={t.moduloDestino}
                 onClick={e => e.stopPropagation()}
-                className="inline-flex items-center gap-1.5 text-sm text-[#C9A84C] hover:underline"
+                className="inline-flex items-center gap-1.5 text-sm text-[#c9a96a] hover:underline"
               >
                 {t.moduloTexto} →
               </a>
@@ -391,7 +391,7 @@ export default function MiDiaPage() {
           <div className="mt-3 flex items-center gap-3">
             <div className="flex-1 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">
               <div
-                className="h-full bg-[#C9A84C] rounded-full transition-all duration-500"
+                className="h-full bg-[#c9a96a] rounded-full transition-all duration-500"
                 style={{ width: `${pct}%` }}
               />
             </div>
@@ -434,22 +434,22 @@ export default function MiDiaPage() {
                 onClick={() => setFechaActual(new Date(dia))}
                 className={`flex flex-col items-center px-2 py-3 rounded-xl border transition-all ${
                   isSelected
-                    ? 'bg-[#C9A84C]/10 border-[#C9A84C]/40 shadow-sm'
+                    ? 'bg-[#c9a96a]/10 border-[#c9a96a]/40 shadow-sm'
                     : 'bg-[#0a0a0a] border-[#1a1a1a] hover:border-[#333]'
                 }`}
               >
                 <span className={`text-xs font-semibold mb-0.5 ${
-                  isSelected ? 'text-[#C9A84C]' : isToday ? 'text-white' : 'text-[#666]'
+                  isSelected ? 'text-[#c9a96a]' : isToday ? 'text-white' : 'text-[#666]'
                 }`}>
                   {diaNombre}
                 </span>
                 <span className={`text-[11px] mt-0.5 ${
-                  isSelected ? 'text-[#C9A84C]/80' : isToday ? 'text-gray-300' : 'text-[#444]'
+                  isSelected ? 'text-[#c9a96a]/80' : isToday ? 'text-gray-300' : 'text-[#444]'
                 }`}>
                   {diaNumero} de {mesAbrev}
                 </span>
                 <span className={`text-[9px] mt-1 font-mono ${
-                  isSelected ? 'text-[#C9A84C]/70' : 'text-gray-700'
+                  isSelected ? 'text-[#c9a96a]/70' : 'text-gray-700'
                 }`}>
                   {loadingConteos ? '·' : (conteo !== undefined ? `${conteo} tarea${conteo !== 1 ? 's' : ''}` : '–')}
                 </span>
@@ -471,7 +471,7 @@ export default function MiDiaPage() {
           <button
             onClick={handleGenerar}
             disabled={generando}
-            className="bg-[#C9A84C] text-black font-semibold px-6 py-3 rounded-xl text-sm hover:bg-[#d4b060] disabled:opacity-50 transition-colors"
+            className="bg-[#c9a96a] text-black font-semibold px-6 py-3 rounded-xl text-sm hover:bg-[#d4b060] disabled:opacity-50 transition-colors"
           >
             {generando ? 'Generando...' : 'Generar tareas →'}
           </button>

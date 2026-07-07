@@ -143,7 +143,7 @@ function ResponsableBtn({
               onClick={e => { e.stopPropagation(); onCambiar(u.id); setOpen(false) }}
               className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2 ${
                 tarea.responsable?.id === u.id
-                  ? 'text-[#C9A84C] bg-[#C9A84C]/5'
+                  ? 'text-[#c9a96a] bg-[#c9a96a]/5'
                   : 'text-gray-400 hover:bg-[#111] hover:text-white'
               }`}
             >
@@ -247,7 +247,7 @@ function TareaModal({
     }
   }
 
-  const inputCls = 'w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#C9A84C] transition-colors'
+  const inputCls = 'w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a96a] transition-colors'
   const labelCls = 'text-[10px] text-gray-600 uppercase tracking-wider block mb-1'
 
   return (
@@ -290,7 +290,7 @@ function TareaModal({
                 onClick={() => toggleDia(d)}
                 className={`w-9 h-9 rounded-lg text-sm font-bold transition-colors ${
                   form.diasSemana.includes(d)
-                    ? 'bg-[#C9A84C] text-black'
+                    ? 'bg-[#c9a96a] text-black'
                     : 'bg-[#1a1a1a] text-gray-600 hover:text-gray-300'
                 }`}
               >
@@ -391,7 +391,7 @@ function TareaModal({
                     onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
                     placeholder={placeholder}
                     rows={2}
-                    className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#C9A84C] resize-none transition-colors"
+                    className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#c9a96a] resize-none transition-colors"
                   />
                 </div>
               ))}
@@ -410,7 +410,7 @@ function TareaModal({
           <button
             onClick={handleSave}
             disabled={saving || !form.nombre.trim()}
-            className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] text-black text-sm font-semibold hover:bg-[#d4b060] disabled:opacity-40 transition-colors"
+            className="flex-1 py-2.5 rounded-xl bg-[#c9a96a] text-black text-sm font-semibold hover:bg-[#d4b060] disabled:opacity-40 transition-colors"
           >
             {saving ? 'Guardando...' : (isEdit ? 'Guardar cambios' : 'Crear tarea')}
           </button>
@@ -463,7 +463,7 @@ function TemplateRow({
             <span className={`text-[9px] ${imp.color}`}>{imp.label}</span>
             <span className={`text-[9px] px-1.5 py-0.5 rounded-full border ${ctx.cls}`}>{ctx.label}</span>
             {t.tipo === 'ENTREGABLE' && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#C9A84C]/30 text-[#C9A84C]">Entregable</span>
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#c9a96a]/30 text-[#c9a96a]">Entregable</span>
             )}
           </div>
         </td>
@@ -494,7 +494,7 @@ function TemplateRow({
                   }}
                   className={`text-[9px] w-4 h-4 rounded flex items-center justify-center font-bold transition-colors ${
                     t.diasSemana.includes(d)
-                      ? 'bg-[#C9A84C]/20 text-[#C9A84C] hover:bg-[#C9A84C]/40'
+                      ? 'bg-[#c9a96a]/20 text-[#c9a96a] hover:bg-[#c9a96a]/40'
                       : 'bg-[#1a1a1a] text-gray-700 hover:bg-[#2a2a2a] hover:text-gray-500'
                   }`}
                   title={DIAS_SEMANA.find(x => x.d === d)?.full}
@@ -506,7 +506,7 @@ function TemplateRow({
                   key={d}
                   className={`text-[9px] w-4 h-4 rounded flex items-center justify-center font-bold ${
                     t.diasSemana.includes(d)
-                      ? 'bg-[#C9A84C]/20 text-[#C9A84C]'
+                      ? 'bg-[#c9a96a]/20 text-[#c9a96a]'
                       : 'bg-[#1a1a1a] text-gray-700'
                   }`}
                 >
@@ -567,8 +567,8 @@ function TemplateRow({
                 </div>
               )}
               {t.estandarMinimo && (
-                <div className="bg-[#C9A84C]/5 border border-[#C9A84C]/20 rounded-lg p-3">
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#C9A84C] mb-1.5">Estándar mínimo</p>
+                <div className="bg-[#c9a96a]/5 border border-[#c9a96a]/20 rounded-lg p-3">
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#c9a96a] mb-1.5">Estándar mínimo</p>
                   <p className="text-xs text-gray-300 leading-relaxed">{t.estandarMinimo}</p>
                 </div>
               )}
@@ -594,13 +594,13 @@ function TemplateRow({
             </div>
             <div className="ml-3 mt-3 flex items-center gap-3 flex-wrap">
               {t.kpiNombre && (
-                <span className="text-[10px] text-[#C9A84C] border border-[#C9A84C]/30 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] text-[#c9a96a] border border-[#c9a96a]/30 px-2 py-0.5 rounded-full">
                   KPI: {t.kpiNombre}
                 </span>
               )}
               {t.cuando && <span className="text-[10px] text-gray-600">⏰ {t.cuando}</span>}
               {t.moduloDestino && t.moduloTexto && (
-                <a href={t.moduloDestino} onClick={e => e.stopPropagation()} className="text-[10px] text-[#C9A84C] hover:underline">
+                <a href={t.moduloDestino} onClick={e => e.stopPropagation()} className="text-[10px] text-[#c9a96a] hover:underline">
                   {t.moduloTexto} →
                 </a>
               )}
@@ -663,7 +663,7 @@ function VistaPorPersona({
     <div className="flex-1 overflow-auto">
       <div className="px-5 py-4 border-b border-[#1a1a1a] bg-[#0a0a0a] sticky top-0 z-20">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-[#C9A84C]/10 border border-[#C9A84C]/30 flex items-center justify-center text-sm font-bold text-[#C9A84C]">
+          <div className="w-9 h-9 rounded-full bg-[#c9a96a]/10 border border-[#c9a96a]/30 flex items-center justify-center text-sm font-bold text-[#c9a96a]">
             {usuario.name[0]}
           </div>
           <div>
@@ -681,7 +681,7 @@ function VistaPorPersona({
             <section key={d} className="mb-8">
               <div className="flex items-center gap-2 mb-3">
                 <span className="text-[10px] font-bold tracking-wider text-gray-600 uppercase">{full}</span>
-                <span className="text-[10px] text-[#C9A84C]">{tareasDia.length}</span>
+                <span className="text-[10px] text-[#c9a96a]">{tareasDia.length}</span>
               </div>
               <table className="w-full">
                 <tbody>
@@ -886,7 +886,7 @@ export default function PlanPage() {
                   onClick={() => { setActiveAreaId(a.id); setVistaPersonaId(null) }}
                   className={`w-full text-left px-4 py-3 text-xs transition-all border-l-2 ${
                     activeAreaId === a.id && !vistaPersonaId
-                      ? 'border-[#C9A84C] text-white bg-[#0d0d0d]'
+                      ? 'border-[#c9a96a] text-white bg-[#0d0d0d]'
                       : 'border-transparent text-gray-500 hover:text-gray-300 hover:bg-[#0a0a0a]'
                   }`}
                 >
@@ -906,7 +906,7 @@ export default function PlanPage() {
                     onClick={() => { setVistaPersonaId(u.id); setActiveAreaId(null) }}
                     className={`w-full text-left flex items-center gap-2 px-3 py-2 text-xs transition-all border-l-2 ${
                       vistaPersonaId === u.id
-                        ? 'border-[#C9A84C] text-white bg-[#0d0d0d]'
+                        ? 'border-[#c9a96a] text-white bg-[#0d0d0d]'
                         : 'border-transparent text-gray-600 hover:text-gray-300 hover:bg-[#0a0a0a]'
                     }`}
                   >
@@ -955,7 +955,7 @@ export default function PlanPage() {
                     placeholder="Buscar tarea..."
                     value={busqueda}
                     onChange={e => setBusqueda(e.target.value)}
-                    className="bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#C9A84C] w-44"
+                    className="bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#c9a96a] w-44"
                   />
                   <select
                     value={filtroImpacto}
@@ -1019,7 +1019,7 @@ export default function PlanPage() {
                         subAreaId: group.subArea.id,
                         subAreaNombre: group.subArea.nombre,
                       })}
-                      className="w-full text-left px-5 py-2.5 text-xs text-gray-700 hover:text-[#C9A84C] hover:bg-[#0a0a0a] flex items-center gap-1.5 border-b border-[#0d0d0d] transition-colors"
+                      className="w-full text-left px-5 py-2.5 text-xs text-gray-700 hover:text-[#c9a96a] hover:bg-[#0a0a0a] flex items-center gap-1.5 border-b border-[#0d0d0d] transition-colors"
                     >
                       <span className="text-base leading-none">+</span>
                       Agregar tarea a {group.subArea.nombre}

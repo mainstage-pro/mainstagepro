@@ -329,7 +329,7 @@ function NuevaPresentacionForm() {
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white tracking-tight mb-1">Nueva Presentación de Venta</h1>
+          <h1 className="text-xl font-semibold text-white tracking-tight mb-1">Nueva Presentación de Venta</h1>
           <p className="text-sm" style={{ color: "#6b7280" }}>
             Describe el paquete, sube fotos y Claude genera una presentación profesional
           </p>
@@ -404,7 +404,7 @@ function NuevaPresentacionForm() {
                     value={titulo}
                     onChange={(e) => setTitulo(e.target.value)}
                     placeholder="ej: Paquete Corporativo Premium, Boda Completa HD..."
-                    className="w-full px-4 py-3 rounded-lg text-sm text-white placeholder-[#3a3a3a] focus:outline-none transition-colors"
+                    className="w-full px-4 py-3 rounded-lg text-sm text-white placeholder:text-[#444] focus:outline-none transition-colors"
                     style={{ background: "#0a0a0a", border: "1px solid #262626" }}
                     onFocus={(e) => (e.target.style.borderColor = "#B3985B")}
                     onBlur={(e) => (e.target.style.borderColor = "#262626")}
@@ -427,7 +427,7 @@ function NuevaPresentacionForm() {
 • ¿Cuál es el precio o rango de inversión?
 • ¿Cuáles son sus ventajas principales?
 • ¿Hay algo especial o diferente en este paquete?`}
-                    className="w-full px-4 py-3 rounded-lg text-sm text-white placeholder-[#3a3a3a] focus:outline-none transition-colors resize-none leading-relaxed"
+                    className="w-full px-4 py-3 rounded-lg text-sm text-white placeholder:text-[#444] focus:outline-none transition-colors resize-none leading-relaxed"
                     style={{ background: "#0a0a0a", border: "1px solid #262626" }}
                     onFocus={(e) => (e.target.style.borderColor = "#B3985B")}
                     onBlur={(e) => (e.target.style.borderColor = "#262626")}

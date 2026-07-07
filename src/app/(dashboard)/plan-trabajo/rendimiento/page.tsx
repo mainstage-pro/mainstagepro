@@ -75,7 +75,7 @@ function StatCard({
   return (
     <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-5">
       <p className="text-[10px] uppercase tracking-[0.15em] text-gray-600 mb-2">{label}</p>
-      <p className="text-2xl font-bold text-white tabular-nums">{value}</p>
+      <p className="text-xl font-semibold text-white tabular-nums">{value}</p>
       {sub && (
         <p
           className={`text-xs mt-1 ${
@@ -103,7 +103,7 @@ function CustomBar(props: BarShapeProps & { isCurrentWeek?: boolean }) {
       y={y}
       width={width}
       height={height}
-      fill={isCurrentWeek ? '#C9A84C' : '#2a2a2a'}
+      fill={isCurrentWeek ? '#c9a96a' : '#2a2a2a'}
       rx={4}
       ry={4}
     />
@@ -153,10 +153,10 @@ export default function RendimientoPage() {
   return (
     <div className="p-6 max-w-4xl">
       <div className="mb-6">
-        <p className="text-[10px] text-[#C9A84C] uppercase tracking-[0.2em] font-semibold">
+        <p className="text-[10px] text-[#c9a96a] uppercase tracking-[0.2em] font-semibold">
           Semana en curso
         </p>
-        <h2 className="text-xl font-bold text-white mt-0.5">Rendimiento operativo</h2>
+        <h2 className="text-xl font-semibold text-white mt-0.5">Rendimiento operativo</h2>
       </div>
 
       {/* ── Stat cards ── */}
@@ -250,10 +250,10 @@ export default function RendimientoPage() {
             <Line
               type="monotone"
               dataKey="pct"
-              stroke="#C9A84C"
+              stroke="#c9a96a"
               strokeWidth={2}
-              dot={{ fill: '#C9A84C', r: 3, strokeWidth: 0 }}
-              activeDot={{ r: 5, fill: '#C9A84C' }}
+              dot={{ fill: '#c9a96a', r: 3, strokeWidth: 0 }}
+              activeDot={{ r: 5, fill: '#c9a96a' }}
             />
           </LineChart>
         </ResponsiveContainer>
@@ -279,7 +279,7 @@ export default function RendimientoPage() {
                 </div>
                 <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-[#C9A84C] transition-all"
+                    className="h-full rounded-full bg-[#c9a96a] transition-all"
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -341,7 +341,7 @@ export default function RendimientoPage() {
                   <div
                     key={u.id}
                     className={`px-3 py-3 rounded-xl transition-colors ${
-                      isCurrent ? 'bg-[#C9A84C]/5 border border-[#C9A84C]/10' : 'hover:bg-[#0d0d0d]'
+                      isCurrent ? 'bg-[#c9a96a]/5 border border-[#c9a96a]/10' : 'hover:bg-[#0d0d0d]'
                     }`}
                   >
                     {/* Top row: avatar + name + area + pct + label */}
@@ -357,10 +357,10 @@ export default function RendimientoPage() {
                       {/* Name + area */}
                       <div className="min-w-0 flex-1">
                         <p className={`text-sm font-medium leading-none ${
-                          isCurrent ? 'text-[#C9A84C]' : 'text-white'
+                          isCurrent ? 'text-[#c9a96a]' : 'text-white'
                         }`}>
                           {u.name.split(' ')[0]}
-                          {isCurrent && <span className="text-[9px] text-[#C9A84C]/60 ml-1">(tú)</span>}
+                          {isCurrent && <span className="text-[9px] text-[#c9a96a]/60 ml-1">(tú)</span>}
                         </p>
                         {u.area && <p className="text-[10px] text-gray-600 mt-0.5">{u.area}</p>}
                       </div>
@@ -400,7 +400,7 @@ export default function RendimientoPage() {
                       </p>
                       <Link
                         href={`/plan-trabajo/historial?usuario=${u.id}&semana=${getLunesAnterior()}`}
-                        className="text-[9px] text-[#333] hover:text-[#C9A84C] transition-colors"
+                        className="text-[9px] text-[#333] hover:text-[#c9a96a] transition-colors"
                       >
                         Ver historial →
                       </Link>
