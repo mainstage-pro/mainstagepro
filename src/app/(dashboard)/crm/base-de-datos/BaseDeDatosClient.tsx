@@ -30,7 +30,7 @@ interface Contacto {
   notas?: string | null;
   vendedorId: string | null;
   vendedor: Vendedor | null;
-  createdAt: string;
+  createdAt: Date | string;
   tratos: { id: string; etapa: string; origenLead: string; nombreEvento: string | null }[];
   _count: { tratos: number; proyectos: number; prospecciones: number; cotizaciones: number };
 }
@@ -131,7 +131,7 @@ function parseServicios(raw: string | null): string[] {
 function stringifyServicios(arr: string[]): string | null {
   return arr.length ? JSON.stringify(arr) : null;
 }
-function formatRelativo(iso: string): string {
+function formatRelativo(iso: Date | string): string {
   const d = new Date(iso);
   const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
   if (diff === 0) return "Hoy";
