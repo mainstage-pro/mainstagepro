@@ -124,6 +124,10 @@ export async function POST(request: NextRequest) {
         notas: body.notas || null,
         proximaAccion: body.proximaAccion || null,
         fechaProximaAccion: body.fechaProximaAccion ? new Date(body.fechaProximaAccion) : null,
+        // Campos del trato seguro (venta cerrada)
+        confirmadaEn: body.confirmadaEn ? new Date(body.confirmadaEn) : null,
+        fechaCierre: body.fechaCierre ? new Date(body.fechaCierre) : null,
+        metodoConfirmacion: body.metodoConfirmacion || null,
       },
     });
 

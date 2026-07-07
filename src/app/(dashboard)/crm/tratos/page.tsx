@@ -224,7 +224,6 @@ const TIPOS_EVENTO = ["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"];
 
 const ALL_ETAPAS = [
   { key: 'TODOS',          label: 'Todos',          color: '#6B7280' },
-  { key: 'LEAD',           label: 'Leads',          color: '#F59E0B' },
   { key: 'DESCUBRIMIENTO', label: 'Descubrimiento', color: '#3B82F6' },
   { key: 'OPORTUNIDAD',    label: 'Oportunidad',    color: '#8B5CF6' },
   { key: 'VENTA_CERRADA',  label: 'Cerrada',        color: '#10B981' },
@@ -1853,16 +1852,6 @@ export default function TratosPage() {
                 inactiveDot: 'bg-gray-700',
               },
               {
-                filter: 'LEAD',
-                label: 'Leads',
-                count: all.filter(t => t.etapa === 'LEAD').length,
-                color: '#F59E0B',
-                activeGrad: 'from-amber-900/50 to-amber-950/30',
-                activeBorder: 'border-amber-500/40',
-                activeDot: 'bg-amber-400',
-                inactiveDot: 'bg-amber-900/60',
-              },
-              {
                 filter: 'DESCUBRIMIENTO',
                 label: 'Descubrimiento',
                 count: all.filter(t => t.etapa === 'DESCUBRIMIENTO').length,
@@ -1905,7 +1894,7 @@ export default function TratosPage() {
             ];
             const maxCount = Math.max(...pipeline.slice(1).map(p => p.count), 1);
             return (
-              <div className="grid grid-cols-3 lg:grid-cols-6 gap-1.5 mb-5">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-1.5 mb-5">
                 {pipeline.map((card, idx) => {
                   const isActive = filtroEtapa === card.filter;
                   const pct = idx === 0 ? 100 : Math.max(4, Math.round((card.count / maxCount) * 100));

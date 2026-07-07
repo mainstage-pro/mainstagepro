@@ -11,7 +11,7 @@ function nivelProyecto(estado: string): Nivel {
 }
 
 function nivelTrato(confirmadaEn: Date | null, etapa: string): Nivel {
-  if (confirmadaEn) return 'confirmado';
+  if (confirmadaEn || etapa === 'VENTA_CERRADA') return 'confirmado';
   if (['LEAD', 'DESCUBRIMIENTO', 'OPORTUNIDAD'].includes(etapa)) return 'tentativo';
   return 'tentativo';
 }
@@ -103,12 +103,14 @@ export async function GET(req: NextRequest) {
       }));
   });
 
-  // ── 3. Tratos seguros (confirmadaEn != null) sin cotización APROBADA ───────
-  // Sección 3 del documento: tratos con confirmación verbal que aún no tienen cotización
+  // ── 3. Tratos seguros (VENTA_CERRADA o con confirmadaEn) sin cotización APROBADA ──
   const tratosConfirmados = await prisma.trato.findMany({
     where: {
       proyecto: null,
-      confirmadaEn: { not: null },
+      OR: [
+        { confirmadaEn: { not: null } },
+        { etapa: 'VENTA_CERRADA' },
+      ],
       fechaEventoEstimada: { gte: inicio, lte: fin, not: null },
       // Excluir los que ya tienen cotización APROBADA (cubiertos por fuente 2)
       id: { notIn: [...idsConCotAprobada] },
@@ -116,7 +118,7 @@ export async function GET(req: NextRequest) {
     include: {
       cliente: { select: { nombre: true } },
     },
-    orderBy: { fechaEventoEstimada: "asc" },
+    orderBy: { fechaEventoEstimada: 'asc' },
   });
 
   const eventosTratosConfirmados = tratosConfirmados
