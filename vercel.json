@@ -38,6 +38,10 @@
       "schedule": "0 14 1 * *"
     },
     {
+      "path": "/api/cron/renta-mensual-activos",
+      "schedule": "0 15 1 * *"
+    },
+    {
       "path": "/api/cron/notificaciones-diarias",
       "schedule": "0 14 * * 1-5"
     },
