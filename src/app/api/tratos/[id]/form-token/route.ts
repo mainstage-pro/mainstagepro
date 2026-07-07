@@ -21,11 +21,26 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   return NextResponse.json({ token });
 }
 
-export async function PATCH(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await requireAuth();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  await prisma.trato.update({ where: { id }, data: { formEstado: "ENVIADO" } });
-  return NextResponse.json({ ok: true });
+
+  // Si viene body con estado, lo usamos; si no, marcamos como ENVIADO (comportamiento legacy)
+  let data: Record<string, unknown> = { formEstado: "ENVIADO" };
+  try {
+    const body = await req.json();
+    if (body.formEstado) data = { formEstado: body.formEstado };
+    if (body.resetForm) {
+      // Generar nuevo token para que el link anterior quede inválido
+      const newToken = randomUUID();
+      data = { formEstado: "NO_ENVIADO", formToken: newToken, formRecibidoEn: null };
+    }
+  } catch { /* sin body → usar defaults */ }
+
+  await prisma.trato.update({ where: { id }, data });
+  const updated = await prisma.trato.findUnique({ where: { id }, select: { formToken: true, formEstado: true } });
+  return NextResponse.json({ ok: true, ...updated });
 }
+

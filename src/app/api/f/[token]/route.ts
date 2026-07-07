@@ -1,8 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// ─── Ensure formRecibidoEn column exists ─────────────────────────────────────
+let _colReady = false;
+async function ensureFormRecibidoEn() {
+  if (_colReady) return;
+  try {
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "formRecibidoEn" TIMESTAMP`
+    );
+  } catch { /* already exists */ }
+  _colReady = true;
+}
+
 export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
+  await ensureFormRecibidoEn();
 
   const trato = await prisma.trato.findUnique({
     where: { formToken: token },
@@ -26,17 +39,24 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
       contactoVenueTelefono: true,
       formEstado: true,
       cliente: { select: { nombre: true } },
+      responsable: { select: { id: true, name: true } },
     },
   });
 
   if (!trato) return NextResponse.json({ error: "Formulario no encontrado" }, { status: 404 });
-  if (trato.formEstado === "COMPLETADO") return NextResponse.json({ completado: true, trato });
+
+  // Si ya fue completado, lo devolvemos con completado=true PERO también incluimos
+  // la info del trato para que el cliente pueda verla y pueda re-enviar
+  if (trato.formEstado === "COMPLETADO") {
+    return NextResponse.json({ completado: true, trato });
+  }
 
   return NextResponse.json({ trato });
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
+  await ensureFormRecibidoEn();
 
   const trato = await prisma.trato.findUnique({
     where: { formToken: token },
@@ -56,11 +76,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       contactoVenueNombre: true,
       contactoVenueTelefono: true,
       camposCliente: true,
+      // Para notificación al vendedor
+      responsable: { select: { id: true, name: true } },
+      cliente: { select: { nombre: true } },
     },
   });
 
   if (!trato) return NextResponse.json({ error: "Formulario no encontrado" }, { status: 404 });
-  if (trato.formEstado === "COMPLETADO") return NextResponse.json({ error: "Ya fue enviado" }, { status: 400 });
+  // ✅ Eliminado el bloqueo: el cliente puede re-enviar el formulario siempre
 
   const body = await req.json();
 
@@ -114,14 +137,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   const prevCampos: string[] = trato.camposCliente ? JSON.parse(trato.camposCliente) : [];
   const todosCampos = Array.from(new Set([...prevCampos, ...camposLlenados]));
 
+  await prisma.$executeRawUnsafe(
+    `UPDATE tratos SET
+      "formRespuestas" = $1,
+      "formEstado" = 'COMPLETADO',
+      "descubrimientoCompleto" = true,
+      "camposCliente" = $2,
+      "formRecibidoEn" = NOW()
+    WHERE id = $3`,
+    JSON.stringify(body),
+    JSON.stringify(todosCampos),
+    trato.id
+  );
+
+  // Actualizar campos mergeados por separado (Prisma update)
   await prisma.trato.update({
     where: { id: trato.id },
     data: {
-      formRespuestas:        JSON.stringify(body),
-      formEstado:            "COMPLETADO",
-      descubrimientoCompleto: true,
-      camposCliente:         JSON.stringify(todosCampos),
-      // Campos mergeados
       ...(nombreEvento  != null && { nombreEvento }),
       ...(lugarEstimado != null && { lugarEstimado }),
       ...(fechaEvento   != null && { fechaEventoEstimada: fechaEvento }),
@@ -137,5 +169,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     },
   });
 
-  return NextResponse.json({ ok: true, camposActualizados: camposLlenados });
+  return NextResponse.json({
+    ok: true,
+    camposActualizados: camposLlenados,
+    // Devolvemos info del vendedor/responsable para que el cliente pueda
+    // presionar "Avisar a mi vendedor por WhatsApp" en la pantalla de confirmación
+    responsable: trato.responsable ? { name: trato.responsable.name } : null,
+    clienteNombre: trato.cliente?.nombre ?? null,
+  });
 }

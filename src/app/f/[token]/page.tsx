@@ -403,6 +403,7 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
   const [loading, setLoading] = useState(true);
   const [completado, setCompletado] = useState(false);
   const [enviado, setEnviado] = useState(false);
+  const [reenvio, setReenvio] = useState(false); // true cuando el cliente actualiza un form ya enviado
   const [respuestas, setRespuestas] = useState<Record<string, string | string[]>>({});
   const [guardando, setGuardando] = useState(false);
   const [seccionActual, setSeccionActual] = useState(0);
@@ -412,24 +413,31 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
     fetch(`/api/f/${token}`)
       .then(r => r.json())
       .then(d => {
-        if (d.completado) { setCompletado(true); }
-        else if (d.trato) {
-          setTrato(d.trato);
-          // Pre-fill con todo lo que ya tenemos para que el cliente solo llene lo que falta
+        // Pre-fill con todo lo que ya tenemos (para envío nuevo o actualización)
+        const preFill = (t: TratoInfo) => {
           const pre: Record<string, string | string[]> = {};
-          if (d.trato.nombreEvento)          pre.nombreEvento          = d.trato.nombreEvento;
-          if (d.trato.lugarEstimado)         pre.lugar                 = d.trato.lugarEstimado;
-          if (d.trato.asistentesEstimados)   pre.asistentes            = String(d.trato.asistentesEstimados);
-          if (d.trato.fechaEventoEstimada)   pre.fechaEvento           = d.trato.fechaEventoEstimada.slice(0, 10);
-          if (d.trato.presupuestoEstimado)   pre.presupuesto           = String(d.trato.presupuestoEstimado);
-          if (d.trato.horaInicioEvento)      pre.horaInicioEvento      = d.trato.horaInicioEvento;
-          if (d.trato.horaFinEvento)         pre.horaFinEvento         = d.trato.horaFinEvento;
-          if (d.trato.ventanaMontajeInicio)  pre.ventanaMontajeInicio  = d.trato.ventanaMontajeInicio;
-          if (d.trato.ventanaMontajeFin)     pre.ventanaMontajeFin     = d.trato.ventanaMontajeFin;
-          if (d.trato.horaTerminoMontaje)    pre.horaTerminoMontaje    = d.trato.horaTerminoMontaje;
-          if (d.trato.contactoVenueNombre)   pre.contactoVenueNombre   = d.trato.contactoVenueNombre;
-          if (d.trato.contactoVenueTelefono) pre.contactoVenueTelefono = d.trato.contactoVenueTelefono;
-          setRespuestas(pre);
+          if (t.nombreEvento)          pre.nombreEvento          = t.nombreEvento;
+          if (t.lugarEstimado)         pre.lugar                 = t.lugarEstimado;
+          if (t.asistentesEstimados)   pre.asistentes            = String(t.asistentesEstimados);
+          if (t.fechaEventoEstimada)   pre.fechaEvento           = t.fechaEventoEstimada.slice(0, 10);
+          if (t.presupuestoEstimado)   pre.presupuesto           = String(t.presupuestoEstimado);
+          if (t.horaInicioEvento)      pre.horaInicioEvento      = t.horaInicioEvento;
+          if (t.horaFinEvento)         pre.horaFinEvento         = t.horaFinEvento;
+          if (t.ventanaMontajeInicio)  pre.ventanaMontajeInicio  = t.ventanaMontajeInicio;
+          if (t.ventanaMontajeFin)     pre.ventanaMontajeFin     = t.ventanaMontajeFin;
+          if (t.horaTerminoMontaje)    pre.horaTerminoMontaje    = t.horaTerminoMontaje;
+          if (t.contactoVenueNombre)   pre.contactoVenueNombre   = t.contactoVenueNombre;
+          if (t.contactoVenueTelefono) pre.contactoVenueTelefono = t.contactoVenueTelefono;
+          return pre;
+        };
+        if (d.completado && d.trato) {
+          // Ya completado — mostramos pantalla de confirmación con opción de actualizar
+          setCompletado(true);
+          setTrato(d.trato);
+          setRespuestas(preFill(d.trato));
+        } else if (d.trato) {
+          setTrato(d.trato);
+          setRespuestas(preFill(d.trato));
         }
         setLoading(false);
       })
@@ -480,7 +488,14 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(respuestas),
       });
-      if (res.ok) { setEnviado(true); window.scrollTo({ top: 0, behavior: "smooth" }); }
+      if (res.ok) {
+        const data = await res.json();
+        if (completado) setReenvio(true); // era una actualización
+        setEnviado(true);
+        setCompletado(false); // para mostrar pantalla de enviado, no de completado
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        void data; // suprimir warning
+      }
       else setError("Hubo un error al enviar. Por favor intenta de nuevo.");
     } catch { setError("Error de conexión. Por favor intenta de nuevo."); }
     setGuardando(false);
@@ -493,20 +508,63 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
     </div>
   );
 
-  // ── Ya completado ──
-  if (completado || enviado) return (
+  // ── Ya enviado (éxito tras submit) ──
+  if (enviado) return (
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
       <div className="max-w-md w-full text-center space-y-4">
         <div className="w-16 h-16 rounded-full bg-green-900/30 border border-green-600/40 flex items-center justify-center mx-auto text-3xl">✓</div>
-        <h1 className="text-white text-xl font-semibold">¡Gracias por tu tiempo!</h1>
-        <p className="text-gray-400 text-sm">Hemos recibido tu información. Nuestro equipo la revisará y te contactará pronto con una propuesta personalizada.</p>
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 mt-4">
-          <p className="text-gray-500 text-xs">¿Tienes preguntas inmediatas?</p>
-          <a href="https://wa.me/524461432565" target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 mt-2 bg-green-700 hover:bg-green-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-            💬 Escríbenos por WhatsApp
+        <h1 className="text-white text-xl font-semibold">
+          {reenvio ? "¡Información actualizada!" : "¡Gracias por tu tiempo!"}
+        </h1>
+        <p className="text-gray-400 text-sm">
+          {reenvio
+            ? "Tus datos han sido actualizados. El equipo de Mainstage ya puede verlos."
+            : "Hemos recibido tu información. Nuestro equipo la revisará y te contactará pronto con una propuesta personalizada."
+          }
+        </p>
+        {/* Botón WhatsApp — avisa al equipo de ventas */}
+        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 mt-2">
+          <p className="text-gray-500 text-xs mb-3">Avisa a tu asesor que ya llenaste el formulario</p>
+          <a
+            href={`https://wa.me/524461432565?text=${encodeURIComponent(
+              `Hola! Soy ${trato?.cliente?.nombre ?? "tu cliente"} y acabo de ${reenvio ? "actualizar" : "completar"} el formulario de información para mi evento. Ya pueden revisarlo 🎉`
+            )}`}
+            target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 bg-green-700 hover:bg-green-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition-colors"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+              <path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.984-1.31A9.944 9.944 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/>
+            </svg>
+            Notificar a mi asesor
           </a>
         </div>
+      </div>
+    </div>
+  );
+
+  // ── Ya completado previamente — opción de actualizar ──
+  if (completado && trato) return (
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
+      <div className="max-w-md w-full text-center space-y-4">
+        <div className="w-14 h-14 rounded-full bg-[#B3985B]/20 border border-[#B3985B]/40 flex items-center justify-center mx-auto text-2xl">📋</div>
+        <h1 className="text-white text-lg font-semibold">Ya enviaste este formulario</h1>
+        <p className="text-gray-400 text-sm">¿Cambió algo? Puedes actualizar tu información cuando quieras.</p>
+        <button
+          onClick={() => { setCompletado(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+          className="w-full py-3 rounded-xl bg-[#B3985B]/10 border border-[#B3985B]/40 text-[#B3985B] text-sm font-semibold hover:bg-[#B3985B]/20 transition-colors"
+        >
+          Actualizar mi información →
+        </button>
+        <a
+          href={`https://wa.me/524461432565?text=${encodeURIComponent(
+            `Hola, soy ${trato.cliente?.nombre ?? "tu cliente"} y tengo dudas sobre mi evento`
+          )}`}
+          target="_blank" rel="noopener noreferrer"
+          className="block text-sm text-green-500 hover:text-green-400 transition-colors"
+        >
+          💬 Contactar a mi asesor por WhatsApp
+        </a>
       </div>
     </div>
   );

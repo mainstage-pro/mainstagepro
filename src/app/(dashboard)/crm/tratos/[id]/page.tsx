@@ -46,6 +46,7 @@ interface Trato {
   formToken: string | null;
   formEstado: string;
   formRespuestas: string | null;
+  formRecibidoEn: string | null;
   briefToken: string | null;
   briefRecibidoEn: string | null;
   rutaEntrada: string | null;
@@ -2549,6 +2550,137 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           <div className="flex-1 h-px bg-gradient-to-r from-violet-800/20 to-transparent" />
         </div>
       )}
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          FORMULARIO DEL CLIENTE — selector de modo + panel de link
+      ══════════════════════════════════════════════════════════════════════ */}
+      {trato.tipoProspecto !== "NURTURING" && trato.canalAtencion && profundidad !== "INFO" && (() => {
+        // Pantalla A: Cliente ya completó el form → badge de notificación
+        if (trato.formEstado === "COMPLETADO" && trato.formRecibidoEn) {
+          const fechaForm = new Date(trato.formRecibidoEn).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+          return (
+            <div className="bg-[#0d0d0d] border border-emerald-800/40 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-900/30 flex items-center justify-center text-base shrink-0">✅</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm font-semibold">Cliente completó el formulario</p>
+                  <p className="text-emerald-400/70 text-xs">{fechaForm} · Los datos ya están en el brief técnico</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    const res = await fetch(`/api/tratos/${id}/form-token`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ resetForm: true }),
+                    });
+                    const data = await res.json();
+                    if (data.ok) {
+                      setTrato(prev => prev ? { ...prev, formEstado: "NO_ENVIADO", formToken: data.formToken, formRecibidoEn: null } : prev);
+                    }
+                  }}
+                  className="text-[10px] text-[#555] hover:text-white transition-colors shrink-0"
+                >
+                  Reenviar link
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        // Pantalla B: Link generado → mostrar con estado
+        if (trato.formToken) {
+          const waFomMsg = `Hola ${trato.cliente.nombre.split(" ")[0]} 👋, para prepararte la mejor propuesta para tu evento necesito que llenes este breve formulario (toma menos de 3 minutos): ${formUrl}`;
+          const waFormUrl = _telefono ? `https://wa.me/52${_telefono}?text=${encodeURIComponent(waFomMsg)}` : null;
+          return (
+            <div className="bg-[#0d0d0d] border border-[#B3985B]/25 rounded-xl p-4">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-[#B3985B]/10 flex items-center justify-center text-base shrink-0">📋</div>
+                  <div>
+                    <p className="text-white text-sm font-semibold">Formulario del cliente</p>
+                    <p className="text-[#555] text-xs">
+                      {trato.formEstado === "ENVIADO" ? "Enviado · esperando respuesta del cliente" : "Link listo · compártelo con el cliente"}
+                    </p>
+                  </div>
+                </div>
+                {trato.formEstado === "ENVIADO" && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-900/30 text-blue-400 border border-blue-800/30 shrink-0">Enviado</span>
+                )}
+              </div>
+              {/* Link copiable */}
+              <div className="flex items-center gap-2 bg-[#111] border border-[#222] rounded-lg px-3 py-2 mb-2">
+                <span className="text-[#666] text-xs truncate flex-1 font-mono">{formUrl}</span>
+                <button
+                  onClick={() => { copiarLink(formUrl); }}
+                  className="text-[#B3985B] text-xs hover:underline shrink-0"
+                >
+                  {linkCopiado ? "¡Copiado!" : "Copiar"}
+                </button>
+              </div>
+              {/* Acciones */}
+              <div className="flex gap-2">
+                {waFormUrl && (
+                  <a
+                    href={waFormUrl}
+                    target="_blank" rel="noopener noreferrer"
+                    onClick={() => { if (trato.formEstado === "NO_ENVIADO") marcarFormEnviado(); }}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold bg-green-900/20 border border-green-800/40 text-green-400 hover:border-green-700 transition-colors"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.984-1.31A9.944 9.944 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+                    Enviar por WhatsApp
+                  </a>
+                )}
+                <button
+                  onClick={() => { copiarLink(formUrl); if (trato.formEstado === "NO_ENVIADO") marcarFormEnviado(); }}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 hover:text-white transition-colors"
+                >
+                  📋 Copiar link
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        // Pantalla C: Sin link aún → selector de modo
+        return (
+          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-[#141414]">
+              <div className="w-6 h-6 rounded-md bg-violet-900/20 border border-violet-800/30 flex items-center justify-center shrink-0">
+                <span className="text-[11px]">🔍</span>
+              </div>
+              <div>
+                <p className="text-white text-sm font-semibold">¿Cómo recopilas la información?</p>
+                <p className="text-[#555] text-[11px]">Define si tú capturas los datos o el cliente llena el formulario</p>
+              </div>
+            </div>
+            <div className="p-4 grid grid-cols-2 gap-3">
+              {/* Opción A: Yo recopilo */}
+              <button
+                onClick={() => setDiscoveryExpanded(true)}
+                className="border border-[#2a2a2a] bg-[#111] hover:bg-[#1a1a1a] rounded-xl p-4 text-left transition-all group"
+              >
+                <div className="text-2xl mb-2">🎙️</div>
+                <p className="text-white text-sm font-semibold group-hover:text-[#B3985B] transition-colors">Yo recopilo</p>
+                <p className="text-gray-600 text-xs mt-1 leading-relaxed">Lleno el brief en llamada o reunión con el cliente</p>
+              </button>
+              {/* Opción B: El cliente llena */}
+              <button
+                onClick={async () => {
+                  if (!trato.formToken) await generarFormToken();
+                }}
+                disabled={generandoToken}
+                className="border border-[#B3985B]/40 bg-[#B3985B]/5 hover:bg-[#B3985B]/10 rounded-xl p-4 text-left transition-all group disabled:opacity-60"
+              >
+                <div className="text-2xl mb-2">{generandoToken ? "⏳" : "📲"}</div>
+                <p className="text-[#B3985B] text-sm font-semibold group-hover:text-[#c9a96a] transition-colors">
+                  {generandoToken ? "Generando..." : "El cliente llena"}
+                </p>
+                <p className="text-gray-600 text-xs mt-1 leading-relaxed">Generar link para que el cliente complete su info</p>
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── WIZARD DE DESCUBRIMIENTO ── */}
       {trato.tipoProspecto !== "NURTURING" && trato.canalAtencion && profundidad !== "INFO" && (
