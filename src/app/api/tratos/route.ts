@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       fechaEventoEstimada: true, presupuestoEstimado: true, lugarEstimado: true,
       origenLead: true, fechaProximaAccion: true, createdAt: true, fechaCierre: true,
       tipoProspecto: true, nurturingData: true, proximaAccion: true,
-      updatedAt: true, etapaCambiadaEn: true,
+      updatedAt: true, etapaCambiadaEn: true, confirmadaEn: true,
       cliente: { select: { id: true, nombre: true, empresa: true, telefono: true } },
       responsable: { select: { id: true, name: true } },
       cotizaciones: {

@@ -42,6 +42,7 @@ type Trato = {
   updatedAt?: string | null;
   etapaCambiadaEn?: string | null;
   fechaCierre: string | null;
+  confirmadaEn: string | null;    // ✅ confirmación operativa
   cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null };
   responsable: { id: string; name: string } | null;
   cotizaciones: Cotizacion[];
@@ -732,13 +733,16 @@ function KanbanCard({ trato, onDelete, deleting }: { trato: Trato; onDelete: () 
       </div>
       {trato.cliente.empresa && <p className="text-[#6b7280] text-xs">{trato.cliente.empresa}</p>}
       <p className="text-[#9ca3af] text-xs">{trato.nombreEvento || TIPO_EVENTO_LABELS[trato.tipoEvento] || trato.tipoEvento}</p>
-      {(trato.fechaEventoEstimada || trato.presupuestoEstimado) && (
+      {(trato.fechaEventoEstimada || trato.presupuestoEstimado || trato.confirmadaEn) && (
         <div className="flex items-center gap-2 flex-wrap">
           {trato.fechaEventoEstimada && (
             <span className="text-[10px] text-[#555]">{fmtFecha(trato.fechaEventoEstimada)}</span>
           )}
           {trato.presupuestoEstimado && (
             <span className="text-[10px] text-[#B3985B]">{formatCurrency(trato.presupuestoEstimado)}</span>
+          )}
+          {trato.confirmadaEn && (
+            <span className="text-[10px] text-emerald-400 font-semibold">✓ Conf.</span>
           )}
         </div>
       )}

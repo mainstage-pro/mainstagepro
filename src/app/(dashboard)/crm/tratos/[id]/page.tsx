@@ -85,6 +85,15 @@ interface Trato {
   responsable: { id: string; name: string } | null;
   vendedorId: string | null;
   vendedor: { id: string; name: string } | null;
+  // ── Confirmación operativa ──
+  confirmadaEn: string | null;
+  metodoConfirmacion: string | null;
+  notaConfirmacion: string | null;
+  // ── Cierre comercial ──
+  montoFinal: number | null;
+  // ── Descubrimiento adicional ──
+  contactoDecisorNombre: string | null;
+  contactoDecisorCargo: string | null;
   cotizaciones: Array<{
     id: string; numeroCotizacion: string; opcionLetra: string; grupoId: string | null;
     estado: string; granTotal: number; nombreEvento: string | null; nombreCotizacion: string | null;
@@ -264,6 +273,105 @@ function fmtFechaEvento(iso: string | null | undefined): string {
 }
 
 // ─── Lo que busca editable field ─────────────────────────────────────────────
+// ─── ConfirmarEventoPanel ─────────────────────────────────────────────────────
+function ConfirmarEventoPanel({
+  tratoId,
+  onConfirmado,
+}: {
+  tratoId: string;
+  onConfirmado: (data: { confirmadaEn: string; metodoConfirmacion: string; notaConfirmacion: string }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [metodo, setMetodo] = useState('VERBAL');
+  const [nota, setNota] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function confirmar() {
+    setSaving(true);
+    try {
+      const confirmadaEn = new Date().toISOString();
+      const res = await fetch(`/api/tratos/${tratoId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmadaEn, metodoConfirmacion: metodo, notaConfirmacion: nota || null }),
+      });
+      if (res.ok) {
+        onConfirmado({ confirmadaEn, metodoConfirmacion: metodo, notaConfirmacion: nota });
+        setOpen(false);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <>
+      {/* Botón de confirmación */}
+      <div className="bg-[#0d0d0d] border border-amber-800/30 rounded-xl p-4">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-amber-900/20 flex items-center justify-center text-base">🎯</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-sm font-semibold">Evento sin confirmar</p>
+            <p className="text-[#555] text-xs">El cliente aún no ha confirmado formalmente</p>
+          </div>
+          <button
+            onClick={() => setOpen(true)}
+            className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-700/20 border border-amber-700/40 text-amber-400 text-xs font-semibold hover:bg-amber-700/30 transition-colors"
+          >
+            ✓ Confirmar
+          </button>
+        </div>
+      </div>
+
+      {/* Modal de confirmación */}
+      {open && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}>
+          <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl p-6 w-full max-w-sm space-y-4">
+            <div>
+              <h3 className="text-white font-semibold text-base">Confirmar evento</h3>
+              <p className="text-[#555] text-xs mt-1">¿Cómo se confirmó el evento?</p>
+            </div>
+            <div className="space-y-2">
+              {(['VERBAL', 'ANTICIPO', 'CONTRATO', 'OTRO'] as const).map(m => (
+                <button key={m}
+                  onClick={() => setMetodo(m)}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
+                    metodo === m
+                      ? 'bg-amber-900/30 border border-amber-600/50 text-amber-300'
+                      : 'bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 hover:border-amber-900/40'
+                  }`}>
+                  {{ VERBAL: '🗣 Verbal', ANTICIPO: '💰 Anticipo recibido', CONTRATO: '📝 Contrato firmado', OTRO: '📌 Otro' }[m]}
+                </button>
+              ))}
+            </div>
+            <div>
+              <label className="text-xs text-[#6b7280] block mb-1">Nota adicional (opcional)</label>
+              <input
+                value={nota}
+                onChange={e => setNota(e.target.value)}
+                placeholder="ej: anticipo del 50% vía transferencia..."
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-amber-600/50"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setOpen(false)}
+                className="flex-1 py-2.5 rounded-xl border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
+                Cancelar
+              </button>
+              <button
+                disabled={saving}
+                onClick={confirmar}
+                className="flex-1 py-2.5 rounded-xl bg-amber-700 text-white text-sm font-semibold hover:bg-amber-600 disabled:opacity-40 transition-colors">
+                {saving ? 'Confirmando…' : '✓ Confirmar evento'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function LoQueBuscaField({ value, onSave }: { value: string; onSave: (v: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(value);
@@ -1987,6 +2095,39 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           Motivo pérdida: {trato.motivoPerdida}
         </p>
       )}
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          CONFIRMACIÓN OPERATIVA DEL EVENTO
+      ══════════════════════════════════════════════════════════════════════ */}
+      {trato.etapa !== 'VENTA_PERDIDA' && (() => {
+        // Ya confirmado
+        if (trato.confirmadaEn) {
+          const fechaConf = new Date(trato.confirmadaEn).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+          const metodoLabel: Record<string, string> = { VERBAL: 'Verbal', ANTICIPO: 'Anticipo recibido', CONTRATO: 'Contrato firmado', OTRO: 'Otro' };
+          return (
+            <div className="bg-[#0d0d0d] border border-emerald-800/40 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-emerald-900/30 flex items-center justify-center text-base">✅</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm font-semibold">Evento confirmado</p>
+                  <p className="text-emerald-400/70 text-xs">{fechaConf} · {metodoLabel[trato.metodoConfirmacion ?? ''] ?? trato.metodoConfirmacion}</p>
+                  {trato.notaConfirmacion && <p className="text-[#555] text-xs mt-0.5">{trato.notaConfirmacion}</p>}
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // Aún no confirmado — solo mostrar si hay fecha de evento estimada
+        if (!trato.fechaEventoEstimada) return null;
+
+        return (
+          <ConfirmarEventoPanel
+            tratoId={trato.id}
+            onConfirmado={(data) => setTrato(p => p ? { ...p, ...data } : p)}
+          />
+        );
+      })()}
 
       {/* ══════════════════════════════════════════════════════════════════════
           BRIEF DEL CLIENTE
