@@ -1016,12 +1016,12 @@ function CompactTratoRow({
 
   return (
     <>
-      <div className="group flex items-center gap-0 border-b border-[#0f0f0f] last:border-0 hover:bg-[#0b0b0b] transition-colors">
+      <div className="group flex items-center border-b border-[#0f0f0f] last:border-0 hover:bg-[#0b0b0b] transition-colors">
 
-        {/* ── Expand toggle ──────────────────────────────────────────────────── */}
+        {/* ── Toggle ──────────────────────────────────────── */}
         <button
           onClick={e => { e.stopPropagation(); onToggle(); }}
-          className="shrink-0 px-3 self-stretch flex items-center text-[#252525] hover:text-gray-500 transition-colors"
+          className="shrink-0 w-10 self-stretch flex items-center justify-center text-[#252525] hover:text-gray-500 transition-colors"
           title="Ver cotizaciones"
         >
           <svg className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -1029,69 +1029,70 @@ function CompactTratoRow({
           </svg>
         </button>
 
-        {/* ── COL 1 · Cliente / Proyecto — flex-grow ────────────────────────── */}
+        {/* ── COL 1 · Cliente + Empresa  ─── flex-[3] ────── */}
         <div
-          className="flex-1 min-w-0 py-3 pr-3 cursor-pointer"
+          className="flex-[3] min-w-0 py-3 pr-4 cursor-pointer"
           onClick={() => router.push(`/crm/tratos/${t.id}`)}
         >
-          {/* Nombre del cliente — grande y prominente */}
-          <div className="flex items-center gap-2 min-w-0">
-            {/* dot tipo evento */}
+          <div className="flex items-center gap-1.5 min-w-0">
             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${tipoStyle.dot}`} />
-            <span className="text-[15px] text-white font-semibold leading-tight truncate">
+            <span className="text-[14px] text-white font-semibold leading-tight truncate">
               {t.cliente.nombre}
             </span>
-            {/* WhatsApp — junto al nombre */}
             {wa && (
               <a
                 href={wa}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={e => e.stopPropagation()}
-                className="shrink-0 text-green-700 hover:text-green-400 transition-colors ml-0.5"
+                className="shrink-0 text-green-700 hover:text-green-400 transition-colors"
                 title="WhatsApp"
               >
                 <WaIcon />
               </a>
             )}
           </div>
-          {/* Nombre del proyecto / evento — secundario */}
-          {nombreProyecto && (
-            <p className="text-[12px] text-[#666] mt-0.5 truncate leading-snug">
-              {nombreProyecto}
-            </p>
-          )}
           {t.cliente.empresa && (
-            <p className="text-[11px] text-[#3a3a3a] mt-0.5 truncate">{t.cliente.empresa}</p>
+            <p className="text-[11px] text-[#444] mt-0.5 truncate pl-3">{t.cliente.empresa}</p>
           )}
         </div>
 
-        {/* ── COL 2 · Tipo evento — 80px ─────────────────────────────────────── */}
-        <div className="hidden sm:flex w-[80px] shrink-0 justify-start">
-          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${tipoStyle.bg} ${tipoStyle.text}`}>
-            {TIPO_LABEL_SHORT[t.tipoEvento] ?? t.tipoEvento}
-          </span>
-        </div>
-
-        {/* ── COL 3 · Fecha completa del evento — 140px ─────────────────────── */}
-        <div className="hidden md:block w-[140px] shrink-0">
+        {/* ── COL 2 · Fecha del evento ─── 130px ─────────── */}
+        <div className="hidden md:block w-[130px] shrink-0 pr-4">
           {fechaCompletaEvento ? (
-            <div className="text-right">
-              <span className="text-[12px] text-[#888] font-medium capitalize">
-                {fechaCompletaEvento}
-              </span>
-            </div>
+            <span className="text-[12px] text-[#777] font-medium capitalize leading-tight block truncate">
+              {fechaCompletaEvento}
+            </span>
           ) : (
             <span className="text-[11px] text-[#2a2a2a]">&mdash;</span>
           )}
         </div>
 
-        {/* ── COL 4 · Seguimiento — 120px ───────────────────────────────────── */}
-        <div className="hidden lg:flex w-[120px] shrink-0 justify-start">
+        {/* ── COL 3 · Proyecto / Evento ─── flex-[2] ──────── */}
+        <div
+          className="hidden lg:block flex-[2] min-w-0 pr-4 cursor-pointer"
+          onClick={() => router.push(`/crm/tratos/${t.id}`)}
+        >
+          {nombreProyecto ? (
+            <p className="text-[12px] text-[#666] truncate">{nombreProyecto}</p>
+          ) : (
+            <span className="text-[11px] text-[#2a2a2a]">&mdash;</span>
+          )}
+        </div>
+
+        {/* ── COL 4 · Tipo evento ─────── 90px ───────────── */}
+        <div className="hidden sm:flex w-[90px] shrink-0 pr-3">
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${tipoStyle.bg} ${tipoStyle.text}`}>
+            {TIPO_LABEL_SHORT[t.tipoEvento] ?? t.tipoEvento}
+          </span>
+        </div>
+
+        {/* ── COL 5 · Seguimiento ─────── 110px ──────────── */}
+        <div className="hidden lg:flex w-[110px] shrink-0 pr-3 items-center">
           {seg.variant === 'none' ? (
             <button
               onClick={e => { e.stopPropagation(); onQuickNote(); }}
-              className="text-[10px] text-[#2a2a2a] hover:text-[#B3985B] border border-[#1e1e1e] hover:border-[#B3985B]/30 rounded-md px-2 py-1 transition-colors whitespace-nowrap"
+              className="text-[10px] text-[#2a2a2a] hover:text-[#B3985B] border border-[#1e1e1e] hover:border-[#B3985B]/30 rounded-md px-2 py-0.5 transition-colors whitespace-nowrap"
             >
               + Agendar
             </button>
@@ -1102,8 +1103,8 @@ function CompactTratoRow({
           )}
         </div>
 
-        {/* ── COL 5 · Etapa — 130px ─────────────────────────────────────────── */}
-        <div className="hidden sm:flex items-center gap-1.5 w-[130px] shrink-0">
+        {/* ── COL 6 · Etapa ───────────── 130px ──────────── */}
+        <div className="hidden sm:flex items-center gap-1.5 w-[130px] shrink-0 pr-3">
           <span className={`w-2 h-2 rounded-full shrink-0 ${etapaStyle.dot}`} />
           <select
             value={t.etapa}
@@ -1118,20 +1119,20 @@ function CompactTratoRow({
           </select>
         </div>
 
-        {/* ── COL 6 · Acciones rápidas — en hover ───────────────────────────── */}
-        <div className="flex items-center gap-1 px-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        {/* ── COL 7 · Acciones (hover) ── 72px ───────────── */}
+        <div className="flex items-center gap-1 w-[72px] shrink-0 justify-end pr-3 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={e => { e.stopPropagation(); onQuickNote(); }}
-            className="text-[11px] text-[#B3985B]/60 hover:text-[#B3985B] border border-[#1e1e1e] hover:border-[#B3985B]/30 rounded-md px-2 py-1 transition-colors whitespace-nowrap"
-            title="Agregar seguimiento"
+            className="text-[11px] text-[#B3985B]/60 hover:text-[#B3985B] border border-[#1e1e1e] hover:border-[#B3985B]/30 rounded-md px-1.5 py-0.5 transition-colors whitespace-nowrap"
+            title="Seguimiento"
           >
-            + Seg.
+            +
           </button>
           <button
             onClick={e => { e.stopPropagation(); onEliminar(); }}
             disabled={deletingId === t.id}
-            className="text-[#222] hover:text-red-500/50 transition-colors disabled:opacity-40 p-1.5 rounded"
-            title="Eliminar trato"
+            className="text-[#222] hover:text-red-500/50 transition-colors disabled:opacity-40 p-1 rounded"
+            title="Eliminar"
           >
             {deletingId === t.id ? (
               <span className="text-[10px] text-gray-600">...</span>
@@ -1965,16 +1966,25 @@ export default function TratosPage() {
                     </div>
 
                     {/* ── Tabla de tratos ───────────────────────────────────── */}
-                    {/* Header de columnas — solo visible en el primer grupo fuera del intra-past */}
+                    {/* Header de columnas — solo visible en el primer grupo activo */}
                     {!isPastMonth && !isIntraPast && g === all.find(x => !(x as MesGroup & { isIntraMonthPast?: boolean }).isIntraMonthPast && !x.isPast) && (
-                      <div className="hidden md:flex items-center gap-0 px-3 py-1.5 mb-0.5 text-[9px] uppercase tracking-[0.14em] text-gray-700 border-b border-[#111]">
-                        <div className="w-4 shrink-0" />{/* toggle space */}
-                        <div className="flex-1 min-w-0 pl-1">Cliente / Proyecto</div>
-                        <div className="hidden sm:block w-[80px] shrink-0">Tipo</div>
-                        <div className="w-[140px] shrink-0 text-right">Fecha del evento</div>
-                        <div className="hidden lg:block w-[120px] shrink-0">Seguimiento</div>
-                        <div className="hidden sm:block w-[130px] shrink-0">Etapa</div>
-                        <div className="w-[80px] shrink-0" />{/* actions space */}
+                      <div className="hidden md:flex items-center border-b border-[#111] px-0 py-1.5 mb-0.5 text-[9px] uppercase tracking-[0.14em] text-[#3a3a3a]">
+                        {/* toggle placeholder */}
+                        <div className="w-10 shrink-0" />
+                        {/* Cliente */}
+                        <div className="flex-[3] min-w-0 pr-4">Cliente</div>
+                        {/* Fecha */}
+                        <div className="w-[130px] shrink-0 pr-4">Fecha del evento</div>
+                        {/* Proyecto */}
+                        <div className="hidden lg:block flex-[2] min-w-0 pr-4">Proyecto</div>
+                        {/* Tipo */}
+                        <div className="hidden sm:block w-[90px] shrink-0 pr-3">Tipo</div>
+                        {/* Seguimiento */}
+                        <div className="hidden lg:block w-[110px] shrink-0 pr-3">Seguimiento</div>
+                        {/* Etapa */}
+                        <div className="hidden sm:block w-[130px] shrink-0 pr-3">Etapa</div>
+                        {/* Acciones */}
+                        <div className="w-[72px] shrink-0" />
                       </div>
                     )}
 
