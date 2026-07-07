@@ -3,17 +3,18 @@ import {
   Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
 
-// ─── Paleta ───────────────────────────────────────────────────────────────────
-const GOLD  = "#B3985B";
-const BLACK = "#0a0a0a";
-const DARK  = "#181818";
-const DARK2 = "#222222";
-const GRAY  = "#555555";
-const LG    = "#888888";
-const WHITE = "#FFFFFF";
-const GREEN = "#22c55e";
-const RED   = "#ef4444";
-const BLUE  = "#3b82f6";
+// ─── Paleta Marketing-standard ────────────────────────────────────────────────
+const GOLD   = "#B3985B";   // acento principal, borders KPI, secciones
+const BLACK  = "#0a0a0a";   // fondos header/footer
+const DARK   = "#111111";   // texto valores KPI
+const GRAY   = "#4a4a4a";   // texto de tablas
+const LIGHT  = "#888888";   // etiquetas, subvalores
+const WHITE  = "#FFFFFF";   // fondo páginas
+const CREAM  = "#F7F5F0";   // fondo KPI cards, mesStrip, filas alternas
+const CREAM2 = "#FFFBF2";   // fila totales, propuestas
+const GREEN  = "#22c55e";
+const RED    = "#ef4444";
+const BLUE   = "#3b82f6";
 
 const COLORS = [GOLD, BLUE, GREEN, "#a855f7", "#f97316", "#14b8a6", "#f43f5e"];
 
@@ -77,39 +78,65 @@ interface ReporteVentasPDFData {
 
 // ─── Estilos ──────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
+  // Página: fondo blanco, padding top para el header que arranca en negativo
   page: {
     fontFamily: "Helvetica",
     backgroundColor: WHITE,
-    paddingTop: 0,
-    paddingBottom: 44,
+    paddingTop: 36,
+    paddingBottom: 56,
     paddingHorizontal: 0,
     fontSize: 8,
-    color: BLACK,
+    color: DARK,
   },
+
+  // Header negro
   header: {
     backgroundColor: BLACK,
-    paddingHorizontal: 36,
-    paddingTop: 24,
-    paddingBottom: 20,
+    paddingHorizontal: 40,
+    paddingTop: 30,
+    paddingBottom: 25,
+    marginTop: -36,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
   },
-  brand: { fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2, marginBottom: 2 },
-  tagline: { fontSize: 6.5, color: LG, letterSpacing: 1 },
+  brand: { fontSize: 16, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 2 },
+  tagline: { fontSize: 6.5, color: LIGHT, letterSpacing: 1, marginTop: 2 },
   docTitle: { fontSize: 13, fontFamily: "Helvetica-Bold", color: WHITE, marginBottom: 2 },
-  docSub: { fontSize: 7.5, color: LG },
+  docSub: { fontSize: 7.5, color: LIGHT },
+
+  // Barra dorada 3px
   goldBar: { height: 3, backgroundColor: GOLD },
-  body: { paddingHorizontal: 36, paddingTop: 20 },
 
-  // Sección título
-  sectionTitle: { fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, borderBottomWidth: 1, borderBottomColor: DARK2, paddingBottom: 4 },
+  // Strip CREAM con mes y fecha
+  mesStrip: {
+    backgroundColor: CREAM,
+    paddingHorizontal: 40,
+    paddingVertical: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0ddd8",
+  },
+  mesStripLabel: { fontSize: 7, color: GRAY, textTransform: "uppercase", letterSpacing: 1 },
+  mesStripValue: { fontSize: 9, fontFamily: "Helvetica-Bold", color: DARK },
 
-  // KPI grid
+  // Body
+  body: { paddingHorizontal: 40, paddingTop: 18 },
+
+  // KPI grid — tarjetas CREAM con borde dorado izquierdo
   kpiRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
-  kpiCard: { flex: 1, backgroundColor: DARK, borderRadius: 6, padding: 10, borderWidth: 1, borderColor: DARK2 },
-  kpiLabel: { fontSize: 6, color: LG, marginBottom: 3, textTransform: "uppercase", letterSpacing: 0.8 },
-  kpiValue: { fontSize: 15, fontFamily: "Helvetica-Bold", color: WHITE, marginBottom: 1 },
+  kpiCard: {
+    flex: 1,
+    backgroundColor: CREAM,
+    borderLeftWidth: 3,
+    borderLeftColor: GOLD,
+    padding: 10,
+    borderRadius: 2,
+  },
+  kpiLabel: { fontSize: 6, color: LIGHT, marginBottom: 3, textTransform: "uppercase", letterSpacing: 0.8 },
+  kpiValue: { fontSize: 15, fontFamily: "Helvetica-Bold", color: DARK, marginBottom: 1 },
   kpiValueGold: { fontSize: 15, fontFamily: "Helvetica-Bold", color: GOLD, marginBottom: 1 },
   kpiValueGreen: { fontSize: 15, fontFamily: "Helvetica-Bold", color: GREEN, marginBottom: 1 },
   kpiValueRed: { fontSize: 15, fontFamily: "Helvetica-Bold", color: RED, marginBottom: 1 },
@@ -118,22 +145,42 @@ const s = StyleSheet.create({
   // Badge crecimiento
   badge: { borderRadius: 3, paddingHorizontal: 4, paddingVertical: 1.5, fontSize: 6, fontFamily: "Helvetica-Bold", marginTop: 3, alignSelf: "flex-start" },
 
-  // Row de secciones
+  // Rows de secciones
   row: { flexDirection: "row", gap: 12, marginBottom: 16 },
-  section: { backgroundColor: DARK, borderRadius: 6, padding: 12, borderWidth: 1, borderColor: DARK2 },
+
+  // Section — fondo CREAM con border sutil
+  section: {
+    backgroundColor: CREAM,
+    borderRadius: 2,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#e0ddd8",
+  },
+
+  // Section title: línea GOLD + label uppercase dorado
+  sectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+    paddingBottom: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e0ddd8",
+  },
+  sectionBar: { width: 2, height: 10, backgroundColor: GOLD, marginRight: 5 },
+  sectionLabel: { fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase", letterSpacing: 1.5 },
 
   // Barras
   barRow: { flexDirection: "row", alignItems: "center", marginBottom: 5 },
-  barLabel: { fontSize: 7, color: LG, width: 75 },
-  barTrack: { flex: 1, height: 4, backgroundColor: DARK2, borderRadius: 2, marginHorizontal: 6 },
+  barLabel: { fontSize: 7, color: GRAY, width: 75 },
+  barTrack: { flex: 1, height: 4, backgroundColor: "#e0ddd8", borderRadius: 2, marginHorizontal: 6 },
   barFill: { height: 4, borderRadius: 2 },
   barRight: { fontSize: 6.5, color: GRAY, width: 38, textAlign: "right" },
 
   // Tabla clientes
-  clientRow: { flexDirection: "row", alignItems: "center", marginBottom: 5, paddingBottom: 5, borderBottomWidth: 1, borderBottomColor: DARK2 },
-  clientRank: { fontSize: 16, fontFamily: "Helvetica-Bold", color: DARK2, width: 20 },
+  clientRow: { flexDirection: "row", alignItems: "center", marginBottom: 5, paddingBottom: 5, borderBottomWidth: 1, borderBottomColor: "#e0ddd8" },
+  clientRank: { fontSize: 16, fontFamily: "Helvetica-Bold", color: "#e0ddd8", width: 20 },
   clientInfo: { flex: 1 },
-  clientName: { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: WHITE },
+  clientName: { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: DARK },
   clientSub:  { fontSize: 6, color: GRAY, marginTop: 1 },
   clientMonto:{ fontSize: 8, fontFamily: "Helvetica-Bold", color: GOLD },
 
@@ -142,20 +189,41 @@ const s = StyleSheet.create({
   trendBar: { flex: 1, borderRadius: 2 },
   trendLabel: { fontSize: 5.5, color: GRAY, textAlign: "center" },
 
-  // Análisis
-  analysisSection: { backgroundColor: DARK, borderRadius: 6, padding: 14, borderWidth: 1, borderColor: DARK2, marginBottom: 16 },
-  analysisTitle: { fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 },
-  analysisBlock: { backgroundColor: "#111111", borderRadius: 4, padding: 10, borderWidth: 1, borderColor: DARK2 },
-  analysisLabel: { fontSize: 6.5, fontFamily: "Helvetica-Bold", color: LG, marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.6 },
-  analysisText: { fontSize: 7.5, color: WHITE, lineHeight: 1.55 },
+  // Análisis — fondo CREAM2
+  analysisSection: { backgroundColor: CREAM2, borderRadius: 2, padding: 14, borderWidth: 1, borderColor: "#e0ddd8", marginBottom: 16 },
+  analysisTitleRow: { flexDirection: "row", alignItems: "center", marginBottom: 10, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: "#e0ddd8" },
+  analysisBlock: { backgroundColor: WHITE, borderRadius: 2, padding: 10, borderWidth: 1, borderColor: "#e0ddd8" },
+  analysisLabel: { fontSize: 6.5, fontFamily: "Helvetica-Bold", color: LIGHT, marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.6 },
+  analysisText: { fontSize: 7.5, color: DARK, lineHeight: 1.55 },
 
-  // Footer
-  footer: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: BLACK, paddingHorizontal: 36, paddingVertical: 10, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  // Footer negro fijo
+  footer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 36,
+    backgroundColor: BLACK,
+    paddingHorizontal: 40,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   footerBrand: { fontSize: 7, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1.5 },
-  footerText: { fontSize: 6.5, color: GRAY },
+  footerText: { fontSize: 6.5, color: LIGHT },
 });
 
-// ─── Sub-componentes ──────────────────────────────────────────────────────────
+// ─── Título de sección (línea GOLD + label) ───────────────────────────────────
+function SectionTitle({ label }: { label: string }) {
+  return (
+    <View style={s.sectionTitleRow}>
+      <View style={s.sectionBar} />
+      <Text style={s.sectionLabel}>{label}</Text>
+    </View>
+  );
+}
+
+// ─── Barra horizontal ─────────────────────────────────────────────────────────
 function Bar({ label, count, monto, pct, maxPct, color }: {
   label: string; count: number; monto: number; pct: number; maxPct: number; color: string;
 }) {
@@ -204,7 +272,7 @@ export function ReporteVentasMensualPDF({ data }: { data: ReporteVentasPDFData }
     <Document>
       <Page size="A4" orientation="landscape" style={s.page}>
 
-        {/* ── HEADER ── */}
+        {/* ── HEADER negro ── */}
         <View style={s.header}>
           <View>
             {data.logoSrc
@@ -218,7 +286,21 @@ export function ReporteVentasMensualPDF({ data }: { data: ReporteVentasPDFData }
             <Text style={[s.docSub, { marginTop: 3 }]}>Generado: {data.generadoEn ?? new Date().toLocaleDateString("es-MX")}</Text>
           </View>
         </View>
+
+        {/* ── Barra GOLD 3px ── */}
         <View style={s.goldBar} />
+
+        {/* ── Strip CREAM ── */}
+        <View style={s.mesStrip}>
+          <View>
+            <Text style={s.mesStripLabel}>Período</Text>
+            <Text style={s.mesStripValue}>{data.periodo.label}</Text>
+          </View>
+          <View style={{ alignItems: "flex-end" }}>
+            <Text style={s.mesStripLabel}>Fecha de generación</Text>
+            <Text style={s.mesStripValue}>{data.generadoEn ?? new Date().toLocaleDateString("es-MX")}</Text>
+          </View>
+        </View>
 
         <View style={s.body}>
 
@@ -229,8 +311,8 @@ export function ReporteVentasMensualPDF({ data }: { data: ReporteVentasPDFData }
               <Text style={s.kpiValueGold}>{fmt(data.ventasTotal.monto)}</Text>
               <Text style={s.kpiSub}>{data.ventasTotal.count} ventas cerradas</Text>
               {data.crecimientoMensual !== null && (
-                <View style={[s.badge, { backgroundColor: crecOk ? "#14532d" : "#450a0a" }]}>
-                  <Text style={{ color: crecOk ? GREEN : RED }}>{crecOk ? "+" : ""}{data.crecimientoMensual.toFixed(1)}% vs mes anterior</Text>
+                <View style={[s.badge, { backgroundColor: crecOk ? "#dcfce7" : "#fee2e2" }]}>
+                  <Text style={{ color: crecOk ? "#15803d" : "#b91c1c" }}>{crecOk ? "+" : ""}{data.crecimientoMensual.toFixed(1)}% vs mes anterior</Text>
                 </View>
               )}
             </View>
@@ -271,9 +353,9 @@ export function ReporteVentasMensualPDF({ data }: { data: ReporteVentasPDFData }
 
             {/* Tendencia 6 meses */}
             <View style={[s.section, { flex: 1.8 }]}>
-              <Text style={s.sectionTitle}>Tendencia — Últimos 6 Meses</Text>
+              <SectionTitle label="Tendencia — Últimos 6 Meses" />
               <View style={s.trendRow}>
-                {data.porMesHistorico.map((m, i) => {
+                {data.porMesHistorico.map((m) => {
                   const h = maxHistMonto > 0 ? (m.monto / maxHistMonto) * 46 : 2;
                   const isCurrent = m.mes === data.periodo.mes;
                   return (
@@ -296,10 +378,10 @@ export function ReporteVentasMensualPDF({ data }: { data: ReporteVentasPDFData }
 
             {/* Top 5 Clientes */}
             <View style={[s.section, { flex: 2 }]}>
-              <Text style={s.sectionTitle}>Top Clientes del Período</Text>
+              <SectionTitle label="Top Clientes del Período" />
               {data.top5Clientes.map((c, i) => (
                 <View key={i} style={s.clientRow}>
-                  <Text style={[s.clientRank, { color: i === 0 ? GOLD : i === 1 ? "#9ca3af" : i === 2 ? "#b45309" : DARK2 }]}>{i + 1}</Text>
+                  <Text style={[s.clientRank, { color: i === 0 ? GOLD : i === 1 ? "#9ca3af" : i === 2 ? "#b45309" : "#e0ddd8" }]}>{i + 1}</Text>
                   <View style={s.clientInfo}>
                     <Text style={s.clientName}>{c.nombre}</Text>
                     <Text style={s.clientSub}>{c.empresa ?? "—"} · {c.eventos} {c.eventos === 1 ? "evento" : "eventos"}</Text>
@@ -312,7 +394,7 @@ export function ReporteVentasMensualPDF({ data }: { data: ReporteVentasPDFData }
 
             {/* Embudo */}
             <View style={[s.section, { flex: 1.4 }]}>
-              <Text style={s.sectionTitle}>Embudo de Conversión</Text>
+              <SectionTitle label="Embudo de Conversión" />
               {[
                 { label: "Cotizaciones", value: data.cotizaciones.totalCreadas, pctVal: 100, color: GRAY },
                 { label: "Cierres", value: data.cotizaciones.ventasCerradas, pctVal: conversionPct, color: GOLD },
@@ -321,9 +403,9 @@ export function ReporteVentasMensualPDF({ data }: { data: ReporteVentasPDFData }
               ].map(k => (
                 <View key={k.label} style={{ marginBottom: 7 }}>
                   <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 2 }}>
-                    <Text style={{ fontSize: 7, color: LG }}>{k.label}</Text>
+                    <Text style={{ fontSize: 7, color: LIGHT }}>{k.label}</Text>
                     <View style={{ flexDirection: "row", gap: 4 }}>
-                      <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: WHITE }}>{k.value}</Text>
+                      <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: DARK }}>{k.value}</Text>
                       <Text style={{ fontSize: 6.5, color: k.color }}>{fmtPct(k.pctVal)}</Text>
                     </View>
                   </View>
@@ -332,8 +414,8 @@ export function ReporteVentasMensualPDF({ data }: { data: ReporteVentasPDFData }
                   </View>
                 </View>
               ))}
-              <View style={{ borderTopWidth: 1, borderTopColor: DARK2, paddingTop: 6, flexDirection: "row", justifyContent: "space-between" }}>
-                <Text style={{ fontSize: 6.5, color: LG, textTransform: "uppercase" }}>Conversión global</Text>
+              <View style={{ borderTopWidth: 1, borderTopColor: "#e0ddd8", paddingTop: 6, flexDirection: "row", justifyContent: "space-between" }}>
+                <Text style={{ fontSize: 6.5, color: LIGHT, textTransform: "uppercase" }}>Conversión global</Text>
                 <Text style={{ fontSize: 10, fontFamily: "Helvetica-Bold", color: GOLD }}>{fmtPct(conversionPct)}</Text>
               </View>
             </View>
@@ -344,7 +426,7 @@ export function ReporteVentasMensualPDF({ data }: { data: ReporteVentasPDFData }
 
             {/* Por tipo de evento */}
             <View style={[s.section, { flex: 1.2 }]}>
-              <Text style={s.sectionTitle}>Por Tipo de Evento</Text>
+              <SectionTitle label="Por Tipo de Evento" />
               {data.porTipoEvento.map((item, i) => (
                 <Bar key={item.tipo}
                   label={TIPO_EVENTO_LABEL[item.tipo] ?? item.tipo}
@@ -357,7 +439,7 @@ export function ReporteVentasMensualPDF({ data }: { data: ReporteVentasPDFData }
 
             {/* Mix servicios */}
             <View style={[s.section, { flex: 1.2 }]}>
-              <Text style={s.sectionTitle}>Mix de Servicios</Text>
+              <SectionTitle label="Mix de Servicios" />
               <View style={{ flexDirection: "row", marginBottom: 8 }}>
                 {[
                   { label: "Rentas", val: data.porServicio.rentas, color: GOLD },
@@ -382,7 +464,7 @@ export function ReporteVentasMensualPDF({ data }: { data: ReporteVentasPDFData }
 
             {/* Origen leads */}
             <View style={[s.section, { flex: 1.3 }]}>
-              <Text style={s.sectionTitle}>Origen de Leads</Text>
+              <SectionTitle label="Origen de Leads" />
               {data.origenLeads.map((item, i) => (
                 <Bar key={item.origen}
                   label={ORIGEN_LABEL[item.origen] ?? item.origen}
@@ -395,7 +477,7 @@ export function ReporteVentasMensualPDF({ data }: { data: ReporteVentasPDFData }
 
             {/* Vendedores */}
             <View style={[s.section, { flex: 1.3 }]}>
-              <Text style={s.sectionTitle}>Rendimiento por Vendedor</Text>
+              <SectionTitle label="Rendimiento por Vendedor" />
               {data.porVendedor.map((v, i) => (
                 <BarMonto key={v.id}
                   label={v.nombre}
@@ -410,10 +492,10 @@ export function ReporteVentasMensualPDF({ data }: { data: ReporteVentasPDFData }
             <View style={[s.section, { flex: 1.2 }]}>
               {data.tratosPerdidos.count > 0 ? (
                 <>
-                  <Text style={s.sectionTitle}>Motivos de Pérdida ({data.tratosPerdidos.count})</Text>
-                  {data.tratosPerdidos.motivosPerdida.slice(0, 5).map((m, i) => (
+                  <SectionTitle label={`Motivos de Pérdida (${data.tratosPerdidos.count})`} />
+                  {data.tratosPerdidos.motivosPerdida.slice(0, 5).map((m) => (
                     <View key={m.motivo} style={s.barRow}>
-                      <Text style={[s.barLabel, { color: LG, width: 80 }]}>{m.motivo}</Text>
+                      <Text style={[s.barLabel, { color: LIGHT, width: 80 }]}>{m.motivo}</Text>
                       <View style={s.barTrack}>
                         <View style={[s.barFill, { width: `${m.pct}%`, backgroundColor: RED, opacity: 0.7 }]} />
                       </View>
@@ -423,13 +505,13 @@ export function ReporteVentasMensualPDF({ data }: { data: ReporteVentasPDFData }
                 </>
               ) : (
                 <>
-                  <Text style={s.sectionTitle}>Distribución por Zona</Text>
+                  <SectionTitle label="Distribución por Zona" />
                   {data.porZona.length > 0
                     ? data.porZona.slice(0, 6).map((z, i) => (
                         <BarMonto key={z.zona} label={z.zona} monto={z.monto}
                           pct={z.pct} maxMonto={maxZonaMonto} color={COLORS[i % COLORS.length]} />
                       ))
-                    : <Text style={{ fontSize: 7, color: GREEN }}>Sin pérdidas este mes ✓</Text>}
+                    : <Text style={{ fontSize: 7, color: "#15803d" }}>Sin pérdidas este mes ✓</Text>}
                 </>
               )}
             </View>
@@ -438,13 +520,13 @@ export function ReporteVentasMensualPDF({ data }: { data: ReporteVentasPDFData }
           {/* ── CLIENTES NUEVOS ── */}
           {data.clientesNuevos.lista.length > 0 && (
             <View style={[s.section, { marginBottom: 16 }]}>
-              <Text style={s.sectionTitle}>Clientes Nuevos — Primera vez en el período ({data.clientesNuevos.count})</Text>
+              <SectionTitle label={`Clientes Nuevos — Primera vez en el período (${data.clientesNuevos.count})`} />
               <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
                 {data.clientesNuevos.lista.slice(0, 12).map((c, i) => (
-                  <View key={i} style={{ backgroundColor: "#111111", borderRadius: 4, borderWidth: 1, borderColor: DARK2, paddingHorizontal: 8, paddingVertical: 5, minWidth: 100 }}>
+                  <View key={i} style={{ backgroundColor: WHITE, borderRadius: 2, borderWidth: 1, borderColor: "#e0ddd8", paddingHorizontal: 8, paddingVertical: 5, minWidth: 100 }}>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                       <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: BLUE }} />
-                      <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: WHITE }}>{c.nombre}</Text>
+                      <Text style={{ fontSize: 7.5, fontFamily: "Helvetica-Bold", color: DARK }}>{c.nombre}</Text>
                     </View>
                     {c.empresa && <Text style={{ fontSize: 6, color: GRAY, marginTop: 1, marginLeft: 8 }}>{c.empresa}</Text>}
                   </View>
@@ -455,7 +537,10 @@ export function ReporteVentasMensualPDF({ data }: { data: ReporteVentasPDFData }
 
           {/* ── ANÁLISIS DEL RESPONSABLE ── */}
           <View style={s.analysisSection}>
-            <Text style={s.analysisTitle}>Análisis del Responsable de Ventas</Text>
+            <View style={s.analysisTitleRow}>
+              <View style={s.sectionBar} />
+              <Text style={s.sectionLabel}>Análisis del Responsable de Ventas</Text>
+            </View>
             <View style={{ flexDirection: "row", gap: 14 }}>
               <View style={[s.analysisBlock, { flex: 1.2 }]}>
                 <Text style={s.analysisLabel}>Análisis de Resultados</Text>
@@ -474,7 +559,7 @@ export function ReporteVentasMensualPDF({ data }: { data: ReporteVentasPDFData }
 
         </View>
 
-        {/* ── FOOTER ── */}
+        {/* ── FOOTER negro fijo ── */}
         <View style={s.footer} fixed>
           <Text style={s.footerBrand}>MAINSTAGE PRO</Text>
           <Text style={s.footerText}>Reporte de Ventas — {data.periodo.label} · Documento Confidencial</Text>
