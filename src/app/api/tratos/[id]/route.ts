@@ -100,6 +100,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "realizarRender",
     // Levantamiento de contenido
     "requiereRevision",
+    // Cierre / confirmación
+    "montoFinal",
+    "confirmadaEn", "metodoConfirmacion", "notaConfirmacion",
+    "contactoDecisorNombre", "contactoDecisorCargo",
   ];
 
   const data: Record<string, unknown> = {};
@@ -111,6 +115,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         data[key] = parseFloat(body[key]);
       } else if (key === "asistentesEstimados" && body[key] !== null && body[key] !== "") {
         data[key] = parseInt(body[key]);
+      } else if (key === "montoFinal" && body[key] !== null && body[key] !== "") {
+        data[key] = parseFloat(body[key]);
+      } else if (key === "confirmadaEn" && body[key]) {
+        data[key] = new Date(body[key]);
       } else if (key === "descubrimientoCompleto" || key === "tradeCalificado" || key === "familyAndFriends" || key === "realizarRender" || key === "requiereRevision") {
         data[key] = Boolean(body[key]);
       } else if (key === "tradeNivel") {
@@ -124,7 +132,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   // Auto-set fechaCierre y etapaCambiadaEn cuando etapa cambia
   let cambioAVentaPerdida = false;
   if (body.etapa) {
-    const current = await prisma.trato.findUnique({ where: { id }, select: { etapa: true, fechaCierre: true } });
+    const current = await prisma.trato.findUnique({
+      where: { id },
+      select: { etapa: true, fechaCierre: true, presupuestoEstimado: true },
+    });
     if (current && current.etapa !== body.etapa) {
       data.etapaCambiadaEn = new Date();
       if (["VENTA_CERRADA", "VENTA_PERDIDA"].includes(body.etapa) && !current.fechaCierre) {
@@ -133,10 +144,48 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (body.etapa === "VENTA_PERDIDA") {
         cambioAVentaPerdida = true;
       }
+      // Auto-set montoFinal al cerrar si no viene en body
+      if (body.etapa === "VENTA_CERRADA" && !data.montoFinal) {
+        data.montoFinal = (body.presupuestoEstimado as number | undefined) ?? current.presupuestoEstimado ?? null;
+      }
     }
   }
 
-  const trato = await prisma.trato.update({ where: { id }, data });
+  // ── Candados de etapa — validados en servidor, aplican desde CUALQUIER punto ─
+  if (body.etapa) {
+    const tratoActual = await prisma.trato.findUnique({
+      where: { id },
+      select: { etapa: true, motivoPerdida: true, montoFinal: true, presupuestoEstimado: true, fechaProximaAccion: true },
+    });
+    if (tratoActual && tratoActual.etapa !== body.etapa) {
+      // Candado 1: VENTA_PERDIDA requiere motivoPerdida
+      if (body.etapa === 'VENTA_PERDIDA') {
+        const motivo = (body.motivoPerdida as string | undefined)?.trim() || tratoActual.motivoPerdida?.trim();
+        if (!motivo) {
+          return NextResponse.json(
+            { error: 'Se requiere el motivo de pérdida para marcar como Venta Perdida', code: 'REQUIERE_MOTIVO_PERDIDA' },
+            { status: 400 }
+          );
+        }
+      }
+      // Candado 2: VENTA_CERRADA requiere montoFinal o presupuestoEstimado
+      if (body.etapa === 'VENTA_CERRADA') {
+        const monto = (body.montoFinal as number | undefined) ?? tratoActual.montoFinal ?? (body.presupuestoEstimado as number | undefined) ?? tratoActual.presupuestoEstimado;
+        if (!monto || monto <= 0) {
+          return NextResponse.json(
+            { error: 'Se requiere capturar el monto final de cierre', code: 'REQUIERE_MONTO_FINAL' },
+            { status: 400 }
+          );
+        }
+      }
+    }
+  }
+
+  const trato = await prisma.trato.update({
+    where: { id },
+    data,
+    include: { cliente: { select: { nombre: true } } },
+  });
 
   // ── Cancelar CxC pendientes cuando el trato se pierde ───────────────────────
   if (cambioAVentaPerdida) {
@@ -168,7 +217,33 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     });
   }
 
-
+  // ── Si se confirma el evento, crear Proyecto en PLANEACION si no existe ─────
+  if (body.confirmadaEn && !trato.prospeccionId) {
+    const proyectoExistente = await prisma.proyecto.findUnique({ where: { tratoId: id } });
+    if (!proyectoExistente && trato.fechaEventoEstimada) {
+      const primeraCotizacion = await prisma.cotizacion.findFirst({
+        where: { tratoId: id },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (primeraCotizacion) {
+        const numeroProyecto = `P-${Date.now()}`;
+        await prisma.proyecto.create({
+          data: {
+            numeroProyecto,
+            tratoId: id,
+            cotizacionId: primeraCotizacion.id,
+            clienteId: trato.clienteId,
+            nombre: trato.nombreEvento || `Proyecto ${trato.cliente?.nombre ?? 'Sin nombre'}`,
+            estado: 'PLANEACION',
+            tipoEvento: trato.tipoEvento || 'OTRO',
+            tipoServicio: trato.tipoServicio ?? null,
+            fechaEvento: trato.fechaEventoEstimada,
+            lugarEvento: trato.lugarEstimado ?? null,
+          },
+        });
+      }
+    }
+  }
 
   // ── Sincronizar esProspecto según etapa del trato ────────────────────────────
   // Se ejecuta SIEMPRE que cambia etapa, sin importar si hay prospeccionId.

@@ -127,6 +127,9 @@ export async function POST(request: NextRequest) {
         costosTotalesEstimados: campos.costosTotalesEstimados || 0,
         utilidadEstimada: campos.utilidadEstimada || 0,
         porcentajeUtilidad: campos.porcentajeUtilidad || 0,
+        fechaVencimiento: body.fechaVencimiento
+          ? new Date(body.fechaVencimiento)
+          : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
         lineas: {
           create: lineas.map((l: Record<string, unknown>, i: number) => ({
             tipo: l.tipo,

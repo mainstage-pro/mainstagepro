@@ -113,6 +113,23 @@ const TIPO_SERVICIO_LABELS: Record<string, string> = {
 
 type OrdenTrato = 'urgencia' | 'fechaEvento' | 'fechaAgregado' | 'sinActividad';
 
+function calcularUrgencia(t: { fechaProximaAccion?: string | null; fechaEventoEstimada?: string | null; presupuestoEstimado?: number | null }): number {
+  let score = 0;
+  if (!t.fechaProximaAccion) {
+    score += 30;
+  } else {
+    const diasVencido = Math.floor((Date.now() - new Date(t.fechaProximaAccion).getTime()) / 86400000);
+    if (diasVencido > 0) score += diasVencido * 3;
+  }
+  if (t.fechaEventoEstimada) {
+    const diasEvento = Math.floor((new Date(t.fechaEventoEstimada).getTime() - Date.now()) / 86400000);
+    if (diasEvento < 30 && diasEvento >= 0) score += (30 - diasEvento) * 2;
+    if (diasEvento < 0) score += 60;
+  }
+  if (t.presupuestoEstimado) score += Math.min(t.presupuestoEstimado / 10000, 10);
+  return score;
+}
+
 function groupTratosByMes(tratos: Trato[], ordenTrato: OrdenTrato = 'fechaEvento') {
   // SIEMPRE agrupar por fecha del evento (no por createdAt), de más próximo a más lejano
   const now = new Date();
@@ -146,10 +163,7 @@ function groupTratosByMes(tratos: Trato[], ordenTrato: OrdenTrato = 'fechaEvento
           return dB - dA;
         }
         case 'urgencia': {
-          if (!a.fechaProximaAccion && !b.fechaProximaAccion) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-          if (!a.fechaProximaAccion) return 1;
-          if (!b.fechaProximaAccion) return -1;
-          return a.fechaProximaAccion.localeCompare(b.fechaProximaAccion);
+          return calcularUrgencia(b) - calcularUrgencia(a);
         }
         case 'fechaEvento':
         default: {
@@ -410,22 +424,22 @@ function NuevaOportunidadModal({ onClose, onCreated, onLeadCreated }: {
     try {
       const body: Record<string, unknown> = {
         clienteNuevo: { nombre: leadRapidoForm.nombre.trim(), telefono: leadRapidoForm.telefono || null },
-        tipoProspecto: 'NURTURING',
         origenLead: leadRapidoForm.origenLead,
         tipoEvento: leadRapidoForm.tipoEvento || 'OTRO',
-        nombreEvento: leadRapidoForm.notasIniciales.trim() || 'Lead sin evento definido',
+        notas: leadRapidoForm.notasIniciales.trim() || null,
+        tipo: 'NUEVO_PROSPECTO',
+        etapa: 'NUEVO_CONTACTO',
       };
       if (leadRapidoForm.fechaProximaAccion) {
-        body.primerSeguimiento = { fecha: leadRapidoForm.fechaProximaAccion, canal: 'whatsapp' };
-        body.fechaProximaAccion = leadRapidoForm.fechaProximaAccion;
+        body.fechaProximoContacto = leadRapidoForm.fechaProximaAccion;
       }
-      const res = await fetch('/api/tratos', {
+      const res = await fetch('/api/prospeccion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
       if (!res.ok) { toast.error('Error al registrar lead'); return; }
-      toast.success('Lead registrado ✓');
+      toast.success('Lead registrado en Prospección ✓');
       onLeadCreated?.();
       onClose();
     } finally {
@@ -439,23 +453,22 @@ function NuevaOportunidadModal({ onClose, onCreated, onLeadCreated }: {
     try {
       const body: Record<string, unknown> = {
         clienteNuevo: { nombre: prospeccionForm.nombre.trim(), telefono: prospeccionForm.telefono || null },
-        tipoProspecto: 'NURTURING',
-        origenLead: 'PROSPECCION',
+        origenLead: 'ORGANICO',
         tipoEvento: prospeccionForm.tipoEvento || 'OTRO',
-        nombreEvento: prospeccionForm.motivo.trim() || 'Prospección en frío',
-        nurturingData: JSON.stringify({ canalContacto: prospeccionForm.canal, motivoContacto: prospeccionForm.motivo.trim() }),
+        notas: prospeccionForm.motivo.trim() || null,
+        tipo: 'CLIENTE_PROPIO',
+        etapa: 'NUEVO_CONTACTO',
       };
       if (prospeccionForm.fechaPrimerIntento) {
-        body.primerSeguimiento = { fecha: prospeccionForm.fechaPrimerIntento, canal: prospeccionForm.canal.toLowerCase() };
-        body.fechaProximaAccion = prospeccionForm.fechaPrimerIntento;
+        body.fechaProximoContacto = prospeccionForm.fechaPrimerIntento;
       }
-      const res = await fetch('/api/tratos', {
+      const res = await fetch('/api/prospeccion', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
       if (!res.ok) { toast.error('Error al registrar prospecto'); return; }
-      toast.success('Prospecto registrado ✓');
+      toast.success('Prospecto registrado en Prospección ✓');
       onLeadCreated?.();
       onClose();
     } finally {
@@ -1281,6 +1294,13 @@ export default function TratosPage() {
     notaResultado: '', proximaFecha: '', opcion: '' as '' | '+1' | '+3' | '+7' | 'otra' | 'ninguna',
   });
   const [completandoSeguimiento, setCompletandoSeguimiento] = useState(false);
+  const [modalCandado, setModalCandado] = useState<{
+    tipo: 'perdida' | 'cierre' | null;
+    tratoId: string;
+    motivoPerdida: string;
+    motivoPerdidaOtro: string;
+    montoFinal: string;
+  } | null>(null);
 
   function toggleVista(v: "lista" | "kanban") {
     setVista(v);
@@ -1337,22 +1357,39 @@ export default function TratosPage() {
     } finally { setDeletingId(null); }
   }
 
-  async function cambiarEtapa(tratoId: string, nuevaEtapa: string) {
-    // Optimistic update
+  async function ejecutarCambioEtapa(tratoId: string, nuevaEtapa: string, extras: Record<string, unknown> = {}) {
     setTratos(prev => prev.map(t => t.id === tratoId ? { ...t, etapa: nuevaEtapa } : t));
     try {
-      await fetch(`/api/tratos/${tratoId}`, {
+      const res = await fetch(`/api/tratos/${tratoId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ etapa: nuevaEtapa }),
+        body: JSON.stringify({ etapa: nuevaEtapa, ...extras }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || 'Error al cambiar etapa');
+        const refreshed = await fetch('/api/tratos').then(r => r.json());
+        setTratos(refreshed.tratos ?? []);
+        return;
+      }
       toast.success(`Movido a ${ETAPA_LABELS[nuevaEtapa] ?? nuevaEtapa}`);
     } catch {
-      // Revert on error
       toast.error('Error al cambiar etapa');
       const refreshed = await fetch('/api/tratos').then(r => r.json());
       setTratos(refreshed.tratos ?? []);
     }
+  }
+
+  async function cambiarEtapa(tratoId: string, nuevaEtapa: string) {
+    if (nuevaEtapa === 'VENTA_PERDIDA') {
+      setModalCandado({ tipo: 'perdida', tratoId, motivoPerdida: '', motivoPerdidaOtro: '', montoFinal: '' });
+      return;
+    }
+    if (nuevaEtapa === 'VENTA_CERRADA') {
+      setModalCandado({ tipo: 'cierre', tratoId, motivoPerdida: '', motivoPerdidaOtro: '', montoFinal: '' });
+      return;
+    }
+    await ejecutarCambioEtapa(tratoId, nuevaEtapa, {});
   }
 
   async function abrirCompletarSeguimiento(tratoId: string) {
@@ -1718,17 +1755,7 @@ export default function TratosPage() {
                     return a.fechaEventoEstimada.localeCompare(b.fechaEventoEstimada);
                   case 'urgencia':
                   default: {
-                    const etapa = filtroEtapa ?? 'LEAD';
-                    if (etapa === 'LEAD' || etapa === 'DESCUBRIMIENTO' || etapa === 'OPORTUNIDAD') {
-                      if (!a.fechaProximaAccion && !b.fechaProximaAccion) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-                      if (!a.fechaProximaAccion) return 1;
-                      if (!b.fechaProximaAccion) return -1;
-                      return a.fechaProximaAccion.localeCompare(b.fechaProximaAccion);
-                    }
-                    if (!a.fechaCierre && !b.fechaCierre) return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-                    if (!a.fechaCierre) return 1;
-                    if (!b.fechaCierre) return -1;
-                    return new Date(b.fechaCierre).getTime() - new Date(a.fechaCierre).getTime();
+                    return calcularUrgencia(b) - calcularUrgencia(a);
                   }
                 }
               });
@@ -1834,6 +1861,88 @@ export default function TratosPage() {
             >
               ✕
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal candado: Venta Perdida ── */}
+      {modalCandado?.tipo === 'perdida' && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}>
+          <div className="bg-[#111] border border-red-900/50 rounded-2xl p-6 w-full max-w-sm space-y-4">
+            <div>
+              <h3 className="text-white font-semibold text-base">¿Por qué se perdió?</h3>
+              <p className="text-[#555] text-xs mt-1">Requerido para marcar como Venta Perdida</p>
+            </div>
+            <div className="space-y-2">
+              {(['SIN_PRESUPUESTO','ELIGIO_COMPETENCIA','FECHA_NO_DISPONIBLE','PROYECTO_CANCELADO','SIN_RESPUESTA','OTRO'] as const).map(m => (
+                <button key={m}
+                  onClick={() => setModalCandado(prev => prev ? { ...prev, motivoPerdida: m } : null)}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
+                    modalCandado.motivoPerdida === m
+                      ? 'bg-red-900/40 border border-red-500/50 text-red-300'
+                      : 'bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 hover:border-red-900/40'
+                  }`}>
+                  {({ SIN_PRESUPUESTO: 'Sin presupuesto', ELIGIO_COMPETENCIA: 'Eligió competencia', FECHA_NO_DISPONIBLE: 'Fecha no disponible', PROYECTO_CANCELADO: 'Proyecto cancelado', SIN_RESPUESTA: 'Sin respuesta', OTRO: 'Otro motivo' } as Record<string,string>)[m]}
+                </button>
+              ))}
+              {modalCandado.motivoPerdida === 'OTRO' && (
+                <input
+                  value={modalCandado.motivoPerdidaOtro}
+                  onChange={e => setModalCandado(prev => prev ? { ...prev, motivoPerdidaOtro: e.target.value } : null)}
+                  placeholder="Especifica el motivo..."
+                  className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-red-500"
+                />
+              )}
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setModalCandado(null)}
+                className="flex-1 py-2.5 rounded-xl border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">Cancelar</button>
+              <button
+                disabled={!modalCandado.motivoPerdida || (modalCandado.motivoPerdida === 'OTRO' && !modalCandado.motivoPerdidaOtro.trim())}
+                onClick={async () => {
+                  const motivo = modalCandado.motivoPerdida === 'OTRO' ? modalCandado.motivoPerdidaOtro : modalCandado.motivoPerdida;
+                  await ejecutarCambioEtapa(modalCandado.tratoId, 'VENTA_PERDIDA', { motivoPerdida: motivo });
+                  setModalCandado(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-500 disabled:opacity-40 transition-colors">
+                Confirmar pérdida
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal candado: Venta Cerrada ── */}
+      {modalCandado?.tipo === 'cierre' && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}>
+          <div className="bg-[#111] border border-emerald-900/50 rounded-2xl p-6 w-full max-w-sm space-y-4">
+            <div>
+              <h3 className="text-white font-semibold text-base">Monto final de cierre</h3>
+              <p className="text-[#555] text-xs mt-1">Requerido para marcar como Venta Cerrada</p>
+            </div>
+            <div>
+              <label className="text-xs text-[#6b7280] block mb-1">Monto final (MXN) *</label>
+              <input
+                type="number"
+                value={modalCandado.montoFinal}
+                onChange={e => setModalCandado(prev => prev ? { ...prev, montoFinal: e.target.value } : null)}
+                placeholder="0.00"
+                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setModalCandado(null)}
+                className="flex-1 py-2.5 rounded-xl border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">Cancelar</button>
+              <button
+                disabled={!modalCandado.montoFinal || parseFloat(modalCandado.montoFinal) <= 0}
+                onClick={async () => {
+                  await ejecutarCambioEtapa(modalCandado.tratoId, 'VENTA_CERRADA', { montoFinal: parseFloat(modalCandado.montoFinal) });
+                  setModalCandado(null);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-emerald-700 text-white text-sm font-semibold hover:bg-emerald-600 disabled:opacity-40 transition-colors">
+                ✓ Cerrar venta
+              </button>
+            </div>
           </div>
         </div>
       )}

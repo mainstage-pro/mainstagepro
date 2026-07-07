@@ -119,26 +119,58 @@ export async function POST(request: NextRequest) {
         });
       }
     } else if (clienteNuevo?.nombre || nombre) {
-      // Crear nuevo cliente
+      // Dedup: verificar si ya existe cliente con el mismo teléfono o correo
       const clienteData = clienteNuevo ?? { nombre, telefono, correo, empresa };
-      const nuevoCliente = await prisma.cliente.create({
-        data: {
-          nombre:     clienteData.nombre.trim(),
-          telefono:   clienteData.telefono  || null,
-          correo:     clienteData.correo    || null,
-          empresa:    clienteData.empresa   || null,
-          tipoCliente: "POR_DESCUBRIR",
-          esProspecto: true,
-          origenLead:  origenLead ?? null,
-        },
-      });
-      clienteId = nuevoCliente.id;
+      const telNorm = clienteData.telefono?.replace(/\D/g, "") || null;
+      const correoNorm = clienteData.correo?.toLowerCase().trim() || null;
+
+      let clienteExistente = null;
+      if (telNorm || correoNorm) {
+        clienteExistente = await prisma.cliente.findFirst({
+          where: {
+            OR: [
+              ...(telNorm ? [{ telefono: { contains: telNorm } }] : []),
+              ...(correoNorm ? [{ correo: correoNorm }] : []),
+            ],
+          },
+        });
+      }
+
+      if (clienteExistente) {
+        // Reutilizar cliente existente
+        clienteId = clienteExistente.id;
+        if (origenLead) {
+          await prisma.cliente.update({
+            where: { id: clienteId },
+            data: { esProspecto: true },
+          });
+        }
+      } else {
+        // Crear nuevo cliente
+        const nuevoCliente = await prisma.cliente.create({
+          data: {
+            nombre:     clienteData.nombre.trim(),
+            telefono:   clienteData.telefono  || null,
+            correo:     clienteData.correo    || null,
+            empresa:    clienteData.empresa   || null,
+            tipoCliente: "POR_DESCUBRIR",
+            esProspecto: true,
+            origenLead:  origenLead ?? null,
+          },
+        });
+        clienteId = nuevoCliente.id;
+      }
     } else {
       return NextResponse.json(
         { error: "Se requiere clienteId, clienteNuevo.nombre o nombre para crear un cliente" },
         { status: 400 }
       );
     }
+
+    // Auto-set fechaProximoContacto = mañana si no se especifica
+    const fechaProxContactoFinal = fechaProximoContacto
+      ? new Date(fechaProximoContacto)
+      : new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const prospeccion = await prisma.prospeccion.create({
       data: {
@@ -151,7 +183,7 @@ export async function POST(request: NextRequest) {
         estado:        "ACTIVO",
         notas:         notas ?? notasIniciales ?? null,
         fechaEventoEstimada: fechaEventoEstimada ? new Date(fechaEventoEstimada) : null,
-        fechaProximoContacto: fechaProximoContacto ? new Date(fechaProximoContacto) : null,
+        fechaProximoContacto: fechaProxContactoFinal,
       },
       include: {
         cliente: {
