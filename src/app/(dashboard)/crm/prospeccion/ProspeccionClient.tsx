@@ -177,7 +177,7 @@ function EtapaDropdown({ prospeccionId, etapaActual, onChanged }: {
   );
 }
 
-// ─── ProspeccionCard ─────────────────────────────────────────────────────────
+// ─── ProspeccionRow ───────────────────────────────────────────────────────────────
 
 const CONTACTO_LABELS: Record<number, { label: string; desc: string }> = {
   1: { label: "Contacto 1", desc: "Primer contacto — presentación inicial" },
@@ -187,7 +187,7 @@ const CONTACTO_LABELS: Record<number, { label: string; desc: string }> = {
   5: { label: "Contacto 5", desc: "Definición — ¿hay intención de compra?" },
 };
 
-function ProspeccionCard({ p, onEtapaChange, onDelete }: {
+function ProspeccionRow({ p, onEtapaChange, onDelete }: {
   p: Prospeccion;
   onEtapaChange: (id: string, etapa: string) => void;
   onDelete: (id: string) => void;
@@ -198,13 +198,9 @@ function ProspeccionCard({ p, onEtapaChange, onDelete }: {
   const estadoBadge = ESTADO_BADGE[p.estado];
   const alerta = necesitaAlerta(p);
 
-  // 5-contact state — track locally for instant feedback
   const [contactos, setContactos] = useState({
-    1: p.contacto1Hecho,
-    2: p.contacto2Hecho,
-    3: p.contacto3Hecho,
-    4: p.contacto4Hecho,
-    5: p.contacto5Hecho,
+    1: p.contacto1Hecho, 2: p.contacto2Hecho, 3: p.contacto3Hecho,
+    4: p.contacto4Hecho, 5: p.contacto5Hecho,
   });
   const [expandido, setExpandido] = useState(false);
   const [savingContacto, setSavingContacto] = useState<number | null>(null);
@@ -222,9 +218,7 @@ function ProspeccionCard({ p, onEtapaChange, onDelete }: {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [`contacto${n}Hecho`]: nuevo }),
       });
-    } finally {
-      setSavingContacto(null);
-    }
+    } finally { setSavingContacto(null); }
   }
 
   async function abrirTrato() {
@@ -233,223 +227,171 @@ function ProspeccionCard({ p, onEtapaChange, onDelete }: {
     try {
       const res = await fetch(`/api/prospeccion/${p.id}/generar-trato`, { method: "POST" });
       const data = await res.json();
-      if (res.ok && data.trato?.id) {
-        router.push(`/crm/tratos/${data.trato.id}`);
-      } else if (res.status === 409 && data.tratoId) {
-        // Ya tiene trato — redirigir
-        router.push(`/crm/tratos/${data.tratoId}`);
-      } else {
-        alert(data.error ?? "Error al abrir el trato");
-      }
-    } finally {
-      setAbriendo(false);
-    }
+      if (res.ok && data.trato?.id) router.push(`/crm/tratos/${data.trato.id}`);
+      else if (res.status === 409 && data.tratoId) router.push(`/crm/tratos/${data.tratoId}`);
+      else alert(data.error ?? "Error al abrir el trato");
+    } finally { setAbriendo(false); }
   }
 
   const tieneTratoActivo = p.estado === "EN_TRATO" || !!p.trato;
 
   return (
-    <div className={`group bg-[#111] rounded-xl px-4 py-3 transition-all ${
-  alerta
-    ? 'border border-red-900/60 hover:border-red-800/60 bg-red-950/10'
-    : 'border border-[#1e1e1e] hover:border-[#2a2a2a] hover:bg-[#141414]'
-}`}>
-      <div className="flex items-start gap-3">
-        {/* Avatar */}
-        <div className="w-8 h-8 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center shrink-0 mt-0.5">
-          <span className="text-[#B3985B] text-xs font-bold">{p.cliente.nombre.charAt(0).toUpperCase()}</span>
-        </div>
-
-        {/* Main content */}
-        <div className="flex-1 min-w-0">
-          {/* Row 1: name + badges */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Link href={`/crm/prospeccion/${p.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors truncate">
+    <>
+      <div className={`group flex items-center border-b border-[#0f0f0f] last:border-0 transition-colors ${
+        alerta ? "bg-red-950/10 hover:bg-red-950/15" : "hover:bg-[#0b0b0b]"
+      }`}>
+        <button
+          onClick={() => setExpandido(v => !v)}
+          className="shrink-0 w-10 self-stretch flex items-center justify-center text-[#252525] hover:text-gray-500 transition-colors"
+          title="Ver ruta de 5 contactos"
+        >
+          <svg className={`w-3 h-3 transition-transform ${expandido ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+        <div className="flex-[3] min-w-0 py-3 pr-4">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: alerta ? "#ef4444" : (ETAPA_COLORS[p.etapa]?.dot ?? "#374151") }} />
+            <Link href={`/crm/prospeccion/${p.id}`} className="text-[14px] text-white font-semibold leading-tight truncate hover:text-[#B3985B] transition-colors">
               {p.cliente.nombre}
             </Link>
-            {p.cliente.empresa && (
-              <span className="text-[#555] text-xs truncate hidden sm:block">· {p.cliente.empresa}</span>
-            )}
-            {alerta && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-red-900/40 text-red-400 border border-red-800/40 animate-pulse shrink-0">⚠ Sin contacto</span>
-            )}
             {estadoBadge && (
-              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${estadoBadge.className}`}>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${estadoBadge.className}`}>
                 {estadoBadge.label}
               </span>
             )}
+            {alerta && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full font-semibold bg-red-900/40 text-red-400 border border-red-800/40 shrink-0">⚠</span>
+            )}
           </div>
-
-          {/* Row 2: tipo evento + etapa dropdown + origen */}
-          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${evtColors.bg} ${evtColors.text}`}>
-              {TIPO_EVENTO_LABELS[p.tipoEvento] ?? p.tipoEvento}
+          {p.cliente.empresa && (
+            <p className="text-[11px] text-[#444] mt-0.5 truncate pl-3">{p.cliente.empresa}</p>
+          )}
+        </div>
+        <div className="hidden sm:flex w-[160px] shrink-0 pr-3 items-center">
+          <EtapaDropdown
+            prospeccionId={p.id}
+            etapaActual={p.etapa}
+            onChanged={nuevaEtapa => onEtapaChange(p.id, nuevaEtapa)}
+          />
+        </div>
+        <div className="hidden md:flex w-[105px] shrink-0 pr-3">
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${evtColors.bg} ${evtColors.text}`}>
+            {TIPO_EVENTO_LABELS[p.tipoEvento] ?? p.tipoEvento}
+          </span>
+        </div>
+        <div className="hidden lg:block w-[130px] shrink-0 pr-3">
+          {p.fechaProximoContacto ? (
+            <span className={`text-[12px] font-medium leading-tight block ${
+              proximoVencido ? "text-red-400" : "text-[#777]"
+            }`}>
+              {formatFecha(p.fechaProximoContacto)}
+              {proximoVencido && <span className="block text-[10px] text-red-500/60 mt-0.5">vencido</span>}
             </span>
-            <EtapaDropdown
-              prospeccionId={p.id}
-              etapaActual={p.etapa}
-              onChanged={nuevaEtapa => onEtapaChange(p.id, nuevaEtapa)}
-            />
-            <span className="text-[10px] text-[#444]">{ORIGEN_LABELS[p.origen] ?? p.origen}</span>
+          ) : (
+            <span className="text-[12px] text-[#2a2a2a]">— sin fecha</span>
+          )}
+        </div>
+        <div className="hidden lg:flex w-[110px] shrink-0 pr-3 items-center gap-1.5">
+          {p.responsable ? (
+            <>
+              <span className="w-4 h-4 rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 flex items-center justify-center text-[8px] text-[#B3985B] shrink-0 font-bold">
+                {p.responsable.name.charAt(0).toUpperCase()}
+              </span>
+              <span className="text-[11px] text-[#888] truncate">{p.responsable.name.split(" ")[0]}</span>
+            </>
+          ) : (
+            <span className="text-[11px] text-[#2a2a2a]">— sin asignar</span>
+          )}
+        </div>
+        <div className="hidden xl:flex w-[76px] shrink-0 pr-3 items-center gap-1.5">
+          <div className="flex gap-0.5">
+            {[1,2,3,4,5].map(n => (
+              <div key={n} className={`w-2 h-2 rounded-full border transition-colors ${
+                contactos[n as keyof typeof contactos] ? "bg-[#B3985B] border-[#B3985B]" : "bg-transparent border-[#2a2a2a]"
+              }`} />
+            ))}
           </div>
-
-          {/* Row 3: responsable + próximo contacto + progreso dots (clickable) */}
-          <div className="flex items-center gap-4 mt-2 text-xs text-[#6b7280]">
-            {/* Responsable */}
-            <span className="flex items-center gap-1">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-              {p.responsable ? p.responsable.name.split(" ")[0] : "Sin asignar"}
-            </span>
-
-            {/* Próximo contacto */}
-            <span className={`flex items-center gap-1 ${proximoVencido ? "text-red-400" : ""}`}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              {p.fechaProximoContacto ? formatFecha(p.fechaProximoContacto) : "Sin fecha"}
-            </span>
-
-            {/* Progreso de contactos — click to expand */}
+          <span className="text-[10px] text-[#444]">{prog}/5</span>
+        </div>
+        <div className="flex items-center gap-1 w-[72px] shrink-0 justify-end pr-3 opacity-0 group-hover:opacity-100 transition-opacity">
+          {tieneTratoActivo ? (
+            p.trato ? (
+              <Link href={`/crm/tratos/${p.trato.id}`}
+                className="text-[10px] text-purple-400 hover:text-purple-300 border border-purple-900/40 rounded-md px-1.5 py-0.5 transition-colors whitespace-nowrap">
+                Ver trato
+              </Link>
+            ) : null
+          ) : (
             <button
-              onClick={() => setExpandido(v => !v)}
-              className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
-              title={expandido ? "Cerrar panel de contactos" : "Ver / marcar contactos"}
+              onClick={e => { e.stopPropagation(); abrirTrato(); }}
+              disabled={abriendo}
+              className="text-[10px] text-[#B3985B]/70 hover:text-[#B3985B] border border-[#1e1e1e] hover:border-[#B3985B]/30 rounded-md px-1.5 py-0.5 transition-colors whitespace-nowrap disabled:opacity-40"
+              title="Convertir a Trato"
             >
-              <div className="flex gap-0.5">
-                {[1,2,3,4,5].map(n => (
-                  <div key={n} className={`w-2 h-2 rounded-full border transition-colors ${contactos[n as keyof typeof contactos] ? "bg-[#B3985B] border-[#B3985B]" : "bg-transparent border-[#333]"}`} />
-                ))}
-              </div>
-              <span className="text-[10px]">{prog}/5</span>
-              <svg className={`text-[#444] transition-transform ${expandido ? "rotate-180" : ""}`} width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><polyline points="2 4 6 8 10 4" strokeLinecap="round"/></svg>
+              {abriendo ? "…" : "🎯 Trato"}
             </button>
-          </div>
-
-          {/* ── Panel expandible de 5 contactos ── */}
-          {expandido && (
-            <div className="mt-3 border border-[#1e1e1e] rounded-lg overflow-hidden">
+          )}
+          <button onClick={() => onDelete(p.id)}
+            className="text-[#222] hover:text-red-500/50 transition-colors p-1 rounded"
+            title="Eliminar">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+              <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      {expandido && (
+        <div className="bg-[#070707] border-b border-[#0f0f0f]">
+          <div className="ml-10 mr-3 py-3">
+            <div className="border border-[#1e1e1e] rounded-xl overflow-hidden">
               {[1,2,3,4,5].map(n => {
                 const hecho = contactos[n as keyof typeof contactos];
                 const meta = CONTACTO_LABELS[n];
                 const isSaving = savingContacto === n;
                 return (
-                  <button
-                    key={n}
-                    onClick={() => toggleContacto(n)}
-                    disabled={isSaving}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left border-b border-[#1a1a1a] last:border-0 transition-colors ${
+                  <button key={n} onClick={() => toggleContacto(n)} disabled={isSaving}
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-left border-b border-[#1a1a1a] last:border-0 transition-colors ${
                       hecho ? "bg-[#B3985B]/5 hover:bg-[#B3985B]/10" : "bg-[#0d0d0d] hover:bg-[#141414]"
                     } ${isSaving ? "opacity-50" : ""}`}
                   >
-                    {/* Checkbox visual */}
                     <div className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-colors ${
                       hecho ? "bg-[#B3985B] border-[#B3985B]" : "border-[#333] bg-transparent"
                     }`}>
                       {hecho && <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="black" strokeWidth="2.5"><polyline points="2 6 5 9 10 3" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-medium ${hecho ? "text-[#B3985B] line-through opacity-70" : "text-white"}`}>
-                        {meta.label}
-                      </p>
+                      <p className={`text-xs font-medium ${hecho ? "text-[#B3985B] line-through opacity-70" : "text-white"}`}>{meta.label}</p>
                       <p className="text-[10px] text-[#555] truncate">{meta.desc}</p>
                     </div>
                     {isSaving && <div className="w-3 h-3 border border-gray-500 border-t-transparent rounded-full animate-spin shrink-0" />}
                   </button>
                 );
               })}
-
-              {/* Abrir Trato — solo si no tiene trato activo */}
-              <div className="px-3 py-2.5 bg-[#0a0a0a] border-t border-[#1e1e1e]">
+              <div className="px-4 py-2.5 bg-[#0a0a0a] border-t border-[#1e1e1e] flex items-center justify-between">
+                <span className="text-[10px] text-[#444]">{prog} de 5 completados</span>
                 {tieneTratoActivo ? (
                   p.trato ? (
-                    <Link
-                      href={`/crm/tratos/${p.trato.id}`}
-                      className="flex items-center gap-2 text-xs text-purple-400 hover:text-purple-300 transition-colors"
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0" />
-                      Ver trato activo →
+                    <Link href={`/crm/tratos/${p.trato.id}`} className="flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 transition-colors">
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0" /> Ver trato →
                     </Link>
-                  ) : (
-                    <span className="text-xs text-purple-400 opacity-60">En trato (procesando…)</span>
-                  )
+                  ) : <span className="text-xs text-purple-400 opacity-60">En trato…</span>
                 ) : (
-                  <button
-                    onClick={e => { e.stopPropagation(); abrirTrato(); }}
-                    disabled={abriendo}
-                    className="flex items-center gap-2 text-xs text-[#B3985B] hover:text-[#c9a96a] font-medium transition-colors disabled:opacity-50"
-                  >
+                  <button onClick={e => { e.stopPropagation(); abrirTrato(); }} disabled={abriendo}
+                    className="flex items-center gap-2 text-xs text-[#B3985B] hover:text-[#c9a96a] font-medium transition-colors disabled:opacity-50">
                     {abriendo
                       ? <><div className="w-3 h-3 border border-[#B3985B] border-t-transparent rounded-full animate-spin" /> Abriendo…</>
-                      : <><span className="text-sm">🎯</span> Abrir Trato activo</>
+                      : <><span className="text-sm">🎯</span> Abrir Trato</>
                     }
                   </button>
                 )}
               </div>
             </div>
-          )}
-        </div>
-
-        {/* Actions — visible on hover */}
-        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity ml-2 shrink-0">
-          <Link href={`/crm/prospeccion/${p.id}`}
-            className="text-[#B3985B] text-xs hover:underline whitespace-nowrap">
-            Ver →
-          </Link>
-          {(p.estado === "SIN_ETAPA" || p.estado === "CANCELADO") && (
-            <button onClick={() => onDelete(p.id)}
-              className="text-gray-700 hover:text-red-400 transition-colors text-xs" title="Eliminar">✕</button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-// ─── EtapaSection ────────────────────────────────────────────────────────────
-
-function EtapaSection({ etapa, prospecciones, onEtapaChange, onDelete, defaultCollapsed = false }: {
-  etapa: string;
-  prospecciones: Prospeccion[];
-  onEtapaChange: (id: string, etapa: string) => void;
-  onDelete: (id: string) => void;
-  defaultCollapsed?: boolean;
-}) {
-  const [collapsed, setCollapsed] = useState(defaultCollapsed && prospecciones.length === 0);
-  const colors = ETAPA_COLORS[etapa] ?? ETAPA_COLORS.SIN_ETAPA;
-
-  return (
-    <div className="mb-4">
-      <button
-        onClick={() => setCollapsed(v => !v)}
-        className="flex items-center gap-2 w-full text-left mb-2 group"
-      >
-        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: colors.dot }} />
-        <span className="text-xs font-semibold text-[#ccc] group-hover:text-white transition-colors">
-          {ETAPA_LABELS[etapa] ?? etapa}
-        </span>
-        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${colors.bg} ${colors.text} ${colors.border} border`}>
-          {prospecciones.length}
-        </span>
-        <svg
-          className={`ml-auto text-[#444] transition-transform ${collapsed ? "" : "rotate-180"}`}
-          width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <polyline points="18 15 12 9 6 15"/>
-        </svg>
-      </button>
-
-      {!collapsed && (
-        <div className="space-y-2 pl-1">
-          {prospecciones.length === 0 ? (
-            <div className="text-center py-4 text-[#444] text-xs border border-[#1a1a1a] border-dashed rounded-xl">
-              Sin contactos en esta etapa
-            </div>
-          ) : (
-            prospecciones.map(p => (
-              <ProspeccionCard key={p.id} p={p} onEtapaChange={onEtapaChange} onDelete={onDelete} />
-            ))
-          )}
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -479,7 +421,6 @@ function ModalNuevoProspecto({ usuarios, tipo, onClose, onCreated }: {
     notas: "",
   });
 
-  // Search existing clients
   useEffect(() => {
     if (!search.trim() || search.length < 2) { setClienteResults([]); return; }
     setSearching(true);
@@ -527,7 +468,6 @@ function ModalNuevoProspecto({ usuarios, tipo, onClose, onCreated }: {
       onCreated(d.prospeccion);
       onClose();
     } catch {
-      // Error handled silently — parent will show toast
     } finally {
       setSaving(false);
     }
@@ -557,7 +497,6 @@ function ModalNuevoProspecto({ usuarios, tipo, onClose, onCreated }: {
         className="relative w-full max-w-lg bg-[#111] border border-[#2a2a2a] rounded-2xl shadow-2xl overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e1e1e]">
           <div>
             <h2 className="text-white font-semibold text-sm">
@@ -572,9 +511,7 @@ function ModalNuevoProspecto({ usuarios, tipo, onClose, onCreated }: {
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={submit} className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
-          {/* Search existing client */}
           <div>
             <label className="text-[10px] text-[#555] uppercase tracking-wider block mb-1.5">
               {tipo === "CLIENTE_PROPIO" ? "Buscar cliente existente *" : "Buscar contacto existente"}
@@ -593,7 +530,6 @@ function ModalNuevoProspecto({ usuarios, tipo, onClose, onCreated }: {
                 </button>
               )}
             </div>
-            {/* Results dropdown */}
             {!clienteSeleccionado && search.trim() && (
               <div className="mt-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg overflow-hidden">
                 {searching && <p className="text-xs text-[#555] px-3 py-2">Buscando...</p>}
@@ -612,7 +548,6 @@ function ModalNuevoProspecto({ usuarios, tipo, onClose, onCreated }: {
             )}
           </div>
 
-          {/* New client fields (only when no existing selected and NUEVO_PROSPECTO) */}
           {!clienteSeleccionado && tipo === "NUEVO_PROSPECTO" && (
             <>
               <div className="grid grid-cols-1 gap-3">
@@ -650,7 +585,6 @@ function ModalNuevoProspecto({ usuarios, tipo, onClose, onCreated }: {
             </>
           )}
 
-          {/* Common fields */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-[10px] text-[#555] uppercase tracking-wider block mb-1.5">Tipo de evento *</label>
@@ -703,7 +637,6 @@ function ModalNuevoProspecto({ usuarios, tipo, onClose, onCreated }: {
             />
           </div>
 
-          {/* Submit */}
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onClose}
               className="flex-1 px-4 py-2 text-sm text-[#777] border border-[#2a2a2a] rounded-lg hover:text-white hover:border-[#444] transition-colors">
@@ -783,15 +716,6 @@ export default function ProspeccionClient({
     });
   }, [prospecciones, activeTab, showAll, busqueda, filtroEvento, filtroResponsable, filtroOrigen]);
 
-  const porEtapa = useMemo(() => {
-    const map: Record<string, Prospeccion[]> = {};
-    for (const e of ETAPAS_ORDEN) map[e] = [];
-    for (const p of filtradas) {
-      const e = ETAPAS_ORDEN.includes(p.etapa as typeof ETAPAS_ORDEN[number]) ? p.etapa : "SIN_ETAPA";
-      map[e].push(p);
-    }
-    return map;
-  }, [filtradas]);
 
   // Total counts from server for tab badges
   const totalNuevo = serverCounts.filter(c => c.tipo === "NUEVO_PROSPECTO").reduce((a, c) => a + c._count.id, 0);
@@ -915,32 +839,40 @@ export default function ProspeccionClient({
         )}
       </div>
 
-      {/* ── Content ── */}
+      {/* ── Table ── */}
       {loading ? (
         <div className="py-20 text-center text-[#444] text-sm">Cargando contactos…</div>
+      ) : filtradas.length === 0 ? (
+        <div className="py-20 text-center border border-[#1a1a1a] border-dashed rounded-xl">
+          <p className="text-[#444] text-sm">
+            {hayFiltros ? "Sin resultados para los filtros aplicados" : `No hay ${activeTab === "NUEVO_PROSPECTO" ? "contactos nuevos" : "clientes existentes"} activos`}
+          </p>
+          <button onClick={() => setShowModal(true)} className="mt-4 text-[#B3985B] text-xs hover:underline">
+            + Agregar {activeTab === "NUEVO_PROSPECTO" ? "contacto" : "cliente existente"}
+          </button>
+        </div>
       ) : (
-        <div>
-          {ETAPAS_ORDEN.map((etapa, i) => (
-            <EtapaSection
-              key={etapa}
-              etapa={etapa}
-              prospecciones={porEtapa[etapa] ?? []}
+        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden">
+          {/* Header row */}
+          <div className="hidden md:flex items-center border-b border-[#111] px-0 py-1.5 text-[9px] uppercase tracking-[0.14em] text-[#3a3a3a]">
+            <div className="w-10 shrink-0" />
+            <div className="flex-[3] min-w-0 pr-4">Nombre</div>
+            <div className="hidden sm:block w-[160px] shrink-0 pr-3">Clasificación</div>
+            <div className="hidden md:block w-[105px] shrink-0 pr-3">Tipo evento</div>
+            <div className="hidden lg:block w-[130px] shrink-0 pr-3">Próx. contacto</div>
+            <div className="hidden lg:block w-[110px] shrink-0 pr-3">Responsable</div>
+            <div className="hidden xl:block w-[76px] shrink-0 pr-3">Ruta</div>
+            <div className="w-[72px] shrink-0" />
+          </div>
+          {/* Rows */}
+          {filtradas.map(p => (
+            <ProspeccionRow
+              key={p.id}
+              p={p}
               onEtapaChange={handleEtapaChange}
               onDelete={handleDelete}
-              defaultCollapsed={i === 0 && (porEtapa[etapa]?.length ?? 0) === 0}
             />
           ))}
-          {filtradas.length === 0 && !loading && (
-            <div className="py-20 text-center border border-[#1a1a1a] border-dashed rounded-xl">
-              <p className="text-[#444] text-sm">
-                {hayFiltros ? "Sin resultados para los filtros aplicados" : `No hay ${activeTab === "NUEVO_PROSPECTO" ? "contactos nuevos" : "clientes existentes"} activos`}
-              </p>
-              <button onClick={() => setShowModal(true)}
-                className="mt-4 text-[#B3985B] text-xs hover:underline">
-                + Agregar {activeTab === "NUEVO_PROSPECTO" ? "contacto" : "cliente existente"}
-              </button>
-            </div>
-          )}
         </div>
       )}
     </>
