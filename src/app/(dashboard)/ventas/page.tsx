@@ -18,11 +18,13 @@ interface TratoResumen {
   cliente: { nombre: string; empresa: string | null };
   nombreEvento: string | null;
   fechaEventoEstimada: string | null;
+  fechaProximaAccion?: string | null;
   lugarEstimado: string | null;
   presupuestoEstimado: number | null;
   origenVenta: string;
   responsable: { id: string; name: string } | null;
   createdAt: string;
+  confirmadaEn?: string | null;
 }
 
 interface SessionUser {
@@ -59,6 +61,23 @@ function fmt(n: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
 }
 
+function calcularUrgencia(t: { fechaProximaAccion?: string | null; fechaEventoEstimada?: string | null; presupuestoEstimado?: number | null }): number {
+  let score = 0;
+  if (!t.fechaProximaAccion) {
+    score += 30;
+  } else {
+    const diasVencido = Math.floor((Date.now() - new Date(t.fechaProximaAccion).getTime()) / 86400000);
+    if (diasVencido > 0) score += diasVencido * 3;
+  }
+  if (t.fechaEventoEstimada) {
+    const diasEvento = Math.floor((new Date(t.fechaEventoEstimada).getTime() - Date.now()) / 86400000);
+    if (diasEvento < 30 && diasEvento >= 0) score += (30 - diasEvento) * 2;
+    if (diasEvento < 0) score += 60;
+  }
+  if (t.presupuestoEstimado) score += Math.min(t.presupuestoEstimado / 10000, 10);
+  return score;
+}
+
 export default function VentasPage() {
   const [session, setSession] = useState<SessionUser | null>(null);
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
@@ -91,7 +110,7 @@ export default function VentasPage() {
   }, [session, vendedorSelId]);
 
   const tratosPorEtapa = ETAPAS.reduce<Record<string, TratoResumen[]>>((acc, e) => {
-    acc[e] = tratos.filter(t => t.etapa === e);
+    acc[e] = tratos.filter(t => t.etapa === e).sort((a, b) => calcularUrgencia(b) - calcularUrgencia(a));
     return acc;
   }, {});
 
@@ -215,9 +234,12 @@ export default function VentasPage() {
                       ) : (
                         <span className="text-gray-600 text-xs">—</span>
                       )}
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${ORIGEN_COLOR[t.origenVenta] ?? "bg-gray-800 text-gray-400"}`}>
-                        {ORIGEN_LABEL[t.origenVenta] ?? t.origenVenta}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        {t.confirmadaEn && <span className="text-[10px] text-emerald-400 font-semibold">✓ Conf.</span>}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${ORIGEN_COLOR[t.origenVenta] ?? "bg-gray-800 text-gray-400"}`}>
+                          {ORIGEN_LABEL[t.origenVenta] ?? t.origenVenta}
+                        </span>
+                      </div>
                     </div>
 
                     {session?.role === "ADMIN" && t.responsable && (

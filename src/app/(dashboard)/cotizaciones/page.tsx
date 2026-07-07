@@ -19,6 +19,8 @@ type Cotizacion = {
   tipoEvento: string | null;
   createdAt: string;
   mainstageTradeData: string | null;
+  fechaVencimiento: string | null;
+  vencida?: boolean;
   cliente: { id: string; nombre: string; empresa: string | null; tipoCliente: string };
   trato: { tipoEvento: string };
 };
@@ -110,11 +112,12 @@ export default function CotizacionesPage() {
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium w-fit ${ESTADO_COTIZACION_COLORS[cot.estado] ?? "bg-gray-800 text-gray-400"}`}>
                         {ESTADO_COTIZACION_LABELS[cot.estado] ?? cot.estado}
                       </span>
-                      {(cot as {vencida?: boolean}).vencida && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full font-medium w-fit bg-amber-900/40 text-amber-400 border border-amber-700/30">
-                          ⚠ Vencida
-                        </span>
-                      )}
+                      {(() => {
+                        if (!cot.fechaVencimiento) return null;
+                        const vencida = new Date(cot.fechaVencimiento) < new Date() && !['APROBADA','CONTRATADA','CANCELADA'].includes(cot.estado);
+                        if (!vencida) return null;
+                        return <span className="text-[10px] text-red-400 border border-red-900/40 bg-red-900/10 px-1.5 py-0.5 rounded-full font-medium">Vencida</span>;
+                      })()}
                       {(() => {
                         if (!cot.mainstageTradeData) return null;
                         try {

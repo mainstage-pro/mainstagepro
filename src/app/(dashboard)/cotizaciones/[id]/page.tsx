@@ -911,6 +911,26 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               Editar
             </Link>
           )}
+          {cot.estado === 'BORRADOR' && (
+            <button
+              onClick={async () => {
+                const res = await fetch(`/api/cotizaciones/${cot.id}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ estado: 'ENVIADA' }),
+                });
+                if (res.ok) {
+                  setCot(prev => prev ? { ...prev, estado: 'ENVIADA' } : prev);
+                  toast.success('Cotización marcada como enviada');
+                } else {
+                  toast.error('Error al cambiar estado');
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-900/20 border border-blue-800/40 text-blue-400 rounded-lg hover:bg-blue-900/30 transition-colors"
+            >
+              ✉ Marcar como enviada
+            </button>
+          )}
           <a href={`/presentacion/${cot.id}${presentacionToken ? `?token=${presentacionToken}` : ""}`} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#B3985B]/30 hover:border-[#B3985B]/60 text-[#B3985B] text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
