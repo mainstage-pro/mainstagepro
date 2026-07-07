@@ -92,7 +92,6 @@ const MODULOS_POR_SECCION: { seccion: string; items: { key: string; label: strin
     seccion: "VENTAS",
     items: [
       { key: "ventas-seguimientos",   label: "Seguimientos",         desc: "Seguimientos de tratos" },
-      { key: "crm-prospeccion",       label: "Pipeline",             desc: "Pipeline de prospección" },
       { key: "crm-tratos",            label: "Tratos",               desc: "Pipeline de tratos" },
       { key: "crm-base-de-datos",     label: "Base de Datos",        desc: "Base de datos CRM" },
       { key: "ventas-presentaciones", label: "Presentaciones Venta", desc: "Presentaciones para clientes" },
@@ -128,7 +127,7 @@ const ALL_MODULE_KEYS = MODULOS_POR_SECCION.flatMap(s => s.items.map(i => i.key)
 const AREA_MODULE_PRESETS: Record<string, string[]> = {
   ADMINISTRACION: ["dashboard", "plan-trabajo", "operaciones", "calendario", "finanzas", "rrhh", "ats", "inversiones", "tabulador", "tareas-administracion"],
   MARKETING:      ["dashboard", "plan-trabajo", "operaciones", "calendario", "mkt-contenido", "mkt-publicidad", "mkt-resultados", "tareas-marketing"],
-  VENTAS:         ["dashboard", "plan-trabajo", "operaciones", "calendario", "ventas-seguimientos", "crm-prospeccion", "crm-tratos", "crm-base-de-datos", "ventas-presentaciones", "ventas-reporte", "tareas-ventas"],
+  VENTAS:         ["dashboard", "plan-trabajo", "operaciones", "calendario", "ventas-seguimientos", "crm-tratos", "crm-base-de-datos", "ventas-presentaciones", "ventas-reporte", "tareas-ventas"],
   PRODUCCION:     ["dashboard", "plan-trabajo", "operaciones", "calendario", "proyectos", "inventario", "inv-maestro", "catalogo", "bd-proveedores", "bd-tecnicos", "tareas-produccion"],
   RRHH:           ["dashboard", "plan-trabajo", "operaciones", "calendario", "rrhh", "ats", "tareas-rrhh"],
   DIRECCION:      ["dashboard", "plan-trabajo", "operaciones", "calendario", "juntas", "presentaciones", "capacitacion", "tareas-direccion"],
