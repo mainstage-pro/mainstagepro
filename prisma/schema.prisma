@@ -193,9 +193,10 @@ model Trato {
   tipoLead            String   @default("INBOUND")      // INBOUND | OUTBOUND
   origenLead          String   @default("ORGANICO")     // META_ADS | GOOGLE_ADS | ORGANICO | RECOMPRA | REFERIDO | PROSPECCION | OTRO
   estatusContacto     String   @default("PENDIENTE")    // PENDIENTE | CONTACTADO
-  etapa               String   @default("DESCUBRIMIENTO") // DESCUBRIMIENTO | OPORTUNIDAD | VENTA_CERRADA | VENTA_PERDIDA
+  etapa               String   @default("LEAD") // LEAD | DESCUBRIMIENTO | OPORTUNIDAD | VENTA_CERRADA | VENTA_PERDIDA
   clasificacion       String   @default("PROSPECTO")    // PROSPECTO | BASIC | REGULAR | PRIORITY
   tipoServicio        String?  // RENTA | PRODUCCION_TECNICA | DIRECCION_TECNICA
+  subtipoEvento       String?  // CONCIERTO | FESTIVAL | ELECTRONICA | PRESENTACION_MUSICAL | FIESTA_PRIVADA | BODA | XV_ANOS | BAUTIZO | CUMPLEANIOS | CONGRESO | TALLER | LANZAMIENTO | FERIA | OTRO
 
   // ── Descubrimiento ────────────────────────────────────────────────────────
   canalAtencion          String?   // WHATSAPP | FORMULARIO | LLAMADA | REUNION | SCOUTING | INFORMACION
