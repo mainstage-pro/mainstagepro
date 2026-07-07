@@ -18,12 +18,13 @@ type Usuario = { id: string; name: string; area?: string };
 
 // ── Hook: anchos de columnas persistidos en localStorage ──────────────────────
 const COL_DEFAULTS: Record<string, number> = {
-  proyecto: 160,
-  fecha:    130,
-  tipo:      90,
+  cliente:    220,
+  proyecto:   160,
+  fecha:      130,
+  tipo:        90,
   responsable: 110,
   seguimiento: 110,
-  etapa:     130,
+  etapa:       130,
 };
 
 function useColumnWidths() {
@@ -1080,9 +1081,10 @@ function CompactTratoRow({
           </svg>
         </button>
 
-        {/* ── COL 1 · Cliente + Empresa  ─── flex-[3] ────── */}
+        {/* ── COL 1 · Cliente + Empresa  ─── ancho variable ── */}
         <div
-          className="flex-[3] min-w-0 py-3 pr-4 cursor-pointer"
+          className="shrink-0 min-w-0 py-3 pr-4 cursor-pointer"
+          style={{ width: colWidths.cliente }}
           onClick={() => router.push(`/crm/tratos/${t.id}`)}
         >
           <div className="flex items-center gap-1.5 min-w-0">
@@ -2126,8 +2128,11 @@ export default function TratosPage() {
                       <div className="hidden md:flex items-center border-b border-[#111] px-0 py-1.5 mb-0.5 text-[9px] uppercase tracking-[0.14em] text-[#3a3a3a]">
                         {/* toggle placeholder */}
                         <div className="w-10 shrink-0" />
-                        {/* Cliente — flex, ocupa el resto */}
-                        <div className="flex-1 min-w-0 pr-4">Cliente</div>
+                        {/* Cliente */}
+                        <div className="relative pr-4 shrink-0" style={{ width: colWidths.cliente }}>
+                          Cliente
+                          <ResizeHandle onResize={dx => setColWidth('cliente', colWidths.cliente + dx)} onReset={() => resetColWidth('cliente')} />
+                        </div>
                         {/* Proyecto */}
                         <div className="hidden lg:block relative pr-4 shrink-0" style={{ width: colWidths.proyecto }}>
                           Proyecto
