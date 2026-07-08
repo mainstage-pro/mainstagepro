@@ -13,12 +13,9 @@ After EVERY set of changes that passes `npm run build` with 0 errors, automatica
 git add -A
 git commit -m "<description of changes>"
 git push origin main
-npx vercel --prod
 ```
 
-Do NOT wait for the user to ask. Commit, push to GitHub, and deploy immediately after a successful build as part of the normal workflow.
-
-IMPORTANT: Always push to GitHub BEFORE running `npx vercel --prod` so that GitHub and Vercel are always in sync.
+Do NOT wait for the user to ask. Commit and push to GitHub immediately after a successful build as part of the normal workflow. (Vercel will automatically trigger a production deployment from the push to main).
 <!-- END:deployment-rules -->
 
 <!-- BEGIN:collaboration-rules -->

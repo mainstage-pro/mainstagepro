@@ -3,6 +3,8 @@
 import { use, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import DiscoveryForm from "@/components/crm/DiscoveryForm";
+import { useToast } from "@/components/Toast";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface Trato {
@@ -67,12 +69,14 @@ const ETAPA_CONFIG: Record<string, { color: string; bg: string; border: string; 
 export default function TratoWizardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const toast = useToast();
 
   const [trato, setTrato] = useState<Trato | null>(null);
   const [loading, setLoading] = useState(true);
   const [nurturing, setNurturing] = useState<NurturingData>({ etapa: "PRIMER_CONTACTO", log: [], pasosMarcados: [] });
   const [seguimientos, setSeguimientos] = useState<SeguimientoItem[]>([]);
   const [saving, setSaving] = useState(false);
+  const [creandoCotizacion, setCreandoCotizacion] = useState(false);
 
   // Estado para agendar inline por paso
   const [agendandoPaso, setAgendandoPaso] = useState<number | null>(null);
@@ -171,6 +175,32 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
   }
 
   // Avanzar a descubrimiento
+  
+  async function crearNuevaCotizacion() {
+    if (!trato) return;
+    const nombre = window.prompt(
+      "Nombre del evento (puedes cambiarlo después):",
+      "Evento " + ((((trato as any).cotizaciones || [])?.filter((c: any) => !c.grupoId || c.opcionLetra === "A").length + 1) || 1)
+    );
+    if (nombre === null) return;
+    setCreandoCotizacion(true);
+    try {
+      const res = await fetch(`/api/tratos/${trato.id}/cotizaciones`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombreCotizacion: nombre || undefined }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        router.push(`/cotizaciones/nuevo?editId=${d.id}`);
+      } else {
+        toast.error(d.error ?? "Error al crear cotización");
+      }
+    } finally {
+      setCreandoCotizacion(false);
+    }
+  }
+
   async function iniciarDescubrimiento() {
     setSaving(true);
     const res = await fetch(`/api/tratos/${id}`, {
@@ -590,62 +620,19 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
           </>
         )}
 
+        
         {/* ═══════════════════════════════════════════════════════════
             PANEL: DESCUBRIMIENTO
         ═══════════════════════════════════════════════════════════ */}
         {etapa === "DESCUBRIMIENTO" && (
-          <div className="space-y-4">
-            <div className="bg-[#080f1a] border border-blue-800/30 rounded-2xl p-5">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-blue-900/30 flex items-center justify-center text-xl">🔍</div>
-                <div>
-                  <p className="text-white font-bold text-base">Descubrimiento de necesidades</p>
-                  <p className="text-blue-400/70 text-xs mt-0.5">{nombre1} tiene interés · ahora definimos los detalles</p>
-                </div>
-              </div>
-              <p className="text-gray-500 text-sm leading-relaxed mb-5">
-                El cliente ya confirmó su interés. Ahora necesitas levantar toda la información del evento para construir la propuesta perfecta.
-              </p>
-              <Link
-                href={`/crm/tratos/${id}`}
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-blue-700/20 border border-blue-700/40 text-blue-300 text-sm font-bold hover:bg-blue-700/30 transition-colors"
-              >
-                📋 Abrir formulario de descubrimiento →
-              </Link>
-            </div>
-
-            {/* Seguimientos */}
-            {segsCliente.length > 0 && (
-              <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl p-4">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Agenda pendiente</p>
-                <div className="space-y-2">
-                  {segsCliente.map(seg => {
-                    const fmt = fmtFecha(seg.fechaProgramada);
-                    return (
-                      <div key={seg.id} className="flex items-center gap-3 py-1">
-                        <span className="text-sm shrink-0">{TIPO_SEG.find(t => t.key === seg.canal)?.icon ?? "📌"}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs text-white font-medium truncate">{seg.titulo}</p>
-                          <p className={`text-[11px] ${fmt.color}`}>{fmt.text}</p>
-                        </div>
-                        <button
-                          onClick={() => marcarSegHecho(seg.id)}
-                          className="shrink-0 text-[10px] text-gray-700 hover:text-emerald-400 px-2 py-1 rounded border border-transparent hover:border-emerald-800/30 hover:bg-emerald-900/10 transition-colors"
-                        >
-                          ✓ hecho
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
+          <DiscoveryForm 
+            id={id} 
+            trato={trato} 
+            setTrato={setTrato} 
+            onComplete={() => setTrato(p => p ? { ...p, etapa: "OPORTUNIDAD" } : p)}
+          />
         )}
 
-        {/* ═══════════════════════════════════════════════════════════
-            PANEL: OPORTUNIDAD
-        ═══════════════════════════════════════════════════════════ */}
         {etapa === "OPORTUNIDAD" && (
           <div className="bg-[#0d0a1a] border border-violet-800/30 rounded-2xl p-5 space-y-4">
             <div className="flex items-center gap-3">
@@ -657,31 +644,32 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
             </div>
             
             {!trato.descubrimientoCompleto ? (
-              <>
-                <div className="p-3 bg-red-900/20 border border-red-800/40 rounded-lg">
+              <div className="mt-4">
+                <div className="p-3 bg-red-900/20 border border-red-800/40 rounded-lg mb-4">
                   <p className="text-red-400 text-xs font-semibold mb-1">⚠️ Acción requerida</p>
                   <p className="text-red-300/80 text-[11px] leading-relaxed">
                     Antes de poder generar una cotización para esta oportunidad, debes completar el formulario de descubrimiento con los detalles técnicos del evento.
                   </p>
                 </div>
-                <Link
-                  href={`/crm/tratos/${id}?tab=descubrimiento`}
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-500 transition-colors"
-                >
-                  🔍 Completar Descubrimiento →
-                </Link>
-              </>
+                <DiscoveryForm 
+                  id={id} 
+                  trato={trato} 
+                  setTrato={setTrato} 
+                  onComplete={() => setTrato(p => p ? { ...p, descubrimientoCompleto: true } : p)}
+                />
+              </div>
             ) : (
               <>
                 <p className="text-gray-500 text-sm leading-relaxed">
                   El descubrimiento está completo. Ya puedes preparar y enviar la cotización formal.
                 </p>
-                <Link
-                  href={`/crm/tratos/${id}`}
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-violet-700/20 border border-violet-700/40 text-violet-300 text-sm font-bold hover:bg-violet-700/30 transition-colors"
+                <button
+                  onClick={crearNuevaCotizacion}
+                  disabled={creandoCotizacion}
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-violet-700/20 border border-violet-700/40 text-violet-300 text-sm font-bold hover:bg-violet-700/30 transition-colors disabled:opacity-40 cursor-pointer"
                 >
-                  📄 Ver trato y preparar cotización →
-                </Link>
+                  {creandoCotizacion ? "Creando..." : "📄 Crear nueva cotización →"}
+                </button>
               </>
             )}
           </div>
@@ -701,20 +689,20 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
             </div>
 
             {!trato.descubrimientoCompleto ? (
-              <>
-                <div className="p-3 bg-amber-900/20 border border-amber-800/40 rounded-lg">
+              <div className="mt-4">
+                <div className="p-3 bg-amber-900/20 border border-amber-800/40 rounded-lg mb-4">
                   <p className="text-amber-400 text-xs font-semibold mb-1">⚠️ Información faltante</p>
                   <p className="text-amber-300/80 text-[11px] leading-relaxed">
                     Aunque la fecha ya está apartada, debes recabar la información técnica (descubrimiento) para poder operar el evento correctamente.
                   </p>
                 </div>
-                <Link
-                  href={`/crm/tratos/${id}?tab=descubrimiento`}
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-500 transition-colors"
-                >
-                  🔍 Completar Descubrimiento →
-                </Link>
-              </>
+                <DiscoveryForm 
+                  id={id} 
+                  trato={trato} 
+                  setTrato={setTrato} 
+                  onComplete={() => setTrato(p => p ? { ...p, descubrimientoCompleto: true } : p)}
+                />
+              </div>
             ) : (
               <>
                 <p className="text-gray-500 text-sm leading-relaxed">
@@ -732,12 +720,12 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
         )}
 
         {/* ── Pie: link al trato completo ── */}
-        <div className="flex justify-center pt-2 pb-8">
+        <div className="flex justify-center pt-6 pb-8">
           <Link
             href={`/crm/tratos/${id}`}
-            className="text-xs text-gray-700 hover:text-gray-500 transition-colors"
+            className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#1a1a1a] border border-[#333] text-gray-300 text-sm font-semibold hover:bg-[#222] hover:text-white transition-colors"
           >
-            Ver perfil completo del trato →
+            📋 Ver trato completo
           </Link>
         </div>
 
