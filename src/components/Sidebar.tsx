@@ -138,11 +138,11 @@ const NAV: NavSection[] = [
   // ── VENTAS ─────────────────────────────────────────────────────────────────
   {
     key: "seccion-ventas",
-    section: "Ventas",
+    section: "Comercial",
     items: [
 
-      { key: "crm-base-de-datos",       label: "Base de datos de clientes", href: "/crm/base-de-datos" },
-      { key: "crm-tratos",              label: "Pipeline de Ventas",         href: "/crm/tratos", badge: "leads" },
+      { key: "crm-tratos",              label: "Ventas",                     href: "/crm/tratos", badge: "leads" },
+      { key: "crm-base-de-datos",       label: "Clientes",                   href: "/crm/base-de-datos" },
       { key: "ventas-seguimientos",     label: "Seguimientos",               href: "/ventas/seguimientos", badge: "seguimientos" },
       // { key: "ventas-presentaciones",label: "Presentaciones de Venta",    href: "/ventas/presentaciones" },
       { key: "ventas-reporte",          label: "Reporte de ventas",          href: "/ventas/reporte" },

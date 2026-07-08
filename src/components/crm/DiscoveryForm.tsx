@@ -8,11 +8,10 @@ import { useToast } from "@/components/Toast";
 import { isLegacyString, parseLinks } from "@/utils/legacyText";
 
 const PASOS_DISCOVERY = [
-  { id: 1, label: "Contacto", icon: "👤" },
-  { id: 2, label: "Info Básica", icon: "📋" },
-  { id: 3, label: "Detalles", icon: "⚙️" },
-  { id: 4, label: "Operativo", icon: "🚚" },
-  { id: 5, label: "Comercial", icon: "🤝" },
+  { id: 1, label: "Info Básica", icon: "📋" },
+  { id: 2, label: "Detalles", icon: "⚙️" },
+  { id: 3, label: "Operativo", icon: "🚚" },
+  { id: 4, label: "Comercial", icon: "🤝" },
 ];
 
 const RENTA_NIVEL = [
@@ -57,7 +56,7 @@ const EXTRAS_EVENTO: Record<string, any[]> = {
   ],
 };
 
-export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id: string, trato: any, setTrato: any, onComplete?: () => void }) {
+export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnly = false }: { id: string, trato: any, setTrato: any, onComplete?: () => void, readOnly?: boolean }) {
   const toast = useToast();
   
   
@@ -174,12 +173,7 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
   const [eliminandoCotizacion, setEliminandoCotizacion] = useState<string | null>(null);
 
   // Cliente state
-  const [clienteForm, setClienteForm] = useState({
-    nombre: trato?.cliente?.nombre || "",
-    empresa: trato?.cliente?.empresa || "",
-    telefono: trato?.cliente?.telefono || "",
-    correo: trato?.cliente?.correo || "",
-  });
+  
 
   // Discovery state
   const [discForm, setDiscForm] = useState({
@@ -234,20 +228,7 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
     });
   };
 
-  const autoSaveClienteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const autoSaveCliente = useCallback((form: typeof clienteForm) => {
-    if (autoSaveClienteTimer.current) clearTimeout(autoSaveClienteTimer.current);
-    setAutoSaveStatus("saving");
-    autoSaveClienteTimer.current = setTimeout(async () => {
-      await patchCliente({
-        nombre: form.nombre,
-        empresa: form.empresa,
-        telefono: form.telefono,
-        correo: form.correo,
-      });
-      setAutoSaveStatus("saved");
-    }, 1500);
-  }, [patchCliente]);
+  
 
   const autoSaveDisc = useCallback((form: typeof discForm) => {
     if (autoSaveDiscTimer.current) clearTimeout(autoSaveDiscTimer.current);
@@ -392,46 +373,8 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
 
             <div className="p-5 space-y-5">
 
-            {/* PASO 1: Contacto */}
+            {/* PASO 1: Información básica */}
             {pasoActivo === 1 && (<div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Nombre del cliente</label>
-                  <input value={clienteForm.nombre} onChange={e => {
-                    const nf = { ...clienteForm, nombre: e.target.value };
-                    setClienteForm(nf); autoSaveCliente(nf);
-                  }}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Empresa</label>
-                  <input value={clienteForm.empresa} onChange={e => {
-                    const nf = { ...clienteForm, empresa: e.target.value };
-                    setClienteForm(nf); autoSaveCliente(nf);
-                  }}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Teléfono</label>
-                  <input value={clienteForm.telefono} onChange={e => {
-                    const nf = { ...clienteForm, telefono: e.target.value };
-                    setClienteForm(nf); autoSaveCliente(nf);
-                  }}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Correo electrónico</label>
-                  <input type="email" value={clienteForm.correo} onChange={e => {
-                    const nf = { ...clienteForm, correo: e.target.value };
-                    setClienteForm(nf); autoSaveCliente(nf);
-                  }}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-              </div>
-            </div>)}
-
-            {/* PASO 2: Información básica */}
-            {pasoActivo === 2 && (<div className="space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs text-gray-400 uppercase tracking-wider">Tipo de evento</label>
@@ -577,10 +520,10 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
 
             </div>
 
-            </div>)} {/* /paso2 */}
+            </div>)} {/* /paso1 */}
 
-            {/* PASO 3: Detalles y extras */}
-            {pasoActivo === 3 && (<div className="space-y-4">
+            {/* PASO 2: Detalles y extras */}
+            {pasoActivo === 2 && (<div className="space-y-4">
               {discForm.tipoServicio === "RENTA" ? (
               <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">
                 <p className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold">Detalles de renta</p>
@@ -980,10 +923,10 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
                 })}
               </div>}
 
-            </div>)} {/* /paso3 */}
+            </div>)} {/* /paso2 */}
 
-            {/* PASO 4: Operativo y Logística */}
-            {discForm.tipoServicio !== "RENTA" && pasoActivo === 4 && (<div className="space-y-4">
+            {/* PASO 3: Operativo y Logística */}
+            {discForm.tipoServicio !== "RENTA" && pasoActivo === 3 && (<div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* ── Horarios del evento ─────────────────────── */}
                 <div className="sm:col-span-2 grid grid-cols-2 gap-4 pb-4 border-b border-[#1a1a1a]">
@@ -1105,11 +1048,11 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
                 })}
               </div>
 
-            </div>)} {/* /paso4 */}
+            </div>)} {/* /paso3 */}
 
 
-            {/* PASO 5: Opciones comerciales */}
-            {(discForm.tipoServicio === "RENTA" ? pasoActivo === 4 : pasoActivo === 5) && (<div className="space-y-4">
+            {/* PASO 4: Opciones comerciales */}
+            {(discForm.tipoServicio === "RENTA" ? pasoActivo === 3 : pasoActivo === 4) && (<div className="space-y-4">
 
               {/* Toggles: Mainstage Trade + Render */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -14,7 +14,7 @@ import { Combobox } from "@/components/Combobox";
 import { BackButton } from "@/components/BackButton";
 import { SEGUIMIENTO_TIPOS, SEGUIMIENTO_TIPO_LABELS, getWaMensajePrimerContacto } from '@/lib/seguimientoTypes';
 import { SelectorEquiposInventario, type SeleccionEquipos } from '@/components/SelectorEquiposInventario';
-import DiscoverySummary from '@/components/crm/DiscoverySummary';
+import DiscoveryForm from '@/components/crm/DiscoveryForm';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface TratoArchivo {
@@ -1043,6 +1043,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const [form, setForm] = useState<Partial<Trato>>({});
   // Modal razón de pérdida
   const [modalPerdida, setModalPerdida] = useState(false);
+  const [modalEditarCliente, setModalEditarCliente] = useState(false);
+  const [clienteEditForm, setClienteEditForm] = useState({ nombre: '', empresa: '', telefono: '', correo: '' });
   const [razonPerdida, setRazonPerdida] = useState("");
   const [notasPerdida, setNotasPerdida] = useState("");
 
@@ -1838,7 +1840,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#B3985B]/20 text-[#B3985B]">✓ Descubrimiento</span>
               )}
             </div>
-            <h1 className="ms-h1 truncate">{trato.cliente.nombre}</h1>
+            <div className="flex items-center gap-2 group">
+              <h1 className="ms-h1 truncate">{trato.cliente.nombre}</h1>
+              <button onClick={() => setModalEditarCliente(true)} className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-white text-sm transition-all" title="Editar contacto">✏️</button>
+            </div>
             {trato.cliente.empresa && <p className="text-gray-500 text-sm">{trato.cliente.empresa}</p>}
             {trato.nombreEvento && <p className="text-gray-400 text-sm italic mt-0.5">"{trato.nombreEvento}"</p>}
             {notaInicial && <p className="text-gray-600 text-xs mt-1.5 line-clamp-2">{notaInicial}</p>}
@@ -2535,7 +2540,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
 
       
-      {/* ═══ WIZARD DE DESCUBRIMIENTO (LINK) ══════════════════════════════ */}
+            {/* ═══ WIZARD DE DESCUBRIMIENTO EMBEBIDO ══════════════════════════════ */}
       {trato.etapa !== "LEAD" && trato.etapa !== "VENTA_PERDIDA" && (
         <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl p-6 space-y-6 my-8 ms-card-deep">
           <div className="flex items-center justify-between pb-4 border-b border-[#222]">
@@ -2545,18 +2550,71 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               </div>
               <div>
                 <p className="text-white font-bold text-lg">Descubrimiento y Brief Técnico</p>
-                <p className="text-gray-500 text-sm">Toda la información técnica del evento, cliente y equipo.</p>
+                <p className="text-gray-500 text-sm">Información técnica del evento y equipo.</p>
               </div>
             </div>
             <Link
               href={`/crm/tratos/${id}/wizard`}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-700/20 hover:bg-violet-700/30 border border-violet-700/40 text-violet-300 font-bold transition-colors text-sm"
             >
-              {trato.descubrimientoCompleto ? "✏️ Editar Wizard" : "Completar Wizard →"}
+              ✏️ Abrir Wizard (Modo Edición)
             </Link>
           </div>
           
-          <DiscoverySummary trato={trato} />
+          <DiscoveryForm id={id} trato={trato} setTrato={setTrato} readOnly={true} />
+        </div>
+      )}
+
+            {/* ── Modal: Editar Cliente ── */}
+      {modalEditarCliente && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setModalEditarCliente(false)} />
+          <div className="relative bg-[#111] border border-[#333] rounded-2xl w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
+              <h3 className="text-white font-semibold">Editar datos de contacto</h3>
+              <button onClick={() => setModalEditarCliente(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Nombre</label>
+                <input value={clienteEditForm.nombre} onChange={e => setClienteEditForm(p => ({ ...p, nombre: e.target.value }))}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Empresa</label>
+                <input value={clienteEditForm.empresa} onChange={e => setClienteEditForm(p => ({ ...p, empresa: e.target.value }))}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Teléfono</label>
+                <input value={clienteEditForm.telefono} onChange={e => setClienteEditForm(p => ({ ...p, telefono: e.target.value }))}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Correo electrónico</label>
+                <input value={clienteEditForm.correo} onChange={e => setClienteEditForm(p => ({ ...p, correo: e.target.value }))}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <button disabled={savingCliente} onClick={() => setModalEditarCliente(false)} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">Cancelar</button>
+                <button disabled={savingCliente} onClick={async () => {
+                  setSavingCliente(true);
+                  const res = await fetch(`/api/clientes/${trato.cliente.id}`, {
+                    method: "PATCH", headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(clienteEditForm),
+                  });
+                  if (res.ok) {
+                    const d = await res.json();
+                    setTrato(p => p ? { ...p, cliente: { ...p.cliente, ...d.cliente } } : p);
+                    setModalEditarCliente(false);
+                  }
+                  setSavingCliente(false);
+                }} className="px-5 py-2 text-sm bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold rounded-lg transition-colors disabled:opacity-40">
+                  Guardar
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
