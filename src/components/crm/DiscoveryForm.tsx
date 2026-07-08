@@ -234,6 +234,21 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
     });
   };
 
+  const autoSaveClienteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoSaveCliente = useCallback((form: typeof clienteForm) => {
+    if (autoSaveClienteTimer.current) clearTimeout(autoSaveClienteTimer.current);
+    setAutoSaveStatus("saving");
+    autoSaveClienteTimer.current = setTimeout(async () => {
+      await patchCliente({
+        nombre: form.nombre,
+        empresa: form.empresa,
+        telefono: form.telefono,
+        correo: form.correo,
+      });
+      setAutoSaveStatus("saved");
+    }, 1500);
+  }, [patchCliente]);
+
   const autoSaveDisc = useCallback((form: typeof discForm) => {
     if (autoSaveDiscTimer.current) clearTimeout(autoSaveDiscTimer.current);
     setAutoSaveStatus("saving");
@@ -377,8 +392,46 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
 
             <div className="p-5 space-y-5">
 
-            {/* PASO 1: Información básica */}
+            {/* PASO 1: Contacto */}
             {pasoActivo === 1 && (<div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Nombre del cliente</label>
+                  <input value={clienteForm.nombre} onChange={e => {
+                    const nf = { ...clienteForm, nombre: e.target.value };
+                    setClienteForm(nf); autoSaveCliente(nf);
+                  }}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Empresa</label>
+                  <input value={clienteForm.empresa} onChange={e => {
+                    const nf = { ...clienteForm, empresa: e.target.value };
+                    setClienteForm(nf); autoSaveCliente(nf);
+                  }}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Teléfono</label>
+                  <input value={clienteForm.telefono} onChange={e => {
+                    const nf = { ...clienteForm, telefono: e.target.value };
+                    setClienteForm(nf); autoSaveCliente(nf);
+                  }}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Correo electrónico</label>
+                  <input type="email" value={clienteForm.correo} onChange={e => {
+                    const nf = { ...clienteForm, correo: e.target.value };
+                    setClienteForm(nf); autoSaveCliente(nf);
+                  }}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+              </div>
+            </div>)}
+
+            {/* PASO 2: Información básica */}
+            {pasoActivo === 2 && (<div className="space-y-4">
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs text-gray-400 uppercase tracking-wider">Tipo de evento</label>
@@ -451,7 +504,7 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {[
                     { value: "RENTA", label: "Renta de equipo", icon: "📦", desc: "Solo equipo sin operación técnica compleja." },
-                    { value: "PRODUCCION_TECNICA", label: "Operación Técnica", icon: "⚙️", desc: "Equipo, montaje y operación técnica." },
+                    { value: "PRODUCCION_TECNICA", label: "Producción Técnica", icon: "⚙️", desc: "Equipo, montaje y operación técnica." },
                     { value: "DIRECCION_TECNICA", label: "Dirección Técnica", icon: "📋", desc: "Desarrollo conceptual, producción técnica y gestión completa de producción." }
                   ].map(ts => (
                     <button key={ts.value} type="button" onClick={() => setDiscForm(p => ({ ...p, tipoServicio: ts.value }))}
@@ -524,10 +577,10 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
 
             </div>
 
-            </div>)} {/* /paso1 */}
+            </div>)} {/* /paso2 */}
 
-            {/* PASO 2: Servicios de interés */}
-            {pasoActivo === 2 && (<div className="space-y-4">
+            {/* PASO 3: Detalles y extras */}
+            {pasoActivo === 3 && (<div className="space-y-4">
               {discForm.tipoServicio === "RENTA" ? (
               <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">
                 <p className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold">Detalles de renta</p>
@@ -927,10 +980,10 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
                 })}
               </div>}
 
-            </div>)} {/* /paso2 */}
+            </div>)} {/* /paso3 */}
 
-            {/* PASO 3: Detalles operativos (solo producción técnica / no-renta) */}
-            {discForm.tipoServicio !== "RENTA" && pasoActivo === 3 && (<div className="space-y-4">
+            {/* PASO 4: Operativo y Logística */}
+            {discForm.tipoServicio !== "RENTA" && pasoActivo === 4 && (<div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* ── Horarios del evento ─────────────────────── */}
                 <div className="sm:col-span-2 grid grid-cols-2 gap-4 pb-4 border-b border-[#1a1a1a]">
@@ -1052,11 +1105,11 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
                 })}
               </div>
 
-            </div>)} {/* /paso3 */}
+            </div>)} {/* /paso4 */}
 
 
-            {/* PASO 4 (no-renta) / PASO 3 (renta): Comercial */}
-            {(discForm.tipoServicio === "RENTA" ? pasoActivo === 3 : pasoActivo === 4) && (<div className="space-y-4">
+            {/* PASO 5: Opciones comerciales */}
+            {(discForm.tipoServicio === "RENTA" ? pasoActivo === 4 : pasoActivo === 5) && (<div className="space-y-4">
 
               {/* Toggles: Mainstage Trade + Render */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

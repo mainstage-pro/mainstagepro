@@ -14,6 +14,7 @@ import { Combobox } from "@/components/Combobox";
 import { BackButton } from "@/components/BackButton";
 import { SEGUIMIENTO_TIPOS, SEGUIMIENTO_TIPO_LABELS, getWaMensajePrimerContacto } from '@/lib/seguimientoTypes';
 import { SelectorEquiposInventario, type SeleccionEquipos } from '@/components/SelectorEquiposInventario';
+import DiscoverySummary from '@/components/crm/DiscoverySummary';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface TratoArchivo {
@@ -2536,20 +2537,26 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       
       {/* ═══ WIZARD DE DESCUBRIMIENTO (LINK) ══════════════════════════════ */}
       {trato.etapa !== "LEAD" && trato.etapa !== "VENTA_PERDIDA" && (
-        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl p-6 text-center space-y-4 my-8 ms-card-deep">
-          <div className="w-12 h-12 mx-auto rounded-full bg-violet-900/20 border border-violet-800/30 flex items-center justify-center text-2xl">
-            🎯
+        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl p-6 space-y-6 my-8 ms-card-deep">
+          <div className="flex items-center justify-between pb-4 border-b border-[#222]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-violet-900/20 border border-violet-800/30 flex items-center justify-center text-xl">
+                🎯
+              </div>
+              <div>
+                <p className="text-white font-bold text-lg">Descubrimiento y Brief Técnico</p>
+                <p className="text-gray-500 text-sm">Toda la información técnica del evento, cliente y equipo.</p>
+              </div>
+            </div>
+            <Link
+              href={`/crm/tratos/${id}/wizard`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-700/20 hover:bg-violet-700/30 border border-violet-700/40 text-violet-300 font-bold transition-colors text-sm"
+            >
+              {trato.descubrimientoCompleto ? "✏️ Editar Wizard" : "Completar Wizard →"}
+            </Link>
           </div>
-          <div>
-            <p className="text-white font-bold text-lg">Descubrimiento y Brief Técnico</p>
-            <p className="text-gray-500 text-sm mt-1 max-w-md mx-auto">Toda la información técnica del evento, formularios del cliente y selección de equipo ahora se gestionan centralmente en el Wizard del trato.</p>
-          </div>
-          <Link
-            href={`/crm/tratos/${id}/wizard`}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-violet-700/20 hover:bg-violet-700/30 border border-violet-700/40 text-violet-300 font-bold transition-colors"
-          >
-            Abrir Wizard de Descubrimiento →
-          </Link>
+          
+          <DiscoverySummary trato={trato} />
         </div>
       )}
 
