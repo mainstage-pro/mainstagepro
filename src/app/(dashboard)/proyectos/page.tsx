@@ -66,10 +66,6 @@ const ESTADO_BADGE_LABELS: Record<string, string> = {
   CANCELADO:  'Cancelado',
 };
 
-function formatCurrency(n: number) {
-  return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n);
-}
-
 function fmtFecha(iso: string | null) {
   if (!iso) return '';
   try {
@@ -138,12 +134,6 @@ function ProyectoRow({ p, onEliminar, deletingId }: {
 
       <td className="hidden sm:table-cell px-3 py-3 whitespace-nowrap">
         <span className="text-[11px] text-gray-400">{fmtFecha(p.fechaEvento)}</span>
-      </td>
-
-      <td className="hidden lg:table-cell px-3 py-3 whitespace-nowrap text-right">
-        {p.cotizacion?.granTotal ? (
-          <span className="text-[11px] text-[#B3985B]">{formatCurrency(p.cotizacion.granTotal)}</span>
-        ) : <span className="text-gray-600 text-[11px]">—</span>}
       </td>
 
       <td className="hidden sm:table-cell px-3 py-3 whitespace-nowrap w-28">
@@ -355,7 +345,6 @@ export default function ProyectosPage() {
                       <th className="hidden md:table-cell px-3 py-2.5 font-semibold">Servicio</th>
                       <th className="hidden md:table-cell px-3 py-2.5 font-semibold">Venue</th>
                       <th className="hidden sm:table-cell px-3 py-2.5 font-semibold">Fecha</th>
-                      <th className="hidden lg:table-cell px-3 py-2.5 font-semibold text-right">Monto</th>
                       <th className="hidden sm:table-cell px-3 py-2.5 font-semibold w-28">Avance</th>
                       <th className="px-3 py-2.5 w-10"></th>
                     </tr>
@@ -386,7 +375,6 @@ export default function ProyectosPage() {
                       <th className="hidden md:table-cell px-3 py-2.5 font-semibold">Servicio</th>
                       <th className="hidden md:table-cell px-3 py-2.5 font-semibold">Venue</th>
                       <th className="hidden sm:table-cell px-3 py-2.5 font-semibold">Fecha</th>
-                      <th className="hidden lg:table-cell px-3 py-2.5 font-semibold text-right">Monto</th>
                       <th className="hidden sm:table-cell px-3 py-2.5 font-semibold w-28">Avance</th>
                       <th className="px-3 py-2.5 w-10"></th>
                     </tr>
