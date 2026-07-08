@@ -2210,11 +2210,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
       {/* ══════════════════════════════════════════════════════════════════════
           BRIEF TÉCNICO (DESCUBRIMIENTO)
-          Estado 1: sin canal  →  seleccionar canal
-          Estado 2: canal set, no completo  →  formulario de descubrimiento
-          Estado 3: completo  →  resumen + recomendaciones
       ══════════════════════════════════════════════════════════════════════ */}
-
 
       {/* ══════════════════════════════════════════════════════════════════════
           MÓDULO DE PROSPECCIÓN (ETAPA: LEAD)
@@ -2684,11 +2680,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-white font-semibold">Brief técnico</p>
-                  {canalInfo && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${canalInfo.badge}`}>
-                      {canalInfo.icon} {canalInfo.label}
-                    </span>
-                  )}
                   {trato.descubrimientoCompleto && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-[#B3985B]/20 text-[#B3985B]">✓ Completo</span>
                   )}
