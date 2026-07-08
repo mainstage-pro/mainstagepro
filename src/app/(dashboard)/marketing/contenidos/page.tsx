@@ -160,11 +160,11 @@ export default function ContenidosPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">Tipos de contenido</h1>
-          <p className="text-[#6b7280] text-sm">{activos.length} formatos activos</p>
+          <h1 className="ms-h1">Tipos de contenido</h1>
+          <p className="ms-subtitle">{activos.length} formatos activos</p>
         </div>
         <button onClick={() => setShowForm(true)}
-          className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          className="ms-btn-primary">
           + Agregar tipo
         </button>
       </div>
@@ -305,7 +305,7 @@ export default function ContenidosPage() {
       {loading ? (
         <div className="py-12 text-center text-gray-600 text-sm">Cargando...</div>
       ) : activos.length === 0 && inactivos.length === 0 ? (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center">
+        <div className="ms-empty-state">
           {hayFiltros ? (
             <>
               <p className="text-gray-500 text-sm">Sin resultados para los filtros aplicados</p>
@@ -322,7 +322,7 @@ export default function ContenidosPage() {
       ) : (
         <div className="space-y-3">
           {activos.map(t => (
-            <div key={t.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 hover:border-[#2a2a2a] transition-colors">
+            <div key={t.id} className="ms-card p-5 hover:border-[#2a2a2a] transition-colors">
               <div className="flex items-start justify-between gap-4">
                 {/* Left: info */}
                 <div className="flex-1 min-w-0">
@@ -386,7 +386,7 @@ export default function ContenidosPage() {
               </summary>
               <div className="mt-2 space-y-2">
                 {inactivos.map(t => (
-                  <div key={t.id} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl px-5 py-3 flex items-center justify-between opacity-50">
+                  <div key={t.id} className="ms-card-deep px-5 py-3 flex items-center justify-between opacity-50">
                     <div className="flex items-center gap-2">
                       <span className="text-white text-sm">{t.nombre}</span>
                       <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${FORMATO_COLORS[t.formato] ?? "bg-gray-800 text-gray-400 border-gray-700"}`}>{t.formato}</span>

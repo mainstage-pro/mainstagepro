@@ -126,13 +126,13 @@ export default function NuevoMovimientoPage() {
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-white">Registrar Movimiento</h1>
+        <h1 className="ms-h1">Registrar Movimiento</h1>
         <p className="text-gray-400 text-sm mt-1">Ingreso, gasto o movimiento entre cuentas</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Tipo */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Tipo de movimiento</h2>
           <div className="flex gap-3">
             {TIPO_OPTIONS.map(o => (
@@ -155,7 +155,7 @@ export default function NuevoMovimientoPage() {
         </div>
 
         {/* Datos principales */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Datos del movimiento</h2>
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -205,7 +205,7 @@ export default function NuevoMovimientoPage() {
 
         {/* Información adicional — condicional por tipo */}
         {form.tipo !== "ENTRE_CUENTAS" && (
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+          <div className="ms-card p-5">
             <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Información adicional</h2>
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -251,7 +251,7 @@ export default function NuevoMovimientoPage() {
 
         {/* ENTRE_CUENTAS — solo notas y referencia */}
         {form.tipo === "ENTRE_CUENTAS" && (
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+          <div className="ms-card p-5">
             <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Información adicional</h2>
             <div className="space-y-3">
               <div>

@@ -191,7 +191,7 @@ function InlineDropdown({ options, value, onChange, placeholder = "—", colorMa
         <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" className="opacity-50 shrink-0"><polyline points="2 4 6 8 10 4"/></svg>
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[140px]">
+        <div className="ms-dropdown left-0 top-full mt-1 min-w-[140px]">
           {options.map(opt => {
             const oc = colorMap?.[opt.value];
             return (
@@ -261,7 +261,7 @@ function InlineMultiSelect({ options, values, onChange, placeholder = "—", max
         <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" className="opacity-50 shrink-0"><polyline points="2 4 6 8 10 4"/></svg>
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[160px]">
+        <div className="ms-dropdown left-0 top-full mt-1 min-w-[160px]">
           <p className="text-[9px] text-[#444] uppercase tracking-wider px-3 py-1.5">Selecciona hasta {maxSelect}</p>
           {options.map(opt => {
             const active = values.includes(opt.value);
@@ -334,7 +334,7 @@ function InlineVendedor({ clienteId, vendedor, usuarios, onChange }: {
         }
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[160px]">
+        <div className="ms-dropdown left-0 top-full mt-1 min-w-[160px]">
           <p className="text-[9px] text-[#444] uppercase tracking-wider px-3 py-1.5">Responsable</p>
           {usuarios.map(u => (
             <button key={u.id} type="button" onClick={() => select(u)}
@@ -421,7 +421,7 @@ function ContactoRow({
   const estadoActividad = actividadMap[c.id] ?? "INACTIVO";
 
   return (
-    <tr className="border-b border-[#0f0f0f] hover:bg-[#111] transition-colors group cursor-pointer" onClick={() => { window.location.href = `/crm/clientes/${c.id}`; }}>
+    <tr className="ms-tr group cursor-pointer" onClick={() => { window.location.href = `/crm/clientes/${c.id}`; }}>
       {/* Nombre */}
       <td className="px-4 py-2.5 align-middle overflow-visible">
         <div className="flex flex-col gap-0.5">
@@ -468,7 +468,7 @@ function ContactoRow({
             }
           </button>
           {empresaPopoverOpen && (
-            <div className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-2" style={{ width: 240 }} onClick={e => e.stopPropagation()}>
+            <div className="ms-dropdown left-0 top-full mt-1 py-2" style={{ width: 240 }} onClick={e => e.stopPropagation()}>
               {empresaMode === "view" && c.compania ? (
                 <>
                   <p className="text-[9px] text-[#444] uppercase tracking-wider px-3 pb-2">Empresa</p>
@@ -641,8 +641,8 @@ function ModalNuevoContacto({ onClose, onCreado, usuarios }: {
     onClose();
   }
 
-  const inputCls = "w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50 placeholder-[#333] transition-colors";
-  const labelCls = "block text-[10px] text-[#555] mb-1.5 uppercase tracking-wider";
+  const inputCls = "ms-input";
+  const labelCls = "ms-micro block mb-1.5 uppercase tracking-wider";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -686,14 +686,14 @@ function ModalNuevoContacto({ onClose, onCreado, usuarios }: {
             <div>
               <label className={labelCls}>Origen del lead</label>
               <select value={form.origenLead} onChange={e => setF("origenLead", e.target.value)}
-                className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50 transition-colors">
+                className="ms-input">
                 {ORIGEN_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
             <div>
               <label className={labelCls}>Tipo de cliente</label>
               <select value={form.tipoCliente} onChange={e => setF("tipoCliente", e.target.value)}
-                className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50 transition-colors">
+                className="ms-input">
                 {TIPO_CLIENTE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
@@ -701,7 +701,7 @@ function ModalNuevoContacto({ onClose, onCreado, usuarios }: {
               <div>
                 <label className={labelCls}>Clasificación inicial</label>
                 <select value={form.clasificacion} onChange={e => setF("clasificacion", e.target.value)}
-                  className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50 transition-colors">
+                  className="ms-input">
                   {CLASIFICACION_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
@@ -714,11 +714,11 @@ function ModalNuevoContacto({ onClose, onCreado, usuarios }: {
           </div>
         </div>
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#1a1a1a]">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-[#2a2a2a] text-[#555] text-sm hover:text-white hover:border-[#444] transition-colors">
+          <button onClick={onClose} className="ms-btn-secondary">
             Cancelar
           </button>
           <button onClick={crear} disabled={saving || !form.nombre.trim()}
-            className="px-5 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] disabled:opacity-50 transition-colors">
+            className="ms-btn-primary px-5">
             {saving ? "Registrando…" : form.esCliente ? "Registrar como cliente" : "Registrar prospecto"}
           </button>
         </div>
@@ -752,7 +752,7 @@ function ContactList({
   closeEmpresaPopover: () => void;
 }) {
   if (contactos.length === 0) return (
-    <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl py-16 text-center">
+    <div className="ms-card-deep py-16 text-center">
       <p className="text-[#333] text-sm">No hay registros en esta sección</p>
     </div>
   );
@@ -760,7 +760,7 @@ function ContactList({
   const HEADERS = ["Nombre", "Empresa", "Tipo", "Clasificación", "Servicio", "Tipo de Evento", "Actividad", "Responsable", "Tratos", ""];
 
   return (
-    <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl" style={{ overflowX: "auto" }}>
+    <div className="ms-card-deep" style={{ overflowX: "auto" }}>
       <table className="w-full table-fixed" style={{ minWidth: 1100 }}>
         <colgroup>
           <col style={{ width: 220 }} />
@@ -940,7 +940,7 @@ function ResumenTab({ clientes, prospectos, actividadMap, usuarios }: {
       {/* Dos columnas: top clientes + recientes */}
       <div className="grid grid-cols-2 gap-4">
         {/* Mejores clientes */}
-        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+        <div className="ms-card-deep p-5">
           <p className="text-[9px] uppercase tracking-[0.14em] text-[#333] mb-4">Mejores clientes</p>
           {topClientes.length === 0
             ? <p className="text-[#333] text-xs">Sin datos</p>
@@ -961,7 +961,7 @@ function ResumenTab({ clientes, prospectos, actividadMap, usuarios }: {
         </div>
 
         {/* Registros recientes */}
-        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+        <div className="ms-card-deep p-5">
           <p className="text-[9px] uppercase tracking-[0.14em] text-[#333] mb-4">Registros recientes</p>
           {recientes.length === 0
             ? <p className="text-[#333] text-xs">Sin datos</p>
@@ -987,7 +987,7 @@ function ResumenTab({ clientes, prospectos, actividadMap, usuarios }: {
       {/* Distribuciones */}
       <div className="grid grid-cols-2 gap-4">
         {/* Por clasificación */}
-        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+        <div className="ms-card-deep p-5">
           <p className="text-[9px] uppercase tracking-[0.14em] text-[#333] mb-4">Por clasificación</p>
           {porClasif.map(([clas, list]) => {
             const cfg = CLAS_COLORS[clas];
@@ -997,7 +997,7 @@ function ResumenTab({ clientes, prospectos, actividadMap, usuarios }: {
         </div>
 
         {/* Por origen */}
-        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+        <div className="ms-card-deep p-5">
           <p className="text-[9px] uppercase tracking-[0.14em] text-[#333] mb-4">Por origen de lead</p>
           {porOrigen.map(([orig, list]) => {
             const colors = ["#3B82F6", "#EC4899", "#F59E0B", "#10B981", "#B3985B", "#8B5CF6"];
@@ -1008,7 +1008,7 @@ function ResumenTab({ clientes, prospectos, actividadMap, usuarios }: {
         </div>
 
         {/* Por tipo de evento */}
-        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+        <div className="ms-card-deep p-5">
           <p className="text-[9px] uppercase tracking-[0.14em] text-[#333] mb-4">Por tipo de evento</p>
           {porEvento.map(([ev, list]) => (
             <DistBar key={ev} label={TIPOS_EVENTO_OPTIONS.find(o => o.value === ev)?.label ?? ev} count={list.length} total={todos.length} color={EVENTO_COLORS[ev] ?? "#6b7280"} list={list} />
@@ -1017,7 +1017,7 @@ function ResumenTab({ clientes, prospectos, actividadMap, usuarios }: {
         </div>
 
         {/* Por servicio */}
-        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+        <div className="ms-card-deep p-5">
           <p className="text-[9px] uppercase tracking-[0.14em] text-[#333] mb-4">Por servicio habitual</p>
           {porServicio.map(([sv, list]) => (
             <DistBar key={sv} label={SERVICIO_OPTIONS.find(o => o.value === sv)?.label ?? sv} count={list.length} total={todos.length} color={SERVICIO_COLORS[sv] ?? "#6b7280"} list={list} />
@@ -1027,7 +1027,7 @@ function ResumenTab({ clientes, prospectos, actividadMap, usuarios }: {
       </div>
 
       {/* Por responsable */}
-      <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+      <div className="ms-card-deep p-5">
         <p className="text-[9px] uppercase tracking-[0.14em] text-[#333] mb-4">Por responsable</p>
         <div className="space-y-0.5">
           {porResponsable.map(([id, { name, list }]) => (
@@ -1225,7 +1225,7 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-white">Base de Datos</h1>
+          <h1 className="ms-h1">Base de Datos</h1>
           <p className="text-[#333] text-xs mt-1">
             {clientes.length} cliente{clientes.length !== 1 ? "s" : ""}
             {" · "}{prospectos.length} prospecto{prospectos.length !== 1 ? "s" : ""}
@@ -1235,7 +1235,7 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
           </p>
         </div>
         <button onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors shrink-0">
+          className="ms-btn-primary flex items-center gap-2 shrink-0">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           Nuevo contacto
         </button>

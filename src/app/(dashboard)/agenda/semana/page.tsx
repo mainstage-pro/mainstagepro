@@ -204,7 +204,7 @@ export default async function AgendaSemanaPage() {
                 const confirmados = p.personal.filter(x => x.confirmado).length;
                 return (
                   <Link key={p.id} href={`/proyectos/${p.id}`}
-                    className="block bg-[#111] border border-[#1e1e1e] rounded-xl p-3 hover:border-[#2a2a2a] transition-all">
+                    className="block ms-card p-3 hover:border-[#2a2a2a] transition-all">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="text-white text-sm font-semibold truncate">{p.nombre}</p>

@@ -165,7 +165,7 @@ export default function PostEventoPage() {
           <p className="text-[#555] text-sm mt-0.5">{proyecto.cliente.nombre} · {fmtDate(proyecto.fechaEvento)}</p>
         </div>
         {promedio && (
-          <div className="shrink-0 text-center bg-[#111] border border-[#1e1e1e] rounded-xl px-5 py-3">
+          <div className="shrink-0 text-center ms-card px-5 py-3">
             <p className={`text-3xl font-bold ${promedioColor}`}>{promedio}</p>
             <p className="text-[#444] text-[10px] mt-0.5">Promedio</p>
           </div>
@@ -182,7 +182,7 @@ export default function PostEventoPage() {
 
         <div className="space-y-5">
           {CRITERIOS.map(c => (
-            <div key={c.key} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4">
+            <div key={c.key} className="ms-card-deep p-4">
               <div className="flex items-start justify-between gap-4 mb-3">
                 <div>
                   <p className="text-white text-sm font-semibold">{c.label}</p>
@@ -237,7 +237,7 @@ export default function PostEventoPage() {
         ) : (
           <div className="space-y-4">
             {reporte.map((item, i) => (
-              <div key={i} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4 space-y-3">
+              <div key={i} className="ms-card-deep p-4 space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[#555] text-xs font-bold uppercase tracking-wider">Incidencia #{i + 1}</p>
                   <button onClick={() => removeReporte(i)} className="text-[#333] hover:text-red-400 text-xs">Eliminar</button>

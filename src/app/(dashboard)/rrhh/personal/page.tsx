@@ -68,8 +68,8 @@ export default function PersonalPage() {
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Personal Interno</h1>
-          <p className="text-[#6b7280] text-sm">{activos.length} activos · {pagosPendientes.length > 0 ? <span className="text-yellow-400">{pagosPendientes.length} pagos pendientes ({fmt(totalPendiente)})</span> : "sin pagos pendientes"}</p>
+          <h1 className="ms-h1">Personal Interno</h1>
+          <p className="ms-subtitle">{activos.length} activos · {pagosPendientes.length > 0 ? <span className="text-yellow-400">{pagosPendientes.length} pagos pendientes ({fmt(totalPendiente)})</span> : "sin pagos pendientes"}</p>
         </div>
         <div className="flex items-center gap-2">
           {/* Toggle vista */}
@@ -99,7 +99,7 @@ export default function PersonalPage() {
             </button>
           </div>
           <Link href="/rrhh/nomina" className="bg-[#1a1a1a] border border-[#333] hover:bg-[#222] text-gray-300 text-sm px-4 py-2 rounded-lg transition-colors">Nómina</Link>
-          <button onClick={() => setShowForm(true)} className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          <button onClick={() => setShowForm(true)} className="ms-btn-primary">
               + Agregar
             </button>
         </div>
@@ -174,7 +174,7 @@ export default function PersonalPage() {
       {loading ? (
         <SkeletonCards count={5} />
       ) : personal.length === 0 ? (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-12 text-center">
+        <div className="ms-card py-12 text-center">
           <p className="text-gray-600 text-sm">Sin personal registrado</p>
         </div>
       ) : view === "list" ? (
@@ -182,7 +182,7 @@ export default function PersonalPage() {
         <div className="space-y-2">
           {activos.map(p => (
             <Link key={p.id} href={`/rrhh/personal/${p.id}`}
-              className="flex items-center justify-between bg-[#111] border border-[#1e1e1e] rounded-xl px-5 py-4 hover:bg-[#141414] transition-colors">
+              className="flex items-center justify-between ms-card px-5 py-4 hover:bg-[#141414] transition-colors">
               <div className="flex items-center gap-4">
                 <div className="w-9 h-9 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center shrink-0">
                   <span className="text-[#B3985B] text-sm font-bold">{p.nombre.charAt(0)}</span>
@@ -220,7 +220,7 @@ export default function PersonalPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {activos.map(p => (
                 <Link key={p.id} href={`/rrhh/personal/${p.id}`}
-                  className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 hover:bg-[#141414] hover:border-[#2a2a2a] transition-all">
+                  className="ms-card p-5 hover:bg-[#141414] hover:border-[#2a2a2a] transition-all">
                   <div className="flex items-start justify-between mb-4">
                     <div className="w-10 h-10 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center shrink-0">
                       <span className="text-[#B3985B] text-base font-bold">{p.nombre.charAt(0)}</span>
@@ -254,7 +254,7 @@ export default function PersonalPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                 {inactivos.map(p => (
                   <Link key={p.id} href={`/rrhh/personal/${p.id}`}
-                    className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4 hover:bg-[#111] transition-all opacity-50">
+                    className="ms-card-deep p-4 hover:bg-[#111] transition-all opacity-50">
                     <div className="w-8 h-8 rounded-full bg-[#1a1a1a] flex items-center justify-center mb-3">
                       <span className="text-gray-500 text-sm font-bold">{p.nombre.charAt(0)}</span>
                     </div>

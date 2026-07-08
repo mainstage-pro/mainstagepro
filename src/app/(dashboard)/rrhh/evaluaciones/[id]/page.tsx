@@ -98,8 +98,8 @@ export default function EvaluacionDetailPage() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <button onClick={() => router.push("/rrhh/evaluaciones")} className="text-gray-600 hover:text-white text-xs mb-2 transition-colors">← Evaluaciones</button>
-          <h1 className="text-xl font-semibold text-white">{e.personal.nombre}</h1>
-          <p className="text-[#6b7280] text-sm">{e.personal.puesto} · {e.personal.departamento}</p>
+          <h1 className="ms-h1">{e.personal.nombre}</h1>
+          <p className="ms-subtitle">{e.personal.puesto} · {e.personal.departamento}</p>
         </div>
         <div className="text-right">
           {e.puntajeTotal != null && (
@@ -111,7 +111,7 @@ export default function EvaluacionDetailPage() {
       </div>
 
       {/* Info */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+      <div className="ms-card p-5">
         <div className="flex flex-wrap gap-4 text-sm">
           <div><p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">Período</p><p className="text-[#B3985B] font-semibold">{e.periodo}</p></div>
           <div><p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">Fecha</p><p className="text-white">{fecha}</p></div>
@@ -120,7 +120,7 @@ export default function EvaluacionDetailPage() {
       </div>
 
       {/* Métricas */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
+      <div className="ms-card p-5 space-y-4">
         <p className="text-xs text-gray-500 uppercase tracking-wider">Calificaciones</p>
         {METRICAS.map(m => (
           <ScoreRow key={m.key} label={m.label} value={e[m.key as MetricaKey]} />
@@ -137,25 +137,25 @@ export default function EvaluacionDetailPage() {
       {(e.aspectosPositivos || e.areasMejora || e.incidentesNota || e.observaciones) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {e.aspectosPositivos && (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+            <div className="ms-stat-card">
               <p className="text-xs text-green-400 font-semibold uppercase tracking-wider mb-2">+ Aspectos positivos</p>
               <p className="text-gray-300 text-sm whitespace-pre-wrap">{e.aspectosPositivos}</p>
             </div>
           )}
           {e.areasMejora && (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+            <div className="ms-stat-card">
               <p className="text-xs text-orange-400 font-semibold uppercase tracking-wider mb-2">Áreas de mejora</p>
               <p className="text-gray-300 text-sm whitespace-pre-wrap">{e.areasMejora}</p>
             </div>
           )}
           {e.incidentesNota && (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+            <div className="ms-stat-card">
               <p className="text-xs text-red-400 font-semibold uppercase tracking-wider mb-2">Incidentes / Negligencias</p>
               <p className="text-gray-300 text-sm whitespace-pre-wrap">{e.incidentesNota}</p>
             </div>
           )}
           {e.observaciones && (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+            <div className="ms-stat-card">
               <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2">Observaciones generales</p>
               <p className="text-gray-300 text-sm whitespace-pre-wrap">{e.observaciones}</p>
             </div>

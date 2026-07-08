@@ -210,7 +210,7 @@ function SeccionChecklist({ data, mes }: { data: ReporteData["checklistSemanal"]
           { label: "Con alertas",        value: kpis.semanasConAlertas,  color: allAlertas.length > 0 ? "text-[#fbbf24]" : "text-[#4ade80]" },
           { label: "Equipos faltantes",  value: allAlertas.length,       color: allAlertas.length > 0 ? "text-[#f87171]" : "text-[#4ade80]" },
         ].map(k => (
-          <div key={k.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div key={k.label} className="ms-stat-card">
             <p className="text-[#555] text-[10px] uppercase tracking-wider mb-1">{k.label}</p>
             <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
           </div>
@@ -267,7 +267,7 @@ function SeccionChecklist({ data, mes }: { data: ReporteData["checklistSemanal"]
 
       {/* Resumen global de faltantes */}
       {allAlertas.length > 0 && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+        <div className="ms-card p-5">
           <p className="text-white text-sm font-semibold mb-3">Todos los faltantes del mes</p>
           <div className="space-y-2">
             {allAlertas.map(a => (
@@ -285,7 +285,7 @@ function SeccionChecklist({ data, mes }: { data: ReporteData["checklistSemanal"]
 
       {/* Notas de bodega */}
       {checklists.some(c => c.notas) && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+        <div className="ms-card p-5">
           <p className="text-white text-sm font-semibold mb-3">Notas de bodega</p>
           <div className="space-y-2">
             {checklists.filter(c => c.notas).map(c => (
@@ -354,7 +354,7 @@ function SeccionMantenimiento({ data, mes, onActualizar }: { data: ReporteData["
           { label: "Con falla",          value: kpis.equiposConFalla,        color: kpis.equiposConFalla > 0 ? "text-[#f87171]" : "text-[#4ade80]" },
           { label: "En reparación",      value: kpis.equiposEnMantenimiento, color: kpis.equiposEnMantenimiento > 0 ? "text-[#fbbf24]" : "text-[#4ade80]" },
         ].map(k => (
-          <div key={k.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div key={k.label} className="ms-stat-card">
             <p className="text-[#555] text-[10px] uppercase tracking-wider mb-1">{k.label}</p>
             <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
           </div>
@@ -363,11 +363,11 @@ function SeccionMantenimiento({ data, mes, onActualizar }: { data: ReporteData["
 
       {/* Registro de revisiones */}
       {equiposPorEquipo.length === 0 ? (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-8 text-center">
+        <div className="ms-card p-8 text-center">
           <p className="text-[#555] text-sm">No hay revisiones registradas en este mes</p>
         </div>
       ) : (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+        <div className="ms-card p-5">
           <p className="text-white text-sm font-semibold mb-3">Revisiones del mes</p>
           <div className="space-y-1">
             {equiposPorEquipo.map(({ equipo, revisiones, tuvoBajaFalla, costoTotal }) => (
@@ -515,7 +515,7 @@ function SeccionInventario({ data, mes }: { data: ReporteData["inventario"]; mes
           { label: "En mantenimiento", value: totalMant,         color: "text-[#fbbf24]" },
           { label: "Dados de baja",    value: totalBaja,         color: "text-[#f87171]" },
         ].map(k => (
-          <div key={k.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div key={k.label} className="ms-stat-card">
             <p className="text-[#555] text-[10px] uppercase tracking-wider mb-1">{k.label}</p>
             <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
           </div>
@@ -525,7 +525,7 @@ function SeccionInventario({ data, mes }: { data: ReporteData["inventario"]; mes
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Gráfica */}
         {pieData.length > 0 && (
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+          <div className="ms-card p-5">
             <p className="text-white text-sm font-semibold mb-3">Estado del inventario</p>
             <ResponsiveContainer width="100%" height={160}>
               <PieChart>
@@ -561,7 +561,7 @@ function SeccionInventario({ data, mes }: { data: ReporteData["inventario"]; mes
         )}
 
         {/* Altas */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 md:col-span-1">
+        <div className="ms-card p-5 md:col-span-1">
           <p className="text-[#4ade80] text-xs font-semibold uppercase tracking-wider mb-3">📦 Altas ({altas.length})</p>
           {altas.length === 0 && <p className="text-[#555] text-xs text-center py-4">Sin altas en este mes</p>}
           <div className="space-y-2">
@@ -583,7 +583,7 @@ function SeccionInventario({ data, mes }: { data: ReporteData["inventario"]; mes
         </div>
 
         {/* Bajas */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 md:col-span-1">
+        <div className="ms-card p-5 md:col-span-1">
           <p className="text-[#f87171] text-xs font-semibold uppercase tracking-wider mb-3">🗑 Bajas ({bajas.length})</p>
           {bajas.length === 0 && <p className="text-[#555] text-xs text-center py-4">Sin bajas en este mes</p>}
           <div className="space-y-2">
@@ -646,7 +646,7 @@ function SeccionVehiculos({ data, mes }: { data: ReporteData["vehiculos"]; mes: 
           { label: "Vehículos",         value: vehiculos.length, color: "text-white" },
           { label: "Costo total",        value: fmtPeso(totalCosto), color: "text-[#fb923c]" },
         ].map(k => (
-          <div key={k.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div key={k.label} className="ms-stat-card">
             <p className="text-[#555] text-[10px] uppercase tracking-wider mb-1">{k.label}</p>
             <p className={`text-xl font-bold ${k.color}`}>{k.value}</p>
           </div>
@@ -657,7 +657,7 @@ function SeccionVehiculos({ data, mes }: { data: ReporteData["vehiculos"]; mes: 
 
       {/* Gráfica de costos */}
       {barData.length > 1 && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+        <div className="ms-card p-5">
           <p className="text-white text-sm font-semibold mb-4">Costo por vehículo</p>
           <ResponsiveContainer width="100%" height={160}>
             <BarChart data={barData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
@@ -684,7 +684,7 @@ function SeccionVehiculos({ data, mes }: { data: ReporteData["vehiculos"]; mes: 
 
       {/* Por vehículo */}
       {vehiculos.map(({ vehiculo, registros, costoTotal }) => (
-        <div key={vehiculo.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+        <div key={vehiculo.id} className="ms-card p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <span className="text-white text-sm font-semibold">{vehiculo.nombre}</span>
@@ -763,7 +763,7 @@ function SeccionProyectos({ data, mes }: { data: ReporteData["proyectos"]; mes: 
           { label: "Post-evento",   value: `${kpis.postEventoCompletado}/${kpis.total}`, color: kpis.postEventoCompletado === kpis.total ? "text-[#4ade80]" : "text-[#fbbf24]" },
           { label: "Calif. prom.",  value: kpis.promedioCalificacion != null ? `${kpis.promedioCalificacion}/10` : "—", color: "text-[#60a5fa]" },
         ].map(k => (
-          <div key={k.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div key={k.label} className="ms-stat-card">
             <p className="text-[#555] text-[10px] uppercase tracking-wider mb-1">{k.label}</p>
             <p className={`text-xl font-bold ${k.color}`}>{k.value}</p>
           </div>
@@ -772,7 +772,7 @@ function SeccionProyectos({ data, mes }: { data: ReporteData["proyectos"]; mes: 
 
       {/* Gráfica de avance */}
       {barData.length > 0 && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+        <div className="ms-card p-5">
           <p className="text-white text-sm font-semibold mb-4">Avance por proyecto</p>
           <ResponsiveContainer width="100%" height={160}>
             <BarChart data={barData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
@@ -804,7 +804,7 @@ function SeccionProyectos({ data, mes }: { data: ReporteData["proyectos"]; mes: 
       {/* Lista de proyectos */}
       <div className="space-y-2">
         {lista.map(p => (
-          <div key={p.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden hover:border-[#B3985B]/30 transition-colors">
+          <div key={p.id} className="ms-table-wrapper hover:border-[#B3985B]/30 transition-colors">
             <button className="w-full px-4 py-3 text-left" onClick={() => setExpanded(expanded === p.id ? null : p.id)}>
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="flex items-center gap-2 flex-wrap min-w-0">
@@ -1002,7 +1002,7 @@ export default function ReporteProduccionPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-xl font-semibold text-white">Reporte de Producción</h1>
+          <h1 className="ms-h1">Reporte de Producción</h1>
           <p className="text-[#555] text-xs mt-0.5">Informe mensual operativo · {data ? formatMes(data.mes) : formatMes(mes)}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">

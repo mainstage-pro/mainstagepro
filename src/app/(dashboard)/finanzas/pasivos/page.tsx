@@ -252,7 +252,7 @@ export default function PasivosPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-white">Pasivos y Deudas</h1>
+          <h1 className="ms-h1">Pasivos y Deudas</h1>
           <p className="text-gray-500 text-sm mt-0.5">Deudas estructurales — fuera del flujo operativo</p>
         </div>
         <button onClick={() => setShowForm(true)}
@@ -268,7 +268,7 @@ export default function PasivosPage() {
           { label: "Pagado", value: fmt(totalPagado), color: "text-green-400" },
           { label: "Pendiente", value: fmt(totalPendiente), color: "text-orange-400" },
         ].map(k => (
-          <div key={k.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div key={k.label} className="ms-stat-card">
             <p className="text-gray-500 text-xs mb-1">{k.label}</p>
             <p className={`text-lg font-bold ${k.color}`}>{k.value}</p>
           </div>
@@ -363,7 +363,7 @@ export default function PasivosPage() {
             const isOpen = expanded === p.id;
 
             return (
-              <div key={p.id} className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden hover:border-[#2a2a2a] transition-colors">
+              <div key={p.id} className="ms-card rounded-2xl overflow-hidden hover:border-[#2a2a2a] transition-colors">
                 {/* Fila principal */}
                 <div className="p-4 flex flex-col md:flex-row md:items-center gap-3">
                   <div className="flex-1 min-w-0">

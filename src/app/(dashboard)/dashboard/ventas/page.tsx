@@ -129,7 +129,7 @@ export default async function DashboardVentasPage() {
               ⚡ {cotizacionesVencen3dias.length} cots. vencen en 3 días
             </span>
           )}
-          <Link href="/crm/tratos/nuevo" className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          <Link href="/crm/tratos/nuevo" className="ms-btn-primary">
             + Nuevo trato
           </Link>
         </div>
@@ -147,7 +147,7 @@ export default async function DashboardVentasPage() {
 
       <div className="grid md:grid-cols-3 gap-4">
         {/* Pipeline por etapa */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+        <div className="ms-stat-card">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Pipeline</p>
             <Link href="/crm/tratos" className="text-xs text-[#B3985B] hover:underline">Ver todos →</Link>
@@ -169,7 +169,7 @@ export default async function DashboardVentasPage() {
         </div>
 
         {/* Cotizaciones sin respuesta */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+        <div className="ms-stat-card">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Sin respuesta</p>
             <Link href="/cotizaciones" className="text-xs text-[#B3985B] hover:underline">Ver →</Link>
@@ -197,7 +197,7 @@ export default async function DashboardVentasPage() {
         </div>
 
         {/* Próximos seguimientos */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+        <div className="ms-stat-card">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Seguimientos próximos</p>
             <Link href="/crm/tratos" className="text-xs text-[#B3985B] hover:underline">Ver →</Link>
@@ -221,7 +221,7 @@ export default async function DashboardVentasPage() {
       </div>
 
       {/* Tratos activos */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+      <div className="ms-card overflow-x-auto">
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
           <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Tratos activos recientes</p>
           <Link href="/crm/tratos" className="text-xs text-[#B3985B] hover:underline">Ver todos →</Link>

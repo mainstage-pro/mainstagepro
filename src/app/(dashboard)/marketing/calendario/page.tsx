@@ -399,8 +399,8 @@ export default function MarketingCalendarioPage({
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Calendario de contenido</h1>
-          <p className="text-[#6b7280] text-sm">{publicaciones.length} publicaciones · {mesLabel(mes)}</p>
+          <h1 className="ms-h1">Calendario de contenido</h1>
+          <p className="ms-subtitle">{publicaciones.length} publicaciones · {mesLabel(mes)}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
           <Link href="/marketing/contenidos"
@@ -435,7 +435,7 @@ export default function MarketingCalendarioPage({
           className="text-xs text-gray-600 hover:text-white transition-colors">Hoy</button>
 
         {!embedded && (
-          <div className="ml-auto flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1">
+          <div className="ml-auto flex gap-1 ms-card rounded-lg p-1">
             {([["calendario","Calendario"],["proximas","Próximas"],["parrilla","Parrilla"],["tipo","Por tipo"],["feed","Feed IG"]] as [Vista,string][]).map(([v, label]) => (
               <button key={v} onClick={() => setVista(v)}
                 className={`text-xs px-3 py-1 rounded transition-colors ${vista === v ? "bg-[#B3985B] text-black font-semibold" : "text-gray-500 hover:text-white"}`}>
@@ -454,7 +454,7 @@ export default function MarketingCalendarioPage({
           { label: "En proceso", value: pendientes, color: "text-blue-400" },
           { label: "Listas", value: listas, color: "text-yellow-400" },
         ].map(k => (
-          <div key={k.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-3 md:p-4">
+          <div key={k.label} className="ms-card p-3 md:p-4">
             <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">{k.label}</p>
             <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
           </div>
@@ -640,7 +640,7 @@ export default function MarketingCalendarioPage({
           mesLabel={mesLabel(mes)}
         />
       ) : publicaciones.length === 0 ? (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center space-y-3">
+        <div className="ms-empty-state space-y-3">
           <p className="text-gray-500 text-sm">Sin publicaciones para {mesLabel(mes)}</p>
           <p className="text-gray-600 text-xs">Usa &ldquo;⚡ Generar mes&rdquo; para crear automáticamente las publicaciones del mes</p>
           <button onClick={generarMes} disabled={generating}
@@ -1046,7 +1046,7 @@ function VistaProximas({ publicaciones, openEdit, deletePub, quickEstado, onNuev
 
   if (publicaciones.length === 0) {
     return (
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center space-y-3">
+      <div className="ms-empty-state space-y-3">
         <p className="text-gray-500 text-sm">Sin publicaciones programadas para {mesLabel}</p>
         <div className="flex items-center justify-center gap-3 mt-2">
           <button onClick={onGenerar} disabled={generating}
@@ -1065,11 +1065,11 @@ function VistaProximas({ publicaciones, openEdit, deletePub, quickEstado, onNuev
   return (
     <div className="space-y-4">
       {porPublicar.length === 0 ? (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-8 text-center space-y-2">
+        <div className="ms-card py-8 text-center space-y-2">
           <p className="text-green-400 text-sm font-medium">✓ Todo publicado para {mesLabel}</p>
         </div>
       ) : (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="ms-table-wrapper">
           <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#B3985B]" />
             <span className="text-white text-sm font-semibold">Por publicar</span>
@@ -1130,7 +1130,7 @@ function VistaProximas({ publicaciones, openEdit, deletePub, quickEstado, onNuev
       )}
 
       {publicadas.length > 0 && (
-        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden">
+        <div className="ms-card-deep overflow-hidden">
           <button onClick={() => setVerPublicadas(v => !v)}
             className="w-full px-4 py-3 flex items-center justify-between hover:bg-[#111] transition-colors">
             <div className="flex items-center gap-2">
@@ -1195,7 +1195,7 @@ function VistaParrilla({ publicaciones, expandedId, editId, setExpandedId, openE
           ))}
         </div>
       )}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+      <div className="ms-table-wrapper">
         <div className="grid grid-cols-[40px_72px_60px_1fr_1fr_80px_100px] gap-2 px-3 py-2 border-b border-[#1a1a1a] text-[10px] text-gray-600 uppercase tracking-wider">
           <span></span>
           <span>Fecha</span><span>Fmt</span><span>Tipo / Descripción</span><span>Copy</span>
@@ -1326,7 +1326,7 @@ function VistaPorTipo({ porTipo, sinTipo, expandedId, editId, setExpandedId, ope
         const tipo = pubs[0]?.tipo;
         if (!tipo) return null;
         return (
-          <div key={tipoId} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div key={tipoId} className="ms-table-wrapper">
             <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center gap-3">
               <span className={`text-[10px] font-bold ${FORMATO_COLORS[tipo.formato] ?? "text-gray-400"}`}>{tipo.formato}</span>
               <h3 className="text-white font-semibold text-sm">{tipo.nombre}</h3>
@@ -1395,7 +1395,7 @@ function VistaPorTipo({ porTipo, sinTipo, expandedId, editId, setExpandedId, ope
         );
       })}
       {sinTipo.length > 0 && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="ms-table-wrapper">
           <div className="px-5 py-3 border-b border-[#1a1a1a]"><h3 className="text-gray-500 font-medium text-sm">Sin tipo asignado</h3></div>
           <div className="divide-y divide-[#1a1a1a]">
             {[...sinTipo].sort((a, b) => a.fecha.localeCompare(b.fecha)).map(p => {
@@ -1467,7 +1467,7 @@ function FeedCell({ p, openEdit }: { p: Publicacion; openEdit: (p: Publicacion) 
 function VistaFeedIG({ feedPosts, openEdit }: { feedPosts: Publicacion[]; openEdit: (p: Publicacion) => void }) {
   if (feedPosts.length === 0) {
     return (
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center">
+      <div className="ms-empty-state">
         <p className="text-gray-500 text-sm">No hay publicaciones Feed IG este mes</p>
         <p className="text-gray-600 text-xs mt-1">Activa "Feed IG" en el tipo de contenido para que aparezcan aquí</p>
       </div>

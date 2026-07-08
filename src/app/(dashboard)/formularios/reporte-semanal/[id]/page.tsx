@@ -160,7 +160,7 @@ export default function ReporteDetalleePage() {
               Reporte General Semanal
             </p>
             {/* Nombre como título principal */}
-            <h1 className="text-xl font-semibold text-white">Reporte de {reporte.user.name}</h1>
+            <h1 className="ms-h1">Reporte de {reporte.user.name}</h1>
             <p className="text-gray-500 text-xs mt-1">
               Semana {reporte.semana} · {reporte.anio}
               {reporte.user.area && <span className="ml-2 text-gray-600">· {reporte.user.area}</span>}
@@ -179,21 +179,21 @@ export default function ReporteDetalleePage() {
       <div className="space-y-4">
 
         {/* Logros */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-5">
+        <div className="ms-card rounded-2xl p-5">
           <Field label="Logros de la semana anterior">
             <p className="whitespace-pre-wrap">{reporte.logros || <span className="text-gray-700 italic">Sin registrar</span>}</p>
           </Field>
         </div>
 
         {/* Pendientes */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-5">
+        <div className="ms-card rounded-2xl p-5">
           <Field label="Pendientes de la semana anterior">
             <p className="whitespace-pre-wrap">{reporte.pendientes || <span className="text-gray-700 italic">Sin registrar</span>}</p>
           </Field>
         </div>
 
         {/* Tareas comprometidas */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-5">
+        <div className="ms-card rounded-2xl p-5">
           <Field label={`Tareas para la próxima semana (${tareas.length})`}>
             {tareas.length === 0 ? (
               <p className="text-gray-700 italic text-sm">Sin tareas registradas</p>
@@ -216,7 +216,7 @@ export default function ReporteDetalleePage() {
         </div>
 
         {/* Incidencias */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-5">
+        <div className="ms-card rounded-2xl p-5">
           <Field label={`Incidencias (${incidencias.filter(i => i.que || i.causa || i.propuesta).length})`}>
             {incidencias.filter(i => i.que || i.causa || i.propuesta).length === 0 ? (
               <p className="text-gray-700 italic text-sm">Sin incidencias registradas</p>
@@ -253,28 +253,28 @@ export default function ReporteDetalleePage() {
         </div>
 
         {/* Mejoras */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-5">
+        <div className="ms-card rounded-2xl p-5">
           <Field label="Mejoras observadas en otras áreas">
             <p className="whitespace-pre-wrap">{reporte.mejoras || <span className="text-gray-700 italic">Sin registrar</span>}</p>
           </Field>
         </div>
 
         {/* Compromisos */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-5">
+        <div className="ms-card rounded-2xl p-5">
           <Field label="Compromisos de mejora personal">
             <p className="whitespace-pre-wrap">{reporte.compromisos || <span className="text-gray-700 italic">Sin registrar</span>}</p>
           </Field>
         </div>
 
         {/* Sugerencias */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-5">
+        <div className="ms-card rounded-2xl p-5">
           <Field label="Comentarios / solicitudes / sugerencias a dirección">
             <p className="whitespace-pre-wrap">{reporte.sugerencias || <span className="text-gray-700 italic">Sin registrar</span>}</p>
           </Field>
         </div>
 
         {/* Bienestar visual */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-5">
+        <div className="ms-card rounded-2xl p-5">
           <Field label="Estado de inicio de semana">
             <div className="flex items-center gap-4 mt-1">
               <div className="flex gap-1">

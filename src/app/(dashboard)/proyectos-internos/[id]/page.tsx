@@ -162,7 +162,7 @@ export default function ProyectoInternoPage({ params }: { params: Promise<{ id: 
 
       {/* Descripción */}
       {proyecto.descripcion && (
-        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4">
+        <div className="ms-card-deep p-4">
           <p className="text-[11px] text-[#555] uppercase tracking-wider mb-2">Descripción</p>
           <p className="text-sm text-[#666] leading-relaxed whitespace-pre-wrap">{proyecto.descripcion}</p>
         </div>

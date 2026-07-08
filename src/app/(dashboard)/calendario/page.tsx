@@ -172,7 +172,7 @@ export default function CalendarioPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white capitalize">{nombreMes}</h1>
+          <h1 className="ms-h1 capitalize">{nombreMes}</h1>
           <p className="text-gray-500 text-sm mt-0.5">
             {loading ? "Cargando..." : eventos.length === 0
               ? "Sin eventos este mes"
@@ -181,7 +181,7 @@ export default function CalendarioPage() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => navMes(-1)}
-            className="bg-[#111] border border-[#222] text-gray-400 hover:text-white px-3 py-2 rounded-lg text-sm transition-colors">
+            className="ms-btn-secondary">
             ← Anterior
           </button>
           {!esMesActual && (
@@ -192,7 +192,7 @@ export default function CalendarioPage() {
             </button>
           )}
           <button onClick={() => navMes(1)}
-            className="bg-[#111] border border-[#222] text-gray-400 hover:text-white px-3 py-2 rounded-lg text-sm transition-colors">
+            className="ms-btn-secondary">
             Siguiente →
           </button>
         </div>
@@ -208,7 +208,7 @@ export default function CalendarioPage() {
       <div className="flex gap-4">
         {/* Grilla */}
         <div className="flex-1 min-w-0">
-          <div className="bg-[#111] border border-[#222] rounded-xl overflow-x-auto">
+          <div className="ms-card overflow-x-auto">
             <div className="min-w-[320px]">
               <div className="grid grid-cols-7 border-b border-[#1a1a1a]">
                 {DIAS_SEMANA.map(d => (
@@ -276,7 +276,7 @@ export default function CalendarioPage() {
         {/* Panel lateral — desktop */}
         <div className="w-72 shrink-0 hidden lg:block">
           {diaSeleccionado !== null ? (
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden sticky top-4">
+            <div className="ms-table-wrapper sticky top-4">
               <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
                 <p className="text-white text-sm font-semibold capitalize">
                   {new Date(year, month, diaSeleccionado).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" })}
@@ -312,7 +312,7 @@ export default function CalendarioPage() {
               )}
             </div>
           ) : (
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden sticky top-4">
+            <div className="ms-table-wrapper sticky top-4">
               <div className="px-4 py-3 border-b border-[#1a1a1a]">
                 <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Eventos del mes</p>
               </div>
@@ -374,7 +374,7 @@ export default function CalendarioPage() {
       {/* Agenda móvil */}
       <div className="lg:hidden">
         {eventos.length > 0 && (
-          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+          <div className="ms-table-wrapper">
             <div className="px-4 py-3 border-b border-[#1a1a1a]">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Eventos del mes</p>
             </div>
@@ -443,7 +443,7 @@ export default function CalendarioPage() {
             {/* Year selector */}
             <div className="flex items-center justify-between flex-wrap gap-3">
               <p className="text-gray-500 text-xs">Distribución por tipo, servicio y clientes</p>
-              <div className="flex items-center gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1">
+              <div className="flex items-center gap-1 ms-card rounded-lg p-1">
                 {[ahora.getFullYear() - 1, ahora.getFullYear(), ahora.getFullYear() + 1].map(y => (
                   <button key={y} onClick={() => setReporteYear(y)}
                     className={`text-sm px-3 py-1 rounded transition-colors ${reporteYear === y ? 'bg-[#B3985B] text-black font-semibold' : 'text-gray-500 hover:text-white'}`}>

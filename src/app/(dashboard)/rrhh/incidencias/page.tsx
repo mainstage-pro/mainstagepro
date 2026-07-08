@@ -105,10 +105,10 @@ export default function IncidenciasPage() {
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-xl font-semibold text-white">Incidencias</h1>
-          <p className="text-[#6b7280] text-sm">Faltas, retardos, penalizaciones y reconocimientos</p>
+          <h1 className="ms-h1">Incidencias</h1>
+          <p className="ms-subtitle">Faltas, retardos, penalizaciones y reconocimientos</p>
         </div>
-        <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1">
+        <div className="flex gap-1 ms-card rounded-lg p-1">
           {([["registro","Registro"],["catalogo","Catálogo"]] as [typeof tab, string][]).map(([v,l]) => (
             <button key={v} onClick={()=>setTab(v)} className={`text-xs px-3 py-1 rounded transition-colors ${tab===v?"bg-[#B3985B] text-black font-semibold":"text-gray-500 hover:text-white"}`}>{l}</button>
           ))}
@@ -120,11 +120,11 @@ export default function IncidenciasPage() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2">
             <input type="month" value={mes} onChange={e=>setMes(e.target.value)}
-              className="bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              className="ms-input-inline" />
             {totalDescuentos > 0 && <span className="text-red-400 text-xs font-semibold">−{fmt(totalDescuentos)} en descuentos</span>}
           </div>
           <button onClick={()=>setShowIncForm(true)}
-            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+            className="ms-btn-primary">
             + Registrar incidencia
           </button>
         </div>
@@ -179,7 +179,7 @@ export default function IncidenciasPage() {
 
         <div className="space-y-2">
           {incidencias.length === 0 ? (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-12 text-center">
+            <div className="ms-card py-12 text-center">
               <p className="text-gray-600 text-sm">Sin incidencias en este período</p>
             </div>
           ) : incidencias.map(i => (
@@ -216,7 +216,7 @@ export default function IncidenciasPage() {
       {tab === "catalogo" && (<>
         <div className="flex justify-end">
           <button onClick={()=>{setShowTipoForm(true);setEditTipoId(null);setTipoForm(TIPO_EMPTY);}}
-            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+            className="ms-btn-primary">
             + Nuevo tipo
           </button>
         </div>
@@ -267,11 +267,11 @@ export default function IncidenciasPage() {
 
         <div className="space-y-2">
           {tipos.length === 0 ? (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-12 text-center">
+            <div className="ms-card py-12 text-center">
               <p className="text-gray-600 text-sm">Sin tipos de incidencia</p>
             </div>
           ) : tipos.map(t => (
-            <div key={t.id} className={`bg-[#111] border border-[#1e1e1e] rounded-xl px-5 py-3 flex items-center gap-4 ${!t.activo?"opacity-40":""}`}>
+            <div key={t.id} className={`ms-card px-5 py-3 flex items-center gap-4 ${!t.activo?"opacity-40":""}`}>
               <div className="flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-white text-sm font-medium">{t.nombre}</span>

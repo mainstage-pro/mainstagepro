@@ -83,7 +83,7 @@ export default function NuevoProspectoPage() {
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-emerald-700/20 flex items-center justify-center text-lg">🌱</div>
           <div>
-            <h1 className="text-xl font-semibold text-white">Nuevo prospecto en frío</h1>
+            <h1 className="ms-h1">Nuevo prospecto en frío</h1>
             <p className="text-gray-500 text-xs">Outbound · proceso de nurturing a largo plazo</p>
           </div>
         </div>
@@ -96,7 +96,7 @@ export default function NuevoProspectoPage() {
       <div className="space-y-4">
 
         {/* Cliente */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <h2 className="text-xs font-semibold text-emerald-400 mb-4 uppercase tracking-wider">Cliente</h2>
           <div className="flex gap-2 mb-4">
             {(["existente","nuevo"] as const).map(m => (
@@ -185,7 +185,7 @@ export default function NuevoProspectoPage() {
         </div>
 
         {/* Origen */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <h2 className="text-xs font-semibold text-emerald-400 mb-3 uppercase tracking-wider">¿Cómo lo encontraste? *</h2>
           <div className="grid grid-cols-3 gap-2">
             {ORIGENES_OUTBOUND.map(o => (
@@ -205,7 +205,7 @@ export default function NuevoProspectoPage() {
         </div>
 
         {/* Origen de venta + comisión */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <h2 className="text-xs font-semibold text-emerald-400 mb-3 uppercase tracking-wider">Comisiones</h2>
           <div className="space-y-3">
             <div>

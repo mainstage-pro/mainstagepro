@@ -273,7 +273,7 @@ export default function CajaChicaPage() {
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">Caja Chica</h1>
+          <h1 className="ms-h1">Caja Chica</h1>
           <p className="text-gray-500 text-sm mt-0.5">Gastos operativos y emergencias de oficina</p>
         </div>
         <div className="flex items-center gap-2">
@@ -285,7 +285,7 @@ export default function CajaChicaPage() {
           </button>
           <button
             onClick={() => formTipo === "GASTO" ? setFormTipo(null) : abrirForm("GASTO")}
-            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+            className="ms-btn-primary"
           >
             {formTipo === "GASTO" ? "Cancelar" : "+ Registrar gasto"}
           </button>
@@ -428,7 +428,7 @@ export default function CajaChicaPage() {
       )}
 
       {/* ── Historial ───────────────────────────────────────────────────────── */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+      <div className="ms-table-wrapper">
         <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Historial de movimientos</p>
           <span className="text-xs text-gray-600">{movs.length} registros</span>

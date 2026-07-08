@@ -164,7 +164,7 @@ function VehiculoSelector({ value, onChange }: { value: string; onChange: (v: st
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-[#111] border border-[#222] rounded-xl overflow-hidden shadow-2xl">
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 ms-table-wrapper shadow-2xl">
           {/* Search */}
           <div className="px-3 pt-3 pb-2">
             <input
@@ -216,19 +216,19 @@ function VehiculoSelector({ value, onChange }: { value: string; onChange: (v: st
                 <input
                   type="text" value={newNombre} onChange={e => setNewNombre(e.target.value)}
                   placeholder="Nombre identificador * (ej: Sprinter Negra)"
-                  className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50"
+                  className="ms-input"
                 />
                 <div className="grid grid-cols-2 gap-2">
                   <input type="text" value={newMarca} onChange={e => setNewMarca(e.target.value)}
                     placeholder="Marca (ej: Mercedes)"
-                    className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+                    className="ms-card rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50" />
                   <input type="text" value={newColor} onChange={e => setNewColor(e.target.value)}
                     placeholder="Color"
-                    className="bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+                    className="ms-card rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50" />
                 </div>
                 <input type="text" value={newPlacas} onChange={e => setNewPlacas(e.target.value)}
                   placeholder="Placas (opcional)"
-                  className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+                  className="ms-input" />
                 <div className="flex gap-2 pt-1">
                   <button type="button" onClick={() => setShowNew(false)}
                     className="flex-1 text-xs text-gray-500 hover:text-gray-300 py-2 rounded-lg border border-[#222] transition-colors">
@@ -418,7 +418,7 @@ export default function PlanProduccionPage() {
 
       {/* Resumen de personal y equipos */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+        <div className="ms-stat-card">
           <p className="text-[10px] font-bold text-[#555] uppercase tracking-wider mb-3">Personal</p>
           {proyecto.personal.length === 0 ? (
             <p className="text-[#444] text-xs">Sin personal asignado</p>
@@ -442,7 +442,7 @@ export default function PlanProduccionPage() {
           )}
         </div>
 
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+        <div className="ms-stat-card">
           <p className="text-[10px] font-bold text-[#555] uppercase tracking-wider mb-3">Equipos asignados</p>
           {proyecto.equipos.length === 0 ? (
             <p className="text-[#444] text-xs">Sin equipos asignados</p>

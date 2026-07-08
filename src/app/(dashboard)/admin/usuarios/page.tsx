@@ -394,11 +394,11 @@ export default function UsuariosPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Usuarios y Accesos</h1>
-          <p className="text-[#6b7280] text-sm">{users.length} usuarios registrados</p>
+          <h1 className="ms-h1">Usuarios y Accesos</h1>
+          <p className="ms-subtitle">{users.length} usuarios registrados</p>
         </div>
         <button onClick={startCreate}
-            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+            className="ms-btn-primary">
             + Nuevo usuario
           </button>
       </div>
@@ -460,7 +460,7 @@ export default function UsuariosPage() {
       </Modal>
 
       {/* Tabs de vista */}
-      <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1 w-fit">
+      <div className="ms-tabs w-fit">
         {([["usuarios", "Por usuario"], ["modulos", "Por módulo"]] as [typeof viewTab, string][]).map(([t, l]) => (
           <button key={t} onClick={() => setViewTab(t)}
             className={`text-sm px-4 py-1.5 rounded transition-colors ${viewTab === t ? "bg-[#B3985B] text-black font-semibold" : "text-gray-500 hover:text-white"}`}>
@@ -686,7 +686,7 @@ export default function UsuariosPage() {
                   const usersWithAccess = nonAdminUsers.filter(u => effectiveKeysFor(u).has(mod.key));
                   const usersWithout = nonAdminUsers.filter(u => !effectiveKeysFor(u).has(mod.key));
                   return (
-                    <div key={mod.key} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                    <div key={mod.key} className="ms-table-wrapper">
                       <div className="flex items-center justify-between px-4 py-3">
                         <div>
                           <p className="text-white text-sm font-medium">{mod.label}</p>

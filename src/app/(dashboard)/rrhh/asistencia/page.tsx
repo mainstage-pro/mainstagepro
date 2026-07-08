@@ -50,7 +50,7 @@ export default function AsistenciaPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">Asistencia</h1>
+          <h1 className="ms-h1">Asistencia</h1>
           <p className="text-gray-500 text-sm">{personal.length} empleados activos</p>
         </div>
         <Link href="/rrhh/personal" className="text-xs text-gray-600 hover:text-[#B3985B] transition-colors">
@@ -59,7 +59,7 @@ export default function AsistenciaPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-[#111] border border-[#222] rounded-xl p-1">
+      <div className="flex gap-1 ms-card p-1">
         {([
           { id: "hoy",      label: "📋 Captura diaria" },
           { id: "historial", label: "📅 Historial" },
@@ -160,13 +160,13 @@ function TabHoy({ personal }: { personal: Personal[] }) {
       {/* Fecha nav + stats */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2">
-          <button onClick={() => navFecha(-1)} className="w-8 h-8 rounded-lg bg-[#111] border border-[#222] text-gray-400 hover:text-white text-sm transition-colors">←</button>
+          <button onClick={() => navFecha(-1)} className="w-8 h-8 ms-btn-icon">←</button>
           <div className="text-center min-w-[200px]">
             <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
               className="bg-transparent text-white font-semibold text-sm text-center focus:outline-none cursor-pointer" />
             <p className="text-gray-600 text-[10px] capitalize">{fmtFecha(fecha)}</p>
           </div>
-          <button onClick={() => navFecha(1)} className="w-8 h-8 rounded-lg bg-[#111] border border-[#222] text-gray-400 hover:text-white text-sm transition-colors">→</button>
+          <button onClick={() => navFecha(1)} className="w-8 h-8 ms-btn-icon">→</button>
           {fecha !== toDateStr(new Date()) && (
             <button onClick={() => setFecha(toDateStr(new Date()))} className="text-xs text-[#B3985B] hover:text-[#c9a96a] transition-colors">Hoy</button>
           )}
@@ -179,7 +179,7 @@ function TabHoy({ personal }: { personal: Personal[] }) {
 
       {/* Fin de semana aviso */}
       {esFinde && (
-        <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center text-gray-500 text-sm">
+        <div className="ms-stat-card text-center text-gray-500 text-sm">
           Es fin de semana — puedes registrar asistencia si aplica
         </div>
       )}
@@ -199,7 +199,7 @@ function TabHoy({ personal }: { personal: Personal[] }) {
 
       {/* Lista de empleados */}
       {personal.length === 0 ? (
-        <div className="bg-[#111] border border-[#222] rounded-xl p-8 text-center">
+        <div className="ms-card p-8 text-center">
           <p className="text-gray-500 text-sm">No hay empleados activos.</p>
           <Link href="/rrhh/personal" className="text-[#B3985B] text-sm hover:underline mt-2 block">
             Agregar personal →
@@ -371,10 +371,10 @@ function TabHistorial({ personal }: { personal: Personal[] }) {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <button onClick={() => { const d = new Date(`${mes}-15`); d.setMonth(d.getMonth() - 1); setMes(toMes(d)); }}
-              className="w-8 h-8 rounded-lg bg-[#111] border border-[#222] text-gray-400 hover:text-white text-sm transition-colors">←</button>
+              className="w-8 h-8 ms-btn-icon">←</button>
             <span className="text-white text-sm font-semibold min-w-[130px] text-center">{MESES[month - 1]} {year}</span>
             <button onClick={() => { const d = new Date(`${mes}-15`); d.setMonth(d.getMonth() + 1); setMes(toMes(d)); }}
-              className="w-8 h-8 rounded-lg bg-[#111] border border-[#222] text-gray-400 hover:text-white text-sm transition-colors">→</button>
+              className="w-8 h-8 ms-btn-icon">→</button>
           </div>
           {selPersonal && (
             <div className="flex gap-3 text-xs flex-wrap">
@@ -388,7 +388,7 @@ function TabHistorial({ personal }: { personal: Personal[] }) {
         </div>
 
         {loading ? <div className="py-8 text-center text-gray-600 text-sm">Cargando...</div> : (
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+          <div className="ms-card overflow-x-auto">
             <div className="min-w-[420px]">
             <div className="grid grid-cols-7 border-b border-[#1a1a1a]">
               {DIAS_ES.map(d => (
@@ -479,21 +479,21 @@ function TabReporte({ personal }: { personal: Personal[] }) {
       {/* Nav mes */}
       <div className="flex items-center gap-2">
         <button onClick={() => { const d = new Date(`${mes}-15`); d.setMonth(d.getMonth() - 1); setMes(toMes(d)); }}
-          className="w-8 h-8 rounded-lg bg-[#111] border border-[#222] text-gray-400 hover:text-white text-sm transition-colors">←</button>
+          className="w-8 h-8 ms-btn-icon">←</button>
         <span className="text-white text-sm font-semibold min-w-[130px] text-center">{MESES[month - 1]} {year}</span>
         <button onClick={() => { const d = new Date(`${mes}-15`); d.setMonth(d.getMonth() + 1); setMes(toMes(d)); }}
-          className="w-8 h-8 rounded-lg bg-[#111] border border-[#222] text-gray-400 hover:text-white text-sm transition-colors">→</button>
+          className="w-8 h-8 ms-btn-icon">→</button>
         <span className="text-gray-600 text-xs ml-2">{laborales} días laborales</span>
       </div>
 
       {loading ? (
         <div className="py-8 text-center text-gray-600 text-sm">Cargando...</div>
       ) : personal.length === 0 ? (
-        <div className="bg-[#111] border border-[#222] rounded-xl p-8 text-center text-gray-500 text-sm">
+        <div className="ms-card p-8 text-center text-gray-500 text-sm">
           No hay empleados activos.
         </div>
       ) : (
-        <div className="bg-[#111] border border-[#222] rounded-xl overflow-x-auto">
+        <div className="ms-card overflow-x-auto">
           <div className="min-w-[560px]">
           {/* Header tabla */}
           <div className="grid grid-cols-8 border-b border-[#1a1a1a] text-[10px] text-gray-600 uppercase tracking-wider">

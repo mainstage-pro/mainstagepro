@@ -126,7 +126,7 @@ export default function VehiculosPage() {
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">Vehículos</h1>
+          <h1 className="ms-h1">Vehículos</h1>
           <p className="text-gray-500 text-sm mt-0.5">Flota de transporte disponible para producción</p>
         </div>
         <button onClick={openNew}
@@ -212,7 +212,7 @@ export default function VehiculosPage() {
       {loading ? (
         <div className="text-gray-500 text-sm text-center py-12">Cargando…</div>
       ) : vehiculos.length === 0 ? (
-        <div className="bg-[#111] border border-[#222] rounded-2xl p-10 text-center">
+        <div className="ms-card rounded-2xl p-10 text-center">
           <p className="text-gray-400 text-sm mb-1">Sin vehículos registrados</p>
           <p className="text-gray-600 text-xs">Agrega tu flota para asignarla a proyectos y transportes</p>
         </div>

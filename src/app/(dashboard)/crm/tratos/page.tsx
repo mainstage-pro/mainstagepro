@@ -386,7 +386,7 @@ function KanbanCard({ trato, onDelete, deleting }: { trato: Trato; onDelete: () 
   return (
     <div
       onClick={() => router.push(`/crm/tratos/${trato.id}`)}
-      className="bg-[#111] border border-[#1e1e1e] rounded-xl p-3 space-y-2 cursor-pointer hover:border-[#B3985B]/40 transition-colors">
+      className="ms-card p-3 space-y-2 cursor-pointer hover:border-[#B3985B]/40 transition-colors">
       <div className="flex items-start justify-between gap-2">
         <span className="text-white text-sm font-medium leading-tight flex-1">
           {trato.cliente.nombre}
@@ -960,7 +960,7 @@ function LeadsView({ leads, activeSeguimientoPopover, seguimientoPendiente, segu
           const proxHoy = t.fechaProximaAccion && t.fechaProximaAccion === hoyStr;
           const diasRegistrado = Math.floor((Date.now() - new Date(t.createdAt).getTime()) / 86400000);
           return (
-            <div key={t.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 hover:border-[#2a2a2a] transition-all">
+            <div key={t.id} className="ms-stat-card hover:border-[#2a2a2a] transition-all">
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div>
                   <p className="text-white font-medium text-sm">{t.cliente.nombre}</p>
@@ -1431,8 +1431,8 @@ export default function TratosPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Tratos</h1>
-          <p className="text-[#6b7280] text-sm">
+          <h1 className="ms-h1">Tratos</h1>
+          <p className="ms-subtitle">
             {loading ? "Cargando..." : `${tratosProximos.length} próximos${tratosArchivados.length > 0 ? ` · ${tratosArchivados.length} archivados` : ""}`}
           </p>
         </div>
@@ -1468,7 +1468,7 @@ export default function TratosPage() {
         </svg>
         <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
           placeholder="Buscar por cliente, empresa, evento..."
-          className="w-full bg-[#111] border border-[#1e1e1e] rounded-lg pl-9 pr-4 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50 transition-colors" />
+          className="ms-input-search" />
         {busqueda && (
           <button onClick={() => setBusqueda("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white text-xs">✕</button>
         )}

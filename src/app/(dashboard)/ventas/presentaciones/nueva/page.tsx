@@ -329,7 +329,7 @@ function NuevaPresentacionForm() {
 
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-xl font-semibold text-white tracking-tight mb-1">Nueva Presentación de Venta</h1>
+          <h1 className="ms-h1 tracking-tight mb-1">Nueva Presentación de Venta</h1>
           <p className="text-sm" style={{ color: "#6b7280" }}>
             Describe el paquete, sube fotos y Claude genera una presentación profesional
           </p>

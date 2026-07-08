@@ -359,20 +359,20 @@ function DialogNuevaIniciativa({
             onChange={e => setTitulo(e.target.value)}
             onKeyDown={e => { if (e.key === "Escape") onClose(); }}
             placeholder="Título de la iniciativa *"
-            className="w-full bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2.5 text-[13px] text-white placeholder-[#333] focus:outline-none focus:border-[#3b82f6]/40 transition-colors"
+            className="w-full ms-card px-3 py-2.5 text-[13px] text-white placeholder-[#333] focus:outline-none focus:border-[#3b82f6]/40 transition-colors"
           />
           <textarea
             value={descripcion}
             onChange={e => setDescripcion(e.target.value)}
             placeholder="Descripción (opcional)"
             rows={2}
-            className="w-full bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2.5 text-[12.5px] text-white placeholder-[#333] focus:outline-none focus:border-[#3b82f6]/40 resize-none transition-colors"
+            className="w-full ms-card px-3 py-2.5 text-[12.5px] text-white placeholder-[#333] focus:outline-none focus:border-[#3b82f6]/40 resize-none transition-colors"
           />
           <div className="grid grid-cols-2 gap-2">
             <select
               value={area}
               onChange={e => setArea(e.target.value)}
-              className="bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2 text-[12px] text-[#aaa] focus:outline-none transition-colors"
+              className="ms-card px-3 py-2 text-[12px] text-[#aaa] focus:outline-none transition-colors"
             >
               <option value="">Área…</option>
               {AREAS.map(a => <option key={a} value={a}>{AREA_LABELS[a]}</option>)}
@@ -380,7 +380,7 @@ function DialogNuevaIniciativa({
             <select
               value={estado}
               onChange={e => setEstado(e.target.value)}
-              className="bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2 text-[12px] text-[#aaa] focus:outline-none transition-colors"
+              className="ms-card px-3 py-2 text-[12px] text-[#aaa] focus:outline-none transition-colors"
             >
               {Object.entries(ESTADO_CONFIG).map(([k, v]) => (
                 <option key={k} value={k}>{v.label}</option>
@@ -392,13 +392,13 @@ function DialogNuevaIniciativa({
               value={responsable}
               onChange={e => setResponsable(e.target.value)}
               placeholder="Responsable"
-              className="bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2 text-[12px] text-[#aaa] placeholder-[#333] focus:outline-none transition-colors"
+              className="ms-card px-3 py-2 text-[12px] text-[#aaa] placeholder-[#333] focus:outline-none transition-colors"
             />
             <input
               type="date"
               value={fechaLimite}
               onChange={e => setFechaLimite(e.target.value)}
-              className="bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2 text-[12px] text-[#aaa] focus:outline-none transition-colors"
+              className="ms-card px-3 py-2 text-[12px] text-[#aaa] focus:outline-none transition-colors"
               style={{ colorScheme: "dark" }}
             />
           </div>

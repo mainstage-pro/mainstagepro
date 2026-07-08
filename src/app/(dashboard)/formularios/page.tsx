@@ -105,8 +105,8 @@ export default function FormulariosPage() {
         <p className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider mb-1">
           Módulo
         </p>
-        <h1 className="text-xl font-semibold text-white">Formularios</h1>
-        <p className="text-sm text-[#6b7280] mt-0.5">
+        <h1 className="ms-h1">Formularios</h1>
+        <p className="ms-subtitle mt-0.5">
           Centro de formularios operativos del equipo Mainstage Pro.
         </p>
       </div>

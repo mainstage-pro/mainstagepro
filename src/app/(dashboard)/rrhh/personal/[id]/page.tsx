@@ -170,7 +170,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
             <span className="text-[#B3985B] text-lg font-bold">{persona.nombre.charAt(0)}</span>
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-white">{persona.nombre}</h1>
+            <h1 className="ms-h1">{persona.nombre}</h1>
             <p className="text-gray-500 text-sm">{persona.puesto} · {persona.departamento}</p>
           </div>
         </div>
@@ -303,7 +303,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-[#111] border border-[#222] rounded-xl p-1">
+      <div className="flex gap-1 ms-card p-1">
         {(["info", "pagos", "documentos"] as const).map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${tab === t ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"}`}>
@@ -314,7 +314,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
 
       {/* TAB INFO */}
       {tab === "info" && (
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
             {[
               { label: "Nombre", val: persona.nombre },
@@ -463,7 +463,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
             </div>
           )}
 
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="ms-table-wrapper">
             {persona.pagos.length === 0 ? (
               <div className="py-10 text-center text-gray-600 text-sm">Sin pagos registrados</div>
             ) : (
@@ -506,7 +506,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
 
       {/* TAB DOCUMENTOS */}
       {tab === "documentos" && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+        <div className="ms-card p-5">
           {persona.documentos.length === 0 ? (
             <p className="text-gray-600 text-sm text-center py-8">Sin documentos registrados</p>
           ) : (
@@ -565,7 +565,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
                 <button onClick={() => setShowAcuerdo(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
               </div>
               <div className="p-5 space-y-4">
-                <pre className="text-xs text-gray-300 bg-[#111] border border-[#222] rounded-xl p-4 whitespace-pre-wrap leading-relaxed font-sans select-all">
+                <pre className="text-xs text-gray-300 ms-stat-card whitespace-pre-wrap leading-relaxed font-sans select-all">
                   {acuerdoText}
                 </pre>
                 <button

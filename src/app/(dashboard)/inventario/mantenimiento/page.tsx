@@ -282,7 +282,7 @@ function MantenimientoContent() {
       {/* Header */}
       <div className="flex items-start justify-between mb-5 gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Mantenimiento de equipos</h1>
+          <h1 className="ms-h1">Mantenimiento de equipos</h1>
           <p className="text-gray-500 text-sm mt-0.5">
             {propios.length} equipos propios
             {vencidos > 0 && <> · <span className="text-red-400 font-medium">{vencidos} vencido{vencidos !== 1 ? "s" : ""}</span></>}
@@ -304,7 +304,7 @@ function MantenimientoContent() {
           { label: "Próximos 30d", value: proximos, color: proximos > 0 ? "text-yellow-400" : "text-gray-600" },
           { label: "Sin historial", value: sinRegistros, color: sinRegistros > 0 ? "text-gray-400" : "text-gray-600" },
         ].map(s => (
-          <div key={s.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-3">
+          <div key={s.label} className="ms-card p-3">
             <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">{s.label}</p>
             <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
           </div>
@@ -329,7 +329,7 @@ function MantenimientoContent() {
             const catEqs = filteredEquipos.filter(e => e.categoria.id === cat.id && e.activo);
             if (!catEqs.length) return null;
             return (
-              <div key={cat.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div key={cat.id} className="ms-table-wrapper">
                 <div className="px-4 py-2 border-b border-[#1a1a1a]">
                   <p className="text-[10px] text-gray-500 uppercase tracking-widest font-semibold">{cat.nombre}</p>
                 </div>
@@ -375,13 +375,13 @@ function MantenimientoContent() {
         {/* ── RIGHT: Detail ── */}
         <div className="flex-1 min-w-0 space-y-4 md:sticky md:top-4 self-start md:max-h-[calc(100vh-2rem)] overflow-y-auto [&::-webkit-scrollbar]:hidden">
           {!selectedEquipo ? (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-12 text-center">
+            <div className="ms-card p-12 text-center">
               <p className="text-gray-500 text-sm">Selecciona un equipo de la lista</p>
             </div>
           ) : (
             <>
               {/* Equipment header */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+              <div className="ms-card p-5">
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div>
                     <h2 className="text-white font-semibold text-base">{selectedEquipo.descripcion}</h2>
@@ -515,7 +515,7 @@ function MantenimientoContent() {
               </div>
 
               {/* Maintenance form */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div className="ms-table-wrapper">
                 <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
                   <div>
                     <p className="text-white font-medium text-sm">

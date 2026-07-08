@@ -364,7 +364,7 @@ function TareaModal({
     }
   }
 
-  const inputCls = 'w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#c9a96a] transition-colors'
+  const inputCls = 'ms-input'
   const labelCls = 'text-[10px] text-gray-600 uppercase tracking-wider block mb-1'
 
   return (
@@ -597,7 +597,7 @@ function TareaModal({
                     onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
                     placeholder={placeholder}
                     rows={rows}
-                    className="w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#c9a96a] resize-none transition-colors"
+                    className="ms-textarea text-xs"
                   />
                 </div>
               ))}

@@ -400,7 +400,7 @@ export default async function SemaforoPage() {
       </div>
 
       {/* Notas de umbral */}
-      <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4 text-[11px] text-[#444] leading-relaxed space-y-1">
+      <div className="ms-card-deep p-4 text-[11px] text-[#444] leading-relaxed space-y-1">
         <p className="text-[#555] font-semibold mb-2 uppercase tracking-wider text-[10px]">Umbrales de referencia</p>
         <p>Ventas: Verde ≥70% de meta · Amarillo 40-69% · Rojo &lt;40%</p>
         <p>Producción: Verde = 0 sin personal · Amarillo = 1-2 · Rojo = 3+</p>

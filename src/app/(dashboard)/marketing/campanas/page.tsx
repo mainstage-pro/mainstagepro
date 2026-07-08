@@ -357,8 +357,8 @@ export default function TiposCampanaPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <p className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider mb-1">Publicidad</p>
-          <h1 className="text-xl font-semibold text-white">Tipos de campaña</h1>
-          <p className="text-[#6b7280] text-sm mt-0.5">Plantillas de campañas Meta Ads para programar en el calendario.</p>
+          <h1 className="ms-h1">Tipos de campaña</h1>
+          <p className="ms-subtitle mt-0.5">Plantillas de campañas Meta Ads para programar en el calendario.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Link href="/marketing/campanas/calendario"
@@ -579,7 +579,7 @@ export default function TiposCampanaPage() {
 
       {/* Empty state */}
       {!loading && tipos.length === 0 && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center space-y-3">
+        <div className="ms-empty-state space-y-3">
           <div className="text-3xl opacity-20">📣</div>
           <p className="text-white/40 text-sm">Sin tipos de campaña</p>
           <p className="text-white/25 text-xs max-w-xs mx-auto leading-relaxed">
@@ -635,7 +635,7 @@ export default function TiposCampanaPage() {
                     const ubics = t.ubicaciones ? t.ubicaciones.split(",").filter(Boolean) : [];
                     const expanded = expandedId === t.id;
                     return (
-                      <div key={t.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                      <div key={t.id} className="ms-table-wrapper">
                         <div style={{ height: 2, background: t.color }} />
                         <div className="p-4">
                           <div className="flex items-start gap-3">
@@ -724,7 +724,7 @@ export default function TiposCampanaPage() {
           </summary>
           <div className="mt-3 space-y-2">
             {inactivos.map(t => (
-              <div key={t.id} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4 flex items-center gap-4 opacity-50">
+              <div key={t.id} className="ms-card-deep p-4 flex items-center gap-4 opacity-50">
                 <div className="w-3 h-3 rounded-full shrink-0" style={{ background: t.color }} />
                 <p className="flex-1 text-white/50 text-sm">{t.nombre}</p>
                 <button onClick={() => toggleActivo(t)} className="text-xs text-white/30 hover:text-green-400 px-2 py-1 rounded transition-colors">Activar</button>

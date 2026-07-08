@@ -221,7 +221,7 @@ export default function RecoleccionesPage() {
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-xl font-semibold text-white">Recolección de equipo</h1>
+        <h1 className="ms-h1">Recolección de equipo</h1>
         <p className="text-gray-500 text-sm mt-0.5">Protocolo de salida y entrada para equipos en renta</p>
       </div>
 
@@ -252,7 +252,7 @@ export default function RecoleccionesPage() {
 
       {/* Lista */}
       {lista.length === 0 ? (
-        <div className="bg-[#111] border border-[#222] rounded-xl p-12 text-center">
+        <div className="ms-card p-12 text-center">
           <p className="text-4xl mb-3">📦</p>
           <p className="text-gray-400 font-medium">Sin recolecciones {filtro === "completadas" ? "completadas" : "activas"}</p>
           <p className="text-gray-600 text-sm mt-1">Los proyectos de renta aparecerán aquí automáticamente</p>

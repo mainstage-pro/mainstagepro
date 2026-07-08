@@ -316,7 +316,7 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
 
         {/* Col 3 — notas técnicas */}
         <div className="space-y-3">
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-3">
+          <div className="ms-card p-4 space-y-3">
             <p className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold mb-1">Notas adicionales</p>
             <FieldGroup label="Notas">
               <textarea
@@ -631,8 +631,8 @@ export default function InventarioMaestroPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Inventario de Equipos</h1>
-          <p className="text-[#6b7280] text-sm mt-0.5">Gestión de equipos, categorías y proveedores</p>
+          <h1 className="ms-h1">Inventario de Equipos</h1>
+          <p className="ms-subtitle mt-0.5">Gestión de equipos, categorías y proveedores</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowCatPanel(true)}
@@ -640,7 +640,7 @@ export default function InventarioMaestroPage() {
             + Categoría
           </button>
           <button onClick={abrirNuevo}
-            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+            className="ms-btn-primary">
             + Nuevo equipo
           </button>
         </div>
@@ -737,22 +737,22 @@ export default function InventarioMaestroPage() {
       {/* KPIs */}
       {kpis && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div className="ms-stat-card">
             <p className="text-[#6b7280] text-xs mb-1">Total equipos</p>
             <p className="text-white text-2xl font-semibold">{kpis.totalEquipos}</p>
             <p className="text-[#444] text-[10px] mt-0.5">{categorias.length} categorías</p>
           </div>
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div className="ms-stat-card">
             <p className="text-[#6b7280] text-xs mb-1">Equipos propios</p>
             <p className="text-[#B3985B] text-2xl font-semibold">{kpis.totalPropios}</p>
             <p className="text-[#444] text-[10px] mt-0.5">Mainstage Pro</p>
           </div>
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div className="ms-stat-card">
             <p className="text-[#6b7280] text-xs mb-1">Equipos externos</p>
             <p className="text-blue-400 text-2xl font-semibold">{kpis.totalExternos}</p>
             <p className="text-[#444] text-[10px] mt-0.5">De proveedores</p>
           </div>
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div className="ms-stat-card">
             <p className="text-[#6b7280] text-xs mb-1">En vista actual</p>
             <p className="text-white text-2xl font-semibold">{equiposTab.length}</p>
             <p className="text-[#444] text-[10px] mt-0.5">Con filtros aplicados</p>
@@ -762,7 +762,7 @@ export default function InventarioMaestroPage() {
 
       {/* Tabs Propios / Externos */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-xl p-1">
+        <div className="flex gap-1 ms-card p-1">
           {(["propios", "externos"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -778,14 +778,14 @@ export default function InventarioMaestroPage() {
           <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar..."
             className="bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50 transition-colors w-40" />
           <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value as typeof filtroEstado)}
-            className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-xs text-[#9ca3af] focus:outline-none">
+            className="ms-card rounded-lg px-3 py-1.5 text-xs text-[#9ca3af] focus:outline-none">
             <option value="">Estado: todos</option>
             <option value="ACTIVO">Activo</option>
             <option value="EN_MANTENIMIENTO">En mantenimiento</option>
             <option value="DADO_DE_BAJA">Dado de baja</option>
           </select>
           <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)}
-            className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-xs text-[#9ca3af] focus:outline-none">
+            className="ms-card rounded-lg px-3 py-1.5 text-xs text-[#9ca3af] focus:outline-none">
             <option value="">Categoría: todas</option>
             {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
           </select>
@@ -833,7 +833,7 @@ export default function InventarioMaestroPage() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                 {items.map(e => (
-                  <div key={e.id} className="group bg-[#111] border border-[#1e1e1e] rounded-xl p-3 cursor-pointer hover:border-[#B3985B]/30 transition-all" onClick={() => abrirEdit(e)}>
+                  <div key={e.id} className="group ms-card p-3 cursor-pointer hover:border-[#B3985B]/30 transition-all" onClick={() => abrirEdit(e)}>
                     <div className="aspect-square rounded-lg bg-[#0d0d0d] mb-2.5 flex items-center justify-center overflow-hidden">
                       {e.imagenUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -868,7 +868,7 @@ export default function InventarioMaestroPage() {
       ) : (
 
         /* ── Vista lista — tabla única continua con separadores de categoría ── */
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="ms-table-wrapper">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>

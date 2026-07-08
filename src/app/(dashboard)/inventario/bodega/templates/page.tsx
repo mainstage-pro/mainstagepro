@@ -96,10 +96,10 @@ export default function TemplatesPage() {
     <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">Catálogo de items — Bodega</h1>
-          <p className="text-[#6b7280] text-sm">{templates.filter(t => t.activo).length} items activos · Se copian al crear un nuevo checklist semanal</p>
+          <h1 className="ms-h1">Catálogo de items — Bodega</h1>
+          <p className="ms-subtitle">{templates.filter(t => t.activo).length} items activos · Se copian al crear un nuevo checklist semanal</p>
         </div>
-        <button onClick={() => setShowForm(true)} className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+        <button onClick={() => setShowForm(true)} className="ms-btn-primary">
           + Agregar item
         </button>
       </div>
@@ -140,13 +140,13 @@ export default function TemplatesPage() {
       {loading ? (
         <div className="py-12 text-center text-gray-600 text-sm">Cargando...</div>
       ) : templates.length === 0 ? (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-12 text-center text-gray-600 text-sm">
+        <div className="ms-card py-12 text-center text-gray-600 text-sm">
           Sin items. Agrega los equipos y materiales que revisas cada semana en bodega.
         </div>
       ) : (
         <div className="space-y-4">
           {porCategoria.map(({ cat, items }) => (
-            <div key={cat} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div key={cat} className="ms-table-wrapper">
               <div className="px-5 py-3 border-b border-[#1a1a1a]">
                 <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{cat} ({items.length})</p>
               </div>
@@ -171,7 +171,7 @@ export default function TemplatesPage() {
           ))}
           {/* Items sin categoría definida */}
           {templates.filter(t => !CATEGORIAS.includes(t.categoria)).length > 0 && (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div className="ms-table-wrapper">
               <div className="px-5 py-3 border-b border-[#1a1a1a]">
                 <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">OTROS</p>
               </div>

@@ -75,7 +75,7 @@ function StatCard({
   return (
     <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-5">
       <p className="text-[10px] uppercase tracking-[0.15em] text-gray-600 mb-2">{label}</p>
-      <p className="text-xl font-semibold text-white tabular-nums">{value}</p>
+      <p className="ms-h1 tabular-nums">{value}</p>
       {sub && (
         <p
           className={`text-xs mt-1 ${
@@ -156,7 +156,7 @@ export default function RendimientoPage() {
         <p className="text-[10px] text-[#c9a96a] uppercase tracking-[0.2em] font-semibold">
           Semana en curso
         </p>
-        <h2 className="text-xl font-semibold text-white mt-0.5">Rendimiento operativo</h2>
+        <h2 className="ms-h1 mt-0.5">Rendimiento operativo</h2>
       </div>
 
       {/* ── Stat cards ── */}

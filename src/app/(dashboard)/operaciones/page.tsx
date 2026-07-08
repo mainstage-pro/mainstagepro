@@ -2134,7 +2134,7 @@ export default function OperacionesPage() {
           onClick={() => setConfirmDeleteId(null)}
         >
           <div
-            className="bg-[#111] border border-[#222] rounded-2xl p-6 shadow-2xl w-full max-w-sm mx-4"
+            className="ms-card rounded-2xl p-6 shadow-2xl w-full max-w-sm mx-4"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-start gap-4 mb-5">
@@ -2205,7 +2205,7 @@ export default function OperacionesPage() {
       {confirmBulk && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 backdrop-blur-sm"
           onClick={() => setConfirmBulk(false)}>
-          <div className="bg-[#111] border border-[#222] rounded-2xl p-6 shadow-2xl w-full max-w-sm mx-4"
+          <div className="ms-card rounded-2xl p-6 shadow-2xl w-full max-w-sm mx-4"
             onClick={e => e.stopPropagation()}>
             <div className="flex items-start gap-4 mb-5">
               <div className="w-10 h-10 rounded-full bg-red-950/50 flex items-center justify-center shrink-0 mt-0.5">
@@ -2355,7 +2355,7 @@ export default function OperacionesPage() {
                   value={busqueda}
                   onChange={e => setBusqueda(e.target.value)}
                   placeholder="Buscar tarea por nombre…"
-                  className="w-full pl-9 pr-8 py-2 bg-[#111] border border-[#1e1e1e] rounded-xl text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/40 transition-colors"
+                  className="w-full pl-9 pr-8 py-2 ms-card text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/40 transition-colors"
                 />
                 {busqueda && (
                   <button onClick={() => setBusqueda("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#555] hover:text-white transition-colors">
@@ -2458,7 +2458,7 @@ export default function OperacionesPage() {
                 onChange={e => setNuevoProyectoNombre(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") crearProyecto(); if (e.key === "Escape") setShowNuevoProyecto(false); }}
                 placeholder="Nombre del proyecto"
-                className="w-full bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]" />
+                className="w-full ms-card px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]" />
               <div className="space-y-1.5">
                 <label className="text-[11px] text-[#444] uppercase tracking-wider">Color</label>
                 <div className="flex gap-2 flex-wrap">
@@ -2475,7 +2475,7 @@ export default function OperacionesPage() {
                   value={nuevoProyectoCarpeta}
                   onChange={v => setNuevoProyectoCarpeta(v)}
                   options={[{ value: "", label: "— Sin carpeta —" }, ...carpetas.map(c => ({ value: c.id, label: c.nombre }))]}
-                  className="w-full bg-[#111] border border-[#1e1e1e] rounded-xl px-2.5 py-2 text-xs text-white focus:outline-none focus:border-[#B3985B]"
+                  className="w-full ms-card px-2.5 py-2 text-xs text-white focus:outline-none focus:border-[#B3985B]"
                 />
               </div>
             </div>

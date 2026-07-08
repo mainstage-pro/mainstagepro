@@ -245,7 +245,7 @@ export default function CalendarioCampanasPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <p className="text-xs text-white/30 uppercase tracking-widest mb-1">Publicidad</p>
-          <h1 className="text-xl font-semibold text-white">Calendario de campañas</h1>
+          <h1 className="ms-h1">Calendario de campañas</h1>
         </div>
         <div className="flex items-center gap-2">
           <Link href="/marketing/campanas" className="text-xs text-white/35 hover:text-white/70 transition-colors px-2 py-1">
@@ -277,7 +277,7 @@ export default function CalendarioCampanasPage() {
         </div>
 
         {/* Vista selector */}
-        <div className="flex items-center gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1">
+        <div className="flex items-center gap-1 ms-card rounded-lg p-1">
           {(["timeline","calendario","tipo"] as Vista[]).map(v => (
             <button key={v} onClick={() => setVista(v)}
               className={`text-xs px-3 py-1 rounded-md transition-colors capitalize ${vista === v ? "bg-[#B3985B] text-black font-semibold" : "text-white/40 hover:text-white"}`}>
@@ -296,7 +296,7 @@ export default function CalendarioCampanasPage() {
             { label: "Completadas", value: ejecuciones.filter(e => e.estado === "COMPLETADA").length },
             { label: "Presupuesto", value: presupuestoTotal > 0 ? `$${presupuestoTotal.toLocaleString("es-MX")}` : "—" },
           ].map(s => (
-            <div key={s.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3">
+            <div key={s.label} className="ms-card px-4 py-3">
               <p className="text-white/30 text-xs">{s.label}</p>
               <p className="text-white font-semibold text-lg mt-0.5">{s.value}</p>
             </div>
@@ -459,7 +459,7 @@ export default function CalendarioCampanasPage() {
       {loading && <div className="text-white/30 text-sm text-center py-16">Cargando…</div>}
 
       {!loading && ejecuciones.length === 0 && !showForm && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center space-y-3">
+        <div className="ms-empty-state space-y-3">
           <div className="text-3xl opacity-20">📅</div>
           <p className="text-white/40 text-sm">Sin campañas en {mesLabel(mes)}</p>
           <button onClick={startNew}
@@ -491,7 +491,7 @@ export default function CalendarioCampanasPage() {
             const isActive = e.estado === "EN_EJECUCION";
 
             return (
-              <div key={e.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden transition-all duration-200">
+              <div key={e.id} className="ms-table-wrapper transition-all duration-200">
                 {/* Color bar top */}
                 <div style={{ height: 3, background: color }} />
 
@@ -633,7 +633,7 @@ export default function CalendarioCampanasPage() {
 
       {/* ── Vista Calendario ──────────────────────────────────────────────────── */}
       {!loading && vista === "calendario" && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+        <div className="ms-card overflow-x-auto">
           <div className="min-w-[420px]">
           {/* Day headers */}
           <div className="grid grid-cols-7 border-b border-white/[0.05]">
@@ -682,7 +682,7 @@ export default function CalendarioCampanasPage() {
           {Object.entries(porTipo).map(([tipoId, execs]) => {
             const tipo = tipos.find(t => t.id === tipoId);
             return (
-              <div key={tipoId} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div key={tipoId} className="ms-table-wrapper">
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.05]">
                   <div className="w-3 h-3 rounded-full" style={{ background: tipo?.color ?? "#B3985B" }} />
                   <p className="text-white text-sm font-medium">{tipo?.nombre ?? "Sin tipo"}</p>
@@ -715,7 +715,7 @@ export default function CalendarioCampanasPage() {
             );
           })}
           {sinTipo.length > 0 && (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div className="ms-table-wrapper">
               <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.05]">
                 <div className="w-3 h-3 rounded-full bg-white/20" />
                 <p className="text-white text-sm font-medium">Sin tipo asignado</p>

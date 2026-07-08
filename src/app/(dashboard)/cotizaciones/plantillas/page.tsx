@@ -56,18 +56,18 @@ export default function PlantillasPage() {
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-white">Plantillas de cotización</h1>
+          <h1 className="ms-h1">Plantillas de cotización</h1>
           <p className="text-gray-500 text-sm">
             {loading ? "Cargando..." : `${plantillas.length} plantilla${plantillas.length !== 1 ? "s" : ""} activa${plantillas.length !== 1 ? "s" : ""}`}
           </p>
         </div>
-        <Link href="/crm/tratos" className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+        <Link href="/crm/tratos" className="ms-btn-primary">
           Ir a Tratos →
         </Link>
       </div>
 
       {/* Tip */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3 mb-4 flex items-start gap-3">
+      <div className="ms-card px-4 py-3 mb-4 flex items-start gap-3">
         <span className="text-base shrink-0 mt-0.5">💡</span>
         <p className="text-gray-500 text-xs">
           Las plantillas se crean desde una cotización existente usando el botón <span className="text-white font-medium">Guardar como plantilla</span>. Puedes cargarlas al crear una cotización nueva para rellenar las líneas automáticamente.
@@ -76,10 +76,10 @@ export default function PlantillasPage() {
 
       {loading ? (
         <div className="space-y-3">
-          {[1,2,3].map(i => <div key={i} className="h-20 bg-[#111] border border-[#1e1e1e] rounded-xl animate-pulse" />)}
+          {[1,2,3].map(i => <div key={i} className="h-20 ms-card animate-pulse" />)}
         </div>
       ) : plantillas.length === 0 ? (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
+        <div className="ms-empty-state">
           <p className="text-2xl mb-2">📋</p>
           <p className="text-gray-500 text-sm">Sin plantillas guardadas</p>
           <p className="text-gray-700 text-xs mt-1">Abre una cotización y usa "Guardar como plantilla" para crear la primera.</p>
@@ -91,7 +91,7 @@ export default function PlantillasPage() {
             const isOpen = expandida === p.id;
 
             return (
-              <div key={p.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div key={p.id} className="ms-table-wrapper">
                 {/* Cabecera */}
                 <button
                   className="w-full flex items-center gap-4 px-4 py-3 hover:bg-[#151515] transition-colors text-left"

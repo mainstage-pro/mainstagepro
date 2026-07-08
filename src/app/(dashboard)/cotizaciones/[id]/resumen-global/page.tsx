@@ -113,11 +113,11 @@ export default function ResumenGlobalPage({ params }: { params: Promise<{ id: st
       <div className="mb-2"><BackButton /></div>
 
       {/* Header */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-3">
+      <div className="ms-card p-5 space-y-3">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Resumen Global del Proyecto</p>
-            <h1 className="text-xl font-semibold text-white leading-tight">
+            <h1 className="ms-h1 leading-tight">
               {trato?.nombreEvento || cliente.nombre}
             </h1>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -166,7 +166,7 @@ export default function ResumenGlobalPage({ params }: { params: Promise<{ id: st
       </div>
 
       {/* Tabla de eventos */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+      <div className="ms-table-wrapper">
         <div className="px-5 py-4 border-b border-[#1a1a1a]">
           <h2 className="text-sm font-semibold text-gray-300">Desglose por evento</h2>
         </div>

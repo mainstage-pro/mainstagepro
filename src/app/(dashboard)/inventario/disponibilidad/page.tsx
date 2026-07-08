@@ -119,14 +119,14 @@ export default function DisponibilidadPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-xl font-semibold text-white">Disponibilidad de equipos</h1>
+        <h1 className="ms-h1">Disponibilidad de equipos</h1>
         <p className="text-gray-500 text-sm mt-1">
           Consulta qué equipos propios están comprometidos en cotizaciones y proyectos activos para fechas específicas.
         </p>
       </div>
 
       {/* Selector de fechas */}
-      <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+      <div className="ms-card p-5">
         <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">
           Fechas a consultar <span className="text-gray-700">(máx. {MAX_FECHAS})</span>
         </p>
@@ -208,7 +208,7 @@ export default function DisponibilidadPage() {
 
             {/* KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
+              <div className="ms-stat-card text-center">
                 <p className="text-gray-500 text-xs mb-1">Equipos propios</p>
                 <p className="text-white text-2xl font-bold">{totalEquipos}</p>
               </div>
@@ -224,14 +224,14 @@ export default function DisponibilidadPage() {
 
             {/* Tabla por categoría */}
             {Object.keys(equiposFiltrados).length === 0 ? (
-              <div className="bg-[#111] border border-[#222] rounded-xl p-10 text-center">
+              <div className="ms-card p-10 text-center">
                 <p className="text-gray-500 text-sm">
                   {soloConflictos ? "Ningún equipo comprometido en las fechas seleccionadas." : "Sin equipos propios registrados."}
                 </p>
               </div>
             ) : (
               Object.entries(equiposFiltrados).map(([categoria, equipos]) => (
-                <div key={categoria} className="bg-[#111] border border-[#222] rounded-xl overflow-x-auto">
+                <div key={categoria} className="ms-card overflow-x-auto">
                   <div className="px-5 py-3 bg-[#1a1a1a] border-b border-[#222]">
                     <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{categoria}</p>
                   </div>
@@ -332,7 +332,7 @@ export default function DisponibilidadPage() {
 
           {/* Panel derecho: eventos en esas fechas */}
           <div className="xl:col-span-1 space-y-4">
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+            <div className="ms-table-wrapper">
               <div className="px-4 py-3 border-b border-[#1a1a1a]">
                 <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Eventos encontrados</p>
                 <p className="text-gray-600 text-xs mt-0.5">{resultado.eventos.length} en las fechas seleccionadas</p>
@@ -364,7 +364,7 @@ export default function DisponibilidadPage() {
             </div>
 
             {/* Leyenda */}
-            <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-xs space-y-2">
+            <div className="ms-stat-card text-xs space-y-2">
               <p className="text-gray-500 uppercase tracking-wider text-[10px] mb-2">Leyenda</p>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded bg-green-500 shrink-0" />
@@ -392,7 +392,7 @@ export default function DisponibilidadPage() {
       )}
 
       {!resultado && !loading && (
-        <div className="bg-[#111] border border-[#222] rounded-xl p-12 text-center">
+        <div className="ms-card p-12 text-center">
           <p className="text-3xl mb-3">📦</p>
           <p className="text-gray-400 text-sm">Agrega hasta {MAX_FECHAS} fechas y presiona <strong className="text-white">Consultar disponibilidad</strong></p>
           <p className="text-gray-600 text-xs mt-1">

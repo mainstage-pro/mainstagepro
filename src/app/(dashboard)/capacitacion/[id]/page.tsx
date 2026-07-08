@@ -669,7 +669,7 @@ export default function CapacitacionDetailPage() {
                   {estadoCfg.label}
                 </span>
               </div>
-              <h1 className="text-xl font-semibold text-white leading-tight mb-1">
+              <h1 className="ms-h1 leading-tight mb-1">
                 <span style={{ color: "#c9a96a" }}>{padNum(sesion.numero)}.</span> {sesion.titulo}
               </h1>
               <p className="text-sm" style={{ color: "#6b7280" }}>{sesion.descripcion}</p>

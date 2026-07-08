@@ -174,7 +174,7 @@ function ModalAgregarTarea({ junta, usuarios, proyectos, onClose, onCreated }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60">
-      <div className="bg-[#111] border border-[#222] rounded-2xl w-full max-w-lg">
+      <div className="ms-card rounded-2xl w-full max-w-lg">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a1a1a]">
           <p className="text-white font-semibold text-sm">Agregar tarea desde junta</p>
           <button onClick={onClose} className="text-gray-600 hover:text-white text-xl leading-none">✕</button>

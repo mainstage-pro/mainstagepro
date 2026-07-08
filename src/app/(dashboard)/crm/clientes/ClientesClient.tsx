@@ -163,7 +163,7 @@ function InlineDropdown({
         </svg>
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[150px]">
+        <div className="ms-dropdown left-0 top-full mt-1 min-w-[150px]">
           {options.map(opt => (
             <button
               key={opt.value}
@@ -253,7 +253,7 @@ function InlineMultiSelect({
         </svg>
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[160px]">
+        <div className="ms-dropdown left-0 top-full mt-1 min-w-[160px]">
           <p className="text-[9px] text-[#555] uppercase tracking-wider px-3 py-1.5">Máx. {maxSelect}</p>
           {options.map(opt => {
             const active = values.includes(opt.value);
@@ -482,7 +482,7 @@ function ClienteRow({
           </button>
           {empresaPopoverOpen && (
             <div
-              className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-2"
+              className="ms-dropdown left-0 top-full mt-1 py-2"
               style={{ width: 260 }}
               onClick={e => e.stopPropagation()}
             >
@@ -736,8 +736,8 @@ export default function ClientesClient({ clientes: initial, usuarios }: { client
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl font-semibold text-white">Clientes</h1>
-          <p className="text-[#6b7280] text-sm">
+          <h1 className="ms-h1">Clientes</h1>
+          <p className="ms-subtitle">
             {hayFiltros
               ? <>{clientesFiltrados.length} <span className="text-[#555]">de {clientes.length}</span></>
               : <>{clientes.length} clientes registrados</>
@@ -756,7 +756,7 @@ export default function ClientesClient({ clientes: initial, usuarios }: { client
             </button>
           </div>
           <Link href="/crm/clientes/nuevo"
-            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+            className="ms-btn-primary">
             + Nuevo cliente
           </Link>
         </div>
@@ -801,20 +801,20 @@ export default function ClientesClient({ clientes: initial, usuarios }: { client
 
       {/* Resultados */}
       {clientesFiltrados.length === 0 ? (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center">
-          <p className="text-[#6b7280] text-sm">
+        <div className="ms-empty-state">
+          <p className="ms-subtitle">
             {hayFiltros ? "Sin resultados para los filtros aplicados" : "No hay clientes registrados"}
           </p>
           {hayFiltros && <button onClick={limpiarFiltros} className="mt-3 text-[#B3985B] text-xs hover:underline">Limpiar filtros</button>}
         </div>
       ) : view === "list" ? (
         /* ── LISTA (tabla con inline editing) ── */
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+        <div className="ms-card overflow-x-auto">
           <table className="w-full min-w-[900px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
                 {["Cliente", "Empresa", "Tipo", "Clasificación", "Servicio", "Tipo de Evento", "Responsable", "Tratos", "Proyectos", ""].map(h => (
-                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium whitespace-nowrap">{h}</th>
+                  <th key={h} className="ms-th">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -847,7 +847,7 @@ export default function ClientesClient({ clientes: initial, usuarios }: { client
         /* ── TARJETAS ── */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {clientesFiltrados.map(c => (
-            <div key={c.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 hover:bg-[#141414] hover:border-[#2a2a2a] transition-all group">
+            <div key={c.id} className="ms-card p-5 hover:bg-[#141414] hover:border-[#2a2a2a] transition-all group">
               <Link href={`/crm/clientes/${c.id}`} className="block">
                 <div className="w-10 h-10 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center mb-4">
                   <span className="text-[#B3985B] text-base font-bold">{c.nombre.charAt(0).toUpperCase()}</span>

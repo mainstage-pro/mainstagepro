@@ -878,14 +878,14 @@ export default function CobrosPagosPage() {
 
               {/* KPIs semana */}
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                <div className="ms-stat-card">
                   <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Cobros esta semana</p>
                   <p className={`text-xl font-semibold ${semanaActual && semanaActual.totalCobros > 0 ? "text-green-400" : "text-gray-600"}`}>
                     {semanaActual ? formatCurrency(semanaActual.totalCobros) : "$0"}
                   </p>
                   <p className="text-gray-600 text-xs mt-1">{semanaActual?.cobros.length ?? 0} registros · Lunes y Miércoles</p>
                 </div>
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                <div className="ms-stat-card">
                   <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Pagos esta semana</p>
                   <p className={`text-xl font-semibold ${semanaActual && semanaActual.totalPagos > 0 ? "text-yellow-400" : "text-gray-600"}`}>
                     {semanaActual ? formatCurrency(semanaActual.totalPagos) : "$0"}
@@ -895,7 +895,7 @@ export default function CobrosPagosPage() {
               </div>
 
               {/* Sección cobros — siempre visible */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div className="ms-table-wrapper">
                 <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
                   <div>
                     <p className="text-white text-sm font-medium">Cobros</p>
@@ -937,7 +937,7 @@ export default function CobrosPagosPage() {
               </div>
 
               {/* Sección pagos — siempre visible */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div className="ms-table-wrapper">
                 <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
                   <div>
                     <p className="text-white text-sm font-medium">Pagos</p>
@@ -1005,8 +1005,8 @@ export default function CobrosPagosPage() {
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-white">Cobros y Pagos</h1>
-          <p className="text-[#6b7280] text-sm">Cuentas por cobrar y por pagar</p>
+          <h1 className="ms-h1">Cobros y Pagos</h1>
+          <p className="ms-subtitle">Cuentas por cobrar y por pagar</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <button
@@ -1025,7 +1025,7 @@ export default function CobrosPagosPage() {
       {/* Resumen financiero */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
         {/* CxC */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="ms-table-wrapper">
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
             <p className="text-xs font-semibold uppercase tracking-wider text-[#B3985B]">Cuentas por cobrar</p>
             {cxcCobr > 0 && <p className="text-[11px] text-gray-600">cobrado: <span className="text-green-600/80 font-medium">{formatCurrency(cxcCobr)}</span></p>}
@@ -1048,7 +1048,7 @@ export default function CobrosPagosPage() {
           </div>
         </div>
         {/* CxP */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="ms-table-wrapper">
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
             <p className="text-xs font-semibold uppercase tracking-wider text-[#B3985B]">Cuentas por pagar</p>
             {cxpPagd > 0 && <p className="text-[11px] text-gray-600">pagado: <span className="text-green-600/80 font-medium">{formatCurrency(cxpPagd)}</span></p>}
@@ -1139,15 +1139,15 @@ export default function CobrosPagosPage() {
       {loading ? (
         <div className="space-y-2">
           {[1,2,3,4].map(i => (
-            <div key={i} className="bg-[#111] border border-[#1e1e1e] rounded-xl h-20 animate-pulse" />
+            <div key={i} className="ms-card h-20 animate-pulse" />
           ))}
         </div>
       ) : tab === "cobrar" ? (
         // ── CxC Cards ──
         <div className="space-y-4">
           {cxcList.length === 0 ? (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
-              <p className="text-[#6b7280] text-sm">Sin cuentas por cobrar</p>
+            <div className="ms-empty-state">
+              <p className="ms-subtitle">Sin cuentas por cobrar</p>
             </div>
           ) : (() => {
             const { proximos: _cp, pasados: _cv } = splitGroups(groupByProject(cxcList), hoyStr);
@@ -1417,8 +1417,8 @@ export default function CobrosPagosPage() {
         // ── CxP Cards ──
         <div className="space-y-4">
           {cxpList.length === 0 ? (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
-              <p className="text-[#6b7280] text-sm">Sin cuentas por pagar</p>
+            <div className="ms-empty-state">
+              <p className="ms-subtitle">Sin cuentas por pagar</p>
             </div>
           ) : (() => {
             const { proximos: _pp, pasados: _pv } = splitGroups(groupByProject(cxpList), hoyStr);
@@ -1632,15 +1632,15 @@ export default function CobrosPagosPage() {
       {tab === "directos" && (
         <div className="space-y-2">
           {movDirectos.length === 0 ? (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
-              <p className="text-[#6b7280] text-sm">Sin movimientos directos</p>
+            <div className="ms-empty-state">
+              <p className="ms-subtitle">Sin movimientos directos</p>
               <p className="text-[#444] text-xs mt-1">Los ingresos y gastos registrados directamente (no vinculados a CxC/CxP) aparecen aquí</p>
               <a href="/finanzas/movimientos/nuevo" className="inline-block mt-4 px-4 py-1.5 rounded-lg bg-[#B3985B]/15 text-[#B3985B] text-xs font-medium hover:bg-[#B3985B]/25 transition-colors">
                 + Registrar movimiento
               </a>
             </div>
           ) : movDirectos.map(mov => (
-            <div key={mov.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3">
+            <div key={mov.id} className="ms-card px-4 py-3">
               <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">

@@ -196,7 +196,7 @@ export default function ComisionPage({ params }: { params: Promise<{ id: string 
           <div className="flex items-start justify-between gap-4 mb-6">
             <div>
               <p className="text-[10px] font-bold text-[#B3985B] uppercase tracking-widest mb-1">Documento privado</p>
-              <h2 className="text-xl font-semibold text-white leading-tight">
+              <h2 className="ms-h1 leading-tight">
                 Acuerdo de Comisión
               </h2>
               <p className="text-gray-500 text-sm mt-1">por intermediación en venta de servicios</p>
@@ -210,7 +210,7 @@ export default function ComisionPage({ params }: { params: Promise<{ id: string 
           </div>
 
           {/* Info del evento */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 grid grid-cols-2 gap-3">
+          <div className="ms-stat-card grid grid-cols-2 gap-3">
             <div>
               <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-0.5">Cliente</p>
               <p className="text-sm text-white">{cot.cliente.nombre}</p>
@@ -239,7 +239,7 @@ export default function ComisionPage({ params }: { params: Promise<{ id: string 
 
         {/* ── Desglose financiero ── */}
         <Divider label="Desglose financiero de la cotización" />
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden mb-2">
+        <div className="ms-table-wrapper mb-2">
 
           {/* Equipos propios */}
           <div className="px-5 py-3 border-b border-[#1e1e1e] bg-[#0e0e0e]">
@@ -388,7 +388,7 @@ export default function ComisionPage({ params }: { params: Promise<{ id: string 
 
         {/* ── Condiciones ── */}
         <Divider label="Condiciones del acuerdo" />
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 text-xs text-gray-500 leading-relaxed space-y-2">
+        <div className="ms-card p-5 text-xs text-gray-500 leading-relaxed space-y-2">
           <p>· El presente acuerdo es estrictamente entre las partes firmantes y no involucra ni compromete al cliente final en ningún aspecto.</p>
           <p>· La comisión será liquidada en una sola exhibición una vez que Mainstage Pro reciba el pago total del cliente.</p>
           <p>· Este documento no forma parte de ningún contrato, cotización o propuesta emitida al cliente final.</p>

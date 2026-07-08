@@ -183,7 +183,7 @@ function CircularProgress({ pct, completadas, total }: { pct: number; completada
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-xl font-semibold text-white tabular-nums">{pct}%</span>
+          <span className="ms-h1 tabular-nums">{pct}%</span>
           <span className="text-[10px] text-gray-600">{completadas}/{total}</span>
         </div>
       </div>
@@ -391,7 +391,7 @@ function MiDiaItem({
                   ✗
                 </button>
                 {showRazones && (
-                  <div className="absolute right-0 top-6 z-50 bg-[#111] border border-[#222] rounded-xl shadow-2xl py-1 w-52">
+                  <div className="absolute right-0 top-6 z-50 ms-card shadow-2xl py-1 w-52">
                     <p className="text-[8px] uppercase tracking-wider text-gray-600 px-3 py-1.5">¿Por qué no se realizó?</p>
                     {RAZONES_NO_REALIZADO.map(r => (
                       <button
@@ -709,7 +709,7 @@ export default function MiDiaPage() {
       {/* ── Personalized Greeting ── */}
       <div className="mb-5">
         <p className="text-[10px] text-[#c9a96a] uppercase tracking-[0.2em] font-semibold">{fmtFechaLarga(fechaActual)}</p>
-        <p className="text-xl font-semibold text-white mt-1">
+        <p className="ms-h1 mt-1">
           {getGreeting()}{userName ? `, ${userName}` : ''} 👋
         </p>
         <p className="text-xs text-gray-500 mt-2 leading-relaxed max-w-xl italic">

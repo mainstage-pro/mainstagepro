@@ -165,7 +165,7 @@ export default function RolesPage() {
     <div className="p-4 md:p-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-white">Tabulador de Personal</h1>
+          <h1 className="ms-h1">Tabulador de Personal</h1>
           <p className="text-gray-500 text-sm">{activos.length} roles activos · tarifas para cotización y proyectos</p>
         </div>
         <button

@@ -7,7 +7,7 @@ import { EventosWidget } from "@/components/dashboard/EventosWidget";
 
 function KpiCard({ label, value, sub, color = "text-white", href }: { label: string; value: string; sub?: string; color?: string; href?: string }) {
   const content = (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 hover:border-[#2a2a2a] transition-colors">
+    <div className="ms-stat-card hover:border-[#2a2a2a] transition-colors">
       <p className="text-[10px] uppercase tracking-wider text-[#555] font-semibold mb-1">{label}</p>
       <p className={`text-xl font-bold ${color}`}>{value}</p>
       {sub && <p className="text-[11px] text-[#6b7280] mt-0.5">{sub}</p>}
@@ -104,7 +104,7 @@ export default async function DashboardMarketingPage() {
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* Publicaciones próximas 7 días */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+        <div className="ms-stat-card">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Próximos 7 días</p>
             <Link href="/marketing/calendario" className="text-xs text-[#B3985B] hover:underline">Calendario →</Link>
@@ -132,7 +132,7 @@ export default async function DashboardMarketingPage() {
         </div>
 
         {/* Eventos próximos para contenido */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+        <div className="ms-stat-card">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Eventos para contenido (14 días)</p>
             <Link href="/proyectos" className="text-xs text-[#B3985B] hover:underline">Ver proyectos →</Link>
@@ -156,7 +156,7 @@ export default async function DashboardMarketingPage() {
       </div>
 
       {/* Estado del mes */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+      <div className="ms-stat-card">
         <div className="flex items-center justify-between mb-3">
           <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Estado del contenido — {mes}</p>
           <p className="text-white text-sm font-bold">{totalPubs} publicaciones</p>
@@ -189,7 +189,7 @@ export default async function DashboardMarketingPage() {
           { href: "/marketing/contenidos", label: "Tipos de contenido", desc: "Gestionar formatos" },
           { href: "/marketing/campanas", label: "Campañas", desc: "Meta Ads y publicidad" },
         ].map(a => (
-          <Link key={a.href} href={a.href} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 hover:border-[#2a2a2a] hover:bg-[#141414] transition-all">
+          <Link key={a.href} href={a.href} className="ms-stat-card hover:border-[#2a2a2a] hover:bg-[#141414] transition-all">
             <p className="text-white text-sm font-semibold">{a.label}</p>
             <p className="text-gray-500 text-xs mt-0.5">{a.desc}</p>
           </Link>

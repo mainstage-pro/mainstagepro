@@ -43,8 +43,8 @@ export default function ActividadPage() {
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">Registro de actividad</h1>
-          <p className="text-[#6b7280] text-sm">Historial de acciones de todos los usuarios</p>
+          <h1 className="ms-h1">Registro de actividad</h1>
+          <p className="ms-subtitle">Historial de acciones de todos los usuarios</p>
         </div>
       </div>
 
@@ -53,12 +53,12 @@ export default function ActividadPage() {
       ) : actividades.length === 0 ? (
         <div className="text-center py-16 text-gray-600 text-sm">Sin actividad registrada</div>
       ) : (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+        <div className="ms-card overflow-x-auto">
           <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
                 {["Usuario", "Acción", "Entidad", "Descripción", "Fecha"].map(h => (
-                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
+                  <th key={h} className="ms-th">{h}</th>
                 ))}
               </tr>
             </thead>

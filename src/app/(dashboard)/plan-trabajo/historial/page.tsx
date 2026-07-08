@@ -431,7 +431,7 @@ export default function HistorialPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4">
                   <p className="text-[9px] text-[#444] uppercase tracking-wider mb-1">Completadas</p>
-                  <p className="text-xl font-semibold text-white tabular-nums">
+                  <p className="ms-h1 tabular-nums">
                     {resumen.completadas}<span className="text-sm text-[#444] ml-1">/{resumen.total}</span>
                   </p>
                 </div>
@@ -443,13 +443,13 @@ export default function HistorialPage() {
                 </div>
                 <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4">
                   <p className="text-[9px] text-[#444] uppercase tracking-wider mb-1">Críticas completadas</p>
-                  <p className="text-xl font-semibold text-white tabular-nums">
+                  <p className="ms-h1 tabular-nums">
                     {resumen.criticasCompletadas}<span className="text-sm text-[#444] ml-1">/{resumen.criticasTotal}</span>
                   </p>
                 </div>
                 <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4">
                   <p className="text-[9px] text-[#444] uppercase tracking-wider mb-1">Racha</p>
-                  <p className="text-xl font-semibold text-white tabular-nums">
+                  <p className="ms-h1 tabular-nums">
                     {resumen.racha}
                     <span className="text-sm text-[#444] ml-1">día{resumen.racha !== 1 ? 's' : ''}</span>
                   </p>

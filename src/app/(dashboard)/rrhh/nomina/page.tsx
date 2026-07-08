@@ -117,8 +117,8 @@ export default function NominaPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Nómina</h1>
-          <p className="text-[#6b7280] text-sm">
+          <h1 className="ms-h1">Nómina</h1>
+          <p className="ms-subtitle">
             {personal.length} activos ·{" "}
             {pendientes.length > 0 && <span className="text-yellow-400">{pendientes.length} pagos pendientes</span>}
             {pendientes.length === 0 && "sin pagos pendientes"}
@@ -144,7 +144,7 @@ export default function NominaPage() {
             <p className="text-[#6b7280] text-xs uppercase tracking-wider mb-1">Pagado (historial)</p>
             <p className="text-green-400 text-xl font-semibold">{fmt(totalPagado)}</p>
           </div>
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div className="ms-stat-card">
             <p className="text-[#6b7280] text-xs uppercase tracking-wider mb-1">Este mes</p>
             <p className="text-white text-xl font-semibold">{fmt(nominaMes.reduce((s, p) => s + p.monto, 0))}</p>
           </div>
@@ -229,7 +229,7 @@ export default function NominaPage() {
       )}
 
       {!loading && pendientes.length === 0 && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-10 text-center">
+        <div className="ms-card py-10 text-center">
           <p className="text-green-400 text-sm font-medium">Sin pagos pendientes</p>
           <p className="text-gray-600 text-xs mt-1">No hay pagos pendientes en este momento</p>
         </div>
@@ -237,7 +237,7 @@ export default function NominaPage() {
 
       {/* ── ESTIMADO MENSUAL ── */}
       {personal.length > 0 && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="ms-table-wrapper">
           <div className="px-5 py-3 border-b border-[#1a1a1a]">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Personal activo — tarifas base</p>
           </div>
@@ -272,7 +272,7 @@ export default function NominaPage() {
 
       {/* ── HISTORIAL ── */}
       {historial.length > 0 && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+        <div className="ms-card overflow-x-auto">
           <div className="px-5 py-3 border-b border-[#1a1a1a]">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Historial de pagos</p>
           </div>
@@ -280,7 +280,7 @@ export default function NominaPage() {
             <thead>
               <tr className="border-b border-[#1e1e1e]">
                 {["Persona", "Período", "Concepto", "Monto", "Fecha", "Método"].map(h => (
-                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
+                  <th key={h} className="ms-th">{h}</th>
                 ))}
               </tr>
             </thead>

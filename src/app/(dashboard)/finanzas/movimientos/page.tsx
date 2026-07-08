@@ -154,11 +154,11 @@ export default function MovimientosPage() {
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-xl font-semibold text-white">Movimientos</h1>
-          <p className="text-[#6b7280] text-sm">{movimientosFiltrados.length} movimientos{cuentaFiltro ? ` · ${cuentas.find(c => c.id === cuentaFiltro)?.nombre}` : " · todas las cuentas"}</p>
+          <h1 className="ms-h1">Movimientos</h1>
+          <p className="ms-subtitle">{movimientosFiltrados.length} movimientos{cuentaFiltro ? ` · ${cuentas.find(c => c.id === cuentaFiltro)?.nombre}` : " · todas las cuentas"}</p>
         </div>
         <a href="/finanzas/movimientos/nuevo"
-          className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          className="ms-btn-primary">
           + Registrar movimiento
         </a>
       </div>
@@ -200,15 +200,15 @@ export default function MovimientosPage() {
 
       {/* Resumen */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+        <div className="ms-stat-card">
           <p className="text-[#6b7280] text-xs uppercase tracking-wider mb-1">{cuentaFiltro ? "Entradas" : "Ingresos"}</p>
           <p className="text-green-400 text-xl font-semibold">{formatCurrency(ingresos)}</p>
         </div>
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+        <div className="ms-stat-card">
           <p className="text-[#6b7280] text-xs uppercase tracking-wider mb-1">{cuentaFiltro ? "Salidas" : "Gastos"}</p>
           <p className="text-red-400 text-xl font-semibold">{formatCurrency(gastos)}</p>
         </div>
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+        <div className="ms-stat-card">
           <p className="text-[#6b7280] text-xs uppercase tracking-wider mb-1">{cuentaFiltro ? "Saldo neto" : "Balance"}</p>
           <p className={`text-xl font-semibold ${ingresos - gastos >= 0 ? "text-white" : "text-red-400"}`}>
             {formatCurrency(ingresos - gastos)}
@@ -216,19 +216,19 @@ export default function MovimientosPage() {
         </div>
       </div>
 
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+      <div className="ms-card overflow-x-auto">
         {loading ? (
-          <div className="py-16 text-center text-[#6b7280] text-sm">Cargando...</div>
+          <div className="py-16 text-center ms-subtitle">Cargando...</div>
         ) : movimientosFiltrados.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-[#6b7280] text-sm">Sin movimientos{cuentaFiltro ? " en esta cuenta" : " registrados"}</p>
+            <p className="ms-subtitle">Sin movimientos{cuentaFiltro ? " en esta cuenta" : " registrados"}</p>
           </div>
         ) : (
           <table className="w-full min-w-[700px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
                 {["Fecha", "Concepto", "Categoría", "Cuenta", "Tipo", "Monto", ""].map((h, i) => (
-                  <th key={i} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium last:w-16">
+                  <th key={i} className="ms-th last:w-16">
                     {h}
                   </th>
                 ))}

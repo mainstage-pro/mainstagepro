@@ -185,18 +185,18 @@ export default function EmpresasPage() {
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-white">Empresas</h1>
-          <p className="text-[#6b7280] text-sm">{empresas.length} empresas registradas</p>
+          <h1 className="ms-h1">Empresas</h1>
+          <p className="ms-subtitle">{empresas.length} empresas registradas</p>
         </div>
         <button onClick={abrirNueva}
-          className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          className="ms-btn-primary">
           + Nueva empresa
         </button>
       </div>
 
       <div className="mb-3">
         <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por nombre o giro…"
-          className="w-full bg-[#111] border border-[#222] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+          className="w-full ms-card px-4 py-2.5 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
       </div>
 
       {/* Filtros de tipo */}
@@ -216,13 +216,13 @@ export default function EmpresasPage() {
       </div>
 
       {loading ? (
-        <div className="py-16 text-center text-[#6b7280] text-sm">Cargando...</div>
+        <div className="py-16 text-center ms-subtitle">Cargando...</div>
       ) : lista.length === 0 ? (
-        <div className="py-16 text-center text-[#6b7280] text-sm">Sin empresas</div>
+        <div className="py-16 text-center ms-subtitle">Sin empresas</div>
       ) : (
         <div className="space-y-2">
           {lista.map(e => (
-            <div key={e.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div key={e.id} className="ms-table-wrapper">
               <div className="flex items-center justify-between px-4 py-3 gap-3">
                 <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpandida(expandida === e.id ? null : e.id)}>
                   <div className="flex items-center gap-2 flex-wrap">

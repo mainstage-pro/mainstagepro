@@ -134,7 +134,7 @@ export default function KanbanPage() {
         <div className="flex items-center justify-between gap-4">
           <div>
             <h1 className="text-white text-xl font-semibold tracking-tight">Pipeline de contenido</h1>
-            <p className="text-[#6b7280] text-sm mt-0.5">Arrastra publicaciones entre columnas para cambiar su estado</p>
+            <p className="ms-subtitle mt-0.5">Arrastra publicaciones entre columnas para cambiar su estado</p>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => setMes(prevMes(mes))} className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white transition-colors">

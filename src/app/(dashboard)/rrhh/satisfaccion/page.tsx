@@ -125,7 +125,7 @@ export default function SatisfaccionPage() {
       </div>
 
       {/* Selector período */}
-      <div className="flex items-center gap-3 bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3">
+      <div className="flex items-center gap-3 ms-card px-4 py-3">
         <label className="text-[#555] text-xs uppercase tracking-wider font-bold">Período</label>
         <input
           type="text"
@@ -141,17 +141,17 @@ export default function SatisfaccionPage() {
       {/* Stats */}
       {respondidas.length > 0 && (
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 text-center">
+          <div className="ms-stat-card text-center">
             <p className={`text-2xl font-bold ${promedioGlobal != null && promedioGlobal >= 8 ? "text-green-400" : promedioGlobal != null && promedioGlobal >= 6 ? "text-yellow-400" : "text-red-400"}`}>
               {promedioGlobal?.toFixed(1) ?? "—"}
             </p>
             <p className="text-[#555] text-[11px] mt-0.5 uppercase tracking-wider">Promedio</p>
           </div>
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 text-center">
-            <p className="text-xl font-semibold text-white">{respondidas.length}/{encuestas.length}</p>
+          <div className="ms-stat-card text-center">
+            <p className="ms-h1">{respondidas.length}/{encuestas.length}</p>
             <p className="text-[#555] text-[11px] mt-0.5 uppercase tracking-wider">Respondidas</p>
           </div>
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 text-center">
+          <div className="ms-stat-card text-center">
             {(() => {
               const nps = respondidas.filter(e => e.probabilidadRecomendar != null);
               const avg = nps.length > 0 ? nps.reduce((s, e) => s + (e.probabilidadRecomendar ?? 0), 0) / nps.length : null;

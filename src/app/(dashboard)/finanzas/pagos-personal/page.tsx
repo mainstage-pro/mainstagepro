@@ -288,10 +288,10 @@ export default function PagosPersonalPage() {
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl font-semibold text-white">Pagos a Personal</h1>
+          <h1 className="ms-h1">Pagos a Personal</h1>
           <p className="text-gray-500 text-sm mt-0.5">Ciclo semanal · miércoles de pago</p>
         </div>
-        <div className="flex items-center gap-2 bg-[#111] border border-[#222] rounded-xl px-3 py-2">
+        <div className="flex items-center gap-2 ms-card px-3 py-2">
           <button onClick={() => setCiclo(prevCiclo(ciclo))} className="text-gray-400 hover:text-white px-1 transition-colors">‹</button>
           <div className="text-center">
             <p className="text-xs text-gray-500">Ciclo de pago</p>
@@ -309,24 +309,24 @@ export default function PagosPersonalPage() {
       {/* ── Summary band ── */}
       {data && !loading && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+          <div className="ms-stat-card">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Proyectos</p>
-            <p className="text-xl font-semibold text-white">{data.proyectos.length}</p>
+            <p className="ms-h1">{data.proyectos.length}</p>
             <p className="text-xs text-gray-600 mt-0.5">{fmtDate(data.desde, { weekday: undefined })} – {fmtDate(data.hasta, { weekday: undefined })}</p>
           </div>
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+          <div className="ms-stat-card">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Presupuesto operación</p>
-            <p className="text-xl font-semibold text-white">{fmt(totalPresupuestado)}</p>
+            <p className="ms-h1">{fmt(totalPresupuestado)}</p>
             <p className="text-xs text-gray-600 mt-0.5">cotizado</p>
           </div>
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+          <div className="ms-stat-card">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Total asignado</p>
             <p className={`text-2xl font-bold ${totalAsignado > totalPresupuestado ? "text-red-400" : "text-[#B3985B]"}`}>{fmt(totalAsignado)}</p>
             <p className={`text-xs mt-0.5 ${totalAsignado > totalPresupuestado ? "text-red-500" : "text-gray-600"}`}>
               {totalPresupuestado > 0 ? `${Math.round((totalAsignado / totalPresupuestado) * 100)}% del presupuesto` : "sin presupuesto"}
             </p>
           </div>
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+          <div className="ms-stat-card">
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Por pagar</p>
             <p className="text-2xl font-bold text-yellow-400">{fmt(totalPendiente)}</p>
             {totalPagado > 0 && <p className="text-xs text-green-500 mt-0.5">{fmt(totalPagado)} ya pagado</p>}
@@ -339,7 +339,7 @@ export default function PagosPersonalPage() {
       )}
 
       {!loading && data && data.proyectos.length === 0 && (
-        <div className="bg-[#111] border border-[#222] rounded-xl p-10 text-center">
+        <div className="ms-card p-10 text-center">
           <p className="text-gray-400 text-sm">No hay proyectos en este ciclo</p>
           <p className="text-gray-600 text-xs mt-1">{fmtDate(data.desde)} al {fmtDate(data.hasta)}</p>
         </div>
@@ -366,7 +366,7 @@ export default function PagosPersonalPage() {
               }
 
               return (
-                <div key={p.id} className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                <div key={p.id} className="ms-table-wrapper">
                   <div className="px-5 py-3 bg-[#1a1a1a] flex items-center justify-between gap-3 flex-wrap">
                     <div>
                       <Link href={`/proyectos/${p.id}`} className="text-white font-semibold hover:text-[#B3985B] transition-colors text-sm">
@@ -453,7 +453,7 @@ export default function PagosPersonalPage() {
           </div>
 
           {/* ── Right: Nómina semanal ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden sticky top-6">
+          <div className="ms-table-wrapper sticky top-6">
             <div className="px-5 py-3 bg-[#1a1a1a] border-b border-[#222]">
               <p className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Nómina de la semana</p>
               <p className="text-xs text-gray-600 mt-0.5">

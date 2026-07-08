@@ -72,7 +72,7 @@ function pct(n: number) {
 
 function KpiCard({ label, value, sub, color = "text-white" }: { label: string; value: string; sub?: string; color?: string }) {
   return (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+    <div className="ms-stat-card">
       <p className="text-[#6b7280] text-xs mb-1">{label}</p>
       <p className={`text-2xl font-semibold ${color}`}>{value}</p>
       {sub && <p className="text-[#444] text-[10px] mt-0.5">{sub}</p>}
@@ -395,8 +395,8 @@ export default function InventarioActivosPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Inventario de Activos</h1>
-          <p className="text-[#6b7280] text-sm mt-0.5">Gestión financiera del inventario · solo administración</p>
+          <h1 className="ms-h1">Inventario de Activos</h1>
+          <p className="ms-subtitle mt-0.5">Gestión financiera del inventario · solo administración</p>
         </div>
         <button
           onClick={descargarPDF}
@@ -410,7 +410,7 @@ export default function InventarioActivosPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-1 bg-[#111] border border-[#1e1e1e] rounded-xl p-1 w-fit">
+      <div className="ms-tabs w-fit flex-wrap">
         {tabs.map(t => (
           <button
             key={t.key}
@@ -436,7 +436,7 @@ export default function InventarioActivosPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
 
                 {/* Producción — ADMINISTRADO */}
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 relative overflow-hidden">
+                <div className="ms-stat-card relative overflow-hidden">
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-amber-500/60" />
                   <div className="flex items-start justify-between mb-3">
                     <div>
@@ -460,7 +460,7 @@ export default function InventarioActivosPage() {
                 </div>
 
                 {/* Oficina — PROPIO */}
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 relative overflow-hidden">
+                <div className="ms-stat-card relative overflow-hidden">
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#B3985B]/60" />
                   <div className="flex items-start justify-between mb-3">
                     <div>
@@ -477,7 +477,7 @@ export default function InventarioActivosPage() {
                 </div>
 
                 {/* Intangibles — PROPIO */}
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 relative overflow-hidden">
+                <div className="ms-stat-card relative overflow-hidden">
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-purple-500/60" />
                   <div className="flex items-start justify-between mb-3">
                     <div>
@@ -498,7 +498,7 @@ export default function InventarioActivosPage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
                 {/* Gráfica horizontal — valor por categoría de producción */}
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                <div className="ms-table-wrapper">
                   <div className="px-4 py-3 border-b border-[#1e1e1e] flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-white">Valor por categoría</p>
@@ -531,7 +531,7 @@ export default function InventarioActivosPage() {
                 </div>
 
                 {/* Composición del portafolio */}
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+                <div className="ms-table-wrapper">
                   <div className="px-4 py-3 border-b border-[#1e1e1e]">
                     <p className="text-sm font-medium text-white">Composición del portafolio</p>
                     <p className="text-[10px] text-[#555] mt-0.5">Distribución por tipo de activo</p>
@@ -588,7 +588,7 @@ export default function InventarioActivosPage() {
               </div>
 
               {/* ── Tabla consolidada ── */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div className="ms-table-wrapper">
                 <div className="px-4 py-3 border-b border-[#1e1e1e]">
                   <p className="text-sm font-medium text-white">Inventario consolidado</p>
                   <p className="text-[#555] text-xs mt-0.5">Resumen por sección</p>
@@ -682,7 +682,7 @@ export default function InventarioActivosPage() {
           {equiposProd.length === 0 ? (
             <p className="text-center text-[#333] text-sm py-12">No hay equipos de producción registrados.</p>
           ) : (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div className="ms-table-wrapper">
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
@@ -839,7 +839,7 @@ export default function InventarioActivosPage() {
                     <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Nombre del accesorio *</label>
                     <input value={formAcc.nombre} onChange={e => setFormAcc(p => ({ ...p, nombre: e.target.value }))}
                       placeholder="Ej: Clamp de 50mm, Cable XLR 5m..."
-                      className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+                      className="ms-input" />
                   </div>
                   <div>
                     <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Categoría</label>
@@ -921,7 +921,7 @@ export default function InventarioActivosPage() {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2">
               <input value={busquedaAcc} onChange={e => setBusquedaAcc(e.target.value)} placeholder="Buscar accesorio o equipo..."
-                className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/40 w-56" />
+                className="ms-card rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/40 w-56" />
               <div className="flex gap-0.5 bg-[#111] border border-[#1e1e1e] rounded-lg p-0.5">
                 {(["equipo", "categoria"] as const).map(g => (
                   <button key={g} onClick={() => setAgruparAcc(g)}
@@ -942,11 +942,11 @@ export default function InventarioActivosPage() {
 
           {/* Tabla: siempre visible si hay equipos de produccion */}
           {equiposProd.length === 0 ? (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-12 text-center">
+            <div className="ms-card p-12 text-center">
               <p className="text-[#555] text-sm">No hay equipos propios en el inventario.</p>
             </div>
           ) : (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div className="ms-table-wrapper">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-[#1e1e1e] bg-[#0a0a0a]">
@@ -1081,7 +1081,7 @@ export default function InventarioActivosPage() {
                     <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Artículo *</label>
                     <input value={formOf.nombre} onChange={e => setFormOf(p => ({ ...p, nombre: e.target.value }))}
                       placeholder="Ej: Silla ergonómica"
-                      className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+                      className="ms-input" />
                   </div>
                   {/* Row 2: marca + modelo */}
                   <div className="grid grid-cols-2 gap-3">
@@ -1089,13 +1089,13 @@ export default function InventarioActivosPage() {
                       <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Marca</label>
                       <input value={formOf.marca} onChange={e => setFormOf(p => ({ ...p, marca: e.target.value }))}
                         placeholder="Ej: Sony"
-                        className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+                        className="ms-input" />
                     </div>
                     <div>
                       <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Modelo</label>
                       <input value={formOf.modelo} onChange={e => setFormOf(p => ({ ...p, modelo: e.target.value }))}
                         placeholder="Ej: A7 IV"
-                        className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+                        className="ms-input" />
                     </div>
                   </div>
                   {/* Row 3: cantidad + valor adq + valor actual */}
@@ -1103,19 +1103,19 @@ export default function InventarioActivosPage() {
                     <div>
                       <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Cantidad</label>
                       <input type="number" min="1" value={formOf.cantidad} onChange={e => setFormOf(p => ({ ...p, cantidad: e.target.value }))}
-                        className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]/50" />
+                        className="ms-input" />
                     </div>
                     <div>
                       <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Valor adquisición</label>
                       <input type="number" value={formOf.valorAdquisicion} onChange={e => setFormOf(p => ({ ...p, valorAdquisicion: e.target.value }))}
                         placeholder="0"
-                        className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]/50" />
+                        className="ms-input" />
                     </div>
                     <div>
                       <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Valor actual</label>
                       <input type="number" value={formOf.valorActual} onChange={e => setFormOf(p => ({ ...p, valorActual: e.target.value }))}
                         placeholder="0"
-                        className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]/50" />
+                        className="ms-input" />
                     </div>
                   </div>
                   {/* Notes */}
@@ -1123,7 +1123,7 @@ export default function InventarioActivosPage() {
                     <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Notas</label>
                     <input value={formOf.notas} onChange={e => setFormOf(p => ({ ...p, notas: e.target.value }))}
                       placeholder="Número de serie, ubicación, etc."
-                      className="w-full bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+                      className="ms-input" />
                   </div>
                 </div>
                 <div className="px-6 py-4 border-t border-[#1e1e1e] flex gap-2 justify-end">
@@ -1152,7 +1152,7 @@ export default function InventarioActivosPage() {
           {/* Barra superior: búsqueda + agregar */}
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <input value={busquedaOf} onChange={e => setBusquedaOf(e.target.value)} placeholder="Buscar activo..."
-              className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/40 w-56" />
+              className="ms-card rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/40 w-56" />
             <button onClick={() => abrirModalOf()}
               className="flex items-center gap-2 px-4 py-2 bg-[#B3985B] hover:bg-[#c9a960] text-black text-sm font-semibold rounded-lg transition-colors">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1161,7 +1161,7 @@ export default function InventarioActivosPage() {
           </div>
 
           {/* Tabla estilo inventario */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="ms-table-wrapper">
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
@@ -1296,7 +1296,7 @@ export default function InventarioActivosPage() {
               sub="Costo histórico" />
           </div>
 
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="ms-table-wrapper">
             <div className="px-4 py-3 border-b border-[#1e1e1e]">
               <p className="text-white text-sm font-medium">Activos Intangibles</p>
               <p className="text-[#555] text-xs mt-0.5">Software propietario y propiedad intelectual de Mainstage Pro</p>

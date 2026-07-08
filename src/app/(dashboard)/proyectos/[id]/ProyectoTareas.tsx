@@ -938,7 +938,7 @@ export default function ProyectoTareas({ proyectoId, proyectoNombre = "Proyecto"
   return (
     <div className="space-y-4">
       {/* ── Header con stats ── */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-5">
+      <div className="ms-card rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-white font-semibold text-base">Tareas del proyecto</h3>
@@ -999,7 +999,7 @@ export default function ProyectoTareas({ proyectoId, proyectoNombre = "Proyecto"
       {loading ? (
         <div className="space-y-2">
           {[1, 2, 3].map(i => (
-            <div key={i} className="h-16 bg-[#111] border border-[#1e1e1e] rounded-xl animate-pulse" />
+            <div key={i} className="h-16 ms-card animate-pulse" />
           ))}
         </div>
       ) : tareasFiltradas.length === 0 ? (

@@ -160,7 +160,7 @@ function KpiCard({ label, value, sub, color = "text-white" }: {
   label: string; value: string; sub?: string; color?: string;
 }) {
   return (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+    <div className="ms-stat-card">
       <p className="text-[#6b7280] text-xs mb-1">{label}</p>
       <p className={`text-2xl font-bold tabular-nums ${color}`}>{value}</p>
       {sub && <p className="text-[#555] text-[10px] mt-0.5">{sub}</p>}
@@ -176,7 +176,7 @@ function AnalisisSection({ title, color, fields, values, onChange, saving }: {
   saving: boolean;
 }) {
   return (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+    <div className="ms-table-wrapper">
       <div className="px-5 py-3 border-b border-[#1e1e1e] flex items-center justify-between">
         <h3 className={`text-sm font-semibold ${color}`}>{title}</h3>
         {saving && <span className="text-[10px] text-[#555] animate-pulse">Guardando…</span>}
@@ -597,7 +597,7 @@ export default function ResultadosMarketingPage() {
         if (!pub) return null;
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-            <div className="bg-[#111] border border-[#222] rounded-2xl w-full max-w-md shadow-2xl">
+            <div className="ms-card rounded-2xl w-full max-w-md shadow-2xl">
               {/* Header */}
               <div className="px-5 py-4 border-b border-[#1e1e1e] flex items-start justify-between gap-3">
                 <div>
@@ -697,7 +697,7 @@ export default function ResultadosMarketingPage() {
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
           <div>
-            <h1 className="text-xl font-semibold text-white">Resultados de Marketing</h1>
+            <h1 className="ms-h1">Resultados de Marketing</h1>
             <p className="text-[#555] text-xs mt-0.5">Reporte mensual operativo</p>
           </div>
           <div className="flex items-center gap-2">
@@ -706,7 +706,7 @@ export default function ResultadosMarketingPage() {
               type="month"
               value={mes}
               onChange={e => setMes(e.target.value)}
-              className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-[#B3985B]/50"
+              className="ms-card rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-[#B3985B]/50"
             />
             <button
               onClick={handleDescargarPDF}
@@ -751,7 +751,7 @@ export default function ResultadosMarketingPage() {
               <KpiCard label="Publicadas" value={String(publicadas)} color="text-emerald-400" sub="estado PUBLICADO" />
               <KpiCard label="No publicadas" value={String(noPublicadas)} color="text-yellow-400" sub="pendiente / en proceso / listo" />
               <KpiCard label="Canceladas" value={String(canceladas)} color="text-red-400" />
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+              <div className="ms-stat-card">
                 <p className="text-[#6b7280] text-xs mb-1">Rendimiento</p>
                 <p className={`text-2xl font-bold tabular-nums ${rendimiento >= 80 ? "text-emerald-400" : rendimiento >= 60 ? "text-yellow-400" : "text-red-400"}`}>
                   {rendimiento}%
@@ -763,7 +763,7 @@ export default function ResultadosMarketingPage() {
             {/* Gráficas */}
             {!loadingPub && publicaciones.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                <div className="ms-stat-card">
                   <p className="text-xs text-[#6b7280] uppercase tracking-wider mb-3">Distribución por estado</p>
                   <ResponsiveContainer width="100%" height={200}>
                     <PieChart>
@@ -781,7 +781,7 @@ export default function ResultadosMarketingPage() {
                   </ResponsiveContainer>
                 </div>
                 {formatoBarData.length > 0 && (
-                  <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                  <div className="ms-stat-card">
                     <p className="text-xs text-[#6b7280] uppercase tracking-wider mb-3">Publicadas vs Total por formato</p>
                     <ResponsiveContainer width="100%" height={200}>
                       <BarChart data={formatoBarData} barCategoryGap="30%">
@@ -799,7 +799,7 @@ export default function ResultadosMarketingPage() {
             )}
 
             {/* Tabla de no publicadas */}
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div className="ms-table-wrapper">
               <div className="px-4 py-3 border-b border-[#1e1e1e] flex items-center justify-between">
                 <p className="text-sm font-semibold text-white">
                   Publicaciones no publicadas
@@ -952,7 +952,7 @@ export default function ResultadosMarketingPage() {
             })()}
 
             {/* Tabla métricas */}
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div className="ms-table-wrapper">
               <div className="px-4 py-3 border-b border-[#1e1e1e]">
                 <p className="text-sm font-semibold text-white">Registro — {mesLabel(mes)}</p>
                 <p className="text-[10px] text-[#555] mt-0.5 no-print">Click en cualquier número para editarlo</p>
@@ -1004,7 +1004,7 @@ export default function ResultadosMarketingPage() {
             </div>
 
             {/* Gráfica comparativa */}
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+            <div className="ms-stat-card">
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <p className="text-sm font-semibold text-white">Comparativa — últimos 3 meses</p>
                 <div className="flex gap-1 no-print flex-wrap">
@@ -1069,7 +1069,7 @@ export default function ResultadosMarketingPage() {
               <KpiCard label="Canceladas" value={String(ejecuciones.filter(e => e.estado === "CANCELADA").length)} color="text-red-400" />
             </div>
 
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div className="ms-table-wrapper">
               <div className="px-4 py-3 border-b border-[#1e1e1e]">
                 <p className="text-sm font-semibold text-white">Campañas del mes</p>
               </div>
@@ -1163,7 +1163,7 @@ export default function ResultadosMarketingPage() {
               <KpiCard label="CTR promedio" value={ctrProm != null ? `${ctrProm.toFixed(2)}%` : "—"} color="text-emerald-400" sub="click-through rate" />
             </div>
 
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div className="ms-table-wrapper">
               <div className="px-4 py-3 border-b border-[#1e1e1e]">
                 <p className="text-sm font-semibold text-white">KPIs por campaña — {mesLabel(mes)}</p>
               </div>

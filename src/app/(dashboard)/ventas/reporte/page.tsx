@@ -319,7 +319,7 @@ export default function ReporteVentasPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-xl font-semibold text-white">Reporte de Ventas</h1>
+          <h1 className="ms-h1">Reporte de Ventas</h1>
           <p className="text-[#555] text-xs">Resultados mensuales · análisis de rendimiento</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -374,7 +374,7 @@ export default function ReporteVentasPage() {
             {/* ── SECCIÓN 1: KPIs principales ─────────────────────────────── */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {/* Ventas totales */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 col-span-2 md:col-span-1">
+              <div className="ms-stat-card col-span-2 md:col-span-1">
                 <p className="text-[#555] text-[10px] uppercase tracking-widest mb-1">Ingresos del mes</p>
                 <p className="text-3xl font-bold text-[#B3985B] leading-none">{fmt(reporte.ventasTotal.monto)}</p>
                 <div className="flex items-center gap-2 mt-2">
@@ -390,21 +390,21 @@ export default function ReporteVentasPage() {
               </div>
 
               {/* Ticket promedio */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+              <div className="ms-stat-card">
                 <p className="text-[#555] text-[10px] uppercase tracking-widest mb-1">Ticket promedio</p>
-                <p className="text-xl font-semibold text-white">{fmt(reporte.ticketPromedio)}</p>
+                <p className="ms-h1">{fmt(reporte.ticketPromedio)}</p>
                 <p className="text-[#444] text-[10px] mt-1.5">por venta cerrada</p>
               </div>
 
               {/* Conversión */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+              <div className="ms-stat-card">
                 <p className="text-[#555] text-[10px] uppercase tracking-widest mb-1">Tasa de conversión</p>
                 <p className="text-2xl font-bold text-green-400">{conversionPct}%</p>
                 <p className="text-[#444] text-[10px] mt-1.5">{reporte.cotizaciones.ventasCerradas} de {reporte.cotizaciones.totalCreadas} cotiz.</p>
               </div>
 
               {/* Perdidos */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+              <div className="ms-stat-card">
                 <p className="text-[#555] text-[10px] uppercase tracking-widest mb-1">Ventas perdidas</p>
                 <p className="text-2xl font-bold text-red-400">{reporte.tratosPerdidos.count}</p>
                 <p className="text-[#444] text-[10px] mt-1.5">{reporte.tratosPerdidos.montoEstimadoPerdido > 0 ? `~${fmt(reporte.tratosPerdidos.montoEstimadoPerdido)} estimado` : "este período"}</p>
@@ -414,7 +414,7 @@ export default function ReporteVentasPage() {
             {/* ── SECCIÓN 2: Tendencia + Clientes ─────────────────────────── */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Gráfica tendencia — ocupa 2 columnas */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 md:col-span-2">
+              <div className="ms-card p-5 md:col-span-2">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-white font-semibold text-sm">Tendencia — últimos 6 meses</h2>
                   <div className="flex items-center gap-3 text-[10px] text-[#555]">
@@ -454,7 +454,7 @@ export default function ReporteVentasPage() {
               </div>
 
               {/* Top 5 clientes */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+              <div className="ms-card p-5">
                 <h2 className="text-white font-semibold text-sm mb-4">Top clientes del mes</h2>
                 {reporte.top5Clientes.length === 0 ? (
                   <p className="text-[#444] text-xs text-center py-8">Sin datos</p>
@@ -484,7 +484,7 @@ export default function ReporteVentasPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
               {/* Tipo de evento */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+              <div className="ms-card p-5">
                 <h2 className="text-white font-semibold text-sm mb-4">Tipo de evento</h2>
                 {reporte.porTipoEvento.length === 0
                   ? <p className="text-[#444] text-xs text-center py-6">Sin datos</p>
@@ -510,7 +510,7 @@ export default function ReporteVentasPage() {
               </div>
 
               {/* Mix servicios con donut */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+              <div className="ms-card p-5">
                 <h2 className="text-white font-semibold text-sm mb-2">Mix de servicios</h2>
                 {reporte.porTipoServicio.length === 0
                   ? <p className="text-[#444] text-xs text-center py-6">Sin datos</p>
@@ -556,7 +556,7 @@ export default function ReporteVentasPage() {
               </div>
 
               {/* Origen de leads — barras horizontales */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+              <div className="ms-card p-5">
                 <h2 className="text-white font-semibold text-sm mb-4">Origen de leads</h2>
                 {reporte.origenLeads.length === 0
                   ? <p className="text-[#444] text-xs text-center py-6">Sin datos</p>
@@ -586,7 +586,7 @@ export default function ReporteVentasPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
               {/* Funnel de conversión */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+              <div className="ms-card p-5">
                 <h2 className="text-white font-semibold text-sm mb-4">Embudo de conversión</h2>
                 <div className="space-y-2">
                   {[
@@ -619,7 +619,7 @@ export default function ReporteVentasPage() {
               </div>
 
               {/* Rendimiento por vendedor */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+              <div className="ms-card p-5">
                 <h2 className="text-white font-semibold text-sm mb-4">Rendimiento por vendedor</h2>
                 {reporte.porVendedor.length === 0
                   ? <p className="text-[#444] text-xs text-center py-6">Sin datos</p>
@@ -648,7 +648,7 @@ export default function ReporteVentasPage() {
               </div>
 
               {/* Análisis de pérdidas */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+              <div className="ms-card p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-white font-semibold text-sm">Motivos de pérdida</h2>
                   <span className="text-red-400 text-xl font-bold">{reporte.tratosPerdidos.count}</span>
@@ -684,7 +684,7 @@ export default function ReporteVentasPage() {
             {/* ── SECCIÓN 5: Clientes + Zonas ─────────────────────────────── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Clientes nuevos vs recurrentes */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+              <div className="ms-card p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-white font-semibold text-sm">Nuevos vs recurrentes</h2>
                   <div className="flex items-center gap-3 text-[10px]">
@@ -721,7 +721,7 @@ export default function ReporteVentasPage() {
 
               {/* Zonas */}
               {reporte.porZona.length > 0 ? (
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+                <div className="ms-card p-5">
                   <h2 className="text-white font-semibold text-sm mb-4">Distribución por zona</h2>
                   <div className="space-y-3">
                     {reporte.porZona.map((z, i) => (
@@ -742,7 +742,7 @@ export default function ReporteVentasPage() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+                <div className="ms-card p-5">
                   <h2 className="text-white font-semibold text-sm mb-4">Cotizaciones → Proyectos</h2>
                   <div className="space-y-4">
                     {[
@@ -818,7 +818,7 @@ export default function ReporteVentasPage() {
           ) : (
             <>
               {/* Header vendedor */}
-              <div className="flex items-center justify-between bg-[#111] border border-[#1e1e1e] rounded-xl px-5 py-4">
+              <div className="flex items-center justify-between ms-card px-5 py-4">
                 <div>
                   <p className="text-white font-semibold">{reporteVendedor.vendedor.name}</p>
                   <p className="text-[#6b7280] text-xs mt-0.5">Mes #{reporteVendedor.mesTrabajo} · Meta: {fmt(reporteVendedor.piso)}</p>
@@ -842,7 +842,7 @@ export default function ReporteVentasPage() {
                   { label: "Total a pagar",     value: fmt(reporteVendedor.resumen.totalAPagar), color: "text-[#B3985B]",
                     sub: reporteVendedor.resumen.alcanzaPiso ? `+ bono ${reporteVendedor.config.pctBono}%` : undefined },
                 ].map(k => (
-                  <div key={k.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                  <div key={k.label} className="ms-stat-card">
                     <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">{k.label}</p>
                     <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
                     {k.sub && <p className="text-gray-700 text-[10px] mt-0.5">{k.sub}</p>}
@@ -851,7 +851,7 @@ export default function ReporteVentasPage() {
               </div>
 
               {/* Tabla de eventos */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div className="ms-table-wrapper">
                 <div className="px-5 py-3.5 border-b border-[#1a1a1a] flex items-center justify-between">
                   <h2 className="text-white font-semibold text-sm">Detalle de eventos</h2>
                   <p className="text-gray-600 text-xs">{reporteVendedor.detalles.length} eventos</p>
@@ -914,7 +914,7 @@ export default function ReporteVentasPage() {
 
               {/* Resumen pago + Registrar pago */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 border-l-2 border-l-[#B3985B]">
+                <div className="ms-card p-5 border-l-2 border-l-[#B3985B]">
                   <h2 className="text-white font-semibold text-sm mb-4">Resumen de pago</h2>
                   <div className="space-y-2.5">
                     <div className="flex justify-between text-xs"><span className="text-gray-500">Comisión base</span><span className="text-white font-medium">{fmt(reporteVendedor.resumen.totalComisiones)}</span></div>
@@ -948,7 +948,7 @@ export default function ReporteVentasPage() {
                   </div>
                 </div>
                 {isAdmin && (
-                  <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+                  <div className="ms-card p-5">
                     <h2 className="text-white font-semibold text-sm mb-4">Registrar pago</h2>
                     <div className="space-y-3">
                       <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-lg px-4 py-3">

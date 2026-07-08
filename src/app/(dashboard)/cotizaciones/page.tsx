@@ -56,19 +56,19 @@ export default function CotizacionesPage() {
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-white">Cotizaciones</h1>
-          <p className="text-[#6b7280] text-sm">
+          <h1 className="ms-h1">Cotizaciones</h1>
+          <p className="ms-subtitle">
             {loading ? "Cargando..." : `${cotizaciones.length} cotizaciones`}
           </p>
         </div>
       </div>
 
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+      <div className="ms-table-wrapper">
         {loading ? (
           <SkeletonPage rows={5} cols={5} />
         ) : cotizaciones.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-[#6b7280] text-sm">No hay cotizaciones</p>
+            <p className="ms-subtitle">No hay cotizaciones</p>
             <p className="text-[#444] text-xs mt-1">Crea una cotización desde un trato</p>
           </div>
         ) : (
@@ -77,7 +77,7 @@ export default function CotizacionesPage() {
             <thead>
               <tr className="border-b border-[#1e1e1e]">
                 {["Número", "Cliente", "Evento", "Total", "Estado", "Fecha", ""].map((h) => (
-                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">
+                  <th key={h} className="ms-th">
                     {h}
                   </th>
                 ))}

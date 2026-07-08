@@ -532,7 +532,7 @@ function DocAccordion({ docKey, title, desc, tag, children, isOpen, onToggle }: 
   isOpen: boolean; onToggle: () => void;
 }) {
   return (
-    <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+    <div className="ms-table-wrapper">
       <button onClick={onToggle} className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-[#1a1a1a] transition-colors">
         <div className="flex items-center gap-2 min-w-0">
           <div className="min-w-0">
@@ -600,7 +600,7 @@ function ProtocoloPanel({ tipo, data, onSave }: {
   const save = async () => { setSaving(true); await onSave(tipo, local); setSaving(false); };
 
   return (
-    <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+    <div className="ms-table-wrapper">
       <div className="flex items-center justify-between px-5 py-4 border-b border-[#222]">
         <div className="flex items-center gap-3">
           <span className="text-2xl">{icon}</span>
@@ -851,9 +851,9 @@ function VehiculoIdSelector({
                   className="w-full bg-[#111] border border-[#222] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]/50" />
                 <div className="grid grid-cols-2 gap-2">
                   <input type="text" value={newMarca} onChange={e => setNewMarca(e.target.value)}
-                    placeholder="Marca" className="bg-[#111] border border-[#222] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]/50" />
+                    placeholder="Marca" className="ms-card rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]/50" />
                   <input type="text" value={newColor} onChange={e => setNewColor(e.target.value)}
-                    placeholder="Color" className="bg-[#111] border border-[#222] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]/50" />
+                    placeholder="Color" className="ms-card rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-[#B3985B]/50" />
                 </div>
                 <input type="text" value={newPlacas} onChange={e => setNewPlacas(e.target.value)}
                   placeholder="Placas (opcional)"
@@ -1243,12 +1243,12 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
 
       {/* KPIs */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-3">
+        <div className="ms-card p-3">
           <p className="text-[#6b7280] text-[10px] mb-1">Propios</p>
           <p className="text-white text-xl font-semibold">{propios.length}</p>
           <p className="text-[#444] text-[10px]">{conflictos.length > 0 ? `${conflictos.length} con conflicto` : 'Sin conflictos'}</p>
         </div>
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-3">
+        <div className="ms-card p-3">
           <p className="text-[#6b7280] text-[10px] mb-1">Externos confirmados</p>
           <p className="text-emerald-400 text-xl font-semibold">{externos.length}</p>
           <p className="text-[#444] text-[10px]">Proveedor asignado</p>
@@ -1292,7 +1292,7 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
 
       {/* Sección: Externos confirmados */}
       {externos.length > 0 && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="ms-table-wrapper">
           <div className="px-4 py-2.5 bg-blue-900/5 border-b border-blue-900/20 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-blue-400" />
             <span className="text-[10px] text-blue-400 uppercase tracking-widest font-semibold">Proveedor externo ({externos.length})</span>
@@ -1319,7 +1319,7 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
 
       {/* Sección: Equipos propios */}
       {propios.length > 0 && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="ms-table-wrapper">
           <div className="px-4 py-2.5 bg-emerald-900/5 border-b border-emerald-900/20 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
             <span className="text-[10px] text-emerald-400 uppercase tracking-widest font-semibold">Equipo propio ({propios.length})</span>
@@ -3548,7 +3548,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       )}
       <button
         onClick={() => { setLoading(true); load(); }}
-        className="px-4 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c9a96a] transition-colors">
+        className="ms-btn-primary">
         Reintentar
       </button>
       <a href="/proyectos" className="text-white/30 text-xs hover:text-white/60 transition-colors">← Volver a proyectos</a>
@@ -3592,7 +3592,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </span>
             )}
           </div>
-          <h1 className="text-xl md:text-xl font-semibold text-white">{proyecto.nombre}</h1>
+          <h1 className="text-xl md:ms-h1">{proyecto.nombre}</h1>
           <Link href={`/crm/clientes/${proyecto.cliente.id}`} className="text-[#B3985B] text-sm hover:underline">
             {proyecto.cliente.nombre}{proyecto.cliente.empresa ? ` · ${proyecto.cliente.empresa}` : ""}
           </Link>
@@ -3871,7 +3871,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         const pendientes = wChecks.filter(c => !c.ok);
 
         return (
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div className="ms-stat-card">
             {/* Header row */}
             <div className="flex items-center justify-between gap-3 mb-3">
               <div className="flex items-center gap-3">
@@ -3933,7 +3933,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
       {/* ── KPIs rápidos ── */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+        <div className="ms-stat-card">
           <p className="text-gray-500 text-xs mb-1">{esRenta ? 'Equipos' : 'Personal'}</p>
           {esRenta ? (
             <>
@@ -3948,17 +3948,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           )}
         </div>
         {proyecto._canViewFinances ? (
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+          <div className="ms-stat-card">
             <p className="text-gray-500 text-xs mb-1">Cobrado</p>
             <p className="text-green-400 text-lg font-bold">{fmt(cobrado)}</p>
             <p className="text-gray-600 text-xs">de {fmt(totalCxC)}</p>
           </div>
         ) : (
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4 flex flex-col justify-center items-center opacity-50">
+          <div className="ms-stat-card flex flex-col justify-center items-center opacity-50">
             <p className="text-gray-500 text-xs text-center">Finanzas ocultas</p>
           </div>
         )}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+        <div className="ms-stat-card">
           <p className="text-gray-500 text-xs mb-1">Días</p>
           <p className={`text-lg font-bold ${diasRestantes < 0 ? "text-gray-500" : diasRestantes <= 7 ? "text-red-400" : diasRestantes <= 30 ? "text-yellow-400" : "text-white"}`}>
             {diasRestantes < 0 ? "Pasado" : diasRestantes === 0 ? "¡Hoy!" : diasRestantes}
@@ -4035,7 +4035,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             )}
             {/* Cliente */}
-            <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+            <div className="ms-card p-5">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Cliente</p>
               <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
                 <div>
@@ -4084,7 +4084,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               </div>
             </div>
             {/* Evento */}
-            <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+            <div className="ms-card p-5">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Datos del evento</p>
 
               {/* Tipo de evento + servicio — badges estáticos */}
@@ -4214,7 +4214,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </div>
 
             {/* Notas */}
-            <div className="bg-[#111] border border-[#222] rounded-xl p-5 space-y-3">
+            <div className="ms-card p-5 space-y-3">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Notas del proyecto</p>
             {/* Notas del descubrimiento */}
             {(() => {
@@ -4306,7 +4306,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
 
           {/* ── Traslados (solo producción) ── */}
-          {!esRenta && <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+          {!esRenta && <div className="ms-card p-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Traslados</p>
               {savingTransporte && <p className="text-xs text-gray-600">Guardando...</p>}
@@ -4374,7 +4374,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               OTRO:           "Otro",
             };
             return (
-              <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+              <div className="ms-card p-5">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Equipo cotizado</p>
                   <a
@@ -4658,7 +4658,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           })()}
 
           {/* ── Personal del evento (sección unificada) ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+          <div className="ms-table-wrapper">
             {/* ── Cabecera ── */}
             <div className="p-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -5238,7 +5238,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
           {/* ── Proveedores y Subrentas ── */}
           <div className="space-y-3">
-            <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+            <div className="ms-stat-card">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Proveedores y subrentas</p>
                 <button onClick={() => setShowAddProveedor(v => !v)}
@@ -5293,7 +5293,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
             {/* Lista de proveedores */}
             {(proyecto.proveedoresEvento ?? []).length > 0 && (
-              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              <div className="ms-table-wrapper">
                 <div className="divide-y divide-[#1a1a1a]">
                   {(proyecto.proveedoresEvento ?? []).map(prov => (
                     <div key={prov.id} className="px-4 py-3">
@@ -5370,7 +5370,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               { nombre: "Zaid Bautista",        cargo: "Auxiliar de Producción",         tel: "4428634195", desc: "Apoyo en montaje, bodega y logística de equipo" },
             ];
             return (
-              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              <div className="ms-table-wrapper">
                 <button onClick={() => setDirectorioOpen(v => !v)} className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-[#1a1a1a] transition-colors">
                   <p className="text-xs text-white font-semibold uppercase tracking-wider">Directorio Mainstage Pro</p>
                   <svg className={`w-4 h-4 text-gray-600 transition-transform ${directorioOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
@@ -5400,7 +5400,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
           {/* ── Cronograma (tabla) — solo producción técnica / dirección técnica ── */}
           {!esRenta && (
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+          <div className="ms-card p-5">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Cronología general del evento</p>
               <div className="flex items-center gap-2 flex-wrap">
@@ -5477,7 +5477,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           )}
 
           {/* ── Documentos operativos ── */}
-          {!esRenta && <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+          {!esRenta && <div className="ms-card p-5">
             <div className="flex items-center justify-between mb-1">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Documentos operativos</p>
               <label className={`cursor-pointer text-xs border px-3 py-1.5 rounded-lg transition-colors ${
@@ -5617,7 +5617,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
             {/* Externos */}
             {equiposExternos.length > 0 && (
-              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              <div className="ms-table-wrapper">
                 <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
                   <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Equipo externo / renta ({equiposExternos.length})</p>
                   <p className="text-xs text-yellow-400 font-semibold">
@@ -5639,7 +5639,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             )}
 
             {proyecto.equipos.length === 0 && (
-              <div className="bg-[#111] border border-[#222] rounded-xl py-12 text-center">
+              <div className="ms-card py-12 text-center">
                 <p className="text-gray-600 text-sm">Sin equipos asignados</p>
                 <p className="text-gray-700 text-xs mt-1">Agrega equipo propio o externo para este proyecto</p>
               </div>
@@ -5816,7 +5816,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
                 if (riderEquipos.length === 0 && cotLineas.length === 0) {
                   return (
-                    <div className="bg-[#111] border border-[#222] rounded-xl py-12 text-center">
+                    <div className="ms-card py-12 text-center">
                       <p className="text-gray-600 text-sm">Sin equipos en este proyecto</p>
                       <p className="text-gray-700 text-xs mt-1">Agrega equipos en la pestaña Equipos o cotización</p>
                     </div>
@@ -5826,7 +5826,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 const grupos: Record<string, typeof riderEquipos> = {};
                 for (const e of riderEquipos) { const cat = e.equipo.categoria.nombre; if (!grupos[cat]) grupos[cat] = []; grupos[cat].push(e); }
                 return (
-                  <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                  <div className="ms-table-wrapper">
                     {Object.entries(grupos).map(([cat, items]) => (
                       <div key={cat}>
                         <div className="px-4 py-1.5 bg-[#0a0a0a] border-b border-[#1a1a1a]">
@@ -5992,7 +5992,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
                                   {/* Add accessory form */}
                                   {isAddOpen ? (
-                                    <div className="bg-[#111] border border-[#222] rounded-lg p-3 space-y-2">
+                                    <div className="ms-card rounded-lg p-3 space-y-2">
                                       <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold">Agregar accesorio</p>
                                       <div className="flex gap-2">
                                         <input
@@ -6093,7 +6093,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <p className="text-gray-500 text-xs">Equipos que se agregan al rider pero no están en la cotización original. La disponibilidad no se verifica aquí.</p>
 
               {equiposRiderExtra.length > 0 && (
-                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden divide-y divide-[#1a1a1a]">
+                <div className="ms-table-wrapper divide-y divide-[#1a1a1a]">
                   {equiposRiderExtra.map(eq => (
                     <div key={eq.id} className="px-4 py-3">
                       {extraEditId === eq.id ? (
@@ -6347,7 +6347,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div className="space-y-4">
 
                   {/* ── Reporte Post-Evento ── */}
-                  <div className="bg-[#111] border border-[#222] rounded-xl p-5 space-y-4">
+                  <div className="ms-card p-5 space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Reporte post-evento</p>
@@ -6413,7 +6413,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </div>
 
                   {/* ── Evaluación del cliente ── */}
-                  <div className="bg-[#111] border border-[#222] rounded-xl p-5 space-y-4">
+                  <div className="ms-card p-5 space-y-4">
                     <div className="flex items-center justify-between"><div><p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Evaluación del cliente</p><p className="text-gray-500 text-xs mt-0.5">Formulario externo para que el cliente califique el servicio</p></div><button onClick={async () => { const token = evalCliente?.tokenAcceso ?? await generarLinkEvalCliente(); if (token) { try { await navigator.clipboard.writeText(`${linkBaseEval}${token}`); } catch { /* noop */ } } }} disabled={generandoLink || loadingEvalCliente || evalCliente?.respondida} className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] disabled:opacity-50 text-white text-xs px-4 py-2 rounded-lg transition-colors"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>{generandoLink ? "Copiando..." : evalCliente?.respondida ? "Respondida" : "Copiar link"}</button></div>
                     {loadingEvalCliente && <p className="text-gray-600 text-sm">Cargando...</p>}
                     {evalCliente && (
@@ -6470,7 +6470,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         <div className="space-y-4">
 
           {/* ── P&L Summary ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+          <div className="ms-table-wrapper">
             <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
               <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Estado de resultados</h3>
               <span className={`text-xs font-bold px-2 py-1 rounded-full ${
@@ -6563,7 +6563,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             const montoLiqPreview = Math.max(0, granTotal - montoAnticipoPreview);
 
             return (
-              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              <div className="ms-table-wrapper">
                 <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
                   <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Cuentas por cobrar</h3>
                   {!editandoEsquema && (
@@ -6888,7 +6888,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           })()}
 
           {/* Pagos a personal */}
-          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+          <div className="ms-table-wrapper">
             <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
               <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Pagos a personal</h3>
               {proyecto.personal.some(p => !p.tarifaAcordada) && proyecto.cotizacion && (
@@ -7070,7 +7070,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             const pctDesviacion = estimadoTotal > 0 ? (desviacion / estimadoTotal) * 100 : 0;
 
             return (
-              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              <div className="ms-table-wrapper">
 
                 {/* Header */}
                 <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
@@ -7254,7 +7254,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             ];
             const cierreReady = cierreReqs.every(r => r.ok) || !!proyecto.cierreFinanciero;
             return (
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+              <div className="ms-card p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div>
                     <h3 className="text-white font-semibold text-sm">Cierre financiero</h3>
@@ -7322,7 +7322,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           })()}
 
           {/* ── Liquidación a inversionistas por uso de equipos propios ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+          <div className="ms-table-wrapper">
             <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
               <h3 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">
                 Liquidación a inversionistas · Equipos propios
@@ -7374,10 +7374,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
                 {/* Viabilidad + equipos */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4">
+                  <div className="ms-card-deep p-4">
                     <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Viabilidad de cotización</p>
                     <div className="flex items-baseline gap-2">
-                      <p className="text-xl font-semibold text-white tabular-nums">{pagoSocios.viabilidad.pctFormateado}</p>
+                      <p className="ms-h1 tabular-nums">{pagoSocios.viabilidad.pctFormateado}</p>
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                         pagoSocios.viabilidad.tier.color === "emerald" ? "bg-emerald-900/30 text-emerald-400"
                         : pagoSocios.viabilidad.tier.color === "green"   ? "bg-green-900/30 text-green-400"
@@ -7388,11 +7388,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <p className="text-[10px] text-gray-600 mt-1">Porcentaje automático: {pagoSocios.viabilidad.tier.pctFormateado}</p>
                   </div>
 
-                  <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4">
+                  <div className="ms-card-deep p-4">
                     <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">
                       Equipos propios en cotización ({pagoSocios.equipoPropio.lineas.length})
                     </p>
-                    <p className="text-xl font-semibold text-white tabular-nums">{fmt(pagoSocios.equipoPropio.total)}</p>
+                    <p className="ms-h1 tabular-nums">{fmt(pagoSocios.equipoPropio.total)}</p>
                     <p className="text-[10px] text-gray-600 mt-1">Total generado por equipos propios</p>
                   </div>
                 </div>
@@ -7528,7 +7528,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         <div className="w-full md:w-72 shrink-0 space-y-3 md:sticky md:top-4">
 
           {/* Cliente card */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-3">
+          <div className="ms-card p-4 space-y-3">
             <p className="text-[10px] uppercase tracking-wider text-gray-600">Cliente</p>
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -7564,7 +7564,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
 
           {/* Proyecto info card */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-2.5">
+          <div className="ms-stat-card space-y-2.5">
             <p className="text-[10px] uppercase tracking-wider text-gray-600">Proyecto</p>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -7587,7 +7587,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
 
           {/* Documentos card */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-2">
+          <div className="ms-stat-card space-y-2">
             <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-3">Documentos</p>
             <div className="space-y-1.5">
               {esRenta && (
@@ -7871,7 +7871,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             <div className="p-6 space-y-5">
               {/* Comparativa */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                <div className="ms-stat-card">
                   <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-3">Estimado (cotización)</p>
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs"><span className="text-gray-400">Gran total</span><span className="text-white font-semibold">{fmt(cierreData.estimado.granTotalEstimado)}</span></div>
@@ -7879,7 +7879,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <div className="flex justify-between text-xs border-t border-[#1e1e1e] pt-2"><span className="text-gray-400">Utilidad est.</span><span className="text-green-400 font-semibold">{fmt(cierreData.estimado.utilidadEstimada)}</span></div>
                   </div>
                 </div>
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                <div className="ms-stat-card">
                   <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-3">Real (al cierre)</p>
                   <div className="space-y-2">
                     <div className="flex justify-between text-xs"><span className="text-gray-400">Total cobrado</span><span className="text-white font-semibold">{fmt(cierreData.real.totalCobrado)}</span></div>
@@ -7905,7 +7905,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
               {/* Desglose */}
               {cierreData.desgloseCostos.length > 0 && (
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                <div className="ms-stat-card">
                   <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-3">Desglose de costos reales</p>
                   <div className="space-y-2">
                     {cierreData.desgloseCostos.map(d => (
@@ -8095,7 +8095,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <button onClick={() => setShowAnuncioCierre(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
             </div>
             <div className="p-5 space-y-4">
-              <pre className="text-xs text-gray-300 bg-[#111] border border-[#222] rounded-xl p-4 whitespace-pre-wrap leading-relaxed font-sans select-all">
+              <pre className="text-xs text-gray-300 ms-stat-card whitespace-pre-wrap leading-relaxed font-sans select-all">
                 {briefText}
               </pre>
               <div className="flex gap-2">

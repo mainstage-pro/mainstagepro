@@ -110,7 +110,7 @@ export default function ProyectosInternosPage() {
           <p className="text-[#555] text-sm mt-1">Mejoras, implementaciones y desarrollo de la empresa</p>
         </div>
         <button onClick={() => setShowModal(true)}
-          className="shrink-0 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          className="shrink-0 ms-btn-primary">
           + Nuevo
         </button>
       </div>

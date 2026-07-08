@@ -99,7 +99,7 @@ function MetricCard({ label, value, sub, color = "text-white" }: {
   label: string; value: string; sub?: string; color?: string;
 }) {
   return (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl px-5 py-4">
+    <div className="ms-card px-5 py-4">
       <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">{label}</p>
       <p className={`text-2xl font-bold tabular-nums ${color}`}>{value}</p>
       {sub && <p className="text-[11px] text-gray-600 mt-1">{sub}</p>}
@@ -255,7 +255,7 @@ export default function FlujoPage() {
       <div className="border-b border-[#1a1a1a] px-6 py-5">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h1 className="text-xl font-semibold text-white">Flujo de Efectivo</h1>
+            <h1 className="ms-h1">Flujo de Efectivo</h1>
             <p className="text-xs text-[#6b7280] mt-0.5">Movimientos realizados + compromisos del período</p>
           </div>
           <select
@@ -314,7 +314,7 @@ export default function FlujoPage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-xl p-1 w-fit">
+          <div className="flex gap-1 ms-card p-1 w-fit">
             {(["realizados", "cxc", "cxp"] as const).map(t => {
               const labels = {
                 realizados: "Movimientos realizados",
@@ -489,7 +489,7 @@ export default function FlujoPage() {
 
           {/* ─── Tab: CxC ─── */}
           {tab === "cxc" && (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div className="ms-table-wrapper">
               <div className="px-5 py-4 border-b border-[#1a1a1a]">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400">Cuentas por cobrar — compromisos del período</h3>
@@ -513,7 +513,7 @@ export default function FlujoPage() {
 
           {/* ─── Tab: CxP ─── */}
           {tab === "cxp" && (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div className="ms-table-wrapper">
               <div className="px-5 py-4 border-b border-[#1a1a1a]">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-red-400">Compromisos de pago — estructurales del período</h3>

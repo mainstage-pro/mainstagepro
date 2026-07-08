@@ -644,7 +644,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       <div className="h-5 w-48 bg-[#1a1a1a] rounded animate-pulse" />
       <div className="h-12 w-full bg-[#1a1a1a] rounded-xl animate-pulse" />
       <div className="space-y-2">
-        {[1,2,3,4,5].map(i => <div key={i} className="h-14 bg-[#111] border border-[#1e1e1e] rounded-xl animate-pulse" />)}
+        {[1,2,3,4,5].map(i => <div key={i} className="h-14 ms-card animate-pulse" />)}
       </div>
     </div>
   );
@@ -848,7 +848,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       )}
 
       {/* Header */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
+      <div className="ms-card p-5 space-y-4">
 
         {/* Fila 1: metadata */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -873,7 +873,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             {/* Nombre del evento del cotizador */}
-            <h1 className="text-xl font-semibold text-white leading-tight">{cot.nombreEvento || "Sin nombre"}</h1>
+            <h1 className="ms-h1 leading-tight">{cot.nombreEvento || "Sin nombre"}</h1>
             {/* Fecha larga del evento */}
             {cot.fechaEvento && (
               <p className="text-xs text-gray-400 mt-0.5 capitalize">
@@ -912,7 +912,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             </Link>
           </div>
           <div className="text-right shrink-0">
-            <p className="text-xl font-semibold text-white tabular-nums">{formatCurrency(cot.granTotal)}</p>
+            <p className="ms-h1 tabular-nums">{formatCurrency(cot.granTotal)}</p>
 
             {cot.aplicaIva && <p className="text-gray-500 text-[11px]">IVA incluido</p>}
             <p className={`text-sm font-medium ${semaforoColor}`}>{semaforo} · {formatPct(pctVivo)} margen</p>
@@ -1178,7 +1178,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       )}
 
       {/* Estado flujo */}
-      <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+      <div className="ms-stat-card">
         <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider">Estado</p>
         {/* Fecha larga del evento debajo del bloque Estado */}
         {cot.fechaEvento && (
@@ -1264,7 +1264,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
         {/* Columna principal */}
         <div className="md:col-span-2 space-y-4">
           {/* Info evento */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+          <div className="ms-stat-card grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
             <div>
               <p className="text-gray-500 text-xs mb-0.5">Fecha</p>
               <input
@@ -1289,7 +1289,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
           {/* Equipos propios — subsecciones por categoría */}
           {lineasEquipo.length > 0 && (
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+            <div className="ms-table-wrapper">
               <div className="flex items-center justify-between px-4 pt-4 pb-2">
                 <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Equipos Mainstage</h3>
                 <Link href="/catalogo/equipos" className="text-[10px] text-[#6b7280] hover:text-[#B3985B] transition-colors">
@@ -1398,7 +1398,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
           {/* Equipos externos */}
           {lineasExterno.length > 0 && (
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+            <div className="ms-table-wrapper">
               <div className="px-4 pt-4 pb-2">
                 <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Equipos Adicionales (Terceros)</h3>
               </div>
@@ -1424,7 +1424,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
           {/* Conceptos adicionales — después de terceros */}
           {lineasOcasional.length > 0 && (
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+            <div className="ms-table-wrapper">
               <div className="px-4 pt-4 pb-2">
                 <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Equipos y conceptos adicionales</h3>
               </div>
@@ -1471,7 +1471,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             const agrupar = fechas.length > 1 || (fechas.length === 1 && fechas[0] !== "__sin_fecha__");
 
             return (
-              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              <div className="ms-table-wrapper">
                 <div className="px-4 pt-4 pb-2">
                   <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Operación técnica</h3>
                 </div>
@@ -1527,7 +1527,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
           {/* Logística */}
           {lineasLog.length > 0 && cot.tipoServicio !== "RENTA" && (
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+            <div className="ms-table-wrapper">
               <div className="px-4 pt-4 pb-2">
                 <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Logística y Viáticos</h3>
               </div>
@@ -1590,7 +1590,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             };
 
             return (
-              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              <div className="ms-table-wrapper">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
                   <div>
                     <p className="text-white text-sm font-semibold">Plan de pagos</p>
@@ -1844,7 +1844,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           })()}
 
           {cot.observaciones && (
-            <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-sm">
+            <div className="ms-stat-card text-sm">
               <p className="text-gray-500 text-xs mb-1">Observaciones</p>
               <p className="text-gray-300">{cot.observaciones}</p>
             </div>
@@ -1861,7 +1861,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
         {/* Sidebar */}
         <div className="space-y-4">
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-sm space-y-2">
+          <div className="ms-stat-card text-sm space-y-2">
             <div className="flex justify-between text-gray-400">
               <span>Equipos bruto</span><span>{formatCurrency(cot.subtotalEquiposBruto)}</span>
             </div>
@@ -1912,7 +1912,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
           {/* ── Gastos de Producción (comisión interna) ── */}
           {cot.estado === "BORRADOR" && (
-            <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-sm">
+            <div className="ms-stat-card text-sm">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Comisión interna</p>
               <p className="text-gray-400 text-xs mb-3 leading-relaxed">
                 Los gastos de producción se agregan como línea dentro del cotizador y se suman al total.
@@ -1927,7 +1927,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           )}
 
           {/* ── Viabilidad detallada ── */}
-          <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-sm">
+          <div className="ms-stat-card text-sm">
             {/* Título + semáforo */}
             <div className="flex items-center justify-between mb-3">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider">Viabilidad</p>
@@ -2046,7 +2046,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
 
           <Link href={`/crm/tratos/${cot.trato.id}`}
-            className="block bg-[#111] border border-[#222] rounded-xl p-4 text-sm hover:border-[#B3985B] transition-colors">
+            className="block ms-stat-card text-sm hover:border-[#B3985B] transition-colors">
             <p className="text-gray-500 text-xs mb-1">Trato vinculado</p>
             <p className="text-white">{cot.trato.tipoEvento}</p>
             <p className="text-gray-400 text-xs">{cot.trato.etapa.replace(/_/g, " ")}</p>

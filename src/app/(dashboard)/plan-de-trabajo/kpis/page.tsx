@@ -119,7 +119,7 @@ function ModalRegistrar({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-      <div className="bg-[#111] border border-[#222] rounded-2xl w-full max-w-md shadow-2xl">
+      <div className="ms-card rounded-2xl w-full max-w-md shadow-2xl">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#1a1a1a]">
           <div>
             <p className="text-white font-semibold text-sm">Registrar KPI</p>

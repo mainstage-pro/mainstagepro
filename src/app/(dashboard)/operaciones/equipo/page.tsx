@@ -334,7 +334,7 @@ export default function EquipoPage() {
               ← Operaciones
             </Link>
           </div>
-          <h1 className="text-xl font-semibold text-white">Equipo</h1>
+          <h1 className="ms-h1">Equipo</h1>
           {!loading && (
             <div className="flex flex-wrap items-center gap-2 mt-1.5">
               <span className="text-[#555] text-sm">{tareasFiltradas.length} tarea{tareasFiltradas.length !== 1 ? "s" : ""}</span>

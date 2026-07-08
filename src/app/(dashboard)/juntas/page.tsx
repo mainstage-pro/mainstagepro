@@ -123,7 +123,7 @@ function ModalNuevaJunta({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
-      <div className="bg-[#111] border border-[#222] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="ms-card rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
           <div>
@@ -224,7 +224,7 @@ function ModalNuevaJunta({
 
               {/* Agenda preview */}
               {template && (
-                <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4">
+                <div className="ms-card-deep p-4">
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Agenda ({template.agendaItems.length} puntos)</p>
                   <div className="space-y-1">
                     {template.agendaItems.map((item) => (
@@ -425,8 +425,8 @@ export default function JuntasPage() {
       <div className="p-4 md:p-6 border-b border-[#1a1a1a]">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold text-white">Juntas</h1>
-            <p className="text-[#6b7280] text-sm mt-0.5">Semana: {semanaLabel}</p>
+            <h1 className="ms-h1">Juntas</h1>
+            <p className="ms-subtitle mt-0.5">Semana: {semanaLabel}</p>
           </div>
           <div className="flex items-center gap-3">
             <Link

@@ -144,13 +144,13 @@ export default function OrdenesCompraPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Órdenes de compra</h1>
+          <h1 className="ms-h1">Órdenes de compra</h1>
           <p className="text-gray-500 text-sm mt-0.5">
             {ordenes.filter(o => o.estado === "PENDIENTE").length} pendientes · {fmt(totales.pendiente + totales.confirmada)} comprometido
           </p>
         </div>
         <button onClick={() => setShowForm(true)}
-          className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          className="ms-btn-primary">
           + Nueva orden
         </button>
       </div>
@@ -251,7 +251,7 @@ export default function OrdenesCompraPage() {
       {loading ? (
         <div className="py-12 text-center text-gray-600 text-sm">Cargando...</div>
       ) : filtradas.length === 0 ? (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-12 text-center">
+        <div className="ms-card py-12 text-center">
           <p className="text-gray-600 text-sm">Sin órdenes de compra</p>
         </div>
       ) : (
@@ -259,7 +259,7 @@ export default function OrdenesCompraPage() {
           {filtradas.map(o => (
             <div key={o.id}
               onClick={() => setDetalle(detalle?.id === o.id ? null : o)}
-              className="bg-[#111] border border-[#1e1e1e] rounded-xl px-5 py-4 hover:bg-[#141414] transition-colors cursor-pointer">
+              className="ms-card px-5 py-4 hover:bg-[#141414] transition-colors cursor-pointer">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">

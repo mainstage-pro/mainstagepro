@@ -151,7 +151,7 @@ function InlineSelect({ label, value, options, onSave, colorMap }: {
         </svg>
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1 min-w-[180px]">
+        <div className="ms-dropdown left-0 top-full mt-1 min-w-[180px]">
           {options.map((o) => (
             <button
               key={o.value}
@@ -318,7 +318,7 @@ function PanelPrecios({
   }
 
   return (
-    <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+    <div className="ms-card p-5">
       {/* Header */}
       <div className="flex items-start justify-between mb-4 gap-3 flex-wrap">
         <div>
@@ -693,7 +693,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-xl md:text-xl font-semibold text-white truncate">{cliente.nombre}</h1>
+          <h1 className="text-xl md:ms-h1 truncate">{cliente.nombre}</h1>
           {(cliente.compania ?? cliente.empresa) && (
             <p className="text-gray-400 text-sm mt-0.5">
               {cliente.compania?.nombre ?? cliente.empresa}
@@ -749,7 +749,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
         <div className="flex flex-wrap gap-2 shrink-0">
           <Link
             href={`/crm/tratos/nuevo`}
-            className="px-4 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors"
+            className="ms-btn-primary"
           >
             + Nuevo trato
           </Link>
@@ -867,7 +867,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
       )}
 
       {/* ── Información de contacto ─────────────────────────────────────────── */}
-      <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+      <div className="ms-card p-5">
         <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">
           Información de contacto
         </h2>
@@ -932,16 +932,16 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
 
       {/* ── Stats ──────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
-          <p className="text-xl font-semibold text-white">{cliente.tratos.length}</p>
+        <div className="ms-stat-card text-center">
+          <p className="ms-h1">{cliente.tratos.length}</p>
           <p className="text-gray-400 text-xs mt-1">Tratos</p>
         </div>
-        <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
-          <p className="text-xl font-semibold text-white">{cliente.cotizaciones.length}</p>
+        <div className="ms-stat-card text-center">
+          <p className="ms-h1">{cliente.cotizaciones.length}</p>
           <p className="text-gray-400 text-xs mt-1">Cotizaciones</p>
         </div>
-        <div className="bg-[#111] border border-[#222] rounded-xl p-4 text-center">
-          <p className="text-xl font-semibold text-white">{cliente.proyectos.length}</p>
+        <div className="ms-stat-card text-center">
+          <p className="ms-h1">{cliente.proyectos.length}</p>
           <p className="text-gray-400 text-xs mt-1">Proyectos</p>
         </div>
       </div>
@@ -977,7 +977,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
 
       {/* ── Tratos ─────────────────────────────────────────────────────────── */}
       {cliente.tratos.length > 0 && (
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">
             Tratos
           </h2>
@@ -1012,7 +1012,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
 
       {/* ── Cotizaciones ────────────────────────────────────────────────────── */}
       {cliente.cotizaciones.length > 0 && (
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">
             Cotizaciones
           </h2>
@@ -1045,7 +1045,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
 
       {/* ── Proyectos ───────────────────────────────────────────────────────── */}
       {cliente.proyectos.length > 0 && (
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">
             Proyectos
           </h2>
@@ -1076,7 +1076,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
 
       {/* ── Panel de precios preferenciales ────────────────────────────────── */}
       {loadingInventario ? (
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <p className="text-[#444] text-sm animate-pulse">Cargando inventario…</p>
         </div>
       ) : (

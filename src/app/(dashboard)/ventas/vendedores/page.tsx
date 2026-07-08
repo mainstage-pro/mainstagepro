@@ -67,7 +67,7 @@ export default function VendedoresPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <Link href="/ventas" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">← Ventas</Link>
-          <h1 className="text-xl font-semibold text-white mt-1">Vendedores</h1>
+          <h1 className="ms-h1 mt-1">Vendedores</h1>
           <p className="text-gray-400 text-sm mt-1">{vendedores.length} vendedor{vendedores.length !== 1 ? "es" : ""} registrado{vendedores.length !== 1 ? "s" : ""}</p>
         </div>
         <button
@@ -131,14 +131,14 @@ export default function VendedoresPage() {
       {loading ? (
         <SkeletonCards count={4} />
       ) : vendedores.length === 0 ? (
-        <div className="bg-[#111] border border-[#222] rounded-xl p-10 text-center">
+        <div className="ms-card p-10 text-center">
           <p className="text-gray-500 text-sm">No hay vendedores registrados</p>
           <p className="text-gray-600 text-xs mt-1">Agrega vendedores para gestionar su pipeline y comisiones</p>
         </div>
       ) : (
         <div className="space-y-3">
           {vendedores.map(v => (
-            <div key={v.id} className="bg-[#111] border border-[#222] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div key={v.id} className="ms-stat-card flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 rounded-full bg-[#1e1e1e] border border-[#333] flex items-center justify-center shrink-0">
                   <span className="text-[#B3985B] text-sm font-semibold">{v.name.charAt(0).toUpperCase()}</span>

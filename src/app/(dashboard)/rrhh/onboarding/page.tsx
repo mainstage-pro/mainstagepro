@@ -59,23 +59,23 @@ export default function OnboardingPage() {
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-white">Planes de integración</h1>
+          <h1 className="ms-h1">Planes de integración</h1>
           <p className="text-gray-500 text-sm">
             {loading ? "Cargando..." : `${activos.length} activo${activos.length !== 1 ? "s" : ""} · ${otros.length} completado${otros.length !== 1 ? "s" : ""}`}
           </p>
         </div>
         <Link href="/rrhh/onboarding/nuevo"
-          className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          className="ms-btn-primary">
           + Nuevo plan
         </Link>
       </div>
 
       {loading ? (
         <div className="space-y-3">
-          {[1,2,3].map(i => <div key={i} className="h-28 bg-[#111] border border-[#1e1e1e] rounded-xl animate-pulse" />)}
+          {[1,2,3].map(i => <div key={i} className="h-28 ms-card animate-pulse" />)}
         </div>
       ) : planes.length === 0 ? (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-20">
+        <div className="ms-card text-center py-20">
           <p className="text-4xl mb-3">🚀</p>
           <p className="text-gray-400 font-medium mb-1">Sin planes de integración</p>
           <p className="text-gray-600 text-sm mb-4">Crea el primer plan para un nuevo colaborador.</p>

@@ -250,7 +250,7 @@ export default function MetasPage() {
         <div className="flex items-start justify-between mb-8">
           <div>
             <p className="text-xs text-[#B3985B] uppercase tracking-widest mb-1">Ventas · Outbound</p>
-            <h1 className="text-xl font-semibold text-white">Metas de prospección</h1>
+            <h1 className="ms-h1">Metas de prospección</h1>
             <p className="text-sm text-gray-500 mt-0.5 capitalize">{mesActual}</p>
           </div>
           <Link href="/crm/tratos/nuevo?tipo=OUTBOUND"
@@ -267,7 +267,7 @@ export default function MetasPage() {
             { label: "Prospectos del mes", value: mes.prospectados, sub: `meta ~${metaMensual}`, color: mes.prospectados >= metaMensual ? "text-green-400" : "text-white" },
             { label: "Cierres del mes", value: mes.cierres, sub: mes.montoCierres > 0 ? fmt(mes.montoCierres) : "—", color: mes.cierres > 0 ? "text-green-400" : "text-gray-400" },
           ].map(k => (
-            <div key={k.label} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4">
+            <div key={k.label} className="ms-card-deep p-4">
               <p className="text-xs text-gray-500 mb-1">{k.label}</p>
               <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
               <p className="text-[10px] text-gray-600 mt-0.5">{k.sub}</p>
@@ -294,7 +294,7 @@ export default function MetasPage() {
         {tab === "hoy" && (
           <div className="space-y-5">
             {/* Meta del día */}
-            <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-6">
+            <div className="ms-card-deep p-6">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-5">Meta del día — {fmtDate(hoy.fecha)}</p>
               <div className="flex flex-col md:flex-row items-center gap-8">
                 {/* Gauge */}
@@ -327,7 +327,7 @@ export default function MetasPage() {
 
             {/* Histórico 6 meses */}
             {historico && historico.length > 1 && (
-              <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+              <div className="ms-card-deep p-5">
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Histórico — últimos 6 meses</p>
                   <div className="flex items-center gap-4 text-[10px] text-gray-600">
@@ -341,7 +341,7 @@ export default function MetasPage() {
 
             {/* Scoreboard por vendedor (admin) */}
             {scoreboard.length > 0 && (
-              <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+              <div className="ms-card-deep p-5">
                 <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Scoreboard del equipo</p>
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[600px] text-sm">
@@ -400,13 +400,13 @@ export default function MetasPage() {
 
             {/* Lista nurturing pendiente */}
             {nurturing.lista.length === 0 ? (
-              <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-10 text-center">
+              <div className="ms-card-deep p-10 text-center">
                 <p className="text-4xl mb-3">✓</p>
                 <p className="text-white font-semibold">Sin seguimientos pendientes</p>
                 <p className="text-gray-500 text-sm mt-1">Todos los prospectos tienen su próxima acción programada a futuro</p>
               </div>
             ) : (
-              <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden">
+              <div className="ms-card-deep overflow-hidden">
                 <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
                   <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Seguimientos para hoy</p>
                   <span className="text-xs text-gray-500">{nurturing.lista.length} prospectos</span>
@@ -553,13 +553,13 @@ export default function MetasPage() {
         {tab === "leads" && (
           <div className="space-y-4">
             {leads.length === 0 ? (
-              <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-10 text-center">
+              <div className="ms-card-deep p-10 text-center">
                 <p className="text-4xl mb-3">📭</p>
                 <p className="text-white font-semibold">Sin leads asignados pendientes</p>
                 <p className="text-gray-500 text-sm mt-1">Los leads asignados aparecerán aquí hasta que avancen a Oportunidad</p>
               </div>
             ) : (
-              <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden">
+              <div className="ms-card-deep overflow-hidden">
                 <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
                   <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Leads asignados por gestionar</p>
                   <span className="text-xs text-gray-500">{leads.length} leads</span>
@@ -608,7 +608,7 @@ export default function MetasPage() {
         {tab === "mes" && (
           <div className="space-y-5">
             {/* Funnel visual */}
-            <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-6">
+            <div className="ms-card-deep p-6">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-5">Embudo de conversión — {mesActual}</p>
               <div className="space-y-3 max-w-md">
                 {[
@@ -654,7 +654,7 @@ export default function MetasPage() {
 
             {/* Scoreboard por vendedor (admin) */}
             {scoreboard.length > 0 && (
-              <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+              <div className="ms-card-deep p-5">
                 <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-4">Resultados del mes por vendedor</p>
                 <div className="space-y-3">
                   {scoreboard.sort((a, b) => b.mes - a.mes).map(v => {

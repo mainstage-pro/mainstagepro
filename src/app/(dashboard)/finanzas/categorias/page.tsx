@@ -101,11 +101,11 @@ export default function CategoriasPage() {
     <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Categorías Financieras</h1>
-          <p className="text-[#6b7280] text-sm">{categorias.length} categoría{categorias.length !== 1 ? "s" : ""}</p>
+          <h1 className="ms-h1">Categorías Financieras</h1>
+          <p className="ms-subtitle">{categorias.length} categoría{categorias.length !== 1 ? "s" : ""}</p>
         </div>
         <button onClick={() => setShowForm(true)}
-            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+            className="ms-btn-primary">
             + Nueva categoría
           </button>
       </div>
@@ -149,14 +149,14 @@ export default function CategoriasPage() {
       {loading ? (
         <SkeletonCards count={6} />
       ) : categorias.length === 0 ? (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-12 text-center text-gray-600 text-sm">
+        <div className="ms-card py-12 text-center text-gray-600 text-sm">
           Sin categorías registradas
         </div>
       ) : (
         <div className="space-y-4">
           {porTipo.map(({ tipo, items }) => (
             items.length > 0 && (
-              <div key={tipo} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div key={tipo} className="ms-table-wrapper">
                 <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center gap-2">
                   <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase ${TIPO_COLORS[tipo] ?? "bg-gray-800 text-gray-400"}`}>
                     {tipo}

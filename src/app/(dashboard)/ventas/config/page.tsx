@@ -69,13 +69,13 @@ export default function ConfigComisionesPage() {
     <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
         <Link href="/ventas" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">← Ventas</Link>
-        <h1 className="text-xl font-semibold text-white mt-1">Configuración de Comisiones</h1>
+        <h1 className="ms-h1 mt-1">Configuración de Comisiones</h1>
         <p className="text-gray-400 text-sm mt-1">Parámetros modulares — modifica según la estrategia vigente</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Metas ramp-up */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider mb-1">Metas (ramp-up)</h2>
           <p className="text-xs text-gray-500 mb-4">Piso mínimo para activar bono según mes de trabajo del vendedor</p>
           <div className="grid grid-cols-2 gap-4">
@@ -106,7 +106,7 @@ export default function ConfigComisionesPage() {
         </div>
 
         {/* Porcentajes comisión */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider mb-1">Comisión base</h2>
           <p className="text-xs text-gray-500 mb-4">Porcentaje sobre equipos rentados con descuento, liquidados al 100%</p>
           <div className="space-y-4">
@@ -177,7 +177,7 @@ export default function ConfigComisionesPage() {
         </div>
 
         {/* Bono */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider mb-1">Bono</h2>
           <p className="text-xs text-gray-500 mb-4">Aplica solo si el vendedor alcanza el piso del mes (liquidado 100%)</p>
           <div className="flex items-center gap-4">
@@ -197,7 +197,7 @@ export default function ConfigComisionesPage() {
         </div>
 
         {/* Meta de prospección outbound */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider mb-1">Prospección outbound</h2>
           <p className="text-xs text-gray-500 mb-4">Meta mínima de nuevos prospectos outbound por vendedor por día hábil</p>
           <div className="flex items-center gap-4">
@@ -217,7 +217,7 @@ export default function ConfigComisionesPage() {
         </div>
 
         {/* Reglas fijas (informativas) */}
-        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+        <div className="ms-card-deep p-5">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Reglas fijas (del documento)</h2>
           <ul className="space-y-1.5 text-xs text-gray-500">
             <li>• Venta cerrada = cuando hay anticipo recibido</li>

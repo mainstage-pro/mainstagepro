@@ -193,7 +193,7 @@ export default function RepartosPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-white">Reparto de Utilidades</h1>
+          <h1 className="ms-h1">Reparto de Utilidades</h1>
           <p className="text-gray-500 text-sm mt-0.5">Pagos a socios — se registran después de la utilidad neta</p>
         </div>
         <button onClick={() => setShowForm(true)}
@@ -223,7 +223,7 @@ export default function RepartosPage() {
           { label: "Total pagado", value: fmt(totalPagado), color: "text-green-400" },
           { label: "Pendiente de pago", value: fmt(totalPendiente), color: "text-orange-400" },
         ].map(k => (
-          <div key={k.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div key={k.label} className="ms-stat-card">
             <p className="text-gray-500 text-xs mb-1">{k.label}</p>
             <p className={`text-lg font-bold ${k.color}`}>{k.value}</p>
           </div>
@@ -310,7 +310,7 @@ export default function RepartosPage() {
             const isOpen = expanded === r.id;
 
             return (
-              <div key={r.id} className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden hover:border-[#2a2a2a] transition-colors">
+              <div key={r.id} className="ms-card rounded-2xl overflow-hidden hover:border-[#2a2a2a] transition-colors">
                 <div className="p-4 flex flex-col md:flex-row md:items-center gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">

@@ -565,7 +565,7 @@ export default function KpisDashboardPage() {
         {/* ── ESTADO DE RESULTADOS — Big metrics row ───── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Ingresos */}
-          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5 relative overflow-hidden">
+          <div className="ms-card-deep p-5 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-[#B3985B]/5 to-transparent pointer-events-none" />
             <p className="text-[10px] uppercase tracking-[0.15em] text-gray-500 font-semibold mb-3">Ingresos del período</p>
             <p className={`text-3xl font-bold tabular-nums leading-none mb-1 ${
@@ -584,7 +584,7 @@ export default function KpisDashboardPage() {
           </div>
 
           {/* Costos totales */}
-          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+          <div className="ms-card-deep p-5">
             <p className="text-[10px] uppercase tracking-[0.15em] text-gray-500 font-semibold mb-3">Costos totales</p>
             <p className="text-3xl font-bold tabular-nums leading-none mb-1 text-white">
               {er ? fmt(er.costosTotales) : '—'}
@@ -597,7 +597,7 @@ export default function KpisDashboardPage() {
           </div>
 
           {/* Utilidad bruta */}
-          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5">
+          <div className="ms-card-deep p-5">
             <p className="text-[10px] uppercase tracking-[0.15em] text-gray-500 font-semibold mb-3">Utilidad bruta</p>
             <p className={`text-3xl font-bold tabular-nums leading-none mb-1 ${
               er ? (er.margenBruto >= 65 ? 'text-emerald-400' : 'text-red-400') : 'text-gray-600'
@@ -617,7 +617,7 @@ export default function KpisDashboardPage() {
           </div>
 
           {/* Utilidad neta */}
-          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5 relative overflow-hidden">
+          <div className="ms-card-deep p-5 relative overflow-hidden">
             <div className={`absolute inset-0 bg-gradient-to-br ${
               er ? (er.cumpleMetaMargen ? 'from-emerald-900/10' : 'from-red-900/10') : 'from-transparent'
             } to-transparent pointer-events-none`} />
@@ -641,7 +641,7 @@ export default function KpisDashboardPage() {
         </div>
 
         {/* ── FLUJO DE CAJA — compact ──────────────────── */}
-        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl px-5 py-4">
+        <div className="ms-card-deep px-5 py-4">
           <p className="text-[10px] uppercase tracking-[0.15em] text-gray-500 font-semibold mb-3">Flujo de Caja · Efectivo real</p>
           <div className="grid grid-cols-3 gap-6">
             <div>
@@ -1149,7 +1149,7 @@ function ResumenTab({
           const tabKey = getAreaTab(area.nombre);
 
           return (
-            <div key={area.id} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-5 flex flex-col">
+            <div key={area.id} className="ms-card-deep p-5 flex flex-col">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   {area.icono && <span>{area.icono}</span>}
@@ -1220,7 +1220,7 @@ function ResumenTab({
 
 function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-4">
+    <div className="ms-card-deep p-4">
       <p className="text-[10px] uppercase tracking-[0.15em] text-gray-500 font-semibold mb-4">{title}</p>
       {children}
     </div>

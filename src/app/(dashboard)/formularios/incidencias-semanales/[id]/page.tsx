@@ -147,7 +147,7 @@ export default function IncidenciaDetallePage() {
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div>
                 <p className="text-[10px] text-[#B3985B] uppercase tracking-widest font-semibold mb-1">Incidencias Semanales</p>
-                <h1 className="text-xl font-semibold text-white">Semana {registro.semana} · {registro.anio}</h1>
+                <h1 className="ms-h1">Semana {registro.semana} · {registro.anio}</h1>
                 <p className="text-gray-500 text-xs mt-1">{fmtDate(registro.createdAt)}</p>
               </div>
               <div className="text-right space-y-1">
@@ -175,7 +175,7 @@ export default function IncidenciaDetallePage() {
             .sort((a, b) => a.orden - b.orden);
           if (areaIncs.length === 0) return null;
           return (
-            <div key={area.key} className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden print:border-gray-300 print:border">
+            <div key={area.key} className="ms-card rounded-2xl overflow-hidden print:border-gray-300 print:border">
               <div className="flex items-center gap-2 px-4 py-3 border-b border-[#1e1e1e] print:border-gray-300">
                 <h2 className="text-white font-semibold text-sm print:text-black">{area.label}</h2>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full border ${area.badgeClass} print:hidden`}>
@@ -226,7 +226,7 @@ export default function IncidenciaDetallePage() {
 
         {/* Empty */}
         {total === 0 && (
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-8 text-center">
+          <div className="ms-card rounded-2xl p-8 text-center">
             <p className="text-gray-600 text-sm italic">Sin incidencias registradas</p>
           </div>
         )}

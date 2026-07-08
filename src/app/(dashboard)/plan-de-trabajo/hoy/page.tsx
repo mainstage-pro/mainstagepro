@@ -386,7 +386,7 @@ export default function MiDiaPage() {
       {/* Greeting */}
       <div className="mb-6">
         <p className="text-gray-500 text-sm">{fmtFechaLarga(fechaActual)}</p>
-        <p className="text-xl font-semibold text-white mt-0.5">{getGreeting()}.</p>
+        <p className="ms-h1 mt-0.5">{getGreeting()}.</p>
         {total > 0 && (
           <div className="mt-3 flex items-center gap-3">
             <div className="flex-1 h-1.5 bg-[#1a1a1a] rounded-full overflow-hidden">

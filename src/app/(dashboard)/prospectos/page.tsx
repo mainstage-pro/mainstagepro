@@ -92,11 +92,11 @@ export default function ProspectosPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-white">Prospectos en frío</h1>
-          <p className="text-sm text-[#6b7280] mt-0.5">Outbound · nurturing · construcción de relaciones</p>
+          <h1 className="ms-h1">Prospectos en frío</h1>
+          <p className="ms-subtitle mt-0.5">Outbound · nurturing · construcción de relaciones</p>
         </div>
         <Link href="/prospectos/nuevo"
-          className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          className="ms-btn-primary">
           + Nuevo prospecto
         </Link>
       </div>
@@ -136,7 +136,7 @@ export default function ProspectosPage() {
           <p className="text-white font-semibold mb-1">Sin prospectos {filtroTemp !== "TODOS" ? `con temperatura ${TEMPERATURA_CONFIG[filtroTemp]?.label.toLowerCase()}` : "aún"}</p>
           <p className="text-gray-500 text-sm mb-5">Registra el primer prospecto para arrancar el proceso de nurturing</p>
           <Link href="/prospectos/nuevo"
-            className="inline-flex bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+            className="inline-flex ms-btn-primary">
             + Nuevo prospecto
           </Link>
         </div>

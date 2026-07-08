@@ -162,7 +162,7 @@ const SEMAFORO_STYLE: Record<string, { border: string; text: string; bg: string;
 // ─── Subcomponente de sección ─────────────────────────────────────────────────
 function Seccion({ titulo, children, hint }: { titulo: string; children: React.ReactNode; hint?: string }) {
   return (
-    <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+    <div className="ms-card p-5">
       <div className="flex items-center gap-3 mb-4">
         <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">{titulo}</h2>
         {hint && <span className="text-gray-600 text-xs">{hint}</span>}
@@ -1400,7 +1400,7 @@ function CotizadorForm() {
     <div className="p-4 md:p-6 max-w-6xl mx-auto">
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">{editId ? "Editar Cotización" : "Nueva Cotización"}</h1>
+          <h1 className="ms-h1">{editId ? "Editar Cotización" : "Nueva Cotización"}</h1>
           {clienteNombre && <p className="text-[#B3985B] text-sm mt-0.5">{clienteNombre}</p>}
         </div>
         <div className="flex gap-3">
@@ -1643,7 +1643,7 @@ function CotizadorForm() {
                   const esImagen = a.tipo === "IMAGEN" || /\.(jpe?g|png|gif|webp|heic)$/i.test(a.url);
                   return (
                     <a key={a.id} href={a.url} target="_blank" rel="noreferrer"
-                      className="bg-[#111] border border-[#222] rounded-lg overflow-hidden hover:border-[#B3985B]/40 transition-colors">
+                      className="ms-card rounded-lg overflow-hidden hover:border-[#B3985B]/40 transition-colors">
                       {esImagen ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={a.url} alt={a.nombre} className="w-full h-20 object-cover" />
@@ -2924,7 +2924,7 @@ function CotizadorForm() {
             </div>
 
             {/* Resumen de precios */}
-            <div className="bg-[#111] border border-[#222] rounded-xl p-4 space-y-2 text-sm">
+            <div className="ms-stat-card space-y-2 text-sm">
               <div className="flex justify-between text-gray-400">
                 <span>Equipos bruto</span>
                 <span>{formatCurrency(resumen.subtotalEquiposBruto)}</span>

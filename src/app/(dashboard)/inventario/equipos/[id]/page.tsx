@@ -154,7 +154,7 @@ function AccesoriosSection({ equipoId, initial }: { equipoId: string; initial: A
   const sinCategoria = accesorios.filter(a => !a.categoria || !CATEGORIAS_ACC.includes(a.categoria as typeof CATEGORIAS_ACC[number]));
 
   return (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+    <div className="ms-card p-5">
       <div className="flex items-center justify-between mb-3">
         <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">
           Accesorios y rider ({accesorios.length})
@@ -342,7 +342,7 @@ function NotasSection({ equipoId, initial }: { equipoId: string; initial: Equipo
   }
 
   return (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+    <div className="ms-card p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">
           Notas {notas.length > 0 && <span className="text-[#555] font-normal">({notas.length})</span>}
@@ -451,8 +451,8 @@ export default function EquipoFichaPage() {
               <img src={equipo.imagenUrl} alt="" className="w-12 h-12 object-contain rounded-lg bg-[#0a0a0a] p-1 shrink-0" />
             )}
             <div>
-              <h1 className="text-xl font-semibold text-white">{[equipo.marca, equipo.modelo].filter(Boolean).join(" · ") || equipo.descripcion}</h1>
-              <p className="text-[#6b7280] text-sm mt-0.5">
+              <h1 className="ms-h1">{[equipo.marca, equipo.modelo].filter(Boolean).join(" · ") || equipo.descripcion}</h1>
+              <p className="ms-subtitle mt-0.5">
                 {[equipo.marca, equipo.modelo].filter(Boolean).length > 0 && <span>{equipo.descripcion} · </span>}
                 {equipo.categoria.nombre}
               </p>
@@ -470,7 +470,7 @@ export default function EquipoFichaPage() {
       </div>
 
       {/* Datos rápidos */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+      <div className="ms-card p-5">
         <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider mb-3">Datos del equipo</h2>
         <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
           <div>
@@ -511,7 +511,7 @@ export default function EquipoFichaPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Proyectos */}
         {equipo.proyectoEquipos.length > 0 && (
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+          <div className="ms-card p-5">
             <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider mb-3">
               Proyectos ({equipo.proyectoEquipos.length})
             </h2>
@@ -538,7 +538,7 @@ export default function EquipoFichaPage() {
 
         {/* Mantenimiento */}
         {equipo.mantenimientos.length > 0 && (
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+          <div className="ms-card p-5">
             <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider mb-3">
               Mantenimiento ({equipo.mantenimientos.length})
             </h2>

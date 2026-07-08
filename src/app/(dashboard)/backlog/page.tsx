@@ -249,7 +249,7 @@ export default function BacklogPage() {
           <p className="text-[#555] text-sm mt-1">Captura ideas y pendientes — procesar los viernes</p>
         </div>
         <button onClick={() => setCaptura(true)}
-          className="shrink-0 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          className="shrink-0 ms-btn-primary">
           + Capturar
         </button>
       </div>

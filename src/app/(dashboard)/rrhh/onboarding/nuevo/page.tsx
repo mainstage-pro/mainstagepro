@@ -142,12 +142,12 @@ export default function NuevoOnboardingPage() {
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-white">Nuevo plan de integración</h1>
+        <h1 className="ms-h1">Nuevo plan de integración</h1>
         <p className="text-gray-500 text-sm">Completa la información del puesto y usa la IA para generar el plan completo.</p>
       </div>
 
       {/* ── DATOS DEL COLABORADOR ── */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
+      <div className="ms-card p-5 space-y-4">
         <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Datos del colaborador</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -177,7 +177,7 @@ export default function NuevoOnboardingPage() {
       </div>
 
       {/* ── CONTEXTO PARA LA IA ── */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
+      <div className="ms-card p-5 space-y-4">
         <div className="flex items-center gap-2">
           <span className="text-base">🤖</span>
           <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Contexto para la IA</p>

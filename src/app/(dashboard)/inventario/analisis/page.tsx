@@ -174,7 +174,7 @@ export default function AnalisisInventarioPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-white">Análisis de uso de inventario</h1>
+          <h1 className="ms-h1">Análisis de uso de inventario</h1>
           <p className="text-gray-500 text-sm mt-0.5">Rentabilidad, demanda y oportunidades de inversión</p>
         </div>
         <div className="flex items-center gap-3">
@@ -200,7 +200,7 @@ export default function AnalisisInventarioPage() {
             { label: "Revenue subrentas", value: fmtMXN(data.resumen.revenueExterno), sub: `Costo: ${fmtMXN(data.resumen.costoExterno)} · Margen: ${fmtMXN(data.resumen.margenExterno)}`, color: "text-blue-400" },
             { label: "Equipos nunca rentados", value: String(data.resumen.equiposNuncaRentados), sub: `De ${data.resumen.totalEquiposPropio} en inventario`, color: "text-red-400" },
           ].map(k => (
-            <div key={k.label} className="bg-[#111] border border-[#222] rounded-xl p-4">
+            <div key={k.label} className="ms-stat-card">
               <p className="text-gray-500 text-xs mb-1">{k.label}</p>
               <p className={`text-xl font-semibold ${k.color}`}>{k.value}</p>
               <p className="text-gray-600 text-[11px] mt-1">{k.sub}</p>
@@ -251,7 +251,7 @@ export default function AnalisisInventarioPage() {
           </div>
 
           {/* Table */}
-          <div className="bg-[#111] border border-[#222] rounded-xl overflow-x-auto">
+          <div className="ms-card overflow-x-auto">
             <table className="w-full min-w-[600px] text-sm">
               <thead>
                 <tr className="border-b border-[#1e1e1e]">
@@ -314,7 +314,7 @@ export default function AnalisisInventarioPage() {
       {!loading && data && tab === "externo" && (
         <div className="space-y-4">
           {data.proveedoresEquipo.length === 0 ? (
-            <div className="bg-[#111] border border-[#222] rounded-xl p-12 text-center text-gray-500">Sin subrentas registradas este mes</div>
+            <div className="ms-card p-12 text-center text-gray-500">Sin subrentas registradas este mes</div>
           ) : (
             <>
               {/* Quick insight */}
@@ -338,7 +338,7 @@ export default function AnalisisInventarioPage() {
                 </div>
               </div>
 
-              <div className="bg-[#111] border border-[#222] rounded-xl overflow-x-auto">
+              <div className="ms-card overflow-x-auto">
                 <table className="w-full min-w-[600px] text-sm">
                   <thead>
                     <tr className="border-b border-[#1e1e1e]">
@@ -407,9 +407,9 @@ export default function AnalisisInventarioPage() {
             Estos items aparecieron en cotizaciones de este mes pero no están vinculados a ningún equipo del catálogo. Considera agregarlos al inventario.
           </div>
           {data.itemsCustom.length === 0 ? (
-            <div className="bg-[#111] border border-[#222] rounded-xl p-12 text-center text-gray-500">Sin items personalizados este mes</div>
+            <div className="ms-card p-12 text-center text-gray-500">Sin items personalizados este mes</div>
           ) : (
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-x-auto">
+            <div className="ms-card overflow-x-auto">
               <table className="w-full min-w-[600px] text-sm">
                 <thead>
                   <tr className="border-b border-[#1e1e1e]">
@@ -644,7 +644,7 @@ export default function AnalisisInventarioPage() {
                 )}
               </div>
               {d.socios.length === 0 ? (
-                <div className="bg-[#111] border border-[#222] rounded-xl p-10 text-center text-gray-500 text-sm">
+                <div className="ms-card p-10 text-center text-gray-500 text-sm">
                   Sin socios inversionistas activos registrados.
                 </div>
               ) : (
@@ -658,7 +658,7 @@ export default function AnalisisInventarioPage() {
                     );
                     const opsAMostrar = opsSocio.length > 0 ? opsSocio : oportunidades.slice(0, 2);
                     return (
-                      <div key={s.id} className="bg-[#111] border border-[#222] rounded-xl p-4">
+                      <div key={s.id} className="ms-stat-card">
                         {/* Header del socio */}
                         <div className="flex items-center justify-between mb-3">
                           <div>

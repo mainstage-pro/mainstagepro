@@ -98,10 +98,10 @@ export default function CandidatosPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="ms-page space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Candidatos</h1>
+          <h1 className="ms-h1">Candidatos</h1>
           <p className="text-gray-500 text-sm">{candidatos.length} registros · Pipeline de contratación</p>
         </div>
         <div className="flex items-center gap-3">
@@ -117,7 +117,7 @@ export default function CandidatosPage() {
             </button>
           </div>
           <button onClick={() => setShowNew(true)}
-            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+            className="ms-btn-primary">
             + Nuevo candidato
           </button>
         </div>
@@ -178,7 +178,7 @@ export default function CandidatosPage() {
         </div>
       ) : (
         /* ── Lista ── */
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+        <div className="ms-card overflow-x-auto">
           <table className="w-full min-w-[600px] text-sm">
             <thead>
               <tr className="border-b border-[#1a1a1a]">

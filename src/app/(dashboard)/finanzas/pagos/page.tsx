@@ -980,8 +980,8 @@ export default function PagosSemanaPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">Semana Financiera</h1>
-          <p className="text-[#6b7280] text-sm">Cobros (Lun & Mié) · Pagos (Mié)</p>
+          <h1 className="ms-h1">Semana Financiera</h1>
+          <p className="ms-subtitle">Cobros (Lun & Mié) · Pagos (Mié)</p>
         </div>
         <Link href="/finanzas/cobros-pagos" className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors">
           Ver todas las CxC / CxP →
@@ -991,7 +991,7 @@ export default function PagosSemanaPage() {
       {/* Tabs vista */}
       <div className="flex items-center gap-3 flex-wrap">
         {/* Vista principal */}
-        <div className="flex gap-1 bg-[#111] border border-[#222] rounded-xl p-1">
+        <div className="flex gap-1 ms-card p-1">
           <button onClick={() => setVista("operativa")}
             className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 ${vista === "operativa" ? "bg-[#B3985B] text-black" : "text-gray-500 hover:text-white"}`}>
             <span>📅</span> Semana operativa
@@ -1012,7 +1012,7 @@ export default function PagosSemanaPage() {
 
         {/* Tabs Personal / Proveedores — solo para vistas que no son operativa */}
         {vista !== "operativa" && (
-          <div className="flex gap-1 bg-[#111] border border-[#222] rounded-xl p-1">
+          <div className="flex gap-1 ms-card p-1">
             {(["TECNICO", "PROVEEDOR"] as Tab[]).map(t => (
               <button key={t} onClick={() => setTab(t)}
                 className={`px-5 py-2 rounded-lg text-sm font-medium transition-colors ${tab === t ? "bg-[#222] text-white" : "text-gray-400 hover:text-white"}`}>
@@ -1031,12 +1031,12 @@ export default function PagosSemanaPage() {
             <p className="text-white text-lg font-bold">{fmt(totalesOp?.cobrar ?? 0)}</p>
             <p className="text-gray-600 text-xs">CxC pendientes</p>
           </div>
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div className="ms-stat-card">
             <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1">Por pagar</p>
             <p className="text-white text-lg font-bold">{fmt(totalesOp?.pagar ?? 0)}</p>
             <p className="text-gray-600 text-xs">CxP pendientes</p>
           </div>
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div className="ms-stat-card">
             <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1">Balance neto</p>
             <p className={`text-lg font-bold ${(totalesOp?.balance ?? 0) >= 0 ? "text-green-400" : "text-red-400"}`}>
               {fmt(totalesOp?.balance ?? 0)}
@@ -1053,12 +1053,12 @@ export default function PagosSemanaPage() {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div className="ms-stat-card">
             <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1">Total pendiente</p>
             <p className="text-white text-lg font-bold">{fmt(totalPendiente)}</p>
             <p className="text-gray-600 text-xs">{pendientes.length} pago{pendientes.length !== 1 ? "s" : ""}</p>
           </div>
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div className="ms-stat-card">
             <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1">Vencidos</p>
             <p className={`text-lg font-bold ${totalVencido > 0 ? "text-red-400" : "text-green-400"}`}>
               {totalVencido > 0 ? fmt(totalVencido) : "Al día ✓"}
@@ -1070,7 +1070,7 @@ export default function PagosSemanaPage() {
             <p className="text-white text-lg font-bold">{fmt(montoProximoMiercoles)}</p>
             <p className="text-gray-600 text-xs">{proximoMiercoles ? fmtFechaCorta(proximoMiercoles) : "—"}</p>
           </div>
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div className="ms-stat-card">
             <p className="text-[#6b7280] text-[10px] uppercase tracking-wider mb-1">Proyectos</p>
             <p className="text-white text-lg font-bold">{gruposProyecto.filter(g => g.totalPendiente > 0).length}</p>
             <p className="text-gray-600 text-xs">con pagos pendientes</p>
@@ -1269,7 +1269,7 @@ export default function PagosSemanaPage() {
 
           {/* ── VISTA POR SEMANA ── */}
           {vista === "semana" && (
-            <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+            <div className="ms-table-wrapper">
               {/* Tabs de semanas */}
               <div className="flex border-b border-[#1a1a1a] overflow-x-auto">
                 {semanas.map((s, idx) => {
@@ -1318,7 +1318,7 @@ export default function PagosSemanaPage() {
                     <thead>
                       <tr className="border-b border-[#1a1a1a]">
                         {["Persona", "Proyecto", "Concepto", "Monto", "Estado", "Acciones"].map(h => (
-                          <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-3 py-2.5 font-semibold first:px-4">
+                          <th key={h} className="ms-th first:px-4">
                             {h}
                           </th>
                         ))}

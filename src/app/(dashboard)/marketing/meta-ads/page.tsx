@@ -247,7 +247,7 @@ export default function MetaAdsPage() {
 
         {/* ── Formulario nueva campaña ── */}
         {showNew && (
-          <div className="bg-[#111] border border-[#222] rounded-xl p-5 space-y-4">
+          <div className="ms-card p-5 space-y-4">
             <p className="text-white font-semibold">Nueva campaña</p>
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
@@ -343,7 +343,7 @@ export default function MetaAdsPage() {
                   { label: "Alcance", value: fmtN(m.alcance), sub: m.impresiones > 0 ? `${fmtN(m.impresiones)} imp.` : null },
                   { label: "CPM", value: m.cpm != null ? fmt(m.cpm) : "—", sub: "Costo por mil imp." },
                 ].map(k => (
-                  <div key={k.label} className="bg-[#111] border border-[#222] rounded-xl p-4">
+                  <div key={k.label} className="ms-stat-card">
                     <p className="text-gray-500 text-[10px] uppercase tracking-wide mb-1">{k.label}</p>
                     <p className="text-white text-lg font-semibold">{k.value}</p>
                     {k.sub && <p className="text-gray-600 text-[10px] mt-0.5">{k.sub}</p>}
@@ -353,7 +353,7 @@ export default function MetaAdsPage() {
 
               {/* Progreso de presupuesto */}
               {m.presupuestoUsado != null && (
-                <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+                <div className="ms-stat-card">
                   <div className="flex justify-between text-xs text-gray-400 mb-2">
                     <span>Presupuesto utilizado</span>
                     <span>{fmt(m.gastado)} / {fmt(selected.presupuesto)}</span>
@@ -367,20 +367,20 @@ export default function MetaAdsPage() {
 
               {/* Notas de la campaña */}
               {selected.notas && (
-                <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+                <div className="ms-stat-card">
                   <p className="text-xs text-gray-500 mb-1">Notas</p>
                   <p className="text-gray-300 text-sm">{selected.notas}</p>
                 </div>
               )}
               {selected.audiencia && (
-                <div className="bg-[#111] border border-[#222] rounded-xl p-4">
+                <div className="ms-stat-card">
                   <p className="text-xs text-gray-500 mb-1">Audiencia</p>
                   <p className="text-gray-300 text-sm">{selected.audiencia}</p>
                 </div>
               )}
 
               {/* Tabla de resultados */}
-              <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              <div className="ms-table-wrapper">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
                   <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Resultados por período</p>
                   <button onClick={() => setShowResultForm(!showResultForm)}

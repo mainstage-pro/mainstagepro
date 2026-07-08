@@ -266,7 +266,7 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
           {edit ? (
             <textarea value={form.notas || ""} onChange={(e) => f("notas", e.target.value)} rows={3}
               className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
-          ) : <p className="text-sm text-[#6b7280]">{socio.notas || <span className="text-[#555]">Sin notas</span>}</p>}
+          ) : <p className="ms-subtitle">{socio.notas || <span className="text-[#555]">Sin notas</span>}</p>}
         </div>
       </div>
 
@@ -415,12 +415,12 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
       {activos.length === 0 ? (
         <div className="text-center py-12 text-gray-600 text-sm">No hay equipos registrados aún</div>
       ) : (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+        <div className="ms-card overflow-x-auto">
           <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
                 {["Código","Equipo","Cat.","Condición","Valor declarado","Precio/día","Split","Rentas",""].map((h) => (
-                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
+                  <th key={h} className="ms-th">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -443,13 +443,13 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
                       </span>
                     </td>
                     <td className={`px-4 py-3 text-xs font-semibold ${COND_COLORS[a.condicion]}`}>{a.condicion}</td>
-                    <td className="px-4 py-3 text-[#6b7280] text-sm">{fmt(a.valorDeclarado)}</td>
+                    <td className="px-4 py-3 ms-subtitle">{fmt(a.valorDeclarado)}</td>
                     <td className="px-4 py-3 text-white text-sm font-semibold">{fmt(a.precioDia)}</td>
                     <td className="px-4 py-3 text-[#6b7280] text-xs">
                       {pS}% / {pM}%
                       {a.pctSocioOverride !== null && <span className="ml-1 text-[#B3985B]">*</span>}
                     </td>
-                    <td className="px-4 py-3 text-[#6b7280] text-sm text-center">{a._count.rentas}</td>
+                    <td className="px-4 py-3 ms-subtitle text-center">{a._count.rentas}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-3">
                         <button onClick={() => editar(a)} className="text-[#B3985B] text-xs hover:underline">Editar</button>
@@ -563,7 +563,7 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
       </div>
 
       {activos.length === 0 && (
-        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 text-sm text-[#6b7280] mb-4">
+        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3 ms-subtitle mb-4">
           Primero registra equipos en la pestaña Activos.
         </div>
       )}
@@ -616,12 +616,12 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
       ) : rentas.length === 0 ? (
         <div className="text-center py-12 text-gray-600 text-sm">Sin rentas en {MESES[filMes]} {filAnio}</div>
       ) : (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+        <div className="ms-card overflow-x-auto">
           <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
                 {["Evento","Equipo","Días","Precio/día","Subtotal","Socio","Fee Mainstage",""].map((h) => (
-                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
+                  <th key={h} className="ms-th">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -630,8 +630,8 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
                 <tr key={r.id} className="hover:bg-[#1a1a1a] transition-colors">
                   <td className="px-4 py-3 text-white text-sm font-medium">{r.descripcion}</td>
                   <td className="px-4 py-3 text-[#6b7280] text-xs">{r.activo.codigoInventario}<br/>{r.activo.nombre}</td>
-                  <td className="px-4 py-3 text-[#6b7280] text-sm text-center">{r.dias}</td>
-                  <td className="px-4 py-3 text-[#6b7280] text-sm">{fmt(r.precioDia)}</td>
+                  <td className="px-4 py-3 ms-subtitle text-center">{r.dias}</td>
+                  <td className="px-4 py-3 ms-subtitle">{fmt(r.precioDia)}</td>
                   <td className="px-4 py-3 text-white text-sm font-semibold">{fmt(r.subtotal)}</td>
                   <td className="px-4 py-3 text-green-400 text-sm font-semibold">{fmt(r.montoSocio)}</td>
                   <td className="px-4 py-3 text-[#B3985B] text-sm font-semibold">{fmt(r.montoMainstage)}</td>
@@ -724,7 +724,7 @@ function TabReportes({ socio, reload }: { socio: Socio; reload: () => void }) {
       ) : (
         <div className="space-y-3">
           {socio.reportes.map((r) => (
-            <div key={r.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+            <div key={r.id} className="ms-stat-card">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <p className="text-white font-semibold">{MESES[r.mes]} {r.anio}</p>
@@ -882,7 +882,7 @@ function TabMantenimiento({ socio, activos }: { socio: Socio; activos: Activo[] 
       ) : (
         <div className="space-y-2">
           {mantenimientos.map((m) => (
-            <div key={m.id} className="flex items-start gap-4 px-4 py-3 bg-[#111] border border-[#1e1e1e] rounded-xl">
+            <div key={m.id} className="flex items-start gap-4 px-4 py-3 ms-card">
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded border shrink-0 mt-0.5 ${TIPO_COLORS[m.tipo]}`}>
                 {m.tipo}
               </span>
@@ -954,7 +954,7 @@ function TabCapital({ config, valorEfectivo, montoFijoMensual, pisoAbsolutoPeso 
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-3">
+        <div className="ms-card p-5 space-y-3">
           <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Modo de cálculo</p>
           <div className="flex items-center gap-2">
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
@@ -987,7 +987,7 @@ function TabCapital({ config, valorEfectivo, montoFijoMensual, pisoAbsolutoPeso 
           </div>
         </div>
 
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-3">
+        <div className="ms-card p-5 space-y-3">
           <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Crédito personal HERVAM</p>
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between">
@@ -1023,9 +1023,9 @@ function TabCapital({ config, valorEfectivo, montoFijoMensual, pisoAbsolutoPeso 
       </div>
 
       {config.notas && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+        <div className="ms-stat-card">
           <p className="text-xs text-[#555] mb-1">Notas</p>
-          <p className="text-sm text-[#6b7280]">{config.notas}</p>
+          <p className="ms-subtitle">{config.notas}</p>
         </div>
       )}
     </div>
@@ -1048,7 +1048,7 @@ function TabActivosHervam({ activos }: { activos: HervamActivo[] }) {
       <div className="grid grid-cols-2 gap-3 mb-2">
         <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
           <p className="text-[10px] uppercase tracking-wider text-[#555] font-semibold mb-1">Valor de adquisición</p>
-          <p className="text-xl font-semibold text-white">{fmt(totalValorAdq)}</p>
+          <p className="ms-h1">{fmt(totalValorAdq)}</p>
         </div>
         <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
           <p className="text-[10px] uppercase tracking-wider text-[#555] font-semibold mb-1">Valor actual declarado</p>
@@ -1062,12 +1062,12 @@ function TabActivosHervam({ activos }: { activos: HervamActivo[] }) {
           <a href="/admin/valuacion" className="text-[#B3985B] hover:underline">Agregar en Estructura de Capital</a>
         </div>
       ) : (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+        <div className="ms-card overflow-x-auto">
           <table className="w-full min-w-[500px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
                 {["Activo","Categoría","V. Adquisición","V. Actual","Fecha",""].map(h => (
-                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
+                  <th key={h} className="ms-th">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -1083,7 +1083,7 @@ function TabActivosHervam({ activos }: { activos: HervamActivo[] }) {
                       {a.categoria}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-[#6b7280] text-sm">{fmt(a.valorAdquisicion)}</td>
+                  <td className="px-4 py-3 ms-subtitle">{fmt(a.valorAdquisicion)}</td>
                   <td className="px-4 py-3 text-white text-sm font-semibold">{fmt(a.valorActual)}</td>
                   <td className="px-4 py-3 text-[#555] text-xs">
                     {a.fechaAdquisicion ? (() => { const iso = typeof a.fechaAdquisicion === "string" ? a.fechaAdquisicion : (a.fechaAdquisicion as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX"); })() : "—"}
@@ -1141,12 +1141,12 @@ function TabPagosHervam({ pagos }: { pagos: HervamPago[] }) {
       {pagos.length === 0 ? (
         <div className="text-center py-12 text-gray-600 text-sm">Sin pagos registrados aún</div>
       ) : (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+        <div className="ms-card overflow-x-auto">
           <table className="w-full min-w-[600px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
                 {["Mes","Renta fija","Variable","Acordado","Pagado","Estado","Pagado en"].map(h => (
-                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
+                  <th key={h} className="ms-th">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -1154,8 +1154,8 @@ function TabPagosHervam({ pagos }: { pagos: HervamPago[] }) {
               {pagos.map(p => (
                 <tr key={p.id} className="hover:bg-[#1a1a1a] transition-colors">
                   <td className="px-4 py-3 text-white text-sm font-semibold">{MESES_H[p.mes]} {p.anio}</td>
-                  <td className="px-4 py-3 text-[#6b7280] text-sm">{fmt(p.montoFijo)}</td>
-                  <td className="px-4 py-3 text-[#6b7280] text-sm">{p.montoVariable != null ? fmt(p.montoVariable) : "—"}</td>
+                  <td className="px-4 py-3 ms-subtitle">{fmt(p.montoFijo)}</td>
+                  <td className="px-4 py-3 ms-subtitle">{p.montoVariable != null ? fmt(p.montoVariable) : "—"}</td>
                   <td className="px-4 py-3 text-white text-sm font-semibold">{fmt(p.montoAcordado)}</td>
                   <td className="px-4 py-3 text-green-400 text-sm font-semibold">{fmt(p.montoPagado)}</td>
                   <td className="px-4 py-3">
@@ -1208,11 +1208,11 @@ function TabCuentasPagar({ socio }: { socio: Socio }) {
       {/* Resumen */}
       {cxps.length > 0 && (
         <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div className="ms-stat-card">
             <p className="text-[#6b7280] text-xs mb-1">Total registros</p>
             <p className="text-white text-2xl font-bold tabular-nums">{cxps.length}</p>
           </div>
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div className="ms-stat-card">
             <p className="text-[#6b7280] text-xs mb-1">Por pagar</p>
             <p className="text-amber-400 text-2xl font-bold tabular-nums">{fmt(totalPendiente)}</p>
           </div>
@@ -1359,7 +1359,7 @@ export default function SocioDetallePage() {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-xl font-semibold text-white">{socio.nombre}</h1>
+            <h1 className="ms-h1">{socio.nombre}</h1>
             {isFundador && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded border text-[#B3985B] bg-[#B3985B]/10 border-[#B3985B]/30">
                 Socio Fundador
@@ -1369,7 +1369,7 @@ export default function SocioDetallePage() {
               {STATUS_LABEL[socio.status]}
             </span>
           </div>
-          <p className="text-[#6b7280] text-sm mt-0.5">
+          <p className="ms-subtitle mt-0.5">
             {socio.tipo === "FISICA" ? "Persona Física" : "Persona Moral"}
             {socio.ciudad && ` · ${socio.ciudad}`}
             {socio.telefono && ` · ${socio.telefono}`}

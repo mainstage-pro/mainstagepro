@@ -274,7 +274,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
           <div className="flex items-center gap-3 flex-wrap">
             <Link href="/rrhh/candidatos" className="text-gray-600 hover:text-white text-sm transition-colors">← Candidatos</Link>
             <span className="text-[#333]">|</span>
-            <h1 className="text-xl font-semibold text-white">{candidato.nombre}</h1>
+            <h1 className="ms-h1">{candidato.nombre}</h1>
             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${ETAPA_COLORS[etapa]}`}>
               {ETAPA_LABELS[etapa]}
             </span>
@@ -315,7 +315,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
       </div>
 
       {/* Pipeline steps */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+      <div className="ms-stat-card">
         <div className="flex gap-2 flex-wrap">
           {ETAPAS.map((e, i) => {
             const isCurrent = etapa === e;
@@ -354,7 +354,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
       {/* ── TAB PERFIL ── */}
       {tab === "perfil" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-4">
+          <div className="ms-stat-card space-y-4">
             <p className="text-xs text-gray-500 uppercase tracking-wider">Datos personales</p>
             {([
               ["nombre","Nombre completo","text"],
@@ -380,7 +380,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
           </div>
 
           <div className="space-y-4">
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-3">
+            <div className="ms-card p-4 space-y-3">
               <p className="text-xs text-gray-500 uppercase tracking-wider">Disponibilidad y compensación</p>
               <div>
                 <label className={lbl}>Salario esperado mensual (MXN)</label>
@@ -407,7 +407,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
               </div>
             </div>
 
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-3">
+            <div className="ms-card p-4 space-y-3">
               <p className="text-xs text-gray-500 uppercase tracking-wider">Habilidades y experiencia</p>
               <div>
                 <label className={lbl}>Habilidades principales</label>
@@ -423,7 +423,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
               </div>
             </div>
 
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+            <div className="ms-stat-card">
               <label className={lbl}>Notas internas</label>
               <textarea defaultValue={candidato.notas ?? ""} rows={3}
                 onChange={e => setEdit(p => ({ ...p, notas: e.target.value || null }))}
@@ -457,7 +457,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
             ["motivacion", "¿Por qué quieres trabajar en Mainstage Producciones específicamente?", 3],
             ["visionLargoPlazo", "¿Dónde te ves en 3-5 años? ¿Cómo encaja Mainstage en ese plan?", 3],
           ] as [keyof Candidato, string, number][]).map(([field, pregunta, rows]) => (
-            <div key={field as string} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+            <div key={field as string} className="ms-stat-card">
               <label className="block text-sm text-white mb-2">{pregunta}</label>
               {rows === 1 ? (
                 <input
@@ -489,7 +489,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
       {tab === "propuesta" && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-4">
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-4">
+            <div className="ms-stat-card space-y-4">
               <p className="text-xs text-gray-500 uppercase tracking-wider">Condiciones de la oferta</p>
               <div>
                 <label className={lbl}>Salario propuesto (MXN/mes)</label>
@@ -533,7 +533,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
 
           {/* Acciones */}
           <div className="space-y-4">
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-3">
+            <div className="ms-card p-4 space-y-3">
               <p className="text-xs text-gray-500 uppercase tracking-wider">Acciones</p>
 
               {/* Presentación de la empresa por WhatsApp */}
@@ -610,7 +610,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
 
             {/* Puesto vinculado */}
             {post?.puesto && (
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-2">
+              <div className="ms-stat-card space-y-2">
                 <p className="text-xs text-gray-500 uppercase tracking-wider">Puesto vinculado</p>
                 <p className="text-white font-medium">{post.puesto.titulo}</p>
                 <p className="text-gray-500 text-xs">{post.puesto.area}</p>
@@ -697,7 +697,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
           )}
 
           {etapa !== "APROBADO" && etapa !== "CONTRATADO" && (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-6 text-center">
+            <div className="ms-card p-6 text-center">
               <p className="text-gray-500 text-sm">El contrato se genera cuando el candidato pasa a etapa <strong className="text-white">Aprobado</strong></p>
             </div>
           )}
@@ -736,7 +736,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
 
         return (
           <div className="max-w-xl space-y-4">
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+            <div className="ms-card p-5">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="text-white font-semibold">Checklist de integración</p>

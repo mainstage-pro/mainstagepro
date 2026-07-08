@@ -176,7 +176,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
           { label: "En renta",   value: naranjas,  color: naranjas > 0 ? "text-orange-400" : "text-gray-600" },
           { label: "Faltantes",  value: rojos,     color: rojos > 0 ? "text-red-400" : "text-gray-600" },
         ].map(k => (
-          <div key={k.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-3 text-center">
+          <div key={k.label} className="ms-card p-3 text-center">
             <p className={`text-xl font-bold ${k.color}`}>{k.value}</p>
             <p className="text-gray-600 text-[10px] mt-0.5">{k.label}</p>
           </div>
@@ -201,7 +201,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
         const catRojos   = items.filter(i => colorSemaforo(i) === "red").length;
         const catNaranjas = items.filter(i => colorSemaforo(i) === "orange").length;
         return (
-          <div key={cat} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div key={cat} className="ms-table-wrapper">
             <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{cat}</p>
               <div className="flex items-center gap-3 text-xs">
@@ -326,7 +326,7 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
       })}
 
       {checklist.items.length === 0 && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-12 text-center">
+        <div className="ms-card py-12 text-center">
           <p className="text-gray-600 text-sm">Sin equipos en el checklist</p>
           <p className="text-gray-700 text-xs mt-1">Agrega equipos propios al inventario para que aparezcan aquí</p>
         </div>

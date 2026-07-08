@@ -333,8 +333,8 @@ export default function TecnicosPage() {
     <div className="p-4 md:p-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-white">Técnicos</h1>
-          <p className="text-[#6b7280] text-sm">
+          <h1 className="ms-h1">Técnicos</h1>
+          <p className="ms-subtitle">
             {tecnicos.filter(t => t.activo).length} activos
             {tecnicos.filter(t => !t.activo).length > 0 && ` · ${tecnicos.filter(t => !t.activo).length} inactivos`}
           </p>
@@ -357,7 +357,7 @@ export default function TecnicosPage() {
               </button>
             </div>
             <button onClick={startCreate}
-              className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+              className="ms-btn-primary">
               + Nuevo técnico
             </button>
           </div>
@@ -581,7 +581,7 @@ export default function TecnicosPage() {
         </>
       ) : view === "list" ? (
         /* ── LISTA ── */
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+        <div className="ms-card overflow-x-auto">
           <table className="w-full min-w-[700px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
@@ -709,7 +709,7 @@ export default function TecnicosPage() {
 
                       {prioPopover === t.id && (
                         <div
-                          className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-2"
+                          className="ms-dropdown left-0 top-full mt-1 py-2"
                           style={{ width: 180 }}
                           onClick={e => e.stopPropagation()}
                         >
@@ -797,12 +797,12 @@ export default function TecnicosPage() {
           {loadingRanking ? (
             <div className="py-12 text-center text-gray-600 text-sm">Calculando ranking...</div>
           ) : (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden overflow-x-auto">
+            <div className="ms-table-wrapper overflow-x-auto">
               <table className="w-full min-w-[700px]">
                 <thead>
                   <tr className="border-b border-[#1e1e1e]">
                     {["#", "Técnico", "Rol", "Nivel", "Proyectos", "Score", "Puntualidad", "Último evento", "Últimos"].map(h => (
-                      <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
+                      <th key={h} className="ms-th">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -871,7 +871,7 @@ export default function TecnicosPage() {
           <p className="text-xs text-gray-500 mb-4">Proyectos asignados a cada técnico en los próximos 60 días. Click en un técnico para ver su historial completo.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {activos.filter(t => t.activo).map(t => (
-              <div key={t.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 cursor-pointer hover:border-[#2a2a2a] transition-colors" onClick={() => loadDetalle(t.id)}>
+              <div key={t.id} className="ms-stat-card cursor-pointer hover:border-[#2a2a2a] transition-colors" onClick={() => loadDetalle(t.id)}>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-full bg-[#1e1e1e] border border-[#262626] flex items-center justify-center shrink-0">

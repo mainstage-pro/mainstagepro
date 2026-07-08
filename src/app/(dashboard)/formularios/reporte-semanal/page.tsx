@@ -120,7 +120,7 @@ export default function ReporteSemanalHistorialPage() {
             <span className="text-gray-700 text-[10px]">/</span>
             <span className="text-[10px] text-gray-500">Reporte General Semanal</span>
           </div>
-          <h1 className="text-xl font-semibold text-white">Archivo de Reportes</h1>
+          <h1 className="ms-h1">Archivo de Reportes</h1>
           <p className="text-gray-500 text-sm mt-1">
             {reportes.length > 0
               ? `${reportes.length} reporte${reportes.length !== 1 ? "s" : ""} registrado${reportes.length !== 1 ? "s" : ""}`
@@ -156,7 +156,7 @@ export default function ReporteSemanalHistorialPage() {
               const reagendasPlan = compPlan.filter(c => c.accion === "reagendada");
               const hasPendientes = reagendadasOp.length > 0 || reagendasPlan.length > 0;
               return (
-                <div key={r.id} className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-4">
+                <div key={r.id} className="ms-card rounded-2xl p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <p className="text-white text-sm font-semibold">{r.user.name.split(" ")[0]}</p>
@@ -209,14 +209,14 @@ export default function ReporteSemanalHistorialPage() {
       {loading && (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 animate-pulse h-24" />
+            <div key={i} className="ms-card p-5 animate-pulse h-24" />
           ))}
         </div>
       )}
 
       {/* Empty state */}
       {!loading && reportes.length === 0 && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-12 text-center">
+        <div className="ms-card rounded-2xl p-12 text-center">
           <p className="text-5xl mb-4">📋</p>
           <p className="text-white font-semibold mb-1">Sin reportes aún</p>
           <p className="text-gray-500 text-sm mb-6">
@@ -280,7 +280,7 @@ export default function ReporteSemanalHistorialPage() {
                     return (
                       <div
                         key={r.id}
-                        className="group flex items-stretch bg-[#111] border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-xl transition-all"
+                        className="group flex items-stretch ms-card-hover transition-all"
                       >
                         <Link
                           href={`/formularios/reporte-semanal/${r.id}`}

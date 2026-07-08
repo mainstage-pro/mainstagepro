@@ -58,12 +58,12 @@ export default function NuevoClientePage() {
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold text-white">Nuevo Cliente</h1>
+        <h1 className="ms-h1">Nuevo Cliente</h1>
         <p className="text-gray-400 text-sm mt-1">Registra un nuevo cliente en el sistema</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Información personal</h2>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -113,7 +113,7 @@ export default function NuevoClientePage() {
           </div>
         </div>
 
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Clasificación</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -143,7 +143,7 @@ export default function NuevoClientePage() {
           </div>
         </div>
 
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Notas</h2>
           <textarea
             name="notas"

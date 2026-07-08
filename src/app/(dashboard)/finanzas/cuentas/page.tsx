@@ -134,12 +134,12 @@ export default function CuentasPage() {
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Cuentas Bancarias</h1>
-          <p className="text-[#6b7280] text-sm">{cuentas.length} cuenta{cuentas.length !== 1 ? "s" : ""} registrada{cuentas.length !== 1 ? "s" : ""}</p>
+          <h1 className="ms-h1">Cuentas Bancarias</h1>
+          <p className="ms-subtitle">{cuentas.length} cuenta{cuentas.length !== 1 ? "s" : ""} registrada{cuentas.length !== 1 ? "s" : ""}</p>
         </div>
         {!showForm && (
           <button onClick={() => setShowForm(true)}
-            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+            className="ms-btn-primary">
             + Nueva cuenta
           </button>
         )}
@@ -202,7 +202,7 @@ export default function CuentasPage() {
       )}
 
       {/* Lista */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+      <div className="ms-card overflow-x-auto">
         {loading ? (
           <SkeletonTable rows={4} cols={4} />
         ) : cuentas.length === 0 ? (
@@ -212,7 +212,7 @@ export default function CuentasPage() {
             <thead>
               <tr className="border-b border-[#1e1e1e]">
                 {["Nombre / Banco", "Número de cuenta", "CLABE", "Titular", "Estado", ""].map(h => (
-                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
+                  <th key={h} className="ms-th">{h}</th>
                 ))}
               </tr>
             </thead>

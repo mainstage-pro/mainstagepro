@@ -63,14 +63,14 @@ export default function PipelinePage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Pipeline Comercial</h1>
+          <h1 className="ms-h1">Pipeline Comercial</h1>
           <div className="flex items-center gap-3 mt-0.5">
-            <p className="text-[#6b7280] text-sm">{totalPipeline} tratos activos</p>
+            <p className="ms-subtitle">{totalPipeline} tratos activos</p>
             {totalValor > 0 && <p className="text-[#B3985B] text-sm">${totalValor.toLocaleString("es-MX")} en pipeline</p>}
             {vencidos > 0 && <p className="text-red-400 text-xs">⚠ {vencidos} seguimiento{vencidos !== 1 ? "s" : ""} vencido{vencidos !== 1 ? "s" : ""}</p>}
           </div>
         </div>
-        <Link href="/crm/tratos/nuevo" className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+        <Link href="/crm/tratos/nuevo" className="ms-btn-primary">
           + Nuevo trato
         </Link>
       </div>

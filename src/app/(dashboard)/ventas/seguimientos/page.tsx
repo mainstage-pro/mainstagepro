@@ -96,7 +96,7 @@ function ModalReprogramar({ segId, onClose, onSaved }: {
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-[#111] border border-[#222] rounded-2xl p-6 w-full max-w-sm">
+      <div className="ms-card rounded-2xl p-6 w-full max-w-sm">
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-white font-semibold text-sm">Reprogramar seguimiento</h3>
           <button onClick={onClose} className="text-[#555] hover:text-white">✕</button>
@@ -175,7 +175,7 @@ function ModalNuevo({ onClose, onSave }: { onClose: () => void; onSave: () => vo
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4"
       onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-[#111] border border-[#222] rounded-2xl p-6 w-full max-w-md">
+      <div className="ms-card rounded-2xl p-6 w-full max-w-md">
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-white font-semibold">Nuevo seguimiento</h3>
           <button onClick={onClose} className="text-[#555] hover:text-white">✕</button>
@@ -523,8 +523,8 @@ export default function SeguimientosPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-semibold text-white">Seguimientos</h1>
-          <p className="text-[#6b7280] text-sm">
+          <h1 className="ms-h1">Seguimientos</h1>
+          <p className="ms-subtitle">
             {!loading && (
               <>
                 {vencidos > 0 && <span className="text-red-400 font-medium">{vencidos} vencidos · </span>}
@@ -535,7 +535,7 @@ export default function SeguimientosPage() {
           </p>
         </div>
         <button onClick={() => setShowModal(true)}
-          className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          className="ms-btn-primary">
           + Seguimiento
         </button>
       </div>
@@ -560,7 +560,7 @@ export default function SeguimientosPage() {
 
       {/* Filtros */}
       <div className="flex flex-wrap items-center gap-2 mb-5">
-        <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-xl p-1">
+        <div className="flex gap-1 ms-card p-1">
           {ESTADO_PILLS.map(p => (
             <button key={p.key} onClick={() => setFiltroEstado(p.key)}
               className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-all ${filtroEstado === p.key ? "bg-[#B3985B] text-black" : "text-[#555] hover:text-white"}`}>

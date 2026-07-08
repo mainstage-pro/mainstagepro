@@ -72,8 +72,8 @@ export default function MarketingReportePage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Reporte de publicaciones</h1>
-          <p className="text-[#6b7280] text-sm">Contenido orgánico · análisis de rendimiento</p>
+          <h1 className="ms-h1">Reporte de publicaciones</h1>
+          <p className="ms-subtitle">Contenido orgánico · análisis de rendimiento</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Link href="/marketing/calendario"
@@ -87,7 +87,7 @@ export default function MarketingReportePage() {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             Reporte ejecutivo
           </button>
-          <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1">
+          <div className="flex gap-1 ms-card rounded-lg p-1">
             {[3, 6, 12].map(n => (
               <button key={n} onClick={() => setRango(n)}
                 className={`text-xs px-3 py-1 rounded transition-colors ${rango === n ? "bg-[#B3985B] text-black font-semibold" : "text-gray-500 hover:text-white"}`}>
@@ -111,7 +111,7 @@ export default function MarketingReportePage() {
               { label: "En proceso", value: data.enProceso, color: "text-blue-400", pct: pct(data.enProceso, data.total) },
               { label: "Pendientes", value: data.pendientes, color: "text-gray-400", pct: pct(data.pendientes, data.total) },
             ].map(k => (
-              <div key={k.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+              <div key={k.label} className="ms-stat-card">
                 <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">{k.label}</p>
                 <p className={`text-2xl font-bold ${k.color}`}>{k.value}</p>
                 {"pct" in k && k.pct !== undefined && (
@@ -122,7 +122,7 @@ export default function MarketingReportePage() {
           </div>
 
           {/* Por mes — recharts stacked bar */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+          <div className="ms-card p-5">
             <h2 className="text-white font-semibold text-sm mb-4">Publicaciones por mes</h2>
             {data.porMes.length === 0 ? (
               <p className="text-gray-600 text-xs text-center py-8">Sin datos en este período</p>
@@ -198,7 +198,7 @@ export default function MarketingReportePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
             {/* Por formato */}
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+            <div className="ms-card p-5">
               <h2 className="text-white font-semibold text-sm mb-4">Por formato</h2>
               {data.porFormato.length === 0 ? (
                 <p className="text-gray-600 text-xs text-center py-4">Sin datos</p>
@@ -224,7 +224,7 @@ export default function MarketingReportePage() {
             </div>
 
             {/* Por tipo de contenido */}
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 md:col-span-2">
+            <div className="ms-card p-5 md:col-span-2">
               <h2 className="text-white font-semibold text-sm mb-4">Por tipo de contenido</h2>
               {data.porTipo.length === 0 ? (
                 <p className="text-gray-600 text-xs text-center py-4">Sin datos</p>
@@ -255,7 +255,7 @@ export default function MarketingReportePage() {
           </div>
 
           {/* Plataformas */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+          <div className="ms-card p-5">
             <h2 className="text-white font-semibold text-sm mb-4">Alcance por plataforma</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[

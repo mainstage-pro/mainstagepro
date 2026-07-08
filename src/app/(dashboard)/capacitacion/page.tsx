@@ -234,7 +234,7 @@ export default function CapacitacionPage() {
         <div className="mb-8">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <h1 className="text-xl font-semibold text-white tracking-tight mb-1">Capacitación</h1>
+              <h1 className="ms-h1 tracking-tight mb-1">Capacitación</h1>
               <p className="text-sm" style={{ color: "#6b7280" }}>
                 Módulo Fundacional · 24 sesiones · Miércoles 10:00 am
               </p>

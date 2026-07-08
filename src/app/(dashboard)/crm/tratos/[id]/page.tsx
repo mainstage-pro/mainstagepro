@@ -1819,7 +1819,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       <div className="space-y-4 min-w-0">
 
       {/* ── Compact Header ── */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+      <div className="ms-card p-5">
         <div className="flex items-start gap-3 mb-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -1836,7 +1836,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#B3985B]/20 text-[#B3985B]">✓ Descubrimiento</span>
               )}
             </div>
-            <h1 className="text-xl font-semibold text-white truncate">{trato.cliente.nombre}</h1>
+            <h1 className="ms-h1 truncate">{trato.cliente.nombre}</h1>
             {trato.cliente.empresa && <p className="text-gray-500 text-sm">{trato.cliente.empresa}</p>}
             {trato.nombreEvento && <p className="text-gray-400 text-sm italic mt-0.5">"{trato.nombreEvento}"</p>}
             {notaInicial && <p className="text-gray-600 text-xs mt-1.5 line-clamp-2">{notaInicial}</p>}
@@ -2614,7 +2614,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
         // Pantalla C: Sin link aún → selector de modo
         return (
-          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl overflow-hidden">
+          <div className="ms-card-deep overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-[#141414]">
               <div className="w-6 h-6 rounded-md bg-violet-900/20 border border-violet-800/30 flex items-center justify-center shrink-0">
                 <span className="text-[11px]">🔍</span>
@@ -2655,7 +2655,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
       {/* ── WIZARD DE DESCUBRIMIENTO ── */}
       {trato.etapa !== "LEAD" && trato.etapa !== "VENTA_PERDIDA" && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="ms-table-wrapper">
           <button
             onClick={() => setDiscoveryExpanded(prev => !prev)}
             className="w-full flex items-center justify-between px-4 py-3 text-sm hover:bg-[#0d0d0d] transition-colors"
@@ -3410,7 +3410,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
 
       {/* ── SCOUTING DE VENUE ── */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+      <div className="ms-table-wrapper">
         <button
           onClick={() => setScoutingVisible(prev => !prev)}
           className="w-full flex items-center justify-between px-4 py-3 text-sm hover:bg-[#0d0d0d] transition-colors"
@@ -3584,7 +3584,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
           {/* Recomendaciones de categorías de equipo */}
           {serviciosSel.length > 0 && (
-            <div className="bg-[#111] border border-[#222] rounded-lg p-4 mb-4">
+            <div className="ms-card rounded-lg p-4 mb-4">
               <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Categorías para cotización</p>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                 {(serviciosSel.includes("AUDIO_PA") || serviciosSel.includes("AUDIO_CONF")) && <div className="text-xs bg-[#1a1a1a] rounded px-3 py-2 text-gray-300">🔊 Audio</div>}
@@ -3840,7 +3840,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       {/* ── RIGHT COLUMN ── */}
       <div className="space-y-4 lg:sticky lg:top-6 self-start">
         {/* Client card */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+        <div className="ms-stat-card">
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] text-gray-600 uppercase tracking-wider">Cliente</p>
           </div>
@@ -3876,7 +3876,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             });
           };
           return (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+            <div className="ms-stat-card">
               <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2">Responsable</p>
               {trato.responsable ? (
                 <div className="flex items-center gap-2">
@@ -3931,7 +3931,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           const hayInfo = fechaAutoritativa || lugarAutoritativo || trato.presupuestoEstimado;
           if (!hayInfo) return null;
           return (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 space-y-2">
+            <div className="ms-stat-card space-y-2">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[10px] text-gray-600 uppercase tracking-wider">Evento</p>
                 {fechaDesde === 'cotizacion' && (
@@ -3965,7 +3965,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         })()}
 
         {/* Registro del trato */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3 flex items-center gap-2">
+        <div className="ms-card px-4 py-3 flex items-center gap-2">
           <span className="text-gray-700 text-xs">🗓</span>
           <span className="text-[10px] text-gray-600">Registro del trato:</span>
           <span className="text-gray-500 text-[10px] font-medium">

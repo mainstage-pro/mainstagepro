@@ -245,7 +245,7 @@ export default function VenuesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">Venues</h1>
+          <h1 className="ms-h1">Venues</h1>
           <p className="text-gray-400 text-sm mt-0.5">Base de datos de recintos y espacios de eventos</p>
         </div>
         <button onClick={openNew} className="px-4 py-2 bg-[#B3985B] text-black font-semibold rounded-lg text-sm hover:bg-[#c9a96a] transition-colors">
@@ -257,7 +257,7 @@ export default function VenuesPage() {
       <input
         value={search} onChange={e => setSearch(e.target.value)}
         placeholder="Buscar por nombre o ciudad..."
-        className="w-full bg-[#111] border border-[#222] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+        className="w-full ms-card px-4 py-3 text-white text-sm focus:outline-none focus:border-[#B3985B]"
       />
 
       {/* Lista */}
@@ -273,7 +273,7 @@ export default function VenuesPage() {
             const tipos: string[] = v.tiposEvento ? JSON.parse(v.tiposEvento) : [];
             const isExpanded = expandedId === v.id;
             return (
-              <div key={v.id} className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+              <div key={v.id} className="ms-table-wrapper">
                 {/* Card header */}
                 <div className="flex items-start gap-4 p-4">
                   {v.fotoPortada ? (
@@ -423,7 +423,7 @@ export default function VenuesPage() {
       {/* Modal form */}
       {showForm && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-start justify-center p-4 overflow-y-auto">
-          <div className="bg-[#111] border border-[#222] rounded-2xl w-full max-w-2xl my-6">
+          <div className="ms-card rounded-2xl w-full max-w-2xl my-6">
             <div className="flex items-center justify-between p-5 border-b border-[#222]">
               <h2 className="text-white font-semibold">{editing ? "Editar venue" : "Nuevo venue"}</h2>
               <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-white text-xl">✕</button>

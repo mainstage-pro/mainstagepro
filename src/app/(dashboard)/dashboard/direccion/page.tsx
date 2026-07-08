@@ -19,7 +19,7 @@ function StatCard({ label, value, sub, color = "text-white", href }: {
   label: string; value: string | number; sub?: string; color?: string; href?: string;
 }) {
   const inner = (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 hover:border-[#2a2a2a] transition-colors">
+    <div className="ms-stat-card hover:border-[#2a2a2a] transition-colors">
       <p className="text-[10px] uppercase tracking-wider text-[#555] font-semibold mb-1">{label}</p>
       <p className={`text-xl font-bold ${color}`}>{value}</p>
       {sub && <p className="text-[11px] text-[#6b7280] mt-0.5">{sub}</p>}
@@ -175,7 +175,7 @@ export default async function DashboardDireccionPage() {
         </div>
 
         {/* Mini barra de distribución por área */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+        <div className="ms-stat-card">
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] text-[#555] uppercase tracking-wider font-semibold">Tareas por área</p>
             <Link href="/operaciones/equipo" className="text-[10px] text-[#B3985B] hover:underline">Ver detalle →</Link>
@@ -252,7 +252,7 @@ export default async function DashboardDireccionPage() {
         </div>
         <Link
           href="/dashboard/semaforo"
-          className="block bg-[#111] border border-[#1e1e1e] rounded-xl p-4 hover:border-[#2a2a2a] transition-all"
+          className="block ms-card p-4 hover:border-[#2a2a2a] transition-all"
         >
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -291,7 +291,7 @@ export default async function DashboardDireccionPage() {
             <Link
               key={m.href}
               href={m.href}
-              className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 hover:border-[#2a2a2a] hover:bg-[#141414] transition-all flex items-start gap-3"
+              className="ms-stat-card hover:border-[#2a2a2a] hover:bg-[#141414] transition-all flex items-start gap-3"
             >
               <span className="text-xl shrink-0 mt-0.5">{m.icon}</span>
               <div className="min-w-0">

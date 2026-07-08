@@ -153,7 +153,7 @@ function KpiCard({
 }) {
   return (
     <div
-      className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 transition-all hover:border-[#2a2a2a]"
+      className="ms-card-hover p-4"
       style={borderColor ? { borderLeft: `3px solid ${borderColor}` } : undefined}
     >
       <p className="text-[#6b7280] text-xs mb-1">{label}</p>
@@ -166,7 +166,7 @@ function KpiCard({
 function Section({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+    <div className="ms-table-wrapper">
       <button
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-[#151515] transition-colors"
@@ -291,7 +291,7 @@ function TabBalance({ mes, onDataLoad }: { mes: string; onDataLoad?: (d: Balance
       </div>
 
       {/* Indicador de salud */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 flex items-center gap-4">
+      <div className="ms-stat-card flex items-center gap-4">
         <div className={`w-4 h-4 rounded-full flex-shrink-0 ${salud === 'SALUDABLE' ? 'bg-green-500' : salud === 'ATENCION' ? 'bg-yellow-500' : 'bg-red-500'}`} style={{ boxShadow: salud === 'SALUDABLE' ? '0 0 8px #22c55e66' : salud === 'ATENCION' ? '0 0 8px #eab30866' : '0 0 8px #ef444466' }} />
         <div className="flex-1">
           <p className="text-white font-semibold text-sm">{saludLabel}</p>
@@ -1066,12 +1066,12 @@ export default function ReportesAdminPage() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
           <div>
             <p className="text-[#B3985B] text-[10px] font-semibold uppercase tracking-widest mb-1">Administración</p>
-            <h1 className="text-xl font-semibold text-white">Reportes de Administración</h1>
+            <h1 className="ms-h1">Reportes de Administración</h1>
             <p className="text-gray-500 text-sm mt-0.5">Escenario Principal S.A. de C.V. · Consolidado ejecutivo</p>
           </div>
           <div className="flex items-center gap-3">
             {/* Selector de mes */}
-            <div className="flex items-center gap-2 bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2">
+            <div className="flex items-center gap-2 ms-card px-3 py-2">
               <button onClick={() => setMes(m => navMes(m, -1))} className="text-gray-400 hover:text-white px-1 transition-colors">‹</button>
               <span className="text-white text-sm font-medium min-w-[120px] text-center">{mesLabel(mes)}</span>
               <button onClick={() => setMes(m => navMes(m, 1))} className="text-gray-400 hover:text-white px-1 transition-colors">›</button>
@@ -1125,7 +1125,7 @@ export default function ReportesAdminPage() {
         {/* ── ANÁLISIS INLINE (siempre visible) ── */}
         <div className="no-print mt-8">
           {/* Responsable — campo adicional solo en admin */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 mb-4">
+          <div className="ms-stat-card mb-4">
             <label className="block text-[10px] text-[#6b7280] uppercase tracking-wider mb-1.5">Elaborado por</label>
             <input
               value={pdfState.responsable}

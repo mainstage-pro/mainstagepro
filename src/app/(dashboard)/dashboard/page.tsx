@@ -578,7 +578,7 @@ export default async function DashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Posición bancaria */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="ms-table-wrapper">
             <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
               <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">Cuentas</p>
               <Link href="/finanzas/cuentas" className="text-[#B3985B] text-xs hover:underline">Ver →</Link>
@@ -609,7 +609,7 @@ export default async function DashboardPage() {
           </div>
 
           {/* CxC */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="ms-table-wrapper">
             <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
               <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">Por cobrar</p>
               <Link href="/finanzas/cobros-pagos" className="text-[#B3985B] text-xs hover:underline">Ver →</Link>
@@ -644,7 +644,7 @@ export default async function DashboardPage() {
           </div>
 
           {/* CxP */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="ms-table-wrapper">
             <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
               <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">Por pagar</p>
               <Link href="/finanzas/cobros-pagos" className="text-[#B3985B] text-xs hover:underline">Ver →</Link>
@@ -702,7 +702,7 @@ export default async function DashboardPage() {
           <GraficaPublicaciones pubsMap={pubsMap} total={totalPubsMes} />
 
           {/* Próximas publicaciones */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="ms-table-wrapper">
             <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
               <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">Próximas publicaciones</p>
               <Link href="/marketing/calendario" className="text-[#B3985B] text-xs hover:underline">Ver calendario →</Link>
@@ -750,7 +750,7 @@ export default async function DashboardPage() {
 
         {/* Cotizaciones sin respuesta */}
         {cotizacionesSinRespuesta.length > 0 && (
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="ms-table-wrapper">
             <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
@@ -871,7 +871,7 @@ export default async function DashboardPage() {
           <GraficaProyectos estadosMap={estadosMap} proyectosSinPersonal={proyectosSinPersonal} />
 
           {/* Próximos eventos */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="ms-table-wrapper">
             <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
               <p className="text-xs text-gray-600 uppercase tracking-wider font-semibold">Próximos eventos</p>
               <Link href="/proyectos" className="text-[#B3985B] text-xs hover:underline">Ver todos →</Link>
@@ -1005,7 +1005,7 @@ function KpiCard({ label, value, sub, subColor = "text-gray-500", animate, href 
   href?: string;
 }) {
   const inner = (
-    <div className={`bg-[#111] border border-[#1e1e1e] rounded-xl p-5 ${href ? "hover:border-[#333] transition-colors group" : ""}`}>
+    <div className={`ms-card p-5 ${href ? "hover:border-[#333] transition-colors group" : ""}`}>
       <p className="text-gray-500 text-xs uppercase tracking-wider mb-2">{label}</p>
       <p className={`text-2xl font-semibold text-white ${href ? "group-hover:text-[#B3985B] transition-colors" : ""}`}>
         {animate ? (

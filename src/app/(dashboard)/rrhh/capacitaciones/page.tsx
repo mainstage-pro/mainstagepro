@@ -150,15 +150,15 @@ export default function CapacitacionesPage() {
 
       {/* Resumen */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 text-center">
+        <div className="ms-stat-card text-center">
           <p className="text-xl font-bold text-blue-400">{programadas}</p>
           <p className="text-[#555] text-xs mt-0.5">Programadas</p>
         </div>
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 text-center">
+        <div className="ms-stat-card text-center">
           <p className="text-xl font-bold text-yellow-400">{enCurso}</p>
           <p className="text-[#555] text-xs mt-0.5">En curso</p>
         </div>
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 text-center">
+        <div className="ms-stat-card text-center">
           <p className="text-xl font-bold text-green-400">{completadas}</p>
           <p className="text-[#555] text-xs mt-0.5">Completadas</p>
         </div>
@@ -192,7 +192,7 @@ export default function CapacitacionesPage() {
           {filtradas.map(c => {
             const asistieron = c.participantes.filter(p => p.asistio).length;
             return (
-              <div key={c.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div key={c.id} className="ms-table-wrapper">
                 <div
                   className="flex items-start gap-3 px-4 py-4 cursor-pointer hover:bg-[#141414] transition-colors"
                   onClick={() => setExpandedId(expandedId === c.id ? null : c.id)}

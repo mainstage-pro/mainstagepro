@@ -83,7 +83,7 @@ export default function ProyectoAccesoPanel({ onClose }: Props) {
             const isDropOpen = dropdownOpen === p.id;
 
             return (
-              <div key={p.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+              <div key={p.id} className="ms-stat-card">
                 <div className="flex items-center gap-2 mb-3">
                   {p.color && <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: p.color }} />}
                   <p className="text-white text-sm font-medium">{p.nombre}</p>

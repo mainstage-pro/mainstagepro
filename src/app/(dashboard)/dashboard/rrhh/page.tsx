@@ -7,7 +7,7 @@ import { EventosWidget } from "@/components/dashboard/EventosWidget";
 
 function KpiCard({ label, value, sub, color = "text-white", href }: { label: string; value: string | number; sub?: string; color?: string; href?: string }) {
   const content = (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 hover:border-[#2a2a2a] transition-colors">
+    <div className="ms-stat-card hover:border-[#2a2a2a] transition-colors">
       <p className="text-[10px] uppercase tracking-wider text-[#555] font-semibold mb-1">{label}</p>
       <p className={`text-xl font-bold ${color}`}>{value}</p>
       {sub && <p className="text-[11px] text-[#6b7280] mt-0.5">{sub}</p>}
@@ -84,7 +84,7 @@ export default async function DashboardRRHHPage() {
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* Candidatos */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+        <div className="ms-stat-card">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Reclutamiento</p>
             <Link href="/rrhh/candidatos" className="text-xs text-[#B3985B] hover:underline">Ver candidatos →</Link>
@@ -104,7 +104,7 @@ export default async function DashboardRRHHPage() {
         </div>
 
         {/* Quick links */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+        <div className="ms-stat-card">
           <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Accesos rápidos</p>
           <div className="grid grid-cols-2 gap-2">
             {[

@@ -11,7 +11,7 @@ function fmt(n: number) {
 
 function KpiCard({ label, value, sub, color = "text-white", href }: { label: string; value: string; sub?: string; color?: string; href?: string }) {
   const content = (
-    <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 hover:border-[#2a2a2a] transition-colors">
+    <div className="ms-stat-card hover:border-[#2a2a2a] transition-colors">
       <p className="text-[10px] uppercase tracking-wider text-[#555] font-semibold mb-1">{label}</p>
       <p className={`text-xl font-bold ${color}`}>{value}</p>
       {sub && <p className="text-[11px] text-[#6b7280] mt-0.5">{sub}</p>}
@@ -150,7 +150,7 @@ export default async function DashboardAdminPage() {
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* Cuentas por cobrar */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="ms-table-wrapper">
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Cuentas por cobrar</p>
             <Link href="/finanzas/cobros-pagos" className="text-xs text-[#B3985B] hover:underline">Ver todos →</Link>
@@ -190,7 +190,7 @@ export default async function DashboardAdminPage() {
         </div>
 
         {/* Cuentas por pagar */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="ms-table-wrapper">
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Cuentas por pagar</p>
             <Link href="/finanzas/cobros-pagos" className="text-xs text-[#B3985B] hover:underline">Ver todos →</Link>
@@ -230,7 +230,7 @@ export default async function DashboardAdminPage() {
         </div>
 
         {/* HERVAM */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+        <div className="ms-stat-card">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Capital HERVAM · {mes}</p>
             <Link href="/admin/valuacion" className="text-xs text-[#B3985B] hover:underline">Ver →</Link>
@@ -265,7 +265,7 @@ export default async function DashboardAdminPage() {
         </div>
 
         {/* Personal & Incidencias */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+        <div className="ms-stat-card">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Recursos Humanos</p>
             <Link href="/rrhh/personal" className="text-xs text-[#B3985B] hover:underline">Ver equipo →</Link>

@@ -358,8 +358,8 @@ export default function ProveedoresPage() {
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-white">Proveedores</h1>
-          <p className="text-[#6b7280] text-sm">
+          <h1 className="ms-h1">Proveedores</h1>
+          <p className="ms-subtitle">
             {proveedores.filter(p => p.activo).length} activos · rentas externas y servicios
           </p>
         </div>
@@ -375,7 +375,7 @@ export default function ProveedoresPage() {
               </button>
             </div>
             <button onClick={startCreate}
-              className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+              className="ms-btn-primary">
               + Nuevo proveedor
             </button>
           </div>
@@ -660,12 +660,12 @@ export default function ProveedoresPage() {
         </>
       ) : (
         /* ── LISTA ── */
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+        <div className="ms-card overflow-x-auto">
           <table className="w-full min-w-[700px]">
             <thead>
               <tr className="border-b border-[#1e1e1e]">
                 {["Proveedor", "Empresa", "Giro", "Prioridad", "Teléfono", "Correo", ""].map(h => (
-                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-3 font-medium">{h}</th>
+                  <th key={h} className="ms-th">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -698,7 +698,7 @@ export default function ProveedoresPage() {
 
                       {giroPopover === p.id && (
                         <div
-                          className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-2"
+                          className="ms-dropdown left-0 top-full mt-1 py-2"
                           style={{ width: 220 }}
                           onClick={e => e.stopPropagation()}
                         >
@@ -758,7 +758,7 @@ export default function ProveedoresPage() {
 
                       {prioPopover === p.id && (
                         <div
-                          className="absolute left-0 top-full mt-1 z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-2"
+                          className="ms-dropdown left-0 top-full mt-1 py-2"
                           style={{ width: 180 }}
                           onClick={e => e.stopPropagation()}
                         >

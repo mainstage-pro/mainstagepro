@@ -165,10 +165,10 @@ export default function PuestosPage() {
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Puestos Ideales</h1>
+          <h1 className="ms-h1">Puestos Ideales</h1>
           <p className="text-gray-500 text-sm">Perfiles de roles que la organización busca desarrollar</p>
         </div>
-        <button onClick={openNew} className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+        <button onClick={openNew} className="ms-btn-primary">
           + Nuevo puesto
         </button>
       </div>
@@ -190,7 +190,7 @@ export default function PuestosPage() {
           <div className="w-6 h-6 border-2 border-[#B3985B] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : visible.length === 0 ? (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-16 text-center">
+        <div className="ms-empty-state">
           <p className="text-gray-500">Sin puestos definidos</p>
           <p className="text-gray-700 text-xs mt-1">Define los perfiles ideales para tu organización</p>
         </div>
@@ -198,7 +198,7 @@ export default function PuestosPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {visible.map(p => (
             <div key={p.id}
-              className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 hover:border-[#2a2a2a] cursor-pointer transition-all"
+              className="ms-stat-card hover:border-[#2a2a2a] cursor-pointer transition-all"
               onClick={() => setSelected(p === selected ? null : p)}>
               <div className="flex items-start justify-between gap-2 mb-3">
                 <div className="flex-1 min-w-0">
@@ -274,7 +274,7 @@ export default function PuestosPage() {
       {/* Modal form */}
       {showForm && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 overflow-auto">
-          <div className="bg-[#111] border border-[#222] rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+          <div className="ms-card w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-[#111] border-b border-[#222] px-6 py-4 flex items-center justify-between">
               <h2 className="text-white font-semibold">{editing ? "Editar puesto" : "Nuevo puesto ideal"}</h2>
               <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-white text-xl">×</button>

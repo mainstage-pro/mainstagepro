@@ -136,21 +136,21 @@ export default function RentabilidadPage() {
 
           {/* Métricas globales */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl px-5 py-4">
+            <div className="ms-card px-5 py-4">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Proyectos</p>
-              <p className="text-xl font-semibold text-white">{data.kpis.totalProyectos}</p>
+              <p className="ms-h1">{data.kpis.totalProyectos}</p>
             </div>
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl px-5 py-4">
+            <div className="ms-card px-5 py-4">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Ingresos cobrados</p>
               <p className="text-2xl font-bold text-emerald-400 tabular-nums">{fmt(data.kpis.totalIngresos)}</p>
             </div>
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl px-5 py-4">
+            <div className="ms-card px-5 py-4">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Utilidad total</p>
               <p className={`text-2xl font-bold tabular-nums ${data.kpis.totalUtilidad >= 0 ? "text-white" : "text-red-400"}`}>
                 {fmt(data.kpis.totalUtilidad)}
               </p>
             </div>
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl px-5 py-4">
+            <div className="ms-card px-5 py-4">
               <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Margen promedio</p>
               <p className={`text-2xl font-bold tabular-nums ${margenColor(data.kpis.margenGlobal)}`}>
                 {fmtPct(data.kpis.margenGlobal)}
@@ -160,7 +160,7 @@ export default function RentabilidadPage() {
 
           {/* Por tipo de evento */}
           {data.porTipoEvento.length > 0 && (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div className="ms-table-wrapper">
               <div className="px-4 py-3 border-b border-[#1a1a1a]">
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Por tipo de evento</h3>
               </div>
@@ -200,7 +200,7 @@ export default function RentabilidadPage() {
               onChange={e => setBuscar(e.target.value)}
               className="bg-[#111] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#c9a96a]/40 w-64"
             />
-            <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1">
+            <div className="flex gap-1 ms-card rounded-lg p-1">
               {(["fecha", "margen", "utilidad"] as const).map(o => (
                 <button
                   key={o}
@@ -217,7 +217,7 @@ export default function RentabilidadPage() {
           </div>
 
           {/* Tabla de proyectos */}
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+          <div className="ms-table-wrapper">
             <div className="divide-y divide-[#161616]">
               {proyectosFiltrados.length === 0 ? (
                 <p className="text-xs text-gray-600 text-center py-8">Sin resultados</p>

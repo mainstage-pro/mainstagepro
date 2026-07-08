@@ -128,7 +128,7 @@ export default function OnboardingDetallePage({ params }: { params: Promise<{ id
       <div className="h-8 w-64 bg-[#1a1a1a] rounded-lg animate-pulse" />
       <div className="h-4 w-48 bg-[#1a1a1a] rounded animate-pulse" />
       <div className="space-y-3">
-        {[1,2,3].map(i => <div key={i} className="h-16 bg-[#111] border border-[#1e1e1e] rounded-xl animate-pulse" />)}
+        {[1,2,3].map(i => <div key={i} className="h-16 ms-card animate-pulse" />)}
       </div>
     </div>
   );
@@ -158,7 +158,7 @@ export default function OnboardingDetallePage({ params }: { params: Promise<{ id
         </Link>
         <div className="flex items-start justify-between gap-4 mt-2">
           <div>
-            <h1 className="text-xl font-semibold text-white">{plan.nombre}</h1>
+            <h1 className="ms-h1">{plan.nombre}</h1>
             <p className="text-[#B3985B] text-sm font-medium">{plan.puesto}</p>
             {plan.area && <p className="text-gray-600 text-xs">{plan.area}</p>}
             {candidato && (
@@ -189,7 +189,7 @@ export default function OnboardingDetallePage({ params }: { params: Promise<{ id
       </div>
 
       {/* Progreso global */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+      <div className="ms-card p-5">
         <div className="flex items-center justify-between mb-3">
           <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider">Progreso general</p>
           <span className={`text-2xl font-bold ${pct === 100 ? "text-green-400" : "text-[#B3985B]"}`}>{pct}%</span>
@@ -312,7 +312,7 @@ export default function OnboardingDetallePage({ params }: { params: Promise<{ id
 
       {/* Notas */}
       {plan.notas && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+        <div className="ms-stat-card">
           <p className="text-gray-600 text-xs font-semibold uppercase tracking-wider mb-2">Notas</p>
           <p className="text-gray-400 text-sm whitespace-pre-wrap">{plan.notas}</p>
         </div>

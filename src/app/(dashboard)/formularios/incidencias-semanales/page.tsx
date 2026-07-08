@@ -45,7 +45,7 @@ export default function IncidenciasHistorialPage() {
             <span className="text-gray-700">/</span>
             <span className="text-gray-500">Incidencias Semanales</span>
           </div>
-          <h1 className="text-xl font-semibold text-white">Incidencias Semanales</h1>
+          <h1 className="ms-h1">Incidencias Semanales</h1>
           <p className="text-gray-500 text-sm mt-1">
             {registros.length > 0
               ? `${registros.length} registro${registros.length !== 1 ? "s" : ""}`
@@ -67,14 +67,14 @@ export default function IncidenciasHistorialPage() {
       {loading && (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 animate-pulse h-20" />
+            <div key={i} className="ms-card p-5 animate-pulse h-20" />
           ))}
         </div>
       )}
 
       {/* Empty */}
       {!loading && registros.length === 0 && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-12 text-center">
+        <div className="ms-card rounded-2xl p-12 text-center">
           <p className="text-5xl mb-4">⚠️</p>
           <p className="text-white font-semibold mb-1">Sin registros aún</p>
           <p className="text-gray-500 text-sm mb-6">Crea tu primer registro de incidencias semanales.</p>
@@ -98,7 +98,7 @@ export default function IncidenciasHistorialPage() {
               <Link
                 key={r.id}
                 href={`/formularios/incidencias-semanales/${r.id}`}
-                className="block bg-[#111] border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-xl px-5 py-4 transition-all group"
+                className="block ms-card-hover px-5 py-4 transition-all group"
               >
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex-1 min-w-0">

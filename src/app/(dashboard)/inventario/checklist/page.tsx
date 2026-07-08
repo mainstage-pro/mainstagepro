@@ -73,13 +73,13 @@ export default function BodegaPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Checklist semanal de bodega</h1>
-          <p className="text-[#6b7280] text-sm">Verificación del inventario propio · cada semana</p>
+          <h1 className="ms-h1">Checklist semanal de bodega</h1>
+          <p className="ms-subtitle">Verificación del inventario propio · cada semana</p>
         </div>
       </div>
 
       {/* CTA semana actual */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5">
+      <div className="ms-card p-5">
         <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-3">Semana actual · {semanaActual}</p>
         {checklistSemana ? (
           <div className="flex items-center justify-between">
@@ -95,7 +95,7 @@ export default function BodegaPage() {
               </div>
             </div>
             <button onClick={() => router.push(`/inventario/checklist/${checklistSemana.id}`)}
-              className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+              className="ms-btn-primary">
               Continuar →
             </button>
           </div>
@@ -116,7 +116,7 @@ export default function BodegaPage() {
         {loading ? (
           <div className="py-8 text-center text-gray-600 text-sm">Cargando...</div>
         ) : checklists.filter(c => c.semana !== semanaActual).length === 0 ? (
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-10 text-center">
+          <div className="ms-card py-10 text-center">
             <p className="text-gray-600 text-sm">Sin checklists anteriores</p>
           </div>
         ) : (
@@ -128,7 +128,7 @@ export default function BodegaPage() {
               const pct = c._count.items > 0 ? Math.round((revisados / c._count.items) * 100) : 0;
               return (
                 <button key={c.id} onClick={() => router.push(`/inventario/checklist/${c.id}`)}
-                  className="w-full bg-[#111] border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-xl px-5 py-4 text-left flex items-center gap-4 transition-colors group">
+                  className="w-full ms-card-hover px-5 py-4 text-left flex items-center gap-4 transition-colors group">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <p className="text-white text-sm font-medium">{fechaLabel(c.fechaInicio)}</p>

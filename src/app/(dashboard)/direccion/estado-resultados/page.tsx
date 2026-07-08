@@ -402,7 +402,7 @@ export default function EstadoResultadosDireccionPage() {
       {activeTab === "resumen" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Waterfall */}
-          <div className="lg:col-span-2 bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
+          <div className="lg:col-span-2 ms-card rounded-2xl overflow-hidden">
             <div className="px-5 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Cascada de Utilidades</p>
               <p className="text-[9px] text-gray-700">Base devengado · {mesLabel(mes)}</p>
@@ -481,7 +481,7 @@ export default function EstadoResultadosDireccionPage() {
           <div className="space-y-4">
             {/* Comparativo */}
             {comp && (
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
+              <div className="ms-card rounded-2xl overflow-hidden">
                 <div className="px-4 py-3 border-b border-[#1a1a1a]">
                   <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">vs. {mesLabel(comp.mes)}</p>
                 </div>
@@ -505,7 +505,7 @@ export default function EstadoResultadosDireccionPage() {
             )}
 
             {/* Estructura de costos */}
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-4 space-y-3">
+            <div className="ms-card rounded-2xl p-4 space-y-3">
               <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Estructura de Costos</p>
               {[
                 { label: "Costos Directos", value: data.totalCostosDirectos, color: "#dc2626" },
@@ -579,13 +579,13 @@ export default function EstadoResultadosDireccionPage() {
                   { label: "Utilidad Bruta", value: fmt(data.utilidadBruta), color: data.utilidadBruta >= 0 ? "text-green-400" : "text-red-400" },
                   { label: "Por Cobrar", value: fmt(totalPorCobrar), color: totalPorCobrar > 0 ? "text-amber-400" : "text-green-400" },
                 ].map(k => (
-                  <div key={k.label} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+                  <div key={k.label} className="ms-stat-card">
                     <p className="text-[9px] text-gray-600 uppercase tracking-widest">{k.label}</p>
                     <p className={`text-lg font-bold tabular-nums mt-1 ${k.color}`}>{k.value}</p>
                   </div>
                 ))}
               </div>
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
+              <div className="ms-card rounded-2xl overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-[#040404]">
@@ -657,7 +657,7 @@ export default function EstadoResultadosDireccionPage() {
           {/* Gastos por categoría */}
           <div className="space-y-3">
             <SectionDivider title="Gastos Operativos por Categoría" />
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
+            <div className="ms-card rounded-2xl overflow-hidden">
               {data.gastosPorCategoria.length === 0 ? (
                 <p className="text-gray-600 text-sm text-center py-10">Sin gastos operativos en {mesLabel(mes)}</p>
               ) : (
@@ -696,7 +696,7 @@ export default function EstadoResultadosDireccionPage() {
           <div className="space-y-4">
             <div className="space-y-3">
               <SectionDivider title="Nómina del Período" />
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden">
+              <div className="ms-card rounded-2xl overflow-hidden">
                 {data.nominaItems.length === 0 ? (
                   <p className="text-gray-600 text-sm text-center py-10">Sin registros de nómina en {mes}</p>
                 ) : (
@@ -733,7 +733,7 @@ export default function EstadoResultadosDireccionPage() {
             {data.cuotasDeuda.length > 0 && (
               <div className="space-y-3">
                 <SectionDivider title="Costos Financieros" />
-                <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl overflow-hidden divide-y divide-[#0a0a0a]">
+                <div className="ms-card rounded-2xl overflow-hidden divide-y divide-[#0a0a0a]">
                   {data.cuotasDeuda.map(c => (
                     <div key={c.id} className="flex items-center justify-between px-4 py-3">
                       <div>

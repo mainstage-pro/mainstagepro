@@ -163,7 +163,7 @@ export default function MetricasPage() {
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-white text-xl font-semibold tracking-tight">Métricas orgánicas</h1>
-            <p className="text-[#6b7280] text-sm mt-0.5">Seguimiento manual de alcance y crecimiento por plataforma</p>
+            <p className="ms-subtitle mt-0.5">Seguimiento manual de alcance y crecimiento por plataforma</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">

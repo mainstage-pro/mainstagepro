@@ -213,7 +213,7 @@ export default async function DashboardProduccionPage() {
       </div>
 
       {/* Próximos proyectos */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-x-auto">
+      <div className="ms-card overflow-x-auto">
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
           <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Proyectos próximos 30 días</p>
           <Link href="/proyectos" className="text-xs text-[#B3985B] hover:underline">Ver todos →</Link>
@@ -225,7 +225,7 @@ export default async function DashboardProduccionPage() {
             <thead>
               <tr className="border-b border-[#1a1a1a]">
                 {["Evento", "Cliente", "Fecha", "Personal", "Checklist", "Plan", "Estado"].map(h => (
-                  <th key={h} className="text-left text-[10px] uppercase tracking-wider text-[#555] px-4 py-2 font-medium">{h}</th>
+                  <th key={h} className="ms-th">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -304,7 +304,7 @@ export default async function DashboardProduccionPage() {
             ? { href: `/proyectos/${proximoEvento.id}/plan`, label: "Plan de producción", desc: proximoEvento.nombre }
             : { href: "/proyectos", label: "Plan de producción", desc: "Sin eventos próximos" },
         ] as { href: string; label: string; desc: string }[]).map(a => (
-          <Link key={a.href} href={a.href} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4 hover:border-[#2a2a2a] hover:bg-[#141414] transition-all">
+          <Link key={a.href} href={a.href} className="ms-stat-card hover:border-[#2a2a2a] hover:bg-[#141414] transition-all">
             <p className="text-white text-sm font-semibold">{a.label}</p>
             <p className="text-gray-500 text-xs mt-0.5">{a.desc}</p>
           </Link>

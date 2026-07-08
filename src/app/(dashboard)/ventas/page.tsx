@@ -129,17 +129,17 @@ export default function VentasPage() {
   const mesActual = new Date().toISOString().slice(0, 7);
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="ms-page space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Ventas</h1>
-          <p className="text-sm text-[#6b7280] mt-0.5">Pipeline, rendimiento y comisiones</p>
+          <h1 className="ms-h1">Ventas</h1>
+          <p className="ms-subtitle mt-0.5">Pipeline, rendimiento y comisiones</p>
         </div>
         <div className="flex gap-2">
           <Link
             href="/ventas/reporte"
-            className="px-4 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c9a96a] transition-colors"
+            className="ms-btn-primary"
           >
             Reporte comisiones
           </Link>
@@ -147,13 +147,13 @@ export default function VentasPage() {
             <>
               <Link
                 href="/ventas/vendedores"
-                className="border border-[#333] text-gray-400 hover:text-white hover:border-[#555] text-sm px-4 py-2 rounded-lg transition-colors"
+                className="ms-btn-secondary"
               >
                 Vendedores
               </Link>
               <Link
                 href="/ventas/config"
-                className="border border-[#333] text-gray-400 hover:text-white hover:border-[#555] text-sm px-4 py-2 rounded-lg transition-colors"
+                className="ms-btn-secondary"
               >
                 Configuración
               </Link>
@@ -189,9 +189,9 @@ export default function VentasPage() {
           { label: "Oportunidades", value: tratosPorEtapa.OPORTUNIDAD.length, sub: "tratos" },
           { label: "Cerrados (total)", value: tratosPorEtapa.VENTA_CERRADA.length, sub: "tratos" },
         ].map(s => (
-          <div key={s.label} className="bg-[#111] border border-[#222] rounded-xl p-4">
+          <div key={s.label} className="ms-stat-card">
             <p className="text-xs text-gray-500 mb-1">{s.label}</p>
-            <p className="text-xl font-semibold text-white">{s.value}</p>
+            <p className="ms-h1">{s.value}</p>
             <p className="text-xs text-gray-600 mt-0.5">{s.sub}</p>
           </div>
         ))}
@@ -203,7 +203,7 @@ export default function VentasPage() {
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {ETAPAS.map(etapa => (
-            <div key={etapa} className={`bg-[#111] border rounded-xl p-4 ${etapa === "VENTA_PERDIDA" ? "border-[#1f1f1f] opacity-70" : "border-[#222]"}`}>
+            <div key={etapa} className={`ms-card p-4 ${etapa === "VENTA_PERDIDA" ? "opacity-70" : ""}`}>
               <div className={`flex items-center gap-2 mb-3 pb-2 border-b border-[#1a1a1a]`}>
                 <span className={`text-xs font-semibold uppercase tracking-wider ${ETAPA_COLOR[etapa].split(" ")[1]}`}>
                   {ETAPA_LABEL[etapa]}

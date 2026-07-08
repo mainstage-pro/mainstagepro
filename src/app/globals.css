@@ -360,8 +360,11 @@ input[type="number"]::-webkit-inner-spin-button {
 
   /* ── Cards / Contenedores ───────────────────────────────────────────────── */
   .ms-card          { @apply bg-[#111] border border-[#1e1e1e] rounded-xl; }
+  .ms-card-hover    { @apply bg-[#111] border border-[#1e1e1e] rounded-xl hover:border-[#2a2a2a] transition-all; }
   .ms-card-deep     { @apply bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl; }
   .ms-card-inset    { @apply bg-[#1a1a1a] border border-[#252525] rounded-lg; }
+  /* Stat/KPI card */
+  .ms-stat-card     { @apply bg-[#111] border border-[#1e1e1e] rounded-xl p-4; }
 
   /* ── Botones ─────────────────────────────────────────────────────────────── */
   .ms-btn-primary   {
@@ -428,13 +431,27 @@ input[type="number"]::-webkit-inner-spin-button {
            text-white text-sm focus:outline-none focus:border-[#B3985B] transition-colors
            placeholder:text-[#444] resize-none;
   }
+  /* Filter select (para filtros en tablas) */
+  .ms-filter-select {
+    @apply text-[11px] px-2.5 py-1.5 rounded-lg border border-[#1a1a1a]
+           bg-[#0d0d0d] text-[#444] cursor-pointer transition-colors
+           focus:outline-none;
+  }
+  .ms-filter-select-active {
+    @apply text-[11px] px-2.5 py-1.5 rounded-lg border border-[#B3985B]/40
+           bg-[#0d0d0d] text-[#B3985B] cursor-pointer transition-colors
+           focus:outline-none;
+  }
 
-  /* ── Table / Lista headers ──────────────────────────────────────────────── */
+  /* ── Table / Lista ──────────────────────────────────────────────────────── */
   .ms-th            {
     @apply text-left text-[10px] uppercase tracking-wider text-[#555]
            px-4 py-3 font-medium whitespace-nowrap;
   }
   .ms-thead         { @apply bg-[#0a0a0a] border-b border-[#111]; }
+  .ms-table-wrapper { @apply bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden; }
+  .ms-tr            { @apply border-b border-[#0f0f0f] hover:bg-[#111] transition-colors; }
+  .ms-td            { @apply px-4 py-2.5 align-middle; }
 
   /* ── Badges ─────────────────────────────────────────────────────────────── */
   .ms-badge         { @apply text-[10px] px-2 py-0.5 rounded-full font-medium border; }
@@ -445,10 +462,36 @@ input[type="number"]::-webkit-inner-spin-button {
   .ms-badge-blue    { @apply bg-blue-900/30 text-blue-400 border-blue-800/30; }
   .ms-badge-purple  { @apply bg-purple-900/30 text-purple-400 border-purple-800/30; }
   .ms-badge-gray    { @apply bg-[#1a1a1a] text-[#555] border-[#2a2a2a]; }
+  .ms-badge-emerald { @apply bg-emerald-900/30 text-emerald-400 border-emerald-800/30; }
+  .ms-badge-sky     { @apply bg-sky-900/30 text-sky-400 border-sky-800/30; }
+  .ms-badge-pink    { @apply bg-pink-900/30 text-pink-400 border-pink-800/30; }
+
+  /* ── Links ──────────────────────────────────────────────────────────────── */
+  .ms-link-gold     { @apply text-[#B3985B] hover:text-white transition-colors; }
 
   /* ── Dividers ────────────────────────────────────────────────────────────── */
   .ms-divider       { @apply border-t border-[#111]; }
   .ms-divider-mid   { @apply border-t border-[#1e1e1e]; }
+
+  /* ── Dropdown menus (custom, no shadcn) ─────────────────────────────────── */
+  .ms-dropdown      {
+    @apply absolute z-50 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl py-1;
+  }
+  .ms-dropdown-item {
+    @apply w-full flex items-center gap-2 text-left px-3 py-2 text-[11px]
+           text-gray-300 hover:bg-[#1e1e1e] transition-colors;
+  }
+  .ms-dropdown-label {
+    @apply text-[9px] text-[#444] uppercase tracking-wider px-3 py-1.5;
+  }
+  .ms-dropdown-divider {
+    @apply border-t border-[#1e1e1e] mt-0.5;
+  }
+
+  /* ── Empty states ───────────────────────────────────────────────────────── */
+  .ms-empty-state   {
+    @apply bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16;
+  }
 
   /* ── Modales / Dialogs ───────────────────────────────────────────────────── */
   .ms-modal-overlay { @apply fixed inset-0 z-50 flex items-center justify-center p-4; }

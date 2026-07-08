@@ -279,12 +279,12 @@ export default function ConfiguracionPage() {
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-5">
       <div>
-        <h1 className="text-xl font-semibold text-white">Configuración</h1>
-        <p className="text-[#6b7280] text-sm">Personalización y parámetros del sistema</p>
+        <h1 className="ms-h1">Configuración</h1>
+        <p className="ms-subtitle">Personalización y parámetros del sistema</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-[#111] border border-[#1e1e1e] rounded-lg p-1 w-fit flex-wrap">
+      <div className="ms-tabs w-fit flex-wrap">
         {([
           ["etiquetas", "Etiquetas"],
           ["configuracion", "Configuración general"],
@@ -303,7 +303,7 @@ export default function ConfiguracionPage() {
             Personaliza los nombres que aparecen en el menú lateral. Deja en blanco para usar el nombre por defecto.
           </p>
           {ETIQUETAS.map(group => (
-            <div key={group.group} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-3">
+            <div key={group.group} className="ms-card p-5 space-y-3">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{group.group}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {group.items.map(item => (
@@ -342,7 +342,7 @@ export default function ConfiguracionPage() {
       {tab === "configuracion" && (
         <div className="space-y-5">
           {/* Seed button */}
-          <div className="flex items-center justify-between bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
+          <div className="flex items-center justify-between ms-stat-card">
             <div>
               <p className="text-white text-sm font-medium">Inicializar configuración</p>
               <p className="text-gray-600 text-xs mt-0.5">Carga todos los parámetros de la plataforma. Los valores existentes no se sobreescriben.</p>
@@ -363,7 +363,7 @@ export default function ConfiguracionPage() {
             </div>
           ) : (
             Array.from(sections.entries()).map(([section, entries]) => (
-              <div key={section} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div key={section} className="ms-table-wrapper">
                 <div className="px-5 py-3 border-b border-[#1a1a1a]">
                   <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
                     {SECCION_LABELS[section] ?? section}
@@ -412,7 +412,7 @@ export default function ConfiguracionPage() {
       )}
 
       {/* ── Migraciones ── */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-3">
+      <div className="ms-card p-5 space-y-3">
         <h2 className="text-white font-semibold text-sm">Migraciones de datos</h2>
         <div className="flex items-center gap-4">
           <div>
@@ -444,7 +444,7 @@ export default function ConfiguracionPage() {
       </div>
 
       {/* ── Backups ── */}
-      <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
+      <div className="ms-card p-5 space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h2 className="text-white font-semibold text-sm flex items-center gap-2">

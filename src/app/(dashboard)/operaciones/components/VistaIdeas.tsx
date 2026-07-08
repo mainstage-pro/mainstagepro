@@ -200,20 +200,20 @@ function DialogNuevaIdea({
             onChange={e => setTitulo(e.target.value)}
             onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) submit(); if (e.key === "Escape") onClose(); }}
             placeholder="Título de la idea *"
-            className="w-full bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2.5 text-[13px] text-white placeholder-[#333] focus:outline-none focus:border-[#a78bfa]/40 transition-colors"
+            className="w-full ms-card px-3 py-2.5 text-[13px] text-white placeholder-[#333] focus:outline-none focus:border-[#a78bfa]/40 transition-colors"
           />
           <textarea
             value={nota}
             onChange={e => setNota(e.target.value)}
             placeholder="Nota o descripción (opcional)"
             rows={3}
-            className="w-full bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2.5 text-[12.5px] text-white placeholder-[#333] focus:outline-none focus:border-[#a78bfa]/40 resize-none transition-colors"
+            className="w-full ms-card px-3 py-2.5 text-[12.5px] text-white placeholder-[#333] focus:outline-none focus:border-[#a78bfa]/40 resize-none transition-colors"
           />
           <div className="grid grid-cols-2 gap-2">
             <select
               value={area}
               onChange={e => setArea(e.target.value)}
-              className="bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2 text-[12px] text-[#aaa] focus:outline-none focus:border-[#a78bfa]/30 transition-colors"
+              className="ms-card px-3 py-2 text-[12px] text-[#aaa] focus:outline-none focus:border-[#a78bfa]/30 transition-colors"
             >
               <option value="">Área…</option>
               {AREAS.map(a => <option key={a} value={a}>{AREA_LABELS[a]}</option>)}
@@ -221,7 +221,7 @@ function DialogNuevaIdea({
             <select
               value={tipo}
               onChange={e => setTipo(e.target.value)}
-              className="bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2 text-[12px] text-[#aaa] focus:outline-none focus:border-[#a78bfa]/30 transition-colors"
+              className="ms-card px-3 py-2 text-[12px] text-[#aaa] focus:outline-none focus:border-[#a78bfa]/30 transition-colors"
             >
               <option value="">Tipo…</option>
               {["negocio", "operacion", "plataforma", "estrategia"].map(t => (

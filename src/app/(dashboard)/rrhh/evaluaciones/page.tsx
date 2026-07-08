@@ -108,11 +108,11 @@ export default function EvaluacionesPage() {
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-5">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-xl font-semibold text-white">Evaluaciones de desempeño</h1>
-          <p className="text-[#6b7280] text-sm">Seguimiento del rendimiento del equipo</p>
+          <h1 className="ms-h1">Evaluaciones de desempeño</h1>
+          <p className="ms-subtitle">Seguimiento del rendimiento del equipo</p>
         </div>
         <button onClick={() => setShowForm(true)}
-          className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+          className="ms-btn-primary">
           + Nueva evaluación
         </button>
       </div>
@@ -123,7 +123,7 @@ export default function EvaluacionesPage() {
           value={filtroPersonal}
           onChange={v => setFiltroPersonal(v)}
           options={[{ value: "", label: "Todos los empleados" }, ...personal.map(p => ({ value: p.id, label: p.nombre }))]}
-          className="bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+          className="ms-input-inline"
         />
         {evaluaciones.length > 0 && promedio > 0 && (
           <span className={`text-sm font-semibold ${scoreColor(promedio)}`}>
@@ -218,11 +218,11 @@ export default function EvaluacionesPage() {
       {/* Lista */}
       <div className="space-y-3">
         {evaluaciones.length === 0 ? (
-          <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-14 text-center">
+          <div className="ms-card py-14 text-center">
             <p className="text-gray-500 text-sm">Sin evaluaciones registradas</p>
           </div>
         ) : evaluaciones.map(e => (
-          <div key={e.id} className="bg-[#111] border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-xl p-5 transition-colors cursor-pointer"
+          <div key={e.id} className="ms-card-hover p-5 transition-colors cursor-pointer"
             onClick={() => router.push(`/rrhh/evaluaciones/${e.id}`)}>
             <div className="flex items-start justify-between gap-3">
               <div className="flex-1 min-w-0">

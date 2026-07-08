@@ -322,8 +322,8 @@ export default function VehiculosPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-semibold text-white">Vehículos</h1>
-          <p className="text-[#6b7280] text-sm">Bitácora de mantenimiento</p>
+          <h1 className="ms-h1">Vehículos</h1>
+          <p className="ms-subtitle">Bitácora de mantenimiento</p>
         </div>
         <button onClick={() => { setShowVehForm(true); setVehFotos([]); }}
           className="bg-[#B3985B] hover:bg-[#d4b068] text-black text-sm font-semibold px-4 py-2 rounded-xl transition-colors">
@@ -422,7 +422,7 @@ export default function VehiculosPage() {
           {/* Lista de vehículos */}
           <div className="w-72 shrink-0 space-y-2">
             {vehiculos.length === 0 ? (
-              <div className="bg-[#111] border border-[#222] rounded-xl py-10 text-center">
+              <div className="ms-card py-10 text-center">
                 <p className="text-gray-600 text-sm">Sin vehículos</p>
                 <p className="text-gray-700 text-xs mt-1">Agrega el primero</p>
               </div>
@@ -462,13 +462,13 @@ export default function VehiculosPage() {
           {/* Detalle */}
           <div className="flex-1 min-w-0">
             {!selected ? (
-              <div className="bg-[#111] border border-[#222] rounded-xl h-64 flex items-center justify-center">
+              <div className="ms-card h-64 flex items-center justify-center">
                 <p className="text-gray-700 text-sm">Selecciona un vehículo</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {/* Info del vehículo */}
-                <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+                <div className="ms-card p-5">
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <h2 className="text-white font-semibold text-lg">{selected.nombre}</h2>
@@ -647,7 +647,7 @@ export default function VehiculosPage() {
                 </Modal>
 
                 {/* Bitácora de registros */}
-                <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+                <div className="ms-table-wrapper">
                   <div className="px-5 py-3 border-b border-[#1a1a1a]">
                     <p className="text-white text-sm font-semibold">Bitácora de mantenimiento</p>
                     <p className="text-gray-600 text-xs mt-0.5">{selected.mantenimientos.length} registros</p>

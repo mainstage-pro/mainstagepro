@@ -53,7 +53,7 @@ export default function AgendaPage() {
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
       <div className="h-8 w-48 bg-[#1a1a1a] rounded-lg animate-pulse" />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {[1,2,3,4].map(i => <div key={i} className="h-40 bg-[#111] border border-[#1e1e1e] rounded-xl animate-pulse" />)}
+        {[1,2,3,4].map(i => <div key={i} className="h-40 ms-card animate-pulse" />)}
       </div>
     </div>
   );
@@ -76,7 +76,7 @@ export default function AgendaPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-xl font-semibold text-white">Mi agenda</h1>
+        <h1 className="ms-h1">Mi agenda</h1>
         <p className="text-gray-500 text-sm">
           {usuario.name} · {new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
         </p>
@@ -97,7 +97,7 @@ export default function AgendaPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
         {/* CxC pendientes de mis proyectos */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="ms-table-wrapper">
           <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
             <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Cobros pendientes</p>
             <Link href="/finanzas/cobros-pagos" className="text-[#B3985B] text-xs hover:underline">Ver todos →</Link>
@@ -139,7 +139,7 @@ export default function AgendaPage() {
         </div>
 
         {/* Cotizaciones sin respuesta */}
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+        <div className="ms-table-wrapper">
           <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
             <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Cotizaciones sin respuesta</p>
             <Link href="/cotizaciones" className="text-[#B3985B] text-xs hover:underline">Ver todas →</Link>
@@ -180,7 +180,7 @@ export default function AgendaPage() {
       )}
 
       {proyectosActivos.length === 0 && cxcPendientes.length === 0 && cotizacionesSinRespuesta.length === 0 && (
-        <div className="bg-[#111] border border-[#1e1e1e] rounded-xl text-center py-16">
+        <div className="ms-empty-state">
           <p className="text-2xl mb-2">🎉</p>
           <p className="text-gray-500 text-sm">Todo al día — sin pendientes asignados</p>
         </div>

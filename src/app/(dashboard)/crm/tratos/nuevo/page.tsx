@@ -154,7 +154,7 @@ export default function NuevoContactoPage() {
       {/* Header */}
       <div className="mb-6">
         <button onClick={() => router.back()} className="text-gray-600 hover:text-white text-sm mb-2 transition-colors">← Atrás</button>
-        <h1 className="text-xl font-semibold text-white">Nuevo contacto</h1>
+        <h1 className="ms-h1">Nuevo contacto</h1>
         <p className="text-gray-600 text-xs mt-1">Registra un nuevo contacto en el funnel de ventas</p>
       </div>
 
@@ -165,7 +165,7 @@ export default function NuevoContactoPage() {
       <div className="space-y-4">
 
         {/* ── Sección 1: Cliente ── */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <h2 className="text-xs font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Cliente</h2>
           <div className="flex gap-2 mb-4">
             {(["existente", "nuevo"] as const).map(m => (
@@ -279,7 +279,7 @@ export default function NuevoContactoPage() {
         </div>
 
         {/* ── Sección 2: Etapa inicial ── */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <h2 className="text-xs font-semibold text-[#B3985B] mb-1 uppercase tracking-wider">Etapa inicial</h2>
           <p className="text-[11px] text-gray-600 mb-4">¿En qué punto del proceso se encuentra este contacto?</p>
           <div className="space-y-2">
@@ -324,7 +324,7 @@ export default function NuevoContactoPage() {
         </div>
 
         {/* ── Sección 3: Origen ── */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Origen del contacto</h2>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -352,7 +352,7 @@ export default function NuevoContactoPage() {
         </div>
 
         {/* ── Sección 4: Vendedor y comisión ── */}
-        <div className="bg-[#111] border border-[#222] rounded-xl p-5">
+        <div className="ms-card p-5">
           <h2 className="text-xs font-semibold text-[#B3985B] mb-3 uppercase tracking-wider">Vendedor y comisión</h2>
           <div className="space-y-3">
             <div>

@@ -91,8 +91,8 @@ export default function EmpresaDetallePage() {
 
   useEffect(() => { load(); }, [load]);
 
-  if (loading) return <div className="p-8 text-center text-[#6b7280] text-sm">Cargando...</div>;
-  if (!empresa) return <div className="p-8 text-center text-[#6b7280] text-sm">Empresa no encontrada</div>;
+  if (loading) return <div className="p-8 text-center ms-subtitle">Cargando...</div>;
+  if (!empresa) return <div className="p-8 text-center ms-subtitle">Empresa no encontrada</div>;
 
   const totalCobrar = empresa.cuentasCobrar.reduce((s, c) => s + c.monto, 0);
   const totalPagar = empresa.cuentasPagar.reduce((s, c) => s + c.monto, 0);
@@ -120,13 +120,13 @@ export default function EmpresaDetallePage() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-semibold text-white">{empresa.nombre}</h1>
+              <h1 className="ms-h1">{empresa.nombre}</h1>
               <span className={`text-[10px] px-2 py-0.5 rounded-full ${TIPO_COLORS[empresa.tipo] ?? "bg-gray-900/30 text-gray-400"}`}>
                 {TIPO_LABELS[empresa.tipo] ?? empresa.tipo}
               </span>
               {!empresa.activo && <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-900/30 text-red-400">Inactiva</span>}
             </div>
-            {empresa.giro && <p className="text-sm text-[#6b7280] mt-0.5">{empresa.giro}</p>}
+            {empresa.giro && <p className="ms-subtitle mt-0.5">{empresa.giro}</p>}
           </div>
           <Link href="/catalogo/empresas" className="text-xs text-[#B3985B] hover:underline shrink-0">
             Ver todas
@@ -136,25 +136,25 @@ export default function EmpresaDetallePage() {
         {/* Info básica */}
         <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
           {empresa.telefono && (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2">
+            <div className="ms-card px-3 py-2">
               <p className="text-[10px] text-[#555] uppercase tracking-wider">Teléfono</p>
               <p className="text-sm text-gray-300 mt-0.5">{empresa.telefono}</p>
             </div>
           )}
           {empresa.correo && (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2">
+            <div className="ms-card px-3 py-2">
               <p className="text-[10px] text-[#555] uppercase tracking-wider">Correo</p>
               <p className="text-sm text-gray-300 mt-0.5 truncate">{empresa.correo}</p>
             </div>
           )}
           {empresa.rfc && (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2">
+            <div className="ms-card px-3 py-2">
               <p className="text-[10px] text-[#555] uppercase tracking-wider">RFC</p>
               <p className="text-sm text-gray-300 font-mono mt-0.5">{empresa.rfc}</p>
             </div>
           )}
           {empresa.banco && (
-            <div className="bg-[#111] border border-[#1e1e1e] rounded-xl px-3 py-2">
+            <div className="ms-card px-3 py-2">
               <p className="text-[10px] text-[#555] uppercase tracking-wider">Banco</p>
               <p className="text-sm text-gray-300 mt-0.5">{empresa.banco}</p>
             </div>
@@ -201,9 +201,9 @@ export default function EmpresaDetallePage() {
       {currentTab === "clientes" && (
         <div className="space-y-4">
           {empresa.contactosCliente.length === 0 ? (
-            <div className="py-12 text-center text-[#6b7280] text-sm">Sin clientes vinculados a esta empresa</div>
+            <div className="py-12 text-center ms-subtitle">Sin clientes vinculados a esta empresa</div>
           ) : empresa.contactosCliente.map(c => (
-            <div key={c.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div key={c.id} className="ms-table-wrapper">
               <div className="px-4 py-3 flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
@@ -249,13 +249,13 @@ export default function EmpresaDetallePage() {
       {currentTab === "proveedores" && (
         <div className="space-y-3">
           {empresa.contactosProveedor.length === 0 ? (
-            <div className="py-12 text-center text-[#6b7280] text-sm">Sin proveedores vinculados a esta empresa</div>
+            <div className="py-12 text-center ms-subtitle">Sin proveedores vinculados a esta empresa</div>
           ) : empresa.contactosProveedor.map(p => {
             const proyectosUnicos = Array.from(
               new Map(p.proyectoEquipos.map(pe => [pe.proyecto.id, pe.proyecto])).values()
             );
             return (
-              <div key={p.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-3">
+              <div key={p.id} className="ms-card px-4 py-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="flex items-center gap-2">
@@ -296,7 +296,7 @@ export default function EmpresaDetallePage() {
               <h3 className="text-sm font-medium text-white mb-3">Cuentas por cobrar</h3>
               <div className="space-y-2">
                 {empresa.cuentasCobrar.map(c => (
-                  <div key={c.id} className="flex items-center justify-between bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-2.5 text-sm">
+                  <div key={c.id} className="flex items-center justify-between ms-card px-4 py-2.5 text-sm">
                     <div>
                       <p className="text-gray-300 text-xs">{c.concepto}</p>
                       <p className="text-[10px] text-[#555]">{fmtDate(c.createdAt)}</p>
@@ -317,7 +317,7 @@ export default function EmpresaDetallePage() {
               <h3 className="text-sm font-medium text-white mb-3">Cuentas por pagar</h3>
               <div className="space-y-2">
                 {empresa.cuentasPagar.map(c => (
-                  <div key={c.id} className="flex items-center justify-between bg-[#111] border border-[#1e1e1e] rounded-xl px-4 py-2.5 text-sm">
+                  <div key={c.id} className="flex items-center justify-between ms-card px-4 py-2.5 text-sm">
                     <div>
                       <p className="text-gray-300 text-xs">{c.concepto}</p>
                       <p className="text-[10px] text-[#555]">{fmtDate(c.createdAt)}</p>
@@ -334,7 +334,7 @@ export default function EmpresaDetallePage() {
             </div>
           )}
           {empresa.cuentasCobrar.length === 0 && empresa.cuentasPagar.length === 0 && (
-            <div className="py-12 text-center text-[#6b7280] text-sm">Sin movimientos financieros registrados</div>
+            <div className="py-12 text-center ms-subtitle">Sin movimientos financieros registrados</div>
           )}
         </div>
       )}

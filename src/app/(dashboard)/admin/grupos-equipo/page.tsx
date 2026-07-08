@@ -303,8 +303,8 @@ export default function GruposEquipoPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">Grupos de equipo</h1>
-          <p className="text-[#6b7280] text-sm mt-0.5">Configura paquetes de equipos que aparecen como sugerencias en cotizaciones</p>
+          <h1 className="ms-h1">Grupos de equipo</h1>
+          <p className="ms-subtitle mt-0.5">Configura paquetes de equipos que aparecen como sugerencias en cotizaciones</p>
         </div>
         <button onClick={startCreate} className="px-4 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c4a86a] transition-colors shrink-0">
           + Nuevo grupo
@@ -314,7 +314,7 @@ export default function GruposEquipoPage() {
       {/* Modal crear / editar */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-[#111] border border-[#222] rounded-2xl p-6 w-full max-w-md space-y-4">
+          <div className="ms-card rounded-2xl p-6 w-full max-w-md space-y-4">
             <h2 className="text-white font-semibold">{editId ? "Editar grupo" : "Nuevo grupo de equipo"}</h2>
 
             <div className="space-y-3">
@@ -365,7 +365,7 @@ export default function GruposEquipoPage() {
 
             <div className="flex gap-2 pt-1">
               <button onClick={() => { setShowForm(false); setEditId(null); }}
-                className="flex-1 py-2 rounded-lg border border-[#333] text-[#6b7280] text-sm hover:border-[#444] transition-colors">
+                className="flex-1 py-2 rounded-lg border border-[#333] ms-subtitle hover:border-[#444] transition-colors">
                 Cancelar
               </button>
               <button onClick={saveGrupo} disabled={saving || !form.nombre.trim()}
@@ -381,9 +381,9 @@ export default function GruposEquipoPage() {
       <div className="flex flex-wrap items-center gap-2">
         <input value={busqueda} onChange={e => setBusqueda(e.target.value)}
           placeholder="Buscar grupo…"
-          className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/40 w-44" />
+          className="ms-card rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/40 w-44" />
         <select value={filtroEvento} onChange={e => setFiltroEvento(e.target.value)}
-          className="bg-[#111] border border-[#222] rounded-lg px-3 py-1.5 text-xs text-[#9ca3af] focus:outline-none focus:border-[#B3985B]/40">
+          className="ms-card rounded-lg px-3 py-1.5 text-xs text-[#9ca3af] focus:outline-none focus:border-[#B3985B]/40">
           <option value="">Evento: todos</option>
           {TIPO_EVENTO_OPTS.filter(o => o.value !== "TODOS").map(o => (
             <option key={o.value} value={o.value}>{o.label}</option>

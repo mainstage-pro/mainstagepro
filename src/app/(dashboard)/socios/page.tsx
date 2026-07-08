@@ -137,8 +137,8 @@ export default function SociosConstitutivosPage() {
       {/* Header */}
       <div className="flex items-start justify-between mb-8">
         <div>
-          <h1 className="text-xl font-semibold text-white">Socios Constitutivos</h1>
-          <p className="text-[#6b7280] text-sm mt-0.5">
+          <h1 className="ms-h1">Socios Constitutivos</h1>
+          <p className="ms-subtitle mt-0.5">
             {constitutivos.length} socios · Escenario Principal S.A. de C.V.
           </p>
         </div>
@@ -193,7 +193,7 @@ export default function SociosConstitutivosPage() {
           const cxpVencidas = cxpSocio.filter(c => c.estado === "VENCIDO").length;
 
           return (
-            <div key={s.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div key={s.id} className="ms-table-wrapper">
               {/* Top: info principal */}
               <div className="flex items-start gap-4 p-5">
                 {/* Avatar */}
