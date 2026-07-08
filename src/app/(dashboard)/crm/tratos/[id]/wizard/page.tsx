@@ -655,15 +655,35 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
                 <p className="text-violet-400/70 text-xs mt-0.5">{nombre1} está en proceso de decisión</p>
               </div>
             </div>
-            <p className="text-gray-500 text-sm leading-relaxed">
-              El descubrimiento está completo. Ya puedes preparar y enviar la cotización formal.
-            </p>
-            <Link
-              href={`/crm/tratos/${id}`}
-              className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-violet-700/20 border border-violet-700/40 text-violet-300 text-sm font-bold hover:bg-violet-700/30 transition-colors"
-            >
-              📄 Ver trato y preparar cotización →
-            </Link>
+            
+            {!trato.descubrimientoCompleto ? (
+              <>
+                <div className="p-3 bg-red-900/20 border border-red-800/40 rounded-lg">
+                  <p className="text-red-400 text-xs font-semibold mb-1">⚠️ Acción requerida</p>
+                  <p className="text-red-300/80 text-[11px] leading-relaxed">
+                    Antes de poder generar una cotización para esta oportunidad, debes completar el formulario de descubrimiento con los detalles técnicos del evento.
+                  </p>
+                </div>
+                <Link
+                  href={`/crm/tratos/${id}?tab=descubrimiento`}
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-violet-600 text-white text-sm font-bold hover:bg-violet-500 transition-colors"
+                >
+                  🔍 Completar Descubrimiento →
+                </Link>
+              </>
+            ) : (
+              <>
+                <p className="text-gray-500 text-sm leading-relaxed">
+                  El descubrimiento está completo. Ya puedes preparar y enviar la cotización formal.
+                </p>
+                <Link
+                  href={`/crm/tratos/${id}`}
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-violet-700/20 border border-violet-700/40 text-violet-300 text-sm font-bold hover:bg-violet-700/30 transition-colors"
+                >
+                  📄 Ver trato y preparar cotización →
+                </Link>
+              </>
+            )}
           </div>
         )}
 
@@ -679,15 +699,35 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
                 <p className="text-emerald-400/70 text-xs mt-0.5">{nombre1} ya confirmó — iniciamos producción</p>
               </div>
             </div>
-            <p className="text-gray-500 text-sm leading-relaxed">
-              El cliente reservó. Ahora toca confirmar formalmente y arrancar el levantamiento técnico.
-            </p>
-            <Link
-              href={`/crm/tratos/${id}`}
-              className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-emerald-700/20 border border-emerald-700/40 text-emerald-300 text-sm font-bold hover:bg-emerald-700/30 transition-colors"
-            >
-              🎯 Ver trato y confirmar evento →
-            </Link>
+
+            {!trato.descubrimientoCompleto ? (
+              <>
+                <div className="p-3 bg-amber-900/20 border border-amber-800/40 rounded-lg">
+                  <p className="text-amber-400 text-xs font-semibold mb-1">⚠️ Información faltante</p>
+                  <p className="text-amber-300/80 text-[11px] leading-relaxed">
+                    Aunque la fecha ya está apartada, debes recabar la información técnica (descubrimiento) para poder operar el evento correctamente.
+                  </p>
+                </div>
+                <Link
+                  href={`/crm/tratos/${id}?tab=descubrimiento`}
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-500 transition-colors"
+                >
+                  🔍 Completar Descubrimiento →
+                </Link>
+              </>
+            ) : (
+              <>
+                <p className="text-gray-500 text-sm leading-relaxed">
+                  El cliente reservó. Ahora toca confirmar formalmente y arrancar el levantamiento técnico.
+                </p>
+                <Link
+                  href={`/crm/tratos/${id}`}
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-emerald-700/20 border border-emerald-700/40 text-emerald-300 text-sm font-bold hover:bg-emerald-700/30 transition-colors"
+                >
+                  🎯 Ver trato y confirmar evento →
+                </Link>
+              </>
+            )}
           </div>
         )}
 

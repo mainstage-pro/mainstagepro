@@ -1482,6 +1482,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     const isRenta = discForm.tipoServicio === "RENTA";
     const payload: Record<string, unknown> = {
       tipoEvento: discForm.tipoEvento,
+      subtipoEvento: discForm.subtipoEvento || null,
       nombreEvento: discForm.nombreEvento || null,
       fechaEventoEstimada: discForm.fechaEventoEstimada === "por-definir" ? null : (discForm.fechaEventoEstimada || null),
       lugarEstimado: discForm.lugarEstimado === "por-definir" ? "Por definir" : (discForm.lugarEstimado || null),
@@ -2728,7 +2729,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"].map(te => (
-                      <button key={te} onClick={() => { setDiscForm(p => ({ ...p, tipoEvento: te, serviciosInteres: [] })); setTipoEventoUnlocked(false); }}
+                      <button key={te} onClick={() => { setDiscForm(p => ({ ...p, tipoEvento: te, subtipoEvento: "", serviciosInteres: [] })); setTipoEventoUnlocked(false); }}
                       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
                         discForm.tipoEvento === te
                           ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10"
@@ -2737,6 +2738,46 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                       {te === "MUSICAL" ? "🎵 Musical" : te === "SOCIAL" ? "🥂 Social" : te === "EMPRESARIAL" ? "🏢 Empresarial" : "📅 Otro"}
                     </button>
                   ))}
+                  </div>
+                )}
+                
+                {/* Subtipo de evento */}
+                {discForm.tipoEvento && (
+                  <div className="mt-3">
+                    <label className="text-xs text-gray-400 block mb-1">Subtipo de evento</label>
+                    <select
+                      value={discForm.subtipoEvento}
+                      onChange={e => setDiscForm(p => ({ ...p, subtipoEvento: e.target.value }))}
+                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                    >
+                      <option value="">— Seleccionar —</option>
+                      {discForm.tipoEvento === "MUSICAL" && (
+                        <>
+                          <option value="CONCIERTO">Concierto</option>
+                          <option value="FESTIVAL">Festival</option>
+                          <option value="ELECTRONICA">Música Electrónica</option>
+                          <option value="PRESENTACION_MUSICAL">Presentación Musical</option>
+                        </>
+                      )}
+                      {discForm.tipoEvento === "SOCIAL" && (
+                        <>
+                          <option value="BODA">Boda</option>
+                          <option value="XV_ANOS">XV Años</option>
+                          <option value="BAUTIZO">Bautizo</option>
+                          <option value="CUMPLEANIOS">Cumpleaños</option>
+                          <option value="FIESTA_PRIVADA">Fiesta Privada</option>
+                        </>
+                      )}
+                      {discForm.tipoEvento === "EMPRESARIAL" && (
+                        <>
+                          <option value="CONGRESO">Congreso / Convención</option>
+                          <option value="LANZAMIENTO">Lanzamiento de Marca</option>
+                          <option value="FERIA">Feria / Expo</option>
+                          <option value="TALLER">Taller / Capacitación</option>
+                        </>
+                      )}
+                      <option value="OTRO">Otro</option>
+                    </select>
                   </div>
                 )}
               </div>
@@ -3014,14 +3055,19 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
                   {/* Asistentes estimados */}
                   <div className="mb-4">
-                    <label className="text-xs text-gray-400 block mb-1">Asistentes estimados</label>
-                    <input
-                      type="number" min="1"
+                    <label className="text-xs text-gray-400 block mb-1">Rango de asistentes aproximados</label>
+                    <select
                       value={discForm.asistentesEstimados}
                       onChange={e => setDiscForm(p => ({ ...p, asistentesEstimados: e.target.value }))}
-                      placeholder="Número aproximado de invitados"
                       className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    />
+                    >
+                      <option value="">— Seleccionar rango —</option>
+                      <option value="100">0 - 100 personas</option>
+                      <option value="300">100 - 300 personas</option>
+                      <option value="500">300 - 500 personas</option>
+                      <option value="1000">500 - 1,000 personas</option>
+                      <option value="2000">Más de 1,000 personas</option>
+                    </select>
                   </div>
 
                   {/* Notas de DT */}
@@ -3095,14 +3141,19 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               {/* Asistentes estimados — visible en paso 2 para producción técnica (no DT ni RENTA) */}
               {discForm.tipoServicio !== "RENTA" && discForm.tipoServicio !== "DIRECCION_TECNICA" && (
                 <div className="pt-2 border-t border-[#1a1a1a]">
-                  <label className="text-xs text-gray-400 block mb-1">Asistentes estimados</label>
-                  <input
-                    type="number" min="1"
+                  <label className="text-xs text-gray-400 block mb-1">Rango de asistentes aproximados</label>
+                  <select
                     value={discForm.asistentesEstimados}
                     onChange={e => setDiscForm(p => ({ ...p, asistentesEstimados: e.target.value }))}
-                    placeholder="Número aproximado de invitados"
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
+                  >
+                    <option value="">— Seleccionar rango —</option>
+                    <option value="100">0 - 100 personas</option>
+                    <option value="300">100 - 300 personas</option>
+                    <option value="500">300 - 500 personas</option>
+                    <option value="1000">500 - 1,000 personas</option>
+                    <option value="2000">Más de 1,000 personas</option>
+                  </select>
                 </div>
               )}
 

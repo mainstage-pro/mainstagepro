@@ -456,7 +456,7 @@ function ClienteRow({
   }
 
   return (
-    <tr className={`transition-colors ${inline.dirty ? "bg-[#1a1400]" : "hover:bg-[#161616]"}`}>
+    <tr className={`group transition-colors ${inline.dirty ? "bg-[#1a1400]" : "hover:bg-[#161616]"}`}>
       {/* Nombre */}
       <td className="px-4 py-3 min-w-[160px]">
         <Link href={`/crm/clientes/${c.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">
@@ -581,29 +581,36 @@ function ClienteRow({
 
       {/* Acciones */}
       <td className="px-3 py-3 text-right">
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
           {inline.dirty ? (
             <>
               <button
                 onClick={guardar}
                 disabled={saving}
-                className="text-[10px] px-2.5 py-1 rounded-md bg-[#B3985B] text-black font-semibold hover:bg-[#c9a96a] disabled:opacity-50 transition-colors"
+                className="text-[10px] font-medium px-2.5 py-1.5 rounded-md bg-[#B3985B] text-black hover:bg-[#c9a96a] disabled:opacity-50 transition-all whitespace-nowrap"
               >
                 {saving ? "…" : "Guardar"}
               </button>
               <button
                 onClick={cancelar}
-                className="text-[10px] px-2 py-1 rounded-md text-[#555] hover:text-white border border-[#2a2a2a] hover:border-[#444] transition-colors"
+                className="text-[10px] font-medium px-2 py-1.5 rounded-md border border-[#2a2a2a] text-[#888] hover:text-white hover:border-[#444] transition-all whitespace-nowrap"
               >
                 ✕
               </button>
             </>
           ) : (
             <>
-              <Link href={`/crm/clientes/${c.id}`} className="text-[#B3985B] text-xs hover:underline">Ver →</Link>
+              <Link href={`/crm/clientes/${c.id}`}
+                className="p-1.5 rounded-md text-[#555] hover:text-[#B3985B] hover:bg-[#B3985B]/10 transition-all" title="Ver perfil">
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              </Link>
               <button onClick={onDelete} disabled={deleting}
-                className="text-gray-600 hover:text-red-400 transition-colors disabled:opacity-30" title="Eliminar">
-                {deleting ? "…" : "✕"}
+                className="p-1.5 rounded-md text-[#555] hover:text-red-400 hover:bg-red-400/10 transition-all disabled:opacity-40" title="Eliminar">
+                {deleting ? (
+                  <span className="text-[10px] font-medium">...</span>
+                ) : (
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                )}
               </button>
             </>
           )}

@@ -83,6 +83,9 @@ export default function NuevoContactoPage() {
   const [clienteNuevo, setClienteNuevo] = useState({
     nombre: "", empresa: "", tipoCliente: "POR_DESCUBRIR", telefono: "", correo: "",
   });
+  
+  const [nombreEvento, setNombreEvento] = useState("");
+  const [fechaEvento, setFechaEvento] = useState("");
 
   useEffect(() => {
     fetch("/api/clientes").then(r => r.json()).then(d => setClientes(d.clientes || []));
@@ -102,6 +105,10 @@ export default function NuevoContactoPage() {
     if (modoCliente === "existente" && !clienteId) { setError("Selecciona un cliente existente"); return false; }
     if (modoCliente === "nuevo" && !clienteNuevo.nombre.trim()) { setError("El nombre del cliente es requerido"); return false; }
     if (!origenLead) { setError("Selecciona de dónde viene el contacto"); return false; }
+    if (etapa === "VENTA_CERRADA") {
+      if (!nombreEvento.trim()) { setError("Ingresa el nombre del evento a apartar"); return false; }
+      if (!fechaEvento) { setError("Selecciona la fecha del evento para apartarla en el calendario"); return false; }
+    }
     setError(""); return true;
   }
 
@@ -116,6 +123,12 @@ export default function NuevoContactoPage() {
       origenVenta,
       vendedorId: vendedorId || undefined,
     };
+
+    if (etapa === "VENTA_CERRADA") {
+      payload.nombreEvento = nombreEvento;
+      payload.fechaEventoEstimada = new Date(fechaEvento + "T12:00:00").toISOString();
+      payload.descubrimientoCompleto = false; // Forzamos descubrimiento
+    }
 
     if (modoCliente === "existente") {
       payload.clienteId = clienteId;
@@ -319,6 +332,35 @@ export default function NuevoContactoPage() {
               <p className="text-[11px] text-gray-500">
                 ℹ️ Al crear el contacto en esta etapa, se abrirá directamente el wizard de descubrimiento para capturar la información del evento.
               </p>
+            </div>
+          )}
+          {etapa === "VENTA_CERRADA" && (
+            <div className="mt-4 p-4 border border-emerald-800/40 bg-emerald-900/10 rounded-xl space-y-4">
+              <h3 className="text-sm font-semibold text-emerald-400">Datos para apartar en calendario</h3>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Al crear un contacto directamente en Venta Cerrada, es necesario registrar la fecha del evento para apartarla en el calendario de inmediato.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Nombre del evento a apartar *</label>
+                  <input
+                    type="text"
+                    value={nombreEvento}
+                    onChange={e => setNombreEvento(e.target.value)}
+                    placeholder="Ej. Boda Civil Maria y Juan"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Fecha del evento *</label>
+                  <input
+                    type="date"
+                    value={fechaEvento}
+                    onChange={e => setFechaEvento(e.target.value)}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
             </div>
           )}
         </div>

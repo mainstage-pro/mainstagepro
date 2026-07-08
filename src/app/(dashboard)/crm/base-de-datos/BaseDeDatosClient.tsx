@@ -553,44 +553,48 @@ function ContactoRow({
 
       {/* Acciones */}
       <td className="px-3 py-2.5 align-middle">
-        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
           {tab === "prospectos" && (
             <>
               <button onClick={e => { e.stopPropagation(); onConvertir(); }}
-                className="text-[9px] px-1.5 py-0.5 rounded border border-emerald-800/40 text-emerald-500 hover:bg-emerald-900/20 transition-colors whitespace-nowrap">
+                className="text-[10px] font-medium px-2 py-1 rounded-md border border-emerald-800/30 text-emerald-500/80 hover:text-emerald-400 hover:border-emerald-500/50 hover:bg-emerald-500/10 transition-all whitespace-nowrap">
                 → Cliente
               </button>
               <a href={`/crm/tratos?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
-                className="text-[9px] px-1.5 py-0.5 rounded border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors whitespace-nowrap">
+                className="text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
                 + Trato
               </a>
             </>
           )}
           {tab === "clientes" && (
             <a href={`/crm/tratos?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
-              className="text-[9px] px-1.5 py-0.5 rounded border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors whitespace-nowrap">
+              className="text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
               + Trato
             </a>
           )}
           {tab === "sin-clasificar" && (
             <>
               <button onClick={e => { e.stopPropagation(); onReclasificar(false); }}
-                className="text-[9px] px-1.5 py-0.5 rounded border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors">
+                className="text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
                 → Cliente
               </button>
               <a href={`/crm/tratos?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
-                className="text-[9px] px-1.5 py-0.5 rounded border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors">
+                className="text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
                 + Trato
               </a>
             </>
           )}
           <Link href={`/crm/clientes/${c.id}`} onClick={e => e.stopPropagation()}
-            className="p-0.5 rounded text-[#333] hover:text-[#B3985B] transition-colors" title="Ver perfil">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            className="p-1.5 rounded-md text-[#555] hover:text-[#B3985B] hover:bg-[#B3985B]/10 transition-all" title="Ver perfil">
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </Link>
           <button onClick={e => { e.stopPropagation(); onDelete(); }} disabled={deleting}
-            className="p-0.5 rounded text-[#2a2a2a] hover:text-red-500/60 transition-colors disabled:opacity-30" title="Eliminar">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            className="p-1.5 rounded-md text-[#555] hover:text-red-400 hover:bg-red-400/10 transition-all disabled:opacity-40" title="Eliminar">
+            {deleting ? (
+              <span className="text-[10px] font-medium">...</span>
+            ) : (
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            )}
           </button>
         </div>
       </td>

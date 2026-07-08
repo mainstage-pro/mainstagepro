@@ -14,7 +14,7 @@ const SHORTCUTS: Shortcut[] = [
   { keys: ["⌘", "K"], description: "Búsqueda global", category: "Navegación" },
   { keys: ["G", "D"], description: "Ir a Dashboard", category: "Navegación" },
   { keys: ["G", "C"], description: "Ir a Clientes", category: "Navegación" },
-  { keys: ["G", "T"], description: "Ir a Tratos", category: "Navegación" },
+  { keys: ["G", "T"], description: "Ir a Pipeline de Ventas", category: "Navegación" },
   { keys: ["G", "Q"], description: "Ir a Cotizaciones", category: "Navegación" },
   { keys: ["G", "P"], description: "Ir a Proyectos", category: "Navegación" },
   // Acciones

@@ -90,7 +90,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // Nurturing
     "tipoProspecto", "nurturingData",
     // Descubrimiento
-    "canalAtencion", "nombreEvento", "duracionEvento", "asistentesEstimados",
+    "canalAtencion", "nombreEvento", "duracionEvento", "asistentesEstimados", "subtipoEvento",
     "diasServicio",
     "serviciosInteres", "ideasReferencias", "etapaContratacion", "continuarPor",
     "descubrimientoCompleto",

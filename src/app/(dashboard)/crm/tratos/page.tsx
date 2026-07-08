@@ -545,32 +545,29 @@ function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, e
                   )}
                 </div>
 
-                <div className="flex items-center gap-2.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center justify-end gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                   {aprobada?.proyecto && (
                     <Link href={`/proyectos/${aprobada.proyecto.id}`}
                       onClick={e => e.stopPropagation()}
-                      className="text-emerald-600 hover:text-emerald-400 text-[11px] transition-colors whitespace-nowrap">
+                      className="text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
                       Proyecto →
                     </Link>
                   )}
                   {wa && (
                     <a href={wa} target="_blank" rel="noopener noreferrer"
                       onClick={e => e.stopPropagation()}
-                      className="text-green-700 hover:text-green-400 transition-colors">
+                      className="p-1.5 rounded-md text-green-700/80 hover:text-green-400 hover:bg-green-500/10 transition-all" title="WhatsApp">
                       <WaIcon />
                     </a>
                   )}
                   <button
                     onClick={e => { e.stopPropagation(); eliminar(t.id, t.cliente.nombre); }}
                     disabled={deletingId === t.id}
-                    className="text-[#252525] hover:text-red-500/60 transition-colors disabled:opacity-40">
+                    className="p-1.5 rounded-md text-[#555] hover:text-red-400 hover:bg-red-400/10 transition-all disabled:opacity-40" title="Eliminar">
                     {deletingId === t.id ? (
-                      <span className="text-[10px] text-gray-600">...</span>
+                      <span className="text-[10px] font-medium">...</span>
                     ) : (
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-                        <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                      </svg>
+                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                     )}
                   </button>
                 </div>
@@ -848,28 +845,25 @@ function CompactTratoRow({
           </select>
         </div>
 
-        {/* ── COL 8 · Acciones (hover) ── 56px ───────────── */}
-        <div className="flex items-center gap-1 w-[56px] shrink-0 justify-end pr-3 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* ── COL 8 · Acciones (hover) ── auto ───────────── */}
+        <div className="flex items-center justify-end gap-1.5 w-auto shrink-0 pr-3 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={e => { e.stopPropagation(); onQuickNote(); }}
-            className="text-[11px] text-[#B3985B]/60 hover:text-[#B3985B] border border-[#1e1e1e] hover:border-[#B3985B]/30 rounded-md px-1.5 py-0.5 transition-colors whitespace-nowrap"
+            className="text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap"
             title="Seguimiento"
           >
-            +
+            + Nota
           </button>
           <button
             onClick={e => { e.stopPropagation(); onEliminar(); }}
             disabled={deletingId === t.id}
-            className="text-[#222] hover:text-red-500/50 transition-colors disabled:opacity-40 p-1 rounded"
+            className="p-1.5 rounded-md text-[#555] hover:text-red-400 hover:bg-red-400/10 transition-all disabled:opacity-40"
             title="Eliminar"
           >
             {deletingId === t.id ? (
-              <span className="text-[10px] text-gray-600">...</span>
+              <span className="text-[10px] font-medium">...</span>
             ) : (
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-                <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-              </svg>
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
             )}
           </button>
         </div>
@@ -994,13 +988,13 @@ function LeadsView({ leads, activeSeguimientoPopover, seguimientoPendiente, segu
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => onAbrirPopover(t.id)}
-                    className="text-xs px-3 py-1 rounded-lg border border-[#2a2a2a] hover:border-[#B3985B]/40 text-gray-400 hover:text-[#B3985B] transition-all"
+                    className="text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap"
                   >
                     Seguimiento ✓
                   </button>
                   <button
                     onClick={() => onConvertirOportunidad(t)}
-                    className="text-xs px-3 py-1 rounded-lg border border-[#B3985B]/20 hover:border-[#B3985B]/50 text-[#B3985B]/60 hover:text-[#B3985B] transition-all"
+                    className="text-[10px] font-medium px-2 py-1 rounded-md border border-emerald-800/30 text-emerald-500/80 hover:text-emerald-400 hover:border-emerald-500/50 hover:bg-emerald-500/10 transition-all whitespace-nowrap"
                     title="Convertir a oportunidad activa"
                   >
                     → Oportunidad
@@ -1431,7 +1425,7 @@ export default function TratosPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="ms-h1">Tratos</h1>
+          <h1 className="ms-h1">Pipeline de Ventas</h1>
           <p className="ms-subtitle">
             {loading ? "Cargando..." : `${tratosProximos.length} próximos${tratosArchivados.length > 0 ? ` · ${tratosArchivados.length} archivados` : ""}`}
           </p>

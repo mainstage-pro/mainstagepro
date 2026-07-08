@@ -92,7 +92,7 @@ const MODULOS_POR_SECCION: { seccion: string; items: { key: string; label: strin
     seccion: "VENTAS",
     items: [
       { key: "ventas-seguimientos",   label: "Seguimientos",         desc: "Seguimientos de tratos" },
-      { key: "crm-tratos",            label: "Tratos",               desc: "Pipeline de tratos" },
+      { key: "crm-tratos",            label: "Pipeline de Ventas",   desc: "Gestión del pipeline de ventas" },
       { key: "crm-base-de-datos",     label: "Base de Datos",        desc: "Base de datos CRM" },
       { key: "ventas-presentaciones", label: "Presentaciones Venta", desc: "Presentaciones para clientes" },
       { key: "ventas-reporte",        label: "Reporte de Ventas",    desc: "Métricas y reportes de ventas" },
