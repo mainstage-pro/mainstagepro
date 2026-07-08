@@ -56,6 +56,11 @@ export default function PipelinePage() {
   }
 
   const getTratoValor = (t: Trato) => {
+    // Ignorar tratos cuyo evento ya pasó
+    if (t.fechaEventoEstimada) {
+      const hoyStr = new Date().toISOString().split('T')[0];
+      if (t.fechaEventoEstimada.substring(0, 10) < hoyStr) return 0;
+    }
     const cots = t.cotizaciones ?? [];
     const ap = cots.find(c => c.estado === "APROBADA");
     if (ap) return ap.granTotal;
