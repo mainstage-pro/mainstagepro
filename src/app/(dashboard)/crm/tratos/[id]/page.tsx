@@ -684,12 +684,12 @@ const NURTURING_PLAYBOOK: Record<string, NPlaybookEtapa> = {
 
   DETECTANDO: {
     objetivo: "Identificar si hay una ventana de oportunidad próxima. Preguntar directamente — con tacto — si hay un evento en puerta para el que podamos cotizar.",
-    intervalo: "2–3 semanas después, o cuando suba la temperatura",
+    intervalo: "2–3 semanas después, o cuando haya apertura clara",
     acciones: [
       "Hacer la pregunta directa sobre eventos próximos con fecha estimada",
       "Si mencionó una fecha antes: retomar ese dato y acercarse con urgencia suave",
       "Si hay silencio prolongado: reactivar con contenido fresco antes de preguntar",
-      "Registrar la respuesta y actualizar temperatura y próxima acción",
+      "Registrar la respuesta y definir próxima acción",
     ],
     contenido: ["Pregunta directa sobre fechas", "Urgencia suave (disponibilidad limitada)", "Oferta de presupuesto express sin compromiso"],
     templates: {
@@ -1063,8 +1063,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
   // Nurturing state
   type NurturingLogEntry = { fecha: string; etapa: string; templateId: string; templateLabel: string };
-  type NurturingData = { etapa: string; temperatura: string; log: NurturingLogEntry[]; notas?: Record<string, string> };
-  const NURTURING_EMPTY: NurturingData = { etapa: "PRIMER_CONTACTO", temperatura: "FRIO", log: [] };
+  type NurturingData = { etapa: string; log: NurturingLogEntry[]; notas?: Record<string, string>; pasosMarcados?: number[] };
+  const NURTURING_EMPTY: NurturingData = { etapa: "PRIMER_CONTACTO", log: [], pasosMarcados: [] };
   const [nurturing, setNurturing] = useState<NurturingData>(NURTURING_EMPTY);
   const [savingNurturing, setSavingNurturing] = useState(false);
 
@@ -1881,6 +1881,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           >
             {creandoCotizacion ? "Creando..." : "+ Nueva cotización"}
           </button>
+          <Link
+            href={`/crm/tratos/nuevo?clienteId=${trato.cliente.id}`}
+            className="px-3 py-1.5 text-xs text-gray-500 hover:text-white border border-[#2a2a2a] hover:border-[#444] rounded-lg transition-colors"
+          >
+            + Otro trato
+          </Link>
         </div>
       </div>
 
@@ -2070,79 +2076,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         <div className="flex-1 h-px bg-gradient-to-r from-blue-800/20 to-transparent" />
       </div>
 
-      {/* ─── SECCIÓN: TIPO DE PROSPECTO (GATE PRIMARIO) ─────────────── */}
 
-      {!skipGate && !trato.canalAtencion && trato.tipoProspecto !== "NURTURING" && (
-        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-[#141414]">
-            <div className="w-8 h-8 rounded-lg bg-violet-900/20 border border-violet-800/30 flex items-center justify-center shrink-0">
-              <span className="text-sm">🎯</span>
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-white tracking-tight">¿Cómo atienes este lead?</h2>
-              <p className="text-[10px] text-gray-600 mt-0.5">Selecciona el tipo de prospecto para definir la ruta de trabajo</p>
-            </div>
-          </div>
-          <div className="p-6">
-          {!showCanales ? (
-            <>
-              <div className="text-center mb-6">
-                <p className="text-white font-semibold text-lg">¿Cómo es este prospecto?</p>
-                <p className="text-gray-500 text-sm mt-1">Esta selección define toda la ruta de trabajo</p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button
-                  onClick={async () => {
-                    const d = await patch({ tipoProspecto: "NURTURING", tipoLead: "OUTBOUND", origenLead: "PROSPECCION" });
-                    if (d) setTrato(prev => prev ? { ...prev, tipoProspecto: d.trato.tipoProspecto, tipoLead: "OUTBOUND", origenLead: "PROSPECCION" } : prev);
-                  }}
-                  disabled={saving}
-                  className="border-2 border-emerald-700/50 bg-emerald-950/30 hover:bg-emerald-900/20 rounded-xl p-5 text-left transition-all group">
-                  <div className="text-3xl mb-3">🌱</div>
-                  <p className="text-emerald-300 font-semibold text-base group-hover:text-emerald-200 transition-colors">Prospecto en frío</p>
-                  <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">Sin necesidad inmediata · Construir confianza a largo plazo · Seguimiento de valor</p>
-                  <p className="text-emerald-700 text-xs mt-3 font-medium">Proceso de semanas o meses →</p>
-                </button>
-                <button
-                  onClick={() => setShowCanales(true)}
-                  className="border-2 border-[#B3985B]/50 bg-[#B3985B]/5 hover:bg-[#B3985B]/10 rounded-xl p-5 text-left transition-all group">
-                  <div className="text-3xl mb-3">🎯</div>
-                  <p className="text-[#B3985B] font-semibold text-base group-hover:text-[#c9a96a] transition-colors">Tiene necesidad concreta</p>
-                  <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">Ya tiene un evento en mente · Hay que descubrir y cotizar · Proceso de venta activo</p>
-                  <p className="text-[#B3985B]/60 text-xs mt-3 font-medium">Iniciar descubrimiento →</p>
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-3 mb-5">
-                <button onClick={() => setShowCanales(false)} className="text-gray-600 hover:text-gray-400 text-sm transition-colors">← Volver</button>
-                <div>
-                  <p className="text-white font-semibold">¿Cómo vas a atender este lead?</p>
-                  <p className="text-gray-500 text-xs">Selecciona el canal de descubrimiento</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {CANALES.map(canal => (
-                  <button key={canal.id} onClick={() => { seleccionarCanal(canal.id); setShowCanales(false); }} disabled={saving}
-                    className={`border ${canal.border} bg-[#111] hover:bg-[#1a1a1a] rounded-xl p-4 text-left transition-all group`}>
-                    <div className="text-2xl mb-2">{canal.icon}</div>
-                    <p className="text-white text-sm font-semibold group-hover:text-[#B3985B] transition-colors">{canal.label}</p>
-                    <p className="text-gray-500 text-xs mt-0.5">{canal.desc}</p>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-          <div className="text-center mt-6 pt-4 border-t border-[#1a1a1a]">
-            <button onClick={() => setSkipGate(true)} className="text-gray-600 hover:text-gray-400 text-xs transition-colors underline underline-offset-2">
-              Saltar este paso y cotizar directamente →
-            </button>
-          </div>
-          </div>
-        </div>
-      )}
 
 
 
@@ -2345,83 +2279,118 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
             <div className="p-5 space-y-5">
 
-              {/* ── Tipo de evento ── */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-                <p className="text-xs font-bold text-white mb-3">Tipo de evento que organiza</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    { id: "MUSICAL",     icon: "🎸", label: "Musical" },
-                    { id: "SOCIAL",      icon: "🎊", label: "Social" },
-                    { id: "EMPRESARIAL", icon: "🏢", label: "Empresarial" },
-                    { id: "OTRO",        icon: "📅", label: "Otro" },
-                  ].map(te => (
-                    <button key={te.id}
-                      onClick={async () => { const d = await patch({ tipoEvento: te.id }); if (d) setTrato(p => p ? { ...p, tipoEvento: d.trato.tipoEvento } : p); }}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors ${
-                        trato.tipoEvento === te.id
-                          ? esOutbound ? "border-emerald-600/60 bg-emerald-900/20 text-emerald-300" : "border-amber-600/60 bg-amber-900/20 text-amber-300"
-                          : "border-[#2a2a2a] text-gray-500 hover:text-white hover:border-[#444]"
-                      }`}>
-                      <span>{te.icon}</span><span>{te.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* ── Temperatura del lead ── */}
-              <div className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-                <div className="flex items-baseline gap-2 mb-3">
-                  <p className="text-sm font-bold text-white">Temperatura del lead</p>
-                  <span className="text-[10px] text-gray-600">nivel de interés mostrado hasta ahora</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { id: "FRIO",     icon: "❄️", label: "Frío",     desc: "Sin respuesta o primera interacción",  cls: "border-blue-700/60 bg-blue-900/20 text-blue-300" },
-                    { id: "TIBIO",    icon: "🌡️", label: "Tibio",    desc: "Respondió, mostró algo de interés",    cls: "border-yellow-600/60 bg-yellow-900/20 text-yellow-300" },
-                    { id: "CALIENTE", icon: "🔥", label: "Caliente", desc: "Tiene evento próximo o pidió cotizar", cls: "border-red-700/60 bg-red-900/20 text-red-300" },
-                  ].map(t => (
-                    <button key={t.id}
-                      onClick={() => { const u = { ...nurturing, temperatura: t.id }; setNurturing(u); guardarNurturing(u); }}
-                      title={t.desc}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${nurturing.temperatura === t.id ? t.cls : "border-[#2a2a2a] text-gray-600 hover:text-white hover:border-[#555]"}`}>
-                      <span>{t.icon}</span><span>{t.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* ── Playbook de contactos ── */}
               <div className={`rounded-xl p-5 ${esOutbound ? "bg-[#0a1a0f] border border-emerald-900/40" : "bg-[#111a0a] border border-amber-900/30"}`}>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xl">{esOutbound ? "🗺️" : "📋"}</span>
-                  <p className="text-base font-bold text-white">
-                    Plan de contactos {esOutbound ? "outbound" : "inbound"}
-                  </p>
-                  <span className={`text-[10px] ml-1 ${esOutbound ? "text-emerald-700" : "text-amber-700"}`}>
-                    {contactos.length} contactos recomendados
-                  </span>
-                </div>
+                {/* Progreso */}
+                {(() => {
+                  const completados = (nurturing.pasosMarcados ?? []).filter(n => contactos.some(c => c.num === n)).length;
+                  const total = contactos.length;
+                  const pct = total > 0 ? Math.round((completados / total) * 100) : 0;
+                  return (
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{esOutbound ? "🗺️" : "📋"}</span>
+                        <p className="text-base font-bold text-white">
+                          Plan de contactos {esOutbound ? "outbound" : "inbound"}
+                        </p>
+                      </div>
+                      <span className={`text-xs font-semibold tabular-nums ${completados === total ? (esOutbound ? "text-emerald-400" : "text-amber-400") : "text-gray-500"}`}>
+                        {completados}/{total}
+                      </span>
+                    </div>
+                  );
+                })()}
+                {/* Barra de progreso */}
+                {(() => {
+                  const completados = (nurturing.pasosMarcados ?? []).filter(n => contactos.some(c => c.num === n)).length;
+                  const pct = contactos.length > 0 ? Math.round((completados / contactos.length) * 100) : 0;
+                  return (
+                    <div className="mb-3">
+                      <div className="h-1.5 rounded-full bg-[#1a1a1a] overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${esOutbound ? "bg-emerald-600" : "bg-amber-600"}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
                 <p className={`text-xs mb-4 leading-relaxed ${esOutbound ? "text-emerald-600" : "text-amber-600"}`}>
                   {esOutbound
                     ? "Sigue este orden para construir confianza y generar interés de forma progresiva."
                     : "El cliente ya llegó con intención. Estos contactos ayudan a calificar y avanzar al descubrimiento."}
                 </p>
 
-                <div className="space-y-3">
-                  {contactos.map((c) => (
-                    <div key={c.num} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-4">
-                      <div className="flex items-start gap-3">
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-                          esOutbound ? "bg-emerald-900/40 text-emerald-400" : "bg-amber-900/40 text-amber-400"
-                        }`}>{c.num}</div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-white mb-0.5">{c.label}</p>
-                          <p className="text-xs text-gray-500 leading-relaxed">{c.objetivo}</p>
+                <div className="space-y-2">
+                  {contactos.map((c) => {
+                    const marcado = (nurturing.pasosMarcados ?? []).includes(c.num);
+                    return (
+                      <button
+                        key={c.num}
+                        type="button"
+                        onClick={() => {
+                          const actuales = nurturing.pasosMarcados ?? [];
+                          const nuevos = marcado
+                            ? actuales.filter(n => n !== c.num)
+                            : [...actuales, c.num];
+                          const u = { ...nurturing, pasosMarcados: nuevos };
+                          setNurturing(u);
+                          guardarNurturing(u);
+                        }}
+                        className={`w-full text-left rounded-xl p-4 border transition-all ${
+                          marcado
+                            ? esOutbound
+                              ? "bg-emerald-950/40 border-emerald-700/50"
+                              : "bg-amber-950/30 border-amber-700/40"
+                            : "bg-[#111] border-[#1e1e1e] hover:border-[#333]"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0 transition-colors ${
+                            marcado
+                              ? esOutbound ? "bg-emerald-700/60 text-emerald-200" : "bg-amber-700/60 text-amber-200"
+                              : esOutbound ? "bg-emerald-900/40 text-emerald-600" : "bg-amber-900/40 text-amber-600"
+                          }`}>
+                            {marcado ? "✓" : c.num}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-semibold mb-0.5 ${
+                              marcado ? (esOutbound ? "text-emerald-300 line-through" : "text-amber-300 line-through") : "text-white"
+                            }`}>{c.label}</p>
+                            <p className="text-xs text-gray-500 leading-relaxed">{c.objetivo}</p>
+                          </div>
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+                            marcado
+                              ? esOutbound ? "bg-emerald-600 border-emerald-500" : "bg-amber-600 border-amber-500"
+                              : "border-[#444]"
+                          }`}>
+                            {marcado && <span className="text-[9px] text-black font-bold">✓</span>}
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  ))}
+                      </button>
+                    );
+                  })}
                 </div>
+
+                {/* Marcar todos */}
+                {(() => {
+                  const completadosLocal = (nurturing.pasosMarcados ?? []).filter(n => contactos.some(c => c.num === n)).length;
+                  if (completadosLocal === contactos.length) return null;
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const todos = contactos.map(c => c.num);
+                        const u = { ...nurturing, pasosMarcados: todos };
+                        setNurturing(u);
+                        guardarNurturing(u);
+                      }}
+                      className="mt-3 w-full py-2 text-[11px] text-gray-600 hover:text-white border border-dashed border-[#2a2a2a] hover:border-[#444] rounded-xl transition-colors"
+                    >
+                      ✓ Marcar todos como realizados
+                    </button>
+                  );
+                })()}
               </div>
 
               {/* ── Guión WA ── */}
@@ -2547,7 +2516,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
 
       {/* ═══ DIVIDER: LEVANTAMIENTO TÉCNICO ══════════════════════════════ */}
-      {trato.tipoProspecto !== "NURTURING" && trato.canalAtencion && (
+      {trato.etapa !== "LEAD" && trato.etapa !== "VENTA_PERDIDA" && (
         <div className="flex items-center gap-3 px-1">
           <div className="w-5 h-5 rounded-md bg-violet-900/20 border border-violet-700/20 flex items-center justify-center shrink-0">
             <span className="text-[10px]">🎯</span>
@@ -2560,7 +2529,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       {/* ══════════════════════════════════════════════════════════════════════
           FORMULARIO DEL CLIENTE — selector de modo + panel de link
       ══════════════════════════════════════════════════════════════════════ */}
-      {trato.tipoProspecto !== "NURTURING" && trato.canalAtencion && profundidad !== "INFO" && (() => {
+      {trato.etapa !== "LEAD" && trato.etapa !== "VENTA_PERDIDA" && (() => {
         // Pantalla A: Cliente ya completó el form → badge de notificación
         if (trato.formEstado === "COMPLETADO" && trato.formRecibidoEn) {
           const fechaForm = new Date(trato.formRecibidoEn).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
@@ -2689,7 +2658,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       })()}
 
       {/* ── WIZARD DE DESCUBRIMIENTO ── */}
-      {trato.tipoProspecto !== "NURTURING" && trato.canalAtencion && profundidad !== "INFO" && (
+      {trato.etapa !== "LEAD" && trato.etapa !== "VENTA_PERDIDA" && (
         <div className="bg-[#111] border border-[#1e1e1e] rounded-xl overflow-hidden">
           <button
             onClick={() => setDiscoveryExpanded(prev => !prev)}
@@ -2730,7 +2699,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             <div className="flex items-center gap-3">
               {autoSaveStatus === "saving" && <span className="text-xs text-gray-500 animate-pulse">Guardando…</span>}
               {autoSaveStatus === "saved" && <span className="text-xs text-green-500">✓ Guardado</span>}
-              <button onClick={() => seleccionarCanal("")} className="text-xs text-gray-600 hover:text-gray-400 transition-colors">Cambiar canal</button>
             </div>
           </div>
 
@@ -3551,8 +3519,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
             </div>
           </div>
-          <div className="flex justify-between items-center mt-4">
-            <button onClick={() => seleccionarCanal("")} className="text-xs text-gray-600 hover:text-gray-400">Cambiar canal</button>
+          <div className="flex justify-end items-center mt-4">
             <button onClick={() => guardarDescubrimiento(false)} disabled={saving}
               className="bg-gray-700 hover:bg-gray-600 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors">
               Guardar y programar seguimiento
@@ -4317,6 +4284,17 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
       )}
+
+      {/* ── Botón: Nuevo trato con este cliente ── */}
+      <div className="flex items-center justify-center pt-4 pb-2">
+        <a
+          href={`/crm/tratos/nuevo?clienteId=${trato.cliente.id}`}
+          className="flex items-center gap-2 text-xs text-gray-600 hover:text-gray-400 transition-colors border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-lg px-3 py-2"
+        >
+          <span>+</span>
+          <span>Nuevo trato con {trato.cliente.nombre.split(" ")[0]}</span>
+        </a>
+      </div>
 
       {CelebrationToastEl}
     </div>

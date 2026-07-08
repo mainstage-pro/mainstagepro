@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+
 import { Combobox } from "@/components/Combobox";
 import { ORIGEN_LEAD_OPTIONS } from "@/lib/constants";
 
@@ -61,6 +62,7 @@ const ORIGEN_VENTA_OPTIONS = [
 
 export default function NuevoContactoPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [usuarios, setUsuarios] = useState<{ id: string; name: string }[]>([]);
   const [modoCliente, setModoCliente] = useState<"existente" | "nuevo">("existente");
@@ -69,6 +71,7 @@ export default function NuevoContactoPage() {
   const clienteInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
 
   const [clienteId, setClienteId] = useState("");
   const [etapa, setEtapa] = useState<string>("LEAD");
@@ -85,6 +88,15 @@ export default function NuevoContactoPage() {
     fetch("/api/clientes").then(r => r.json()).then(d => setClientes(d.clientes || []));
     fetch("/api/usuarios-activos").then(r => r.json()).then(d => setUsuarios(d.usuarios || []));
   }, []);
+
+  // Pre-seleccionar cliente si viene del query param ?clienteId=
+  useEffect(() => {
+    const paramId = searchParams.get("clienteId");
+    if (paramId) {
+      setClienteId(paramId);
+      setModoCliente("existente");
+    }
+  }, [searchParams]);
 
   function validar() {
     if (modoCliente === "existente" && !clienteId) { setError("Selecciona un cliente existente"); return false; }
@@ -124,15 +136,8 @@ export default function NuevoContactoPage() {
         return;
       }
       const { trato } = await res.json();
-
-      // Redirect según etapa seleccionada
-      if (etapa === "LEAD") {
-        // Va a la vista del contacto en pestaña de prospección
-        router.push(`/crm/tratos/${trato.id}?tab=prospeccion`);
-      } else {
-        // Descubrimiento, Oportunidad o Venta Cerrada → wizard paso 1
-        router.push(`/crm/tratos/${trato.id}?paso=1`);
-      }
+      // Ir al wizard de proceso comercial según la etapa
+      router.push(`/crm/tratos/${trato.id}/wizard`);
     } catch {
       setError("Error de conexión");
       setLoading(false);
@@ -141,6 +146,8 @@ export default function NuevoContactoPage() {
 
   const clienteSel = clientes.find(c => c.id === clienteId);
   const etapaSeleccionada = ETAPAS_CARDS.find(e => e.value === etapa);
+
+
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
