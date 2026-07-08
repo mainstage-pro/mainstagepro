@@ -8,10 +8,11 @@ import { useToast } from "@/components/Toast";
 import { isLegacyString, parseLinks } from "@/utils/legacyText";
 
 const PASOS_DISCOVERY = [
-  { id: 1, label: "Info Básica", icon: "📋" },
-  { id: 2, label: "Detalles", icon: "⚙️" },
-  { id: 3, label: "Operativo", icon: "🚚" },
-  { id: 4, label: "Comercial", icon: "🤝" },
+  { id: 1, label: "Contacto", icon: "👤" },
+  { id: 2, label: "Info Básica", icon: "📋" },
+  { id: 3, label: "Detalles", icon: "⚙️" },
+  { id: 4, label: "Operativo", icon: "🚚" },
+  { id: 5, label: "Comercial", icon: "🤝" },
 ];
 
 const RENTA_NIVEL = [
@@ -99,6 +100,24 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
     return d;
   }
 
+  async function patchCliente(data: Record<string, unknown>) {
+    if (!trato?.cliente?.id) return null;
+    const res = await fetch(`/api/clientes/${trato.cliente.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al guardar información del cliente");
+      return null;
+    }
+    const d = await res.json();
+    if (d.cliente) {
+      setTrato((prev: any) => prev ? { ...prev, cliente: { ...prev.cliente, ...d.cliente } } : prev);
+    }
+    return d;
+  }
+
   async function subirArchivo(e: React.ChangeEvent<HTMLInputElement>, tipo: string) {
     if (!e.target.files?.length) return;
     setUploadingTipo(tipo);
@@ -153,6 +172,14 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
   const [saving, setSaving] = useState(false);
   const [creandoCotizacion, setCreandoCotizacion] = useState(false);
   const [eliminandoCotizacion, setEliminandoCotizacion] = useState<string | null>(null);
+
+  // Cliente state
+  const [clienteForm, setClienteForm] = useState({
+    nombre: trato?.cliente?.nombre || "",
+    empresa: trato?.cliente?.empresa || "",
+    telefono: trato?.cliente?.telefono || "",
+    correo: trato?.cliente?.correo || "",
+  });
 
   // Discovery state
   const [discForm, setDiscForm] = useState({
@@ -763,21 +790,46 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
                 {/* ── Servicios Adicionales ─────────────────────── */}
                 <div className="pt-2 border-t border-[#1a1a1a]">
                   <label className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold block mb-3">Servicios Adicionales (Opcionales)</label>
-                  <div className="flex flex-wrap gap-2 mb-3">
+                  <div className="flex flex-col gap-3 mb-3">
                     {[
-                      { id: "SA_FOTO_VIDEO", label: "Levantamiento de foto y video profesional" },
-                      { id: "SA_RENDER", label: "Diseño de render de la producción" },
-                      { id: "SA_PROD_MANAGEMENT", label: "Production Management del proyecto" }
-                    ].map(srv => (
-                      <button key={srv.id} onClick={() => toggleServicio(srv.id)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
-                          discForm.serviciosInteres.includes(srv.id)
-                            ? "border-[#B3985B] text-black bg-[#B3985B]"
-                            : "border-[#2a2a2a] text-gray-400 hover:border-[#555] hover:text-white"
-                        }`}>
-                        {srv.label}
-                      </button>
-                    ))}
+                      { 
+                        id: "SA_FOTO_VIDEO", 
+                        emoji: "📸",
+                        label: "Fotografía y Video", 
+                        desc: "Levantamiento y entrega de material de fotografía y video profesional, fotografías editadas, videos after movie, videos formato corto o videovlog."
+                      },
+                      { 
+                        id: "SA_RENDER", 
+                        emoji: "🖥️",
+                        label: "Render de Producción", 
+                        desc: "Propuesta de render de la producción, imágenes con diferentes vistas, render a escala real, videos de la producción en operación (principalmente iluminación) y plots técnicos de producción (audio, luces, stage, estructuras etc) y entrega de materiales de imagen y videos así como los plots de producción."
+                      }
+                    ].map(srv => {
+                      const isSelected = discForm.serviciosInteres.includes(srv.id);
+                      return (
+                        <div key={srv.id} onClick={() => toggleServicio(srv.id)}
+                          className={`flex items-start gap-3 p-3 rounded-lg border transition-colors cursor-pointer ${
+                            isSelected
+                              ? "border-[#B3985B]/30 bg-[#B3985B]/10"
+                              : "border-[#2a2a2a] hover:border-[#444] bg-[#111]"
+                          }`}
+                        >
+                          <div className={`mt-0.5 flex-shrink-0 w-4 h-4 rounded flex items-center justify-center border transition-colors ${
+                            isSelected ? "border-[#B3985B] bg-[#B3985B]" : "border-[#444] bg-transparent"
+                          }`}>
+                            {isSelected && <span className="text-black text-[10px]">✓</span>}
+                          </div>
+                          <div>
+                            <p className={`text-sm font-medium ${isSelected ? "text-[#B3985B]" : "text-gray-300"}`}>
+                              {srv.emoji} {srv.label}
+                            </p>
+                            <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+                              {srv.desc}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                   <input
                     type="text"
