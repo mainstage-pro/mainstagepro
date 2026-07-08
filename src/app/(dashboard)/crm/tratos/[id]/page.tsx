@@ -2229,16 +2229,26 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         const origin = typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app";
         const COPY_ICON = <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 opacity-50"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>;
 
-        // Presentaciones según tipo de evento
-        const presentacionPrincipal: { label: string; url: string } | null =
-          trato.tipoEvento === "MUSICAL"     ? { label: "🎸 Presentación Eventos Musicales",    url: `${origin}/presentacion/evento/musical` }
-          : trato.tipoEvento === "SOCIAL"      ? { label: "🎊 Presentación Eventos Sociales",     url: `${origin}/presentacion/evento/social` }
-          : trato.tipoEvento === "EMPRESARIAL" ? { label: "🏢 Presentación Eventos Empresariales", url: `${origin}/presentacion/evento/empresarial` }
-          : null;
-        const presentacionesSecundarias = [
-          { label: "📋 Presentación de Servicios", url: `${origin}/presentacion/servicios` },
-          { label: "🎛 Catálogo de Inventario",    url: `${origin}/presentacion/inventario` },
+        // Materiales para compartir
+        const MATERIALES_COMPARTIR = [
+          { id: 'servicios', label: "📋 Presentación de Servicios", url: `${origin}/presentacion/servicios` },
+          { id: 'inventario', label: "🎛 Catálogo de Inventario", url: `${origin}/presentacion/inventario` },
+          { id: 'musical', label: "🎸 Presentación Eventos Musicales", url: `${origin}/presentacion/evento/musical` },
+          { id: 'social', label: "🎊 Presentación Eventos Sociales", url: `${origin}/presentacion/evento/social` },
+          { id: 'empresarial', label: "🏢 Presentación Eventos Empresariales", url: `${origin}/presentacion/evento/empresarial` },
+          { id: 'galeria', label: "📸 Galería de Eventos", url: `${origin}/presentacion/galeria` },
         ];
+        
+        // Colocar la presentación del tipo de evento seleccionado al principio si existe
+        const eventoMapping: Record<string, string> = { MUSICAL: 'musical', SOCIAL: 'social', EMPRESARIAL: 'empresarial' };
+        const tipoId = eventoMapping[trato.tipoEvento];
+        if (tipoId) {
+          const idx = MATERIALES_COMPARTIR.findIndex(m => m.id === tipoId);
+          if (idx > -1) {
+            const [item] = MATERIALES_COMPARTIR.splice(idx, 1);
+            MATERIALES_COMPARTIR.unshift(item);
+          }
+        }
 
         // Guión WA según etapa del nurturing y tipo de evento
         const playbook = NURTURING_PLAYBOOK[etapaKey];
@@ -2424,26 +2434,37 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 );
               })()}
 
-              {/* ── Qué compartir (inbound) ── */}
-              {!esOutbound && (presentacionPrincipal ?? presentacionesSecundarias[0]) && (
-                <div>
-                  <p className="text-xs font-bold text-[#B3985B] uppercase tracking-widest mb-2">Material para compartir</p>
-                  <button
-                    onClick={() => navigator.clipboard.writeText((presentacionPrincipal ?? presentacionesSecundarias[0]).url)}
-                    className="w-full flex items-center justify-between gap-2 bg-[#B3985B]/10 border border-[#B3985B]/30 rounded-xl px-3 py-2.5 mb-2 text-left hover:bg-[#B3985B]/15 transition-colors">
-                    <span className="text-sm text-white font-medium">{(presentacionPrincipal ?? presentacionesSecundarias[0]).label}</span>
-                    <div className="flex items-center gap-1 text-[#B3985B] text-[10px] shrink-0">{COPY_ICON}<span>Copiar</span></div>
-                  </button>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(presentacionPrincipal ? presentacionesSecundarias : presentacionesSecundarias.slice(1)).map(p => (
-                      <button key={p.url} onClick={() => navigator.clipboard.writeText(p.url)}
-                        className="flex items-center gap-1.5 text-[10px] text-gray-500 hover:text-gray-300 bg-[#111] border border-[#2a2a2a] hover:border-[#444] px-2 py-1 rounded-lg transition-colors">
-                        <span>{p.label}</span>{COPY_ICON}
+              {/* ── Material para compartir (inbound & outbound) ── */}
+              <div className="pt-2 pb-2">
+                <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${esOutbound ? "text-emerald-500" : "text-[#B3985B]"}`}>Material para compartir</p>
+                <div className="flex flex-col gap-2">
+                  {MATERIALES_COMPARTIR.map((m, i) => (
+                    <div key={m.url} className="flex items-center gap-2">
+                      <a href={m.url} target="_blank" rel="noopener noreferrer" 
+                        className={`flex-1 flex items-center justify-between gap-2 border rounded-lg px-3 py-2 text-left transition-colors ${
+                          i === 0 
+                            ? (esOutbound ? "bg-emerald-900/10 border-emerald-700/30 hover:bg-emerald-900/20" : "bg-[#B3985B]/10 border-[#B3985B]/30 hover:bg-[#B3985B]/20")
+                            : "bg-[#111] border-[#2a2a2a] hover:border-[#444]"
+                        }`}>
+                        <span className={`text-sm font-medium ${i === 0 ? "text-white" : "text-gray-300"}`}>{m.label}</span>
+                      </a>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(m.url);
+                          toast.success("Enlace copiado al portapapeles");
+                        }}
+                        className={`shrink-0 flex items-center gap-1.5 border rounded-lg px-3 py-2 transition-colors ${
+                          i === 0 
+                            ? (esOutbound ? "bg-emerald-900/20 border-emerald-700/40 text-emerald-400 hover:bg-emerald-900/40" : "bg-[#B3985B]/20 border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B]/30")
+                            : "bg-[#111] border-[#2a2a2a] text-gray-400 hover:text-white hover:border-[#555]"
+                        }`}
+                      >
+                        {COPY_ICON}<span className="text-[10px] uppercase font-bold">Copiar</span>
                       </button>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
-              )}
+              </div>
 
               {/* ── Actividad y notas ── */}
               <div>

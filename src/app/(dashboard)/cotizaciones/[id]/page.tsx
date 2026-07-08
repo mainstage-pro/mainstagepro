@@ -189,6 +189,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [opciones, setOpciones] = useState<OpcionHermana[]>([]);
   const [creandoOpcion, setCreandoOpcion] = useState(false);
   const [modalOpcion, setModalOpcion] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   // Nombre/descripción editable inline
   const [editNombre, setEditNombre] = useState<string | null>(null);
   const [editDescripcion, setEditDescripcion] = useState<string | null>(null);
@@ -367,6 +368,9 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       } else {
         setCot((prev) => prev ? { ...prev, estado: d.cotizacion?.estado ?? estado } : prev);
         toast.success("Estado actualizado");
+        if (estado === "ENVIADA") {
+          setShowShareModal(true);
+        }
       }
     } catch {
       toast.error("Error de conexión al cambiar el estado");
@@ -1012,6 +1016,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                 if (res.ok) {
                   setCot(prev => prev ? { ...prev, estado: 'ENVIADA' } : prev);
                   toast.success('Cotización marcada como enviada');
+                  setShowShareModal(true);
                 } else {
                   toast.error('Error al cambiar estado');
                 }
@@ -2165,6 +2170,75 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             </button>
           </div>
           <button onClick={() => setModalOpcion(false)} className="mt-4 w-full text-xs text-gray-600 hover:text-gray-400 transition-colors py-1">Cancelar</button>
+        </div>
+      </div>
+    )}
+    {showShareModal && cot && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div className="bg-[#111] border border-[#222] rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-white text-lg font-bold">Cotización Enviada 🎉</h3>
+              <p className="text-gray-400 text-xs mt-1">Comparte presentaciones para generar más valor.</p>
+            </div>
+            <button onClick={() => setShowShareModal(false)} className="text-gray-500 hover:text-white p-2">✕</button>
+          </div>
+          
+          <div className="flex flex-col gap-2.5">
+            {(() => {
+              const origin = typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app";
+              const MATERIALES_COMPARTIR = [
+                { id: 'servicios', label: "📋 Presentación de Servicios", url: `${origin}/presentacion/servicios` },
+                { id: 'inventario', label: "🎛 Catálogo de Inventario", url: `${origin}/presentacion/inventario` },
+                { id: 'musical', label: "🎸 Presentación Eventos Musicales", url: `${origin}/presentacion/evento/musical` },
+                { id: 'social', label: "🎊 Presentación Eventos Sociales", url: `${origin}/presentacion/evento/social` },
+                { id: 'empresarial', label: "🏢 Presentación Eventos Empresariales", url: `${origin}/presentacion/evento/empresarial` },
+                { id: 'galeria', label: "📸 Galería de Eventos", url: `${origin}/presentacion/galeria` },
+              ];
+              // Priorizar el tipo de evento actual
+              const eventoMapping: Record<string, string> = { MUSICAL: 'musical', SOCIAL: 'social', EMPRESARIAL: 'empresarial' };
+              const tipoId = eventoMapping[cot.tipoEvento ?? ""];
+              if (tipoId) {
+                const idx = MATERIALES_COMPARTIR.findIndex(m => m.id === tipoId);
+                if (idx > -1) {
+                  const [item] = MATERIALES_COMPARTIR.splice(idx, 1);
+                  MATERIALES_COMPARTIR.unshift(item);
+                }
+              }
+
+              return MATERIALES_COMPARTIR.map((m, i) => (
+                <div key={m.url} className="flex items-center gap-2">
+                  <a href={m.url} target="_blank" rel="noopener noreferrer" 
+                    className={`flex-1 flex items-center justify-between gap-2 border rounded-lg px-3 py-2.5 text-left transition-colors ${
+                      i === 0 
+                        ? "bg-blue-900/10 border-blue-700/30 hover:bg-blue-900/20"
+                        : "bg-[#151515] border-[#2a2a2a] hover:border-[#444]"
+                    }`}>
+                    <span className={`text-sm font-medium ${i === 0 ? "text-white" : "text-gray-300"}`}>{m.label}</span>
+                  </a>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(m.url);
+                      toast.success("Enlace copiado");
+                    }}
+                    className={`shrink-0 flex items-center gap-1.5 border rounded-lg px-3 py-2.5 transition-colors ${
+                      i === 0 
+                        ? "bg-blue-900/20 border-blue-700/40 text-blue-400 hover:bg-blue-900/40"
+                        : "bg-[#151515] border-[#2a2a2a] text-gray-400 hover:text-white hover:border-[#555]"
+                    }`}
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 opacity-50"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    <span className="text-[10px] uppercase font-bold tracking-wider">Copiar</span>
+                  </button>
+                </div>
+              ));
+            })()}
+          </div>
+          <div className="mt-6 pt-4 border-t border-[#222]">
+            <button onClick={() => setShowShareModal(false)} className="w-full py-2.5 bg-[#222] hover:bg-[#333] text-white text-sm font-semibold rounded-xl transition-colors">
+              Cerrar
+            </button>
+          </div>
         </div>
       </div>
     )}
