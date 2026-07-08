@@ -464,78 +464,74 @@ function ClienteRow({
   }
 
   return (
-    <tr className={`group transition-colors ${inline.dirty ? "bg-[#1a1400]" : "hover:bg-[#161616]"}`}>
-      {/* Nombre */}
-      <td className="px-4 py-3 min-w-[160px]">
-        <Link href={`/crm/clientes/${c.id}`} className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">
-          {c.nombre}
-        </Link>
-        {c.correo && (
-          <span className="flex items-center gap-1 mt-0.5">
-            <p className="text-[#555] text-xs truncate max-w-[150px]">{c.correo}</p>
-            <CopyButton value={c.correo} size="xs" />
-          </span>
-        )}
-      </td>
-
-      {/* Empresa */}
-      <td className="px-4 py-3">
-        <div className="relative">
-          <button onClick={onEmpresaClick} className="text-left focus:outline-none">
-            {c.compania ? (
-              <span className="text-sm text-[#B3985B] hover:text-[#c9a96a] transition-colors cursor-pointer">{c.compania.nombre}</span>
-            ) : (
-              <span className="text-xs text-gray-700 hover:text-gray-400 transition-colors cursor-pointer">+ Vincular</span>
-            )}
-          </button>
-          {empresaPopoverOpen && (
-            <div
-              className="ms-dropdown left-0 top-full mt-1 py-2"
-              style={{ width: 260 }}
-              onClick={e => e.stopPropagation()}
-            >
-              {empresaMode === "view" && c.compania ? (
-                <>
-                  <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 pb-2">Empresa</p>
-                  <a href={`/catalogo/empresas/${c.compania.id}`} target="_blank" rel="noreferrer"
-                    className="flex items-center justify-between px-3 py-2 text-sm text-gray-300 hover:bg-[#1a1a1a] transition-colors"
-                    onClick={onCloseEmpresa}>
-                    <span>Ver empresa</span><span className="text-gray-600">→</span>
-                  </a>
-                  <button onClick={() => { setEmpresaMode("search"); setEmpresaSearch(""); }}
-                    className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-300 hover:bg-[#1a1a1a] transition-colors">
-                    <span>Cambiar empresa</span>
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 pb-2">Vincular empresa</p>
-                  <div className="px-3 pb-2">
-                    <input autoFocus value={empresaSearch} onChange={e => setEmpresaSearch(e.target.value)}
-                      placeholder="Buscar empresa..."
-                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-gray-700 focus:outline-none focus:border-[#c9a96a]/30" />
-                  </div>
-                  <div className="max-h-[200px] overflow-y-auto">
-                    {empresaSearching && <p className="text-xs text-gray-600 px-3 py-2">Buscando...</p>}
-                    {!empresaSearching && empresaResults.length === 0 && empresaSearch.trim() && (
-                      <p className="text-xs text-gray-600 px-3 py-2">Sin resultados</p>
-                    )}
-                    {empresaResults.map(emp => (
-                      <button key={emp.id} onClick={() => onVincularEmpresa(emp.id, emp.nombre)}
-                        className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-[#1a1a1a] transition-colors">
-                        {emp.nombre}
+    <div className={`flex items-center gap-2 px-5 py-2.5 transition-colors border-b border-[#181818] last:border-0 hover:bg-[#111] relative group/row ${inline.dirty ? "bg-[#1a1400]" : ""} ${deleting ? "opacity-50 pointer-events-none" : ""}`}>
+      {/* Contacto / Empresa */}
+      <div className="flex-[3] min-w-0 pr-4">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 shrink-0 rounded-full bg-[#111] border border-[#2a2a2a] flex items-center justify-center text-[#B3985B] text-[10px] font-bold">
+            {c.nombre.charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <Link href={`/crm/clientes/${c.id}`} className="text-[13px] font-medium text-white hover:text-[#B3985B] transition-colors truncate">
+                {c.nombre}
+              </Link>
+              
+            </div>
+            <div className="text-[10px] font-medium text-[#444] truncate mt-0.5 relative">
+              <button onClick={onEmpresaClick} className="text-left focus:outline-none hover:text-[#c9a96a] transition-colors">
+                {c.compania ? c.compania.nombre : "+ Vincular empresa"}
+              </button>
+              {empresaPopoverOpen && (
+                <div
+                  className="ms-dropdown left-0 top-full mt-1 py-2 z-50 absolute"
+                  style={{ width: 260 }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  {empresaMode === "view" && c.compania ? (
+                    <>
+                      <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 pb-2">Empresa</p>
+                      <a href={`/catalogo/empresas/${c.compania.id}`} target="_blank" rel="noreferrer"
+                        className="flex items-center justify-between px-3 py-2 text-sm text-gray-300 hover:bg-[#1a1a1a] transition-colors"
+                        onClick={onCloseEmpresa}>
+                        <span>Ver empresa</span><span className="text-gray-600">→</span>
+                      </a>
+                      <button onClick={() => { setEmpresaMode("search"); setEmpresaSearch(""); }}
+                        className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-300 hover:bg-[#1a1a1a] transition-colors">
+                        <span>Cambiar empresa</span>
                       </button>
-                    ))}
-                  </div>
-                </>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 pb-2">Vincular empresa</p>
+                      <div className="px-3 pb-2">
+                        <input autoFocus value={empresaSearch} onChange={e => setEmpresaSearch(e.target.value)}
+                          placeholder="Buscar empresa..."
+                          className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder:text-gray-700 focus:outline-none focus:border-[#c9a96a]/30" />
+                      </div>
+                      <div className="max-h-[200px] overflow-y-auto">
+                        {empresaSearching && <p className="text-xs text-gray-600 px-3 py-2">Buscando...</p>}
+                        {!empresaSearching && empresaResults.length === 0 && empresaSearch.trim() && (
+                          <p className="text-xs text-gray-600 px-3 py-2">Sin resultados</p>
+                        )}
+                        {empresaResults.map(emp => (
+                          <button key={emp.id} onClick={() => onVincularEmpresa(emp.id, emp.nombre)}
+                            className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-[#1a1a1a] transition-colors">
+                            {emp.nombre}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
               )}
             </div>
-          )}
+          </div>
         </div>
-      </td>
+      </div>
 
-      {/* Tipo de Cliente (inline) */}
-      <td className="px-3 py-3">
+      {/* Tipo */}
+      <div className="w-[110px] shrink-0 pr-3 relative">
         <InlineDropdown
           options={TIPO_CLIENTE_OPTIONS}
           value={inline.tipoCliente}
@@ -543,10 +539,10 @@ function ClienteRow({
           placeholder="Tipo"
           colorMap={Object.fromEntries(Object.entries(TIPO_COLORS).map(([k]) => [k, TIPO_COLORS[k]]))}
         />
-      </td>
+      </div>
 
-      {/* Clasificación (inline) */}
-      <td className="px-3 py-3">
+      {/* Clasificación */}
+      <div className="w-[120px] shrink-0 pr-3 relative">
         <InlineDropdown
           options={CLASIFICACION_OPTIONS}
           value={inline.clasificacion}
@@ -554,20 +550,20 @@ function ClienteRow({
           placeholder="Clasificación"
           colorMap={Object.fromEntries(Object.entries(CLAS_COLORS).map(([k, css]) => [k, css.replace("text-", "")]))}
         />
-      </td>
+      </div>
 
-      {/* Servicio Usual (inline) */}
-      <td className="px-3 py-3">
+      {/* Servicio */}
+      <div className="w-[130px] shrink-0 pr-3 relative">
         <InlineDropdown
           options={SERVICIO_OPTIONS}
           value={inline.servicioUsual}
           onChange={v => patch("servicioUsual", v)}
           placeholder="Servicio"
         />
-      </td>
+      </div>
 
-      {/* Tipos de Evento (inline multi) */}
-      <td className="px-3 py-3">
+      {/* Tipos Evento */}
+      <div className="flex-[2] min-w-0 pr-3 relative">
         <InlineMultiSelect
           options={TIPOS_EVENTO_OPTIONS}
           values={inline.tiposEvento}
@@ -576,7 +572,7 @@ function ClienteRow({
           maxSelect={3}
           colorMap={EVENTO_COLORS}
           renderValue={(vals) => {
-            if (vals.length === 0) return <span className="text-[#2a2a2a]">Tipos evento</span>;
+            if (vals.length === 0) return <span className="text-[#444]">—</span>;
             return (
               <div className="flex flex-wrap gap-1.5 pointer-events-none">
                 {vals.map(t => {
@@ -595,59 +591,38 @@ function ClienteRow({
             );
           }}
         />
-      </td>
+      </div>
 
       {/* Responsable */}
-      <td className="px-3 py-3">
+      <div className="w-[130px] shrink-0 pr-3">
         <InlineVendedor clienteId={c.id} vendedor={c.vendedor} usuarios={usuarios} onChange={onVendedorChange} />
-      </td>
+      </div>
 
-      {/* Tratos / Proyectos */}
-      <td className="px-3 py-3 text-sm text-[#9ca3af] text-center">{c._count.tratos}</td>
-      <td className="px-3 py-3 text-sm text-[#9ca3af] text-center">{c._count.proyectos}</td>
+      {/* Tratos */}
+      <div className="w-[70px] shrink-0 pr-3 text-center">
+        <span className="text-[11px] font-medium text-gray-500">{c._count.tratos}</span>
+      </div>
 
       {/* Acciones */}
-      <td className="px-3 py-3 text-right">
-        <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-          {inline.dirty ? (
-            <>
-              <button
-                onClick={guardar}
-                disabled={saving}
-                className="text-[10px] font-medium px-2.5 py-1.5 rounded-md bg-[#B3985B] text-black hover:bg-[#c9a96a] disabled:opacity-50 transition-all whitespace-nowrap"
-              >
-                {saving ? "…" : "Guardar"}
-              </button>
-              <button
-                onClick={cancelar}
-                className="text-[10px] font-medium px-2 py-1.5 rounded-md border border-[#2a2a2a] text-[#888] hover:text-white hover:border-[#444] transition-all whitespace-nowrap"
-              >
-                ✕
-              </button>
-            </>
-          ) : (
-            <>
-              <Link href={`/crm/clientes/${c.id}`}
-                className="p-1.5 rounded-md text-[#555] hover:text-[#B3985B] hover:bg-[#B3985B]/10 transition-all" title="Ver perfil">
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-              </Link>
-              <button onClick={onDelete} disabled={deleting}
-                className="p-1.5 rounded-md text-[#555] hover:text-red-400 hover:bg-red-400/10 transition-all disabled:opacity-40" title="Eliminar">
-                {deleting ? (
-                  <span className="text-[10px] font-medium">...</span>
-                ) : (
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                )}
-              </button>
-            </>
-          )}
-        </div>
-      </td>
-    </tr>
+      <div className="w-[60px] shrink-0 flex items-center justify-end gap-1.5 opacity-0 group-hover/row:opacity-100 transition-opacity">
+        <button onClick={onDelete} disabled={deleting} title="Eliminar"
+          className="p-1.5 rounded-md text-red-700/80 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+        </button>
+      </div>
+    </div>
   );
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
+
+function WaIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+    </svg>
+  );
+}
 
 export default function ClientesClient({ clientes: initial, usuarios }: { clientes: Cliente[]; usuarios: Vendedor[] }) {
   const confirm = useConfirm();
@@ -843,39 +818,42 @@ export default function ClientesClient({ clientes: initial, usuarios }: { client
         </div>
       ) : view === "list" ? (
         /* ── LISTA (tabla con inline editing) ── */
-        <div className="ms-card overflow-x-auto">
-          <table className="w-full min-w-[900px]">
-            <thead>
-              <tr className="border-b border-[#1e1e1e]">
-                {["Cliente", "Empresa", "Tipo", "Clasificación", "Servicio", "Tipo de Evento", "Responsable", "Tratos", "Proyectos", ""].map(h => (
-                  <th key={h} className="ms-th">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#1a1a1a]">
-              {clientesFiltrados.map(c => (
-                <ClienteRow
-                  key={c.id}
-                  c={c}
-                  usuarios={usuarios}
-                  onSaved={updated => actualizarCampos(c.id, updated)}
-                  onVendedorChange={v => actualizarVendedor(c.id, v)}
-                  onDelete={() => eliminar(c)}
-                  deleting={deletingId === c.id}
-                  onEmpresaClick={() => openEmpresaPopover(c)}
-                  empresaPopoverOpen={empresaPopoverId === c.id}
-                  empresaMode={empresaMode}
-                  setEmpresaMode={setEmpresaMode}
-                  empresaSearch={empresaSearch}
-                  setEmpresaSearch={setEmpresaSearch}
-                  empresaResults={empresaResults}
-                  empresaSearching={empresaSearching}
-                  onVincularEmpresa={(empId, empNombre) => handleVincularEmpresa(c.id, empId, empNombre)}
-                  onCloseEmpresa={closeEmpresaPopover}
-                />
-              ))}
-            </tbody>
-          </table>
+        <div className="rounded-xl border border-[#1e1e1e] overflow-hidden">
+          {/* Header de columnas */}
+          <div className="hidden md:flex items-center border-b border-[#0f0f0f] bg-[#0a0a0a] px-0 py-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#333]">
+            <div className="flex-[3] min-w-0 pr-4 pl-5">Contacto / Empresa</div>
+            <div className="w-[110px] shrink-0 pr-3">Tipo</div>
+            <div className="w-[120px] shrink-0 pr-3">Clasificación</div>
+            <div className="w-[130px] shrink-0 pr-3">Servicio</div>
+            <div className="flex-[2] min-w-0 pr-3">Tipo Evento</div>
+            <div className="w-[130px] shrink-0 pr-3">Responsable</div>
+            <div className="w-[70px] shrink-0 pr-3 text-center">Tratos</div>
+            <div className="w-[60px] shrink-0"></div>
+          </div>
+          {/* Lista de filas */}
+          <div className="divide-y divide-[#181818]">
+            {clientesFiltrados.map(c => (
+              <ClienteRow
+                key={c.id}
+                c={c}
+                usuarios={usuarios}
+                onSaved={updated => actualizarCampos(c.id, updated)}
+                onVendedorChange={v => actualizarVendedor(c.id, v)}
+                onDelete={() => eliminar(c)}
+                deleting={deletingId === c.id}
+                onEmpresaClick={() => openEmpresaPopover(c)}
+                empresaPopoverOpen={empresaPopoverId === c.id}
+                empresaMode={empresaMode}
+                setEmpresaMode={setEmpresaMode}
+                empresaSearch={empresaSearch}
+                setEmpresaSearch={setEmpresaSearch}
+                empresaResults={empresaResults}
+                empresaSearching={empresaSearching}
+                onVincularEmpresa={(empId, empNombre) => handleVincularEmpresa(c.id, empId, empNombre)}
+                onCloseEmpresa={closeEmpresaPopover}
+              />
+            ))}
+          </div>
         </div>
       ) : (
         /* ── TARJETAS ── */
