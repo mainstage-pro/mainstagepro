@@ -356,14 +356,6 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs text-gray-400 uppercase tracking-wider">Tipo de evento</label>
                 </div>
-                {discForm.tipoEvento && !tipoEventoUnlocked ? (
-                  <div className="flex items-center gap-3 px-3 py-2 bg-[#111] border border-[#1e1e1e] rounded-lg w-fit">
-                    <span className="text-sm text-white font-medium">
-                      {discForm.tipoEvento === "MUSICAL" ? "🎵 Musical" : discForm.tipoEvento === "SOCIAL" ? "🥂 Social" : discForm.tipoEvento === "EMPRESARIAL" ? "🏢 Empresarial" : "📅 Otro"}
-                    </span>
-                    <button onClick={() => setTipoEventoUnlocked(true)} className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors">cambiar</button>
-                  </div>
-                ) : (
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     {[
                       { te: "MUSICAL", icon: "🎵", label: "Musical", desc: "Conciertos, festivales, giras, etc." },
@@ -371,7 +363,7 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
                       { te: "EMPRESARIAL", icon: "🏢", label: "Empresarial", desc: "Congresos, lanzamientos, expos." },
                       { te: "OTRO", icon: "📅", label: "Otro", desc: "Algún otro tipo de evento." }
                     ].map(t => (
-                      <button key={t.te} onClick={() => { setDiscForm(p => ({ ...p, tipoEvento: t.te, subtipoEvento: "", serviciosInteres: [] })); setTipoEventoUnlocked(false); }}
+                      <button key={t.te} type="button" onClick={() => setDiscForm(p => ({ ...p, tipoEvento: t.te, subtipoEvento: "", serviciosInteres: [] }))}
                         className={`text-left p-3 rounded-xl border transition-all ${discForm.tipoEvento === t.te ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#222] bg-[#111] hover:border-[#444]"}`}>
                         <div className="text-xl mb-1">{t.icon}</div>
                         <p className={`text-sm font-semibold mb-0.5 ${discForm.tipoEvento === t.te ? "text-[#B3985B]" : "text-white"}`}>{t.label}</p>
@@ -379,7 +371,6 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
                       </button>
                     ))}
                   </div>
-                )}
                 
                 {/* Subtipo de evento */}
                 {discForm.tipoEvento && (
