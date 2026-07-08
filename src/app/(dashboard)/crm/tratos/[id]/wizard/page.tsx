@@ -91,6 +91,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
   const [agendaTipo, setAgendaTipo] = useState("whatsapp");
   const [agendaNota, setAgendaNota] = useState("");
   const [agendandoTodo, setAgendandoTodo] = useState(false);
+  const [isEditingDiscovery, setIsEditingDiscovery] = useState(false);
 
   // Estados para formulario cliente
   const [generandoToken, setGenerandoToken] = useState(false);
@@ -736,19 +737,30 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
               </div>
             </div>
             
-            {!trato.descubrimientoCompleto ? (
+            {!trato.descubrimientoCompleto || isEditingDiscovery ? (
               <div className="mt-4">
-                <div className="p-3 bg-red-900/20 border border-red-800/40 rounded-lg mb-4">
-                  <p className="text-red-400 text-xs font-semibold mb-1">⚠️ Acción requerida</p>
-                  <p className="text-red-300/80 text-[11px] leading-relaxed">
-                    Antes de poder generar una cotización para esta oportunidad, debes completar el formulario de descubrimiento con los detalles técnicos del evento.
-                  </p>
-                </div>
+                {!trato.descubrimientoCompleto && (
+                  <div className="p-3 bg-red-900/20 border border-red-800/40 rounded-lg mb-4">
+                    <p className="text-red-400 text-xs font-semibold mb-1">⚠️ Acción requerida</p>
+                    <p className="text-red-300/80 text-[11px] leading-relaxed">
+                      Antes de poder generar una cotización para esta oportunidad, debes completar el formulario de descubrimiento con los detalles técnicos del evento.
+                    </p>
+                  </div>
+                )}
+                {isEditingDiscovery && (
+                  <div className="flex justify-between items-center mb-4">
+                    <p className="text-[#B3985B] text-sm font-semibold">Editando descubrimiento</p>
+                    <button onClick={() => setIsEditingDiscovery(false)} className="text-xs text-gray-500 hover:text-white transition-colors">✕ Cancelar edición</button>
+                  </div>
+                )}
                 <DiscoveryForm 
                   id={id} 
                   trato={trato} 
                   setTrato={setTrato} 
-                  onComplete={() => setTrato(p => p ? { ...p, descubrimientoCompleto: true } : p)}
+                  onComplete={() => {
+                    setTrato(p => p ? { ...p, descubrimientoCompleto: true } : p);
+                    setIsEditingDiscovery(false);
+                  }}
                 />
               </div>
             ) : (
@@ -822,10 +834,16 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
                 <button
                   onClick={crearNuevaCotizacion}
                   disabled={creandoCotizacion}
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-violet-700/20 border border-violet-700/40 text-violet-300 text-sm font-bold hover:bg-violet-700/30 transition-colors disabled:opacity-40 cursor-pointer"
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-violet-700/20 border border-violet-700/40 text-violet-300 text-sm font-bold hover:bg-violet-700/30 transition-colors disabled:opacity-40 cursor-pointer mb-3"
                 >
                   {creandoCotizacion ? "Creando..." : "📄 Crear nueva cotización →"}
                 </button>
+
+                <div className="flex justify-center border-t border-[#1a1a1a] pt-3">
+                  <button onClick={() => setIsEditingDiscovery(true)} className="text-[11px] text-gray-500 hover:text-white transition-colors underline">
+                    Editar detalles del descubrimiento
+                  </button>
+                </div>
               </>
             )}
           </div>
@@ -844,19 +862,30 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
               </div>
             </div>
 
-            {!trato.descubrimientoCompleto ? (
+            {!trato.descubrimientoCompleto || isEditingDiscovery ? (
               <div className="mt-4">
-                <div className="p-3 bg-amber-900/20 border border-amber-800/40 rounded-lg mb-4">
-                  <p className="text-amber-400 text-xs font-semibold mb-1">⚠️ Información faltante</p>
-                  <p className="text-amber-300/80 text-[11px] leading-relaxed">
-                    Aunque la fecha ya está apartada, debes recabar la información técnica (descubrimiento) para poder operar el evento correctamente.
-                  </p>
-                </div>
+                {!trato.descubrimientoCompleto && (
+                  <div className="p-3 bg-amber-900/20 border border-amber-800/40 rounded-lg mb-4">
+                    <p className="text-amber-400 text-xs font-semibold mb-1">⚠️ Información faltante</p>
+                    <p className="text-amber-300/80 text-[11px] leading-relaxed">
+                      Aunque la fecha ya está apartada, debes recabar la información técnica (descubrimiento) para poder operar el evento correctamente.
+                    </p>
+                  </div>
+                )}
+                {isEditingDiscovery && (
+                  <div className="flex justify-between items-center mb-4">
+                    <p className="text-[#B3985B] text-sm font-semibold">Editando descubrimiento</p>
+                    <button onClick={() => setIsEditingDiscovery(false)} className="text-xs text-gray-500 hover:text-white transition-colors">✕ Cancelar edición</button>
+                  </div>
+                )}
                 <DiscoveryForm 
                   id={id} 
                   trato={trato} 
                   setTrato={setTrato} 
-                  onComplete={() => setTrato(p => p ? { ...p, descubrimientoCompleto: true } : p)}
+                  onComplete={() => {
+                    setTrato(p => p ? { ...p, descubrimientoCompleto: true } : p);
+                    setIsEditingDiscovery(false);
+                  }}
                 />
               </div>
             ) : (
@@ -866,10 +895,16 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
                 </p>
                 <Link
                   href={`/crm/tratos/${id}`}
-                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-emerald-700/20 border border-emerald-700/40 text-emerald-300 text-sm font-bold hover:bg-emerald-700/30 transition-colors"
+                  className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-emerald-700/20 border border-emerald-700/40 text-emerald-300 text-sm font-bold hover:bg-emerald-700/30 transition-colors mb-3"
                 >
                   🎯 Ver trato y confirmar evento →
                 </Link>
+
+                <div className="flex justify-center border-t border-[#1a1a1a] pt-3">
+                  <button onClick={() => setIsEditingDiscovery(true)} className="text-[11px] text-gray-500 hover:text-white transition-colors underline">
+                    Editar detalles del descubrimiento
+                  </button>
+                </div>
               </>
             )}
           </div>

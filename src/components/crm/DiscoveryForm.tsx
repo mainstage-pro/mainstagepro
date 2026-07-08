@@ -170,6 +170,7 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
     serviciosInteres: [] as string[],
     equiposInteres: "",
     notasEquipos: "",
+    serviciosAdicionalesOtro: "",
     familyAndFriends: false,
     realizarRender: false,
     tradeAplica: false,
@@ -363,17 +364,20 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
                     <button onClick={() => setTipoEventoUnlocked(true)} className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors">cambiar</button>
                   </div>
                 ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"].map(te => (
-                      <button key={te} onClick={() => { setDiscForm(p => ({ ...p, tipoEvento: te, subtipoEvento: "", serviciosInteres: [] })); setTipoEventoUnlocked(false); }}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors border ${
-                        discForm.tipoEvento === te
-                          ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10"
-                          : "border-[#333] text-gray-500 hover:text-white hover:border-[#555]"
-                      }`}>
-                      {te === "MUSICAL" ? "🎵 Musical" : te === "SOCIAL" ? "🥂 Social" : te === "EMPRESARIAL" ? "🏢 Empresarial" : "📅 Otro"}
-                    </button>
-                  ))}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    {[
+                      { te: "MUSICAL", icon: "🎵", label: "Musical", desc: "Conciertos, festivales, giras, etc." },
+                      { te: "SOCIAL", icon: "🥂", label: "Social", desc: "Bodas, XV años, fiestas privadas." },
+                      { te: "EMPRESARIAL", icon: "🏢", label: "Empresarial", desc: "Congresos, lanzamientos, expos." },
+                      { te: "OTRO", icon: "📅", label: "Otro", desc: "Algún otro tipo de evento." }
+                    ].map(t => (
+                      <button key={t.te} onClick={() => { setDiscForm(p => ({ ...p, tipoEvento: t.te, subtipoEvento: "", serviciosInteres: [] })); setTipoEventoUnlocked(false); }}
+                        className={`text-left p-3 rounded-xl border transition-all ${discForm.tipoEvento === t.te ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#222] bg-[#111] hover:border-[#444]"}`}>
+                        <div className="text-xl mb-1">{t.icon}</div>
+                        <p className={`text-sm font-semibold mb-0.5 ${discForm.tipoEvento === t.te ? "text-[#B3985B]" : "text-white"}`}>{t.label}</p>
+                        <p className="text-[10px] text-gray-500 leading-tight">{t.desc}</p>
+                      </button>
+                    ))}
                   </div>
                 )}
                 
@@ -429,8 +433,8 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {[
                     { value: "RENTA", label: "Renta de equipo", icon: "📦", desc: "Solo equipo sin operación técnica compleja." },
-                    { value: "PRODUCCION_TECNICA", label: "Producción Técnica", icon: "⚙️", desc: "Equipo, operación y diseño técnico." },
-                    { value: "DIRECCION_TECNICA", label: "Dirección Técnica", icon: "📋", desc: "Coordinación y gestión de proveedores externos." }
+                    { value: "PRODUCCION_TECNICA", label: "Operación Técnica", icon: "⚙️", desc: "Equipo, montaje y operación técnica." },
+                    { value: "DIRECCION_TECNICA", label: "Dirección Técnica", icon: "📋", desc: "Desarrollo conceptual, producción técnica y gestión completa de producción." }
                   ].map(ts => (
                     <button key={ts.value} type="button" onClick={() => setDiscForm(p => ({ ...p, tipoServicio: ts.value }))}
                       className={`text-left p-4 rounded-xl border transition-all ${discForm.tipoServicio === ts.value ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#222] bg-[#111] hover:border-[#444]"}`}>
@@ -765,24 +769,33 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
                   />
                 </div>
 
-                {/* ── Add-ons específicos del evento ─────────────────────── */}
-                {(EXTRAS_EVENTO[discForm.tipoEvento] ?? EXTRAS_EVENTO.OTRO).length > 0 && (
-                  <div>
-                    <p className="text-[10px] text-[#555] uppercase tracking-widest mb-2 font-semibold">Add-ons específicos del evento</p>
-                    <div className="flex flex-wrap gap-2">
-                      {(EXTRAS_EVENTO[discForm.tipoEvento] ?? EXTRAS_EVENTO.OTRO).map(srv => (
-                        <button key={srv.id} onClick={() => toggleServicio(srv.id)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
-                            discForm.serviciosInteres.includes(srv.id)
-                              ? "border-[#B3985B] text-black bg-[#B3985B]"
-                              : "border-[#2a2a2a] text-gray-400 hover:border-[#555] hover:text-white"
-                          }`}>
-                          {srv.label}
-                        </button>
-                      ))}
-                    </div>
+                {/* ── Servicios Adicionales ─────────────────────── */}
+                <div className="pt-2 border-t border-[#1a1a1a]">
+                  <label className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold block mb-3">Servicios Adicionales (Opcionales)</label>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {[
+                      { id: "SA_FOTO_VIDEO", label: "Levantamiento de foto y video profesional" },
+                      { id: "SA_RENDER", label: "Diseño de render de la producción" },
+                      { id: "SA_PROD_MANAGEMENT", label: "Production Management del proyecto" }
+                    ].map(srv => (
+                      <button key={srv.id} onClick={() => toggleServicio(srv.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                          discForm.serviciosInteres.includes(srv.id)
+                            ? "border-[#B3985B] text-black bg-[#B3985B]"
+                            : "border-[#2a2a2a] text-gray-400 hover:border-[#555] hover:text-white"
+                        }`}>
+                        {srv.label}
+                      </button>
+                    ))}
                   </div>
-                )}
+                  <input
+                    type="text"
+                    value={discForm.serviciosAdicionalesOtro || ""}
+                    onChange={e => setDiscForm(p => ({ ...p, serviciosAdicionalesOtro: e.target.value }))}
+                    placeholder="Otro servicio adicional (especifica)..."
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                </div>
               </div>
             )}
             
@@ -876,6 +889,18 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
             {/* PASO 3: Detalles operativos (solo producción técnica / no-renta) */}
             {discForm.tipoServicio !== "RENTA" && pasoActivo === 3 && (<div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* ── Horarios del evento ─────────────────────── */}
+                <div className="sm:col-span-2 grid grid-cols-2 gap-4 pb-4 border-b border-[#1a1a1a]">
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Hora de inicio del evento (opcional)</label>
+                    <TimePicker value={discForm.horaInicioEvento || ""} onChange={v => setDiscForm(p => ({ ...p, horaInicioEvento: v }))} placeholder="Inicio" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Hora de fin del evento (opcional)</label>
+                    <TimePicker value={discForm.horaFinEvento || ""} onChange={v => setDiscForm(p => ({ ...p, horaFinEvento: v }))} placeholder="Fin" />
+                  </div>
+                </div>
+
                 <div className="sm:col-span-2">
                   <label className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider block mb-1.5">💡 Ideas / Referencias (links)</label>
                   <p className="text-[11px] text-gray-500 mb-3">Links de Pinterest, Instagram, Google Drive o cualquier sitio web que sirva de inspiración (ej: fotos de otros eventos, ideas de internet, etc.) para entender el mood del proyecto.</p>

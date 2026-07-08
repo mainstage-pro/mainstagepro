@@ -131,7 +131,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false }:
         )}
       </div>
 
-      {categorias.map((cat) => {
+      {categorias.filter(cat => !cat.nombre.toLowerCase().includes('veh') && !cat.nombre.toLowerCase().includes('externo')).map((cat) => {
         const catSeleccionada = value.categorias.includes(cat.id);
         const eqsEnCat = value.equipos.filter((eid) =>
           cat.equipos.some((e) => e.id === eid)
@@ -183,14 +183,17 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false }:
                     {(() => {
                       const n = cat.nombre.toLowerCase();
                       let emoji = "📦";
-                      if (n.includes("audio")) emoji = "🔊";
+                      if (n.includes("microfon")) emoji = "🎤";
+                      else if (n.includes("in ear")) emoji = "🎧";
+                      else if (n.includes("consolas de audio") || n.includes("mixer")) emoji = "🎚️";
+                      else if (n.includes("dj") || n.includes("cdj")) emoji = "💽";
+                      else if (n.includes("audio")) emoji = "🔊";
                       else if (n.includes("iluminaci")) emoji = "💡";
                       else if (n.includes("video") || n.includes("pantalla") || n.includes("led")) emoji = "📺";
                       else if (n.includes("estruct")) emoji = "🏗️";
                       else if (n.includes("backline")) emoji = "🎸";
                       else if (n.includes("efecto")) emoji = "✨";
                       else if (n.includes("pista")) emoji = "💃";
-                      else if (n.includes("dj") || n.includes("cdj")) emoji = "🎚️";
                       else if (n.includes("energ") || n.includes("planta")) emoji = "⚡";
                       else if (n.includes("escenograf") || n.includes("mobiliario")) emoji = "🛋️";
                       return `${emoji} ${cat.nombre}`;

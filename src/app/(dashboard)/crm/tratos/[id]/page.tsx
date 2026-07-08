@@ -2824,16 +2824,40 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           const fechaAutoritativa = cotPrincipal?.fechaEvento ?? trato.fechaEventoEstimada;
           const fechaDesde = cotPrincipal?.fechaEvento ? 'cotizacion' : 'estimada';
           const lugarAutoritativo = cotPrincipal?.lugarEvento ?? trato.lugarEstimado;
-          const hayInfo = fechaAutoritativa || lugarAutoritativo || trato.presupuestoEstimado;
+          const hayInfo = fechaAutoritativa || lugarAutoritativo || trato.presupuestoEstimado || trato.tipoEvento;
           if (!hayInfo) return null;
+
+          // Extraer tipoServicio del brief si existe
+          let tipoServicio = "";
+          try {
+            const dbForm = (trato as any).brief ? JSON.parse((trato as any).brief) : {};
+            if (dbForm.tipoServicio) {
+              tipoServicio = dbForm.tipoServicio === "RENTA" ? "Renta de Equipo" : 
+                             dbForm.tipoServicio === "PRODUCCION_TECNICA" ? "Operación Técnica" : 
+                             dbForm.tipoServicio === "DIRECCION_TECNICA" ? "Dirección Técnica" : dbForm.tipoServicio;
+            }
+          } catch (e) {}
+
           return (
             <div className="ms-stat-card space-y-2">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] text-gray-600 uppercase tracking-wider">Evento</p>
+              <div className="flex items-center justify-between mb-2 pb-2 border-b border-[#1a1a1a]">
+                <p className="text-[10px] text-gray-600 uppercase tracking-wider">Detalles del Evento</p>
                 {fechaDesde === 'cotizacion' && (
                   <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-900/20 border border-emerald-800/30 text-emerald-400">Confirmado</span>
                 )}
               </div>
+              {trato.tipoEvento && (
+                <div className="flex items-start gap-2">
+                  <span className="text-gray-700 text-xs shrink-0">🎫</span>
+                  <p className="text-gray-300 text-xs capitalize">{trato.tipoEvento.toLowerCase()}</p>
+                </div>
+              )}
+              {tipoServicio && (
+                <div className="flex items-start gap-2">
+                  <span className="text-gray-700 text-xs shrink-0">⚙️</span>
+                  <p className="text-[#B3985B] text-xs">{tipoServicio}</p>
+                </div>
+              )}
               {fechaAutoritativa && (
                 <div className="flex items-start gap-2">
                   <span className="text-gray-700 text-xs shrink-0">📅</span>
