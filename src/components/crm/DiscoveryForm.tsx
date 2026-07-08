@@ -169,6 +169,7 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
     notas: "",
     serviciosInteres: [] as string[],
     equiposInteres: "",
+    notasEquipos: "",
     familyAndFriends: false,
     realizarRender: false,
     tradeAplica: false,
@@ -379,40 +380,44 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
                 {/* Subtipo de evento */}
                 {discForm.tipoEvento && (
                   <div className="mt-3">
-                    <label className="text-xs text-gray-400 block mb-1">Subtipo de evento</label>
-                    <select
-                      value={discForm.subtipoEvento}
-                      onChange={e => setDiscForm(p => ({ ...p, subtipoEvento: e.target.value }))}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    >
-                      <option value="">— Seleccionar —</option>
-                      {discForm.tipoEvento === "MUSICAL" && (
-                        <>
-                          <option value="CONCIERTO">Concierto</option>
-                          <option value="FESTIVAL">Festival</option>
-                          <option value="ELECTRONICA">Música Electrónica</option>
-                          <option value="PRESENTACION_MUSICAL">Presentación Musical</option>
-                        </>
-                      )}
-                      {discForm.tipoEvento === "SOCIAL" && (
-                        <>
-                          <option value="BODA">Boda</option>
-                          <option value="XV_ANOS">XV Años</option>
-                          <option value="BAUTIZO">Bautizo</option>
-                          <option value="CUMPLEANIOS">Cumpleaños</option>
-                          <option value="FIESTA_PRIVADA">Fiesta Privada</option>
-                        </>
-                      )}
-                      {discForm.tipoEvento === "EMPRESARIAL" && (
-                        <>
-                          <option value="CONGRESO">Congreso / Convención</option>
-                          <option value="LANZAMIENTO">Lanzamiento de Marca</option>
-                          <option value="FERIA">Feria / Expo</option>
-                          <option value="TALLER">Taller / Capacitación</option>
-                        </>
-                      )}
-                      <option value="OTRO">Otro</option>
-                    </select>
+                    <label className="text-xs text-gray-400 block mb-2">Subtipo de evento (puedes seleccionar varios)</label>
+                    <div className="flex flex-wrap gap-2">
+                      {(() => {
+                        const opts = discForm.tipoEvento === "MUSICAL" ? ["Concierto", "Festival", "Música Electrónica", "Presentación Musical"] :
+                                     discForm.tipoEvento === "SOCIAL" ? ["Boda", "XV Años", "Bautizo", "Cumpleaños", "Fiesta Privada"] :
+                                     discForm.tipoEvento === "EMPRESARIAL" ? ["Congreso / Convención", "Lanzamiento de Marca", "Feria / Expo", "Taller / Capacitación"] : [];
+                        const actuales = discForm.subtipoEvento ? discForm.subtipoEvento.split(', ') : [];
+                        return (
+                          <>
+                            {opts.map(opt => (
+                              <button key={opt} type="button" onClick={() => {
+                                const nuevos = actuales.includes(opt) ? actuales.filter(a => a !== opt) : [...actuales, opt].filter(x => x && !x.startsWith("Otro"));
+                                setDiscForm(p => ({ ...p, subtipoEvento: nuevos.join(', ') }));
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-sm transition-colors border ${actuales.includes(opt) ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10" : "border-[#333] text-gray-500 hover:text-white"}`}>
+                                {opt}
+                              </button>
+                            ))}
+                            <button type="button" onClick={() => {
+                                const isOtro = actuales.some(a => a.startsWith("Otro"));
+                                setDiscForm(p => ({ ...p, subtipoEvento: isOtro ? actuales.filter(a => !a.startsWith("Otro")).join(', ') : [...actuales, "Otro"].join(', ') }));
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-sm transition-colors border ${actuales.some(a => a.startsWith("Otro")) ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10" : "border-[#333] text-gray-500 hover:text-white"}`}>
+                              Otro
+                            </button>
+                          </>
+                        );
+                      })()}
+                    </div>
+                    {discForm.subtipoEvento?.includes("Otro") && (
+                      <input type="text" placeholder="Especifica el otro subtipo..."
+                        onChange={e => {
+                          const actuales = discForm.subtipoEvento.split(', ').filter(x => !x.startsWith("Otro"));
+                          setDiscForm(p => ({ ...p, subtipoEvento: [...actuales, `Otro: ${e.target.value}`].join(', ') }));
+                        }}
+                        className="mt-3 w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                      />
+                    )}
                   </div>
                 )}
               </div>
@@ -420,13 +425,21 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
             {/* Step 1 continuation: base fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
-                <label className="text-xs text-gray-400 block mb-1">Tipo de servicio</label>
-                <Combobox
-                  value={discForm.tipoServicio}
-                  onChange={v => setDiscForm(p => ({ ...p, tipoServicio: v }))}
-                  options={[{ value: "", label: "— Seleccionar —" }, { value: "POR_DESCUBRIR", label: "Por descubrir" }, { value: "RENTA", label: "Renta de equipo" }, { value: "PRODUCCION_TECNICA", label: "Producción técnica" }, { value: "DIRECCION_TECNICA", label: "Dirección técnica" }]}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                />
+                <label className="text-xs text-gray-400 block mb-2">Tipo de servicio</label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {[
+                    { value: "RENTA", label: "Renta de equipo", icon: "📦", desc: "Solo equipo sin operación técnica compleja." },
+                    { value: "PRODUCCION_TECNICA", label: "Producción Técnica", icon: "⚙️", desc: "Equipo, operación y diseño técnico." },
+                    { value: "DIRECCION_TECNICA", label: "Dirección Técnica", icon: "📋", desc: "Coordinación y gestión de proveedores externos." }
+                  ].map(ts => (
+                    <button key={ts.value} type="button" onClick={() => setDiscForm(p => ({ ...p, tipoServicio: ts.value }))}
+                      className={`text-left p-4 rounded-xl border transition-all ${discForm.tipoServicio === ts.value ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#222] bg-[#111] hover:border-[#444]"}`}>
+                      <div className="text-2xl mb-2">{ts.icon}</div>
+                      <p className={`text-sm font-semibold mb-1 ${discForm.tipoServicio === ts.value ? "text-[#B3985B]" : "text-white"}`}>{ts.label}</p>
+                      <p className="text-xs text-gray-500 leading-relaxed">{ts.desc}</p>
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Nombre del evento / proyecto</label>
@@ -772,6 +785,19 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
                 )}
               </div>
             )}
+            
+            {/* ── Notas Técnicas / Equipos Adicionales (Manual) ─────────────────────── */}
+            <div className="pt-2">
+              <label className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold block mb-2">Notas Técnicas y Equipo Adicional (Manual)</label>
+              <p className="text-[11px] text-gray-500 mb-2">Detalla marcas, modelos específicos, o lista cualquier equipo que no hayas encontrado en las categorías.</p>
+              <textarea
+                value={discForm.notasEquipos || ""}
+                onChange={e => setDiscForm(p => ({ ...p, notasEquipos: e.target.value }))}
+                rows={4}
+                placeholder="Ej: Necesitamos 4 micrófonos Shure ULXD, consola Digico SD12, o detalles adicionales técnicos..."
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
+              />
+            </div>
 
               {/* Asistentes estimados — visible en paso 2 para producción técnica (no DT ni RENTA) */}
               {discForm.tipoServicio !== "RENTA" && discForm.tipoServicio !== "DIRECCION_TECNICA" && (
@@ -851,8 +877,8 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
             {discForm.tipoServicio !== "RENTA" && pasoActivo === 3 && (<div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
-                  <label className="text-xs text-gray-400 block mb-1.5">Ideas / Referencias (links)</label>
-
+                  <label className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider block mb-1.5">💡 Ideas / Referencias (links)</label>
+                  <p className="text-[11px] text-gray-500 mb-3">Links de Pinterest, Instagram, Google Drive o cualquier sitio web que sirva de inspiración (ej: fotos de otros eventos, ideas de internet, etc.) para entender el mood del proyecto.</p>
                   {/* Legacy text — show as text, don't edit */}
                   {isLegacyString(discForm.ideasReferencias) && (
                     <p className="text-xs text-gray-500 bg-[#0d0d0d] border border-[#222] rounded-lg px-3 py-2 mb-2 leading-relaxed">
@@ -961,65 +987,11 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete }: { id:
             </div>)} {/* /paso3 */}
 
 
-            {/* PASO 4 (no-renta) / PASO 3 (renta): Brief de contenido */}
+            {/* PASO 4 (no-renta) / PASO 3 (renta): Comercial */}
             {(discForm.tipoServicio === "RENTA" ? pasoActivo === 3 : pasoActivo === 4) && (<div className="space-y-4">
-              <div className="flex items-center gap-3 flex-wrap">
-                <p className="text-sm text-gray-300">¿Aplica levantamiento de contenido?</p>
-                <button onClick={async () => {
-                  setBriefAplica(true);
-                  try {
-                    await fetch(`/api/tratos/${id}`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ requiereRevision: true }),
-                    });
-                    setLevantamientoCreado(true);
-                  } catch { /* silent */ }
-                }} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${briefAplica === true ? "border-[#B3985B] text-black bg-[#B3985B]" : "border-[#333] text-gray-400 hover:text-white"}`}>Sí aplica</button>
-                <button onClick={async () => {
-                  setBriefAplica(false);
-                  setLevantamientoCreado(false);
-                  try {
-                    await fetch(`/api/tratos/${id}`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ requiereRevision: false }),
-                    });
-                  } catch { /* silent */ }
-                }} className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${briefAplica === false ? "border-gray-500 text-white bg-gray-700" : "border-[#333] text-gray-400 hover:text-white"}`}>No aplica</button>
-                {briefGuardado && <span className="px-2 py-0.5 rounded-full text-xs bg-green-900/40 text-green-300">Guardado</span>}
-                {levantamientoCreado && (
-                  <p className="text-xs text-green-400">✓ Solicitud de levantamiento creada — Marketing será notificado</p>
-                )}
-              </div>
-              {briefAplica === false && <p className="text-gray-600 text-xs italic">No se requiere levantamiento de contenido para este proyecto.</p>}
-              {briefAplica === true && (
-                <div className="bg-[#0d1a0f] border border-green-900/40 rounded-xl px-4 py-3 flex items-start gap-3">
-                  <span className="text-green-400 text-base mt-0.5">✓</span>
-                  <div>
-                    <p className="text-green-300 text-sm font-medium">Levantamiento marcado como requerido</p>
-                    <p className="text-green-700 text-xs mt-0.5">El equipo de Marketing recibirá la orden automáticamente cuando se apruebe la cotización.</p>
-                  </div>
-                </div>
-              )}
 
-
-
-              {/* Toggles: Family & Friends + Mainstage Trade */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#1a1a1a]">
-                <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-white font-medium">Descuento especial</p>
-                      <p className="text-[11px] text-gray-500 mt-0.5">Se aplicará en la cotización automáticamente</p>
-                    </div>
-                    <button
-                      onClick={() => setDiscForm(p => ({ ...p, familyAndFriends: !p.familyAndFriends }))}
-                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 overflow-hidden ${discForm.familyAndFriends ? "bg-[#B3985B]" : "bg-[#333]"}`}>
-                      <span className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${discForm.familyAndFriends ? "translate-x-5" : "translate-x-0"}`} />
-                    </button>
-                  </div>
-                </div>
+              {/* Toggles: Mainstage Trade + Render */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 pr-3">

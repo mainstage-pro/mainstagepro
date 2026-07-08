@@ -22,6 +22,7 @@ type Trato = {
   createdAt: string; fechaCierre: string | null;
   cliente: { nombre: string; empresa: string | null };
   responsable: { name: string } | null;
+  cotizaciones?: { estado: string; granTotal: number }[];
 };
 
 export default function PipelinePage() {
@@ -54,8 +55,18 @@ export default function PipelinePage() {
     setMoving(null);
   }
 
+  const getTratoValor = (t: Trato) => {
+    const cots = t.cotizaciones ?? [];
+    const ap = cots.find(c => c.estado === "APROBADA");
+    if (ap) return ap.granTotal;
+    const en = cots.find(c => c.estado === "ENVIADA" || c.estado === "REENVIADA");
+    if (en) return en.granTotal;
+    if (cots.length > 0) return cots[0].granTotal;
+    return t.presupuestoEstimado ?? 0;
+  };
+
   const totalPipeline = tratos.length;
-  const totalValor = tratos.reduce((s, t) => s + (t.presupuestoEstimado ?? 0), 0);
+  const totalValor = tratos.reduce((s, t) => s + getTratoValor(t), 0);
   const vencidos = tratos.filter(t => t.fechaProximaAccion && new Date(t.fechaProximaAccion) < new Date()).length;
 
   return (
@@ -84,7 +95,7 @@ export default function PipelinePage() {
             const etapaIdx = ETAPA_ORDER.indexOf(etapa);
             const prev = etapaIdx > 0 ? ETAPA_ORDER[etapaIdx - 1] : null;
             const next = etapaIdx < ETAPA_ORDER.length - 1 ? ETAPA_ORDER[etapaIdx + 1] : null;
-            const columnaValor = columnaTratos.reduce((s, t) => s + (t.presupuestoEstimado ?? 0), 0);
+            const columnaValor = columnaTratos.reduce((s, t) => s + getTratoValor(t), 0);
 
             return (
               <div key={etapa} className="flex flex-col min-h-0">

@@ -18,6 +18,11 @@ interface Trato {
   responsable: { id: string; name: string } | null;
   canalAtencion: string | null;
   descubrimientoCompleto: boolean;
+  formToken: string | null;
+  formEstado: string;
+  formRecibidoEn: string | null;
+  tipoEvento: string | null;
+  nombreEvento: string | null;
 }
 
 type SeguimientoItem = {
@@ -86,6 +91,41 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
   const [agendaTipo, setAgendaTipo] = useState("whatsapp");
   const [agendaNota, setAgendaNota] = useState("");
   const [agendandoTodo, setAgendandoTodo] = useState(false);
+
+  // Estados para formulario cliente
+  const [generandoToken, setGenerandoToken] = useState(false);
+  const [linkCopiado, setLinkCopiado] = useState(false);
+  const formUrl = trato?.formToken ? `${typeof window !== 'undefined' ? window.location.origin : ''}/f/${trato.formToken}` : "";
+
+  function copiarLink(url: string) {
+    navigator.clipboard.writeText(url);
+    setLinkCopiado(true);
+    setTimeout(() => setLinkCopiado(false), 2000);
+  }
+
+  async function generarFormToken() {
+    setGenerandoToken(true);
+    try {
+      const res = await fetch(`/api/tratos/${id}/form-token`, { method: "POST" });
+      const data = await res.json();
+      if (data.ok) {
+        setTrato(prev => prev ? { ...prev, formToken: data.formToken, formEstado: "NO_ENVIADO" } : prev);
+      }
+    } finally {
+      setGenerandoToken(false);
+    }
+  }
+
+  async function marcarFormEnviado() {
+    const res = await fetch(`/api/tratos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ formEstado: "ENVIADO" }),
+    });
+    if (res.ok) {
+      setTrato(prev => prev ? { ...prev, formEstado: "ENVIADO" } : prev);
+    }
+  }
 
   // Cargar trato
   useEffect(() => {
@@ -260,7 +300,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
     <div className="min-h-screen bg-[#080808]">
       {/* ─── Header fijo ───────────────────────────────────────────────── */}
       <div className="sticky top-0 z-40 bg-[#0a0a0a]/95 backdrop-blur border-b border-[#181818]">
-        <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push(`/crm/tratos/${id}`)}
@@ -281,7 +321,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-6 space-y-5">
+      <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
 
         {/* ═══════════════════════════════════════════════════════════
             PANEL: LEAD — Plan de contactos
@@ -599,22 +639,75 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
               </div>
             )}
 
-            {/* ── CTA: Iniciar descubrimiento ── */}
-            <div className="pt-2">
+            {/* ── CTA: Iniciar descubrimiento o Enviar Formulario ── */}
+            <div className="pt-2 space-y-4">
               <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-2xl p-5">
                 <p className="text-white font-semibold text-sm mb-1">¿{nombre1} está listo para el siguiente paso?</p>
                 <p className="text-gray-600 text-xs mb-4 leading-relaxed">
                   {esOutbound
-                    ? "Cuando el prospecto muestre interés en un evento concreto, inicia el descubrimiento."
-                    : "Cuando tengas suficiente información y el cliente muestre intención clara, inicia el descubrimiento."}
+                    ? "Cuando el prospecto muestre interés en un evento concreto, es hora de recopilar los detalles técnicos."
+                    : "Cuando tengas suficiente información y el cliente muestre intención clara, es hora de recopilar los detalles técnicos."}
                 </p>
-                <button
-                  onClick={iniciarDescubrimiento}
-                  disabled={saving}
-                  className="w-full py-3 rounded-xl bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-bold transition-colors disabled:opacity-40"
-                >
-                  🔍 Iniciar descubrimiento de necesidades →
-                </button>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                  {/* Opción A: Yo recopilo */}
+                  <button
+                    onClick={iniciarDescubrimiento}
+                    disabled={saving}
+                    className="border border-[#2a2a2a] bg-[#111] hover:bg-[#1a1a1a] rounded-xl p-4 text-left transition-all group disabled:opacity-50"
+                  >
+                    <div className="text-2xl mb-2">🎙️</div>
+                    <p className="text-white text-sm font-semibold group-hover:text-[#B3985B] transition-colors">Yo recopilo (Vendedor)</p>
+                    <p className="text-gray-600 text-xs mt-1 leading-relaxed">Lleno el brief en llamada o reunión con el cliente</p>
+                  </button>
+                  {/* Opción B: El cliente llena */}
+                  <button
+                    onClick={async () => {
+                      if (!trato.formToken) await generarFormToken();
+                    }}
+                    disabled={generandoToken || saving}
+                    className="border border-[#B3985B]/30 bg-[#B3985B]/5 hover:bg-[#B3985B]/10 rounded-xl p-4 text-left transition-all group disabled:opacity-50"
+                  >
+                    <div className="text-2xl mb-2">{generandoToken ? "⏳" : "📲"}</div>
+                    <p className="text-[#B3985B] text-sm font-semibold group-hover:text-[#c9a96a] transition-colors">
+                      {generandoToken ? "Generando..." : "El cliente llena"}
+                    </p>
+                    <p className="text-gray-600 text-xs mt-1 leading-relaxed">Generar link para que el cliente complete su info</p>
+                  </button>
+                </div>
+
+                {trato.formToken && (
+                  <div className="bg-[#111] border border-[#B3985B]/20 rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
+                    <p className="text-white text-sm font-semibold mb-1">Formulario para el cliente</p>
+                    <p className="text-[#555] text-[11px] mb-3">
+                      {trato.formEstado === "ENVIADO" ? "Link enviado · esperando respuesta" : "Link generado · compártelo"}
+                    </p>
+                    <div className="flex items-center gap-2 bg-[#000] border border-[#222] rounded-lg px-3 py-2 mb-3">
+                      <span className="text-[#666] text-[11px] truncate flex-1 font-mono">{formUrl}</span>
+                      <button
+                        onClick={() => { copiarLink(formUrl); if (trato.formEstado === "NO_ENVIADO") marcarFormEnviado(); }}
+                        className="text-[#B3985B] text-xs font-medium hover:underline shrink-0"
+                      >
+                        {linkCopiado ? "¡Copiado!" : "Copiar"}
+                      </button>
+                    </div>
+                    {trato.cliente.telefono && (
+                      <a
+                        href={`https://wa.me/52${trato.cliente.telefono}?text=${encodeURIComponent(`Hola ${nombre1} 👋, para prepararte la mejor propuesta para tu evento necesito que llenes este breve formulario (toma menos de 3 minutos): ${formUrl}`)}`}
+                        target="_blank" rel="noopener noreferrer"
+                        onClick={() => { if (trato.formEstado === "NO_ENVIADO") marcarFormEnviado(); }}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold bg-green-900/20 border border-green-800/40 text-green-400 hover:border-green-700 transition-colors"
+                      >
+                        Enviar link por WhatsApp
+                      </a>
+                    )}
+                    <div className="mt-4 pt-4 border-t border-[#1e1e1e] flex justify-center">
+                      <button onClick={iniciarDescubrimiento} className="text-xs text-gray-500 hover:text-white transition-colors">
+                        O continuar y llenar el formulario yo mismo →
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </>
@@ -660,9 +753,72 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
               </div>
             ) : (
               <>
-                <p className="text-gray-500 text-sm leading-relaxed">
-                  El descubrimiento está completo. Ya puedes preparar y enviar la cotización formal.
+                <p className="text-gray-500 text-sm leading-relaxed mb-2">
+                  El descubrimiento está completo. A continuación la guía rápida del proyecto para elaborar tu cotización.
                 </p>
+
+                {/* Guía minimalista para el vendedor */}
+                <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4 mb-4">
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Tipo de Evento</p>
+                      <p className="text-white text-sm font-medium">{trato.tipoEvento || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Nombre del Proyecto</p>
+                      <p className="text-white text-sm font-medium">{trato.nombreEvento || "—"}</p>
+                    </div>
+                  </div>
+
+                  {(() => {
+                    let equipos = [];
+                    try {
+                      // Obtenemos los equipos directamente del campo de descubrimiento, o del brief
+                      const dbForm = (trato as any).brief ? JSON.parse((trato as any).brief) : {};
+                      if (dbForm.equiposInteres) {
+                        const parsed = typeof dbForm.equiposInteres === "string" ? JSON.parse(dbForm.equiposInteres) : dbForm.equiposInteres;
+                        equipos = parsed.categorias || [];
+                      }
+                    } catch (e) {}
+
+                    if (equipos.length > 0) {
+                      return (
+                        <div className="mb-4">
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Categorías Seleccionadas</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {equipos.map((cat: string) => (
+                              <span key={cat} className="px-2 py-1 bg-[#222] border border-[#333] text-gray-300 text-xs rounded-md">
+                                {cat}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  {(() => {
+                    let notasGenerales = "";
+                    try {
+                      const dbForm = (trato as any).brief ? JSON.parse((trato as any).brief) : {};
+                      notasGenerales = dbForm.notasEquipos || dbForm.notas || "";
+                    } catch (e) {}
+
+                    if (notasGenerales) {
+                      return (
+                        <div>
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Notas / Equipo Manual</p>
+                          <p className="text-gray-300 text-xs leading-relaxed whitespace-pre-wrap bg-[#080808] p-3 rounded-lg border border-[#1a1a1a]">
+                            {notasGenerales}
+                          </p>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+
                 <button
                   onClick={crearNuevaCotizacion}
                   disabled={creandoCotizacion}

@@ -180,7 +180,21 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false }:
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-white text-sm font-medium truncate">
-                    {cat.nombre}
+                    {(() => {
+                      const n = cat.nombre.toLowerCase();
+                      let emoji = "📦";
+                      if (n.includes("audio")) emoji = "🔊";
+                      else if (n.includes("iluminaci")) emoji = "💡";
+                      else if (n.includes("video") || n.includes("pantalla") || n.includes("led")) emoji = "📺";
+                      else if (n.includes("estruct")) emoji = "🏗️";
+                      else if (n.includes("backline")) emoji = "🎸";
+                      else if (n.includes("efecto")) emoji = "✨";
+                      else if (n.includes("pista")) emoji = "💃";
+                      else if (n.includes("dj") || n.includes("cdj")) emoji = "🎚️";
+                      else if (n.includes("energ") || n.includes("planta")) emoji = "⚡";
+                      else if (n.includes("escenograf") || n.includes("mobiliario")) emoji = "🛋️";
+                      return `${emoji} ${cat.nombre}`;
+                    })()}
                   </span>
                   {eqsEnCat.length > 0 && (
                     <span className="text-[10px] text-[#B3985B] bg-[#B3985B]/10 rounded-full px-2 py-0.5 shrink-0">

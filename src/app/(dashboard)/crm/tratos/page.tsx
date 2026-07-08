@@ -1413,6 +1413,18 @@ export default function TratosPage() {
     return 0;
   });
 
+  const getTratoValor = (t: Trato) => {
+    const cots = t.cotizaciones ?? [];
+    const ap = cots.find(c => c.estado === "APROBADA");
+    if (ap) return ap.granTotal;
+    const en = cots.find(c => c.estado === "ENVIADA" || c.estado === "REENVIADA");
+    if (en) return en.granTotal;
+    if (cots.length > 0) return cots[0].granTotal;
+    return t.presupuestoEstimado ?? 0;
+  };
+
+  const fmtM = (n: number) => n >= 1000000 ? `$${(n/1000000).toFixed(1)}M` : n >= 1000 ? `$${(n/1000).toFixed(0)}k` : `$${n.toLocaleString("es-MX", { maximumFractionDigits: 0 })}`;
+
   return (
     <div className="p-4 md:p-6">
       {/* Header */}
@@ -1473,12 +1485,8 @@ export default function TratosPage() {
             const sinSeguimiento = activos.filter(t => !t.fechaProximaAccion);
             const hoyStr = new Date().toISOString().split('T')[0];
             const vencidos = activos.filter(t => t.fechaProximaAccion && t.fechaProximaAccion < hoyStr);
-            const valorPipeline = activos.reduce((s, t) => s + (t.presupuestoEstimado ?? 0), 0);
-            const valorCerrado = cerradas.reduce((s, t) => {
-              const ap = t.cotizaciones?.find(c => c.estado === 'APROBADA');
-              return s + (ap?.granTotal ?? t.presupuestoEstimado ?? 0);
-            }, 0);
-            const fmtM = (n: number) => n >= 1000000 ? `$${(n/1000000).toFixed(1)}M` : n >= 1000 ? `$${(n/1000).toFixed(0)}k` : `$${n.toFixed(0)}`;
+            const valorPipeline = activos.reduce((s, t) => s + getTratoValor(t), 0);
+            const valorCerrado = cerradas.reduce((s, t) => s + getTratoValor(t), 0);
             return (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-2 p-3 bg-[#080808] border border-[#141414] rounded-xl">
                 <div className="flex flex-col gap-0.5">
@@ -1525,6 +1533,7 @@ export default function TratosPage() {
                 filter: 'TODOS',
                 label: 'Todos',
                 count: all.length,
+                valor: all.reduce((s, t) => s + getTratoValor(t), 0),
                 color: '#6B7280',
                 activeGrad: 'from-gray-800/60 to-gray-900/40',
                 activeBorder: 'border-gray-600/40',
@@ -1535,6 +1544,7 @@ export default function TratosPage() {
                 filter: 'LEAD',
                 label: 'Prospección',
                 count: all.filter(t => t.etapa === 'LEAD').length,
+                valor: all.filter(t => t.etapa === 'LEAD').reduce((s, t) => s + getTratoValor(t), 0),
                 color: '#F59E0B',
                 activeGrad: 'from-amber-900/50 to-amber-950/30',
                 activeBorder: 'border-amber-500/40',
@@ -1545,6 +1555,7 @@ export default function TratosPage() {
                 filter: 'DESCUBRIMIENTO',
                 label: 'Descubrimiento',
                 count: all.filter(t => t.etapa === 'DESCUBRIMIENTO').length,
+                valor: all.filter(t => t.etapa === 'DESCUBRIMIENTO').reduce((s, t) => s + getTratoValor(t), 0),
                 color: '#3B82F6',
                 activeGrad: 'from-blue-900/50 to-blue-950/30',
                 activeBorder: 'border-blue-500/40',
@@ -1555,6 +1566,7 @@ export default function TratosPage() {
                 filter: 'OPORTUNIDAD',
                 label: 'Oportunidad',
                 count: all.filter(t => t.etapa === 'OPORTUNIDAD').length,
+                valor: all.filter(t => t.etapa === 'OPORTUNIDAD').reduce((s, t) => s + getTratoValor(t), 0),
                 color: '#8B5CF6',
                 activeGrad: 'from-violet-900/50 to-violet-950/30',
                 activeBorder: 'border-violet-500/40',
@@ -1565,6 +1577,7 @@ export default function TratosPage() {
                 filter: 'VENTA_CERRADA',
                 label: 'Cerradas',
                 count: all.filter(t => t.etapa === 'VENTA_CERRADA').length,
+                valor: all.filter(t => t.etapa === 'VENTA_CERRADA').reduce((s, t) => s + getTratoValor(t), 0),
                 activeCount: all.filter(t => !['VENTA_CERRADA', 'VENTA_PERDIDA'].includes(t.etapa)).length,
                 color: '#10B981',
                 activeGrad: 'from-emerald-900/50 to-emerald-950/30',
@@ -1576,6 +1589,7 @@ export default function TratosPage() {
                 filter: 'VENTA_PERDIDA',
                 label: 'Perdidas',
                 count: all.filter(t => t.etapa === 'VENTA_PERDIDA').length,
+                valor: all.filter(t => t.etapa === 'VENTA_PERDIDA').reduce((s, t) => s + getTratoValor(t), 0),
                 color: '#EF4444',
                 activeGrad: 'from-red-900/40 to-red-950/30',
                 activeBorder: 'border-red-500/30',
@@ -1624,8 +1638,15 @@ export default function TratosPage() {
                         }`}>
                           {card.count}
                         </p>
+                        {card.valor !== undefined && card.valor > 0 && (
+                          <p className={`text-[10px] mt-1.5 font-bold tabular-nums ${
+                            isActive ? 'text-[#B3985B]' : 'text-[#B3985B]/60'
+                          }`}>
+                            {fmtM(card.valor)}
+                          </p>
+                        )}
                         {'activeCount' in card && card.activeCount !== undefined && (
-                          <p className={`text-[9px] mt-1 tabular-nums ${
+                          <p className={`text-[9px] mt-0.5 tabular-nums ${
                             isActive ? 'text-emerald-400/60' : 'text-[#333]'
                           }`}>
                             {card.activeCount} activos
