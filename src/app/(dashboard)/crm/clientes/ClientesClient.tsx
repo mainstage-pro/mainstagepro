@@ -61,10 +61,17 @@ const CLAS_COLORS: Record<string, string> = {
   BASIC: "text-blue-400",
 };
 const EVENTO_COLORS: Record<string, string> = {
-  MUSICAL:     "#3B82F6",
-  SOCIAL:      "#10B981",
-  EMPRESARIAL: "#F59E0B",
-  VARIOS:      "#8B5CF6",
+  MUSICAL:     "#818CF8", // indigo-400
+  SOCIAL:      "#FB7185", // rose-400
+  EMPRESARIAL: "#2DD4BF", // teal-400
+  VARIOS:      "#9CA3AF", // gray-400
+};
+
+const TIPO_EVENTO_BADGE: Record<string, { bg: string; text: string; dot: string }> = {
+  MUSICAL:     { bg: 'bg-indigo-900/30',  text: 'text-indigo-400',  dot: 'bg-indigo-400' },
+  SOCIAL:      { bg: 'bg-rose-900/30',    text: 'text-rose-400',    dot: 'bg-rose-400' },
+  EMPRESARIAL: { bg: 'bg-teal-900/30',    text: 'text-teal-400',    dot: 'bg-teal-400' },
+  VARIOS:      { bg: 'bg-gray-800/50',    text: 'text-gray-500',    dot: 'bg-gray-600' },
 };
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
@@ -99,17 +106,17 @@ function ClasificacionBadge({ clasificacion }: { clasificacion: string }) {
 function EventoPills({ tiposEvento }: { tiposEvento: string[] }) {
   if (!tiposEvento.length) return <span className="text-[#444] text-xs">—</span>;
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-wrap gap-1.5">
       {tiposEvento.map(t => {
         const opt = TIPOS_EVENTO_OPTIONS.find(o => o.value === t);
+        const style = TIPO_EVENTO_BADGE[t] ?? TIPO_EVENTO_BADGE.VARIOS;
         return (
-          <span
-            key={t}
-            className="text-[9px] px-1.5 py-0.5 rounded-full font-medium text-white"
-            style={{ backgroundColor: EVENTO_COLORS[t] ?? "#6b7280" }}
-          >
-            {opt?.label ?? t}
-          </span>
+          <div key={t} className="flex items-center gap-1.5">
+            <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`}></span>
+            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-md border border-transparent ${style.bg} ${style.text}`}>
+              {opt?.label ?? t}
+            </span>
+          </div>
         );
       })}
     </div>
@@ -193,7 +200,7 @@ function InlineDropdown({
 // ─── InlineMultiSelect ────────────────────────────────────────────────────────
 
 function InlineMultiSelect({
-  options, values, onChange, placeholder = "—", maxSelect = 3, colorMap,
+  options, values, onChange, placeholder = "—", maxSelect = 3, colorMap, renderValue,
 }: {
   options: { value: string; label: string }[];
   values: string[];
@@ -201,6 +208,7 @@ function InlineMultiSelect({
   placeholder?: string;
   maxSelect?: number;
   colorMap?: Record<string, string>;
+  renderValue?: (values: string[]) => React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -230,7 +238,7 @@ function InlineMultiSelect({
         onClick={() => setOpen(v => !v)}
         className="flex items-center gap-1 px-2 py-1 rounded-md border border-transparent hover:border-[#B3985B]/40 hover:bg-[#B3985B]/5 transition-all group"
       >
-        {values.length === 0 ? (
+        {renderValue ? renderValue(values) : values.length === 0 ? (
           <span className="text-xs text-[#444]">{placeholder}</span>
         ) : (
           <div className="flex flex-wrap gap-0.5">
@@ -567,6 +575,25 @@ function ClienteRow({
           placeholder="Evento"
           maxSelect={3}
           colorMap={EVENTO_COLORS}
+          renderValue={(vals) => {
+            if (vals.length === 0) return <span className="text-[#2a2a2a]">Tipos evento</span>;
+            return (
+              <div className="flex flex-wrap gap-1.5 pointer-events-none">
+                {vals.map(t => {
+                  const opt = TIPOS_EVENTO_OPTIONS.find(o => o.value === t);
+                  const style = TIPO_EVENTO_BADGE[t] ?? TIPO_EVENTO_BADGE.VARIOS;
+                  return (
+                    <div key={t} className="flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`}></span>
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-md border border-transparent ${style.bg} ${style.text}`}>
+                        {opt?.label ?? t}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          }}
         />
       </td>
 

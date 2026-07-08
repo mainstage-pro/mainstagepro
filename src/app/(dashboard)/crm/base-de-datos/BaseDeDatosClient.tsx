@@ -92,7 +92,17 @@ const TIPOS_EVENTO_OPTIONS = [
   { value: "VARIOS",      label: "Varios" },
 ];
 const EVENTO_COLORS: Record<string, string> = {
-  MUSICAL: "#3B82F6", SOCIAL: "#10B981", EMPRESARIAL: "#F59E0B", VARIOS: "#8B5CF6",
+  MUSICAL:     "#818CF8", // indigo-400
+  SOCIAL:      "#FB7185", // rose-400
+  EMPRESARIAL: "#2DD4BF", // teal-400
+  VARIOS:      "#9CA3AF", // gray-400
+};
+
+const TIPO_EVENTO_BADGE: Record<string, { bg: string; text: string; dot: string }> = {
+  MUSICAL:     { bg: 'bg-indigo-900/30',  text: 'text-indigo-400',  dot: 'bg-indigo-400' },
+  SOCIAL:      { bg: 'bg-rose-900/30',    text: 'text-rose-400',    dot: 'bg-rose-400' },
+  EMPRESARIAL: { bg: 'bg-teal-900/30',    text: 'text-teal-400',    dot: 'bg-teal-400' },
+  VARIOS:      { bg: 'bg-gray-800/50',    text: 'text-gray-500',    dot: 'bg-gray-600' },
 };
 
 const TIPO_COLORS: Record<string, { bg: string; text: string; border: string }> = {
@@ -218,13 +228,14 @@ function InlineDropdown({ options, value, onChange, placeholder = "—", colorMa
 
 // ─── InlineMultiSelect ────────────────────────────────────────────────────────
 
-function InlineMultiSelect({ options, values, onChange, placeholder = "—", maxSelect = 4, colorMap }: {
+function InlineMultiSelect({ options, values, onChange, placeholder = "—", maxSelect = 4, colorMap, renderValue }: {
   options: { value: string; label: string }[];
   values: string[];
   onChange: (v: string[]) => void;
   placeholder?: string;
   maxSelect?: number;
   colorMap?: Record<string, string>;
+  renderValue?: (values: string[]) => React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -254,7 +265,7 @@ function InlineMultiSelect({ options, values, onChange, placeholder = "—", max
             ? "border-transparent text-gray-300 hover:border-[#2a2a2a] hover:bg-[#1a1a1a]"
             : "border-transparent text-[#555] hover:text-[#aaa] hover:border-[#2a2a2a] hover:bg-[#1a1a1a]"
         }`}>
-        {displayLabel
+        {renderValue ? renderValue(values) : displayLabel
           ? <span>{displayLabel}</span>
           : <span className="text-[#2a2a2a]">{placeholder}</span>
         }
@@ -533,7 +544,27 @@ function ContactoRow({
       <td className="px-3 py-2.5 align-middle overflow-visible">
         <InlineMultiSelect options={TIPOS_EVENTO_OPTIONS} values={eventosActuales}
           onChange={v => patch({ tiposEvento: stringifyTiposEvento(v) })}
-          placeholder="Tipo evento" maxSelect={3} colorMap={EVENTO_COLORS} />
+          placeholder="Tipo evento" maxSelect={3} colorMap={EVENTO_COLORS}
+          renderValue={(vals) => {
+            if (vals.length === 0) return <span className="text-[#2a2a2a]">Tipo evento</span>;
+            return (
+              <div className="flex flex-wrap gap-1.5 pointer-events-none">
+                {vals.map(t => {
+                  const opt = TIPOS_EVENTO_OPTIONS.find(o => o.value === t);
+                  const style = TIPO_EVENTO_BADGE[t] ?? TIPO_EVENTO_BADGE.VARIOS;
+                  return (
+                    <div key={t} className="flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`}></span>
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-md border border-transparent ${style.bg} ${style.text}`}>
+                        {opt?.label ?? t}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          }}
+        />
       </td>
 
       {/* Actividad */}

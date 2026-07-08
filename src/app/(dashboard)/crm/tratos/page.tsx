@@ -86,26 +86,15 @@ const COT_LABELS: Record<string, string> = {
   EN_REVISION: "En revisión", AJUSTE_SOLICITADO: "Ajuste", REENVIADA: "Reenviada",
 };
 
-// Subtle accent colors for tipo evento
-const TIPO_EVENTO_BORDER: Record<string, string> = {
-  MUSICAL:     'border-l-indigo-500/30',
-  SOCIAL:      'border-l-rose-500/30',
-  EMPRESARIAL: 'border-l-cyan-500/30',
-  OTRO:        'border-l-transparent',
+const TIPO_BADGE: Record<string, { bg: string; text: string; dot: string }> = {
+  MUSICAL:     { bg: 'bg-indigo-900/30',  text: 'text-indigo-400',  dot: 'bg-indigo-400' },
+  SOCIAL:      { bg: 'bg-rose-900/30',    text: 'text-rose-400',    dot: 'bg-rose-400' },
+  EMPRESARIAL: { bg: 'bg-teal-900/30',    text: 'text-teal-400',    dot: 'bg-teal-400' },
+  VARIOS:      { bg: 'bg-gray-800/50',    text: 'text-gray-500',    dot: 'bg-gray-600' },
+  OTRO:        { bg: 'bg-gray-800/50',    text: 'text-gray-500',    dot: 'bg-gray-600' },
 };
-
-const TIPO_EVENTO_DOT: Record<string, string> = {
-  MUSICAL:     'bg-indigo-400/60',
-  SOCIAL:      'bg-rose-400/60',
-  EMPRESARIAL: 'bg-cyan-400/60',
-  OTRO:        'bg-gray-600/50',
-};
-
-const TIPO_EVENTO_TEXT: Record<string, string> = {
-  MUSICAL:     'text-indigo-400/70',
-  SOCIAL:      'text-rose-400/70',
-  EMPRESARIAL: 'text-cyan-400/70',
-  OTRO:        'text-gray-500',
+const TIPO_LABEL_SHORT: Record<string, string> = {
+  MUSICAL: 'Musical', SOCIAL: 'Social', EMPRESARIAL: 'Empresarial', VARIOS: 'Varios', OTRO: 'Otro',
 };
 
 const TIPO_SERVICIO_LABELS: Record<string, string> = {
@@ -401,7 +390,12 @@ function KanbanCard({ trato, onDelete, deleting }: { trato: Trato; onDelete: () 
         )}
       </div>
       {trato.cliente.empresa && <p className="text-[#6b7280] text-xs">{trato.cliente.empresa}</p>}
-      <p className="text-[#9ca3af] text-xs">{trato.nombreEvento || TIPO_EVENTO_LABELS[trato.tipoEvento] || trato.tipoEvento}</p>
+      <div className="flex items-center gap-1.5 mb-1">
+        <span className={`w-1.5 h-1.5 rounded-full ${TIPO_BADGE[trato.tipoEvento]?.dot ?? TIPO_BADGE.OTRO.dot}`}></span>
+        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-md border border-transparent ${TIPO_BADGE[trato.tipoEvento]?.bg ?? TIPO_BADGE.OTRO.bg} ${TIPO_BADGE[trato.tipoEvento]?.text ?? TIPO_BADGE.OTRO.text}`}>
+          {trato.nombreEvento || TIPO_LABEL_SHORT[trato.tipoEvento] || trato.tipoEvento}
+        </span>
+      </div>
       {(trato.fechaEventoEstimada || trato.presupuestoEstimado || trato.confirmadaEn) && (
         <div className="flex items-center gap-2 flex-wrap">
           {trato.fechaEventoEstimada && (
@@ -518,11 +512,18 @@ function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, e
                       ) : null;
                     })()}
                   </div>
-                  <p className="text-gray-600 text-[11px] mt-0.5 truncate">
-                    {t.nombreEvento || TIPO_EVENTO_LABELS[t.tipoEvento] || t.tipoEvento}
-                    {t.lugarEstimado && <span className="text-gray-700"> · {t.lugarEstimado}</span>}
-                    {cots.length > 0 && <span className="text-gray-700"> · {cots.length} cot.</span>}
-                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className={`w-1 h-1 rounded-full ${TIPO_BADGE[t.tipoEvento]?.dot ?? TIPO_BADGE.OTRO.dot}`}></span>
+                      <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded border border-transparent ${TIPO_BADGE[t.tipoEvento]?.bg ?? TIPO_BADGE.OTRO.bg} ${TIPO_BADGE[t.tipoEvento]?.text ?? TIPO_BADGE.OTRO.text}`}>
+                        {t.nombreEvento || TIPO_LABEL_SHORT[t.tipoEvento] || t.tipoEvento}
+                      </span>
+                    </div>
+                    <p className="text-gray-600 text-[11px] truncate">
+                      {t.lugarEstimado && <span className="text-gray-700">· {t.lugarEstimado}</span>}
+                      {cots.length > 0 && <span className="text-gray-700 ml-1">· {cots.length} cot.</span>}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="shrink-0 hidden sm:block">
@@ -645,15 +646,7 @@ function CompactTratoRow({
   const proyectoVinculado = t.cotizaciones.find(c => c.proyecto)?.proyecto ?? null;
   const nombreProyecto = proyectoVinculado?.nombre ?? t.nombreEvento ?? null;
 
-  const TIPO_BADGE: Record<string, { bg: string; text: string; dot: string }> = {
-    MUSICAL:     { bg: 'bg-indigo-900/30',  text: 'text-indigo-400',  dot: 'bg-indigo-400' },
-    SOCIAL:      { bg: 'bg-rose-900/30',    text: 'text-rose-400',    dot: 'bg-rose-400' },
-    EMPRESARIAL: { bg: 'bg-teal-900/30',    text: 'text-teal-400',    dot: 'bg-teal-400' },
-    OTRO:        { bg: 'bg-gray-800/50',    text: 'text-gray-500',    dot: 'bg-gray-600' },
-  };
-  const TIPO_LABEL_SHORT: Record<string, string> = {
-    MUSICAL: 'Musical', SOCIAL: 'Social', EMPRESARIAL: 'Empresarial', OTRO: 'Otro',
-  };
+
   const ETAPA_STYLE: Record<string, { dot: string; text: string; bg: string }> = {
     LEAD:           { dot: 'bg-amber-400',   text: 'text-amber-400',   bg: 'bg-amber-900/20' },
     DESCUBRIMIENTO: { dot: 'bg-blue-400',    text: 'text-blue-400',    bg: 'bg-blue-900/20' },
