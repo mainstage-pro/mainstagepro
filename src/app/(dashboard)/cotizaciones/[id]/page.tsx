@@ -868,6 +868,11 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${ESTADO_COLORS[cot.estado] || "bg-gray-700 text-gray-300"}`}>
             {ESTADO_LABELS[cot.estado] ?? cot.estado}
           </span>
+          {cot.tipoServicio && (
+            <span className="px-2.5 py-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-[#B3985B] text-xs">
+              {cot.tipoServicio === "RENTA" ? "Renta de Equipo" : cot.tipoServicio === "PRODUCCION_TECNICA" ? "Producción Técnica" : cot.tipoServicio === "DIRECCION_TECNICA" ? "Dirección Técnica" : cot.tipoServicio}
+            </span>
+          )}
           {cot.creadaPor && (
             <span className="text-gray-600 text-xs">· {cot.creadaPor.name}</span>
           )}

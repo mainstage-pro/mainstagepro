@@ -85,84 +85,94 @@ function ProyectoRow({ p, onEliminar, deletingId }: {
   deletingId: string | null;
 }) {
   return (
-    <div className={`group flex items-center gap-2 px-3 py-2.5 hover:bg-[#0a0a0a] border-b border-[#0f0f0f] last:border-0 transition-colors border-l-2 ${TIPO_EVENTO_BORDER[p.tipoEvento] ?? 'border-l-transparent'}`}>
+    <tr className={`group hover:bg-[#111] border-b border-[#1a1a1a] last:border-0 transition-colors`}>
+      <td className={`pl-4 pr-3 py-3 border-l-2 ${TIPO_EVENTO_BORDER[p.tipoEvento] ?? 'border-l-transparent'}`}>
+        <Link href={`/proyectos/${p.id}`} className="block min-w-0 cursor-pointer">
+          <div className="flex items-center gap-1.5">
+            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${TIPO_EVENTO_DOT[p.tipoEvento] ?? 'bg-gray-600/50'}`} />
+            <p className="text-white text-sm font-medium leading-snug truncate">{p.cliente.nombre}</p>
+          </div>
+          <p className="text-gray-600 text-[11px] truncate pl-3 mt-0.5">
+            {p.numeroProyecto}
+            {p.nombre && p.nombre !== p.cliente.nombre && ` · ${p.nombre}`}
+          </p>
+        </Link>
+      </td>
 
-      {/* Nombre + número */}
-      <Link href={`/proyectos/${p.id}`} className="flex-1 min-w-0 cursor-pointer">
-        <div className="flex items-center gap-1.5">
-          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${TIPO_EVENTO_DOT[p.tipoEvento] ?? 'bg-gray-600/50'}`} />
-          <p className="text-white text-sm font-medium leading-snug truncate">{p.cliente.nombre}</p>
-        </div>
-        <p className="text-gray-600 text-[11px] truncate pl-3 mt-0.5">
-          {p.numeroProyecto}
-          {p.nombre && p.nombre !== p.cliente.nombre && ` · ${p.nombre}`}
-        </p>
-      </Link>
-
-      {/* Tipo evento */}
-      <span className={`hidden sm:inline text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] shrink-0 whitespace-nowrap ${TIPO_EVENTO_TEXT[p.tipoEvento] ?? 'text-gray-500'}`}>
-        {TIPO_EVENTO_LABELS[p.tipoEvento] ?? p.tipoEvento}
-      </span>
-
-      {/* Estado badge */}
-      {(() => {
-        const estadoNorm = p.estado === 'CONFIRMADO' ? 'PLANEACION'
-          : p.estado === 'PENDIENTE_CIERRE' ? 'EN_CURSO'
-          : p.estado;
-        return (
-          <span className={`hidden sm:inline text-[10px] px-1.5 py-0.5 rounded border shrink-0 whitespace-nowrap ${
-            ESTADO_BADGE_COLORS[estadoNorm] ?? 'text-gray-500 border-gray-500/20'
-          }`}>
-            {ESTADO_BADGE_LABELS[estadoNorm] ?? estadoNorm}
-          </span>
-        );
-      })()}
-
-      {/* Tipo servicio */}
-      {p.tipoServicio && (
-        <span className="hidden md:inline text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] text-gray-500 shrink-0 whitespace-nowrap">
-          {TIPO_SERVICIO_LABELS[p.tipoServicio] ?? p.tipoServicio}
+      <td className="hidden sm:table-cell px-3 py-3 whitespace-nowrap">
+        <span className={`text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] ${TIPO_EVENTO_TEXT[p.tipoEvento] ?? 'text-gray-500'}`}>
+          {TIPO_EVENTO_LABELS[p.tipoEvento] ?? p.tipoEvento}
         </span>
-      )}
+      </td>
 
-      {/* Venue */}
-      {p.lugarEvento && (
-        <span className="hidden md:inline text-[10px] text-gray-600 shrink-0 truncate max-w-[120px]">{p.lugarEvento}</span>
-      )}
+      <td className="hidden sm:table-cell px-3 py-3 whitespace-nowrap">
+        {(() => {
+          const estadoNorm = p.estado === 'CONFIRMADO' ? 'PLANEACION'
+            : p.estado === 'PENDIENTE_CIERRE' ? 'EN_CURSO'
+            : p.estado;
+          return (
+            <span className={`text-[10px] px-1.5 py-0.5 rounded border ${ESTADO_BADGE_COLORS[estadoNorm] ?? 'text-gray-500 border-gray-500/20'}`}>
+              {ESTADO_BADGE_LABELS[estadoNorm] ?? estadoNorm}
+            </span>
+          );
+        })()}
+      </td>
 
-      {/* Fecha */}
-      <span className="hidden sm:inline text-[11px] text-gray-500 shrink-0 whitespace-nowrap">{fmtFecha(p.fechaEvento)}</span>
-
-      {/* Monto */}
-      {p.cotizacion?.granTotal ? (
-        <span className="hidden lg:inline text-[11px] text-[#B3985B] shrink-0 whitespace-nowrap">{formatCurrency(p.cotizacion.granTotal)}</span>
-      ) : null}
-
-      {/* Avance */}
-      <div className="hidden sm:flex items-center gap-1.5 shrink-0">
-        <div className="w-16 h-0.5 bg-[#1a1a1a] rounded-full overflow-hidden">
-          <div className="h-full rounded-full bg-[#B3985B] transition-all" style={{ width: `${p.avance}%` }} />
-        </div>
-        <span className="text-[10px] text-gray-600 tabular-nums w-7">{p.avance}%</span>
-      </div>
-
-      {/* Eliminar */}
-      <button
-        onClick={e => { e.preventDefault(); e.stopPropagation(); onEliminar(); }}
-        disabled={deletingId === p.id}
-        className="shrink-0 text-[#2a2a2a] hover:text-red-500/60 transition-colors disabled:opacity-40 opacity-0 group-hover:opacity-100"
-        title="Eliminar proyecto"
-      >
-        {deletingId === p.id ? (
-          <span className="text-[10px] text-gray-600">...</span>
+      <td className="hidden md:table-cell px-3 py-3 whitespace-nowrap">
+        {p.tipoServicio ? (
+          <span className="text-[10px] px-1.5 py-0.5 rounded border border-[#1a1a1a] text-[#B3985B]">
+            {TIPO_SERVICIO_LABELS[p.tipoServicio] ?? p.tipoServicio}
+          </span>
         ) : (
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-            <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-          </svg>
+          <span className="text-gray-600 text-[10px]">—</span>
         )}
-      </button>
-    </div>
+      </td>
+
+      <td className="hidden md:table-cell px-3 py-3 max-w-[150px]">
+        {p.lugarEvento ? (
+          <span className="text-[11px] text-gray-500 block truncate" title={p.lugarEvento}>{p.lugarEvento}</span>
+        ) : (
+          <span className="text-gray-600 text-[11px]">—</span>
+        )}
+      </td>
+
+      <td className="hidden sm:table-cell px-3 py-3 whitespace-nowrap">
+        <span className="text-[11px] text-gray-400">{fmtFecha(p.fechaEvento)}</span>
+      </td>
+
+      <td className="hidden lg:table-cell px-3 py-3 whitespace-nowrap text-right">
+        {p.cotizacion?.granTotal ? (
+          <span className="text-[11px] text-[#B3985B]">{formatCurrency(p.cotizacion.granTotal)}</span>
+        ) : <span className="text-gray-600 text-[11px]">—</span>}
+      </td>
+
+      <td className="hidden sm:table-cell px-3 py-3 whitespace-nowrap w-28">
+        <div className="flex items-center gap-1.5">
+          <div className="flex-1 h-0.5 bg-[#1a1a1a] rounded-full overflow-hidden">
+            <div className="h-full rounded-full bg-[#B3985B] transition-all" style={{ width: `${p.avance}%` }} />
+          </div>
+          <span className="text-[10px] text-gray-600 tabular-nums w-6 text-right">{p.avance}%</span>
+        </div>
+      </td>
+
+      <td className="px-3 py-3 text-right">
+        <button
+          onClick={e => { e.preventDefault(); e.stopPropagation(); onEliminar(); }}
+          disabled={deletingId === p.id}
+          className="shrink-0 text-[#2a2a2a] hover:text-red-500/60 transition-colors disabled:opacity-40 opacity-0 group-hover:opacity-100"
+          title="Eliminar proyecto"
+        >
+          {deletingId === p.id ? (
+            <span className="text-[10px] text-gray-600">...</span>
+          ) : (
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+              <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+            </svg>
+          )}
+        </button>
+      </td>
+    </tr>
   );
 }
 
@@ -335,8 +345,25 @@ export default function ProyectosPage() {
                 <div className="h-px flex-1 bg-[#111]" />
                 <span className="text-[10px] text-gray-700">{g.items.length}</span>
               </div>
-              <div className="rounded-xl border border-[#1a1a1a] overflow-hidden">
-                {g.items.map(renderRow)}
+              <div className="rounded-xl border border-[#1a1a1a] bg-[#0a0a0a] overflow-hidden overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#1a1a1a] bg-[#111] text-[10px] uppercase tracking-wider text-gray-500">
+                      <th className="px-4 py-2.5 font-semibold">Proyecto</th>
+                      <th className="hidden sm:table-cell px-3 py-2.5 font-semibold">Tipo</th>
+                      <th className="hidden sm:table-cell px-3 py-2.5 font-semibold">Estado</th>
+                      <th className="hidden md:table-cell px-3 py-2.5 font-semibold">Servicio</th>
+                      <th className="hidden md:table-cell px-3 py-2.5 font-semibold">Venue</th>
+                      <th className="hidden sm:table-cell px-3 py-2.5 font-semibold">Fecha</th>
+                      <th className="hidden lg:table-cell px-3 py-2.5 font-semibold text-right">Monto</th>
+                      <th className="hidden sm:table-cell px-3 py-2.5 font-semibold w-28">Avance</th>
+                      <th className="px-3 py-2.5 w-10"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {g.items.map(renderRow)}
+                  </tbody>
+                </table>
               </div>
             </div>
           ))}
@@ -349,8 +376,25 @@ export default function ProyectosPage() {
                 <p className="text-[10px] uppercase tracking-wider text-gray-700">Eventos pasados</p>
                 <div className="h-px flex-1 bg-[#111]" />
               </div>
-              <div className="rounded-xl border border-[#1a1a1a] overflow-hidden opacity-50">
-                {pasados.map(renderRow)}
+              <div className="rounded-xl border border-[#1a1a1a] bg-[#0a0a0a] overflow-hidden overflow-x-auto opacity-60 hover:opacity-100 transition-opacity duration-300">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#1a1a1a] bg-[#111] text-[10px] uppercase tracking-wider text-gray-500">
+                      <th className="px-4 py-2.5 font-semibold">Proyecto</th>
+                      <th className="hidden sm:table-cell px-3 py-2.5 font-semibold">Tipo</th>
+                      <th className="hidden sm:table-cell px-3 py-2.5 font-semibold">Estado</th>
+                      <th className="hidden md:table-cell px-3 py-2.5 font-semibold">Servicio</th>
+                      <th className="hidden md:table-cell px-3 py-2.5 font-semibold">Venue</th>
+                      <th className="hidden sm:table-cell px-3 py-2.5 font-semibold">Fecha</th>
+                      <th className="hidden lg:table-cell px-3 py-2.5 font-semibold text-right">Monto</th>
+                      <th className="hidden sm:table-cell px-3 py-2.5 font-semibold w-28">Avance</th>
+                      <th className="px-3 py-2.5 w-10"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pasados.map(renderRow)}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

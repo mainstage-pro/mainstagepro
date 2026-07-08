@@ -436,6 +436,7 @@ interface ProyectoData {
   nombre: string;
   fechaEvento: string | null;
   lugarEvento: string | null;
+  tipoServicio?: string | null;
   encargadoCliente: string | null;
   logisticaRenta: string | null;
   tratoIdeasReferencias?: string | null;
@@ -563,6 +564,10 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
               <View style={s.infoRow}>
                 <Text style={s.infoLabel}>EVENTO</Text>
                 <Text style={s.infoValue}>{proyecto.nombre}</Text>
+              </View>
+              <View style={s.infoRow}>
+                <Text style={s.infoLabel}>TIPO DE SERVICIO</Text>
+                <Text style={s.infoValue}>{proyecto.tipoServicio === "RENTA" ? "Renta de Equipo" : proyecto.tipoServicio === "PRODUCCION_TECNICA" ? "Producción Técnica" : proyecto.tipoServicio === "DIRECCION_TECNICA" ? "Dirección Técnica" : proyecto.tipoServicio ?? "Renta de Equipo"}</Text>
               </View>
               <View style={s.infoRow}>
                 <Text style={s.infoLabel}>MODALIDAD</Text>

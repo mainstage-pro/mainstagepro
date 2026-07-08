@@ -3591,6 +3591,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 {diasRestantes === 0 ? "¡Hoy!" : `En ${diasRestantes} días`}
               </span>
             )}
+            {proyecto.tipoServicio && (
+              <span className="px-2.5 py-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-[#B3985B] text-xs">
+                {proyecto.tipoServicio === "RENTA" ? "Renta de Equipo" : proyecto.tipoServicio === "PRODUCCION_TECNICA" ? "Producción Técnica" : proyecto.tipoServicio === "DIRECCION_TECNICA" ? "Dirección Técnica" : proyecto.tipoServicio}
+              </span>
+            )}
           </div>
           <h1 className="text-xl md:ms-h1">{proyecto.nombre}</h1>
           <Link href={`/crm/clientes/${proyecto.cliente.id}`} className="text-[#B3985B] text-sm hover:underline">
