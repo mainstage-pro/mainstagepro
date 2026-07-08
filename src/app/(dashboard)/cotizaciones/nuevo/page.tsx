@@ -5,7 +5,6 @@ import { useConfirm } from "@/components/Confirm";
 import { useRouter, useSearchParams } from "next/navigation";
 import { calcularDescuentoVolumen, calcularDescuentoMultidia, formatCurrency, formatPct } from "@/lib/cotizador";
 import { DESCUENTO_B2B, IVA, VIABILIDAD, JORNADA_LABELS } from "@/lib/constants";
-import { getSugerencias, type SugItem } from "@/lib/sugerencias-equipo";
 import { getSugerenciasTecnicos } from "@/lib/sugerencias-tecnicos";
 import VenuePicker from "@/components/ui/VenuePicker";
 import NumSelect from "@/components/ui/NumSelect";
@@ -247,7 +246,8 @@ function CotizadorForm() {
   const [tratoNotas, setTratoNotas] = useState<string | null>(null);
   const [tratoArchivos, setTratoArchivos] = useState<Array<{ id: string; nombre: string; url: string; tipo: string }>>([]);
   const [tratoFormEstado, setTratoFormEstado] = useState<string | null>(null);
-  const [tratoServicios, setTratoServicios] = useState<string[]>([]);
+  // Equipos/categorías seleccionados en el descubrimiento del trato: { categorias: CategoriaEquipo IDs, equipos: Equipo IDs }
+  const [equiposInteres, setEquiposInteres] = useState<{ categorias: string[]; equipos: string[] }>({ categorias: [], equipos: [] });
   // Precios especiales del cliente: { equipoId → precio }
   const [preciosCliente, setPreciosCliente] = useState<Record<string, number>>({});
   // Precio original de lista al momento de registrar el especial: { equipoId → precioOriginal }
@@ -258,12 +258,6 @@ function CotizadorForm() {
   const [plantillas, setPlantillas] = useState<{ id: string; nombre: string; tipoEvento: string | null; lineas: unknown[] }[]>([]);
   const [showPlantillas, setShowPlantillas] = useState(false);
   const [cargandoPlantilla, setCargandoPlantilla] = useState(false);
-  // Grupos de equipo (paquetes recomendados por tipo de evento y asistentes)
-  type GrupoItem = { id: string; descripcion: string; cantidad: number; esOpcional: boolean; notas: string | null; equipo: { id: string; descripcion: string; marca: string | null; modelo: string | null; precioRenta: number; cantidadTotal: number } | null };
-  type GrupoEquipo = { id: string; nombre: string; tipoEvento: string; capacidadMin: number; capacidadMax: number; descripcion: string | null; items: GrupoItem[] };
-  const [grupos, setGrupos] = useState<GrupoEquipo[]>([]);
-  const [loadingGrupos, setLoadingGrupos] = useState(false);
-
   const [evento, setEvento] = useState({
     nombreEvento: "",
     tipoEvento: "MUSICAL",
@@ -578,7 +572,7 @@ function CotizadorForm() {
         }
         if (t.asistentesEstimados) setAsistentesEstimados(t.asistentesEstimados);
         if (t.formEstado) setTratoFormEstado(t.formEstado);
-        if (t.serviciosInteres) { try { setTratoServicios(JSON.parse(t.serviciosInteres)); } catch { /* noop */ } }
+        if (t.equiposInteres) { try { const ei = JSON.parse(t.equiposInteres); setEquiposInteres({ categorias: ei.categorias ?? [], equipos: ei.equipos ?? [] }); } catch { /* noop */ } }
       }
     });
   }, [clienteId, tratoId]);
@@ -644,39 +638,6 @@ function CotizadorForm() {
     return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
   }, [equipos]);
 
-  // ── Grupos de equipo: cargar cuando cambia tipo de evento o asistentes ──
-  useEffect(() => {
-    if (!evento.tipoEvento || !asistentesEstimados || asistentesEstimados <= 0) { setGrupos([]); return; }
-    setLoadingGrupos(true);
-    const qs = new URLSearchParams({ tipoEvento: evento.tipoEvento, asistentes: String(asistentesEstimados) });
-    fetch(`/api/grupos-equipo?${qs}`)
-      .then(r => r.json())
-      .then(d => { setGrupos(d.grupos ?? []); setLoadingGrupos(false); })
-      .catch(() => setLoadingGrupos(false));
-  }, [evento.tipoEvento, asistentesEstimados]);
-
-  function agregarPaquete(grupo: GrupoEquipo) {
-    const diasEq = parseInt(evento.diasEquipo) || 1;
-    const nuevasLineas: LineaEquipo[] = [];
-    for (const item of grupo.items) {
-      const eq = item.equipo
-        ? equipos.find(e => e.id === item.equipo!.id)
-        : matchInventario(item.descripcion);
-      if (!eq || lineasEquipo.some(l => l.equipoId === eq.id) || nuevasLineas.some(l => l.equipoId === eq.id)) continue;
-      const precio = preciosCliente[eq.id] ?? eq.precioRenta;
-      nuevasLineas.push({
-        id: uid(), equipoId: eq.id, descripcion: eq.descripcion,
-        marca: eq.marca ?? "",
-        modelo: eq.modelo ?? "",
-        cantidad: item.cantidad, dias: diasEq,
-        precioUnitario: precio, subtotal: precio * item.cantidad * diasEq,
-        categoria: eq.categoria.nombre,
-        notas: "",
-      });
-    }
-    if (nuevasLineas.length > 0) setLineasEquipo(prev => [...prev, ...nuevasLineas]);
-  }
-
   // ── Agregar equipo ──
   async function agregarEquipo() {
     const eq = equipos.find(e => e.id === selEq);
@@ -722,28 +683,18 @@ function CotizadorForm() {
     setSelEq(""); setSelEqCant("1"); setSelEqDias(evento.diasEquipo);
   }
 
-  // ── Sugerencias de equipo ──
-  function matchInventario(keyword: string): Equipo | undefined {
-    const kw = keyword.toLowerCase().trim();
-    return equipos.find(e => {
-      if (e.tipo !== "PROPIO") return false;
-      const texto = `${e.descripcion} ${e.marca ?? ""} ${e.modelo ?? ""}`.toLowerCase();
-      return texto.includes(kw);
-    });
-  }
-
-  function agregarSugerencia(item: SugItem, eq: Equipo) {
-    const yaExiste = lineasEquipo.some(l => l.equipoId === eq.id);
-    if (yaExiste) return;
+  // ── Sugerencias de equipo (derivadas del descubrimiento) ──
+  function agregarEquipoDescubrimiento(eq: Equipo) {
+    if (lineasEquipo.some(l => l.equipoId === eq.id)) return;
     const precio = preciosCliente[eq.id] ?? eq.precioRenta;
     const dias = parseInt(evento.diasEquipo) || 1;
     setLineasEquipo(prev => [...prev, {
       id: uid(), equipoId: eq.id, descripcion: eq.descripcion,
       marca: eq.marca ?? "",
       modelo: eq.modelo ?? "",
-      cantidad: item.cant, dias,
+      cantidad: 1, dias,
       precioUnitario: precio,
-      subtotal: precio * item.cant * dias,
+      subtotal: precio * dias,
       categoria: eq.categoria.nombre,
       notas: "",
     }]);
@@ -1705,135 +1656,69 @@ function CotizadorForm() {
             </div>
           </Seccion>
 
-          {/* ── Sugerencias de equipo ── */}
-          {evento.tipoEvento && asistentesEstimados && asistentesEstimados > 0 && (
-            <details className="bg-[#0d0d0d] border border-[#B3985B]/30 rounded-xl group" open>
-              <summary className="flex items-center gap-3 px-5 py-3 cursor-pointer select-none">
-                <span className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider">Sugerencia de equipo</span>
-                <span className="text-gray-500 text-xs">{evento.tipoEvento.charAt(0) + evento.tipoEvento.slice(1).toLowerCase()} · {asistentesEstimados} personas</span>
-                <span className="ml-auto text-gray-600 text-xs group-open:hidden">▶ ver guía</span>
-                <span className="ml-auto text-gray-600 text-xs hidden group-open:inline">▼ ocultar</span>
-              </summary>
-              <div className="px-5 pb-5">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {getSugerencias(evento.tipoEvento, asistentesEstimados, tratoServicios.length > 0 ? tratoServicios : undefined).map((grupo) => (
-                    <div key={grupo.cat} className="bg-[#111] border border-[#1e1e1e] rounded-lg p-3">
-                      <p className="text-[#B3985B] text-[10px] font-bold uppercase tracking-wider mb-2">{grupo.cat}</p>
+          {/* ── Sugerencia de equipo (derivada del descubrimiento) ── */}
+          {(equiposInteres.categorias.length > 0 || equiposInteres.equipos.length > 0) && (() => {
+            const catsSel = equiposInteres.categorias
+              .map(id => categoriasList.find(c => c.id === id)?.nombre)
+              .filter((n): n is string => !!n);
+            const eqsSel = equiposInteres.equipos
+              .map(id => equipos.find(e => e.id === id))
+              .filter((e): e is Equipo => !!e);
+            if (catsSel.length === 0 && eqsSel.length === 0) return null;
+            return (
+              <details className="bg-[#0d0d0d] border border-[#B3985B]/30 rounded-xl group" open>
+                <summary className="flex items-center gap-3 px-5 py-3 cursor-pointer select-none">
+                  <span className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider">Sugerencia de equipo</span>
+                  <span className="text-gray-500 text-xs">Seleccionado en descubrimiento</span>
+                  <span className="ml-auto text-gray-600 text-xs group-open:hidden">▶ ver</span>
+                  <span className="ml-auto text-gray-600 text-xs hidden group-open:inline">▼ ocultar</span>
+                </summary>
+                <div className="px-5 pb-5 space-y-4">
+                  {catsSel.length > 0 && (
+                    <div>
+                      <p className="text-[#B3985B] text-[10px] font-bold uppercase tracking-wider mb-2">Categorías de interés</p>
+                      <div className="flex flex-wrap gap-2">
+                        {catsSel.map(nombre => (
+                          <span key={nombre} className="text-sm text-gray-300 bg-[#111] border border-[#1e1e1e] rounded-full px-3 py-1">{nombre}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {eqsSel.length > 0 && (
+                    <div>
+                      <p className="text-[#B3985B] text-[10px] font-bold uppercase tracking-wider mb-2">Equipos específicos</p>
                       <div className="space-y-1.5">
-                        {grupo.items.map((item, i) => {
-                          const eq = item.cant > 0 ? matchInventario(item.desc) : undefined;
-                          const yaAgregado = eq ? lineasEquipo.some(l => l.equipoId === eq.id) : false;
+                        {eqsSel.map(eq => {
+                          const yaAgregado = lineasEquipo.some(l => l.equipoId === eq.id);
                           return (
-                            <div key={i} className={`flex items-start gap-2 text-sm ${item.esOpcional ? "opacity-55" : ""}`}>
-                              {item.cant > 0 ? (
-                                <span className="text-[#B3985B] text-xs font-mono w-5 shrink-0 pt-0.5 text-right">{item.cant}×</span>
-                              ) : (
-                                <span className="w-5 shrink-0" />
-                              )}
-                              <span className={`flex-1 leading-snug ${item.cant === 0 ? "text-yellow-500/80 text-xs italic" : "text-gray-300"}`}>
-                                {item.desc}
-                                {item.esOpcional && <span className="ml-1 text-[10px] text-gray-600">opcional</span>}
-                                {item.nota && <span className="ml-1 text-[10px] text-gray-500">— {item.nota}</span>}
+                            <div key={eq.id} className="flex items-start gap-2 text-sm">
+                              <span className="flex-1 leading-snug text-gray-300">
+                                {eq.descripcion}
+                                {(eq.marca || eq.modelo) && <span className="ml-1 text-[10px] text-gray-500">{[eq.marca, eq.modelo].filter(Boolean).join(" ")}</span>}
                               </span>
-                              {eq && !yaAgregado && (
+                              {!yaAgregado ? (
                                 <button
-                                  onClick={() => agregarSugerencia(item, eq)}
+                                  onClick={() => agregarEquipoDescubrimiento(eq)}
                                   className="shrink-0 text-[10px] px-2 py-0.5 rounded bg-[#B3985B]/15 text-[#B3985B] hover:bg-[#B3985B]/30 transition-colors leading-5"
                                 >
                                   + Agregar
                                 </button>
-                              )}
-                              {eq && yaAgregado && (
+                              ) : (
                                 <span className="shrink-0 text-[10px] text-green-500 px-1 leading-5">✓</span>
-                              )}
-                              {!eq && item.cant > 0 && (
-                                <span className="shrink-0 text-[10px] text-gray-700 px-1 leading-5">—</span>
                               )}
                             </div>
                           );
                         })}
                       </div>
                     </div>
-                  ))}
+                  )}
+                  <p className="text-gray-700 text-xs pt-3 border-t border-[#1a1a1a]">
+                    Basado en lo seleccionado durante el descubrimiento. Las cantidades y el detalle se definen al armar la cotización.
+                  </p>
                 </div>
-                <p className="text-gray-700 text-xs mt-3 pt-3 border-t border-[#1a1a1a]">
-                  Guía comercial de arranque. Ajustar según venue, interior/exterior, altura, si hay pista, y requerimientos específicos del cliente.
-                </p>
-              </div>
-            </details>
-          )}
-
-          {/* ── Paquetes de equipo recomendados ── */}
-          {(grupos.length > 0 || loadingGrupos) && evento.tipoEvento && asistentesEstimados && asistentesEstimados > 0 && (
-            <details className="bg-[#0d0d0d] border border-[#2a1f0d] rounded-xl group" open>
-              <summary className="flex items-center gap-3 px-5 py-3 cursor-pointer select-none">
-                <span className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider">Paquetes de equipo</span>
-                <span className="text-gray-500 text-xs">Selecciona un paquete completo de un solo clic</span>
-                <span className="ml-auto text-gray-600 text-xs group-open:hidden">▶ ver paquetes</span>
-                <span className="ml-auto text-gray-600 text-xs hidden group-open:inline">▼ ocultar</span>
-              </summary>
-              <div className="px-5 pb-5">
-                {loadingGrupos ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {[...Array(2)].map((_, i) => <div key={i} className="h-24 bg-[#111] rounded-lg animate-pulse" />)}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {grupos.map(grupo => {
-                      const matchCount = grupo.items.filter(item => {
-                        const eq = item.equipo ? equipos.find(e => e.id === item.equipo!.id) : matchInventario(item.descripcion);
-                        return !!eq;
-                      }).length;
-                      const yaAgregado = grupo.items.some(item => {
-                        const eq = item.equipo ? equipos.find(e => e.id === item.equipo!.id) : matchInventario(item.descripcion);
-                        return eq && lineasEquipo.some(l => l.equipoId === eq.id);
-                      });
-                      return (
-                        <div key={grupo.id} className="bg-[#111] border border-[#1e1e1e] rounded-lg p-3">
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <div>
-                              <p className="text-white font-medium text-xs">{grupo.nombre}</p>
-                              {grupo.descripcion && <p className="text-[#555] text-[10px] mt-0.5">{grupo.descripcion}</p>}
-                            </div>
-                            <button
-                              onClick={() => agregarPaquete(grupo)}
-                              disabled={matchCount === 0}
-                              className="shrink-0 text-[10px] px-2.5 py-1 rounded bg-[#B3985B]/20 text-[#B3985B] hover:bg-[#B3985B]/35 transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-medium leading-5"
-                            >
-                              {yaAgregado ? "Actualizar" : "+ Agregar paquete"}
-                            </button>
-                          </div>
-                          <div className="space-y-1">
-                            {grupo.items.map((item, i) => {
-                              const eq = item.equipo ? equipos.find(e => e.id === item.equipo!.id) : matchInventario(item.descripcion);
-                              const yaEn = eq ? lineasEquipo.some(l => l.equipoId === eq.id) : false;
-                              return (
-                                <div key={i} className={`flex items-start gap-1.5 text-xs ${item.esOpcional ? "opacity-50" : ""}`}>
-                                  <span className="text-[#B3985B] font-mono w-5 text-right shrink-0 pt-0.5">{item.cantidad}×</span>
-                                  <span className={`flex-1 leading-snug ${eq ? "text-gray-300" : "text-[#555]"}`}>
-                                    {item.descripcion}
-                                    {item.esOpcional && <span className="ml-1 text-[10px] text-[#555]">opcional</span>}
-                                    {item.notas && <span className="ml-1 text-[10px] text-[#555]">— {item.notas}</span>}
-                                  </span>
-                                  {yaEn && <span className="shrink-0 text-[10px] text-green-500 leading-5">✓</span>}
-                                  {!eq && <span className="shrink-0 text-[10px] text-[#444] leading-5">—</span>}
-                                </div>
-                              );
-                            })}
-                          </div>
-                          {matchCount < grupo.items.length && (
-                            <p className="text-[#444] text-[10px] mt-2 pt-2 border-t border-[#1a1a1a]">
-                              {grupo.items.length - matchCount} equipo{grupo.items.length - matchCount !== 1 ? "s" : ""} sin coincidencia en inventario
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </details>
-          )}
+              </details>
+            );
+          })()}
 
           {/* ── Equipos propios ── */}
           <Seccion titulo="Equipos propios" hint="aplican descuentos · precio editable por línea · ★ = precio especial del cliente">
