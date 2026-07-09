@@ -218,6 +218,64 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
     contactoDecisorCargo: "",
   });
 
+  // Hidratar el formulario con la información ya capturada en el trato
+  // (ej. nombre y fecha que se ingresan al crear el contacto en Venta Cerrada,
+  // o datos guardados en visitas anteriores). Se ejecuta una sola vez para no
+  // pisar ediciones en curso.
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (hydratedRef.current || !trato) return;
+    hydratedRef.current = true;
+    const isRenta = trato.tipoServicio === "RENTA";
+    let renta: Record<string, string> = {};
+    if (isRenta && trato.ideasReferencias) {
+      try { renta = JSON.parse(trato.ideasReferencias); } catch { renta = {}; }
+    }
+    let servicios: string[] = [];
+    if (trato.serviciosInteres) {
+      try { const s = JSON.parse(trato.serviciosInteres); if (Array.isArray(s)) servicios = s; } catch { /* noop */ }
+    }
+    setDiscForm(prev => ({
+      ...prev,
+      tipoEvento: trato.tipoEvento || prev.tipoEvento,
+      subtipoEvento: trato.subtipoEvento || "",
+      nombreEvento: trato.nombreEvento || "",
+      fechaEventoEstimada: trato.fechaEventoEstimada ? String(trato.fechaEventoEstimada).split("T")[0] : "",
+      lugarEstimado: trato.lugarEstimado === "Por definir" ? "por-definir" : (trato.lugarEstimado || ""),
+      asistentesEstimados: trato.asistentesEstimados != null ? String(trato.asistentesEstimados) : "",
+      diasServicio: trato.diasServicio != null ? String(trato.diasServicio) : "",
+      presupuestoEstimado: trato.presupuestoEstimado != null ? String(trato.presupuestoEstimado) : "",
+      tipoServicio: trato.tipoServicio || "",
+      notas: trato.notas || "",
+      serviciosInteres: servicios,
+      equiposInteres: trato.equiposInteres || "",
+      familyAndFriends: !!trato.familyAndFriends,
+      realizarRender: !!trato.realizarRender,
+      tradeAplica: !!trato.tradeCalificado,
+      horaInicioEvento: trato.horaInicioEvento || "",
+      horaFinEvento: trato.horaFinEvento || "",
+      duracionMontajeHrs: trato.duracionMontajeHrs != null ? String(trato.duracionMontajeHrs) : "",
+      ventanaMontajeInicio: trato.ventanaMontajeInicio || "",
+      ventanaMontajeFin: trato.ventanaMontajeFin || "",
+      horaTerminoMontaje: trato.horaTerminoMontaje || "",
+      contactoVenueNombre: trato.contactoVenueNombre || "",
+      contactoVenueTelefono: trato.contactoVenueTelefono || "",
+      contactoDecisorNombre: trato.contactoDecisorNombre || "",
+      contactoDecisorCargo: trato.contactoDecisorCargo || "",
+      ideasReferencias: isRenta ? "" : (trato.ideasReferencias || ""),
+      rentaModalidadServicio: renta.modalidadServicio || "",
+      rentaModalidadEntrega: renta.modalidadEntrega || "",
+      rentaDireccionEntrega: renta.direccionEntrega || "",
+      rentaFechaEntrega: renta.fechaEntrega || "",
+      rentaHoraEntrega: renta.horaEntrega || "",
+      rentaFechaDevolucion: renta.fechaDevolucion || "",
+      rentaHoraDevolucion: renta.horaDevolucion || "",
+      rentaDescripcionEquipos: renta.descripcionEquipos || "",
+      rentaTecnicoPropio: renta.tecnicoPropio || "",
+      rentaNotas: renta.notas || "",
+    }));
+  }, [trato]);
+
   const toggleServicio = (idService: string) => {
     setDiscForm(p => {
       const isSel = p.serviciosInteres.includes(idService);
@@ -770,12 +828,12 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
               <div className="space-y-4">
                 {/* ── Selector de equipos del inventario ─────────────────── */}
                 <div>
-                  <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1">Categorías de equipo / inventario</label>
-                  <p className="text-[11px] text-gray-600 mb-3">Selecciona las categorías de tu interés. Puedes marcar ☐ la categoría si no sabes aún qué equipo necesitas — lo definimos después. O despliega ▸ para elegir equipos específicos.</p>
+                  <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1">Equipos e inventario de interés</label>
+                  <p className="text-[11px] text-gray-600 mb-3">Paso 1: elige las categorías que te interesan. Paso 2: dentro de cada una, selecciona los equipos y las piezas que necesitas. Lo seleccionado aquí se sugiere automáticamente al armar la cotización.</p>
                   <SelectorEquiposInventario
                     value={(() => {
-                      try { return discForm.equiposInteres ? JSON.parse(discForm.equiposInteres as string) : { categorias: [], equipos: [] }; }
-                      catch { return { categorias: [], equipos: [] }; }
+                      try { return discForm.equiposInteres ? JSON.parse(discForm.equiposInteres as string) : { categorias: [], equipos: [], cantidades: {} }; }
+                      catch { return { categorias: [], equipos: [], cantidades: {} }; }
                     })()}
                     onChange={(sel: SeleccionEquipos) => {
                       setDiscForm(p => ({ ...p, equiposInteres: JSON.stringify(sel) }));
