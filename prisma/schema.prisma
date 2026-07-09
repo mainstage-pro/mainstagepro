@@ -68,6 +68,8 @@ model User {
   presentacionesVenta    PresentacionVenta[]    @relation("PresentacionesVentaCreadas")
   prospecciones          Prospeccion[]          @relation("ProspeccionResponsable")
   tratosApoyo            TratoApoyo[]           @relation("TratoApoyoUsers")
+  solicitudesCotizacionAsignadas SolicitudCotizacion[] @relation("SolicitudCotizacionVendedor")
+  solicitudesCotizacionCreadas   SolicitudCotizacion[] @relation("SolicitudCotizacionCreador")
 
 
   @@map("users")
@@ -284,6 +286,7 @@ model Trato {
   levantamientoContenido LevantamientoContenido?
   seguimientos           Seguimiento[]
   apoyoDe                TratoApoyo[]
+  solicitudOrigen        SolicitudCotizacion?
 
   @@map("tratos")
 }
@@ -2097,6 +2100,10 @@ model TipoCampana {
   descripcion         String?
   grupo               String?  // Sub-sección libre: "Servicios generales", "Tipo de servicio", "Tipo de evento", etc.
   color               String   @default("#B3985B")
+  categoria           String   @default("base")         // base | eventual
+  vigenciaDesde       DateTime?                          // solo eventual
+  vigenciaHasta       DateTime?                          // solo eventual
+  briefTemplate       String?                            // JSON: plantilla default del brief
   activo              Boolean  @default(true)
   orden               Int      @default(0)
   createdAt           DateTime @default(now())
@@ -2117,6 +2124,8 @@ model EjecucionCampana {
   fechaInicio    DateTime
   fechaFin       DateTime
   estado         String       @default("PLANIFICADA") // PLANIFICADA | EN_EJECUCION | COMPLETADA | CANCELADA
+  brief          String?      // JSON: clon editable de TipoCampana.briefTemplate
+  briefCompleto  Boolean      @default(false) // lo define el checklist de lanzamiento del brief
   presupuesto    Float?
   notas          String?
   mes            String       // YYYY-MM
@@ -3582,4 +3591,59 @@ model ReporteERAnalisis {
   updatedAt                   DateTime @updatedAt
 
   @@map("reporte_er_analisis")
+}
+
+// ── Solicitudes de Cotización (inbox de briefs, independiente del CRM) ─────────
+model SolicitudCotizacion {
+  id             String   @id @default(cuid())
+  folio          Int      @default(autoincrement())
+  clienteNombre  String
+  fechaEvento    DateTime?
+  lugarEvento    String?
+  etapa          String?  // LEAD | DESCUBRIMIENTO | OPORTUNIDAD | VENTA_CERRADA | VENTA_PERDIDA
+  tipoEvento     String?  // MUSICAL | SOCIAL | EMPRESARIAL | OTRO
+  tipoServicio   String?  // RENTA | PRODUCCION_TECNICA | DIRECCION_TECNICA
+  asistentes     Int?
+
+  requiereTransporte Boolean @default(false)
+  transporteConcepto String?
+
+  llevaDescuento     Boolean @default(false)
+  descuentoDetalle   String?
+
+  notaEspecial   String?
+  sumaComision   Boolean  @default(false)
+  entregable     String   @default("SOLO_PDF") // PRESENTACION_DESCUENTO | SOLO_PDF
+
+  estado         String   @default("NUEVA") // NUEVA | ASIGNADA | COTIZADA | CONVERTIDA
+
+  vendedorId     String?
+  vendedor       User?    @relation("SolicitudCotizacionVendedor", fields: [vendedorId], references: [id], onDelete: SetNull)
+
+  creadoPorId    String?
+  creadoPor      User?    @relation("SolicitudCotizacionCreador", fields: [creadoPorId], references: [id], onDelete: SetNull)
+
+  tratoId        String?  @unique
+  trato          Trato?   @relation(fields: [tratoId], references: [id], onDelete: SetNull)
+
+  activo         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  equipos        SolicitudCotizacionEquipo[]
+
+  @@map("solicitudes_cotizacion")
+}
+
+model SolicitudCotizacionEquipo {
+  id           String  @id @default(cuid())
+  solicitudId  String
+  solicitud    SolicitudCotizacion @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
+  categoria    String?
+  equipo       String?
+  cantidad     Int     @default(1)
+  notas        String?
+  orden        Int     @default(0)
+
+  @@map("solicitudes_cotizacion_equipos")
 }

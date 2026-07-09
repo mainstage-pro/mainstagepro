@@ -46,6 +46,26 @@ export const ESTADO_COTIZACION_COLORS: Record<string, string> = {
   REENVIADA: "bg-blue-100 text-blue-700",
 };
 
+// Solicitudes de cotización (inbox de briefs)
+export const ESTADO_SOLICITUD_LABELS: Record<string, string> = {
+  NUEVA: "Nueva",
+  ASIGNADA: "Asignada",
+  COTIZADA: "Cotizada",
+  CONVERTIDA: "Convertida a trato",
+};
+
+export const ESTADO_SOLICITUD_COLORS: Record<string, string> = {
+  NUEVA:      "bg-blue-500/10 text-blue-400 border border-blue-500/30",
+  ASIGNADA:   "bg-violet-500/10 text-violet-400 border border-violet-500/30",
+  COTIZADA:   "bg-amber-500/10 text-amber-400 border border-amber-500/30",
+  CONVERTIDA: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30",
+};
+
+export const ENTREGABLE_LABELS: Record<string, string> = {
+  PRESENTACION_DESCUENTO: "Presentación descuento ventas",
+  SOLO_PDF: "Solo PDF",
+};
+
 // Estados de proyecto
 export const ESTADO_PROYECTO_LABELS: Record<string, string> = {
   PLANEACION: 'Planeación',
