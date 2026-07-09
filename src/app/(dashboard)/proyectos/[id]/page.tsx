@@ -1658,7 +1658,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [agregandoLinea, setAgregandoLinea] = useState<string | null>(null);
   // Proveedores y subrentas
   const [showAddProveedor, setShowAddProveedor] = useState(false);
-  const [showFichasMenu, setShowFichasMenu] = useState(false);
   const { downloading, downloadPdf } = usePdfDownload();
   const [pdfPreview, setPdfPreview] = useState<{ url: string; title: string; filename: string } | null>(null);
   const previewPdf = (url: string, title: string, filename: string) => setPdfPreview({ url, title, filename });
@@ -3603,180 +3602,77 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       <div className="mb-2"><BackButton /></div>
 
       {/* ── Header ── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-4">
+        {/* Título e intención */}
         <div className="min-w-0">
-          <div className="flex items-center gap-1.5 mb-2">
-            <span className="text-gray-400 text-sm font-mono">{proyecto.numeroProyecto}</span>
-            <CopyButton value={proyecto.numeroProyecto} size="xs" />
-          </div>
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-medium ${ESTADO_COLORS[proyecto.estado]}`}>
-              {ESTADO_LABELS[proyecto.estado] ?? proyecto.estado.replace("_", " ")}
-            </span>
-            {proyecto.tipoServicio && (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-md border border-[#2a2a2a] bg-[#1a1a1a] text-[#B3985B] text-[11px] font-medium">
-                {proyecto.tipoServicio === "RENTA" ? "Renta de Equipo" : proyecto.tipoServicio === "PRODUCCION_TECNICA" ? "Producción Técnica" : proyecto.tipoServicio === "DIRECCION_TECNICA" ? "Dirección Técnica" : proyecto.tipoServicio}
-              </span>
-            )}
-            {diasRestantes >= 0 && (
-              <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-medium ${diasRestantes <= 7 ? "bg-red-900/40 text-red-300" : diasRestantes <= 30 ? "bg-yellow-900/30 text-yellow-400" : "bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400"}`}>
-                {diasRestantes === 0 ? "Es hoy" : `Faltan ${diasRestantes} día${diasRestantes !== 1 ? "s" : ""}`}
-              </span>
-            )}
-          </div>
           <h1 className="text-xl md:ms-h1">{proyecto.nombre}</h1>
-          <Link href={`/crm/clientes/${proyecto.cliente.id}`} className="text-[#B3985B] text-sm hover:underline">
-            {proyecto.cliente.nombre}{proyecto.cliente.empresa ? ` · ${proyecto.cliente.empresa}` : ""}
-          </Link>
           <p className="text-[#444] text-xs mt-1 italic">
             Estamos creando una experiencia memorable para {proyecto.cliente.nombre.split(" ")[0]}.
           </p>
         </div>
-        <div className="sm:text-right shrink-0 flex flex-col sm:items-end gap-2">
-          <div className="sm:text-right">
-            <p className="text-white font-semibold text-base leading-tight">{fmtDate(proyecto.fechaEvento)}</p>
-            {proyecto.horaInicioEvento && (
-              <p className="text-gray-400 text-sm mt-0.5">{proyecto.horaInicioEvento}{proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}</p>
-            )}
-            <p className="text-gray-500 text-xs mt-1 inline-flex items-center gap-1 sm:justify-end">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              {proyecto.lugarEvento ?? <span className="text-red-500/60 italic">Sin lugar</span>}
-            </p>
-            {proyecto.cotizacion && (
-              <Link href={`/cotizaciones/${proyecto.cotizacion.id}`} className="inline-flex items-center gap-1 text-[11px] text-[#B3985B] hover:underline mt-1">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                {proyecto.cotizacion.numeroCotizacion}
-              </Link>
-            )}
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Hoja de entrega — solo para renta */}
-            {esRenta && (
-              <button
-                onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/hoja-entrega`, `hoja-entrega-${proyecto.numeroProyecto}.pdf`)}
-                disabled={downloading === `hoja-entrega-${proyecto.numeroProyecto}.pdf`}
-                className="inline-flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-60 text-black text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-              >
-                {downloading === `hoja-entrega-${proyecto.numeroProyecto}.pdf` ? (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
-                ) : (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>
-                )}
-                {downloading === `hoja-entrega-${proyecto.numeroProyecto}.pdf` ? "Generando..." : "Hoja de Entrega"}
-              </button>
-            )}
 
-            {/* Fichas — dropdown click-based */}
-            <div className="relative">
-              <button
-                onClick={() => setShowFichasMenu(v => !v)}
-                onBlur={e => { if (!e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) setShowFichasMenu(false); }}
-                className="inline-flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                  <line x1="16" y1="13" x2="8" y2="13" />
-                  <line x1="16" y1="17" x2="8" y2="17" />
-                </svg>
-                Fichas
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                  className={`transition-transform duration-150 ${showFichasMenu ? "rotate-180" : ""}`}>
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </button>
-              {showFichasMenu && (
-                <div className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl py-1 min-w-[240px] flex flex-col z-50 shadow-xl shadow-black/40">
-                  {/* Confirmación cliente */}
-                  <div className="flex items-stretch">
-                    <button
-                      onClick={() => { setShowFichasMenu(false); downloadPdf(`/api/proyectos/${proyecto.id}/fichas/cliente`, `confirmacion-cliente-${proyecto.numeroProyecto}.pdf`); }}
-                      disabled={!!downloading}
-                      className="flex-1 px-4 py-3 text-xs text-gray-300 hover:text-white hover:bg-[#222] disabled:opacity-60 transition-colors flex items-center gap-2.5 text-left">
-                      <span className="text-[#B3985B] text-sm shrink-0">
-                        {downloading === `confirmacion-cliente-${proyecto.numeroProyecto}.pdf` ? (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
-                        ) : "👤"}
-                      </span>
-                      <span>
-                        <span className="block font-medium text-white">Confirmación para cliente</span>
-                        <span className="block text-gray-500 text-[10px]">Evento, equipo y coordinador</span>
-                      </span>
-                    </button>
-                    <button onClick={() => { setShowFichasMenu(false); previewPdf(`/api/proyectos/${proyecto.id}/fichas/cliente`, 'Confirmación para cliente', `confirmacion-cliente-${proyecto.numeroProyecto}.pdf`); }} title="Vista previa" className="px-3 text-gray-600 hover:text-[#B3985B] hover:bg-[#222] transition-colors shrink-0 border-l border-[#2a2a2a]">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    </button>
-                  </div>
-                  <div className="border-t border-[#2a2a2a] mx-2" />
-                  {/* Ficha operativa */}
-                  <div className="flex items-stretch">
-                    <button
-                      onClick={() => { setShowFichasMenu(false); downloadPdf(`/api/proyectos/${proyecto.id}/fichas/operativa`, `ficha-operativa-${proyecto.numeroProyecto}.pdf`); }}
-                      disabled={!!downloading}
-                      className="flex-1 px-4 py-3 text-xs text-gray-300 hover:text-white hover:bg-[#222] disabled:opacity-60 transition-colors flex items-center gap-2.5 text-left">
-                      <span className="text-[#B3985B] text-sm shrink-0">
-                        {downloading === `ficha-operativa-${proyecto.numeroProyecto}.pdf` ? (
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
-                        ) : "📋"}
-                      </span>
-                      <span>
-                        <span className="block font-medium text-white">Ficha operativa</span>
-                        <span className="block text-gray-500 text-[10px]">Coordinador y técnicos</span>
-                      </span>
-                    </button>
-                    <button onClick={() => { setShowFichasMenu(false); previewPdf(`/api/proyectos/${proyecto.id}/fichas/operativa`, 'Ficha Operativa', `ficha-operativa-${proyecto.numeroProyecto}.pdf`); }} title="Vista previa" className="px-3 text-gray-600 hover:text-[#B3985B] hover:bg-[#222] transition-colors shrink-0 border-l border-[#2a2a2a]">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    </button>
-                  </div>
-                  <div className="border-t border-[#2a2a2a] mx-2" />
-                  {/* Brief técnico */}
-                  {(proyecto.tipoServicio === 'PRODUCCION_TECNICA' || proyecto.tipoServicio === 'RENTA') && (
-                    <div className="flex items-stretch">
-                      <button
-                        onClick={() => { setShowFichasMenu(false); downloadPdf(`/api/proyectos/${proyecto.id}/brief-tecnico`, `brief-tecnico-${proyecto.numeroProyecto}.pdf`); }}
-                        disabled={!!downloading}
-                        className="flex-1 px-4 py-3 text-xs text-gray-300 hover:text-white hover:bg-[#222] disabled:opacity-60 transition-colors flex items-center gap-2.5 text-left">
-                        <span className="text-[#B3985B] text-sm shrink-0">
-                          {downloading === `brief-tecnico-${proyecto.numeroProyecto}.pdf` ? (
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="animate-spin"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
-                          ) : "🔧"}
-                        </span>
-                        <span>
-                          <span className="block font-medium text-white">Brief técnico</span>
-                          <span className="block text-gray-500 text-[10px]">Logística para equipo técnico</span>
-                        </span>
-                      </button>
-                      <button onClick={() => { setShowFichasMenu(false); previewPdf(`/api/proyectos/${proyecto.id}/brief-tecnico`, 'Brief Técnico', `brief-tecnico-${proyecto.numeroProyecto}.pdf`); }} title="Vista previa" className="px-3 text-gray-600 hover:text-[#B3985B] hover:bg-[#222] transition-colors shrink-0 border-l border-[#2a2a2a]">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-
-            </div>
-
-            <Link
-              href={`/carta-responsiva/${proyecto.id}`}
-              className="inline-flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <rect x="3" y="3" width="18" height="18" rx="2" />
-                <line x1="7" y1="8" x2="17" y2="8" />
-                <line x1="7" y1="12" x2="17" y2="12" />
-                <line x1="7" y1="16" x2="11" y2="16" />
-              </svg>
-              Carta Responsiva
+        {/* Datos clave del evento: Cliente · Fecha · Lugar */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Cliente</p>
+            <Link href={`/crm/clientes/${proyecto.cliente.id}`} className="text-[#B3985B] text-sm font-medium hover:underline block truncate">
+              {proyecto.cliente.nombre}
             </Link>
-            <button
-              onClick={() => setShowAnuncioCierre(true)}
-              className="inline-flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
-              Brief
-            </button>
+            {proyecto.cliente.empresa && (
+              <p className="text-gray-500 text-xs truncate">{proyecto.cliente.empresa}</p>
+            )}
           </div>
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Fecha del evento</p>
+            <p className="text-white font-semibold text-sm leading-tight">{fmtDate(proyecto.fechaEvento)}</p>
+            {proyecto.horaInicioEvento && (
+              <p className="text-gray-400 text-xs mt-0.5">{proyecto.horaInicioEvento}{proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}</p>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Lugar del evento</p>
+            <p className="text-gray-300 text-sm inline-flex items-start gap-1.5">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 mt-0.5 text-gray-600"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <span>{proyecto.lugarEvento ?? <span className="text-red-500/60 italic">Sin lugar</span>}</span>
+            </p>
+          </div>
+        </div>
+
+        {/* Contexto: etapa · tipo de servicio · cuenta regresiva */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] ${ESTADO_COLORS[proyecto.estado]}`}>
+            <span className="opacity-60">Etapa del proyecto</span>
+            <span className="font-semibold">{ESTADO_LABELS[proyecto.estado] ?? proyecto.estado.replace("_", " ")}</span>
+          </span>
+          {proyecto.tipoServicio && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-[#2a2a2a] bg-[#1a1a1a] text-[11px]">
+              <span className="text-gray-500">Tipo de servicio</span>
+              <span className="font-semibold text-[#B3985B]">{proyecto.tipoServicio === "RENTA" ? "Renta de Equipo" : proyecto.tipoServicio === "PRODUCCION_TECNICA" ? "Producción Técnica" : proyecto.tipoServicio === "DIRECCION_TECNICA" ? "Dirección Técnica" : proyecto.tipoServicio}</span>
+            </span>
+          )}
+          {diasRestantes >= 0 && (
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] ${diasRestantes <= 7 ? "bg-red-900/40 text-red-300" : diasRestantes <= 30 ? "bg-yellow-900/30 text-yellow-400" : "bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400"}`}>
+              <span className="opacity-60">Cuenta regresiva</span>
+              <span className="font-semibold">{diasRestantes === 0 ? "Es hoy" : `Faltan ${diasRestantes} día${diasRestantes !== 1 ? "s" : ""}`}</span>
+            </span>
+          )}
+        </div>
+
+        {/* Referencias: Proyecto y Cotización bajo un mismo formato */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-[#2a2a2a] bg-[#111] text-[11px] text-gray-400">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span className="text-gray-500">Proyecto</span>
+            <span className="font-mono text-gray-300">{proyecto.numeroProyecto}</span>
+            <CopyButton value={proyecto.numeroProyecto} size="xs" />
+          </span>
+          {proyecto.cotizacion && (
+            <Link href={`/cotizaciones/${proyecto.cotizacion.id}`} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-[#2a2a2a] bg-[#111] text-[11px] text-gray-400 hover:border-[#B3985B]/40 hover:text-[#B3985B] transition-colors">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              <span className="text-gray-500">Cotización</span>
+              <span className="font-mono">{proyecto.cotizacion.numeroCotizacion}</span>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -5977,14 +5873,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   {/* Library suggestions */}
                                   {libSugs.length > 0 && (
                                     <div>
-                                      <p className="text-[10px] text-[#444] uppercase tracking-widest mb-2 font-semibold">Sugerencias guardadas (biblioteca)</p>
-                                      <div className="space-y-1">
+                                      <p className="text-[10px] text-[#444] uppercase tracking-widest mb-0.5 font-semibold">Sugerencias guardadas (biblioteca)</p>
+                                      <p className="text-[10px] text-gray-600 mb-2">Marca la casilla para agregarlo al rider de salida.</p>
+                                      <div className="space-y-0.5">
                                         {libSugs.map(a => (
-                                          <div key={a.id} className="flex items-center gap-2.5 py-0.5">
-                                            <div className="w-3.5 h-3.5 rounded border border-[#333] shrink-0" />
-                                            <span className="flex-1 text-xs text-gray-400">{a.nombre}</span>
-                                            <button onClick={() => riderAgregarSugerencia(e.id, a.nombre)} className="text-[10px] text-[#B3985B] hover:underline shrink-0">+ Agregar</button>
-                                          </div>
+                                          <button
+                                            key={a.id}
+                                            type="button"
+                                            onClick={() => riderAgregarSugerencia(e.id, a.nombre)}
+                                            className="w-full flex items-center gap-2.5 py-1 px-1 -mx-1 rounded-md text-left group/sug hover:bg-[#111] transition-colors"
+                                          >
+                                            <span className="w-4 h-4 rounded border border-[#333] group-hover/sug:border-[#B3985B] group-hover/sug:bg-[#B3985B]/10 flex items-center justify-center shrink-0 transition-colors">
+                                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-[#B3985B] opacity-0 group-hover/sug:opacity-100 transition-opacity"><polyline points="20 6 9 17 4 12"/></svg>
+                                            </span>
+                                            <span className="flex-1 text-xs text-gray-400 group-hover/sug:text-gray-200 transition-colors">{a.nombre}</span>
+                                            <span className="text-[10px] text-gray-700 group-hover/sug:text-[#B3985B] shrink-0 transition-colors">Agregar al rider</span>
+                                          </button>
                                         ))}
                                       </div>
                                     </div>
@@ -5993,14 +5897,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   {/* System suggestions */}
                                   {sistemaSugs.length > 0 && (
                                     <div>
-                                      <p className="text-[10px] text-[#444] uppercase tracking-widest mb-2 font-semibold">Sugerencias del sistema</p>
-                                      <div className="space-y-1">
+                                      <p className="text-[10px] text-[#444] uppercase tracking-widest mb-0.5 font-semibold">Sugerencias del sistema</p>
+                                      <p className="text-[10px] text-gray-600 mb-2">Marca la casilla para agregarlo al rider de salida.</p>
+                                      <div className="space-y-0.5">
                                         {sistemaSugs.map((s, i) => (
-                                          <div key={i} className="flex items-center gap-2.5 py-0.5">
-                                            <div className="w-3.5 h-3.5 rounded border border-dashed border-[#2a2a2a] shrink-0" />
-                                            <span className="flex-1 text-xs text-gray-500">{s}</span>
-                                            <button onClick={() => riderAgregarSugerencia(e.id, s)} className="text-[10px] text-[#B3985B] hover:underline shrink-0">+ Agregar</button>
-                                          </div>
+                                          <button
+                                            key={i}
+                                            type="button"
+                                            onClick={() => riderAgregarSugerencia(e.id, s)}
+                                            className="w-full flex items-center gap-2.5 py-1 px-1 -mx-1 rounded-md text-left group/sug hover:bg-[#111] transition-colors"
+                                          >
+                                            <span className="w-4 h-4 rounded border border-dashed border-[#2a2a2a] group-hover/sug:border-[#B3985B] group-hover/sug:border-solid group-hover/sug:bg-[#B3985B]/10 flex items-center justify-center shrink-0 transition-colors">
+                                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-[#B3985B] opacity-0 group-hover/sug:opacity-100 transition-opacity"><polyline points="20 6 9 17 4 12"/></svg>
+                                            </span>
+                                            <span className="flex-1 text-xs text-gray-500 group-hover/sug:text-gray-300 transition-colors">{s}</span>
+                                            <span className="text-[10px] text-gray-700 group-hover/sug:text-[#B3985B] shrink-0 transition-colors">Agregar al rider</span>
+                                          </button>
                                         ))}
                                       </div>
                                     </div>
@@ -7550,7 +7462,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         </div>{/* /left column */}
 
         {/* Right sidebar — 30% */}
-        <div className="w-full md:w-72 shrink-0 space-y-3 md:sticky md:top-4">
+        <div className="w-full md:w-72 shrink-0 space-y-3 md:sticky md:top-4 md:max-h-[calc(100vh-2rem)] md:overflow-y-auto md:overflow-x-hidden md:pr-1">
 
           {/* Cliente card */}
           <div className="ms-card p-4 space-y-3">
@@ -7673,6 +7585,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   Carta Responsiva
                 </Link>
               )}
+              <div className="border-t border-[#1e1e1e] my-1" />
+              <button
+                onClick={() => setShowAnuncioCierre(true)}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:text-white hover:border-[#444] text-xs font-medium transition-colors"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Brief del evento
+              </button>
             </div>
           </div>
 
