@@ -218,6 +218,14 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
     contactoDecisorCargo: "",
   });
 
+  // Refs de apoyo para el auto-guardado global: el último formulario conocido
+  // (para hacer flush al salir) y la firma de lo ya guardado (para no re-guardar
+  // los datos de hidratación).
+  const latestDiscRef = useRef(discForm);
+  const lastSavedSigRef = useRef("");
+  const autosaveArmedRef = useRef(false);
+  useEffect(() => { latestDiscRef.current = discForm; });
+
   // Hidratar el formulario con la información ya capturada en el trato
   // (ej. nombre y fecha que se ingresan al crear el contacto en Venta Cerrada,
   // o datos guardados en visitas anteriores). Se ejecuta una sola vez para no
@@ -235,7 +243,8 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
     if (trato.serviciosInteres) {
       try { const s = JSON.parse(trato.serviciosInteres); if (Array.isArray(s)) servicios = s; } catch { /* noop */ }
     }
-    setDiscForm(prev => ({
+    setDiscForm(prev => {
+      const hydrated = {
       ...prev,
       tipoEvento: trato.tipoEvento || prev.tipoEvento,
       subtipoEvento: trato.subtipoEvento || "",
@@ -273,68 +282,126 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
       rentaDescripcionEquipos: renta.descripcionEquipos || "",
       rentaTecnicoPropio: renta.tecnicoPropio || "",
       rentaNotas: renta.notas || "",
-    }));
+      };
+      latestDiscRef.current = hydrated;
+      return hydrated;
+    });
   }, [trato]);
 
   const toggleServicio = (idService: string) => {
     setDiscForm(p => {
       const isSel = p.serviciosInteres.includes(idService);
       const n = isSel ? p.serviciosInteres.filter(s => s !== idService) : [...p.serviciosInteres, idService];
-      const newState = { ...p, serviciosInteres: n };
-      autoSaveDisc(newState);
-      return newState;
+      return { ...p, serviciosInteres: n };
     });
   };
 
   
 
+  // Construye el payload de guardado a partir del formulario. Incluye TODOS los
+  // campos del descubrimiento para que el auto-guardado sea equivalente al
+  // guardado manual (antes omitía subtipo y contacto decisor).
+  const buildDiscPayload = useCallback((form: typeof discForm) => {
+    const isRenta = form.tipoServicio === "RENTA";
+    return {
+      tipoEvento: form.tipoEvento,
+      subtipoEvento: form.subtipoEvento || null,
+      nombreEvento: form.nombreEvento || null,
+      fechaEventoEstimada: form.fechaEventoEstimada === "por-definir" ? null : (form.fechaEventoEstimada || null),
+      lugarEstimado: form.lugarEstimado === "por-definir" ? "Por definir" : (form.lugarEstimado || null),
+      asistentesEstimados: form.asistentesEstimados ? parseInt(form.asistentesEstimados) : null,
+      diasServicio: form.diasServicio ? parseInt(form.diasServicio) : null,
+      presupuestoEstimado: form.presupuestoEstimado ? parseFloat(form.presupuestoEstimado) : null,
+      tipoServicio: form.tipoServicio || null,
+      notas: form.notas || null,
+      familyAndFriends: form.familyAndFriends,
+      realizarRender: form.realizarRender,
+      tradeCalificado: form.tradeAplica,
+      horaInicioEvento: form.horaInicioEvento || null,
+      horaFinEvento: form.horaFinEvento || null,
+      duracionMontajeHrs: form.duracionMontajeHrs ? parseFloat(form.duracionMontajeHrs) : null,
+      ventanaMontajeInicio: form.ventanaMontajeInicio || null,
+      ventanaMontajeFin: form.ventanaMontajeFin || null,
+      horaTerminoMontaje: form.horaTerminoMontaje || null,
+      contactoVenueNombre: form.contactoVenueNombre || null,
+      contactoVenueTelefono: form.contactoVenueTelefono || null,
+      contactoDecisorNombre: form.contactoDecisorNombre || null,
+      contactoDecisorCargo: form.contactoDecisorCargo || null,
+      serviciosInteres: JSON.stringify(form.serviciosInteres),
+      equiposInteres: form.equiposInteres || null,
+      ideasReferencias: isRenta
+        ? JSON.stringify({
+            modalidadServicio: form.rentaModalidadServicio || null,
+            modalidadEntrega: form.rentaModalidadEntrega || null,
+            direccionEntrega: form.rentaDireccionEntrega || null,
+            fechaEntrega: form.rentaFechaEntrega || null,
+            horaEntrega: form.rentaHoraEntrega || null,
+            fechaDevolucion: form.rentaFechaDevolucion || null,
+            horaDevolucion: form.rentaHoraDevolucion || null,
+            descripcionEquipos: form.rentaDescripcionEquipos || null,
+            tecnicoPropio: form.rentaTecnicoPropio || null,
+            notas: form.rentaNotas || null,
+          })
+        : (form.ideasReferencias || null),
+    };
+  }, []);
+
   const autoSaveDisc = useCallback((form: typeof discForm) => {
     if (autoSaveDiscTimer.current) clearTimeout(autoSaveDiscTimer.current);
     setAutoSaveStatus("saving");
     autoSaveDiscTimer.current = setTimeout(async () => {
-      const isRenta = form.tipoServicio === "RENTA";
-      await patch({
-        tipoEvento: form.tipoEvento,
-        nombreEvento: form.nombreEvento || null,
-        fechaEventoEstimada: form.fechaEventoEstimada === "por-definir" ? null : (form.fechaEventoEstimada || null),
-        lugarEstimado: form.lugarEstimado === "por-definir" ? "Por definir" : (form.lugarEstimado || null),
-        asistentesEstimados: form.asistentesEstimados ? parseInt(form.asistentesEstimados) : null,
-        diasServicio: form.diasServicio ? parseInt(form.diasServicio) : null,
-        presupuestoEstimado: form.presupuestoEstimado ? parseFloat(form.presupuestoEstimado) : null,
-        tipoServicio: form.tipoServicio || null,
-        notas: form.notas || null,
-        familyAndFriends: form.familyAndFriends,
-        realizarRender: form.realizarRender,
-        tradeCalificado: form.tradeAplica,
-        horaInicioEvento: form.horaInicioEvento || null,
-        horaFinEvento: form.horaFinEvento || null,
-        duracionMontajeHrs: form.duracionMontajeHrs ? parseFloat(form.duracionMontajeHrs) : null,
-        ventanaMontajeInicio: form.ventanaMontajeInicio || null,
-        ventanaMontajeFin: form.ventanaMontajeFin || null,
-        horaTerminoMontaje: form.horaTerminoMontaje || null,
-        contactoVenueNombre: form.contactoVenueNombre || null,
-        contactoVenueTelefono: form.contactoVenueTelefono || null,
-        serviciosInteres: JSON.stringify(form.serviciosInteres),
-        equiposInteres: form.equiposInteres || null,
-        ideasReferencias: isRenta
-          ? JSON.stringify({
-              modalidadServicio: form.rentaModalidadServicio || null,
-              modalidadEntrega: form.rentaModalidadEntrega || null,
-              direccionEntrega: form.rentaDireccionEntrega || null,
-              fechaEntrega: form.rentaFechaEntrega || null,
-              horaEntrega: form.rentaHoraEntrega || null,
-              fechaDevolucion: form.rentaFechaDevolucion || null,
-              horaDevolucion: form.rentaHoraDevolucion || null,
-              descripcionEquipos: form.rentaDescripcionEquipos || null,
-              tecnicoPropio: form.rentaTecnicoPropio || null,
-              notas: form.rentaNotas || null,
-            })
-          : (form.ideasReferencias || null),
-      });
+      autoSaveDiscTimer.current = null;
+      await patch(buildDiscPayload(form));
       setAutoSaveStatus("saved");
       setTimeout(() => setAutoSaveStatus("idle"), 2000);
     }, 1200);
-  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [buildDiscPayload]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Flush inmediato del guardado pendiente (al retroceder, navegar o cerrar la
+  // pestaña). Usa keepalive para que la petición sobreviva a la descarga de la
+  // página. Así no se pierden los cambios de los últimos 1.2s antes de salir.
+  const flushDisc = useCallback(() => {
+    if (!autoSaveDiscTimer.current) return;
+    clearTimeout(autoSaveDiscTimer.current);
+    autoSaveDiscTimer.current = null;
+    try {
+      fetch(`/api/tratos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildDiscPayload(latestDiscRef.current)),
+        keepalive: true,
+      }).catch(() => {});
+    } catch { /* noop */ }
+  }, [id, buildDiscPayload]);
+
+  // Auto-guardado global: CUALQUIER cambio en el formulario dispara el guardado
+  // con debounce. Antes solo la selección de servicios lo hacía, por eso al
+  // retroceder se perdía todo el avance del descubrimiento.
+  useEffect(() => {
+    if (readOnly || !hydratedRef.current) return;
+    const sig = JSON.stringify(discForm);
+    if (!autosaveArmedRef.current) {
+      // Primera pasada tras hidratar: registramos la firma base sin guardar,
+      // para no re-escribir los datos ya existentes ni los valores por defecto.
+      autosaveArmedRef.current = true;
+      lastSavedSigRef.current = JSON.stringify(latestDiscRef.current);
+      return;
+    }
+    if (sig === lastSavedSigRef.current) return;
+    lastSavedSigRef.current = sig;
+    autoSaveDisc(discForm);
+  }, [discForm, readOnly, autoSaveDisc]);
+
+  // Flush al desmontar (navegación SPA / botón atrás) y al ocultar la pestaña.
+  useEffect(() => {
+    if (readOnly) return;
+    const handler = () => flushDisc();
+    window.addEventListener("pagehide", handler);
+    return () => {
+      window.removeEventListener("pagehide", handler);
+      flushDisc();
+    };
+  }, [readOnly, flushDisc]);
 
   async function guardarDescubrimiento(completar = false) {
     setSaving(true);
