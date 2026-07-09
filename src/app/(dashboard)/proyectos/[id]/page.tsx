@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef, use } from "react";
+import { createPortal } from "react-dom";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { upload } from "@vercel/blob/client";
 import { usePdfDownload } from "@/hooks/usePdfDownload";
@@ -199,6 +200,9 @@ function accesoriosPorEquipo(descripcion: string, categoria: string): string[] {
 function InlinePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
+  const btnRef = React.useRef<HTMLButtonElement>(null);
+  const popRef = React.useRef<HTMLDivElement>(null);
+  const [pos, setPos] = React.useState<{ top: number; left: number } | null>(null);
 
   const parse = (v: string) => {
     if (!v) return { h: 12, m: 0, p: 'AM' as const };
@@ -219,14 +223,37 @@ function InlinePicker({ value, onChange }: { value: string; onChange: (v: string
     setSelH(h); setSelM(m); setSelP(p);
   }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const recalcPos = React.useCallback(() => {
+    if (!btnRef.current) return;
+    const r = btnRef.current.getBoundingClientRect();
+    const POP_W = 208; // w-52
+    const POP_H = 168; // altura aprox del popover
+    let left = r.left;
+    if (left + POP_W > window.innerWidth - 8) left = window.innerWidth - POP_W - 8;
+    // Si no cabe abajo, abrir hacia arriba
+    const top = r.bottom + POP_H > window.innerHeight - 8 ? r.top - POP_H - 4 : r.bottom + 2;
+    setPos({ top, left: Math.max(8, left) });
+  }, []);
+
   React.useEffect(() => {
     if (!open) return;
+    recalcPos();
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (ref.current?.contains(t)) return;
+      if (popRef.current?.contains(t)) return;
+      setOpen(false);
     };
+    const onScrollResize = () => recalcPos();
     document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
+    window.addEventListener('scroll', onScrollResize, true);
+    window.addEventListener('resize', onScrollResize);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      window.removeEventListener('scroll', onScrollResize, true);
+      window.removeEventListener('resize', onScrollResize);
+    };
+  }, [open, recalcPos]);
 
   function pick(h: number, m: number, p: 'AM' | 'PM') {
     setSelH(h); setSelM(m); setSelP(p);
@@ -240,12 +267,13 @@ function InlinePicker({ value, onChange }: { value: string; onChange: (v: string
 
   return (
     <div ref={ref} className="relative">
-      <button type="button" onClick={() => setOpen(o => !o)}
+      <button ref={btnRef} type="button" onClick={() => setOpen(o => !o)}
         className="w-full text-left bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] hover:border-[#B3985B]/40 rounded px-2 py-1 text-xs transition-colors focus:outline-none whitespace-nowrap">
         <span className={value ? 'text-white' : 'text-gray-600'}>{display}</span>
       </button>
-      {open && (
-        <div className="absolute z-50 top-full mt-0.5 left-0 bg-[#111] border border-[#2a2a2a] rounded-xl shadow-2xl p-2.5 w-52">
+      {open && pos && typeof document !== 'undefined' && createPortal(
+        <div ref={popRef} style={{ position: 'fixed', top: pos.top, left: pos.left }}
+          className="z-[100] bg-[#111] border border-[#2a2a2a] rounded-xl shadow-2xl p-2.5 w-52">
           {/* AM/PM */}
           <div className="flex gap-1 mb-2">
             {(['AM', 'PM'] as const).map(p => (
@@ -275,7 +303,8 @@ function InlinePicker({ value, onChange }: { value: string; onChange: (v: string
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
@@ -3564,11 +3593,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const hoyStr = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
   const eventoStr = proyecto.fechaEvento.substring(0, 10);
   const diasRestantes = Math.round((new Date(eventoStr).getTime() - new Date(hoyStr).getTime()) / 86400000);
-  const totalCxC = proyecto.cuentasCobrar.reduce((s, c) => s + c.monto, 0);
-  const cobrado = proyecto.cuentasCobrar.reduce((s, c) => s + c.montoCobrado, 0);
   const esRenta = proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA";
-  const equiposTotal = proyecto.equipos?.length ?? 0;
-  const equiposConf = proyecto.equipos?.filter((e: { confirmado: boolean }) => e.confirmado).length ?? 0;
 
   return (
     <>
@@ -3578,22 +3603,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       {/* ── Header ── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className="flex items-center gap-1.5">
-              <span className="text-gray-400 text-sm font-mono">{proyecto.numeroProyecto}</span>
-              <CopyButton value={proyecto.numeroProyecto} size="xs" />
-            </span>
-            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${ESTADO_COLORS[proyecto.estado]}`}>
+          <div className="flex items-center gap-1.5 mb-2">
+            <span className="text-gray-400 text-sm font-mono">{proyecto.numeroProyecto}</span>
+            <CopyButton value={proyecto.numeroProyecto} size="xs" />
+          </div>
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-medium ${ESTADO_COLORS[proyecto.estado]}`}>
               {ESTADO_LABELS[proyecto.estado] ?? proyecto.estado.replace("_", " ")}
             </span>
-            {diasRestantes >= 0 && (
-              <span className={`text-xs px-2 py-0.5 rounded-full ${diasRestantes <= 7 ? "bg-red-900/50 text-red-300" : diasRestantes <= 30 ? "bg-yellow-900/30 text-yellow-400" : "bg-[#222] text-gray-400"}`}>
-                {diasRestantes === 0 ? "¡Hoy!" : `En ${diasRestantes} días`}
+            {proyecto.tipoServicio && (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-md border border-[#2a2a2a] bg-[#1a1a1a] text-[#B3985B] text-[11px] font-medium">
+                {proyecto.tipoServicio === "RENTA" ? "Renta de Equipo" : proyecto.tipoServicio === "PRODUCCION_TECNICA" ? "Producción Técnica" : proyecto.tipoServicio === "DIRECCION_TECNICA" ? "Dirección Técnica" : proyecto.tipoServicio}
               </span>
             )}
-            {proyecto.tipoServicio && (
-              <span className="px-2.5 py-1 rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] text-[#B3985B] text-xs">
-                {proyecto.tipoServicio === "RENTA" ? "Renta de Equipo" : proyecto.tipoServicio === "PRODUCCION_TECNICA" ? "Producción Técnica" : proyecto.tipoServicio === "DIRECCION_TECNICA" ? "Dirección Técnica" : proyecto.tipoServicio}
+            {diasRestantes >= 0 && (
+              <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-medium ${diasRestantes <= 7 ? "bg-red-900/40 text-red-300" : diasRestantes <= 30 ? "bg-yellow-900/30 text-yellow-400" : "bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400"}`}>
+                {diasRestantes === 0 ? "Es hoy" : `Faltan ${diasRestantes} día${diasRestantes !== 1 ? "s" : ""}`}
               </span>
             )}
           </div>
@@ -3606,15 +3631,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </p>
         </div>
         <div className="sm:text-right shrink-0 flex flex-col sm:items-end gap-2">
-          <div>
-            <p className="text-white font-semibold">{fmtDate(proyecto.fechaEvento)}</p>
+          <div className="sm:text-right">
+            <p className="text-white font-semibold text-base leading-tight">{fmtDate(proyecto.fechaEvento)}</p>
             {proyecto.horaInicioEvento && (
-              <p className="text-gray-400 text-sm">{proyecto.horaInicioEvento}{proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}</p>
+              <p className="text-gray-400 text-sm mt-0.5">{proyecto.horaInicioEvento}{proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}</p>
             )}
-            <p className="text-gray-500 text-xs mt-0.5">{proyecto.lugarEvento ?? <span className="text-red-500/60 italic">Sin lugar</span>}</p>
+            <p className="text-gray-500 text-xs mt-1 inline-flex items-center gap-1 sm:justify-end">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              {proyecto.lugarEvento ?? <span className="text-red-500/60 italic">Sin lugar</span>}
+            </p>
             {proyecto.cotizacion && (
-              <Link href={`/cotizaciones/${proyecto.cotizacion.id}`} className="text-[10px] text-[#B3985B] hover:underline block mt-1">
-                {proyecto.cotizacion.numeroCotizacion} · {fmt(proyecto.cotizacion.granTotal)}
+              <Link href={`/cotizaciones/${proyecto.cotizacion.id}`} className="inline-flex items-center gap-1 text-[11px] text-[#B3985B] hover:underline mt-1">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                {proyecto.cotizacion.numeroCotizacion}
               </Link>
             )}
           </div>
@@ -3800,7 +3829,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         type WCheck = { ok: boolean; label: string; peso: number };
         const wChecks: WCheck[] = [
           { ok: !!proyecto.lugarEvento,                                                                       label: "Lugar del evento",       peso: 8  },
-          { ok: !!proyecto.encargado,                                                                          label: "Responsable interno",    peso: 4  },
+          { ok: !!proyecto.encargado,                                                                          label: "Coordinador de producción", peso: 4  },
           { ok: proyecto.equipos.length > 0,                                                                  label: "Equipo registrado",      peso: 8  },
           ...(proyecto._canViewFinances ? [
             { ok: !!proyecto.cotizacion,                                                                       label: "Cotización generada",   peso: 10 },
@@ -3822,7 +3851,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         const infoChecks: CheckItem[] = [
           { ok: !!proyecto.lugarEvento,                                              label: "Lugar del evento" },
           { ok: !!proyecto.encargadoCliente && !!proyecto.encargadoClienteContacto, label: "Contacto cliente" },
-          { ok: !!proyecto.encargado,                                                label: "Responsable interno" },
+          { ok: !!proyecto.encargado,                                                label: "Coordinador de producción" },
         ];
         const prodChecks: CheckItem[] = [
           { ok: proyecto.equipos.length > 0,                                         label: "Equipo registrado" },
@@ -3936,42 +3965,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         );
       })()}
 
-      {/* ── KPIs rápidos ── */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="ms-stat-card">
-          <p className="text-gray-500 text-xs mb-1">{esRenta ? 'Equipos' : 'Personal'}</p>
-          {esRenta ? (
-            <>
-              <p className="text-white text-lg font-bold">{equiposTotal}<span className="text-gray-500 font-normal text-sm"> registrados</span></p>
-              <p className="text-gray-600 text-xs">en el proyecto</p>
-            </>
-          ) : (
-            <>
-              <p className="text-white text-lg font-bold">{personalConfirmado}<span className="text-gray-500 font-normal text-sm">/{proyecto.personal.length}</span></p>
-              <p className="text-gray-600 text-xs">confirmados</p>
-            </>
-          )}
-        </div>
-        {proyecto._canViewFinances ? (
-          <div className="ms-stat-card">
-            <p className="text-gray-500 text-xs mb-1">Cobrado</p>
-            <p className="text-green-400 text-lg font-bold">{fmt(cobrado)}</p>
-            <p className="text-gray-600 text-xs">de {fmt(totalCxC)}</p>
-          </div>
-        ) : (
-          <div className="ms-stat-card flex flex-col justify-center items-center opacity-50">
-            <p className="text-gray-500 text-xs text-center">Finanzas ocultas</p>
-          </div>
-        )}
-        <div className="ms-stat-card">
-          <p className="text-gray-500 text-xs mb-1">Días</p>
-          <p className={`text-lg font-bold ${diasRestantes < 0 ? "text-gray-500" : diasRestantes <= 7 ? "text-red-400" : diasRestantes <= 30 ? "text-yellow-400" : "text-white"}`}>
-            {diasRestantes < 0 ? "Pasado" : diasRestantes === 0 ? "¡Hoy!" : diasRestantes}
-          </p>
-          <p className="text-gray-600 text-xs">{diasRestantes < 0 ? `hace ${Math.abs(diasRestantes)}d` : diasRestantes === 0 ? "es hoy" : "para el evento"}</p>
-        </div>
-      </div>
-
       {/* ── Semáforo de preparación del evento ── */}
       {(() => {
         const anticipo = proyecto.cuentasCobrar.find(c => c.tipoPago === "ANTICIPO");
@@ -4056,7 +4049,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   {proyecto.cliente.correo && <p className="text-gray-400 text-xs">{proyecto.cliente.correo}</p>}
                 </div>
                 <div className="col-span-2">
-                  <p className="text-gray-500 text-xs mb-1">Encargado interno</p>
+                  <p className="text-gray-500 text-xs mb-1">Coordinador de producción</p>
                   <Combobox
                     value={proyecto.encargado?.id ?? ""}
                     onChange={v => guardarCampo("encargadoId", v)}
@@ -4165,13 +4158,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div className="flex-1 h-px bg-[#1e1e1e]" />
                 </div>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                  <Campo label="Fecha de montaje" value={proyecto.fechaMontaje?.toString().substring(0, 10) ?? null} field="fechaMontaje" type="date" onSave={guardarCampo} />
-                  <HourPicker label="Hora de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" onSave={guardarCampo} />
-                  <Campo label="Duración montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? null} field="duracionMontajeHrs" type="number" onSave={guardarCampo} />
-                  <Campo label="Hora desmontaje/salida" value={proyecto.horaDesmontaje} field="horaDesmontaje" type="time" onSave={guardarCampo} />
-                  <Campo label="Punto de salida bodega" value={proyecto.puntoSalidaBodega} field="puntoSalidaBodega" type="text" onSave={guardarCampo} />
-                  <HourPicker label="Hora salida bodega" value={proyecto.horaSalidaBodega} field="horaSalidaBodega" onSave={guardarCampo} />
-                  {/* ── Llamado en bodega (fecha + hora) ── */}
+                  {/* ── Llamado en bodega (fecha + hora) — PRIMERO ── */}
                   <div className="col-span-2">
                     <label className="text-xs text-gray-500 block mb-1">Llamado en bodega</label>
                     <div className="flex gap-2">
@@ -4204,6 +4191,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       />
                     </div>
                   </div>
+                  <Campo label="Fecha de montaje" value={proyecto.fechaMontaje?.toString().substring(0, 10) ?? null} field="fechaMontaje" type="date" onSave={guardarCampo} />
+                  <HourPicker label="Hora de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" onSave={guardarCampo} />
+                  <Campo label="Duración montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? null} field="duracionMontajeHrs" type="number" onSave={guardarCampo} />
+                  <Campo label="Punto de salida bodega" value={proyecto.puntoSalidaBodega} field="puntoSalidaBodega" type="text" onSave={guardarCampo} />
+                  <HourPicker label="Hora salida bodega" value={proyecto.horaSalidaBodega} field="horaSalidaBodega" onSave={guardarCampo} />
+                  {/* ── Desmontaje — AL FINAL ── */}
+                  <Campo label="Hora desmontaje/salida" value={proyecto.horaDesmontaje} field="horaDesmontaje" type="time" onSave={guardarCampo} />
                 </div>
               </>)}
 
@@ -4265,15 +4259,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 />
               </div>
             )}
-          </div>
-
-          {/* Viabilidad */}
-          <div className="mt-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-600 mb-3">Viabilidad del proyecto</p>
-            <ViabilidadWidget
-              viabilidadActiva={viabilidad?.viabilidadActiva ?? null}
-              historico={viabilidad?.historico ?? []}
-            />
           </div>
 
           </div>
@@ -5364,45 +5349,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             )}
           </div>
 
-          {!esRenta && (() => {
-            const DIRECTORIO = [
-              { nombre: "Mauricio Hernández",  cargo: "Dirección General",              tel: "4461432565", desc: "Liderazgo estratégico, cierre de tratos y decisiones críticas" },
-              { nombre: "Carlos Luna",          cargo: "Coordinador de Producción",      tel: "4428633023", desc: "Dirección técnica en campo, rider de carga y coordinación de equipo" },
-              { nombre: "Daniel Guarneros",     cargo: "Atención a Clientes y Ventas",   tel: "4428078646", desc: "Contacto con cliente, seguimiento comercial y ventas" },
-              { nombre: "Emiliano Pérez",       cargo: "Coordinador Administrativo",     tel: "4428635398", desc: "Finanzas, CxC, CxP, nómina y administración general" },
-              { nombre: "Sebastián Pérez",      cargo: "Community Manager",              tel: "4428159359", desc: "Contenido, redes sociales y levantamientos foto/video" },
-              { nombre: "Rodrigo Vera",         cargo: "Auxiliar de Producción",         tel: "4428633175", desc: "Apoyo en montaje, bodega y logística de equipo" },
-              { nombre: "Zaid Bautista",        cargo: "Auxiliar de Producción",         tel: "4428634195", desc: "Apoyo en montaje, bodega y logística de equipo" },
-            ];
-            return (
-              <div className="ms-table-wrapper">
-                <button onClick={() => setDirectorioOpen(v => !v)} className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-[#1a1a1a] transition-colors">
-                  <p className="text-xs text-white font-semibold uppercase tracking-wider">Directorio Mainstage Pro</p>
-                  <svg className={`w-4 h-4 text-gray-600 transition-transform ${directorioOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
-                </button>
-                {directorioOpen && (
-                  <div className="border-t border-[#1a1a1a] divide-y divide-[#1a1a1a]">
-                    {DIRECTORIO.map(p => (
-                      <div key={p.nombre} className="flex items-center justify-between px-5 py-3">
-                        <div>
-                          <p className="text-white text-sm font-medium">{p.nombre}</p>
-                          <p className="text-gray-400 text-xs">{p.cargo}</p>
-                          <p className="text-gray-600 text-[11px] mt-0.5">{p.desc}</p>
-                        </div>
-                        <a href={`https://wa.me/52${p.tel}`} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 text-xs text-green-400 border border-green-800/40 hover:bg-green-900/20 px-2.5 py-1 rounded-lg transition-colors shrink-0">
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.12 1.524 5.855L0 24l6.29-1.498A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.899 0-3.68-.5-5.225-1.378l-.375-.224-3.884.925.98-3.774-.244-.389A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
-                          {p.tel.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3")}
-                        </a>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })()}
-
-
           {/* ── Cronograma (tabla) — solo producción técnica / dirección técnica ── */}
           {!esRenta && (
           <div className="ms-card p-5">
@@ -5516,8 +5462,44 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             )}
           </div>}
 
-
-
+          {/* ── Directorio Mainstage Pro — al final de operación ── */}
+          {!esRenta && (() => {
+            const DIRECTORIO = [
+              { nombre: "Mauricio Hernández",  cargo: "Dirección General",              tel: "4461432565", desc: "Liderazgo estratégico, cierre de tratos y decisiones críticas" },
+              { nombre: "Carlos Luna",          cargo: "Coordinador de Producción",      tel: "4428633023", desc: "Dirección técnica en campo, rider de carga y coordinación de equipo" },
+              { nombre: "Daniel Guarneros",     cargo: "Atención a Clientes y Ventas",   tel: "4428078646", desc: "Contacto con cliente, seguimiento comercial y ventas" },
+              { nombre: "Emiliano Pérez",       cargo: "Coordinador Administrativo",     tel: "4428635398", desc: "Finanzas, CxC, CxP, nómina y administración general" },
+              { nombre: "Sebastián Pérez",      cargo: "Community Manager",              tel: "4428159359", desc: "Contenido, redes sociales y levantamientos foto/video" },
+              { nombre: "Rodrigo Vera",         cargo: "Auxiliar de Producción",         tel: "4428633175", desc: "Apoyo en montaje, bodega y logística de equipo" },
+              { nombre: "Zaid Bautista",        cargo: "Auxiliar de Producción",         tel: "4428634195", desc: "Apoyo en montaje, bodega y logística de equipo" },
+            ];
+            return (
+              <div className="ms-table-wrapper">
+                <button onClick={() => setDirectorioOpen(v => !v)} className="w-full flex items-center justify-between px-5 py-3 text-left hover:bg-[#1a1a1a] transition-colors">
+                  <p className="text-xs text-white font-semibold uppercase tracking-wider">Directorio Mainstage Pro</p>
+                  <svg className={`w-4 h-4 text-gray-600 transition-transform ${directorioOpen ? "rotate-90" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                </button>
+                {directorioOpen && (
+                  <div className="border-t border-[#1a1a1a] divide-y divide-[#1a1a1a]">
+                    {DIRECTORIO.map(p => (
+                      <div key={p.nombre} className="flex items-center justify-between px-5 py-3">
+                        <div>
+                          <p className="text-white text-sm font-medium">{p.nombre}</p>
+                          <p className="text-gray-400 text-xs">{p.cargo}</p>
+                          <p className="text-gray-600 text-[11px] mt-0.5">{p.desc}</p>
+                        </div>
+                        <a href={`https://wa.me/52${p.tel}`} target="_blank" rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-xs text-green-400 border border-green-800/40 hover:bg-green-900/20 px-2.5 py-1 rounded-lg transition-colors shrink-0">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.12 1.524 5.855L0 24l6.29-1.498A11.935 11.935 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.899 0-3.68-.5-5.225-1.378l-.375-.224-3.884.925.98-3.774-.244-.389A10 10 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
+                          {p.tel.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3")}
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
         </div>
         );
@@ -6473,6 +6455,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
         return (
         <div className="space-y-4">
+
+          {/* ── Viabilidad del proyecto ── */}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-gray-600 mb-3">Viabilidad del proyecto</p>
+            <ViabilidadWidget
+              viabilidadActiva={viabilidad?.viabilidadActiva ?? null}
+              historico={viabilidad?.historico ?? []}
+            />
+          </div>
 
           {/* ── P&L Summary ── */}
           <div className="ms-table-wrapper">
@@ -7568,20 +7559,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             </div>
           </div>
 
-          {/* Proyecto info card */}
+          {/* Proyecto info card — solo datos no repetidos en el header */}
           <div className="ms-stat-card space-y-2.5">
             <p className="text-[10px] uppercase tracking-wider text-gray-600">Proyecto</p>
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-gray-600">Número</span>
-                <span className="text-[11px] text-white font-mono">{proyecto.numeroProyecto}</span>
-              </div>
-              {proyecto.cotizacion && (
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-gray-600">Cotización</span>
-                  <Link href={`/cotizaciones/${proyecto.cotizacion.id}`} className="text-[11px] text-[#B3985B] hover:underline">
-                    Ver cotización →
-                  </Link>
+              {!esRenta && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-gray-600 shrink-0">Coordinador</span>
+                  <span className="text-[11px] text-gray-300 text-right truncate">{proyecto.encargado?.name ?? "— Sin asignar —"}</span>
                 </div>
               )}
               <div className="flex items-center justify-between">

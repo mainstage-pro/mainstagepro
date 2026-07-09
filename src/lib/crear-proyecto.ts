@@ -108,6 +108,17 @@ export async function crearProyectoDesdeCotizacion(
 
   const numeroProyecto = await siguienteNumeroProyecto(tx);
 
+  // Coordinador de producción por defecto: Rodrigo Vera (fallback: quien creó la cotización)
+  const esRentaProy = (cot.tipoServicio || cot.trato?.tipoServicio) === "RENTA";
+  let coordinadorId = cot.creadaPorId;
+  if (!esRentaProy) {
+    const rodrigo = await tx.user.findFirst({
+      where: { name: { contains: "Rodrigo Vera", mode: "insensitive" }, active: true },
+      select: { id: true },
+    });
+    if (rodrigo) coordinadorId = rodrigo.id;
+  }
+
   const hoy = new Date();
   const fechaEvento = cot.fechaEvento ?? new Date(hoy.getTime() + 30 * 24 * 60 * 60 * 1000);
 
@@ -122,7 +133,7 @@ export async function crearProyectoDesdeCotizacion(
       tratoId: cot.tratoId ?? undefined,
       cotizacionId: cot.id,
       clienteId: cot.clienteId,
-      encargadoId: cot.creadaPorId,
+      encargadoId: coordinadorId,
       nombre: cot.nombreEvento || `Proyecto ${cot.numeroCotizacion}`,
       estado: "PLANEACION",
       zona: cot.zonaEvento ?? "LOCAL",
