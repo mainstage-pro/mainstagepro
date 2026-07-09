@@ -4886,13 +4886,21 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           <div className="text-right shrink-0">
                             <div className="text-xs text-[#B3985B] font-semibold">{fmt(linea.precioUnitario)}<span className="text-gray-600 font-normal"> × {linea.cantidad}</span></div>
                           </div>
-                          {disciplina && (
+                          {disciplina ? (
                             <button
                               onClick={() => cargarSugerencias(disciplina, linea.nivel, sugKey)}
                               className={`shrink-0 text-xs px-3 py-1.5 rounded-lg transition-colors border ${abierto ? "bg-[#B3985B]/20 border-[#B3985B]/40 text-[#B3985B]" : "bg-[#1e1e1e] hover:bg-[#2a2a2a] border-[#2a2a2a] text-gray-300"}`}
                             >
                               {abierto ? "Ocultar" : "Sugerir técnicos"}
                             </button>
+                          ) : (
+                            <a
+                              href="/catalogo/roles"
+                              title="Este rol no tiene disciplina asignada. Asígnala en el catálogo para ver sugerencias de técnicos."
+                              className="shrink-0 text-[11px] px-3 py-1.5 rounded-lg border border-dashed border-[#333] text-gray-600 hover:text-[#B3985B] hover:border-[#B3985B]/40 transition-colors"
+                            >
+                              Asignar disciplina
+                            </a>
                           )}
                           <button
                             onClick={() => agregarDesdeLinea(linea)}
