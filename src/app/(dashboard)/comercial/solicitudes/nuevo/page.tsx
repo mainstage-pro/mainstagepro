@@ -15,75 +15,90 @@ const LABEL = "block text-xs font-medium text-gray-400 mb-1";
 const ETAPAS = ["LEAD", "DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA"];
 const ETAPA_TXT: Record<string, string> = { LEAD: "Prospección", ...ETAPA_LABELS };
 
-interface LineaEquipo {
-  key: string;
-  categoria: string;
-  equipo: string;
-  cantidad: number;
-  notas: string;
-}
-
-function nuevaLinea(): LineaEquipo {
-  return { key: Math.random().toString(36).slice(2), categoria: "", equipo: "", cantidad: 1, notas: "" };
-}
+interface Cliente { id: string; nombre: string; empresa: string | null; telefono: string | null; clasificacion: string; }
 
 export default function NuevaSolicitudPage() {
   const router = useRouter();
   const [usuarios, setUsuarios] = useState<{ id: string; name: string }[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  const [clienteNombre, setClienteNombre] = useState("");
+  // Cliente
+  const [modoCliente, setModoCliente] = useState<"existente" | "nuevo">("existente");
+  const [clienteId, setClienteId] = useState("");
+  const [clienteQuery, setClienteQuery] = useState("");
+  const [clienteDropdown, setClienteDropdown] = useState(false);
+  const [clienteNuevo, setClienteNuevo] = useState({ nombre: "", empresa: "", telefono: "", correo: "" });
+  const [contactoTelefono, setContactoTelefono] = useState("");
+
+  // Evento
   const [fechaEvento, setFechaEvento] = useState("");
   const [lugarEvento, setLugarEvento] = useState("");
   const [etapa, setEtapa] = useState("DESCUBRIMIENTO");
   const [tipoEvento, setTipoEvento] = useState("");
   const [tipoServicio, setTipoServicio] = useState("");
   const [asistentes, setAsistentes] = useState("");
-  const [equipos, setEquipos] = useState<LineaEquipo[]>([nuevaLinea()]);
+  const [equiposDescripcion, setEquiposDescripcion] = useState("");
+
+  // Condiciones
   const [requiereTransporte, setRequiereTransporte] = useState(false);
   const [transporteConcepto, setTransporteConcepto] = useState("");
   const [llevaDescuento, setLlevaDescuento] = useState(false);
   const [descuentoDetalle, setDescuentoDetalle] = useState("");
   const [notaEspecial, setNotaEspecial] = useState("");
+  const [observaciones, setObservaciones] = useState("");
   const [sumaComision, setSumaComision] = useState(false);
   const [entregable, setEntregable] = useState("SOLO_PDF");
   const [vendedorId, setVendedorId] = useState("");
 
   useEffect(() => {
     fetch("/api/usuarios-activos").then(r => r.json()).then(d => setUsuarios(d.usuarios || []));
+    fetch("/api/clientes").then(r => r.json()).then(d => setClientes(d.clientes || []));
   }, []);
 
-  function updateLinea(key: string, campo: keyof LineaEquipo, valor: string | number) {
-    setEquipos(prev => prev.map(l => (l.key === key ? { ...l, [campo]: valor } : l)));
+  const clienteSel = clientes.find(c => c.id === clienteId);
+
+  function seleccionarCliente(c: Cliente) {
+    setClienteId(c.id);
+    setClienteQuery(c.nombre + (c.empresa ? ` · ${c.empresa}` : ""));
+    setClienteDropdown(false);
+    if (c.telefono) setContactoTelefono(c.telefono);
   }
-  function addLinea() { setEquipos(prev => [...prev, nuevaLinea()]); }
-  function removeLinea(key: string) { setEquipos(prev => prev.filter(l => l.key !== key)); }
 
   async function guardar() {
-    if (!clienteNombre.trim()) { setError("El nombre del cliente es requerido"); return; }
+    if (modoCliente === "existente" && !clienteId) { setError("Selecciona un cliente existente"); return; }
+    if (modoCliente === "nuevo" && !clienteNuevo.nombre.trim()) { setError("El nombre del cliente es requerido"); return; }
     setSaving(true); setError("");
 
-    const payload = {
-      clienteNombre,
+    const payload: Record<string, unknown> = {
+      contactoTelefono,
       fechaEvento: fechaEvento ? new Date(fechaEvento + "T12:00:00").toISOString() : null,
       lugarEvento,
       etapa,
       tipoEvento: tipoEvento || null,
       tipoServicio: tipoServicio || null,
       asistentes: asistentes || null,
+      equiposDescripcion,
       requiereTransporte,
       transporteConcepto,
       llevaDescuento,
       descuentoDetalle,
       notaEspecial,
+      observaciones,
       sumaComision,
       entregable,
       vendedorId: vendedorId || null,
-      equipos: equipos
-        .filter(l => l.categoria.trim() || l.equipo.trim())
-        .map(l => ({ categoria: l.categoria, equipo: l.equipo, cantidad: l.cantidad, notas: l.notas })),
     };
+
+    if (modoCliente === "existente") {
+      payload.clienteId = clienteId;
+      payload.clienteNombre = clienteSel?.nombre || "";
+    } else {
+      payload.clienteNuevo = clienteNuevo;
+      payload.clienteNombre = clienteNuevo.nombre;
+      if (!contactoTelefono) payload.contactoTelefono = clienteNuevo.telefono;
+    }
 
     try {
       const res = await fetch("/api/solicitudes-cotizacion", {
@@ -110,7 +125,7 @@ export default function NuevaSolicitudPage() {
       <div className="mb-6">
         <button onClick={() => router.back()} className="text-gray-600 hover:text-white text-sm mb-2 transition-colors">← Atrás</button>
         <h1 className="ms-h1">Nueva solicitud de cotización</h1>
-        <p className="text-gray-600 text-xs mt-1">Captura rápida del brief. Solo cliente es obligatorio.</p>
+        <p className="text-gray-600 text-xs mt-1">Captura rápida del brief. Solo el cliente es obligatorio.</p>
       </div>
 
       {error && (
@@ -118,13 +133,94 @@ export default function NuevaSolicitudPage() {
       )}
 
       <div className="space-y-4">
-        {/* Datos generales */}
+        {/* Cliente */}
+        <div className="ms-card p-5 space-y-4">
+          <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Cliente</h2>
+          <div className="flex gap-2">
+            {(["existente", "nuevo"] as const).map(m => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setModoCliente(m)}
+                className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  modoCliente === m ? "bg-[#B3985B] text-black" : "bg-[#1a1a1a] text-gray-400 hover:text-white border border-[#333]"
+                }`}
+              >
+                {m === "existente" ? "Cliente existente" : "+ Dar de alta cliente"}
+              </button>
+            ))}
+          </div>
+
+          {modoCliente === "existente" ? (
+            <div className="relative">
+              <label className={LABEL}>Buscar cliente *</label>
+              <input
+                type="text"
+                value={clienteQuery}
+                onChange={e => { setClienteQuery(e.target.value); setClienteDropdown(true); if (!e.target.value) setClienteId(""); }}
+                onFocusCapture={() => setClienteDropdown(true)}
+                onBlur={() => setTimeout(() => setClienteDropdown(false), 150)}
+                placeholder="Buscar por nombre o empresa…"
+                className={INPUT}
+              />
+              {clienteDropdown && (
+                <div className="absolute z-50 w-full mt-1 bg-[#161616] border border-[#2a2a2a] rounded-lg shadow-xl max-h-52 overflow-y-auto">
+                  {clientes
+                    .filter(c => {
+                      const q = clienteQuery.toLowerCase();
+                      return !q || c.nombre.toLowerCase().includes(q) || (c.empresa ?? "").toLowerCase().includes(q);
+                    })
+                    .slice(0, 40)
+                    .map(c => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onMouseDown={() => seleccionarCliente(c)}
+                        className="w-full text-left px-3 py-2 text-sm text-white hover:bg-[#222] transition-colors"
+                      >
+                        <span className="font-medium">{c.nombre}</span>
+                        {c.empresa && <span className="text-[#666] ml-1.5">· {c.empresa}</span>}
+                      </button>
+                    ))}
+                </div>
+              )}
+              {clienteSel && (
+                <p className="text-xs text-gray-500 mt-1.5">
+                  Seleccionado: <span className="text-[#B3985B] font-medium">{clienteSel.nombre}</span>
+                  {clienteSel.telefono && <span className="ml-2 text-gray-600">· {clienteSel.telefono}</span>}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className={LABEL}>Nombre *</label>
+                <input value={clienteNuevo.nombre} onChange={e => setClienteNuevo(p => ({ ...p, nombre: e.target.value }))} placeholder="Nombre completo" className={INPUT} />
+              </div>
+              <div>
+                <label className={LABEL}>Empresa</label>
+                <input value={clienteNuevo.empresa} onChange={e => setClienteNuevo(p => ({ ...p, empresa: e.target.value }))} placeholder="Empresa" className={INPUT} />
+              </div>
+              <div>
+                <label className={LABEL}>Teléfono</label>
+                <input value={clienteNuevo.telefono} onChange={e => setClienteNuevo(p => ({ ...p, telefono: e.target.value }))} placeholder="442 000 0000" className={INPUT} />
+              </div>
+              <div>
+                <label className={LABEL}>Correo</label>
+                <input type="email" value={clienteNuevo.correo} onChange={e => setClienteNuevo(p => ({ ...p, correo: e.target.value }))} placeholder="correo@ejemplo.com" className={INPUT} />
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className={LABEL}>Contacto (teléfono)</label>
+            <input value={contactoTelefono} onChange={e => setContactoTelefono(e.target.value)} placeholder="Número de contacto" className={INPUT} />
+          </div>
+        </div>
+
+        {/* Datos del evento */}
         <div className="ms-card p-5 space-y-4">
           <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Datos del evento</h2>
-          <div>
-            <label className={LABEL}>Cliente *</label>
-            <input value={clienteNombre} onChange={e => setClienteNombre(e.target.value)} placeholder="Nombre del cliente" className={INPUT} autoFocus />
-          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className={LABEL}>Fecha del evento</label>
@@ -161,38 +257,17 @@ export default function NuevaSolicitudPage() {
           </div>
         </div>
 
-        {/* Equipos a cotizar */}
+        {/* Equipos a cotizar (texto libre) */}
         <div className="ms-card p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Equipos a cotizar</h2>
-            <button onClick={addLinea} type="button" className="text-xs bg-[#B3985B]/20 text-[#B3985B] px-3 py-1 rounded-lg hover:bg-[#B3985B]/30 transition-colors">+ Agregar fila</button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-gray-500 text-xs">
-                  <th className="text-left font-medium pb-2 pr-2">Categoría</th>
-                  <th className="text-left font-medium pb-2 pr-2">Equipo</th>
-                  <th className="text-left font-medium pb-2 pr-2 w-20">Cant.</th>
-                  <th className="text-left font-medium pb-2 pr-2">Notas</th>
-                  <th className="pb-2 w-8"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {equipos.map(l => (
-                  <tr key={l.key}>
-                    <td className="pr-2 py-1"><input value={l.categoria} onChange={e => updateLinea(l.key, "categoria", e.target.value)} placeholder="Audio…" className={INPUT} /></td>
-                    <td className="pr-2 py-1"><input value={l.equipo} onChange={e => updateLinea(l.key, "equipo", e.target.value)} placeholder="Bocina…" className={INPUT} /></td>
-                    <td className="pr-2 py-1"><input type="number" min={1} value={l.cantidad} onChange={e => updateLinea(l.key, "cantidad", parseInt(e.target.value) || 1)} className={INPUT} /></td>
-                    <td className="pr-2 py-1"><input value={l.notas} onChange={e => updateLinea(l.key, "notas", e.target.value)} placeholder="Detalle…" className={INPUT} /></td>
-                    <td className="py-1 text-center">
-                      <button type="button" onClick={() => removeLinea(l.key)} className="text-red-400 hover:text-red-300 text-lg leading-none">×</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider mb-1">Equipos a cotizar</h2>
+          <p className="text-[11px] text-gray-600 mb-3">Escribe libremente los equipos que irían en la cotización.</p>
+          <textarea
+            value={equiposDescripcion}
+            onChange={e => setEquiposDescripcion(e.target.value)}
+            rows={8}
+            placeholder={"Ej.\n2 bocinas activas\n1 consola digital 32 canales\n4 monitores\nMicrofonía inalámbrica…"}
+            className={INPUT}
+          />
         </div>
 
         {/* Condiciones */}
@@ -222,7 +297,12 @@ export default function NuevaSolicitudPage() {
 
           <div>
             <label className={LABEL}>Nota especial</label>
-            <textarea value={notaEspecial} onChange={e => setNotaEspecial(e.target.value)} rows={3} placeholder="Cualquier detalle relevante…" className={INPUT} />
+            <textarea value={notaEspecial} onChange={e => setNotaEspecial(e.target.value)} rows={2} placeholder="Cualquier detalle relevante…" className={INPUT} />
+          </div>
+
+          <div>
+            <label className={LABEL}>Observaciones / comentarios</label>
+            <textarea value={observaciones} onChange={e => setObservaciones(e.target.value)} rows={2} placeholder="Notas u observaciones…" className={INPUT} />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

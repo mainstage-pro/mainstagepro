@@ -12,17 +12,19 @@ import {
   ETAPA_LABELS,
 } from "@/lib/constants";
 
-interface Equipo { id: string; categoria: string | null; equipo: string | null; cantidad: number; notas: string | null; }
 interface Solicitud {
-  id: string; folio: number; clienteNombre: string; fechaEvento: string | null; lugarEvento: string | null;
+  id: string; folio: number; clienteNombre: string; contactoTelefono: string | null; clienteId: string | null;
+  fechaEvento: string | null; lugarEvento: string | null;
   etapa: string | null; tipoEvento: string | null; tipoServicio: string | null; asistentes: number | null;
+  equiposDescripcion: string | null;
   requiereTransporte: boolean; transporteConcepto: string | null;
   llevaDescuento: boolean; descuentoDetalle: string | null;
-  notaEspecial: string | null; sumaComision: boolean; entregable: string; estado: string;
+  notaEspecial: string | null; observaciones: string | null;
+  sumaComision: boolean; entregable: string; estado: string;
   vendedorId: string | null; tratoId: string | null; createdAt: string;
-  equipos: Equipo[];
   vendedor: { id: string; name: string } | null;
   creadoPor: { id: string; name: string } | null;
+  cliente: { id: string; nombre: string; telefono: string | null } | null;
   trato: { id: string; nombreEvento: string | null } | null;
 }
 
@@ -52,11 +54,13 @@ export default function DetalleSolicitudPage() {
   const [loading, setLoading] = useState(true);
   const [convirtiendo, setConvirtiendo] = useState(false);
   const [msg, setMsg] = useState("");
+  const [obs, setObs] = useState("");
+  const [guardandoObs, setGuardandoObs] = useState(false);
 
   const cargar = useCallback(() => {
     fetch(`/api/solicitudes-cotizacion/${id}`)
       .then(r => r.json())
-      .then(d => setSol(d.solicitud || null))
+      .then(d => { setSol(d.solicitud || null); setObs(d.solicitud?.observaciones || ""); })
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -72,6 +76,12 @@ export default function DetalleSolicitudPage() {
       body: JSON.stringify(data),
     });
     if (res.ok) { const d = await res.json(); setSol(prev => prev ? { ...prev, ...d.solicitud } : prev); }
+  }
+
+  async function guardarObs() {
+    setGuardandoObs(true);
+    await patch({ observaciones: obs });
+    setGuardandoObs(false);
   }
 
   async function convertir() {
@@ -136,6 +146,20 @@ export default function DetalleSolicitudPage() {
           </div>
         </div>
 
+        {/* Cliente y contacto */}
+        <div className="ms-card p-5">
+          <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider mb-4">Cliente y contacto</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <Dato label="Cliente">
+              {sol.cliente ? (
+                <Link href={`/crm/clientes/${sol.cliente.id}`} className="text-[#B3985B] hover:underline">{sol.cliente.nombre}</Link>
+              ) : sol.clienteNombre}
+            </Dato>
+            <Dato label="Teléfono de contacto">{sol.contactoTelefono}</Dato>
+            <Dato label="Registrado">{sol.clienteId ? "Sí" : "No"}</Dato>
+          </div>
+        </div>
+
         {/* Datos del evento */}
         <div className="ms-card p-5">
           <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider mb-4">Datos del evento</h2>
@@ -152,29 +176,10 @@ export default function DetalleSolicitudPage() {
         {/* Equipos */}
         <div className="ms-card p-5">
           <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider mb-4">Equipos a cotizar</h2>
-          {sol.equipos.length === 0 ? (
-            <p className="text-gray-600 text-sm">No se especificaron equipos.</p>
+          {sol.equiposDescripcion ? (
+            <p className="text-sm text-gray-200 whitespace-pre-wrap">{sol.equiposDescripcion}</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-gray-500 text-xs border-b border-[#333]">
-                  <th className="text-left font-medium py-2">Categoría</th>
-                  <th className="text-left font-medium py-2">Equipo</th>
-                  <th className="text-left font-medium py-2 w-16">Cant.</th>
-                  <th className="text-left font-medium py-2">Notas</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sol.equipos.map(e => (
-                  <tr key={e.id} className="border-b border-[#1a1a1a]">
-                    <td className="py-2 text-gray-300">{e.categoria || "—"}</td>
-                    <td className="py-2 text-gray-200">{e.equipo || "—"}</td>
-                    <td className="py-2 text-gray-300">{e.cantidad}</td>
-                    <td className="py-2 text-gray-400">{e.notas || "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <p className="text-gray-600 text-sm">No se especificaron equipos.</p>
           )}
         </div>
 
@@ -193,6 +198,27 @@ export default function DetalleSolicitudPage() {
               <p className="text-sm text-gray-200 whitespace-pre-wrap">{sol.notaEspecial}</p>
             </div>
           )}
+        </div>
+
+        {/* Observaciones del vendedor */}
+        <div className="ms-card p-5">
+          <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider mb-4">Notas y observaciones</h2>
+          <textarea
+            value={obs}
+            onChange={e => setObs(e.target.value)}
+            rows={5}
+            placeholder="Comentarios, observaciones o notas internas sobre esta solicitud…"
+            className={`${INPUT} w-full resize-y`}
+          />
+          <div className="flex justify-end mt-3">
+            <button
+              onClick={guardarObs}
+              disabled={guardandoObs || obs === (sol.observaciones || "")}
+              className="px-4 py-2 bg-[#1a1a1a] border border-[#333] text-gray-200 text-sm rounded-lg hover:border-[#B3985B] disabled:opacity-40 transition-colors"
+            >
+              {guardandoObs ? "Guardando…" : "Guardar notas"}
+            </button>
+          </div>
         </div>
 
         {!yaConvertida && (

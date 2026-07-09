@@ -164,6 +164,7 @@ model Cliente {
   movimientos     MovimientoFinanciero[]
   preciosEquipos  PrecioClienteEquipo[]
   prospecciones   Prospeccion[]
+  solicitudesCotizacion SolicitudCotizacion[]
 
   @@map("clientes")
 }
@@ -3598,12 +3599,19 @@ model SolicitudCotizacion {
   id             String   @id @default(cuid())
   folio          Int      @default(autoincrement())
   clienteNombre  String
+  contactoTelefono String?
+
+  clienteId      String?
+  cliente        Cliente? @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+
   fechaEvento    DateTime?
   lugarEvento    String?
   etapa          String?  // LEAD | DESCUBRIMIENTO | OPORTUNIDAD | VENTA_CERRADA | VENTA_PERDIDA
   tipoEvento     String?  // MUSICAL | SOCIAL | EMPRESARIAL | OTRO
   tipoServicio   String?  // RENTA | PRODUCCION_TECNICA | DIRECCION_TECNICA
   asistentes     Int?
+
+  equiposDescripcion String?  // texto libre con los equipos a cotizar
 
   requiereTransporte Boolean @default(false)
   transporteConcepto String?
@@ -3612,6 +3620,7 @@ model SolicitudCotizacion {
   descuentoDetalle   String?
 
   notaEspecial   String?
+  observaciones  String?  // notas/comentarios del vendedor al revisar
   sumaComision   Boolean  @default(false)
   entregable     String   @default("SOLO_PDF") // PRESENTACION_DESCUENTO | SOLO_PDF
 
@@ -3630,20 +3639,5 @@ model SolicitudCotizacion {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  equipos        SolicitudCotizacionEquipo[]
-
   @@map("solicitudes_cotizacion")
-}
-
-model SolicitudCotizacionEquipo {
-  id           String  @id @default(cuid())
-  solicitudId  String
-  solicitud    SolicitudCotizacion @relation(fields: [solicitudId], references: [id], onDelete: Cascade)
-  categoria    String?
-  equipo       String?
-  cantidad     Int     @default(1)
-  notas        String?
-  orden        Int     @default(0)
-
-  @@map("solicitudes_cotizacion_equipos")
 }

@@ -3,13 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureSolicitudTables } from "@/lib/solicitudes-cotizacion";
 
-interface EquipoInput {
-  categoria?: string | null;
-  equipo?: string | null;
-  cantidad?: number | string;
-  notas?: string | null;
-}
-
 export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -27,11 +20,10 @@ export async function GET(request: NextRequest) {
   const solicitudes = await prisma.solicitudCotizacion.findMany({
     where,
     select: {
-      id: true, folio: true, clienteNombre: true, fechaEvento: true, lugarEvento: true,
-      tipoEvento: true, tipoServicio: true, estado: true, entregable: true,
-      createdAt: true, tratoId: true,
+      id: true, folio: true, clienteNombre: true, contactoTelefono: true,
+      fechaEvento: true, lugarEvento: true, tipoEvento: true, tipoServicio: true,
+      estado: true, entregable: true, createdAt: true, tratoId: true, clienteId: true,
       vendedor: { select: { id: true, name: true } },
-      _count: { select: { equipos: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -48,45 +40,69 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    if (!body.clienteNombre || !String(body.clienteNombre).trim()) {
+    // Resolver cliente: existente (clienteId) o nuevo (clienteNuevo → se da de alta)
+    let clienteId: string | null = body.clienteId || null;
+    let clienteNombre: string = (body.clienteNombre || "").trim();
+    let contactoTelefono: string | null = body.contactoTelefono || null;
+
+    if (body.clienteNuevo && body.clienteNuevo.nombre?.trim()) {
+      const c = body.clienteNuevo;
+      const nuevo = await prisma.cliente.create({
+        data: {
+          nombre: c.nombre.trim(),
+          empresa: c.empresa || null,
+          telefono: c.telefono || null,
+          correo: c.correo || null,
+          tipoCliente: "POR_DESCUBRIR",
+          clasificacion: "NUEVO",
+          vendedorId: body.vendedorId || session.id,
+        },
+        select: { id: true, nombre: true, telefono: true },
+      });
+      clienteId = nuevo.id;
+      clienteNombre = nuevo.nombre;
+      if (!contactoTelefono) contactoTelefono = nuevo.telefono;
+    } else if (clienteId) {
+      const existente = await prisma.cliente.findUnique({
+        where: { id: clienteId },
+        select: { nombre: true, telefono: true },
+      });
+      if (existente) {
+        if (!clienteNombre) clienteNombre = existente.nombre;
+        if (!contactoTelefono) contactoTelefono = existente.telefono;
+      }
+    }
+
+    if (!clienteNombre) {
       return NextResponse.json({ error: "El nombre del cliente es requerido" }, { status: 400 });
     }
 
-    const equipos: EquipoInput[] = Array.isArray(body.equipos) ? body.equipos : [];
     const vendedorId = body.vendedorId || null;
 
     const solicitud = await prisma.solicitudCotizacion.create({
       data: {
-        clienteNombre: String(body.clienteNombre).trim(),
+        clienteNombre,
+        contactoTelefono,
+        clienteId,
         fechaEvento: body.fechaEvento ? new Date(body.fechaEvento) : null,
         lugarEvento: body.lugarEvento || null,
         etapa: body.etapa || null,
         tipoEvento: body.tipoEvento || null,
         tipoServicio: body.tipoServicio || null,
         asistentes: body.asistentes ? parseInt(body.asistentes) : null,
+        equiposDescripcion: body.equiposDescripcion || null,
         requiereTransporte: Boolean(body.requiereTransporte),
         transporteConcepto: body.requiereTransporte ? (body.transporteConcepto || null) : null,
         llevaDescuento: Boolean(body.llevaDescuento),
         descuentoDetalle: body.llevaDescuento ? (body.descuentoDetalle || null) : null,
         notaEspecial: body.notaEspecial || null,
+        observaciones: body.observaciones || null,
         sumaComision: Boolean(body.sumaComision),
         entregable: body.entregable || "SOLO_PDF",
         estado: vendedorId ? "ASIGNADA" : "NUEVA",
         vendedorId,
         creadoPorId: session.id,
-        equipos: {
-          create: equipos
-            .filter((e) => (e.categoria || e.equipo))
-            .map((e, i) => ({
-              categoria: e.categoria || null,
-              equipo: e.equipo || null,
-              cantidad: e.cantidad ? parseInt(String(e.cantidad)) : 1,
-              notas: e.notas || null,
-              orden: i,
-            })),
-        },
       },
-      include: { equipos: { orderBy: { orden: "asc" } } },
     });
 
     return NextResponse.json({ solicitud }, { status: 201 });

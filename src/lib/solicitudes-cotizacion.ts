@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 
-// Crea las tablas de forma idempotente (Neon no corre migraciones formales).
+// Crea/actualiza las tablas de forma idempotente (Neon no corre migraciones formales).
 let _tablesReady = false;
 export async function ensureSolicitudTables() {
   if (_tablesReady) return;
@@ -9,17 +9,21 @@ export async function ensureSolicitudTables() {
       id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
       folio SERIAL,
       "clienteNombre" TEXT NOT NULL,
+      "contactoTelefono" TEXT,
+      "clienteId" TEXT REFERENCES clientes(id) ON DELETE SET NULL,
       "fechaEvento" TIMESTAMP,
       "lugarEvento" TEXT,
       etapa TEXT,
       "tipoEvento" TEXT,
       "tipoServicio" TEXT,
       asistentes INTEGER,
+      "equiposDescripcion" TEXT,
       "requiereTransporte" BOOLEAN NOT NULL DEFAULT false,
       "transporteConcepto" TEXT,
       "llevaDescuento" BOOLEAN NOT NULL DEFAULT false,
       "descuentoDetalle" TEXT,
       "notaEspecial" TEXT,
+      observaciones TEXT,
       "sumaComision" BOOLEAN NOT NULL DEFAULT false,
       entregable TEXT NOT NULL DEFAULT 'SOLO_PDF',
       estado TEXT NOT NULL DEFAULT 'NUEVA',
@@ -31,16 +35,15 @@ export async function ensureSolicitudTables() {
       "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `);
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS solicitudes_cotizacion_equipos (
-      id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-      "solicitudId" TEXT NOT NULL REFERENCES solicitudes_cotizacion(id) ON DELETE CASCADE,
-      categoria TEXT,
-      equipo TEXT,
-      cantidad INTEGER NOT NULL DEFAULT 1,
-      notas TEXT,
-      orden INTEGER NOT NULL DEFAULT 0
-    );
-  `);
+  // Columnas agregadas después de la creación inicial (para tablas ya existentes en prod)
+  const cols = [
+    `"contactoTelefono" TEXT`,
+    `"clienteId" TEXT`,
+    `"equiposDescripcion" TEXT`,
+    `observaciones TEXT`,
+  ];
+  for (const c of cols) {
+    await prisma.$executeRawUnsafe(`ALTER TABLE solicitudes_cotizacion ADD COLUMN IF NOT EXISTS ${c};`);
+  }
   _tablesReady = true;
 }

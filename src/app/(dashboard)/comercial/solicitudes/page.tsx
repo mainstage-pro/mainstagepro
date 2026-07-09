@@ -20,8 +20,8 @@ interface Solicitud {
   entregable: string;
   createdAt: string;
   tratoId: string | null;
+  contactoTelefono: string | null;
   vendedor: { id: string; name: string } | null;
-  _count: { equipos: number };
 }
 
 const ESTADOS = ["NUEVA", "ASIGNADA", "COTIZADA", "CONVERTIDA"];
@@ -128,8 +128,8 @@ export default function SolicitudesPage() {
                     <Link href={`/comercial/solicitudes/${s.id}`} className="text-white hover:text-[#B3985B] font-medium">
                       {s.clienteNombre}
                     </Link>
-                    {s._count.equipos > 0 && (
-                      <span className="text-gray-600 text-xs ml-2">· {s._count.equipos} equipo{s._count.equipos !== 1 ? "s" : ""}</span>
+                    {s.contactoTelefono && (
+                      <span className="text-gray-600 text-xs ml-2">· {s.contactoTelefono}</span>
                     )}
                   </td>
                   <td className="py-3 px-4 text-gray-300">{fmtFecha(s.fechaEvento)}</td>
