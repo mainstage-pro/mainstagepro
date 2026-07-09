@@ -52,7 +52,7 @@ export async function EventosWidget() {
     // Tratos con cotización aprobada sin proyecto aún (cualquier etapa)
     prisma.trato.findMany({
       where: {
-        proyecto: null,
+        proyectos: { none: {} },
         cotizaciones: {
           some: {
             estado: "APROBADA",

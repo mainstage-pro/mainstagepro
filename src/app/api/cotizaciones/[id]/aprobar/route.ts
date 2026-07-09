@@ -1,57 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-
-function proximoLunesTraEvento(fecha: Date): Date {
-  const d = new Date(fecha);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 1);
-  const dow = d.getDay();
-  d.setDate(d.getDate() + (8 - dow) % 7);
-  return d;
-}
-
-function proximoMiercolesTraEvento(fecha: Date): Date {
-  const d = new Date(fecha);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 1);
-  const dow = d.getDay();
-  d.setDate(d.getDate() + (dow <= 3 ? 3 - dow : 10 - dow));
-  return d;
-}
-
-// Checklist operativo base para producción técnica / dirección técnica
-const CHECKLIST_BASE = [
-  "Confirmar personal asignado",
-  "Confirmar equipos propios",
-  "Confirmar equipos externos / proveedores",
-  "Confirmar transporte",
-  "Confirmar alimentación / catering",
-  "Confirmar hospedaje (si aplica)",
-  "Confirmar horarios del evento y montaje",
-  "Confirmar documentos técnicos (rider, input list, plot)",
-  "Confirmar contactos clave del cliente y del lugar",
-  "Solicitar a administración presupuesto operativo (gasolinas, emergencia y gastos necesarios)",
-  "Solicitar y coordinar catering de producción de acuerdo al número de personal",
-  "Cierre financiero preliminar confirmado",
-];
-
-// Checklist operativo base para renta de equipo
-const CHECKLIST_RENTA = [
-  "Confirmar lista de equipos a entregar",
-  "Verificar inventario y estado del equipo antes de salida",
-  "Preparar y revisar hoja de entrega (firmas y cantidades)",
-  "Confirmar dirección y horario de entrega",
-  "Confirmar fecha y horario de devolución/recolección",
-  "Confirmar si el cliente tiene técnico propio (y su contacto)",
-  "Confirmar anticipo y condiciones de pago",
-  "Confirmar contacto del cliente para el día de entrega",
-  "Empacar y etiquetar equipo por bulto",
-  "Registrar fotos del equipo al momento de entrega",
-  "Obtener firma de responsiva al entregar",
-  "Verificar regreso del equipo en buen estado",
-  "Cierre financiero confirmado",
-];
+import { crearProyectoDesdeCotizacion, ensureTratoIndiceSoltado } from "@/lib/crear-proyecto";
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -59,15 +9,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
 
-  // Cargar cotización completa
+  // Cargar cotización (solo para validaciones e idempotencia)
   const cot = await prisma.cotizacion.findUnique({
     where: { id },
-    include: {
-      trato: true,
-      cliente: true,
-      lineas: true,
-      proyecto: { select: { id: true } },
-    },
+    select: { id: true, tratoId: true, proyecto: { select: { id: true, numeroProyecto: true } }, trato: { select: { id: true, etapa: true } } },
   });
 
   if (!cot) return NextResponse.json({ error: "Cotización no encontrada" }, { status: 404 });
@@ -76,228 +21,30 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     if (cot.trato && cot.trato.etapa !== "VENTA_CERRADA") {
       await prisma.trato.update({ where: { id: cot.trato.id }, data: { etapa: "VENTA_CERRADA", etapaCambiadaEn: new Date() } });
     }
-    return NextResponse.json({ proyectoId: cot.proyecto.id, yaExistia: true });
+    return NextResponse.json({ proyectoId: cot.proyecto.id, numeroProyecto: cot.proyecto.numeroProyecto, yaExistia: true });
   }
 
-  // Generar número de proyecto: PRY-YYYY-NNN
-  const year = new Date().getFullYear();
-  const lastProyecto = await prisma.proyecto.findFirst({
-    where: { numeroProyecto: { startsWith: `PRY-${year}-` } },
-    orderBy: { numeroProyecto: "desc" },
-    select: { numeroProyecto: true },
-  });
-  const nextNum = lastProyecto
-    ? parseInt(lastProyecto.numeroProyecto.split("-")[2]) + 1
-    : 1;
-  const numeroProyecto = `PRY-${year}-${String(nextNum).padStart(3, "0")}`;
-
-  // Fechas para CxC
-  const hoy = new Date();
-  const fechaEvento = cot.fechaEvento ?? new Date(hoy.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-  // fecha de compromiso: lunes siguiente al evento
-  function fechaCxC(): Date {
-    return proximoLunesTraEvento(fechaEvento);
-  }
-
-  // Equipos propios y externos de la cotización para copiar al proyecto
-  const lineasEquipo = cot.lineas.filter(
-    (l) => ["EQUIPO_PROPIO", "EQUIPO_EXTERNO"].includes(l.tipo) && l.equipoId
-  );
-
-  // Líneas de personal (OPERACION_TECNICA) para expandir por cantidad
-  const lineasPersonal = cot.lineas.filter(
-    (l) => l.tipo === "OPERACION_TECNICA" && l.rolTecnicoId
-  );
-
-  // Plan de jornadas operativas (si existe, reemplaza lineasPersonal para crear slots)
-  type JornadaSlotPlan = { rolId: string; rolNombre: string; cantidad: number; nivel: string; jornada: string; tarifa: number };
-  type JornadaPlan = { id: string; fecha: string; tipo: string; slots: JornadaSlotPlan[] };
-  let jornadasPlan: JornadaPlan[] = [];
-  try { jornadasPlan = cot.jornadasPlan ? JSON.parse(cot.jornadasPlan) : []; } catch { jornadasPlan = []; }
+  await ensureTratoIndiceSoltado();
 
   // Ejecutar todo en una transacción
   let proyecto;
   try {
-  proyecto = await prisma.$transaction(async (tx) => {
-    // 1. Crear el proyecto
-    const proy = await tx.proyecto.create({
-      data: {
-        numeroProyecto,
-        tratoId: cot.tratoId ?? undefined,
-        cotizacionId: cot.id,
-        clienteId: cot.clienteId,
-        encargadoId: cot.creadaPorId,
-        nombre: cot.nombreEvento || `Proyecto ${cot.numeroCotizacion}`,
-        estado: "PLANEACION",
-        zona: cot.zonaEvento ?? "LOCAL",
-        tipoEvento: cot.tipoEvento || cot.trato?.tipoEvento || "OTRO",
-        tipoServicio: cot.tipoServicio || cot.trato?.tipoServicio,
-        recoleccionStatus: (cot.tipoServicio || cot.trato?.tipoServicio) === "RENTA" ? "PENDIENTE" : "NO_APLICA",
-        fechaEvento,
-        lugarEvento: cot.lugarEvento,
-        descripcionGeneral: cot.observaciones,
-        horaInicioEvento: cot.trato?.horaInicioEvento ?? null,
-        horaFinEvento: cot.trato?.horaFinEvento ?? null,
-        horaInicioMontaje: cot.trato?.ventanaMontajeInicio ?? null,
-        duracionMontajeHrs: cot.trato?.duracionMontajeHrs ?? null,
-        encargadoLugar: cot.trato?.contactoVenueNombre ?? null,
-        encargadoLugarContacto: cot.trato?.contactoVenueTelefono ?? null,
-        detallesEspecificos: (() => {
-          const partes: string[] = [];
-          if (cot.trato?.notas) partes.push(cot.trato.notas);
-          const tipoSrv = cot.tipoServicio || cot.trato?.tipoServicio;
-          if (tipoSrv !== "RENTA") {
-            // Categorías de equipo seleccionadas
-            try {
-              const cats = cot.trato?.serviciosInteres ? JSON.parse(cot.trato.serviciosInteres) : [];
-              if (cats.length > 0) partes.push(`Categorías: ${cats.join(", ")}`);
-            } catch { /* ignore */ }
-            // Referencias / ideas
-            if (cot.trato?.ideasReferencias) partes.push(`Referencias: ${cot.trato.ideasReferencias}`);
-            // Ventana de desmontaje
-            if (cot.trato?.ventanaMontajeFin) partes.push(`Límite montaje: ${cot.trato.ventanaMontajeFin}`);
-            if (cot.trato?.horaTerminoMontaje) partes.push(`Salida desmontaje: ${cot.trato.horaTerminoMontaje}`);
-            // Venue scouting
-            try {
-              const s = cot.trato?.scoutingData ? JSON.parse(cot.trato.scoutingData) : {};
-              const venue: string[] = [];
-              if (s.nombreVenue) venue.push(`Venue: ${s.nombreVenue}`);
-              if (s.direccion) venue.push(`Dir: ${s.direccion}`);
-              if (s.largo && s.ancho) venue.push(`Dimensiones: ${s.largo}m × ${s.ancho}m${s.alturaMaxima ? ` × ${s.alturaMaxima}m alt` : ""}`);
-              if (s.voltajeDisponible || s.amperajeTotalDisponible) venue.push(`Eléctrico: ${[s.fases, s.voltajeDisponible && `${s.voltajeDisponible}V`, s.amperajeTotalDisponible && `${s.amperajeTotalDisponible}A`].filter(Boolean).join(", ")}`);
-              if (s.restriccionDecibeles) venue.push(`Límite dB: ${s.restriccionDecibeles}`);
-              if (s.restriccionHorarioAcceso) venue.push(`Horario acceso: ${s.restriccionHorarioAcceso}`);
-              if (s.restriccionInstalacion) venue.push(`Restricciones: ${s.restriccionInstalacion}`);
-              if (s.accesoVehicular) venue.push(`Acceso vehicular: ${s.accesoVehicular}`);
-              if (s.notasScouting) venue.push(`Notas venue: ${s.notasScouting}`);
-              if (venue.length > 0) partes.push(venue.join(" | "));
-            } catch { /* ignore */ }
-          }
-          return partes.length > 0 ? partes.join("\n") : null;
-        })(),
-        logisticaRenta: (() => {
-          if ((cot.tipoServicio || cot.trato?.tipoServicio) !== "RENTA") return null;
-          try {
-            const s = cot.trato?.scoutingData ? JSON.parse(cot.trato.scoutingData) : {};
-            if (!s.rentaPiso && !s.rentaHorarioEntrega && !s.rentaHorarioRecoleccion) return null;
-            return JSON.stringify({
-              piso: s.rentaPiso || null,
-              hayElevador: s.rentaHayElevador || null,
-              horarioEntrega: s.rentaHorarioEntrega || null,
-              horarioRecoleccion: s.rentaHorarioRecoleccion || null,
-              zonaCarga: s.rentaZonaCarga || null,
-              accesoVehicular: s.rentaAccesoVehicular || null,
-              notas: s.rentaNotasEntrega || null,
-            });
-          } catch { return null; }
-        })(),
-      },
+    proyecto = await prisma.$transaction(async (tx) => {
+      const proy = await crearProyectoDesdeCotizacion(tx, cot.id, { id: session.id, name: session.name });
+
+      // Actualizar cotización → APROBADA
+      await tx.cotizacion.update({ where: { id: cot.id }, data: { estado: "APROBADA" } });
+
+      // Actualizar trato → VENTA_CERRADA + confirmación operativa (solo si hay trato vinculado)
+      if (cot.tratoId) {
+        await tx.trato.update({
+          where: { id: cot.tratoId },
+          data: { etapa: "VENTA_CERRADA", etapaCambiadaEn: new Date(), confirmadaEn: new Date() },
+        });
+      }
+
+      return proy;
     });
-
-    // 2. Copiar equipos al proyecto (incluyendo proveedorId para externos)
-    if (lineasEquipo.length > 0) {
-      await tx.proyectoEquipo.createMany({
-        data: lineasEquipo.map((l) => ({
-          proyectoId: proy.id,
-          equipoId: l.equipoId!,
-          tipo: l.tipo === "EQUIPO_EXTERNO" ? "EXTERNO" : "PROPIO",
-          cantidad: Math.round(l.cantidad),
-          dias: l.dias,
-          costoExterno: l.tipo === "EQUIPO_EXTERNO" ? l.costoUnitario : null,
-          proveedorId: l.tipo === "EQUIPO_EXTERNO" ? (l.proveedorId ?? null) : null,
-        })),
-      });
-    }
-
-    // 2b. Crear CxP para cada equipo externo con costo
-    const lineasExternas = lineasEquipo.filter(
-      (l) => l.tipo === "EQUIPO_EXTERNO" && (l.costoUnitario ?? 0) > 0
-    );
-    if (lineasExternas.length > 0) {
-      const fechaCxP = proximoMiercolesTraEvento(fechaEvento);
-      await tx.cuentaPagar.createMany({
-        data: lineasExternas.map((l) => ({
-          tipoAcreedor: l.proveedorId ? "PROVEEDOR" : "OTRO",
-          proveedorId: l.proveedorId ?? null,
-          proyectoId: proy.id,
-          concepto: `${l.descripcion} (x${Math.round(l.cantidad)} × ${l.dias}d)${!l.proveedorId ? " — ⚠ Asignar proveedor" : ""}`,
-          monto: l.costoUnitario * Math.round(l.cantidad) * l.dias,
-          fechaCompromiso: fechaCxP,
-          estado: "PENDIENTE",
-          notas: !l.proveedorId ? "Proveedor no asignado en la cotización. Asignar manualmente en CxP." : null,
-        })),
-      });
-    }
-
-    // 3. Personal: se deja en blanco — el coordinador lo arma desde el proyecto
-    //    usando las sugerencias y presupuesto de la cotización como referencia.
-
-    // 4. Crear checklist base según tipo de servicio
-    const tipoServicio = cot.tipoServicio || cot.trato?.tipoServicio;
-    const checklistItems = tipoServicio === "RENTA" ? CHECKLIST_RENTA : CHECKLIST_BASE;
-    await tx.proyectoChecklist.createMany({
-      data: checklistItems.map((item, i) => ({
-        proyectoId: proy.id,
-        item,
-        orden: i,
-        completado: false,
-      })),
-    });
-
-    // 4b. Para renta: copiar logística del trato al proyecto
-    if (tipoServicio === "RENTA" && cot.trato?.ideasReferencias) {
-      try {
-        const rentaData = JSON.parse(cot.trato.ideasReferencias);
-        if (rentaData && typeof rentaData === "object" && rentaData.nivelServicio) {
-          await tx.proyecto.update({
-            where: { id: proy.id },
-            data: { logisticaRenta: cot.trato.ideasReferencias },
-          });
-        }
-      } catch { /* ideasReferencias es texto plano, no JSON */ }
-    }
-
-    // 5. Crear una única CxC por el total del evento
-    await tx.cuentaCobrar.create({
-      data: {
-        clienteId: cot.clienteId,
-        proyectoId: proy.id,
-        cotizacionId: cot.id,
-        concepto: `Total — ${proy.nombre}`,
-        tipoPago: "TOTAL",
-        monto: cot.granTotal,
-        fechaCompromiso: fechaCxC(),
-        estado: "PENDIENTE",
-      },
-    });
-
-    // 7. Entrada en bitácora
-    await tx.proyectoBitacora.create({
-      data: {
-        proyectoId: proy.id,
-        usuarioId: session.id,
-        tipo: "ACCION",
-        contenido: `Proyecto creado automáticamente desde cotización ${cot.numeroCotizacion} por ${session.name ?? "sistema"}.`,
-      },
-    });
-
-    // 8. Actualizar cotización → APROBADA
-    await tx.cotizacion.update({
-      where: { id: cot.id },
-      data: { estado: "APROBADA" },
-    });
-
-    // 9. Actualizar trato → VENTA_CERRADA (solo si hay trato vinculado)
-    if (cot.tratoId) {
-      await tx.trato.update({
-        where: { id: cot.tratoId },
-        data: { etapa: "VENTA_CERRADA" },
-      });
-    }
-
-    return proy;
-  });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[aprobar]", msg);

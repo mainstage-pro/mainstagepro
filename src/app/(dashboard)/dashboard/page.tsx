@@ -181,7 +181,7 @@ export default async function DashboardPage() {
     // Cotizaciones APROBADAS sin proyecto — esta semana
     prisma.trato.findMany({
       where: {
-        proyecto: null,
+        proyectos: { none: {} },
         cotizaciones: { some: { estado: "APROBADA", fechaEvento: { gte: inicioDeHoy, lte: en7dias, not: null } } },
       },
       select: {
@@ -318,7 +318,7 @@ export default async function DashboardPage() {
   const tratosVentaCerrada = await prisma.trato.findMany({
     where: {
       etapa: "VENTA_CERRADA",
-      proyecto: null,
+      proyectos: { none: {} },
       cotizaciones: {
         some: { estado: "APROBADA", fechaEvento: { gte: ahora, not: null } },
       },

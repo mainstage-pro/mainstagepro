@@ -25,7 +25,7 @@ export const ETAPA_LABELS: Record<string, string> = {
 export const ESTADO_COTIZACION_LABELS: Record<string, string> = {
   BORRADOR: "Borrador",
   ENVIADA: "Enviada",
-  APROBADA: "Aprobada",
+  APROBADA: "Venta Cerrada",
   RECHAZADA: "Rechazada",
   VENCIDA: "Vencida",
   // Legacy — kept for backward-compatible display of old records

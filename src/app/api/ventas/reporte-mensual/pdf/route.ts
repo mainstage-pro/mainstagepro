@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
       cliente: { select: { id: true, nombre: true, empresa: true } },
       vendedor: { select: { id: true, name: true } },
       cotizaciones: { where: { estado: "APROBADA" }, select: { granTotal: true }, orderBy: { createdAt: "desc" }, take: 1 },
-      proyecto: { select: { id: true, tipoServicio: true, zona: true } },
+      proyectos: { select: { id: true, tipoServicio: true, zona: true }, take: 1 },
     },
   });
 
@@ -65,15 +65,15 @@ export async function POST(req: NextRequest) {
   const enriquecidos = tratos.map(t => ({
     id: t.id,
     tipoEvento: t.tipoEvento ?? "OTRO",
-    tipoServicio: t.proyecto?.tipoServicio ?? t.tipoServicio ?? "OTRO",
+    tipoServicio: t.proyectos[0]?.tipoServicio ?? t.tipoServicio ?? "OTRO",
     origenLead: t.origenLead,
     clienteId: t.clienteId,
     vendedorId: t.vendedorId,
     vendedorNombre: t.vendedor?.name ?? null,
     cliente: t.cliente,
     granTotal: t.cotizaciones[0]?.granTotal ?? 0,
-    tieneProyecto: t.proyecto !== null,
-    zona: t.proyecto?.zona ?? null,
+    tieneProyecto: t.proyectos.length > 0,
+    zona: t.proyectos[0]?.zona ?? null,
   }));
 
   const totalMonto = enriquecidos.reduce((s, t) => s + t.granTotal, 0);

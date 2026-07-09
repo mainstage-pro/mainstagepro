@@ -51,7 +51,7 @@ export async function GET(_req: NextRequest) {
     prisma.trato.findMany({
       where: {
         etapa: 'VENTA_CERRADA',
-        proyecto: null,
+        proyectos: { none: {} },
         cotizaciones: {
           some: {
             estado: 'APROBADA',

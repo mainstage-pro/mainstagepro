@@ -6,6 +6,7 @@ import { TIPO_EVENTO_LABELS, TIPO_EVENTO_COLORS } from "@/lib/constants";
 import { SERVICIO_LABELS } from "@/lib/form-labels";
 import { BadgeDias } from "@/components/ui/BadgeDias";
 import { diasTrato, nivelTrato, NIVEL_BORDER } from "@/lib/contadores";
+import { CerrarVentaModal } from "@/components/crm/CerrarVentaModal";
 
 const COLUMNAS = [
   { etapa: "DESCUBRIMIENTO", label: "Descubrimiento", color: "border-blue-800", badge: "bg-blue-900/20 text-blue-400" },
@@ -29,6 +30,7 @@ export default function PipelinePage() {
   const [tratos, setTratos] = useState<Trato[]>([]);
   const [loading, setLoading] = useState(true);
   const [moving, setMoving] = useState<string | null>(null);
+  const [cerrarVentaTratoId, setCerrarVentaTratoId] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -41,6 +43,11 @@ export default function PipelinePage() {
   useEffect(() => { load(); }, []);
 
   async function moverEtapa(id: string, etapa: string) {
+    // Cerrar venta: abrir modal para seleccionar cotizaciones y generar proyectos
+    if (etapa === "VENTA_CERRADA") {
+      setCerrarVentaTratoId(id);
+      return;
+    }
     setMoving(id);
     const res = await fetch(`/api/tratos/${id}`, {
       method: "PATCH",
@@ -192,6 +199,18 @@ export default function PipelinePage() {
             );
           })}
         </div>
+      )}
+
+      {cerrarVentaTratoId && (
+        <CerrarVentaModal
+          tratoId={cerrarVentaTratoId}
+          open={!!cerrarVentaTratoId}
+          onClose={() => setCerrarVentaTratoId(null)}
+          onDone={async () => {
+            setCerrarVentaTratoId(null);
+            await load();
+          }}
+        />
       )}
     </div>
   );

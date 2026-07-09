@@ -204,12 +204,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     const tratoConRelaciones = await prisma.trato.findUnique({
       where: { id },
       select: {
-        proyecto: { select: { id: true } },
+        proyectos: { select: { id: true } },
         cotizaciones: { select: { id: true } },
       },
     });
 
-    const proyectoId = tratoConRelaciones?.proyecto?.id;
+    const proyectoIds = tratoConRelaciones?.proyectos.map(p => p.id) ?? [];
     const cotizacionIds = tratoConRelaciones?.cotizaciones.map(c => c.id) ?? [];
 
     // Cancelar CxC PENDIENTE ligadas al proyecto o cotizaciones (no tocar PARCIAL ni LIQUIDADO)
@@ -217,7 +217,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       where: {
         estado: "PENDIENTE",
         OR: [
-          ...(proyectoId ? [{ proyectoId }] : []),
+          ...(proyectoIds.length > 0 ? [{ proyectoId: { in: proyectoIds } }] : []),
           ...(cotizacionIds.length > 0 ? [{ cotizacionId: { in: cotizacionIds } }] : []),
         ],
       },
@@ -230,7 +230,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   // ── Si se confirma el evento, crear Proyecto en PLANEACION si no existe ─────
   if (body.confirmadaEn && !trato.prospeccionId) {
-    const proyectoExistente = await prisma.proyecto.findUnique({ where: { tratoId: id } });
+    const proyectoExistente = await prisma.proyecto.findFirst({ where: { tratoId: id } });
     if (!proyectoExistente && trato.fechaEventoEstimada) {
       const primeraCotizacion = await prisma.cotizacion.findFirst({
         where: { tratoId: id },
@@ -376,9 +376,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   try {
     await prisma.$transaction(async (tx) => {
-      // 1. Borrar proyecto PRIMERO (tiene FK → cotizacion)
-      const proyecto = await tx.proyecto.findUnique({ where: { tratoId: id }, select: { id: true } });
-      if (proyecto) {
+      // 1. Borrar proyectos PRIMERO (tienen FK → cotizacion)
+      const proyectos = await tx.proyecto.findMany({ where: { tratoId: id }, select: { id: true } });
+      for (const proyecto of proyectos) {
         // Romper FK CxC/CxP → MovimientoFinanciero antes de borrar movimientos
         await tx.abono.updateMany({ where: { cuentaCobrar: { proyectoId: proyecto.id } }, data: { movimientoId: null } });
         await tx.cuentaPagar.updateMany({ where: { proyectoId: proyecto.id }, data: { movimientoId: null } });

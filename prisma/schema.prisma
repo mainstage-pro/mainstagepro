@@ -279,7 +279,7 @@ model Trato {
   prospeccion            Prospeccion? @relation("TratoProspeccion", fields: [prospeccionId], references: [id])
 
   cotizaciones           Cotizacion[]
-  proyecto               Proyecto?
+  proyectos              Proyecto[]
   archivos               TratoArchivo[]
   levantamientoContenido LevantamientoContenido?
   seguimientos           Seguimiento[]
@@ -477,7 +477,7 @@ model CotizacionLinea {
 model Proyecto {
   id             String   @id @default(cuid())
   numeroProyecto String   @unique
-  tratoId        String?  @unique
+  tratoId        String?
   trato          Trato?   @relation(fields: [tratoId], references: [id])
   cotizacionId   String   @unique
   cotizacion     Cotizacion @relation(fields: [cotizacionId], references: [id])

@@ -10,6 +10,7 @@ import { Combobox } from "@/components/Combobox";
 import { CopyButton } from "@/components/CopyButton";
 import VersionHistorial from "@/components/VersionHistorial";
 import { BackButton } from "@/components/BackButton";
+import { CerrarVentaModal } from "@/components/crm/CerrarVentaModal";
 
 interface Linea {
   id: string;
@@ -118,7 +119,7 @@ const ESTADOS_FLUJO = ["BORRADOR", "ENVIADA", "APROBADA", "RECHAZADA"];
 const ESTADO_LABELS: Record<string, string> = {
   BORRADOR: "Borrador",
   ENVIADA: "Enviada",
-  APROBADA: "Aprobada",
+  APROBADA: "Venta Cerrada",
   RECHAZADA: "Rechazada",
   VENCIDA: "Vencida",
   EN_REVISION: "En revisión",
@@ -168,7 +169,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [aprobando, setAprobando] = useState(false);
+  const [cerrarVentaOpen, setCerrarVentaOpen] = useState(false);
   const [sharingPdf, setSharingPdf] = useState(false);
   const [sharingListado, setSharingListado] = useState(false);
   const [generandoLink, setGenerandoLink] = useState(false);
@@ -454,19 +455,10 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     router.push("/cotizaciones");
   }
 
-  async function aprobar() {
-    const ok = await confirm({ message: "¿Aprobar esta cotización y crear el proyecto? El trato pasará a Venta Cerrada.", confirmText: "Aprobar y crear proyecto", danger: false });
-    if (!ok) return;
-    setAprobando(true);
-    const res = await fetch(`/api/cotizaciones/${id}/aprobar`, { method: "POST" });
-    const data = await res.json();
-    if (data.proyectoId) {
-      toast.success("Proyecto de evento creado exitosamente");
-      router.push(`/proyectos/${data.proyectoId}`);
-    } else {
-      toast.error(data.error ?? "Error al crear proyecto");
-      setAprobando(false);
-    }
+  function aprobar() {
+    // Abre el modal de cierre de venta, preseleccionando esta cotización.
+    // Si el trato tiene varias cotizaciones, el modal permite elegir cuáles aprobar.
+    setCerrarVentaOpen(true);
   }
 
   async function generarLinkAprobacion() {
@@ -1031,14 +1023,14 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               ✉ Marcar como enviada
             </button>
           )}
-          {/* Aprobar manualmente — cuando está ENVIADA el cliente da OK por teléfono/WA */}
+          {/* Aprobar — cuando está ENVIADA el cliente da OK: aprueba y genera el proyecto */}
           {cot.estado === "ENVIADA" && (
             <button
-              onClick={() => cambiarEstado("APROBADA")}
+              onClick={aprobar}
               disabled={saving}
               className="flex items-center gap-1.5 bg-green-800/40 hover:bg-green-700/60 border border-green-700/50 hover:border-green-600 text-green-300 text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors"
             >
-              {saving ? "Guardando..." : "✓ Aprobar manualmente"}
+              {saving ? "Guardando..." : "✓ Aprobar y cerrar venta"}
             </button>
           )}
           {/* Rechazar manualmente — cuando está ENVIADA */}
@@ -1053,9 +1045,9 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           )}
           {/* Crear proyecto — solo cuando está APROBADA */}
           {cot.estado === "APROBADA" && !cot.proyecto && (
-            <button onClick={aprobar} disabled={aprobando}
+            <button onClick={aprobar}
               className="flex items-center gap-1.5 bg-green-700 hover:bg-green-600 disabled:opacity-50 text-white text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
-              {aprobando ? "Creando..." : "✓ Crear proyecto"}
+              ✓ Crear proyecto
             </button>
           )}
         </div>
@@ -2246,6 +2238,23 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           </div>
         </div>
       </div>
+    )}
+
+    {cot && (
+      <CerrarVentaModal
+        tratoId={cot.trato.id}
+        open={cerrarVentaOpen}
+        onClose={() => setCerrarVentaOpen(false)}
+        preseleccion={[cot.id]}
+        onDone={({ proyectos }) => {
+          setCerrarVentaOpen(false);
+          if (proyectos[0]) {
+            router.push(`/proyectos/${proyectos[0].id}`);
+          } else {
+            router.refresh();
+          }
+        }}
+      />
     )}
     </>
   );

@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
   // ── 2. Tratos con cotización APROBADA sin proyecto creado aún ──────────────
   const tratosConCot = await prisma.trato.findMany({
     where: {
-      proyecto: null,
+      proyectos: { none: {} },
       cotizaciones: {
         some: {
           estado: "APROBADA",
@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
   // ── 3. Tratos seguros (VENTA_CERRADA o con confirmadaEn) sin cotización APROBADA ──
   const tratosConfirmados = await prisma.trato.findMany({
     where: {
-      proyecto: null,
+      proyectos: { none: {} },
       OR: [
         { confirmadaEn: { not: null } },
         { etapa: 'VENTA_CERRADA' },
@@ -147,7 +147,7 @@ export async function GET(req: NextRequest) {
   // Se muestran como eventos tentativos para que el equipo vea la carga potencial
   const tratosActivos = await prisma.trato.findMany({
     where: {
-      proyecto: null,
+      proyectos: { none: {} },
       etapa: { in: ['LEAD', 'DESCUBRIMIENTO', 'OPORTUNIDAD'] },
       fechaEventoEstimada: { gte: inicio, lte: fin, not: null },
       id: { notIn: [...idsCubiertos] },

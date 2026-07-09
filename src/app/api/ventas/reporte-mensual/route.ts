@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: "desc" },
         take: 1,
       },
-      proyecto: {
+      proyectos: {
         select: {
           id: true,
           tipoServicio: true,
@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
           clienteId: true,
           createdAt: true,
         },
+        take: 1,
       },
     },
   });
@@ -104,7 +105,7 @@ export async function GET(req: NextRequest) {
   const tratosEnriquecidos: TratoEnriquecido[] = tratos.map(t => ({
     id: t.id,
     tipoEvento: t.tipoEvento ?? "OTRO",
-    tipoServicio: t.proyecto?.tipoServicio ?? t.tipoServicio ?? "OTRO",
+    tipoServicio: t.proyectos[0]?.tipoServicio ?? t.tipoServicio ?? "OTRO",
     origenLead: t.origenLead,
     origenVenta: t.origenVenta ?? "CLIENTE_PROPIO",
     clienteId: t.clienteId,
@@ -112,8 +113,8 @@ export async function GET(req: NextRequest) {
     vendedorNombre: t.vendedor?.name ?? null,
     cliente: t.cliente,
     granTotal: t.cotizaciones[0]?.granTotal ?? 0,
-    tieneProyecto: t.proyecto !== null,
-    zona: t.proyecto?.zona ?? null,
+    tieneProyecto: t.proyectos.length > 0,
+    zona: t.proyectos[0]?.zona ?? null,
   }));
 
   // ── Totales principales ─────────────────────────────────────────────────────
@@ -323,7 +324,7 @@ export async function GET(req: NextRequest) {
     porZona,
     porMesHistorico,
     _debug: {
-      totalTratosNullServicio: tratos.filter(t => !t.proyecto?.tipoServicio && !t.tipoServicio).length,
+      totalTratosNullServicio: tratos.filter(t => !t.proyectos[0]?.tipoServicio && !t.tipoServicio).length,
     },
   });
 }

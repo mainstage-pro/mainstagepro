@@ -365,20 +365,26 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (body.estado === "APROBADA") {
         const cotData = await prisma.cotizacion.findUnique({
           where: { id },
-          select: { tratoId: true },
+          select: { tratoId: true, grupoId: true },
         });
         if (cotData?.tratoId) {
-          await prisma.cotizacion.updateMany({
-            where: {
-              tratoId: cotData.tratoId,
-              id: { not: id },
-              estado: { in: ["BORRADOR", "ENVIADA", "EN_REVISION", "AJUSTE_SOLICITADO", "REENVIADA"] },
-            },
-            data: { estado: "RECHAZADA" },
-          });
+          // Solo rechazar las OPCIONES hermanas del MISMO grupo (alternativas mutuamente
+          // excluyentes A/B/C). Las cotizaciones independientes (otro grupo o sin grupo)
+          // son entregables separados y pueden aprobarse por su cuenta.
+          if (cotData.grupoId) {
+            await prisma.cotizacion.updateMany({
+              where: {
+                tratoId: cotData.tratoId,
+                grupoId: cotData.grupoId,
+                id: { not: id },
+                estado: { in: ["BORRADOR", "ENVIADA", "EN_REVISION", "AJUSTE_SOLICITADO", "REENVIADA"] },
+              },
+              data: { estado: "RECHAZADA" },
+            });
+          }
           await prisma.trato.update({
             where: { id: cotData.tratoId },
-            data: { etapa: "VENTA_CERRADA" },
+            data: { etapa: "VENTA_CERRADA", confirmadaEn: new Date() },
           });
 
           // ── Levantamiento de contenido: crear orden si aplica ──

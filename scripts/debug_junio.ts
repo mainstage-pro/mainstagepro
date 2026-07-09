@@ -24,15 +24,15 @@ async function main() {
         orderBy: { createdAt: "desc" },
         take: 1,
       },
-      proyecto: { select: { id: true, tipoServicio: true } },
+      proyectos: { select: { id: true, tipoServicio: true }, take: 1 },
     },
     orderBy: { fechaCierre: "asc" },
   });
 
   console.log(`\n=== TRATOS VENTA_CERRADA JUNIO 2026: ${tratos.length} ===\n`);
   for (const t of tratos) {
-    const efectivo = t.proyecto?.tipoServicio ?? t.tipoServicio ?? "NULL";
-    const tieneProyecto = t.proyecto !== null;
+    const efectivo = t.proyectos[0]?.tipoServicio ?? t.tipoServicio ?? "NULL";
+    const tieneProyecto = t.proyectos.length > 0;
     const tieneCotiz = t.cotizaciones.length > 0;
     console.log(`${t.fechaCierre?.toISOString().substring(0,10)} | ${(t.cliente.nombre ?? "?").substring(0,25).padEnd(25)} | servicio_efectivo=${efectivo.padEnd(20)} | trato_ts=${(t.tipoServicio??'null').padEnd(20)} | proy=${tieneProyecto?'✓':'✗'} | cotiz_aprobada=${tieneCotiz?'✓ '+t.cotizaciones[0].granTotal:'✗'}`);
   }
@@ -70,7 +70,7 @@ async function main() {
       fechaCierre: true,
       etapaCambiadaEn: true,
       cliente: { select: { nombre: true, empresa: true } },
-      proyecto: { select: { tipoServicio: true, createdAt: true } },
+      proyectos: { select: { tipoServicio: true, createdAt: true }, take: 1 },
       cotizaciones: { select: { estado: true, granTotal: true }, take: 5 },
     },
     orderBy: { fechaCierre: "desc" },
@@ -78,7 +78,7 @@ async function main() {
   });
 
   for (const t of cx) {
-    console.log(`ETAPA=${t.etapa} | cierre=${t.fechaCierre?.toISOString().substring(0,10)??'null'} | cambioEtapa=${t.etapaCambiadaEn?.toISOString().substring(0,10)??'null'} | ${t.cliente.nombre} | evento=${t.nombreEvento??'?'} | ts_trato=${t.tipoServicio??'null'} | ts_proy=${t.proyecto?.tipoServicio??'null'}`);
+    console.log(`ETAPA=${t.etapa} | cierre=${t.fechaCierre?.toISOString().substring(0,10)??'null'} | cambioEtapa=${t.etapaCambiadaEn?.toISOString().substring(0,10)??'null'} | ${t.cliente.nombre} | evento=${t.nombreEvento??'?'} | ts_trato=${t.tipoServicio??'null'} | ts_proy=${t.proyectos[0]?.tipoServicio??'null'}`);
     for (const c of t.cotizaciones) console.log(`  cotiz ${c.estado}: $${c.granTotal}`);
   }
 }
