@@ -63,6 +63,8 @@ export type RiderPDFData = {
   puntoSalidaBodega: string | null
   choferNombre: string | null
   contactosEmergencia: string | null
+  esRenta?: boolean
+  modalidadEntrega?: string | null
 }
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -209,6 +211,20 @@ export function RiderPDF({ data }: { data: RiderPDFData }) {
             )}
           </View>
         </View>
+
+        {/* ── Nota de aplicabilidad (solo renta) ── */}
+        {data.esRenta && (
+          <View style={{ backgroundColor: LIGHT1, borderWidth: 1, borderColor: GOLD, borderRadius: 4, padding: 10, marginBottom: 12 }}>
+            <Text style={{ fontSize: 7, color: GOLD, textTransform: 'uppercase', letterSpacing: 1.5, fontFamily: 'Helvetica-Bold', marginBottom: 4 }}>Aplicabilidad del rider de carga</Text>
+            <Text style={{ fontSize: 9, color: INK1, lineHeight: 1.5 }}>
+              {data.modalidadEntrega === 'ENTREGA_VENUE'
+                ? 'Este rider de carga aplica porque Mainstage entrega el equipo directamente en el venue del evento.'
+                : data.modalidadEntrega === 'ENTREGA_BODEGA'
+                  ? 'Este rider de carga aplica porque Mainstage entrega el equipo en la bodega del cliente.'
+                  : 'El rider de carga solo aplica cuando Mainstage entrega el equipo (a la bodega del cliente o al venue). Si el cliente recoge el equipo en bodega, este documento no aplica.'}
+            </Text>
+          </View>
+        )}
 
         {/* ── Datos del evento ── */}
         <View style={[s.gridRow, { marginBottom: 8 }]}>

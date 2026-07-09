@@ -16,6 +16,7 @@ export async function GET(
           nombre: true,
           numeroProyecto: true,
           fechaEvento: true,
+          tipoServicio: true,
           cliente: { select: { nombre: true } },
         },
       },
@@ -31,6 +32,7 @@ export async function GET(
     numeroProyecto: reporte.proyecto.numeroProyecto,
     clienteNombre: reporte.proyecto.cliente.nombre,
     fechaEvento: reporte.proyecto.fechaEvento?.toISOString() ?? null,
+    tipoServicio: reporte.proyecto.tipoServicio ?? null,
   });
 }
 

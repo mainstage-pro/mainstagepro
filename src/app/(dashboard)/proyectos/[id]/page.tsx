@@ -1053,7 +1053,8 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
   const propios     = data.lineas.filter(l => l.tipo === 'EQUIPO_PROPIO');
   const externos    = data.lineas.filter(l => l.tipo === 'EQUIPO_EXTERNO' && l.clasificacion === 'EXTERNO_CONFIRMADO');
   const aConseguir  = data.lineas.filter(l => l.tipo === 'EQUIPO_EXTERNO' && l.clasificacion !== 'EXTERNO_CONFIRMADO');
-  const conflictos  = propios.filter(l => l.conflictos.length > 0);
+  // Solo es "conflicto" real cuando no alcanzan las unidades disponibles (déficit), no cuando solo hay traslape de fechas.
+  const conflictos  = propios.filter(l => l.cantidadTotal != null && l.disponible < l.cantidad);
 
   const fmtFechaCorta = (iso: string | null) =>
     iso ? new Date(iso + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '—';
@@ -1065,7 +1066,8 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
   // Render de una fila de equipo (propios y externos comparten estructura)
   function FilaEquipo({ linea, mostrarAccion }: { linea: LineaEquipo; mostrarAccion?: boolean }) {
     const cfg = CLASIF_CFG[linea.clasificacion];
-    const esConflicto = linea.conflictos.length > 0;
+    // Alertar solo cuando faltan unidades (déficit), no por simple traslape de fechas con inventario aún disponible.
+    const esConflicto = linea.tipo === 'EQUIPO_PROPIO' && linea.cantidadTotal != null && linea.disponible < linea.cantidad;
     const esConfirmando = confirmando === linea.id;
     const esReclasificando = reclasificando === linea.id;
     const menuOpen = menuAbierto === linea.id;
@@ -1275,7 +1277,7 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
         <div className="ms-card p-3">
           <p className="text-[#6b7280] text-[10px] mb-1">Propios</p>
           <p className="text-white text-xl font-semibold">{propios.length}</p>
-          <p className="text-[#444] text-[10px]">{conflictos.length > 0 ? `${conflictos.length} con conflicto` : 'Sin conflictos'}</p>
+          <p className="text-[#444] text-[10px]">{conflictos.length > 0 ? `${conflictos.length} con faltante` : 'Inventario suficiente'}</p>
         </div>
         <div className="ms-card p-3">
           <p className="text-[#6b7280] text-[10px] mb-1">Externos confirmados</p>
@@ -1353,7 +1355,7 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
             <span className="text-[10px] text-emerald-400 uppercase tracking-widest font-semibold">Equipo propio ({propios.length})</span>
             {conflictos.length > 0 && (
-              <span className="ml-auto text-[10px] text-yellow-500">{conflictos.length} con conflicto de fechas</span>
+              <span className="ml-auto text-[10px] text-yellow-500">{conflictos.length} con faltante de inventario</span>
             )}
           </div>
           <div className="overflow-x-auto">
@@ -4481,6 +4483,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <TimePicker
                       value={rentaData.horaEntrega ?? ""}
                       onChange={v => saveRentaField("horaEntrega", v)}
+                      placeholder="Por definir"
                     />
                   </div>
 
@@ -4499,6 +4502,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     <TimePicker
                       value={rentaData.horaDevolucion ?? ""}
                       onChange={v => saveRentaField("horaDevolucion", v)}
+                      placeholder="Por definir"
                     />
                   </div>
 
@@ -4514,25 +4518,26 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     />
                   </div>
 
-                  {/* Contacto en punto de entrega */}
+                  {/* Quién entrega (nuestro personal) */}
                   <div>
-                    <label className={labelCls}>Contacto en punto de entrega</label>
+                    <label className={labelCls}>Quién entrega (Mainstage)</label>
                     <Campo
                       label=""
                       noLabel
-                      value={rentaData.contactoEntrega ?? null}
+                      value={rentaData.quienEntrega ?? null}
                       field="logisticaRenta"
-                      onSave={(_, v) => saveRentaField("contactoEntrega", v)}
+                      onSave={(_, v) => saveRentaField("quienEntrega", v)}
                     />
                   </div>
+                  {/* Quién recibe (cliente) */}
                   <div>
-                    <label className={labelCls}>Tel. contacto entrega</label>
+                    <label className={labelCls}>Quién recibe (cliente)</label>
                     <Campo
                       label=""
                       noLabel
-                      value={rentaData.telContactoEntrega ?? null}
+                      value={rentaData.quienRecibe ?? null}
                       field="logisticaRenta"
-                      onSave={(_, v) => saveRentaField("telContactoEntrega", v)}
+                      onSave={(_, v) => saveRentaField("quienRecibe", v)}
                     />
                   </div>
 
@@ -4647,7 +4652,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             );
           })()}
 
-          {/* ── Personal del evento (sección unificada) ── */}
+          {/* ── Personal del evento (sección unificada) — solo producción técnica; en renta se usa "Quién entrega/recibe" ── */}
+          {!esRenta && (
           <div className="ms-table-wrapper">
             {/* ── Cabecera ── */}
             <div className="p-4">
@@ -5225,6 +5231,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               );
             })()}
           </div>
+          )}
 
           {/* ── Proveedores y Subrentas ── */}
           <div className="space-y-3">
@@ -5782,6 +5789,28 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 </div>
               </div>
 
+              {esRenta && (() => {
+                let rd: Record<string, string> = {};
+                try { if (proyecto.logisticaRenta) rd = JSON.parse(proyecto.logisticaRenta); } catch {}
+                const modalidad = rd.entrega ?? rd.modalidadEntrega ?? "";
+                const entregamos = modalidad === "ENTREGA_BODEGA" || modalidad === "ENTREGA_VENUE";
+                const destino = modalidad === "ENTREGA_VENUE" ? "el venue del evento" : "la bodega del cliente";
+                return (
+                  <div className={`rounded-xl px-4 py-3 border ${entregamos ? "bg-[#B3985B]/5 border-[#B3985B]/30" : "bg-yellow-900/10 border-yellow-800/30"}`}>
+                    <p className={`text-xs font-semibold ${entregamos ? "text-[#B3985B]" : "text-yellow-500"}`}>
+                      {entregamos ? "Aplica el rider de carga" : "El rider de carga no aplica para este servicio"}
+                    </p>
+                    <p className="text-gray-400 text-xs mt-1 leading-relaxed">
+                      {entregamos
+                        ? `El rider de carga solo aplica en renta cuando nosotros entregamos el equipo. En este servicio llevamos el equipo a ${destino}, así que úsalo como lista de carga.`
+                        : modalidad === "RECOGE_BODEGA"
+                          ? "El cliente recoge el equipo en bodega (Querétaro), por lo que no se realiza entrega de nuestra parte. Genera el rider de carga únicamente cuando nosotros vayamos a entregar el equipo."
+                          : "Define la modalidad de entrega en la logística. El rider de carga solo aplica cuando nosotros entregamos el equipo (a su bodega o al venue)."}
+                    </p>
+                  </div>
+                );
+              })()}
+
               {cotObservaciones && (
                 <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl px-4 py-3">
                   <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Observaciones (cotización)</p>
@@ -6337,8 +6366,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div className="ms-card p-5 space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Reporte post-evento</p>
-                        <p className="text-gray-500 text-xs mt-0.5">Formulario de cierre para el coordinador del evento</p>
+                        <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{esRenta ? "Reporte post-renta" : "Reporte post-evento"}</p>
+                        <p className="text-gray-500 text-xs mt-0.5">{esRenta ? "Cierre del servicio: estado de equipos, entrega y accesorios faltantes" : "Formulario de cierre para el coordinador del evento"}</p>
                       </div>
                       {!reporteEvento ? (
                         <button
@@ -7598,15 +7627,34 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 {downloading === `confirmacion-cliente-${proyecto.numeroProyecto}.pdf` ? 'Generando...' : 'Confirmación Cliente'}
               </button>
-              <button
-                onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/fichas/operativa`, `ficha-operativa-${proyecto.numeroProyecto}.pdf`)}
-                disabled={!!downloading}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:text-white hover:border-[#444] text-xs font-medium transition-colors disabled:opacity-60"
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="11" y2="16"/></svg>
-                {downloading === `ficha-operativa-${proyecto.numeroProyecto}.pdf` ? 'Generando...' : 'Ficha Operativa'}
-              </button>
-              {(proyecto.tipoServicio === 'PRODUCCION_TECNICA' || proyecto.tipoServicio === 'RENTA') && (
+              {esRenta && (() => {
+                let rd: Record<string, string> = {};
+                try { if (proyecto.logisticaRenta) rd = JSON.parse(proyecto.logisticaRenta); } catch {}
+                const modalidad = rd.entrega ?? rd.modalidadEntrega ?? "";
+                const entregamos = modalidad === "ENTREGA_BODEGA" || modalidad === "ENTREGA_VENUE";
+                if (!entregamos) return null;
+                return (
+                  <a
+                    href={`/api/proyectos/${proyecto.id}/rider-pdf`}
+                    download
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:text-white hover:border-[#444] text-xs font-medium transition-colors"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                    Rider de Carga
+                  </a>
+                );
+              })()}
+              {!esRenta && (
+                <button
+                  onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/fichas/operativa`, `ficha-operativa-${proyecto.numeroProyecto}.pdf`)}
+                  disabled={!!downloading}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:text-white hover:border-[#444] text-xs font-medium transition-colors disabled:opacity-60"
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="11" y2="16"/></svg>
+                  {downloading === `ficha-operativa-${proyecto.numeroProyecto}.pdf` ? 'Generando...' : 'Ficha Operativa'}
+                </button>
+              )}
+              {proyecto.tipoServicio === 'PRODUCCION_TECNICA' && (
                 <button
                   onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/brief-tecnico`, `brief-tecnico-${proyecto.numeroProyecto}.pdf`)}
                   disabled={!!downloading}
@@ -7616,13 +7664,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   {downloading === `brief-tecnico-${proyecto.numeroProyecto}.pdf` ? 'Generando...' : 'Brief Técnico'}
                 </button>
               )}
-              <Link
-                href={`/carta-responsiva/${proyecto.id}`}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:text-white hover:border-[#444] text-xs font-medium transition-colors"
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="11" y2="16"/></svg>
-                Carta Responsiva
-              </Link>
+              {!esRenta && (
+                <Link
+                  href={`/carta-responsiva/${proyecto.id}`}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:text-white hover:border-[#444] text-xs font-medium transition-colors"
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="11" y2="16"/></svg>
+                  Carta Responsiva
+                </Link>
+              )}
             </div>
           </div>
 

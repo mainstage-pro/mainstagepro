@@ -443,6 +443,7 @@ interface ProyectoData {
   cliente: { nombre: string; empresa: string | null; telefono?: string | null } | null;
   equipos: ProyectoEquipo[];
   cotizacion?: CotizacionData | null;
+  equiposRiderExtra?: string | null;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -518,6 +519,34 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
 
   const hasInventory = proyecto.equipos.length > 0;
   const hasCotExtras = cotExtras.length > 0;
+
+  // ─── Equipos adicionales al rider (fuera de cotización) ───────────────────────
+  // Se muestran igual que en el Rider de Carga para mantener uniformidad.
+  type RiderExtra = { id: string; descripcion: string; cantidad: number; notas?: string };
+  const equiposRiderExtra: RiderExtra[] = (() => {
+    let parsed: RiderExtra[] = [];
+    try {
+      const raw = proyecto.equiposRiderExtra;
+      if (typeof raw === "string" && raw) parsed = JSON.parse(raw);
+      else if (Array.isArray(raw)) parsed = raw as RiderExtra[];
+    } catch { /* noop */ }
+    const norm = (v: string) => v.toLowerCase().replace(/\s+/g, " ").trim();
+    const equiposKeys = new Set(
+      proyecto.equipos.map(eq => norm(eq.equipo?.descripcion ?? eq.descripcionManual ?? ""))
+    );
+    const cotKeys = new Set(cotExtras.map(l => norm(l.descripcion)));
+    const seen = new Set<string>();
+    return parsed.filter(ex => {
+      const key = norm(ex.descripcion);
+      if (!key) return false;
+      if ([...equiposKeys].some(k => k && (k === key || k.includes(key) || key.includes(k)))) return false;
+      if (cotKeys.has(key)) return false;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  })();
+  const hasRiderExtras = equiposRiderExtra.length > 0;
 
   const clienteNombre = proyecto.cliente?.empresa
     ? `${proyecto.cliente.nombre} · ${proyecto.cliente.empresa}`
@@ -742,6 +771,27 @@ export function HojaEntregaRentaPDF({ proyecto, logoSrc }: { proyecto: ProyectoD
                     </View>
                   );
                 })}
+              </View>
+            </>
+          )}
+
+          {/* ── Equipos adicionales al rider (fuera de cotización) ── */}
+          {hasRiderExtras && (
+            <>
+              <View style={[s.subSectionHeader, { marginTop: 4 }]}>
+                <Text style={s.subSectionHeaderText}>EQUIPOS ADICIONALES AL RIDER</Text>
+              </View>
+              <View style={[s.tableWrapper, { marginBottom: 8 }]}>
+                {equiposRiderExtra.map((ex, i) => (
+                  <View key={ex.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt} wrap={false}>
+                    <View style={s.colModelo}>
+                      <Text style={s.cellText}>{ex.descripcion}</Text>
+                      {ex.notas ? <Text style={{ fontSize: 6, color: LIGHT, fontStyle: "italic", marginTop: 1 }}>{ex.notas}</Text> : null}
+                    </View>
+                    <View style={s.colQty}><Text style={[s.cellText, { textAlign: "center" }]}>{ex.cantidad}</Text></View>
+                    <View style={[s.colSerie, { borderRightWidth: 0 }]}><Text style={s.cellText}> </Text></View>
+                  </View>
+                ))}
               </View>
             </>
           )}

@@ -52,6 +52,18 @@ export async function GET(req: NextRequest,
 
   if (!proyecto) return NextResponse.json({ error: 'No encontrado' }, { status: 404 })
 
+  // Renta context: distinguir servicio de renta y su modalidad de entrega
+  const tipoServicio = (proyecto as unknown as Record<string, unknown>).tipoServicio as string | null ?? null
+  const esRenta = tipoServicio === 'RENTA'
+  let modalidadEntrega: string | null = null
+  try {
+    const rawLog = (proyecto as unknown as Record<string, unknown>).logisticaRenta
+    if (typeof rawLog === 'string' && rawLog) {
+      const rd = JSON.parse(rawLog) as Record<string, string>
+      modalidadEntrega = rd.entrega ?? rd.modalidadEntrega ?? null
+    }
+  } catch { /* ignore */ }
+
   // Parse equiposRiderExtra JSON field
   type EquipoRiderExtra = {
     id: string; descripcion: string; cantidad: number
@@ -203,6 +215,8 @@ export async function GET(req: NextRequest,
         }) as { id: string; tipo: string; descripcion: string; marca: string | null; cantidad: number; notas: string | null }[]
     })(),
     logoSrc,
+    esRenta,
+    modalidadEntrega,
   }
 
   const pdfStream = await ReactPDF.renderToStream(

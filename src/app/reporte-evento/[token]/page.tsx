@@ -11,6 +11,7 @@ interface Contexto {
   numeroProyecto: string;
   clienteNombre: string;
   fechaEvento: string | null;
+  tipoServicio: string | null;
 }
 
 interface Incidencia {
@@ -311,6 +312,8 @@ export default function ReportePostEventoPage() {
 
   // ── Formulario ──────────────────────────────────────────────────────────────
 
+  const esRenta = contexto.tipoServicio === "RENTA";
+
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
 
@@ -322,7 +325,7 @@ export default function ReportePostEventoPage() {
           </div>
           <div>
             <p className="text-white text-sm font-bold leading-tight">Mainstage Pro</p>
-            <p className="text-gray-600 text-[10px]">Reporte post-evento</p>
+            <p className="text-gray-600 text-[10px]">{esRenta ? "Reporte post-renta" : "Reporte post-evento"}</p>
           </div>
         </div>
       </div>
@@ -332,7 +335,7 @@ export default function ReportePostEventoPage() {
 
           {/* Intro card */}
           <div className="bg-gradient-to-br from-[#B3985B]/10 to-[#0d0d0d] border border-[#B3985B]/20 rounded-2xl p-6">
-            <p className="text-[10px] text-[#B3985B] uppercase tracking-widest font-semibold mb-1">Reporte post-evento</p>
+            <p className="text-[10px] text-[#B3985B] uppercase tracking-widest font-semibold mb-1">{esRenta ? "Reporte post-renta" : "Reporte post-evento"}</p>
             <h1 className="text-white text-lg font-bold mb-1">{contexto.proyectoNombre}</h1>
             <p className="text-gray-400 text-sm">{contexto.clienteNombre}</p>
             {contexto.fechaEvento && <p className="text-gray-600 text-xs mt-1">{fmtDate(contexto.fechaEvento)}</p>}
@@ -355,7 +358,8 @@ export default function ReportePostEventoPage() {
             />
           </Card>
 
-          {/* BLOQUE 1 — Horarios */}
+          {/* BLOQUE 1 — Horarios (solo eventos / producción) */}
+          {!esRenta && (
           <Card>
             <SectionHeader num="1" title="Horarios — planeado vs real" sub="Registra la hora que se planeó y la hora real de cada etapa" />
             <HorarioRow label="Llegada al venue" planeado={llegadaP} real={llegadaR} onChangePlaneado={setLlegadaP} onChangeReal={setLlegadaR} />
@@ -368,16 +372,32 @@ export default function ReportePostEventoPage() {
               value={seEjecuto} onChange={setSeEjecuto}
             />
           </Card>
+          )}
 
-          {/* BLOQUE 2 — Equipos */}
+          {/* BLOQUE 1 (renta) — Entrega y devolución */}
+          {esRenta && (
           <Card>
-            <SectionHeader num="2" title="Equipos" sub="Presiona Enter o + para agregar cada ítem" />
-            <TagList label="Fallas de equipo durante el evento" items={fallas} setItems={setFallas} placeholder="Describe la falla..." />
+            <SectionHeader num="1" title="Entrega y devolución" sub="Registra la hora real de entrega y de devolución del equipo" />
+            <HorarioRow label="Entrega del equipo" planeado={montajeP} real={llegadaR} onChangePlaneado={setMontajeP} onChangeReal={setLlegadaR} />
+            <HorarioRow label="Devolución del equipo" planeado={inicioP} real={salidaR} onChangePlaneado={setInicioP} onChangeReal={setSalidaR} />
+            <TriSelector
+              label="¿La entrega se realizó según lo acordado?"
+              options={[{ value: "si", label: "Sí" }, { value: "ajustes", label: "Con ajustes" }, { value: "no", label: "No" }]}
+              value={seEjecuto} onChange={setSeEjecuto}
+            />
+          </Card>
+          )}
+
+          {/* BLOQUE 2 — Estado de equipos */}
+          <Card>
+            <SectionHeader num="2" title={esRenta ? "Estado de los equipos" : "Equipos"} sub="Presiona Enter o + para agregar cada ítem" />
+            <TagList label={esRenta ? "Equipos con daños o fallas al regresar" : "Fallas de equipo durante el evento"} items={fallas} setItems={setFallas} placeholder="Describe la falla o daño..." />
             <TagList label="Equipos que requieren mantenimiento" items={mantenimiento} setItems={setMantenimiento} placeholder="Nombre del equipo..." />
-            <TagList label="Herramientas o accesorios que faltaron" items={faltantes} setItems={setFaltantes} placeholder="¿Qué faltó?" />
+            <TagList label={esRenta ? "Accesorios o cables que faltaron / no regresaron" : "Herramientas o accesorios que faltaron"} items={faltantes} setItems={setFaltantes} placeholder="¿Qué faltó?" />
           </Card>
 
-          {/* BLOQUE 3 — Información */}
+          {/* BLOQUE 3 — Información (solo eventos / producción) */}
+          {!esRenta && (
           <Card>
             <SectionHeader num="3" title="Información y planeación" />
             <TriSelector
@@ -409,8 +429,10 @@ export default function ReportePostEventoPage() {
               )}
             </div>
           </Card>
+          )}
 
-          {/* BLOQUE 4 — Equipo técnico */}
+          {/* BLOQUE 4 — Equipo técnico (solo eventos / producción) */}
+          {!esRenta && (
           <Card>
             <SectionHeader num="4" title="Equipo técnico" />
             <div>
@@ -439,10 +461,11 @@ export default function ReportePostEventoPage() {
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-700 focus:outline-none focus:border-[#B3985B] transition-colors resize-none" />
             </div>
           </Card>
+          )}
 
           {/* BLOQUE 5 — Incidencias */}
           <Card>
-            <SectionHeader num="5" title="Incidencias" sub="Registra cualquier problema que ocurrió durante el evento" />
+            <SectionHeader num="5" title="Incidencias" sub={esRenta ? "Registra cualquier problema durante la entrega, uso o devolución" : "Registra cualquier problema que ocurrió durante el evento"} />
             {incidencias.length === 0 && (
               <p className="text-sm text-gray-700 italic">Sin incidencias registradas</p>
             )}
@@ -502,15 +525,15 @@ export default function ReportePostEventoPage() {
               />
             )}
             <div>
-              <label className="block text-sm font-semibold text-white mb-2">Aprendizaje clave del evento</label>
+              <label className="block text-sm font-semibold text-white mb-2">{esRenta ? "Observaciones del servicio" : "Aprendizaje clave del evento"}</label>
               <textarea value={aprendizaje} onChange={e => setAprendizaje(e.target.value)}
-                placeholder="¿Qué se lleva el equipo de aprendizaje de este evento?"
+                placeholder={esRenta ? "Estado general del equipo, notas de la entrega/devolución, pendientes con el cliente..." : "¿Qué se lleva el equipo de aprendizaje de este evento?"}
                 rows={2}
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl px-4 py-3 text-sm text-white placeholder:text-gray-700 focus:outline-none focus:border-[#B3985B] transition-colors resize-none"
               />
             </div>
             <TriSelector
-              label="¿Lo repetiríamos en las mismas condiciones?"
+              label={esRenta ? "¿Volveríamos a rentar a este cliente en las mismas condiciones?" : "¿Lo repetiríamos en las mismas condiciones?"}
               options={[{ value: "si", label: "Sí" }, { value: "ajustes", label: "Con ajustes" }, { value: "no", label: "No" }]}
               value={loRepetiriamos} onChange={setLoRepetiriamos}
             />

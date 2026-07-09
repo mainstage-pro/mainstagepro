@@ -118,8 +118,9 @@ export async function GET(
   const cxpsSocios = proyecto.cuentasPagar.filter(c => c.tipoAcreedor === "SOCIO" || c.socioId);
 
   // ── Cargar socios activos ─────────────────────────────────────────────────
+  // Por ahora solo se liquida a Mauricio Hernández (se omite la sugerencia a otros socios).
   const socios = await prisma.socio.findMany({
-    where: { status: "ACTIVO" },
+    where: { status: "ACTIVO", nombre: { contains: "Mauricio", mode: "insensitive" } },
     select: {
       id: true,
       nombre: true,
