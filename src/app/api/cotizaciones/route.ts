@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     const {
       tratoId,
-      clienteId,
+      clienteId: clienteIdInput,
       lineas = [],
       // Descuentos adicionales opcionales
       descuentoPatrocinioPct = 0,
@@ -70,8 +70,24 @@ export async function POST(request: NextRequest) {
       ...campos
     } = body;
 
-    if (!clienteId) {
+    if (!clienteIdInput) {
       return NextResponse.json({ error: "clienteId requerido" }, { status: 400 });
+    }
+
+    // Verifica que el cliente exista. Si el id que llegó del formulario está
+    // obsoleto (p. ej. estado de UI viejo), recupéralo desde el trato asociado
+    // para evitar el error crudo de FK y permitir guardar el borrador.
+    let clienteId = clienteIdInput;
+    let clienteValido = await prisma.cliente.findUnique({ where: { id: clienteId }, select: { id: true } });
+    if (!clienteValido && tratoId) {
+      const trato = await prisma.trato.findUnique({ where: { id: tratoId }, select: { clienteId: true } });
+      if (trato?.clienteId) {
+        const clienteTrato = await prisma.cliente.findUnique({ where: { id: trato.clienteId }, select: { id: true } });
+        if (clienteTrato) { clienteId = trato.clienteId; clienteValido = clienteTrato; }
+      }
+    }
+    if (!clienteValido) {
+      return NextResponse.json({ error: "El cliente seleccionado ya no existe. Vuelve a seleccionarlo." }, { status: 400 });
     }
 
     const cotizacion = await prisma.cotizacion.create({
