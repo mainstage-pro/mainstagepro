@@ -1711,6 +1711,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [riderAddCategoria, setRiderAddCategoria] = useState("");
   const [riderAddGuardar, setRiderAddGuardar] = useState(true);
   const [riderAddSaving, setRiderAddSaving] = useState(false);
+  // Cantidad pendiente por sugerencia de accesorio, key = `${proyectoEquipoId}::${nombre}`
+  const [sugCantidad, setSugCantidad] = useState<Record<string, number>>({});
 
   // Proveedores de subarriendo (manuales)
   type ProveedorRenta = { id: string; nombre: string; contacto: string; equipos: string[] };
@@ -2825,11 +2827,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     ));
   }
 
-  async function riderAgregarSugerencia(proyectoEquipoId: string, nombre: string) {
+  async function riderAgregarSugerencia(proyectoEquipoId: string, nombre: string, cantidad: number = 1) {
     const res = await fetch(`/api/proyectos/${id}/rider-accesorios`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ proyectoEquipoId, nombre, guardarEnBiblioteca: false }),
+      body: JSON.stringify({ proyectoEquipoId, nombre, cantidad, guardarEnBiblioteca: false }),
     });
     const d = await res.json();
     if (d.accesorio) {
@@ -2839,6 +2841,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           : e
       ));
     }
+    // Reset la cantidad pendiente de esta sugerencia
+    setSugCantidad(prev => { const n = { ...prev }; delete n[`${proyectoEquipoId}::${nombre}`]; return n; });
   }
 
   // ── Crear técnico inline ──
@@ -6007,22 +6011,23 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   {libSugs.length > 0 && (
                                     <div>
                                       <p className="text-[10px] text-[#444] uppercase tracking-widest mb-0.5 font-semibold">Sugerencias guardadas (biblioteca)</p>
-                                      <p className="text-[10px] text-gray-600 mb-2">Marca la casilla para agregarlo al rider de salida.</p>
+                                      <p className="text-[10px] text-gray-600 mb-2">Elige la cantidad y agrégalo al rider de salida.</p>
                                       <div className="space-y-0.5">
-                                        {libSugs.map(a => (
-                                          <button
-                                            key={a.id}
-                                            type="button"
-                                            onClick={() => riderAgregarSugerencia(e.id, a.nombre)}
-                                            className="w-full flex items-center gap-2.5 py-1 px-1 -mx-1 rounded-md text-left group/sug hover:bg-[#111] transition-colors"
-                                          >
-                                            <span className="w-4 h-4 rounded border border-[#333] group-hover/sug:border-[#B3985B] group-hover/sug:bg-[#B3985B]/10 flex items-center justify-center shrink-0 transition-colors">
-                                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-[#B3985B] opacity-0 group-hover/sug:opacity-100 transition-opacity"><polyline points="20 6 9 17 4 12"/></svg>
-                                            </span>
+                                        {libSugs.map(a => {
+                                          const sk = `${e.id}::${a.nombre}`;
+                                          const cant = sugCantidad[sk] ?? 1;
+                                          return (
+                                          <div key={a.id} className="w-full flex items-center gap-2.5 py-1 px-1 -mx-1 rounded-md group/sug hover:bg-[#111] transition-colors">
                                             <span className="flex-1 text-xs text-gray-400 group-hover/sug:text-gray-200 transition-colors">{a.nombre}</span>
-                                            <span className="text-[10px] text-gray-700 group-hover/sug:text-[#B3985B] shrink-0 transition-colors">Agregar al rider</span>
-                                          </button>
-                                        ))}
+                                            <div className="flex items-center gap-0.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-1 shrink-0">
+                                              <button type="button" onClick={() => setSugCantidad(prev => ({ ...prev, [sk]: Math.max(1, cant - 1) }))} className="text-gray-500 hover:text-white w-5 text-center text-sm leading-none transition-colors">−</button>
+                                              <span className="text-white text-xs font-semibold w-5 text-center">{cant}</span>
+                                              <button type="button" onClick={() => setSugCantidad(prev => ({ ...prev, [sk]: cant + 1 }))} className="text-gray-500 hover:text-white w-5 text-center text-sm leading-none transition-colors">+</button>
+                                            </div>
+                                            <button type="button" onClick={() => riderAgregarSugerencia(e.id, a.nombre, cant)} className="text-[10px] font-semibold text-gray-500 hover:text-black hover:bg-[#B3985B] border border-[#333] hover:border-[#B3985B] px-2 py-1 rounded-md shrink-0 transition-colors">Agregar</button>
+                                          </div>
+                                          );
+                                        })}
                                       </div>
                                     </div>
                                   )}
@@ -6031,22 +6036,23 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   {sistemaSugs.length > 0 && (
                                     <div>
                                       <p className="text-[10px] text-[#444] uppercase tracking-widest mb-0.5 font-semibold">Sugerencias del sistema</p>
-                                      <p className="text-[10px] text-gray-600 mb-2">Marca la casilla para agregarlo al rider de salida.</p>
+                                      <p className="text-[10px] text-gray-600 mb-2">Elige la cantidad y agrégalo al rider de salida.</p>
                                       <div className="space-y-0.5">
-                                        {sistemaSugs.map((s, i) => (
-                                          <button
-                                            key={i}
-                                            type="button"
-                                            onClick={() => riderAgregarSugerencia(e.id, s)}
-                                            className="w-full flex items-center gap-2.5 py-1 px-1 -mx-1 rounded-md text-left group/sug hover:bg-[#111] transition-colors"
-                                          >
-                                            <span className="w-4 h-4 rounded border border-dashed border-[#2a2a2a] group-hover/sug:border-[#B3985B] group-hover/sug:border-solid group-hover/sug:bg-[#B3985B]/10 flex items-center justify-center shrink-0 transition-colors">
-                                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-[#B3985B] opacity-0 group-hover/sug:opacity-100 transition-opacity"><polyline points="20 6 9 17 4 12"/></svg>
-                                            </span>
+                                        {sistemaSugs.map((s, i) => {
+                                          const sk = `${e.id}::${s}`;
+                                          const cant = sugCantidad[sk] ?? 1;
+                                          return (
+                                          <div key={i} className="w-full flex items-center gap-2.5 py-1 px-1 -mx-1 rounded-md group/sug hover:bg-[#111] transition-colors">
                                             <span className="flex-1 text-xs text-gray-500 group-hover/sug:text-gray-300 transition-colors">{s}</span>
-                                            <span className="text-[10px] text-gray-700 group-hover/sug:text-[#B3985B] shrink-0 transition-colors">Agregar al rider</span>
-                                          </button>
-                                        ))}
+                                            <div className="flex items-center gap-0.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded-md px-1 shrink-0">
+                                              <button type="button" onClick={() => setSugCantidad(prev => ({ ...prev, [sk]: Math.max(1, cant - 1) }))} className="text-gray-500 hover:text-white w-5 text-center text-sm leading-none transition-colors">−</button>
+                                              <span className="text-white text-xs font-semibold w-5 text-center">{cant}</span>
+                                              <button type="button" onClick={() => setSugCantidad(prev => ({ ...prev, [sk]: cant + 1 }))} className="text-gray-500 hover:text-white w-5 text-center text-sm leading-none transition-colors">+</button>
+                                            </div>
+                                            <button type="button" onClick={() => riderAgregarSugerencia(e.id, s, cant)} className="text-[10px] font-semibold text-gray-500 hover:text-black hover:bg-[#B3985B] border border-[#333] hover:border-[#B3985B] px-2 py-1 rounded-md shrink-0 transition-colors">Agregar</button>
+                                          </div>
+                                          );
+                                        })}
                                       </div>
                                     </div>
                                   )}
