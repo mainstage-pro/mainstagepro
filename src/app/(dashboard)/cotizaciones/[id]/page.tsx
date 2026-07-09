@@ -171,7 +171,6 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [deleting, setDeleting] = useState(false);
   const [cerrarVentaOpen, setCerrarVentaOpen] = useState(false);
   const [sharingPdf, setSharingPdf] = useState(false);
-  const [sharingListado, setSharingListado] = useState(false);
   const [generandoLink, setGenerandoLink] = useState(false);
   const [linkAprobacion, setLinkAprobacion] = useState<string | null>(null);
   const [linkCopiado, setLinkCopiado] = useState(false);
@@ -540,53 +539,6 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     }
   }
 
-  async function shareListadoEquiposPdf() {
-    if (!cot) return;
-    setSharingListado(true);
-    try {
-      const pdfUrl = `/api/cotizaciones/${cot.id}/listado-equipos-pdf`;
-      const filename = `ListadoEquipos-${cot.numeroCotizacion}${cot.nombreEvento ? `-${cot.nombreEvento.replace(/\s+/g, "-")}` : ""}.pdf`;
-
-      const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-      if (isMobile && typeof navigator !== "undefined" && navigator.canShare) {
-        const res = await fetch(pdfUrl, { credentials: "include" });
-        if (!res.ok) throw new Error("Fetch failed: " + res.status);
-        const blob = await res.blob();
-        const file = new File([blob], filename, { type: "application/pdf" });
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], title: filename });
-          return;
-        }
-        if (navigator.share) {
-          await navigator.share({ title: filename, url: window.location.origin + pdfUrl });
-          return;
-        }
-      }
-
-      const res = await fetch(pdfUrl, { credentials: "include" });
-      if (!res.ok) throw new Error("Fetch failed: " + res.status);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    } catch (e) {
-      if (e instanceof Error && e.name !== "AbortError") {
-        const a = document.createElement("a");
-        a.href = `/api/cotizaciones/${cot.id}/listado-equipos-pdf`;
-        a.download = `ListadoEquipos-${cot.numeroCotizacion}.pdf`;
-        a.click();
-      }
-    } finally {
-      setSharingListado(false);
-    }
-  }
-
   async function handleWhatsAppConCotizacion() {
     if (!cot || !cot.cliente.telefono) return;
     setSendingWA(true);
@@ -920,22 +872,9 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           </div>
         </div>
 
-        {/* Fila 3: acciones principales — orden: Listado → Presentación → Contrato → Comisión → PDF → WhatsApp → Editar → Marcar enviada */}
+        {/* Fila 3: acciones principales — Presentación → PDF → WhatsApp → ciclo de vida.
+            Los documentos (Contrato, Listado de equipos, Comisión) se generan desde el trato. */}
         <div className="flex items-center gap-2 flex-wrap pt-1 border-t border-[#1a1a1a]">
-          {/* Listado equipos */}
-          <button onClick={shareListadoEquiposPdf} disabled={sharingListado}
-            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] hover:border-[#555] text-gray-300 hover:text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
-            {sharingListado ? (
-              <span className="w-3.5 h-3.5 border-2 border-[#555] border-t-white rounded-full animate-spin" />
-            ) : (
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                <line x1="3" y1="9" x2="21" y2="9"/>
-                <line x1="9" y1="21" x2="9" y2="9"/>
-              </svg>
-            )}
-            {sharingListado ? "Generando..." : "Listado equipos"}
-          </button>
           {/* Presentación */}
           <a href={`/presentacion/${cot.id}${presentacionToken ? `?token=${presentacionToken}` : ""}`} target="_blank" rel="noopener noreferrer"
             className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#B3985B]/30 hover:border-[#B3985B]/60 text-[#B3985B] text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
@@ -944,25 +883,6 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             </svg>
             Presentación
           </a>
-          {/* Contrato */}
-          <Link href={`/contratos/${cot.trato.id}`} target="_blank" rel="noopener noreferrer"
-            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] hover:border-[#555] text-gray-300 hover:text-white text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
-            </svg>
-            Contrato
-          </Link>
-          {/* Comisión */}
-          <Link
-            href={`/cotizaciones/${id}/comision`}
-            target="_blank"
-            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#c9a96a]/30 hover:border-[#c9a96a]/60 text-[#c9a96a] text-xs sm:text-sm font-medium px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
-            </svg>
-            Comisión
-          </Link>
           {/* PDF */}
           <button onClick={sharePdf} disabled={sharingPdf}
             className="flex items-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-60 text-black text-xs sm:text-sm font-semibold px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg transition-colors">

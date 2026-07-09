@@ -44,14 +44,25 @@ export async function GET(
 
   if (!trato) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-  const cotizacionRaw = trato.cotizaciones[0] ?? await prisma.cotizacion.findFirst({
-    where: { tratoId },
-    include: {
-      lineas: { orderBy: { orden: "asc" } },
-      cuentasCobrar: { orderBy: { createdAt: "asc" } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  // Si un usuario autenticado pide una cotización específica del trato, úsala.
+  const cotizacionRaw = (session && cotizacionId
+    ? await prisma.cotizacion.findFirst({
+        where: { id: cotizacionId, tratoId },
+        include: {
+          lineas: { orderBy: { orden: "asc" } },
+          cuentasCobrar: { orderBy: { createdAt: "asc" } },
+        },
+      })
+    : null)
+    ?? trato.cotizaciones[0]
+    ?? await prisma.cotizacion.findFirst({
+      where: { tratoId },
+      include: {
+        lineas: { orderBy: { orden: "asc" } },
+        cuentasCobrar: { orderBy: { createdAt: "asc" } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
 
   const appUrl = req.nextUrl.origin;
 

@@ -15,6 +15,7 @@ import { BackButton } from "@/components/BackButton";
 import { SEGUIMIENTO_TIPOS, SEGUIMIENTO_TIPO_LABELS, getWaMensajePrimerContacto } from '@/lib/seguimientoTypes';
 import { SelectorEquiposInventario, type SeleccionEquipos } from '@/components/SelectorEquiposInventario';
 import DiscoveryForm from '@/components/crm/DiscoveryForm';
+import DocumentosClienteModal from '@/components/crm/DocumentosClienteModal';
 import {
   CONTACTOS_INBOUND,
   CONTACTOS_OUTBOUND,
@@ -2929,6 +2930,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           );
         })()}
+
+        {/* Documentos para el cliente — se activa al cerrar venta / aprobar cotización */}
+        <DocumentosClienteModal trato={trato} />
 
         {/* Actions */}
         <div className="flex flex-col gap-2">

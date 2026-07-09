@@ -34,11 +34,21 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ cxc });
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  const { searchParams } = req.nextUrl;
+  const proyectoId = searchParams.get("proyectoId");
+  const cotizacionId = searchParams.get("cotizacionId");
+  const tipoPago = searchParams.get("tipoPago");
+
   const cuentas = await prisma.cuentaCobrar.findMany({
+    where: {
+      ...(proyectoId ? { proyectoId } : {}),
+      ...(cotizacionId ? { cotizacionId } : {}),
+      ...(tipoPago ? { tipoPago } : {}),
+    },
     include: {
       cliente: { select: { id: true, nombre: true, telefono: true } },
       empresa: { select: { id: true, nombre: true, telefono: true } },
