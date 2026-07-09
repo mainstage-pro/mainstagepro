@@ -247,7 +247,7 @@ function CotizadorForm() {
   const [tratoArchivos, setTratoArchivos] = useState<Array<{ id: string; nombre: string; url: string; tipo: string }>>([]);
   const [tratoFormEstado, setTratoFormEstado] = useState<string | null>(null);
   // Equipos/categorías seleccionados en el descubrimiento del trato: { categorias: CategoriaEquipo IDs, equipos: Equipo IDs }
-  const [equiposInteres, setEquiposInteres] = useState<{ categorias: string[]; equipos: string[] }>({ categorias: [], equipos: [] });
+  const [equiposInteres, setEquiposInteres] = useState<{ categorias: string[]; equipos: string[]; cantidades: Record<string, number> }>({ categorias: [], equipos: [], cantidades: {} });
   // Precios especiales del cliente: { equipoId → precio }
   const [preciosCliente, setPreciosCliente] = useState<Record<string, number>>({});
   // Precio original de lista al momento de registrar el especial: { equipoId → precioOriginal }
@@ -572,7 +572,7 @@ function CotizadorForm() {
         }
         if (t.asistentesEstimados) setAsistentesEstimados(t.asistentesEstimados);
         if (t.formEstado) setTratoFormEstado(t.formEstado);
-        if (t.equiposInteres) { try { const ei = JSON.parse(t.equiposInteres); setEquiposInteres({ categorias: ei.categorias ?? [], equipos: ei.equipos ?? [] }); } catch { /* noop */ } }
+        if (t.equiposInteres) { try { const ei = JSON.parse(t.equiposInteres); setEquiposInteres({ categorias: ei.categorias ?? [], equipos: ei.equipos ?? [], cantidades: ei.cantidades ?? {} }); } catch { /* noop */ } }
       }
     });
   }, [clienteId, tratoId]);
@@ -684,20 +684,30 @@ function CotizadorForm() {
   }
 
   // ── Sugerencias de equipo (derivadas del descubrimiento) ──
-  function agregarEquipoDescubrimiento(eq: Equipo) {
+  function agregarEquipoDescubrimiento(eq: Equipo, cantidad?: number) {
     if (lineasEquipo.some(l => l.equipoId === eq.id)) return;
     const precio = preciosCliente[eq.id] ?? eq.precioRenta;
     const dias = parseInt(evento.diasEquipo) || 1;
+    const cant = cantidad && cantidad > 0 ? cantidad : 1;
     setLineasEquipo(prev => [...prev, {
       id: uid(), equipoId: eq.id, descripcion: eq.descripcion,
       marca: eq.marca ?? "",
       modelo: eq.modelo ?? "",
-      cantidad: 1, dias,
+      cantidad: cant, dias,
       precioUnitario: precio,
-      subtotal: precio * dias,
+      subtotal: precio * cant * dias,
       categoria: eq.categoria.nombre,
       notas: "",
     }]);
+  }
+
+  function agregarTodasSugerencias() {
+    equiposInteres.equipos.forEach(id => {
+      const eq = equipos.find(e => e.id === id);
+      if (eq && !lineasEquipo.some(l => l.equipoId === eq.id)) {
+        agregarEquipoDescubrimiento(eq, equiposInteres.cantidades[eq.id]);
+      }
+    });
   }
 
   function agregarSugerenciaTecnico(keyword: string, cantidad: number) {
@@ -1673,6 +1683,16 @@ function CotizadorForm() {
                   <span className="ml-auto text-gray-600 text-xs group-open:hidden">▶ ver</span>
                   <span className="ml-auto text-gray-600 text-xs hidden group-open:inline">▼ ocultar</span>
                 </summary>
+                {eqsSel.some(eq => !lineasEquipo.some(l => l.equipoId === eq.id)) && (
+                  <div className="px-5 -mt-1 pb-2">
+                    <button
+                      onClick={agregarTodasSugerencias}
+                      className="text-[11px] px-3 py-1 rounded-lg bg-[#B3985B] text-black font-semibold hover:bg-[#c9a96a] transition-colors"
+                    >
+                      + Agregar todos a la cotización
+                    </button>
+                  </div>
+                )}
                 <div className="px-5 pb-5 space-y-4">
                   {catsSel.length > 0 && (
                     <div>
@@ -1690,15 +1710,21 @@ function CotizadorForm() {
                       <div className="space-y-1.5">
                         {eqsSel.map(eq => {
                           const yaAgregado = lineasEquipo.some(l => l.equipoId === eq.id);
+                          const cant = equiposInteres.cantidades[eq.id];
                           return (
                             <div key={eq.id} className="flex items-start gap-2 text-sm">
                               <span className="flex-1 leading-snug text-gray-300">
                                 {eq.descripcion}
                                 {(eq.marca || eq.modelo) && <span className="ml-1 text-[10px] text-gray-500">{[eq.marca, eq.modelo].filter(Boolean).join(" ")}</span>}
+                                {cant ? (
+                                  <span className="ml-1.5 text-[10px] text-[#B3985B] font-semibold bg-[#B3985B]/10 rounded px-1.5 py-0.5">{cant} pz</span>
+                                ) : (
+                                  <span className="ml-1.5 text-[10px] text-gray-500 bg-[#1a1a1a] rounded px-1.5 py-0.5">sin cantidad</span>
+                                )}
                               </span>
                               {!yaAgregado ? (
                                 <button
-                                  onClick={() => agregarEquipoDescubrimiento(eq)}
+                                  onClick={() => agregarEquipoDescubrimiento(eq, cant)}
                                   className="shrink-0 text-[10px] px-2 py-0.5 rounded bg-[#B3985B]/15 text-[#B3985B] hover:bg-[#B3985B]/30 transition-colors leading-5"
                                 >
                                   + Agregar
@@ -1713,7 +1739,7 @@ function CotizadorForm() {
                     </div>
                   )}
                   <p className="text-gray-700 text-xs pt-3 border-t border-[#1a1a1a]">
-                    Basado en lo seleccionado durante el descubrimiento. Las cantidades y el detalle se definen al armar la cotización.
+                    Basado en lo seleccionado durante el descubrimiento. Los equipos con cantidad la traen desde ahí; los que dicen “sin cantidad” se agregan con 1 pieza para que la ajustes manualmente.
                   </p>
                 </div>
               </details>
