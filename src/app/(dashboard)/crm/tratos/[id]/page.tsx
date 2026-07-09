@@ -15,6 +15,14 @@ import { BackButton } from "@/components/BackButton";
 import { SEGUIMIENTO_TIPOS, SEGUIMIENTO_TIPO_LABELS, getWaMensajePrimerContacto } from '@/lib/seguimientoTypes';
 import { SelectorEquiposInventario, type SeleccionEquipos } from '@/components/SelectorEquiposInventario';
 import DiscoveryForm from '@/components/crm/DiscoveryForm';
+import {
+  CONTACTOS_INBOUND,
+  CONTACTOS_OUTBOUND,
+  PlanContactosSteps,
+  MaterialCompartir,
+  NotasSeguimiento,
+  type NotaSeg,
+} from '@/components/crm/PlanContactos';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface TratoArchivo {
@@ -209,18 +217,6 @@ const SUBTIPOS_EVENTO: Record<string, { value: string; label: string }[]> = {
 };
 
 // Contactos recomendados para la etapa de Prospección
-const CONTACTOS_INBOUND = [
-  { num: 1, label: "Presentación",           objetivo: "Primer contacto. Preséntate y da a conocer quién es Mainstage Pro." },
-  { num: 2, label: "Generación de confianza", objetivo: "Comparte trabajo, referencias, casos de éxito relevantes al perfil del cliente." },
-  { num: 3, label: "Orientar a información", objetivo: "Hacer preguntas clave para obtener info suficiente para cotizar." },
-];
-const CONTACTOS_OUTBOUND = [
-  { num: 1, label: "Presentación de Mainstage Pro", objetivo: "Dar a conocer la empresa, servicios y diferenciadores clave." },
-  { num: 2, label: "Generación de confianza #1",     objetivo: "Portfolio, reseñas, casos de éxito relevantes al sector del prospecto." },
-  { num: 3, label: "Generación de confianza #2",     objetivo: "Seguimiento proactivo. Nuevo material, estadísticas, mantener presencia." },
-  { num: 4, label: "Prospección de evento",           objetivo: "Preguntar si tienen algún evento próximo que podamos atender o cotizar." },
-  { num: 5, label: "Propuesta de reunión",            objetivo: "Invitar a una reunión para conocernos y detectar oportunidades en conjunto." },
-];
 
 // Servicios por tipo de evento
 interface ServicioItem { id: string; label: string; grupo: string }
@@ -1066,7 +1062,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
   // Nurturing state
   type NurturingLogEntry = { fecha: string; etapa: string; templateId: string; templateLabel: string };
-  type NurturingData = { etapa: string; log: NurturingLogEntry[]; notas?: Record<string, string>; pasosMarcados?: number[] };
+  type NurturingData = { etapa: string; log: NurturingLogEntry[]; notas?: Record<string, string>; notasSeguimiento?: NotaSeg[]; pasosMarcados?: number[] };
   const NURTURING_EMPTY: NurturingData = { etapa: "PRIMER_CONTACTO", log: [], pasosMarcados: [] };
   const [nurturing, setNurturing] = useState<NurturingData>(NURTURING_EMPTY);
   const [savingNurturing, setSavingNurturing] = useState(false);
@@ -2232,29 +2228,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         const ctx = { evento: trato.nombreEvento, fecha: trato.fechaEventoEstimada };
         const tel = trato.cliente.telefono?.replace(/\D/g, "");
         const num = tel ? (tel.startsWith("52") ? tel : `52${tel}`) : null;
-        const origin = typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app";
-        const COPY_ICON = <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 opacity-50"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>;
-
-        // Materiales para compartir
-        const MATERIALES_COMPARTIR = [
-          { id: 'servicios', label: "📋 Presentación de Servicios", url: `${origin}/presentacion/servicios` },
-          { id: 'inventario', label: "🎛 Catálogo de Inventario", url: `${origin}/presentacion/inventario` },
-          { id: 'musical', label: "🎸 Presentación Eventos Musicales", url: `${origin}/presentacion/evento/musical` },
-          { id: 'social', label: "🎊 Presentación Eventos Sociales", url: `${origin}/presentacion/evento/social` },
-          { id: 'empresarial', label: "🏢 Presentación Eventos Empresariales", url: `${origin}/presentacion/evento/empresarial` },
-          { id: 'galeria', label: "📸 Galería de Eventos", url: `${origin}/presentacion/galeria` },
-        ];
-        
-        // Colocar la presentación del tipo de evento seleccionado al principio si existe
-        const eventoMapping: Record<string, string> = { MUSICAL: 'musical', SOCIAL: 'social', EMPRESARIAL: 'empresarial' };
-        const tipoId = eventoMapping[trato.tipoEvento];
-        if (tipoId) {
-          const idx = MATERIALES_COMPARTIR.findIndex(m => m.id === tipoId);
-          if (idx > -1) {
-            const [item] = MATERIALES_COMPARTIR.splice(idx, 1);
-            MATERIALES_COMPARTIR.unshift(item);
-          }
-        }
 
         // Guión WA según etapa del nurturing y tipo de evento
         const playbook = NURTURING_PLAYBOOK[etapaKey];
@@ -2292,119 +2265,27 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
             <div className="p-5 space-y-5">
 
-              {/* ── Playbook de contactos ── */}
-              <div className={`rounded-xl p-5 ${esOutbound ? "bg-[#0a1a0f] border border-emerald-900/40" : "bg-[#111a0a] border border-amber-900/30"}`}>
-                {/* Progreso */}
-                {(() => {
-                  const completados = (nurturing.pasosMarcados ?? []).filter(n => contactos.some(c => c.num === n)).length;
-                  const total = contactos.length;
-                  const pct = total > 0 ? Math.round((completados / total) * 100) : 0;
-                  return (
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xl">{esOutbound ? "🗺️" : "📋"}</span>
-                        <p className="text-base font-bold text-white">
-                          Plan de contactos {esOutbound ? "outbound" : "inbound"}
-                        </p>
-                      </div>
-                      <span className={`text-xs font-semibold tabular-nums ${completados === total ? (esOutbound ? "text-emerald-400" : "text-amber-400") : "text-gray-500"}`}>
-                        {completados}/{total}
-                      </span>
-                    </div>
-                  );
-                })()}
-                {/* Barra de progreso */}
-                {(() => {
-                  const completados = (nurturing.pasosMarcados ?? []).filter(n => contactos.some(c => c.num === n)).length;
-                  const pct = contactos.length > 0 ? Math.round((completados / contactos.length) * 100) : 0;
-                  return (
-                    <div className="mb-3">
-                      <div className="h-1.5 rounded-full bg-[#1a1a1a] overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${esOutbound ? "bg-emerald-600" : "bg-amber-600"}`}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })()}
-                <p className={`text-xs mb-4 leading-relaxed ${esOutbound ? "text-emerald-600" : "text-amber-600"}`}>
-                  {esOutbound
-                    ? "Sigue este orden para construir confianza y generar interés de forma progresiva."
-                    : "El cliente ya llegó con intención. Estos contactos ayudan a calificar y avanzar al descubrimiento."}
-                </p>
-
-                <div className="space-y-2">
-                  {contactos.map((c) => {
-                    const marcado = (nurturing.pasosMarcados ?? []).includes(c.num);
-                    return (
-                      <button
-                        key={c.num}
-                        type="button"
-                        onClick={() => {
-                          const actuales = nurturing.pasosMarcados ?? [];
-                          const nuevos = marcado
-                            ? actuales.filter(n => n !== c.num)
-                            : [...actuales, c.num];
-                          const u = { ...nurturing, pasosMarcados: nuevos };
-                          setNurturing(u);
-                          guardarNurturing(u);
-                        }}
-                        className={`w-full text-left rounded-xl p-4 border transition-all ${
-                          marcado
-                            ? esOutbound
-                              ? "bg-emerald-950/40 border-emerald-700/50"
-                              : "bg-amber-950/30 border-amber-700/40"
-                            : "bg-[#111] border-[#1e1e1e] hover:border-[#333]"
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0 transition-colors ${
-                            marcado
-                              ? esOutbound ? "bg-emerald-700/60 text-emerald-200" : "bg-amber-700/60 text-amber-200"
-                              : esOutbound ? "bg-emerald-900/40 text-emerald-600" : "bg-amber-900/40 text-amber-600"
-                          }`}>
-                            {marcado ? "✓" : c.num}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-semibold mb-0.5 ${
-                              marcado ? (esOutbound ? "text-emerald-300 line-through" : "text-amber-300 line-through") : "text-white"
-                            }`}>{c.label}</p>
-                            <p className="text-xs text-gray-500 leading-relaxed">{c.objetivo}</p>
-                          </div>
-                          <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
-                            marcado
-                              ? esOutbound ? "bg-emerald-600 border-emerald-500" : "bg-amber-600 border-amber-500"
-                              : "border-[#444]"
-                          }`}>
-                            {marcado && <span className="text-[9px] text-black font-bold">✓</span>}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Marcar todos */}
-                {(() => {
-                  const completadosLocal = (nurturing.pasosMarcados ?? []).filter(n => contactos.some(c => c.num === n)).length;
-                  if (completadosLocal === contactos.length) return null;
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const todos = contactos.map(c => c.num);
-                        const u = { ...nurturing, pasosMarcados: todos };
-                        setNurturing(u);
-                        guardarNurturing(u);
-                      }}
-                      className="mt-3 w-full py-2 text-[11px] text-gray-600 hover:text-white border border-dashed border-[#2a2a2a] hover:border-[#444] rounded-xl transition-colors"
-                    >
-                      ✓ Marcar todos como realizados
-                    </button>
-                  );
-                })()}
-              </div>
+              {/* ── Plan de contactos (pasos) ── */}
+              <PlanContactosSteps
+                contactos={contactos}
+                esOutbound={esOutbound}
+                pasosMarcados={nurturing.pasosMarcados ?? []}
+                onToggle={(num) => {
+                  const actuales = nurturing.pasosMarcados ?? [];
+                  const nuevos = actuales.includes(num)
+                    ? actuales.filter(n => n !== num)
+                    : [...actuales, num];
+                  const u = { ...nurturing, pasosMarcados: nuevos };
+                  setNurturing(u);
+                  guardarNurturing(u);
+                }}
+                onMarcarTodos={() => {
+                  const todos = contactos.map(c => c.num);
+                  const u = { ...nurturing, pasosMarcados: todos };
+                  setNurturing(u);
+                  guardarNurturing(u);
+                }}
+              />
 
               {/* ── Guión WA ── */}
               {esOutbound && tplsEvento.length > 0 && (() => {
@@ -2441,57 +2322,19 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               })()}
 
               {/* ── Material para compartir (inbound & outbound) ── */}
-              <div className="pt-2 pb-2">
-                <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${esOutbound ? "text-emerald-500" : "text-[#B3985B]"}`}>Material para compartir</p>
-                <div className="flex flex-col gap-2">
-                  {MATERIALES_COMPARTIR.map((m, i) => (
-                    <div key={m.url} className="flex items-center gap-2">
-                      <a href={m.url} target="_blank" rel="noopener noreferrer" 
-                        className={`flex-1 flex items-center justify-between gap-2 border rounded-lg px-3 py-2 text-left transition-colors ${
-                          i === 0 
-                            ? (esOutbound ? "bg-emerald-900/10 border-emerald-700/30 hover:bg-emerald-900/20" : "bg-[#B3985B]/10 border-[#B3985B]/30 hover:bg-[#B3985B]/20")
-                            : "bg-[#111] border-[#2a2a2a] hover:border-[#444]"
-                        }`}>
-                        <span className={`text-sm font-medium ${i === 0 ? "text-white" : "text-gray-300"}`}>{m.label}</span>
-                      </a>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(m.url);
-                          toast.success("Enlace copiado al portapapeles");
-                        }}
-                        className={`shrink-0 flex items-center gap-1.5 border rounded-lg px-3 py-2 transition-colors ${
-                          i === 0 
-                            ? (esOutbound ? "bg-emerald-900/20 border-emerald-700/40 text-emerald-400 hover:bg-emerald-900/40" : "bg-[#B3985B]/20 border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B]/30")
-                            : "bg-[#111] border-[#2a2a2a] text-gray-400 hover:text-white hover:border-[#555]"
-                        }`}
-                      >
-                        {COPY_ICON}<span className="text-[10px] uppercase font-bold">Copiar</span>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <MaterialCompartir tipoEvento={trato.tipoEvento} esOutbound={esOutbound} />
 
-              {/* ── Actividad y notas ── */}
-              <div>
-                <p className="text-base font-bold text-white mb-1">Notas de seguimiento</p>
-                <p className="text-xs text-gray-500 mb-3">Registra respuestas, avances, solicitudes o cualquier dato relevante.</p>
-                <textarea
-                  key={etapaKey}
-                  defaultValue={nurturing.notas?.[etapaKey] ?? ""}
-                  onBlur={e => {
-                    const notas = { ...(nurturing.notas ?? {}), [etapaKey]: e.target.value };
-                    const u = { ...nurturing, notas };
-                    setNurturing(u);
-                    guardarNurturing(u);
-                  }}
-                  rows={3}
-                  placeholder={`Ej: Respondió el ${new Date().toLocaleDateString("es-MX", { day: "numeric", month: "short" })}, mostró interés en audio...`}
-                  className={`w-full bg-[#111] border hover:border-[#333] rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none placeholder-gray-700 transition-colors ${
-                    esOutbound ? "border-[#222] focus:border-emerald-700/60" : "border-[#222] focus:border-amber-700/60"
-                  }`}
-                />
-              </div>
+              {/* ── Notas de seguimiento ── */}
+              <NotasSeguimiento
+                notas={nurturing.notasSeguimiento ?? []}
+                onAdd={async (texto) => {
+                  const nueva: NotaSeg = { texto, fecha: new Date().toISOString() };
+                  const u = { ...nurturing, notasSeguimiento: [...(nurturing.notasSeguimiento ?? []), nueva] };
+                  setNurturing(u);
+                  await guardarNurturing(u);
+                }}
+                esOutbound={esOutbound}
+              />
 
               {/* ── Historial de mensajes ── */}
               {nurturing.log.length > 0 && (
