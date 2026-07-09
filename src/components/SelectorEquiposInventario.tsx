@@ -19,6 +19,15 @@ export type CategoriaPublica = {
   equipos: EquipoPublico[];
 };
 
+/** Categoría o equipo agregado manualmente para este trato/descubrimiento.
+ *  No existe en el inventario ni se registra en la BD — vive dentro del JSON. */
+export type ExtraEquipo = {
+  id: string;
+  nombre: string;
+  categoria?: string;
+  cantidad?: number;
+};
+
 export type SeleccionEquipos = {
   /** IDs de CategoriaEquipo elegidas en el paso 1 */
   categorias: string[];
@@ -26,12 +35,17 @@ export type SeleccionEquipos = {
   equipos: string[];
   /** equipoId → cantidad de piezas. Ausente = seleccionado sin cantidad definida */
   cantidades?: Record<string, number>;
+  /** Equipos/categorías adicionales tecleados a mano (solo este trato) */
+  extras?: ExtraEquipo[];
 };
 
 interface Props {
   value: SeleccionEquipos;
   onChange: (sel: SeleccionEquipos) => void;
   readOnly?: boolean;
+  /** Notas técnicas / equipo faltante. Si se pasa onNotasChange, se muestra el campo tras las categorías. */
+  notas?: string;
+  onNotasChange?: (v: string) => void;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────────
@@ -60,17 +74,31 @@ function nombreEquipo(eq: EquipoPublico): string {
     : eq.marca || eq.modelo || eq.descripcion;
 }
 
+/** Marcas principales de la categoría, derivadas del inventario real (máx. 3). */
+function marcasPrincipales(cat: CategoriaPublica): string {
+  const seen = new Set<string>();
+  for (const e of cat.equipos) {
+    const m = (e.marca ?? "").trim();
+    if (m) seen.add(m);
+  }
+  return [...seen].slice(0, 3).join(" · ");
+}
+
+const CANTIDADES = Array.from({ length: 32 }, (_, i) => i + 1);
+
 // ── Componente ─────────────────────────────────────────────────────────────────
 
-export function SelectorEquiposInventario({ value, onChange, readOnly = false }: Props) {
+export function SelectorEquiposInventario({ value, onChange, readOnly = false, notas, onNotasChange }: Props) {
   const [categorias, setCategorias] = useState<CategoriaPublica[]>([]);
   const [loading, setLoading] = useState(true);
   const [paso, setPaso] = useState<1 | 2>(() =>
     value.categorias.length > 0 || value.equipos.length > 0 ? 2 : 1
   );
-  const [catActivaRaw, setCatActivaRaw] = useState<string | null>(null);
+  const [extraNombre, setExtraNombre] = useState("");
+  const [extraCategoria, setExtraCategoria] = useState("");
 
   const cantidades = value.cantidades ?? {};
+  const extras = value.extras ?? [];
 
   useEffect(() => {
     fetch("/api/inventario/publico")
@@ -97,12 +125,6 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false }:
     [categoriasVisibles, value.categorias]
   );
 
-  // Categoría activa efectiva: la elegida por el usuario si sigue vigente, si no la primera
-  const catActiva =
-    catActivaRaw && categoriasElegidas.some((c) => c.id === catActivaRaw)
-      ? catActivaRaw
-      : categoriasElegidas[0]?.id ?? null;
-
   // ── Mutadores ──
   function toggleCategoria(catId: string) {
     if (readOnly) return;
@@ -116,6 +138,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false }:
         if (idsCat.has(id)) delete nuevasCant[id];
       });
       onChange({
+        ...value,
         categorias: value.categorias.filter((id) => id !== catId),
         equipos: value.equipos.filter((id) => !idsCat.has(id)),
         cantidades: nuevasCant,
@@ -146,7 +169,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false }:
     if (cant <= 0) {
       delete nuevasCant[eqId]; // "sin cantidad definida"
     } else {
-      nuevasCant[eqId] = cant;
+      nuevasCant[eqId] = Math.min(cant, 32);
     }
     onChange({
       ...value,
@@ -154,6 +177,37 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false }:
       equipos: seleccionado ? value.equipos : [...value.equipos, eqId],
       cantidades: nuevasCant,
     });
+  }
+
+  // ── Extras (categoría/equipo adicional a mano) ──
+  function addExtra() {
+    if (readOnly) return;
+    const nombre = extraNombre.trim();
+    if (!nombre) return;
+    const item: ExtraEquipo = {
+      id: `extra-${Date.now()}`,
+      nombre,
+      categoria: extraCategoria.trim() || undefined,
+      cantidad: undefined,
+    };
+    onChange({ ...value, extras: [...extras, item] });
+    setExtraNombre("");
+    setExtraCategoria("");
+  }
+
+  function setExtraCantidad(id: string, cant: number) {
+    if (readOnly) return;
+    onChange({
+      ...value,
+      extras: extras.map((e) =>
+        e.id === id ? { ...e, cantidad: cant <= 0 ? undefined : Math.min(cant, 32) } : e
+      ),
+    });
+  }
+
+  function removeExtra(id: string) {
+    if (readOnly) return;
+    onChange({ ...value, extras: extras.filter((e) => e.id !== id) });
   }
 
   // ── Estados de carga / vacío ──
@@ -167,7 +221,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false }:
     );
   }
 
-  if (categoriasVisibles.length === 0) {
+  if (categoriasVisibles.length === 0 && extras.length === 0) {
     return (
       <p className="text-gray-600 text-sm py-4 text-center">
         No hay equipos disponibles en el inventario todavía.
@@ -177,7 +231,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false }:
 
   // ── Vista de solo lectura (resumen) ──
   if (readOnly) {
-    const conEquipos = categoriasElegidas.length > 0 || value.equipos.length > 0;
+    const conEquipos = categoriasElegidas.length > 0 || value.equipos.length > 0 || extras.length > 0;
     if (!conEquipos) {
       return <p className="text-gray-600 text-sm py-3">Sin equipos seleccionados.</p>;
     }
@@ -207,11 +261,64 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false }:
             </div>
           );
         })}
+        {extras.length > 0 && (
+          <div className="bg-[#111] border border-dashed border-[#2a2a2a] rounded-xl p-3">
+            <p className="text-white text-sm font-medium mb-1.5">➕ Adicionales (a mano)</p>
+            <ul className="space-y-1">
+              {extras.map((ex) => (
+                <li key={ex.id} className="text-gray-300 text-xs flex justify-between gap-2">
+                  <span>
+                    {ex.nombre}
+                    {ex.categoria ? <span className="text-gray-600"> · {ex.categoria}</span> : null}
+                  </span>
+                  <span className="text-[#B3985B]">
+                    {ex.cantidad ? `${ex.cantidad} pz` : "sin cantidad"}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     );
   }
 
-  const totalEquipos = value.equipos.length;
+  const totalEquipos = value.equipos.length + extras.length;
+
+  // Control de cantidad reutilizable: −  [1–32 ▾]  +
+  const controlCantidad = (
+    cant: number | undefined,
+    onSet: (n: number) => void
+  ) => (
+    <div className="flex items-center gap-1 shrink-0">
+      <button
+        type="button"
+        onClick={() => onSet((cant ?? 0) - 1)}
+        className="w-6 h-6 rounded-md bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white text-sm flex items-center justify-center leading-none"
+      >
+        −
+      </button>
+      <select
+        value={cant ?? 0}
+        onChange={(e) => onSet(Number(e.target.value))}
+        className="h-6 bg-[#111] border border-[#2a2a2a] rounded-md text-white text-xs px-1 focus:outline-none focus:border-[#B3985B]"
+      >
+        <option value={0}>—</option>
+        {CANTIDADES.map((n) => (
+          <option key={n} value={n}>
+            {n} pz
+          </option>
+        ))}
+      </select>
+      <button
+        type="button"
+        onClick={() => onSet((cant ?? 0) + 1)}
+        className="w-6 h-6 rounded-md bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white text-sm flex items-center justify-center leading-none"
+      >
+        +
+      </button>
+    </div>
+  );
 
   // ── UI interactiva ──
   return (
@@ -250,45 +357,59 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false }:
       {paso === 1 && (
         <div className="space-y-3">
           <p className="text-gray-500 text-xs">
-            ¿Qué tipo de equipo o servicio necesitas? Elige las categorías que te
-            interesan. En el siguiente paso eliges los equipos exactos y cuántas piezas.
+            ¿Qué tipo de equipo o servicio necesitas? Elige las categorías; en el
+            siguiente paso defines los equipos exactos y las piezas.
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {categoriasVisibles.map((cat) => {
               const sel = value.categorias.includes(cat.id);
-              const nEq = cat.equipos.filter((e) => value.equipos.includes(e.id)).length;
+              const marcas = marcasPrincipales(cat);
               return (
                 <button
                   key={cat.id}
                   type="button"
                   onClick={() => toggleCategoria(cat.id)}
-                  className={`relative flex flex-col items-start gap-1 rounded-xl border p-3 text-left transition-all ${
+                  title={marcas ? `Marcas: ${marcas}` : undefined}
+                  className={`relative flex flex-col items-start gap-0.5 rounded-lg border p-2 text-left transition-all ${
                     sel
                       ? "border-[#B3985B] bg-[#B3985B]/10"
                       : "border-[#1e1e1e] bg-[#111] hover:border-[#B3985B]/40"
                   }`}
                 >
-                  <span className="text-2xl leading-none">{catEmoji(cat.nombre)}</span>
-                  <span className="text-white text-xs font-medium leading-tight">{cat.nombre}</span>
-                  <span className="text-gray-600 text-[10px]">
-                    {cat.equipos.length} equipo{cat.equipos.length !== 1 ? "s" : ""}
-                  </span>
-                  {nEq > 0 && (
-                    <span className="absolute top-2 right-2 text-[10px] text-[#B3985B] bg-[#B3985B]/15 rounded-full px-1.5 leading-4">
-                      {nEq}
+                  <span className="text-lg leading-none">{catEmoji(cat.nombre)}</span>
+                  <span className="text-white text-[11px] font-medium leading-tight line-clamp-2">{cat.nombre}</span>
+                  {marcas && (
+                    <span className="text-gray-600 text-[9px] leading-tight line-clamp-1">{marcas}</span>
+                  )}
+                  {sel && (
+                    <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-md bg-[#B3985B] flex items-center justify-center">
+                      <span className="text-black text-[8px] font-bold leading-none">✓</span>
                     </span>
                   )}
-                  <div
-                    className={`absolute top-2 right-2 w-4 h-4 rounded-md border-2 flex items-center justify-center transition-all ${
-                      sel ? "bg-[#B3985B] border-[#B3985B]" : "border-[#333]"
-                    } ${nEq > 0 ? "hidden" : ""}`}
-                  >
-                    {sel && <span className="text-black text-[9px] font-bold leading-none">✓</span>}
-                  </div>
                 </button>
               );
             })}
           </div>
+
+          {/* Notas técnicas / equipo faltante — capturar en cuanto se detecte */}
+          {onNotasChange && (
+            <div className="pt-1">
+              <label className="text-[11px] text-[#B3985B] font-medium block mb-1">
+                Notas técnicas / equipo faltante
+              </label>
+              <p className="text-[10px] text-gray-600 mb-1.5">
+                Marcas o modelos específicos, o cualquier equipo que no encuentres en las categorías.
+              </p>
+              <textarea
+                value={notas ?? ""}
+                onChange={(e) => onNotasChange(e.target.value)}
+                rows={2}
+                placeholder="Ej: 4 micrófonos Shure ULXD, consola Digico SD12..."
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
+              />
+            </div>
+          )}
+
           <button
             type="button"
             onClick={() => setPaso(2)}
@@ -302,10 +423,10 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false }:
         </div>
       )}
 
-      {/* ── PASO 2: elegir equipos + cantidades ── */}
+      {/* ── PASO 2: elegir equipos + cantidades (vista única scrolleable) ── */}
       {paso === 2 && (
-        <div className="space-y-3">
-          {categoriasElegidas.length === 0 ? (
+        <div className="space-y-4">
+          {categoriasElegidas.length === 0 && extras.length === 0 ? (
             <div className="text-center py-6">
               <p className="text-gray-500 text-sm mb-3">Primero elige una o más categorías.</p>
               <button
@@ -318,130 +439,133 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false }:
             </div>
           ) : (
             <>
-              {/* Tabs de categorías elegidas */}
-              <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-                {categoriasElegidas.map((cat) => {
-                  const nEq = cat.equipos.filter((e) => value.equipos.includes(e.id)).length;
-                  const activa = catActiva === cat.id;
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setCatActivaRaw(cat.id)}
-                      className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-colors ${
-                        activa
-                          ? "bg-[#1e1e1e] text-white border border-[#B3985B]/50"
-                          : "bg-[#111] text-gray-400 border border-[#1e1e1e] hover:text-white"
-                      }`}
-                    >
-                      <span>{catEmoji(cat.nombre)}</span>
-                      <span className="whitespace-nowrap">{cat.nombre}</span>
-                      {nEq > 0 && (
-                        <span className="text-[10px] text-[#B3985B] bg-[#B3985B]/15 rounded-full px-1.5 leading-4">
-                          {nEq}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+              <p className="text-gray-500 text-xs">
+                Marca los equipos que necesitas y ajusta las piezas con − / + o el menú.
+              </p>
 
-              {/* Carrusel de equipos de la categoría activa */}
-              {(() => {
-                const cat = categoriasElegidas.find((c) => c.id === catActiva);
-                if (!cat) return null;
-                if (cat.equipos.length === 0) {
-                  return (
-                    <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4 text-center">
-                      <p className="text-gray-500 text-xs">
-                        No hay equipos listados en <span className="text-white">{cat.nombre}</span>.
-                        Se queda marcada como interés — lo definimos juntos.
-                      </p>
-                    </div>
-                  );
-                }
-                return (
-                  <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x">
-                    {cat.equipos.map((eq) => {
-                      const sel = value.equipos.includes(eq.id);
-                      const cant = cantidades[eq.id];
-                      return (
-                        <div
-                          key={eq.id}
-                          className={`snap-start shrink-0 w-[160px] rounded-xl border overflow-hidden transition-all ${
-                            sel ? "border-[#B3985B] bg-[#B3985B]/[0.06]" : "border-[#1e1e1e] bg-[#0d0d0d]"
-                          }`}
-                        >
-                          {/* Imagen + toggle */}
-                          <button
-                            type="button"
-                            onClick={() => toggleEquipo(eq.id)}
-                            className="relative w-full h-[110px] bg-[#1a1a1a] flex items-center justify-center"
+              {/* Todas las categorías elegidas, una debajo de otra */}
+              {categoriasElegidas.map((cat) => (
+                <div key={cat.id} className="space-y-1.5">
+                  <p className="text-[#B3985B] text-xs font-semibold sticky top-0 bg-black/80 backdrop-blur-sm py-1 z-10">
+                    {catEmoji(cat.nombre)} {cat.nombre}
+                  </p>
+                  {cat.equipos.length === 0 ? (
+                    <p className="text-gray-600 text-[11px] px-1">
+                      Sin equipos listados — se queda marcada como interés, lo definimos juntos.
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {cat.equipos.map((eq) => {
+                        const sel = value.equipos.includes(eq.id);
+                        const cant = cantidades[eq.id];
+                        return (
+                          <div
+                            key={eq.id}
+                            className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 transition-all ${
+                              sel ? "border-[#B3985B]/60 bg-[#B3985B]/[0.06]" : "border-[#1e1e1e] bg-[#0d0d0d]"
+                            }`}
                           >
-                            {eq.imagenUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={eq.imagenUrl} alt={eq.descripcion} className="w-full h-full object-cover" />
-                            ) : (
-                              <span className="text-gray-700 text-3xl">{catEmoji(cat.nombre)}</span>
-                            )}
-                            <div
-                              className={`absolute top-2 right-2 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                                sel ? "bg-[#B3985B] border-[#B3985B]" : "border-white/40 bg-black/40"
-                              }`}
+                            {/* Miniatura + toggle */}
+                            <button
+                              type="button"
+                              onClick={() => toggleEquipo(eq.id)}
+                              className="flex items-center gap-2 flex-1 min-w-0 text-left"
                             >
-                              {sel && <span className="text-black text-xs font-bold leading-none">✓</span>}
-                            </div>
-                          </button>
-
-                          {/* Info */}
-                          <div className="p-2.5 space-y-2">
-                            <div className="min-h-[34px]">
-                              <p className="text-white text-xs font-medium leading-tight line-clamp-2">
+                              <span className="relative w-9 h-9 rounded-md bg-[#1a1a1a] flex items-center justify-center shrink-0 overflow-hidden">
+                                {eq.imagenUrl ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={eq.imagenUrl} alt={eq.descripcion} className="w-full h-full object-cover" />
+                                ) : (
+                                  <span className="text-gray-700 text-base">{catEmoji(cat.nombre)}</span>
+                                )}
+                              </span>
+                              <span className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${sel ? "bg-[#B3985B] border-[#B3985B]" : "border-[#333]"}`}>
+                                {sel && <span className="text-black text-[9px] font-bold leading-none">✓</span>}
+                              </span>
+                              <span className="text-white text-xs font-medium leading-tight truncate">
                                 {nombreEquipo(eq)}
-                              </p>
-                            </div>
+                              </span>
+                            </button>
 
-                            {/* Selector de cantidad */}
-                            {sel ? (
-                              <div className="flex items-center justify-between gap-1 bg-[#111] rounded-lg p-1">
-                                <button
-                                  type="button"
-                                  onClick={() => setCantidad(eq.id, (cant ?? 0) - 1)}
-                                  className="w-7 h-7 rounded-md bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white text-base flex items-center justify-center leading-none"
-                                >
-                                  −
-                                </button>
-                                <div className="flex-1 text-center">
-                                  {cant ? (
-                                    <span className="text-white text-sm font-semibold">{cant} pz</span>
-                                  ) : (
-                                    <span className="text-gray-500 text-[11px]">sin cantidad</span>
-                                  )}
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => setCantidad(eq.id, (cant ?? 0) + 1)}
-                                  className="w-7 h-7 rounded-md bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white text-base flex items-center justify-center leading-none"
-                                >
-                                  +
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => toggleEquipo(eq.id)}
-                                className="w-full text-[11px] py-1.5 rounded-lg border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors"
-                              >
-                                + Seleccionar
-                              </button>
-                            )}
+                            {/* Cantidad (solo si está seleccionado) */}
+                            {sel && controlCantidad(cant, (n) => setCantidad(eq.id, n))}
                           </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* ── Categoría / equipo adicional (a mano, solo este trato) ── */}
+              <div className="space-y-2 pt-1 border-t border-[#1a1a1a]">
+                <p className="text-gray-400 text-xs font-medium">
+                  ➕ ¿Falta una categoría o equipo?
+                </p>
+                <p className="text-gray-600 text-[10px] -mt-1">
+                  Agrégalo a mano solo para este trato (no se guarda en el inventario).
+                </p>
+                {extras.length > 0 && (
+                  <div className="space-y-1.5">
+                    {extras.map((ex) => (
+                      <div
+                        key={ex.id}
+                        className="flex items-center gap-2 rounded-lg border border-dashed border-[#2a2a2a] bg-[#0d0d0d] px-2 py-1.5"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-xs font-medium leading-tight truncate">{ex.nombre}</p>
+                          {ex.categoria && (
+                            <p className="text-gray-600 text-[10px] leading-tight truncate">{ex.categoria}</p>
+                          )}
                         </div>
-                      );
-                    })}
+                        {controlCantidad(ex.cantidad, (n) => setExtraCantidad(ex.id, n))}
+                        <button
+                          type="button"
+                          onClick={() => removeExtra(ex.id)}
+                          className="w-6 h-6 rounded-md text-gray-500 hover:text-red-400 hover:bg-red-500/10 text-sm flex items-center justify-center shrink-0"
+                          aria-label="Quitar"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                );
-              })()}
+                )}
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    value={extraNombre}
+                    onChange={(e) => setExtraNombre(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addExtra();
+                      }
+                    }}
+                    placeholder="Equipo o categoría (ej: Máquina de humo Antari)"
+                    className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                  <input
+                    value={extraCategoria}
+                    onChange={(e) => setExtraCategoria(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addExtra();
+                      }
+                    }}
+                    placeholder="Categoría (opcional)"
+                    className="sm:w-40 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                  <button
+                    type="button"
+                    onClick={addExtra}
+                    disabled={!extraNombre.trim()}
+                    className="bg-[#1e1e1e] hover:bg-[#2a2a2a] disabled:opacity-40 disabled:cursor-not-allowed text-[#B3985B] text-sm font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
+                  >
+                    Agregar
+                  </button>
+                </div>
+              </div>
 
               {/* Resumen + navegación */}
               <div className="flex items-center justify-between pt-1">
@@ -465,7 +589,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false }:
       )}
 
       <p className="text-gray-700 text-[11px] pt-1 text-center">
-        Si no encuentras lo que necesitas, menciónalo en las notas o escríbenos directamente.
+        Si no encuentras lo que necesitas, agrégalo arriba o menciónalo en las notas.
       </p>
     </div>
   );

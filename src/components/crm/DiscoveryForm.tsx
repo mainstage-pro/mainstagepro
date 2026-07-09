@@ -838,6 +838,8 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
                     onChange={(sel: SeleccionEquipos) => {
                       setDiscForm(p => ({ ...p, equiposInteres: JSON.stringify(sel) }));
                     }}
+                    notas={discForm.notasEquipos || ""}
+                    onNotasChange={(v) => setDiscForm(p => ({ ...p, notasEquipos: v }))}
                   />
                 </div>
 
@@ -896,7 +898,10 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
               </div>
             )}
             
-            {/* ── Notas Técnicas / Equipos Adicionales (Manual) ─────────────────────── */}
+            {/* ── Notas Técnicas / Equipos Adicionales (Manual) ───────────────────────
+                En producción técnica el campo lo maneja el selector (tras las categorías);
+                aquí solo para RENTA y Dirección Técnica. */}
+            {(discForm.tipoServicio === "RENTA" || discForm.tipoServicio === "DIRECCION_TECNICA") && (
             <div className="pt-2">
               <label className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold block mb-2">Notas Técnicas y Equipo Adicional (Manual)</label>
               <p className="text-[11px] text-gray-500 mb-2">Detalla marcas, modelos específicos, o lista cualquier equipo que no hayas encontrado en las categorías.</p>
@@ -908,6 +913,7 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
                 className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
               />
             </div>
+            )}
 
               {/* Asistentes estimados — visible en paso 2 para producción técnica (no DT ni RENTA) */}
               {discForm.tipoServicio !== "RENTA" && discForm.tipoServicio !== "DIRECCION_TECNICA" && (
