@@ -141,4 +141,12 @@ await run(`ALTER TABLE tareas ADD COLUMN IF NOT EXISTS "fecha"           TIMESTA
 await run(`ALTER TABLE tareas ADD COLUMN IF NOT EXISTS "recurrencia"     TEXT`,                                                        "tareas.recurrencia");
 await run(`ALTER TABLE tareas ADD COLUMN IF NOT EXISTS "orden"           INTEGER NOT NULL DEFAULT 0`,                                  "tareas.orden");
 
+// ─── CAMPAÑAS: brief + categoría/vigencia ─────────────────────────────────────
+await run(`ALTER TABLE tipos_campana ADD COLUMN IF NOT EXISTS "categoria" TEXT NOT NULL DEFAULT 'base'`, "tipos_campana.categoria");
+await run(`ALTER TABLE tipos_campana ADD COLUMN IF NOT EXISTS "vigenciaDesde" TIMESTAMP(3)`,             "tipos_campana.vigenciaDesde");
+await run(`ALTER TABLE tipos_campana ADD COLUMN IF NOT EXISTS "vigenciaHasta" TIMESTAMP(3)`,             "tipos_campana.vigenciaHasta");
+await run(`ALTER TABLE tipos_campana ADD COLUMN IF NOT EXISTS "briefTemplate" TEXT`,                     "tipos_campana.briefTemplate");
+await run(`ALTER TABLE ejecuciones_campana ADD COLUMN IF NOT EXISTS "brief" TEXT`,                       "ejecuciones_campana.brief");
+await run(`ALTER TABLE ejecuciones_campana ADD COLUMN IF NOT EXISTS "briefCompleto" BOOLEAN NOT NULL DEFAULT false`, "ejecuciones_campana.briefCompleto");
+
 console.log("Migración completada.");

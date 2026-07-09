@@ -5,6 +5,8 @@ import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { Modal } from "@/components/Modal";
+import { BriefEditor } from "@/components/BriefEditor";
+import { CampanaBrief, defaultBrief, parseBrief, isBriefCompleto } from "@/lib/campana-brief";
 
 interface TipoCampana {
   id: string; nombre: string; objetivo: string; objetivoMeta: string;
@@ -12,13 +14,14 @@ interface TipoCampana {
   duracionDias: number; presupuestoEstimado: number | null; color: string; activo: boolean;
   cta: string; copyReferencia: string | null; pixelEvento: string | null;
   publicoEdadMin: number; publicoEdadMax: number; publicoGenero: string; ubicaciones: string;
+  briefTemplate: string | null;
 }
 interface EjecucionCampana {
   id: string; tipoId: string | null; tipo: TipoCampana | null;
   nombre: string; objetivo: string | null; canal: string | null; color: string | null;
   fechaInicio: string; fechaFin: string;
   estado: string; presupuesto: number | null; notas: string | null; mes: string;
-  idMetaAds: string | null;
+  idMetaAds: string | null; brief: string | null; briefCompleto: boolean;
   alcance: number | null; impresiones: number | null; clics: number | null;
   ctr: number | null; cantResultados: number | null; costoResultado: number | null;
 }
@@ -79,6 +82,7 @@ export default function CalendarioCampanasPage() {
   const [showForm, setShowForm]     = useState(false);
   const [editId, setEditId]         = useState<string | null>(null);
   const [form, setForm]             = useState(FORM_EMPTY);
+  const [brief, setBrief]           = useState<CampanaBrief>(defaultBrief());
   const [saving, setSaving]         = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -98,12 +102,14 @@ export default function CalendarioCampanasPage() {
   // When a tipo is selected in the form, prefill data
   function onTipoChange(tipoId: string) {
     const t = tipos.find(t => t.id === tipoId);
-    if (!t) { setForm(f => ({ ...f, tipoId })); return; }
+    if (!t) { setForm(f => ({ ...f, tipoId })); setBrief(defaultBrief()); return; }
     const ini = form.fechaInicio || `${mes}-01`;
     const iniDate = parseFecha(ini);
     const finDate = new Date(iniDate);
     finDate.setDate(finDate.getDate() + t.duracionDias - 1);
     const fin = finDate.toISOString().slice(0, 10);
+    // Clonar la plantilla de brief del tipo, editable para esta campaña.
+    setBrief(parseBrief(t.briefTemplate));
     setForm(f => ({
       ...f, tipoId,
       nombre: f.nombre || t.nombre,
@@ -117,6 +123,7 @@ export default function CalendarioCampanasPage() {
 
   function startNew() {
     setForm({ ...FORM_EMPTY, fechaInicio: `${mes}-01` });
+    setBrief(defaultBrief());
     setEditId(null); setShowForm(true);
   }
 
@@ -139,14 +146,19 @@ export default function CalendarioCampanasPage() {
       cantResultados: e.cantResultados?.toString() ?? "",
       costoResultado: e.costoResultado?.toString() ?? "",
     });
+    setBrief(parseBrief(e.brief));
     setEditId(e.id); setShowForm(true); setExpandedId(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function cancelForm() { setForm(FORM_EMPTY); setEditId(null); setShowForm(false); }
+  function cancelForm() { setForm(FORM_EMPTY); setBrief(defaultBrief()); setEditId(null); setShowForm(false); }
 
   async function save() {
     if (!form.nombre.trim() || !form.fechaInicio || !form.fechaFin) return;
+    if (form.estado === "EN_EJECUCION" && !isBriefCompleto(brief)) {
+      toast.error("Completa el checklist de lanzamiento del brief antes de poner la campaña en ejecución.");
+      return;
+    }
     setSaving(true);
     const tipoSeleccionado = tipos.find(t => t.id === form.tipoId);
     const payload = {
@@ -158,6 +170,7 @@ export default function CalendarioCampanasPage() {
       fechaInicio: form.fechaInicio,
       fechaFin: form.fechaFin,
       estado: form.estado,
+      brief: JSON.stringify(brief),
       presupuesto: form.presupuesto ? parseFloat(form.presupuesto) : null,
       notas: form.notas || null,
       mes,
@@ -396,6 +409,20 @@ export default function CalendarioCampanasPage() {
             </div>
           </div>
 
+          {/* Brief de la campaña */}
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between">
+              <label className="text-xs text-white/40 uppercase tracking-wider">Brief de la campaña</label>
+              <span className={`text-[11px] px-2 py-0.5 rounded-full ${isBriefCompleto(brief) ? "bg-green-900/30 text-green-300" : "bg-yellow-900/20 text-yellow-300/80"}`}>
+                {isBriefCompleto(brief) ? "Completo" : "Incompleto"}
+              </span>
+            </div>
+            <p className="text-[11px] text-white/30 -mt-1">
+              Clonado del tipo al crear. Debe estar completo para poner la campaña en ejecución.
+            </p>
+            <BriefEditor value={brief} onChange={setBrief} />
+          </div>
+
           {/* Resultados (solo si edición de campaña activa o completada) */}
           {editId && (form.estado === "EN_EJECUCION" || form.estado === "COMPLETADA") && (
             <div className="space-y-3 pt-1">
@@ -508,6 +535,11 @@ export default function CalendarioCampanasPage() {
                         <span className={`text-xs px-2 py-0.5 rounded-full ${ESTADO_COLOR[e.estado]}`}>
                           {ESTADO_LABEL[e.estado]}
                         </span>
+                        {!e.briefCompleto && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-900/20 text-yellow-300/80" title="El brief debe completarse para lanzar">
+                            Brief incompleto
+                          </span>
+                        )}
                         {e.tipo && (
                           <span className="text-xs text-white/25 border border-white/[0.07] rounded-full px-2 py-0.5">
                             {e.tipo.nombre}

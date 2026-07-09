@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { ensureCampanaBriefColumns, archivarEventualesVencidos } from "@/lib/campana-brief-db";
 
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  await ensureCampanaBriefColumns();
+  await archivarEventualesVencidos();
   const tipos = await prisma.tipoCampana.findMany({ orderBy: [{ orden: "asc" }, { nombre: "asc" }] });
   return NextResponse.json({ tipos });
 }
@@ -12,6 +15,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  await ensureCampanaBriefColumns();
   const body = await request.json();
   const {
     nombre, objetivo, objetivoMeta, formato, recurrencia, canal,
@@ -19,6 +23,7 @@ export async function POST(request: NextRequest) {
     publicoEdadMin, publicoEdadMax, publicoGenero, ubicaciones,
     cta, copyReferencia, pixelEvento,
     descripcion, grupo, color, activo, orden,
+    categoria, vigenciaDesde, vigenciaHasta, briefTemplate,
   } = body;
   if (!nombre?.trim()) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
   const tipo = await prisma.tipoCampana.create({
@@ -41,6 +46,10 @@ export async function POST(request: NextRequest) {
       descripcion: descripcion || null,
       grupo: grupo || null,
       color: color ?? "#B3985B",
+      categoria: categoria === "eventual" ? "eventual" : "base",
+      vigenciaDesde: vigenciaDesde ? new Date(vigenciaDesde) : null,
+      vigenciaHasta: vigenciaHasta ? new Date(vigenciaHasta) : null,
+      briefTemplate: briefTemplate || null,
       activo: activo ?? true,
       orden: orden ?? 0,
     },

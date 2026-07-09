@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { ensureCampanaBriefColumns } from "@/lib/campana-brief-db";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  await ensureCampanaBriefColumns();
   const { id } = await params;
   const body = await request.json();
   const {
@@ -13,6 +15,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     publicoEdadMin, publicoEdadMax, publicoGenero, ubicaciones,
     cta, copyReferencia, pixelEvento,
     descripcion, grupo, color, activo, orden,
+    categoria, vigenciaDesde, vigenciaHasta, briefTemplate,
   } = body;
   const tipo = await prisma.tipoCampana.update({
     where: { id },
@@ -35,6 +38,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       ...(descripcion !== undefined && { descripcion: descripcion || null }),
       ...(grupo !== undefined && { grupo: grupo || null }),
       ...(color !== undefined && { color }),
+      ...(categoria !== undefined && { categoria: categoria === "eventual" ? "eventual" : "base" }),
+      ...(vigenciaDesde !== undefined && { vigenciaDesde: vigenciaDesde ? new Date(vigenciaDesde) : null }),
+      ...(vigenciaHasta !== undefined && { vigenciaHasta: vigenciaHasta ? new Date(vigenciaHasta) : null }),
+      ...(briefTemplate !== undefined && { briefTemplate: briefTemplate || null }),
       ...(activo !== undefined && { activo }),
       ...(orden !== undefined && { orden }),
     },

@@ -5,6 +5,8 @@ import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { Modal } from "@/components/Modal";
+import { BriefEditor } from "@/components/BriefEditor";
+import { CampanaBrief, defaultBrief, parseBrief } from "@/lib/campana-brief";
 
 interface TipoCampana {
   id: string; nombre: string;
@@ -15,6 +17,8 @@ interface TipoCampana {
   pixelEvento: string | null; descripcion: string | null;
   grupo: string | null;
   color: string; activo: boolean; orden: number;
+  categoria: string; vigenciaDesde: string | null; vigenciaHasta: string | null;
+  briefTemplate: string | null;
 }
 
 // Categorías del documento
@@ -64,6 +68,7 @@ type FormState = {
   publicoEdadMin:string; publicoEdadMax:string; publicoGenero:string;
   ubicaciones:string[]; cta:string; copyReferencia:string; pixelEvento:string;
   descripcion:string; grupo:string; color:string;
+  categoria:string; vigenciaDesde:string; vigenciaHasta:string;
 };
 const EMPTY: FormState = {
   nombre:"", objetivo:"INFORMATIVO", objetivoMeta:"RECONOCIMIENTO", formato:"VIDEO", recurrencia:"MENSUAL",
@@ -71,10 +76,11 @@ const EMPTY: FormState = {
   publicoEdadMin:"25", publicoEdadMax:"55", publicoGenero:"TODOS",
   ubicaciones:["FEED_IG","REELS_IG","STORIES_IG"], cta:"MAS_INFORMACION",
   copyReferencia:"", pixelEvento:"", descripcion:"", grupo:"", color:"#B3985B",
+  categoria:"base", vigenciaDesde:"", vigenciaHasta:"",
 };
 
 // ── 14 campañas del documento ───────────────────────────────────────────────
-type Sugerido = Omit<TipoCampana,"id"|"activo"|"orden">;
+type Sugerido = Omit<TipoCampana,"id"|"activo"|"orden"|"categoria"|"vigenciaDesde"|"vigenciaHasta"|"briefTemplate">;
 const SUGERIDOS: Sugerido[] = [
   {
     nombre:"Servicios Mainstage 1", objetivo:"INFORMATIVO", objetivoMeta:"RECONOCIMIENTO",
@@ -236,6 +242,7 @@ export default function TiposCampanaPage() {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY);
+  const [brief, setBrief] = useState<CampanaBrief>(defaultBrief());
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -277,14 +284,18 @@ export default function TiposCampanaPage() {
       descripcion: t.descripcion ?? "",
       grupo: t.grupo ?? "",
       color: t.color,
+      categoria: t.categoria ?? "base",
+      vigenciaDesde: t.vigenciaDesde ? t.vigenciaDesde.slice(0, 10) : "",
+      vigenciaHasta: t.vigenciaHasta ? t.vigenciaHasta.slice(0, 10) : "",
     });
+    setBrief(parseBrief(t.briefTemplate));
     setEditId(t.id);
     setShowForm(true);
     setExpandedId(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function cancelForm() { setForm(EMPTY); setEditId(null); setShowForm(false); }
+  function cancelForm() { setForm(EMPTY); setBrief(defaultBrief()); setEditId(null); setShowForm(false); }
 
   async function save() {
     if (!form.nombre.trim()) return;
@@ -308,6 +319,10 @@ export default function TiposCampanaPage() {
       descripcion: form.descripcion || null,
       grupo: form.grupo || null,
       color: form.color,
+      categoria: form.categoria,
+      vigenciaDesde: form.categoria === "eventual" && form.vigenciaDesde ? form.vigenciaDesde : null,
+      vigenciaHasta: form.categoria === "eventual" && form.vigenciaHasta ? form.vigenciaHasta : null,
+      briefTemplate: JSON.stringify(brief),
     };
     const url = editId ? `/api/marketing/tipos-campana/${editId}` : "/api/marketing/tipos-campana";
     const method = editId ? "PATCH" : "POST";
@@ -408,6 +423,41 @@ export default function TiposCampanaPage() {
                 {REC_LABEL[r]}
               </button>
             ))}
+          </div>
+
+          {/* Categoría: base vs eventual */}
+          <div className="space-y-2">
+            <label className="text-xs text-white/40 uppercase tracking-wider">Categoría del tipo</label>
+            <div className="flex gap-2">
+              {[
+                { key: "base", label: "Base", hint: "Fijo/permanente" },
+                { key: "eventual", label: "Eventual", hint: "Por coyuntura" },
+              ].map(c => (
+                <button key={c.key} onClick={() => setForm(f => ({ ...f, categoria: c.key }))}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${form.categoria === c.key ? "border-[#B3985B] bg-[#B3985B]/10 text-[#B3985B]" : "border-white/10 text-white/40 hover:border-white/20 hover:text-white"}`}>
+                  {c.label} <span className="text-white/25">· {c.hint}</span>
+                </button>
+              ))}
+            </div>
+            {form.categoria === "eventual" && (
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block text-xs text-white/40 mb-1">Válido desde</label>
+                  <input type="date" value={form.vigenciaDesde}
+                    onChange={e => setForm(f => ({ ...f, vigenciaDesde: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="block text-xs text-white/40 mb-1">Válido hasta</label>
+                  <input type="date" value={form.vigenciaHasta}
+                    onChange={e => setForm(f => ({ ...f, vigenciaHasta: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <p className="col-span-2 text-[11px] text-white/30">
+                  Al vencer la vigencia, el tipo se archiva solo (queda guardado para reusarse).
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Objetivo + Objetivo Meta */}
@@ -552,6 +602,15 @@ export default function TiposCampanaPage() {
               placeholder="Para qué sirve esta campaña, cuándo usarla, segmentación sugerida…" />
           </div>
 
+          {/* Plantilla de brief */}
+          <div className="space-y-2">
+            <label className="text-xs text-white/40 uppercase tracking-wider">Plantilla de brief</label>
+            <p className="text-[11px] text-white/30 -mt-1">
+              Punto de partida al crear una campaña de este tipo. Se clona editable en cada campaña.
+            </p>
+            <BriefEditor value={brief} onChange={setBrief} />
+          </div>
+
           {/* Preview */}
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-[#1a1a1a] border border-white/[0.04]">
             <div className="w-3 h-3 rounded-full shrink-0" style={{ background: form.color }} />
@@ -655,6 +714,11 @@ export default function TiposCampanaPage() {
                                 <span className={`text-xs px-2 py-0.5 rounded-full ${REC_COLOR[t.recurrencia]}`}>
                                   {REC_LABEL[t.recurrencia]}
                                 </span>
+                                {t.categoria === "eventual" && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-900/30 text-amber-300">
+                                    Eventual{t.vigenciaHasta ? ` · hasta ${t.vigenciaHasta.slice(0, 10)}` : ""}
+                                  </span>
+                                )}
                               </div>
                               <div className="flex items-center gap-3 mt-1 text-xs text-white/30 flex-wrap">
                                 <span>{t.publicoEdadMin}–{t.publicoEdadMax} años · {GENERO_LABEL[t.publicoGenero]}</span>
