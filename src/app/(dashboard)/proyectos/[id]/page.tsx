@@ -18,10 +18,17 @@ import { Combobox } from "@/components/Combobox";
 import ProyectoTareas from "./ProyectoTareas";
 import { BackButton } from "@/components/BackButton";
 import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem } from "@/components/proyectos/ViabilidadWidget";
+import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
-interface RolTecnico { id: string; nombre: string; tipoPago: string; tarifaAAACorta: number | null; tarifaAAAMedia: number | null; tarifaAAALarga: number | null; tarifaPlanaAAA: number | null; tarifaPlanaAA: number | null; tarifaPlanaA: number | null; tarifaHoraAAA: number | null; tarifaHoraAA: number | null; tarifaHoraA: number | null }
+interface RolTecnico { id: string; nombre: string; tipoPago: string; disciplina: string | null; tarifaAAACorta: number | null; tarifaAAAMedia: number | null; tarifaAAALarga: number | null; tarifaPlanaAAA: number | null; tarifaPlanaAA: number | null; tarifaPlanaA: number | null; tarifaHoraAAA: number | null; tarifaHoraAA: number | null; tarifaHoraA: number | null }
+interface SugerenciaTecnico {
+  id: string; nombre: string; celular: string | null; nivel: string | null;
+  prioridad: number; evaluacionPromedio: number | null; zonaHabitual: string | null;
+  rol: { id: string; nombre: string } | null;
+  yaAsignado: boolean; ocupado: boolean;
+}
 interface Personal {
   id: string; confirmado: boolean; estadoPago: string;
   participacion: string | null;
@@ -30,6 +37,7 @@ interface Personal {
   tarifaAcordada: number | null; notas: string | null;
   confirmToken: string | null; confirmRespuesta: string | null;
   rolEnEvento: string | null;
+  esAdicional: boolean;
   tecnico: { id: string; nombre: string; celular: string | null; rol: { nombre: string } | null } | null;
   rolTecnico: { nombre: string } | null;
 }
@@ -68,7 +76,7 @@ interface Proyecto {
   cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
   encargado: { id: string; name: string } | null;
   trato: { tipoEvento: string; tipoServicio: string | null; ideasReferencias: string | null; notas: string | null; familyAndFriends: boolean; tradeCalificado: boolean; ventanaMontajeInicio: string | null; ventanaMontajeFin: string | null; responsable: { name: string } | null } | null;
-  cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number; subtotalOperacion: number; subtotalTransporte: number; subtotalHospedaje: number; subtotalEquiposNeto: number; subtotalTerceros: number; notasSecciones: string | null; observaciones: string | null; lineas: { id: string; tipo: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; notas: string | null; marca: string | null; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string } | null }[] } | null;
+  cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number; subtotalOperacion: number; subtotalTransporte: number; subtotalHospedaje: number; subtotalEquiposNeto: number; subtotalTerceros: number; notasSecciones: string | null; observaciones: string | null; lineas: { id: string; tipo: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; notas: string | null; marca: string | null; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string; disciplina: string | null } | null }[] } | null;
   logisticaRenta: string | null;
   docsTecnicos: string | null;
   proveedoresRenta: string | null;
@@ -1656,6 +1664,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [showBroadcast, setShowBroadcast] = useState(false);
   const [showSugerencias, setShowSugerencias] = useState(false);
   const [agregandoLinea, setAgregandoLinea] = useState<string | null>(null);
+  // Sugerencias de técnicos por disciplina (operación técnica)
+  const [sugerenciasAbiertas, setSugerenciasAbiertas] = useState<string | null>(null); // key de la línea/disciplina expandida
+  const [sugerenciasCache, setSugerenciasCache] = useState<Record<string, SugerenciaTecnico[]>>({});
+  const [sugerenciasLoading, setSugerenciasLoading] = useState<string | null>(null);
+  const [agregandoSugerido, setAgregandoSugerido] = useState<string | null>(null); // tecnicoId en curso
+  // Flag "técnico adicional" (fuera de lo cotizado) para el form de alta
+  const [selEsAdicional, setSelEsAdicional] = useState(false);
   // Proveedores y subrentas
   const [showAddProveedor, setShowAddProveedor] = useState(false);
   const { downloading, downloadPdf } = usePdfDownload();
@@ -2865,6 +2880,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         responsabilidad: selResp || null,
         rolEnEvento: selRolEnEvento || null,
         fechaJornada: selFechaJornada || null,
+        esAdicional: selEsAdicional,
       }),
     });
     if (!res.ok) {
@@ -2875,9 +2891,61 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     }
     const d = await res.json();
     setProyecto(prev => prev ? { ...prev, personal: [...prev.personal, d.personal] } : prev);
-    setSelTecnico(""); setSelRol(""); setSelNivel("AAA"); setSelTarifa(""); setSelResp(""); setSelRolEnEvento(""); setSelFechaJornada("");
+    setSelTecnico(""); setSelRol(""); setSelNivel("AAA"); setSelTarifa(""); setSelResp(""); setSelRolEnEvento(""); setSelFechaJornada(""); setSelEsAdicional(false);
     setShowAddPersonal(false);
     setAddingPersonal(false);
+  }
+
+  // ── Sugerencias de técnicos por disciplina (operación técnica) ──
+  async function cargarSugerencias(disciplina: string, nivel: string | null, key: string) {
+    if (sugerenciasAbiertas === key) { setSugerenciasAbiertas(null); return; }
+    setSugerenciasAbiertas(key);
+    if (sugerenciasCache[key]) return; // ya cacheado
+    setSugerenciasLoading(key);
+    const qs = new URLSearchParams({ disciplina });
+    if (nivel) qs.set("nivel", nivel);
+    const res = await fetch(`/api/proyectos/${id}/sugerencias-tecnicos?${qs.toString()}`);
+    if (res.ok) {
+      const d = await res.json();
+      setSugerenciasCache(prev => ({ ...prev, [key]: d.sugerencias ?? [] }));
+    }
+    setSugerenciasLoading(null);
+  }
+
+  // ── Agregar técnico sugerido a la operación (ya asignado según la línea cotizada) ──
+  async function agregarTecnicoSugerido(
+    tecnico: SugerenciaTecnico,
+    linea: NonNullable<NonNullable<typeof proyecto>["cotizacion"]>["lineas"][0],
+  ) {
+    setAgregandoSugerido(tecnico.id);
+    const res = await fetch(`/api/proyectos/${id}/personal`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tecnicoId: tecnico.id,
+        rolTecnicoId: linea.rolTecnicoId || null,
+        participacion: "OPERACION",
+        nivel: linea.nivel || tecnico.nivel || "A",
+        jornada: linea.jornada || "MEDIA",
+        tarifaAcordada: linea.precioUnitario > 0 ? linea.precioUnitario : null,
+        responsabilidad: linea.descripcion || null,
+      }),
+    });
+    if (res.ok) {
+      const d = await res.json();
+      setProyecto(prev => prev ? { ...prev, personal: [...prev.personal, d.personal] } : prev);
+      // Marcar como ya asignado en la caché de sugerencias
+      setSugerenciasCache(prev => {
+        const next = { ...prev };
+        for (const k of Object.keys(next)) {
+          next[k] = next[k].map(s => s.id === tecnico.id ? { ...s, yaAsignado: true } : s);
+        }
+        return next;
+      });
+    } else {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al agregar técnico");
+    }
+    setAgregandoSugerido(null);
   }
 
   // ── Agregar slot(s) desde sugerencia de cotización ──
@@ -4750,7 +4818,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
                           />
                         </div>
-                        <div className="col-span-2 md:col-span-3 flex justify-end">
+                        <div className="col-span-2 md:col-span-3 flex items-center justify-between gap-3">
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" checked={selEsAdicional} onChange={e => setSelEsAdicional(e.target.checked)}
+                              className="accent-[#B3985B] w-4 h-4" />
+                            <span className="text-xs text-gray-400">Técnico adicional <span className="text-gray-600">(fuera de lo cotizado · marcador interno, no aparece en PDFs)</span></span>
+                          </label>
                           <button onClick={agregarPersonal} disabled={addingPersonal || (!selTecnico && !selRol)}
                             className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold px-6 py-2 rounded-lg transition-colors">
                             {addingPersonal ? "Agregando..." : "Agregar técnico a esta jornada"}
@@ -4782,28 +4855,87 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     </div>
                   </div>
                   <div className="divide-y divide-[#1a1a1a]">
-                    {lineas.map(linea => (
-                      <div key={linea.id} className="flex items-center gap-3 py-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs text-white font-medium truncate">{linea.rolTecnico?.nombre ?? linea.descripcion}</div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            {linea.nivel && <span className="text-[10px] text-gray-500">{linea.nivel}</span>}
-                            {linea.jornada && <span className="text-[10px] text-gray-500">· {linea.jornada === "CORTA" ? "0–8h" : linea.jornada === "MEDIA" ? "8–12h" : "12+h"}</span>}
-                            {linea.descripcion && linea.rolTecnico && <span className="text-[10px] text-gray-600 truncate">· {linea.descripcion}</span>}
+                    {lineas.map(linea => {
+                      const disciplina = linea.rolTecnico?.disciplina ?? null;
+                      const sugKey = linea.id;
+                      const abierto = sugerenciasAbiertas === sugKey;
+                      const sugerencias = sugerenciasCache[sugKey] ?? [];
+                      const cargando = sugerenciasLoading === sugKey;
+                      return (
+                      <div key={linea.id} className="py-2">
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs text-white font-medium truncate">{linea.rolTecnico?.nombre ?? linea.descripcion}</span>
+                              {disciplina && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded font-semibold shrink-0" style={{ color: DISCIPLINA_COLORS[disciplina] ?? "#888", backgroundColor: `${DISCIPLINA_COLORS[disciplina] ?? "#888"}1a` }}>
+                                  {DISCIPLINA_LABELS[disciplina] ?? disciplina}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {linea.nivel && <span className="text-[10px] text-gray-500">{linea.nivel}</span>}
+                              {linea.jornada && <span className="text-[10px] text-gray-500">· {linea.jornada === "CORTA" ? "0–8h" : linea.jornada === "MEDIA" ? "8–12h" : "12+h"}</span>}
+                              {linea.descripcion && linea.rolTecnico && <span className="text-[10px] text-gray-600 truncate">· {linea.descripcion}</span>}
+                            </div>
                           </div>
+                          <div className="text-right shrink-0">
+                            <div className="text-xs text-[#B3985B] font-semibold">{fmt(linea.precioUnitario)}<span className="text-gray-600 font-normal"> × {linea.cantidad}</span></div>
+                          </div>
+                          {disciplina && (
+                            <button
+                              onClick={() => cargarSugerencias(disciplina, linea.nivel, sugKey)}
+                              className={`shrink-0 text-xs px-3 py-1.5 rounded-lg transition-colors border ${abierto ? "bg-[#B3985B]/20 border-[#B3985B]/40 text-[#B3985B]" : "bg-[#1e1e1e] hover:bg-[#2a2a2a] border-[#2a2a2a] text-gray-300"}`}
+                            >
+                              {abierto ? "Ocultar" : "Sugerir técnicos"}
+                            </button>
+                          )}
+                          <button
+                            onClick={() => agregarDesdeLinea(linea)}
+                            disabled={agregandoLinea === linea.id}
+                            className="shrink-0 text-xs bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#2a2a2a] text-gray-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                          >
+                            {agregandoLinea === linea.id ? "..." : `+ ${linea.cantidad} slot${linea.cantidad !== 1 ? "s" : ""}`}
+                          </button>
                         </div>
-                        <div className="text-right shrink-0">
-                          <div className="text-xs text-[#B3985B] font-semibold">{fmt(linea.precioUnitario)}<span className="text-gray-600 font-normal"> × {linea.cantidad}</span></div>
-                        </div>
-                        <button
-                          onClick={() => agregarDesdeLinea(linea)}
-                          disabled={agregandoLinea === linea.id}
-                          className="shrink-0 text-xs bg-[#1e1e1e] hover:bg-[#2a2a2a] border border-[#2a2a2a] text-gray-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          {agregandoLinea === linea.id ? "..." : `+ ${linea.cantidad} slot${linea.cantidad !== 1 ? "s" : ""}`}
-                        </button>
+                        {/* Panel de técnicos sugeridos por disciplina */}
+                        {abierto && (
+                          <div className="mt-2 ml-1 pl-3 border-l-2 border-[#B3985B]/30 space-y-1">
+                            {cargando ? (
+                              <div className="text-[11px] text-gray-500 py-2">Cargando técnicos…</div>
+                            ) : sugerencias.length === 0 ? (
+                              <div className="text-[11px] text-gray-600 py-2">Sin técnicos de esta disciplina en la base.</div>
+                            ) : (
+                              sugerencias.map(s => (
+                                <div key={s.id} className="flex items-center gap-2 py-1">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className={`text-xs truncate ${s.yaAsignado ? "text-gray-500 line-through" : "text-white"}`}>{s.nombre}</span>
+                                      {s.nivel && <span className="text-[9px] text-gray-500 shrink-0">{s.nivel}</span>}
+                                      {s.prioridad > 0 && <span className="text-[9px] text-[#B3985B] shrink-0">{"★".repeat(s.prioridad)}</span>}
+                                      {s.ocupado && <span className="text-[9px] text-red-400 bg-red-900/20 px-1 rounded shrink-0">ocupado ese día</span>}
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                      {s.rol?.nombre && <span className="text-[9px] text-gray-600">{s.rol.nombre}</span>}
+                                      {s.zonaHabitual && <span className="text-[9px] text-gray-600">· {s.zonaHabitual}</span>}
+                                      {s.evaluacionPromedio != null && <span className="text-[9px] text-gray-600">· {s.evaluacionPromedio.toFixed(1)}★</span>}
+                                    </div>
+                                  </div>
+                                  <button
+                                    onClick={() => agregarTecnicoSugerido(s, linea)}
+                                    disabled={s.yaAsignado || agregandoSugerido === s.id}
+                                    className="shrink-0 text-[11px] bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-30 disabled:cursor-not-allowed text-black font-semibold px-2.5 py-1 rounded transition-colors"
+                                  >
+                                    {s.yaAsignado ? "Agregado" : agregandoSugerido === s.id ? "…" : "+ Agregar"}
+                                  </button>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               );
@@ -4950,6 +5082,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               <p className="text-white text-sm font-medium">{p.tecnico.nombre}</p>
                               {p.nivel && <span className={`text-xs font-semibold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
                               <span className={`px-1.5 py-0.5 rounded border text-[10px] font-medium ${badge.cls}`}>{badge.label}</span>
+                              {p.esAdicional && <span className="px-1.5 py-0.5 rounded border border-fuchsia-800/40 bg-fuchsia-900/20 text-fuchsia-300 text-[10px] font-medium" title="Agregado fuera de lo cotizado — solo visible internamente">Adicional</span>}
                             </div>
                           )
                         )}

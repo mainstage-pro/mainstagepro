@@ -5,10 +5,12 @@ import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
+import { DISCIPLINAS, DISCIPLINA_LABELS, DISCIPLINA_COLORS } from "@/lib/disciplinaColors";
 
 type Rol = {
   id: string;
   nombre: string;
+  disciplina: string | null;
   tipoPago: string;
   descripcion: string | null;
   activo: boolean;
@@ -41,7 +43,7 @@ function fmt(v: number | null) {
 }
 
 const EMPTY: Omit<Rol, "id"> = {
-  nombre: "", tipoPago: "POR_JORNADA", descripcion: null, activo: true, orden: 99,
+  nombre: "", disciplina: null, tipoPago: "POR_JORNADA", descripcion: null, activo: true, orden: 99,
   tarifaAAACorta: null, tarifaAAAMedia: null, tarifaAAALarga: null,
   tarifaPlanaAAA: null, tarifaHoraAAA: null,
   tarifaAACorta: null, tarifaAAMedia: null, tarifaAALarga: null,
@@ -192,6 +194,19 @@ export default function RolesPage() {
             />
           </div>
           <div>
+            <label className="text-xs text-gray-500 mb-1 block">Categoría (disciplina)</label>
+            <Combobox
+              value={form.disciplina ?? ""}
+              onChange={v => set("disciplina", v || null)}
+              options={[
+                { value: "", label: "— Sin categoría —" },
+                ...DISCIPLINAS.map(d => ({ value: d, label: DISCIPLINA_LABELS[d] })),
+              ]}
+              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-[#B3985B]/50"
+            />
+            <p className="text-[10px] text-gray-600 mt-1">Liga este rol con la base de técnicos para sugerencias.</p>
+          </div>
+          <div className="md:col-span-3">
             <label className="text-xs text-gray-500 mb-1 block">Tipo de pago</label>
             <Combobox
               value={form.tipoPago}
@@ -336,6 +351,14 @@ function RolCard({ r, onEdit, onToggle, onDelete }: {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2.5 mb-1.5">
           <span className="text-white text-sm font-medium">{r.nombre}</span>
+          {r.disciplina && (
+            <span
+              className="text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded font-semibold"
+              style={{ color: DISCIPLINA_COLORS[r.disciplina] ?? "#9ca3af", backgroundColor: `${DISCIPLINA_COLORS[r.disciplina] ?? "#9ca3af"}1a` }}
+            >
+              {DISCIPLINA_LABELS[r.disciplina] ?? r.disciplina}
+            </span>
+          )}
           <span className="text-[9px] uppercase tracking-widest text-[#B3985B]/70 bg-[#B3985B]/10 px-1.5 py-0.5 rounded">
             {TIPO_PAGO_LABELS[r.tipoPago] ?? r.tipoPago}
           </span>

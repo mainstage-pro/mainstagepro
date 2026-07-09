@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { ensureOperacionTecnicaColumns } from "@/lib/migraciones-lazy";
 
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  await ensureOperacionTecnicaColumns();
+
   const roles = await prisma.rolTecnico.findMany({
     select: {
       id: true,
       nombre: true,
+      disciplina: true,
       tipoPago: true,
       descripcion: true,
       activo: true,
@@ -40,9 +44,11 @@ export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  await ensureOperacionTecnicaColumns();
+
   const body = await request.json();
   const {
-    nombre, tipoPago, descripcion, orden,
+    nombre, disciplina, tipoPago, descripcion, orden,
     tarifaAAACorta, tarifaAAAMedia, tarifaAAALarga,
     tarifaAACorta,  tarifaAAMedia,  tarifaAALarga,
     tarifaACorta,   tarifaAMedia,   tarifaALarga,
@@ -54,7 +60,8 @@ export async function POST(request: NextRequest) {
 
   const rol = await prisma.rolTecnico.create({
     data: {
-      nombre, tipoPago: tipoPago || "POR_JORNADA",
+      nombre, disciplina: disciplina || null,
+      tipoPago: tipoPago || "POR_JORNADA",
       descripcion: descripcion || null,
       orden: orden ?? 0,
       tarifaAAACorta: tarifaAAACorta ?? null, tarifaAAAMedia: tarifaAAAMedia ?? null, tarifaAAALarga: tarifaAAALarga ?? null,

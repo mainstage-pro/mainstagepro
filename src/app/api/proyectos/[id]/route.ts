@@ -5,6 +5,7 @@ import { logActividad } from "@/lib/actividad";
 import { guardarVersion } from "@/lib/versiones";
 import { createExpiringToken } from "@/lib/tokens";
 import { calcularAvanceProyecto } from "@/lib/proyecto-avance";
+import { ensureOperacionTecnicaColumns } from "@/lib/migraciones-lazy";
 
 function proximoMiercolesTraEvento(fecha: Date): Date {
   const d = new Date(fecha);
@@ -35,6 +36,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
+  await ensureOperacionTecnicaColumns();
+
   // Try with rider accessories (new tables); fall back without them if tables don't exist yet
   let proyecto = null;
   try {
@@ -51,7 +54,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
             subtotalHospedaje: true, subtotalEquiposNeto: true, subtotalTerceros: true,
             notasSecciones: true, observaciones: true,
             lineas: {
-              select: { id: true, tipo: true, descripcion: true, cantidad: true, dias: true, nivel: true, jornada: true, precioUnitario: true, notas: true, marca: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true } } },
+              select: { id: true, tipo: true, descripcion: true, cantidad: true, dias: true, nivel: true, jornada: true, precioUnitario: true, notas: true, marca: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true, disciplina: true } } },
               orderBy: { id: "asc" },
             },
           },
@@ -107,7 +110,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
             subtotalHospedaje: true, subtotalEquiposNeto: true, subtotalTerceros: true,
             notasSecciones: true, observaciones: true,
             lineas: {
-              select: { id: true, tipo: true, descripcion: true, cantidad: true, dias: true, nivel: true, jornada: true, precioUnitario: true, notas: true, marca: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true } } },
+              select: { id: true, tipo: true, descripcion: true, cantidad: true, dias: true, nivel: true, jornada: true, precioUnitario: true, notas: true, marca: true, rolTecnicoId: true, rolTecnico: { select: { id: true, nombre: true, disciplina: true } } },
               orderBy: { id: "asc" },
             },
           },

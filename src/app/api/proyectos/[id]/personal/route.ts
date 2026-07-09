@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { ensureOperacionTecnicaColumns } from "@/lib/migraciones-lazy";
 
 function proximoMiercolesTraEvento(fecha: Date): Date {
   const d = new Date(fecha);
@@ -15,8 +16,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  await ensureOperacionTecnicaColumns();
+
   const { id } = await params;
-  const { tecnicoId, rolTecnicoId, nivel, jornada, responsabilidad, tarifaAcordada, notas, participacion, fechaJornada, rolEnEvento } = await req.json();
+  const { tecnicoId, rolTecnicoId, nivel, jornada, responsabilidad, tarifaAcordada, notas, participacion, fechaJornada, rolEnEvento, esAdicional } = await req.json();
 
   const tarifa = tarifaAcordada ? parseFloat(tarifaAcordada) : null;
 
@@ -33,6 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       tarifaAcordada: tarifa,
       notas: notas || null,
       rolEnEvento: rolEnEvento || null,
+      esAdicional: esAdicional === true,
       confirmado: false,
     },
     include: {

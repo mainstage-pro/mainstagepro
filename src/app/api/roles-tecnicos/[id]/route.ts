@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { ensureOperacionTecnicaColumns } from "@/lib/migraciones-lazy";
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  await ensureOperacionTecnicaColumns();
+
   const { id } = await params;
   const body = await request.json();
 
   const allowed = [
-    "nombre", "tipoPago", "descripcion", "activo", "orden",
+    "nombre", "disciplina", "tipoPago", "descripcion", "activo", "orden",
     "tarifaAAACorta", "tarifaAAAMedia", "tarifaAAALarga",
     "tarifaAACorta", "tarifaAAMedia", "tarifaAALarga",
     "tarifaACorta", "tarifaAMedia", "tarifaALarga",
