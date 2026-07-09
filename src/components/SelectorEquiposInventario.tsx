@@ -482,8 +482,15 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                               <span className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${sel ? "bg-[#B3985B] border-[#B3985B]" : "border-[#333]"}`}>
                                 {sel && <span className="text-black text-[9px] font-bold leading-none">✓</span>}
                               </span>
-                              <span className="text-white text-xs font-medium leading-tight truncate">
-                                {nombreEquipo(eq)}
+                              <span className="flex flex-col min-w-0">
+                                <span className="text-white text-xs font-medium leading-tight truncate">
+                                  {nombreEquipo(eq)}
+                                </span>
+                                {eq.descripcion && eq.descripcion !== nombreEquipo(eq) && (
+                                  <span className="text-gray-500 text-[10px] leading-tight line-clamp-2">
+                                    {eq.descripcion}
+                                  </span>
+                                )}
                               </span>
                             </button>
 
