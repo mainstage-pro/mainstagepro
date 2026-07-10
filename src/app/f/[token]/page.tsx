@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import DiscoveryForm from "@/components/crm/DiscoveryForm";
+import { ToastProvider } from "@/components/Toast";
 
 // Página pública del descubrimiento del cliente (link por token).
 // Renderiza EXACTAMENTE el mismo formulario que ve el vendedor internamente
@@ -118,6 +119,10 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
     : `${SERVICIO_LABELS[trato.tipoServicio ?? ""] ?? "Formulario de descubrimiento"}${trato.tipoEvento ? ` · ${EVENTO_LABELS[trato.tipoEvento] ?? trato.tipoEvento}` : ""}`;
 
   return (
+    // ToastProvider: DiscoveryForm usa useToast(), que lanza sin provider.
+    // La ruta pública /f no está bajo el layout de (dashboard), así que lo
+    // montamos aquí para que el formulario funcione en el link del cliente.
+    <ToastProvider>
     <div className="min-h-screen bg-[#0a0a0a]"
          style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
       {/* Header */}
@@ -148,5 +153,6 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
         />
       </div>
     </div>
+    </ToastProvider>
   );
 }
