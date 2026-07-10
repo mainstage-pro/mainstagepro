@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { cotejarOCrearCliente } from "@/lib/cotejo-cliente";
+import { ensureFormularioLeadTable, etapaDesdeMomento } from "@/lib/formulario-lead";
 
 // ─── Ensure formRecibidoEn column exists ─────────────────────────────────────
 let _colReady = false;
@@ -8,6 +10,12 @@ async function ensureFormRecibidoEn() {
   try {
     await prisma.$executeRawUnsafe(
       `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "formRecibidoEn" TIMESTAMP`
+    );
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "momentoContratacion" TEXT`
+    );
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "posibleDuplicado" BOOLEAN NOT NULL DEFAULT false`
     );
   } catch { /* already exists */ }
   _colReady = true;
@@ -43,7 +51,29 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
     },
   });
 
-  if (!trato) return NextResponse.json({ error: "Formulario no encontrado" }, { status: 404 });
+  if (!trato) {
+    // ¿Es un link huérfano (sin trato previo)?
+    await ensureFormularioLeadTable();
+    const formulario = await prisma.formularioLead.findUnique({ where: { token } });
+    if (formulario) {
+      if (formulario.usado) {
+        return NextResponse.json({ completado: true });
+      }
+      return NextResponse.json({
+        huerfano: true,
+        trato: {
+          id: null,
+          tipoServicio: formulario.tipoServicio,
+          tipoEvento: formulario.tipoEvento,
+          rutaEntrada: null,
+          formEstado: "ENVIADO",
+          cliente: { nombre: "" },
+          responsable: null,
+        },
+      });
+    }
+    return NextResponse.json({ error: "Formulario no encontrado" }, { status: 404 });
+  }
 
   // Si ya fue completado, lo devolvemos con completado=true PERO también incluimos
   // la info del trato para que el cliente pueda verla y pueda re-enviar
@@ -82,7 +112,73 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     },
   });
 
-  if (!trato) return NextResponse.json({ error: "Formulario no encontrado" }, { status: 404 });
+  if (!trato) {
+    // ── Link huérfano: cotejar/crear cliente y crear el trato en el pipeline ──
+    await ensureFormularioLeadTable();
+    const formulario = await prisma.formularioLead.findUnique({ where: { token } });
+    if (!formulario) return NextResponse.json({ error: "Formulario no encontrado" }, { status: 404 });
+
+    const bodyH = await req.json();
+    const nombreH = (bodyH.nombre || bodyH.nombreContacto || "").trim();
+    const telefonoH = (bodyH.telefono || bodyH.whatsapp || "").trim();
+    if (!nombreH || !telefonoH) {
+      return NextResponse.json({ error: "Nombre y WhatsApp son obligatorios" }, { status: 400 });
+    }
+
+    const momentoH: string | null = bodyH.momentoContratacion || formulario.momentoSugerido || null;
+
+    // Si ya se convirtió antes, ligamos al trato existente en vez de duplicar.
+    if (formulario.usado && formulario.tratoId) {
+      return NextResponse.json({ ok: true, yaConvertido: true });
+    }
+
+    const cotejo = await cotejarOCrearCliente({
+      nombre: nombreH,
+      telefono: telefonoH,
+      correo: bodyH.correo,
+      origenLead: formulario.origenLead,
+    });
+
+    const nuevoTrato = await prisma.trato.create({
+      data: {
+        clienteId: cotejo.clienteId!,
+        responsableId: formulario.responsableId || null,
+        origenLead: formulario.origenLead,
+        tipoLead: "INBOUND",
+        origenVenta: "PUBLICIDAD",
+        etapa: etapaDesdeMomento(momentoH),
+        momentoContratacion: momentoH,
+        posibleDuplicado: cotejo.estado === "DUPLICADO_POSIBLE",
+        tipoServicio: formulario.tipoServicio || null,
+        tipoEvento: formulario.tipoEvento || "OTRO",
+        rutaEntrada: "DESCUBRIR",
+        formToken: token,
+        formEstado: "COMPLETADO",
+        descubrimientoCompleto: true,
+        formRespuestas: JSON.stringify(bodyH),
+        nombreEvento: bodyH.nombreEvento || null,
+        lugarEstimado: bodyH.lugar || null,
+        fechaEventoEstimada: bodyH.fechaEvento ? new Date(bodyH.fechaEvento) : null,
+        asistentesEstimados: bodyH.asistentes ? parseInt(bodyH.asistentes) : null,
+        presupuestoEstimado: bodyH.presupuesto ? parseFloat(bodyH.presupuesto) : null,
+        equiposInteres: bodyH._equiposInteres ?? null,
+      },
+      select: { id: true },
+    });
+
+    // formRecibidoEn es columna lazy (no está en el schema Prisma) → set vía raw.
+    await prisma.$executeRawUnsafe(
+      `UPDATE tratos SET "formRecibidoEn" = NOW() WHERE id = $1`,
+      nuevoTrato.id
+    );
+
+    await prisma.formularioLead.update({
+      where: { id: formulario.id },
+      data: { usado: true, tratoId: nuevoTrato.id },
+    });
+
+    return NextResponse.json({ ok: true, tratoId: nuevoTrato.id, clienteNombre: nombreH });
+  }
   // ✅ Eliminado el bloqueo: el cliente puede re-enviar el formulario siempre
 
   const body = await req.json();

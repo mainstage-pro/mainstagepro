@@ -1,22 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { cotejarOCrearCliente } from "@/lib/cotejo-cliente";
 
-// Add vendedorId column lazily on first request (safe to run multiple times)
-let _vendedorColReady = false;
-async function ensureVendedorId() {
-  if (_vendedorColReady) return;
+// Mapeo momento de contratación → etapa por defecto del pipeline (el vendedor puede sobreescribir).
+const MOMENTO_ETAPA: Record<string, string> = {
+  EXPLORANDO: "LEAD",
+  COTIZANDO: "DESCUBRIMIENTO",
+  LISTO_DECIDIR: "OPORTUNIDAD",
+  URGENTE: "OPORTUNIDAD",
+};
+
+// Add columns lazily on first request (safe to run multiple times)
+let _colsReady = false;
+async function ensureColumns() {
+  if (_colsReady) return;
   try {
     await prisma.$executeRawUnsafe(
       `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "vendedorId" TEXT REFERENCES users(id) ON DELETE SET NULL`
     );
-  } catch { /* column already exists */ }
-  _vendedorColReady = true;
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "momentoContratacion" TEXT`
+    );
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "posibleDuplicado" BOOLEAN NOT NULL DEFAULT false`
+    );
+  } catch { /* columns already exist */ }
+  _colsReady = true;
 }
 
 export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  await ensureColumns();
 
   const { searchParams } = new URL(request.url);
   const responsableId = searchParams.get("responsableId");
@@ -42,6 +59,7 @@ export async function GET(request: NextRequest) {
       fechaEventoEstimada: true, presupuestoEstimado: true, lugarEstimado: true,
       origenLead: true, fechaProximaAccion: true, createdAt: true, fechaCierre: true,
       tipoProspecto: true, nurturingData: true, proximaAccion: true,
+      momentoContratacion: true, posibleDuplicado: true,
       updatedAt: true, etapaCambiadaEn: true, confirmadaEn: true,
       cliente: { select: { id: true, nombre: true, empresa: true, telefono: true } },
       responsable: { select: { id: true, name: true } },
@@ -67,36 +85,55 @@ export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  await ensureVendedorId();
+  await ensureColumns();
 
   try {
     const body = await request.json();
 
-    // Si viene clienteNuevo, crearlo primero
+    // origenLead es obligatorio: sin origen no se puede atribuir el lead.
+    if (!body.origenLead) {
+      return NextResponse.json({ error: "origen requerido" }, { status: 400 });
+    }
+
+    // Si viene clienteNuevo, cotejar contra clientes existentes (no crear a ciegas).
     let clienteId = body.clienteId;
+    let posibleDuplicado = false;
+    let candidatoDuplicado: { id: string; nombre: string; telefono: string | null; correo: string | null } | undefined;
     if (!clienteId && body.clienteNuevo) {
       const c = body.clienteNuevo;
-      const cliente = await prisma.cliente.create({
-        data: {
-          nombre: c.nombre,
-          empresa: c.empresa || null,
-          tipoCliente: c.tipoCliente || "POR_DESCUBRIR",
-          clasificacion: c.clasificacion || "NUEVO",
-          telefono: c.telefono || null,
-          correo: c.correo || null,
-        },
+      const cotejo = await cotejarOCrearCliente({
+        nombre: c.nombre,
+        telefono: c.telefono,
+        correo: c.correo,
+        origenLead: body.origenLead,
+        campana: body.campana,
       });
-      clienteId = cliente.id;
+      clienteId = cotejo.clienteId;
+      if (cotejo.estado === "DUPLICADO_POSIBLE") {
+        posibleDuplicado = true;
+        candidatoDuplicado = cotejo.clienteExistente;
+      }
+      // Completar datos que el helper no captura (empresa/tipo) sobre el cliente ligado o creado.
+      if (clienteId && (c.empresa || c.tipoCliente)) {
+        await prisma.cliente.update({
+          where: { id: clienteId },
+          data: {
+            ...(c.empresa ? { empresa: c.empresa } : {}),
+            ...(cotejo.estado === "CREADO" && c.tipoCliente ? { tipoCliente: c.tipoCliente } : {}),
+          },
+        });
+      }
     }
 
     if (!clienteId) {
       return NextResponse.json({ error: "Cliente requerido" }, { status: 400 });
     }
 
-    // Determine etapa: NURTURING leads start as LEAD, others use body.etapa or default DESCUBRIMIENTO
+    // Determine etapa: NURTURING → LEAD; etapa explícita gana; si no, se deriva del momento; default DESCUBRIMIENTO.
+    const momento: string | null = body.momentoContratacion || null;
     const trato_etapa = body.tipoProspecto === 'NURTURING'
       ? 'LEAD'
-      : (body.etapa || 'DESCUBRIMIENTO');
+      : (body.etapa || (momento && MOMENTO_ETAPA[momento]) || 'DESCUBRIMIENTO');
 
     const trato = await prisma.trato.create({
       data: {
@@ -116,6 +153,8 @@ export async function POST(request: NextRequest) {
         canalAtencion: body.canalAtencion || null,
         rutaEntrada: body.rutaEntrada || "DESCUBRIR",
         etapaContratacion: body.etapaContratacion || null,
+        momentoContratacion: momento,
+        posibleDuplicado,
         nombreEvento: body.nombreEvento || null,
         lugarEstimado: body.lugarEstimado || null,
         asistentesEstimados: body.asistentesEstimados ? parseInt(body.asistentesEstimados) : null,
@@ -139,7 +178,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ trato });
+    return NextResponse.json({ trato, posibleDuplicado, candidato: candidatoDuplicado });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Error al crear trato" }, { status: 500 });

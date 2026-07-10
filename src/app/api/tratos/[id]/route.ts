@@ -20,6 +20,8 @@ async function ensureBriefCols() {
     await prisma.$executeRawUnsafe(`ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "briefToken" TEXT UNIQUE`);
     await prisma.$executeRawUnsafe(`ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "briefRecibidoEn" TIMESTAMP`);
     await prisma.$executeRawUnsafe(`ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "requiereRevision" BOOLEAN NOT NULL DEFAULT false`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "momentoContratacion" TEXT`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "posibleDuplicado" BOOLEAN NOT NULL DEFAULT false`);
   } catch { /* already exists */ }
   _briefColsReady = true;
 }
@@ -76,6 +78,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   await ensureVendedorId();
+  await ensureBriefCols();
   const { id } = await params;
   const body = await request.json();
 
@@ -92,8 +95,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // Descubrimiento
     "canalAtencion", "nombreEvento", "duracionEvento", "asistentesEstimados", "subtipoEvento",
     "diasServicio",
-    "serviciosInteres", "ideasReferencias", "etapaContratacion", "continuarPor",
-    "descubrimientoCompleto",
+    "serviciosInteres", "ideasReferencias", "etapaContratacion", "momentoContratacion", "continuarPor",
+    "descubrimientoCompleto", "posibleDuplicado",
     // Selección de equipos del inventario
     "equiposInteres",
     // Horarios del evento

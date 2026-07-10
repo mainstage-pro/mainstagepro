@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+/**
+ * @deprecated Flujo de brief reducido. Reemplazado por el formulario de descubrimiento
+ * unificado en /f/[token] (ver src/app/f/[token] y src/app/api/f/[token]).
+ * Se mantiene solo para links de brief ya enviados. No generar nuevos briefTokens.
+ */
+
 // GET — datos del trato (sin auth, solo token)
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;

@@ -4,7 +4,10 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { Combobox } from "@/components/Combobox";
-import { ORIGEN_LEAD_OPTIONS } from "@/lib/constants";
+import { ORIGEN_LEAD_OPTIONS, MOMENTO_OPTIONS } from "@/lib/constants";
+
+type CotejoEstado = "LIGADO" | "DUPLICADO_POSIBLE" | "NUEVO" | null;
+interface CotejoCliente { id: string; nombre: string; telefono: string | null; empresa: string | null; }
 
 interface Cliente {
   id: string; nombre: string; empresa: string | null; clasificacion: string; telefono: string | null;
@@ -75,6 +78,12 @@ export default function NuevoContactoPage() {
 
   const [clienteId, setClienteId] = useState("");
   const [etapa, setEtapa] = useState<string>("LEAD");
+  const [momento, setMomento] = useState<string>("");
+  const [cotejoEstado, setCotejoEstado] = useState<CotejoEstado>(null);
+  const [cotejoCliente, setCotejoCliente] = useState<CotejoCliente | null>(null);
+  const [linkHuerfano, setLinkHuerfano] = useState("");
+  const [generandoLink, setGenerandoLink] = useState(false);
+  const [linkCopiado, setLinkCopiado] = useState(false);
   const [origenLead, setOrigenLead] = useState("META_ADS");
   const [tipoLead, setTipoLead] = useState("INBOUND");
   const [origenVenta, setOrigenVenta] = useState("CLIENTE_PROPIO");
@@ -101,6 +110,28 @@ export default function NuevoContactoPage() {
     }
   }, [searchParams]);
 
+  // Cotejo en vivo del cliente nuevo (por teléfono/nombre) para avisar duplicados antes de crear.
+  useEffect(() => {
+    if (modoCliente !== "nuevo") { setCotejoEstado(null); setCotejoCliente(null); return; }
+    const tel = clienteNuevo.telefono.replace(/\D/g, "");
+    const nom = clienteNuevo.nombre.trim();
+    if (tel.length < 7 && nom.length < 3) { setCotejoEstado(null); setCotejoCliente(null); return; }
+    const ctrl = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const qs = new URLSearchParams();
+        if (tel) qs.set("telefono", tel);
+        if (nom) qs.set("nombre", nom);
+        const res = await fetch(`/api/clientes/cotejo?${qs.toString()}`, { signal: ctrl.signal });
+        if (!res.ok) return;
+        const d = await res.json();
+        setCotejoEstado(d.estado);
+        setCotejoCliente(d.cliente ?? null);
+      } catch { /* abortado o error de red */ }
+    }, 400);
+    return () => { clearTimeout(t); ctrl.abort(); };
+  }, [modoCliente, clienteNuevo.telefono, clienteNuevo.nombre]);
+
   function validar() {
     if (modoCliente === "existente" && !clienteId) { setError("Selecciona un cliente existente"); return false; }
     if (modoCliente === "nuevo" && !clienteNuevo.nombre.trim()) { setError("El nombre del cliente es requerido"); return false; }
@@ -112,12 +143,28 @@ export default function NuevoContactoPage() {
     setError(""); return true;
   }
 
+  async function generarLinkHuerfano() {
+    setGenerandoLink(true); setError("");
+    try {
+      const res = await fetch("/api/leads/form-huerfano", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ origenLead, momentoSugerido: momento || undefined, responsableId: vendedorId || undefined }),
+      });
+      if (!res.ok) { setError("No se pudo generar el link"); return; }
+      const d = await res.json();
+      setLinkHuerfano(`${window.location.origin}${d.url}`);
+    } catch { setError("Error de conexión"); }
+    finally { setGenerandoLink(false); }
+  }
+
   async function crear() {
     if (!validar()) return;
     setLoading(true); setError("");
 
     const payload: Record<string, unknown> = {
       etapa,
+      momentoContratacion: momento || undefined,
       origenLead,
       tipoLead,
       origenVenta,
@@ -287,8 +334,51 @@ export default function NuevoContactoPage() {
                   />
                 </div>
               </div>
+
+              {/* Cotejo en vivo: avisa si el cliente ya existe o es posible duplicado */}
+              {cotejoEstado === "LIGADO" && cotejoCliente && (
+                <div className="text-xs px-3 py-2 rounded-lg border border-emerald-700/50 bg-emerald-900/15 text-emerald-300">
+                  ✓ Cliente existente — se ligará a <span className="font-semibold">{cotejoCliente.nombre}</span>
+                  {cotejoCliente.empresa && <span className="text-emerald-400/70"> ({cotejoCliente.empresa})</span>}. No se duplicará.
+                </div>
+              )}
+              {cotejoEstado === "DUPLICADO_POSIBLE" && cotejoCliente && (
+                <div className="text-xs px-3 py-2 rounded-lg border border-amber-700/50 bg-amber-900/15 text-amber-300">
+                  ⚠️ Posible duplicado de <span className="font-semibold">{cotejoCliente.nombre}</span>
+                  {cotejoCliente.telefono && <span className="text-amber-400/70"> · {cotejoCliente.telefono}</span>}. Se marcará para revisión.
+                </div>
+              )}
+              {cotejoEstado === "NUEVO" && (
+                <div className="text-xs px-3 py-2 rounded-lg border border-[#2a2a2a] bg-[#0d0d0d] text-gray-500">
+                  Cliente nuevo — se creará al guardar.
+                </div>
+              )}
             </div>
           )}
+        </div>
+
+        {/* ── Sección: Momento de contratación ── */}
+        <div className="ms-card p-5">
+          <h2 className="text-xs font-semibold text-[#B3985B] mb-1 uppercase tracking-wider">Momento de contratación</h2>
+          <p className="text-[11px] text-gray-600 mb-4">¿Para cuándo lo decide? Esto pre-selecciona la etapa (puedes cambiarla abajo).</p>
+          <div className="grid grid-cols-2 gap-2">
+            {MOMENTO_OPTIONS.map(m => {
+              const isActive = momento === m.value;
+              return (
+                <button
+                  key={m.value}
+                  type="button"
+                  onClick={() => { setMomento(m.value); setEtapa(m.etapa); }}
+                  className={`text-left p-3 rounded-xl border transition-all ${
+                    isActive ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] hover:border-[#3a3a3a]"
+                  }`}
+                >
+                  <p className={`text-sm font-semibold ${isActive ? "text-[#B3985B]" : "text-white"}`}>{m.label}</p>
+                  <p className="text-gray-500 text-[11px] mt-0.5 leading-snug">{m.hint}</p>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* ── Sección 2: Etapa inicial ── */}
@@ -424,6 +514,36 @@ export default function NuevoContactoPage() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* ── Alternativa: que el cliente llene desde su teléfono (link huérfano) ── */}
+        <div className="ms-card p-5">
+          <h2 className="text-xs font-semibold text-[#B3985B] mb-1 uppercase tracking-wider">¿Prefieres que el cliente llene sus datos?</h2>
+          <p className="text-[11px] text-gray-600 mb-3">
+            Genera un link para que el propio cliente registre su nombre, WhatsApp y detalles.
+            Al enviarlo, el sistema coteja o crea el cliente y crea el contacto en el pipeline automáticamente.
+          </p>
+          {!linkHuerfano ? (
+            <button
+              type="button"
+              onClick={generarLinkHuerfano}
+              disabled={generandoLink}
+              className="text-sm px-4 py-2 rounded-lg border border-[#B3985B]/30 bg-[#B3985B]/5 text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors disabled:opacity-50"
+            >
+              {generandoLink ? "Generando…" : "📲 Generar link para el cliente"}
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 bg-[#000] border border-[#222] rounded-lg px-3 py-2">
+              <span className="text-[#666] text-[11px] truncate flex-1 font-mono">{linkHuerfano}</span>
+              <button
+                type="button"
+                onClick={() => { navigator.clipboard.writeText(linkHuerfano); setLinkCopiado(true); setTimeout(() => setLinkCopiado(false), 2000); }}
+                className="text-[#B3985B] text-xs font-medium hover:underline shrink-0"
+              >
+                {linkCopiado ? "¡Copiado!" : "Copiar"}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── CTA ── */}

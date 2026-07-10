@@ -209,6 +209,8 @@ model Trato {
   serviciosInteres       String?   // JSON: ["AUDIO_PA","ILUMINACION","VIDEO_LED",...]
   ideasReferencias       String?   // links o descripción de referencias
   etapaContratacion      String?   // obsoleto — reemplazado por rutaEntrada
+  momentoContratacion    String?   // EXPLORANDO | COTIZANDO | LISTO_DECIDIR | URGENTE
+  posibleDuplicado       Boolean   @default(false) // lo marca el cotejo de cliente para revisión manual
   rutaEntrada            String?   // DESCUBRIR | RIDER_DIRECTO
   continuarPor           String?   // WHATSAPP | LLAMADA | REUNION | COTIZACION
   descubrimientoCompleto Boolean   @default(false)
@@ -290,6 +292,24 @@ model Trato {
   solicitudOrigen        SolicitudCotizacion?
 
   @@map("tratos")
+}
+
+// ─── FORMULARIO LEAD (link de descubrimiento huérfano, sin trato previo) ──────
+// Se genera desde "+ Nuevo contacto" para que el cliente llene sus datos.
+// Al enviarse, coteja/crea el Cliente y crea el Trato en el pipeline.
+model FormularioLead {
+  id              String   @id @default(cuid())
+  token           String   @unique
+  origenLead      String   @default("META_ADS")
+  tipoServicio    String?
+  tipoEvento      String?
+  momentoSugerido String?  // EXPLORANDO | COTIZANDO | LISTO_DECIDIR | URGENTE
+  responsableId   String?
+  usado           Boolean  @default(false)
+  tratoId         String?  // se llena cuando el formulario se convierte en trato
+  createdAt       DateTime @default(now())
+
+  @@map("formularios_lead")
 }
 
 model Seguimiento {

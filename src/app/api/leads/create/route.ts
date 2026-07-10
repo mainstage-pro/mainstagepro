@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { cotejarOCrearCliente } from '@/lib/cotejo-cliente';
 
 /**
  * POST /api/leads/create
@@ -125,50 +126,28 @@ export async function POST(req: NextRequest) {
     OTRO: 'OTRO',
   };
 
-  // ── Buscar cliente existente por teléfono ────────────────────────────────────
-  let clienteId: string | null = null;
-  let nuevo = true;
+  // ── Cotejar o crear cliente (helper compartido) ──────────────────────────────
+  const cotejo = await cotejarOCrearCliente({
+    nombre,
+    telefono,
+    correo: email,
+    origenLead: origenFinal,
+    campana,
+  });
+  const clienteId = cotejo.clienteId!;
+  const nuevo = cotejo.estado === 'CREADO';
 
-  if (telefono) {
-    const existingCliente = await prisma.cliente.findFirst({
-      where: { telefono },
-    });
-    if (existingCliente) {
-      clienteId = existingCliente.id;
-      nuevo = false;
-      // Actualizar origenLead si no tenía
-      await prisma.cliente.update({
-        where: { id: clienteId },
-        data: {
-          esProspecto: true,
-          ...(existingCliente.origenLead ? {} : { origenLead: origenFinal }),
-          ...(campana && !existingCliente.campana ? { campana } : {}),
-        },
-      });
-    }
-  }
-
-  // ── Crear cliente si no existe ───────────────────────────────────────────────
-  if (!clienteId) {
+  // Si es cliente recién creado, adjuntar notas de contexto del lead.
+  if (nuevo) {
     const notas = [
       `Lead generado vía ${origenFinal}`,
       notaInicial || null,
       city ? `Ciudad: ${city}` : null,
       campana ? `Campaña: ${campana}` : null,
     ].filter(Boolean).join('\n');
-
-    const cliente = await prisma.cliente.create({
-      data: {
-        nombre,
-        telefono: telefono || null,
-        correo:   email    || null,
-        esProspecto: true,
-        origenLead:  origenFinal,
-        campana:     campana || null,
-        notas:       notas || null,
-      },
-    });
-    clienteId = cliente.id;
+    if (notas) {
+      await prisma.cliente.update({ where: { id: clienteId }, data: { notas } });
+    }
   }
 
   // ── Crear Prospeccion si no tiene una activa ──────────────────────────────────

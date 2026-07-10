@@ -4,7 +4,7 @@ import React from "react";
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ETAPA_LABELS, TIPO_EVENTO_LABELS, ORIGEN_LEAD_LABELS } from "@/lib/constants";
+import { ETAPA_LABELS, TIPO_EVENTO_LABELS, ORIGEN_LEAD_LABELS, MOMENTO_LABELS, MOMENTO_COLORS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/cotizador";
 import { useToast } from "@/components/Toast";
 import { Combobox } from "@/components/Combobox";
@@ -39,6 +39,8 @@ type Trato = {
   presupuestoEstimado: number | null;
   lugarEstimado: string | null;
   origenLead: string;
+  momentoContratacion?: string | null;
+  posibleDuplicado?: boolean;
   fechaProximaAccion: string | null;
   createdAt: string;
   updatedAt?: string | null;
@@ -395,6 +397,16 @@ function KanbanCard({ trato, onDelete, deleting }: { trato: Trato; onDelete: () 
         <span className={`text-[10px] font-medium px-2 py-0.5 rounded-md border border-transparent ${TIPO_BADGE[trato.tipoEvento]?.bg ?? TIPO_BADGE.OTRO.bg} ${TIPO_BADGE[trato.tipoEvento]?.text ?? TIPO_BADGE.OTRO.text}`}>
           {trato.nombreEvento || TIPO_LABEL_SHORT[trato.tipoEvento] || trato.tipoEvento}
         </span>
+        {trato.momentoContratacion && MOMENTO_LABELS[trato.momentoContratacion] && (
+          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-md border ${MOMENTO_COLORS[trato.momentoContratacion] ?? ""}`}>
+            {MOMENTO_LABELS[trato.momentoContratacion]}
+          </span>
+        )}
+        {trato.posibleDuplicado && (
+          <span className="text-[10px] font-medium px-2 py-0.5 rounded-md border border-amber-500/40 bg-amber-500/15 text-amber-300" title="Posible duplicado — revisar">
+            ⚠ revisar duplicado
+          </span>
+        )}
       </div>
       {(trato.fechaEventoEstimada || trato.presupuestoEstimado || trato.confirmadaEn) && (
         <div className="flex items-center gap-2 flex-wrap">
@@ -957,6 +969,16 @@ function LeadsView({ leads, activeSeguimientoPopover, seguimientoPendiente, segu
                   <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${ORIGEN_COLORS[t.origenLead] ?? ORIGEN_COLORS.OTRO}`}>
                     {ORIGEN_LEAD_LABELS[t.origenLead] ?? t.origenLead}
                   </span>
+                  {t.momentoContratacion && MOMENTO_LABELS[t.momentoContratacion] && (
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${MOMENTO_COLORS[t.momentoContratacion] ?? ""}`}>
+                      {MOMENTO_LABELS[t.momentoContratacion]}
+                    </span>
+                  )}
+                  {t.posibleDuplicado && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full border border-amber-500/40 bg-amber-500/15 text-amber-300 font-medium" title="Posible duplicado — revisar">
+                      ⚠ duplicado
+                    </span>
+                  )}
                   {temperatura && (
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${TEMP_COLORS[temperatura] ?? ''}`}>
                       {temperatura}

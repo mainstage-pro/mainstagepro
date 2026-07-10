@@ -410,11 +410,15 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
   const [seccionActual, setSeccionActual] = useState(0);
   const [error, setError] = useState("");
   const [equiposInteres, setEquiposInteres] = useState<SeleccionEquipos>({ categorias: [], equipos: [] });
+  // Link huérfano (sin trato previo): pedimos datos de contacto para cotejar/crear.
+  const [huerfano, setHuerfano] = useState(false);
+  const [contacto, setContacto] = useState({ nombre: "", whatsapp: "", momento: "" });
 
   useEffect(() => {
     fetch(`/api/f/${token}`)
       .then(r => r.json())
       .then(d => {
+        if (d.huerfano) setHuerfano(true);
         // Pre-fill con todo lo que ya tenemos (para envío nuevo o actualización)
         const preFill = (t: TratoInfo) => {
           const pre: Record<string, string | string[]> = {};
@@ -483,6 +487,14 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
 
   async function enviar() {
     if (!validarSeccion()) return;
+    if (huerfano) {
+      if (!contacto.nombre.trim() || contacto.whatsapp.replace(/\D/g, "").length < 7) {
+        setError("Por favor ingresa tu nombre y un WhatsApp válido.");
+        setSeccionActual(0);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+    }
     setGuardando(true);
     try {
       const res = await fetch(`/api/f/${token}`, {
@@ -491,6 +503,11 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
         body: JSON.stringify({
           ...respuestas,
           _equiposInteres: JSON.stringify(equiposInteres),
+          ...(huerfano ? {
+            nombre: contacto.nombre.trim(),
+            telefono: contacto.whatsapp.trim(),
+            momentoContratacion: contacto.momento || undefined,
+          } : {}),
         }),
       });
       if (res.ok) {
@@ -621,6 +638,46 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
         </div>
 
         <div className="space-y-5">
+          {/* Datos de contacto (solo en link huérfano, primera sección) para cotejar/crear cliente */}
+          {huerfano && seccionActual === 0 && (
+            <div className="space-y-5 pb-5 border-b border-[#1e1e1e]">
+              <div>
+                <label className="block text-gray-300 text-sm mb-1.5 font-medium">
+                  Tu nombre <span className="text-[#B3985B] ml-1">*</span>
+                </label>
+                <input value={contacto.nombre} onChange={e => setContacto(c => ({ ...c, nombre: e.target.value }))}
+                  placeholder="Nombre completo"
+                  className="w-full bg-[#111] border border-[#2a2a2a] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <label className="block text-gray-300 text-sm mb-1.5 font-medium">
+                  WhatsApp <span className="text-[#B3985B] ml-1">*</span>
+                </label>
+                <input value={contacto.whatsapp} onChange={e => setContacto(c => ({ ...c, whatsapp: e.target.value }))}
+                  placeholder="442 000 0000" inputMode="tel"
+                  className="w-full bg-[#111] border border-[#2a2a2a] rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <label className="block text-gray-300 text-sm mb-1.5 font-medium">¿Para cuándo lo decides?</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: "EXPLORANDO", label: "Explorando" },
+                    { value: "COTIZANDO", label: "Cotizando" },
+                    { value: "LISTO_DECIDIR", label: "Listo" },
+                  ].map(m => (
+                    <button key={m.value} type="button" onClick={() => setContacto(c => ({ ...c, momento: m.value }))}
+                      className={`px-3 py-2.5 rounded-xl border text-sm transition-all ${
+                        contacto.momento === m.value
+                          ? "border-[#B3985B] bg-[#B3985B]/10 text-white"
+                          : "border-[#2a2a2a] bg-[#111] text-gray-400 hover:border-[#3a3a3a] hover:text-white"
+                      }`}>
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
           {seccion.preguntas.map(p => (
             <div key={p.id}>
               <label className="block text-gray-300 text-sm mb-1.5 font-medium">

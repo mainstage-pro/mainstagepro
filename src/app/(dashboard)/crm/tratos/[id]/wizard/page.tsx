@@ -31,6 +31,7 @@ interface Trato {
   formRecibidoEn: string | null;
   tipoEvento: string | null;
   nombreEvento: string | null;
+  momentoContratacion: string | null;
 }
 
 type NurturingData = {
@@ -65,6 +66,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
   // Estados para formulario cliente
   const [generandoToken, setGenerandoToken] = useState(false);
   const [linkCopiado, setLinkCopiado] = useState(false);
+  const [forzarFormulario, setForzarFormulario] = useState(false);
   const formUrl = trato?.formToken ? `${typeof window !== 'undefined' ? window.location.origin : ''}/f/${trato.formToken}` : "";
 
   function copiarLink(url: string) {
@@ -272,32 +274,63 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
                     : "Cuando tengas suficiente información y el cliente muestre intención clara, es hora de recopilar los detalles técnicos."}
                 </p>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                  {/* Opción A: Yo recopilo */}
-                  <button
-                    onClick={iniciarDescubrimiento}
-                    disabled={saving}
-                    className="border border-[#2a2a2a] bg-[#111] hover:bg-[#1a1a1a] rounded-xl p-4 text-left transition-all group disabled:opacity-50"
-                  >
-                    <div className="text-2xl mb-2">🎙️</div>
-                    <p className="text-white text-sm font-semibold group-hover:text-[#B3985B] transition-colors">Yo recopilo (Vendedor)</p>
-                    <p className="text-gray-600 text-xs mt-1 leading-relaxed">Lleno el brief en llamada o reunión con el cliente</p>
-                  </button>
-                  {/* Opción B: El cliente llena */}
-                  <button
-                    onClick={async () => {
-                      if (!trato.formToken) await generarFormToken();
-                    }}
-                    disabled={generandoToken || saving}
-                    className="border border-[#B3985B]/30 bg-[#B3985B]/5 hover:bg-[#B3985B]/10 rounded-xl p-4 text-left transition-all group disabled:opacity-50"
-                  >
-                    <div className="text-2xl mb-2">{generandoToken ? "⏳" : "📲"}</div>
-                    <p className="text-[#B3985B] text-sm font-semibold group-hover:text-[#c9a96a] transition-colors">
-                      {generandoToken ? "Generando..." : "El cliente llena"}
-                    </p>
-                    <p className="text-gray-600 text-xs mt-1 leading-relaxed">Generar link para que el cliente complete su info</p>
-                  </button>
-                </div>
+                {/* Arista de publicidad: para leads META_ADS / REDES_SOCIALES priorizamos
+                    la presentación antes de pedir el formulario. El formulario solo se ofrece
+                    cuando el lead ya está cotizando o el vendedor lo fuerza. */}
+                {(() => {
+                  const esPublicidad = ["META_ADS", "REDES_SOCIALES"].includes(trato.origenLead);
+                  const yaCotizando = trato.momentoContratacion === "COTIZANDO";
+                  const ofrecerFormulario = !esPublicidad || yaCotizando || forzarFormulario;
+                  return (
+                    <>
+                      {esPublicidad && !ofrecerFormulario && (
+                        <div className="mb-4 p-3 rounded-xl border border-amber-700/40 bg-amber-900/10">
+                          <p className="text-amber-300 text-xs font-semibold mb-1">📣 Lead de publicidad</p>
+                          <p className="text-gray-500 text-[11px] leading-relaxed">
+                            Primero comparte la presentación (arriba). Cuando muestre interés concreto en cotizar,
+                            se habilita el formulario para que el cliente lo llene.
+                          </p>
+                        </div>
+                      )}
+                      <div className={`grid grid-cols-1 ${ofrecerFormulario ? "sm:grid-cols-2" : ""} gap-3 mb-4`}>
+                        {/* Opción A: Yo recopilo */}
+                        <button
+                          onClick={iniciarDescubrimiento}
+                          disabled={saving}
+                          className="border border-[#2a2a2a] bg-[#111] hover:bg-[#1a1a1a] rounded-xl p-4 text-left transition-all group disabled:opacity-50"
+                        >
+                          <div className="text-2xl mb-2">🎙️</div>
+                          <p className="text-white text-sm font-semibold group-hover:text-[#B3985B] transition-colors">Yo recopilo (Vendedor)</p>
+                          <p className="text-gray-600 text-xs mt-1 leading-relaxed">Lleno el brief en llamada o reunión con el cliente</p>
+                        </button>
+                        {/* Opción B: El cliente llena (oculta para publicidad hasta cotización) */}
+                        {ofrecerFormulario && (
+                          <button
+                            onClick={async () => {
+                              if (!trato.formToken) await generarFormToken();
+                            }}
+                            disabled={generandoToken || saving}
+                            className="border border-[#B3985B]/30 bg-[#B3985B]/5 hover:bg-[#B3985B]/10 rounded-xl p-4 text-left transition-all group disabled:opacity-50"
+                          >
+                            <div className="text-2xl mb-2">{generandoToken ? "⏳" : "📲"}</div>
+                            <p className="text-[#B3985B] text-sm font-semibold group-hover:text-[#c9a96a] transition-colors">
+                              {generandoToken ? "Generando..." : "El cliente llena"}
+                            </p>
+                            <p className="text-gray-600 text-xs mt-1 leading-relaxed">Generar link para que el cliente complete su info</p>
+                          </button>
+                        )}
+                      </div>
+                      {esPublicidad && !yaCotizando && !forzarFormulario && (
+                        <button
+                          onClick={() => setForzarFormulario(true)}
+                          className="text-[11px] text-gray-500 hover:text-white transition-colors mb-2"
+                        >
+                          Forzar envío de formulario de todos modos →
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
 
                 {trato.formToken && (
                   <div className="bg-[#111] border border-[#B3985B]/20 rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
