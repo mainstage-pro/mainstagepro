@@ -56,8 +56,24 @@ const EXTRAS_EVENTO: Record<string, any[]> = {
   ],
 };
 
-export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnly = false }: { id: string, trato: any, setTrato: any, onComplete?: () => void, readOnly?: boolean }) {
+export default function DiscoveryForm({
+  id, trato, setTrato, onComplete, readOnly = false,
+  clientMode = false, token, huerfano = false, contacto, setContacto,
+}: {
+  id: string, trato: any, setTrato: any, onComplete?: () => void, readOnly?: boolean,
+  // ── Modo cliente (link público /f/[token]) ──────────────────────────────
+  // Cuando clientMode=true el formulario guarda vía /api/f/[token] (POST con
+  // `_discoveryMode`) en lugar de /api/tratos/[id], oculta la UI interna del
+  // vendedor (propuesta, Trade, render) y muestra un botón "Enviar" final.
+  clientMode?: boolean,
+  token?: string,
+  huerfano?: boolean,
+  contacto?: { nombre: string; whatsapp: string; correo?: string; momentoContratacion?: string },
+  setContacto?: (c: any) => void,
+}) {
   const toast = useToast();
+  // Rutas base según el modo. En modo cliente todo pasa por el endpoint por token.
+  const archivosBase = clientMode ? `/api/f/${token}/archivos` : `/api/tratos/${id}/archivos`;
   
   
   
@@ -76,13 +92,32 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
   const [briefGuardado, setBriefGuardado] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/tratos/${id}/archivos`)
+    // En modo huérfano aún no hay trato → no hay archivos que listar.
+    if (clientMode && huerfano) return;
+    fetch(archivosBase)
       .then(r => r.json())
       .then(d => setArchivos(d.archivos || []))
       .catch(() => {});
-  }, [id]);
+  }, [archivosBase, clientMode, huerfano]);
 
   async function patch(data: Record<string, unknown>) {
+    // ── Modo cliente: guardar vía endpoint por token ──────────────────────
+    if (clientMode) {
+      const res = await fetch(`/api/f/${token}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, _discoveryMode: true }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al guardar");
+        return null;
+      }
+      const d = await res.json();
+      // El trato local se mantiene sincronizado con lo que el cliente escribe.
+      setTrato((prev: any) => prev ? { ...prev, ...data } : prev);
+      return d;
+    }
+
     const res = await fetch(`/api/tratos/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -124,7 +159,7 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
     formData.append("file", e.target.files[0]);
     formData.append("tipo", tipo);
     try {
-      const res = await fetch(`/api/tratos/${id}/archivos`, { method: "POST", body: formData });
+      const res = await fetch(archivosBase, { method: "POST", body: formData });
       if (res.ok) {
         const d = await res.json();
         setArchivos(prev => [...prev, d.archivo]);
@@ -143,7 +178,7 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
   async function eliminarArchivo(archivoId: string) {
     if (!window.confirm("¿Seguro de eliminar este archivo?")) return;
     try {
-      const res = await fetch(`/api/tratos/${id}/archivos?archivoId=${archivoId}`, { method: "DELETE" });
+      const res = await fetch(`${archivosBase}?archivoId=${archivoId}`, { method: "DELETE" });
       if (res.ok) {
         setArchivos(prev => prev.filter(a => a.id !== archivoId));
       } else {
@@ -365,20 +400,26 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
     clearTimeout(autoSaveDiscTimer.current);
     autoSaveDiscTimer.current = null;
     try {
-      fetch(`/api/tratos/${id}`, {
-        method: "PATCH",
+      const url = clientMode ? `/api/f/${token}` : `/api/tratos/${id}`;
+      const payload = clientMode
+        ? { ...buildDiscPayload(latestDiscRef.current), _discoveryMode: true }
+        : buildDiscPayload(latestDiscRef.current);
+      fetch(url, {
+        method: clientMode ? "POST" : "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildDiscPayload(latestDiscRef.current)),
+        body: JSON.stringify(payload),
         keepalive: true,
       }).catch(() => {});
     } catch { /* noop */ }
-  }, [id, buildDiscPayload]);
+  }, [id, buildDiscPayload, clientMode, token]);
 
   // Auto-guardado global: CUALQUIER cambio en el formulario dispara el guardado
   // con debounce. Antes solo la selección de servicios lo hacía, por eso al
   // retroceder se perdía todo el avance del descubrimiento.
   useEffect(() => {
-    if (readOnly || !hydratedRef.current) return;
+    // En modo huérfano todavía no existe el trato, así que no hay auto-guardado:
+    // los datos se persisten de golpe en el envío final.
+    if (readOnly || huerfano || !hydratedRef.current) return;
     const sig = JSON.stringify(discForm);
     if (!autosaveArmedRef.current) {
       // Primera pasada tras hidratar: registramos la firma base sin guardar,
@@ -390,7 +431,7 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
     if (sig === lastSavedSigRef.current) return;
     lastSavedSigRef.current = sig;
     autoSaveDisc(discForm);
-  }, [discForm, readOnly, autoSaveDisc]);
+  }, [discForm, readOnly, huerfano, autoSaveDisc]);
 
   // Flush al desmontar (navegación SPA / botón atrás) y al ocultar la pestaña.
   useEffect(() => {
@@ -457,6 +498,48 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
     if (completar && onComplete) onComplete();
   }
 
+  // ── Envío final del cliente (modo público) ────────────────────────────────
+  // Persiste todo el descubrimiento de una sola vez y marca el formulario como
+  // COMPLETADO. En huérfano crea el cliente + trato con los datos de contacto.
+  async function enviarFormularioCliente() {
+    if (huerfano) {
+      const nombre = (contacto?.nombre || "").trim();
+      const whatsapp = (contacto?.whatsapp || "").trim();
+      if (!nombre || !whatsapp) {
+        toast.error("Escribe tu nombre y WhatsApp para enviar el formulario");
+        return;
+      }
+    }
+    setSaving(true);
+    const payload: Record<string, unknown> = {
+      ...buildDiscPayload(discForm),
+      _discoveryMode: true,
+      _final: true,
+    };
+    if (huerfano && contacto) {
+      payload.nombreContacto = contacto.nombre?.trim() || null;
+      payload.telefonoContacto = contacto.whatsapp?.trim() || null;
+      payload.correoContacto = contacto.correo?.trim() || null;
+      payload.momentoContratacion = contacto.momentoContratacion || null;
+    }
+    try {
+      const res = await fetch(`/api/f/${token}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al enviar el formulario");
+        return;
+      }
+      if (onComplete) onComplete();
+    } catch {
+      toast.error("Error de red al enviar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function addLink() {
     const url = linkDraft.url.trim();
     const label = linkDraft.label.trim();
@@ -500,6 +583,36 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
 
             {/* PASO 1: Información básica */}
             {pasoActivo === 1 && (<div className="space-y-4">
+              {/* Datos de contacto — solo en links huérfanos (sin trato previo) */}
+              {clientMode && huerfano && (
+                <div className="border border-[#2a2a2a] bg-[#111] rounded-xl p-4 space-y-3">
+                  <p className="text-sm text-white font-semibold">Tus datos de contacto</p>
+                  <p className="text-[11px] text-gray-500 -mt-1">Para poder enviarte la propuesta y comunicarnos contigo.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">Nombre completo *</label>
+                      <input type="text" value={contacto?.nombre || ""}
+                        onChange={e => setContacto?.({ ...contacto, nombre: e.target.value })}
+                        placeholder="Tu nombre"
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">WhatsApp *</label>
+                      <input type="tel" value={contacto?.whatsapp || ""}
+                        onChange={e => setContacto?.({ ...contacto, whatsapp: e.target.value })}
+                        placeholder="10 dígitos"
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="text-xs text-gray-400 block mb-1">Correo <span className="text-gray-600">(opcional)</span></label>
+                      <input type="email" value={contacto?.correo || ""}
+                        onChange={e => setContacto?.({ ...contacto, correo: e.target.value })}
+                        placeholder="tucorreo@ejemplo.com"
+                        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    </div>
+                  </div>
+                </div>
+              )}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs text-gray-400 uppercase tracking-wider">Tipo de evento</label>
@@ -591,7 +704,7 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
               </div>
               <div>
-                <label className="text-xs text-gray-400 block mb-1">Presupuesto estimado del cliente</label>
+                <label className="text-xs text-gray-400 block mb-1">{clientMode ? "Tu presupuesto estimado" : "Presupuesto estimado del cliente"}</label>
                 <input type="number" value={discForm.presupuestoEstimado} onChange={e => setDiscForm(p => ({ ...p, presupuestoEstimado: e.target.value }))}
                   placeholder="0"
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
@@ -637,7 +750,7 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
                     placeholder="1"
                     className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                   />
-                  <span className="text-xs text-gray-500">día(s) · se pre-llena en la cotización</span>
+                  <span className="text-xs text-gray-500">día(s){clientMode ? "" : " · se pre-llena en la cotización"}</span>
                 </div>
               </div>
 
@@ -834,7 +947,7 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
 
                   {/* Presupuesto global del evento */}
                   <div className="mb-4">
-                    <label className="text-xs text-gray-400 block mb-1">Presupuesto global del evento <span className="text-gray-600">(si el cliente lo comparte)</span></label>
+                    <label className="text-xs text-gray-400 block mb-1">Presupuesto global del evento {!clientMode && <span className="text-gray-600">(si el cliente lo comparte)</span>}</label>
                     <input
                       type="text"
                       value={discForm.presupuestoEstimado}
@@ -874,8 +987,8 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
                   </div>
                 </div>
 
-                {/* CTA Hacer propuesta — en paso 2 para DT (último paso) */}
-                {!trato.descubrimientoCompleto && (
+                {/* CTA Hacer propuesta — en paso 2 para DT (último paso) — solo vendedor */}
+                {!clientMode && !trato.descubrimientoCompleto && (
                   <div className="border border-[#B3985B]/30 bg-[#B3985B]/5 rounded-xl p-4 flex items-center justify-between gap-4">
                     <div>
                       <p className="text-white text-sm font-semibold">¿Ya tienes todo lo que necesitas?</p>
@@ -1185,7 +1298,8 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
             {/* PASO 4: Opciones comerciales */}
             {(discForm.tipoServicio === "RENTA" ? pasoActivo === 3 : pasoActivo === 4) && (<div className="space-y-4">
 
-              {/* Toggles: Mainstage Trade + Render */}
+              {/* Toggles: Mainstage Trade + Render — solo vendedor */}
+              {!clientMode && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl p-4">
                   <div className="flex items-center justify-between">
@@ -1216,9 +1330,27 @@ export default function DiscoveryForm({ id, trato, setTrato, onComplete, readOnl
                 </div>
                 )}
               </div>
+              )}
 
-              {/* CTA Hacer propuesta — solo en el último paso */}
-              {!trato.descubrimientoCompleto && (
+              {/* Panel de envío del cliente — solo modo público */}
+              {clientMode && (
+                <div className="border border-[#B3985B]/30 bg-[#B3985B]/5 rounded-xl p-5 text-center space-y-3">
+                  <p className="text-white text-base font-semibold">¡Ya casi terminas! 🎉</p>
+                  <p className="text-gray-400 text-xs leading-relaxed">
+                    Revisa que la información esté completa y envíanos tu solicitud.
+                    Nuestro equipo te contactará con una propuesta a la medida.
+                  </p>
+                  <button
+                    onClick={enviarFormularioCliente}
+                    disabled={saving}
+                    className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-6 py-2.5 rounded-lg transition-colors disabled:opacity-50">
+                    {saving ? "Enviando…" : "Enviar formulario →"}
+                  </button>
+                </div>
+              )}
+
+              {/* CTA Hacer propuesta — solo en el último paso (vendedor) */}
+              {!clientMode && !trato.descubrimientoCompleto && (
                 <div className="border border-[#B3985B]/30 bg-[#B3985B]/5 rounded-xl p-4 flex items-center justify-between gap-4">
                   <div>
                     <p className="text-white text-sm font-semibold">¿Ya tienes toda la información?</p>
