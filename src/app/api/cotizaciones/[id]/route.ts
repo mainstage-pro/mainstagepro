@@ -5,6 +5,7 @@ import { logActividad } from "@/lib/actividad";
 import { guardarVersion } from "@/lib/versiones";
 import { generarTokenPresentacion } from "@/lib/presentacion-token";
 import { agendarSeguimientoPorEtapa, ensureSeguimientoEtapaCol } from "@/lib/etapaSeguimientos";
+import { syncFechaProximaAccion } from "@/app/api/seguimientos/route";
 
 // Calcula la fecha del próximo día de semana (0=dom,1=lun,...,6=sab)
 function proximoDiaSemana(targetDow: number): Date {
@@ -466,15 +467,46 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             where: {
               tratoId: cotData.tratoId,
               id: { not: id },
-              estado: { in: ["BORRADOR", "ENVIADA", "EN_REVISION", "AJUSTE_SOLICITADO", "REENVIADA"] },
+              estado: { in: ["BORRADOR", "ENVIADA", "EN_REVISION", "AJUSTE_SOLICITADO", "REENVIADA", "APROBADA"] },
             },
           });
           if (activasCount === 0) {
             await prisma.trato.update({
               where: { id: cotData.tratoId },
-              data: { etapa: "VENTA_PERDIDA" },
+              data: { etapa: "VENTA_PERDIDA", confirmadaEn: null },
             });
             await agendarSeguimientoPorEtapa(cotData.tratoId, "VENTA_PERDIDA");
+            await syncFechaProximaAccion(cotData.tratoId);
+          }
+        }
+      }
+
+      // CASCADE INVERSA: al regresar la cotización a un estado activo (borrador/
+      // enviada/en revisión), si el trato quedó en una etapa terminal (cerrada o
+      // perdida) y no hay otra cotización aprobada, regrésalo a OPORTUNIDAD.
+      const ESTADOS_ACTIVOS = ["BORRADOR", "ENVIADA", "REENVIADA", "EN_REVISION", "AJUSTE_SOLICITADO"];
+      if (ESTADOS_ACTIVOS.includes(body.estado)) {
+        const cotData = await prisma.cotizacion.findUnique({
+          where: { id },
+          select: { tratoId: true },
+        });
+        if (cotData?.tratoId) {
+          const trato = await prisma.trato.findUnique({
+            where: { id: cotData.tratoId },
+            select: { etapa: true },
+          });
+          if (trato && ["VENTA_CERRADA", "VENTA_PERDIDA"].includes(trato.etapa)) {
+            const aprobadaCount = await prisma.cotizacion.count({
+              where: { tratoId: cotData.tratoId, id: { not: id }, estado: "APROBADA" },
+            });
+            if (aprobadaCount === 0) {
+              await prisma.trato.update({
+                where: { id: cotData.tratoId },
+                data: { etapa: "OPORTUNIDAD", confirmadaEn: null },
+              });
+              await agendarSeguimientoPorEtapa(cotData.tratoId, "OPORTUNIDAD");
+              await syncFechaProximaAccion(cotData.tratoId);
+            }
           }
         }
       }
