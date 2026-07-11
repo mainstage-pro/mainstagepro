@@ -361,7 +361,78 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
   );
 }
 
-function UnidadesInline({ equipoId, unidades, loading }: { equipoId: string; unidades: Unidad[] | undefined; loading: boolean }) {
+function UnidadesInline({ equipoId, unidades, loading, onUpdated }: {
+  equipoId: string; unidades: Unidad[] | undefined; loading: boolean;
+  onUpdated: (equipoId: string, unidad: Unidad) => void;
+}) {
+  const toast = useToast();
+  const [editUnidad, setEditUnidad] = useState<Unidad | null>(null);
+  const [form, setForm] = useState({ codigo: "", estado: "ACTIVO", voltaje: "", notas: "" });
+  const [saving, setSaving] = useState(false);
+
+  function abrirEdit(u: Unidad) {
+    setForm({ codigo: u.codigo ?? "", estado: u.estado, voltaje: u.voltaje ?? "", notas: u.notas ?? "" });
+    setEditUnidad(u);
+  }
+
+  async function guardar() {
+    if (!editUnidad) return;
+    setSaving(true);
+    const res = await fetch(`/api/equipos/${equipoId}/unidades/${editUnidad.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ codigo: form.codigo || null, estado: form.estado, voltaje: form.voltaje || null, notas: form.notas || null }),
+    });
+    if (!res.ok) { toast.error("Error al guardar unidad"); setSaving(false); return; }
+    const d = await res.json();
+    if (d.unidad) onUpdated(equipoId, d.unidad);
+    setEditUnidad(null);
+    setSaving(false);
+  }
+
+  const editModal = (
+    <Modal open={editUnidad !== null} onClose={() => setEditUnidad(null)} title="Editar unidad" maxWidth="max-w-md">
+      <div className="space-y-3">
+        <FieldGroup label="Código / N° serie / Etiqueta">
+          <FInput value={form.codigo} onChange={v => setForm(p => ({ ...p, codigo: v }))} placeholder="Ej. SN-12345, Unidad A..." />
+        </FieldGroup>
+        <FieldGroup label="Estado">
+          <select value={form.estado} onChange={e => setForm(p => ({ ...p, estado: e.target.value }))} className={inputCls}>
+            <option value="ACTIVO">Activo</option>
+            <option value="EN_MANTENIMIENTO">En mantenimiento</option>
+            <option value="DADO_DE_BAJA">Dado de baja</option>
+          </select>
+        </FieldGroup>
+        <FieldGroup label="Voltaje">
+          <div className="flex gap-1">
+            {([["", "—"], ["110", "110V"], ["220", "220V"], ["AMBOS", "Ambos"]] as [string, string][]).map(([val, label]) => (
+              <button key={val} type="button"
+                onClick={() => setForm(p => ({ ...p, voltaje: val }))}
+                className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
+                  form.voltaje === val
+                    ? val === "" ? "bg-[#1a1a1a] border-[#333] text-gray-400" : "bg-[#B3985B]/15 border-[#B3985B]/60 text-[#B3985B]"
+                    : "bg-[#0d0d0d] border-[#2a2a2a] text-gray-600 hover:border-[#444] hover:text-gray-400"
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </FieldGroup>
+        <FieldGroup label="Notas">
+          <FInput value={form.notas} onChange={v => setForm(p => ({ ...p, notas: v }))} placeholder="Observaciones de esta unidad..." />
+        </FieldGroup>
+        <div className="flex items-center gap-3 pt-1">
+          <button onClick={guardar} disabled={saving}
+            className="px-5 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold disabled:opacity-40 hover:bg-[#c9a96a] transition-colors">
+            {saving ? "Guardando..." : "Guardar cambios"}
+          </button>
+          <button onClick={() => setEditUnidad(null)} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+
   if (loading || !unidades) {
     return <p className="text-[#555] text-xs py-2">Cargando unidades…</p>;
   }
@@ -383,6 +454,7 @@ function UnidadesInline({ equipoId, unidades, loading }: { equipoId: string; uni
   const resumen = VOLTAJES_UNIDAD_MAESTRO.filter(v => counts[v.value]).map(v => `${counts[v.value]}× ${v.label}`).join(" · ");
   return (
     <div>
+      {editModal}
       <div className="flex items-center justify-between gap-3 mb-2">
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-[#6b7280] uppercase tracking-wider font-semibold">
@@ -392,12 +464,13 @@ function UnidadesInline({ equipoId, unidades, loading }: { equipoId: string; uni
         </div>
         <Link href={`/inventario/equipos/${equipoId}`}
           className="text-[11px] text-[#B3985B] hover:text-white transition-colors shrink-0">
-          Editar unidades →
+          Agregar / eliminar unidades →
         </Link>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
         {unidades.map((u, idx) => (
-          <div key={u.id} className="p-2 rounded-lg border border-[#1e1e1e] bg-[#0d0d0d]">
+          <button key={u.id} onClick={() => abrirEdit(u)}
+            className="text-left p-2 rounded-lg border border-[#1e1e1e] bg-[#0d0d0d] hover:border-[#B3985B]/40 transition-colors">
             <p className="text-xs font-semibold text-white truncate">{u.codigo || `Unidad ${idx + 1}`}</p>
             <div className="flex flex-wrap items-center gap-1 mt-1">
               <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${ESTADO_BADGE[u.estado] ?? "bg-[#1a1a1a] text-[#6b7280]"}`}>
@@ -410,7 +483,7 @@ function UnidadesInline({ equipoId, unidades, loading }: { equipoId: string; uni
               )}
             </div>
             {u.notas && <p className="text-[#555] text-[9px] mt-1 truncate">{u.notas}</p>}
-          </div>
+          </button>
         ))}
       </div>
     </div>
@@ -594,6 +667,13 @@ export default function InventarioMaestroPage() {
         if (res.ok) { const d = await res.json(); setUnidadesCache(prev => ({ ...prev, [equipoId]: d.unidades ?? [] })); }
       } finally { setLoadingUnidades(null); }
     }
+  }
+
+  function updateUnidadInCache(equipoId: string, actualizada: Unidad) {
+    setUnidadesCache(prev => ({
+      ...prev,
+      [equipoId]: (prev[equipoId] ?? []).map(u => u.id === actualizada.id ? actualizada : u),
+    }));
   }
 
   async function handleImagen(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1082,6 +1162,7 @@ export default function InventarioMaestroPage() {
                                 equipoId={e.id}
                                 unidades={unidadesCache[e.id]}
                                 loading={loadingUnidades === e.id}
+                                onUpdated={updateUnidadInCache}
                               />
                             </td>
                           </tr>
