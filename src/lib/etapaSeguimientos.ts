@@ -57,3 +57,50 @@ export async function agendarSeguimientoPorEtapa(tratoId: string, nuevaEtapa: st
     },
   });
 }
+
+// ── Presentaciones de venta (Descubrimiento) ─────────────────────────────────
+// Migración lazy: columna "tratoId" en presentaciones_venta (sin FK a propósito).
+let _pvTratoColReady = false;
+export async function ensurePresentacionTratoCol() {
+  if (_pvTratoColReady) return;
+  try {
+    await prisma.$executeRawUnsafe(`ALTER TABLE presentaciones_venta ADD COLUMN IF NOT EXISTS "tratoId" TEXT`);
+  } catch { /* ya existe */ }
+  _pvTratoColReady = true;
+}
+
+/**
+ * Agenda el seguimiento de revisión cuando se envía una presentación al prospecto.
+ * Idempotente por trato: no duplica si ya hay uno pendiente del mismo título.
+ */
+export async function agendarSeguimientoPresentacionEnviada(tratoId: string) {
+  await ensureSeguimientoEtapaCol();
+
+  const titulo = "¿Revisaron la presentación? Dar seguimiento";
+  const yaExiste = await prisma.seguimiento.count({
+    where: { tratoId, titulo, completado: false },
+  });
+  if (yaExiste > 0) return;
+
+  const trato = await prisma.trato.findUnique({
+    where: { id: tratoId },
+    select: { etapa: true },
+  });
+
+  const fecha = new Date();
+  fecha.setHours(10, 0, 0, 0);
+  fecha.setDate(fecha.getDate() + 2);
+
+  await prisma.seguimiento.create({
+    data: {
+      tratoId,
+      tipo: "auto_etapa",
+      etapa: trato?.etapa ?? "DESCUBRIMIENTO",
+      canal: "whatsapp",
+      titulo,
+      nota: "Agendado automáticamente al enviar la presentación al prospecto.",
+      numero: null,
+      fechaProgramada: fecha,
+    },
+  });
+}

@@ -4,6 +4,7 @@ import { use, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import DiscoveryForm from "@/components/crm/DiscoveryForm";
+import PresentacionDescubrimiento from "@/components/crm/PresentacionDescubrimiento";
 import { useToast } from "@/components/Toast";
 import {
   CONTACTOS_INBOUND,
@@ -374,12 +375,15 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
             PANEL: DESCUBRIMIENTO
         ═══════════════════════════════════════════════════════════ */}
         {etapa === "DESCUBRIMIENTO" && (
-          <DiscoveryForm 
-            id={id} 
-            trato={trato} 
-            setTrato={setTrato} 
-            onComplete={() => setTrato(p => p ? { ...p, etapa: "OPORTUNIDAD" } : p)}
-          />
+          <div className="space-y-5">
+            <PresentacionDescubrimiento tratoId={id} />
+            <DiscoveryForm
+              id={id}
+              trato={trato}
+              setTrato={setTrato}
+              onComplete={() => setTrato(p => p ? { ...p, etapa: "OPORTUNIDAD" } : p)}
+            />
+          </div>
         )}
 
         {etapa === "OPORTUNIDAD" && (

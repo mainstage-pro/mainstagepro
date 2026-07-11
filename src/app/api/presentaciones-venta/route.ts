@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { ensurePresentacionTratoCol } from "@/lib/etapaSeguimientos";
 import Anthropic from "@anthropic-ai/sdk";
 
 // ── Edge runtime: no Prisma, no 10s limit (CPU time) ────────────────────────
@@ -14,8 +15,15 @@ export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  await ensurePresentacionTratoCol();
+
+  const tratoId = req.nextUrl.searchParams.get("tratoId");
+
   const presentaciones = await prisma.presentacionVenta.findMany({
-    where: { creadaPorId: session.id },
+    where: {
+      creadaPorId: session.id,
+      ...(tratoId ? { tratoId } : {}),
+    },
     include: { imagenes: { orderBy: { orden: "asc" } } },
     orderBy: { createdAt: "desc" },
   });
@@ -28,15 +36,18 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { titulo, descripcion, imagenes } = body as {
+  const { titulo, descripcion, imagenes, tratoId } = body as {
     titulo: string;
     descripcion: string;
     imagenes: { url: string; nombre: string; orden: number }[];
+    tratoId?: string;
   };
 
   if (!titulo || !descripcion) {
     return NextResponse.json({ error: "Título y descripción requeridos" }, { status: 400 });
   }
+
+  await ensurePresentacionTratoCol();
 
   const fotosDisponibles = imagenes?.length || 0;
   const galeriaSections =
@@ -154,6 +165,7 @@ ${htmlContent}
       descripcion,
       htmlContent: fullHtml,
       estado: "GENERADA",
+      tratoId: tratoId ?? null,
       creadaPorId: session.id,
       imagenes: {
         create: (imagenes || []).map((img) => ({

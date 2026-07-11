@@ -265,9 +265,11 @@ function NuevaPresentacionForm() {
     setStep("generating");
 
     try {
+      const tratoId = searchParams.get("tratoId");
       const payload = {
         titulo: titulo.trim(),
         descripcion: descripcion.trim(),
+        ...(tratoId ? { tratoId } : {}),
         imagenes: imagenes
           .filter((i) => !i.uploading && !i.error && i.url)
           .map((i, idx) => ({ url: i.url, nombre: i.nombre, orden: idx })),
@@ -290,9 +292,10 @@ function NuevaPresentacionForm() {
       setStep("done");
       showToast("¡Presentación generada con éxito!", "success");
 
-      // Open in new tab and redirect to list
+      // Open in new tab and redirect back (to the wizard if we came from there)
       window.open(`/api/presentaciones-venta/${id}/html`, "_blank");
-      setTimeout(() => router.push("/ventas/presentaciones"), 1500);
+      const volver = searchParams.get("volver");
+      setTimeout(() => router.push(volver || "/ventas/presentaciones"), 1500);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Error al generar", "error");
       setGenerating(false);

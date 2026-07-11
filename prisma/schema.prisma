@@ -3430,6 +3430,7 @@ model PresentacionVenta {
   htmlContent  String     @default("") @db.Text
   estado       String     @default("BORRADOR")
   tokenPublico String?    @unique
+  tratoId      String?    // prospecto ligado (etapa Descubrimiento) — sin FK a propósito
   creadaPorId  String
   creadaPor    User       @relation("PresentacionesVentaCreadas", fields: [creadaPorId], references: [id])
   createdAt    DateTime   @default(now())

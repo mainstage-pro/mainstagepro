@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { put, list } from "@vercel/blob";
 import { getSession } from "@/lib/auth";
+import { ensurePresentacionTratoCol } from "@/lib/etapaSeguimientos";
 
 export const maxDuration = 60;
 
 async function generarBackup() {
+  await ensurePresentacionTratoCol();
   const [
     clientes, proyectos, cotizaciones, users,
     movimientos, cuentasCobrar, cuentasPagar,
