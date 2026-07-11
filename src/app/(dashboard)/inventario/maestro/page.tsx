@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
+import { Fragment, useEffect, useRef, useState, useMemo } from "react";
+import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
@@ -81,6 +82,22 @@ const ESTADO_BADGE: Record<string, string> = {
 const ESTADO_LABEL: Record<string, string> = {
   ACTIVO: "Activo", EN_MANTENIMIENTO: "En mantenimiento", DADO_DE_BAJA: "Dado de baja",
 };
+
+type Unidad = {
+  id: string; codigo: string | null; estado: string; voltaje: string | null;
+  notas: string | null; _count: { mantenimientos: number };
+  mantenimientos: { fecha: string; proximoMantenimiento: string | null; tipo: string }[];
+};
+
+const VOLTAJES_UNIDAD_MAESTRO = [
+  { value: "110", label: "110V" },
+  { value: "220", label: "220V" },
+  { value: "AMBOS", label: "Ambos" },
+];
+function voltajeUnidadLabelMaestro(v: string | null) {
+  if (!v) return null;
+  return v === "AMBOS" ? "110V + 220V" : `${v}V`;
+}
 
 function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -344,6 +361,62 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
   );
 }
 
+function UnidadesInline({ equipoId, unidades, loading }: { equipoId: string; unidades: Unidad[] | undefined; loading: boolean }) {
+  if (loading || !unidades) {
+    return <p className="text-[#555] text-xs py-2">Cargando unidades…</p>;
+  }
+  if (unidades.length === 0) {
+    return (
+      <div className="flex items-center justify-between gap-3 py-1">
+        <p className="text-[#555] text-xs">Sin unidades registradas para este equipo.</p>
+        <Link href={`/inventario/equipos/${equipoId}`}
+          className="text-[11px] text-[#B3985B] hover:text-white transition-colors shrink-0">
+          Registrar unidades →
+        </Link>
+      </div>
+    );
+  }
+  const counts = unidades.reduce<Record<string, number>>((acc, u) => {
+    if (u.voltaje) acc[u.voltaje] = (acc[u.voltaje] ?? 0) + 1;
+    return acc;
+  }, {});
+  const resumen = VOLTAJES_UNIDAD_MAESTRO.filter(v => counts[v.value]).map(v => `${counts[v.value]}× ${v.label}`).join(" · ");
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-[#6b7280] uppercase tracking-wider font-semibold">
+            {unidades.length} unidad{unidades.length !== 1 ? "es" : ""}
+          </span>
+          {resumen && <span className="text-[10px] text-yellow-500/80">{resumen}</span>}
+        </div>
+        <Link href={`/inventario/equipos/${equipoId}`}
+          className="text-[11px] text-[#B3985B] hover:text-white transition-colors shrink-0">
+          Editar unidades →
+        </Link>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+        {unidades.map((u, idx) => (
+          <div key={u.id} className="p-2 rounded-lg border border-[#1e1e1e] bg-[#0d0d0d]">
+            <p className="text-xs font-semibold text-white truncate">{u.codigo || `Unidad ${idx + 1}`}</p>
+            <div className="flex flex-wrap items-center gap-1 mt-1">
+              <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${ESTADO_BADGE[u.estado] ?? "bg-[#1a1a1a] text-[#6b7280]"}`}>
+                {ESTADO_LABEL[u.estado] ?? u.estado}
+              </span>
+              {u.voltaje && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-yellow-900/20 text-yellow-400">
+                  {voltajeUnidadLabelMaestro(u.voltaje)}
+                </span>
+              )}
+            </div>
+            {u.notas && <p className="text-[#555] text-[9px] mt-1 truncate">{u.notas}</p>}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function InventarioMaestroPage() {
   const toast = useToast();
   const confirm = useConfirm();
@@ -454,6 +527,9 @@ export default function InventarioMaestroPage() {
   const [busqueda, setBusqueda] = useState("");
 
   const [vista, setVista] = useState<"lista" | "grid">("lista");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [unidadesCache, setUnidadesCache] = useState<Record<string, Unidad[]>>({});
+  const [loadingUnidades, setLoadingUnidades] = useState<string | null>(null);
   const [panel, setPanel] = useState<"nuevo" | string | null>(null); // "nuevo" | equipoId | null
   const [form, setForm] = useState<Form>(FORM_EMPTY);
   const [imagen, setImagen] = useState<string | null>(null);
@@ -507,6 +583,18 @@ export default function InventarioMaestroPage() {
   }
 
   function cerrarPanel() { setPanel(null); setImagen(null); }
+
+  async function toggleUnidades(equipoId: string) {
+    if (expandedId === equipoId) { setExpandedId(null); return; }
+    setExpandedId(equipoId);
+    if (!unidadesCache[equipoId]) {
+      setLoadingUnidades(equipoId);
+      try {
+        const res = await fetch(`/api/equipos/${equipoId}/unidades`, { cache: "no-store" });
+        if (res.ok) { const d = await res.json(); setUnidadesCache(prev => ({ ...prev, [equipoId]: d.unidades ?? [] })); }
+      } finally { setLoadingUnidades(null); }
+    }
+  }
 
   async function handleImagen(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -897,9 +985,17 @@ export default function InventarioMaestroPage() {
                         ? null
                         : (e.proveedorDefault?.nombre ?? e.proveedoresPrecios?.[0]?.proveedor?.nombre ?? null);
                       return (
-                        <tr key={e.id} className="border-t border-[#161616] transition-colors group hover:bg-[#0d0d0d]">
+                        <Fragment key={e.id}>
+                        <tr className="border-t border-[#161616] transition-colors group hover:bg-[#0d0d0d]">
                           <td className="px-4 py-2.5">
                             <div className="flex items-center gap-2.5 min-w-0">
+                              <button onClick={ev => { ev.stopPropagation(); toggleUnidades(e.id); }}
+                                title="Ver unidades"
+                                className="shrink-0 text-[#555] hover:text-[#B3985B] transition-colors">
+                                <svg className={`w-4 h-4 transition-transform ${expandedId === e.id ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                </svg>
+                              </button>
                               {e.imagenUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={e.imagenUrl} alt="" className="w-8 h-8 object-contain rounded bg-[#0a0a0a] p-0.5 shrink-0 cursor-zoom-in hover:opacity-80 transition-opacity" onClick={ev => { ev.stopPropagation(); setLightboxUrl(e.imagenUrl!); }} />
@@ -979,6 +1075,18 @@ export default function InventarioMaestroPage() {
                             </div>
                           </td>
                         </tr>
+                        {expandedId === e.id && (
+                          <tr className="bg-[#080808]">
+                            <td colSpan={6} className="px-4 py-3">
+                              <UnidadesInline
+                                equipoId={e.id}
+                                unidades={unidadesCache[e.id]}
+                                loading={loadingUnidades === e.id}
+                              />
+                            </td>
+                          </tr>
+                        )}
+                        </Fragment>
                       );
                     })}
                   </>
