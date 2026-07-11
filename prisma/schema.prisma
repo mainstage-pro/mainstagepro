@@ -49,6 +49,7 @@ model User {
   proyectosInternosLider ProyectoInterno[]      @relation("ProyectoInternoLider")
   backlogItems           BacklogItem[]          @relation("BacklogCreadoPor")
   equipoNotasCreadas     EquipoNota[]           @relation("EquipoNotasCreadas")
+  unidadObservaciones    UnidadObservacion[]    @relation("UnidadObservaciones")
   proyectoAccesos        ProyectoAcceso[]
   reportesFormulario     ReporteFormulario[]    @relation("ReportesFormularioUser")
 
@@ -1289,8 +1290,21 @@ model EquipoUnidad {
   createdAt DateTime @default(now())
 
   mantenimientos MantenimientoEquipo[]
+  observaciones  UnidadObservacion[]
 
   @@map("equipo_unidades")
+}
+
+model UnidadObservacion {
+  id          String       @id @default(cuid())
+  unidadId    String
+  unidad      EquipoUnidad @relation(fields: [unidadId], references: [id], onDelete: Cascade)
+  contenido   String
+  creadoPorId String?
+  creadoPor   User?        @relation("UnidadObservaciones", fields: [creadoPorId], references: [id])
+  createdAt   DateTime     @default(now())
+
+  @@map("unidad_observaciones")
 }
 
 model MantenimientoEquipo {

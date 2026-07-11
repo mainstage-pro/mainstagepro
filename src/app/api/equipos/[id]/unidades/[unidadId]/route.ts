@@ -1,6 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { ensureObservacionesTable } from "./observaciones/route";
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string; unidadId: string }> }
+) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  await ensureObservacionesTable();
+  const { unidadId } = await params;
+  const [mantenimientos, observaciones] = await Promise.all([
+    prisma.mantenimientoEquipo.findMany({
+      where: { unidadId },
+      orderBy: { fecha: "desc" },
+      select: {
+        id: true, fecha: true, tipo: true, accionRealizada: true,
+        comentarios: true, proximoMantenimiento: true, costoReparacion: true,
+      },
+    }),
+    prisma.unidadObservacion.findMany({
+      where: { unidadId },
+      include: { creadoPor: { select: { id: true, name: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+  const costoMantenimiento = mantenimientos.reduce((s, m) => s + (m.costoReparacion ?? 0), 0);
+  return NextResponse.json({ mantenimientos, observaciones, costoMantenimiento });
+}
 
 export async function PATCH(
   request: NextRequest,

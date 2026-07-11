@@ -89,6 +89,17 @@ type Unidad = {
   mantenimientos: { fecha: string; proximoMantenimiento: string | null; tipo: string }[];
 };
 
+type EquipoStats = { vecesRentada: number; diasRentados: number; revenue: number; costoMantenimiento: number };
+
+type UnidadMantenimiento = {
+  id: string; fecha: string; tipo: string; accionRealizada: string;
+  comentarios: string | null; proximoMantenimiento: string | null; costoReparacion: number | null;
+};
+type UnidadObservacion = {
+  id: string; contenido: string; createdAt: string;
+  creadoPor: { id: string; name: string } | null;
+};
+
 const VOLTAJES_UNIDAD_MAESTRO = [
   { value: "110", label: "110V" },
   { value: "220", label: "220V" },
@@ -361,47 +372,82 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
   );
 }
 
-function UnidadesInline({ equipoId, unidades, loading, onUpdated }: {
-  equipoId: string; unidades: Unidad[] | undefined; loading: boolean;
+function fmtFechaHoraMaestro(iso: string) {
+  return new Date(iso).toLocaleString("es-MX", {
+    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+}
+function fmtFechaMaestro(iso: string) {
+  return new Date(iso).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function UnidadEditModal({ equipoId, unidad, onClose, onUpdated }: {
+  equipoId: string; unidad: Unidad; onClose: () => void;
   onUpdated: (equipoId: string, unidad: Unidad) => void;
 }) {
   const toast = useToast();
-  const [editUnidad, setEditUnidad] = useState<Unidad | null>(null);
-  const [form, setForm] = useState({ codigo: "", estado: "ACTIVO", voltaje: "", notas: "" });
+  const [form, setForm] = useState({
+    codigo: unidad.codigo ?? "", estado: unidad.estado, voltaje: unidad.voltaje ?? "", notas: unidad.notas ?? "",
+  });
   const [saving, setSaving] = useState(false);
+  const [detalle, setDetalle] = useState<{ mantenimientos: UnidadMantenimiento[]; observaciones: UnidadObservacion[]; costoMantenimiento: number } | null>(null);
+  const [loadingDetalle, setLoadingDetalle] = useState(true);
+  const [nuevaObs, setNuevaObs] = useState("");
+  const [guardandoObs, setGuardandoObs] = useState(false);
 
-  function abrirEdit(u: Unidad) {
-    setForm({ codigo: u.codigo ?? "", estado: u.estado, voltaje: u.voltaje ?? "", notas: u.notas ?? "" });
-    setEditUnidad(u);
-  }
+  useEffect(() => {
+    let cancel = false;
+    fetch(`/api/equipos/${equipoId}/unidades/${unidad.id}`, { cache: "no-store" })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (!cancel && d) setDetalle(d); })
+      .finally(() => { if (!cancel) setLoadingDetalle(false); });
+    return () => { cancel = true; };
+  }, [equipoId, unidad.id]);
 
   async function guardar() {
-    if (!editUnidad) return;
     setSaving(true);
-    const res = await fetch(`/api/equipos/${equipoId}/unidades/${editUnidad.id}`, {
+    const res = await fetch(`/api/equipos/${equipoId}/unidades/${unidad.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ codigo: form.codigo || null, estado: form.estado, voltaje: form.voltaje || null, notas: form.notas || null }),
     });
     if (!res.ok) { toast.error("Error al guardar unidad"); setSaving(false); return; }
     const d = await res.json();
     if (d.unidad) onUpdated(equipoId, d.unidad);
-    setEditUnidad(null);
     setSaving(false);
+    onClose();
   }
 
-  const editModal = (
-    <Modal open={editUnidad !== null} onClose={() => setEditUnidad(null)} title="Editar unidad" maxWidth="max-w-md">
-      <div className="space-y-3">
-        <FieldGroup label="Código / N° serie / Etiqueta">
-          <FInput value={form.codigo} onChange={v => setForm(p => ({ ...p, codigo: v }))} placeholder="Ej. SN-12345, Unidad A..." />
-        </FieldGroup>
-        <FieldGroup label="Estado">
-          <select value={form.estado} onChange={e => setForm(p => ({ ...p, estado: e.target.value }))} className={inputCls}>
-            <option value="ACTIVO">Activo</option>
-            <option value="EN_MANTENIMIENTO">En mantenimiento</option>
-            <option value="DADO_DE_BAJA">Dado de baja</option>
-          </select>
-        </FieldGroup>
+  async function agregarObs() {
+    if (!nuevaObs.trim()) return;
+    setGuardandoObs(true);
+    const res = await fetch(`/api/equipos/${equipoId}/unidades/${unidad.id}/observaciones`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contenido: nuevaObs.trim() }),
+    });
+    if (!res.ok) { toast.error("Error al guardar observación"); setGuardandoObs(false); return; }
+    const d = await res.json();
+    if (d.observacion) {
+      setDetalle(prev => prev ? { ...prev, observaciones: [d.observacion, ...prev.observaciones] } : prev);
+      setNuevaObs("");
+    }
+    setGuardandoObs(false);
+  }
+
+  return (
+    <Modal open onClose={onClose} title="Editar unidad" maxWidth="max-w-2xl">
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <FieldGroup label="Código / N° serie / Etiqueta">
+            <FInput value={form.codigo} onChange={v => setForm(p => ({ ...p, codigo: v }))} placeholder="Ej. SN-12345, Unidad A..." />
+          </FieldGroup>
+          <FieldGroup label="Estado">
+            <select value={form.estado} onChange={e => setForm(p => ({ ...p, estado: e.target.value }))} className={inputCls}>
+              <option value="ACTIVO">Activo</option>
+              <option value="EN_MANTENIMIENTO">En mantenimiento</option>
+              <option value="DADO_DE_BAJA">Dado de baja</option>
+            </select>
+          </FieldGroup>
+        </div>
         <FieldGroup label="Voltaje">
           <div className="flex gap-1">
             {([["", "—"], ["110", "110V"], ["220", "220V"], ["AMBOS", "Ambos"]] as [string, string][]).map(([val, label]) => (
@@ -420,30 +466,127 @@ function UnidadesInline({ equipoId, unidades, loading, onUpdated }: {
         <FieldGroup label="Notas">
           <FInput value={form.notas} onChange={v => setForm(p => ({ ...p, notas: v }))} placeholder="Observaciones de esta unidad..." />
         </FieldGroup>
-        <div className="flex items-center gap-3 pt-1">
+        <div className="flex items-center gap-3">
           <button onClick={guardar} disabled={saving}
             className="px-5 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold disabled:opacity-40 hover:bg-[#c9a96a] transition-colors">
             {saving ? "Guardando..." : "Guardar cambios"}
           </button>
-          <button onClick={() => setEditUnidad(null)} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
+          <button onClick={onClose} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
             Cancelar
           </button>
+        </div>
+
+        <div className="border-t border-[#1e1e1e] pt-4">
+          <p className="text-[10px] text-[#6b7280] uppercase tracking-wider font-semibold mb-2">Observaciones</p>
+          <div className="flex gap-2 mb-3">
+            <input value={nuevaObs} onChange={e => setNuevaObs(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); agregarObs(); } }}
+              placeholder="Escribe una observación y presiona Enter…"
+              className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50" />
+            <button onClick={agregarObs} disabled={guardandoObs || !nuevaObs.trim()}
+              className="px-4 py-2 rounded-lg bg-[#1a1a1a] border border-[#333] text-gray-300 text-sm hover:border-[#B3985B]/50 disabled:opacity-40 transition-colors">
+              {guardandoObs ? "…" : "Agregar"}
+            </button>
+          </div>
+          {loadingDetalle ? (
+            <p className="text-[#555] text-xs">Cargando…</p>
+          ) : detalle && detalle.observaciones.length > 0 ? (
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {detalle.observaciones.map(o => (
+                <div key={o.id} className="p-2 rounded-lg border border-[#1e1e1e] bg-[#0d0d0d]">
+                  <p className="text-sm text-gray-200 whitespace-pre-wrap">{o.contenido}</p>
+                  <p className="text-[10px] text-[#555] mt-1">
+                    {fmtFechaHoraMaestro(o.createdAt)}{o.creadoPor ? ` · ${o.creadoPor.name}` : ""}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[#555] text-xs">Sin observaciones aún.</p>
+          )}
+        </div>
+
+        <div className="border-t border-[#1e1e1e] pt-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] text-[#6b7280] uppercase tracking-wider font-semibold">Historial de mantenimiento</p>
+            {detalle && detalle.costoMantenimiento > 0 && (
+              <span className="text-[10px] text-red-400/80">Costo total: {fmx(detalle.costoMantenimiento)}</span>
+            )}
+          </div>
+          {loadingDetalle ? (
+            <p className="text-[#555] text-xs">Cargando…</p>
+          ) : detalle && detalle.mantenimientos.length > 0 ? (
+            <div className="space-y-2 max-h-56 overflow-y-auto">
+              {detalle.mantenimientos.map(m => (
+                <div key={m.id} className="p-2 rounded-lg border border-[#1e1e1e] bg-[#0d0d0d]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-white">{m.tipo}</span>
+                    <span className="text-[10px] text-[#555]">{fmtFechaMaestro(m.fecha)}</span>
+                  </div>
+                  {m.accionRealizada && <p className="text-[11px] text-gray-300 mt-1">{m.accionRealizada}</p>}
+                  {m.comentarios && <p className="text-[10px] text-[#666] mt-1">{m.comentarios}</p>}
+                  <div className="flex items-center gap-3 mt-1">
+                    {m.costoReparacion != null && m.costoReparacion > 0 && (
+                      <span className="text-[10px] text-red-400/80">{fmx(m.costoReparacion)}</span>
+                    )}
+                    {m.proximoMantenimiento && (
+                      <span className="text-[10px] text-[#B3985B]/70">Próximo: {fmtFechaMaestro(m.proximoMantenimiento)}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[#555] text-xs">Sin mantenimientos registrados.</p>
+          )}
         </div>
       </div>
     </Modal>
   );
+}
+
+function UnidadesInline({ equipoId, unidades, stats, loading, onUpdated }: {
+  equipoId: string; unidades: Unidad[] | undefined; stats: EquipoStats | undefined; loading: boolean;
+  onUpdated: (equipoId: string, unidad: Unidad) => void;
+}) {
+  const [editUnidad, setEditUnidad] = useState<Unidad | null>(null);
+
+  const statsBar = stats && (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+      {[
+        { label: "Veces rentada", value: String(stats.vecesRentada), color: "text-white" },
+        { label: "Días rentados", value: String(stats.diasRentados), color: "text-white" },
+        { label: "Revenue generado", value: fmx(stats.revenue), color: "text-emerald-400" },
+        { label: "Costo mantenimiento", value: fmx(stats.costoMantenimiento), color: "text-red-400" },
+      ].map(s => (
+        <div key={s.label} className="p-2 rounded-lg border border-[#1e1e1e] bg-[#0d0d0d]">
+          <p className="text-[9px] text-[#6b7280] uppercase tracking-wider">{s.label}</p>
+          <p className={`text-sm font-semibold mt-0.5 ${s.color}`}>{s.value}</p>
+        </div>
+      ))}
+    </div>
+  );
 
   if (loading || !unidades) {
-    return <p className="text-[#555] text-xs py-2">Cargando unidades…</p>;
+    return <div>{statsBar}<p className="text-[#555] text-xs py-2">Cargando unidades…</p></div>;
   }
+
+  const editModal = editUnidad && (
+    <UnidadEditModal equipoId={equipoId} unidad={editUnidad} onClose={() => setEditUnidad(null)} onUpdated={onUpdated} />
+  );
+
   if (unidades.length === 0) {
     return (
-      <div className="flex items-center justify-between gap-3 py-1">
-        <p className="text-[#555] text-xs">Sin unidades registradas para este equipo.</p>
-        <Link href={`/inventario/equipos/${equipoId}`}
-          className="text-[11px] text-[#B3985B] hover:text-white transition-colors shrink-0">
-          Registrar unidades →
-        </Link>
+      <div>
+        {statsBar}
+        {editModal}
+        <div className="flex items-center justify-between gap-3 py-1">
+          <p className="text-[#555] text-xs">Sin unidades registradas para este equipo.</p>
+          <Link href={`/inventario/equipos/${equipoId}`}
+            className="text-[11px] text-[#B3985B] hover:text-white transition-colors shrink-0">
+            Registrar unidades →
+          </Link>
+        </div>
       </div>
     );
   }
@@ -454,6 +597,7 @@ function UnidadesInline({ equipoId, unidades, loading, onUpdated }: {
   const resumen = VOLTAJES_UNIDAD_MAESTRO.filter(v => counts[v.value]).map(v => `${counts[v.value]}× ${v.label}`).join(" · ");
   return (
     <div>
+      {statsBar}
       {editModal}
       <div className="flex items-center justify-between gap-3 mb-2">
         <div className="flex items-center gap-2">
@@ -469,7 +613,7 @@ function UnidadesInline({ equipoId, unidades, loading, onUpdated }: {
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
         {unidades.map((u, idx) => (
-          <button key={u.id} onClick={() => abrirEdit(u)}
+          <button key={u.id} onClick={() => setEditUnidad(u)}
             className="text-left p-2 rounded-lg border border-[#1e1e1e] bg-[#0d0d0d] hover:border-[#B3985B]/40 transition-colors">
             <p className="text-xs font-semibold text-white truncate">{u.codigo || `Unidad ${idx + 1}`}</p>
             <div className="flex flex-wrap items-center gap-1 mt-1">
@@ -479,6 +623,11 @@ function UnidadesInline({ equipoId, unidades, loading, onUpdated }: {
               {u.voltaje && (
                 <span className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-yellow-900/20 text-yellow-400">
                   {voltajeUnidadLabelMaestro(u.voltaje)}
+                </span>
+              )}
+              {u._count.mantenimientos > 0 && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-[#1a1a1a] text-[#6b7280]">
+                  {u._count.mantenimientos} mant.
                 </span>
               )}
             </div>
@@ -602,6 +751,7 @@ export default function InventarioMaestroPage() {
   const [vista, setVista] = useState<"lista" | "grid">("lista");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [unidadesCache, setUnidadesCache] = useState<Record<string, Unidad[]>>({});
+  const [statsCache, setStatsCache] = useState<Record<string, EquipoStats>>({});
   const [loadingUnidades, setLoadingUnidades] = useState<string | null>(null);
   const [panel, setPanel] = useState<"nuevo" | string | null>(null); // "nuevo" | equipoId | null
   const [form, setForm] = useState<Form>(FORM_EMPTY);
@@ -660,6 +810,12 @@ export default function InventarioMaestroPage() {
   async function toggleUnidades(equipoId: string) {
     if (expandedId === equipoId) { setExpandedId(null); return; }
     setExpandedId(equipoId);
+    if (!statsCache[equipoId]) {
+      fetch(`/api/equipos/${equipoId}/stats`, { cache: "no-store" })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setStatsCache(prev => ({ ...prev, [equipoId]: d })); })
+        .catch(() => {});
+    }
     if (!unidadesCache[equipoId]) {
       setLoadingUnidades(equipoId);
       try {
@@ -1161,6 +1317,7 @@ export default function InventarioMaestroPage() {
                               <UnidadesInline
                                 equipoId={e.id}
                                 unidades={unidadesCache[e.id]}
+                                stats={statsCache[e.id]}
                                 loading={loadingUnidades === e.id}
                                 onUpdated={updateUnidadInCache}
                               />
