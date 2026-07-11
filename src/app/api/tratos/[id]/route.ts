@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { agendarSeguimientoPorEtapa } from "@/lib/etapaSeguimientos";
+import { syncFechaProximaAccion } from "@/app/api/seguimientos/route";
 
 let _vendedorColReady = false;
 async function ensureVendedorId() {
@@ -145,12 +147,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   // Auto-set fechaCierre y etapaCambiadaEn cuando etapa cambia
   let cambioAVentaPerdida = false;
+  let etapaCambio = false;
   if (body.etapa) {
     const current = await prisma.trato.findUnique({
       where: { id },
       select: { etapa: true, fechaCierre: true, presupuestoEstimado: true },
     });
     if (current && current.etapa !== body.etapa) {
+      etapaCambio = true;
       data.etapaCambiadaEn = new Date();
       if (["VENTA_CERRADA", "VENTA_PERDIDA"].includes(body.etapa) && !current.fechaCierre) {
         data.fechaCierre = new Date();
@@ -200,6 +204,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     data,
     include: { cliente: { select: { nombre: true } } },
   });
+
+  // ── Agendar seguimiento de entrada cuando el trato cambia de etapa ──────────
+  if (etapaCambio) {
+    await agendarSeguimientoPorEtapa(id, body.etapa);
+    await syncFechaProximaAccion(id);
+  }
 
   // ── Cancelar CxC pendientes cuando el trato se pierde ───────────────────────
   if (cambioAVentaPerdida) {

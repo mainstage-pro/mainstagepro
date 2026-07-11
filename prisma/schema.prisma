@@ -317,8 +317,9 @@ model Seguimiento {
   id              String    @id @default(cuid())
   tratoId         String
   trato           Trato     @relation(fields: [tratoId], references: [id], onDelete: Cascade)
-  tipo            String    // "auto" | "manual"
+  tipo            String    // "auto" | "manual" | "auto_etapa"
   numero          Int?      // 1, 2, 3 para los automáticos
+  etapa           String?   // etapa de compra del prospecto al agendar el seguimiento
   canal           String    @default("whatsapp") // "whatsapp" | "llamada" | "reunion"
   titulo          String
   nota            String?

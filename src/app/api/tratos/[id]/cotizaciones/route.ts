@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { agendarSeguimientoPorEtapa } from "@/lib/etapaSeguimientos";
+import { syncFechaProximaAccion } from "@/app/api/seguimientos/route";
 
 /**
  * POST /api/tratos/[id]/cotizaciones
@@ -65,6 +67,8 @@ export async function POST(
       where: { id: tratoId },
       data: { etapa: "OPORTUNIDAD" },
     });
+    await agendarSeguimientoPorEtapa(tratoId, "OPORTUNIDAD");
+    await syncFechaProximaAccion(tratoId);
   }
 
   return NextResponse.json(

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { put, list, del } from "@vercel/blob";
+import { ensureSeguimientoEtapaCol } from "@/lib/etapaSeguimientos";
 
 export const maxDuration = 60;
 
 async function generarBackup() {
+  await ensureSeguimientoEtapaCol();
   const [
     // ── CRM ───────────────────────────────────────────
     clientes, tratos, prospeccion, seguimientos,

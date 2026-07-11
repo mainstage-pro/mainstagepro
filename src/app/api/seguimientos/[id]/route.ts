@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { syncFechaProximaAccion } from "@/app/api/seguimientos/route";
+import { ensureSeguimientoEtapaCol } from "@/lib/etapaSeguimientos";
 
 let _revColReady = false;
 async function ensureRequiereRevision() {
@@ -22,6 +23,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await req.json();
 
   await ensureRequiereRevision();
+  await ensureSeguimientoEtapaCol();
 
   const data: Record<string, unknown> = {};
   if ("completado" in body) {
@@ -71,6 +73,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
+
+  await ensureSeguimientoEtapaCol();
 
   // Read tratoId before deleting
   const seg = await prisma.seguimiento.findUnique({ where: { id }, select: { tratoId: true } });

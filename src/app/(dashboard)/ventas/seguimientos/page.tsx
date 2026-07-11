@@ -9,6 +9,7 @@ type Seguimiento = {
   id: string;
   tipo: string;
   numero: number | null;
+  etapa: string | null;
   canal: string;
   titulo: string;
   nota: string | null;
@@ -69,6 +70,13 @@ function nextTuesdayOrThursday(): string {
 
 const CANAL_ICON: Record<string, string> = { whatsapp: "📱", llamada: "📞", reunion: "🤝" };
 const CANAL_LABEL: Record<string, string> = { whatsapp: "WhatsApp", llamada: "Llamada", reunion: "Reunión" };
+const ETAPA_BADGE: Record<string, { label: string; cls: string }> = {
+  LEAD:           { label: "Prospección",    cls: "bg-amber-900/20 text-amber-400" },
+  DESCUBRIMIENTO: { label: "Descubrimiento", cls: "bg-blue-900/20 text-blue-400" },
+  OPORTUNIDAD:    { label: "Oportunidad",    cls: "bg-violet-900/20 text-violet-400" },
+  VENTA_CERRADA:  { label: "Cerrada",        cls: "bg-emerald-900/20 text-emerald-400" },
+  VENTA_PERDIDA:  { label: "Perdida",        cls: "bg-red-900/20 text-red-400" },
+};
 
 // ─── ModalReprogramar ──────────────────────────────────────────────────────────
 
@@ -292,6 +300,11 @@ function SeguimientoRow({ s, onComplete, onReprogramar, onDelete }: {
         </p>
         {s.trato.cliente.empresa && (
           <p className="text-[10px] text-[#3a3a3a] truncate mt-0.5">{s.trato.cliente.empresa}</p>
+        )}
+        {s.etapa && ETAPA_BADGE[s.etapa] && (
+          <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-medium ${ETAPA_BADGE[s.etapa].cls}`}>
+            {ETAPA_BADGE[s.etapa].label}
+          </span>
         )}
       </div>
 

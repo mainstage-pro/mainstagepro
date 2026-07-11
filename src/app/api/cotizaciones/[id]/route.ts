@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
 import { guardarVersion } from "@/lib/versiones";
 import { generarTokenPresentacion } from "@/lib/presentacion-token";
+import { agendarSeguimientoPorEtapa, ensureSeguimientoEtapaCol } from "@/lib/etapaSeguimientos";
 
 // Calcula la fecha del próximo día de semana (0=dom,1=lun,...,6=sab)
 function proximoDiaSemana(targetDow: number): Date {
@@ -19,11 +20,19 @@ function proximoDiaSemana(targetDow: number): Date {
 }
 
 async function generarSeguimientosAuto(tratoId: string, cotizacionId: string) {
+  await ensureSeguimientoEtapaCol();
+
   // Verificar que no existan ya seguimientos auto para este trato
   const existing = await prisma.seguimiento.count({
     where: { tratoId, tipo: "auto" },
   });
   if (existing > 0) return; // Ya generados, no duplicar
+
+  const trato = await prisma.trato.findUnique({
+    where: { id: tratoId },
+    select: { etapa: true },
+  });
+  const etapa = trato?.etapa ?? null;
 
   // Seg 1: próximo martes (DOW=2)
   const seg1 = proximoDiaSemana(2);
@@ -42,6 +51,7 @@ async function generarSeguimientosAuto(tratoId: string, cotizacionId: string) {
         tratoId,
         tipo: "auto",
         numero: 1,
+        etapa,
         canal: "whatsapp",
         titulo: "¿Recibiste la cotización? ¿Alguna duda?",
         nota: `Seguimiento automático — cotización ${cotizacionId}`,
@@ -51,6 +61,7 @@ async function generarSeguimientosAuto(tratoId: string, cotizacionId: string) {
         tratoId,
         tipo: "auto",
         numero: 2,
+        etapa,
         canal: "whatsapp",
         titulo: "¿Tuvieron oportunidad de revisarla?",
         nota: `Seguimiento automático — cotización ${cotizacionId}`,
@@ -60,6 +71,7 @@ async function generarSeguimientosAuto(tratoId: string, cotizacionId: string) {
         tratoId,
         tipo: "auto",
         numero: 3,
+        etapa,
         canal: "whatsapp",
         titulo: "Cierre o siguiente paso — ¿Cómo seguimos?",
         nota: `Seguimiento automático — cotización ${cotizacionId}`,
@@ -386,6 +398,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             where: { id: cotData.tratoId },
             data: { etapa: "VENTA_CERRADA", confirmadaEn: new Date() },
           });
+          await agendarSeguimientoPorEtapa(cotData.tratoId, "VENTA_CERRADA");
 
           // ── Levantamiento de contenido: crear orden si aplica ──
           try {
@@ -461,6 +474,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
               where: { id: cotData.tratoId },
               data: { etapa: "VENTA_PERDIDA" },
             });
+            await agendarSeguimientoPorEtapa(cotData.tratoId, "VENTA_PERDIDA");
           }
         }
       }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { ensureSeguimientoEtapaCol } from "@/lib/etapaSeguimientos";
 
 // ── Helper: recalculate and save fechaProximaAccion on the trato ─────────────
 // Sets it to the earliest pending (not completed) seguimiento, or null if none.
@@ -19,6 +20,8 @@ export async function syncFechaProximaAccion(tratoId: string) {
 export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  await ensureSeguimientoEtapaCol();
 
   const { searchParams } = new URL(req.url);
   const tratoId = searchParams.get("tratoId");
@@ -75,6 +78,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "tratoId, titulo y fechaProgramada son requeridos" }, { status: 400 });
   }
 
+  await ensureSeguimientoEtapaCol();
+
+  // Capturar la etapa de compra del prospecto al momento de agendar
+  const tratoEtapa = await prisma.trato.findUnique({
+    where: { id: tratoId },
+    select: { etapa: true },
+  });
+
   const seguimiento = await prisma.seguimiento.create({
     data: {
       tratoId,
@@ -83,6 +94,7 @@ export async function POST(req: NextRequest) {
       titulo,
       nota: nota ?? null,
       numero: numero ?? null,
+      etapa: tratoEtapa?.etapa ?? null,
       fechaProgramada: new Date(fechaProgramada),
     },
     include: {
