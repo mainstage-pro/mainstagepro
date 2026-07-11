@@ -1283,6 +1283,7 @@ model EquipoUnidad {
   equipo    Equipo   @relation(fields: [equipoId], references: [id], onDelete: Cascade)
   codigo    String?  // Número de serie, tag, etiqueta, ej: "SN-12345" o "Unidad 1"
   estado    String   @default("ACTIVO") // ACTIVO | EN_MANTENIMIENTO | DADO_DE_BAJA
+  voltaje   String?  // Voltaje de esta unidad ("110" | "220" | "AMBOS")
   notas     String?
   activo    Boolean  @default(true)
   createdAt DateTime @default(now())

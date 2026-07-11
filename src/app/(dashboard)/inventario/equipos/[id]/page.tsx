@@ -4,7 +4,35 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
+import { useConfirm } from "@/components/Confirm";
 import { BackButton } from "@/components/BackButton";
+
+const ESTADOS_UNIDAD = ["ACTIVO", "EN_MANTENIMIENTO", "DADO_DE_BAJA"] as const;
+const ESTADO_UNIDAD_BADGE: Record<string, string> = {
+  ACTIVO: "bg-green-900/30 text-green-400 border-green-900/50",
+  EN_MANTENIMIENTO: "bg-yellow-900/30 text-yellow-400 border-yellow-900/50",
+  DADO_DE_BAJA: "bg-red-900/30 text-red-400 border-red-900/50",
+};
+const VOLTAJES_UNIDAD = [
+  { value: "110", label: "110V" },
+  { value: "220", label: "220V" },
+  { value: "AMBOS", label: "Ambos" },
+];
+function voltajeUnidadLabel(v: string | null) {
+  if (!v) return null;
+  return v === "AMBOS" ? "110V + 220V" : `${v}V`;
+}
+function fmtFechaCorta(s: string | null) {
+  if (!s) return null;
+  const [y, m, d] = s.substring(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "2-digit" });
+}
+
+type Unidad = {
+  id: string; codigo: string | null; estado: string; voltaje: string | null;
+  notas: string | null; _count: { mantenimientos: number };
+  mantenimientos: { fecha: string; proximoMantenimiento: string | null; tipo: string }[];
+};
 
 const CATEGORIAS_ACC = ["cable", "herramienta", "consumible", "soporte", "otro"] as const;
 type CategoriaAcc = typeof CATEGORIAS_ACC[number] | null;
@@ -402,6 +430,188 @@ function NotasSection({ equipoId, initial }: { equipoId: string; initial: Equipo
   );
 }
 
+function UnidadesSection({ equipoId, cantidadTotal }: { equipoId: string; cantidadTotal: number }) {
+  const toast = useToast();
+  const confirm = useConfirm();
+  const [unidades, setUnidades] = useState<Unidad[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState({ codigo: "", estado: "ACTIVO", voltaje: "", notas: "" });
+  const [saving, setSaving] = useState(false);
+
+  const emptyForm = { codigo: "", estado: "ACTIVO", voltaje: "", notas: "" };
+
+  const reload = async () => {
+    const r = await fetch(`/api/equipos/${equipoId}/unidades`, { cache: "no-store" });
+    if (r.ok) { const d = await r.json(); setUnidades(d.unidades ?? []); }
+  };
+
+  useEffect(() => { reload().finally(() => setLoading(false)); }, [equipoId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function startAdd() { setForm(emptyForm); setEditId(null); setShowForm(true); }
+  function startEdit(u: Unidad) {
+    setForm({ codigo: u.codigo ?? "", estado: u.estado, voltaje: u.voltaje ?? "", notas: u.notas ?? "" });
+    setEditId(u.id); setShowForm(true);
+  }
+
+  async function save() {
+    setSaving(true);
+    const payload = { codigo: form.codigo || null, estado: form.estado, voltaje: form.voltaje || null, notas: form.notas || null };
+    const url = editId ? `/api/equipos/${equipoId}/unidades/${editId}` : `/api/equipos/${equipoId}/unidades`;
+    const r = await fetch(url, { method: editId ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    if (!r.ok) { toast.error("Error al guardar unidad"); setSaving(false); return; }
+    await reload();
+    setShowForm(false); setEditId(null); setForm(emptyForm); setSaving(false);
+  }
+
+  async function generar() {
+    for (let i = 1; i <= cantidadTotal; i++) {
+      await fetch(`/api/equipos/${equipoId}/unidades`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codigo: `Unidad ${i}` }),
+      });
+    }
+    await reload();
+  }
+
+  async function eliminar(id: string) {
+    if (!await confirm({ message: "¿Eliminar esta unidad? Se perderá su historial de mantenimiento.", danger: true, confirmText: "Eliminar" })) return;
+    setUnidades(prev => prev.filter(u => u.id !== id));
+    const r = await fetch(`/api/equipos/${equipoId}/unidades/${id}`, { method: "DELETE" });
+    if (!r.ok) { toast.error("Error al eliminar"); reload(); }
+  }
+
+  const voltajeResumen = (() => {
+    const counts = unidades.reduce<Record<string, number>>((acc, u) => {
+      if (u.voltaje) acc[u.voltaje] = (acc[u.voltaje] ?? 0) + 1;
+      return acc;
+    }, {});
+    const parts = VOLTAJES_UNIDAD.filter(v => counts[v.value]).map(v => `${counts[v.value]}× ${v.label}`);
+    return parts.length > 0 ? parts.join(" · ") : null;
+  })();
+
+  return (
+    <div className="ms-card p-5">
+      <div className="flex items-start justify-between mb-3 gap-3">
+        <div>
+          <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">
+            Unidades individuales {unidades.length > 0 && <span className="text-[#555] font-normal">({unidades.length})</span>}
+          </h2>
+          {voltajeResumen && <p className="text-[10px] text-yellow-500/80 mt-0.5">{voltajeResumen}</p>}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {!loading && unidades.length === 0 && cantidadTotal > 0 && (
+            <button onClick={generar}
+              className="text-[10px] text-[#B3985B] hover:text-white border border-[#B3985B]/30 px-2 py-1 rounded transition-colors">
+              Generar {cantidadTotal} unidades
+            </button>
+          )}
+          <button onClick={startAdd}
+            className="text-[10px] text-gray-500 hover:text-white border border-[#222] px-2 py-1 rounded transition-colors">
+            + Agregar
+          </button>
+        </div>
+      </div>
+
+      {showForm && (
+        <div className="mb-4 p-3 bg-[#0d0d0d] border border-[#B3985B]/20 rounded-lg space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="sm:col-span-2">
+              <label className="text-[10px] text-gray-600 mb-1 block">Código / N° serie / Etiqueta</label>
+              <input value={form.codigo} onChange={e => setForm(p => ({ ...p, codigo: e.target.value }))}
+                placeholder="Ej: SN-12345, Tag #3, Unidad A..."
+                className="w-full bg-[#111] border border-[#222] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]/50" />
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-600 mb-1 block">Estado</label>
+              <select value={form.estado} onChange={e => setForm(p => ({ ...p, estado: e.target.value }))}
+                className="w-full bg-[#111] border border-[#222] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]/50">
+                {ESTADOS_UNIDAD.map(s => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-600 mb-1 block">Voltaje</label>
+            <div className="flex gap-1.5">
+              {VOLTAJES_UNIDAD.map(v => (
+                <button key={v.value} type="button"
+                  onClick={() => setForm(p => ({ ...p, voltaje: p.voltaje === v.value ? "" : v.value }))}
+                  className={`text-[10px] px-2.5 py-1 rounded border transition-colors ${
+                    form.voltaje === v.value
+                      ? "bg-[#B3985B]/15 text-[#B3985B] border-[#B3985B]/50 font-semibold"
+                      : "bg-transparent text-gray-500 border-[#333] hover:border-[#555]"
+                  }`}>
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-600 mb-1 block">Notas</label>
+            <input value={form.notas} onChange={e => setForm(p => ({ ...p, notas: e.target.value }))}
+              placeholder="Observaciones de esta unidad..."
+              className="w-full bg-[#111] border border-[#222] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]/50" />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button onClick={() => { setShowForm(false); setEditId(null); }} className="text-xs text-[#555] hover:text-white transition-colors px-2 py-1">Cancelar</button>
+            <button onClick={save} disabled={saving}
+              className="text-xs bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold px-3 py-1 rounded disabled:opacity-40 transition-colors">
+              {saving ? "Guardando…" : editId ? "Actualizar" : "Agregar unidad"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <p className="text-[#444] text-xs text-center py-4">Cargando unidades…</p>
+      ) : unidades.length === 0 ? (
+        <p className="text-[#444] text-xs text-center py-6">
+          Sin unidades registradas. Usa &quot;Generar {cantidadTotal} unidades&quot; para crearlas y luego edita cada una.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          {unidades.map((u, idx) => {
+            const lastMaint = u.mantenimientos[0];
+            return (
+              <div key={u.id} className="group p-3 rounded-xl border border-[#1e1e1e] bg-[#0d0d0d]">
+                <div className="flex items-start justify-between gap-1 mb-1.5">
+                  <p className="text-xs font-semibold text-white truncate">{u.codigo || `Unidad ${idx + 1}`}</p>
+                  <div className="flex gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => startEdit(u)} className="text-[9px] text-gray-600 hover:text-[#B3985B] transition-colors">Editar</button>
+                    <button onClick={() => eliminar(u.id)} className="text-[9px] text-gray-600 hover:text-red-400 transition-colors">×</button>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-1">
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold ${ESTADO_UNIDAD_BADGE[u.estado] ?? "bg-gray-800 text-gray-400 border-gray-700"}`}>
+                    {u.estado.replace(/_/g, " ")}
+                  </span>
+                  {u.voltaje && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded border font-semibold bg-yellow-900/20 text-yellow-400 border-yellow-900/40">
+                      {voltajeUnidadLabel(u.voltaje)}
+                    </span>
+                  )}
+                </div>
+                {u.notas && <p className="text-gray-600 text-[9px] mt-1 truncate">{u.notas}</p>}
+                <p className="text-[9px] text-gray-600 mt-1.5">
+                  {lastMaint ? <>Últ. mant: {fmtFechaCorta(lastMaint.fecha)} · {u._count.mantenimientos} reg.</> : "Sin mantenimientos"}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {unidades.length > 0 && (
+        <Link href={`/inventario/mantenimiento?equipoId=${equipoId}`}
+          className="text-[10px] text-gray-500 hover:text-[#B3985B] transition-colors mt-3 inline-block">
+          Ver historial de mantenimiento por unidad →
+        </Link>
+      )}
+    </div>
+  );
+}
+
 export default function EquipoFichaPage() {
   const { id } = useParams<{ id: string }>();
   const [equipo, setEquipo] = useState<Equipo | null>(null);
@@ -501,6 +711,9 @@ export default function EquipoFichaPage() {
           )}
         </dl>
       </div>
+
+      {/* Unidades individuales */}
+      <UnidadesSection equipoId={equipo.id} cantidadTotal={equipo.cantidadTotal} />
 
       {/* Accesorios */}
       <AccesoriosSection equipoId={equipo.id} initial={equipo.accesorios} />

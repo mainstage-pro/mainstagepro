@@ -11,7 +11,7 @@ export async function PATCH(
 
   const { unidadId } = await params;
   const body = await request.json();
-  const allowed = ["codigo", "estado", "notas", "activo"];
+  const allowed = ["codigo", "estado", "voltaje", "notas", "activo"];
   const data: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) data[key] = body[key] === "" ? null : body[key];

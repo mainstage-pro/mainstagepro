@@ -16,7 +16,7 @@ type Equipo = {
 
 type Unidad = {
   id: string; equipoId: string; codigo: string | null; estado: string;
-  notas: string | null; activo: boolean; createdAt: string;
+  voltaje: string | null; notas: string | null; activo: boolean; createdAt: string;
   _count: { mantenimientos: number };
   mantenimientos: { fecha: string; proximoMantenimiento: string | null; tipo: string }[];
 };
@@ -48,6 +48,15 @@ const ESTADO_BADGE: Record<string, string> = {
 const ESTADO_COLORS: Record<string, string> = {
   ACTIVO: "text-green-400", EN_MANTENIMIENTO: "text-yellow-400", DADO_DE_BAJA: "text-red-400",
 };
+const VOLTAJES = [
+  { value: "110", label: "110V" },
+  { value: "220", label: "220V" },
+  { value: "AMBOS", label: "Ambos" },
+];
+function voltajeLabel(v: string | null) {
+  if (!v) return null;
+  return v === "AMBOS" ? "110V + 220V" : `${v}V`;
+}
 
 function fmtDate(s: string | null) {
   if (!s) return null;
@@ -117,7 +126,7 @@ function MantenimientoContent() {
   const [showAddUnidad, setShowAddUnidad] = useState(false);
   const [editUnidadId, setEditUnidadId] = useState<string | null>(null);
   const [form, setForm] = useState(FORM_EMPTY);
-  const [unidadForm, setUnidadForm] = useState({ codigo: "", estado: "ACTIVO", notas: "" });
+  const [unidadForm, setUnidadForm] = useState({ codigo: "", estado: "ACTIVO", voltaje: "", notas: "" });
   const [saving, setSaving] = useState(false);
   const [savingUnidad, setSavingUnidad] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -243,12 +252,12 @@ function MantenimientoContent() {
     if (editUnidadId) {
       await fetch(`/api/equipos/${selectedEquipoId}/unidades/${editUnidadId}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ codigo: unidadForm.codigo || null, estado: unidadForm.estado, notas: unidadForm.notas || null }),
+        body: JSON.stringify({ codigo: unidadForm.codigo || null, estado: unidadForm.estado, voltaje: unidadForm.voltaje || null, notas: unidadForm.notas || null }),
       });
     } else {
       await fetch(`/api/equipos/${selectedEquipoId}/unidades`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ codigo: unidadForm.codigo || null, estado: unidadForm.estado, notas: unidadForm.notas || null }),
+        body: JSON.stringify({ codigo: unidadForm.codigo || null, estado: unidadForm.estado, voltaje: unidadForm.voltaje || null, notas: unidadForm.notas || null }),
       });
     }
     const ur = await fetch(`/api/equipos/${selectedEquipoId}/unidades`, { cache: "no-store" });
@@ -256,12 +265,12 @@ function MantenimientoContent() {
     setUnidades(ud.unidades ?? []);
     setShowAddUnidad(false);
     setEditUnidadId(null);
-    setUnidadForm({ codigo: "", estado: "ACTIVO", notas: "" });
+    setUnidadForm({ codigo: "", estado: "ACTIVO", voltaje: "", notas: "" });
     setSavingUnidad(false);
   }
 
   function startEditUnidad(u: Unidad) {
-    setUnidadForm({ codigo: u.codigo ?? "", estado: u.estado, notas: u.notas ?? "" });
+    setUnidadForm({ codigo: u.codigo ?? "", estado: u.estado, voltaje: u.voltaje ?? "", notas: u.notas ?? "" });
     setEditUnidadId(u.id);
     setShowAddUnidad(true);
   }
@@ -400,7 +409,17 @@ function MantenimientoContent() {
                 {/* ── UNIDADES ── */}
                 <div className="border-t border-[#1a1a1a] pt-4">
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Unidades individuales</p>
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Unidades individuales</p>
+                      {(() => {
+                        const counts = unidades.reduce<Record<string, number>>((acc, u) => {
+                          if (u.voltaje) acc[u.voltaje] = (acc[u.voltaje] ?? 0) + 1;
+                          return acc;
+                        }, {});
+                        const parts = VOLTAJES.filter(v => counts[v.value]).map(v => `${counts[v.value]}× ${v.label}`);
+                        return parts.length > 0 ? <p className="text-[10px] text-yellow-500/80 mt-0.5">{parts.join(" · ")}</p> : null;
+                      })()}
+                    </div>
                     <div className="flex items-center gap-2">
                       {unidades.length === 0 && (
                         <button onClick={generarUnidades}
@@ -408,7 +427,7 @@ function MantenimientoContent() {
                           Generar {selectedEquipo.cantidadTotal} unidades
                         </button>
                       )}
-                      <button onClick={() => { setShowAddUnidad(true); setEditUnidadId(null); setUnidadForm({ codigo: "", estado: "ACTIVO", notas: "" }); }}
+                      <button onClick={() => { setShowAddUnidad(true); setEditUnidadId(null); setUnidadForm({ codigo: "", estado: "ACTIVO", voltaje: "", notas: "" }); }}
                         className="text-[10px] text-gray-500 hover:text-white border border-[#222] px-2 py-1 rounded transition-colors">
                         + Agregar
                       </button>
@@ -433,6 +452,22 @@ function MantenimientoContent() {
                             options={ESTADOS_EQUIPO.map(s => ({ value: s, label: s.replace(/_/g, " ") }))}
                             className="w-full bg-[#111] border border-[#333] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
                           />
+                        </div>
+                        <div className="col-span-3">
+                          <label className="text-[10px] text-gray-600 mb-1 block">Voltaje</label>
+                          <div className="flex gap-1.5">
+                            {VOLTAJES.map(v => (
+                              <button key={v.value} type="button"
+                                onClick={() => setUnidadForm(p => ({ ...p, voltaje: p.voltaje === v.value ? "" : v.value }))}
+                                className={`text-[10px] px-2.5 py-1 rounded border transition-colors ${
+                                  unidadForm.voltaje === v.value
+                                    ? "bg-[#B3985B]/15 text-[#B3985B] border-[#B3985B]/50 font-semibold"
+                                    : "bg-transparent text-gray-500 border-[#333] hover:border-[#555]"
+                                }`}>
+                                {v.label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                         <div className="col-span-3">
                           <label className="text-[10px] text-gray-600 mb-1 block">Notas</label>
@@ -486,9 +521,16 @@ function MantenimientoContent() {
                                   className="text-[9px] text-gray-600 hover:text-red-400 transition-colors">×</button>
                               </div>
                             </div>
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold ${ESTADO_BADGE[u.estado] ?? "bg-gray-800 text-gray-400 border-gray-700"}`}>
-                              {u.estado.replace(/_/g, " ")}
-                            </span>
+                            <div className="flex flex-wrap items-center gap-1">
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold ${ESTADO_BADGE[u.estado] ?? "bg-gray-800 text-gray-400 border-gray-700"}`}>
+                                {u.estado.replace(/_/g, " ")}
+                              </span>
+                              {u.voltaje && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded border font-semibold bg-yellow-900/20 text-yellow-400 border-yellow-900/40">
+                                  {voltajeLabel(u.voltaje)}
+                                </span>
+                              )}
+                            </div>
                             {u.notas && <p className="text-gray-600 text-[9px] mt-1 truncate">{u.notas}</p>}
                             <div className="mt-1.5 space-y-0.5">
                               {lastMaint ? (
