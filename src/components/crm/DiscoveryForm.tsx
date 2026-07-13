@@ -278,6 +278,16 @@ export default function DiscoveryForm({
     if (trato.serviciosInteres) {
       try { const s = JSON.parse(trato.serviciosInteres); if (Array.isArray(s)) servicios = s; } catch { /* noop */ }
     }
+    // Respaldo local: si el servidor no trae equipos pero el navegador guardó un
+    // borrador de este trato, lo recuperamos para que no se pierda la selección.
+    let equiposRestore = trato.equiposInteres || "";
+    let equiposRestauradoLocal = false;
+    if (!equiposRestore && !readOnly && !clientMode && !huerfano && typeof window !== "undefined") {
+      try {
+        const local = localStorage.getItem(`disc-equipos-${trato.id}`);
+        if (local) { equiposRestore = local; equiposRestauradoLocal = true; }
+      } catch { /* noop */ }
+    }
     setDiscForm(prev => {
       const hydrated = {
       ...prev,
@@ -292,7 +302,7 @@ export default function DiscoveryForm({
       tipoServicio: trato.tipoServicio || "",
       notas: trato.notas || "",
       serviciosInteres: servicios,
-      equiposInteres: trato.equiposInteres || "",
+      equiposInteres: equiposRestore,
       familyAndFriends: !!trato.familyAndFriends,
       realizarRender: !!trato.realizarRender,
       tradeAplica: !!trato.tradeCalificado,
@@ -321,7 +331,12 @@ export default function DiscoveryForm({
       latestDiscRef.current = hydrated;
       return hydrated;
     });
-  }, [trato]);
+    // Si recuperamos los equipos del respaldo local, persistirlos de inmediato
+    // en el servidor para volver a alinear la BD con lo que el usuario tenía.
+    if (equiposRestauradoLocal) {
+      patch({ equiposInteres: equiposRestore }).catch(() => {});
+    }
+  }, [trato]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleServicio = (idService: string) => {
     setDiscForm(p => {
@@ -443,6 +458,17 @@ export default function DiscoveryForm({
       flushDisc();
     };
   }, [readOnly, flushDisc]);
+
+  // Respaldo local INMEDIATO (sin debounce) de la selección de equipos: se
+  // escribe en cada cambio para que nunca se pierda aunque falle la red, se
+  // cierre la pestaña o se navegue antes del auto-guardado con debounce.
+  useEffect(() => {
+    if (readOnly || clientMode || huerfano || !hydratedRef.current) return;
+    try {
+      if (discForm.equiposInteres) localStorage.setItem(`disc-equipos-${id}`, discForm.equiposInteres);
+      else localStorage.removeItem(`disc-equipos-${id}`);
+    } catch { /* noop */ }
+  }, [discForm.equiposInteres, readOnly, clientMode, huerfano, id]);
 
   async function guardarDescubrimiento(completar = false) {
     setSaving(true);
@@ -1349,20 +1375,34 @@ export default function DiscoveryForm({
                 </div>
               )}
 
-              {/* CTA Hacer propuesta — solo en el último paso (vendedor) */}
-              {!clientMode && !trato.descubrimientoCompleto && (
-                <div className="border border-[#B3985B]/30 bg-[#B3985B]/5 rounded-xl p-4 flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-white text-sm font-semibold">¿Ya tienes toda la información?</p>
-                    <p className="text-gray-500 text-xs mt-0.5">Es hora de preparar la propuesta</p>
+              {/* CTA Hacer cotización — con resumen de equipos y cantidades del descubrimiento */}
+              {!clientMode && (
+                <div className="border border-[#B3985B]/30 bg-[#B3985B]/5 rounded-xl p-4 space-y-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-white text-sm font-semibold">Descubrimiento completo</p>
+                      <p className="text-gray-500 text-xs mt-0.5">Los equipos y cantidades seleccionados se sugieren al armar la cotización — ahí los agregas con un clic.</p>
+                    </div>
+                    <Link
+                      href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
+                      onClick={() => { if (!trato.descubrimientoCompleto) guardarDescubrimiento(true); }}
+                      className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-5 py-2 rounded-lg transition-colors shrink-0"
+                    >
+                      Hacer cotización →
+                    </Link>
                   </div>
-                  <Link
-                    href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
-                    onClick={() => { if (!trato.descubrimientoCompleto) guardarDescubrimiento(true); }}
-                    className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-5 py-2 rounded-lg transition-colors shrink-0"
-                  >
-                    Hacer propuesta →
-                  </Link>
+                  {discForm.tipoServicio !== "RENTA" && (() => {
+                    let sel: SeleccionEquipos | null = null;
+                    try { sel = discForm.equiposInteres ? JSON.parse(discForm.equiposInteres) : null; } catch { sel = null; }
+                    const tiene = !!sel && ((sel.equipos?.length ?? 0) > 0 || (sel.categorias?.length ?? 0) > 0 || (sel.extras?.length ?? 0) > 0);
+                    if (!tiene || !sel) return null;
+                    return (
+                      <div className="pt-3 border-t border-[#1a1a1a]">
+                        <p className="text-[11px] text-[#B3985B] uppercase tracking-wider font-semibold mb-2">Equipos y cantidades seleccionados</p>
+                        <SelectorEquiposInventario value={sel} onChange={() => {}} readOnly />
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>)} {/* /paso5 */}
