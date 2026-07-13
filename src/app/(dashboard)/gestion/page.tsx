@@ -1,15 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AREAS, AREA_LABELS, AREA_DOT, PRIORIDADES, PRIO_META, areaLabel, areaChipClass } from "@/lib/gestion";
+import { AREAS, AREA_LABELS, AREA_DOT, PRIO_META, areaLabel } from "@/lib/gestion";
+import TaskItem, { type TareaItem } from "@/app/(dashboard)/operaciones/components/TaskItem";
 
 type Usuario = { id: string; name: string };
-type Tarea = {
-  id: string; titulo: string; prioridad: string; area: string; estado: string;
-  fecha: string | null; asignadoAId: string | null;
-  asignadoA: { id: string; name: string } | null;
-};
 type Instancia = {
   id: string; estado: string;
   template: { nombre: string; area: { nombre: string } | null; subArea: { nombre: string } | null };
@@ -24,11 +21,6 @@ type ProjDetalle = {
   fases: { id: string; nombre: string; tareas: ProjTarea[] }[];
   tareas: ProjTarea[];
 };
-
-function toDateInput(iso: string | null): string {
-  if (!iso) return "";
-  return new Date(iso).toISOString().slice(0, 10);
-}
 
 function Avatar({ name }: { name?: string | null }) {
   if (!name) return <span className="shrink-0 w-5 h-5 rounded-full border border-[#222] flex items-center justify-center text-[9px] text-[#333]">–</span>;
@@ -71,14 +63,14 @@ function groupByArea<T>(items: T[], getArea: (x: T) => string): [string, T[]][] 
 const selCls = "bg-[#0a0a0a] border border-[#2a2a2a] rounded-md px-2 py-1 text-[11px] text-white focus:outline-none focus:border-[#B3985B]/50";
 
 export default function CentroOperativoPage() {
-  const [tareas, setTareas]   = useState<Tarea[]>([]);
+  const router = useRouter();
+  const [tareas, setTareas]   = useState<TareaItem[]>([]);
   const [instancias, setInst] = useState<Instancia[]>([]);
   const [proyectos, setProy]  = useState<Proyecto[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [doneT, setDoneT]     = useState<Set<string>>(new Set());
   const [doneI, setDoneI]     = useState<Set<string>>(new Set());
-  const [editT, setEditT]     = useState<string | null>(null);
   const [editI, setEditI]     = useState<string | null>(null);
   const [expProj, setExpProj] = useState<Set<string>>(new Set());
   const [projCache, setProjCache] = useState<Record<string, ProjDetalle>>({});
@@ -102,11 +94,21 @@ export default function CentroOperativoPage() {
   // ── Acciones Tareas ──────────────────────────────────────────────
   async function completarTarea(id: string) {
     setDoneT(prev => new Set(prev).add(id));
+    setTareas(prev => prev.map(t => t.id === id ? { ...t, estado: "COMPLETADA" } : t));
     await fetch(`/api/tareas/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ estado: "COMPLETADA" }) });
   }
   async function patchTarea(id: string, patch: Record<string, unknown>) {
-    setTareas(prev => prev.map(t => t.id === id ? { ...t, ...patch } as Tarea : t));
+    setTareas(prev => prev.map(t => t.id === id ? { ...t, ...patch } as TareaItem : t));
     await fetch(`/api/tareas/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+  }
+  function asignarTarea(id: string, userId: string | null) {
+    const u = usuarios.find(x => x.id === userId) ?? null;
+    setTareas(prev => prev.map(t => t.id === id ? { ...t, asignadoAId: userId, asignadoA: u } as TareaItem : t));
+    fetch(`/api/tareas/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ asignadoAId: userId }) });
+  }
+  async function eliminarTarea(id: string) {
+    setTareas(prev => prev.filter(t => t.id !== id));
+    await fetch(`/api/tareas/${id}`, { method: "DELETE" });
   }
 
   // ── Acciones Plan ────────────────────────────────────────────────
@@ -214,36 +216,24 @@ export default function CentroOperativoPage() {
             ))}
           </SectionCard>
 
-          {/* ── TAREAS — por área, con acciones inline ───────────────── */}
+          {/* ── TAREAS — por área, misma vista que el Módulo de Tareas ── */}
           <SectionCard title="Tareas de hoy" dot="#B3985B" count={tareas.filter(t => !doneT.has(t.id)).length} href="/operaciones" empty={tareas.length === 0} emptyText="Sin tareas para hoy.">
             {groupByArea(tareas, t => t.area || "GENERAL").map(([areaKey, group]) => (
               <AreaGroup key={areaKey} areaKey={areaKey}>
-                {group.map(t => {
-                  const done = doneT.has(t.id);
-                  const open = editT === t.id;
-                  return (
-                    <div key={t.id} className="rounded-lg hover:bg-white/[0.03] transition-colors">
-                      <div className="flex items-center gap-3 px-2 py-2">
-                        <Circle prioridad={t.prioridad} done={done} onClick={() => !done && completarTarea(t.id)} />
-                        <span className={`flex-1 text-sm ${done ? "text-[#444] line-through" : "text-white"}`}>{t.titulo}</span>
-                        <Avatar name={t.asignadoA?.name} />
-                        <button onClick={() => setEditT(open ? null : t.id)} className="shrink-0 text-[#555] hover:text-[#B3985B] text-xs px-1">⋯</button>
-                      </div>
-                      {open && (
-                        <div className="flex items-center gap-2 px-2 pb-2 pl-9 flex-wrap">
-                          <input type="date" value={toDateInput(t.fecha)} onChange={e => patchTarea(t.id, { fecha: e.target.value || null })} className={selCls} />
-                          <select value={t.prioridad} onChange={e => patchTarea(t.id, { prioridad: e.target.value })} className={selCls}>
-                            {PRIORIDADES.map(p => <option key={p} value={p}>{PRIO_META[p].label}</option>)}
-                          </select>
-                          <select value={t.asignadoAId ?? ""} onChange={e => patchTarea(t.id, { asignadoAId: e.target.value || null })} className={selCls}>
-                            <option value="">Sin responsable</option>
-                            {usuarios.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                          </select>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                {group.map(t => (
+                  <TaskItem
+                    key={t.id}
+                    tarea={t}
+                    isSelected={false}
+                    users={usuarios}
+                    onComplete={() => completarTarea(t.id)}
+                    onSelect={() => router.push(`/operaciones?open=${t.id}`)}
+                    onDelete={() => eliminarTarea(t.id)}
+                    onDateChange={(id, val) => patchTarea(id, { fecha: val || null })}
+                    onPriorityChange={(id, p) => patchTarea(id, { prioridad: p })}
+                    onAssign={(id, uid) => asignarTarea(id, uid)}
+                  />
+                ))}
               </AreaGroup>
             ))}
           </SectionCard>
