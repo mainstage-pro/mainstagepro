@@ -16,11 +16,32 @@ export async function GET(
 
   const proyecto = await prisma.proyecto.findUnique({
     where: { id },
-    select: { evaluacionPostEvento: true },
+    select: {
+      evaluacionPostEvento: true,
+      equipos: { select: { cantidad: true, equipo: { select: { descripcion: true } } } },
+      cotizacion: { select: { lineas: { select: { tipo: true, descripcion: true, cantidad: true, marca: true } } } },
+    },
   });
   if (!proyecto) return NextResponse.json({ error: "Proyecto no encontrado" }, { status: 404 });
 
-  return NextResponse.json({ evaluacion: proyecto.evaluacionPostEvento ?? null });
+  // Contexto de equipos (sin candado de finanzas): primero los del proyecto; si no
+  // hay (típico en renta), se toman de las líneas de equipo de la cotización.
+  type Eq = { nombre: string; cantidad: number };
+  let equiposFuente: Eq[] = (proyecto.equipos ?? [])
+    .map((pe) => ({ nombre: (pe.equipo?.descripcion ?? "").trim(), cantidad: pe.cantidad ?? 1 }))
+    .filter((e) => e.nombre);
+  if (equiposFuente.length === 0 && proyecto.cotizacion) {
+    const tiposEquipo = ["EQUIPO_PROPIO", "EQUIPO_EXTERNO", "PAQUETE", "OTRO"];
+    equiposFuente = (proyecto.cotizacion.lineas ?? [])
+      .filter((l) => tiposEquipo.includes(l.tipo))
+      .map((l) => ({ nombre: `${l.marca ? `${l.marca} ` : ""}${l.descripcion ?? ""}`.trim(), cantidad: l.cantidad ?? 1 }))
+      .filter((e) => e.nombre);
+  }
+  const agrupados = new Map<string, number>();
+  for (const e of equiposFuente) agrupados.set(e.nombre, (agrupados.get(e.nombre) ?? 0) + e.cantidad);
+  const equipos = [...agrupados.entries()].map(([nombre, cantidad]) => ({ nombre, cantidad }));
+
+  return NextResponse.json({ evaluacion: proyecto.evaluacionPostEvento ?? null, contexto: { equipos } });
 }
 
 export async function PUT(

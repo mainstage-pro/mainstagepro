@@ -128,14 +128,8 @@ export default function EvaluacionPostEventoPage() {
     }
     setEquipo(miembros);
 
-    // Equipos del proyecto (agrupa por descripción, suma cantidades).
-    const porNombre = new Map<string, number>();
-    for (const pe of p?.equipos ?? []) {
-      const nombre = pe.equipo?.descripcion?.trim();
-      if (!nombre) continue;
-      porNombre.set(nombre, (porNombre.get(nombre) ?? 0) + (pe.cantidad ?? 1));
-    }
-    setEquipos([...porNombre.entries()].map(([nombre, cantidad]) => ({ nombre, cantidad })));
+    // Equipos: los calcula el endpoint de evaluación (sin candado de finanzas).
+    setEquipos(Array.isArray(de.contexto?.equipos) ? de.contexto.equipos : []);
 
     if (de.evaluacion) setData({ ...emptyEvalData(), ...de.evaluacion });
     setLoading(false);
@@ -435,11 +429,12 @@ export default function EvaluacionPostEventoPage() {
         </div>
       </div>
 
-      {/* Propuestas de mejora */}
+      {/* Propuestas de mejora · solo en evento; en renta basta con comentarios finales */}
+      {config.variante === "evento" && (
       <div>
         <SeccionHeader
           titulo="Propuestas de mejora"
-          descripcion={config.variante === "renta" ? "Acciones concretas para la próxima renta. Agrega una por línea." : "Acciones concretas para el próximo evento. Agrega una por línea."}
+          descripcion="Acciones concretas para el próximo evento. Agrega una por línea."
           color={SECCION_MEJORA_COLOR}
           numero={config.secciones.length + 3}
         />
@@ -468,14 +463,15 @@ export default function EvaluacionPostEventoPage() {
           </button>
         </div>
       </div>
+      )}
 
       {/* Comentarios finales del coordinador */}
       <div>
         <SeccionHeader
           titulo="Comentarios finales del coordinador"
-          descripcion="Conclusión general para la junta: qué salió bien, qué mejorar, acuerdos y responsables."
+          descripcion={config.variante === "renta" ? "Conclusión de la renta: qué salió bien, qué mejorar y acuerdos." : "Conclusión general para la junta: qué salió bien, qué mejorar, acuerdos y responsables."}
           color={SECCION_MEJORA_COLOR}
-          numero={config.secciones.length + 4}
+          numero={config.secciones.length + (config.variante === "renta" ? 3 : 4)}
         />
         <textarea
           value={data.comentariosFinales}

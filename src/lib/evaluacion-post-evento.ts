@@ -93,30 +93,20 @@ const CALIF_EVENTO: CalifDimension[] = [
 
 const SECCIONES_RENTA: EvalSeccion[] = [
   {
-    id: "entrega",
-    titulo: "Entrega del equipo",
-    descripcion: "Cumplimiento en la salida del equipo hacia el cliente.",
+    id: "entregaDevolucion",
+    titulo: "Entrega y devolución",
+    descripcion: "Cumplimiento en la salida y el regreso del equipo.",
     color: "#5B9BD5",
     items: [
-      { id: "entregaTiempo", label: "¿La entrega se realizó en tiempo y forma?", desc: "El equipo se entregó en la fecha y hora acordadas.", tipo: "si-no" },
-      { id: "entregaCompleta", label: "¿Se entregó el equipo completo y funcionando?", desc: "Todo lo del contrato (equipos, cables y accesorios), probado y en buen estado.", tipo: "si-no" },
+      { id: "entregaCompletaTiempo", label: "¿La entrega se realizó completa y en tiempo?", desc: "Todo el equipo del contrato, funcionando, en la fecha acordada.", tipo: "si-no" },
       { id: "responsivaFirmada", label: "¿Se firmó contrato / responsiva de renta?", desc: "Documento que respalda la renta y las responsabilidades del cliente.", tipo: "si-no" },
-    ],
-  },
-  {
-    id: "devolucion",
-    titulo: "Devolución del equipo",
-    descripcion: "Cumplimiento del cliente en el regreso del equipo.",
-    color: "#E0A458",
-    items: [
-      { id: "devolucionTiempo", label: "¿La devolución se realizó en tiempo?", desc: "El cliente devolvió el equipo en la fecha pactada.", tipo: "si-no" },
-      { id: "devolucionCompleta", label: "¿El equipo y accesorios regresaron completos?", desc: "Sin faltantes de equipos, cables ni accesorios.", tipo: "si-no" },
+      { id: "devolucionCompletaTiempo", label: "¿La devolución se realizó completa y en tiempo?", desc: "Regresó todo (equipos, cables y accesorios) en la fecha pactada.", tipo: "si-no" },
       { id: "revisionRetorno", label: "¿Se revisó el equipo al retorno y regresó en buen estado?", desc: "Checklist de retorno; equipo limpio y presentable.", tipo: "si-no" },
     ],
   },
   {
     id: "estado",
-    titulo: "Estado, daños y decisión",
+    titulo: "Estado y decisión",
     descripcion: "Condición del equipo al retorno y decisión sobre el cliente.",
     color: "#A78BFA",
     items: [
@@ -130,8 +120,7 @@ const SECCIONES_RENTA: EvalSeccion[] = [
 
 const CALIF_RENTA: CalifDimension[] = [
   { id: "estadoRetorno", label: "Estado del equipo al retorno", desc: "Condición física y funcional del equipo devuelto." },
-  { id: "cumplimientoCliente", label: "Cumplimiento del cliente", desc: "Apego a fechas, cuidado y condiciones de la renta." },
-  { id: "comunicacionCliente", label: "Comunicación con el cliente", desc: "Claridad y trato durante entrega y devolución." },
+  { id: "cumplimientoCliente", label: "Cumplimiento del cliente", desc: "Apego a fechas, cuidado, comunicación y condiciones de la renta." },
 ];
 
 // ─── Config por variante ─────────────────────────────────────────────────────
