@@ -42,7 +42,7 @@ const AREA_CHIP: Record<string, string> = {
   DIRECCION:     "bg-[#B3985B]/15 text-[#B3985B]",
 };
 const AREA_LABELS: Record<string, string> = {
-  VENTAS: "Ventas", ADMINISTRACION: "Administración", PRODUCCION: "Producción",
+  VENTAS: "Comercial", ADMINISTRACION: "Administración", PRODUCCION: "Producción",
   MARKETING: "Marketing", RRHH: "RR.HH.", GENERAL: "General", DIRECCION: "Dirección",
 };
 const AVATAR_COLOR: Record<string, string> = {

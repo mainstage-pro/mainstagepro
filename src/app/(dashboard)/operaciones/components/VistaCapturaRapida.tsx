@@ -17,7 +17,7 @@ const AREA_LABELS: Record<string, string> = {
   DIRECCION: "Dirección",
   ADMINISTRACION: "Administración",
   MARKETING: "Marketing",
-  VENTAS: "Ventas",
+  VENTAS: "Comercial",
   PRODUCCION: "Producción",
 };
 

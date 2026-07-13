@@ -58,7 +58,7 @@ const PRIORIDADES = [
 
 const AREAS = [
   { key: "GENERAL",       label: "General"     },
-  { key: "VENTAS",        label: "Ventas"       },
+  { key: "VENTAS",        label: "Comercial"    },
   { key: "ADMINISTRACION",label: "Adm."         },
   { key: "PRODUCCION",    label: "Producción"   },
   { key: "MARKETING",     label: "Marketing"    },

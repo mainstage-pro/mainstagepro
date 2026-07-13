@@ -5,7 +5,7 @@ import Link from "next/link";
 
 const AREA_LABELS: Record<string, string> = {
   DIRECCION:"Dirección", ADMINISTRACION:"Administración",
-  MARKETING:"Marketing", VENTAS:"Ventas", PRODUCCION:"Producción",
+  MARKETING:"Marketing", VENTAS:"Comercial", PRODUCCION:"Producción",
 };
 const ESTADO_LABELS: Record<string, string> = {
   PLANIFICACION:"Planificación", ACTIVO:"Activo",

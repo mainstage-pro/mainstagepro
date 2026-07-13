@@ -1037,7 +1037,7 @@ export default function OperacionesPage() {
   [proyectosNav, carpetas]);
 
   const AREA_LABELS: Record<string, string> = {
-    VENTAS: "Ventas", PRODUCCION: "Producción", MARKETING: "Marketing",
+    VENTAS: "Comercial", PRODUCCION: "Producción", MARKETING: "Marketing",
     ADMINISTRACION: "Administración", RRHH: "RRHH", DIRECCION: "Dirección",
   };
   const vistaKey    = typeof vista === "string" ? vista : (vista.tipo === "area" ? `area-${vista.nombre}` : (vista as { tipo: "proyecto"; id: string }).id);

@@ -36,7 +36,7 @@ const ESTADO_CONFIG: Record<string, { label: string; color: string }> = {
 const AREAS = ["DIRECCION", "ADMINISTRACION", "MARKETING", "VENTAS", "PRODUCCION"];
 const AREA_LABELS: Record<string, string> = {
   DIRECCION: "Dirección", ADMINISTRACION: "Administración",
-  MARKETING: "Marketing",  VENTAS: "Ventas", PRODUCCION: "Producción",
+  MARKETING: "Marketing",  VENTAS: "Comercial", PRODUCCION: "Producción",
 };
 
 function progressColor(estado: string) {

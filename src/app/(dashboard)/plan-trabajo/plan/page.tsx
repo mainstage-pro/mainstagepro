@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { getAreaColor } from '@/lib/areaColors'
 import { GRUPOS_MODULOS } from '@/lib/modulosEjecucion'
 
+const displayArea = (n: string) => (n === 'Ventas' ? 'Comercial' : n)
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type Usuario = {
@@ -218,7 +220,7 @@ function ResponsableBtn({
                     className="w-2 h-2 rounded-full shrink-0"
                     style={{ backgroundColor: getAreaColor(area) }}
                   />
-                  <span>Toda {area}</span>
+                  <span>Toda {displayArea(area)}</span>
                 </button>
               ))}
 
@@ -562,7 +564,7 @@ function TareaModal({
                 className={inputCls}
               >
                 <option value="">Seleccionar...</option>
-                <option value="VENTAS">Ventas</option>
+                <option value="VENTAS">Comercial</option>
                 <option value="PRODUCCION">Producción</option>
                 <option value="MARKETING">Marketing</option>
                 <option value="ADMINISTRACION">Administración</option>

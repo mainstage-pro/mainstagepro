@@ -700,6 +700,7 @@ export default function MiDiaPage() {
   }, {} as Record<string, { color: string; subareas: Record<string, Instancia[]> }>)
 
   const AREA_ORDER = ['Dirección', 'Administración', 'Marketing', 'Ventas', 'Producción']
+  const displayArea = (n: string) => (n === 'Ventas' ? 'Comercial' : n)
   const areaKeys = Object.keys(pendientesByArea).sort(
     (a, b) => (AREA_ORDER.indexOf(a) === -1 ? 99 : AREA_ORDER.indexOf(a)) - (AREA_ORDER.indexOf(b) === -1 ? 99 : AREA_ORDER.indexOf(b))
   )
@@ -939,7 +940,7 @@ export default function MiDiaPage() {
                           {/* Area header */}
                           <div className="flex items-center gap-2 mb-3">
                             <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: areaColor }} />
-                            <span className="text-xs font-semibold text-white">{areaNombre}</span>
+                            <span className="text-xs font-semibold text-white">{displayArea(areaNombre)}</span>
                             <div className="h-px flex-1 bg-[#1a1a1a]" />
                             <span className="text-[9px] text-gray-700">{Object.values(subareas).flat().length}</span>
                           </div>

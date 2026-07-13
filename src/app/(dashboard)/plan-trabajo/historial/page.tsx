@@ -72,6 +72,7 @@ const IMPACTO_META: Record<string, { label: string; color: string; dotCls: strin
 const AREAS_PLAN = [
   'Dirección', 'Ventas', 'Producción', 'Marketing', 'Administración', 'RRHH',
 ]
+const displayArea = (n: string) => (n === 'Ventas' ? 'Comercial' : n)
 
 function fmtHora(iso: string | null): string {
   if (!iso) return ''
@@ -375,7 +376,7 @@ export default function HistorialPage() {
             className="w-full bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-2 py-1.5 text-xs text-[#666] focus:outline-none focus:border-[#c9a96a]/30"
           >
             <option value="">Todas las áreas</option>
-            {AREAS_PLAN.map(a => <option key={a} value={a}>{a}</option>)}
+            {AREAS_PLAN.map(a => <option key={a} value={a}>{displayArea(a)}</option>)}
           </select>
         </div>
 
@@ -495,7 +496,7 @@ export default function HistorialPage() {
                         <div key={area} className="bg-[#0d0d0d] border border-[#111] rounded-xl overflow-hidden">
                           {/* Area header */}
                           <div className="flex items-center gap-2 px-4 py-2 border-b border-[#111]" style={{ borderLeftColor: color, borderLeftWidth: 3 }}>
-                            <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#444]">{area}</span>
+                            <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-[#444]">{displayArea(area)}</span>
                             <span className="text-[10px] text-[#333]">{areaInsts.length}</span>
                           </div>
                           {/* Tasks */}
