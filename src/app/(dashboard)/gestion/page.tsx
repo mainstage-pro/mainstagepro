@@ -360,17 +360,23 @@ function AreaGroup({ areaKey, rawName, children }: { areaKey: string; rawName?: 
 function SectionCard({ title, dot, count, href, empty, emptyText, children }: {
   title: string; dot: string; count: number; href: string; empty: boolean; emptyText: string; children: React.ReactNode;
 }) {
+  const [collapsed, setCollapsed] = useState(false);
   return (
     <section className="ms-card p-3">
       <div className="flex items-center justify-between px-2 mb-1.5">
-        <h2 className="flex items-center gap-2 text-[#ccc] text-xs uppercase tracking-wider font-semibold">
+        <button
+          onClick={() => setCollapsed(v => !v)}
+          className="flex items-center gap-2 text-[#ccc] text-xs uppercase tracking-wider font-semibold hover:text-white transition-colors group"
+          title={collapsed ? "Expandir" : "Minimizar"}
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className={`text-[#555] group-hover:text-[#B3985B] transition-transform ${collapsed ? "" : "rotate-90"}`}><polyline points="9 18 15 12 9 6" /></svg>
           <span className="w-1.5 h-1.5 rounded-full" style={{ background: dot }} />
           {title}
           <span className="text-[#555] font-normal">{count}</span>
-        </h2>
+        </button>
         <Link href={href} className="text-[11px] text-[#555] hover:text-[#B3985B] transition-colors">Ver todo →</Link>
       </div>
-      {empty ? <p className="text-[#333] text-[13px] px-2 py-2">{emptyText}</p> : <div>{children}</div>}
+      {!collapsed && (empty ? <p className="text-[#333] text-[13px] px-2 py-2">{emptyText}</p> : <div>{children}</div>)}
     </section>
   );
 }
