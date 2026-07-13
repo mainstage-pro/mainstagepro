@@ -71,6 +71,7 @@ model User {
   tratosApoyo            TratoApoyo[]           @relation("TratoApoyoUsers")
   solicitudesCotizacionAsignadas SolicitudCotizacion[] @relation("SolicitudCotizacionVendedor")
   solicitudesCotizacionCreadas   SolicitudCotizacion[] @relation("SolicitudCotizacionCreador")
+  visionesSemanales              VisionSemanal[]        @relation("VisionSemanalAutor")
 
 
   @@map("users")
@@ -3316,6 +3317,30 @@ model ReporteAreaSemanal {
 
   @@unique([area, semana])
   @@map("reportes_area_semanal")
+}
+
+// ─── VISIÓN SEMANAL ──────────────────────────────────────────────────────────
+
+// Documento de preparación para la junta de inicio de semana. Uno por área.
+// El responsable de cada área lo llena para presentar dónde está, qué viene y
+// qué necesita de apoyo. Las tareas y proyectos NO se guardan aquí: se calculan
+// en vivo por área al abrir el documento.
+model VisionSemanal {
+  id          String   @id @default(cuid())
+  area        String   // ADMINISTRACION | MARKETING | VENTAS | PRODUCCION | PREPRODUCCION
+  semana      String   // Lunes de la semana ISO: "2026-07-13"
+  enfoque     String   @default("") @db.Text  // Caja de texto: enfoque de la semana
+  entregaInfo Json     @default("[]")         // [{ id, titulo, contenido }] — editable/ampliable
+  desbloqueo  String   @default("") @db.Text  // Qué necesita para desbloquear tareas
+  comentarios String   @default("") @db.Text  // Comentarios finales (opcional)
+  extra       Json     @default("{}")         // Campos específicos de pre-producción
+  autorId     String?
+  autor       User?    @relation("VisionSemanalAutor", fields: [autorId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([area, semana])
+  @@map("vision_semanal")
 }
 
 // ─── INCIDENCIAS SEMANALES ───────────────────────────────────────────────────

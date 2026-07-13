@@ -46,6 +46,7 @@ const NAV: NavSection[] = [
       { key: "objetivos", label: "Objetivos", href: "/objetivos", adminOnly: true, icon: Target },
       { key: "kpis-dashboard", label: "KPIs", href: "/kpis", adminOnly: true, icon: BarChart2 },
       { key: "calendario", label: "Calendario de eventos", href: "/calendario" },
+      { key: "vision-semanal", label: "Visión semanal", href: "/vision-semanal" },
     ],
   },
 
