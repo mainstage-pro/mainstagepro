@@ -15,7 +15,7 @@ export interface TareaItem {
   recurrencia: string | null;
   proyectoTarea: { id: string; nombre: string; color: string | null } | null;
   seccion: { id: string; nombre: string } | null;
-  asignadoA: { id: string; name: string } | null;
+  asignadoA: { id: string; name: string; area?: string | null } | null;
   juntaOrigenId?: string | null;
   juntaOrigen?: { id: string; area: string; fecha: string } | null;
   _count: { subtareas: number; comentarios: number; archivos: number };

@@ -229,7 +229,7 @@ export default function CentroOperativoPage() {
 
           {/* ── TAREAS — por área, ordenadas por fecha y prioridad ────── */}
           <SectionCard title="Tareas de hoy" dot="#B3985B" count={tareas.filter(t => !doneT.has(t.id)).length} href="/operaciones" empty={tareas.length === 0} emptyText="Sin tareas para hoy.">
-            {groupByArea(tareas, t => t.area || "GENERAL").map(([areaKey, group]) => (
+            {groupByArea(tareas, t => t.asignadoA?.area || "GENERAL").map(([areaKey, group]) => (
               <AreaGroup key={areaKey} areaKey={areaKey}>
                 {sortTareas(group).map(t => (
                   <TaskItem

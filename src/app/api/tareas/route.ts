@@ -36,7 +36,7 @@ const SELECT = {
   carpetaId: true,
   juntaOrigenId: true,
   fechaCompletada: true,
-  asignadoA:     { select: { id: true, name: true } },
+  asignadoA:     { select: { id: true, name: true, area: true } },
   creadoPor:     { select: { id: true, name: true } },
   iniciativa:    { select: { id: true, nombre: true, color: true } },
   proyectoTarea: { select: { id: true, nombre: true, color: true } },
