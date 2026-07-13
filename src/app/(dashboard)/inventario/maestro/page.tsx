@@ -552,11 +552,10 @@ function UnidadesInline({ equipoId, unidades, stats, loading, onUpdated }: {
   const [editUnidad, setEditUnidad] = useState<Unidad | null>(null);
 
   const statsBar = stats && (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
       {[
         { label: "Veces rentada", value: String(stats.vecesRentada), color: "text-white" },
         { label: "Días rentados", value: String(stats.diasRentados), color: "text-white" },
-        { label: "Revenue generado", value: fmx(stats.revenue), color: "text-emerald-400" },
         { label: "Costo mantenimiento", value: fmx(stats.costoMantenimiento), color: "text-red-400" },
       ].map(s => (
         <div key={s.label} className="p-2 rounded-lg border border-[#1e1e1e] bg-[#0d0d0d]">
