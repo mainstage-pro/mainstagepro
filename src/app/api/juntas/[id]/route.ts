@@ -42,7 +42,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const { estado, notas, resumen, titulo } = body;
+  const { estado, notas, resumen, titulo, fecha, duracionMin } = body;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data: Record<string, any> = {};
@@ -50,6 +50,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (notas   !== undefined) data.notas   = notas;
   if (resumen !== undefined) data.resumen = resumen;
   if (titulo  !== undefined) data.titulo  = titulo;
+  if (fecha   !== undefined) {
+    const d = new Date(fecha);
+    if (isNaN(d.getTime())) return NextResponse.json({ error: "Fecha inválida" }, { status: 400 });
+    data.fecha = d;
+  }
+  if (duracionMin !== undefined) data.duracionMin = Number(duracionMin);
 
   const junta = await prisma.junta.update({
     where: { id },

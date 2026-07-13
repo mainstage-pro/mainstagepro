@@ -85,6 +85,12 @@ function fmtFecha(iso: string) {
 function fmtHora(iso: string) {
   return new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
+// ISO → valor local "YYYY-MM-DDTHH:mm" para <input type="datetime-local">
+function toInputDateTime(iso: string) {
+  const d = new Date(iso);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
 function fmtFechaCorta(iso: string) {
   return new Date(iso).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" });
 }
@@ -1294,6 +1300,8 @@ export default function JuntaActivaPage({ params }: { params: Promise<{ id: stri
   const [loading, setLoading]       = useState(true);
   const [modalTarea, setModalTarea] = useState(false);
   const [cerrando, setCerrando]     = useState(false);
+  const [editandoFecha, setEditandoFecha] = useState(false);
+  const [fechaEdit, setFechaEdit]   = useState("");
   const notasTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Global-panel proyectos state
@@ -1397,7 +1405,36 @@ export default function JuntaActivaPage({ params }: { params: Promise<{ id: stri
         <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${colors.bg} ${colors.text} ${colors.border}`}>{areaLabel}</span>
         <div className="flex-1 min-w-0">
           <p className="text-white font-semibold text-sm truncate">{junta.titulo}</p>
-          <p className="text-gray-500 text-xs">{fmtFecha(junta.fecha)} · {fmtHora(junta.fecha)} · {junta.duracionMin} min · {junta.facilitador.name}</p>
+          {editandoFecha ? (
+            <div className="flex items-center gap-2 mt-0.5">
+              <input
+                type="datetime-local"
+                value={fechaEdit}
+                onChange={(e) => setFechaEdit(e.target.value)}
+                className="bg-[#111] border border-[#2a2a2a] rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-[#B3985B]/50"
+              />
+              <button
+                onClick={async () => {
+                  if (fechaEdit) await patchJunta({ fecha: new Date(fechaEdit).toISOString() });
+                  setEditandoFecha(false);
+                }}
+                className="px-2 py-1 rounded-lg bg-[#B3985B]/15 border border-[#B3985B]/30 text-[#B3985B] text-xs font-semibold hover:bg-[#B3985B]/25 transition-colors">
+                Guardar
+              </button>
+              <button onClick={() => setEditandoFecha(false)}
+                className="px-2 py-1 rounded-lg text-gray-500 hover:text-white text-xs transition-colors">
+                Cancelar
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => { setFechaEdit(toInputDateTime(junta.fecha)); setEditandoFecha(true); }}
+              title="Editar fecha y hora"
+              className="text-gray-500 hover:text-[#B3985B] text-xs text-left transition-colors">
+              {fmtFecha(junta.fecha)} · {fmtHora(junta.fecha)} · {junta.duracionMin} min · {junta.facilitador.name}
+              <span className="ml-1.5 text-gray-600">✎</span>
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {junta.agendaItems.length > 0 && (
