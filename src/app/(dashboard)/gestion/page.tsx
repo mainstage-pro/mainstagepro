@@ -53,6 +53,22 @@ function Circle({ prioridad, done, onClick }: { prioridad?: string; done?: boole
   );
 }
 
+// Agrupa tareas por proyecto (mismo criterio que la vista "Hoy" del módulo de tareas).
+// Los proyectos vienen nombrados "1. Dirección", "2. Administración"… así que el
+// orden alfabético respeta la numeración; las tareas sin proyecto van al final.
+function groupByProyecto(items: TareaItem[]): { label: string; color: string | null; items: TareaItem[] }[] {
+  const map = new Map<string, { color: string | null; items: TareaItem[] }>();
+  for (const t of items) {
+    const label = t.proyectoTarea?.nombre ?? "Sin proyecto";
+    if (!map.has(label)) map.set(label, { color: t.proyectoTarea?.color ?? null, items: [] });
+    map.get(label)!.items.push(t);
+  }
+  const keys = [...map.keys()].sort((a, b) =>
+    a === "Sin proyecto" ? 1 : b === "Sin proyecto" ? -1 : a.localeCompare(b, "es"),
+  );
+  return keys.map(label => ({ label, color: map.get(label)!.color, items: map.get(label)!.items }));
+}
+
 // Agrupa por área en el orden canónico.
 function groupByArea<T>(items: T[], getArea: (x: T) => string): [string, T[]][] {
   const map = new Map<string, T[]>();
@@ -229,23 +245,30 @@ export default function CentroOperativoPage() {
 
           {/* ── TAREAS — por área, ordenadas por fecha y prioridad ────── */}
           <SectionCard title="Tareas de hoy" dot="#B3985B" count={tareas.filter(t => !doneT.has(t.id)).length} href="/operaciones" empty={tareas.length === 0} emptyText="Sin tareas para hoy.">
-            {groupByArea(tareas, t => t.asignadoA?.area || "GENERAL").map(([areaKey, group]) => (
-              <AreaGroup key={areaKey} areaKey={areaKey}>
-                {sortTareas(group).map(t => (
-                  <TaskItem
-                    key={t.id}
-                    tarea={t}
-                    isSelected={false}
-                    users={usuarios}
-                    onComplete={() => completarTarea(t.id)}
-                    onSelect={() => router.push(`/operaciones?open=${t.id}`)}
-                    onDelete={() => eliminarTarea(t.id)}
-                    onDateChange={(id, val) => patchTarea(id, { fecha: val || null })}
-                    onPriorityChange={(id, p) => patchTarea(id, { prioridad: p })}
-                    onAssign={(id, uid) => asignarTarea(id, uid)}
-                  />
-                ))}
-              </AreaGroup>
+            {groupByProyecto(tareas).map(({ label, color, items }) => (
+              <div key={label} className="mb-2 last:mb-0">
+                <div className="flex items-center gap-2 px-2 py-1">
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: color ?? "#666" }} />
+                  <span className="text-[10.5px] uppercase tracking-wider font-semibold text-[#888]">{label}</span>
+                  <span className="text-[10.5px] text-[#555] font-normal">{items.length}</span>
+                </div>
+                <div className="space-y-px">
+                  {sortTareas(items).map(t => (
+                    <TaskItem
+                      key={t.id}
+                      tarea={t}
+                      isSelected={false}
+                      users={usuarios}
+                      onComplete={() => completarTarea(t.id)}
+                      onSelect={() => router.push(`/operaciones?open=${t.id}`)}
+                      onDelete={() => eliminarTarea(t.id)}
+                      onDateChange={(id, val) => patchTarea(id, { fecha: val || null })}
+                      onPriorityChange={(id, p) => patchTarea(id, { prioridad: p })}
+                      onAssign={(id, uid) => asignarTarea(id, uid)}
+                    />
+                  ))}
+                </div>
+              </div>
             ))}
           </SectionCard>
 
