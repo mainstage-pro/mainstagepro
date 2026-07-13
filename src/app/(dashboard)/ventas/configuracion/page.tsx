@@ -1,0 +1,32 @@
+import ConfigHub from "@/components/ConfigHub";
+
+export default function VentasConfiguracionPage() {
+  return (
+    <ConfigHub
+      title="Configuración · Comercial"
+      subtitle="Comisiones, vendedores y plantillas que alimentan el cotizador y los reportes de venta"
+      groups={[
+        {
+          title: "Comisiones y equipo de ventas",
+          items: [
+            { label: "Comisiones y metas", description: "Porcentajes por origen, ramp-up y meta diaria de prospección", href: "/ventas/config" },
+            { label: "Vendedores", description: "Alta de vendedores y fecha de inicio para ramp-up", href: "/ventas/vendedores" },
+          ],
+        },
+        {
+          title: "Plantillas de cotización",
+          items: [
+            { label: "Plantillas de cotización", description: "Combos de líneas, precios y vigencia reutilizables al cotizar", href: "/cotizaciones/plantillas" },
+            { label: "Grupos / paquetes de equipo", description: "Paquetes predefinidos de equipo sugeridos en cotizaciones", href: "/admin/grupos-equipo" },
+          ],
+        },
+        {
+          title: "Parámetros globales",
+          items: [
+            { label: "Precios y descuentos", description: "IVA, viabilidad, descuentos por volumen y multidía en Configuración general", href: "/admin/configuracion" },
+          ],
+        },
+      ]}
+    />
+  );
+}

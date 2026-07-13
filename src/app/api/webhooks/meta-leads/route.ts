@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
                 tipo:      "TAREA",
                 titulo:    `⚡ Nuevo prospecto — ${nombre}`,
                 mensaje:   `Meta Ads · ${tipoEvento}${ciudad ? ` · ${ciudad}` : ""}${campana ? ` · ${campana}` : ""}`,
-                url:       `/crm/prospectos/${clienteId}`,
+                url:       `/crm/tratos`,
               })),
             });
           }

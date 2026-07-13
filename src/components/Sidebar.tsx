@@ -95,6 +95,9 @@ const NAV: NavSection[] = [
           { key: "finanzas-pasivos", label: "Pasivos y Deudas", href: "/finanzas/pasivos", adminOnly: true },
           { key: "finanzas-repartos", label: "Reparto de Utilidades", href: "/finanzas/repartos", adminOnly: true },
           { key: "inv-analisis", label: "Análisis de uso de equipo", href: "/inventario/analisis" },
+          { key: "finanzas-reporte", label: "Reporte financiero", href: "/finanzas/reporte", adminOnly: true },
+          { key: "finanzas-rentabilidad", label: "Rentabilidad por evento", href: "/finanzas/rentabilidad", adminOnly: true },
+          { key: "finanzas-config", label: "Configuración", href: "/finanzas/configuracion", adminOnly: true },
         ],
       },
       {
@@ -117,6 +120,7 @@ const NAV: NavSection[] = [
         children: [
           { key: "rrhh-candidatos", label: "Candidatos", href: "/rrhh/candidatos" },
           { key: "rrhh-puestos", label: "Puestos ideales", href: "/rrhh/puestos" },
+          { key: "rrhh-config", label: "Configuración", href: "/rrhh/configuracion" },
         ],
       },
       {
@@ -144,6 +148,7 @@ const NAV: NavSection[] = [
       { key: "mkt-campanas",    label: "Campañas",          href: "/marketing/campanas" },
       { key: "mkt-meta-ads",    label: "Meta Ads",          href: "/marketing/meta-ads" },
       { key: "mkt-resultados",  label: "Reporte de Marketing", href: "/marketing/resultados", adminOnly: true },
+      { key: "mkt-config",      label: "Configuración",        href: "/marketing/configuracion" },
     ],
   },
 
@@ -159,6 +164,7 @@ const NAV: NavSection[] = [
       { key: "ventas-seguimientos",     label: "Seguimientos",               href: "/ventas/seguimientos", badge: "seguimientos" },
       // { key: "ventas-presentaciones",label: "Presentaciones de Venta",    href: "/ventas/presentaciones" },
       { key: "ventas-reporte",          label: "Reporte de ventas",          href: "/ventas/reporte" },
+      { key: "ventas-config",           label: "Configuración",              href: "/ventas/configuracion", adminOnly: true },
     ],
   },
 
@@ -192,6 +198,7 @@ const NAV: NavSection[] = [
         ],
       },
       { key: "reporte-produccion", label: "Reporte de Producción", href: "/produccion/reporte" },
+      { key: "produccion-config", label: "Configuración", href: "/produccion/configuracion" },
     ],
   },
 ];
@@ -242,7 +249,7 @@ function getActiveSectionKey(pathname: string): string | null {
   if (pathname.startsWith("/presentaciones") || pathname.startsWith("/admin") || pathname.startsWith("/juntas") || pathname.startsWith("/formularios") || pathname.startsWith("/capacitacion") || pathname.startsWith("/direccion")) return "seccion-direccion";
   if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles") || pathname.startsWith("/admin/reportes")) return "seccion-administracion";
   if (pathname.startsWith("/marketing")) return "seccion-marketing";
-  if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas") || pathname.startsWith("/prospectos") || pathname.startsWith("/comercial")) return "seccion-ventas";
+  if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas") || pathname.startsWith("/comercial")) return "seccion-ventas";
   if (pathname.startsWith("/proyectos") || pathname.startsWith("/inventario") || pathname.startsWith("/produccion") || pathname.startsWith("/operaciones") || pathname.startsWith("/catalogo")) return "seccion-produccion";
   return null;
 }

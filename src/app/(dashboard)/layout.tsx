@@ -21,10 +21,10 @@ export default async function DashboardLayout({
 
   const AREA_MODULES: Record<string, string[]> = {
     ADMINISTRACION: ["dashboard", "plan-trabajo", "operaciones", "calendario", "vision-semanal", "finanzas", "rrhh", "ats", "inversiones", "tabulador", "tareas-administracion"],
-    MARKETING:      ["dashboard", "plan-trabajo", "operaciones", "calendario", "vision-semanal", "mkt-contenido", "mkt-publicidad", "mkt-resultados", "tareas-marketing"],
+    MARKETING:      ["dashboard", "plan-trabajo", "operaciones", "calendario", "vision-semanal", "mkt-contenido", "mkt-publicidad", "mkt-resultados", "mkt-config", "tareas-marketing"],
     VENTAS:         ["dashboard", "plan-trabajo", "operaciones", "calendario", "vision-semanal", "ventas-seguimientos", "comercial-solicitudes", "crm-tratos", "crm-base-de-datos", "ventas-presentaciones", "ventas-reporte", "tareas-ventas"],
-    PRODUCCION:     ["dashboard", "plan-trabajo", "operaciones", "calendario", "vision-semanal", "proyectos", "inventario", "inv-maestro", "catalogo", "bd-proveedores", "bd-tecnicos", "tareas-produccion"],
-    RRHH:           ["dashboard", "plan-trabajo", "operaciones", "calendario", "vision-semanal", "rrhh", "ats", "tareas-rrhh"],
+    PRODUCCION:     ["dashboard", "plan-trabajo", "operaciones", "calendario", "vision-semanal", "proyectos", "inventario", "inv-maestro", "catalogo", "bd-proveedores", "bd-tecnicos", "produccion-config", "tareas-produccion"],
+    RRHH:           ["dashboard", "plan-trabajo", "operaciones", "calendario", "vision-semanal", "rrhh", "ats", "rrhh-config", "tareas-rrhh"],
     DIRECCION:      ["dashboard", "plan-trabajo", "operaciones", "calendario", "vision-semanal", "juntas", "presentaciones", "capacitacion", "tareas-direccion"],
     GENERAL:        ["dashboard", "plan-trabajo", "operaciones", "calendario", "vision-semanal"],
   };
