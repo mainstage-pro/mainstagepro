@@ -5,13 +5,20 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AREAS, AREA_LABELS, AREA_DOT, PRIO_META, areaLabel } from "@/lib/gestion";
 import TaskItem, { type TareaItem } from "@/app/(dashboard)/operaciones/components/TaskItem";
+import MiDiaItem, { type Instancia } from "@/app/(dashboard)/plan-trabajo/hoy/MiDiaItem";
 
 type Usuario = { id: string; name: string };
-type Instancia = {
-  id: string; estado: string;
-  template: { nombre: string; area: { nombre: string } | null; subArea: { nombre: string } | null };
-  responsable: { id: string; name: string } | null;
-};
+
+// Orden de prioridad para ordenar tareas (menor = más urgente).
+const PRIO_ORDER: Record<string, number> = { URGENTE: 0, ALTA: 1, MEDIA: 2, BAJA: 3 };
+function sortTareas(list: TareaItem[]): TareaItem[] {
+  return [...list].sort((a, b) => {
+    const fa = a.fecha ? new Date(a.fecha).getTime() : Infinity;
+    const fb = b.fecha ? new Date(b.fecha).getTime() : Infinity;
+    if (fa !== fb) return fa - fb;
+    return (PRIO_ORDER[a.prioridad] ?? 2) - (PRIO_ORDER[b.prioridad] ?? 2);
+  });
+}
 type Proyecto = {
   id: string; nombre: string; area: string; estado: string;
   porcentajeAvance: number; lider: { id: string; name: string };
@@ -60,8 +67,6 @@ function groupByArea<T>(items: T[], getArea: (x: T) => string): [string, T[]][] 
   return ordered;
 }
 
-const selCls = "bg-[#0a0a0a] border border-[#2a2a2a] rounded-md px-2 py-1 text-[11px] text-white focus:outline-none focus:border-[#B3985B]/50";
-
 export default function CentroOperativoPage() {
   const router = useRouter();
   const [tareas, setTareas]   = useState<TareaItem[]>([]);
@@ -70,8 +75,6 @@ export default function CentroOperativoPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [doneT, setDoneT]     = useState<Set<string>>(new Set());
-  const [doneI, setDoneI]     = useState<Set<string>>(new Set());
-  const [editI, setEditI]     = useState<string | null>(null);
   const [expProj, setExpProj] = useState<Set<string>>(new Set());
   const [projCache, setProjCache] = useState<Record<string, ProjDetalle>>({});
   const [doneP, setDoneP]     = useState<Set<string>>(new Set());
@@ -111,17 +114,22 @@ export default function CentroOperativoPage() {
     await fetch(`/api/tareas/${id}`, { method: "DELETE" });
   }
 
-  // ── Acciones Plan ────────────────────────────────────────────────
-  async function accionInstancia(id: string, accion: string, responsableId?: string) {
-    if (accion === "completar") setDoneI(prev => new Set(prev).add(id));
-    if (accion === "omitir") setInst(prev => prev.filter(i => i.id !== id));
-    if (accion === "reasignar" && responsableId) {
-      const u = usuarios.find(x => x.id === responsableId);
-      setInst(prev => prev.map(i => i.id === id ? { ...i, responsable: u ? { id: u.id, name: u.name } : i.responsable } : i));
-    }
-    await fetch(`/api/plan-trabajo/instancias/${id}`, {
-      method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accion, responsableId }),
+  // ── Acciones Plan — mismo comportamiento que el Plan de Trabajo ───
+  async function toggleInstancia(id: string, currentEstado: string) {
+    const goingComplete = currentEstado !== "COMPLETADA";
+    setInst(prev => prev.map(i => i.id === id
+      ? { ...i, estado: goingComplete ? "COMPLETADA" : "PENDIENTE", completadaAt: goingComplete ? new Date().toISOString() : null }
+      : i));
+    await fetch("/api/plan-trabajo/instancias", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ instanciaId: id, estado: goingComplete ? "COMPLETADA" : "PENDIENTE" }),
+    });
+  }
+  async function noRealizadoInstancia(id: string, razon: string) {
+    setInst(prev => prev.map(i => i.id === id ? { ...i, estado: "NO_REALIZADO", razonNoRealizado: razon } : i));
+    await fetch("/api/plan-trabajo/instancias", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ instanciaId: id, estado: "NO_REALIZADO", razonNoRealizado: razon }),
     });
   }
 
@@ -142,9 +150,9 @@ export default function CentroOperativoPage() {
   }
 
   // ── Métricas ─────────────────────────────────────────────────────
-  const instVis    = instancias.filter(i => i.estado !== "COMPLETADA" || doneI.has(i.id));
-  const planTotal  = instVis.length;
-  const planDone   = instVis.filter(i => doneI.has(i.id) || i.estado === "COMPLETADA").length;
+  const planVis    = instancias.filter(i => i.estado !== "NO_REALIZADO");
+  const planTotal  = planVis.length;
+  const planDone   = planVis.filter(i => i.estado === "COMPLETADA").length;
   const tareasDone = tareas.filter(t => doneT.has(t.id)).length;
   const accTotal   = planTotal + tareas.length;
   const accDone    = planDone + tareasDone;
@@ -180,47 +188,50 @@ export default function CentroOperativoPage() {
             </div>
           </div>
 
-          {/* ── PLAN DE TRABAJO — por área › subárea ─────────────────── */}
-          <SectionCard title="Plan de Trabajo" dot="#a78bfa" count={instVis.filter(i => !doneI.has(i.id) && i.estado !== "COMPLETADA").length} href="/plan-trabajo" empty={instVis.length === 0} emptyText="Nada del plan para hoy.">
-            {groupByArea(instVis, i => (i.template.area?.nombre ?? "GENERAL").toUpperCase() === "VENTAS" ? "VENTAS" : matchArea(i.template.area?.nombre)).map(([areaKey, group]) => (
+          {/* ── PLAN DE TRABAJO — vista tal cual el Plan de Trabajo ────── */}
+          <SectionCard title="Plan de Trabajo" dot="#a78bfa" count={planVis.filter(i => i.estado !== "COMPLETADA").length} href="/plan-trabajo" empty={planVis.length === 0} emptyText="Nada del plan para hoy.">
+            {groupByArea(planVis, i => matchArea(i.template.area?.nombre)).map(([areaKey, group]) => (
               <AreaGroup key={areaKey} areaKey={areaKey} rawName={group[0].template.area?.nombre}>
-                {groupBySub(group).map(([sub, subItems]) => (
-                  <div key={sub} className="mb-1">
-                    {sub && <p className="text-[10px] text-[#555] px-2 pt-1 pb-0.5">{sub}</p>}
-                    {subItems.map(i => {
-                      const done = doneI.has(i.id) || i.estado === "COMPLETADA";
-                      const open = editI === i.id;
-                      return (
-                        <div key={i.id} className="rounded-lg hover:bg-white/[0.03] transition-colors">
-                          <div className="flex items-center gap-3 px-2 py-2">
-                            <Circle done={done} onClick={() => !done && accionInstancia(i.id, "completar")} />
-                            <span className={`flex-1 text-sm ${done ? "text-[#444] line-through" : "text-white"}`}>{i.template.nombre}</span>
-                            <Avatar name={i.responsable?.name} />
-                            <button onClick={() => setEditI(open ? null : i.id)} className="shrink-0 text-[#555] hover:text-[#B3985B] text-xs px-1">⋯</button>
-                          </div>
-                          {open && (
-                            <div className="flex items-center gap-2 px-2 pb-2 pl-9 flex-wrap">
-                              <button onClick={() => { accionInstancia(i.id, "omitir"); setEditI(null); }} className="ms-btn-icon !p-1 text-[11px] px-2">Omitir hoy</button>
-                              <select value="" onChange={e => { if (e.target.value) { accionInstancia(i.id, "reasignar", e.target.value); setEditI(null); } }} className={selCls}>
-                                <option value="">Reasignar…</option>
-                                {usuarios.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                              </select>
+                <table className="w-full">
+                  <thead className="bg-[#060606] border-b border-[#0d0d0d]">
+                    <tr>
+                      <th className="w-1 p-0" />
+                      <th className="w-10" />
+                      <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium">Compromiso</th>
+                      <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden sm:table-cell">Responsable</th>
+                      <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden md:table-cell">Días</th>
+                      <th className="py-2 px-3 text-left text-[9px] uppercase tracking-[0.12em] text-gray-700 font-medium hidden lg:table-cell">Recurrencia</th>
+                      <th className="w-16" />
+                    </tr>
+                  </thead>
+                  {groupBySub(group).map(([sub, subItems]) => (
+                    <tbody key={sub}>
+                      {sub && (
+                        <tr className="bg-[#070707] border-b border-[#111]">
+                          <td colSpan={7} className="px-4 py-2">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-0.5 h-4 rounded-full bg-[#c9a96a]/40" />
+                              <span className="text-[11px] text-[#c9a96a] uppercase tracking-[0.12em] font-semibold">{sub}</span>
+                              <span className="text-[10px] text-gray-700">{subItems.length}</span>
                             </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
+                          </td>
+                        </tr>
+                      )}
+                      {subItems.map(inst => (
+                        <MiDiaItem key={inst.id} instancia={inst} onToggle={toggleInstancia} onNoRealizado={noRealizadoInstancia} />
+                      ))}
+                    </tbody>
+                  ))}
+                </table>
               </AreaGroup>
             ))}
           </SectionCard>
 
-          {/* ── TAREAS — por área, misma vista que el Módulo de Tareas ── */}
+          {/* ── TAREAS — por área, ordenadas por fecha y prioridad ────── */}
           <SectionCard title="Tareas de hoy" dot="#B3985B" count={tareas.filter(t => !doneT.has(t.id)).length} href="/operaciones" empty={tareas.length === 0} emptyText="Sin tareas para hoy.">
             {groupByArea(tareas, t => t.area || "GENERAL").map(([areaKey, group]) => (
               <AreaGroup key={areaKey} areaKey={areaKey}>
-                {group.map(t => (
+                {sortTareas(group).map(t => (
                   <TaskItem
                     key={t.id}
                     tarea={t}
