@@ -19,7 +19,7 @@ import ProyectoTareas from "./ProyectoTareas";
 import { BackButton } from "@/components/BackButton";
 import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem } from "@/components/proyectos/ViabilidadWidget";
 import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
-import { contarRespondidos, contarIncidencias, promedioCalificaciones, nivelResultado, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
+import { contarRespondidos, contarIncidencias, promedioCalificaciones, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
@@ -1466,9 +1466,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [loadingEvalCliente, setLoadingEvalCliente] = useState(false);
   const [generandoLink, setGenerandoLink] = useState(false);
   // Reporte post-evento
-  const [reporteEvento, setReporteEvento] = useState<{ token: string; estado: string; respondidoEn?: string | null } | null>(null);
-  const [reporteEventoLoaded, setReporteEventoLoaded] = useState(false);
-  const [generandoReporte, setGenerandoReporte] = useState(false);
 
   // Cierre financiero
   type CierreData = {
@@ -2196,27 +2193,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     return d.evaluacion?.tokenAcceso ?? null;
   }
 
-  async function loadReporteEvento() {
-    if (reporteEventoLoaded) return;
-    const res = await fetch(`/api/proyectos/${id}/reporte-evento/generar`, { method: "GET" }).catch(() => null);
-    if (res?.ok) {
-      const d = await res.json();
-      setReporteEvento(d.reporte ?? null);
-    }
-    setReporteEventoLoaded(true);
-  }
-
-  async function generarReporteEvento(): Promise<string | null> {
-    setGenerandoReporte(true);
-    const res = await fetch(`/api/proyectos/${id}/reporte-evento/generar`, {
-      method: "POST",
-    });
-    const d = await res.json();
-    setReporteEvento(d ?? null);
-    setGenerandoReporte(false);
-    return d?.token ?? null;
-  }
-
   useEffect(() => {
     load();
     loadEval();
@@ -2249,11 +2225,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Lazy-load evaluación cliente when proyecto loads
   useEffect(() => {
     if (proyecto) loadEvalCliente();
-  }, [proyecto?.id]); // eslint-disable-line
-
-  // Lazy-load reporte post-evento when proyecto loads
-  useEffect(() => {
-    if (proyecto) loadReporteEvento();
   }, [proyecto?.id]); // eslint-disable-line
 
   // Docs start closed — user opens them manually
@@ -6423,14 +6394,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 return (
                   <div className="space-y-4">
 
-                  {/* ── Evaluación Post Evento (cierre operativo del coordinador) ── */}
-                  {(proyecto.tipoServicio === "PRODUCCION_TECNICA" || proyecto.tipoServicio === "DIRECCION_TECNICA") && (() => {
+                  {/* ── Evaluación Post Evento / Post Renta (cierre operativo del coordinador) ── */}
+                  {aplicaEvaluacion(proyecto.tipoServicio) && (() => {
+                    const config = getEvalConfig(proyecto.tipoServicio);
                     const evalPost = proyecto.evaluacionPostEvento;
                     const items = evalPost?.items ?? {};
-                    const { respondidos, total } = contarRespondidos(items);
-                    const incidencias = evalPost ? contarIncidencias(items) : 0;
+                    const { respondidos, total } = contarRespondidos(items, config.secciones);
+                    const incidencias = evalPost ? contarIncidencias(items, config.secciones) : 0;
                     const iniciada = !!evalPost?.respondidoEn;
-                    const promOperacion = promedioCalificaciones(evalPost?.calificaciones ?? {});
+                    const promOperacion = promedioCalificaciones(evalPost?.calificaciones ?? {}, config.califDimensiones);
                     const nivelOperacion = nivelResultado(promOperacion);
                     const califFinal = evalPost?.calificacionFinal ?? null;
                     const nivelFinal = nivelResultado(califFinal);
@@ -6438,8 +6410,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       <div className="ms-card p-5 space-y-4">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
                           <div>
-                            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Evaluación post evento</p>
-                            <p className="text-gray-500 text-xs mt-0.5">Cierre operativo del coordinador para presentar en junta</p>
+                            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{config.etiqueta}</p>
+                            <p className="text-gray-500 text-xs mt-0.5">{config.resumenSubtitulo}</p>
                           </div>
                           <Link
                             href={`/proyectos/${proyecto.id}/evaluacion-post-evento`}
@@ -6453,7 +6425,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           <div className="space-y-3">
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                               <div className="rounded-lg px-3 py-2 border" style={{ backgroundColor: `${nivelOperacion.color}14`, borderColor: `${nivelOperacion.color}40` }}>
-                                <p className="text-[9px] uppercase tracking-wider" style={{ color: `${nivelOperacion.color}cc` }}>Operación</p>
+                                <p className="text-[9px] uppercase tracking-wider" style={{ color: `${nivelOperacion.color}cc` }}>{config.variante === "renta" ? "Renta" : "Operación"}</p>
                                 <p className="text-sm font-bold" style={{ color: nivelOperacion.color }}>{promOperacion ? `${promOperacion.toFixed(1)}/5` : "—"} <span className="text-[10px] font-medium">{nivelOperacion.label}</span></p>
                               </div>
                               <div className="rounded-lg px-3 py-2 border" style={{ backgroundColor: `${nivelFinal.color}14`, borderColor: `${nivelFinal.color}40` }}>
@@ -6495,74 +6467,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       </div>
                     );
                   })()}
-
-                  {/* ── Reporte Post-Evento · se reemplaza por "Evaluación post evento" en producción/dirección técnica ── */}
-                  {!(proyecto.tipoServicio === "PRODUCCION_TECNICA" || proyecto.tipoServicio === "DIRECCION_TECNICA") && (
-                  <div className="ms-card p-5 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{esRenta ? "Reporte post-renta" : "Reporte post-evento"}</p>
-                        <p className="text-gray-500 text-xs mt-0.5">{esRenta ? "Cierre del servicio: estado de equipos, entrega y accesorios faltantes" : "Formulario de cierre para el coordinador del evento"}</p>
-                      </div>
-                      {!reporteEvento ? (
-                        <button
-                          onClick={generarReporteEvento}
-                          disabled={generandoReporte}
-                          className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] disabled:opacity-50 text-white text-xs px-4 py-2 rounded-lg transition-colors"
-                        >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-                          {generandoReporte ? "Generando..." : "Generar link"}
-                        </button>
-                      ) : reporteEvento.estado === "completado" ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-green-900/50 text-green-300">Completado</span>
-                      ) : (
-                        <button
-                          onClick={() => navigator.clipboard.writeText(`${linkBase}${reporteEvento.token}`)}
-                          className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-white text-xs px-4 py-2 rounded-lg transition-colors"
-                        >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-                          Copiar link
-                        </button>
-                      )}
-                    </div>
-
-                    {reporteEvento && (
-                      <div className="space-y-3">
-                        {/* Link copiable */}
-                        {reporteEvento.estado === "pendiente" && (
-                          <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 flex items-center gap-2">
-                            <span className="text-gray-500 text-xs flex-1 truncate font-mono">{linkBase}{reporteEvento.token}</span>
-                            <button
-                              onClick={() => navigator.clipboard.writeText(`${linkBase}${reporteEvento.token}`)}
-                              className="text-[10px] text-[#B3985B] hover:text-white shrink-0 transition-colors"
-                            >Copiar</button>
-                          </div>
-                        )}
-                        {/* Badge estado */}
-                        <div className="flex items-center gap-3">
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-                            reporteEvento.estado === "completado"
-                              ? "bg-green-900/50 text-green-300"
-                              : "bg-yellow-900/40 text-yellow-300"
-                          }`}>
-                            {reporteEvento.estado === "completado" ? "Completado" : "Esperando respuesta"}
-                          </span>
-                          {reporteEvento.estado === "completado" && reporteEvento.respondidoEn && (
-                            <span className="text-xs text-gray-500">
-                              {new Date(reporteEvento.respondidoEn).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
-                            </span>
-                          )}
-                          {reporteEvento.estado === "completado" && (
-                            <a
-                              href={`/reporte-evento/${reporteEvento.token}/ver`}
-                              className="text-xs text-[#B3985B] hover:underline"
-                            >Ver reporte completo →</a>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  )}
 
                   {/* ── Evaluación del cliente ── */}
                   <div className="ms-card p-5 space-y-4">

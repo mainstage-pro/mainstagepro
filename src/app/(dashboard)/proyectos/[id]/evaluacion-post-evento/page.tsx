@@ -4,8 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
-  EVAL_SECCIONES,
-  CALIF_DIMENSIONES,
+  getEvalConfig,
   SECCION_CALIF_COLOR,
   SECCION_MEJORA_COLOR,
   emptyEvalData,
@@ -202,9 +201,10 @@ export default function EvaluacionPostEventoPage() {
   if (loading) return <div className="p-6 text-center text-[#444] text-sm">Cargando...</div>;
   if (!proyecto) return <div className="p-6 text-center text-[#444]">Proyecto no encontrado</div>;
 
-  const { respondidos, total } = contarRespondidos(data.items);
-  const incidencias = contarIncidencias(data.items);
-  const promOperacion = promedioCalificaciones(data.calificaciones);
+  const config = getEvalConfig(proyecto.tipoServicio);
+  const { respondidos, total } = contarRespondidos(data.items, config.secciones);
+  const incidencias = contarIncidencias(data.items, config.secciones);
+  const promOperacion = promedioCalificaciones(data.calificaciones, config.califDimensiones);
   const nivelOperacion = nivelResultado(promOperacion);
   const nivelFinal = nivelResultado(data.calificacionFinal);
 
@@ -226,7 +226,7 @@ export default function EvaluacionPostEventoPage() {
               ← {proyecto.numeroProyecto}
             </Link>
             <span className="text-[#333]">/</span>
-            <span className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider">Evaluación Post Evento</span>
+            <span className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider">{config.etiqueta}</span>
           </div>
           <h1 className="text-white text-2xl font-bold">{proyecto.nombre}</h1>
           <p className="text-[#555] text-sm mt-0.5">{proyecto.cliente.nombre} · {fmtDate(proyecto.fechaEvento)}</p>
@@ -258,7 +258,7 @@ export default function EvaluacionPostEventoPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {/* Resultado operación */}
           <div className="rounded-lg px-3 py-2.5 border" style={{ backgroundColor: `${nivelOperacion.color}14`, borderColor: `${nivelOperacion.color}40` }}>
-            <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: `${nivelOperacion.color}cc` }}>Operación y coordinación</p>
+            <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: `${nivelOperacion.color}cc` }}>{config.resultadoLabel}</p>
             <p className="text-lg font-bold" style={{ color: nivelOperacion.color }}>
               {promOperacion ? `${promOperacion.toFixed(1)}/5` : "—"} <span className="text-xs font-medium">{nivelOperacion.label}</span>
             </p>
@@ -294,7 +294,7 @@ export default function EvaluacionPostEventoPage() {
       </div>
 
       {/* Secciones Sí/No */}
-      {EVAL_SECCIONES.map((seccion, sIdx) => (
+      {config.secciones.map((seccion, sIdx) => (
         <div key={seccion.id}>
           <SeccionHeader titulo={seccion.titulo} descripcion={seccion.descripcion} color={seccion.color} numero={sIdx + 1} />
           <div className="space-y-3">
@@ -335,13 +335,13 @@ export default function EvaluacionPostEventoPage() {
       {/* Calificación de la operación (estrellas) */}
       <div>
         <SeccionHeader
-          titulo="Calificación de la operación"
-          descripcion="Califica cada dimensión de 1 a 5 estrellas. El promedio define el resultado de operación y coordinación."
+          titulo={config.califTitulo}
+          descripcion={config.califDescripcion}
           color={SECCION_CALIF_COLOR}
-          numero={EVAL_SECCIONES.length + 1}
+          numero={config.secciones.length + 1}
         />
         <div className="space-y-3">
-          {CALIF_DIMENSIONES.map(dim => (
+          {config.califDimensiones.map(dim => (
             <div key={dim.id} className="ms-card-deep p-4 border-l-2 flex items-center justify-between gap-4 flex-wrap" style={{ borderLeftColor: `${SECCION_CALIF_COLOR}66` }}>
               <div className="flex-1 min-w-[180px]">
                 <p className="text-white text-sm font-medium">{dim.label}</p>
@@ -357,13 +357,13 @@ export default function EvaluacionPostEventoPage() {
       <div>
         <SeccionHeader
           titulo="Calificación final del coordinador"
-          descripcion="Tu valoración global del evento, considerando operación, coordinación y resultado."
+          descripcion={config.califFinalSeccionDesc}
           color={SECCION_MEJORA_COLOR}
-          numero={EVAL_SECCIONES.length + 2}
+          numero={config.secciones.length + 2}
         />
         <div className="ms-card-deep p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
-            <p className="text-white text-sm font-medium">¿Cómo calificarías el evento en general?</p>
+            <p className="text-white text-sm font-medium">{config.califFinalPregunta}</p>
             <p className="text-[#666] text-xs mt-0.5">1 = deficiente · 5 = excelente</p>
           </div>
           <div className="flex items-center gap-4">
@@ -379,9 +379,9 @@ export default function EvaluacionPostEventoPage() {
       <div>
         <SeccionHeader
           titulo="Propuestas de mejora"
-          descripcion="Acciones concretas para el próximo evento. Agrega una por línea."
+          descripcion={config.variante === "renta" ? "Acciones concretas para la próxima renta. Agrega una por línea." : "Acciones concretas para el próximo evento. Agrega una por línea."}
           color={SECCION_MEJORA_COLOR}
-          numero={EVAL_SECCIONES.length + 3}
+          numero={config.secciones.length + 3}
         />
         <div className="space-y-2">
           {data.propuestasMejora.length === 0 && (
@@ -415,12 +415,12 @@ export default function EvaluacionPostEventoPage() {
           titulo="Comentarios finales del coordinador"
           descripcion="Conclusión general para la junta: qué salió bien, qué mejorar, acuerdos y responsables."
           color={SECCION_MEJORA_COLOR}
-          numero={EVAL_SECCIONES.length + 4}
+          numero={config.secciones.length + 4}
         />
         <textarea
           value={data.comentariosFinales}
           onChange={e => actualizar(prev => ({ ...prev, comentariosFinales: e.target.value }))}
-          placeholder="Escribe la conclusión general del evento para presentar en la junta…"
+          placeholder={config.variante === "renta" ? "Escribe la conclusión general de la renta para presentar en la junta…" : "Escribe la conclusión general del evento para presentar en la junta…"}
           rows={5}
           className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl px-4 py-3 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/50 resize-none"
         />
