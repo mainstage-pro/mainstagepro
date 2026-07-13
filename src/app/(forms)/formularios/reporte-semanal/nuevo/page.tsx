@@ -773,7 +773,7 @@ export default function ReporteSemanalLandingPage() {
                 <div>
                   <h2 className="text-white font-semibold text-sm">Tareas para la próxima semana</h2>
                   <p className="text-gray-500 text-xs mt-0.5 leading-relaxed">
-                    Agrega aquí las tareas que planeas realizar la próxima semana. Se crean directamente en el módulo de tareas y Dirección las verá el lunes.
+                    Agrega aquí las tareas que planeas realizar la próxima semana. Cada una necesita <span className="text-gray-300">responsable, fecha y área</span> para saber dónde se gestiona. Se crean directamente en el módulo de tareas y Dirección las verá el lunes.
                   </p>
                 </div>
               </div>
@@ -806,6 +806,8 @@ export default function ReporteSemanalLandingPage() {
                 onAdd={handleAddProximaTarea}
                 proyectos={proyectos}
                 usuarios={usuarios}
+                requiredFields={["fecha", "proyecto", "asignado"]}
+                defaultAsignadoId={session.id}
                 placeholder="¿Qué vas a hacer la próxima semana?"
               />
             </div>

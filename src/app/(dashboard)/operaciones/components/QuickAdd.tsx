@@ -80,6 +80,8 @@ type ActivePanel = "fecha" | "recurrente" | "limite" | "prioridad" | "proyecto" 
 export interface ProyectoOption { id: string; nombre: string; color: string | null }
 export interface UsuarioOption  { id: string; name: string }
 
+type RequiredField = "fecha" | "asignado" | "proyecto";
+
 interface Props {
   proyectoTareaId?: string | null;
   seccionId?: string | null;
@@ -87,6 +89,8 @@ interface Props {
   proyectos?: ProyectoOption[];
   usuarios?: UsuarioOption[];
   triggerOpen?: number;
+  requiredFields?: RequiredField[];
+  defaultAsignadoId?: string | null;
   onAdd: (tarea: {
     titulo: string;
     descripcion: string | null;
@@ -127,6 +131,8 @@ export default function QuickAdd({
   proyectos = [],
   usuarios = [],
   triggerOpen,
+  requiredFields = [],
+  defaultAsignadoId = null,
   onAdd,
   placeholder = "Agregar tarea…",
   compact = false,
@@ -139,7 +145,8 @@ export default function QuickAdd({
   const [prioridad, setPrioridad]     = useState<Prioridad>("MEDIA");
   const [area, setArea]               = useState<Area>("GENERAL");
   const [proyectoSel, setProyectoSel] = useState<string | null>(proyectoTareaId);
-  const [asignadoSel, setAsignadoSel] = useState<string | null>(null);
+  const [asignadoSel, setAsignadoSel] = useState<string | null>(defaultAsignadoId);
+  const [reqError, setReqError]       = useState<string | null>(null);
   const [recTexto, setRecTexto]       = useState("");
   const [recurrencia, setRecurrencia] = useState<string | null>(null);
   const [recError, setRecError]       = useState("");
@@ -201,9 +208,19 @@ export default function QuickAdd({
 
   function resetFields() {
     setTitulo(""); setDescripcion(""); setFecha(""); setFechaVen(""); setPrioridad("MEDIA"); setArea("GENERAL");
-    setProyectoSel(proyectoTareaId); setAsignadoSel(null);
-    setRecTexto(""); setRecurrencia(null); setRecError("");
+    setProyectoSel(proyectoTareaId); setAsignadoSel(defaultAsignadoId);
+    setRecTexto(""); setRecurrencia(null); setRecError(""); setReqError(null);
     setPanel(null); setDetIgnorada(false); setPastedLines(null);
+  }
+
+  const REQ_LABELS: Record<RequiredField, string> = { fecha: "fecha", proyecto: "área", asignado: "responsable" };
+  // Devuelve los campos obligatorios que aún faltan (fechaOk permite forzar null en modo lote)
+  function camposFaltantes(fechaOk: boolean): RequiredField[] {
+    const m: RequiredField[] = [];
+    if (requiredFields.includes("fecha")    && !fechaOk)      m.push("fecha");
+    if (requiredFields.includes("proyecto") && !proyectoSel)  m.push("proyecto");
+    if (requiredFields.includes("asignado") && !asignadoSel)  m.push("asignado");
+    return m;
   }
 
   function reset() {
@@ -218,6 +235,13 @@ export default function QuickAdd({
     // If recurrencia is set, fecha is cleared (mutually exclusive)
     const fechaFinal  = recurrencia ? null : (fecha || (deteccion?.fecha ?? null));
     const recFinal    = recurrencia ?? (fecha ? null : (deteccion?.recurrencia ?? null));
+    const missing = camposFaltantes(!!fechaFinal);
+    if (missing.length) {
+      setReqError("Falta indicar " + missing.map(m => REQ_LABELS[m]).join(", "));
+      setPanel(missing[0]);
+      return;
+    }
+    setReqError(null);
     onAdd({
       titulo:           tituloFinal,
       descripcion:      descripcion.trim() || null,
@@ -237,6 +261,18 @@ export default function QuickAdd({
 
   function submitAll() {
     if (!detectedLines) return;
+    // En modo lote no hay fecha por línea: si la fecha es obligatoria, forzar alta individual
+    const missing = camposFaltantes(!requiredFields.includes("fecha"));
+    if (missing.length) {
+      setReqError(
+        requiredFields.includes("fecha")
+          ? "Agrega las tareas una por una para asignarles fecha, responsable y área"
+          : "Falta indicar " + missing.map(m => REQ_LABELS[m]).join(", "),
+      );
+      if (missing[0] !== "fecha") setPanel(missing[0]);
+      return;
+    }
+    setReqError(null);
     detectedLines.forEach(line => {
       onAdd({
         titulo: line,
@@ -415,6 +451,7 @@ export default function QuickAdd({
         <div className="flex items-center gap-0.5 px-3 pt-1.5 pb-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
           <ToolbarBtn icon={<IconCalendar />}
             label={fecha ? formatDisplay(fecha) : "Fecha"} active={!!fecha} activeColor="#B3985B"
+            required={requiredFields.includes("fecha") && !fecha && !recurrencia}
             isOpen={panel === "fecha"} onClick={() => { if (recurrencia) { setRecurrencia(null); setRecTexto(""); } togglePanel("fecha"); }} />
 
           <ToolbarBtn icon={<IconRepeat />}
@@ -432,12 +469,14 @@ export default function QuickAdd({
           {!compact && (
             <>
               <ToolbarBtn icon={<IconFolder />}
-                label={proyectoInfo?.nombre ?? "Proyecto"} active={!!proyectoInfo} activeColor="#B3985B"
+                label={proyectoInfo?.nombre ?? (requiredFields.includes("proyecto") ? "Área" : "Proyecto")} active={!!proyectoInfo} activeColor="#B3985B"
+                required={requiredFields.includes("proyecto") && !proyectoSel}
                 isOpen={panel === "proyecto"} onClick={() => togglePanel("proyecto")} />
 
               {usuarios.length > 0 && (
                 <ToolbarBtn icon={<IconUser />}
                   label={usuarioInfo?.name.split(" ")[0] ?? "Asignar"} active={!!usuarioInfo} activeColor="#B3985B"
+                  required={requiredFields.includes("asignado") && !asignadoSel}
                   isOpen={panel === "asignado"} onClick={() => togglePanel("asignado")} />
               )}
             </>
@@ -446,6 +485,12 @@ export default function QuickAdd({
 
         {/* Row 2: actions */}
         <div className="flex items-center justify-end gap-1 px-3 pb-2">
+          {reqError && (
+            <span className="mr-auto flex items-center gap-1 text-[11px] text-red-400">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              {reqError}
+            </span>
+          )}
           <button type="button" onClick={reset}
             className="text-xs text-[#333] hover:text-[#777] px-2 py-1 rounded-lg hover:bg-[#0f0f0f] transition-all">
             Cancelar
@@ -574,16 +619,17 @@ export default function QuickAdd({
 
 // ── ToolbarBtn ────────────────────────────────────────────────────────────────
 
-function ToolbarBtn({ icon, label, active, activeColor, isOpen, onClick }: {
+function ToolbarBtn({ icon, label, active, activeColor, isOpen, onClick, required = false }: {
   icon: React.ReactNode; label: string; active: boolean;
-  activeColor: string; isOpen: boolean; onClick: () => void;
+  activeColor: string; isOpen: boolean; onClick: () => void; required?: boolean;
 }) {
   return (
     <button type="button" onClick={onClick}
-      className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${isOpen ? "bg-[#151515] text-white" : "hover:bg-[#0f0f0f]"}`}
-      style={{ color: isOpen ? "white" : active ? activeColor : "#333" }}>
-      <span style={{ color: isOpen ? "#888" : active ? activeColor : "#2e2e2e" }}>{icon}</span>
+      className={`relative flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium transition-all ${isOpen ? "bg-[#151515] text-white" : "hover:bg-[#0f0f0f]"} ${required ? "ring-1 ring-red-500/30" : ""}`}
+      style={{ color: isOpen ? "white" : active ? activeColor : required ? "#f87171" : "#333" }}>
+      <span style={{ color: isOpen ? "#888" : active ? activeColor : required ? "#f87171" : "#2e2e2e" }}>{icon}</span>
       <span className="hidden sm:inline">{label}</span>
+      {required && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-red-500" />}
     </button>
   );
 }

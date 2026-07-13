@@ -94,7 +94,6 @@ export default function OperacionesPage() {
   const [sessionId, setSessionId]               = useState<string>("");
   const [sessionRole, setSessionRole]           = useState<string>("");
   const [sessionArea, setSessionArea]           = useState<string>("");
-  const [sessionModuloKeys, setSessionModuloKeys] = useState<string[] | null>(null);
 
   const [capturaCounts, setCapturaCounts] = useState({ captura: 0, ideas: 0, iniciativas: 0 });
   const [vista, setVista]                             = useState<VistaKey>(() => {
@@ -281,7 +280,6 @@ export default function OperacionesPage() {
       if (me?.id) setSessionId(me.id);
       if (me?.role) setSessionRole(me.role);
       if (me?.area) setSessionArea(me.area);
-      setSessionModuloKeys(me?.role === "ADMIN" ? null : (me?.moduloKeys ?? []));
     });
   }, []);
 
@@ -1042,11 +1040,6 @@ export default function OperacionesPage() {
     VENTAS: "Ventas", PRODUCCION: "Producción", MARKETING: "Marketing",
     ADMINISTRACION: "Administración", RRHH: "RRHH", DIRECCION: "Dirección",
   };
-  const ALL_AREAS = ["VENTAS", "PRODUCCION", "MARKETING", "ADMINISTRACION", "RRHH", "DIRECCION"];
-  const allowedTaskAreas = sessionRole === "ADMIN"
-    ? ALL_AREAS
-    : ALL_AREAS.filter(a => sessionModuloKeys?.includes(`tareas-${a.toLowerCase()}`));
-
   const vistaKey    = typeof vista === "string" ? vista : (vista.tipo === "area" ? `area-${vista.nombre}` : (vista as { tipo: "proyecto"; id: string }).id);
   const vistaLabel  =
     vista === "bandeja"          ? "Bandeja de entrada" :
@@ -1112,18 +1105,50 @@ export default function OperacionesPage() {
     setCarpetas(prev => prev.filter(c => c.id !== id));
   }
 
-  // Equipo view: tareas agrupadas por usuario asignado
+  // Equipo view: tareas agrupadas por usuario asignado, con métricas por persona
   const equipoGroups = useMemo(() => {
     if (vista !== "equipo") return [];
-    const map = new Map<string, { nombre: string; tareas: typeof tareas }>();
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const map = new Map<string, { id: string; nombre: string; tareas: typeof tareas }>();
     for (const t of tareas) {
       const uid  = t.asignadoA?.id  ?? "__sin_asignar";
       const name = t.asignadoA?.name ?? "Sin asignar";
-      if (!map.has(uid)) map.set(uid, { nombre: name, tareas: [] });
+      if (!map.has(uid)) map.set(uid, { id: uid, nombre: name, tareas: [] });
       map.get(uid)!.tareas.push(t);
     }
-    return Array.from(map.values()).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+    const esVencida = (t: typeof tareas[number]) =>
+      t.estado !== "COMPLETADA" && !!t.fecha && new Date(t.fecha + "T00:00:00") < hoy;
+    return Array.from(map.values()).map(g => {
+      const tareas = [...g.tareas].sort((a, b) => {
+        const ac = a.estado === "COMPLETADA" ? 1 : 0;
+        const bc = b.estado === "COMPLETADA" ? 1 : 0;
+        if (ac !== bc) return ac - bc;                                   // pendientes primero
+        const av = esVencida(a) ? 0 : 1, bv = esVencida(b) ? 0 : 1;
+        if (av !== bv) return av - bv;                                   // vencidas primero
+        const ap = PRIO_ORDER[a.prioridad] ?? 9, bp = PRIO_ORDER[b.prioridad] ?? 9;
+        if (ap !== bp) return ap - bp;                                   // por prioridad
+        const af = a.fecha ?? "9999", bf = b.fecha ?? "9999";
+        return af.localeCompare(bf);                                    // por fecha
+      });
+      const completadas = tareas.filter(t => t.estado === "COMPLETADA").length;
+      const vencidas    = tareas.filter(esVencida).length;
+      const pendientes  = tareas.length - completadas;
+      return { ...g, tareas, total: tareas.length, completadas, pendientes, vencidas };
+    }).sort((a, b) =>
+      b.vencidas - a.vencidas ||
+      b.pendientes - a.pendientes ||
+      a.nombre.localeCompare(b.nombre, "es"),
+    );
   }, [vista, tareas]);
+
+  const [equipoColapsados, setEquipoColapsados] = useState<Set<string>>(new Set());
+  function toggleEquipoUser(id: string) {
+    setEquipoColapsados(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
 
   // Today count for badge
   const hoyCount = useMemo(() => {
@@ -1262,10 +1287,6 @@ export default function OperacionesPage() {
             icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>}
             label="Próximas" isActive={vistaKey === "proximas"} onClick={() => setVista("proximas")}
           />
-          <SideItem
-            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>}
-            label="Proyectos" isActive={vistaKey === "proyectos-evento"} onClick={() => setVista("proyectos-evento")}
-          />
           {sessionRole === "ADMIN" && (
             <SideItem
               icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
@@ -1280,30 +1301,10 @@ export default function OperacionesPage() {
           />
         </nav>
 
-        {/* ── Áreas section ─────────────────────────────────────────────── */}
-        {allowedTaskAreas.length > 0 && (
-          <div className="mt-3 shrink-0">
-            <div className="px-3 py-1.5">
-              <span className="text-xs text-[#3a3a3a] font-semibold tracking-widest uppercase select-none">Áreas</span>
-            </div>
-            <nav className="px-2 space-y-0.5">
-              {allowedTaskAreas.map(area => (
-                <SideItem
-                  key={area}
-                  icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>}
-                  label={AREA_LABELS[area] ?? area}
-                  isActive={vistaKey === `area-${area}`}
-                  onClick={() => setVista({ tipo: "area", nombre: area })}
-                />
-              ))}
-            </nav>
-          </div>
-        )}
-
-        {/* ── Proyectos section ──────────────────────────────────────────── */}
+        {/* ── Áreas section (carpetas y proyectos) ───────────────────────── */}
         <div className="mt-4 flex-1 min-h-0 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-3 py-1.5 shrink-0">
-            <span className="text-xs text-[#3a3a3a] font-semibold tracking-widest uppercase select-none">Proyectos</span>
+            <span className="text-xs text-[#3a3a3a] font-semibold tracking-widest uppercase select-none">Áreas</span>
             <button
               onClick={() => { setShowNuevoProyecto(true); setTimeout(() => proyectoInputRef.current?.focus(), 50); }}
               className="w-5 h-5 flex items-center justify-center rounded text-[#2a2a2a] hover:text-[#B3985B] hover:bg-[#B3985B]/10 transition-all"
@@ -1794,34 +1795,82 @@ export default function OperacionesPage() {
             />
 
           ) : vista === "equipo" ? (
-            <div className="max-w-2xl mx-auto px-2 py-4 pb-24">
+            <div className="max-w-3xl mx-auto px-3 py-4 pb-24">
               {equipoGroups.length === 0 ? (
                 <EmptyState icon="👥" title="Sin tareas de equipo" sub="No hay tareas personales asignadas a ningún usuario" />
-              ) : equipoGroups.map(group => (
-                <div key={group.nombre} className="mb-6">
-                  <div className="flex items-center gap-2 px-3 py-2 mb-1">
-                    <div className="w-6 h-6 rounded-full bg-[#B3985B]/20 flex items-center justify-center shrink-0">
-                      <span className="text-[10px] font-bold text-[#B3985B]">
-                        {group.nombre.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-                      </span>
-                    </div>
-                    <span className="text-xs text-[#aaa] font-semibold">{group.nombre}</span>
-                    <span className="text-[11px] text-[#333] font-medium">{group.tareas.length}</span>
+              ) : (
+                <>
+                  {/* Resumen general del equipo */}
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-3 pb-3 mb-3 border-b border-[#161616]">
+                    <span className="text-[11px] uppercase tracking-widest text-[#555] font-semibold">Equipo · {equipoGroups.length} {equipoGroups.length === 1 ? "persona" : "personas"}</span>
+                    <span className="text-[11px] text-[#777]"><b className="text-[#ccc]">{equipoGroups.reduce((s, g) => s + g.pendientes, 0)}</b> pendientes</span>
+                    {equipoGroups.reduce((s, g) => s + g.vencidas, 0) > 0 && (
+                      <span className="text-[11px] text-red-400/80"><b>{equipoGroups.reduce((s, g) => s + g.vencidas, 0)}</b> vencidas</span>
+                    )}
+                    <span className="text-[11px] text-[#777]"><b className="text-emerald-400/80">{equipoGroups.reduce((s, g) => s + g.completadas, 0)}</b> completadas</span>
                   </div>
-                  {group.tareas.map(t => (
-                    <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
-                      onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
-                      onDateChange={(id, val) => saveTarea(id, { fecha: val || null })}
-                      onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
-                      onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
-                      onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
-                      projects={proyectosNav}
-                      users={usuarios}
-                      showProject
-                    />
-                  ))}
-                </div>
-              ))}
+
+                  {equipoGroups.map(group => {
+                    const colapsado = equipoColapsados.has(group.id);
+                    const pct = group.total ? Math.round((group.completadas / group.total) * 100) : 0;
+                    return (
+                      <div key={group.id} className="mb-3 rounded-xl border border-[#161616] bg-[#0a0a0a] overflow-hidden">
+                        {/* Header por persona */}
+                        <button
+                          onClick={() => toggleEquipoUser(group.id)}
+                          className="w-full flex items-center gap-3 px-3.5 py-3 hover:bg-[#0d0d0d] transition-colors text-left"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5"
+                            className={`shrink-0 transition-transform ${colapsado ? "" : "rotate-90"}`}><path d="M9 18l6-6-6-6"/></svg>
+                          <div className="w-8 h-8 rounded-full bg-[#B3985B]/15 border border-[#B3985B]/25 flex items-center justify-center shrink-0">
+                            <span className="text-[11px] font-bold text-[#B3985B]">
+                              {group.nombre.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-[#e5e5e5] font-semibold truncate">{group.nombre}</span>
+                              <span className="text-[11px] text-[#555]">{group.total} {group.total === 1 ? "tarea" : "tareas"}</span>
+                            </div>
+                            {/* Barra de avance */}
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <div className="flex-1 h-1 rounded-full bg-[#1a1a1a] overflow-hidden max-w-[220px]">
+                                <div className="h-full rounded-full bg-emerald-500/70 transition-all" style={{ width: `${pct}%` }} />
+                              </div>
+                              <span className="text-[10px] text-[#555] tabular-nums">{pct}%</span>
+                            </div>
+                          </div>
+                          {/* Chips de estado */}
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {group.vencidas > 0 && (
+                              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">{group.vencidas} vencidas</span>
+                            )}
+                            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#141414] text-[#999] border border-[#222]">{group.pendientes} pend.</span>
+                          </div>
+                        </button>
+
+                        {/* Tareas de la persona */}
+                        {!colapsado && (
+                          <div className="border-t border-[#141414] px-1.5 pb-1.5">
+                            {group.tareas.map(t => (
+                              <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
+                                onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
+                                onDateChange={(id, val) => saveTarea(id, { fecha: val || null })}
+                                onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
+                                onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
+                                onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
+                                projects={proyectosNav}
+                                users={usuarios}
+                                showProject
+                              />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </>
+              )}
             </div>
 
           ) : vista === "integrada" ? (
@@ -2395,25 +2444,10 @@ export default function OperacionesPage() {
                 ));
               })() : (
                 <>
-                  {allowedTaskAreas.length > 0 && (
-                    <div className="mb-2">
-                      <div className="flex items-center gap-2 px-4 py-2 mt-2">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-                        <span className="text-[12px] text-[#555] font-semibold tracking-wide uppercase">Áreas</span>
-                      </div>
-                      {allowedTaskAreas.map(area => (
-                        <button key={area} onClick={() => { setVista({ tipo: "area", nombre: area }); setMobileProyectos(false); }}
-                          className={`w-full flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-colors ${vistaKey === `area-${area}` ? "text-[#B3985B] bg-[#B3985B]/5" : "text-white hover:bg-[#111]"}`}>
-                          {AREA_LABELS[area] ?? area}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
                   {proyectosSinCarpeta.length > 0 && (
                     <div className="flex items-center gap-2 px-4 py-2 mt-2">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
-                      <span className="text-[12px] text-[#555] font-semibold tracking-wide uppercase">Proyectos</span>
+                      <span className="text-[12px] text-[#555] font-semibold tracking-wide uppercase">Áreas</span>
                     </div>
                   )}
                   {proyectosSinCarpeta.map(p => (
