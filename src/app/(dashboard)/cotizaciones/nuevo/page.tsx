@@ -247,7 +247,12 @@ function CotizadorForm() {
   const [tratoArchivos, setTratoArchivos] = useState<Array<{ id: string; nombre: string; url: string; tipo: string }>>([]);
   const [tratoFormEstado, setTratoFormEstado] = useState<string | null>(null);
   // Equipos/categorías seleccionados en el descubrimiento del trato: { categorias: CategoriaEquipo IDs, equipos: Equipo IDs }
-  const [equiposInteres, setEquiposInteres] = useState<{ categorias: string[]; equipos: string[]; cantidades: Record<string, number> }>({ categorias: [], equipos: [], cantidades: {} });
+  // `extras` = equipos escritos a mano en el descubrimiento (no existen en inventario);
+  // se agregan como conceptos ocasionales con precio editable.
+  const [equiposInteres, setEquiposInteres] = useState<{ categorias: string[]; equipos: string[]; cantidades: Record<string, number>; extras: { id: string; nombre: string; categoria?: string; cantidad?: number }[] }>({ categorias: [], equipos: [], cantidades: {}, extras: [] });
+  // Precio capturado por cada extra antes de agregarlo, y los extras ya agregados.
+  const [extrasPrecios, setExtrasPrecios] = useState<Record<string, string>>({});
+  const [extrasAgregados, setExtrasAgregados] = useState<string[]>([]);
   // Precios especiales del cliente: { equipoId → precio }
   const [preciosCliente, setPreciosCliente] = useState<Record<string, number>>({});
   // Precio original de lista al momento de registrar el especial: { equipoId → precioOriginal }
@@ -572,7 +577,7 @@ function CotizadorForm() {
         }
         if (t.asistentesEstimados) setAsistentesEstimados(t.asistentesEstimados);
         if (t.formEstado) setTratoFormEstado(t.formEstado);
-        if (t.equiposInteres) { try { const ei = JSON.parse(t.equiposInteres); setEquiposInteres({ categorias: ei.categorias ?? [], equipos: ei.equipos ?? [], cantidades: ei.cantidades ?? {} }); } catch { /* noop */ } }
+        if (t.equiposInteres) { try { const ei = JSON.parse(t.equiposInteres); setEquiposInteres({ categorias: ei.categorias ?? [], equipos: ei.equipos ?? [], cantidades: ei.cantidades ?? {}, extras: ei.extras ?? [] }); } catch { /* noop */ } }
       }
     });
   }, [clienteId, tratoId]);
@@ -708,6 +713,21 @@ function CotizadorForm() {
         agregarEquipoDescubrimiento(eq, equiposInteres.cantidades[eq.id]);
       }
     });
+  }
+
+  // Extra del descubrimiento (equipo a mano) → concepto ocasional con precio editable.
+  function agregarExtraDescubrimiento(extra: { id: string; nombre: string; categoria?: string; cantidad?: number }) {
+    const precio = parseFloat(extrasPrecios[extra.id] ?? "") || 0;
+    if (precio <= 0) return;
+    const cant = extra.cantidad && extra.cantidad > 0 ? extra.cantidad : 1;
+    const dias = parseInt(evento.diasEquipo) || 1;
+    const desc = extra.categoria ? `${extra.nombre} (${extra.categoria})` : extra.nombre;
+    setLineasOcasional(prev => [...prev, {
+      id: uid(), descripcion: desc,
+      cantidad: cant, dias, precioUnitario: precio,
+      subtotal: precio * cant * dias,
+    }]);
+    setExtrasAgregados(prev => prev.includes(extra.id) ? prev : [...prev, extra.id]);
   }
 
   function agregarSugerenciaTecnico(keyword: string, cantidad: number) {
@@ -1667,14 +1687,15 @@ function CotizadorForm() {
           </Seccion>
 
           {/* ── Sugerencia de equipo (derivada del descubrimiento) ── */}
-          {(equiposInteres.categorias.length > 0 || equiposInteres.equipos.length > 0) && (() => {
+          {(equiposInteres.categorias.length > 0 || equiposInteres.equipos.length > 0 || equiposInteres.extras.length > 0) && (() => {
             const catsSel = equiposInteres.categorias
               .map(id => categoriasList.find(c => c.id === id)?.nombre)
               .filter((n): n is string => !!n);
             const eqsSel = equiposInteres.equipos
               .map(id => equipos.find(e => e.id === id))
               .filter((e): e is Equipo => !!e);
-            if (catsSel.length === 0 && eqsSel.length === 0) return null;
+            const extrasSel = equiposInteres.extras ?? [];
+            if (catsSel.length === 0 && eqsSel.length === 0 && extrasSel.length === 0) return null;
             return (
               <details className="bg-[#0d0d0d] border border-[#B3985B]/30 rounded-xl group" open>
                 <summary className="flex items-center gap-3 px-5 py-3 cursor-pointer select-none">
@@ -1738,8 +1759,53 @@ function CotizadorForm() {
                       </div>
                     </div>
                   )}
+                  {extrasSel.length > 0 && (
+                    <div>
+                      <p className="text-[#B3985B] text-[10px] font-bold uppercase tracking-wider mb-2">Equipos a mano (define su precio)</p>
+                      <div className="space-y-1.5">
+                        {extrasSel.map(ex => {
+                          const yaAgregado = extrasAgregados.includes(ex.id);
+                          const precio = extrasPrecios[ex.id] ?? "";
+                          const cant = ex.cantidad && ex.cantidad > 0 ? ex.cantidad : 1;
+                          return (
+                            <div key={ex.id} className="flex items-center gap-2 text-sm">
+                              <span className="flex-1 leading-snug text-gray-300 min-w-0">
+                                <span className="truncate">{ex.nombre}</span>
+                                {ex.categoria && <span className="ml-1 text-[10px] text-gray-500">{ex.categoria}</span>}
+                                <span className="ml-1.5 text-[10px] text-[#B3985B] font-semibold bg-[#B3985B]/10 rounded px-1.5 py-0.5">{cant} pz</span>
+                              </span>
+                              {!yaAgregado ? (
+                                <>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <span className="text-gray-500 text-xs">$</span>
+                                    <input
+                                      type="number" min="0" inputMode="decimal"
+                                      value={precio}
+                                      onChange={e => setExtrasPrecios(p => ({ ...p, [ex.id]: e.target.value }))}
+                                      onKeyDown={e => { if (e.key === "Enter") agregarExtraDescubrimiento(ex); }}
+                                      placeholder="precio"
+                                      className="w-20 bg-[#111] border border-[#2a2a2a] rounded px-2 py-0.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+                                    />
+                                  </div>
+                                  <button
+                                    onClick={() => agregarExtraDescubrimiento(ex)}
+                                    disabled={!(parseFloat(precio) > 0)}
+                                    className="shrink-0 text-[10px] px-2 py-0.5 rounded bg-[#B3985B]/15 text-[#B3985B] hover:bg-[#B3985B]/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors leading-5"
+                                  >
+                                    + Agregar
+                                  </button>
+                                </>
+                              ) : (
+                                <span className="shrink-0 text-[10px] text-green-500 px-1 leading-5">✓ agregado</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                   <p className="text-gray-700 text-xs pt-3 border-t border-[#1a1a1a]">
-                    Basado en lo seleccionado durante el descubrimiento. Los equipos con cantidad la traen desde ahí; los que dicen “sin cantidad” se agregan con 1 pieza para que la ajustes manualmente.
+                    Basado en lo seleccionado durante el descubrimiento. Los equipos con cantidad la traen desde ahí; los que dicen “sin cantidad” se agregan con 1 pieza para que la ajustes manualmente. Los equipos a mano se agregan como conceptos adicionales con el precio que definas.
                   </p>
                 </div>
               </details>
