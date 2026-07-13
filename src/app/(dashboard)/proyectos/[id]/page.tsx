@@ -19,6 +19,7 @@ import ProyectoTareas from "./ProyectoTareas";
 import { BackButton } from "@/components/BackButton";
 import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem } from "@/components/proyectos/ViabilidadWidget";
 import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
+import { contarRespondidos, contarIncidencias, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
@@ -79,6 +80,7 @@ interface Proyecto {
   cotizacion: { id: string; numeroCotizacion: string; granTotal: number; diasComidas: number; subtotalComidas: number; subtotalOperacion: number; subtotalTransporte: number; subtotalHospedaje: number; subtotalEquiposNeto: number; subtotalTerceros: number; notasSecciones: string | null; observaciones: string | null; lineas: { id: string; tipo: string; descripcion: string; cantidad: number; nivel: string | null; jornada: string | null; precioUnitario: number; notas: string | null; marca: string | null; rolTecnicoId: string | null; rolTecnico: { id: string; nombre: string; disciplina: string | null } | null }[] } | null;
   logisticaRenta: string | null;
   docsTecnicos: string | null;
+  evaluacionPostEvento: EvalPostEventoData | null;
   proveedoresRenta: string | null;
   equiposRiderExtra: string | null;
   zona: string;
@@ -6420,6 +6422,58 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
                 return (
                   <div className="space-y-4">
+
+                  {/* ── Evaluación Post Evento (cierre operativo del coordinador) ── */}
+                  {(proyecto.tipoServicio === "PRODUCCION_TECNICA" || proyecto.tipoServicio === "DIRECCION_TECNICA") && (() => {
+                    const evalPost = proyecto.evaluacionPostEvento;
+                    const items = evalPost?.items ?? {};
+                    const { respondidos, total } = contarRespondidos(items);
+                    const incidencias = evalPost ? contarIncidencias(items) : 0;
+                    const iniciada = !!evalPost?.respondidoEn;
+                    return (
+                      <div className="ms-card p-5 space-y-4">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <div>
+                            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Evaluación post evento</p>
+                            <p className="text-gray-500 text-xs mt-0.5">Cierre operativo del coordinador para presentar en junta</p>
+                          </div>
+                          <Link
+                            href={`/proyectos/${proyecto.id}/evaluacion-post-evento`}
+                            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-white text-xs px-4 py-2 rounded-lg transition-colors"
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                            {iniciada ? "Editar" : "Realizar evaluación"}
+                          </Link>
+                        </div>
+                        {iniciada ? (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-[#1a1a1a] text-gray-300 border border-[#333]">{respondidos}/{total} respondidos</span>
+                              {incidencias > 0 ? (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-red-900/50 text-red-300">{incidencias} punto{incidencias === 1 ? "" : "s"} a revisar</span>
+                              ) : (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-green-900/50 text-green-300">Sin incidencias</span>
+                              )}
+                              {evalPost?.llenadoPorNombre && (
+                                <span className="text-xs text-gray-500">Por {evalPost.llenadoPorNombre}</span>
+                              )}
+                              {evalPost?.respondidoEn && (
+                                <span className="text-xs text-gray-500">· {fmtDateTime(evalPost.respondidoEn)}</span>
+                              )}
+                            </div>
+                            {evalPost?.comentariosFinales && (
+                              <div className="bg-[#0d0d0d] rounded-lg px-3 py-2">
+                                <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Comentarios finales del coordinador</p>
+                                <p className="text-gray-300 text-sm whitespace-pre-wrap line-clamp-3">{evalPost.comentariosFinales}</p>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-gray-600 text-sm">Aún no se ha realizado. Registra el cierre operativo del evento.</p>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* ── Reporte Post-Evento ── */}
                   <div className="ms-card p-5 space-y-4">
