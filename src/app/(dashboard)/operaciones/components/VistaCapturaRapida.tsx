@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import MigrarCapturaModal from "./MigrarCapturaModal";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type CapturaItem = {
@@ -12,7 +13,6 @@ type CapturaItem = {
   creadoEn: string;
 };
 
-const AREAS = ["DIRECCION", "ADMINISTRACION", "MARKETING", "VENTAS", "PRODUCCION"];
 const AREA_LABELS: Record<string, string> = {
   DIRECCION: "Dirección",
   ADMINISTRACION: "Administración",
@@ -36,19 +36,13 @@ function isOld(dateStr: string) {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export function VistaCapturaRapida({
-  onConvertirATarea,
-}: {
-  onConvertirATarea?: (texto: string) => void;
-}) {
+export function VistaCapturaRapida() {
   const [items, setItems]           = useState<CapturaItem[]>([]);
   const [loading, setLoading]       = useState(true);
   const [texto, setTexto]           = useState("");
   const [saving, setSaving]         = useState(false);
   const [hoverId, setHoverId]       = useState<string | null>(null);
-  const [classifyId, setClassifyId] = useState<string | null>(null);
-  const [classifyTipo, setClassifyTipo] = useState<string | null>(null);
-  const [classifyArea, setClassifyArea] = useState<string | null>(null);
+  const [migrateItem, setMigrateItem] = useState<CapturaItem | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
@@ -75,60 +69,6 @@ export function VistaCapturaRapida({
       refresh();
     }
     setSaving(false);
-  }
-
-  // ── Classify ───────────────────────────────────────────────────────────────
-  async function confirmClassify() {
-    if (!classifyId || !classifyTipo) return;
-    if (classifyTipo === "tarea") {
-      const item = items.find(i => i.id === classifyId);
-      if (item && onConvertirATarea) {
-        onConvertirATarea(item.contenido);
-        await fetch(`/api/captura/${classifyId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ clasificado: true, tipo: "tarea" }),
-        });
-      }
-    } else if (classifyTipo === "idea") {
-      const item = items.find(i => i.id === classifyId);
-      if (item) {
-        await fetch("/api/ideas", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ titulo: item.contenido, area: classifyArea }),
-        });
-        await fetch(`/api/captura/${classifyId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ clasificado: true, tipo: "idea", area: classifyArea }),
-        });
-      }
-    } else if (classifyTipo === "iniciativa") {
-      const item = items.find(i => i.id === classifyId);
-      if (item) {
-        await fetch("/api/iniciativas", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ titulo: item.contenido, area: classifyArea }),
-        });
-        await fetch(`/api/captura/${classifyId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ clasificado: true, tipo: "iniciativa", area: classifyArea }),
-        });
-      }
-    } else {
-      await fetch(`/api/captura/${classifyId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ clasificado: true, tipo: classifyTipo, area: classifyArea }),
-      });
-    }
-    setClassifyId(null);
-    setClassifyTipo(null);
-    setClassifyArea(null);
-    refresh();
   }
 
   async function handleDelete(id: string) {
@@ -243,21 +183,15 @@ export function VistaCapturaRapida({
               {/* Hover actions */}
               {hoverId === item.id && (
                 <div className="flex items-center gap-1 mt-2.5 pt-2 border-t border-white/[0.04]">
-                  {[
-                    { key: "idea",       label: "→ Idea",        color: "#a78bfa" },
-                    { key: "iniciativa", label: "→ Iniciativa",  color: "#3b82f6" },
-                    { key: "tarea",      label: "→ Tarea",       color: "#B3985B" },
-                    { key: "backlog",    label: "→ Backlog",     color: "#555" },
-                  ].map(a => (
-                    <button
-                      key={a.key}
-                      onClick={() => { setClassifyId(item.id); setClassifyTipo(a.key); }}
-                      className="px-2 py-1 rounded text-[10.5px] font-medium transition-all hover:opacity-80"
-                      style={{ background: `${a.color}18`, color: a.color, border: `1px solid ${a.color}25` }}
-                    >
-                      {a.label}
-                    </button>
-                  ))}
+                  <button
+                    onClick={() => setMigrateItem(item)}
+                    className="px-2.5 py-1 rounded text-[10.5px] font-semibold transition-all hover:opacity-80 flex items-center gap-1"
+                    style={{ background: "#e8a02018", color: "#e8a020", border: "1px solid #e8a02033" }}
+                  >
+                    Migrar
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                  </button>
+                  <span className="text-[10px] text-[#3a3a3a]">Tarea · Proyecto · Compromiso · Idea…</span>
                   <button
                     onClick={() => handleDelete(item.id)}
                     className="ml-auto p-1 rounded text-[#2a2a2a] hover:text-[#666] transition-colors"
@@ -273,57 +207,13 @@ export function VistaCapturaRapida({
         )}
       </div>
 
-      {/* ── Classify Modal ─────────────────────────────────────────────────── */}
-      {classifyId && classifyTipo && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
-          onClick={e => { if (e.target === e.currentTarget) { setClassifyId(null); setClassifyTipo(null); } }}
-        >
-          <div className="w-full max-w-sm rounded-2xl border border-[#222] bg-[#0e0e0e] p-5 shadow-2xl">
-            <p className="text-sm font-semibold text-white mb-1">
-              Clasificar como{" "}
-              <span style={{ color: classifyTipo === "idea" ? "#a78bfa" : classifyTipo === "iniciativa" ? "#3b82f6" : classifyTipo === "tarea" ? "#B3985B" : "#555" }}>
-                {classifyTipo}
-              </span>
-            </p>
-            <p className="text-[12px] text-[#555] mb-4">
-              Selecciona el área (opcional) y confirma.
-            </p>
-            {classifyTipo !== "tarea" && (
-              <div className="grid grid-cols-2 gap-1.5 mb-4">
-                {AREAS.map(a => (
-                  <button
-                    key={a}
-                    onClick={() => setClassifyArea(classifyArea === a ? null : a)}
-                    className="px-2 py-1.5 rounded-lg text-[11.5px] transition-all border"
-                    style={{
-                      background: classifyArea === a ? "#e8a020/12" : "#111",
-                      borderColor: classifyArea === a ? "#e8a020/40" : "#222",
-                      color: classifyArea === a ? "#e8a020" : "#555",
-                    }}
-                  >
-                    {AREA_LABELS[a]}
-                  </button>
-                ))}
-              </div>
-            )}
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setClassifyId(null); setClassifyTipo(null); setClassifyArea(null); }}
-                className="flex-1 py-2 rounded-lg border border-[#222] text-[12px] text-[#555] hover:text-[#888] transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmClassify}
-                className="flex-1 py-2 rounded-lg bg-[#e8a020] hover:bg-[#f0ab2a] text-[#080808] text-[12px] font-semibold transition-colors"
-              >
-                Confirmar
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* ── Modal de migración adaptativo ──────────────────────────────────── */}
+      {migrateItem && (
+        <MigrarCapturaModal
+          captura={{ id: migrateItem.id, contenido: migrateItem.contenido }}
+          onClose={() => setMigrateItem(null)}
+          onDone={() => { setMigrateItem(null); refresh(); }}
+        />
       )}
     </div>
   );

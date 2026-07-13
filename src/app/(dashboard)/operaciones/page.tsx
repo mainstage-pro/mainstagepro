@@ -1745,12 +1745,7 @@ export default function OperacionesPage() {
             </div>
 
           ) : vista === "captura" ? (
-            <VistaCapturaRapida
-              onConvertirATarea={(texto) => {
-                setVista("bandeja");
-                setTimeout(() => setQuickAddTrigger(n => n + 1), 50);
-              }}
-            />
+            <VistaCapturaRapida />
 
           ) : vista === "ideas" ? (
             <VistaIdeas
