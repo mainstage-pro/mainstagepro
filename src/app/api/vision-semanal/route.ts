@@ -16,11 +16,17 @@ import {
 } from "@/lib/vision-semanal";
 
 // ¿Puede este usuario editar el documento de esta área?
-function puedeEditar(role: string, userArea: string | null | undefined, area: VisionAreaKey): boolean {
-  if (role === "ADMIN") return true;
-  if (userArea === area) return true;
+function puedeEditar(
+  session: { id: string; role: string; area?: string | null },
+  area: VisionAreaKey,
+  responsableId?: string | null,
+): boolean {
+  if (session.role === "ADMIN") return true;
+  if (session.area === area) return true;
   // Producción también es responsable de pre-producción.
-  if (area === "PREPRODUCCION" && userArea === "PRODUCCION") return true;
+  if (area === "PREPRODUCCION" && session.area === "PRODUCCION") return true;
+  // El responsable designado del documento puede llenarlo.
+  if (responsableId && session.id === responsableId) return true;
   return false;
 }
 
@@ -40,12 +46,20 @@ export async function GET(req: NextRequest) {
 
   const doc = await prisma.visionSemanal.findUnique({
     where: { area_semana: { area, semana } },
-    include: { autor: { select: { id: true, name: true } } },
+    include: {
+      autor: { select: { id: true, name: true } },
+      responsable: { select: { id: true, name: true } },
+    },
   });
 
-  const [tareas, proyectos] = await Promise.all([
-    tareasDelArea(area, semana),
+  const [tareas, proyectos, usuarios] = await Promise.all([
+    tareasDelArea(area),
     proyectosDelArea(area),
+    prisma.user.findMany({
+      where: { active: true },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   const config = VISION_CONFIG[area];
@@ -59,7 +73,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     config,
     semana,
-    puedeEditar: puedeEditar(session.role, session.area, area),
+    puedeEditar: puedeEditar(session, area, doc?.responsableId),
     nuevo: !doc,
     documento: {
       enfoque: doc?.enfoque ?? "",
@@ -68,10 +82,12 @@ export async function GET(req: NextRequest) {
       comentarios: doc?.comentarios ?? "",
       extra,
       autor: doc?.autor ?? null,
+      responsable: doc?.responsable ?? null,
       actualizadoEn: doc?.updatedAt?.toISOString() ?? null,
     },
     tareas,
     proyectos,
+    usuarios,
   });
 }
 
@@ -86,11 +102,16 @@ export async function PUT(req: NextRequest) {
   if (!isVisionArea(area)) {
     return NextResponse.json({ error: "Área inválida" }, { status: 400 });
   }
-  if (!puedeEditar(session.role, session.area, area)) {
-    return NextResponse.json({ error: "Sin permiso para editar esta área" }, { status: 403 });
-  }
 
   await ensureVisionSemanalTable();
+
+  const existente = await prisma.visionSemanal.findUnique({
+    where: { area_semana: { area, semana } },
+    select: { responsableId: true },
+  });
+  if (!puedeEditar(session, area, existente?.responsableId)) {
+    return NextResponse.json({ error: "Sin permiso para editar esta área" }, { status: 403 });
+  }
 
   // Sanea entregaInfo: array de { id, titulo, contenido }
   const entregaInfo: EntregaPunto[] = Array.isArray(body.entregaInfo)
@@ -108,12 +129,16 @@ export async function PUT(req: NextRequest) {
       ? { ...PREPRODUCCION_EXTRA_VACIO, ...body.extra }
       : PREPRODUCCION_EXTRA_VACIO;
 
+  const responsableId =
+    typeof body.responsableId === "string" && body.responsableId ? body.responsableId : null;
+
   const data = {
     enfoque: typeof body.enfoque === "string" ? body.enfoque : "",
     desbloqueo: typeof body.desbloqueo === "string" ? body.desbloqueo : "",
     comentarios: typeof body.comentarios === "string" ? body.comentarios : "",
     entregaInfo: entregaInfo as unknown as object,
     extra: extra as unknown as object,
+    responsableId,
     autorId: session.id,
   };
 
@@ -121,7 +146,10 @@ export async function PUT(req: NextRequest) {
     where: { area_semana: { area, semana } },
     create: { area, semana, ...data },
     update: data,
-    include: { autor: { select: { id: true, name: true } } },
+    include: {
+      autor: { select: { id: true, name: true } },
+      responsable: { select: { id: true, name: true } },
+    },
   });
 
   await logActividad(
@@ -141,6 +169,7 @@ export async function PUT(req: NextRequest) {
       comentarios: doc.comentarios,
       extra: doc.extra,
       autor: doc.autor,
+      responsable: doc.responsable,
       actualizadoEn: doc.updatedAt.toISOString(),
     },
   });

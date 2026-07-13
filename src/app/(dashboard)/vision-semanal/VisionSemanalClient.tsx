@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import TaskItem, { type TareaItem } from "@/app/(dashboard)/operaciones/components/TaskItem";
 
 // ─── Tipos (espejo del API) ──────────────────────────────────────────────────
 interface EntregaPunto {
@@ -17,17 +18,7 @@ interface PreExtra {
   incidenciasPersonal: string;
   situacionesGenerales: string;
 }
-interface VisionTarea {
-  id: string;
-  titulo: string;
-  descripcion: string | null;
-  prioridad: string;
-  estado: string;
-  fecha: string | null;
-  fechaVencimiento: string | null;
-  asignadoA: { id: string; name: string } | null;
-  vencida: boolean;
-}
+interface Usuario { id: string; name: string }
 interface VisionProyecto {
   id: string;
   nombre: string;
@@ -58,10 +49,21 @@ interface VisionData {
     comentarios: string;
     extra: PreExtra;
     autor: { id: string; name: string } | null;
+    responsable: { id: string; name: string } | null;
     actualizadoEn: string | null;
   };
-  tareas: VisionTarea[];
+  tareas: TareaItem[];
   proyectos: VisionProyecto[];
+  usuarios: Usuario[];
+}
+interface ResumenArea {
+  area: string;
+  label: string;
+  tipo: "STANDARD" | "PREPRODUCCION";
+  nuevo: boolean;
+  responsable: { id: string; name: string } | null;
+  autor: { id: string; name: string } | null;
+  actualizadoEn: string | null;
 }
 
 // ─── Metadatos de áreas ──────────────────────────────────────────────────────
@@ -71,13 +73,6 @@ const AREA_META: Record<string, { label: string; dot: string; chip: string }> = 
   VENTAS:         { label: "Comercial",      dot: "#4ade80", chip: "bg-green-900/30 text-green-400" },
   PRODUCCION:     { label: "Producción",     dot: "#facc15", chip: "bg-yellow-900/30 text-yellow-400" },
   PREPRODUCCION:  { label: "Pre producción", dot: "#B3985B", chip: "bg-[#B3985B]/15 text-[#B3985B]" },
-};
-
-const PRIO_META: Record<string, { label: string; cls: string }> = {
-  URGENTE: { label: "Urgente", cls: "text-red-400 bg-red-950/40 border-red-500/30" },
-  ALTA:    { label: "Alta",    cls: "text-orange-400 bg-orange-950/40 border-orange-500/25" },
-  MEDIA:   { label: "Media",   cls: "text-[#B3985B] bg-[#B3985B]/10 border-[#B3985B]/25" },
-  BAJA:    { label: "Baja",    cls: "text-[#888] bg-[#161616] border-[#2a2a2a]" },
 };
 
 const ESTADO_PROY: Record<string, { label: string; cls: string }> = {
@@ -112,8 +107,33 @@ function rangoSemana(semana: string): string {
 }
 function fmtFecha(iso: string | null): string {
   if (!iso) return "";
-  const d = new Date(`${iso}T00:00:00`);
+  const d = new Date(`${iso.slice(0, 10)}T00:00:00`);
   return `${d.getDate()} ${MESES[d.getMonth()]}`;
+}
+function fmtActualizado(iso: string | null | undefined, autor?: { name: string } | null): string {
+  if (!iso) return "Sin llenar aún";
+  const f = new Date(iso).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  return `Actualizado ${f}${autor ? ` · ${autor.name}` : ""}`;
+}
+
+// ─── Selector de semana (compartido) ─────────────────────────────────────────
+function SelectorSemana({ semana, setSemana }: { semana: string; setSemana: (s: string) => void }) {
+  const esSemanaActual = semana === lunesDeHoy();
+  return (
+    <div className="flex items-center gap-1 bg-[#0c0c0c] border border-[#1a1a1a] rounded-xl p-1">
+      <button onClick={() => setSemana(desplazarSemana(semana, -7))}
+        className="w-7 h-7 flex items-center justify-center rounded-lg text-[#888] hover:text-white hover:bg-[#161616] transition-colors" aria-label="Semana anterior">‹</button>
+      <div className="px-2 text-center min-w-[132px]">
+        <p className="text-[12px] text-white font-medium leading-tight">{rangoSemana(semana)}</p>
+        <button onClick={() => setSemana(lunesDeHoy())} disabled={esSemanaActual}
+          className={`text-[10px] leading-tight ${esSemanaActual ? "text-[#B3985B]/70" : "text-[#666] hover:text-[#B3985B]"}`}>
+          {esSemanaActual ? "Semana actual" : "Ir a semana actual"}
+        </button>
+      </div>
+      <button onClick={() => setSemana(desplazarSemana(semana, 7))}
+        className="w-7 h-7 flex items-center justify-center rounded-lg text-[#888] hover:text-white hover:bg-[#161616] transition-colors" aria-label="Semana siguiente">›</button>
+    </div>
+  );
 }
 
 // ─── Componentes de campo ────────────────────────────────────────────────────
@@ -154,9 +174,151 @@ function CampoTexto({
 // ─── Componente principal ────────────────────────────────────────────────────
 export default function VisionSemanalClient({
   areas, areaInicial, userArea, isAdmin,
-}: { areas: string[]; areaInicial: string; userArea: string | null; isAdmin: boolean }) {
-  const [area, setArea] = useState(areaInicial);
+}: { areas: string[]; areaInicial: string | null; userArea: string | null; isAdmin: boolean }) {
+  const [vista, setVista] = useState<"index" | "documento">(areaInicial ? "documento" : "index");
+  const [area, setArea] = useState(areaInicial ?? areas[0]);
   const [semana, setSemana] = useState(lunesDeHoy());
+
+  function abrirDocumento(a: string) {
+    setArea(a);
+    setVista("documento");
+  }
+
+  return vista === "index" ? (
+    <IndexView
+      areas={areas} semana={semana} setSemana={setSemana}
+      userArea={userArea} isAdmin={isAdmin} onAbrir={abrirDocumento}
+    />
+  ) : (
+    <DocumentoView
+      areas={areas} area={area} setArea={setArea} semana={semana} setSemana={setSemana}
+      userArea={userArea} isAdmin={isAdmin} onVolver={() => setVista("index")}
+    />
+  );
+}
+
+// ─── Portada: lista de documentos por área ───────────────────────────────────
+function IndexView({
+  areas, semana, setSemana, userArea, isAdmin, onAbrir,
+}: {
+  areas: string[]; semana: string; setSemana: (s: string) => void;
+  userArea: string | null; isAdmin: boolean; onAbrir: (a: string) => void;
+}) {
+  const [resumen, setResumen] = useState<ResumenArea[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [copiado, setCopiado] = useState<string | null>(null);
+
+  const cargarResumen = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await fetch(`/api/vision-semanal/resumen?semana=${semana}`);
+      const d = await r.json();
+      setResumen(d.areas ?? []);
+    } catch {
+      setResumen([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [semana]);
+
+  useEffect(() => { cargarResumen(); }, [cargarResumen]);
+
+  async function copiarLink(a: string) {
+    const url = `${window.location.origin}/vision-semanal?area=${a}&semana=${semana}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiado(a);
+      setTimeout(() => setCopiado((prev) => (prev === a ? null : prev)), 1800);
+    } catch { /* clipboard no disponible */ }
+  }
+
+  const porArea = new Map((resumen ?? []).map((r) => [r.area, r]));
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-4 sm:px-6 py-4 border-b border-white/[0.06] shrink-0">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <h1 className="text-white text-xl font-semibold tracking-tight">Visión semanal</h1>
+            <p className="text-[12px] text-[#666] mt-0.5 max-w-2xl leading-snug">
+              Un documento por área para la junta de inicio de semana. Abre el de tu área, o comparte el enlace
+              con la persona responsable de llenarlo.
+            </p>
+          </div>
+          <SelectorSemana semana={semana} setSemana={setSemana} />
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-3xl w-full mx-auto px-4 sm:px-6 py-6 pb-28">
+          {loading ? (
+            <div className="text-center text-[#555] text-sm py-20">Cargando documentos…</div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {areas.map((a) => {
+                const m = AREA_META[a];
+                const r = porArea.get(a);
+                const esMia = !isAdmin && userArea === a;
+                return (
+                  <div key={a} className="rounded-2xl bg-[#0c0c0c] border border-[#1a1a1a] p-4 flex flex-col gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <span className="mt-1 w-2.5 h-2.5 rounded-full shrink-0" style={{ background: m.dot }} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-white text-[15px] font-semibold leading-tight">{m.label}</h3>
+                          {esMia && <span className="text-[9px] text-[#B3985B] border border-[#B3985B]/30 rounded px-1 py-0.5">tu área</span>}
+                        </div>
+                        <p className="text-[11px] text-[#666] mt-0.5">{fmtActualizado(r?.actualizadoEn, r?.autor)}</p>
+                      </div>
+                    </div>
+
+                    <div className="text-[12px] text-[#888] flex items-center gap-1.5">
+                      <span className="text-[#555]">Responsable:</span>
+                      {r?.responsable ? (
+                        <span className="inline-flex items-center gap-1 text-[#c4c4c4]">
+                          <span className="w-4 h-4 rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[9px] text-[#B3985B] flex items-center justify-center font-bold">
+                            {r.responsable.name.charAt(0).toUpperCase()}
+                          </span>
+                          {r.responsable.name}
+                        </span>
+                      ) : (
+                        <span className="text-[#555] italic">Sin asignar</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-auto">
+                      <button onClick={() => onAbrir(a)}
+                        className="flex-1 text-[13px] py-1.5 rounded-lg font-semibold bg-[#161616] hover:bg-[#1e1e1e] text-white border border-[#2a2a2a] transition-colors">
+                        Abrir documento
+                      </button>
+                      <button onClick={() => copiarLink(a)}
+                        className={`text-[12px] px-3 py-1.5 rounded-lg font-medium border transition-colors ${
+                          copiado === a
+                            ? "bg-emerald-950/40 border-emerald-700/40 text-emerald-400"
+                            : "bg-[#0f0f0f] border-[#222] text-[#888] hover:text-white hover:border-[#333]"
+                        }`}>
+                        {copiado === a ? "¡Copiado!" : "Copiar link"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Vista del documento ─────────────────────────────────────────────────────
+function DocumentoView({
+  areas, area, setArea, semana, setSemana, userArea, isAdmin, onVolver,
+}: {
+  areas: string[]; area: string; setArea: (a: string) => void;
+  semana: string; setSemana: (s: string) => void;
+  userArea: string | null; isAdmin: boolean; onVolver: () => void;
+}) {
   const [data, setData] = useState<VisionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -168,10 +330,15 @@ export default function VisionSemanalClient({
   const [entregaInfo, setEntregaInfo] = useState<EntregaPunto[]>([]);
   const [desbloqueo, setDesbloqueo] = useState("");
   const [comentarios, setComentarios] = useState("");
+  const [responsableId, setResponsableId] = useState<string>("");
   const [extra, setExtra] = useState<PreExtra>({
     mejoras: "", solicitudesHerramientas: "", solicitudesRecursoHumano: "",
     solicitudesPresupuesto: "", fallasTransporte: "", incidenciasPersonal: "", situacionesGenerales: "",
   });
+
+  // Tareas en vivo (editables inline vía TaskItem)
+  const [tareas, setTareas] = useState<TareaItem[]>([]);
+  const [tareaSel, setTareaSel] = useState<TareaItem | null>(null);
 
   const cargar = useCallback(async () => {
     setLoading(true);
@@ -185,7 +352,9 @@ export default function VisionSemanalClient({
       setEntregaInfo(d.documento.entregaInfo);
       setDesbloqueo(d.documento.desbloqueo);
       setComentarios(d.documento.comentarios);
+      setResponsableId(d.documento.responsable?.id ?? "");
       setExtra(d.documento.extra);
+      setTareas(d.tareas);
       setDirty(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
@@ -198,6 +367,7 @@ export default function VisionSemanalClient({
 
   const editable = data?.puedeEditar ?? false;
   const tipo = data?.config.tipo ?? "STANDARD";
+  const usuarios = useMemo(() => data?.usuarios ?? [], [data]);
 
   function marcar<T>(setter: (v: T) => void) {
     return (v: T) => { setter(v); setDirty(true); };
@@ -220,6 +390,41 @@ export default function VisionSemanalClient({
     setDirty(true);
   }
 
+  // ── Edición de tareas (persiste directo en el módulo de tareas) ──
+  const saveTarea = useCallback(async (id: string, patch: Record<string, unknown>) => {
+    setTareas((prev) => prev.map((t) => (t.id === id
+      ? { ...t, ...patch, asignadoA: "asignadoAId" in patch
+          ? (usuarios.find((u) => u.id === patch.asignadoAId) ?? null)
+          : t.asignadoA } as TareaItem
+      : t)));
+    setTareaSel((prev) => (prev && prev.id === id ? { ...prev, ...patch } as TareaItem : prev));
+    try {
+      await fetch(`/api/tareas/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+    } catch { /* se reintentará al recargar */ }
+  }, [usuarios]);
+
+  const completeTarea = useCallback(async (id: string) => {
+    setTareas((prev) => prev.filter((t) => t.id !== id));
+    try {
+      await fetch(`/api/tareas/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado: "COMPLETADA" }),
+      });
+    } catch { /* noop */ }
+  }, []);
+
+  const deleteTarea = useCallback(async (id: string) => {
+    setTareas((prev) => prev.filter((t) => t.id !== id));
+    try {
+      await fetch(`/api/tareas/${id}`, { method: "DELETE" });
+    } catch { /* noop */ }
+  }, []);
+
   async function guardar() {
     if (!editable) return;
     setSaving(true);
@@ -228,7 +433,7 @@ export default function VisionSemanalClient({
       const r = await fetch("/api/vision-semanal", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ area, semana, enfoque, entregaInfo, desbloqueo, comentarios, extra }),
+        body: JSON.stringify({ area, semana, enfoque, entregaInfo, desbloqueo, comentarios, extra, responsableId: responsableId || null }),
       });
       if (!r.ok) {
         const j = await r.json().catch(() => ({}));
@@ -236,7 +441,7 @@ export default function VisionSemanalClient({
       }
       const j = await r.json();
       setDirty(false);
-      setData((prev) => prev ? { ...prev, nuevo: false, documento: { ...prev.documento, autor: j.documento.autor, actualizadoEn: j.documento.actualizadoEn } } : prev);
+      setData((prev) => prev ? { ...prev, nuevo: false, documento: { ...prev.documento, autor: j.documento.autor, responsable: j.documento.responsable, actualizadoEn: j.documento.actualizadoEn } } : prev);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error al guardar");
     } finally {
@@ -244,34 +449,23 @@ export default function VisionSemanalClient({
     }
   }
 
-  const esSemanaActual = semana === lunesDeHoy();
-
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="px-4 sm:px-6 py-4 border-b border-white/[0.06] shrink-0">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0">
+            <button onClick={onVolver}
+              className="text-[12px] text-[#666] hover:text-[#B3985B] transition-colors mb-1">
+              ‹ Documentos
+            </button>
             <h1 className="text-white text-xl font-semibold tracking-tight">Visión semanal</h1>
             <p className="text-[12px] text-[#666] mt-0.5 max-w-2xl leading-snug">
               Guía para la junta de inicio de semana. Cada responsable prepara aquí dónde está su área,
               qué viene y qué necesita de apoyo.
             </p>
           </div>
-          {/* Selector de semana */}
-          <div className="flex items-center gap-1 bg-[#0c0c0c] border border-[#1a1a1a] rounded-xl p-1">
-            <button onClick={() => setSemana(desplazarSemana(semana, -7))}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-[#888] hover:text-white hover:bg-[#161616] transition-colors" aria-label="Semana anterior">‹</button>
-            <div className="px-2 text-center min-w-[132px]">
-              <p className="text-[12px] text-white font-medium leading-tight">{rangoSemana(semana)}</p>
-              <button onClick={() => setSemana(lunesDeHoy())} disabled={esSemanaActual}
-                className={`text-[10px] leading-tight ${esSemanaActual ? "text-[#B3985B]/70" : "text-[#666] hover:text-[#B3985B]"}`}>
-                {esSemanaActual ? "Semana actual" : "Ir a semana actual"}
-              </button>
-            </div>
-            <button onClick={() => setSemana(desplazarSemana(semana, 7))}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-[#888] hover:text-white hover:bg-[#161616] transition-colors" aria-label="Semana siguiente">›</button>
-          </div>
+          <SelectorSemana semana={semana} setSemana={setSemana} />
         </div>
 
         {/* Tabs de área */}
@@ -307,6 +501,22 @@ export default function VisionSemanalClient({
                   Vista de solo lectura — este documento lo edita el responsable de {data.config.label}.
                 </div>
               )}
+
+              {/* Responsable de llenar el documento */}
+              <div className="rounded-xl bg-[#0c0c0c] border border-[#1a1a1a] px-3.5 py-3 flex items-center gap-3 flex-wrap">
+                <span className="text-[12px] text-[#888] font-medium">Responsable de llenar este documento</span>
+                <select
+                  value={responsableId}
+                  onChange={(e) => { setResponsableId(e.target.value); setDirty(true); }}
+                  disabled={!editable}
+                  className="flex-1 min-w-[180px] bg-[#111] border border-[#222] rounded-lg px-2.5 py-1.5 text-[13px] text-[#d6d6d6] focus:outline-none focus:border-[#B3985B]/40 disabled:opacity-60 disabled:cursor-default"
+                >
+                  <option value="">Sin asignar</option>
+                  {usuarios.map((u) => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))}
+                </select>
+              </div>
 
               {/* 1. Enfoque */}
               <Seccion n={1} icon="🎯" titulo="Enfoque de la semana"
@@ -359,8 +569,15 @@ export default function VisionSemanalClient({
                 <>
                   {/* 3. Revisión de tareas pendientes */}
                   <Seccion n={3} icon="✅" titulo="Revisión de tareas pendientes"
-                    hint="Tareas del área asignadas y con fecha vencida, actual o de esta semana.">
-                    <ListaTareas tareas={data.tareas} />
+                    hint="Todas las tareas asignadas y con fecha del área o de sus proyectos. Edita fecha, prioridad, responsable o descripción.">
+                    <ListaTareas
+                      tareas={tareas} usuarios={usuarios} editable={editable}
+                      onSelect={(id) => setTareaSel(tareas.find((t) => t.id === id) ?? null)}
+                      onComplete={completeTarea} onDelete={deleteTarea}
+                      onDateChange={(id, val) => saveTarea(id, { fecha: val || null })}
+                      onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
+                      onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
+                    />
                   </Seccion>
 
                   {/* 4. Desbloqueo de tareas */}
@@ -463,6 +680,15 @@ export default function VisionSemanalClient({
           </div>
         </div>
       )}
+
+      {/* Modal de edición de descripción de tarea */}
+      {tareaSel && (
+        <TareaEditModal
+          tarea={tareaSel} editable={editable}
+          onClose={() => setTareaSel(null)}
+          onSave={(patch) => { saveTarea(tareaSel.id, patch); setTareaSel(null); }}
+        />
+      )}
     </div>
   );
 }
@@ -479,44 +705,95 @@ function SubCampo({
   );
 }
 
-function ListaTareas({ tareas }: { tareas: VisionTarea[] }) {
+function ListaTareas({
+  tareas, usuarios, editable, onSelect, onComplete, onDelete, onDateChange, onPriorityChange, onAssign,
+}: {
+  tareas: TareaItem[];
+  usuarios: Usuario[];
+  editable: boolean;
+  onSelect: (id: string) => void;
+  onComplete: (id: string) => void;
+  onDelete: (id: string) => void;
+  onDateChange: (id: string, value: string) => void;
+  onPriorityChange: (id: string, prioridad: string) => void;
+  onAssign: (id: string, userId: string | null) => void;
+}) {
   if (tareas.length === 0) {
-    return <p className="text-[13px] text-[#555] px-1 py-2">Sin tareas pendientes con fecha para esta semana.</p>;
+    return <p className="text-[13px] text-[#555] px-1 py-2">Sin tareas asignadas con fecha en esta área.</p>;
   }
+  const noop = () => {};
   return (
-    <div className="rounded-xl bg-[#0c0c0c] border border-[#161616] divide-y divide-[#131313]">
-      {tareas.map((t) => {
-        const prio = PRIO_META[t.prioridad] ?? PRIO_META.MEDIA;
-        const fecha = t.fechaVencimiento ?? t.fecha;
-        return (
-          <div key={t.id} className="flex items-start gap-3 px-3 py-2.5">
-            <span className={`mt-1 w-[15px] h-[15px] shrink-0 rounded-full border-2 ${
-              t.prioridad === "URGENTE" ? "border-red-500 bg-red-500/20"
-              : t.prioridad === "ALTA" ? "border-orange-500 bg-orange-500/15"
-              : "border-[#B3985B] bg-[#B3985B]/10"}`} />
-            <div className="flex-1 min-w-0">
-              <p className="text-[14px] leading-snug text-[#d4d4d4]">{t.titulo}</p>
-              <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${prio.cls}`}>{prio.label}</span>
-                {fecha && (
-                  <span className={`text-[11px] px-1.5 py-0.5 rounded-md font-medium ${t.vencida ? "text-red-400 bg-red-950/30" : "text-emerald-400 bg-emerald-950/30"}`}>
-                    {t.vencida ? "Vencía " : ""}{fmtFecha(fecha)}
-                  </span>
-                )}
-                {t.estado === "EN_PROGRESO" && <span className="text-[10px] text-blue-400 bg-blue-950/30 px-1.5 py-0.5 rounded-md">En progreso</span>}
-                {t.asignadoA && (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-[#777]">
-                    <span className="w-[16px] h-[16px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[9px] text-[#B3985B] flex items-center justify-center font-bold">
-                      {t.asignadoA.name.charAt(0).toUpperCase()}
-                    </span>
-                    {t.asignadoA.name.split(" ")[0]}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })}
+    <div>
+      <div className="max-h-[480px] overflow-y-auto rounded-xl bg-[#0c0c0c] border border-[#161616] p-1">
+        {tareas.map((t) => (
+          <TaskItem
+            key={t.id} tarea={t} isSelected={false} showProject
+            onSelect={onSelect}
+            onComplete={editable ? onComplete : noop}
+            onDelete={editable ? onDelete : noop}
+            onDateChange={editable ? onDateChange : undefined}
+            onPriorityChange={editable ? onPriorityChange : undefined}
+            onAssign={editable ? onAssign : undefined}
+            users={usuarios}
+          />
+        ))}
+      </div>
+      <p className="text-[11px] text-[#555] mt-2 px-1">{tareas.length} tarea{tareas.length !== 1 ? "s" : ""} · toca una para editar su descripción</p>
+    </div>
+  );
+}
+
+function TareaEditModal({
+  tarea, editable, onClose, onSave,
+}: {
+  tarea: TareaItem;
+  editable: boolean;
+  onClose: () => void;
+  onSave: (patch: { titulo: string; descripcion: string }) => void;
+}) {
+  const [titulo, setTitulo] = useState(tarea.titulo);
+  const [descripcion, setDescripcion] = useState(tarea.descripcion ?? "");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-2xl bg-[#0d0d0d] border border-[#222] p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <h3 className="text-white text-[15px] font-semibold">Editar tarea</h3>
+          <button onClick={onClose} className="text-[#666] hover:text-white text-lg leading-none">✕</button>
+        </div>
+        <div>
+          <p className="text-[11px] font-medium text-[#888] uppercase tracking-wide mb-1">Título</p>
+          <input
+            value={titulo}
+            onChange={(e) => setTitulo(e.target.value)}
+            readOnly={!editable}
+            className="w-full rounded-xl bg-[#0c0c0c] border border-[#1a1a1a] px-3.5 py-2.5 text-[14px] text-[#e4e4e4] focus:outline-none focus:border-[#B3985B]/40"
+          />
+        </div>
+        <div>
+          <p className="text-[11px] font-medium text-[#888] uppercase tracking-wide mb-1">Descripción</p>
+          <textarea
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            readOnly={!editable}
+            rows={5}
+            placeholder="Descripción de la tarea…"
+            className="w-full rounded-xl bg-[#0c0c0c] border border-[#1a1a1a] px-3.5 py-2.5 text-[14px] text-[#d6d6d6] placeholder:text-[#3f3f3f] leading-relaxed resize-y focus:outline-none focus:border-[#B3985B]/40"
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <button onClick={onClose}
+            className="text-[13px] px-3.5 py-1.5 rounded-lg text-[#888] hover:text-white border border-[#222] hover:border-[#333] transition-colors">
+            Cancelar
+          </button>
+          {editable && (
+            <button onClick={() => onSave({ titulo: titulo.trim() || tarea.titulo, descripcion })}
+              className="text-[13px] px-4 py-1.5 rounded-lg font-semibold bg-[#B3985B] hover:bg-[#c9a96a] text-black transition-colors">
+              Guardar
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

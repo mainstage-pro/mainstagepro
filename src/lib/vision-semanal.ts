@@ -135,14 +135,6 @@ export function semanaKey(ref: Date = new Date()): string {
   return lunesDeLaSemana(ref).toISOString().slice(0, 10);
 }
 
-// Fin exclusivo de la semana entrante (lunes siguiente 00:00) a partir de la clave.
-function finSemanaExclusivo(semana: string): Date {
-  const lunes = new Date(`${semana}T00:00:00`);
-  const fin = new Date(lunes);
-  fin.setDate(fin.getDate() + 7);
-  return fin;
-}
-
 // ─── Migración lazy (Neon no corre migraciones formales) ─────────────────────
 
 let _tablaLista = false;
@@ -159,10 +151,14 @@ export async function ensureVisionSemanalTable(): Promise<void> {
       comentarios TEXT NOT NULL DEFAULT '',
       extra JSONB NOT NULL DEFAULT '{}'::jsonb,
       "autorId" TEXT REFERENCES users(id) ON DELETE SET NULL,
+      "responsableId" TEXT REFERENCES users(id) ON DELETE SET NULL,
       "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
       "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `);
+  await prisma.$executeRawUnsafe(
+    `ALTER TABLE vision_semanal ADD COLUMN IF NOT EXISTS "responsableId" TEXT REFERENCES users(id) ON DELETE SET NULL;`
+  );
   await prisma.$executeRawUnsafe(
     `CREATE UNIQUE INDEX IF NOT EXISTS vision_semanal_area_semana_key ON vision_semanal (area, semana);`
   );
@@ -181,35 +177,40 @@ export function puntosDefault(area: VisionAreaKey): EntregaPunto[] {
 
 // ─── Tareas del área (en vivo) ───────────────────────────────────────────────
 
+// Forma compatible con `TareaItem` del módulo de tareas, para reutilizar la
+// misma vista (TaskItem) dentro de la Visión semanal.
 export interface VisionTarea {
   id: string;
   titulo: string;
   descripcion: string | null;
   prioridad: string;
+  area: string;
   estado: string;
   fecha: string | null;
-  fechaVencimiento: string | null;
+  recurrencia: string | null;
+  proyectoTarea: { id: string; nombre: string; color: string | null } | null;
+  seccion: { id: string; nombre: string } | null;
   asignadoA: { id: string; name: string } | null;
-  vencida: boolean;
+  proyectoInterno: { id: string; nombre: string } | null;
+  _count: { subtareas: number; comentarios: number; archivos: number };
+  createdAt: string;
 }
 
-// Tareas asignadas del área, con fecha (de trabajo o de vencimiento) vencida,
-// actual o dentro de la semana entrante. Sigue el criterio del reporte semanal.
-export async function tareasDelArea(area: VisionAreaKey, semana: string): Promise<VisionTarea[]> {
-  if (area === "PREPRODUCCION") return []; // no hay tareas con esta área
-
-  const fin = finSemanaExclusivo(semana);
-  const hoy = new Date();
+// Todas las tareas asignadas y con fecha del área: ya sea porque la tarea es del
+// área, o porque pertenece a un proyecto interno del área. Sin límite de semana.
+export async function tareasDelArea(area: VisionAreaKey): Promise<VisionTarea[]> {
+  // Pre-producción usa las tareas/proyectos del área PRODUCCION.
+  const areaTareas = area === "PREPRODUCCION" ? "PRODUCCION" : area;
 
   const tareas = await prisma.tarea.findMany({
     where: {
-      area,
       asignadoAId: { not: null },
+      fecha: { not: null },
       estado: { in: ["PENDIENTE", "EN_PROGRESO"] },
       parentId: null,
       OR: [
-        { fechaVencimiento: { lt: fin } },
-        { fecha: { lt: fin } },
+        { area: areaTareas },
+        { proyectoInterno: { area: areaTareas } },
       ],
     },
     select: {
@@ -217,29 +218,39 @@ export async function tareasDelArea(area: VisionAreaKey, semana: string): Promis
       titulo: true,
       descripcion: true,
       prioridad: true,
+      area: true,
       estado: true,
       fecha: true,
-      fechaVencimiento: true,
+      recurrencia: true,
+      createdAt: true,
+      proyectoTarea: { select: { id: true, nombre: true, color: true } },
+      seccion: { select: { id: true, nombre: true } },
       asignadoA: { select: { id: true, name: true } },
+      proyectoInterno: { select: { id: true, nombre: true } },
+      _count: { select: { subtareas: true, comentarios: true, archivos: true } },
     },
-    orderBy: [{ prioridad: "asc" }, { fechaVencimiento: "asc" }, { fecha: "asc" }],
-    take: 60,
+    orderBy: [{ prioridad: "asc" }, { fecha: "asc" }],
+    take: 200,
   });
 
-  return tareas.map((t) => {
-    const venceEn = t.fechaVencimiento ?? t.fecha;
-    return {
-      id: t.id,
-      titulo: t.titulo,
-      descripcion: t.descripcion ?? null,
-      prioridad: t.prioridad,
-      estado: t.estado,
-      fecha: t.fecha?.toISOString().slice(0, 10) ?? null,
-      fechaVencimiento: t.fechaVencimiento?.toISOString().slice(0, 10) ?? null,
-      asignadoA: t.asignadoA ?? null,
-      vencida: !!venceEn && venceEn < new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate()),
-    };
-  });
+  return tareas.map((t) => ({
+    id: t.id,
+    titulo: t.titulo,
+    descripcion: t.descripcion ?? null,
+    prioridad: t.prioridad,
+    area: t.area,
+    estado: t.estado,
+    fecha: t.fecha?.toISOString() ?? null,
+    recurrencia: t.recurrencia ?? null,
+    // Muestra el proyecto interno como chip cuando la tarea no tiene proyecto de tareas.
+    proyectoTarea: t.proyectoTarea
+      ?? (t.proyectoInterno ? { id: t.proyectoInterno.id, nombre: t.proyectoInterno.nombre, color: null } : null),
+    seccion: t.seccion ?? null,
+    asignadoA: t.asignadoA ?? null,
+    proyectoInterno: t.proyectoInterno ?? null,
+    _count: t._count,
+    createdAt: t.createdAt.toISOString(),
+  }));
 }
 
 // ─── Proyectos del área (en vivo) ────────────────────────────────────────────

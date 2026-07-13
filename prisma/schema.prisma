@@ -72,6 +72,7 @@ model User {
   solicitudesCotizacionAsignadas SolicitudCotizacion[] @relation("SolicitudCotizacionVendedor")
   solicitudesCotizacionCreadas   SolicitudCotizacion[] @relation("SolicitudCotizacionCreador")
   visionesSemanales              VisionSemanal[]        @relation("VisionSemanalAutor")
+  visionesResponsable            VisionSemanal[]        @relation("VisionSemanalResponsable")
 
 
   @@map("users")
@@ -3336,6 +3337,8 @@ model VisionSemanal {
   extra       Json     @default("{}")         // Campos específicos de pre-producción
   autorId     String?
   autor       User?    @relation("VisionSemanalAutor", fields: [autorId], references: [id])
+  responsableId String?
+  responsable   User?  @relation("VisionSemanalResponsable", fields: [responsableId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
