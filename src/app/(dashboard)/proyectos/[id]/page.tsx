@@ -6475,7 +6475,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     );
                   })()}
 
-                  {/* ── Reporte Post-Evento ── */}
+                  {/* ── Reporte Post-Evento · se reemplaza por "Evaluación post evento" en producción/dirección técnica ── */}
+                  {!(proyecto.tipoServicio === "PRODUCCION_TECNICA" || proyecto.tipoServicio === "DIRECCION_TECNICA") && (
                   <div className="ms-card p-5 space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -6540,6 +6541,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       </div>
                     )}
                   </div>
+                  )}
 
                   {/* ── Evaluación del cliente ── */}
                   <div className="ms-card p-5 space-y-4">
