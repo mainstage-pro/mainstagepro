@@ -207,6 +207,7 @@ export async function POST(req: NextRequest) {
   const {
     titulo, descripcion, prioridad, area, asignadoAId, notas, etiquetas,
     iniciativaId, proyectoTareaId, seccionId, carpetaId,
+    proyectoInternoId, faseInternaId,
     parentId, fecha, fechaVencimiento, recurrencia, orden, juntaOrigenId,
   } = body;
 
@@ -222,6 +223,8 @@ export async function POST(req: NextRequest) {
       creadoPorId:     session.id,
       iniciativaId:    iniciativaId     || null,
       proyectoTareaId: proyectoTareaId  || null,
+      proyectoInternoId: proyectoInternoId || null,
+      faseInternaId:   faseInternaId    || null,
       seccionId:       seccionId        || null,
       carpetaId:       carpetaId        || null,
       parentId:        parentId         || null,

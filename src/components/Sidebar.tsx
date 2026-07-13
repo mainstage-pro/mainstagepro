@@ -45,9 +45,20 @@ const NAV: NavSection[] = [
       { label: "Mi Dashboard", href: "/dashboard" },
       { key: "objetivos", label: "Objetivos", href: "/objetivos", adminOnly: true, icon: Target },
       { key: "kpis-dashboard", label: "KPIs", href: "/kpis", adminOnly: true, icon: BarChart2 },
+      { key: "calendario", label: "Calendario de eventos", href: "/calendario" },
+    ],
+  },
+
+  // ── GESTIÓN OPERATIVA ───────────────────────────────────────────────────────
+  {
+    key: "seccion-gestion",
+    section: "Gestión Operativa",
+    items: [
+      { accessKey: "operaciones", label: "Centro Operativo", href: "/gestion" },
+      { accessKey: "operaciones", label: "Bandeja de entrada", href: "/gestion/bandeja" },
       { key: "plan-trabajo", label: "Plan de Trabajo", href: "/plan-trabajo" },
       { key: "operaciones", label: "Módulo de tareas", href: "/operaciones" },
-      { key: "calendario", label: "Calendario de eventos", href: "/calendario" },
+      { accessKey: "proyectos", label: "Proyectos", href: "/proyectos-internos" },
     ],
   },
 
@@ -226,6 +237,7 @@ function getInitialOpen(pathname: string): Set<string> {
 }
 
 function getActiveSectionKey(pathname: string): string | null {
+  if (pathname.startsWith("/gestion") || pathname.startsWith("/proyectos-internos") || pathname.startsWith("/plan-trabajo") || pathname.startsWith("/operaciones")) return "seccion-gestion";
   if (pathname.startsWith("/presentaciones") || pathname.startsWith("/admin") || pathname.startsWith("/juntas") || pathname.startsWith("/formularios") || pathname.startsWith("/capacitacion") || pathname.startsWith("/direccion")) return "seccion-direccion";
   if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles") || pathname.startsWith("/admin/reportes")) return "seccion-administracion";
   if (pathname.startsWith("/marketing")) return "seccion-marketing";
@@ -244,7 +256,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
   const [badges, setBadges] = useState<Record<string, number>>({});
 
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => getInitialOpen(pathname));
-  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set<string>());
+  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set<string>(["seccion-gestion"]));
   const [stateLoaded, setStateLoaded] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
