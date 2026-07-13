@@ -19,7 +19,7 @@ import ProyectoTareas from "./ProyectoTareas";
 import { BackButton } from "@/components/BackButton";
 import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem } from "@/components/proyectos/ViabilidadWidget";
 import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
-import { contarRespondidos, contarIncidencias, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
+import { contarRespondidos, contarIncidencias, promedioCalificaciones, nivelResultado, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
@@ -6430,6 +6430,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     const { respondidos, total } = contarRespondidos(items);
                     const incidencias = evalPost ? contarIncidencias(items) : 0;
                     const iniciada = !!evalPost?.respondidoEn;
+                    const promOperacion = promedioCalificaciones(evalPost?.calificaciones ?? {});
+                    const nivelOperacion = nivelResultado(promOperacion);
+                    const califFinal = evalPost?.calificacionFinal ?? null;
+                    const nivelFinal = nivelResultado(califFinal);
                     return (
                       <div className="ms-card p-5 space-y-4">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -6447,13 +6451,22 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                         </div>
                         {iniciada ? (
                           <div className="space-y-3">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                              <div className="rounded-lg px-3 py-2 border" style={{ backgroundColor: `${nivelOperacion.color}14`, borderColor: `${nivelOperacion.color}40` }}>
+                                <p className="text-[9px] uppercase tracking-wider" style={{ color: `${nivelOperacion.color}cc` }}>Operación</p>
+                                <p className="text-sm font-bold" style={{ color: nivelOperacion.color }}>{promOperacion ? `${promOperacion.toFixed(1)}/5` : "—"} <span className="text-[10px] font-medium">{nivelOperacion.label}</span></p>
+                              </div>
+                              <div className="rounded-lg px-3 py-2 border" style={{ backgroundColor: `${nivelFinal.color}14`, borderColor: `${nivelFinal.color}40` }}>
+                                <p className="text-[9px] uppercase tracking-wider" style={{ color: `${nivelFinal.color}cc` }}>Final</p>
+                                <p className="text-sm font-bold" style={{ color: nivelFinal.color }}>{califFinal ? `${califFinal}/5` : "—"} <span className="text-[10px] font-medium">{nivelFinal.label}</span></p>
+                              </div>
+                              <div className="rounded-lg px-3 py-2 border" style={incidencias > 0 ? { backgroundColor: "#F8717114", borderColor: "#F8717140" } : { backgroundColor: "#34D39914", borderColor: "#34D39940" }}>
+                                <p className="text-[9px] uppercase tracking-wider" style={{ color: incidencias > 0 ? "#F87171cc" : "#34D399cc" }}>Puntos a revisar</p>
+                                <p className="text-sm font-bold" style={{ color: incidencias > 0 ? "#F87171" : "#34D399" }}>{incidencias > 0 ? incidencias : "0"} <span className="text-[10px] font-medium">{incidencias > 0 ? "en junta" : "ok"}</span></p>
+                              </div>
+                            </div>
                             <div className="flex items-center gap-3 flex-wrap">
                               <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-[#1a1a1a] text-gray-300 border border-[#333]">{respondidos}/{total} respondidos</span>
-                              {incidencias > 0 ? (
-                                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-red-900/50 text-red-300">{incidencias} punto{incidencias === 1 ? "" : "s"} a revisar</span>
-                              ) : (
-                                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-green-900/50 text-green-300">Sin incidencias</span>
-                              )}
                               {evalPost?.llenadoPorNombre && (
                                 <span className="text-xs text-gray-500">Por {evalPost.llenadoPorNombre}</span>
                               )}
@@ -6461,6 +6474,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                 <span className="text-xs text-gray-500">· {fmtDateTime(evalPost.respondidoEn)}</span>
                               )}
                             </div>
+                            {evalPost?.propuestasMejora && evalPost.propuestasMejora.filter(Boolean).length > 0 && (
+                              <div className="bg-[#0d0d0d] rounded-lg px-3 py-2">
+                                <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Propuestas de mejora</p>
+                                <ul className="text-gray-300 text-sm list-disc list-inside space-y-0.5">
+                                  {evalPost.propuestasMejora.filter(Boolean).slice(0, 4).map((p, i) => <li key={i}>{p}</li>)}
+                                </ul>
+                              </div>
+                            )}
                             {evalPost?.comentariosFinales && (
                               <div className="bg-[#0d0d0d] rounded-lg px-3 py-2">
                                 <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Comentarios finales del coordinador</p>

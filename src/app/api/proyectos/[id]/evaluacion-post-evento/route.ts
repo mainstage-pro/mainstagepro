@@ -53,6 +53,13 @@ export async function PUT(
     respondidoEn: prev.respondidoEn ?? ahora,
     actualizadoEn: ahora,
     items,
+    calificaciones:
+      body.calificaciones && typeof body.calificaciones === "object" ? body.calificaciones : prev.calificaciones ?? {},
+    calificacionFinal:
+      typeof body.calificacionFinal === "number" || body.calificacionFinal === null
+        ? body.calificacionFinal
+        : prev.calificacionFinal ?? null,
+    propuestasMejora: Array.isArray(body.propuestasMejora) ? body.propuestasMejora : prev.propuestasMejora ?? [],
     comentariosFinales:
       typeof body.comentariosFinales === "string" ? body.comentariosFinales : prev.comentariosFinales ?? "",
   };
