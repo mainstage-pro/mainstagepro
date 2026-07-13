@@ -164,10 +164,8 @@ export async function GET(req: NextRequest) {
     where.OR = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
   } else if (vista === "equipo") {
     if (session.role !== "ADMIN") return NextResponse.json({ error: "No autorizado" }, { status: 403 });
-    where.proyectoTareaId = null;
-    where.iniciativaId    = null;
-    where.parentId        = null;
-    where.asignadoAId     = { not: null };
+    // Todas las tareas top-level: de proyectos, áreas, iniciativas, asignadas o sin asignar.
+    where.parentId = null;
   } else if (vista === "area") {
     if (!area) return NextResponse.json({ error: "Área requerida" }, { status: 400 });
     if (session.role !== "ADMIN") {
