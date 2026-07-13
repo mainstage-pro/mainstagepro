@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import TaskItem, { type TareaItem } from "@/app/(dashboard)/operaciones/components/TaskItem";
+import { usePdfDownload } from "@/hooks/usePdfDownload";
 
 // ─── Tipos (espejo del API) ──────────────────────────────────────────────────
 interface EntregaPunto {
@@ -324,6 +325,7 @@ function DocumentoView({
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { downloading, downloadPdf } = usePdfDownload();
 
   // Estado editable local
   const [enfoque, setEnfoque] = useState("");
@@ -449,6 +451,26 @@ function DocumentoView({
     }
   }
 
+  const nombreArchivo = data ? `VisionSemanal-${data.config.label.replace(/\s+/g, "")}-${semana}.pdf` : "";
+
+  function descargarPDF() {
+    if (!data) return;
+    downloadPdf(`/api/vision-semanal/pdf?area=${area}&semana=${semana}`, nombreArchivo);
+  }
+
+  function enviarWhatsApp() {
+    if (!data) return;
+    const link = `${window.location.origin}/vision-semanal?area=${area}&semana=${semana}`;
+    const lineas = [
+      `*Visión Semanal — ${data.config.label}*`,
+      `📅 Semana: ${rangoSemana(semana)}`,
+      `👤 Responsable: ${data.documento.responsable?.name ?? "Sin asignar"}`,
+      enfoque.trim() ? `\n🎯 Enfoque: ${enfoque.trim()}` : "",
+      `\nAbrir documento: ${link}`,
+    ].filter(Boolean).join("\n");
+    window.open(`https://wa.me/?text=${encodeURIComponent(lineas)}`, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -465,7 +487,25 @@ function DocumentoView({
               qué viene y qué necesita de apoyo.
             </p>
           </div>
-          <SelectorSemana semana={semana} setSemana={setSemana} />
+          <div className="flex flex-col items-end gap-2">
+            <SelectorSemana semana={semana} setSemana={setSemana} />
+            {data && (
+              <div className="flex items-center gap-1.5">
+                <button onClick={descargarPDF} disabled={!!downloading}
+                  className="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-lg font-medium border bg-[#0f0f0f] border-[#222] text-[#c4c4c4] hover:text-white hover:border-[#333] transition-colors disabled:opacity-60 disabled:cursor-wait">
+                  <span aria-hidden>⬇</span>
+                  {downloading === nombreArchivo ? "Generando…" : "Descargar PDF"}
+                </button>
+                <button onClick={enviarWhatsApp}
+                  className="inline-flex items-center gap-1.5 text-[12px] px-3 py-1.5 rounded-lg font-medium border bg-emerald-950/30 border-emerald-800/40 text-emerald-400 hover:bg-emerald-950/50 hover:border-emerald-700/50 transition-colors">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden>
+                    <path d="M17.5 14.4c-.3-.2-1.7-.9-2-1s-.5-.2-.7.1-.7 1-.9 1.2-.3.2-.6.1a8 8 0 0 1-2.4-1.5 9 9 0 0 1-1.6-2c-.2-.3 0-.5.1-.6l.5-.5.3-.5v-.5l-1-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4a3.4 3.4 0 0 0-1 2.5c0 1.5 1 2.9 1.2 3.1s2.2 3.4 5.3 4.7c2.6 1.1 3.1.9 3.7.9s1.7-.7 2-1.4.3-1.3.2-1.4-.2-.2-.5-.4zM12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.3A10 10 0 1 0 12 2z"/>
+                  </svg>
+                  Enviar por WhatsApp
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Tabs de área */}
