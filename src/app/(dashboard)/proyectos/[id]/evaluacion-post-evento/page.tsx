@@ -97,9 +97,10 @@ export default function EvaluacionPostEventoPage() {
   const [proyecto, setProyecto] = useState<{
     nombre: string; numeroProyecto: string; fechaEvento: string;
     lugarEvento?: string | null; estado: string; tipoServicio: string | null;
-    cliente: { nombre: string };
+    cliente: { nombre: string; empresa?: string | null };
   } | null>(null);
   const [equipo, setEquipo] = useState<MiembroEquipo[]>([]);
+  const [equipos, setEquipos] = useState<{ nombre: string; cantidad: number }[]>([]);
   const [data, setData] = useState<EvalPostEventoData>(emptyEvalData());
   const [loading, setLoading] = useState(true);
   const [estado, setEstado] = useState<"idle" | "saving" | "saved">("idle");
@@ -126,6 +127,15 @@ export default function EvaluacionPostEventoPage() {
       miembros.push({ id: t.id, nombre: t.nombre, rol: per.rolTecnico?.nombre ?? t.rol?.nombre ?? null });
     }
     setEquipo(miembros);
+
+    // Equipos del proyecto (agrupa por descripción, suma cantidades).
+    const porNombre = new Map<string, number>();
+    for (const pe of p?.equipos ?? []) {
+      const nombre = pe.equipo?.descripcion?.trim();
+      if (!nombre) continue;
+      porNombre.set(nombre, (porNombre.get(nombre) ?? 0) + (pe.cantidad ?? 1));
+    }
+    setEquipos([...porNombre.entries()].map(([nombre, cantidad]) => ({ nombre, cantidad })));
 
     if (de.evaluacion) setData({ ...emptyEvalData(), ...de.evaluacion });
     setLoading(false);
@@ -237,6 +247,56 @@ export default function EvaluacionPostEventoPage() {
             <p className="text-[#444] text-[10px]">respondidos</p>
           </div>
           <p className={`text-[10px] h-3 ${estado === "saving" ? "text-[#666]" : "text-green-500"}`}>{estadoTxt}</p>
+        </div>
+      </div>
+
+      {/* Contexto del servicio · recordatorio compacto para el coordinador */}
+      <div className="ms-card-deep p-4 space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <p className="text-[10px] text-[#666] uppercase tracking-wider mb-0.5">Cliente</p>
+            <p className="text-white text-sm font-medium">
+              {proyecto.cliente.nombre}
+              {proyecto.cliente.empresa && <span className="text-[#666] font-normal"> · {proyecto.cliente.empresa}</span>}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] text-[#666] uppercase tracking-wider mb-0.5">Lugar</p>
+            <p className="text-white text-sm font-medium">{proyecto.lugarEvento || <span className="text-[#555] font-normal">Sin especificar</span>}</p>
+          </div>
+        </div>
+        <div>
+          <p className="text-[10px] text-[#666] uppercase tracking-wider mb-1">
+            {config.variante === "renta" ? "Equipo rentado" : "Equipo utilizado"} <span className="text-[#444]">({equipos.length})</span>
+          </p>
+          {equipos.length === 0 ? (
+            <p className="text-[#555] text-xs">Sin equipos registrados en el proyecto.</p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {equipos.slice(0, 12).map((e, i) => (
+                <span key={i} className="text-[11px] bg-[#141414] border border-[#252525] text-gray-300 rounded-md px-2 py-0.5">
+                  {e.cantidad > 1 && <span className="text-[#B3985B] font-semibold">{e.cantidad}× </span>}{e.nombre}
+                </span>
+              ))}
+              {equipos.length > 12 && <span className="text-[11px] text-[#555] px-1 py-0.5">+{equipos.length - 12} más</span>}
+            </div>
+          )}
+        </div>
+        <div>
+          <p className="text-[10px] text-[#666] uppercase tracking-wider mb-1">
+            Técnicos que operaron <span className="text-[#444]">({equipo.length})</span>
+          </p>
+          {equipo.length === 0 ? (
+            <p className="text-[#555] text-xs">Sin técnicos asignados en el proyecto.</p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {equipo.map((m) => (
+                <span key={m.id} className="text-[11px] bg-[#141414] border border-[#252525] text-gray-300 rounded-md px-2 py-0.5">
+                  {m.nombre}{m.rol && <span className="text-[#666]"> · {m.rol}</span>}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
