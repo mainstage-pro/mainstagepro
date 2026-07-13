@@ -3768,22 +3768,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         const checkOp2 = proyecto.checklist.filter(c => c.tipo !== "RIDER");
         const checkPct2 = checkOp2.length > 0 ? checkOp2.filter(c => c.completado).length / checkOp2.length : 0;
 
-        // ── Campos ponderados (suman 100) ───────────────────────────────────
+        // ── Campos ponderados de PRODUCCIÓN (suman 100) ─────────────────────
+        // El progreso mide únicamente pre-producción / producción técnica.
+        // Nada de finanzas ni cobranza entra en esta medición.
         type WCheck = { ok: boolean; label: string; peso: number };
         const wChecks: WCheck[] = [
-          { ok: !!proyecto.lugarEvento,                                                                       label: "Lugar del evento",       peso: 8  },
-          { ok: !!proyecto.encargado,                                                                          label: "Coordinador de producción", peso: 4  },
-          { ok: proyecto.equipos.length > 0,                                                                  label: "Equipo registrado",      peso: 8  },
-          ...(proyecto._canViewFinances ? [
-            { ok: !!proyecto.cotizacion,                                                                       label: "Cotización generada",   peso: 10 },
-            { ok: !!anticipoCxC && anticipoCxC.montoCobrado >= anticipoCxC.monto,                              label: "Anticipo cobrado",      peso: 18 },
-            { ok: !!liquidacionCxC && liquidacionCxC.montoCobrado >= liquidacionCxC.monto,                     label: "Liquidación cobrada",   peso: 18 },
-          ] : []),
-          { ok: proyecto.personal.length > 0,                                                                 label: "Personal asignado",     peso: 7  },
-          { ok: _salidaData.estado === "OK",                                                                   label: "Protocolo de salida",   peso: 7  },
-          { ok: !!(proyecto.direccionVenue || proyecto.linkMaps),                                              label: "Info del venue",        peso: 5  },
-          { ok: !!proyecto.fechaMontaje && !!proyecto.horaInicioMontaje,                                      label: "Logística de montaje",  peso: 5  },
-          { ok: !!proyecto.encargadoLugar || !!proyecto.encargadoCliente,                                     label: "Encargado del lugar",   peso: 5  },
+          { ok: !!proyecto.lugarEvento,                                                                       label: "Lugar del evento",          peso: 15 },
+          { ok: !!proyecto.encargado,                                                                          label: "Coordinador de producción", peso: 10 },
+          { ok: proyecto.equipos.length > 0,                                                                  label: "Equipo registrado",         peso: 20 },
+          { ok: proyecto.personal.length > 0,                                                                 label: "Personal asignado",         peso: 15 },
+          { ok: _salidaData.estado === "OK",                                                                   label: "Protocolo de salida",       peso: 12 },
+          { ok: !!(proyecto.direccionVenue || proyecto.linkMaps),                                              label: "Info del venue",            peso: 8  },
+          { ok: !!proyecto.fechaMontaje && !!proyecto.horaInicioMontaje,                                      label: "Logística de montaje",      peso: 12 },
+          { ok: !!proyecto.encargadoLugar || !!proyecto.encargadoCliente,                                     label: "Encargado del lugar",       peso: 8  },
         ];
 
         const pct = Math.round(wChecks.reduce((sum, c) => sum + (c.ok ? c.peso : 0), 0));
