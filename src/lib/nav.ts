@@ -162,7 +162,7 @@ export const NAV: NavSection[] = [
     section: "Producción",
     items: [
       { key: "proyectos", label: "Proyectos de evento", href: "/proyectos" },
-      { key: "produccion-tablero", accessKey: "inventario", label: "Estado de equipos", href: "/produccion/tablero" },
+      { key: "produccion-tablero", label: "Estado de equipos", href: "/produccion/tablero" },
       {
         key: "inventario",
         label: "Bodega",
@@ -240,6 +240,7 @@ const MODULE_META: Record<string, { label?: string; desc?: string }> = {
   "comercial-productos": { desc: "Productos y paquetes comerciales" },
   "ventas-seguimientos": { desc: "Seguimientos de tratos" },
   "ventas-reporte":      { desc: "Métricas y reportes de ventas" },
+  "produccion-tablero":  { label: "Estado de equipos", desc: "Tablero de estado de equipos (en taller / fuera / disponible)" },
   inventario:            { label: "Bodega", desc: "Disponibilidad, recolecciones, mantenimiento, checklist y vehículos" },
   "inv-maestro":         { desc: "Catálogo maestro de equipos" },
   "bd-proveedores":      { desc: "Directorio de proveedores" },
@@ -338,7 +339,7 @@ export const AREA_MODULE_PRESETS: Record<string, string[]> = {
   ],
   PRODUCCION: [
     "plan-trabajo", "operaciones", "calendario", "vision-semanal",
-    "proyectos", "inventario", "inv-maestro", "catalogo", "bd-proveedores", "bd-tecnicos",
+    "proyectos", "produccion-tablero", "inventario", "inv-maestro", "catalogo", "bd-proveedores", "bd-tecnicos",
     "tareas-produccion",
   ],
   RRHH: [
