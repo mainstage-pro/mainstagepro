@@ -12,6 +12,7 @@ interface Categoria {
   nombre: string;
   tipo: string;
   orden: number;
+  descripcion?: string | null;
 }
 
 const TIPOS = ["INGRESO", "GASTO", "TRANSFERENCIA", "INVERSION", "RETIRO"];
@@ -29,7 +30,7 @@ export default function CategoriasPage() {
   const confirm = useConfirm();
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ nombre: "", tipo: "GASTO", orden: 0 });
+  const [form, setForm] = useState({ nombre: "", tipo: "GASTO", orden: 0, descripcion: "" });
   const [saving, setSaving] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -44,13 +45,13 @@ export default function CategoriasPage() {
   useEffect(() => { load(); }, []);
 
   function startEdit(c: Categoria) {
-    setForm({ nombre: c.nombre, tipo: c.tipo, orden: c.orden });
+    setForm({ nombre: c.nombre, tipo: c.tipo, orden: c.orden, descripcion: c.descripcion ?? "" });
     setEditId(c.id);
     setShowForm(true);
   }
 
   function cancelForm() {
-    setForm({ nombre: "", tipo: "GASTO", orden: 0 });
+    setForm({ nombre: "", tipo: "GASTO", orden: 0, descripcion: "" });
     setEditId(null);
     setShowForm(false);
   }
@@ -132,6 +133,13 @@ export default function CategoriasPage() {
             />
           </div>
         </div>
+        <div className="mt-4">
+          <label className="text-xs text-gray-500 mb-1 block">Descripción</label>
+          <textarea value={form.descripcion} onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))}
+            rows={3}
+            placeholder="¿Qué incluye esta categoría? Ej: Pagos a técnicos externos por evento"
+            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+        </div>
         <div className="w-32 mt-4">
           <label className="text-xs text-gray-500 mb-1 block">Orden</label>
           <input type="number" value={form.orden} onChange={e => setForm(p => ({ ...p, orden: parseInt(e.target.value) || 0 }))}
@@ -165,12 +173,15 @@ export default function CategoriasPage() {
                 </div>
                 <div className="divide-y divide-[#1a1a1a]">
                   {items.map(c => (
-                    <div key={c.id} className="flex items-center justify-between px-5 py-3 hover:bg-[#1a1a1a] transition-colors">
-                      <div className="flex items-center gap-3">
-                        <span className="text-gray-600 text-xs w-6 text-right">{c.orden}</span>
-                        <p className="text-white text-sm">{c.nombre}</p>
+                    <div key={c.id} className="flex items-start justify-between px-5 py-3 hover:bg-[#1a1a1a] transition-colors">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <span className="text-gray-600 text-xs w-6 text-right shrink-0 pt-0.5">{c.orden}</span>
+                        <div className="min-w-0">
+                          <p className="text-white text-sm">{c.nombre}</p>
+                          {c.descripcion && <p className="text-gray-500 text-xs mt-0.5">{c.descripcion}</p>}
+                        </div>
                       </div>
-                      <div className="flex gap-3">
+                      <div className="flex gap-3 shrink-0">
                         <button onClick={() => startEdit(c)} className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors">Editar</button>
                         <button onClick={() => deleteCategoria(c.id)} className="text-xs text-gray-500 hover:text-red-400 transition-colors">Eliminar</button>
                       </div>

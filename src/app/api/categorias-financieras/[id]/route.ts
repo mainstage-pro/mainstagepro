@@ -13,7 +13,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ("nombre" in body) data.nombre = body.nombre;
   if ("tipo" in body) data.tipo = body.tipo;
   if ("orden" in body) data.orden = body.orden;
+  if ("descripcion" in body) data.descripcion = body.descripcion?.trim() || null;
 
+  await prisma.$executeRawUnsafe(`ALTER TABLE categorias_financieras ADD COLUMN IF NOT EXISTS "descripcion" TEXT`);
   const categoria = await prisma.categoriaFinanciera.update({ where: { id }, data });
   return NextResponse.json({ categoria });
 }

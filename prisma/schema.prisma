@@ -1039,10 +1039,11 @@ model CuentaBancaria {
 }
 
 model CategoriaFinanciera {
-  id     String @id @default(cuid())
-  nombre String
-  tipo   String // INGRESO | GASTO | TRANSFERENCIA | INVERSION | RETIRO
-  orden  Int    @default(0)
+  id          String  @id @default(cuid())
+  nombre      String
+  tipo        String // INGRESO | GASTO | TRANSFERENCIA | INVERSION | RETIRO
+  orden       Int     @default(0)
+  descripcion String?
 
   movimientos MovimientoFinanciero[]
 
