@@ -475,10 +475,57 @@ function TabBalance({ mes, onDataLoad }: { mes: string; onDataLoad?: (d: Balance
 
 // ── Acordeón de categoría con estado de cuenta ───────────────────────────────
 type MovRow = { id: string; fecha: string; concepto: string; monto: number; categoria: string; cuenta?: string | null; metodoPago?: string; proveedor?: string | null; cliente?: string | null };
+type CatOption = { id: string; nombre: string; tipo: string };
 
-function CatAccordion({ nombre, total, movimientos, color, bgAccent, borderAccent }: {
+// Botón para recategorizar un movimiento. Actualiza la categoría en el
+// MovimientoFinanciero (FK), por lo que el cambio se refleja en todos los
+// módulos que consultan la categoría (flujo, balance, estado de resultados,
+// movimientos), no solo en este reporte.
+function RecatControl({ movId, cats, onRecat }: {
+  movId: string; cats: CatOption[]; onRecat: (id: string, categoriaId: string) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  if (!editing) {
+    return (
+      <button
+        onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+        title="Recategorizar"
+        className="text-[10px] text-gray-600 hover:text-[#B3985B] px-1.5 py-0.5 rounded border border-[#222] hover:border-[#B3985B]/40 transition-colors shrink-0"
+      >
+        ⇄
+      </button>
+    );
+  }
+
+  return (
+    <select
+      autoFocus
+      disabled={saving}
+      defaultValue=""
+      onClick={(e) => e.stopPropagation()}
+      onBlur={() => setEditing(false)}
+      onChange={async (e) => {
+        const val = e.target.value;
+        if (!val) { setEditing(false); return; }
+        setSaving(true);
+        await onRecat(movId, val);
+        setSaving(false);
+        setEditing(false);
+      }}
+      className="text-[10px] bg-[#141414] border border-[#B3985B]/40 rounded px-1 py-0.5 text-gray-200 max-w-[140px] shrink-0"
+    >
+      <option value="">Elegir categoría…</option>
+      {cats.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+    </select>
+  );
+}
+
+function CatAccordion({ nombre, total, movimientos, color, bgAccent, borderAccent, cats, onRecat }: {
   nombre: string; total: number; movimientos: MovRow[];
   color: string; bgAccent: string; borderAccent: string;
+  cats: CatOption[]; onRecat: (id: string, categoriaId: string) => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -514,7 +561,10 @@ function CatAccordion({ nombre, total, movimientos, color, bgAccent, borderAccen
                   </p>
                 )}
               </div>
-              <span className={`text-xs font-semibold tabular-nums shrink-0 ${color}`}>{fmt(m.monto)}</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className={`text-xs font-semibold tabular-nums ${color}`}>{fmt(m.monto)}</span>
+                <RecatControl movId={m.id} cats={cats} onRecat={onRecat} />
+              </div>
             </div>
           ))}
           <div className="flex items-center justify-between px-4 py-2 border-t border-[#1e1e1e] bg-[#0d0d0d]">
@@ -532,8 +582,9 @@ function TabFlujo({ mes, onDataLoad }: { mes: string; onDataLoad?: (d: FlujoData
   const [data, setData] = useState<FlujoData | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [cats, setCats] = useState<CatOption[]>([]);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     setLoading(true);
     fetch(`/api/admin/reportes/flujo?mes=${mes}`, { cache: "no-store" })
       .then(r => r.json())
@@ -544,6 +595,27 @@ function TabFlujo({ mes, onDataLoad }: { mes: string; onDataLoad?: (d: FlujoData
       })
       .catch(() => setLoading(false));
   }, [mes, onDataLoad]);
+
+  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    fetch("/api/categorias-financieras", { cache: "no-store" })
+      .then(r => r.json())
+      .then(d => setCats(d.categorias || []))
+      .catch(() => {});
+  }, []);
+
+  const recategorizar = useCallback(async (movId: string, categoriaId: string) => {
+    const res = await fetch(`/api/movimientos/${movId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ categoriaId }),
+    });
+    if (res.ok) load();
+  }, [load]);
+
+  const catsIngreso = cats.filter(c => c.tipo === "INGRESO");
+  const catsGasto = cats.filter(c => c.tipo === "GASTO");
 
   if (loading) return (
     <div className="flex items-center justify-center py-24 gap-3">
@@ -652,6 +724,8 @@ function TabFlujo({ mes, onDataLoad }: { mes: string; onDataLoad?: (d: FlujoData
                   color="text-green-400"
                   bgAccent="bg-green-900/10"
                   borderAccent="border-green-900/20"
+                  cats={catsIngreso}
+                  onRecat={recategorizar}
                 />
               ))
             }
@@ -672,7 +746,10 @@ function TabFlujo({ mes, onDataLoad }: { mes: string; onDataLoad?: (d: FlujoData
                 <div key={m.id} className="grid grid-cols-[72px_1fr_auto] gap-2 px-4 py-2.5 border-b border-[#111] last:border-0 bg-[#0a0a0a]">
                   <span className="text-[10px] text-gray-600">{fmtDate(m.fecha)}</span>
                   <p className="text-xs text-white truncate">{m.concepto}</p>
-                  <span className="text-xs font-semibold text-green-400 tabular-nums">{fmt(m.monto)}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs font-semibold text-green-400 tabular-nums">{fmt(m.monto)}</span>
+                    <RecatControl movId={m.id} cats={catsIngreso} onRecat={recategorizar} />
+                  </div>
                 </div>
               ))}
             </div>
@@ -696,6 +773,8 @@ function TabFlujo({ mes, onDataLoad }: { mes: string; onDataLoad?: (d: FlujoData
                   color="text-red-400"
                   bgAccent="bg-red-900/10"
                   borderAccent="border-red-900/20"
+                  cats={catsGasto}
+                  onRecat={recategorizar}
                 />
               ))
             }
@@ -716,7 +795,10 @@ function TabFlujo({ mes, onDataLoad }: { mes: string; onDataLoad?: (d: FlujoData
                 <div key={m.id} className="grid grid-cols-[72px_1fr_auto] gap-2 px-4 py-2.5 border-b border-[#111] last:border-0 bg-[#0a0a0a]">
                   <span className="text-[10px] text-gray-600">{fmtDate(m.fecha)}</span>
                   <p className="text-xs text-white truncate">{m.concepto}</p>
-                  <span className="text-xs font-semibold text-red-400 tabular-nums">{fmt(m.monto)}</span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs font-semibold text-red-400 tabular-nums">{fmt(m.monto)}</span>
+                    <RecatControl movId={m.id} cats={catsGasto} onRecat={recategorizar} />
+                  </div>
                 </div>
               ))}
             </div>
