@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { Combobox } from "@/components/Combobox";
 import { Modal } from "@/components/Modal";
+import { MODULOS_POR_SECCION, ALL_MODULE_KEYS, AREA_MODULE_PRESETS } from "@/lib/nav";
 
 type User = {
   id: string;
@@ -44,94 +45,6 @@ const AREA_COLORS: Record<string, string> = {
   VENTAS: "text-green-400 bg-green-900/20",
   PRODUCCION: "text-blue-400 bg-blue-900/20",
   GENERAL: "text-gray-500 bg-[#1a1a1a]",
-};
-
-const MODULOS_POR_SECCION: { seccion: string; items: { key: string; label: string; desc: string }[] }[] = [
-  {
-    seccion: "GLOBAL",
-    items: [
-      { key: "dashboard",      label: "Dashboard",                   desc: "Mi Dashboard principal" },
-      { key: "plan-trabajo",   label: "Plan de Trabajo",             desc: "Plan de trabajo y tareas personales" },
-      { key: "operaciones",    label: "Módulo de Tareas",            desc: "Tareas globales y operativas" },
-      { key: "calendario",     label: "Calendario de Eventos",       desc: "Vista y reportes de eventos" },
-    ],
-  },
-  {
-    seccion: "DIRECCIÓN",
-    items: [
-      { key: "juntas",         label: "Juntas",                      desc: "Minutas y acuerdos de juntas" },
-      { key: "presentaciones", label: "Presentaciones",              desc: "Presentaciones de ventas y dirección" },
-      { key: "capacitacion",   label: "Capacitación",                desc: "Portal de capacitación" },
-      { key: "formularios",    label: "Formularios",                 desc: "Gestión de formularios" },
-      { key: "admin-usuarios", label: "Usuarios y Accesos",          desc: "Gestión de usuarios y sus permisos" },
-      { key: "admin-actividad",label: "Log de Actividad",            desc: "Registro de actividad de usuarios" },
-      { key: "configuracion",  label: "Configuración",               desc: "Configuración global del sistema" },
-    ],
-  },
-  {
-    seccion: "ADMINISTRACIÓN",
-    items: [
-      { key: "finanzas",         label: "Finanzas (Todo)",           desc: "Cobros, pagos, movimientos, reportes" },
-      { key: "rrhh",             label: "Recursos Humanos (Todo)",   desc: "Personal, nómina, asistencia, onboarding" },
-      { key: "ats",              label: "Reclutamiento",             desc: "Candidatos y puestos ideales" },
-      { key: "inversiones",      label: "Inversiones y Socios",      desc: "Gestión de socios de activos" },
-      { key: "tabulador",        label: "Tabulador Freelancers",     desc: "Roles técnicos y tarifas" },
-      { key: "grupos-equipo",    label: "Grupos de equipo",          desc: "Administración de grupos de equipo" },
-      { key: "inventario-activos-admin", label: "Valuación de Activos", desc: "Inventario de activos de administración" },
-    ],
-  },
-  {
-    seccion: "MARKETING",
-    items: [
-      { key: "mkt-contenido",    label: "Contenido",                 desc: "Estrategia y calendario de contenido" },
-      { key: "mkt-publicidad",   label: "Publicidad",                desc: "Campañas y pauta" },
-      { key: "mkt-resultados",   label: "Resultados",                desc: "Métricas y resultados de marketing" },
-    ],
-  },
-  {
-    seccion: "VENTAS",
-    items: [
-      { key: "ventas-seguimientos",   label: "Seguimientos",         desc: "Seguimientos de tratos" },
-      { key: "crm-tratos",            label: "Pipeline de Ventas",   desc: "Gestión del pipeline de ventas" },
-      { key: "crm-base-de-datos",     label: "Base de Datos",        desc: "Base de datos CRM" },
-      { key: "ventas-presentaciones", label: "Presentaciones Venta", desc: "Presentaciones para clientes" },
-      { key: "ventas-reporte",        label: "Reporte de Ventas",    desc: "Métricas y reportes de ventas" },
-    ],
-  },
-  {
-    seccion: "PRODUCCIÓN",
-    items: [
-      { key: "proyectos",      label: "Proyectos de evento",         desc: "Gestión de proyectos" },
-      { key: "inventario",     label: "Inventario (Módulos)",        desc: "Disponibilidad, recolecciones, mantenimiento" },
-      { key: "inv-maestro",    label: "Inventario Maestro",          desc: "Catálogo maestro de equipos" },
-      { key: "catalogo",       label: "Catálogo Venues",             desc: "Catálogo de venues" },
-      { key: "bd-proveedores", label: "Proveedores",                 desc: "Directorio de proveedores" },
-      { key: "bd-tecnicos",    label: "Técnicos freelance",          desc: "Directorio de técnicos" },
-    ],
-  },
-  {
-    seccion: "ACCESOS MÓDULO DE TAREAS",
-    items: [
-      { key: "tareas-ventas",         label: "Tareas · Ventas",         desc: "Ver tareas del área de Ventas" },
-      { key: "tareas-produccion",     label: "Tareas · Producción",     desc: "Ver tareas del área de Producción" },
-      { key: "tareas-marketing",      label: "Tareas · Marketing",      desc: "Ver tareas del área de Marketing" },
-      { key: "tareas-administracion", label: "Tareas · Administración", desc: "Ver tareas del área de Administración" },
-      { key: "tareas-rrhh",           label: "Tareas · RRHH",           desc: "Ver tareas del área de RRHH" },
-      { key: "tareas-direccion",      label: "Tareas · Dirección",      desc: "Ver tareas del área de Dirección" },
-    ],
-  },
-];
-
-const ALL_MODULE_KEYS = MODULOS_POR_SECCION.flatMap(s => s.items.map(i => i.key));
-
-const AREA_MODULE_PRESETS: Record<string, string[]> = {
-  ADMINISTRACION: ["dashboard", "plan-trabajo", "operaciones", "calendario", "finanzas", "rrhh", "ats", "inversiones", "tabulador", "tareas-administracion"],
-  MARKETING:      ["dashboard", "plan-trabajo", "operaciones", "calendario", "mkt-contenido", "mkt-publicidad", "mkt-resultados", "tareas-marketing"],
-  VENTAS:         ["dashboard", "plan-trabajo", "operaciones", "calendario", "ventas-seguimientos", "crm-tratos", "crm-base-de-datos", "ventas-presentaciones", "ventas-reporte", "tareas-ventas"],
-  PRODUCCION:     ["dashboard", "plan-trabajo", "operaciones", "calendario", "proyectos", "inventario", "inv-maestro", "catalogo", "bd-proveedores", "bd-tecnicos", "tareas-produccion"],
-  RRHH:           ["dashboard", "plan-trabajo", "operaciones", "calendario", "rrhh", "ats", "tareas-rrhh"],
-  DIRECCION:      ["dashboard", "plan-trabajo", "operaciones", "calendario", "juntas", "presentaciones", "capacitacion", "tareas-direccion"],
-  GENERAL:        ["dashboard", "plan-trabajo", "operaciones", "calendario"],
 };
 
 const EMPTY = { name: "", email: "", password: "", role: "USER", area: "GENERAL" };

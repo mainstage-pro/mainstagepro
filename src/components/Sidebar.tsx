@@ -6,198 +6,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { BarChart2, Target, GraduationCap } from "lucide-react";
 import BusquedaGlobal from "@/components/BusquedaGlobal";
 import NotificacionesBell from "@/components/NotificacionesBell";
-
-interface NavChild {
-  key?: string;
-  accessKey?: string;
-  label: string;
-  href: string;
-  adminOnly?: boolean;
-}
-
-interface NavItem {
-  key?: string;
-  accessKey?: string;
-  label: string;
-  href?: string;
-  adminOnly?: boolean;
-  children?: NavChild[];
-  badge?: string; // key used to look up badge counts
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  icon?: React.ComponentType<any>; // optional lucide icon
-}
-
-interface NavSection {
-  key: string;
-  section: string;
-  items: NavItem[];
-}
-
-const NAV: NavSection[] = [
-  // ── ACCESO GLOBAL (siempre visible, sin encabezado) ────────────────────────
-  {
-    key: "seccion-top",
-    section: "",
-    items: [
-      { label: "Mi Dashboard", href: "/dashboard" },
-      { key: "objetivos", label: "Objetivos", href: "/objetivos", adminOnly: true, icon: Target },
-      { key: "kpis-dashboard", label: "KPIs", href: "/kpis", adminOnly: true, icon: BarChart2 },
-      { key: "calendario", label: "Calendario de eventos", href: "/calendario" },
-      { key: "vision-semanal", label: "Visión semanal", href: "/vision-semanal" },
-    ],
-  },
-
-  // ── GESTIÓN OPERATIVA ───────────────────────────────────────────────────────
-  {
-    key: "seccion-gestion",
-    section: "Gestión Operativa",
-    items: [
-      { accessKey: "operaciones", label: "Centro Operativo", href: "/gestion" },
-      { accessKey: "operaciones", label: "Bandeja de entrada", href: "/gestion/bandeja" },
-      { key: "plan-trabajo", label: "Plan de Trabajo", href: "/plan-trabajo" },
-      { key: "operaciones", label: "Módulo de tareas", href: "/operaciones" },
-      { accessKey: "proyectos", label: "Proyectos", href: "/proyectos-internos" },
-    ],
-  },
-
-  // ── DIRECCIÓN ──────────────────────────────────────────────────────────────
-  {
-    key: "seccion-direccion",
-    section: "Dirección",
-    items: [
-      { key: "dir-estado-resultados", label: "Estado de Resultados", href: "/direccion/estado-resultados", adminOnly: true },
-      { key: "juntas", label: "Juntas", href: "/juntas" },
-      { key: "presentaciones", label: "Presentaciones", href: "/presentaciones" },
-      { key: "capacitacion", label: "Capacitación", href: "/capacitacion", icon: GraduationCap },
-      { key: "formularios", label: "Formularios", href: "/formularios", adminOnly: true },
-      { key: "admin-usuarios", label: "Usuarios y accesos", href: "/admin/usuarios" },
-      { key: "admin-actividad", label: "Log de actividad", href: "/admin/actividad" },
-      { key: "configuracion", label: "Configuración", href: "/admin/configuracion", adminOnly: true },
-    ],
-  },
-
-  // ── ADMINISTRACIÓN ─────────────────────────────────────────────────────────
-  {
-    key: "seccion-administracion",
-    section: "Administración",
-    items: [
-      {
-        key: "finanzas",
-        label: "Finanzas",
-        children: [
-          { key: "finanzas-cobros", label: "Cobros y pagos", href: "/finanzas/cobros-pagos" },
-          { key: "finanzas-pagos-personal", label: "Pagos a personal", href: "/finanzas/pagos-personal" },
-          { key: "finanzas-movimientos", label: "Movimientos", href: "/finanzas/movimientos" },
-          { key: "finanzas-caja-chica", label: "Caja chica", href: "/finanzas/caja-chica" },
-          { key: "finanzas-pasivos", label: "Pasivos y Deudas", href: "/finanzas/pasivos", adminOnly: true },
-          { key: "finanzas-repartos", label: "Reparto de Utilidades", href: "/finanzas/repartos", adminOnly: true },
-          { key: "inv-analisis", label: "Análisis de uso de equipo", href: "/inventario/analisis" },
-          { key: "finanzas-config", label: "Configuración", href: "/finanzas/configuracion", adminOnly: true },
-        ],
-      },
-      {
-        key: "rrhh",
-        label: "Recursos Humanos",
-        children: [
-          { key: "rrhh-personal", label: "Personal interno", href: "/rrhh/personal" },
-          { key: "rrhh-nomina", label: "Nómina", href: "/rrhh/nomina" },
-          { key: "rrhh-asistencia", label: "Asistencia", href: "/rrhh/asistencia" },
-          { key: "rrhh-evaluaciones", label: "Evaluaciones", href: "/rrhh/evaluaciones" },
-          { key: "rrhh-satisfaccion", label: "Satisfacción equipo", href: "/rrhh/satisfaccion" },
-          { key: "rrhh-capacitaciones", label: "Capacitaciones", href: "/rrhh/capacitaciones" },
-          { key: "rrhh-onboarding", label: "Integración / Onboarding", href: "/rrhh/onboarding" },
-        ],
-      },
-      {
-        key: "ats",
-        label: "Reclutamiento",
-        children: [
-          { key: "rrhh-candidatos", label: "Candidatos", href: "/rrhh/candidatos" },
-          { key: "rrhh-puestos", label: "Puestos ideales", href: "/rrhh/puestos" },
-          { key: "rrhh-config", label: "Configuración", href: "/rrhh/configuracion" },
-        ],
-      },
-      {
-        key: "inversiones",
-        label: "Inversiones y Socios",
-        children: [
-          { key: "socios-constitutivos", label: "Socios Constitutivos", href: "/socios" },
-        ],
-      },
-      { key: "tabulador", label: "Tabulador Freelancers", href: "/catalogo/roles" },
-      { key: "inventario-activos-admin", label: "Inventario de Activos", href: "/admin/valuacion", adminOnly: true },
-      { key: "admin-reportes", label: "Reportes de Administración", href: "/admin/reportes", adminOnly: true },
-
-    ],
-  },
-
-  // ── MARKETING ──────────────────────────────────────────────────────────────
-  {
-    key: "seccion-marketing",
-    section: "Marketing",
-    items: [
-      { key: "mkt-contenido",   label: "Contenido",        href: "/marketing/contenido" },
-      { key: "mkt-publicidad",  label: "Publicidad",        href: "/marketing/publicidad" },
-      { key: "mkt-resultados",  label: "Reporte de Marketing", href: "/marketing/resultados", adminOnly: true },
-      { key: "mkt-config",      label: "Configuración",        href: "/marketing/configuracion" },
-    ],
-  },
-
-  // ── VENTAS ─────────────────────────────────────────────────────────────────
-  {
-    key: "seccion-ventas",
-    section: "Comercial",
-    items: [
-
-      { key: "crm-tratos",              label: "Ventas",                     href: "/crm/tratos", badge: "leads" },
-      { key: "crm-base-de-datos",       label: "Clientes",                   href: "/crm/base-de-datos" },
-      { key: "comercial-productos",     label: "Productos y paquetes",       href: "/comercial/productos" },
-      { key: "ventas-seguimientos",     label: "Seguimientos",               href: "/ventas/seguimientos", badge: "seguimientos" },
-      // { key: "ventas-presentaciones",label: "Presentaciones de Venta",    href: "/ventas/presentaciones" },
-      { key: "ventas-reporte",          label: "Reporte de ventas",          href: "/ventas/reporte" },
-      { key: "grupos-equipo",           label: "Grupos de equipo",           href: "/admin/grupos-equipo", adminOnly: true },
-      { key: "ventas-config",           label: "Configuración",              href: "/ventas/configuracion", adminOnly: true },
-    ],
-  },
-
-  // ── PRODUCCIÓN ─────────────────────────────────────────────────────────────
-  {
-    key: "seccion-produccion",
-    section: "Producción",
-    items: [
-      { key: "proyectos", label: "Proyectos de evento", href: "/proyectos" },
-      { key: "produccion-tablero", accessKey: "inventario", label: "Tablero operativo", href: "/produccion/tablero" },
-      {
-        key: "inventario",
-        label: "Bodega",
-        children: [
-          { key: "inv-maestro", label: "Inventario de Equipos", href: "/inventario/maestro" },
-          { key: "inv-disponibilidad", accessKey: "inventario", label: "Disponibilidad", href: "/inventario/disponibilidad" },
-          { key: "inv-recolecciones", accessKey: "inventario", label: "Recolecciones", href: "/inventario/recolecciones" },
-          { key: "inv-mantenimiento", accessKey: "inventario", label: "Mantenimiento", href: "/inventario/mantenimiento" },
-          { key: "inv-checklist", accessKey: "inventario", label: "Checklist semanal", href: "/inventario/checklist" },
-          { key: "inv-vehiculos", accessKey: "inventario", label: "Vehículos", href: "/inventario/vehiculos" },
-        ],
-      },
-      {
-        key: "catalogo",
-        label: "Base de datos producción",
-        children: [
-          // Hidden from sidebar — route still accessible via direct URL
-          // { key: "bd-empresas", label: "Empresas", href: "/catalogo/empresas?tipo=proveedor" },
-          { key: "bd-proveedores", label: "Proveedores", href: "/catalogo/proveedores" },
-          { key: "bd-tecnicos", label: "Técnicos freelance", href: "/catalogo/tecnicos" },
-          { key: "bd-venues", accessKey: "catalogo", label: "Venues", href: "/catalogo/venues" },
-        ],
-      },
-      { key: "reporte-produccion", label: "Reporte de Producción", href: "/produccion/reporte" },
-      { key: "produccion-config", label: "Configuración", href: "/produccion/configuracion" },
-    ],
-  },
-];
+import { NAV } from "@/lib/nav";
 
 interface User {
   id: string;
@@ -359,7 +170,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
             if (item.adminOnly && !isAdmin) return false;
             if (canAccess(item.accessKey ?? item.key, isAdmin, userModuleKeys)) return true;
             if (item.children) {
-              return item.children.some(c => (!c.adminOnly || isAdmin) && canAccess(c.accessKey ?? c.key, isAdmin, userModuleKeys));
+              return item.children.some(c => (!c.adminOnly || isAdmin) && (canAccess(c.accessKey ?? c.key, isAdmin, userModuleKeys) || canAccess(item.key, isAdmin, userModuleKeys)));
             }
             return false;
           });
@@ -418,7 +229,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
                         </button>
                         {isOpen && (
                           <div className="ml-3 mt-0.5 space-y-0.5 border-l border-[#1f1f1f] pl-3">
-                            {item.children.filter(c => (!c.adminOnly || isAdmin) && canAccess(c.accessKey ?? c.key, isAdmin, userModuleKeys)).map((child) => {
+                            {item.children.filter(c => (!c.adminOnly || isAdmin) && (canAccess(c.accessKey ?? c.key, isAdmin, userModuleKeys) || canAccess(item.key, isAdmin, userModuleKeys))).map((child) => {
                               const childLabel = resolveLabel(child.key, child.label, labels);
                               return (
                                 <Link
