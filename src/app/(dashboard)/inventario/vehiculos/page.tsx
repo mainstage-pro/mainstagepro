@@ -9,6 +9,7 @@ import { Modal } from "@/components/Modal";
 interface Mantenimiento {
   id: string;
   fecha: string;
+  createdAt: string;
   km: number | null;
   tipoRegistro: string;
   servicio: string;
@@ -540,10 +541,11 @@ export default function VehiculosPage() {
                 <Modal open={showMantForm} onClose={() => { setShowMantForm(false); setMantFotos([]); }} title="Nuevo registro de mantenimiento" maxWidth="max-w-3xl">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
                     <div>
-                      <label className="text-xs text-gray-500 mb-1 block">Fecha *</label>
+                      <label className="text-xs text-gray-500 mb-1 block">Fecha del servicio / reparación *</label>
                       <input type="date" value={mantForm.fecha}
                         onChange={e => setMantForm(p => ({ ...p, fecha: e.target.value }))}
                         className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]/50" />
+                      <p className="text-gray-600 text-[10px] mt-1">Cuándo se realizó — no la fecha en que lo capturas</p>
                     </div>
                     <div>
                       <label className="text-xs text-gray-500 mb-1 block">Tipo *</label>
@@ -679,6 +681,9 @@ export default function VehiculosPage() {
                               </div>
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-[11px] text-gray-600">
                                 <span>📅 {fmtDate(m.fecha)}</span>
+                                {m.createdAt && m.createdAt.substring(0, 10) !== m.fecha.substring(0, 10) && (
+                                  <span className="text-gray-700">registrado {fmtDate(m.createdAt)}</span>
+                                )}
                                 {m.km && <span>🛣 {fmtKm(m.km)}</span>}
                                 {m.costo && <span className="text-[#B3985B]">💰 {fmt(m.costo)}</span>}
                                 {m.proximoKm && <span>⏭ Próx: {fmtKm(m.proximoKm)}</span>}

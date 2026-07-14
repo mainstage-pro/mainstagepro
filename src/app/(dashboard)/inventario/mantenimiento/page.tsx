@@ -23,7 +23,7 @@ type Unidad = {
 };
 
 type Registro = {
-  id: string; fecha: string; tipo: string; accionRealizada: string;
+  id: string; fecha: string; createdAt: string; tipo: string; accionRealizada: string;
   estadoEquipo: string | null; comentarios: string | null;
   proximoMantenimiento: string | null; fotoEvidencia: string | null;
   unidad: { id: string; codigo: string | null } | null;
@@ -580,9 +580,10 @@ function MantenimientoContent() {
                   <div className="space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                       <div>
-                        <label className="text-gray-500 text-xs mb-1 block">Fecha *</label>
+                        <label className="text-gray-500 text-xs mb-1 block">Fecha del mantenimiento / reparación *</label>
                         <input type="date" value={form.fecha} onChange={e => setForm(p => ({ ...p, fecha: e.target.value }))}
                           className="w-full bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]" />
+                        <p className="text-gray-600 text-[10px] mt-1">Cuándo se llevó o se realizó — no la fecha en que lo capturas</p>
                       </div>
                       <div>
                         <label className="text-gray-500 text-xs mb-1 block">Tipo *</label>
@@ -685,6 +686,9 @@ function MantenimientoContent() {
                               {r.comentarios && <p className="text-gray-500 text-xs mt-1">{r.comentarios}</p>}
                               <div className="flex flex-wrap items-center gap-3 mt-2">
                                 <span className="text-gray-600 text-xs">{fmtDate(r.fecha)}</span>
+                                {r.createdAt && r.createdAt.substring(0, 10) !== r.fecha.substring(0, 10) && (
+                                  <span className="text-gray-700 text-[10px]">registrado {fmtDate(r.createdAt)}</span>
+                                )}
                                 {r.estadoEquipo && (
                                   <span className={`text-xs font-medium ${ESTADO_COLORS[r.estadoEquipo] ?? "text-gray-400"}`}>
                                     → {ESTADO_EQUIPO_LABEL[r.estadoEquipo] ?? r.estadoEquipo}
