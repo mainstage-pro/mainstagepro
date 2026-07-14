@@ -748,6 +748,8 @@ model Equipo {
   accesorios           EquipoAccesorio[]
   notasEquipo          EquipoNota[]
   proveedoresPrecios   EquipoProveedorPrecio[] @relation("EquipoProveedores")
+  productoItems        ProductoEquipo[]
+  productosDominante   Producto[]              @relation("ProductoEquipoDominante")
 
   @@map("equipos")
 }
@@ -798,6 +800,42 @@ model CategoriaEquipo {
   equipos Equipo[]
 
   @@map("categoria_equipos")
+}
+
+// Producto/paquete comercial: agrupa varios equipos del inventario en un solo
+// concepto vendible ("Sistema EV EKX12P — 2 medios + 2 bajos"). El precio y la
+// disponibilidad siempre se derivan del inventario (Equipo), nunca se duplican.
+model Producto {
+  id                 String   @id @default(cuid())
+  nombre             String
+  descripcion        String?
+  categoria          String?  // AUDIO | ILUMINACION | VIDEO | DJ | ESTRUCTURA | OTRO — agrupa en la UI
+  tiposEvento        String?  // JSON array: ["MUSICAL","SOCIAL","EMPRESARIAL"] — sugerencia por tipo de evento
+  imagenUrl          String?  // imagen del producto (por default la del equipo dominante; editable)
+  equipoDominanteId  String?  // equipo cuya imagen se usa por default
+  equipoDominante    Equipo?  @relation("ProductoEquipoDominante", fields: [equipoDominanteId], references: [id])
+  precioManual       Float?   // override opcional; si es null el precio = suma de rentas de los items
+  precioFinal        Float    @default(0) // cache: precioManual ?? Σ(cantidad × equipo.precioRenta)
+  activo             Boolean  @default(true)
+  orden              Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  items              ProductoEquipo[]
+
+  @@map("productos")
+}
+
+model ProductoEquipo {
+  id         String   @id @default(cuid())
+  productoId String
+  producto   Producto @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  equipoId   String
+  equipo     Equipo   @relation(fields: [equipoId], references: [id])
+  cantidad   Int      @default(1)
+  orden      Int      @default(0)
+
+  @@map("producto_equipos")
 }
 
 model RolTecnico {
@@ -3480,6 +3518,40 @@ model ImagenPV {
   createdAt      DateTime          @default(now())
 
   @@map("imagenes_pv")
+}
+
+// ─── CATÁLOGO DE TIPOS DE EVENTO ──────────────────────────────────────────────
+// Fuente única para categorizar tratos/cotizaciones y alimentar galerías,
+// presentaciones por tipo y presentaciones derivadas de cotización.
+
+model TipoEvento {
+  id          String           @id @default(cuid())
+  slug        String           @unique // "musical" | "social" | "empresarial" | "otro"
+  nombre      String                   // "Eventos Musicales"
+  emoji       String?
+  subtitulo   String?                  // tagline: "Conciertos · Festivales · DJ Sets"
+  descripcion String?          @db.Text // base/copy larga del tipo de evento
+  orden       Int              @default(0)
+  activo      Boolean          @default(true)
+  fotos       FotoTipoEvento[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@map("tipos_evento")
+}
+
+model FotoTipoEvento {
+  id           String     @id @default(cuid())
+  tipoEventoId String
+  tipoEvento   TipoEvento @relation(fields: [tipoEventoId], references: [id], onDelete: Cascade)
+  url          String                   // blob URL o ruta en /public
+  caption      String?
+  orden        Int        @default(0)
+  destacada    Boolean    @default(false) // "los mejores" — preseleccionadas
+  createdAt    DateTime   @default(now())
+
+  @@index([tipoEventoId])
+  @@map("fotos_tipo_evento")
 }
 
 // ── Prospección ──────────────────────────────────────────────────────────────

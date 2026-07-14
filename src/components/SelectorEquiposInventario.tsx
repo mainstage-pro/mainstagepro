@@ -28,6 +28,23 @@ export type ExtraEquipo = {
   cantidad?: number;
 };
 
+/** Producto/paquete armado seleccionado en el descubrimiento. */
+export type SeleccionProducto = {
+  id: string;
+  cantidad?: number;
+};
+
+export type ProductoPublico = {
+  id: string;
+  nombre: string;
+  descripcion: string | null;
+  categoria: string | null;
+  tiposEvento: string | null;
+  imagenUrl: string | null;
+  precioFinal: number;
+  items: { cantidad: number; equipo: { id: string; descripcion: string; marca: string | null; modelo: string | null } }[];
+};
+
 export type SeleccionEquipos = {
   /** IDs de CategoriaEquipo elegidas en el paso 1 */
   categorias: string[];
@@ -37,6 +54,8 @@ export type SeleccionEquipos = {
   cantidades?: Record<string, number>;
   /** Equipos/categorías adicionales tecleados a mano (solo este trato) */
   extras?: ExtraEquipo[];
+  /** Productos/paquetes armados seleccionados */
+  productos?: SeleccionProducto[];
 };
 
 interface Props {
@@ -90,7 +109,11 @@ const CANTIDADES = Array.from({ length: 32 }, (_, i) => i + 1);
 
 export function SelectorEquiposInventario({ value, onChange, readOnly = false, notas, onNotasChange }: Props) {
   const [categorias, setCategorias] = useState<CategoriaPublica[]>([]);
+  const [productos, setProductos] = useState<ProductoPublico[]>([]);
   const [loading, setLoading] = useState(true);
+  const [modo, setModo] = useState<"productos" | "equipos">(() =>
+    (value.productos?.length ?? 0) > 0 ? "productos" : "equipos"
+  );
   const [paso, setPaso] = useState<1 | 2>(() =>
     value.categorias.length > 0 || value.equipos.length > 0 ? 2 : 1
   );
@@ -99,15 +122,42 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
 
   const cantidades = value.cantidades ?? {};
   const extras = value.extras ?? [];
+  const productosSel = value.productos ?? [];
 
   useEffect(() => {
-    fetch("/api/inventario/publico")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.categorias) setCategorias(d.categorias);
+    Promise.all([
+      fetch("/api/inventario/publico").then((r) => r.json()).catch(() => ({})),
+      fetch("/api/productos/publico").then((r) => r.json()).catch(() => ({})),
+    ])
+      .then(([inv, prod]) => {
+        if (inv.categorias) setCategorias(inv.categorias);
+        if (prod.productos) setProductos(prod.productos);
       })
       .finally(() => setLoading(false));
   }, []);
+
+  // ── Mutadores de productos ──
+  function toggleProducto(id: string) {
+    if (readOnly) return;
+    const tiene = productosSel.some((p) => p.id === id);
+    onChange({
+      ...value,
+      productos: tiene
+        ? productosSel.filter((p) => p.id !== id)
+        : [...productosSel, { id, cantidad: 1 }],
+    });
+  }
+  function setProductoCantidad(id: string, cant: number) {
+    if (readOnly) return;
+    const c = Math.max(1, Math.min(cant, 32));
+    const existe = productosSel.some((p) => p.id === id);
+    onChange({
+      ...value,
+      productos: existe
+        ? productosSel.map((p) => (p.id === id ? { ...p, cantidad: c } : p))
+        : [...productosSel, { id, cantidad: c }],
+    });
+  }
 
   // Categorías visibles (excluye vehículos / externos)
   const categoriasVisibles = useMemo(
@@ -221,7 +271,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
     );
   }
 
-  if (categoriasVisibles.length === 0 && extras.length === 0) {
+  if (categoriasVisibles.length === 0 && extras.length === 0 && productos.length === 0) {
     return (
       <p className="text-gray-600 text-sm py-4 text-center">
         No hay equipos disponibles en el inventario todavía.
@@ -229,14 +279,36 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
     );
   }
 
+  const productosElegidos = productos.filter((p) => productosSel.some((s) => s.id === p.id));
+
   // ── Vista de solo lectura (resumen) ──
   if (readOnly) {
-    const conEquipos = categoriasElegidas.length > 0 || value.equipos.length > 0 || extras.length > 0;
+    const conEquipos =
+      categoriasElegidas.length > 0 || value.equipos.length > 0 || extras.length > 0 || productosElegidos.length > 0;
     if (!conEquipos) {
       return <p className="text-gray-600 text-sm py-3">Sin equipos seleccionados.</p>;
     }
     return (
       <div className="space-y-3">
+        {productosElegidos.length > 0 && (
+          <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-3">
+            <p className="text-white text-sm font-medium mb-1.5">📦 Productos armados</p>
+            <ul className="space-y-1">
+              {productosElegidos.map((p) => {
+                const cant = productosSel.find((s) => s.id === p.id)?.cantidad ?? 1;
+                return (
+                  <li key={p.id} className="text-gray-300 text-xs flex justify-between gap-2">
+                    <span>
+                      {cant > 1 ? `${cant}× ` : ""}
+                      {p.nombre}
+                    </span>
+                    <span className="text-[#B3985B]">${(p.precioFinal * cant).toLocaleString("es-MX")}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
         {categoriasElegidas.map((cat) => {
           const eqs = cat.equipos.filter((e) => value.equipos.includes(e.id));
           return (
@@ -323,6 +395,96 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
   // ── UI interactiva ──
   return (
     <div className="space-y-3">
+      {/* Selector de modo: productos armados vs equipos individuales */}
+      {productos.length > 0 && (
+        <div className="flex items-center gap-1.5 p-1 bg-[#111] rounded-xl">
+          <button
+            type="button"
+            onClick={() => setModo("productos")}
+            className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+              modo === "productos" ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
+            }`}
+          >
+            📦 Productos armados
+          </button>
+          <button
+            type="button"
+            onClick={() => setModo("equipos")}
+            className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+              modo === "equipos" ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
+            }`}
+          >
+            🎛️ Equipos individuales
+          </button>
+        </div>
+      )}
+
+      {/* ── MODO PRODUCTOS ── */}
+      {modo === "productos" && (
+        <div className="space-y-2">
+          <p className="text-gray-500 text-xs">
+            Sistemas y paquetes ya armados. Al elegir uno se consideran todos sus equipos.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {productos.map((p) => {
+              const sel = productosSel.some((s) => s.id === p.id);
+              const cant = productosSel.find((s) => s.id === p.id)?.cantidad ?? 1;
+              return (
+                <div
+                  key={p.id}
+                  className={`rounded-xl border p-2.5 transition-all ${
+                    sel ? "border-[#B3985B] bg-[#B3985B]/[0.06]" : "border-[#1e1e1e] bg-[#0d0d0d]"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleProducto(p.id)}
+                    className="flex items-start gap-2.5 w-full text-left"
+                  >
+                    <span className="w-12 h-12 rounded-lg bg-[#1a1a1a] overflow-hidden shrink-0 flex items-center justify-center">
+                      {p.imagenUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.imagenUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-gray-700">📦</span>
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5">
+                        <span
+                          className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
+                            sel ? "bg-[#B3985B] border-[#B3985B]" : "border-[#333]"
+                          }`}
+                        >
+                          {sel && <span className="text-black text-[9px] font-bold leading-none">✓</span>}
+                        </span>
+                        <span className="text-white text-xs font-medium leading-tight">{p.nombre}</span>
+                      </span>
+                      {p.descripcion && (
+                        <span className="block text-gray-500 text-[10px] leading-tight line-clamp-2 mt-0.5">
+                          {p.descripcion}
+                        </span>
+                      )}
+                      <span className="block text-[#B3985B] text-[11px] font-semibold mt-1">
+                        ${p.precioFinal.toLocaleString("es-MX")}
+                      </span>
+                    </span>
+                  </button>
+                  {sel && (
+                    <div className="flex items-center justify-end mt-1.5">
+                      {controlCantidad(cant, (n) => setProductoCantidad(p.id, n))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── MODO EQUIPOS INDIVIDUALES ── */}
+      {modo === "equipos" && (
+      <>
       {/* Indicador de pasos */}
       <div className="flex items-center gap-2 text-xs">
         <button
@@ -594,10 +756,14 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
           )}
         </div>
       )}
+      </>
+      )}
 
-      <p className="text-gray-700 text-[11px] pt-1 text-center">
-        Si no encuentras lo que necesitas, agrégalo arriba o menciónalo en las notas.
-      </p>
+      {modo === "equipos" && (
+        <p className="text-gray-700 text-[11px] pt-1 text-center">
+          Si no encuentras lo que necesitas, agrégalo arriba o menciónalo en las notas.
+        </p>
+      )}
     </div>
   );
 }

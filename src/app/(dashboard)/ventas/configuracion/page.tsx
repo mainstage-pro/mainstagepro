@@ -14,6 +14,12 @@ export default function VentasConfiguracionPage() {
           ],
         },
         {
+          title: "Catálogos comerciales",
+          items: [
+            { label: "Tipos de evento", description: "Categorías de evento con fotos y descripciones que alimentan galerías y presentaciones", href: "/ventas/configuracion/tipos-evento" },
+          ],
+        },
+        {
           title: "Plantillas de cotización",
           items: [
             { label: "Plantillas de cotización", description: "Combos de líneas, precios y vigencia reutilizables al cotizar", href: "/cotizaciones/plantillas" },

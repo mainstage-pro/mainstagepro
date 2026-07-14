@@ -249,10 +249,13 @@ function CotizadorForm() {
   // Equipos/categorías seleccionados en el descubrimiento del trato: { categorias: CategoriaEquipo IDs, equipos: Equipo IDs }
   // `extras` = equipos escritos a mano en el descubrimiento (no existen en inventario);
   // se agregan como conceptos ocasionales con precio editable.
-  const [equiposInteres, setEquiposInteres] = useState<{ categorias: string[]; equipos: string[]; cantidades: Record<string, number>; extras: { id: string; nombre: string; categoria?: string; cantidad?: number }[] }>({ categorias: [], equipos: [], cantidades: {}, extras: [] });
+  const [equiposInteres, setEquiposInteres] = useState<{ categorias: string[]; equipos: string[]; cantidades: Record<string, number>; extras: { id: string; nombre: string; categoria?: string; cantidad?: number }[]; productos: { id: string; cantidad?: number }[] }>({ categorias: [], equipos: [], cantidades: {}, extras: [], productos: [] });
   // Precio capturado por cada extra antes de agregarlo, y los extras ya agregados.
   const [extrasPrecios, setExtrasPrecios] = useState<Record<string, string>>({});
   const [extrasAgregados, setExtrasAgregados] = useState<string[]>([]);
+  // Catálogo de paquetes/productos (para expandir en líneas de equipo al agregarlos).
+  const [productosCatalogo, setProductosCatalogo] = useState<Array<{ id: string; nombre: string; categoria: string | null; precioFinal: number; items: { cantidad: number; equipo: { id: string; descripcion: string; marca: string | null; modelo: string | null; precioRenta: number } }[] }>>([]);
+  const [paquetesAgregados, setPaquetesAgregados] = useState<string[]>([]);
   // Precios especiales del cliente: { equipoId → precio }
   const [preciosCliente, setPreciosCliente] = useState<Record<string, number>>({});
   // Precio original de lista al momento de registrar el especial: { equipoId → precioOriginal }
@@ -375,6 +378,7 @@ function CotizadorForm() {
   // Cargar datos (modo nuevo O modo edición)
   useEffect(() => {
     fetch("/api/plantillas-cotizacion").then(r => r.json()).then(d => setPlantillas(d.plantillas ?? [])).catch(() => {});
+    fetch("/api/productos/publico").then(r => r.json()).then(d => setProductosCatalogo(d.productos ?? [])).catch(() => {});
     Promise.all([
       fetch("/api/equipos").then(r => r.json()),
       fetch("/api/roles-tecnicos").then(r => r.json()),
@@ -577,7 +581,7 @@ function CotizadorForm() {
         }
         if (t.asistentesEstimados) setAsistentesEstimados(t.asistentesEstimados);
         if (t.formEstado) setTratoFormEstado(t.formEstado);
-        if (t.equiposInteres) { try { const ei = JSON.parse(t.equiposInteres); setEquiposInteres({ categorias: ei.categorias ?? [], equipos: ei.equipos ?? [], cantidades: ei.cantidades ?? {}, extras: ei.extras ?? [] }); } catch { /* noop */ } }
+        if (t.equiposInteres) { try { const ei = JSON.parse(t.equiposInteres); setEquiposInteres({ categorias: ei.categorias ?? [], equipos: ei.equipos ?? [], cantidades: ei.cantidades ?? {}, extras: ei.extras ?? [], productos: ei.productos ?? [] }); } catch { /* noop */ } }
       }
     });
   }, [clienteId, tratoId]);
@@ -713,6 +717,42 @@ function CotizadorForm() {
         agregarEquipoDescubrimiento(eq, equiposInteres.cantidades[eq.id]);
       }
     });
+  }
+
+  // Paquete del descubrimiento → se expande en sus equipos componentes como líneas
+  // EQUIPO_PROPIO. Cada componente cuenta para disponibilidad/viabilidad y se hereda
+  // al proyecto igual que un equipo suelto. La procedencia queda en `notas`.
+  function agregarPaqueteDescubrimiento(prod: typeof productosCatalogo[number]) {
+    if (paquetesAgregados.includes(prod.id)) return;
+    const sel = equiposInteres.productos.find(p => p.id === prod.id);
+    const paqCant = sel?.cantidad && sel.cantidad > 0 ? sel.cantidad : 1;
+    const dias = parseInt(evento.diasEquipo) || 1;
+    setLineasEquipo(prev => {
+      const next = [...prev];
+      for (const item of prod.items) {
+        if (!item.equipo) continue;
+        const totalCant = item.cantidad * paqCant;
+        const full = equipos.find(e => e.id === item.equipo.id);
+        const precio = preciosCliente[item.equipo.id] ?? item.equipo.precioRenta;
+        const idx = next.findIndex(l => l.equipoId === item.equipo.id);
+        if (idx >= 0) {
+          const l = next[idx];
+          const nuevaCant = l.cantidad + totalCant;
+          next[idx] = { ...l, cantidad: nuevaCant, subtotal: l.precioUnitario * nuevaCant * l.dias };
+        } else {
+          next.push({
+            id: uid(), equipoId: item.equipo.id, descripcion: item.equipo.descripcion,
+            marca: item.equipo.marca ?? "", modelo: item.equipo.modelo ?? "",
+            cantidad: totalCant, dias, precioUnitario: precio,
+            subtotal: precio * totalCant * dias,
+            categoria: full?.categoria.nombre ?? (prod.categoria ?? "Equipo"),
+            notas: `Paquete: ${prod.nombre}`,
+          });
+        }
+      }
+      return next;
+    });
+    setPaquetesAgregados(prev => prev.includes(prod.id) ? prev : [...prev, prod.id]);
   }
 
   // Extra del descubrimiento (equipo a mano) → concepto ocasional con precio editable.
@@ -1687,7 +1727,7 @@ function CotizadorForm() {
           </Seccion>
 
           {/* ── Sugerencia de equipo (derivada del descubrimiento) ── */}
-          {(equiposInteres.categorias.length > 0 || equiposInteres.equipos.length > 0 || equiposInteres.extras.length > 0) && (() => {
+          {(equiposInteres.categorias.length > 0 || equiposInteres.equipos.length > 0 || equiposInteres.extras.length > 0 || equiposInteres.productos.length > 0) && (() => {
             const catsSel = equiposInteres.categorias
               .map(id => categoriasList.find(c => c.id === id)?.nombre)
               .filter((n): n is string => !!n);
@@ -1695,7 +1735,10 @@ function CotizadorForm() {
               .map(id => equipos.find(e => e.id === id))
               .filter((e): e is Equipo => !!e);
             const extrasSel = equiposInteres.extras ?? [];
-            if (catsSel.length === 0 && eqsSel.length === 0 && extrasSel.length === 0) return null;
+            const paqSel = equiposInteres.productos
+              .map(p => productosCatalogo.find(pc => pc.id === p.id))
+              .filter((p): p is typeof productosCatalogo[number] => !!p);
+            if (catsSel.length === 0 && eqsSel.length === 0 && extrasSel.length === 0 && paqSel.length === 0) return null;
             return (
               <details className="bg-[#0d0d0d] border border-[#B3985B]/30 rounded-xl group" open>
                 <summary className="flex items-center gap-3 px-5 py-3 cursor-pointer select-none">
@@ -1715,6 +1758,40 @@ function CotizadorForm() {
                   </div>
                 )}
                 <div className="px-5 pb-5 space-y-4">
+                  {paqSel.length > 0 && (
+                    <div>
+                      <p className="text-[#B3985B] text-[10px] font-bold uppercase tracking-wider mb-2">Paquetes seleccionados</p>
+                      <div className="space-y-1.5">
+                        {paqSel.map(prod => {
+                          const sel = equiposInteres.productos.find(p => p.id === prod.id);
+                          const paqCant = sel?.cantidad && sel.cantidad > 0 ? sel.cantidad : 1;
+                          const yaAgregado = paquetesAgregados.includes(prod.id);
+                          return (
+                            <div key={prod.id} className="flex items-start gap-2 text-sm">
+                              <span className="flex-1 leading-snug text-gray-300 min-w-0">
+                                <span className="font-medium">{prod.nombre}</span>
+                                {paqCant > 1 && <span className="ml-1.5 text-[10px] text-[#B3985B] font-semibold bg-[#B3985B]/10 rounded px-1.5 py-0.5">{paqCant}×</span>}
+                                <span className="block text-[10px] text-gray-500 mt-0.5">
+                                  {prod.items.map(it => `${it.cantidad * paqCant}× ${it.equipo?.descripcion ?? ""}`).join(" · ")}
+                                </span>
+                              </span>
+                              {!yaAgregado ? (
+                                <button
+                                  onClick={() => agregarPaqueteDescubrimiento(prod)}
+                                  className="shrink-0 text-[10px] px-2 py-0.5 rounded bg-[#B3985B]/15 text-[#B3985B] hover:bg-[#B3985B]/30 transition-colors leading-5"
+                                >
+                                  + Agregar equipos
+                                </button>
+                              ) : (
+                                <span className="shrink-0 text-[10px] text-green-500 px-1 leading-5">✓ agregado</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <p className="text-gray-700 text-[11px] mt-2">Al agregar un paquete, sus equipos se cargan como líneas individuales y cuentan para la disponibilidad.</p>
+                    </div>
+                  )}
                   {catsSel.length > 0 && (
                     <div>
                       <p className="text-[#B3985B] text-[10px] font-bold uppercase tracking-wider mb-2">Categorías de interés</p>

@@ -748,6 +748,78 @@ export async function POST(req: NextRequest) {
     await prisma.$executeRawUnsafe(`ALTER TABLE "tratos" ADD COLUMN IF NOT EXISTS "realizarRender" BOOLEAN NOT NULL DEFAULT false`);
     results.push("✅ tratos.realizarRender");
 
+    // 40. productos + producto_equipos (paquetes comerciales)
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "productos" (
+        "id" TEXT NOT NULL,
+        "nombre" TEXT NOT NULL,
+        "descripcion" TEXT,
+        "categoria" TEXT,
+        "tiposEvento" TEXT,
+        "imagenUrl" TEXT,
+        "equipoDominanteId" TEXT,
+        "precioManual" DOUBLE PRECISION,
+        "precioFinal" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "activo" BOOLEAN NOT NULL DEFAULT true,
+        "orden" INTEGER NOT NULL DEFAULT 0,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "productos_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "productos_equipoDominanteId_fkey"
+          FOREIGN KEY ("equipoDominanteId") REFERENCES "equipos"("id") ON DELETE SET NULL
+      );
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "producto_equipos" (
+        "id" TEXT NOT NULL,
+        "productoId" TEXT NOT NULL,
+        "equipoId" TEXT NOT NULL,
+        "cantidad" INTEGER NOT NULL DEFAULT 1,
+        "orden" INTEGER NOT NULL DEFAULT 0,
+        CONSTRAINT "producto_equipos_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "producto_equipos_productoId_fkey"
+          FOREIGN KEY ("productoId") REFERENCES "productos"("id") ON DELETE CASCADE,
+        CONSTRAINT "producto_equipos_equipoId_fkey"
+          FOREIGN KEY ("equipoId") REFERENCES "equipos"("id") ON DELETE CASCADE
+      );
+    `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "producto_equipos_productoId_idx" ON "producto_equipos"("productoId");`);
+    results.push("✅ productos + producto_equipos");
+
+    // 41. tipos_evento + fotos_tipo_evento (catálogo comercial de tipos de evento)
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "tipos_evento" (
+        "id" TEXT NOT NULL,
+        "slug" TEXT NOT NULL,
+        "nombre" TEXT NOT NULL,
+        "emoji" TEXT,
+        "subtitulo" TEXT,
+        "descripcion" TEXT,
+        "orden" INTEGER NOT NULL DEFAULT 0,
+        "activo" BOOLEAN NOT NULL DEFAULT true,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "tipos_evento_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "tipos_evento_slug_key" UNIQUE ("slug")
+      );
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "fotos_tipo_evento" (
+        "id" TEXT NOT NULL,
+        "tipoEventoId" TEXT NOT NULL,
+        "url" TEXT NOT NULL,
+        "caption" TEXT,
+        "orden" INTEGER NOT NULL DEFAULT 0,
+        "destacada" BOOLEAN NOT NULL DEFAULT false,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "fotos_tipo_evento_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "fotos_tipo_evento_tipoEventoId_fkey"
+          FOREIGN KEY ("tipoEventoId") REFERENCES "tipos_evento"("id") ON DELETE CASCADE
+      );
+    `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "fotos_tipo_evento_tipoEventoId_idx" ON "fotos_tipo_evento"("tipoEventoId");`);
+    results.push("✅ tipos_evento + fotos_tipo_evento");
+
     return NextResponse.json({ ok: true, results });
   } catch (error) {
     return NextResponse.json({ ok: false, error: String(error), results }, { status: 500 });

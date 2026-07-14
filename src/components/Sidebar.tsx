@@ -154,6 +154,7 @@ const NAV: NavSection[] = [
 
       { key: "crm-tratos",              label: "Ventas",                     href: "/crm/tratos", badge: "leads" },
       { key: "crm-base-de-datos",       label: "Clientes",                   href: "/crm/base-de-datos" },
+      { key: "comercial-productos",     label: "Productos y paquetes",       href: "/comercial/productos" },
       { key: "ventas-seguimientos",     label: "Seguimientos",               href: "/ventas/seguimientos", badge: "seguimientos" },
       // { key: "ventas-presentaciones",label: "Presentaciones de Venta",    href: "/ventas/presentaciones" },
       { key: "ventas-reporte",          label: "Reporte de ventas",          href: "/ventas/reporte" },
