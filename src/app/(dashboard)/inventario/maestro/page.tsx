@@ -43,6 +43,7 @@ type Form = {
   categoriaId: string; cantidadTotal: string; estado: string;
   proveedorDefaultId: string; notas: string;
   amperajeRequerido: string; voltajeRequerido: string;
+  precioRenta: string; costoProveedor: string;
 };
 
 const FORM_EMPTY: Form = {
@@ -50,6 +51,7 @@ const FORM_EMPTY: Form = {
   categoriaId: "", cantidadTotal: "1", estado: "ACTIVO",
   proveedorDefaultId: "", notas: "",
   amperajeRequerido: "", voltajeRequerido: "",
+  precioRenta: "", costoProveedor: "",
 };
 
 function fmx(n: number) {
@@ -253,6 +255,16 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
           <FieldGroup label="Cantidad total">
             <FInput type="number" value={form.cantidadTotal} onChange={v => setForm(p => ({ ...p, cantidadTotal: v }))} />
           </FieldGroup>
+          <div className="grid grid-cols-2 gap-2">
+            <FieldGroup label="Precio de renta ($)">
+              <FInput type="number" value={form.precioRenta} onChange={v => setForm(p => ({ ...p, precioRenta: v }))} placeholder="0" />
+            </FieldGroup>
+            {form.tipo === "EXTERNO" && (
+              <FieldGroup label="Costo proveedor ($)">
+                <FInput type="number" value={form.costoProveedor} onChange={v => setForm(p => ({ ...p, costoProveedor: v }))} placeholder="0" />
+              </FieldGroup>
+            )}
+          </div>
           <FieldGroup label="Proveedor por defecto">
             <select value={form.proveedorDefaultId} onChange={e => setForm(p => ({ ...p, proveedorDefaultId: e.target.value }))}
               className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50">
@@ -808,6 +820,8 @@ export default function InventarioMaestroPage() {
       notas: e.notas ?? "",
       amperajeRequerido: e.amperajeRequerido != null ? String(e.amperajeRequerido) : "",
       voltajeRequerido: e.voltajeRequerido != null ? String(e.voltajeRequerido) : "",
+      precioRenta: e.precioRenta != null ? String(e.precioRenta) : "",
+      costoProveedor: e.costoProveedor != null ? String(e.costoProveedor) : "",
     });
     setImagen(null);
     setPanel(e.id);
@@ -862,6 +876,8 @@ export default function InventarioMaestroPage() {
       notas: form.notas || null,
       amperajeRequerido: form.amperajeRequerido !== "" ? parseFloat(form.amperajeRequerido) : null,
       voltajeRequerido: form.voltajeRequerido !== "" ? form.voltajeRequerido : null,
+      precioRenta: form.precioRenta !== "" ? parseFloat(form.precioRenta) : 0,
+      costoProveedor: form.tipo === "EXTERNO" && form.costoProveedor !== "" ? parseFloat(form.costoProveedor) : null,
       ...(imagen !== null ? { imagenUrl: imagen } : {}),
     };
 
