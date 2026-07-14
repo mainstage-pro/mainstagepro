@@ -112,10 +112,12 @@ function ProductoEditor({
   form,
   setForm,
   equipos,
+  categorias,
 }: {
   form: FormState;
   setForm: (f: FormState) => void;
   equipos: EquipoItem[];
+  categorias: string[];
 }) {
   const [busqueda, setBusqueda] = useState("");
   const equipoMap = useMemo(() => new Map(equipos.map((e) => [e.id, e])), [equipos]);
@@ -191,11 +193,14 @@ function ProductoEditor({
             onChange={(e) => setForm({ ...form, categoria: e.target.value })}
             className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
           >
-            {CATEGORIAS_PRODUCTO.map((c) => (
+            {(categorias.length > 0 ? categorias : CATEGORIAS_PRODUCTO).map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
             ))}
+            {form.categoria && !categorias.includes(form.categoria) && !CATEGORIAS_PRODUCTO.includes(form.categoria) && (
+              <option value={form.categoria}>{form.categoria}</option>
+            )}
           </select>
         </div>
         <div>
@@ -391,6 +396,7 @@ export default function ProductosPage() {
 
   const [productos, setProductos] = useState<Producto[]>([]);
   const [equipos, setEquipos] = useState<EquipoItem[]>([]);
+  const [categoriasInv, setCategoriasInv] = useState<string[]>([]);
   const [sinPaquetear, setSinPaquetear] = useState<EquipoSinPaquetear[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroCat, setFiltroCat] = useState<string>("TODAS");
@@ -404,14 +410,16 @@ export default function ProductosPage() {
   async function cargar() {
     setLoading(true);
     try {
-      const [rp, re, rs] = await Promise.all([
+      const [rp, re, rs, rc] = await Promise.all([
         fetch("/api/productos").then((r) => r.json()),
         fetch("/api/equipos").then((r) => r.json()),
         fetch("/api/productos/sin-paquetear").then((r) => r.json()),
+        fetch("/api/inventario/categorias").then((r) => r.json()),
       ]);
       setProductos(rp.productos ?? []);
       setEquipos(re.equipos ?? []);
       setSinPaquetear(rs.equipos ?? []);
+      setCategoriasInv((rc.categorias ?? []).map((c: { nombre: string }) => c.nombre));
     } finally {
       setLoading(false);
     }
@@ -423,10 +431,11 @@ export default function ProductosPage() {
 
   function abrirNuevo(prefillEquipoId?: string) {
     setEditId(null);
+    const base = { ...FORM_EMPTY, categoria: categoriasInv[0] ?? FORM_EMPTY.categoria };
     setForm(
       prefillEquipoId
-        ? { ...FORM_EMPTY, items: [{ equipoId: prefillEquipoId, cantidad: 1 }], equipoDominanteId: prefillEquipoId }
-        : FORM_EMPTY
+        ? { ...base, items: [{ equipoId: prefillEquipoId, cantidad: 1 }], equipoDominanteId: prefillEquipoId }
+        : base
     );
     setModalOpen(true);
   }
@@ -671,7 +680,7 @@ export default function ProductosPage() {
         title={editId ? "Editar producto" : "Nuevo producto"}
         maxWidth="max-w-3xl"
       >
-        <ProductoEditor form={form} setForm={setForm} equipos={equipos} />
+        <ProductoEditor form={form} setForm={setForm} equipos={equipos} categorias={categoriasInv} />
         <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-[#1a1a1a]">
           <button
             onClick={() => setModalOpen(false)}
