@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
+import { EquipoGaleria } from "@/components/EquipoGaleria";
 
 type Equipo = {
   id: string;
@@ -358,6 +359,14 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
           </div>
         </div>
       </div>
+
+      {equipoActual ? (
+        <div className="ms-card p-4 mb-4">
+          <EquipoGaleria equipoId={equipoActual.id} />
+        </div>
+      ) : (
+        <p className="text-[10px] text-[#555] mb-4">Guarda el equipo para poder agregar fotos a su galería.</p>
+      )}
 
       <div className="flex items-center gap-3 pt-2 border-t border-[#1a1a1a]">
         <button onClick={onSave} disabled={saving || !form.descripcion || !form.categoriaId}
