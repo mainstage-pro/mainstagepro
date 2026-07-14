@@ -145,8 +145,6 @@ const NAV: NavSection[] = [
     items: [
       { key: "mkt-contenido",   label: "Contenido",        href: "/marketing/contenido" },
       { key: "mkt-publicidad",  label: "Publicidad",        href: "/marketing/publicidad" },
-      { key: "mkt-campanas",    label: "Campañas",          href: "/marketing/campanas" },
-      { key: "mkt-meta-ads",    label: "Meta Ads",          href: "/marketing/meta-ads" },
       { key: "mkt-resultados",  label: "Reporte de Marketing", href: "/marketing/resultados", adminOnly: true },
       { key: "mkt-config",      label: "Configuración",        href: "/marketing/configuracion" },
     ],
