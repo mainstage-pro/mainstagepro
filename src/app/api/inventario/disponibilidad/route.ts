@@ -60,8 +60,8 @@ export async function GET(req: NextRequest) {
       trato: { select: { fechaEventoEstimada: true } },
       cliente: { select: { nombre: true, empresa: true } },
       lineas: {
-        where: { tipo: "EQUIPO_PROPIO", equipoId: { not: null } },
-        select: { equipoId: true, cantidad: true },
+        where: { OR: [{ tipo: "EQUIPO_PROPIO", equipoId: { not: null } }, { tipo: "PAQUETE" }] },
+        select: { tipo: true, equipoId: true, cantidad: true, notasInternas: true },
       },
     },
   });
@@ -87,18 +87,31 @@ export async function GET(req: NextRequest) {
   }> = {};
 
   for (const cot of cotizacionesEnFecha) {
+    const fechaCot = cot.fechaEvento ?? cot.trato?.fechaEventoEstimada;
+    const evento = {
+      tipo: "COT" as const,
+      ref: cot.numeroCotizacion,
+      nombre: cot.nombreEvento ?? cot.cliente.nombre,
+      estado: cot.estado,
+      fecha: fechaCot ? fechaCot.toISOString().split("T")[0] : null,
+    };
     for (const linea of cot.lineas) {
+      // Paquete: expandir sus componentes (guardados en notasInternas)
+      if (linea.tipo === "PAQUETE") {
+        let comps: { equipoId?: string; cantidad?: number }[] = [];
+        try { comps = JSON.parse(linea.notasInternas ?? "{}").componentes ?? []; } catch { /* ignore */ }
+        for (const c of comps) {
+          if (!c.equipoId) continue;
+          if (!comprometido[c.equipoId]) comprometido[c.equipoId] = { cantidad: 0, eventos: [] };
+          comprometido[c.equipoId].cantidad += Math.round((c.cantidad ?? 0) * linea.cantidad);
+          comprometido[c.equipoId].eventos.push(evento);
+        }
+        continue;
+      }
       if (!linea.equipoId) continue;
       if (!comprometido[linea.equipoId]) comprometido[linea.equipoId] = { cantidad: 0, eventos: [] };
       comprometido[linea.equipoId].cantidad += Math.round(linea.cantidad);
-      const fechaCot = cot.fechaEvento ?? cot.trato?.fechaEventoEstimada;
-      comprometido[linea.equipoId].eventos.push({
-        tipo: "COT",
-        ref: cot.numeroCotizacion,
-        nombre: cot.nombreEvento ?? cot.cliente.nombre,
-        estado: cot.estado,
-        fecha: fechaCot ? fechaCot.toISOString().split("T")[0] : null,
-      });
+      comprometido[linea.equipoId].eventos.push(evento);
     }
   }
 

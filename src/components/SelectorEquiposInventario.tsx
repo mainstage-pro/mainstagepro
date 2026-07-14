@@ -111,12 +111,11 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
   const [categorias, setCategorias] = useState<CategoriaPublica[]>([]);
   const [productos, setProductos] = useState<ProductoPublico[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modo, setModo] = useState<"productos" | "equipos">(() =>
-    (value.productos?.length ?? 0) > 0 ? "productos" : "equipos"
-  );
   const [paso, setPaso] = useState<1 | 2>(() =>
-    value.categorias.length > 0 || value.equipos.length > 0 ? 2 : 1
+    value.categorias.length > 0 || value.equipos.length > 0 || (value.productos?.length ?? 0) > 0 ? 2 : 1
   );
+  // Sub-pestaña dentro del paso 2: equipos individuales (default) vs paquetes armados
+  const [subTab, setSubTab] = useState<"equipos" | "paquetes">("equipos");
   const [extraNombre, setExtraNombre] = useState("");
   const [extraCategoria, setExtraCategoria] = useState("");
 
@@ -395,96 +394,6 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
   // ── UI interactiva ──
   return (
     <div className="space-y-3">
-      {/* Selector de modo: productos armados vs equipos individuales */}
-      {productos.length > 0 && (
-        <div className="flex items-center gap-1.5 p-1 bg-[#111] rounded-xl">
-          <button
-            type="button"
-            onClick={() => setModo("productos")}
-            className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-              modo === "productos" ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
-            }`}
-          >
-            📦 Productos armados
-          </button>
-          <button
-            type="button"
-            onClick={() => setModo("equipos")}
-            className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-              modo === "equipos" ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
-            }`}
-          >
-            🎛️ Equipos individuales
-          </button>
-        </div>
-      )}
-
-      {/* ── MODO PRODUCTOS ── */}
-      {modo === "productos" && (
-        <div className="space-y-2">
-          <p className="text-gray-500 text-xs">
-            Sistemas y paquetes ya armados. Al elegir uno se consideran todos sus equipos.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {productos.map((p) => {
-              const sel = productosSel.some((s) => s.id === p.id);
-              const cant = productosSel.find((s) => s.id === p.id)?.cantidad ?? 1;
-              return (
-                <div
-                  key={p.id}
-                  className={`rounded-xl border p-2.5 transition-all ${
-                    sel ? "border-[#B3985B] bg-[#B3985B]/[0.06]" : "border-[#1e1e1e] bg-[#0d0d0d]"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => toggleProducto(p.id)}
-                    className="flex items-start gap-2.5 w-full text-left"
-                  >
-                    <span className="w-12 h-12 rounded-lg bg-[#1a1a1a] overflow-hidden shrink-0 flex items-center justify-center">
-                      {p.imagenUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.imagenUrl} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-gray-700">📦</span>
-                      )}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-1.5">
-                        <span
-                          className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
-                            sel ? "bg-[#B3985B] border-[#B3985B]" : "border-[#333]"
-                          }`}
-                        >
-                          {sel && <span className="text-black text-[9px] font-bold leading-none">✓</span>}
-                        </span>
-                        <span className="text-white text-xs font-medium leading-tight">{p.nombre}</span>
-                      </span>
-                      {p.descripcion && (
-                        <span className="block text-gray-500 text-[10px] leading-tight line-clamp-2 mt-0.5">
-                          {p.descripcion}
-                        </span>
-                      )}
-                      <span className="block text-[#B3985B] text-[11px] font-semibold mt-1">
-                        ${p.precioFinal.toLocaleString("es-MX")}
-                      </span>
-                    </span>
-                  </button>
-                  {sel && (
-                    <div className="flex items-center justify-end mt-1.5">
-                      {controlCantidad(cant, (n) => setProductoCantidad(p.id, n))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* ── MODO EQUIPOS INDIVIDUALES ── */}
-      {modo === "equipos" && (
-      <>
       {/* Indicador de pasos */}
       <div className="flex items-center gap-2 text-xs">
         <button
@@ -511,7 +420,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
           }`}
         >
           <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${paso === 2 ? "bg-black/20" : "bg-[#B3985B]/20 text-[#B3985B]"}`}>2</span>
-          Equipos y cantidades
+          Equipos y paquetes
         </button>
       </div>
 
@@ -585,9 +494,43 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
         </div>
       )}
 
-      {/* ── PASO 2: elegir equipos + cantidades (vista única scrolleable) ── */}
+      {/* ── PASO 2: equipos individuales + paquetes armados ── */}
       {paso === 2 && (
-        <div className="space-y-4">
+        <div className="space-y-3">
+          {/* Sub-pestañas: equipos individuales (default) vs paquetes armados */}
+          <div className="flex items-center gap-1.5 p-1 bg-[#111] rounded-xl">
+            <button
+              type="button"
+              onClick={() => setSubTab("equipos")}
+              className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                subTab === "equipos" ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
+              }`}
+            >
+              🎛️ Equipos individuales
+            </button>
+            {productos.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSubTab("paquetes")}
+                className={`relative flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all overflow-hidden ${
+                  subTab === "paquetes"
+                    ? "bg-gradient-to-r from-[#B3985B] to-[#d4b876] text-black shadow-lg shadow-[#B3985B]/25"
+                    : "text-[#B3985B] bg-gradient-to-r from-[#B3985B]/15 to-[#B3985B]/5 ring-1 ring-[#B3985B]/40 hover:from-[#B3985B]/25"
+                }`}
+              >
+                ✨ Paquetes armados
+                {subTab !== "paquetes" && (
+                  <span className="ml-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-[#B3985B] text-black text-[9px] font-bold align-middle">
+                    {productos.length}
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
+
+          {/* ── Sub-pestaña: EQUIPOS INDIVIDUALES ── */}
+          {subTab === "equipos" && (
+          <div className="space-y-4">
           {categoriasElegidas.length === 0 && extras.length === 0 ? (
             <div className="text-center py-6">
               <p className="text-gray-500 text-sm mb-3">Primero elige una o más categorías.</p>
@@ -754,12 +697,75 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
               </div>
             </>
           )}
+          </div>
+          )}
+
+          {/* ── Sub-pestaña: PAQUETES ARMADOS ── */}
+          {subTab === "paquetes" && (
+            <div className="space-y-2">
+              <p className="text-gray-500 text-xs">
+                Sistemas y paquetes ya armados. Al elegir uno se consideran todos sus equipos para la disponibilidad.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {productos.map((p) => {
+                  const sel = productosSel.some((s) => s.id === p.id);
+                  const cant = productosSel.find((s) => s.id === p.id)?.cantidad ?? 1;
+                  return (
+                    <div
+                      key={p.id}
+                      className={`rounded-xl border p-2.5 transition-all ${
+                        sel ? "border-[#B3985B] bg-[#B3985B]/[0.06]" : "border-[#1e1e1e] bg-[#0d0d0d]"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleProducto(p.id)}
+                        className="flex items-start gap-2.5 w-full text-left"
+                      >
+                        <span className="w-12 h-12 rounded-lg bg-[#1a1a1a] overflow-hidden shrink-0 flex items-center justify-center">
+                          {p.imagenUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={p.imagenUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-gray-700">📦</span>
+                          )}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center gap-1.5">
+                            <span
+                              className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
+                                sel ? "bg-[#B3985B] border-[#B3985B]" : "border-[#333]"
+                              }`}
+                            >
+                              {sel && <span className="text-black text-[9px] font-bold leading-none">✓</span>}
+                            </span>
+                            <span className="text-white text-xs font-medium leading-tight">{p.nombre}</span>
+                          </span>
+                          {p.descripcion && (
+                            <span className="block text-gray-500 text-[10px] leading-tight line-clamp-2 mt-0.5">
+                              {p.descripcion}
+                            </span>
+                          )}
+                          <span className="block text-[#B3985B] text-[11px] font-semibold mt-1">
+                            ${p.precioFinal.toLocaleString("es-MX")}
+                          </span>
+                        </span>
+                      </button>
+                      {sel && (
+                        <div className="flex items-center justify-end mt-1.5">
+                          {controlCantidad(cant, (n) => setProductoCantidad(p.id, n))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
-      </>
-      )}
 
-      {modo === "equipos" && (
+      {paso === 2 && subTab === "equipos" && (
         <p className="text-gray-700 text-[11px] pt-1 text-center">
           Si no encuentras lo que necesitas, agrégalo arriba o menciónalo en las notas.
         </p>

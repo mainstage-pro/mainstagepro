@@ -50,8 +50,8 @@ export async function GET(req: NextRequest) {
       nombreEvento: true,
       cliente: { select: { nombre: true } },
       lineas: {
-        where: { tipo: "EQUIPO_PROPIO", equipoId: { not: null } },
-        select: { equipoId: true, cantidad: true },
+        where: { OR: [{ tipo: "EQUIPO_PROPIO", equipoId: { not: null } }, { tipo: "PAQUETE" }] },
+        select: { tipo: true, equipoId: true, cantidad: true, notasInternas: true },
       },
     },
   });
@@ -81,15 +81,28 @@ export async function GET(req: NextRequest) {
   }> = {};
 
   for (const cot of cotizaciones) {
+    const evento = {
+      ref: cot.numeroCotizacion,
+      nombre: cot.nombreEvento ?? cot.cliente.nombre,
+      estado: cot.estado,
+    };
     for (const linea of cot.lineas) {
+      // Paquete: expandir sus componentes (guardados en notasInternas) por la cantidad de paquetes
+      if (linea.tipo === "PAQUETE") {
+        let comps: { equipoId?: string; cantidad?: number }[] = [];
+        try { comps = JSON.parse(linea.notasInternas ?? "{}").componentes ?? []; } catch { /* ignore */ }
+        for (const c of comps) {
+          if (!c.equipoId) continue;
+          if (!comprometido[c.equipoId]) comprometido[c.equipoId] = { cantidad: 0, eventos: [] };
+          comprometido[c.equipoId].cantidad += Math.round((c.cantidad ?? 0) * linea.cantidad);
+          comprometido[c.equipoId].eventos.push(evento);
+        }
+        continue;
+      }
       if (!linea.equipoId) continue;
       if (!comprometido[linea.equipoId]) comprometido[linea.equipoId] = { cantidad: 0, eventos: [] };
       comprometido[linea.equipoId].cantidad += Math.round(linea.cantidad);
-      comprometido[linea.equipoId].eventos.push({
-        ref: cot.numeroCotizacion,
-        nombre: cot.nombreEvento ?? cot.cliente.nombre,
-        estado: cot.estado,
-      });
+      comprometido[linea.equipoId].eventos.push(evento);
     }
   }
 

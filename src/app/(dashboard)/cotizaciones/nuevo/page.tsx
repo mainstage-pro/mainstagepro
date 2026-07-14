@@ -54,6 +54,16 @@ interface LineaEquipo {
   notas: string;     // nota libre por concepto
 }
 
+// Paquete/producto armado agregado como UN concepto (no expandido en equipos sueltos).
+// `componentes` = equipos que lo integran por 1 unidad de paquete → se usan para contar
+// disponibilidad de inventario y al convertir a proyecto, sin aparecer como líneas sueltas.
+interface LineaPaquete {
+  id: string; productoId: string; nombre: string;
+  cantidad: number; dias: number; precioUnitario: number; subtotal: number;
+  componentes: { equipoId: string; cantidad: number }[];
+  categoria: string;
+}
+
 // ─── Helpers de codificación notas ────────────────────────────────────────────
 // Formato en DB: "cat:XXX" | "cat:XXX|nota:YYY" | null
 function extractUserNote(raw: string | null | undefined): string {
@@ -279,6 +289,7 @@ function CotizadorForm() {
 
   // Líneas
   const [lineasEquipo, setLineasEquipo] = useState<LineaEquipo[]>([]);
+  const [lineasPaquete, setLineasPaquete] = useState<LineaPaquete[]>([]);
   const [lineasExterno, setLineasExterno] = useState<LineaExterno[]>([]);
   const [lineasOp, setLineasOp] = useState<LineaOp[]>([]);
   const [lineasDJ, setLineasDJ] = useState<LineaDJ[]>([]);
@@ -290,6 +301,9 @@ function CotizadorForm() {
   // Selectores rápidos
 
   const [selEq, setSelEq] = useState(""); const [selEqCant, setSelEqCant] = useState("1"); const [selEqDias, setSelEqDias] = useState("1");
+  // Caja de "Equipos propios": pestaña individual (default) vs. catálogo de paquetes
+  const [equipoTab, setEquipoTab] = useState<"individual" | "paquete">("individual");
+  const [selPaq, setSelPaq] = useState(""); const [selPaqCant, setSelPaqCant] = useState("1");
   const [selExt, setSelExt] = useState(""); const [selExtCant, setSelExtCant] = useState("1"); const [selExtDias, setSelExtDias] = useState("1");
   const [selRol, setSelRol] = useState(""); const [selRolJornada, setSelRolJornada] = useState("CORTA"); const [selRolCant, setSelRolCant] = useState("1"); const [selRolNivel, setSelRolNivel] = useState("AAA");
   const [selDJHoras, setSelDJHoras] = useState("4"); const [selDJNivel, setSelDJNivel] = useState("AAA"); const [selDJTarifa, setSelDJTarifa] = useState("");
@@ -515,6 +529,25 @@ function CotizadorForm() {
           categoria: l.notas?.startsWith("cat:") ? (l.notas.split("|")[0].slice(4)) : "",
           notas: extractUserNote(l.notas),
         })));
+        // Paquetes: reconstruir concepto + componentes desde notasInternas
+        const paqueteLineas = lineas.filter((l: {tipo:string}) => l.tipo === "PAQUETE") as Array<{descripcion:string;cantidad:number;dias:number;precioUnitario:number;subtotal:number;notas:string|null;notasInternas:string|null}>;
+        setLineasPaquete(paqueteLineas.map((l) => {
+          let componentes: { equipoId: string; cantidad: number }[] = [];
+          let productoId = "";
+          try {
+            const meta = JSON.parse(l.notasInternas ?? "{}");
+            componentes = Array.isArray(meta.componentes) ? meta.componentes : [];
+            productoId = meta.paqueteId ?? "";
+          } catch { /* ignore */ }
+          return {
+            id: uid(), productoId, nombre: l.descripcion,
+            cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario, subtotal: l.subtotal,
+            componentes, categoria: l.notas?.startsWith("cat:") ? l.notas.slice(4) : "Paquetes",
+          };
+        }));
+        setPaquetesAgregados(paqueteLineas.map((l) => {
+          try { return (JSON.parse(l.notasInternas ?? "{}").paqueteId as string) ?? ""; } catch { return ""; }
+        }).filter(Boolean));
         setLineasExterno(lineas.filter((l: {tipo:string}) => l.tipo === "EQUIPO_EXTERNO").map((l: {equipoId:string;descripcion:string;marca:string|null;cantidad:number;dias:number;precioUnitario:number;costoUnitario:number;subtotal:number;proveedorId:string|null}) => ({
           id: uid(), equipoId: l.equipoId ?? "", descripcion: l.descripcion,
           marca: l.marca ?? "", cantidad: l.cantidad, dias: l.dias,
@@ -719,40 +752,66 @@ function CotizadorForm() {
     });
   }
 
-  // Paquete del descubrimiento → se expande en sus equipos componentes como líneas
-  // EQUIPO_PROPIO. Cada componente cuenta para disponibilidad/viabilidad y se hereda
-  // al proyecto igual que un equipo suelto. La procedencia queda en `notas`.
+  // Agrega un paquete como UN concepto (línea PAQUETE), no expandido en equipos sueltos.
+  // Sus componentes se conservan para contar disponibilidad y heredar al proyecto.
+  function agregarLineaPaquete(prod: typeof productosCatalogo[number], cant: number, dias: number) {
+    const componentes = prod.items
+      .filter(it => it.equipo)
+      .map(it => ({ equipoId: it.equipo.id, cantidad: it.cantidad }));
+    setLineasPaquete(prev => {
+      const idx = prev.findIndex(l => l.productoId === prod.id);
+      if (idx >= 0) {
+        const l = prev[idx];
+        const nuevaCant = l.cantidad + cant;
+        const next = [...prev];
+        next[idx] = { ...l, cantidad: nuevaCant, subtotal: l.precioUnitario * nuevaCant * l.dias };
+        return next;
+      }
+      return [...prev, {
+        id: uid(), productoId: prod.id, nombre: prod.nombre,
+        cantidad: cant, dias, precioUnitario: prod.precioFinal,
+        subtotal: prod.precioFinal * cant * dias,
+        componentes, categoria: prod.categoria ?? "Paquetes",
+      }];
+    });
+  }
+
+  // Paquete del descubrimiento → se agrega tal cual como concepto/paquete.
   function agregarPaqueteDescubrimiento(prod: typeof productosCatalogo[number]) {
     if (paquetesAgregados.includes(prod.id)) return;
     const sel = equiposInteres.productos.find(p => p.id === prod.id);
     const paqCant = sel?.cantidad && sel.cantidad > 0 ? sel.cantidad : 1;
     const dias = parseInt(evento.diasEquipo) || 1;
-    setLineasEquipo(prev => {
-      const next = [...prev];
-      for (const item of prod.items) {
-        if (!item.equipo) continue;
-        const totalCant = item.cantidad * paqCant;
-        const full = equipos.find(e => e.id === item.equipo.id);
-        const precio = preciosCliente[item.equipo.id] ?? item.equipo.precioRenta;
-        const idx = next.findIndex(l => l.equipoId === item.equipo.id);
-        if (idx >= 0) {
-          const l = next[idx];
-          const nuevaCant = l.cantidad + totalCant;
-          next[idx] = { ...l, cantidad: nuevaCant, subtotal: l.precioUnitario * nuevaCant * l.dias };
-        } else {
-          next.push({
-            id: uid(), equipoId: item.equipo.id, descripcion: item.equipo.descripcion,
-            marca: item.equipo.marca ?? "", modelo: item.equipo.modelo ?? "",
-            cantidad: totalCant, dias, precioUnitario: precio,
-            subtotal: precio * totalCant * dias,
-            categoria: full?.categoria.nombre ?? (prod.categoria ?? "Equipo"),
-            notas: `Paquete: ${prod.nombre}`,
-          });
-        }
-      }
-      return next;
-    });
+    agregarLineaPaquete(prod, paqCant, dias);
     setPaquetesAgregados(prev => prev.includes(prod.id) ? prev : [...prev, prod.id]);
+  }
+
+  // Paquete elegido manualmente desde el catálogo (caja de Equipos propios).
+  function agregarPaqueteManual() {
+    const prod = productosCatalogo.find(p => p.id === selPaq);
+    if (!prod) return;
+    const cant = parseInt(selPaqCant) || 1;
+    const dias = parseInt(selEqDias) || 1;
+    agregarLineaPaquete(prod, cant, dias);
+    setPaquetesAgregados(prev => prev.includes(prod.id) ? prev : [...prev, prod.id]);
+    setSelPaq(""); setSelPaqCant("1");
+  }
+
+  function updatePaquete(id: string, field: "cantidad" | "dias" | "precioUnitario", val: number) {
+    setLineasPaquete(prev => prev.map(l => {
+      if (l.id !== id) return l;
+      const u = { ...l, [field]: val };
+      u.subtotal = u.precioUnitario * u.cantidad * u.dias;
+      return u;
+    }));
+  }
+
+  function removePaquete(id: string) {
+    setLineasPaquete(prev => {
+      const l = prev.find(x => x.id === id);
+      if (l) setPaquetesAgregados(p => p.filter(pid => pid !== l.productoId));
+      return prev.filter(x => x.id !== id);
+    });
   }
 
   // Extra del descubrimiento (equipo a mano) → concepto ocasional con precio editable.
@@ -982,6 +1041,8 @@ function CotizadorForm() {
   // ─── Cálculo del resumen ──────────────────────────────────────────────────
   const resumen = useMemo(() => {
     const subtotalEquiposBruto = lineasEquipo.reduce((s, l) => s + l.subtotal, 0);
+    // Paquetes: precio fijo, sin descuentos de equipo. Se suman al total tal cual.
+    const subtotalPaquetes = lineasPaquete.reduce((s, l) => s + l.subtotal, 0);
     // Externos: precio al cliente (sin descuento) y costo de proveedor (para viabilidad)
     const subtotalExternos = lineasExterno.reduce((s, l) => s + l.subtotal, 0);
     const costoExternos = lineasExterno.reduce((s, l) => s + l.costoTotal, 0);
@@ -1036,7 +1097,7 @@ function CotizadorForm() {
 
     const subtotalOcasionales = lineasOcasional.reduce((s, l) => s + l.subtotal, 0);
     const subtotalChofer = incluirChofer ? 500 : 0;
-    const baseTotal = subtotalEquiposNeto + subtotalExternos + subtotalOcasionales + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje + subtotalChofer;
+    const baseTotal = subtotalEquiposNeto + subtotalPaquetes + subtotalExternos + subtotalOcasionales + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje + subtotalChofer;
 
     // Comisión interna / Gastos de producción
     const gastosProduccionMonto = gastosActivo
@@ -1068,7 +1129,7 @@ function CotizadorForm() {
       : pctUtilidad >= VIABILIDAD.MINIMO ? "MINIMO" : "RIESGO";
 
     return {
-      subtotalEquiposBruto, subtotalExternos, subtotalOcasionales, costoExternos,
+      subtotalEquiposBruto, subtotalPaquetes, subtotalExternos, subtotalOcasionales, costoExternos,
       subtotalOperacion, subtotalDJ, subtotalChofer,
       subtotalTransporte, subtotalComidas, subtotalHospedaje,
       montoVolumen, basePostVolumen, montoB2b, basePostB2b,
@@ -1081,7 +1142,7 @@ function CotizadorForm() {
       costos, utilidad, pctUtilidad, semaforo,
       zonaBonus, bonusZonaTotal,
     };
-  }, [lineasEquipo, lineasExterno, lineasOcasional, lineasOp, lineasDJ, lineasLog, jornadasPlan,
+  }, [lineasEquipo, lineasPaquete, lineasExterno, lineasOcasional, lineasOp, lineasDJ, lineasLog, jornadasPlan,
     volumenActivo, b2bActivo, manualActivo, manualEsMonto, manualValor, pagoAnticipadoActivo,
     cfgUmbralVolumen, cfgPctVolumen, cfgPctB2b, cfgPctAnticipado, cfgMaxManual,
     dMultidiaPreservado, dEspecialPreservado, dPatrocinioPreservado, dFijoPreservado,
@@ -1126,6 +1187,14 @@ function CotizadorForm() {
               ...deficitFields,
             };
           }),
+          ...lineasPaquete.map(l => ({
+            tipo: "PAQUETE", descripcion: l.nombre,
+            cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
+            costoUnitario: 0, subtotal: l.subtotal,
+            esExterno: false, esIncluido: false,
+            notas: l.categoria ? `cat:${l.categoria}` : null,
+            notasInternas: JSON.stringify({ paqueteId: l.productoId, componentes: l.componentes }),
+          })),
           ...lineasExterno.map(l => ({
             tipo: "EQUIPO_EXTERNO", descripcion: l.descripcion, marca: l.marca,
             cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
@@ -1208,7 +1277,7 @@ function CotizadorForm() {
           pagoAnticipadoActivo,
           pagoAnticipadoFecha: pagoAnticipadoFecha || null,
           pagoAnticipadoTexto: pagoAnticipadoActivo ? (pagoAnticipadoTexto || cfgTextoAnticipado.replace("{pct}", String(cfgPctAnticipado))) : null,
-          subtotalPaquetes: 0,
+          subtotalPaquetes: resumen.subtotalPaquetes,
           subtotalTerceros: resumen.subtotalExternos + resumen.subtotalOcasionales,
           subtotalOperacion: resumen.subtotalOperacion + resumen.subtotalDJ,
           subtotalTransporte: resumen.subtotalTransporte,
@@ -1243,7 +1312,7 @@ function CotizadorForm() {
   }, [
     editId,
     evento, observaciones, aplicaIva, incluirChofer,
-    lineasEquipo, lineasExterno, lineasOp, lineasDJ, lineasLog, lineasOcasional,
+    lineasEquipo, lineasPaquete, lineasExterno, lineasOp, lineasDJ, lineasLog, lineasOcasional,
     jornadasPlan, notasSecciones, zonaEvento, numTecnicosZona,
     volumenActivo, b2bActivo, manualActivo, manualEsMonto, manualValor, manualRazon,
     pagoAnticipadoActivo, pagoAnticipadoFecha, pagoAnticipadoTexto,
@@ -1281,6 +1350,14 @@ function CotizadorForm() {
           ...deficitFields,
         };
       }),
+      ...lineasPaquete.map(l => ({
+        tipo: "PAQUETE", descripcion: l.nombre,
+        cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
+        costoUnitario: 0, subtotal: l.subtotal,
+        esExterno: false, esIncluido: false,
+        notas: l.categoria ? `cat:${l.categoria}` : null,
+        notasInternas: JSON.stringify({ paqueteId: l.productoId, componentes: l.componentes }),
+      })),
       ...lineasExterno.map(l => ({
         tipo: "EQUIPO_EXTERNO", descripcion: l.descripcion, marca: l.marca,
         cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario,
@@ -1372,7 +1449,7 @@ function CotizadorForm() {
       pagoAnticipadoActivo:  pagoAnticipadoActivo,
       pagoAnticipadoFecha:   pagoAnticipadoFecha || null,
       pagoAnticipadoTexto:   pagoAnticipadoActivo ? (pagoAnticipadoTexto || cfgTextoAnticipado.replace("{pct}", String(cfgPctAnticipado))) : null,
-      subtotalPaquetes: 0,
+      subtotalPaquetes: resumen.subtotalPaquetes,
       subtotalTerceros: resumen.subtotalExternos + resumen.subtotalOcasionales + (gastosActivo ? resumen.gastosProduccionMonto : 0),
       subtotalOperacion: resumen.subtotalOperacion + resumen.subtotalDJ,
       subtotalTransporte: resumen.subtotalTransporte,
@@ -1780,7 +1857,7 @@ function CotizadorForm() {
                                   onClick={() => agregarPaqueteDescubrimiento(prod)}
                                   className="shrink-0 text-[10px] px-2 py-0.5 rounded bg-[#B3985B]/15 text-[#B3985B] hover:bg-[#B3985B]/30 transition-colors leading-5"
                                 >
-                                  + Agregar equipos
+                                  + Agregar paquete
                                 </button>
                               ) : (
                                 <span className="shrink-0 text-[10px] text-green-500 px-1 leading-5">✓ agregado</span>
@@ -1789,7 +1866,7 @@ function CotizadorForm() {
                           );
                         })}
                       </div>
-                      <p className="text-gray-700 text-[11px] mt-2">Al agregar un paquete, sus equipos se cargan como líneas individuales y cuentan para la disponibilidad.</p>
+                      <p className="text-gray-700 text-[11px] mt-2">El paquete se agrega como un solo concepto; sus equipos cuentan para la disponibilidad de inventario.</p>
                     </div>
                   )}
                   {catsSel.length > 0 && (
@@ -1891,7 +1968,34 @@ function CotizadorForm() {
 
           {/* ── Equipos propios ── */}
           <Seccion titulo="Equipos propios" hint="aplican descuentos · precio editable por línea · ★ = precio especial del cliente">
-            {/* Selector */}
+            {/* Pestañas de la caja: equipo individual vs. catálogo de paquetes */}
+            <div className="flex items-center gap-1.5 p-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl mb-4">
+              <button
+                type="button"
+                onClick={() => setEquipoTab("individual")}
+                className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  equipoTab === "individual" ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
+                }`}
+              >
+                🎛️ Equipo individual
+              </button>
+              {productosCatalogo.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setEquipoTab("paquete")}
+                  className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                    equipoTab === "paquete"
+                      ? "bg-gradient-to-r from-[#B3985B] to-[#d4b876] text-black shadow-lg shadow-[#B3985B]/25"
+                      : "text-[#B3985B] bg-gradient-to-r from-[#B3985B]/15 to-[#B3985B]/5 ring-1 ring-[#B3985B]/40 hover:from-[#B3985B]/25"
+                  }`}
+                >
+                  ✨ Del catálogo de paquetes
+                </button>
+              )}
+            </div>
+
+            {/* Selector — equipo individual */}
+            {equipoTab === "individual" && (
             <div className="flex gap-2 mb-4 items-end">
               {/* Cascade selector */}
               <div className="flex-1 min-w-0">
@@ -1928,9 +2032,98 @@ function CotizadorForm() {
                 + Agregar
               </button>
             </div>
+            )}
+
+            {/* Selector — catálogo de paquetes */}
+            {equipoTab === "paquete" && (
+            <div className="flex gap-2 mb-4 items-end">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-[#555] mb-1 px-1">Paquete / producto armado</p>
+                <select
+                  value={selPaq}
+                  onChange={e => setSelPaq(e.target.value)}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                >
+                  <option value="">— Elige un paquete —</option>
+                  {productosCatalogo.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.nombre} · {formatCurrency(p.precioFinal)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="shrink-0">
+                <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
+                <NumSelect value={selPaqCant} onChange={setSelPaqCant} max={20} className="w-20 py-2" />
+              </div>
+              <div className="shrink-0">
+                <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
+                <NumSelect value={selEqDias} onChange={setSelEqDias} max={10} className="w-20 py-2" />
+              </div>
+              <button
+                type="button"
+                onClick={agregarPaqueteManual}
+                disabled={!selPaq}
+                className="shrink-0 px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40 hover:bg-[#c9a96a] transition-colors"
+              >
+                + Agregar
+              </button>
+            </div>
+            )}
+
+            {/* Paquetes agregados (conceptos) */}
+            {lineasPaquete.length > 0 && (
+              <div className="mb-4 border border-[#B3985B]/30 rounded-lg overflow-hidden">
+                <div className="flex items-center justify-between bg-[#B3985B]/[0.07] px-3 py-2">
+                  <span className="text-[10px] font-semibold text-[#B3985B] uppercase tracking-wider">📦 Paquetes armados</span>
+                  <span className="text-xs text-gray-400">{formatCurrency(lineasPaquete.reduce((s, l) => s + l.subtotal, 0))}</span>
+                </div>
+                {lineasPaquete.map(l => (
+                  <div key={l.id} className="border-t border-[#111] px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm truncate">{l.nombre}</p>
+                        {l.componentes.length > 0 && (
+                          <p className="text-gray-500 text-[10px] truncate">
+                            {l.componentes.map(c => {
+                              const eq = equipos.find(e => e.id === c.equipoId);
+                              return `${c.cantidad * l.cantidad}× ${eq?.descripcion ?? "equipo"}`;
+                            }).join(" · ")}
+                          </p>
+                        )}
+                      </div>
+                      <div className="shrink-0 flex items-center gap-1.5">
+                        <NumSelect value={String(l.cantidad)} onChange={v => updatePaquete(l.id, "cantidad", parseInt(v) || 1)} max={20} className="w-16 py-1.5" />
+                        <span className="text-gray-600 text-xs">×</span>
+                        <NumSelect value={String(l.dias)} onChange={v => updatePaquete(l.id, "dias", parseInt(v) || 1)} max={10} className="w-16 py-1.5" />
+                        <span className="text-gray-600 text-xs">días</span>
+                      </div>
+                      <div className="shrink-0 flex items-center gap-1">
+                        <span className="text-gray-500 text-xs">$</span>
+                        <input
+                          type="number"
+                          value={l.precioUnitario}
+                          onChange={e => updatePaquete(l.id, "precioUnitario", parseFloat(e.target.value) || 0)}
+                          className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]"
+                        />
+                      </div>
+                      <span className="shrink-0 text-[#B3985B] text-sm font-medium w-24 text-right">{formatCurrency(l.subtotal)}</span>
+                      <button
+                        type="button"
+                        onClick={() => removePaquete(l.id)}
+                        className="shrink-0 text-gray-500 hover:text-red-500 transition-colors"
+                        title="Quitar paquete"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {lineasEquipo.length === 0 ? (
-              <p className="text-gray-600 text-sm text-center py-3">Sin equipos agregados</p>
+              lineasPaquete.length === 0 ? <p className="text-gray-600 text-sm text-center py-3">Sin equipos agregados</p> : null
             ) : (
               /* Subsecciones por categoría */
               (() => {
@@ -3007,6 +3200,7 @@ function CotizadorForm() {
                   <span>{formatCurrency(resumen.subtotalEquiposNeto)}</span>
                 </div>
               )}
+              {resumen.subtotalPaquetes > 0 && <div className="flex justify-between text-gray-400"><span>📦 Paquetes armados</span><span>{formatCurrency(resumen.subtotalPaquetes)}</span></div>}
               {resumen.subtotalExternos > 0 && <div className="flex justify-between text-gray-400"><span>Equipos terceros</span><span>{formatCurrency(resumen.subtotalExternos)}</span></div>}
               {resumen.subtotalOcasionales > 0 && <div className="flex justify-between text-gray-400"><span>Adicionales</span><span>{formatCurrency(resumen.subtotalOcasionales)}</span></div>}
               {resumen.subtotalOperacion > 0 && <div className="flex justify-between text-gray-400"><span>Operación técnica</span><span>{formatCurrency(resumen.subtotalOperacion)}</span></div>}

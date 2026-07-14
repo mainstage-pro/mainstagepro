@@ -126,6 +126,22 @@ export async function crearProyectoDesdeCotizacion(
     (l) => ["EQUIPO_PROPIO", "EQUIPO_EXTERNO"].includes(l.tipo) && l.equipoId,
   );
 
+  // Paquetes: expandir sus componentes (en notasInternas) a equipos propios del proyecto.
+  // El paquete se cotiza como un concepto, pero su inventario se hereda pieza por pieza.
+  const equiposDePaquetes: { equipoId: string; cantidad: number; dias: number }[] = [];
+  for (const l of cot.lineas.filter((x) => x.tipo === "PAQUETE")) {
+    let comps: { equipoId?: string; cantidad?: number }[] = [];
+    try { comps = JSON.parse(l.notasInternas ?? "{}").componentes ?? []; } catch { /* ignore */ }
+    for (const c of comps) {
+      if (!c.equipoId) continue;
+      equiposDePaquetes.push({
+        equipoId: c.equipoId,
+        cantidad: Math.round((c.cantidad ?? 0) * l.cantidad),
+        dias: l.dias,
+      });
+    }
+  }
+
   // 1. Crear el proyecto
   const proy = await tx.proyecto.create({
     data: {
@@ -198,17 +214,28 @@ export async function crearProyectoDesdeCotizacion(
   });
 
   // 2. Copiar equipos al proyecto (incluyendo proveedorId para externos)
-  if (lineasEquipo.length > 0) {
+  if (lineasEquipo.length > 0 || equiposDePaquetes.length > 0) {
     await tx.proyectoEquipo.createMany({
-      data: lineasEquipo.map((l) => ({
-        proyectoId: proy.id,
-        equipoId: l.equipoId!,
-        tipo: l.tipo === "EQUIPO_EXTERNO" ? "EXTERNO" : "PROPIO",
-        cantidad: Math.round(l.cantidad),
-        dias: l.dias,
-        costoExterno: l.tipo === "EQUIPO_EXTERNO" ? l.costoUnitario : null,
-        proveedorId: l.tipo === "EQUIPO_EXTERNO" ? (l.proveedorId ?? null) : null,
-      })),
+      data: [
+        ...lineasEquipo.map((l) => ({
+          proyectoId: proy.id,
+          equipoId: l.equipoId!,
+          tipo: l.tipo === "EQUIPO_EXTERNO" ? "EXTERNO" : "PROPIO",
+          cantidad: Math.round(l.cantidad),
+          dias: l.dias,
+          costoExterno: l.tipo === "EQUIPO_EXTERNO" ? l.costoUnitario : null,
+          proveedorId: l.tipo === "EQUIPO_EXTERNO" ? (l.proveedorId ?? null) : null,
+        })),
+        ...equiposDePaquetes.map((c) => ({
+          proyectoId: proy.id,
+          equipoId: c.equipoId,
+          tipo: "PROPIO",
+          cantidad: c.cantidad,
+          dias: c.dias,
+          costoExterno: null,
+          proveedorId: null,
+        })),
+      ],
     });
   }
 
