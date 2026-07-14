@@ -6,7 +6,8 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
 import { EquipoGaleria } from "@/components/EquipoGaleria";
-import { ESTADO_EQUIPO_LABEL } from "@/lib/equipo-estado";
+import { CostoMantenimientoModal, type CostoMantenimiento } from "@/components/CostoMantenimientoModal";
+import { ESTADO_EQUIPO_LABEL, esRetornoAServicio } from "@/lib/equipo-estado";
 
 type Equipo = {
   id: string;
@@ -412,6 +413,7 @@ function UnidadEditModal({ equipoId, unidad, onClose, onUpdated }: {
     codigo: unidad.codigo ?? "", estado: unidad.estado, voltaje: unidad.voltaje ?? "", notas: unidad.notas ?? "",
   });
   const [saving, setSaving] = useState(false);
+  const [showCosto, setShowCosto] = useState(false);
   const [detalle, setDetalle] = useState<{ mantenimientos: UnidadMantenimiento[]; observaciones: UnidadObservacion[]; costoMantenimiento: number } | null>(null);
   const [loadingDetalle, setLoadingDetalle] = useState(true);
   const [nuevaObs, setNuevaObs] = useState("");
@@ -426,16 +428,22 @@ function UnidadEditModal({ equipoId, unidad, onClose, onUpdated }: {
     return () => { cancel = true; };
   }, [equipoId, unidad.id]);
 
-  async function guardar() {
+  async function guardar(costo?: CostoMantenimiento) {
+    // Candado: al devolver a servicio desde mantenimiento/reparación, pedir el costo primero.
+    if (!costo && esRetornoAServicio(unidad.estado, form.estado)) {
+      setShowCosto(true);
+      return;
+    }
     setSaving(true);
     const res = await fetch(`/api/equipos/${equipoId}/unidades/${unidad.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ codigo: form.codigo || null, estado: form.estado, voltaje: form.voltaje || null, notas: form.notas || null }),
+      body: JSON.stringify({ codigo: form.codigo || null, estado: form.estado, voltaje: form.voltaje || null, notas: form.notas || null, costo: costo ?? undefined }),
     });
     if (!res.ok) { toast.error("Error al guardar unidad"); setSaving(false); return; }
     const d = await res.json();
     if (d.unidad) onUpdated(equipoId, d.unidad);
     setSaving(false);
+    setShowCosto(false);
     onClose();
   }
 
@@ -490,7 +498,7 @@ function UnidadEditModal({ equipoId, unidad, onClose, onUpdated }: {
           <FInput value={form.notas} onChange={v => setForm(p => ({ ...p, notas: v }))} placeholder="Observaciones de esta unidad..." />
         </FieldGroup>
         <div className="flex items-center gap-3">
-          <button onClick={guardar} disabled={saving}
+          <button onClick={() => guardar()} disabled={saving}
             className="px-5 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold disabled:opacity-40 hover:bg-[#c9a96a] transition-colors">
             {saving ? "Guardando..." : "Guardar cambios"}
           </button>
@@ -498,6 +506,15 @@ function UnidadEditModal({ equipoId, unidad, onClose, onUpdated }: {
             Cancelar
           </button>
         </div>
+
+        <CostoMantenimientoModal
+          open={showCosto}
+          estadoAnterior={unidad.estado}
+          equipoLabel={form.codigo || unidad.codigo || "Unidad"}
+          saving={saving}
+          onConfirm={(costo) => guardar(costo)}
+          onCancel={() => setShowCosto(false)}
+        />
 
         <div className="border-t border-[#1e1e1e] pt-4">
           <p className="text-[10px] text-[#6b7280] uppercase tracking-wider font-semibold mb-2">Observaciones</p>
@@ -781,6 +798,7 @@ export default function InventarioMaestroPage() {
   const [saving, setSaving] = useState(false);
   const [eliminando, setEliminando] = useState<string | null>(null);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [costoEquipo, setCostoEquipo] = useState<{ estadoAnterior: string; label: string } | null>(null);
   const imgRef = useRef<HTMLInputElement>(null);
 
   async function load() {
@@ -862,10 +880,18 @@ export default function InventarioMaestroPage() {
     setImagen(await compressImage(file));
   }
 
-  async function guardar() {
+  async function guardar(costo?: CostoMantenimiento) {
     if (!form.descripcion || !form.categoriaId) {
       toast.error("Descripción y categoría son requeridos");
       return;
+    }
+    // Candado: al devolver el equipo a servicio desde mantenimiento/reparación, pedir el costo primero.
+    if (panel && panel !== "nuevo" && !costo) {
+      const prev = equipos.find(e => e.id === panel);
+      if (prev && esRetornoAServicio(prev.estado, form.estado)) {
+        setCostoEquipo({ estadoAnterior: prev.estado, label: form.descripcion });
+        return;
+      }
     }
     setSaving(true);
     const body = {
@@ -881,6 +907,7 @@ export default function InventarioMaestroPage() {
       precioRenta: form.precioRenta !== "" ? parseFloat(form.precioRenta) : 0,
       costoProveedor: form.tipo === "EXTERNO" && form.costoProveedor !== "" ? parseFloat(form.costoProveedor) : null,
       ...(imagen !== null ? { imagenUrl: imagen } : {}),
+      ...(costo ? { costo } : {}),
     };
 
     const url = panel === "nuevo" ? "/api/equipos" : `/api/equipos/${panel}`;
@@ -896,6 +923,7 @@ export default function InventarioMaestroPage() {
       return;
     }
     toast.success(panel === "nuevo" ? "Equipo creado" : "Equipo actualizado");
+    setCostoEquipo(null);
     cerrarPanel();
     await load();
     setSaving(false);
@@ -969,7 +997,7 @@ export default function InventarioMaestroPage() {
 
   const formPanelProps: FormPanelProps = {
     panel, equipos, form, setForm, imagen, saving, categorias, proveedores, imgRef,
-    onClose: cerrarPanel, onImageChange: handleImagen, onSave: guardar,
+    onClose: cerrarPanel, onImageChange: handleImagen, onSave: () => guardar(),
     showAddProveedor, setShowAddProveedor, newProveedorId, setNewProveedorId,
     newProveedorPrecio, setNewProveedorPrecio, newProveedorNotas, setNewProveedorNotas,
     savingProveedor, onAddProveedor: handleAddProveedorPrecio, onRemoveProveedor: handleRemoveProveedorPrecio,
@@ -1005,6 +1033,17 @@ export default function InventarioMaestroPage() {
       >
         <FormPanel {...formPanelProps} />
       </Modal>
+
+      {costoEquipo && (
+        <CostoMantenimientoModal
+          open
+          estadoAnterior={costoEquipo.estadoAnterior}
+          equipoLabel={costoEquipo.label}
+          saving={saving}
+          onConfirm={(costo) => guardar(costo)}
+          onCancel={() => setCostoEquipo(null)}
+        />
+      )}
 
       {/* Modal gestión de categorías */}
       <Modal open={showCatPanel} onClose={() => { setShowCatPanel(false); setNewCatNombre(""); setRenamingCat(null); }} title="Categorías de equipos" maxWidth="max-w-md">

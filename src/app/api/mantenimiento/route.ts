@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { esRetornoAServicio, registrarCostoMantenimiento } from "@/lib/mantenimiento-costo";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -40,17 +41,30 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { equipoId, unidadId, fecha, tipo, accionRealizada, estadoEquipo, comentarios, proximoMantenimiento, fotoEvidencia } = body;
+  const { equipoId, unidadId, fecha, tipo, accionRealizada, estadoEquipo, comentarios, proximoMantenimiento, fotoEvidencia, costo } = body;
 
   if (!equipoId || !fecha || !tipo || !accionRealizada) {
     return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
   }
 
   // Actualizar estado del equipo o de la unidad específica
+  let estadoAnterior: string | null = null;
+  let equipoDescripcion = "";
+  let unidadCodigo: string | null = null;
   if (estadoEquipo) {
     if (unidadId) {
+      const previa = await prisma.equipoUnidad.findUnique({
+        where: { id: unidadId },
+        select: { estado: true, codigo: true, equipo: { select: { descripcion: true } } },
+      });
+      estadoAnterior = previa?.estado ?? null;
+      equipoDescripcion = previa?.equipo.descripcion ?? "";
+      unidadCodigo = previa?.codigo ?? null;
       await prisma.equipoUnidad.update({ where: { id: unidadId }, data: { estado: estadoEquipo } });
     } else {
+      const previo = await prisma.equipo.findUnique({ where: { id: equipoId }, select: { estado: true, descripcion: true } });
+      estadoAnterior = previo?.estado ?? null;
+      equipoDescripcion = previo?.descripcion ?? "";
       await prisma.equipo.update({ where: { id: equipoId }, data: { estado: estadoEquipo } });
     }
   }
@@ -66,6 +80,8 @@ export async function POST(req: NextRequest) {
       comentarios: comentarios ?? null,
       proximoMantenimiento: proximoMantenimiento ? new Date(proximoMantenimiento) : null,
       fotoEvidencia: fotoEvidencia ?? null,
+      costoReparacion: costo?.hubo && costo?.monto ? parseFloat(String(costo.monto)) : null,
+      descripcionReparacion: costo?.hubo ? (costo?.descripcion?.trim() || null) : null,
     },
     include: {
       equipo: {
@@ -81,6 +97,15 @@ export async function POST(req: NextRequest) {
       unidad: { select: { id: true, codigo: true } },
     },
   });
+
+  if (estadoAnterior && estadoEquipo && esRetornoAServicio(estadoAnterior, estadoEquipo)) {
+    await registrarCostoMantenimiento({
+      costo,
+      estadoAnterior,
+      equipoDescripcion,
+      unidadCodigo,
+    });
+  }
 
   return NextResponse.json({ registro });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { esRetornoAServicio, registrarCostoMantenimiento } from "@/lib/mantenimiento-costo";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -60,6 +61,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if ("amperajeRequerido" in body) data.amperajeRequerido = body.amperajeRequerido !== "" && body.amperajeRequerido != null ? parseFloat(body.amperajeRequerido) : null;
   if ("voltajeRequerido" in body) data.voltajeRequerido = body.voltajeRequerido !== "" && body.voltajeRequerido != null ? String(body.voltajeRequerido) : null;
 
+  // Estado previo, para detectar retorno a servicio y registrar el costo.
+  const previo = "estado" in data
+    ? await prisma.equipo.findUnique({ where: { id }, select: { estado: true, descripcion: true } })
+    : null;
+
   const equipo = await prisma.equipo.update({
     where: { id },
     data,
@@ -69,6 +75,15 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     },
     // Explicitly select fields needed by the maestro list
   });
+
+  if (previo && esRetornoAServicio(previo.estado, String(data.estado))) {
+    await registrarCostoMantenimiento({
+      costo: body.costo,
+      estadoAnterior: previo.estado,
+      equipoDescripcion: previo.descripcion,
+    });
+  }
+
   // Add the computed fields back manually so the list row can update
   return NextResponse.json({ equipo: { ...equipo, amperajeRequerido: equipo.amperajeRequerido, voltajeRequerido: equipo.voltajeRequerido, notas: equipo.notas } });
 }

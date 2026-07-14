@@ -1045,7 +1045,8 @@ model CategoriaFinanciera {
   orden       Int     @default(0)
   descripcion String?
 
-  movimientos MovimientoFinanciero[]
+  movimientos  MovimientoFinanciero[]
+  cuentasPagar CuentaPagar[]
 
   @@map("categorias_financieras")
 }
@@ -1156,6 +1157,8 @@ model CuentaPagar {
   estado          String   @default("PENDIENTE") // PENDIENTE | PARCIAL | LIQUIDADO | VENCIDO
   cuentaOrigenId  String?
   cuentaOrigen    CuentaBancaria? @relation(fields: [cuentaOrigenId], references: [id])
+  categoriaId     String?
+  categoria       CategoriaFinanciera? @relation(fields: [categoriaId], references: [id])
   movimientoId    String?  @unique
   movimiento      MovimientoFinanciero? @relation(fields: [movimientoId], references: [id])
   notas           String?

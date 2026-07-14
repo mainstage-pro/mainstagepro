@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { ensureCuentaPagarCategoria } from "@/lib/mantenimiento-costo";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -9,6 +10,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params;
   const { monto, fecha, notas, cuentaId, metodoPago, categoriaId } = await req.json();
 
+  await ensureCuentaPagarCategoria();
   const cxp = await prisma.cuentaPagar.findUnique({
     where: { id },
     include: { abonos: true },
@@ -32,7 +34,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         proyectoId: cxp.proyectoId,
         cuentaOrigenId: cuentaId || null,
         metodoPago: metodoPago || "TRANSFERENCIA",
-        categoriaId: categoriaId || null,
+        categoriaId: categoriaId || cxp.categoriaId || null,
         notas: notas || null,
         creadoPor: session.id,
       },

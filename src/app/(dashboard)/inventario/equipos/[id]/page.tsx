@@ -7,7 +7,8 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { BackButton } from "@/components/BackButton";
 import { EquipoGaleria } from "@/components/EquipoGaleria";
-import { ESTADOS_EQUIPO as ESTADOS_UNIDAD, ESTADO_EQUIPO_LABEL } from "@/lib/equipo-estado";
+import { CostoMantenimientoModal, type CostoMantenimiento } from "@/components/CostoMantenimientoModal";
+import { ESTADOS_EQUIPO as ESTADOS_UNIDAD, ESTADO_EQUIPO_LABEL, esRetornoAServicio } from "@/lib/equipo-estado";
 
 const ESTADO_UNIDAD_BADGE: Record<string, string> = {
   ACTIVO: "bg-green-900/30 text-green-400 border-green-900/50",
@@ -442,6 +443,7 @@ function UnidadesSection({ equipoId, cantidadTotal }: { equipoId: string; cantid
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState({ codigo: "", estado: "ACTIVO", voltaje: "", notas: "" });
   const [saving, setSaving] = useState(false);
+  const [showCosto, setShowCosto] = useState(false);
 
   const emptyForm = { codigo: "", estado: "ACTIVO", voltaje: "", notas: "" };
 
@@ -458,14 +460,19 @@ function UnidadesSection({ equipoId, cantidadTotal }: { equipoId: string; cantid
     setEditId(u.id); setShowForm(true);
   }
 
-  async function save() {
+  async function save(costo?: CostoMantenimiento) {
+    // Candado: al devolver una unidad a servicio desde mantenimiento/reparación, pedir el costo primero.
+    if (editId && !costo) {
+      const orig = unidades.find(u => u.id === editId);
+      if (orig && esRetornoAServicio(orig.estado, form.estado)) { setShowCosto(true); return; }
+    }
     setSaving(true);
-    const payload = { codigo: form.codigo || null, estado: form.estado, voltaje: form.voltaje || null, notas: form.notas || null };
+    const payload = { codigo: form.codigo || null, estado: form.estado, voltaje: form.voltaje || null, notas: form.notas || null, ...(editId ? { costo: costo ?? undefined } : {}) };
     const url = editId ? `/api/equipos/${equipoId}/unidades/${editId}` : `/api/equipos/${equipoId}/unidades`;
     const r = await fetch(url, { method: editId ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     if (!r.ok) { toast.error("Error al guardar unidad"); setSaving(false); return; }
     await reload();
-    setShowForm(false); setEditId(null); setForm(emptyForm); setSaving(false);
+    setShowForm(false); setEditId(null); setForm(emptyForm); setSaving(false); setShowCosto(false);
   }
 
   async function generar() {
@@ -558,12 +565,23 @@ function UnidadesSection({ equipoId, cantidadTotal }: { equipoId: string; cantid
           </div>
           <div className="flex gap-2 justify-end">
             <button onClick={() => { setShowForm(false); setEditId(null); }} className="text-xs text-[#555] hover:text-white transition-colors px-2 py-1">Cancelar</button>
-            <button onClick={save} disabled={saving}
+            <button onClick={() => save()} disabled={saving}
               className="text-xs bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold px-3 py-1 rounded disabled:opacity-40 transition-colors">
               {saving ? "Guardando…" : editId ? "Actualizar" : "Agregar unidad"}
             </button>
           </div>
         </div>
+      )}
+
+      {showCosto && editId && (
+        <CostoMantenimientoModal
+          open
+          estadoAnterior={unidades.find(u => u.id === editId)?.estado ?? ""}
+          equipoLabel={form.codigo || unidades.find(u => u.id === editId)?.codigo || "Unidad"}
+          saving={saving}
+          onConfirm={(costo) => save(costo)}
+          onCancel={() => setShowCosto(false)}
+        />
       )}
 
       {loading ? (

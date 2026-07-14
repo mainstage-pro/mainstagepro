@@ -24,6 +24,17 @@ export const ESTADOS_FUERA_DE_STOCK: readonly string[] = [
   "DADO_DE_BAJA",
 ];
 
+// Estados de los que un equipo/unidad "regresa a servicio" al pasar a ACTIVO.
+export const ESTADOS_FUERA_DE_SERVICIO: readonly string[] = [
+  "EN_MANTENIMIENTO",
+  "EN_REPARACION",
+];
+
+// true cuando el equipo/unidad vuelve a ACTIVO desde mantenimiento o reparación.
+export function esRetornoAServicio(estadoAnterior: string, estadoNuevo: string): boolean {
+  return ESTADOS_FUERA_DE_SERVICIO.includes(estadoAnterior) && estadoNuevo === "ACTIVO";
+}
+
 /**
  * Capacidad operativa: unidades del equipo que cuentan como stock disponible.
  *

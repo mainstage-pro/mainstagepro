@@ -7,7 +7,8 @@ import { SkeletonPage } from "@/components/Skeleton";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { Modal } from "@/components/Modal";
-import { ESTADOS_EQUIPO, ESTADO_EQUIPO_LABEL } from "@/lib/equipo-estado";
+import { CostoMantenimientoModal, type CostoMantenimiento } from "@/components/CostoMantenimientoModal";
+import { ESTADOS_EQUIPO, ESTADO_EQUIPO_LABEL, esRetornoAServicio } from "@/lib/equipo-estado";
 
 type Equipo = {
   id: string; descripcion: string; marca: string | null; modelo: string | null;
@@ -132,6 +133,7 @@ function MantenimientoContent() {
   const [saving, setSaving] = useState(false);
   const [savingUnidad, setSavingUnidad] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [costoGate, setCostoGate] = useState<{ estadoAnterior: string; label: string; kind: "form" | "unidad" } | null>(null);
 
   const loadData = useCallback(async () => {
     const [eqRes, regRes] = await Promise.all([
@@ -204,8 +206,17 @@ function MantenimientoContent() {
     router.replace(`/inventario/mantenimiento?equipoId=${id}`, { scroll: false });
   }
 
-  async function guardar() {
+  async function guardar(costo?: CostoMantenimiento) {
     if (!selectedEquipoId || !form.accionRealizada.trim()) return;
+    // Candado: al devolver a servicio desde mantenimiento/reparación, pedir el costo primero.
+    const estadoActual = selectedUnidad?.estado ?? selectedEquipo?.estado ?? "";
+    if (!costo && form.estadoEquipo && esRetornoAServicio(estadoActual, form.estadoEquipo)) {
+      const label = selectedUnidad
+        ? unidadLabel(selectedUnidad, unidades.indexOf(selectedUnidad))
+        : selectedEquipo?.descripcion ?? "Equipo";
+      setCostoGate({ estadoAnterior: estadoActual, label, kind: "form" });
+      return;
+    }
     setSaving(true);
     const res = await fetch("/api/mantenimiento", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -218,6 +229,7 @@ function MantenimientoContent() {
         comentarios: form.comentarios || null,
         proximoMantenimiento: form.proximoMantenimiento || null,
         fotoEvidencia: form.fotoEvidencia || null,
+        costo: costo ?? undefined,
       }),
     });
     if (res.ok) {
@@ -230,6 +242,7 @@ function MantenimientoContent() {
       }
       setShowForm(false);
       setForm(FORM_EMPTY);
+      setCostoGate(null);
     }
     setSaving(false);
   }
@@ -248,13 +261,21 @@ function MantenimientoContent() {
     setUnidades(ud.unidades ?? []);
   }
 
-  async function saveUnidad() {
+  async function saveUnidad(costo?: CostoMantenimiento) {
     if (!selectedEquipoId) return;
+    // Candado: al devolver una unidad a servicio desde mantenimiento/reparación, pedir el costo primero.
+    if (editUnidadId && !costo) {
+      const orig = unidades.find(u => u.id === editUnidadId);
+      if (orig && esRetornoAServicio(orig.estado, unidadForm.estado)) {
+        setCostoGate({ estadoAnterior: orig.estado, label: unidadForm.codigo || orig.codigo || "Unidad", kind: "unidad" });
+        return;
+      }
+    }
     setSavingUnidad(true);
     if (editUnidadId) {
       await fetch(`/api/equipos/${selectedEquipoId}/unidades/${editUnidadId}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ codigo: unidadForm.codigo || null, estado: unidadForm.estado, voltaje: unidadForm.voltaje || null, notas: unidadForm.notas || null }),
+        body: JSON.stringify({ codigo: unidadForm.codigo || null, estado: unidadForm.estado, voltaje: unidadForm.voltaje || null, notas: unidadForm.notas || null, costo: costo ?? undefined }),
       });
     } else {
       await fetch(`/api/equipos/${selectedEquipoId}/unidades`, {
@@ -269,6 +290,7 @@ function MantenimientoContent() {
     setEditUnidadId(null);
     setUnidadForm({ codigo: "", estado: "ACTIVO", voltaje: "", notas: "" });
     setSavingUnidad(false);
+    setCostoGate(null);
   }
 
   function startEditUnidad(u: Unidad) {
@@ -479,7 +501,7 @@ function MantenimientoContent() {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={saveUnidad} disabled={savingUnidad}
+                        <button onClick={() => saveUnidad()} disabled={savingUnidad}
                           className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold px-3 py-1.5 rounded transition-colors">
                           {savingUnidad ? "..." : editUnidadId ? "Actualizar" : "Agregar unidad"}
                         </button>
@@ -652,7 +674,7 @@ function MantenimientoContent() {
                       </div>
                     </div>
                     <div className="flex gap-3">
-                      <button onClick={guardar} disabled={saving || !form.accionRealizada.trim()}
+                      <button onClick={() => guardar()} disabled={saving || !form.accionRealizada.trim()}
                         className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
                         {saving ? "Guardando..." : "Guardar registro"}
                       </button>
@@ -718,6 +740,21 @@ function MantenimientoContent() {
           )}
         </div>
       </div>
+
+      {costoGate && (
+        <CostoMantenimientoModal
+          open
+          estadoAnterior={costoGate.estadoAnterior}
+          equipoLabel={costoGate.label}
+          saving={saving || savingUnidad}
+          onConfirm={(costo) => {
+            const kind = costoGate.kind;
+            if (kind === "form") guardar(costo);
+            else saveUnidad(costo);
+          }}
+          onCancel={() => setCostoGate(null)}
+        />
+      )}
     </div>
   );
 }
