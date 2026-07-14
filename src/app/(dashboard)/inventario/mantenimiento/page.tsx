@@ -12,7 +12,7 @@ import { ESTADOS_EQUIPO, ESTADO_EQUIPO_LABEL, esRetornoAServicio } from "@/lib/e
 
 type Equipo = {
   id: string; descripcion: string; marca: string | null; modelo: string | null;
-  estado: string; cantidadTotal: number; tipo: string;
+  estado: string; cantidadTotal: number; tipo: string; createdAt: string;
   categoria: { id: string; nombre: string; orden: number }; activo: boolean;
 };
 
@@ -75,13 +75,37 @@ function diasHasta(s: string | null): number | null {
   return Math.ceil((new Date(s).getTime() - Date.now()) / 86400000);
 }
 
-function StatusDot({ lastDate, nextDate, total }: { lastDate: string | null; nextDate: string | null; total: number }) {
-  if (total === 0) return <span className="w-2 h-2 rounded-full bg-gray-700 shrink-0" />;
+// Umbral de mantenimiento: días sin ningún registro desde la última acción
+// (o desde el alta del equipo si nunca se le ha registrado nada).
+const UMBRAL_AMARILLO_DEFAULT = 30; // > este umbral → amarillo
+const UMBRAL_ROJO_DEFAULT = 60;     // > este umbral → rojo
+
+type MantColor = "verde" | "amarillo" | "rojo";
+const DOT_CLASS: Record<MantColor, string> = {
+  verde: "bg-green-500",
+  amarillo: "bg-yellow-400",
+  rojo: "bg-red-500",
+};
+
+// Color de estado combinando el próximo mantenimiento programado (si existe)
+// con la antigüedad sin registro (última acción o alta del equipo).
+function mantColor(
+  lastActivity: string | null,
+  nextDate: string | null,
+  umbralAmarillo: number,
+  umbralRojo: number,
+): MantColor {
   const hasta = diasHasta(nextDate);
-  if (hasta !== null && hasta < 0) return <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />;
-  if (hasta !== null && hasta <= 30) return <span className="w-2 h-2 rounded-full bg-yellow-400 shrink-0" />;
-  return <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />;
-  void lastDate;
+  if (hasta !== null && hasta < 0) return "rojo"; // próximo mantenimiento vencido
+  const desde = diasDesde(lastActivity);
+  if (desde !== null && desde > umbralRojo) return "rojo";
+  if (hasta !== null && hasta <= 30) return "amarillo"; // próximo mantenimiento cercano
+  if (desde !== null && desde > umbralAmarillo) return "amarillo";
+  return "verde";
+}
+
+function StatusDot({ color }: { color: MantColor }) {
+  return <span className={`w-2 h-2 rounded-full shrink-0 ${DOT_CLASS[color]}`} />;
 }
 
 function unidadLabel(u: Unidad, idx: number) {
@@ -134,6 +158,27 @@ function MantenimientoContent() {
   const [savingUnidad, setSavingUnidad] = useState(false);
   const [loading, setLoading] = useState(true);
   const [costoGate, setCostoGate] = useState<{ estadoAnterior: string; label: string; kind: "form" | "unidad" } | null>(null);
+  const [umbralAmarillo, setUmbralAmarillo] = useState(UMBRAL_AMARILLO_DEFAULT);
+  const [umbralRojo, setUmbralRojo] = useState(UMBRAL_ROJO_DEFAULT);
+  const [showUmbral, setShowUmbral] = useState(false);
+
+  // Cargar umbrales guardados
+  useEffect(() => {
+    const a = Number(localStorage.getItem("mant_umbral_amarillo"));
+    const r = Number(localStorage.getItem("mant_umbral_rojo"));
+    if (a > 0) setUmbralAmarillo(a);
+    if (r > 0) setUmbralRojo(r);
+  }, []);
+
+  function updateUmbral(kind: "amarillo" | "rojo", value: number) {
+    if (kind === "amarillo") {
+      setUmbralAmarillo(value);
+      localStorage.setItem("mant_umbral_amarillo", String(value));
+    } else {
+      setUmbralRojo(value);
+      localStorage.setItem("mant_umbral_rojo", String(value));
+    }
+  }
 
   const loadData = useCallback(async () => {
     const [eqRes, regRes] = await Promise.all([
@@ -190,15 +235,12 @@ function MantenimientoContent() {
       : [];
 
   const propios = equipos.filter(e => e.activo);
-  const vencidos = propios.filter(e => {
+  const equipoColor = (e: Equipo): MantColor => {
     const s = maintMap[e.id];
-    return s?.nextDate && diasHasta(s.nextDate)! < 0;
-  }).length;
-  const proximos = propios.filter(e => {
-    const s = maintMap[e.id];
-    const h = diasHasta(s?.nextDate ?? null);
-    return h !== null && h >= 0 && h <= 30;
-  }).length;
+    return mantColor(s?.lastDate ?? e.createdAt, s?.nextDate ?? null, umbralAmarillo, umbralRojo);
+  };
+  const colorCounts = { verde: 0, amarillo: 0, rojo: 0 };
+  for (const e of propios) colorCounts[equipoColor(e)]++;
   const sinRegistros = propios.filter(e => !maintMap[e.id] || maintMap[e.id].totalRecords === 0).length;
 
   function selectEquipo(id: string) {
@@ -318,8 +360,8 @@ function MantenimientoContent() {
           <h1 className="ms-h1">Mantenimiento de equipos</h1>
           <p className="text-gray-500 text-sm mt-0.5">
             {propios.length} equipos propios
-            {vencidos > 0 && <> · <span className="text-red-400 font-medium">{vencidos} vencido{vencidos !== 1 ? "s" : ""}</span></>}
-            {proximos > 0 && <> · <span className="text-yellow-400">{proximos} próximo{proximos !== 1 ? "s" : ""}</span></>}
+            {colorCounts.rojo > 0 && <> · <span className="text-red-400 font-medium">{colorCounts.rojo} requiere{colorCounts.rojo !== 1 ? "n" : ""} atención</span></>}
+            {colorCounts.amarillo > 0 && <> · <span className="text-yellow-400">{colorCounts.amarillo} por revisar</span></>}
             {sinRegistros > 0 && <> · <span className="text-gray-600">{sinRegistros} sin historial</span></>}
           </p>
         </div>
@@ -333,15 +375,64 @@ function MantenimientoContent() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {[
           { label: "Equipos propios", value: propios.length, color: "text-white" },
-          { label: "Vencidos", value: vencidos, color: vencidos > 0 ? "text-red-400" : "text-gray-600" },
-          { label: "Próximos 30d", value: proximos, color: proximos > 0 ? "text-yellow-400" : "text-gray-600" },
-          { label: "Sin historial", value: sinRegistros, color: sinRegistros > 0 ? "text-gray-400" : "text-gray-600" },
+          { label: "Al día", value: colorCounts.verde, color: colorCounts.verde > 0 ? "text-green-400" : "text-gray-600" },
+          { label: "Por revisar", value: colorCounts.amarillo, color: colorCounts.amarillo > 0 ? "text-yellow-400" : "text-gray-600" },
+          { label: "Requieren atención", value: colorCounts.rojo, color: colorCounts.rojo > 0 ? "text-red-400" : "text-gray-600" },
         ].map(s => (
           <div key={s.label} className="ms-card p-3">
             <p className="text-gray-600 text-[10px] uppercase tracking-wider mb-1">{s.label}</p>
             <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
           </div>
         ))}
+      </div>
+
+      {/* ── Umbral de mantenimiento ── */}
+      <div className="ms-card p-4 mb-6">
+        <button onClick={() => setShowUmbral(v => !v)}
+          className="w-full flex items-center justify-between text-left">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Umbral de mantenimiento</span>
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1 text-[10px] text-green-400"><span className="w-2 h-2 rounded-full bg-green-500" /> ≤ {umbralAmarillo}d</span>
+              <span className="flex items-center gap-1 text-[10px] text-yellow-400"><span className="w-2 h-2 rounded-full bg-yellow-400" /> {umbralAmarillo}–{umbralRojo}d</span>
+              <span className="flex items-center gap-1 text-[10px] text-red-400"><span className="w-2 h-2 rounded-full bg-red-500" /> &gt; {umbralRojo}d</span>
+            </div>
+          </div>
+          <span className="text-gray-600 text-xs">{showUmbral ? "▲" : "▼"}</span>
+        </button>
+        {showUmbral && (
+          <div className="mt-4 pt-4 border-t border-[#1a1a1a] space-y-4">
+            <p className="text-gray-500 text-xs">
+              El color de cada equipo y unidad indica los <span className="text-gray-300">días transcurridos sin registrar mantenimiento</span>,
+              contando desde la última acción o, si nunca se le ha registrado nada, desde su fecha de alta.
+              Un próximo mantenimiento vencido siempre se marca en rojo.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-md">
+              <div>
+                <label className="text-[10px] text-yellow-500 uppercase tracking-wider font-semibold mb-1 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-yellow-400" /> Pasa a amarillo tras
+                </label>
+                <div className="flex items-center gap-2">
+                  <input type="number" min={1} value={umbralAmarillo}
+                    onChange={e => updateUmbral("amarillo", Math.max(1, Number(e.target.value) || 1))}
+                    className="w-20 bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]" />
+                  <span className="text-gray-500 text-xs">días sin registro</span>
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] text-red-500 uppercase tracking-wider font-semibold mb-1 flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full bg-red-500" /> Pasa a rojo tras
+                </label>
+                <div className="flex items-center gap-2">
+                  <input type="number" min={umbralAmarillo + 1} value={umbralRojo}
+                    onChange={e => updateUmbral("rojo", Math.max(umbralAmarillo + 1, Number(e.target.value) || umbralAmarillo + 1))}
+                    className="w-20 bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]" />
+                  <span className="text-gray-500 text-xs">días sin registro</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-4 items-start">
@@ -370,14 +461,13 @@ function MantenimientoContent() {
                   {catEqs.map(e => {
                     const s = maintMap[e.id];
                     const isSelected = selectedEquipoId === e.id;
+                    const lastActivity = s?.lastDate ?? e.createdAt;
+                    const color = mantColor(lastActivity, s?.nextDate ?? null, umbralAmarillo, umbralRojo);
+                    const diasSin = diasDesde(lastActivity);
                     return (
                       <button key={e.id} onClick={() => selectEquipo(e.id)}
                         className={`w-full text-left px-4 py-3 transition-colors flex items-start gap-2 ${isSelected ? "bg-[#1a1a1a]" : "hover:bg-[#141414]"}`}>
-                        <StatusDot
-                          lastDate={s?.lastDate ?? null}
-                          nextDate={s?.nextDate ?? null}
-                          total={s?.totalRecords ?? 0}
-                        />
+                        <StatusDot color={color} />
                         <div className="flex-1 min-w-0">
                           <p className={`text-xs font-medium truncate leading-tight ${isSelected ? "text-[#B3985B]" : "text-white"}`}>
                             {e.descripcion}
@@ -389,12 +479,15 @@ function MantenimientoContent() {
                             {e.cantidadTotal} unidad{e.cantidadTotal !== 1 ? "es" : ""}
                             {s && s.totalRecords > 0 && <> · {s.totalRecords} registros</>}
                           </p>
-                          {s?.nextDate && diasHasta(s.nextDate)! < 0 && (
-                            <p className="text-[9px] text-red-500 font-semibold">● vencido</p>
-                          )}
-                          {s?.nextDate && diasHasta(s.nextDate)! >= 0 && diasHasta(s.nextDate)! <= 30 && (
-                            <p className="text-[9px] text-yellow-500">● próximo</p>
-                          )}
+                          {s?.nextDate && diasHasta(s.nextDate)! < 0 ? (
+                            <p className="text-[9px] text-red-500 font-semibold">● próx. mant. vencido</p>
+                          ) : s?.nextDate && diasHasta(s.nextDate)! <= 30 ? (
+                            <p className="text-[9px] text-yellow-500">● próximo mant. cercano</p>
+                          ) : color !== "verde" && diasSin !== null ? (
+                            <p className={`text-[9px] ${color === "rojo" ? "text-red-500 font-semibold" : "text-yellow-500"}`}>
+                              ● {s ? "sin registro hace" : "sin mantenimiento hace"} {diasSin}d
+                            </p>
+                          ) : null}
                         </div>
                       </button>
                     );
@@ -521,6 +614,9 @@ function MantenimientoContent() {
                         const h = diasHasta(nextDate);
                         const overdue = h !== null && h < 0;
                         const soonDue = h !== null && h >= 0 && h <= 30;
+                        const lastActivity = lastMaint?.fecha ?? u.createdAt;
+                        const color = mantColor(lastActivity, nextDate, umbralAmarillo, umbralRojo);
+                        const diasSin = diasDesde(lastActivity);
 
                         return (
                           <button key={u.id}
@@ -528,14 +624,15 @@ function MantenimientoContent() {
                             className={`text-left p-3 rounded-xl border transition-colors ${
                               isSelected
                                 ? "border-[#B3985B]/50 bg-[#B3985B]/5"
-                                : overdue
+                                : color === "rojo"
                                   ? "border-red-900/40 bg-[#0d0d0d] hover:border-red-800/60"
-                                  : soonDue
+                                  : color === "amarillo"
                                     ? "border-yellow-900/40 bg-[#0d0d0d] hover:border-yellow-800/60"
                                     : "border-[#1e1e1e] bg-[#0d0d0d] hover:border-[#2a2a2a]"
                             }`}>
                             <div className="flex items-start justify-between gap-1 mb-1">
-                              <p className={`text-xs font-semibold truncate ${isSelected ? "text-[#B3985B]" : "text-white"}`}>
+                              <p className={`text-xs font-semibold truncate flex items-center gap-1.5 ${isSelected ? "text-[#B3985B]" : "text-white"}`}>
+                                <StatusDot color={color} />
                                 {unidadLabel(u, idx)}
                               </p>
                               <div className="flex gap-1 shrink-0" onClick={e => e.stopPropagation()}>
@@ -569,7 +666,9 @@ function MantenimientoContent() {
                                   )}
                                 </>
                               ) : (
-                                <p className="text-[9px] text-gray-700">Sin registros</p>
+                                <p className={`text-[9px] ${color === "rojo" ? "text-red-500 font-medium" : color === "amarillo" ? "text-yellow-500" : "text-gray-700"}`}>
+                                  Sin registros{diasSin !== null && <> · alta hace {diasSin}d</>}
+                                </p>
                               )}
                             </div>
                           </button>
