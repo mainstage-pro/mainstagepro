@@ -1060,6 +1060,7 @@ export default function DiscoveryForm({
                   <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1">Equipos e inventario de interés</label>
                   <p className="text-[11px] text-gray-600 mb-3">Paso 1: elige las categorías que te interesan. Paso 2: dentro de cada una, selecciona los equipos y las piezas que necesitas. Lo seleccionado aquí se sugiere automáticamente al armar la cotización.</p>
                   <SelectorEquiposInventario
+                    readOnly={readOnly}
                     value={(() => {
                       try { return discForm.equiposInteres ? JSON.parse(discForm.equiposInteres as string) : { categorias: [], equipos: [], cantidades: {} }; }
                       catch { return { categorias: [], equipos: [], cantidades: {} }; }

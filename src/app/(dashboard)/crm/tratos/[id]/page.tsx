@@ -2408,7 +2408,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </Link>
           </div>
           
-          <DiscoveryForm id={id} trato={trato} setTrato={setTrato} readOnly={true} />
+          <DiscoveryForm id={id} trato={trato} setTrato={setTrato} />
         </div>
       )}
 
