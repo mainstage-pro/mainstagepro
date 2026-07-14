@@ -26,6 +26,12 @@ const nextConfig: NextConfig = {
       // ── Finanzas (legacy routes) ─────────────────────────────────────────────
       { source: "/finanzas/cxp",                 destination: "/finanzas/cobros-pagos",             permanent: true },
       { source: "/finanzas/cxc",                 destination: "/finanzas/cobros-pagos",             permanent: true },
+      { source: "/finanzas/reporte",             destination: "/direccion/estado-resultados",       permanent: true },
+      { source: "/finanzas/rentabilidad",        destination: "/admin/reportes",                    permanent: true },
+      // ── RRHH (legacy routes) ─────────────────────────────────────────────────
+      { source: "/rrhh/incidencias",             destination: "/rrhh/asistencia",                   permanent: true },
+      // ── Comercial (legacy routes) ────────────────────────────────────────────
+      { source: "/comercial/solicitudes",        destination: "/crm/tratos",                        permanent: true },
       // ── CRM (legacy routes) ──────────────────────────────────────────────────
       { source: "/crm/clientes",                 destination: "/crm/base-de-datos",                permanent: true },
       // ── Admin (legacy routes) ────────────────────────────────────────────────

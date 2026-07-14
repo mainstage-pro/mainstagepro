@@ -95,8 +95,6 @@ const NAV: NavSection[] = [
           { key: "finanzas-pasivos", label: "Pasivos y Deudas", href: "/finanzas/pasivos", adminOnly: true },
           { key: "finanzas-repartos", label: "Reparto de Utilidades", href: "/finanzas/repartos", adminOnly: true },
           { key: "inv-analisis", label: "Análisis de uso de equipo", href: "/inventario/analisis" },
-          { key: "finanzas-reporte", label: "Reporte financiero", href: "/finanzas/reporte", adminOnly: true },
-          { key: "finanzas-rentabilidad", label: "Rentabilidad por evento", href: "/finanzas/rentabilidad", adminOnly: true },
           { key: "finanzas-config", label: "Configuración", href: "/finanzas/configuracion", adminOnly: true },
         ],
       },
@@ -107,7 +105,6 @@ const NAV: NavSection[] = [
           { key: "rrhh-personal", label: "Personal interno", href: "/rrhh/personal" },
           { key: "rrhh-nomina", label: "Nómina", href: "/rrhh/nomina" },
           { key: "rrhh-asistencia", label: "Asistencia", href: "/rrhh/asistencia" },
-          { key: "rrhh-incidencias", label: "Incidencias", href: "/rrhh/incidencias" },
           { key: "rrhh-evaluaciones", label: "Evaluaciones", href: "/rrhh/evaluaciones" },
           { key: "rrhh-satisfaccion", label: "Satisfacción equipo", href: "/rrhh/satisfaccion" },
           { key: "rrhh-capacitaciones", label: "Capacitaciones", href: "/rrhh/capacitaciones" },
@@ -131,7 +128,6 @@ const NAV: NavSection[] = [
         ],
       },
       { key: "tabulador", label: "Tabulador Freelancers", href: "/catalogo/roles" },
-      { key: "grupos-equipo", label: "Grupos de equipo", href: "/admin/grupos-equipo", adminOnly: true },
       { key: "inventario-activos-admin", label: "Inventario de Activos", href: "/admin/valuacion", adminOnly: true },
       { key: "admin-reportes", label: "Reportes de Administración", href: "/admin/reportes", adminOnly: true },
 
@@ -156,12 +152,12 @@ const NAV: NavSection[] = [
     section: "Comercial",
     items: [
 
-      { key: "comercial-solicitudes",   label: "Solicitudes de Cotización",  href: "/comercial/solicitudes" },
       { key: "crm-tratos",              label: "Ventas",                     href: "/crm/tratos", badge: "leads" },
       { key: "crm-base-de-datos",       label: "Clientes",                   href: "/crm/base-de-datos" },
       { key: "ventas-seguimientos",     label: "Seguimientos",               href: "/ventas/seguimientos", badge: "seguimientos" },
       // { key: "ventas-presentaciones",label: "Presentaciones de Venta",    href: "/ventas/presentaciones" },
       { key: "ventas-reporte",          label: "Reporte de ventas",          href: "/ventas/reporte" },
+      { key: "grupos-equipo",           label: "Grupos de equipo",           href: "/admin/grupos-equipo", adminOnly: true },
       { key: "ventas-config",           label: "Configuración",              href: "/ventas/configuracion", adminOnly: true },
     ],
   },
@@ -174,7 +170,7 @@ const NAV: NavSection[] = [
       { key: "proyectos", label: "Proyectos de evento", href: "/proyectos" },
       {
         key: "inventario",
-        label: "Inventario",
+        label: "Bodega",
         children: [
           { key: "inv-maestro", label: "Inventario de Equipos", href: "/inventario/maestro" },
           { key: "inv-disponibilidad", accessKey: "inventario", label: "Disponibilidad", href: "/inventario/disponibilidad" },
@@ -186,7 +182,7 @@ const NAV: NavSection[] = [
       },
       {
         key: "catalogo",
-        label: "Catálogo",
+        label: "Base de datos producción",
         children: [
           // Hidden from sidebar — route still accessible via direct URL
           // { key: "bd-empresas", label: "Empresas", href: "/catalogo/empresas?tipo=proveedor" },
@@ -243,6 +239,7 @@ function getInitialOpen(pathname: string): Set<string> {
 }
 
 function getActiveSectionKey(pathname: string): string | null {
+  if (pathname.startsWith("/admin/grupos-equipo")) return "seccion-ventas";
   if (pathname.startsWith("/gestion") || pathname.startsWith("/proyectos-internos") || pathname.startsWith("/plan-trabajo") || pathname.startsWith("/operaciones")) return "seccion-gestion";
   if (pathname.startsWith("/presentaciones") || pathname.startsWith("/admin") || pathname.startsWith("/juntas") || pathname.startsWith("/formularios") || pathname.startsWith("/capacitacion") || pathname.startsWith("/direccion")) return "seccion-direccion";
   if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles") || pathname.startsWith("/admin/reportes")) return "seccion-administracion";
