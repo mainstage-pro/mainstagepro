@@ -99,7 +99,7 @@ export default function TableroProduccionPage() {
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="ms-h1">Tablero operativo</h1>
+        <h1 className="ms-h1">Estado de equipos</h1>
         <p className="text-gray-500 text-sm mt-0.5">Estado en vivo del área de producción — equipo en taller y equipo fuera</p>
       </div>
 

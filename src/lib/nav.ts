@@ -162,7 +162,7 @@ export const NAV: NavSection[] = [
     section: "Producción",
     items: [
       { key: "proyectos", label: "Proyectos de evento", href: "/proyectos" },
-      { key: "produccion-tablero", accessKey: "inventario", label: "Tablero operativo", href: "/produccion/tablero" },
+      { key: "produccion-tablero", accessKey: "inventario", label: "Estado de equipos", href: "/produccion/tablero" },
       {
         key: "inventario",
         label: "Bodega",
