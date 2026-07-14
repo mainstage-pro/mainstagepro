@@ -7,11 +7,12 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { BackButton } from "@/components/BackButton";
 import { EquipoGaleria } from "@/components/EquipoGaleria";
+import { ESTADOS_EQUIPO as ESTADOS_UNIDAD, ESTADO_EQUIPO_LABEL } from "@/lib/equipo-estado";
 
-const ESTADOS_UNIDAD = ["ACTIVO", "EN_MANTENIMIENTO", "DADO_DE_BAJA"] as const;
 const ESTADO_UNIDAD_BADGE: Record<string, string> = {
   ACTIVO: "bg-green-900/30 text-green-400 border-green-900/50",
   EN_MANTENIMIENTO: "bg-yellow-900/30 text-yellow-400 border-yellow-900/50",
+  EN_REPARACION: "bg-orange-900/30 text-orange-400 border-orange-900/50",
   DADO_DE_BAJA: "bg-red-900/30 text-red-400 border-red-900/50",
 };
 const VOLTAJES_UNIDAD = [
@@ -529,7 +530,7 @@ function UnidadesSection({ equipoId, cantidadTotal }: { equipoId: string; cantid
               <label className="text-[10px] text-gray-600 mb-1 block">Estado</label>
               <select value={form.estado} onChange={e => setForm(p => ({ ...p, estado: e.target.value }))}
                 className="w-full bg-[#111] border border-[#222] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]/50">
-                {ESTADOS_UNIDAD.map(s => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+                {ESTADOS_UNIDAD.map(s => <option key={s} value={s}>{ESTADO_EQUIPO_LABEL[s] ?? s}</option>)}
               </select>
             </div>
           </div>
@@ -586,7 +587,7 @@ function UnidadesSection({ equipoId, cantidadTotal }: { equipoId: string; cantid
                 </div>
                 <div className="flex flex-wrap items-center gap-1">
                   <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold ${ESTADO_UNIDAD_BADGE[u.estado] ?? "bg-gray-800 text-gray-400 border-gray-700"}`}>
-                    {u.estado.replace(/_/g, " ")}
+                    {ESTADO_EQUIPO_LABEL[u.estado] ?? u.estado}
                   </span>
                   {u.voltaje && (
                     <span className="text-[9px] px-1.5 py-0.5 rounded border font-semibold bg-yellow-900/20 text-yellow-400 border-yellow-900/40">

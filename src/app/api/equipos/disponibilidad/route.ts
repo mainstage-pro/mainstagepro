@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { capacidadOperativa } from "@/lib/equipo-estado";
 
 /**
  * GET /api/equipos/disponibilidad?fecha=YYYY-MM-DD&excludeCotizacionId=X
@@ -29,7 +30,12 @@ export async function GET(req: NextRequest) {
   // 1. Todos los equipos propios activos
   const equipos = await prisma.equipo.findMany({
     where: { tipo: "PROPIO", activo: true },
-    select: { id: true, cantidadTotal: true },
+    select: {
+      id: true,
+      cantidadTotal: true,
+      estado: true,
+      unidades: { where: { activo: true }, select: { estado: true } },
+    },
   });
 
   // 2. Cotizaciones en esa fecha que comprometen inventario
@@ -127,10 +133,12 @@ export async function GET(req: NextRequest) {
 
   for (const eq of equipos) {
     const comp = comprometido[eq.id] ?? { cantidad: 0, eventos: [] };
+    // Capacidad operativa: descuenta unidades en mantenimiento/reparación/baja
+    const capacidad = capacidadOperativa(eq.cantidadTotal, eq.estado, eq.unidades);
     disponibilidad[eq.id] = {
       total: eq.cantidadTotal,
       comprometido: comp.cantidad,
-      disponible: Math.max(0, eq.cantidadTotal - comp.cantidad),
+      disponible: Math.max(0, capacidad - comp.cantidad),
       eventos: comp.eventos,
     };
   }

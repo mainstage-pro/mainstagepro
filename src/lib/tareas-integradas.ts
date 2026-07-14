@@ -100,10 +100,10 @@ export async function computarTareasIntegradas(): Promise<TareaIntegrada[]> {
       take: 30,
     }),
 
-    // 5. Equipos en mantenimiento
+    // 5. Equipos en taller (mantenimiento / reparación)
     prisma.equipo.findMany({
-      where: { estado: "EN_MANTENIMIENTO" },
-      select: { id: true, descripcion: true, marca: true, categoria: { select: { nombre: true } } },
+      where: { estado: { in: ["EN_MANTENIMIENTO", "EN_REPARACION"] } },
+      select: { id: true, descripcion: true, marca: true, estado: true, categoria: { select: { nombre: true } } },
       take: 30,
     }),
   ]);
@@ -191,18 +191,19 @@ export async function computarTareasIntegradas(): Promise<TareaIntegrada[]> {
     });
   }
 
-  // ── Equipos en mantenimiento → PRODUCCION ─────────────────────────────────
+  // ── Equipos en taller (mantenimiento / reparación) → PRODUCCION ───────────
   for (const e of equipos) {
+    const esReparacion = e.estado === "EN_REPARACION";
     result.push({
       id: `EQUIPO_MANTENIMIENTO_${e.id}`,
       fuente: "EQUIPO_MANTENIMIENTO",
-      titulo: `En mantenimiento — ${e.descripcion}`,
+      titulo: `${esReparacion ? "En reparación" : "En mantenimiento"} — ${e.descripcion}`,
       descripcion: [e.marca, e.categoria.nombre].filter(Boolean).join(" · ") || undefined,
       area: "PRODUCCION",
       entidadId: e.id,
       href: "/inventario/mantenimiento",
       severidad: "MEDIA",
-      etiqueta: "Mantenimiento",
+      etiqueta: esReparacion ? "Reparación" : "Mantenimiento",
     });
   }
 

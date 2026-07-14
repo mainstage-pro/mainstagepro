@@ -6,6 +6,7 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
 import { EquipoGaleria } from "@/components/EquipoGaleria";
+import { ESTADO_EQUIPO_LABEL } from "@/lib/equipo-estado";
 
 type Equipo = {
   id: string;
@@ -80,11 +81,10 @@ async function compressImage(file: File, maxPx = 1200): Promise<string> {
 const ESTADO_BADGE: Record<string, string> = {
   ACTIVO: "bg-green-900/20 text-green-400",
   EN_MANTENIMIENTO: "bg-yellow-900/20 text-yellow-400",
+  EN_REPARACION: "bg-orange-900/20 text-orange-400",
   DADO_DE_BAJA: "bg-red-900/20 text-red-400",
 };
-const ESTADO_LABEL: Record<string, string> = {
-  ACTIVO: "Activo", EN_MANTENIMIENTO: "En mantenimiento", DADO_DE_BAJA: "Dado de baja",
-};
+const ESTADO_LABEL = ESTADO_EQUIPO_LABEL;
 
 type Unidad = {
   id: string; codigo: string | null; estado: string; voltaje: string | null;
@@ -248,6 +248,7 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]/50">
                 <option value="ACTIVO">Activo</option>
                 <option value="EN_MANTENIMIENTO">En mantenimiento</option>
+                <option value="EN_REPARACION">En reparación</option>
                 <option value="DADO_DE_BAJA">Dado de baja</option>
               </select>
             </FieldGroup>
@@ -465,6 +466,7 @@ function UnidadEditModal({ equipoId, unidad, onClose, onUpdated }: {
             <select value={form.estado} onChange={e => setForm(p => ({ ...p, estado: e.target.value }))} className={inputCls}>
               <option value="ACTIVO">Activo</option>
               <option value="EN_MANTENIMIENTO">En mantenimiento</option>
+              <option value="EN_REPARACION">En reparación</option>
               <option value="DADO_DE_BAJA">Dado de baja</option>
             </select>
           </FieldGroup>
@@ -763,7 +765,7 @@ export default function InventarioMaestroPage() {
   const [savingProveedor, setSavingProveedor] = useState(false);
 
   const [filtroTipo, setFiltroTipo] = useState<"" | "PROPIO" | "EXTERNO">("");
-  const [filtroEstado, setFiltroEstado] = useState<"" | "ACTIVO" | "EN_MANTENIMIENTO" | "DADO_DE_BAJA">("");
+  const [filtroEstado, setFiltroEstado] = useState<"" | "ACTIVO" | "EN_MANTENIMIENTO" | "EN_REPARACION" | "DADO_DE_BAJA">("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [filtroInactivos, setFiltroInactivos] = useState(false);
   const [busqueda, setBusqueda] = useState("");
@@ -1130,6 +1132,7 @@ export default function InventarioMaestroPage() {
             <option value="">Estado: todos</option>
             <option value="ACTIVO">Activo</option>
             <option value="EN_MANTENIMIENTO">En mantenimiento</option>
+            <option value="EN_REPARACION">En reparación</option>
             <option value="DADO_DE_BAJA">Dado de baja</option>
           </select>
           <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)}
@@ -1276,6 +1279,7 @@ export default function InventarioMaestroPage() {
                                 className="bg-[#0d0d0d] border border-[#2a2a2a] rounded text-[10px] font-medium text-white focus:outline-none focus:border-[#B3985B]/50 px-1.5 py-0.5">
                                 <option value="ACTIVO" className="bg-[#111]">Activo</option>
                                 <option value="EN_MANTENIMIENTO" className="bg-[#111]">En mantenimiento</option>
+                                <option value="EN_REPARACION" className="bg-[#111]">En reparación</option>
                                 <option value="DADO_DE_BAJA" className="bg-[#111]">Dado de baja</option>
                               </select>
                             ) : (

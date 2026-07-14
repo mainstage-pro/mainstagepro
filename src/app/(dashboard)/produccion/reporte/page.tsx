@@ -494,25 +494,28 @@ function SeccionInventario({ data, mes }: { data: ReporteData["inventario"]; mes
   }, [mes]);
   const totalActivo = estadoActual["ACTIVO"] ?? 0;
   const totalMant   = estadoActual["EN_MANTENIMIENTO"] ?? 0;
+  const totalRep    = estadoActual["EN_REPARACION"] ?? 0;
   const totalBaja   = estadoActual["DADO_DE_BAJA"] ?? 0;
-  const totalGeneral = totalActivo + totalMant + totalBaja;
+  const totalGeneral = totalActivo + totalMant + totalRep + totalBaja;
 
   const pieData = [
     { name: "Activo",          value: totalActivo, color: "#4ade80" },
     { name: "En mantenimiento", value: totalMant,  color: "#fbbf24" },
+    { name: "En reparación",   value: totalRep,    color: "#fb923c" },
     { name: "Dado de baja",    value: totalBaja,   color: "#f87171" },
   ].filter(d => d.value > 0);
 
   return (
     <div className="space-y-4">
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-7 gap-3">
         {[
           { label: "Altas",            value: `+${kpis.altas}`,  color: "text-[#4ade80]" },
           { label: "Bajas",            value: `-${kpis.bajas}`,  color: "text-[#f87171]" },
           { label: "Balance",          value: kpis.delta >= 0 ? `+${kpis.delta}` : `${kpis.delta}`, color: kpis.delta >= 0 ? "text-[#4ade80]" : "text-[#f87171]" },
           { label: "Activos",          value: totalActivo,       color: "text-[#4ade80]" },
           { label: "En mantenimiento", value: totalMant,         color: "text-[#fbbf24]" },
+          { label: "En reparación",    value: totalRep,          color: "text-[#fb923c]" },
           { label: "Dados de baja",    value: totalBaja,         color: "text-[#f87171]" },
         ].map(k => (
           <div key={k.label} className="ms-stat-card">

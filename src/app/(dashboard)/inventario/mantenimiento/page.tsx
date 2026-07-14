@@ -7,6 +7,7 @@ import { SkeletonPage } from "@/components/Skeleton";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { Modal } from "@/components/Modal";
+import { ESTADOS_EQUIPO, ESTADO_EQUIPO_LABEL } from "@/lib/equipo-estado";
 
 type Equipo = {
   id: string; descripcion: string; marca: string | null; modelo: string | null;
@@ -33,7 +34,6 @@ const TIPOS = ["PREVENTIVO", "CORRECTIVO", "ESTETICO", "FUNCIONAL"];
 const TIPOS_LABEL: Record<string, string> = {
   PREVENTIVO: "Preventivo", CORRECTIVO: "Correctivo", ESTETICO: "Estético", FUNCIONAL: "Funcional",
 };
-const ESTADOS_EQUIPO = ["ACTIVO", "EN_MANTENIMIENTO", "DADO_DE_BAJA"];
 const TIPO_COLORS: Record<string, string> = {
   PREVENTIVO: "bg-blue-900/40 text-blue-300",
   CORRECTIVO: "bg-red-900/40 text-red-300",
@@ -43,10 +43,12 @@ const TIPO_COLORS: Record<string, string> = {
 const ESTADO_BADGE: Record<string, string> = {
   ACTIVO: "bg-green-900/30 text-green-400 border-green-900/50",
   EN_MANTENIMIENTO: "bg-yellow-900/30 text-yellow-400 border-yellow-900/50",
+  EN_REPARACION: "bg-orange-900/30 text-orange-400 border-orange-900/50",
   DADO_DE_BAJA: "bg-red-900/30 text-red-400 border-red-900/50",
 };
 const ESTADO_COLORS: Record<string, string> = {
-  ACTIVO: "text-green-400", EN_MANTENIMIENTO: "text-yellow-400", DADO_DE_BAJA: "text-red-400",
+  ACTIVO: "text-green-400", EN_MANTENIMIENTO: "text-yellow-400",
+  EN_REPARACION: "text-orange-400", DADO_DE_BAJA: "text-red-400",
 };
 const VOLTAJES = [
   { value: "110", label: "110V" },
@@ -399,7 +401,7 @@ function MantenimientoContent() {
                     )}
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className={`text-[10px] px-2 py-0.5 rounded border font-semibold ${ESTADO_BADGE[selectedEquipo.estado] ?? "bg-gray-800 text-gray-400 border-gray-700"}`}>
-                        {selectedEquipo.estado.replace(/_/g, " ")}
+                        {ESTADO_EQUIPO_LABEL[selectedEquipo.estado] ?? selectedEquipo.estado}
                       </span>
                       <span className="text-gray-600 text-xs">{selectedEquipo.cantidadTotal} unidades · {selectedEquipo.categoria.nombre}</span>
                     </div>
@@ -449,7 +451,7 @@ function MantenimientoContent() {
                           <Combobox
                             value={unidadForm.estado}
                             onChange={v => setUnidadForm(p => ({ ...p, estado: v }))}
-                            options={ESTADOS_EQUIPO.map(s => ({ value: s, label: s.replace(/_/g, " ") }))}
+                            options={ESTADOS_EQUIPO.map(s => ({ value: s, label: ESTADO_EQUIPO_LABEL[s] ?? s }))}
                             className="w-full bg-[#111] border border-[#333] text-white text-xs rounded px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
                           />
                         </div>
@@ -523,7 +525,7 @@ function MantenimientoContent() {
                             </div>
                             <div className="flex flex-wrap items-center gap-1">
                               <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold ${ESTADO_BADGE[u.estado] ?? "bg-gray-800 text-gray-400 border-gray-700"}`}>
-                                {u.estado.replace(/_/g, " ")}
+                                {ESTADO_EQUIPO_LABEL[u.estado] ?? u.estado}
                               </span>
                               {u.voltaje && (
                                 <span className="text-[9px] px-1.5 py-0.5 rounded border font-semibold bg-yellow-900/20 text-yellow-400 border-yellow-900/40">
@@ -596,7 +598,7 @@ function MantenimientoContent() {
                         <Combobox
                           value={form.estadoEquipo}
                           onChange={v => setForm(p => ({ ...p, estadoEquipo: v }))}
-                          options={[{ value: "", label: "Sin cambio" }, ...ESTADOS_EQUIPO.map(s => ({ value: s, label: s.replace(/_/g, " ") }))]}
+                          options={[{ value: "", label: "Sin cambio" }, ...ESTADOS_EQUIPO.map(s => ({ value: s, label: ESTADO_EQUIPO_LABEL[s] ?? s }))]}
                           className="w-full bg-[#111] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]"
                         />
                       </div>
@@ -685,7 +687,7 @@ function MantenimientoContent() {
                                 <span className="text-gray-600 text-xs">{fmtDate(r.fecha)}</span>
                                 {r.estadoEquipo && (
                                   <span className={`text-xs font-medium ${ESTADO_COLORS[r.estadoEquipo] ?? "text-gray-400"}`}>
-                                    → {r.estadoEquipo.replace(/_/g, " ")}
+                                    → {ESTADO_EQUIPO_LABEL[r.estadoEquipo] ?? r.estadoEquipo}
                                   </span>
                                 )}
                                 {r.proximoMantenimiento && (

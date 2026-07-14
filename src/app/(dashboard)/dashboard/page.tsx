@@ -114,7 +114,7 @@ export default async function DashboardPage() {
       orderBy: { fechaEvento: "asc" },
       take: 10,
     }),
-    prisma.equipo.count({ where: { estado: "EN_MANTENIMIENTO" } }),
+    prisma.equipo.count({ where: { estado: { in: ["EN_MANTENIMIENTO", "EN_REPARACION"] } } }),
     prisma.proyecto.count({
       where: {
         estado: { in: ["PLANEACION", "CONFIRMADO"] },

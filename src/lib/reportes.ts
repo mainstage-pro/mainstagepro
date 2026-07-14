@@ -192,7 +192,7 @@ export async function generarReporteData(
     prisma.proyecto.count({
       where: { estado: { in: ["PLANEACION","CONFIRMADO"] }, personal: { none: { confirmado: true } }, fechaEvento: { lte: en30dias, gte: ahora } },
     }),
-    prisma.equipo.count({ where: { estado: "EN_MANTENIMIENTO" } }),
+    prisma.equipo.count({ where: { estado: { in: ["EN_MANTENIMIENTO", "EN_REPARACION"] } } }),
     prisma.ordenCompra.count({ where: { estado: "PENDIENTE" } }).catch(() => 0),
 
     // ── MARKETING ────────────────────────────────────────────────────────────

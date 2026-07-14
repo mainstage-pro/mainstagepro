@@ -46,9 +46,16 @@ export async function PATCH(
         where: { equipoId: registro.equipoId },
         select: { estado: true },
       });
+      const algEnReparacion = unidades.some((u) => u.estado === "EN_REPARACION");
       const algEnMant = unidades.some((u) => u.estado === "EN_MANTENIMIENTO");
       const todasBaja = unidades.every((u) => u.estado === "DADO_DE_BAJA");
-      const estadoPadre = todasBaja ? "DADO_DE_BAJA" : algEnMant ? "EN_MANTENIMIENTO" : "ACTIVO";
+      const estadoPadre = todasBaja
+        ? "DADO_DE_BAJA"
+        : algEnReparacion
+          ? "EN_REPARACION"
+          : algEnMant
+            ? "EN_MANTENIMIENTO"
+            : "ACTIVO";
       await prisma.equipo.update({
         where: { id: registro.equipoId },
         data: {

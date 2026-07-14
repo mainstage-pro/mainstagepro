@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { capacidadOperativa } from "@/lib/equipo-estado";
 
 // GET /api/inventario/disponibilidad?fechas=YYYY-MM-DD,YYYY-MM-DD,YYYY-MM-DD
 export async function GET(req: NextRequest) {
@@ -34,7 +35,10 @@ export async function GET(req: NextRequest) {
   // 1. Todos los equipos propios activos
   const equipos = await prisma.equipo.findMany({
     where: { tipo: "PROPIO", activo: true },
-    include: { categoria: { select: { nombre: true, orden: true } } },
+    include: {
+      categoria: { select: { nombre: true, orden: true } },
+      unidades: { where: { activo: true }, select: { estado: true } },
+    },
     orderBy: [{ categoria: { orden: "asc" } }, { descripcion: "asc" }],
   });
 
@@ -133,7 +137,10 @@ export async function GET(req: NextRequest) {
   // 5. Resultado por equipo
   const resultado = equipos.map((eq) => {
     const comp = comprometido[eq.id] ?? { cantidad: 0, eventos: [] };
-    const disponible = eq.cantidadTotal - comp.cantidad;
+    // Capacidad operativa: descuenta unidades en mantenimiento/reparación/baja
+    const capacidad = capacidadOperativa(eq.cantidadTotal, eq.estado, eq.unidades);
+    const fueraDeStock = eq.cantidadTotal - capacidad;
+    const disponible = capacidad - comp.cantidad;
     return {
       id: eq.id,
       descripcion: eq.descripcion,
@@ -141,6 +148,7 @@ export async function GET(req: NextRequest) {
       modelo: eq.modelo,
       categoria: eq.categoria.nombre,
       cantidadTotal: eq.cantidadTotal,
+      fueraDeStock,
       comprometido: comp.cantidad,
       disponible: Math.max(0, disponible),
       sobredemanda: disponible < 0 ? Math.abs(disponible) : 0,

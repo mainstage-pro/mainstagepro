@@ -5,7 +5,7 @@ import { getSession } from "@/lib/auth";
 // Tablero operativo de Producción: equipos en taller (mantenimiento/reparación)
 // + equipos de renta que siguen fuera (pendientes de recolección).
 
-const REPARACION_TIPOS = ["CORRECTIVO", "FUNCIONAL"];
+const ESTADOS_TALLER = ["EN_MANTENIMIENTO", "EN_REPARACION"];
 
 function diasDesde(fecha: Date | null): number | null {
   if (!fecha) return null;
@@ -21,11 +21,12 @@ export async function GET() {
     const [unidades, equiposGenerales, proyectos] = await Promise.all([
       // Unidades individuales en taller
       prisma.equipoUnidad.findMany({
-        where: { estado: "EN_MANTENIMIENTO" },
+        where: { estado: { in: ESTADOS_TALLER } },
         select: {
           id: true,
           codigo: true,
           notas: true,
+          estado: true,
           equipo: {
             select: {
               id: true,
@@ -43,11 +44,12 @@ export async function GET() {
       }),
       // Equipos marcados en taller a nivel general (sin unidad específica)
       prisma.equipo.findMany({
-        where: { estado: "EN_MANTENIMIENTO", activo: true },
+        where: { estado: { in: ESTADOS_TALLER }, activo: true },
         select: {
           id: true,
           descripcion: true,
           marca: true,
+          estado: true,
           categoria: { select: { nombre: true } },
           mantenimientos: {
             where: { unidadId: null },
@@ -90,7 +92,7 @@ export async function GET() {
           codigo: u.codigo,
           notas: u.notas,
           tipo: m?.tipo ?? null,
-          esReparacion: m ? REPARACION_TIPOS.includes(m.tipo) : false,
+          esReparacion: u.estado === "EN_REPARACION",
           desde: m?.fecha ?? null,
           dias: diasDesde(m?.fecha ?? null),
           accion: m?.accionRealizada ?? null,
@@ -109,7 +111,7 @@ export async function GET() {
           codigo: null,
           notas: null,
           tipo: m?.tipo ?? null,
-          esReparacion: m ? REPARACION_TIPOS.includes(m.tipo) : false,
+          esReparacion: e.estado === "EN_REPARACION",
           desde: m?.fecha ?? null,
           dias: diasDesde(m?.fecha ?? null),
           accion: m?.accionRealizada ?? null,

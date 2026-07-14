@@ -101,9 +101,9 @@ export async function GET(req: NextRequest) {
     entry.costoTotal += r.costoReparacion ?? 0;
   }
 
-  // Equipos actualmente EN_MANTENIMIENTO (independiente del mes)
+  // Equipos actualmente en taller: mantenimiento o reparación (independiente del mes)
   const equiposEnMantenimiento = await prisma.equipo.findMany({
-    where: { estado: "EN_MANTENIMIENTO", activo: true },
+    where: { estado: { in: ["EN_MANTENIMIENTO", "EN_REPARACION"] }, activo: true },
     include: {
       categoria: { select: { nombre: true } },
       mantenimientos: {
@@ -111,7 +111,7 @@ export async function GET(req: NextRequest) {
         take: 1,
         select: { id: true, fecha: true, tipo: true, accionRealizada: true, comentarios: true, costoReparacion: true, estadoEquipo: true },
       },
-      unidades: { where: { estado: "EN_MANTENIMIENTO" }, select: { id: true, codigo: true } },
+      unidades: { where: { estado: { in: ["EN_MANTENIMIENTO", "EN_REPARACION"] } }, select: { id: true, codigo: true } },
     },
     orderBy: { descripcion: "asc" },
   });

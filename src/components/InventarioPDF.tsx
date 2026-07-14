@@ -84,6 +84,7 @@ const s = StyleSheet.create({
   tdEstado: { width: 60, fontSize: 6.5, textAlign: "center" },
   estadoActivo: { color: "#16a34a" },
   estadoMant: { color: "#d97706" },
+  estadoRep: { color: "#ea580c" },
   estadoBaja: { color: "#dc2626" },
 
   // ── Divider ──
@@ -132,12 +133,14 @@ export interface InventarioPDFData {
 function estadoLabel(e: string) {
   if (e === "ACTIVO") return "Activo";
   if (e === "EN_MANTENIMIENTO") return "Mant.";
+  if (e === "EN_REPARACION") return "Repar.";
   if (e === "DADO_DE_BAJA") return "Baja";
   return e;
 }
 function estadoStyle(e: string) {
   if (e === "ACTIVO") return s.estadoActivo;
   if (e === "EN_MANTENIMIENTO") return s.estadoMant;
+  if (e === "EN_REPARACION") return s.estadoRep;
   return s.estadoBaja;
 }
 function fmtDate(iso: string) {

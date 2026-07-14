@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { capacidadOperativa } from "@/lib/equipo-estado";
 
 /**
  * GET /api/equipos/[id]/disponibilidad?fecha=YYYY-MM-DD&proyectoId=XXX&cantidad=1
@@ -26,7 +27,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const [equipo, asignaciones] = await Promise.all([
     prisma.equipo.findUnique({
       where: { id },
-      select: { id: true, descripcion: true, marca: true, cantidadTotal: true },
+      select: {
+        id: true,
+        descripcion: true,
+        marca: true,
+        cantidadTotal: true,
+        estado: true,
+        unidades: { where: { activo: true }, select: { estado: true } },
+      },
     }),
     prisma.proyectoEquipo.findMany({
       where: {
@@ -49,8 +57,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!equipo) return NextResponse.json({ disponible: true, conflictos: [], cantidadDisponible: null });
 
   const cantidadTotal = equipo.cantidadTotal ?? 1;
+  // Capacidad operativa: descuenta unidades en mantenimiento/reparación/baja
+  const capacidad = capacidadOperativa(cantidadTotal, equipo.estado, equipo.unidades);
   const cantidadComprometida = asignaciones.reduce((s, a) => s + a.cantidad, 0);
-  const cantidadDisponible = cantidadTotal - cantidadComprometida;
+  const cantidadDisponible = capacidad - cantidadComprometida;
   const disponible = cantidadDisponible >= cantidadSolicitada;
 
   return NextResponse.json({
