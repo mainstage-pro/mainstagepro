@@ -259,6 +259,10 @@ export default function DiscoveryForm({
   const latestDiscRef = useRef(discForm);
   const lastSavedSigRef = useRef("");
   const autosaveArmedRef = useRef(false);
+  // Última selección de equipos ya persistida en el servidor. Se usa para el
+  // guardado INMEDIATO de `equiposInteres` (independiente del debounce global),
+  // evitando re-guardar el valor hidratado.
+  const equiposPersistidosRef = useRef<string | null>(null);
   useEffect(() => { latestDiscRef.current = discForm; });
 
   // Hidratar el formulario con la información ya capturada en el trato
@@ -331,6 +335,9 @@ export default function DiscoveryForm({
       latestDiscRef.current = hydrated;
       return hydrated;
     });
+    // Marcar la selección de equipos cargada como "ya persistida" para que el
+    // guardado inmediato no la re-escriba en el primer render tras hidratar.
+    equiposPersistidosRef.current = equiposRestore || "";
     // Si recuperamos los equipos del respaldo local, persistirlos de inmediato
     // en el servidor para volver a alinear la BD con lo que el usuario tenía.
     if (equiposRestauradoLocal) {
@@ -467,6 +474,22 @@ export default function DiscoveryForm({
     try {
       if (discForm.equiposInteres) localStorage.setItem(`disc-equipos-${id}`, discForm.equiposInteres);
       else localStorage.removeItem(`disc-equipos-${id}`);
+    } catch { /* noop */ }
+    // Persistencia INMEDIATA al servidor (sin esperar el debounce global). La
+    // selección de equipos son clics discretos, así que guardamos en cada cambio
+    // con keepalive: así la selección del paso 2 nunca se pierde aunque el
+    // usuario navegue a la cotización de inmediato. Solo re-guardamos si cambió
+    // respecto a lo ya persistido (evita re-escribir el valor hidratado).
+    const val = discForm.equiposInteres || "";
+    if (val === (equiposPersistidosRef.current ?? "")) return;
+    equiposPersistidosRef.current = val;
+    try {
+      fetch(`/api/tratos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ equiposInteres: val || null }),
+        keepalive: true,
+      }).catch(() => {});
     } catch { /* noop */ }
   }, [discForm.equiposInteres, readOnly, clientMode, huerfano, id]);
 
