@@ -384,9 +384,6 @@ function CotizadorForm() {
   const [autoSaved, setAutoSaved] = useState(false);
   // Prevent saving on first render (before data is loaded from server)
   const isInitialized = useRef(false);
-  // Marca que hay una selección del descubrimiento pendiente de volcarse a las
-  // líneas de la cotización (solo al abrir un borrador recién creado desde el trato).
-  const autoAgregarDescRef = useRef(false);
 
   // Disponibilidad de inventario para la fecha del evento
   const [dispMap, setDispMap] = useState<Record<string, { disponible: number; comprometido: number; total: number; eventos: Array<{ ref: string; nombre: string; estado: string }> }>>({});
@@ -585,13 +582,12 @@ function CotizadorForm() {
         if (cot.zonaEvento) setZonaEvento(cot.zonaEvento as "LOCAL"|"BAJIO"|"NACIONAL");
         if (cot.numTecnicosZona) setNumTecnicosZona(cot.numTecnicosZona);
         // Heredar la selección del descubrimiento del trato. Si la cotización es
-        // un borrador recién creado (sin líneas), se agregan automáticamente a la
-        // cotización (equipos individuales y paquetes) — ver efecto más abajo.
+        // el panel de sugerencias, donde el vendedor los agrega manualmente
+        // (checklist consciente).
         if (cot.trato?.equiposInteres) {
           try {
             const ei = JSON.parse(cot.trato.equiposInteres);
             setEquiposInteres({ categorias: ei.categorias ?? [], equipos: ei.equipos ?? [], cantidades: ei.cantidades ?? {}, extras: ei.extras ?? [], productos: ei.productos ?? [] });
-            if ((cot.lineas ?? []).length === 0) autoAgregarDescRef.current = true;
           } catch { /* noop */ }
         }
         // Mark as initialized so auto-save can start on next change
@@ -627,37 +623,14 @@ function CotizadorForm() {
         }
         if (t.asistentesEstimados) setAsistentesEstimados(t.asistentesEstimados);
         if (t.formEstado) setTratoFormEstado(t.formEstado);
-        if (t.equiposInteres) { try { const ei = JSON.parse(t.equiposInteres); setEquiposInteres({ categorias: ei.categorias ?? [], equipos: ei.equipos ?? [], cantidades: ei.cantidades ?? {}, extras: ei.extras ?? [], productos: ei.productos ?? [] }); autoAgregarDescRef.current = true; } catch { /* noop */ } }
+        if (t.equiposInteres) { try { const ei = JSON.parse(t.equiposInteres); setEquiposInteres({ categorias: ei.categorias ?? [], equipos: ei.equipos ?? [], cantidades: ei.cantidades ?? {}, extras: ei.extras ?? [], productos: ei.productos ?? [] }); } catch { /* noop */ } }
       }
     });
   }, [clienteId, tratoId]);
 
-  // Volcar la selección del descubrimiento del trato a las líneas de la
-  // cotización: equipos individuales y paquetes/productos. Se ejecuta una sola
-  // vez, cuando ya cargó el catálogo necesario y hay una selección heredada
-  // pendiente (borrador recién creado o cotización nueva desde el trato). Los
-  // "extras" (equipos escritos a mano) no se agregan aquí porque requieren que
-  // el vendedor capture su precio manualmente.
-  useEffect(() => {
-    if (!autoAgregarDescRef.current) return;
-    const tieneEquipos = equiposInteres.equipos.length > 0;
-    const tienePaquetes = equiposInteres.productos.length > 0;
-    if (!tieneEquipos && !tienePaquetes) { autoAgregarDescRef.current = false; return; }
-    // Esperar a que carguen los catálogos que hacen falta para resolver precios.
-    if (tieneEquipos && equipos.length === 0) return;
-    if (tienePaquetes && productosCatalogo.length === 0) return;
-    autoAgregarDescRef.current = false;
-    // Asegurar que el auto-guardado (modo edición) persista lo que agreguemos.
-    isInitialized.current = true;
-    if (tieneEquipos) agregarTodasSugerencias();
-    if (tienePaquetes) {
-      equiposInteres.productos.forEach(p => {
-        const prod = productosCatalogo.find(pc => pc.id === p.id);
-        if (prod) agregarPaqueteDescubrimiento(prod);
-      });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [equiposInteres, equipos, productosCatalogo]);
+  // La selección del descubrimiento NO se vuelca automáticamente a las líneas de
+  // la cotización. Se muestra en el panel de sugerencias como checklist, y el
+  // vendedor decide conscientemente qué agregar con los botones "+ Agregar".
 
   // Auto-activación B2B desactivada intencionalmente:
   // El vendedor decide manualmente si aplica descuento B2B para cada cotización.

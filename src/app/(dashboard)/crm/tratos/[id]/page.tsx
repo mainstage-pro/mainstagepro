@@ -1503,7 +1503,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       contactoVenueNombre:  discForm.contactoVenueNombre || null,
       contactoVenueTelefono:discForm.contactoVenueTelefono || null,
       serviciosInteres: JSON.stringify(discForm.serviciosInteres),
-      equiposInteres: discForm.equiposInteres || null,
+      // equiposInteres se persiste solo desde el wizard (DiscoveryForm), no aquí.
       ideasReferencias: isRenta
         ? JSON.stringify({
             modalidadServicio:  discForm.rentaModalidadServicio || null,
@@ -1565,7 +1565,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         contactoVenueNombre: form.contactoVenueNombre || null,
         contactoVenueTelefono: form.contactoVenueTelefono || null,
         serviciosInteres: JSON.stringify(form.serviciosInteres),
-        equiposInteres: form.equiposInteres || null,
+        // NO se envía equiposInteres: la selección de equipos se edita y persiste
+        // exclusivamente en el wizard (DiscoveryForm). Si esta página la reenviara,
+        // sobrescribiría con el valor hidratado (posiblemente viejo) lo que el
+        // usuario acaba de guardar desde el wizard.
         ideasReferencias: isRenta
           ? JSON.stringify({
               modalidadServicio: form.rentaModalidadServicio || null,
