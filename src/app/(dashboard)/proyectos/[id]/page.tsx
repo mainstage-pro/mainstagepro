@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useEffect, useState, useRef, use } from "react";
-import { createPortal } from "react-dom";
 import { PDFPreviewModal } from "@/components/PDFPreviewModal";
 import { upload } from "@vercel/blob/client";
 import { usePdfDownload } from "@/hooks/usePdfDownload";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import TimePicker from "@/components/ui/TimePicker";
+import HoraInput from "@/components/ui/HoraInput";
 import VenuePicker from "@/components/ui/VenuePicker";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
@@ -20,7 +20,7 @@ import { BackButton } from "@/components/BackButton";
 import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem } from "@/components/proyectos/ViabilidadWidget";
 import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
 import { contarRespondidos, contarIncidencias, promedioCalificaciones, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
-import { diasEvento } from "@/lib/fechas-evento";
+import { diasEvento, parseHorariosEvento, horarioDeDia } from "@/lib/fechas-evento";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
@@ -61,7 +61,7 @@ interface TransporteSlot { vehiculoId: string; choferId: string; horaSalida: str
 interface Proyecto {
   id: string; numeroProyecto: string; nombre: string; estado: string;
   tipoEvento: string; tipoServicio: string | null;
-  fechaEvento: string; fechasEvento: string | null; horaInicioEvento: string | null; horaFinEvento: string | null;
+  fechaEvento: string; fechasEvento: string | null; horaInicioEvento: string | null; horaFinEvento: string | null; horariosEvento: string | null;
   fechaMontaje: string | null; horaInicioMontaje: string | null; duracionMontajeHrs: number | null;
   horaMontaje: string | null; horaInicio: string | null; horaDesmontaje: string | null;
   direccionVenue: string | null; linkMaps: string | null; indicacionesAcceso: string | null;
@@ -207,233 +207,39 @@ function accesoriosPorEquipo(descripcion: string, categoria: string): string[] {
   return ["Cable de poder"];
 }
 
-// ─── InlinePicker: picker AM/PM compacto para tabla de cronograma ────────────
+// ─── InlinePicker: hora escrita a mano (12h AM/PM) para tabla de cronograma ────
 function InlinePicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [open, setOpen] = React.useState(false);
-  const ref = React.useRef<HTMLDivElement>(null);
-  const btnRef = React.useRef<HTMLButtonElement>(null);
-  const popRef = React.useRef<HTMLDivElement>(null);
-  const [pos, setPos] = React.useState<{ top: number; left: number } | null>(null);
-
-  const parse = (v: string) => {
-    if (!v) return { h: 12, m: 0, p: 'AM' as const };
-    const [hStr, mStr] = v.split(':');
-    const h24 = parseInt(hStr, 10);
-    const m = parseInt(mStr ?? '0', 10);
-    const p: 'AM' | 'PM' = h24 >= 12 ? 'PM' : 'AM';
-    const h = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
-    return { h, m, p };
-  };
-  const { h: initH, m: initM, p: initP } = parse(value);
-  const [selH, setSelH] = React.useState(initH);
-  const [selM, setSelM] = React.useState(initM);
-  const [selP, setSelP] = React.useState<'AM' | 'PM'>(initP);
-
-  React.useEffect(() => {
-    const { h, m, p } = parse(value);
-    setSelH(h); setSelM(m); setSelP(p);
-  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const recalcPos = React.useCallback(() => {
-    if (!btnRef.current) return;
-    const r = btnRef.current.getBoundingClientRect();
-    const POP_W = 208; // w-52
-    const POP_H = 168; // altura aprox del popover
-    let left = r.left;
-    if (left + POP_W > window.innerWidth - 8) left = window.innerWidth - POP_W - 8;
-    // Si no cabe abajo, abrir hacia arriba
-    const top = r.bottom + POP_H > window.innerHeight - 8 ? r.top - POP_H - 4 : r.bottom + 2;
-    setPos({ top, left: Math.max(8, left) });
-  }, []);
-
-  React.useEffect(() => {
-    if (!open) return;
-    recalcPos();
-    const handler = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (ref.current?.contains(t)) return;
-      if (popRef.current?.contains(t)) return;
-      setOpen(false);
-    };
-    const onScrollResize = () => recalcPos();
-    document.addEventListener('mousedown', handler);
-    window.addEventListener('scroll', onScrollResize, true);
-    window.addEventListener('resize', onScrollResize);
-    return () => {
-      document.removeEventListener('mousedown', handler);
-      window.removeEventListener('scroll', onScrollResize, true);
-      window.removeEventListener('resize', onScrollResize);
-    };
-  }, [open, recalcPos]);
-
-  function pick(h: number, m: number, p: 'AM' | 'PM') {
-    setSelH(h); setSelM(m); setSelP(p);
-    onChange(fmt12to24(h, m, p));
-    setOpen(false);
-  }
-
-  const HOURS = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
-  const MINS  = [0, 15, 30, 45];
-  const display = value ? fmt24to12(value) : '—';
-
   return (
-    <div ref={ref} className="relative">
-      <button ref={btnRef} type="button" onClick={() => setOpen(o => !o)}
-        className="w-full text-left bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] hover:border-[#B3985B]/40 rounded px-2 py-1 text-xs transition-colors focus:outline-none whitespace-nowrap">
-        <span className={value ? 'text-white' : 'text-gray-600'}>{display}</span>
-      </button>
-      {open && pos && typeof document !== 'undefined' && createPortal(
-        <div ref={popRef} style={{ position: 'fixed', top: pos.top, left: pos.left }}
-          className="z-[100] bg-[#111] border border-[#2a2a2a] rounded-xl shadow-2xl p-2.5 w-52">
-          {/* AM/PM */}
-          <div className="flex gap-1 mb-2">
-            {(['AM', 'PM'] as const).map(p => (
-              <button key={p} type="button" onClick={() => setSelP(p)}
-                className={`flex-1 py-1 rounded-lg text-[10px] font-bold transition-all ${selP === p ? 'bg-[#B3985B] text-black' : 'bg-[#1a1a1a] text-gray-400 hover:text-white'}`}>
-                {p}
-              </button>
-            ))}
-          </div>
-          {/* Horas */}
-          <div className="grid grid-cols-6 gap-0.5 mb-2">
-            {HOURS.map(h => (
-              <button key={h} type="button"
-                onClick={() => { setSelH(h); }}
-                className={`py-1 rounded text-[10px] font-medium transition-all ${selH === h ? 'bg-[#B3985B] text-black' : 'bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#222]'}`}>
-                {h}
-              </button>
-            ))}
-          </div>
-          {/* Minutos — al seleccionar confirma automáticamente */}
-          <div className="grid grid-cols-4 gap-0.5">
-            {MINS.map(m => (
-              <button key={m} type="button"
-                onClick={() => pick(selH, m, selP)}
-                className={`py-1.5 rounded text-[10px] font-semibold transition-all ${selM === m ? 'bg-[#B3985B] text-black' : 'bg-[#1a1a1a] text-gray-400 hover:bg-[#B3985B]/80 hover:text-black'}`}>
-                :{String(m).padStart(2, '0')}
-              </button>
-            ))}
-          </div>
-        </div>,
-        document.body,
-      )}
-    </div>
+    <HoraInput
+      value={value}
+      onChange={onChange}
+      size="sm"
+      placeholder="—"
+      className="w-full bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] hover:border-[#B3985B]/40 focus:border-[#B3985B] rounded px-2 py-1 text-xs text-white transition-colors focus:outline-none whitespace-nowrap"
+    />
   );
 }
 
-// ─── TimePicker AM/PM ─────────────────────────────────────────────────────────
-function fmt24to12(val: string | null): string {
-  if (!val) return '';
-  const [hStr, mStr] = val.split(':');
-  let h = parseInt(hStr, 10);
-  const m = mStr ?? '00';
-  const period = h >= 12 ? 'PM' : 'AM';
-  if (h === 0) h = 12;
-  else if (h > 12) h -= 12;
-  return `${h}:${m} ${period}`;
-}
-function fmt12to24(h: number, m: number, period: 'AM' | 'PM'): string {
-  let hour = h;
-  if (period === 'AM' && h === 12) hour = 0;
-  else if (period === 'PM' && h !== 12) hour = h + 12;
-  return `${String(hour).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-}
+// ─── HourPicker: hora escrita a mano (12h AM/PM) con etiqueta e indicador ──────
 function HourPicker({ label, value, field, onSave, noLabel = false }:
   { label: string; value: string | null; field: string; onSave: (f: string, v: string) => void; noLabel?: boolean }) {
-  const [open, setOpen] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
-  const ref = React.useRef<HTMLDivElement>(null);
 
-  const parse = (v: string | null) => {
-    if (!v) return { h: 12, m: 0, p: 'AM' as const };
-    const [hStr, mStr] = v.split(':');
-    const h24 = parseInt(hStr, 10);
-    const m = parseInt(mStr ?? '0', 10);
-    const p: 'AM' | 'PM' = h24 >= 12 ? 'PM' : 'AM';
-    const h = h24 === 0 ? 12 : h24 > 12 ? h24 - 12 : h24;
-    return { h, m, p };
-  };
-  const init = parse(value);
-  const [selH, setSelH] = React.useState(init.h);
-  const [selM, setSelM] = React.useState(init.m);
-  const [selP, setSelP] = React.useState<'AM' | 'PM'>(init.p);
-
-  React.useEffect(() => {
-    const { h, m, p } = parse(value);
-    setSelH(h); setSelM(m); setSelP(p);
-  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  React.useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  function pick(h: number, m: number, p: 'AM' | 'PM') {
-    setSelH(h); setSelM(m); setSelP(p);
-    onSave(field, fmt12to24(h, m, p));
+  function handleChange(v: string) {
+    onSave(field, v);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-    setOpen(false);
   }
 
-  const HOURS = [12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
-  const MINS  = [0, 15, 30, 45];
-
   return (
-    <div ref={ref} className="relative">
+    <div>
       {!noLabel && (
         <div className="flex items-center justify-between mb-1">
           <label className="text-gray-500 text-xs">{label}</label>
           {saved && <span className="text-[10px] text-green-500/70">guardado</span>}
         </div>
       )}
-      <button type="button" onClick={() => setOpen(o => !o)}
-        className="w-full text-left bg-[#1a1a1a] border border-[#2a2a2a] hover:border-[#B3985B]/50 rounded-lg px-3 py-2 text-sm transition-colors focus:outline-none focus:border-[#B3985B]">
-        {value
-          ? <span className="text-white font-medium">{fmt24to12(value)}</span>
-          : <span className="text-gray-600 italic">Seleccionar hora...</span>}
-      </button>
-      {open && (
-        <div className="absolute z-50 top-full mt-1 left-0 bg-[#111] border border-[#2a2a2a] rounded-xl shadow-2xl p-3 w-60">
-          {/* AM / PM */}
-          <div className="flex gap-1 mb-3">
-            {(['AM', 'PM'] as const).map(p => (
-              <button key={p} type="button" onClick={() => setSelP(p)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${selP === p ? 'bg-[#B3985B] text-black' : 'bg-[#1a1a1a] text-gray-400 hover:text-white'}`}>
-                {p}
-              </button>
-            ))}
-          </div>
-          {/* Horas */}
-          <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">Hora</p>
-          <div className="grid grid-cols-6 gap-1 mb-3">
-            {HOURS.map(h => (
-              <button key={h} type="button" onClick={() => setSelH(h)}
-                className={`py-1.5 rounded-lg text-xs font-medium transition-all ${selH === h ? 'bg-[#B3985B] text-black' : 'bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#222]'}`}>
-                {h}
-              </button>
-            ))}
-          </div>
-          {/* Minutos */}
-          <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">Minutos</p>
-          <div className="grid grid-cols-4 gap-1 mb-3">
-            {MINS.map(m => (
-              <button key={m} type="button" onClick={() => setSelM(m)}
-                className={`py-1.5 rounded-lg text-xs font-medium transition-all ${selM === m ? 'bg-[#B3985B] text-black' : 'bg-[#1a1a1a] text-gray-400 hover:text-white hover:bg-[#222]'}`}>
-                :{String(m).padStart(2, '0')}
-              </button>
-            ))}
-          </div>
-          <button type="button" onClick={() => pick(selH, selM, selP)}
-            className="w-full py-2 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold rounded-lg transition-colors">
-            Confirmar {selH}:{String(selM).padStart(2, '0')} {selP}
-          </button>
-        </div>
-      )}
+      <HoraInput value={value} onChange={handleChange} placeholder="ej. 2:30 PM" />
     </div>
   );
 }
@@ -487,11 +293,10 @@ function Campo({ label, value, field, onSave, type = "text", multiline = false, 
             {saved && <span className="text-[10px] text-green-500/70">guardado</span>}
           </div>
         )}
-        <input
-          type="time"
+        <HoraInput
           value={val}
-          onChange={e => { setVal(e.target.value); onSave(field, e.target.value); markSaved(); }}
-          className="w-full bg-[#1a1a1a] border border-[#2a2a2a] focus:border-[#B3985B] rounded-lg px-3 py-2 text-white text-sm focus:outline-none transition-colors"
+          onChange={v => { setVal(v); onSave(field, v); markSaved(); }}
+          placeholder="ej. 2:30 PM"
         />
       </div>
     );
@@ -2482,6 +2287,25 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     });
   }
 
+  // ── Guardar horario de un día concreto ──
+  // Día 1 (índice 0) se guarda en horaInicioEvento/horaFinEvento (compatibilidad).
+  // Días 2+ se guardan en el JSON horariosEvento { "YYYY-MM-DD": {inicio, fin} }.
+  async function guardarHorarioDia(fecha: string, indice: number, campo: "inicio" | "fin", value: string) {
+    if (indice === 0) {
+      await guardarCampo(campo === "inicio" ? "horaInicioEvento" : "horaFinEvento", value);
+      return;
+    }
+    const mapa = parseHorariosEvento(proyecto?.horariosEvento);
+    const prev = mapa[fecha] ?? { inicio: null, fin: null };
+    mapa[fecha] = { ...prev, [campo]: value || null };
+    const json = JSON.stringify(mapa);
+    await fetch(`/api/proyectos/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ horariosEvento: json }),
+    });
+    setProyecto(p => p ? { ...p, horariosEvento: json } : p);
+  }
+
   // ── Guardar cronograma (auto-sort por hora) ──
   async function guardarCronograma(rows: CronoRow[]) {
     setSavingCrono(true);
@@ -4158,8 +3982,32 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <Campo label="Contacto del lugar" value={proyecto.encargadoLugarContacto} field="encargadoLugarContacto" onSave={guardarCampo} />
                   <Campo label="Fecha del evento" value={proyecto.fechaEvento?.substring(0, 10) ?? null} field="fechaEvento" type="date" onSave={guardarCampo} />
                   <div className="col-span-1" />
-                  <HourPicker label="Hora inicio del evento" value={proyecto.horaInicioEvento} field="horaInicioEvento" onSave={guardarCampo} />
-                  <HourPicker label="Hora fin del evento" value={proyecto.horaFinEvento} field="horaFinEvento" onSave={guardarCampo} />
+                  {esMultidia ? (
+                    <div className="col-span-2 space-y-2">
+                      <p className="text-gray-500 text-xs">Horarios del evento por día</p>
+                      {diasDelEvento.map((fecha, di) => {
+                        const h = horarioDeDia(fecha, di, diasDelEvento, proyecto.horariosEvento, proyecto.horaInicioEvento, proyecto.horaFinEvento);
+                        const propio = parseHorariosEvento(proyecto.horariosEvento)[fecha];
+                        const heredado = di > 0 && !(propio && (propio.inicio || propio.fin));
+                        return (
+                          <div key={fecha} className="rounded-lg border border-[#1e1e1e] bg-[#141414] p-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="text-[10px] font-bold text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/30 rounded px-1.5 py-0.5">D{di + 1}</span>
+                              <p className="text-gray-300 text-xs capitalize">{fmtDiaCorto(fecha)}</p>
+                              {heredado && <span className="text-[10px] text-gray-600">· mismos horarios del Día 1</span>}
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                              <HourPicker label="Hora inicio del evento" value={h.inicio} field={`inicio-${fecha}`} onSave={(_f, v) => guardarHorarioDia(fecha, di, "inicio", v)} />
+                              <HourPicker label="Hora fin del evento" value={h.fin} field={`fin-${fecha}`} onSave={(_f, v) => guardarHorarioDia(fecha, di, "fin", v)} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (<>
+                    <HourPicker label="Hora inicio del evento" value={proyecto.horaInicioEvento} field="horaInicioEvento" onSave={guardarCampo} />
+                    <HourPicker label="Hora fin del evento" value={proyecto.horaFinEvento} field="horaFinEvento" onSave={guardarCampo} />
+                  </>)}
                 </div>
 
                 {/* ── Subsección 2: Información del venue ── */}
@@ -4199,7 +4047,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             ? proyecto.llamadoBodega.substring(11, 16)
                             : '08:00';
                           if (fechaPart) {
-                            guardarCampo('llamadoBodega', new Date(`${fechaPart}T${horaPart}:00`).toISOString());
+                            // Guardar la hora de pared literal como UTC para que
+                            // no se desplace al leerla (substring UTC) ni en PDFs.
+                            guardarCampo('llamadoBodega', `${fechaPart}T${horaPart}:00.000Z`);
                           } else {
                             guardarCampo('llamadoBodega', '');
                           }
@@ -4213,7 +4063,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           const fechaPart = proyecto.llamadoBodega
                             ? proyecto.llamadoBodega.substring(0, 10)
                             : new Date().toISOString().substring(0, 10);
-                          guardarCampo('llamadoBodega', new Date(`${fechaPart}T${v}:00`).toISOString());
+                          // Hora de pared literal como UTC (ver nota arriba).
+                          guardarCampo('llamadoBodega', `${fechaPart}T${v}:00.000Z`);
                         }}
                       />
                     </div>
