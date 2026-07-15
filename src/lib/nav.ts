@@ -41,6 +41,19 @@ export const NAV: NavSection[] = [
       { label: "Mi Dashboard", href: "/dashboard" },
       { key: "calendario", label: "Calendario de eventos", href: "/calendario" },
       {
+        key: "gestion-operativa",
+        accessKey: "operaciones",
+        label: "Gestión Operativa",
+        href: "/gestion",
+        children: [
+          { accessKey: "operaciones", label: "Centro Operativo", href: "/gestion/resumen" },
+          { key: "plan-trabajo", label: "Plan de trabajo", href: "/plan-trabajo" },
+          { key: "operaciones", label: "Módulo de tareas", href: "/operaciones" },
+          { accessKey: "proyectos", label: "Proyectos internos", href: "/proyectos-internos" },
+          { accessKey: "operaciones", label: "Bandeja de entrada", href: "/gestion/bandeja" },
+        ],
+      },
+      {
         key: "metas",
         label: "Metas",
         href: "/metas",
@@ -51,19 +64,6 @@ export const NAV: NavSection[] = [
           { key: "kpis-dashboard", label: "KPIs", href: "/kpis", adminOnly: true },
         ],
       },
-    ],
-  },
-
-  // ── GESTIÓN OPERATIVA ───────────────────────────────────────────────────────
-  {
-    key: "seccion-gestion",
-    section: "Gestión Operativa",
-    items: [
-      { accessKey: "operaciones", label: "Centro Operativo", href: "/gestion" },
-      { key: "plan-trabajo", label: "Plan de trabajo", href: "/plan-trabajo" },
-      { key: "operaciones", label: "Módulo de tareas", href: "/operaciones" },
-      { accessKey: "proyectos", label: "Proyectos internos", href: "/proyectos-internos" },
-      { accessKey: "operaciones", label: "Bandeja de entrada", href: "/gestion/bandeja" },
     ],
   },
 

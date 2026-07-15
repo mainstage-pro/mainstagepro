@@ -44,8 +44,9 @@ function getInitialOpen(): Set<string> {
 function getActiveSectionKey(pathname: string): string | null {
   // Configuración (sistema)
   if (pathname.startsWith("/admin/usuarios") || pathname.startsWith("/admin/actividad") || pathname.startsWith("/admin/configuracion")) return "seccion-config";
-  // Gestión Operativa (/proyectos-internos antes que /proyectos)
-  if (pathname.startsWith("/gestion") || pathname.startsWith("/operaciones") || pathname.startsWith("/plan-trabajo") || pathname.startsWith("/proyectos-internos")) return "seccion-gestion";
+  // Gestión Operativa vive como link único en seccion-top (sin encabezado);
+  // no resaltar ninguna sección para sus rutas (antes que Producción por /proyectos-internos).
+  if (pathname.startsWith("/gestion") || pathname.startsWith("/operaciones") || pathname.startsWith("/plan-trabajo") || pathname.startsWith("/proyectos-internos")) return null;
   // Administración (RRHH/Personal vive aquí; /inventario/analisis y /catalogo/roles antes que Producción)
   if (pathname.startsWith("/finanzas") || pathname.startsWith("/personal") || pathname.startsWith("/rrhh") || pathname.startsWith("/capacitacion") || pathname.startsWith("/formacion") || pathname.startsWith("/reclutamiento") || pathname.startsWith("/activos") || pathname.startsWith("/inventario/analisis") || pathname.startsWith("/admin/valuacion") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles") || pathname.startsWith("/admin/reportes")) return "seccion-administracion";
   // Dirección
@@ -69,7 +70,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
   const [badges, setBadges] = useState<Record<string, number>>({});
 
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => getInitialOpen());
-  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set<string>(["seccion-gestion"]));
+  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set<string>());
   const [stateLoaded, setStateLoaded] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
