@@ -5,6 +5,8 @@ import DailyGreeting from "@/components/DailyGreeting";
 import TareasPendientesWidget from "@/components/TareasPendientesWidget";
 import { EventosWidget } from "@/components/dashboard/EventosWidget";
 
+export const dynamic = "force-dynamic";
+
 const AREA_LABELS: Record<string, string> = {
   VENTAS: "Ventas", ADMINISTRACION: "Administración",
   PRODUCCION: "Producción", MARKETING: "Marketing",

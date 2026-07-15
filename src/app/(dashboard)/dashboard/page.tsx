@@ -15,6 +15,8 @@ import PlanTrabajoWidget from "@/components/PlanTrabajoWidget";
 import { NuevoTratoDropdown } from "@/components/NuevoTratoDropdown";
 import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
   const session = await getSession();
   // Lee tratos con `include`; garantizar columnas nuevas del proceso de venta.

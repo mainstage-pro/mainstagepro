@@ -5,6 +5,8 @@ import DailyGreeting from "@/components/DailyGreeting";
 import TareasPendientesWidget from "@/components/TareasPendientesWidget";
 import { EventosWidget } from "@/components/dashboard/EventosWidget";
 
+export const dynamic = "force-dynamic";
+
 function KpiCard({ label, value, sub, color = "text-white", href }: { label: string; value: string | number; sub?: string; color?: string; href?: string }) {
   const content = (
     <div className="ms-stat-card hover:border-[#2a2a2a] transition-colors">

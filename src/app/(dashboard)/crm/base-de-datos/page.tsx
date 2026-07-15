@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import BaseDeDatosClient from "./BaseDeDatosClient";
 
+export const dynamic = "force-dynamic";
+
 const SELECT = {
   id: true,
   nombre: true,
