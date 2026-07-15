@@ -311,14 +311,17 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
     [categoriasVisibles, value.categorias]
   );
 
-  // Categorías de servicio (sintéticas) armadas con roles técnicos vigentes.
+  // Categorías de servicio (sintéticas). Siempre se muestran las 5 (DJ + técnicos por
+  // disciplina) para poder marcar el tipo de personal técnico en el descubrimiento aunque
+  // todavía no haya roles cargados con esa disciplina; los roles existentes se anidan para
+  // elegir el detalle.
   const serviciosCategorias = useMemo(
     () =>
-      SERVICIOS_DEF.filter((def) => (rolesPorCat[def.id]?.length ?? 0) > 0).map((def) => ({
+      SERVICIOS_DEF.map((def) => ({
         id: def.id,
         nombre: def.nombre,
         emoji: def.emoji,
-        roles: rolesPorCat[def.id],
+        roles: rolesPorCat[def.id] ?? [],
       })),
     [rolesPorCat]
   );
@@ -710,7 +713,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                     >
                       <span className="text-lg leading-none">{svc.emoji}</span>
                       <span className="text-white text-[11px] font-medium leading-tight line-clamp-2">{svc.nombre}</span>
-                      <span className="text-gray-600 text-[9px] leading-tight line-clamp-1">{svc.roles.length} rol{svc.roles.length !== 1 ? "es" : ""}</span>
+                      <span className="text-gray-600 text-[9px] leading-tight line-clamp-1">{svc.roles.length > 0 ? `${svc.roles.length} rol${svc.roles.length !== 1 ? "es" : ""}` : "por asignar"}</span>
                       {sel && (
                         <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-md bg-[#B3985B] flex items-center justify-center">
                           <span className="text-black text-[8px] font-bold leading-none">✓</span>
@@ -872,11 +875,12 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
               {serviciosElegidos.map((svc) => {
                 const abierta = expandidas.has(svc.id);
                 const nSel = svc.roles.filter((r) => rolesSel.includes(r.id)).length;
+                const sinRoles = svc.roles.length === 0;
                 return (
                   <div key={svc.id} className="rounded-lg border border-[#1e1e1e] overflow-hidden">
                     <button
                       type="button"
-                      onClick={() => toggleExpandida(svc.id)}
+                      onClick={() => { if (!sinRoles) toggleExpandida(svc.id); }}
                       className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-[#0d0d0d] hover:bg-[#141414] transition-colors"
                     >
                       <span className="text-[#B3985B] text-xs font-semibold flex items-center gap-1.5">
@@ -885,9 +889,9 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#B3985B] text-black font-bold">{nSel}</span>
                         )}
                       </span>
-                      <span className="text-gray-500 text-xs">{abierta ? "▲ ocultar" : "▼ elegir roles"}</span>
+                      <span className="text-gray-500 text-xs">{sinRoles ? "el vendedor asigna" : abierta ? "▲ ocultar" : "▼ elegir roles"}</span>
                     </button>
-                    {abierta && (
+                    {abierta && !sinRoles && (
                       <div className="p-2 space-y-1.5 bg-black/40">
                         {svc.roles.map((r) => {
                           const sel = rolesSel.includes(r.id);
