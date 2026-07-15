@@ -1,6 +1,22 @@
 import { prisma } from "@/lib/prisma";
 
 /**
+ * Helper: verifica si una columna ya existe en la tabla antes de hacer ALTER TABLE.
+ * ALTER TABLE ... ADD COLUMN IF NOT EXISTS adquiere ACCESS EXCLUSIVE lock aunque la
+ * columna ya exista, lo que bloquea todas las queries a esa tabla. Verificar primero
+ * en information_schema evita ese lock innecesario en producción.
+ */
+async function columnExists(table: string, column: string): Promise<boolean> {
+  const rows = await prisma.$queryRaw<{ exists: boolean }[]>`
+    SELECT EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = ${table} AND column_name = ${column}
+    ) as exists
+  `;
+  return rows[0]?.exists === true;
+}
+
+/**
  * Migraciones lazy para la operación técnica (patrón Neon: ADD COLUMN IF NOT EXISTS).
  * - roles_tecnicos.disciplina: categoría del rol para ligarlo con la BD de técnicos.
  * - proyecto_personal.esAdicional: marcador interno de técnico fuera de cotización.
@@ -11,39 +27,27 @@ let _ready = false;
 
 export async function ensureOperacionTecnicaColumns() {
   if (_ready) return;
-  try {
-    const hasDisciplina = await prisma.$queryRaw<any[]>`
-      SELECT column_name FROM information_schema.columns 
-      WHERE table_name = 'roles_tecnicos' AND column_name = 'disciplina'
-    `;
-    if (hasDisciplina.length === 0) {
+  if (!await columnExists('roles_tecnicos', 'disciplina')) {
+    try {
       await prisma.$executeRawUnsafe(
         `ALTER TABLE roles_tecnicos ADD COLUMN IF NOT EXISTS "disciplina" TEXT`
       );
-    }
-  } catch { /* ya existe */ }
-  try {
-    const hasEsAdicional = await prisma.$queryRaw<any[]>`
-      SELECT column_name FROM information_schema.columns 
-      WHERE table_name = 'proyecto_personal' AND column_name = 'esAdicional'
-    `;
-    if (hasEsAdicional.length === 0) {
+    } catch { /* ya existe */ }
+  }
+  if (!await columnExists('proyecto_personal', 'esAdicional')) {
+    try {
       await prisma.$executeRawUnsafe(
         `ALTER TABLE proyecto_personal ADD COLUMN IF NOT EXISTS "esAdicional" BOOLEAN NOT NULL DEFAULT false`
       );
-    }
-  } catch { /* ya existe */ }
-  try {
-    const hasEval = await prisma.$queryRaw<any[]>`
-      SELECT column_name FROM information_schema.columns 
-      WHERE table_name = 'proyectos' AND column_name = 'evaluacionPostEvento'
-    `;
-    if (hasEval.length === 0) {
+    } catch { /* ya existe */ }
+  }
+  if (!await columnExists('proyectos', 'evaluacionPostEvento')) {
+    try {
       await prisma.$executeRawUnsafe(
         `ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS "evaluacionPostEvento" JSONB`
       );
-    }
-  } catch { /* ya existe */ }
+    } catch { /* ya existe */ }
+  }
   _ready = true;
 }
 
@@ -57,28 +61,20 @@ let _procesoVentaReady = false;
 
 export async function ensureProcesoVentaColumns() {
   if (_procesoVentaReady) return;
-  try {
-    const hasModo = await prisma.$queryRaw<any[]>`
-      SELECT column_name FROM information_schema.columns 
-      WHERE table_name = 'tratos' AND column_name = 'modoDescubrimiento'
-    `;
-    if (hasModo.length === 0) {
+  if (!await columnExists('tratos', 'modoDescubrimiento')) {
+    try {
       await prisma.$executeRawUnsafe(
         `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "modoDescubrimiento" TEXT`
       );
-    }
-  } catch { /* ya existe */ }
-  try {
-    const hasPref = await prisma.$queryRaw<any[]>`
-      SELECT column_name FROM information_schema.columns 
-      WHERE table_name = 'tratos' AND column_name = 'preferenciaContacto'
-    `;
-    if (hasPref.length === 0) {
+    } catch { /* ya existe */ }
+  }
+  if (!await columnExists('tratos', 'preferenciaContacto')) {
+    try {
       await prisma.$executeRawUnsafe(
         `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "preferenciaContacto" TEXT`
       );
-    }
-  } catch { /* ya existe */ }
+    } catch { /* ya existe */ }
+  }
   _procesoVentaReady = true;
 }
 
@@ -92,38 +88,27 @@ let _multidiaReady = false;
 
 export async function ensureMultidiaColumns() {
   if (_multidiaReady) return;
-  try {
-    const hasFechasTratos = await prisma.$queryRaw<any[]>`
-      SELECT column_name FROM information_schema.columns 
-      WHERE table_name = 'tratos' AND column_name = 'fechasEvento'
-    `;
-    if (hasFechasTratos.length === 0) {
+  if (!await columnExists('tratos', 'fechasEvento')) {
+    try {
       await prisma.$executeRawUnsafe(
         `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "fechasEvento" TEXT`
       );
-    }
-  } catch { /* ya existe */ }
-  try {
-    const hasFechasProyectos = await prisma.$queryRaw<any[]>`
-      SELECT column_name FROM information_schema.columns 
-      WHERE table_name = 'proyectos' AND column_name = 'fechasEvento'
-    `;
-    if (hasFechasProyectos.length === 0) {
+    } catch { /* ya existe */ }
+  }
+  if (!await columnExists('proyectos', 'fechasEvento')) {
+    try {
       await prisma.$executeRawUnsafe(
         `ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS "fechasEvento" TEXT`
       );
-    }
-  } catch { /* ya existe */ }
-  try {
-    const hasHorarios = await prisma.$queryRaw<any[]>`
-      SELECT column_name FROM information_schema.columns 
-      WHERE table_name = 'proyectos' AND column_name = 'horariosEvento'
-    `;
-    if (hasHorarios.length === 0) {
+    } catch { /* ya existe */ }
+  }
+  if (!await columnExists('proyectos', 'horariosEvento')) {
+    try {
       await prisma.$executeRawUnsafe(
         `ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS "horariosEvento" TEXT`
       );
-    }
-  } catch { /* ya existe */ }
+    } catch { /* ya existe */ }
+  }
   _multidiaReady = true;
 }
+
