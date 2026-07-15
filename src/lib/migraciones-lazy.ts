@@ -93,19 +93,37 @@ let _multidiaReady = false;
 export async function ensureMultidiaColumns() {
   if (_multidiaReady) return;
   try {
-    await prisma.$executeRawUnsafe(
-      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "fechasEvento" TEXT`
-    );
+    const hasFechasTratos = await prisma.$queryRaw<any[]>`
+      SELECT column_name FROM information_schema.columns 
+      WHERE table_name = 'tratos' AND column_name = 'fechasEvento'
+    `;
+    if (hasFechasTratos.length === 0) {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "fechasEvento" TEXT`
+      );
+    }
   } catch { /* ya existe */ }
   try {
-    await prisma.$executeRawUnsafe(
-      `ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS "fechasEvento" TEXT`
-    );
+    const hasFechasProyectos = await prisma.$queryRaw<any[]>`
+      SELECT column_name FROM information_schema.columns 
+      WHERE table_name = 'proyectos' AND column_name = 'fechasEvento'
+    `;
+    if (hasFechasProyectos.length === 0) {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS "fechasEvento" TEXT`
+      );
+    }
   } catch { /* ya existe */ }
   try {
-    await prisma.$executeRawUnsafe(
-      `ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS "horariosEvento" TEXT`
-    );
+    const hasHorarios = await prisma.$queryRaw<any[]>`
+      SELECT column_name FROM information_schema.columns 
+      WHERE table_name = 'proyectos' AND column_name = 'horariosEvento'
+    `;
+    if (hasHorarios.length === 0) {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS "horariosEvento" TEXT`
+      );
+    }
   } catch { /* ya existe */ }
   _multidiaReady = true;
 }
