@@ -47,6 +47,7 @@ const AREA_COLORS: Record<string, string> = {
   GENERAL: "text-gray-500 bg-[#1a1a1a]",
 };
 
+
 const EMPTY = { name: "", email: "", password: "", role: "USER", area: "GENERAL" };
 
 function effectiveKeysFor(u: User): Set<string> {

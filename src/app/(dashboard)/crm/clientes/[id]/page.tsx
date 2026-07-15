@@ -52,6 +52,8 @@ interface Cliente {
   tratos: Array<{ id: string; etapa: string; tipoEvento: string; fechaEventoEstimada: string | null; presupuestoEstimado: number | null; createdAt: string; updatedAt?: string }>;
   cotizaciones: Array<{ id: string; numeroCotizacion: string; estado: string; granTotal: number; createdAt: string }>;
   proyectos: Array<{ id: string; numeroProyecto: string; nombre: string; estado: string; fechaEvento: string }>;
+  cuentasCobrar?: Array<{ id: string; monto: number; montoCobrado: number; estado: string }>;
+  cuentasPagar?: Array<{ id: string; monto: number; montoPagado: number; estado: string }>;
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────

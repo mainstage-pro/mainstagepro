@@ -108,34 +108,85 @@ interface MovDirecto {
 }
 
 type ProyGrupo<T> = {
+  isEntityGroup?: boolean;
+  entityId?: string | null;
   proyectoId: string | null;
   proyectoNombre: string | null;
   numeroProyecto: string | null;
   fechaEvento: string | null;
   items: T[];
 };
-function groupByProject<T extends { proyecto: { id: string; nombre: string; numeroProyecto: string; fechaEvento: string | null } | null }>(items: T[]): ProyGrupo<T>[] {
-  const map = new Map<string, ProyGrupo<T>>();
-  for (const item of items) {
-    const key = item.proyecto?.id ?? "__sin_proyecto__";
-    if (!map.has(key)) {
-      map.set(key, {
-        proyectoId: item.proyecto?.id ?? null,
-        proyectoNombre: item.proyecto?.nombre ?? null,
-        numeroProyecto: item.proyecto?.numeroProyecto ?? null,
-        fechaEvento: item.proyecto?.fechaEvento ?? null,
-        items: [],
-      });
-    }
-    map.get(key)!.items.push(item);
-  }
-  const grupos = Array.from(map.values());
-  const conProyecto = grupos.filter(g => g.proyectoId !== null);
-  const sinProyecto = grupos.filter(g => g.proyectoId === null);
-  return [...conProyecto, ...sinProyecto];
+
+function getEntityInfo(item: any): { id: string, name: string } {
+  if (item.empresa) return { id: item.empresa.id, name: item.empresa.nombre };
+  if (item.cliente) return { id: item.cliente.id, name: item.cliente.nombre };
+  if (item.tecnico) return { id: item.tecnico.id, name: item.tecnico.nombre };
+  if (item.proveedor) return { id: item.proveedor.id, name: item.proveedor.nombre };
+  if (item.socio) return { id: item.socio.id, name: item.socio.nombre };
+  return { id: "__sin_entidad__", name: "Sin entidad" };
 }
 
-function splitGroups<T>(grupos: ProyGrupo<T>[], hoy: string): { proximos: ProyGrupo<T>[]; pasados: ProyGrupo<T>[] } {
+function groupByProject<T extends { proyecto: { id: string; nombre: string; numeroProyecto: string; fechaEvento: string | null } | null }>(items: T[], sortBy: string): ProyGrupo<T>[] {
+  const map = new Map<string, ProyGrupo<T>>();
+  const byEntity = sortBy === "nombre_asc";
+
+  for (const item of items) {
+    let key, pId, pNombre, pNum, pFecha;
+    
+    if (byEntity) {
+      const ent = getEntityInfo(item);
+      key = "ent_" + ent.id;
+      pId = null;
+      pNombre = ent.name;
+      pNum = null;
+      pFecha = null;
+      if (!map.has(key)) {
+        map.set(key, {
+          isEntityGroup: true,
+          entityId: ent.id,
+          proyectoId: pId,
+          proyectoNombre: pNombre,
+          numeroProyecto: pNum,
+          fechaEvento: pFecha,
+          items: [],
+        });
+      }
+    } else {
+      key = item.proyecto?.id ?? "__sin_proyecto__";
+      pId = item.proyecto?.id ?? null;
+      pNombre = item.proyecto?.nombre ?? null;
+      pNum = item.proyecto?.numeroProyecto ?? null;
+      pFecha = item.proyecto?.fechaEvento ?? null;
+      if (!map.has(key)) {
+        map.set(key, {
+          isEntityGroup: false,
+          proyectoId: pId,
+          proyectoNombre: pNombre,
+          numeroProyecto: pNum,
+          fechaEvento: pFecha,
+          items: [],
+        });
+      }
+    }
+    
+    map.get(key)!.items.push(item);
+  }
+  
+  const grupos = Array.from(map.values());
+  if (byEntity) {
+    return grupos.sort((a, b) => (a.proyectoNombre || "").localeCompare(b.proyectoNombre || ""));
+  } else {
+    const conProyecto = grupos.filter(g => g.proyectoId !== null);
+    const sinProyecto = grupos.filter(g => g.proyectoId === null);
+    return [...conProyecto, ...sinProyecto];
+  }
+}
+
+function splitGroups<T>(grupos: ProyGrupo<T>[], hoy: string, sortBy: string): { proximos: ProyGrupo<T>[]; pasados: ProyGrupo<T>[] } {
+  if (sortBy === "nombre_asc") {
+    // If grouped by entity, don't split by "pasados" or "proximos" because we are just showing entities
+    return { proximos: grupos, pasados: [] };
+  }
   const proximos = grupos
     .filter(g => !g.fechaEvento || g.fechaEvento.substring(0, 10) >= hoy)
     .sort((a, b) => (a.fechaEvento ?? "9999").localeCompare(b.fechaEvento ?? "9999"));
@@ -1128,7 +1179,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                     ["fecha_desc", "Fecha de cobro: más lejana"],
                     ["monto_desc", "Monto: mayor a menor"],
                     ["monto_asc",  "Monto: menor a mayor"],
-                    ["nombre_asc", "Nombre: A → Z"],
+                    ["nombre_asc", "Cliente / Proveedor: A → Z"],
                   ] as const).map(([key, label]) => (
                     <button key={key}
                       onClick={() => { setSortBy(key); setShowSortMenu(false); }}
@@ -1157,7 +1208,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
               <p className="ms-subtitle">Sin cuentas por cobrar</p>
             </div>
           ) : (() => {
-            const { proximos: _cp, pasados: _cv } = splitGroups(groupByProject(cxcList), hoyStr);
+            const { proximos: _cp, pasados: _cv } = splitGroups(groupByProject(cxcList, sortBy), hoyStr, sortBy);
             let _cvLastMonth = "";
             return [..._cp, ..._cv].map((grupo, idx) => {
             const totalGrupo = grupo.items.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
@@ -1178,7 +1229,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
               }
             }
             return (
-            <Fragment key={(grupo.proyectoId ?? "__sin__") + idx}>
+            <Fragment key={(grupo.isEntityGroup ? "ent_" + grupo.entityId : grupo.proyectoId ?? "__sin__") + idx}>
               {idx === _cp.length && _cv.length > 0 && (
                 <div className="flex items-center gap-4 py-3">
                   <div className="flex-1 h-px bg-[#161616]" />
@@ -1188,7 +1239,18 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
               )}
               {monthHeader}
               <div className={isPasado ? "opacity-50" : ""}>
-              {grupo.proyectoId ? (
+              {grupo.isEntityGroup ? (
+                <div className="flex items-center justify-between gap-2 mb-2 px-1 border-b border-[#222] pb-2">
+                  <span className="text-sm font-semibold text-[#B3985B]">
+                    {grupo.proyectoNombre}
+                  </span>
+                  {totalGrupo > 0 && (
+                    <span className="text-xs font-semibold text-white bg-[#1a1a1a] border border-[#333] px-2 py-1 rounded-md shrink-0">
+                      Total pendiente: {formatCurrency(totalGrupo)}
+                    </span>
+                  )}
+                </div>
+              ) : grupo.proyectoId ? (
                 <div className="flex items-center justify-between gap-2 mb-2 px-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Link href={`/proyectos/${grupo.proyectoId}`} className="text-xs font-semibold text-[#B3985B] hover:underline">
@@ -1428,7 +1490,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
               <p className="ms-subtitle">Sin cuentas por pagar</p>
             </div>
           ) : (() => {
-            const { proximos: _pp, pasados: _pv } = splitGroups(groupByProject(cxpList), hoyStr);
+            const { proximos: _pp, pasados: _pv } = splitGroups(groupByProject(cxpList, sortBy), hoyStr, sortBy);
             let _pvLastMonth = "";
             return [..._pp, ..._pv].map((grupo, idx) => {
             const totalGrupo = grupo.items.filter(c => c.estado !== "LIQUIDADO").reduce((s, c) => s + (c.monto - c.montoPagado), 0);
@@ -1449,7 +1511,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
               }
             }
             return (
-            <Fragment key={(grupo.proyectoId ?? "__sin__") + idx}>
+            <Fragment key={(grupo.isEntityGroup ? "ent_" + grupo.entityId : grupo.proyectoId ?? "__sin__") + idx}>
               {idx === _pp.length && _pv.length > 0 && (
                 <div className="flex items-center gap-4 py-3">
                   <div className="flex-1 h-px bg-[#161616]" />
@@ -1459,7 +1521,18 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
               )}
               {monthHeaderP}
               <div className={isPasadoP ? "opacity-50" : ""}>
-              {grupo.proyectoId ? (
+              {grupo.isEntityGroup ? (
+                <div className="flex items-center justify-between gap-2 mb-2 px-1 border-b border-[#222] pb-2">
+                  <span className="text-sm font-semibold text-[#B3985B]">
+                    {grupo.proyectoNombre}
+                  </span>
+                  {totalGrupo > 0 && (
+                    <span className="text-xs font-semibold text-white bg-[#1a1a1a] border border-[#333] px-2 py-1 rounded-md shrink-0">
+                      Total por pagar: {formatCurrency(totalGrupo)}
+                    </span>
+                  )}
+                </div>
+              ) : grupo.proyectoId ? (
                 <div className="flex items-center justify-between gap-2 mb-2 px-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Link href={`/proyectos/${grupo.proyectoId}`} className="text-xs font-semibold text-[#B3985B] hover:underline">

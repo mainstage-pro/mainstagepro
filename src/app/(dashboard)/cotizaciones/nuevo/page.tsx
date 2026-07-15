@@ -1623,7 +1623,7 @@ function CotizadorForm() {
           {clienteNombre && <p className="text-[#B3985B] text-sm mt-0.5">{clienteNombre}</p>}
         </div>
         <div className="flex gap-3">
-          {!editId && plantillas.length > 0 && (
+          {plantillas.length > 0 && (
             <button
               onClick={() => setShowPlantillas(true)}
               className="px-4 py-2 rounded-lg border border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B]/10 text-sm font-medium"
@@ -1660,6 +1660,15 @@ function CotizadorForm() {
                   key={p.id}
                   disabled={cargandoPlantilla}
                   onClick={async () => {
+                    const hasItems = lineasEquipo.length > 0 || lineasExterno.length > 0 || lineasOp.length > 0 || lineasDJ.length > 0 || lineasLog.length > 0 || lineasOcasional.length > 0;
+                    if (hasItems) {
+                      const ok = await confirm({
+                        message: "Cargar una plantilla reemplazará todos los conceptos actuales de la cotización. ¿Deseas continuar?",
+                        confirmText: "Reemplazar y cargar",
+                        danger: true
+                      });
+                      if (!ok) return;
+                    }
                     setCargandoPlantilla(true);
                     const res = await fetch(`/api/plantillas-cotizacion`, { cache: "no-store" });
                     const d = await res.json();
