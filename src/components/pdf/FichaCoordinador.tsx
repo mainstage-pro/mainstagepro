@@ -5,11 +5,11 @@
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import {
-  C, base, fmtFecha, fmtHora, duracion, nowStr,
+  C, base, fmtFecha, fmtFechaCorta, fmtHora, duracion, nowStr,
   agruparPorCategoria, EquipoFlat,
   CronoRow, TransporteSlot, DocsData, EquipoRiderExtra, ProveedorRenta,
 } from "./PdfShared";
-import { diasEvento, agruparPorDia } from "@/lib/fechas-evento";
+import { diasEvento, agruparPorDia, horarioDeDia } from "@/lib/fechas-evento";
 
 const s = StyleSheet.create({
   // Header
@@ -102,6 +102,7 @@ export interface FichaCoordinadorData {
   zona: string;
   fechaEvento: string | null;
   fechasEvento: string | null;
+  horariosEvento: string | null;
   horaInicioEvento: string | null;
   horaFinEvento: string | null;
   horaInicio: string | null;
@@ -318,8 +319,18 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
               {data.horaInicioMontaje && <KVRow label="Inicio de montaje" value={fmtHora(data.horaInicioMontaje)} bold />}
               {data.duracionMontajeHrs && <KVRow label="Duración montaje" value={`${data.duracionMontajeHrs} hrs`} />}
               {data.horaMontaje && <KVRow label="Llegada al venue" value={fmtHora(data.horaMontaje)} bold />}
-              {horaIni && <KVRow label="Inicio del evento" value={horaIni} bold />}
-              {horaFin && <KVRow label="Fin / desmontaje" value={horaFin} />}
+              {esMultidiaCrono ? (
+                diasCrono.map((fecha, di) => {
+                  const h = horarioDeDia(fecha, di, diasCrono, data.horariosEvento, data.horaInicioEvento, data.horaFinEvento);
+                  if (!h.inicio && !h.fin) return null;
+                  const etiqueta = `Día ${di + 1} · ${fmtFechaCorta(fecha)}`;
+                  const valor = [h.inicio ? `Inicio ${fmtHora(h.inicio)}` : null, h.fin ? `Fin ${fmtHora(h.fin)}` : null].filter(Boolean).join("  ·  ");
+                  return <KVRow key={fecha} label={etiqueta} value={valor} bold />;
+                })
+              ) : (<>
+                {horaIni && <KVRow label="Inicio del evento" value={horaIni} bold />}
+                {horaFin && <KVRow label="Fin / desmontaje" value={horaFin} />}
+              </>)}
             </View>
             {data.indicacionesAcceso && (
               <View style={{ marginTop: 6 }}>

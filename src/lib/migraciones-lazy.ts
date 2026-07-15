@@ -72,5 +72,10 @@ export async function ensureMultidiaColumns() {
       `ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS "fechasEvento" TEXT`
     );
   } catch { /* ya existe */ }
+  try {
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS "horariosEvento" TEXT`
+    );
+  } catch { /* ya existe */ }
   _multidiaReady = true;
 }

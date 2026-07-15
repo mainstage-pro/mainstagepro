@@ -115,6 +115,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     zona: proyecto.zona ?? "LOCAL",
     fechaEvento: proyecto.fechaEvento?.toISOString() ?? null,
     fechasEvento: (proyecto as { fechasEvento?: string | null }).fechasEvento ?? null,
+    horariosEvento: (proyecto as { horariosEvento?: string | null }).horariosEvento ?? null,
     horaInicioEvento: proyecto.horaInicioEvento ?? null,
     horaFinEvento: proyecto.horaFinEvento ?? null,
     horaInicio: proyecto.horaInicio ?? null,

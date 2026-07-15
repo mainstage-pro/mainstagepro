@@ -3,7 +3,7 @@ import {
   Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
 import { JORNADA_LABELS } from "@/lib/constants";
-import { diasEvento, agruparPorDia } from "@/lib/fechas-evento";
+import { diasEvento, agruparPorDia, horarioDeDia } from "@/lib/fechas-evento";
 
 
 // ─── Paleta ──────────────────────────────────────────────────────────────────
@@ -334,6 +334,7 @@ export interface FichaTecnicaData {
   zona: string | null;
   fechaEvento: string;
   fechasEvento: string | null;
+  horariosEvento: string | null;
   horaInicioEvento: string | null;
   horaFinEvento: string | null;
   fechaMontaje: string | null;
@@ -579,14 +580,27 @@ export function FichaTecnicaPDF({ proyecto, logoSrc }: { proyecto: FichaTecnicaD
               label="Fecha del evento"
               value={fmtDate(proyecto.fechaEvento)}
             />
-            <InfoField
-              label="Horario del evento"
-              value={
-                proyecto.horaInicioEvento
-                  ? `${proyecto.horaInicioEvento}${proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}`
-                  : null
-              }
-            />
+            {esMultidiaCrono ? (
+              diasCrono.map((fecha, di) => {
+                const h = horarioDeDia(fecha, di, diasCrono, proyecto.horariosEvento, proyecto.horaInicioEvento, proyecto.horaFinEvento);
+                return (
+                  <InfoField
+                    key={fecha}
+                    label={`Horario Día ${di + 1}`}
+                    value={h.inicio ? `${h.inicio}${h.fin ? ` – ${h.fin}` : ""}` : null}
+                  />
+                );
+              })
+            ) : (
+              <InfoField
+                label="Horario del evento"
+                value={
+                  proyecto.horaInicioEvento
+                    ? `${proyecto.horaInicioEvento}${proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}`
+                    : null
+                }
+              />
+            )}
             <InfoField
               label="Fecha de montaje"
               value={fmtDate(proyecto.fechaMontaje)}

@@ -525,6 +525,7 @@ model Proyecto {
   fechasEvento           String?   // JSON: ["YYYY-MM-DD", ...] fechas explícitas cuando el proyecto dura varios días (día 1 = fechaEvento)
   horaInicioEvento       String?
   horaFinEvento          String?
+  horariosEvento         String?   // JSON: {"YYYY-MM-DD": {inicio, fin}} horarios por día (día 1 = horaInicioEvento/horaFinEvento)
   fechaMontaje           DateTime?
   horaInicioMontaje      String?
   duracionMontajeHrs     Float?

@@ -11,7 +11,7 @@ import {
   agruparPorCategoria, EquipoFlat, CronoRow, TransporteSlot,
   DocsData, EquipoRiderExtra, ProveedorRenta, MAPS,
 } from "./PdfShared";
-import { diasEvento, agruparPorDia } from "@/lib/fechas-evento";
+import { diasEvento, agruparPorDia, horarioDeDia } from "@/lib/fechas-evento";
 
 const s = StyleSheet.create({
   // Sección numerada con badge negro
@@ -124,6 +124,7 @@ export interface FichaOperativaData {
   tipoEvento: string; tipoServicio: string | null; zona: string;
   fechaEvento: string | null;
   fechasEvento: string | null;
+  horariosEvento: string | null;
   horaInicioEvento: string | null; horaFinEvento: string | null;
   horaInicio: string | null; horaDesmontaje: string | null;
   fechaMontaje: string | null; horaInicioMontaje: string | null; duracionMontajeHrs: number | null;
@@ -209,12 +210,23 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
 
   // Horarios del día — solo filas con hora
   type HoraItem = { label: string; hora: string; ref: string; fecha: string };
+  const eventoHoras: HoraItem[] = esMultidiaCrono
+    ? diasCrono.flatMap((fecha, di) => {
+        const h = horarioDeDia(fecha, di, diasCrono, data.horariosEvento, data.horaInicioEvento, data.horaFinEvento);
+        return [
+          { label: `Inicio del evento · Día ${di + 1}`, hora: fmtHora(h.inicio), ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(fecha) },
+          { label: `Fin del evento · Día ${di + 1}`, hora: fmtHora(h.fin), ref: "", fecha: fmtFechaCorta(fecha) },
+        ];
+      })
+    : [
+        { label: "Inicio del evento", hora: horaIni, ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(data.fechaEvento) },
+        { label: "Fin / inicio de desmontaje", hora: horaFin, ref: "", fecha: fmtFechaCorta(data.fechaEvento) },
+      ];
   const horariosDia: HoraItem[] = [
     { label: "Llamado en bodega", hora: llamadoBodegaHora ?? "", ref: data.puntoSalidaBodega ?? "", fecha: llamadoBodegaFecha ?? fmtFechaCorta(data.fechaMontaje) ?? fmtFechaCorta(data.fechaEvento) },
     { label: "Salida desde bodega", hora: horaSalida, ref: data.puntoSalidaBodega ?? "", fecha: fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento) },
     { label: "Llegada / inicio de montaje", hora: horaMontaje, ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento) },
-    { label: "Inicio del evento", hora: horaIni, ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(data.fechaEvento) },
-    { label: "Fin / inicio de desmontaje", hora: horaFin, ref: "", fecha: fmtFechaCorta(data.fechaEvento) },
+    ...eventoHoras,
   ].filter(h => h.hora);
 
   let seccion = 0;
