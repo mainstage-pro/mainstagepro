@@ -291,10 +291,11 @@ function generarEstructuraSemanas(lunesHoy: string, cuantas = 10): SemanaOpLocal
   return semanas;
 }
 
-export default function CobrosPagosPage() {
+export default function CobrosPagosPage({ view }: { view?: "cobros" | "programacion" } = {}) {
   const toast = useToast();
   const confirm = useConfirm();
-  const [pageTab, setPageTab] = useState<"cobros" | "programacion">("cobros");
+  const [pageTabState, setPageTab] = useState<"cobros" | "programacion">("cobros");
+  const pageTab = view ?? pageTabState;
   const [tab, setTab] = useState<"cobrar" | "pagar" | "directos">("cobrar");
   const [movDirectos, setMovDirectos] = useState<MovDirecto[]>([]);
   // Programación semanal
@@ -492,6 +493,10 @@ export default function CobrosPagosPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (view === "programacion") cargarProgramacion();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
   useEffect(() => {
     fetch("/api/clientes", { cache: "no-store" }).then(r => r.json()).then(d => setClientes(d.clientes ?? [])).catch(() => {});
     fetch("/api/cuentas", { cache: "no-store" }).then(r => r.json()).then(d => setCuentas(d.cuentas ?? [])).catch(() => {});
@@ -842,16 +847,18 @@ export default function CobrosPagosPage() {
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
 
-      {/* Page-level tabs */}
-      <div className="flex gap-1 mb-6 border-b border-[#1a1a1a] pb-0">
-        {([["cobros", "Cobros y Pagos"], ["programacion", "Programación Semanal"]] as const).map(([key, label]) => (
-          <button key={key}
-            onClick={() => { setPageTab(key); if (key === "programacion") cargarProgramacion(); }}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${pageTab === key ? "border-[#B3985B] text-white" : "border-transparent text-[#6b7280] hover:text-white"}`}>
-            {label}
-          </button>
-        ))}
-      </div>
+      {/* Page-level tabs (ocultas cuando el módulo controla la vista) */}
+      {!view && (
+        <div className="flex gap-1 mb-6 border-b border-[#1a1a1a] pb-0">
+          {([["cobros", "Cobros y Pagos"], ["programacion", "Programación Semanal"]] as const).map(([key, label]) => (
+            <button key={key}
+              onClick={() => { setPageTab(key); if (key === "programacion") cargarProgramacion(); }}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${pageTab === key ? "border-[#B3985B] text-white" : "border-transparent text-[#6b7280] hover:text-white"}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── TAB: Programación Semanal ── */}
       {pageTab === "programacion" && (

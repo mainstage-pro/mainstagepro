@@ -14,7 +14,8 @@ export default function FinanzasPage() {
   return (
     <ModuleTabs
       tabs={[
-        { key: "cobros", label: "Cobros y pagos", accessKey: "finanzas-cobros", content: <CobrosPagosPage /> },
+        { key: "cobros", label: "Cobros y pagos", accessKey: "finanzas-cobros", content: <CobrosPagosPage view="cobros" /> },
+        { key: "programacion", label: "Programación semanal", accessKey: "finanzas-cobros", content: <CobrosPagosPage view="programacion" /> },
         { key: "pagos-personal", label: "Pagos a personal", accessKey: "finanzas-pagos-personal", content: <PagosPersonalPage /> },
         { key: "movimientos", label: "Movimientos", accessKey: "finanzas-movimientos", content: <MovimientosPage /> },
         { key: "caja-chica", label: "Caja chica", accessKey: "finanzas-caja-chica", content: <CajaChicaPage /> },

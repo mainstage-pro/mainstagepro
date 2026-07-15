@@ -24,7 +24,7 @@ export default function ModuleTabs({ tabs }: { tabs: ModuleTab[] }) {
 
   return (
     <div className="flex flex-col min-h-full">
-      <div className="flex gap-1 border-b border-[#1a1a1a] px-4 md:px-6 shrink-0 overflow-x-auto">
+      <div className="flex gap-1 border-b border-[#1a1a1a] px-4 md:px-6 pt-4 md:pt-6 shrink-0 overflow-x-auto">
         {visible.map((t) => (
           <button
             key={t.key}
