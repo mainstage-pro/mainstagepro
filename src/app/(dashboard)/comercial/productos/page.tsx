@@ -513,6 +513,13 @@ export default function ProductosPage() {
     [productos, filtroCat]
   );
 
+  const porCategoria = useMemo(() => {
+    const cats = [...new Set(visibles.map((p) => p.categoria ?? "OTRO"))].sort();
+    return cats
+      .map((cat) => ({ cat, items: visibles.filter((p) => (p.categoria ?? "OTRO") === cat) }))
+      .filter((g) => g.items.length > 0);
+  }, [visibles]);
+
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
       {/* Header */}
@@ -588,11 +595,11 @@ export default function ProductosPage() {
         ))}
       </div>
 
-      {/* Grid de productos */}
+      {/* Productos por categoría */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="h-56 rounded-2xl bg-[#111] animate-pulse" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+          {[...Array(12)].map((_, i) => (
+            <div key={i} className="h-52 rounded-xl bg-[#111] animate-pulse" />
           ))}
         </div>
       ) : visibles.length === 0 ? (
@@ -606,70 +613,60 @@ export default function ProductosPage() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {visibles.map((p) => {
-            const tags = parseTags(p.tiposEvento);
-            return (
-              <div
-                key={p.id}
-                className="rounded-2xl border border-[#1e1e1e] bg-[#0d0d0d] overflow-hidden flex flex-col hover:border-[#B3985B]/30 transition-colors"
-              >
-                <div className="h-36 bg-[#1a1a1a] relative overflow-hidden">
-                  {p.imagenUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.imagenUrl} alt={p.nombre} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-700 text-4xl">📦</div>
-                  )}
-                  {p.categoria && (
-                    <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/60 text-[10px] text-gray-300">
-                      {p.categoria}
-                    </span>
-                  )}
-                </div>
-                <div className="p-3 flex-1 flex flex-col">
-                  <p className="text-white text-sm font-semibold leading-tight mb-1">{p.nombre}</p>
-                  {p.descripcion && (
-                    <p className="text-gray-500 text-[11px] line-clamp-2 mb-2">{p.descripcion}</p>
-                  )}
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {tags.map((t) => {
-                      const meta = TIPOS_EVENTO.find((x) => x.key === t);
-                      return (
-                        <span key={t} className="px-1.5 py-0.5 rounded bg-[#1a1a1a] text-[9px] text-gray-400">
-                          {meta?.emoji} {meta?.label ?? t}
-                        </span>
-                      );
-                    })}
-                  </div>
-                  <p className="text-gray-600 text-[10px] mb-2">
-                    {p.items.length} equipo{p.items.length !== 1 ? "s" : ""}:{" "}
-                    {p.items.map((it) => `${it.cantidad}× ${nombreEq(it.equipo)}`).join(", ")}
-                  </p>
-                  <div className="mt-auto flex items-center justify-between pt-2 border-t border-[#1a1a1a]">
-                    <span className="text-[#B3985B] font-semibold">
-                      {fmx(p.precioFinal)}
-                      {p.precioManual != null && <span className="text-[9px] text-gray-600 ml-1">manual</span>}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => abrirEditar(p)}
-                        className="text-xs text-gray-400 hover:text-white px-2 py-1 rounded-md hover:bg-[#1a1a1a]"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => eliminar(p)}
-                        className="text-xs text-gray-500 hover:text-red-400 px-2 py-1 rounded-md hover:bg-red-500/10"
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-                  </div>
-                </div>
+        <div className="space-y-8">
+          {porCategoria.map(({ cat, items }) => (
+            <div key={cat}>
+              <div className="flex items-center gap-3 mb-3">
+                <h2 className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">{cat}</h2>
+                <span className="text-[#333] text-[10px]">({items.length})</span>
+                <div className="flex-1 h-px bg-[#1a1a1a]" />
               </div>
-            );
-          })}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+                {items.map((p) => (
+                  <div
+                    key={p.id}
+                    className="group ms-card p-3 cursor-pointer hover:border-[#B3985B]/30 transition-all relative"
+                    onClick={() => abrirEditar(p)}
+                  >
+                    <div className="aspect-square rounded-lg bg-[#0d0d0d] mb-2.5 flex items-center justify-center overflow-hidden">
+                      {p.imagenUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.imagenUrl} alt={p.nombre} className="w-full h-full object-contain p-2" />
+                      ) : (
+                        <svg className="w-8 h-8 text-[#2a2a2a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white text-xs font-medium leading-snug group-hover:text-[#B3985B] transition-colors line-clamp-2">
+                        {p.nombre}
+                      </p>
+                      {p.descripcion && (
+                        <p className="text-[#555] text-[10px] truncate mt-0.5">{p.descripcion}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded text-[#6b7280] bg-[#1a1a1a]">
+                        {p.items.length} eq
+                      </span>
+                      <span className="text-sm font-bold text-[#B3985B]">{fmx(p.precioFinal)}</span>
+                    </div>
+                    <button
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        eliminar(p);
+                      }}
+                      title="Eliminar"
+                      className="absolute top-2 right-2 w-6 h-6 rounded-md bg-black/60 text-gray-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all text-sm flex items-center justify-center"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
