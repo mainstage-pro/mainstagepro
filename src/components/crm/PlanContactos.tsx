@@ -278,6 +278,7 @@ export function SeguimientosTracker({
   onAgregarSlot,
   onPasarDescubrimiento,
   onMarcarPerdida,
+  labelContinuar = "🔍 Pasar a descubrimiento →",
 }: {
   seguimientos: SegItem[];
   maxSlots: number;
@@ -287,6 +288,7 @@ export function SeguimientosTracker({
   onAgregarSlot: () => void;
   onPasarDescubrimiento: (saltar: boolean) => void;
   onMarcarPerdida: (motivo: string) => void | Promise<void>;
+  labelContinuar?: string;
 }) {
   const [nota, setNota] = useState("");
   const [motivo, setMotivo] = useState("");
@@ -441,7 +443,7 @@ export function SeguimientosTracker({
               : "bg-violet-700/20 border border-violet-700/40 text-violet-300 hover:bg-violet-700/30"
           }`}
         >
-          🔍 Pasar a descubrimiento →
+          {labelContinuar}
         </button>
         {hechos === 0 && (
           <div className="flex justify-center mt-2">

@@ -58,9 +58,12 @@ const EXTRAS_EVENTO: Record<string, any[]> = {
 
 export default function DiscoveryForm({
   id, trato, setTrato, onComplete, readOnly = false,
-  clientMode = false, token, huerfano = false, contacto, setContacto,
+  clientMode = false, token, huerfano = false, contacto, setContacto, modalidad,
 }: {
   id: string, trato: any, setTrato: any, onComplete?: () => void, readOnly?: boolean,
+  // Modalidad de la propuesta elegida en el paso previo: INVENTARIO (equipo Mainstage)
+  // o CONTRA_RIDER (el cliente trae un rider específico / equipos de otras marcas).
+  modalidad?: "INVENTARIO" | "CONTRA_RIDER",
   // ── Modo cliente (link público /f/[token]) ──────────────────────────────
   // Cuando clientMode=true el formulario guarda vía /api/f/[token] (POST con
   // `_discoveryMode`) en lugar de /api/tratos/[id], oculta la UI interna del
@@ -859,6 +862,53 @@ export default function DiscoveryForm({
 
             {/* PASO 2: Detalles y extras */}
             {pasoActivo === 2 && (<div className="space-y-4">
+              {/* ── Rider específico / Contra-rider (modalidad elegida en el paso previo) ── */}
+              {modalidad === "CONTRA_RIDER" && (
+                <div className="rounded-xl border border-blue-800/40 bg-blue-950/20 p-4 space-y-3">
+                  <div className="flex items-start gap-3">
+                    <span className="text-xl">📄</span>
+                    <div>
+                      <p className="text-blue-200 text-sm font-semibold">Rider específico / Contra-rider</p>
+                      <p className="text-[11px] text-blue-300/70 leading-relaxed mt-0.5">
+                        {clientMode
+                          ? "Cuéntanos qué equipos específicos necesitas (marcas/modelos) o sube tu rider técnico. Analizaremos tu solicitud y te propondremos la mejor solución."
+                          : "Captura los equipos de otras marcas que pide el cliente o sube su rider técnico. Con esto preparamos un contra-rider. El inventario Mainstage abajo queda como referencia opcional."}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Descripción del rider / equipos requeridos</label>
+                    <textarea
+                      value={discForm.notasEquipos || ""}
+                      onChange={e => setDiscForm(p => ({ ...p, notasEquipos: e.target.value }))}
+                      rows={4}
+                      placeholder="Ej: Consola DiGiCo SD12, 12x d&b V8, micrófonos Shure Axient... o describe el rider que necesitas."
+                      className="w-full bg-[#111] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-blue-600 resize-none"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs text-gray-400 font-medium">📁 Rider técnico (archivo)</p>
+                      <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[11px] cursor-pointer transition-colors ${uploadingTipo === "DOCUMENTO" ? "opacity-40 pointer-events-none text-gray-500" : "text-gray-500 hover:text-white hover:border-[#444]"}`}>
+                        {uploadingTipo === "DOCUMENTO" ? "Subiendo..." : "+ Subir rider"}
+                        <input type="file" className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip" multiple onChange={e => subirArchivo(e, "DOCUMENTO")} />
+                      </label>
+                    </div>
+                    {archivos.filter(a => a.tipo === "DOCUMENTO").length === 0 ? (
+                      <p className="text-gray-700 text-[11px] italic">Sin archivos aún</p>
+                    ) : (
+                      <ul className="space-y-1">
+                        {archivos.filter(a => a.tipo === "DOCUMENTO").map(a => (
+                          <li key={a.id} className="flex items-center gap-2 text-[11px] text-blue-300">
+                            <span>📎</span>
+                            <a href={a.url} target="_blank" rel="noopener noreferrer" className="truncate hover:underline">{a.nombre || a.url}</a>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              )}
               {discForm.tipoServicio === "RENTA" ? (
               <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">
                 <p className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold">Detalles de renta</p>

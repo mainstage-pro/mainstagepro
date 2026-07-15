@@ -58,7 +58,7 @@ export type PaquetePublico = {
   conceptos: { tipo: string; descripcion: string }[];
 };
 
-/** Rol técnico vigente (para las categorías "Servicio de DJ" y "Operación técnica"). */
+/** Rol técnico vigente (alimenta las categorías de servicio: DJ y técnicos por disciplina). */
 export type RolPublico = {
   id: string;
   nombre: string;
@@ -86,10 +86,31 @@ export type SeleccionEquipos = {
   aCriterioVendedor?: boolean;
 };
 
-// Categorías sintéticas de servicio (no existen en el inventario; se arman con roles técnicos)
+// Categorías sintéticas de servicio (no existen en el inventario; se arman con roles técnicos).
+// Cada una agrupa los RolTecnico vigentes por su disciplina.
 const CAT_SERVICIO_DJ = "__svc_dj__";
-const CAT_OPERACION_TECNICA = "__svc_optec__";
-const CATS_SERVICIO = new Set([CAT_SERVICIO_DJ, CAT_OPERACION_TECNICA]);
+const CAT_TEC_AUDIO = "__svc_audio__";
+const CAT_TEC_ILUMINACION = "__svc_ilum__";
+const CAT_TEC_VIDEO = "__svc_video__";
+const CAT_TEC_GENERAL = "__svc_general__";
+const CATS_SERVICIO = new Set([
+  CAT_SERVICIO_DJ,
+  CAT_TEC_AUDIO,
+  CAT_TEC_ILUMINACION,
+  CAT_TEC_VIDEO,
+  CAT_TEC_GENERAL,
+]);
+
+// Definición de cada categoría de servicio: cómo se etiqueta y qué disciplinas agrupa.
+const SERVICIOS_DEF: { id: string; nombre: string; emoji: string; disciplinas: string[] }[] = [
+  { id: CAT_SERVICIO_DJ, nombre: "Servicio de DJ", emoji: "💽", disciplinas: ["DJ"] },
+  { id: CAT_TEC_AUDIO, nombre: "Técnicos de audio", emoji: "🔊", disciplinas: ["AUDIO"] },
+  { id: CAT_TEC_ILUMINACION, nombre: "Técnicos de iluminación", emoji: "💡", disciplinas: ["ILUMINACION"] },
+  { id: CAT_TEC_VIDEO, nombre: "Técnicos de video", emoji: "🎥", disciplinas: ["VIDEO"] },
+  // Cualquier disciplina distinta a las anteriores (RIGGING, STAGE, STAFF_GENERAL, etc.) cae en generales.
+  { id: CAT_TEC_GENERAL, nombre: "Técnicos generales", emoji: "🛠️", disciplinas: [] },
+];
+const DISCIPLINAS_ESPECIFICAS = new Set(["DJ", "AUDIO", "ILUMINACION", "VIDEO"]);
 
 const ETIQUETA_TIPO_EVENTO: Record<string, string> = {
   MUSICAL: "🎵 Musical",
@@ -191,15 +212,19 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
   const rolesSel = value.roles ?? [];
   const aCriterioVendedor = value.aCriterioVendedor ?? false;
 
-  // Categorías sintéticas de servicio, armadas con los roles técnicos vigentes.
-  const rolesDj = useMemo(
-    () => roles.filter((r) => (r.disciplina ?? "").toUpperCase() === "DJ"),
-    [roles]
-  );
-  const rolesOpTecnica = useMemo(
-    () => roles.filter((r) => (r.disciplina ?? "").toUpperCase() !== "DJ"),
-    [roles]
-  );
+  // Roles técnicos vigentes agrupados por categoría de servicio (según su disciplina).
+  const rolesPorCat = useMemo(() => {
+    const map: Record<string, RolPublico[]> = {};
+    for (const def of SERVICIOS_DEF) map[def.id] = [];
+    for (const rol of roles) {
+      const disc = (rol.disciplina ?? "").toUpperCase();
+      const def = DISCIPLINAS_ESPECIFICAS.has(disc)
+        ? SERVICIOS_DEF.find((d) => d.disciplinas.includes(disc))!
+        : SERVICIOS_DEF.find((d) => d.id === CAT_TEC_GENERAL)!;
+      map[def.id].push(rol);
+    }
+    return map;
+  }, [roles]);
 
   function toggleExpandida(catId: string) {
     setExpandidas((prev) => {
@@ -287,14 +312,16 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
   );
 
   // Categorías de servicio (sintéticas) armadas con roles técnicos vigentes.
-  const serviciosCategorias = useMemo(() => {
-    const out: { id: string; nombre: string; emoji: string; roles: RolPublico[] }[] = [];
-    if (rolesDj.length > 0)
-      out.push({ id: CAT_SERVICIO_DJ, nombre: "Servicio de DJ", emoji: "💽", roles: rolesDj });
-    if (rolesOpTecnica.length > 0)
-      out.push({ id: CAT_OPERACION_TECNICA, nombre: "Operación técnica", emoji: "🎚️", roles: rolesOpTecnica });
-    return out;
-  }, [rolesDj, rolesOpTecnica]);
+  const serviciosCategorias = useMemo(
+    () =>
+      SERVICIOS_DEF.filter((def) => (rolesPorCat[def.id]?.length ?? 0) > 0).map((def) => ({
+        id: def.id,
+        nombre: def.nombre,
+        emoji: def.emoji,
+        roles: rolesPorCat[def.id],
+      })),
+    [rolesPorCat]
+  );
 
   const serviciosElegidos = useMemo(
     () => serviciosCategorias.filter((s) => value.categorias.includes(s.id)),
@@ -308,9 +335,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
     if (tiene) {
       // Categoría de servicio: al quitarla, soltamos también sus roles seleccionados.
       if (CATS_SERVICIO.has(catId)) {
-        const rolesDeCat = new Set(
-          (catId === CAT_SERVICIO_DJ ? rolesDj : rolesOpTecnica).map((r) => r.id)
-        );
+        const rolesDeCat = new Set((rolesPorCat[catId] ?? []).map((r) => r.id));
         onChange({
           ...value,
           categorias: value.categorias.filter((id) => id !== catId),
