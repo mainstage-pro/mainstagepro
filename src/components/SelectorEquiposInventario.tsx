@@ -45,6 +45,19 @@ export type ProductoPublico = {
   items: { cantidad: number; equipo: { id: string; descripcion: string; marca: string | null; modelo: string | null } }[];
 };
 
+/** Paquete comercial armado (equipos + productos + conceptos operativos), listado público. */
+export type PaquetePublico = {
+  id: string;
+  nombre: string;
+  tipoEvento: string;
+  rangoPersonas: string | null;
+  resumen: string | null;
+  descripcion: string | null;
+  imagenes: { url: string }[];
+  items: { cantidad: number; tipo: string }[];
+  conceptos: { tipo: string; descripcion: string }[];
+};
+
 export type SeleccionEquipos = {
   /** IDs de CategoriaEquipo elegidas en el paso 1 */
   categorias: string[];
@@ -54,8 +67,16 @@ export type SeleccionEquipos = {
   cantidades?: Record<string, number>;
   /** Equipos/categorías adicionales tecleados a mano (solo este trato) */
   extras?: ExtraEquipo[];
-  /** Productos/paquetes armados seleccionados */
+  /** Productos armados seleccionados */
   productos?: SeleccionProducto[];
+  /** Paquetes comerciales seleccionados */
+  paquetes?: SeleccionProducto[];
+};
+
+const ETIQUETA_TIPO_EVENTO: Record<string, string> = {
+  MUSICAL: "🎵 Musical",
+  SOCIAL: "🎉 Social",
+  EMPRESARIAL: "💼 Empresarial",
 };
 
 interface Props {
@@ -110,27 +131,36 @@ const CANTIDADES = Array.from({ length: 32 }, (_, i) => i + 1);
 export function SelectorEquiposInventario({ value, onChange, readOnly = false, notas, onNotasChange }: Props) {
   const [categorias, setCategorias] = useState<CategoriaPublica[]>([]);
   const [productos, setProductos] = useState<ProductoPublico[]>([]);
+  const [paquetes, setPaquetes] = useState<PaquetePublico[]>([]);
   const [loading, setLoading] = useState(true);
   const [paso, setPaso] = useState<1 | 2>(() =>
-    value.categorias.length > 0 || value.equipos.length > 0 || (value.productos?.length ?? 0) > 0 ? 2 : 1
+    value.categorias.length > 0 ||
+    value.equipos.length > 0 ||
+    (value.productos?.length ?? 0) > 0 ||
+    (value.paquetes?.length ?? 0) > 0
+      ? 2
+      : 1
   );
-  // Sub-pestaña dentro del paso 2: equipos individuales (default) vs paquetes armados
-  const [subTab, setSubTab] = useState<"equipos" | "paquetes">("equipos");
+  // Sub-pestaña dentro del paso 2: equipos individuales (default), productos o paquetes
+  const [subTab, setSubTab] = useState<"equipos" | "productos" | "paquetes">("equipos");
   const [extraNombre, setExtraNombre] = useState("");
   const [extraCategoria, setExtraCategoria] = useState("");
 
   const cantidades = value.cantidades ?? {};
   const extras = value.extras ?? [];
   const productosSel = value.productos ?? [];
+  const paquetesSel = value.paquetes ?? [];
 
   useEffect(() => {
     Promise.all([
       fetch("/api/inventario/publico").then((r) => r.json()).catch(() => ({})),
       fetch("/api/productos/publico").then((r) => r.json()).catch(() => ({})),
+      fetch("/api/paquetes/publico").then((r) => r.json()).catch(() => ({})),
     ])
-      .then(([inv, prod]) => {
+      .then(([inv, prod, paq]) => {
         if (inv.categorias) setCategorias(inv.categorias);
         if (prod.productos) setProductos(prod.productos);
+        if (paq.paquetes) setPaquetes(paq.paquetes);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -155,6 +185,29 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
       productos: existe
         ? productosSel.map((p) => (p.id === id ? { ...p, cantidad: c } : p))
         : [...productosSel, { id, cantidad: c }],
+    });
+  }
+
+  // ── Mutadores de paquetes ──
+  function togglePaquete(id: string) {
+    if (readOnly) return;
+    const tiene = paquetesSel.some((p) => p.id === id);
+    onChange({
+      ...value,
+      paquetes: tiene
+        ? paquetesSel.filter((p) => p.id !== id)
+        : [...paquetesSel, { id, cantidad: 1 }],
+    });
+  }
+  function setPaqueteCantidad(id: string, cant: number) {
+    if (readOnly) return;
+    const c = Math.max(1, Math.min(cant, 32));
+    const existe = paquetesSel.some((p) => p.id === id);
+    onChange({
+      ...value,
+      paquetes: existe
+        ? paquetesSel.map((p) => (p.id === id ? { ...p, cantidad: c } : p))
+        : [...paquetesSel, { id, cantidad: c }],
     });
   }
 
@@ -270,7 +323,12 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
     );
   }
 
-  if (categoriasVisibles.length === 0 && extras.length === 0 && productos.length === 0) {
+  if (
+    categoriasVisibles.length === 0 &&
+    extras.length === 0 &&
+    productos.length === 0 &&
+    paquetes.length === 0
+  ) {
     return (
       <p className="text-gray-600 text-sm py-4 text-center">
         No hay equipos disponibles en el inventario todavía.
@@ -279,16 +337,43 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
   }
 
   const productosElegidos = productos.filter((p) => productosSel.some((s) => s.id === p.id));
+  const paquetesElegidos = paquetes.filter((p) => paquetesSel.some((s) => s.id === p.id));
 
   // ── Vista de solo lectura (resumen) ──
   if (readOnly) {
     const conEquipos =
-      categoriasElegidas.length > 0 || value.equipos.length > 0 || extras.length > 0 || productosElegidos.length > 0;
+      categoriasElegidas.length > 0 ||
+      value.equipos.length > 0 ||
+      extras.length > 0 ||
+      productosElegidos.length > 0 ||
+      paquetesElegidos.length > 0;
     if (!conEquipos) {
       return <p className="text-gray-600 text-sm py-3">Sin equipos seleccionados.</p>;
     }
     return (
       <div className="space-y-3">
+        {paquetesElegidos.length > 0 && (
+          <div className="bg-[#111] border border-[#B3985B]/40 rounded-xl p-3">
+            <p className="text-white text-sm font-medium mb-1.5">✨ Paquetes</p>
+            <ul className="space-y-1">
+              {paquetesElegidos.map((p) => {
+                const cant = paquetesSel.find((s) => s.id === p.id)?.cantidad ?? 1;
+                return (
+                  <li key={p.id} className="text-gray-300 text-xs flex justify-between gap-2">
+                    <span>
+                      {cant > 1 ? `${cant}× ` : ""}
+                      {p.nombre}
+                    </span>
+                    <span className="text-gray-600">
+                      {ETIQUETA_TIPO_EVENTO[p.tipoEvento] ?? p.tipoEvento}
+                      {p.rangoPersonas ? ` · ${p.rangoPersonas} pers` : ""}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
         {productosElegidos.length > 0 && (
           <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-3">
             <p className="text-white text-sm font-medium mb-1.5">📦 Productos armados</p>
@@ -497,31 +582,47 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
       {/* ── PASO 2: equipos individuales + paquetes armados ── */}
       {paso === 2 && (
         <div className="space-y-3">
-          {/* Sub-pestañas: equipos individuales (default) vs paquetes armados */}
+          {/* Sub-pestañas: equipos individuales · productos armados · paquetes */}
           <div className="flex items-center gap-1.5 p-1 bg-[#111] rounded-xl">
             <button
               type="button"
               onClick={() => setSubTab("equipos")}
-              className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+              className={`flex-1 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors ${
                 subTab === "equipos" ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
               }`}
             >
-              🎛️ Equipos individuales
+              🎛️ Equipos
             </button>
             {productos.length > 0 && (
               <button
                 type="button"
+                onClick={() => setSubTab("productos")}
+                className={`relative flex-1 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors ${
+                  subTab === "productos" ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
+                }`}
+              >
+                📦 Productos
+                {subTab !== "productos" && (
+                  <span className="ml-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-[#1e1e1e] text-gray-400 text-[9px] font-bold align-middle">
+                    {productos.length}
+                  </span>
+                )}
+              </button>
+            )}
+            {paquetes.length > 0 && (
+              <button
+                type="button"
                 onClick={() => setSubTab("paquetes")}
-                className={`relative flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all overflow-hidden ${
+                className={`relative flex-1 px-2.5 py-2 rounded-lg text-xs font-semibold transition-all overflow-hidden ${
                   subTab === "paquetes"
                     ? "bg-gradient-to-r from-[#B3985B] to-[#d4b876] text-black shadow-lg shadow-[#B3985B]/25"
                     : "text-[#B3985B] bg-gradient-to-r from-[#B3985B]/15 to-[#B3985B]/5 ring-1 ring-[#B3985B]/40 hover:from-[#B3985B]/25"
                 }`}
               >
-                ✨ Paquetes armados
+                ✨ Paquetes
                 {subTab !== "paquetes" && (
                   <span className="ml-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-[#B3985B] text-black text-[9px] font-bold align-middle">
-                    {productos.length}
+                    {paquetes.length}
                   </span>
                 )}
               </button>
@@ -700,11 +801,11 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
           </div>
           )}
 
-          {/* ── Sub-pestaña: PAQUETES ARMADOS ── */}
-          {subTab === "paquetes" && (
+          {/* ── Sub-pestaña: PRODUCTOS ARMADOS ── */}
+          {subTab === "productos" && (
             <div className="space-y-2">
               <p className="text-gray-500 text-xs">
-                Sistemas y paquetes ya armados. Al elegir uno se consideran todos sus equipos para la disponibilidad.
+                Sistemas y productos ya armados. Al elegir uno se consideran todos sus equipos para la disponibilidad.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {productos.map((p) => {
@@ -754,6 +855,87 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                       {sel && (
                         <div className="flex items-center justify-end mt-1.5">
                           {controlCantidad(cant, (n) => setProductoCantidad(p.id, n))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ── Sub-pestaña: PAQUETES ── */}
+          {subTab === "paquetes" && (
+            <div className="space-y-2">
+              <p className="text-gray-500 text-xs">
+                Paquetes comerciales por tipo y tamaño de evento. Se desglosan en la cotización con sus equipos y conceptos.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {paquetes.map((p) => {
+                  const sel = paquetesSel.some((s) => s.id === p.id);
+                  const cant = paquetesSel.find((s) => s.id === p.id)?.cantidad ?? 1;
+                  const numEquipos = p.items.reduce((a, it) => a + (it.cantidad || 1), 0);
+                  return (
+                    <div
+                      key={p.id}
+                      className={`rounded-xl border p-2.5 transition-all ${
+                        sel ? "border-[#B3985B] bg-[#B3985B]/[0.06]" : "border-[#1e1e1e] bg-[#0d0d0d]"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => togglePaquete(p.id)}
+                        className="flex items-start gap-2.5 w-full text-left"
+                      >
+                        <span className="w-12 h-12 rounded-lg bg-[#1a1a1a] overflow-hidden shrink-0 flex items-center justify-center">
+                          {p.imagenes[0]?.url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={p.imagenes[0].url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-gray-700">✨</span>
+                          )}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center gap-1.5">
+                            <span
+                              className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
+                                sel ? "bg-[#B3985B] border-[#B3985B]" : "border-[#333]"
+                              }`}
+                            >
+                              {sel && <span className="text-black text-[9px] font-bold leading-none">✓</span>}
+                            </span>
+                            <span className="text-white text-xs font-medium leading-tight">{p.nombre}</span>
+                          </span>
+                          {(p.resumen || p.descripcion) && (
+                            <span className="block text-gray-500 text-[10px] leading-tight line-clamp-2 mt-0.5">
+                              {p.resumen || p.descripcion}
+                            </span>
+                          )}
+                          <span className="flex flex-wrap items-center gap-1 mt-1">
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-gray-400">
+                              {ETIQUETA_TIPO_EVENTO[p.tipoEvento] ?? p.tipoEvento}
+                            </span>
+                            {p.rangoPersonas && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-gray-400">
+                                👥 {p.rangoPersonas}
+                              </span>
+                            )}
+                            {numEquipos > 0 && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-gray-400">
+                                🎛️ {numEquipos}
+                              </span>
+                            )}
+                            {p.conceptos.length > 0 && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-gray-400">
+                                ⚙️ {p.conceptos.length}
+                              </span>
+                            )}
+                          </span>
+                        </span>
+                      </button>
+                      {sel && (
+                        <div className="flex items-center justify-end mt-1.5">
+                          {controlCantidad(cant, (n) => setPaqueteCantidad(p.id, n))}
                         </div>
                       )}
                     </div>

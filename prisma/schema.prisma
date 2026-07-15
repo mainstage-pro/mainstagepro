@@ -750,6 +750,7 @@ model Equipo {
   proveedoresPrecios   EquipoProveedorPrecio[] @relation("EquipoProveedores")
   productoItems        ProductoEquipo[]
   productosDominante   Producto[]              @relation("ProductoEquipoDominante")
+  paqueteItems         PaqueteItem[]
 
   @@map("equipos")
 }
@@ -822,6 +823,7 @@ model Producto {
   updatedAt          DateTime @updatedAt
 
   items              ProductoEquipo[]
+  paqueteItems       PaqueteItem[]
 
   @@map("productos")
 }
@@ -836,6 +838,79 @@ model ProductoEquipo {
   orden      Int      @default(0)
 
   @@map("producto_equipos")
+}
+
+// ── Paquetes ──────────────────────────────────────────────────────────────────
+// Un Paquete es una propuesta base cotizable por tipo y tamaño de evento. Agrupa
+// equipos del inventario y/o productos armados, más los conceptos operativos
+// (personal, transporte, hospedaje, comida/viáticos, otros). Al elegirse en el
+// descubrimiento se vuelca DESGLOSADO a la cotización. Tablas creadas lazy
+// (ensurePaquetesTables en src/lib/paquetes.ts) — patrón Neon sin migración formal.
+model Paquete {
+  id             String   @id @default(cuid())
+  nombre         String
+  tipoEvento     String   // MUSICAL | SOCIAL | EMPRESARIAL — define la pestaña
+  rangoPersonas  String?  // "1-100" | "100-300" | ... | "3000-5000"
+  subtiposEvento String?  // JSON array de subtipos específicos (Boda, Concierto, etc.)
+  resumen        String?  // resumen corto (generable con IA)
+  descripcion    String?  @db.Text // descripción general (generable con IA)
+  propuestaValor String?  @db.Text // propuesta de valor (generable con IA)
+  activo         Boolean  @default(true)
+  orden          Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  items     PaqueteItem[]
+  conceptos PaqueteConcepto[]
+  imagenes  PaqueteImagen[]
+
+  @@map("paquetes")
+}
+
+model PaqueteItem {
+  id         String    @id @default(cuid())
+  paqueteId  String
+  paquete    Paquete   @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  tipo       String    @default("EQUIPO") // EQUIPO | PRODUCTO
+  equipoId   String?
+  equipo     Equipo?   @relation(fields: [equipoId], references: [id], onDelete: Cascade)
+  productoId String?
+  producto   Producto? @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  cantidad   Int       @default(1)
+  orden      Int       @default(0)
+
+  @@index([paqueteId])
+  @@map("paquete_items")
+}
+
+model PaqueteConcepto {
+  id            String      @id @default(cuid())
+  paqueteId     String
+  paquete       Paquete     @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  tipo          String      // OPERACION_TECNICA | TRANSPORTE | HOSPEDAJE | COMIDA | OTRO
+  descripcion   String
+  rolTecnicoId  String?
+  rolTecnico    RolTecnico? @relation(fields: [rolTecnicoId], references: [id], onDelete: SetNull)
+  nivel         String?     // AAA | AA | A (para OPERACION_TECNICA)
+  jornada       String?     // CORTA | MEDIA | LARGA (para OPERACION_TECNICA)
+  cantidad      Float       @default(1)
+  dias          Int         @default(1)
+  precioUnitario Float      @default(0)
+  orden         Int         @default(0)
+
+  @@index([paqueteId])
+  @@map("paquete_conceptos")
+}
+
+model PaqueteImagen {
+  id        String  @id @default(cuid())
+  paqueteId String
+  paquete   Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
+  url       String
+  orden     Int     @default(0)
+
+  @@index([paqueteId])
+  @@map("paquete_imagenes")
 }
 
 model RolTecnico {
@@ -869,6 +944,7 @@ model RolTecnico {
   cotizacionLineas CotizacionLinea[]
   proyectoPersonal ProyectoPersonal[]
   tecnicos         Tecnico[]
+  paqueteConceptos PaqueteConcepto[]
 
   @@map("roles_tecnicos")
 }
