@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { cotejarOCrearCliente } from "@/lib/cotejo-cliente";
+import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
 
 // Mapeo momento de contratación → etapa por defecto del pipeline (el vendedor puede sobreescribir).
 const MOMENTO_ETAPA: Record<string, string> = {
@@ -34,6 +35,7 @@ export async function GET(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   await ensureColumns();
+  await ensureProcesoVentaColumns();
 
   const { searchParams } = new URL(request.url);
   const responsableId = searchParams.get("responsableId");
@@ -61,6 +63,8 @@ export async function GET(request: NextRequest) {
       tipoProspecto: true, nurturingData: true, proximaAccion: true,
       momentoContratacion: true, posibleDuplicado: true,
       updatedAt: true, etapaCambiadaEn: true, confirmadaEn: true,
+      descubrimientoCompleto: true, formEstado: true,
+      modoDescubrimiento: true, preferenciaContacto: true,
       cliente: { select: { id: true, nombre: true, empresa: true, telefono: true } },
       responsable: { select: { id: true, name: true } },
       cotizaciones: {

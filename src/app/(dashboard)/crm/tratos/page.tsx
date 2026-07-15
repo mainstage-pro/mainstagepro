@@ -51,6 +51,10 @@ type Trato = {
   responsable: { id: string; name: string } | null;
   cotizaciones: Cotizacion[];
   nurturingData: string | null;
+  descubrimientoCompleto?: boolean;
+  formEstado?: string | null;
+  modoDescubrimiento?: string | null;
+  preferenciaContacto?: string | null;
 };
 
 type Cliente = { id: string; nombre: string; empresa: string | null; telefono: string | null };
@@ -594,6 +598,57 @@ function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, e
   );
 }
 
+// ── Indicador del sub-proceso comercial de cada trato ───────────────────────────
+function SubProcesoChips({ t }: { t: Trato }) {
+  const chips: { label: string; cls: string }[] = [];
+
+  // Seguimientos registrados (solo relevante en prospección)
+  if (t.etapa === 'LEAD') {
+    let hechos = 0, max = 3;
+    try {
+      const nd = t.nurturingData ? JSON.parse(t.nurturingData) : null;
+      if (nd?.seguimientos) hechos = nd.seguimientos.length;
+      if (nd?.maxSeguimientos) max = nd.maxSeguimientos;
+    } catch { /* noop */ }
+    if (hechos > 0) chips.push({ label: `📌 ${hechos}/${max} seg.`, cls: 'text-amber-400/80 bg-amber-900/15' });
+  }
+
+  // Formulario contestado por el cliente
+  if (t.formEstado === 'COMPLETADO') {
+    chips.push({ label: '📥 Formulario contestado', cls: 'text-[#B3985B] bg-[#B3985B]/10' });
+  }
+
+  // Estado del descubrimiento
+  if (t.descubrimientoCompleto) {
+    chips.push({ label: '🔍 Descubrimiento ✓', cls: 'text-emerald-400/80 bg-emerald-900/15' });
+  } else if (['OPORTUNIDAD', 'VENTA_CERRADA'].includes(t.etapa)) {
+    chips.push({ label: '🔍 Descubrimiento pendiente', cls: 'text-red-400/80 bg-red-900/15' });
+  }
+
+  // Quién hizo el descubrimiento
+  if (t.modoDescubrimiento === 'CLIENTE') {
+    chips.push({ label: '👤 Lo llenó el cliente', cls: 'text-blue-400/70 bg-blue-900/15' });
+  }
+
+  // Preferencia de contacto declarada por el cliente
+  if (t.preferenciaContacto === 'LLAMADA') {
+    chips.push({ label: '📞 Pidió llamada', cls: 'text-violet-400/70 bg-violet-900/15' });
+  } else if (t.preferenciaContacto === 'PROPUESTA') {
+    chips.push({ label: '⚡ Pidió propuesta', cls: 'text-violet-400/70 bg-violet-900/15' });
+  }
+
+  if (chips.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1 mt-1 pl-3">
+      {chips.map((c, i) => (
+        <span key={i} className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium ${c.cls}`}>
+          {c.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 // ── Compact Trato Row — Rediseño ────────────────────────────────────────────────
 function CompactTratoRow({
   trato: t,
@@ -719,6 +774,7 @@ function CompactTratoRow({
           {t.cliente.empresa && (
             <p className="text-[11px] text-[#444] mt-0.5 truncate pl-3">{t.cliente.empresa}</p>
           )}
+          <SubProcesoChips t={t} />
         </div>
 
         {/* ── COL 2 · Proyecto / Evento ─── flex-[2] ──── */}
@@ -1335,6 +1391,11 @@ export default function TratosPage() {
       const matchBcs = !qcs || t.cliente.nombre.toLowerCase().includes(qcs) || (t.cliente.empresa ?? '').toLowerCase().includes(qcs) || (t.nombreEvento ?? '').toLowerCase().includes(qcs);
       return matchBcs && !!t.fechaProximaAccion && new Date(t.fechaProximaAccion) >= hoyD && new Date(t.fechaProximaAccion) <= finSemana;
     }
+    if (filtroEtapa === 'FORMULARIOS') {
+      const qf = busqueda.toLowerCase();
+      const matchBf = !qf || t.cliente.nombre.toLowerCase().includes(qf) || (t.cliente.empresa ?? '').toLowerCase().includes(qf) || (t.nombreEvento ?? '').toLowerCase().includes(qf);
+      return matchBf && t.formEstado === 'COMPLETADO';
+    }
     if (filtroEtapa === 'ACCION_REQUERIDA') {
       const hoyAR = new Date();
       const qar = busqueda.toLowerCase();
@@ -1684,6 +1745,36 @@ export default function TratosPage() {
                   );
                 })}
               </div>
+            );
+          })()}
+
+          {/* ── Bandeja: formularios contestados por el cliente ── */}
+          {(() => {
+            const contestados = tratos.filter(t => t.formEstado === 'COMPLETADO');
+            if (contestados.length === 0) return null;
+            const activo = filtroEtapa === 'FORMULARIOS';
+            return (
+              <button
+                onClick={() => setFiltroEtapa(activo ? 'TODOS' : 'FORMULARIOS')}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 mb-3 rounded-xl border text-left transition-all ${
+                  activo
+                    ? 'bg-gradient-to-r from-[#B3985B]/20 to-[#B3985B]/5 border-[#B3985B]/50'
+                    : 'bg-[#0d0d0d] border-[#181818] hover:border-[#B3985B]/30'
+                }`}
+              >
+                <span className="text-lg">📥</span>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-semibold ${activo ? 'text-[#B3985B]' : 'text-white'}`}>
+                    Formularios contestados
+                  </p>
+                  <p className="text-[11px] text-gray-500">Descubrimientos que el cliente ya completó · listos para cotizar</p>
+                </div>
+                <span className={`px-2.5 py-1 rounded-full text-xs font-bold tabular-nums shrink-0 ${
+                  activo ? 'bg-[#B3985B] text-black' : 'bg-[#B3985B]/20 text-[#B3985B]'
+                }`}>
+                  {contestados.length}
+                </span>
+              </button>
             );
           })()}
 
