@@ -331,6 +331,26 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
     [serviciosCategorias, value.categorias]
   );
 
+  // Productos armados agrupados por su categoría de origen, para mostrarlos
+  // seccionados igual que los equipos individuales. Los productos sin categoría
+  // caen en un grupo "Otros" que se muestra al final.
+  const productosPorCategoria = useMemo(() => {
+    const grupos = new Map<string, ProductoPublico[]>();
+    for (const p of productos) {
+      const cat = (p.categoria ?? "").trim() || "Otros";
+      const arr = grupos.get(cat);
+      if (arr) arr.push(p);
+      else grupos.set(cat, [p]);
+    }
+    return [...grupos.entries()]
+      .sort(([a], [b]) => {
+        if (a === "Otros") return 1;
+        if (b === "Otros") return -1;
+        return a.localeCompare(b, "es");
+      })
+      .map(([nombre, items]) => ({ nombre, items }));
+  }, [productos]);
+
   // ── Mutadores ──
   function toggleCategoria(catId: string) {
     if (readOnly) return;
@@ -1098,62 +1118,72 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
           {subTab === "productos" && (
             <div className="space-y-2">
               <p className="text-gray-500 text-xs">
-                Sistemas y productos ya armados. Al elegir uno se consideran todos sus equipos para la disponibilidad.
+                Sistemas y productos ya armados, agrupados por categoría. Al elegir uno se consideran todos sus equipos para la disponibilidad.
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {productos.map((p) => {
-                  const sel = productosSel.some((s) => s.id === p.id);
-                  const cant = productosSel.find((s) => s.id === p.id)?.cantidad ?? 1;
-                  return (
-                    <div
-                      key={p.id}
-                      className={`rounded-xl border p-2.5 transition-all ${
-                        sel ? "border-[#B3985B] bg-[#B3985B]/[0.06]" : "border-[#1e1e1e] bg-[#0d0d0d]"
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => toggleProducto(p.id)}
-                        className="flex items-start gap-2.5 w-full text-left"
-                      >
-                        <span className="w-12 h-12 rounded-lg bg-[#1a1a1a] overflow-hidden shrink-0 flex items-center justify-center">
-                          {p.imagenUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={p.imagenUrl} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="text-gray-700">📦</span>
-                          )}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="flex items-center gap-1.5">
-                            <span
-                              className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
-                                sel ? "bg-[#B3985B] border-[#B3985B]" : "border-[#333]"
-                              }`}
-                            >
-                              {sel && <span className="text-black text-[9px] font-bold leading-none">✓</span>}
+              {productosPorCategoria.map((grupo) => (
+                <div key={grupo.nombre} className="space-y-1.5">
+                  <p className="flex items-center gap-1.5 text-[#B3985B] text-xs font-semibold uppercase tracking-wider pt-1">
+                    {catEmoji(grupo.nombre)} {grupo.nombre}
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-gray-400 font-bold normal-case tracking-normal">
+                      {grupo.items.length}
+                    </span>
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {grupo.items.map((p) => {
+                      const sel = productosSel.some((s) => s.id === p.id);
+                      const cant = productosSel.find((s) => s.id === p.id)?.cantidad ?? 1;
+                      return (
+                        <div
+                          key={p.id}
+                          className={`rounded-xl border p-2.5 transition-all ${
+                            sel ? "border-[#B3985B] bg-[#B3985B]/[0.06]" : "border-[#1e1e1e] bg-[#0d0d0d]"
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => toggleProducto(p.id)}
+                            className="flex items-start gap-2.5 w-full text-left"
+                          >
+                            <span className="w-12 h-12 rounded-lg bg-[#1a1a1a] overflow-hidden shrink-0 flex items-center justify-center">
+                              {p.imagenUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={p.imagenUrl} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-gray-700">📦</span>
+                              )}
                             </span>
-                            <span className="text-white text-xs font-medium leading-tight">{p.nombre}</span>
-                          </span>
-                          {p.descripcion && (
-                            <span className="block text-gray-500 text-[10px] leading-tight line-clamp-2 mt-0.5">
-                              {p.descripcion}
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-center gap-1.5">
+                                <span
+                                  className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
+                                    sel ? "bg-[#B3985B] border-[#B3985B]" : "border-[#333]"
+                                  }`}
+                                >
+                                  {sel && <span className="text-black text-[9px] font-bold leading-none">✓</span>}
+                                </span>
+                                <span className="text-white text-xs font-medium leading-tight">{p.nombre}</span>
+                              </span>
+                              {p.descripcion && (
+                                <span className="block text-gray-500 text-[10px] leading-tight line-clamp-2 mt-0.5">
+                                  {p.descripcion}
+                                </span>
+                              )}
+                              <span className="block text-[#B3985B] text-[11px] font-semibold mt-1">
+                                ${p.precioFinal.toLocaleString("es-MX")}
+                              </span>
                             </span>
+                          </button>
+                          {sel && (
+                            <div className="flex items-center justify-end mt-1.5">
+                              {controlCantidad(cant, (n) => setProductoCantidad(p.id, n))}
+                            </div>
                           )}
-                          <span className="block text-[#B3985B] text-[11px] font-semibold mt-1">
-                            ${p.precioFinal.toLocaleString("es-MX")}
-                          </span>
-                        </span>
-                      </button>
-                      {sel && (
-                        <div className="flex items-center justify-end mt-1.5">
-                          {controlCantidad(cant, (n) => setProductoCantidad(p.id, n))}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 

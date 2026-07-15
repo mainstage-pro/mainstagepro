@@ -9,7 +9,7 @@ import { isLegacyString, parseLinks } from "@/utils/legacyText";
 
 const PASOS_DISCOVERY = [
   { id: 1, label: "Info Básica", icon: "📋" },
-  { id: 2, label: "Detalles", icon: "⚙️" },
+  { id: 2, label: "Producción", icon: "⚙️" },
   { id: 3, label: "Operativo", icon: "🚚" },
   { id: 4, label: "Comercial", icon: "🤝" },
 ];
