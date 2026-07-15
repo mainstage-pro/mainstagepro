@@ -853,27 +853,6 @@ export default function DiscoveryForm({
                 />
               </div>
 
-              {/* Preferencia de contacto — SOLO cuando el cliente llena el formulario */}
-              {clientMode && (
-                <div className="sm:col-span-2">
-                  <label className="text-xs text-gray-400 block mb-2">¿Cómo prefieres continuar?</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {[
-                      { value: "LLAMADA", icon: "📞", label: "Quiero una llamada", desc: "Prefiero que me contacten para consolidar juntos los detalles." },
-                      { value: "PROPUESTA", icon: "⚡", label: "Quiero mi propuesta ya", desc: "Prefiero recibir una propuesta lo antes posible." },
-                    ].map(pref => (
-                      <button key={pref.value} type="button"
-                        onClick={() => setDiscForm(p => ({ ...p, preferenciaContacto: p.preferenciaContacto === pref.value ? "" : pref.value }))}
-                        className={`text-left p-3 rounded-xl border transition-all ${discForm.preferenciaContacto === pref.value ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#222] bg-[#111] hover:border-[#444]"}`}>
-                        <div className="text-xl mb-1">{pref.icon}</div>
-                        <p className={`text-sm font-semibold mb-0.5 ${discForm.preferenciaContacto === pref.value ? "text-[#B3985B]" : "text-white"}`}>{pref.label}</p>
-                        <p className="text-[10px] text-gray-500 leading-tight">{pref.desc}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
             </div>
 
             </div>)} {/* /paso1 */}
@@ -1418,6 +1397,27 @@ export default function DiscoveryForm({
                 </div>
                 )}
               </div>
+              )}
+
+              {/* Preferencia de contacto — SOLO cuando el cliente llena el formulario */}
+              {clientMode && (
+                <div>
+                  <label className="text-xs text-gray-400 block mb-2">¿Cómo prefieres continuar?</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                      { value: "LLAMADA", icon: "📞", label: "Quiero una llamada", desc: "Prefiero que me contacten para consolidar juntos los detalles." },
+                      { value: "PROPUESTA", icon: "⚡", label: "Quiero mi propuesta ya", desc: "Prefiero recibir una propuesta lo antes posible." },
+                    ].map(pref => (
+                      <button key={pref.value} type="button"
+                        onClick={() => setDiscForm(p => ({ ...p, preferenciaContacto: p.preferenciaContacto === pref.value ? "" : pref.value }))}
+                        className={`text-left p-3 rounded-xl border transition-all ${discForm.preferenciaContacto === pref.value ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#222] bg-[#111] hover:border-[#444]"}`}>
+                        <div className="text-xl mb-1">{pref.icon}</div>
+                        <p className={`text-sm font-semibold mb-0.5 ${discForm.preferenciaContacto === pref.value ? "text-[#B3985B]" : "text-white"}`}>{pref.label}</p>
+                        <p className="text-[10px] text-gray-500 leading-tight">{pref.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
 
               {/* Panel de envío del cliente — solo modo público */}
