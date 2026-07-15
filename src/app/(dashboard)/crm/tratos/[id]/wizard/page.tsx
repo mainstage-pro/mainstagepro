@@ -35,6 +35,8 @@ interface Trato {
   tipoEvento: string | null;
   nombreEvento: string | null;
   momentoContratacion: string | null;
+  modoDescubrimiento: string | null;
+  preferenciaContacto: string | null;
 }
 
 type NurturingData = {
@@ -448,7 +450,19 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
                 <p className="text-violet-400/70 text-xs mt-0.5">{nombre1} está en proceso de decisión</p>
               </div>
             </div>
-            
+
+            {/* El cliente completó su descubrimiento por su cuenta → retomar y cotizar */}
+            {trato.modoDescubrimiento === "CLIENTE" && trato.formEstado === "COMPLETADO" && (
+              <div className="p-3 rounded-xl border border-emerald-800/40 bg-emerald-900/15">
+                <p className="text-emerald-300 text-xs font-semibold mb-1">👤 El cliente completó su descubrimiento</p>
+                <p className="text-emerald-200/70 text-[11px] leading-relaxed">
+                  Avanzó automáticamente a oportunidad. Retoma el proceso y arma la cotización con la información que dejó.
+                  {trato.preferenciaContacto === "LLAMADA" && " Pidió que lo contacten por llamada primero."}
+                  {trato.preferenciaContacto === "PROPUESTA" && " Pidió recibir una propuesta lo antes posible."}
+                </p>
+              </div>
+            )}
+
             {!trato.descubrimientoCompleto || isEditingDiscovery ? (
               <div className="mt-4">
                 {!trato.descubrimientoCompleto && (
@@ -548,7 +562,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
                   disabled={creandoCotizacion}
                   className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-violet-700/20 border border-violet-700/40 text-violet-300 text-sm font-bold hover:bg-violet-700/30 transition-colors disabled:opacity-40 cursor-pointer mb-3"
                 >
-                  {creandoCotizacion ? "Creando..." : "📄 Crear nueva cotización →"}
+                  {creandoCotizacion ? "Creando..." : "📄 Retomar el proceso y cotizar →"}
                 </button>
 
                 <div className="flex justify-center border-t border-[#1a1a1a] pt-3">
