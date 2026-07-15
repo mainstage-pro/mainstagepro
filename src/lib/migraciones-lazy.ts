@@ -12,19 +12,37 @@ let _ready = false;
 export async function ensureOperacionTecnicaColumns() {
   if (_ready) return;
   try {
-    await prisma.$executeRawUnsafe(
-      `ALTER TABLE roles_tecnicos ADD COLUMN IF NOT EXISTS "disciplina" TEXT`
-    );
+    const hasDisciplina = await prisma.$queryRaw<any[]>`
+      SELECT column_name FROM information_schema.columns 
+      WHERE table_name = 'roles_tecnicos' AND column_name = 'disciplina'
+    `;
+    if (hasDisciplina.length === 0) {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE roles_tecnicos ADD COLUMN IF NOT EXISTS "disciplina" TEXT`
+      );
+    }
   } catch { /* ya existe */ }
   try {
-    await prisma.$executeRawUnsafe(
-      `ALTER TABLE proyecto_personal ADD COLUMN IF NOT EXISTS "esAdicional" BOOLEAN NOT NULL DEFAULT false`
-    );
+    const hasEsAdicional = await prisma.$queryRaw<any[]>`
+      SELECT column_name FROM information_schema.columns 
+      WHERE table_name = 'proyecto_personal' AND column_name = 'esAdicional'
+    `;
+    if (hasEsAdicional.length === 0) {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE proyecto_personal ADD COLUMN IF NOT EXISTS "esAdicional" BOOLEAN NOT NULL DEFAULT false`
+      );
+    }
   } catch { /* ya existe */ }
   try {
-    await prisma.$executeRawUnsafe(
-      `ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS "evaluacionPostEvento" JSONB`
-    );
+    const hasEval = await prisma.$queryRaw<any[]>`
+      SELECT column_name FROM information_schema.columns 
+      WHERE table_name = 'proyectos' AND column_name = 'evaluacionPostEvento'
+    `;
+    if (hasEval.length === 0) {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS "evaluacionPostEvento" JSONB`
+      );
+    }
   } catch { /* ya existe */ }
   _ready = true;
 }
@@ -40,14 +58,26 @@ let _procesoVentaReady = false;
 export async function ensureProcesoVentaColumns() {
   if (_procesoVentaReady) return;
   try {
-    await prisma.$executeRawUnsafe(
-      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "modoDescubrimiento" TEXT`
-    );
+    const hasModo = await prisma.$queryRaw<any[]>`
+      SELECT column_name FROM information_schema.columns 
+      WHERE table_name = 'tratos' AND column_name = 'modoDescubrimiento'
+    `;
+    if (hasModo.length === 0) {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "modoDescubrimiento" TEXT`
+      );
+    }
   } catch { /* ya existe */ }
   try {
-    await prisma.$executeRawUnsafe(
-      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "preferenciaContacto" TEXT`
-    );
+    const hasPref = await prisma.$queryRaw<any[]>`
+      SELECT column_name FROM information_schema.columns 
+      WHERE table_name = 'tratos' AND column_name = 'preferenciaContacto'
+    `;
+    if (hasPref.length === 0) {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "preferenciaContacto" TEXT`
+      );
+    }
   } catch { /* ya existe */ }
   _procesoVentaReady = true;
 }
