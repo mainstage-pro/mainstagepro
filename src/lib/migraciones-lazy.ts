@@ -51,3 +51,26 @@ export async function ensureProcesoVentaColumns() {
   } catch { /* ya existe */ }
   _procesoVentaReady = true;
 }
+
+/**
+ * Migraciones lazy para servicios de varios días (patrón Neon: ADD COLUMN IF NOT EXISTS).
+ * - tratos.fechasEvento / proyectos.fechasEvento: JSON con las fechas explícitas del evento
+ *   cuando dura más de un día. El día 1 sigue en fechaEventoEstimada / fechaEvento.
+ * Idempotente y seguro de correr múltiples veces.
+ */
+let _multidiaReady = false;
+
+export async function ensureMultidiaColumns() {
+  if (_multidiaReady) return;
+  try {
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "fechasEvento" TEXT`
+    );
+  } catch { /* ya existe */ }
+  try {
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS "fechasEvento" TEXT`
+    );
+  } catch { /* ya existe */ }
+  _multidiaReady = true;
+}

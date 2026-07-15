@@ -234,6 +234,7 @@ model Trato {
 
   // ── Duración del servicio ────────────────────────────────────────────────
   diasServicio       Int?     // días de renta de equipo — se usa para pre-llenar cotizaciones
+  fechasEvento       String?  // JSON: ["YYYY-MM-DD", ...] fechas explícitas del evento cuando dura varios días (día 1 = fechaEventoEstimada)
   // ── Horarios del evento (capturados durante ventas) ─────────────────────
   horaInicioEvento   String?  // ej: "18:00"
   horaFinEvento      String?  // ej: "23:00"
@@ -521,6 +522,7 @@ model Proyecto {
   tipoEvento             String
   tipoServicio           String?
   fechaEvento            DateTime
+  fechasEvento           String?   // JSON: ["YYYY-MM-DD", ...] fechas explícitas cuando el proyecto dura varios días (día 1 = fechaEvento)
   horaInicioEvento       String?
   horaFinEvento          String?
   fechaMontaje           DateTime?

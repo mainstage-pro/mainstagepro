@@ -10,6 +10,15 @@ export async function register() {
       // No enviar errores en desarrollo local si no hay DSN
       enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
     });
+
+    // Garantiza las columnas `fechasEvento` (Trato/Proyecto) al arrancar el proceso,
+    // ANTES de atender cualquier lectura que las incluya en el SELECT. Evita el gotcha
+    // de migración lazy donde una ruta de lectura rompe porque la columna aún no existe.
+    // Idempotente y nunca lanza (cada ALTER va en su propio try/catch interno).
+    try {
+      const { ensureMultidiaColumns } = await import("@/lib/migraciones-lazy");
+      await ensureMultidiaColumns();
+    } catch { /* el arranque no debe fallar por esto */ }
   }
 
   if (process.env.NEXT_RUNTIME === "edge") {

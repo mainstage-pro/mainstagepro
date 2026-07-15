@@ -20,6 +20,7 @@ import { BackButton } from "@/components/BackButton";
 import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem } from "@/components/proyectos/ViabilidadWidget";
 import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
 import { contarRespondidos, contarIncidencias, promedioCalificaciones, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
+import { diasEvento } from "@/lib/fechas-evento";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
@@ -60,7 +61,7 @@ interface TransporteSlot { vehiculoId: string; choferId: string; horaSalida: str
 interface Proyecto {
   id: string; numeroProyecto: string; nombre: string; estado: string;
   tipoEvento: string; tipoServicio: string | null;
-  fechaEvento: string; horaInicioEvento: string | null; horaFinEvento: string | null;
+  fechaEvento: string; fechasEvento: string | null; horaInicioEvento: string | null; horaFinEvento: string | null;
   fechaMontaje: string | null; horaInicioMontaje: string | null; duracionMontajeHrs: number | null;
   horaMontaje: string | null; horaInicio: string | null; horaDesmontaje: string | null;
   direccionVenue: string | null; linkMaps: string | null; indicacionesAcceso: string | null;
@@ -3639,6 +3640,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const hoyStr = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
   const eventoStr = proyecto.fechaEvento.substring(0, 10);
   const diasRestantes = Math.round((new Date(eventoStr).getTime() - new Date(hoyStr).getTime()) / 86400000);
+  // Servicio de varios días: lista canónica de fechas (día 1 = fechaEvento)
+  const diasDelEvento = diasEvento(proyecto.fechaEvento, proyecto.fechasEvento);
+  const esMultidia = diasDelEvento.length > 1;
+  const fmtDiaCorto = (iso: string) =>
+    new Date(iso + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
   const esRenta = proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA";
 
   return (
@@ -3668,10 +3674,28 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             )}
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">Fecha del evento</p>
-            <p className="text-white font-semibold text-sm leading-tight">{fmtDate(proyecto.fechaEvento)}</p>
-            {proyecto.horaInicioEvento && (
-              <p className="text-gray-400 text-xs mt-0.5">{proyecto.horaInicioEvento}{proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}</p>
+            <p className="text-[10px] uppercase tracking-wider text-gray-600 mb-1">
+              {esMultidia ? `Días del evento · ${diasDelEvento.length}` : "Fecha del evento"}
+            </p>
+            {esMultidia ? (
+              <div className="space-y-1">
+                {diasDelEvento.map((d, i) => (
+                  <div key={d} className="flex items-center gap-2">
+                    <span className="text-[9px] font-semibold text-black bg-[#B3985B] rounded px-1.5 py-0.5 shrink-0">D{i + 1}</span>
+                    <span className="text-white text-sm capitalize">{fmtDiaCorto(d)}</span>
+                  </div>
+                ))}
+                {proyecto.horaInicioEvento && (
+                  <p className="text-gray-400 text-xs mt-0.5">{proyecto.horaInicioEvento}{proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}</p>
+                )}
+              </div>
+            ) : (
+              <>
+                <p className="text-white font-semibold text-sm leading-tight">{fmtDate(proyecto.fechaEvento)}</p>
+                {proyecto.horaInicioEvento && (
+                  <p className="text-gray-400 text-xs mt-0.5">{proyecto.horaInicioEvento}{proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}</p>
+                )}
+              </>
             )}
           </div>
           <div className="min-w-0">

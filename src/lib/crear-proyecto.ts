@@ -157,6 +157,8 @@ export async function crearProyectoDesdeCotizacion(
       tipoServicio: cot.tipoServicio || cot.trato?.tipoServicio,
       recoleccionStatus: (cot.tipoServicio || cot.trato?.tipoServicio) === "RENTA" ? "PENDIENTE" : "NO_APLICA",
       fechaEvento,
+      // Servicio de varios días: heredar las fechas explícitas del descubrimiento (día 1 = fechaEvento).
+      fechasEvento: cot.trato?.fechasEvento ?? null,
       lugarEvento: cot.lugarEvento,
       descripcionGeneral: cot.observaciones,
       horaInicioEvento: cot.trato?.horaInicioEvento ?? null,

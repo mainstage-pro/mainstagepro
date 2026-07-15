@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { agendarSeguimientoPorEtapa } from "@/lib/etapaSeguimientos";
 import { syncFechaProximaAccion } from "@/app/api/seguimientos/route";
-import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
+import { ensureProcesoVentaColumns, ensureMultidiaColumns } from "@/lib/migraciones-lazy";
 
 let _vendedorColReady = false;
 async function ensureVendedorId() {
@@ -84,6 +84,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   await ensureVendedorId();
   await ensureBriefCols();
   await ensureProcesoVentaColumns();
+  await ensureMultidiaColumns();
   const { id } = await params;
   const body = await request.json();
 
@@ -99,7 +100,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "tipoProspecto", "nurturingData",
     // Descubrimiento
     "canalAtencion", "nombreEvento", "duracionEvento", "asistentesEstimados", "subtipoEvento",
-    "diasServicio",
+    "diasServicio", "fechasEvento",
     "serviciosInteres", "ideasReferencias", "etapaContratacion", "momentoContratacion", "continuarPor",
     "descubrimientoCompleto", "posibleDuplicado",
     // Selección de equipos del inventario

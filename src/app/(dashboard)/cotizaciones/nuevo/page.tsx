@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { calcularDescuentoVolumen, calcularDescuentoMultidia, formatCurrency, formatPct } from "@/lib/cotizador";
 import { DESCUENTO_B2B, IVA, VIABILIDAD, JORNADA_LABELS } from "@/lib/constants";
 import { getSugerenciasTecnicos } from "@/lib/sugerencias-tecnicos";
+import { diasEvento } from "@/lib/fechas-evento";
 import VenuePicker from "@/components/ui/VenuePicker";
 import NumSelect from "@/components/ui/NumSelect";
 import SearchableSelect from "@/components/ui/SearchableSelect";
@@ -646,6 +647,14 @@ function CotizadorForm() {
         }));
         if (t.notas) setTratoNotas(t.notas);
         if (t.archivos?.length) setTratoArchivos(t.archivos);
+        // Servicio de varios días: sembrar una jornada de OPERACIÓN por cada fecha del
+        // evento para que el vendedor solo asigne técnicos por día. Solo si aún no hay plan.
+        const diasDelEvento = diasEvento(t.fechaEventoEstimada, t.fechasEvento);
+        if (diasDelEvento.length > 1) {
+          setJornadasPlan(prev => prev.length > 0
+            ? prev
+            : diasDelEvento.map(f => ({ id: uid(), fecha: f, tipo: "OPERACION", slots: [] })));
+        }
         // Auto-activate descuento manual si trato es Family & Friends
         if (t.familyAndFriends) {
           setManualActivo(true);

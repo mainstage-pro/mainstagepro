@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cotejarOCrearCliente } from "@/lib/cotejo-cliente";
 import { ensureFormularioLeadTable, etapaDesdeMomento } from "@/lib/formulario-lead";
-import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
+import { ensureProcesoVentaColumns, ensureMultidiaColumns } from "@/lib/migraciones-lazy";
 
 // ─── Ensure formRecibidoEn column exists ─────────────────────────────────────
 let _colReady = false;
@@ -27,7 +27,7 @@ async function ensureFormRecibidoEn() {
 // Reutilizado por el guardado parcial (auto-save) y el envío final del cliente.
 const DISCOVERY_KEYS = [
   "tipoEvento", "subtipoEvento", "nombreEvento", "fechaEventoEstimada", "lugarEstimado",
-  "asistentesEstimados", "diasServicio", "presupuestoEstimado", "tipoServicio", "notas",
+  "asistentesEstimados", "diasServicio", "fechasEvento", "presupuestoEstimado", "tipoServicio", "notas",
   "familyAndFriends", "realizarRender", "tradeCalificado",
   "horaInicioEvento", "horaFinEvento", "duracionMontajeHrs",
   "ventanaMontajeInicio", "ventanaMontajeFin", "horaTerminoMontaje",
@@ -60,6 +60,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
   const { token } = await params;
   await ensureFormRecibidoEn();
   await ensureProcesoVentaColumns();
+  await ensureMultidiaColumns();
 
   const trato = await prisma.trato.findUnique({
     where: { formToken: token },
@@ -76,6 +77,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
       lugarEstimado: true,
       asistentesEstimados: true,
       diasServicio: true,
+      fechasEvento: true,
       presupuestoEstimado: true,
       notas: true,
       serviciosInteres: true,
@@ -140,6 +142,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   const { token } = await params;
   await ensureFormRecibidoEn();
   await ensureProcesoVentaColumns();
+  await ensureMultidiaColumns();
 
   const trato = await prisma.trato.findUnique({
     where: { formToken: token },

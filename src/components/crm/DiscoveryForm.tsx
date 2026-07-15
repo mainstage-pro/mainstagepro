@@ -6,6 +6,7 @@ import { Combobox } from "@/components/Combobox";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { isLegacyString, parseLinks } from "@/utils/legacyText";
+import { parseFechasEvento } from "@/lib/fechas-evento";
 
 const PASOS_DISCOVERY = [
   { id: 1, label: "Info Básica", icon: "📋" },
@@ -55,6 +56,19 @@ const EXTRAS_EVENTO: Record<string, any[]> = {
     { id: "PRODUCCION_GENERAL", label: "Producción completa", grupo: "extra" },
   ],
 };
+
+// Combina el día 1 (fechaEventoEstimada) con los días extra en una lista canónica.
+// Devuelve el JSON a guardar (o null si es 0-1 día) y los días derivados del conteo.
+function calcFechasEvento(form: { fechaEventoEstimada: string; fechasEventoExtra: string[] }): {
+  fechasEvento: string | null;
+  diasDerivados: number | null;
+} {
+  const dia1 = form.fechaEventoEstimada === "por-definir" ? "" : form.fechaEventoEstimada;
+  if (!dia1) return { fechasEvento: null, diasDerivados: null };
+  const lista = Array.from(new Set([dia1, ...form.fechasEventoExtra.filter(Boolean)])).sort();
+  if (lista.length <= 1) return { fechasEvento: null, diasDerivados: null };
+  return { fechasEvento: JSON.stringify(lista), diasDerivados: lista.length };
+}
 
 export default function DiscoveryForm({
   id, trato, setTrato, onComplete, readOnly = false,
@@ -222,6 +236,8 @@ export default function DiscoveryForm({
     lugarEstimado: "",
     asistentesEstimados: "",
     diasServicio: "",
+    // Días adicionales del evento (además del día 1 = fechaEventoEstimada). "YYYY-MM-DD"[]
+    fechasEventoExtra: [] as string[],
     presupuestoEstimado: "",
     tipoServicio: "",
     ideasReferencias: "",
@@ -308,6 +324,11 @@ export default function DiscoveryForm({
       lugarEstimado: trato.lugarEstimado === "Por definir" ? "por-definir" : (trato.lugarEstimado || ""),
       asistentesEstimados: trato.asistentesEstimados != null ? String(trato.asistentesEstimados) : "",
       diasServicio: trato.diasServicio != null ? String(trato.diasServicio) : "",
+      // Días adicionales = todas las fechas guardadas menos el día 1 (fechaEventoEstimada)
+      fechasEventoExtra: (() => {
+        const dia1 = trato.fechaEventoEstimada ? String(trato.fechaEventoEstimada).split("T")[0] : "";
+        return parseFechasEvento(trato.fechasEvento).filter((f) => f !== dia1);
+      })(),
       presupuestoEstimado: trato.presupuestoEstimado != null ? String(trato.presupuestoEstimado) : "",
       tipoServicio: trato.tipoServicio || "",
       notas: trato.notas || "",
@@ -367,14 +388,16 @@ export default function DiscoveryForm({
   // guardado manual (antes omitía subtipo y contacto decisor).
   const buildDiscPayload = useCallback((form: typeof discForm) => {
     const isRenta = form.tipoServicio === "RENTA";
+    const { fechasEvento, diasDerivados } = calcFechasEvento(form);
     return {
       tipoEvento: form.tipoEvento,
       subtipoEvento: form.subtipoEvento || null,
       nombreEvento: form.nombreEvento || null,
       fechaEventoEstimada: form.fechaEventoEstimada === "por-definir" ? null : (form.fechaEventoEstimada || null),
+      fechasEvento,
       lugarEstimado: form.lugarEstimado === "por-definir" ? "Por definir" : (form.lugarEstimado || null),
       asistentesEstimados: form.asistentesEstimados ? parseInt(form.asistentesEstimados) : null,
-      diasServicio: form.diasServicio ? parseInt(form.diasServicio) : null,
+      diasServicio: diasDerivados ?? (form.diasServicio ? parseInt(form.diasServicio) : null),
       presupuestoEstimado: form.presupuestoEstimado ? parseFloat(form.presupuestoEstimado) : null,
       tipoServicio: form.tipoServicio || null,
       notas: form.notas || null,
@@ -504,14 +527,16 @@ export default function DiscoveryForm({
   async function guardarDescubrimiento(completar = false) {
     setSaving(true);
     const isRenta = discForm.tipoServicio === "RENTA";
+    const { fechasEvento, diasDerivados } = calcFechasEvento(discForm);
     const payload: Record<string, unknown> = {
       tipoEvento: discForm.tipoEvento,
       subtipoEvento: discForm.subtipoEvento || null,
       nombreEvento: discForm.nombreEvento || null,
       fechaEventoEstimada: discForm.fechaEventoEstimada === "por-definir" ? null : (discForm.fechaEventoEstimada || null),
+      fechasEvento,
       lugarEstimado: discForm.lugarEstimado === "por-definir" ? "Por definir" : (discForm.lugarEstimado || null),
       asistentesEstimados: discForm.asistentesEstimados ? parseInt(discForm.asistentesEstimados) : null,
-      diasServicio: discForm.diasServicio ? parseInt(discForm.diasServicio) : null,
+      diasServicio: diasDerivados ?? (discForm.diasServicio ? parseInt(discForm.diasServicio) : null),
       presupuestoEstimado: discForm.presupuestoEstimado ? parseFloat(discForm.presupuestoEstimado) : null,
       tipoServicio: discForm.tipoServicio || null,
       notas: discForm.notas || null,
@@ -810,20 +835,46 @@ export default function DiscoveryForm({
                 )}
               </div>
 
-              {/* Días de servicio */}
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Días de servicio del equipo</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number" min="1" max="30"
-                    value={discForm.diasServicio}
-                    onChange={e => setDiscForm(p => ({ ...p, diasServicio: e.target.value }))}
-                    placeholder="1"
-                    className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                  <span className="text-xs text-gray-500">día(s){clientMode ? "" : " · se pre-llena en la cotización"}</span>
+              {/* Días del evento — servicio de uno o varios días con fecha específica */}
+              {discForm.fechaEventoEstimada && discForm.fechaEventoEstimada !== "por-definir" && (
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Días del evento</label>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-gray-500 w-12 shrink-0">Día 1</span>
+                      <div className="flex-1 bg-[#141414] border border-[#2a2a2a] rounded-lg px-3 py-2 text-gray-300 text-sm">{discForm.fechaEventoEstimada}</div>
+                    </div>
+                    {discForm.fechasEventoExtra.map((fecha, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className="text-[10px] text-gray-500 w-12 shrink-0">Día {i + 2}</span>
+                        <input
+                          type="date"
+                          value={fecha}
+                          min={discForm.fechaEventoEstimada}
+                          onChange={e => setDiscForm(p => {
+                            const next = [...p.fechasEventoExtra];
+                            next[i] = e.target.value;
+                            return { ...p, fechasEventoExtra: next };
+                          })}
+                          className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                        />
+                        <button type="button"
+                          onClick={() => setDiscForm(p => ({ ...p, fechasEventoExtra: p.fechasEventoExtra.filter((_, j) => j !== i) }))}
+                          className="text-gray-500 hover:text-red-400 text-lg leading-none px-1" title="Quitar día">×</button>
+                      </div>
+                    ))}
+                    <button type="button"
+                      onClick={() => setDiscForm(p => ({ ...p, fechasEventoExtra: [...p.fechasEventoExtra, ""] }))}
+                      className="text-xs text-[#B3985B] hover:text-[#c9ae70] flex items-center gap-1">
+                      <span className="text-base leading-none">+</span> Agregar día
+                    </button>
+                    <p className="text-[11px] text-gray-500">
+                      {1 + discForm.fechasEventoExtra.filter(Boolean).length} día(s) de servicio
+                      {clientMode ? "" : " · se pre-llenan en la cotización y el calendario"}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Número de asistentes — se define desde el primer paso */}
               <div>

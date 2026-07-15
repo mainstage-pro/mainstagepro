@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
+import { ensureProcesoVentaColumns, ensureMultidiaColumns } from "@/lib/migraciones-lazy";
+import { diasEvento } from "@/lib/fechas-evento";
 
 type Nivel = 'tentativo' | 'confirmado' | 'operativo';
 
@@ -17,12 +18,31 @@ function nivelTrato(confirmadaEn: Date | null, etapa: string): Nivel {
   return 'tentativo';
 }
 
+// Expande un evento (posiblemente de varios días) en las celdas que caen dentro del
+// mes consultado. Devuelve el número de día del mes, el índice (0-based) y el total.
+function celdasDelMes(
+  fechaPrincipal: Date | string | null | undefined,
+  fechasEventoJson: string | null | undefined,
+  year: number,
+  month: number,
+): { dia: number; idx: number; total: number }[] {
+  const dias = diasEvento(fechaPrincipal, fechasEventoJson);
+  const total = dias.length;
+  const out: { dia: number; idx: number; total: number }[] = [];
+  dias.forEach((d, idx) => {
+    const [y, m, dd] = d.split("-").map(Number);
+    if (y === year && m - 1 === month) out.push({ dia: dd, idx, total });
+  });
+  return out;
+}
+
 export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   // Lee tratos con `include`; garantizar columnas nuevas antes de consultar.
   await ensureProcesoVentaColumns();
+  await ensureMultidiaColumns();
 
   const sp = req.nextUrl.searchParams;
   const mes = sp.get("mes"); // "2026-04"
@@ -44,19 +64,21 @@ export async function GET(req: NextRequest) {
     orderBy: { fechaEvento: "asc" },
   });
 
-  const eventosProyecto = proyectos.map(p => ({
-    id: p.id,
-    dia: new Date(p.fechaEvento.toISOString().substring(0, 10) + "T12:00:00Z").getUTCDate(),
-    titulo: p.nombre,
-    subtitulo: p.cliente.nombre,
-    estado: p.estado,
-    nivel: nivelProyecto(p.estado),
-    url: `/proyectos/${p.id}`,
-    tipoEvento: p.tipoEvento,
-    tipoServicio: p.tipoServicio,
-    lugarEvento: p.lugarEvento,
-    horaInicioEvento: p.horaInicioEvento,
-  }));
+  const eventosProyecto = proyectos.flatMap(p =>
+    celdasDelMes(p.fechaEvento, (p as unknown as { fechasEvento?: string | null }).fechasEvento, year, month).map(({ dia, idx, total }) => ({
+      id: `proy-${p.id}-d${idx}`,
+      dia,
+      titulo: total > 1 ? `${p.nombre} · Día ${idx + 1}/${total}` : p.nombre,
+      subtitulo: p.cliente.nombre,
+      estado: p.estado,
+      nivel: nivelProyecto(p.estado),
+      url: `/proyectos/${p.id}`,
+      tipoEvento: p.tipoEvento,
+      tipoServicio: p.tipoServicio,
+      lugarEvento: p.lugarEvento,
+      horaInicioEvento: p.horaInicioEvento,
+    })),
+  );
 
   // ── 2. Tratos con cotización APROBADA sin proyecto creado aún ──────────────
   const tratosConCot = await prisma.trato.findMany({
@@ -90,21 +112,23 @@ export async function GET(req: NextRequest) {
       (t as unknown as { confirmadaEn?: Date | null }).confirmadaEn ?? null,
       (t as unknown as { etapa?: string }).etapa ?? 'LEAD',
     );
-    return t.cotizaciones
-      .filter(c => c.fechaEvento)
-      .map(c => ({
-        id: t.id,
-        dia: new Date(c.fechaEvento!.toISOString().substring(0, 10) + "T12:00:00Z").getUTCDate(),
-        titulo: t.nombreEvento || (c as unknown as Record<string, unknown>).nombreEvento as string || "Evento",
-        subtitulo: t.cliente?.nombre || "",
-        estado: "VENTA_CERRADA" as const,
-        nivel,
-        url: `/crm/tratos/${t.id}`,
-        tipoEvento: t.tipoEvento,
-        tipoServicio: null,
-        lugarEvento: t.lugarEstimado,
-        horaInicioEvento: null,
-      }));
+    const cot = t.cotizaciones.find(c => c.fechaEvento);
+    if (!cot) return [];
+    const titulo = t.nombreEvento || (cot as unknown as Record<string, unknown>).nombreEvento as string || "Evento";
+    // La lista canónica de días sale del descubrimiento (trato.fechasEvento); día 1 = fecha de la cotización.
+    return celdasDelMes(cot.fechaEvento, (t as unknown as { fechasEvento?: string | null }).fechasEvento, year, month).map(({ dia, idx, total }) => ({
+      id: `tratocot-${t.id}-d${idx}`,
+      dia,
+      titulo: total > 1 ? `${titulo} · Día ${idx + 1}/${total}` : titulo,
+      subtitulo: t.cliente?.nombre || "",
+      estado: "VENTA_CERRADA" as const,
+      nivel,
+      url: `/crm/tratos/${t.id}`,
+      tipoEvento: t.tipoEvento,
+      tipoServicio: null,
+      lugarEvento: t.lugarEstimado,
+      horaInicioEvento: null,
+    }));
   });
 
   // ── 3. Tratos seguros (VENTA_CERRADA o con confirmadaEn) sin cotización APROBADA ──
@@ -127,19 +151,22 @@ export async function GET(req: NextRequest) {
 
   const eventosTratosConfirmados = tratosConfirmados
     .filter(t => t.fechaEventoEstimada)
-    .map(t => ({
-      id: t.id,
-      dia: new Date(t.fechaEventoEstimada!.toISOString().substring(0, 10) + "T12:00:00Z").getUTCDate(),
-      titulo: t.nombreEvento || "Evento confirmado",
-      subtitulo: t.cliente?.nombre || "",
-      estado: "VENTA_CERRADA" as const,
-      nivel: 'confirmado' as Nivel,
-      url: `/crm/tratos/${t.id}`,
-      tipoEvento: t.tipoEvento,
-      tipoServicio: null,
-      lugarEvento: t.lugarEstimado,
-      horaInicioEvento: null,
-    }));
+    .flatMap(t => {
+      const titulo = t.nombreEvento || "Evento confirmado";
+      return celdasDelMes(t.fechaEventoEstimada, (t as unknown as { fechasEvento?: string | null }).fechasEvento, year, month).map(({ dia, idx, total }) => ({
+        id: `tratoconf-${t.id}-d${idx}`,
+        dia,
+        titulo: total > 1 ? `${titulo} · Día ${idx + 1}/${total}` : titulo,
+        subtitulo: t.cliente?.nombre || "",
+        estado: "VENTA_CERRADA" as const,
+        nivel: 'confirmado' as Nivel,
+        url: `/crm/tratos/${t.id}`,
+        tipoEvento: t.tipoEvento,
+        tipoServicio: null,
+        lugarEvento: t.lugarEstimado,
+        horaInicioEvento: null,
+      }));
+    });
 
   // IDs ya cubiertos (cotización aprobada o confirmado)
   const idsCubiertos = new Set([
@@ -164,19 +191,22 @@ export async function GET(req: NextRequest) {
 
   const eventosTratosActivos = tratosActivos
     .filter(t => t.fechaEventoEstimada)
-    .map(t => ({
-      id: t.id,
-      dia: new Date(t.fechaEventoEstimada!.toISOString().substring(0, 10) + 'T12:00:00Z').getUTCDate(),
-      titulo: t.nombreEvento || 'Evento tentativo',
-      subtitulo: t.cliente?.nombre || '',
-      estado: t.etapa as string,
-      nivel: 'tentativo' as Nivel,
-      url: `/crm/tratos/${t.id}`,
-      tipoEvento: t.tipoEvento,
-      tipoServicio: null,
-      lugarEvento: t.lugarEstimado,
-      horaInicioEvento: null,
-    }));
+    .flatMap(t => {
+      const titulo = t.nombreEvento || 'Evento tentativo';
+      return celdasDelMes(t.fechaEventoEstimada, (t as unknown as { fechasEvento?: string | null }).fechasEvento, year, month).map(({ dia, idx, total }) => ({
+        id: `tratoact-${t.id}-d${idx}`,
+        dia,
+        titulo: total > 1 ? `${titulo} · Día ${idx + 1}/${total}` : titulo,
+        subtitulo: t.cliente?.nombre || '',
+        estado: t.etapa as string,
+        nivel: 'tentativo' as Nivel,
+        url: `/crm/tratos/${t.id}`,
+        tipoEvento: t.tipoEvento,
+        tipoServicio: null,
+        lugarEvento: t.lugarEstimado,
+        horaInicioEvento: null,
+      }));
+    });
 
   // ── Merge y ordenar por día ───────────────────────────────────────────────
   const eventos = [
