@@ -319,17 +319,104 @@ function getProfundidad(canal: string | null) {
   return getCanal(canal ?? "")?.profundidad ?? null;
 }
 
-// ─── Fecha evento helper ─────────────────────────────────────────────────────
+// ─── Fecha evento helpers ────────────────────────────────────────────────────
+// Las fechas de evento se guardan como medianoche UTC representando un día-calendario.
+// Siempre se formatean en UTC para no correrse un día en zonas horarias negativas.
+function partesFecha(iso: string | null | undefined): [number, number, number] | null {
+  if (!iso) return null;
+  const [y, m, d] = String(iso).substring(0, 10).split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return [y, m, d];
+}
 function fmtFechaEvento(iso: string | null | undefined): string {
-  if (!iso) return 'Por definir';
-  try {
-    const d = new Date(iso.includes('T') ? iso : iso + 'T12:00:00');
-    if (isNaN(d.getTime())) return 'Por definir';
-    return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' });
-  } catch { return 'Por definir'; }
+  const p = partesFecha(iso);
+  if (!p) return 'Por definir';
+  return new Date(Date.UTC(p[0], p[1] - 1, p[2])).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+}
+function fmtFechaEventoCorta(iso: string | null | undefined): string | null {
+  const p = partesFecha(iso);
+  if (!p) return null;
+  return new Date(Date.UTC(p[0], p[1] - 1, p[2])).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
 
-// ─── Lo que busca editable field ─────────────────────────────────────────────
+// ─── Editor inline de fecha de evento ────────────────────────────────────────
+// Cambia la fecha desde un solo lugar y la propaga a todas las cotizaciones del
+// evento (y su proyecto). Si es el evento principal, también actualiza la fecha
+// estimada del trato.
+function EventoFechaInline({
+  tratoId,
+  cotizacionIds,
+  fecha,
+  esPrincipal,
+  onSaved,
+}: {
+  tratoId: string;
+  cotizacionIds: string[];
+  fecha: string | null;
+  esPrincipal: boolean;
+  onSaved: (fechaIso: string, cotizacionIds: string[], actualizarEstimada: boolean) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [val, setVal] = useState((fecha ?? "").substring(0, 10));
+  const [saving, setSaving] = useState(false);
+
+  async function guardar() {
+    if (!val) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/tratos/${tratoId}/fecha-evento`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cotizacionIds, fecha: val, actualizarEstimada: esPrincipal }),
+      });
+      if (res.ok) {
+        onSaved(`${val}T00:00:00.000Z`, cotizacionIds, esPrincipal);
+        setEditing(false);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <span className="flex items-center gap-1.5">
+        <input
+          type="date"
+          value={val}
+          autoFocus
+          onChange={(e) => setVal(e.target.value)}
+          className="bg-[#1a1a1a] border border-[#333] rounded px-1.5 py-0.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+        />
+        <button
+          onClick={guardar}
+          disabled={saving || !val}
+          className="text-emerald-400 text-xs hover:text-emerald-300 disabled:opacity-40"
+        >
+          {saving ? "…" : "✓"}
+        </button>
+        <button
+          onClick={() => { setVal((fecha ?? "").substring(0, 10)); setEditing(false); }}
+          className="text-gray-500 text-xs hover:text-gray-300"
+        >
+          ✕
+        </button>
+      </span>
+    );
+  }
+
+  const label = fmtFechaEventoCorta(fecha);
+  return (
+    <button
+      onClick={() => setEditing(true)}
+      className="text-gray-500 text-xs hover:text-[#B3985B] transition-colors"
+      title="Cambiar fecha del evento"
+    >
+      📅 {label ?? "Definir fecha"} ✎
+    </button>
+  );
+}
+
 // ─── ConfirmarEventoPanel ─────────────────────────────────────────────────────
 function ConfirmarEventoPanel({
   tratoId,
@@ -1429,6 +1516,20 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     }
   }
 
+  function handleFechaEventoGuardada(fechaIso: string, cotizacionIds: string[], actualizarEstimada: boolean) {
+    const ids = new Set(cotizacionIds);
+    setTrato(prev => prev ? {
+      ...prev,
+      fechaEventoEstimada: actualizarEstimada ? fechaIso : prev.fechaEventoEstimada,
+      cotizaciones: prev.cotizaciones.map(c =>
+        ids.has(c.id)
+          ? { ...c, fechaEvento: fechaIso, proyecto: c.proyecto ? { ...c.proyecto, fechaEvento: fechaIso } : c.proyecto }
+          : c
+      ),
+    } : prev);
+    toast.success("Fecha del evento actualizada");
+  }
+
   async function guardarNurturing(data: NurturingData, extra?: Record<string, unknown>) {
     setSavingNurturing(true);
     const d = await patch({ nurturingData: JSON.stringify(data), ...extra });
@@ -1845,7 +1946,15 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <button onClick={() => setModalEditarCliente(true)} className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-white text-sm transition-all" title="Editar contacto">✏️</button>
             </div>
             {trato.cliente.empresa && <p className="text-gray-500 text-sm">{trato.cliente.empresa}</p>}
-            {trato.nombreEvento && <p className="text-gray-400 text-sm italic mt-0.5">"{trato.nombreEvento}"</p>}
+            {(trato.nombreEvento || trato.cotizaciones[0]?.fechaEvento || trato.fechaEventoEstimada) && (
+              <p className="text-gray-400 text-sm italic mt-0.5 flex items-center gap-2 flex-wrap">
+                {trato.nombreEvento && <span>&ldquo;{trato.nombreEvento}&rdquo;</span>}
+                {(() => {
+                  const f = fmtFechaEventoCorta(trato.cotizaciones[0]?.fechaEvento ?? trato.fechaEventoEstimada);
+                  return f ? <span className="not-italic text-gray-500 text-xs">📅 {f}</span> : null;
+                })()}
+              </p>
+            )}
             {notaInicial && <p className="text-gray-600 text-xs mt-1.5 line-clamp-2">{notaInicial}</p>}
             {campanaOrigen && <p className="text-gray-700 text-[10px] mt-1">📣 {campanaOrigen}</p>}
           </div>
@@ -1980,9 +2089,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 const principal = ordenadas.find(o => o.opcionLetra === "A") ?? ordenadas[0];
                 const tieneOpciones = ordenadas.length > 1;
                 const eventoLabel = principal.nombreCotizacion || principal.nombreEvento || `Evento ${gi + 1}`;
-                const fechaLabel = principal.fechaEvento
-                  ? new Date(principal.fechaEvento).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" })
-                  : null;
+                const idsGrupo = ordenadas.map(o => o.id);
 
                 return (
                   <div key={grupoKey} className="border border-[#1e1e1e] rounded-xl overflow-hidden">
@@ -1991,9 +2098,13 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                       <div className="min-w-0">
                         <p className="text-white text-sm font-semibold truncate">{eventoLabel}</p>
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          {fechaLabel && (
-                            <span className="text-gray-500 text-xs">📅 {fechaLabel}</span>
-                          )}
+                          <EventoFechaInline
+                            tratoId={trato.id}
+                            cotizacionIds={idsGrupo}
+                            fecha={principal.fechaEvento}
+                            esPrincipal={gi === 0}
+                            onSaved={handleFechaEventoGuardada}
+                          />
                           {principal.lugarEvento && (
                             <span className="text-gray-600 text-xs truncate max-w-[180px]">· 📍 {principal.lugarEvento}</span>
                           )}
