@@ -682,33 +682,34 @@ function CatalogoPicker({
             equiposPorCategoria.length === 0 ? (
               <p className="text-gray-600 text-sm text-center py-10">Sin equipos que coincidan.</p>
             ) : (
-              <div className="space-y-5">
+              <div className="space-y-4">
                 {equiposPorCategoria.map((g) => (
                   <div key={g.nombre}>
-                    <p className="text-[#B3985B] text-xs font-semibold mb-2 sticky top-0 bg-[#0f0f0f] py-1 z-10">{g.nombre} ({g.equipos.length})</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+                    <p className="text-[#B3985B] text-xs font-semibold mb-1.5 sticky top-0 bg-[#0f0f0f] py-1 z-10">{g.nombre} ({g.equipos.length})</p>
+                    <div className="space-y-1">
                       {g.equipos.map((e) => {
                         const sel = eqSel.has(e.id);
                         return (
                           <button key={e.id} type="button" onClick={() => onToggleEquipo(e.id)}
-                            className={`relative text-left rounded-xl border overflow-hidden transition-all ${sel ? "border-[#B3985B] ring-1 ring-[#B3985B]" : "border-[#1e1e1e] hover:border-[#B3985B]/40"}`}>
-                            <div className="aspect-square bg-[#161616] relative overflow-hidden">
+                            className={`w-full flex items-center gap-3 text-left rounded-lg border px-2.5 py-1.5 transition-all ${sel ? "border-[#B3985B] bg-[#B3985B]/[0.07]" : "border-[#1e1e1e] bg-[#0d0d0d] hover:border-[#B3985B]/40"}`}>
+                            <span className="w-11 h-11 rounded-md bg-[#161616] overflow-hidden shrink-0 flex items-center justify-center">
                               {e.imagenUrl ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={e.imagenUrl} alt="" className="w-full h-full object-cover" />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center text-gray-700 text-2xl">📦</div>
+                                <span className="text-gray-700 text-lg">📦</span>
                               )}
-                              {sel && (
-                                <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-md bg-[#B3985B] flex items-center justify-center">
-                                  <span className="text-black text-[11px] font-bold leading-none">✓</span>
-                                </span>
+                            </span>
+                            <span className="flex-1 min-w-0">
+                              <span className="block text-white text-xs font-medium leading-tight truncate">{nombreEq(e)}</span>
+                              {e.descripcion && e.descripcion !== nombreEq(e) && (
+                                <span className="block text-gray-500 text-[10px] leading-tight truncate">{e.descripcion}</span>
                               )}
-                            </div>
-                            <div className="p-2">
-                              <p className="text-white text-[11px] font-medium leading-tight line-clamp-2">{nombreEq(e)}</p>
-                              <p className="text-[#B3985B] text-[10px] mt-0.5">{fmx(e.precioRenta)}</p>
-                            </div>
+                            </span>
+                            <span className="text-[#B3985B] text-[11px] font-medium shrink-0">{fmx(e.precioRenta)}</span>
+                            <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${sel ? "bg-[#B3985B] border-[#B3985B]" : "border-[#333]"}`}>
+                              {sel && <span className="text-black text-[11px] font-bold leading-none">✓</span>}
+                            </span>
                           </button>
                         );
                       })}
@@ -720,30 +721,28 @@ function CatalogoPicker({
           ) : productosFiltrados.length === 0 ? (
             <p className="text-gray-600 text-sm text-center py-10">Sin productos que coincidan.</p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+            <div className="space-y-1">
               {productosFiltrados.map((p) => {
                 const sel = prodSel.has(p.id);
                 return (
                   <button key={p.id} type="button" onClick={() => onToggleProducto(p.id)}
-                    className={`relative text-left rounded-xl border overflow-hidden transition-all ${sel ? "border-[#B3985B] ring-1 ring-[#B3985B]" : "border-[#1e1e1e] hover:border-[#B3985B]/40"}`}>
-                    <div className="aspect-square bg-[#161616] relative overflow-hidden">
+                    className={`w-full flex items-center gap-3 text-left rounded-lg border px-2.5 py-1.5 transition-all ${sel ? "border-[#B3985B] bg-[#B3985B]/[0.07]" : "border-[#1e1e1e] bg-[#0d0d0d] hover:border-[#B3985B]/40"}`}>
+                    <span className="w-11 h-11 rounded-md bg-[#161616] overflow-hidden shrink-0 flex items-center justify-center">
                       {p.imagenUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={p.imagenUrl} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-700 text-2xl">🧩</div>
+                        <span className="text-gray-700 text-lg">🧩</span>
                       )}
-                      {sel && (
-                        <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-md bg-[#B3985B] flex items-center justify-center">
-                          <span className="text-black text-[11px] font-bold leading-none">✓</span>
-                        </span>
-                      )}
-                    </div>
-                    <div className="p-2">
-                      <p className="text-white text-[11px] font-medium leading-tight line-clamp-2">{p.nombre}</p>
-                      {p.categoria && <p className="text-gray-500 text-[9px] leading-tight truncate">{p.categoria}</p>}
-                      <p className="text-[#B3985B] text-[10px] mt-0.5">{fmx(p.precioFinal)}</p>
-                    </div>
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-white text-xs font-medium leading-tight truncate">{p.nombre}</span>
+                      {p.categoria && <span className="block text-gray-500 text-[10px] leading-tight truncate">{p.categoria}</span>}
+                    </span>
+                    <span className="text-[#B3985B] text-[11px] font-medium shrink-0">{fmx(p.precioFinal)}</span>
+                    <span className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${sel ? "bg-[#B3985B] border-[#B3985B]" : "border-[#333]"}`}>
+                      {sel && <span className="text-black text-[11px] font-bold leading-none">✓</span>}
+                    </span>
                   </button>
                 );
               })}

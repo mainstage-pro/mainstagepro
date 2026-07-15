@@ -38,16 +38,10 @@ function canAccess(key: string | undefined, isAdmin: boolean, userModuleKeys: st
 
 function getInitialOpen(pathname: string): Set<string> {
   const open = new Set<string>();
-  if (pathname.startsWith("/finanzas")) open.add("finanzas");
   if (pathname.startsWith("/inventario/analisis") || pathname.startsWith("/admin/valuacion")) open.add("activos");
   if (pathname.startsWith("/socios")) open.add("inversiones");
   if (pathname.startsWith("/rrhh/candidatos") || pathname.startsWith("/rrhh/puestos") || pathname.startsWith("/rrhh/configuracion")) open.add("ats");
   else if (pathname.startsWith("/rrhh/capacitaciones") || pathname.startsWith("/capacitacion")) open.add("capacitacion-grp");
-  else if (pathname.startsWith("/rrhh")) open.add("rrhh");
-  if (pathname.startsWith("/inventario") && !pathname.startsWith("/inventario/analisis")) open.add("inventario");
-  if (pathname.startsWith("/produccion/tablero")) open.add("inventario");
-  if (pathname.startsWith("/catalogo/proveedores") || pathname.startsWith("/catalogo/tecnicos") || pathname.startsWith("/catalogo/venues") || pathname.startsWith("/catalogo/empresas")) open.add("catalogo");
-  if (pathname.startsWith("/juntas") || pathname.startsWith("/vision-semanal") || pathname.startsWith("/formularios")) open.add("coordinacion");
   return open;
 }
 
@@ -56,16 +50,16 @@ function getActiveSectionKey(pathname: string): string | null {
   if (pathname.startsWith("/admin/usuarios") || pathname.startsWith("/admin/actividad") || pathname.startsWith("/admin/configuracion")) return "seccion-config";
   // Gestión Operativa (/proyectos-internos antes que /proyectos)
   if (pathname.startsWith("/gestion") || pathname.startsWith("/operaciones") || pathname.startsWith("/plan-trabajo") || pathname.startsWith("/proyectos-internos")) return "seccion-gestion";
-  // Administración (RRHH vive aquí; /inventario/analisis y /catalogo/roles antes que Producción)
-  if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/capacitacion") || pathname.startsWith("/inventario/analisis") || pathname.startsWith("/admin/valuacion") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles") || pathname.startsWith("/admin/reportes")) return "seccion-administracion";
+  // Administración (RRHH/Personal vive aquí; /inventario/analisis y /catalogo/roles antes que Producción)
+  if (pathname.startsWith("/finanzas") || pathname.startsWith("/personal") || pathname.startsWith("/rrhh") || pathname.startsWith("/capacitacion") || pathname.startsWith("/inventario/analisis") || pathname.startsWith("/admin/valuacion") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles") || pathname.startsWith("/admin/reportes")) return "seccion-administracion";
   // Dirección
-  if (pathname.startsWith("/direccion") || pathname.startsWith("/juntas") || pathname.startsWith("/vision-semanal") || pathname.startsWith("/formularios") || pathname.startsWith("/presentaciones")) return "seccion-direccion";
+  if (pathname.startsWith("/direccion") || pathname.startsWith("/coordinacion") || pathname.startsWith("/juntas") || pathname.startsWith("/vision-semanal") || pathname.startsWith("/formularios") || pathname.startsWith("/presentaciones")) return "seccion-direccion";
   // Marketing
   if (pathname.startsWith("/marketing")) return "seccion-marketing";
   // Comercial (/admin/grupos-equipo vive aquí)
   if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas") || pathname.startsWith("/comercial") || pathname.startsWith("/admin/grupos-equipo")) return "seccion-ventas";
   // Producción
-  if (pathname.startsWith("/proyectos") || pathname.startsWith("/produccion") || pathname.startsWith("/inventario") || pathname.startsWith("/catalogo")) return "seccion-produccion";
+  if (pathname.startsWith("/proyectos") || pathname.startsWith("/produccion") || pathname.startsWith("/equipos") || pathname.startsWith("/directorio") || pathname.startsWith("/inventario") || pathname.startsWith("/catalogo")) return "seccion-produccion";
   return null;
 }
 
@@ -163,9 +157,17 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
     : "/dashboard";
 
   function isActive(href: string) {
-    if (href === "/dashboard") return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
-    if (href === "/metas") return pathname === "/metas" || pathname.startsWith("/objetivos") || pathname.startsWith("/kpis");
-    return pathname.startsWith(href);
+    const path = href.split("?")[0];
+    if (path === "/dashboard") return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+    return pathname === path || pathname.startsWith(path + "/");
+  }
+
+  // Un módulo con pestañas (item con `href` + `children`) se resalta también
+  // cuando la ruta actual es la de alguna de sus secciones hijas.
+  function isItemActive(item: { href?: string; children?: { href: string }[] }) {
+    if (item.href && isActive(item.href)) return true;
+    if (item.children) return item.children.some((c) => isActive(c.href));
+    return false;
   }
 
   const navContent = (
@@ -209,7 +211,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
               {isSectionOpen && <div className="space-y-0.5">
                 {visibleItems.map((item) => {
                   const itemLabel = resolveLabel(item.key, item.label, labels);
-                  if (item.children) {
+                  if (item.children && !item.href) {
                     const groupKey = item.key ?? item.label;
                     const isOpen = openGroups.has(groupKey);
                     const isGroupActive = item.children.some((c) => isActive(c.href));
@@ -260,19 +262,20 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
                   const href = item.href === "/dashboard" ? dashboardHref : item.href!;
                   const badgeCount = item.badge ? (badges[item.badge] ?? 0) : 0;
                   const Icon = item.icon;
+                  const active = isItemActive(item);
                   return (
                     <Link
                       key={item.href}
                       href={href}
                       className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
-                        isActive(item.href!)
+                        active
                           ? "bg-[#1a1a1a] text-white font-semibold"
                           : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
                       }`}
                     >
                       {Icon
-                        ? <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive(item.href!) ? "text-[#B3985B]" : "opacity-60"}`} />
-                        : <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive(item.href!) ? "bg-[#B3985B]" : "bg-[#333]"}`} />
+                        ? <Icon className={`w-3.5 h-3.5 shrink-0 ${active ? "text-[#B3985B]" : "opacity-60"}`} />
+                        : <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${active ? "bg-[#B3985B]" : "bg-[#333]"}`} />
                       }
                       <span className="flex-1">{itemLabel}</span>
                       {badgeCount > 0 && (

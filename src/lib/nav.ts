@@ -40,7 +40,17 @@ export const NAV: NavSection[] = [
     items: [
       { label: "Mi Dashboard", href: "/dashboard" },
       { key: "calendario", label: "Calendario de eventos", href: "/calendario" },
-      { key: "metas", label: "Metas", href: "/metas", icon: Target, adminOnly: true },
+      {
+        key: "metas",
+        label: "Metas",
+        href: "/metas",
+        icon: Target,
+        adminOnly: true,
+        children: [
+          { key: "objetivos", label: "Objetivos", href: "/objetivos", adminOnly: true },
+          { key: "kpis-dashboard", label: "KPIs", href: "/kpis", adminOnly: true },
+        ],
+      },
     ],
   },
 
@@ -66,6 +76,7 @@ export const NAV: NavSection[] = [
       {
         key: "coordinacion",
         label: "Coordinación",
+        href: "/coordinacion",
         children: [
           { key: "juntas", label: "Juntas", href: "/juntas" },
           { key: "vision-semanal", label: "Visión semanal", href: "/vision-semanal" },
@@ -84,6 +95,7 @@ export const NAV: NavSection[] = [
       {
         key: "finanzas",
         label: "Finanzas",
+        href: "/finanzas",
         children: [
           { key: "finanzas-cobros", label: "Cobros y pagos", href: "/finanzas/cobros-pagos" },
           { key: "finanzas-pagos-personal", label: "Pagos a personal", href: "/finanzas/pagos-personal" },
@@ -116,6 +128,7 @@ export const NAV: NavSection[] = [
       {
         key: "rrhh",
         label: "Personal",
+        href: "/personal",
         children: [
           { key: "rrhh-personal", label: "Personal interno", href: "/rrhh/personal" },
           { key: "rrhh-nomina", label: "Nómina", href: "/rrhh/nomina" },
@@ -182,6 +195,7 @@ export const NAV: NavSection[] = [
       {
         key: "inventario",
         label: "Equipos",
+        href: "/equipos",
         children: [
           { key: "inv-maestro", label: "Inventario de equipos", href: "/inventario/maestro" },
           { key: "produccion-tablero", label: "Estado de equipos", href: "/produccion/tablero" },
@@ -195,6 +209,7 @@ export const NAV: NavSection[] = [
       {
         key: "catalogo",
         label: "Directorio",
+        href: "/directorio",
         children: [
           { key: "bd-proveedores", label: "Proveedores", href: "/catalogo/proveedores" },
           { key: "bd-tecnicos", label: "Técnicos freelance", href: "/catalogo/tecnicos" },

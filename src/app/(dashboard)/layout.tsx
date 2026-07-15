@@ -45,7 +45,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <Providers>
+    <Providers access={{ role: session.role, area: (session as { area?: string }).area ?? null, moduleKeys: userModuleKeys }}>
       <div className="flex h-screen bg-[#0a0a0a] overflow-hidden w-screen max-w-[100vw]">
         <Sidebar
           user={session}
