@@ -173,6 +173,7 @@ function PaqueteEditor({
   const toast = useToast();
   const [busqueda, setBusqueda] = useState("");
   const [subiendo, setSubiendo] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [nuevoConcepto, setNuevoConcepto] = useState<{ tipo: string; rolTecnicoId: string; nivel: string; jornada: string; concepto: string; descripcion: string; precio: string; cantidad: string; dias: string }>({
     tipo: "OPERACION_TECNICA", rolTecnicoId: "", nivel: "AA", jornada: "MEDIA",
     concepto: CONCEPTOS_COMIDA[0].label, descripcion: "", precio: "", cantidad: "1", dias: "1",
@@ -214,6 +215,24 @@ function PaqueteEditor({
     if (form.items.some((i) => i.tipo === "PRODUCTO" && i.productoId === id)) return;
     setForm({ ...form, items: [...form.items, { tipo: "PRODUCTO", productoId: id, cantidad: 1 }] });
     setBusqueda("");
+  }
+  function toggleEquipo(id: string) {
+    const existe = form.items.some((i) => i.tipo === "EQUIPO" && i.equipoId === id);
+    setForm({
+      ...form,
+      items: existe
+        ? form.items.filter((i) => !(i.tipo === "EQUIPO" && i.equipoId === id))
+        : [...form.items, { tipo: "EQUIPO", equipoId: id, cantidad: 1 }],
+    });
+  }
+  function toggleProducto(id: string) {
+    const existe = form.items.some((i) => i.tipo === "PRODUCTO" && i.productoId === id);
+    setForm({
+      ...form,
+      items: existe
+        ? form.items.filter((i) => !(i.tipo === "PRODUCTO" && i.productoId === id))
+        : [...form.items, { tipo: "PRODUCTO", productoId: id, cantidad: 1 }],
+    });
   }
   function setItemCant(idx: number, c: number) {
     setForm({ ...form, items: form.items.map((it, i) => (i === idx ? { ...it, cantidad: Math.max(1, c) } : it)) });
@@ -368,7 +387,13 @@ function PaqueteEditor({
 
       {/* Equipos y productos */}
       <div>
-        <label className={labelCls}>Equipos y productos ({form.items.length})</label>
+        <div className="flex items-center justify-between mb-1">
+          <label className={`${labelCls} mb-0`}>Equipos y productos ({form.items.length})</label>
+          <button type="button" onClick={() => setPickerOpen(true)}
+            className="text-[11px] px-3 py-1.5 rounded-lg bg-[#B3985B] text-black font-semibold hover:bg-[#c9a96a] transition-colors">
+            🖼️ Explorar inventario
+          </button>
+        </div>
         {form.items.length > 0 && (
           <div className="space-y-1.5 mb-2">
             {form.items.map((it, idx) => {
@@ -401,7 +426,7 @@ function PaqueteEditor({
             })}
           </div>
         )}
-        <input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Buscar equipo del inventario o producto…" className={inputCls} />
+        <input value={busqueda} onChange={(e) => setBusqueda(e.target.value)} placeholder="Búsqueda rápida por nombre… o usa «Explorar inventario»" className={inputCls} />
         {busqueda.trim() && (
           <div className="mt-1.5 max-h-56 overflow-y-auto space-y-1 border border-[#1e1e1e] rounded-lg p-1.5 bg-[#0d0d0d]">
             {resultados.productos.length === 0 && resultados.equipos.length === 0 && (
@@ -537,6 +562,202 @@ function PaqueteEditor({
           <p className="text-[10px] text-gray-600">Equipos/productos {fmx(precioItems)} · Operativo {fmx(precioConceptos)}</p>
         </div>
         <p className="text-white text-lg font-semibold">{fmx(totalBase)}</p>
+      </div>
+
+      <CatalogoPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        equipos={equipos}
+        productos={productos}
+        items={form.items}
+        onToggleEquipo={toggleEquipo}
+        onToggleProducto={toggleProducto}
+      />
+    </div>
+  );
+}
+
+// ── Explorador visual del inventario ──────────────────────────────────────────
+function CatalogoPicker({
+  open, onClose, equipos, productos, items, onToggleEquipo, onToggleProducto,
+}: {
+  open: boolean;
+  onClose: () => void;
+  equipos: EquipoItem[];
+  productos: ProductoLite[];
+  items: FormItem[];
+  onToggleEquipo: (id: string) => void;
+  onToggleProducto: (id: string) => void;
+}) {
+  const [tab, setTab] = useState<"equipos" | "productos">("equipos");
+  const [q, setQ] = useState("");
+  const [catFiltro, setCatFiltro] = useState<string>("");
+
+  useEffect(() => {
+    if (!open) return;
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") { e.stopPropagation(); onClose(); } }
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [open, onClose]);
+
+  const eqSel = useMemo(() => new Set(items.filter((i) => i.tipo === "EQUIPO").map((i) => i.equipoId)), [items]);
+  const prodSel = useMemo(() => new Set(items.filter((i) => i.tipo === "PRODUCTO").map((i) => i.productoId)), [items]);
+
+  // Categorías presentes en el inventario
+  const categorias = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const e of equipos) if (e.categoria) m.set(e.categoria.id, e.categoria.nombre);
+    return [...m.entries()].map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [equipos]);
+
+  // Equipos filtrados y agrupados por categoría
+  const equiposPorCategoria = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    const filtrados = equipos.filter((e) => {
+      if (catFiltro && e.categoria?.id !== catFiltro) return false;
+      if (!query) return true;
+      return nombreEq(e).toLowerCase().includes(query) || e.descripcion.toLowerCase().includes(query);
+    });
+    const grupos = new Map<string, { nombre: string; equipos: EquipoItem[] }>();
+    for (const e of filtrados) {
+      const key = e.categoria?.id ?? "sin";
+      if (!grupos.has(key)) grupos.set(key, { nombre: e.categoria?.nombre ?? "Sin categoría", equipos: [] });
+      grupos.get(key)!.equipos.push(e);
+    }
+    return [...grupos.values()].sort((a, b) => a.nombre.localeCompare(b.nombre));
+  }, [equipos, q, catFiltro]);
+
+  const productosFiltrados = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    return productos.filter((p) => !query || p.nombre.toLowerCase().includes(query) || (p.categoria ?? "").toLowerCase().includes(query));
+  }, [productos, q]);
+
+  if (!open) return null;
+  const totalSel = eqSel.size + prodSel.size;
+
+  return (
+    <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-3 sm:p-6"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-2xl w-full max-w-5xl h-[88vh] flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="px-5 py-3 border-b border-[#1a1a1a] shrink-0 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-white font-semibold text-sm">Explorar inventario</p>
+            <button onClick={onClose} className="text-gray-500 hover:text-white text-lg leading-none">✕</button>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1 p-1 bg-[#1a1a1a] rounded-lg">
+              <button onClick={() => setTab("equipos")}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === "equipos" ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"}`}>
+                📦 Equipos ({equipos.length})
+              </button>
+              <button onClick={() => setTab("productos")}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === "productos" ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"}`}>
+                🧩 Productos ({productos.length})
+              </button>
+            </div>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar…"
+              className="flex-1 min-w-[140px] bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+            {totalSel > 0 && <span className="text-[#B3985B] text-xs font-semibold shrink-0">{totalSel} seleccionado{totalSel !== 1 ? "s" : ""}</span>}
+          </div>
+          {tab === "equipos" && categorias.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button onClick={() => setCatFiltro("")}
+                className={`px-2.5 py-1 rounded-full text-[11px] transition-colors ${catFiltro === "" ? "bg-[#B3985B] text-black font-semibold" : "bg-[#1a1a1a] text-gray-400 hover:text-white"}`}>
+                Todas
+              </button>
+              {categorias.map((c) => (
+                <button key={c.id} onClick={() => setCatFiltro(c.id)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] transition-colors ${catFiltro === c.id ? "bg-[#B3985B] text-black font-semibold" : "bg-[#1a1a1a] text-gray-400 hover:text-white"}`}>
+                  {c.nombre}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          {tab === "equipos" ? (
+            equiposPorCategoria.length === 0 ? (
+              <p className="text-gray-600 text-sm text-center py-10">Sin equipos que coincidan.</p>
+            ) : (
+              <div className="space-y-5">
+                {equiposPorCategoria.map((g) => (
+                  <div key={g.nombre}>
+                    <p className="text-[#B3985B] text-xs font-semibold mb-2 sticky top-0 bg-[#0f0f0f] py-1 z-10">{g.nombre} ({g.equipos.length})</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+                      {g.equipos.map((e) => {
+                        const sel = eqSel.has(e.id);
+                        return (
+                          <button key={e.id} type="button" onClick={() => onToggleEquipo(e.id)}
+                            className={`relative text-left rounded-xl border overflow-hidden transition-all ${sel ? "border-[#B3985B] ring-1 ring-[#B3985B]" : "border-[#1e1e1e] hover:border-[#B3985B]/40"}`}>
+                            <div className="aspect-square bg-[#161616] relative overflow-hidden">
+                              {e.imagenUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={e.imagenUrl} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-700 text-2xl">📦</div>
+                              )}
+                              {sel && (
+                                <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-md bg-[#B3985B] flex items-center justify-center">
+                                  <span className="text-black text-[11px] font-bold leading-none">✓</span>
+                                </span>
+                              )}
+                            </div>
+                            <div className="p-2">
+                              <p className="text-white text-[11px] font-medium leading-tight line-clamp-2">{nombreEq(e)}</p>
+                              <p className="text-[#B3985B] text-[10px] mt-0.5">{fmx(e.precioRenta)}</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )
+          ) : productosFiltrados.length === 0 ? (
+            <p className="text-gray-600 text-sm text-center py-10">Sin productos que coincidan.</p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+              {productosFiltrados.map((p) => {
+                const sel = prodSel.has(p.id);
+                return (
+                  <button key={p.id} type="button" onClick={() => onToggleProducto(p.id)}
+                    className={`relative text-left rounded-xl border overflow-hidden transition-all ${sel ? "border-[#B3985B] ring-1 ring-[#B3985B]" : "border-[#1e1e1e] hover:border-[#B3985B]/40"}`}>
+                    <div className="aspect-square bg-[#161616] relative overflow-hidden">
+                      {p.imagenUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.imagenUrl} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-700 text-2xl">🧩</div>
+                      )}
+                      {sel && (
+                        <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-md bg-[#B3985B] flex items-center justify-center">
+                          <span className="text-black text-[11px] font-bold leading-none">✓</span>
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-2">
+                      <p className="text-white text-[11px] font-medium leading-tight line-clamp-2">{p.nombre}</p>
+                      {p.categoria && <p className="text-gray-500 text-[9px] leading-tight truncate">{p.categoria}</p>}
+                      <p className="text-[#B3985B] text-[10px] mt-0.5">{fmx(p.precioFinal)}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-3 border-t border-[#1a1a1a] shrink-0 flex items-center justify-between">
+          <span className="text-gray-500 text-xs">Toca para agregar o quitar · {totalSel} en el paquete</span>
+          <button onClick={onClose} className="px-5 py-2 rounded-lg bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold">
+            Listo
+          </button>
+        </div>
       </div>
     </div>
   );
