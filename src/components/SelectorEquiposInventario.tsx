@@ -808,24 +808,22 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                 )}
               </button>
             )}
-            {paquetes.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setSubTab("paquetes")}
-                className={`relative flex-1 px-2.5 py-2 rounded-lg text-xs font-semibold transition-all overflow-hidden ${
-                  subTab === "paquetes"
-                    ? "bg-gradient-to-r from-[#B3985B] to-[#d4b876] text-black shadow-lg shadow-[#B3985B]/25"
-                    : "text-[#B3985B] bg-gradient-to-r from-[#B3985B]/15 to-[#B3985B]/5 ring-1 ring-[#B3985B]/40 hover:from-[#B3985B]/25"
-                }`}
-              >
-                ✨ Paquetes
-                {subTab !== "paquetes" && (
-                  <span className="ml-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-[#B3985B] text-black text-[9px] font-bold align-middle">
-                    {paquetes.length}
-                  </span>
-                )}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setSubTab("paquetes")}
+              className={`relative flex-1 px-2.5 py-2 rounded-lg text-xs font-semibold transition-all overflow-hidden ${
+                subTab === "paquetes"
+                  ? "bg-gradient-to-r from-[#B3985B] to-[#d4b876] text-black shadow-lg shadow-[#B3985B]/25"
+                  : "text-[#B3985B] bg-gradient-to-r from-[#B3985B]/15 to-[#B3985B]/5 ring-1 ring-[#B3985B]/40 hover:from-[#B3985B]/25"
+              }`}
+            >
+              ✨ Paquetes
+              {subTab !== "paquetes" && paquetes.length > 0 && (
+                <span className="ml-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-[#B3985B] text-black text-[9px] font-bold align-middle">
+                  {paquetes.length}
+                </span>
+              )}
+            </button>
           </div>
 
           {/* ── Sub-pestaña: EQUIPOS INDIVIDUALES ── */}
@@ -1193,6 +1191,15 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
               <p className="text-gray-500 text-xs">
                 Paquetes comerciales por tipo y tamaño de evento. Se desglosan en la cotización con sus equipos y conceptos.
               </p>
+              {paquetes.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-[#2a2a2a] bg-[#0d0d0d] px-4 py-8 text-center">
+                  <p className="text-3xl mb-2">✨</p>
+                  <p className="text-gray-400 text-sm font-medium">Aún no hay paquetes armados</p>
+                  <p className="text-gray-600 text-[11px] leading-relaxed mt-1">
+                    Crea paquetes comerciales en el módulo de Paquetes y productos y aparecerán aquí para elegirlos en el descubrimiento.
+                  </p>
+                </div>
+              ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {paquetes.map((p) => {
                   const sel = paquetesSel.some((s) => s.id === p.id);
@@ -1265,6 +1272,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                   );
                 })}
               </div>
+              )}
             </div>
           )}
         </div>
