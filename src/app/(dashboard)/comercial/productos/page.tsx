@@ -4,7 +4,9 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
+import ModuleTabs from "@/components/ModuleTabs";
 import PaquetesSection from "./PaquetesSection";
+import GruposEquipoPage from "../../admin/grupos-equipo/page";
 
 // ── Tipos ───────────────────────────────────────────────────────────────────
 type EquipoItem = {
@@ -713,37 +715,39 @@ function ProductosSection() {
   );
 }
 
-// ── Página del módulo: Productos de equipos + Paquetes ────────────────────────
+// ── Página del módulo: Productos de equipos + Paquetes + Grupos de equipo ──────
 export default function ProductosModulePage() {
-  const [tab, setTab] = useState<"productos" | "paquetes">("productos");
-
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto">
-      <div className="mb-5">
-        <h1 className="text-2xl font-semibold text-white">Productos y paquetes</h1>
-      </div>
-
-      {/* Pestañas principales */}
-      <div className="flex items-center gap-1.5 p-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl mb-6 w-fit">
-        <button
-          onClick={() => setTab("productos")}
-          className={`px-4 py-2 rounded-lg text-sm transition-colors ${
-            tab === "productos" ? "bg-[#B3985B] text-black font-semibold" : "text-gray-400 hover:text-white"
-          }`}
-        >
-          📦 Productos de equipos
-        </button>
-        <button
-          onClick={() => setTab("paquetes")}
-          className={`px-4 py-2 rounded-lg text-sm transition-colors ${
-            tab === "paquetes" ? "bg-[#B3985B] text-black font-semibold" : "text-gray-400 hover:text-white"
-          }`}
-        >
-          🧩 Paquetes
-        </button>
-      </div>
-
-      {tab === "productos" ? <ProductosSection /> : <PaquetesSection />}
-    </div>
+    <ModuleTabs
+      tabs={[
+        {
+          key: "productos",
+          label: "Productos de equipos",
+          accessKey: "comercial-productos",
+          content: (
+            <div className="p-4 md:p-8 max-w-7xl mx-auto">
+              <ProductosSection />
+            </div>
+          ),
+        },
+        {
+          key: "paquetes",
+          label: "Paquetes",
+          accessKey: "comercial-productos",
+          content: (
+            <div className="p-4 md:p-8 max-w-7xl mx-auto">
+              <PaquetesSection />
+            </div>
+          ),
+        },
+        {
+          key: "grupos-equipo",
+          label: "Grupos de equipo",
+          accessKey: "grupos-equipo",
+          adminOnly: true,
+          content: <GruposEquipoPage />,
+        },
+      ]}
+    />
   );
 }
