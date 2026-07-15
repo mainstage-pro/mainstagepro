@@ -212,20 +212,30 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
   type HoraItem = { label: string; hora: string; ref: string; fecha: string };
   const eventoHoras: HoraItem[] = esMultidiaCrono
     ? diasCrono.flatMap((fecha, di) => {
-        const h = horarioDeDia(fecha, di, diasCrono, data.horariosEvento, data.horaInicioEvento, data.horaFinEvento);
-        return [
-          { label: `Inicio del evento · Día ${di + 1}`, hora: fmtHora(h.inicio), ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(fecha) },
-          { label: `Fin del evento · Día ${di + 1}`, hora: fmtHora(h.fin), ref: "", fecha: fmtFechaCorta(fecha) },
-        ];
+        const h = horarioDeDia(fecha, di, diasCrono, data.horariosEvento, {
+          inicio: data.horaInicioEvento,
+          fin: data.horaFinEvento,
+          llamado: llamadoBodegaHora,
+          montaje: data.horaMontaje || data.horaInicioMontaje,
+        });
+        const rows: HoraItem[] = [];
+        if (h.llamado) rows.push({ label: `Llamado en bodega · Día ${di + 1}`, hora: fmtHora(h.llamado), ref: "", fecha: fmtFechaCorta(fecha) });
+        if ((di === 0 || h.aplicaMontaje) && h.montaje) rows.push({ label: `Montaje · Día ${di + 1}`, hora: fmtHora(h.montaje), ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(fecha) });
+        if (h.inicio) rows.push({ label: `Inicio del evento · Día ${di + 1}`, hora: fmtHora(h.inicio), ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(fecha) });
+        if (h.fin) rows.push({ label: `Fin del evento · Día ${di + 1}`, hora: fmtHora(h.fin), ref: "", fecha: fmtFechaCorta(fecha) });
+        return rows;
       })
     : [
         { label: "Inicio del evento", hora: horaIni, ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(data.fechaEvento) },
         { label: "Fin / inicio de desmontaje", hora: horaFin, ref: "", fecha: fmtFechaCorta(data.fechaEvento) },
       ];
   const horariosDia: HoraItem[] = [
-    { label: "Llamado en bodega", hora: llamadoBodegaHora ?? "", ref: data.puntoSalidaBodega ?? "", fecha: llamadoBodegaFecha ?? fmtFechaCorta(data.fechaMontaje) ?? fmtFechaCorta(data.fechaEvento) },
-    { label: "Salida desde bodega", hora: horaSalida, ref: data.puntoSalidaBodega ?? "", fecha: fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento) },
-    { label: "Llegada / inicio de montaje", hora: horaMontaje, ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento) },
+    // En eventos de un día: llamado y montaje van como filas únicas. En multidía se detallan por día en eventoHoras.
+    ...(esMultidiaCrono ? [] : [
+      { label: "Llamado en bodega", hora: llamadoBodegaHora ?? "", ref: "", fecha: llamadoBodegaFecha ?? fmtFechaCorta(data.fechaMontaje) ?? fmtFechaCorta(data.fechaEvento) },
+      { label: "Llegada / inicio de montaje", hora: horaMontaje, ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento) },
+    ]),
+    { label: "Salida desde bodega", hora: horaSalida, ref: "", fecha: fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento) },
     ...eventoHoras,
   ].filter(h => h.hora);
 

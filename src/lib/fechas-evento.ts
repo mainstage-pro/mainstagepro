@@ -68,9 +68,15 @@ export function agruparPorDia<T extends { dia?: string | null }>(
   }));
 }
 
-export type HorarioDia = { inicio: string | null; fin: string | null };
+export type HorarioDia = {
+  inicio: string | null;
+  fin: string | null;
+  llamado: string | null;
+  montaje: string | null;
+  aplicaMontaje: boolean;
+};
 
-/** Parsea el JSON de horariosEvento a un mapa { "YYYY-MM-DD": {inicio, fin} }. */
+/** Parsea el JSON de horariosEvento a un mapa { "YYYY-MM-DD": {inicio, fin, llamado, montaje, aplicaMontaje} }. */
 export function parseHorariosEvento(json: string | null | undefined): Record<string, HorarioDia> {
   if (!json) return {};
   let obj: unknown;
@@ -83,38 +89,54 @@ export function parseHorariosEvento(json: string | null | undefined): Record<str
   const out: Record<string, HorarioDia> = {};
   for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
     if (!RE_FECHA.test(k) || !v || typeof v !== "object") continue;
-    const val = v as { inicio?: unknown; fin?: unknown };
+    const val = v as { inicio?: unknown; fin?: unknown; llamado?: unknown; montaje?: unknown; aplicaMontaje?: unknown };
+    const str = (x: unknown) => (typeof x === "string" && x ? x : null);
     out[k] = {
-      inicio: typeof val.inicio === "string" && val.inicio ? val.inicio : null,
-      fin: typeof val.fin === "string" && val.fin ? val.fin : null,
+      inicio: str(val.inicio),
+      fin: str(val.fin),
+      llamado: str(val.llamado),
+      montaje: str(val.montaje),
+      aplicaMontaje: val.aplicaMontaje === true,
     };
   }
   return out;
 }
 
+export type HorarioBase = {
+  inicio?: string | null;
+  fin?: string | null;
+  llamado?: string | null;
+  montaje?: string | null;
+};
+
 /**
- * Horario de un día concreto. El día 1 (índice 0) usa `horaInicioEvento/horaFinEvento` como base.
- * Los días 2+ hacen fallback a los horarios del día 1 cuando no tienen valor propio.
+ * Horario de un día concreto. El día 1 (índice 0) usa los valores base (campos escalares del
+ * proyecto). Los días 2+ heredan por defecto los horarios de evento y llamado del día 1; el
+ * montaje es propio de cada día y se controla con `aplicaMontaje` (día 1 siempre aplica).
  */
 export function horarioDeDia(
   fecha: string,
   indice: number,
   dias: string[],
   horariosJson: string | null | undefined,
-  horaInicioDia1: string | null | undefined,
-  horaFinDia1: string | null | undefined,
+  base: HorarioBase,
 ): HorarioDia {
   const mapa = parseHorariosEvento(horariosJson);
   const dia1Fecha = dias[0] ?? fecha;
-  const baseInicio = mapa[dia1Fecha]?.inicio ?? horaInicioDia1 ?? null;
-  const baseFin = mapa[dia1Fecha]?.fin ?? horaFinDia1 ?? null;
+  const baseInicio = mapa[dia1Fecha]?.inicio ?? base.inicio ?? null;
+  const baseFin = mapa[dia1Fecha]?.fin ?? base.fin ?? null;
+  const baseLlamado = mapa[dia1Fecha]?.llamado ?? base.llamado ?? null;
+  const baseMontaje = mapa[dia1Fecha]?.montaje ?? base.montaje ?? null;
   if (indice === 0) {
-    return { inicio: baseInicio, fin: baseFin };
+    return { inicio: baseInicio, fin: baseFin, llamado: baseLlamado, montaje: baseMontaje, aplicaMontaje: true };
   }
   const propio = mapa[fecha];
   return {
     inicio: propio?.inicio ?? baseInicio,
     fin: propio?.fin ?? baseFin,
+    llamado: propio?.llamado ?? baseLlamado,
+    montaje: propio?.montaje ?? null,
+    aplicaMontaje: propio?.aplicaMontaje ?? false,
   };
 }
 

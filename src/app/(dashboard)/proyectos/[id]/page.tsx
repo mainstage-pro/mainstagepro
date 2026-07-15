@@ -2288,16 +2288,27 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   }
 
   // ── Guardar horario de un día concreto ──
-  // Día 1 (índice 0) se guarda en horaInicioEvento/horaFinEvento (compatibilidad).
-  // Días 2+ se guardan en el JSON horariosEvento { "YYYY-MM-DD": {inicio, fin} }.
-  async function guardarHorarioDia(fecha: string, indice: number, campo: "inicio" | "fin", value: string) {
+  // Día 1 (índice 0) se guarda en los campos escalares del proyecto (compatibilidad).
+  // Días 2+ se guardan en el JSON horariosEvento { "YYYY-MM-DD": {inicio, fin, llamado, montaje, aplicaMontaje} }.
+  async function guardarHorarioDia(
+    fecha: string,
+    indice: number,
+    campo: "inicio" | "fin" | "llamado" | "montaje" | "aplicaMontaje",
+    value: string | boolean,
+  ) {
     if (indice === 0) {
-      await guardarCampo(campo === "inicio" ? "horaInicioEvento" : "horaFinEvento", value);
-      return;
+      if (campo === "aplicaMontaje") return; // el día 1 siempre aplica montaje
+      const v = String(value);
+      if (campo === "inicio") return void guardarCampo("horaInicioEvento", v);
+      if (campo === "fin") return void guardarCampo("horaFinEvento", v);
+      if (campo === "montaje") return void guardarCampo("horaInicioMontaje", v);
+      // llamado — conserva la fecha existente del llamado (o usa la del día 1)
+      const fechaLlamado = proyecto?.llamadoBodega ? proyecto.llamadoBodega.substring(0, 10) : fecha;
+      return void guardarCampo("llamadoBodega", v ? `${fechaLlamado}T${v}:00.000Z` : "");
     }
     const mapa = parseHorariosEvento(proyecto?.horariosEvento);
-    const prev = mapa[fecha] ?? { inicio: null, fin: null };
-    mapa[fecha] = { ...prev, [campo]: value || null };
+    const prev = mapa[fecha] ?? { inicio: null, fin: null, llamado: null, montaje: null, aplicaMontaje: false };
+    mapa[fecha] = { ...prev, [campo]: campo === "aplicaMontaje" ? Boolean(value) : (String(value) || null) };
     const json = JSON.stringify(mapa);
     await fetch(`/api/proyectos/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -3984,9 +3995,14 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div className="col-span-1" />
                   {esMultidia ? (
                     <div className="col-span-2 space-y-2">
-                      <p className="text-gray-500 text-xs">Horarios del evento por día</p>
+                      <p className="text-gray-500 text-xs">Horarios por día</p>
                       {diasDelEvento.map((fecha, di) => {
-                        const h = horarioDeDia(fecha, di, diasDelEvento, proyecto.horariosEvento, proyecto.horaInicioEvento, proyecto.horaFinEvento);
+                        const h = horarioDeDia(fecha, di, diasDelEvento, proyecto.horariosEvento, {
+                          inicio: proyecto.horaInicioEvento,
+                          fin: proyecto.horaFinEvento,
+                          llamado: proyecto.llamadoBodega ? proyecto.llamadoBodega.substring(11, 16) : null,
+                          montaje: proyecto.horaInicioMontaje,
+                        });
                         const propio = parseHorariosEvento(proyecto.horariosEvento)[fecha];
                         const heredado = di > 0 && !(propio && (propio.inicio || propio.fin));
                         return (
@@ -3999,6 +4015,25 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                               <HourPicker label="Hora inicio del evento" value={h.inicio} field={`inicio-${fecha}`} onSave={(_f, v) => guardarHorarioDia(fecha, di, "inicio", v)} />
                               <HourPicker label="Hora fin del evento" value={h.fin} field={`fin-${fecha}`} onSave={(_f, v) => guardarHorarioDia(fecha, di, "fin", v)} />
+                              <HourPicker label="Llamado en bodega" value={h.llamado} field={`llamado-${fecha}`} onSave={(_f, v) => guardarHorarioDia(fecha, di, "llamado", v)} />
+                              <div>
+                                {di > 0 && (
+                                  <label className="flex items-center gap-2 mb-1.5 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      checked={h.aplicaMontaje}
+                                      onChange={e => guardarHorarioDia(fecha, di, "aplicaMontaje", e.target.checked)}
+                                      className="accent-[#B3985B] w-3.5 h-3.5"
+                                    />
+                                    <span className="text-xs text-gray-500">Aplica montaje este día</span>
+                                  </label>
+                                )}
+                                {(di === 0 || h.aplicaMontaje) ? (
+                                  <HourPicker label="Hora de montaje" noLabel={di > 0} value={h.montaje} field={`montaje-${fecha}`} onSave={(_f, v) => guardarHorarioDia(fecha, di, "montaje", v)} />
+                                ) : (
+                                  <p className="text-[11px] text-gray-600 italic">Sin montaje este día</p>
+                                )}
+                              </div>
                             </div>
                           </div>
                         );
@@ -4033,49 +4068,55 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div className="flex-1 h-px bg-[#1e1e1e]" />
                 </div>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                  {/* ── Llamado en bodega (fecha + hora) — PRIMERO ── */}
-                  <div className="col-span-2">
-                    <label className="text-xs text-gray-500 block mb-1">Llamado en bodega</label>
-                    <div className="flex gap-2">
-                      {/* Date part */}
-                      <input
-                        type="date"
-                        defaultValue={proyecto.llamadoBodega ? proyecto.llamadoBodega.substring(0, 10) : ''}
-                        onBlur={e => {
-                          const fechaPart = e.target.value;
-                          const horaPart = proyecto.llamadoBodega
-                            ? proyecto.llamadoBodega.substring(11, 16)
-                            : '08:00';
-                          if (fechaPart) {
-                            // Guardar la hora de pared literal como UTC para que
-                            // no se desplace al leerla (substring UTC) ni en PDFs.
-                            guardarCampo('llamadoBodega', `${fechaPart}T${horaPart}:00.000Z`);
-                          } else {
-                            guardarCampo('llamadoBodega', '');
-                          }
-                        }}
-                        className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                      />
-                      {/* Time part */}
-                      <TimePicker
-                        value={proyecto.llamadoBodega ? proyecto.llamadoBodega.substring(11, 16) : ''}
-                        onChange={v => {
-                          const fechaPart = proyecto.llamadoBodega
-                            ? proyecto.llamadoBodega.substring(0, 10)
-                            : new Date().toISOString().substring(0, 10);
-                          // Hora de pared literal como UTC (ver nota arriba).
-                          guardarCampo('llamadoBodega', `${fechaPart}T${v}:00.000Z`);
-                        }}
-                      />
+                  {esMultidia && (
+                    <p className="col-span-2 text-[11px] text-gray-600">
+                      Los horarios de llamado y montaje se capturan por día arriba, en “Horarios por día”.
+                    </p>
+                  )}
+                  {/* ── Llamado en bodega (fecha + hora) — solo en eventos de un día ── */}
+                  {!esMultidia && (
+                    <div className="col-span-2">
+                      <label className="text-xs text-gray-500 block mb-1">Llamado en bodega</label>
+                      <div className="flex gap-2">
+                        {/* Date part */}
+                        <input
+                          type="date"
+                          defaultValue={proyecto.llamadoBodega ? proyecto.llamadoBodega.substring(0, 10) : ''}
+                          onBlur={e => {
+                            const fechaPart = e.target.value;
+                            const horaPart = proyecto.llamadoBodega
+                              ? proyecto.llamadoBodega.substring(11, 16)
+                              : '08:00';
+                            if (fechaPart) {
+                              // Guardar la hora de pared literal como UTC para que
+                              // no se desplace al leerla (substring UTC) ni en PDFs.
+                              guardarCampo('llamadoBodega', `${fechaPart}T${horaPart}:00.000Z`);
+                            } else {
+                              guardarCampo('llamadoBodega', '');
+                            }
+                          }}
+                          className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                        />
+                        {/* Time part */}
+                        <TimePicker
+                          value={proyecto.llamadoBodega ? proyecto.llamadoBodega.substring(11, 16) : ''}
+                          onChange={v => {
+                            const fechaPart = proyecto.llamadoBodega
+                              ? proyecto.llamadoBodega.substring(0, 10)
+                              : new Date().toISOString().substring(0, 10);
+                            // Hora de pared literal como UTC (ver nota arriba).
+                            guardarCampo('llamadoBodega', `${fechaPart}T${v}:00.000Z`);
+                          }}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
                   <Campo label="Fecha de montaje" value={proyecto.fechaMontaje?.toString().substring(0, 10) ?? null} field="fechaMontaje" type="date" onSave={guardarCampo} />
-                  <HourPicker label="Hora de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" onSave={guardarCampo} />
+                  {!esMultidia && (
+                    <HourPicker label="Hora de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" onSave={guardarCampo} />
+                  )}
                   <Campo label="Duración montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? null} field="duracionMontajeHrs" type="number" onSave={guardarCampo} />
-                  <Campo label="Punto de salida bodega" value={proyecto.puntoSalidaBodega} field="puntoSalidaBodega" type="text" onSave={guardarCampo} />
                   <HourPicker label="Hora salida bodega" value={proyecto.horaSalidaBodega} field="horaSalidaBodega" onSave={guardarCampo} />
-                  {/* ── Desmontaje — AL FINAL ── */}
-                  <Campo label="Hora desmontaje/salida" value={proyecto.horaDesmontaje} field="horaDesmontaje" type="time" onSave={guardarCampo} />
                 </div>
               </>)}
 

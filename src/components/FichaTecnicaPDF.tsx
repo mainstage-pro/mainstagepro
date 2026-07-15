@@ -582,7 +582,7 @@ export function FichaTecnicaPDF({ proyecto, logoSrc }: { proyecto: FichaTecnicaD
             />
             {esMultidiaCrono ? (
               diasCrono.map((fecha, di) => {
-                const h = horarioDeDia(fecha, di, diasCrono, proyecto.horariosEvento, proyecto.horaInicioEvento, proyecto.horaFinEvento);
+                const h = horarioDeDia(fecha, di, diasCrono, proyecto.horariosEvento, { inicio: proyecto.horaInicioEvento, fin: proyecto.horaFinEvento });
                 return (
                   <InfoField
                     key={fecha}

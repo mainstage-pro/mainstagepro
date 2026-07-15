@@ -113,6 +113,7 @@ export interface FichaCoordinadorData {
   horaMontaje: string | null;
   horaSalidaBodega: string | null;
   puntoSalidaBodega: string | null;
+  llamadoBodega: string | null;
   lugarEvento: string | null;
   direccionVenue: string | null;
   linkMaps: string | null;
@@ -185,6 +186,9 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
   const duracionEvento = duracion(data.horaInicio || data.horaInicioEvento, data.horaDesmontaje || data.horaFinEvento);
   const horaMontajeStr = fmtHora(data.horaMontaje || data.horaInicioMontaje);
   const horaSalidaStr = fmtHora(data.horaSalidaBodega);
+  const llamadoBodegaHora = data.llamadoBodega
+    ? new Date(data.llamadoBodega).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" })
+    : null;
 
   const equiposPropios = data.equipos.filter(e => e.tipo === "PROPIO");
   const equiposExternos = data.equipos.filter(e => e.tipo === "EXTERNO");
@@ -314,20 +318,28 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
               {data.direccionVenue && <KVRow label="Dirección" value={data.direccionVenue} />}
               {data.linkMaps && <KVRow label="Google Maps" value={data.linkMaps} />}
               {data.horaSalidaBodega && <KVRow label="Salida desde bodega" value={fmtHora(data.horaSalidaBodega)} bold />}
-              {data.puntoSalidaBodega && <KVRow label="Punto de salida" value={data.puntoSalidaBodega} />}
               {fechaMontajeStr && <KVRow label="Fecha de montaje" value={fechaMontajeStr} />}
-              {data.horaInicioMontaje && <KVRow label="Inicio de montaje" value={fmtHora(data.horaInicioMontaje)} bold />}
               {data.duracionMontajeHrs && <KVRow label="Duración montaje" value={`${data.duracionMontajeHrs} hrs`} />}
-              {data.horaMontaje && <KVRow label="Llegada al venue" value={fmtHora(data.horaMontaje)} bold />}
               {esMultidiaCrono ? (
                 diasCrono.map((fecha, di) => {
-                  const h = horarioDeDia(fecha, di, diasCrono, data.horariosEvento, data.horaInicioEvento, data.horaFinEvento);
-                  if (!h.inicio && !h.fin) return null;
-                  const etiqueta = `Día ${di + 1} · ${fmtFechaCorta(fecha)}`;
-                  const valor = [h.inicio ? `Inicio ${fmtHora(h.inicio)}` : null, h.fin ? `Fin ${fmtHora(h.fin)}` : null].filter(Boolean).join("  ·  ");
-                  return <KVRow key={fecha} label={etiqueta} value={valor} bold />;
+                  const h = horarioDeDia(fecha, di, diasCrono, data.horariosEvento, {
+                    inicio: data.horaInicioEvento,
+                    fin: data.horaFinEvento,
+                    llamado: llamadoBodegaHora,
+                    montaje: data.horaMontaje || data.horaInicioMontaje,
+                  });
+                  const partes = [
+                    h.llamado ? `Llamado ${fmtHora(h.llamado)}` : null,
+                    (di === 0 || h.aplicaMontaje) && h.montaje ? `Montaje ${fmtHora(h.montaje)}` : null,
+                    h.inicio ? `Inicio ${fmtHora(h.inicio)}` : null,
+                    h.fin ? `Fin ${fmtHora(h.fin)}` : null,
+                  ].filter(Boolean);
+                  if (partes.length === 0) return null;
+                  return <KVRow key={fecha} label={`Día ${di + 1} · ${fmtFechaCorta(fecha)}`} value={partes.join("  ·  ")} bold />;
                 })
               ) : (<>
+                {data.horaInicioMontaje && <KVRow label="Inicio de montaje" value={fmtHora(data.horaInicioMontaje)} bold />}
+                {data.horaMontaje && <KVRow label="Llegada al venue" value={fmtHora(data.horaMontaje)} bold />}
                 {horaIni && <KVRow label="Inicio del evento" value={horaIni} bold />}
                 {horaFin && <KVRow label="Fin / desmontaje" value={horaFin} />}
               </>)}
