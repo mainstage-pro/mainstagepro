@@ -66,7 +66,7 @@ export default function VendedoresPage() {
     <div className="p-4 md:p-6 max-w-3xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <Link href="/ventas" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">← Ventas</Link>
+          <Link href="/crm/tratos" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">← Ventas</Link>
           <h1 className="ms-h1 mt-1">Vendedores</h1>
           <p className="text-gray-400 text-sm mt-1">{vendedores.length} vendedor{vendedores.length !== 1 ? "es" : ""} registrado{vendedores.length !== 1 ? "s" : ""}</p>
         </div>

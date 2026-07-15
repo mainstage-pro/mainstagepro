@@ -204,7 +204,7 @@ export default function MigrarCapturaModal({
       setSuccess({ label: "Ver Iniciativas", href: `/operaciones` });
     } else {
       await marcarClasificado("backlog", ligeraArea);
-      setSuccess({ label: "Ver Backlog", href: `/backlog` });
+      setSuccess({ label: "Ver capturas", href: `/operaciones` });
     }
     setSaving(false);
   }

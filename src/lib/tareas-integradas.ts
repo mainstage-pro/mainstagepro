@@ -162,7 +162,7 @@ export async function computarTareasIntegradas(): Promise<TareaIntegrada[]> {
         : p.concepto,
       area: "ADMINISTRACION",
       entidadId: p.id,
-      href: "/finanzas/pagos",
+      href: "/finanzas/cobros-pagos",
       severidad: sev(dias),
       etiqueta: "Pago vencido",
       diasVencido: dias,

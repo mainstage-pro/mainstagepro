@@ -139,7 +139,7 @@ export default async function DashboardVentasPage() {
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <KpiCard label="Pipeline activo" value={String(pipeline)} sub={`${fmt(valorPipeline)} estimado`} color="text-[#B3985B]" href="/crm/tratos" />
-        <KpiCard label="Cerradas este mes" value={String(ventasReporte)} sub={`${tasa}% tasa conversión`} color="text-green-400" href="/ventas" />
+        <KpiCard label="Cerradas este mes" value={String(ventasReporte)} sub={`${tasa}% tasa conversión`} color="text-green-400" href="/crm/tratos" />
         <KpiCard label="Cotizaciones mes" value={String(cotizacionesMes)} sub="creadas este mes" href="/cotizaciones" />
         <KpiCard label="Valor aprobado" value={fmt(valorAprobado)} sub="cotizaciones aprobadas" color="text-green-400" href="/cotizaciones" />
         <KpiCard label="Sin respuesta" value={String(cotizacionesSinRespuesta.length)} sub="cotizaciones enviadas" color={cotizacionesSinRespuesta.length > 3 ? "text-yellow-400" : "text-white"} href="/cotizaciones" alert={cotizacionesSinRespuesta.length > 3} />

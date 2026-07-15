@@ -28,12 +28,22 @@ const nextConfig: NextConfig = {
       { source: "/finanzas/cxc",                 destination: "/finanzas/cobros-pagos",             permanent: true },
       { source: "/finanzas/reporte",             destination: "/direccion/estado-resultados",       permanent: true },
       { source: "/finanzas/rentabilidad",        destination: "/admin/reportes",                    permanent: true },
+      { source: "/finanzas/pagos",               destination: "/finanzas/cobros-pagos",             permanent: true },
+      // ── Operaciones (legacy routes) ──────────────────────────────────────────
+      { source: "/backlog",                      destination: "/operaciones",                       permanent: true },
       // ── RRHH (legacy routes) ─────────────────────────────────────────────────
       { source: "/rrhh/incidencias",             destination: "/rrhh/asistencia",                   permanent: true },
       // ── Comercial (legacy routes) ────────────────────────────────────────────
       { source: "/comercial/solicitudes",        destination: "/crm/tratos",                        permanent: true },
+      { source: "/ventas",                        destination: "/crm/tratos",                        permanent: true },
+      { source: "/ventas/metas",                  destination: "/ventas/reporte",                    permanent: true },
       // ── CRM (legacy routes) ──────────────────────────────────────────────────
       { source: "/crm/clientes",                 destination: "/crm/base-de-datos",                permanent: true },
+      { source: "/crm/pipeline",                 destination: "/crm/tratos",                        permanent: true },
+      // ── Dashboard / Agenda (legacy routes) ───────────────────────────────────
+      { source: "/dashboard/semaforo",            destination: "/dashboard/direccion",               permanent: true },
+      { source: "/agenda",                        destination: "/calendario",                        permanent: true },
+      { source: "/agenda/semana",                 destination: "/calendario",                        permanent: true },
       // ── Admin (legacy routes) ────────────────────────────────────────────────
       { source: "/admin/plantillas-equipo",      destination: "/inventario/bodega/templates",       permanent: true },
       // ── Inventario (legacy routes) ───────────────────────────────────────────

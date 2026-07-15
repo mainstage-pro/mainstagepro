@@ -96,7 +96,7 @@ export default async function DashboardMarketingPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <KpiCard label="Publicadas mes" value={String(publicadas)} sub={`${pctCumplimiento}% cumplimiento`} color="text-green-400" href="/marketing/reporte" />
+        <KpiCard label="Publicadas mes" value={String(publicadas)} sub={`${pctCumplimiento}% cumplimiento`} color="text-green-400" href="/marketing/resultados" />
         <KpiCard label="Pendientes" value={String(pendientes)} sub="por publicar" color={pendientes > 5 ? "text-yellow-400" : "text-white"} href="/marketing/calendario" />
         <KpiCard label="Listas para publicar" value={String(listos)} sub="esperando aprobación" color={listos > 0 ? "text-[#B3985B]" : "text-white"} href="/marketing/calendario" />
         <KpiCard label="Campañas activas" value={String(campanasActivas)} sub="Meta Ads en curso" href="/marketing/campanas" />

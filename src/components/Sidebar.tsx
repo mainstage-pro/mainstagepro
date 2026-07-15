@@ -38,27 +38,35 @@ function canAccess(key: string | undefined, isAdmin: boolean, userModuleKeys: st
 
 function getInitialOpen(pathname: string): Set<string> {
   const open = new Set<string>();
-  // ventas section has no collapsible groups anymore
+  if (pathname.startsWith("/objetivos") || pathname.startsWith("/kpis")) open.add("metas");
   if (pathname.startsWith("/finanzas")) open.add("finanzas");
-  if (pathname.startsWith("/rrhh")) open.add("rrhh");
-  if (pathname.startsWith("/rrhh/candidatos") || pathname.startsWith("/rrhh/puestos")) open.add("ats");
-  if (pathname.startsWith("/socios")) open.add("socios");
-  if (pathname.startsWith("/calendario")) open.add("calendario");
-  if (pathname.startsWith("/inventario")) open.add("inventario");
-  if (pathname.startsWith("/catalogo")) open.add("catalogo");
-
-  // marketing section has no collapsible groups anymore
+  if (pathname.startsWith("/inventario/analisis") || pathname.startsWith("/admin/valuacion")) open.add("activos");
+  if (pathname.startsWith("/socios")) open.add("inversiones");
+  if (pathname.startsWith("/rrhh/candidatos") || pathname.startsWith("/rrhh/puestos") || pathname.startsWith("/rrhh/configuracion")) open.add("ats");
+  else if (pathname.startsWith("/rrhh/capacitaciones") || pathname.startsWith("/capacitacion")) open.add("capacitacion-grp");
+  else if (pathname.startsWith("/rrhh")) open.add("rrhh");
+  if (pathname.startsWith("/inventario") && !pathname.startsWith("/inventario/analisis")) open.add("inventario");
+  if (pathname.startsWith("/produccion/tablero")) open.add("inventario");
+  if (pathname.startsWith("/catalogo/proveedores") || pathname.startsWith("/catalogo/tecnicos") || pathname.startsWith("/catalogo/venues") || pathname.startsWith("/catalogo/empresas")) open.add("catalogo");
+  if (pathname.startsWith("/juntas") || pathname.startsWith("/vision-semanal") || pathname.startsWith("/formularios")) open.add("coordinacion");
   return open;
 }
 
 function getActiveSectionKey(pathname: string): string | null {
-  if (pathname.startsWith("/admin/grupos-equipo")) return "seccion-ventas";
-  if (pathname.startsWith("/gestion") || pathname.startsWith("/proyectos-internos") || pathname.startsWith("/plan-trabajo") || pathname.startsWith("/operaciones")) return "seccion-gestion";
-  if (pathname.startsWith("/presentaciones") || pathname.startsWith("/admin") || pathname.startsWith("/juntas") || pathname.startsWith("/formularios") || pathname.startsWith("/capacitacion") || pathname.startsWith("/direccion")) return "seccion-direccion";
-  if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles") || pathname.startsWith("/admin/reportes")) return "seccion-administracion";
+  // Configuración (sistema)
+  if (pathname.startsWith("/admin/usuarios") || pathname.startsWith("/admin/actividad") || pathname.startsWith("/admin/configuracion")) return "seccion-config";
+  // Gestión Operativa (/proyectos-internos antes que /proyectos)
+  if (pathname.startsWith("/gestion") || pathname.startsWith("/operaciones") || pathname.startsWith("/plan-trabajo") || pathname.startsWith("/proyectos-internos")) return "seccion-gestion";
+  // Administración (RRHH vive aquí; /inventario/analisis y /catalogo/roles antes que Producción)
+  if (pathname.startsWith("/finanzas") || pathname.startsWith("/rrhh") || pathname.startsWith("/capacitacion") || pathname.startsWith("/inventario/analisis") || pathname.startsWith("/admin/valuacion") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles") || pathname.startsWith("/admin/reportes")) return "seccion-administracion";
+  // Dirección
+  if (pathname.startsWith("/direccion") || pathname.startsWith("/juntas") || pathname.startsWith("/vision-semanal") || pathname.startsWith("/formularios") || pathname.startsWith("/presentaciones")) return "seccion-direccion";
+  // Marketing
   if (pathname.startsWith("/marketing")) return "seccion-marketing";
-  if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas") || pathname.startsWith("/comercial")) return "seccion-ventas";
-  if (pathname.startsWith("/proyectos") || pathname.startsWith("/inventario") || pathname.startsWith("/produccion") || pathname.startsWith("/operaciones") || pathname.startsWith("/catalogo")) return "seccion-produccion";
+  // Comercial (/admin/grupos-equipo vive aquí)
+  if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas") || pathname.startsWith("/comercial") || pathname.startsWith("/admin/grupos-equipo")) return "seccion-ventas";
+  // Producción
+  if (pathname.startsWith("/proyectos") || pathname.startsWith("/produccion") || pathname.startsWith("/inventario") || pathname.startsWith("/catalogo")) return "seccion-produccion";
   return null;
 }
 

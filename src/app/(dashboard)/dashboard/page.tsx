@@ -731,13 +731,13 @@ export default async function DashboardPage() {
       {/* ══════════════════════════════════════════════════════════════════════
           VENTAS
       ══════════════════════════════════════════════════════════════════════ */}
-      <Section label="VENTAS" href="/crm/pipeline">
+      <Section label="VENTAS" href="/crm/tratos">
         {/* KPIs */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <KpiCard label="Pipeline activo" value={totalPipeline} sub="tratos en curso" animate={{ amount: totalPipeline }} href="/crm/pipeline" />
+          <KpiCard label="Pipeline activo" value={totalPipeline} sub="tratos en curso" animate={{ amount: totalPipeline }} href="/crm/tratos" />
           <KpiCard label="Valor del pipeline" value={valorPipeline > 0 ? formatCurrency(valorPipeline) : "Sin datos"}
             sub="presupuesto estimado" subColor="text-[#B3985B]"
-            animate={valorPipeline > 0 ? { amount: valorPipeline, prefix: "$", decimals: 0 } : undefined} href="/crm/pipeline" />
+            animate={valorPipeline > 0 ? { amount: valorPipeline, prefix: "$", decimals: 0 } : undefined} href="/crm/tratos" />
           <KpiCard label="Tasa de conversión" value={`${tasaConversion}%`}
             sub={`${totalCerrados} cerrados · ${totalPerdidos} perdidos`}
             subColor={tasaConversion >= 50 ? "text-green-400" : tasaConversion >= 30 ? "text-yellow-400" : "text-red-400"} href="/crm/tratos" />

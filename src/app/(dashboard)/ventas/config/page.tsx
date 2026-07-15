@@ -68,7 +68,7 @@ export default function ConfigComisionesPage() {
   return (
     <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
-        <Link href="/ventas" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">← Ventas</Link>
+        <Link href="/crm/tratos" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">← Ventas</Link>
         <h1 className="ms-h1 mt-1">Configuración de Comisiones</h1>
         <p className="text-gray-400 text-sm mt-1">Parámetros modulares — modifica según la estrategia vigente</p>
       </div>
