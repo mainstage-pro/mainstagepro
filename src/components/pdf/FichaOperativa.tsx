@@ -11,6 +11,7 @@ import {
   agruparPorCategoria, EquipoFlat, CronoRow, TransporteSlot,
   DocsData, EquipoRiderExtra, ProveedorRenta, MAPS,
 } from "./PdfShared";
+import { diasEvento, agruparPorDia } from "@/lib/fechas-evento";
 
 const s = StyleSheet.create({
   // Sección numerada con badge negro
@@ -19,6 +20,7 @@ const s = StyleSheet.create({
     alignItems: "center", justifyContent: "center", marginRight: 7, flexShrink: 0,
   },
   secNumTxt: { fontSize: 7, fontFamily: "Helvetica-Bold", color: C.blanco, paddingTop: 1 },
+  diaLabel: { fontSize: 8, fontFamily: "Helvetica-Bold", color: C.dorado, marginBottom: 4 },
   secTitleRow: {
     flexDirection: "row", alignItems: "center", marginBottom: 8,
     paddingBottom: 4, borderBottomWidth: 0.8,
@@ -121,6 +123,7 @@ export interface FichaOperativaData {
   nombre: string; numeroProyecto: string; estado: string;
   tipoEvento: string; tipoServicio: string | null; zona: string;
   fechaEvento: string | null;
+  fechasEvento: string | null;
   horaInicioEvento: string | null; horaFinEvento: string | null;
   horaInicio: string | null; horaDesmontaje: string | null;
   fechaMontaje: string | null; horaInicioMontaje: string | null; duracionMontajeHrs: number | null;
@@ -172,6 +175,19 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
   const todasCategorias = agruparPorCategoria(data.equipos);
 
   const cronConDatos = data.cronograma.filter(r => r.actividad?.trim());
+  // Servicio de varios días: agrupa el cronograma por fecha.
+  const diasCrono = diasEvento(data.fechaEvento, data.fechasEvento);
+  const esMultidiaCrono = diasCrono.length > 1;
+  const fmtDiaCrono = (iso: string) =>
+    new Date(iso + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" });
+  const cronoFilasDoc = (rows: CronoRow[]) => rows.map((r, i) => (
+    <View key={i} style={i < rows.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
+      <Text style={[base.tdTxt, { width: 46, fontFamily: "Helvetica-Bold" }]}>{fmtHora(r.horaInicio)}</Text>
+      <Text style={[base.tdMuted, { width: 40 }]}>{fmtHora(r.horaFin)}</Text>
+      <Text style={[base.tdTxt, { flex: 1 }]}>{r.actividad}</Text>
+      <Text style={[base.tdMuted, { width: 100 }]}>{r.responsable}</Text>
+    </View>
+  ));
   const transConDatos = data.transportes.filter(t => t.horaSalida || t.choferNombre || t.vehiculoNombre);
 
   const todosProveedores = [
@@ -353,22 +369,34 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
           {cronConDatos.length > 0 && (
             <View style={base.section}>
               <SecNum num={sec("crono")} titulo="Cronograma" />
-              <View style={base.table}>
-                <View style={base.tableHd}>
-                  <Text style={[base.thTxt, { width: 46 }]}>Inicio</Text>
-                  <Text style={[base.thTxt, { width: 40 }]}>Fin</Text>
-                  <Text style={[base.thTxt, { flex: 1 }]}>Actividad</Text>
-                  <Text style={[base.thTxt, { width: 100 }]}>Responsable</Text>
-                </View>
-                {cronConDatos.map((r, i) => (
-                  <View key={i} style={i < cronConDatos.length - 1 ? base.tableRow : base.tableRowLast} wrap={false}>
-                    <Text style={[base.tdTxt, { width: 46, fontFamily: "Helvetica-Bold" }]}>{fmtHora(r.horaInicio)}</Text>
-                    <Text style={[base.tdMuted, { width: 40 }]}>{fmtHora(r.horaFin)}</Text>
-                    <Text style={[base.tdTxt, { flex: 1 }]}>{r.actividad}</Text>
-                    <Text style={[base.tdMuted, { width: 100 }]}>{r.responsable}</Text>
+              {esMultidiaCrono ? (
+                agruparPorDia(cronConDatos, diasCrono)
+                  .filter(g => g.rows.length > 0)
+                  .map(g => (
+                    <View key={g.fecha} style={{ marginBottom: 8 }}>
+                      <Text style={[s.diaLabel, { textTransform: "capitalize" }]}>Día {g.numero} · {fmtDiaCrono(g.fecha)}</Text>
+                      <View style={base.table}>
+                        <View style={base.tableHd}>
+                          <Text style={[base.thTxt, { width: 46 }]}>Inicio</Text>
+                          <Text style={[base.thTxt, { width: 40 }]}>Fin</Text>
+                          <Text style={[base.thTxt, { flex: 1 }]}>Actividad</Text>
+                          <Text style={[base.thTxt, { width: 100 }]}>Responsable</Text>
+                        </View>
+                        {cronoFilasDoc(g.rows)}
+                      </View>
+                    </View>
+                  ))
+              ) : (
+                <View style={base.table}>
+                  <View style={base.tableHd}>
+                    <Text style={[base.thTxt, { width: 46 }]}>Inicio</Text>
+                    <Text style={[base.thTxt, { width: 40 }]}>Fin</Text>
+                    <Text style={[base.thTxt, { flex: 1 }]}>Actividad</Text>
+                    <Text style={[base.thTxt, { width: 100 }]}>Responsable</Text>
                   </View>
-                ))}
-              </View>
+                  {cronoFilasDoc(cronConDatos)}
+                </View>
+              )}
             </View>
           )}
 

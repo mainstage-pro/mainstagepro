@@ -3,6 +3,7 @@ import {
   Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
 import { JORNADA_LABELS } from "@/lib/constants";
+import { diasEvento, agruparPorDia } from "@/lib/fechas-evento";
 
 
 // ─── Paleta ──────────────────────────────────────────────────────────────────
@@ -332,6 +333,7 @@ export interface FichaTecnicaData {
   tipoServicio: string | null;
   zona: string | null;
   fechaEvento: string;
+  fechasEvento: string | null;
   horaInicioEvento: string | null;
   horaFinEvento: string | null;
   fechaMontaje: string | null;
@@ -481,13 +483,39 @@ export function FichaTecnicaPDF({ proyecto, logoSrc }: { proyecto: FichaTecnicaD
   const tieneTransportes = transporteSlots.some(t => t.proveedor || t.marcaModelo);
 
   // Parse cronograma JSON
-  type CronoRow = { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string };
+  type CronoRow = { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string; dia?: string };
   let cronoRows: CronoRow[] = [];
   let cronoIsJson = false;
   try {
     const parsed = proyecto.cronograma ? JSON.parse(proyecto.cronograma) : null;
     if (Array.isArray(parsed) && parsed.length > 0) { cronoRows = parsed; cronoIsJson = true; }
   } catch { /* raw text */ }
+
+  // Servicio de varios días: agrupa el cronograma por fecha.
+  const diasCrono = diasEvento(proyecto.fechaEvento, proyecto.fechasEvento);
+  const esMultidiaCrono = diasCrono.length > 1;
+  const fmtDiaCrono = (iso: string) =>
+    new Date(iso + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" });
+  const cronoTablaDoc = (rows: CronoRow[]) => (
+    <View style={s.table}>
+      <View style={s.tableHeader}>
+        <Text style={[s.thText, { width: "12%" }]}>Inicio</Text>
+        <Text style={[s.thText, { width: "12%" }]}>Fin</Text>
+        <Text style={[s.thText, { width: "36%" }]}>Actividad</Text>
+        <Text style={[s.thText, { width: "20%" }]}>Responsable</Text>
+        <Text style={[s.thText, { width: "20%" }]}>Involucrados</Text>
+      </View>
+      {rows.map((r, i) => (
+        <View key={i} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
+          <Text style={[s.tdText, { width: "12%" }]}>{r.horaInicio || "—"}</Text>
+          <Text style={[s.tdText, { width: "12%" }]}>{r.horaFin || "—"}</Text>
+          <Text style={[s.tdBold, { width: "36%" }]}>{r.actividad || "—"}</Text>
+          <Text style={[s.tdText, { width: "20%" }]}>{r.responsable || "—"}</Text>
+          <Text style={[s.tdText, { width: "20%" }]}>{r.involucrados || "—"}</Text>
+        </View>
+      ))}
+    </View>
+  );
 
   const generadoEl = new Date().toLocaleDateString("es-MX", {
     day: "2-digit", month: "long", year: "numeric",
@@ -770,24 +798,20 @@ export function FichaTecnicaPDF({ proyecto, logoSrc }: { proyecto: FichaTecnicaD
           {!proyecto.cronograma ? (
             <Text style={s.emptyText}>Sin cronograma registrado</Text>
           ) : cronoIsJson && cronoRows.some(r => r.actividad) ? (
-            <View style={s.table}>
-              <View style={s.tableHeader}>
-                <Text style={[s.thText, { width: "12%" }]}>Inicio</Text>
-                <Text style={[s.thText, { width: "12%" }]}>Fin</Text>
-                <Text style={[s.thText, { width: "36%" }]}>Actividad</Text>
-                <Text style={[s.thText, { width: "20%" }]}>Responsable</Text>
-                <Text style={[s.thText, { width: "20%" }]}>Involucrados</Text>
+            esMultidiaCrono ? (
+              <View>
+                {agruparPorDia(cronoRows.filter(r => r.actividad || r.horaInicio), diasCrono)
+                  .filter(g => g.rows.length > 0)
+                  .map(g => (
+                    <View key={g.fecha} style={{ marginBottom: 8 }} wrap={false}>
+                      <Text style={[s.subLabel, { textTransform: "capitalize" }]}>Día {g.numero} · {fmtDiaCrono(g.fecha)}</Text>
+                      {cronoTablaDoc(g.rows)}
+                    </View>
+                  ))}
               </View>
-              {cronoRows.filter(r => r.actividad || r.horaInicio).map((r, i) => (
-                <View key={i} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
-                  <Text style={[s.tdText, { width: "12%" }]}>{r.horaInicio || "—"}</Text>
-                  <Text style={[s.tdText, { width: "12%" }]}>{r.horaFin || "—"}</Text>
-                  <Text style={[s.tdBold, { width: "36%" }]}>{r.actividad || "—"}</Text>
-                  <Text style={[s.tdText, { width: "20%" }]}>{r.responsable || "—"}</Text>
-                  <Text style={[s.tdText, { width: "20%" }]}>{r.involucrados || "—"}</Text>
-                </View>
-              ))}
-            </View>
+            ) : (
+              cronoTablaDoc(cronoRows.filter(r => r.actividad || r.horaInicio))
+            )
           ) : (
             <Text style={s.freeText}>{proyecto.cronograma}</Text>
           )}

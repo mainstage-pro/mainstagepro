@@ -9,6 +9,7 @@ import {
   agruparPorCategoria, EquipoFlat,
   CronoRow, TransporteSlot, DocsData, EquipoRiderExtra, ProveedorRenta,
 } from "./PdfShared";
+import { diasEvento, agruparPorDia } from "@/lib/fechas-evento";
 
 const s = StyleSheet.create({
   // Header
@@ -36,6 +37,7 @@ const s = StyleSheet.create({
   kvValBold: { fontSize: 8, color: C.negro, fontFamily: "Helvetica-Bold" },
   // Tablas compactas
   tbl: { width: "100%", borderWidth: 0.5, borderColor: C.grisLinea, borderStyle: "solid", borderRadius: 2, marginTop: 2 },
+  diaLabel: { fontSize: 8, fontFamily: "Helvetica-Bold", color: C.dorado, marginBottom: 3, marginTop: 2 },
   tblHd: { flexDirection: "row", backgroundColor: C.grisFondo, paddingVertical: 3, paddingHorizontal: 6, borderBottomWidth: 0.5, borderBottomColor: C.grisLinea, borderBottomStyle: "solid" },
   tblRow: { flexDirection: "row", paddingVertical: 3, paddingHorizontal: 6, borderBottomWidth: 0.3, borderBottomColor: "#f0f0f0", borderBottomStyle: "solid" },
   tblRowLast: { flexDirection: "row", paddingVertical: 3, paddingHorizontal: 6 },
@@ -99,6 +101,7 @@ export interface FichaCoordinadorData {
   tipoServicio: string | null;
   zona: string;
   fechaEvento: string | null;
+  fechasEvento: string | null;
   horaInicioEvento: string | null;
   horaFinEvento: string | null;
   horaInicio: string | null;
@@ -195,6 +198,19 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
   const liquidacion = data.cuentasCobrar.find(c => c.tipoPago === "LIQUIDACION");
 
   const cronConDatos = data.cronograma.filter(r => r.actividad?.trim());
+  // Servicio de varios días: agrupa la cronología por fecha.
+  const diasCrono = diasEvento(data.fechaEvento, data.fechasEvento);
+  const esMultidiaCrono = diasCrono.length > 1;
+  const fmtDiaCrono = (iso: string) =>
+    new Date(iso + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" });
+  const cronoFilasDoc = (rows: CronoRow[]) => rows.map((r, i) => (
+    <View key={i} style={i < rows.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
+      <Text style={[s.tblTxt, { width: 50 }]}>{fmtHora(r.horaInicio)}</Text>
+      <Text style={[s.tblTxtMuted, { width: 50 }]}>{fmtHora(r.horaFin)}</Text>
+      <Text style={[s.tblTxt, { flex: 1 }]}>{r.actividad}</Text>
+      <Text style={[s.tblTxtMuted, { width: 90 }]}>{r.responsable}</Text>
+    </View>
+  ));
   const transConDatos = data.transportes.filter(t => t.horaSalida || t.choferNombre);
   const todosProveedores = [
     ...data.proveedoresEvento.map(p => ({ nombre: p.nombreProveedor, servicio: p.servicioEquipo, telefono: p.telefonoProveedor })),
@@ -320,22 +336,34 @@ export function FichaCoordinador({ data }: { data: FichaCoordinadorData }) {
         {cronConDatos.length > 0 && (
           <View style={base.section}>
             <SeccionHeader num="4" titulo="Cronología del Evento" />
-            <View style={s.tbl}>
-              <View style={s.tblHd}>
-                <Text style={[s.tblHdTxt, { width: 50 }]}>Hora</Text>
-                <Text style={[s.tblHdTxt, { width: 50 }]}>Fin</Text>
-                <Text style={[s.tblHdTxt, { flex: 1 }]}>Actividad</Text>
-                <Text style={[s.tblHdTxt, { width: 90 }]}>Responsable</Text>
-              </View>
-              {cronConDatos.map((r, i) => (
-                <View key={i} style={i < cronConDatos.length - 1 ? s.tblRow : s.tblRowLast} wrap={false}>
-                  <Text style={[s.tblTxt, { width: 50 }]}>{fmtHora(r.horaInicio)}</Text>
-                  <Text style={[s.tblTxtMuted, { width: 50 }]}>{fmtHora(r.horaFin)}</Text>
-                  <Text style={[s.tblTxt, { flex: 1 }]}>{r.actividad}</Text>
-                  <Text style={[s.tblTxtMuted, { width: 90 }]}>{r.responsable}</Text>
+            {esMultidiaCrono ? (
+              agruparPorDia(cronConDatos, diasCrono)
+                .filter(g => g.rows.length > 0)
+                .map(g => (
+                  <View key={g.fecha} style={{ marginBottom: 8 }}>
+                    <Text style={[s.diaLabel, { textTransform: "capitalize" }]}>Día {g.numero} · {fmtDiaCrono(g.fecha)}</Text>
+                    <View style={s.tbl}>
+                      <View style={s.tblHd}>
+                        <Text style={[s.tblHdTxt, { width: 50 }]}>Hora</Text>
+                        <Text style={[s.tblHdTxt, { width: 50 }]}>Fin</Text>
+                        <Text style={[s.tblHdTxt, { flex: 1 }]}>Actividad</Text>
+                        <Text style={[s.tblHdTxt, { width: 90 }]}>Responsable</Text>
+                      </View>
+                      {cronoFilasDoc(g.rows)}
+                    </View>
+                  </View>
+                ))
+            ) : (
+              <View style={s.tbl}>
+                <View style={s.tblHd}>
+                  <Text style={[s.tblHdTxt, { width: 50 }]}>Hora</Text>
+                  <Text style={[s.tblHdTxt, { width: 50 }]}>Fin</Text>
+                  <Text style={[s.tblHdTxt, { flex: 1 }]}>Actividad</Text>
+                  <Text style={[s.tblHdTxt, { width: 90 }]}>Responsable</Text>
                 </View>
-              ))}
-            </View>
+                {cronoFilasDoc(cronConDatos)}
+              </View>
+            )}
           </View>
         )}
 

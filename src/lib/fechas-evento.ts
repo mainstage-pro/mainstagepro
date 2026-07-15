@@ -48,6 +48,27 @@ export function diasEvento(
 }
 
 /**
+ * Agrupa filas de cronograma (u otras filas con `dia?: "YYYY-MM-DD"`) por día del evento.
+ * Devuelve un grupo por cada fecha de `dias`, en orden. Las filas sin `dia` (o con un `dia`
+ * fuera de la lista) caen en el día 1, para no perder cronogramas hechos antes del multidía.
+ * Si el evento es de un solo día, devuelve un único grupo con todas las filas.
+ */
+export function agruparPorDia<T extends { dia?: string | null }>(
+  rows: T[],
+  dias: string[],
+): { fecha: string; numero: number; rows: T[] }[] {
+  if (dias.length <= 1) {
+    return [{ fecha: dias[0] ?? "", numero: 1, rows }];
+  }
+  const set = new Set(dias);
+  return dias.map((fecha, i) => ({
+    fecha,
+    numero: i + 1,
+    rows: rows.filter(r => (r.dia && set.has(r.dia)) ? r.dia === fecha : i === 0),
+  }));
+}
+
+/**
  * Normaliza una lista de fechas para guardar: devuelve el JSON string (o null si es 0-1 día)
  * junto con la fecha del día 1 como Date a mediodía UTC (o null si no hay fechas).
  */

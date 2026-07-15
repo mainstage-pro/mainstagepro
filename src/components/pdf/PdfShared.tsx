@@ -242,7 +242,7 @@ export type EquipoFlat = {
   accesorios: { nombre: string; cantidad: number; categoria: string | null }[];
 };
 
-export type CronoRow = { horaInicio: string; horaFin: string; actividad: string; responsable: string };
+export type CronoRow = { horaInicio: string; horaFin: string; actividad: string; responsable: string; dia?: string };
 export type TransporteSlot = { vehiculoId: string; vehiculoNombre?: string; choferId: string; choferNombre?: string; horaSalida: string; comentarios: string };
 export type SoundcheckRow = { hora: string; artista: string; duracion: string; notas: string };
 export type ProgramaRow = { hora: string; actividad: string; responsable: string; notas: string };

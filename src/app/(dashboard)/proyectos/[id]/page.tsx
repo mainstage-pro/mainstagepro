@@ -56,7 +56,7 @@ interface Gasto { id: string; fecha: string; concepto: string; monto: number; me
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null }
 interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number }
 interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: { nombre: string }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; riderAccesorios: RiderAccesorio[] }
-interface CronoRow { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string }
+interface CronoRow { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string; dia?: string }
 interface TransporteSlot { vehiculoId: string; choferId: string; horaSalida: string; comentarios: string }
 interface Proyecto {
   id: string; numeroProyecto: string; nombre: string; estado: string;
@@ -2486,6 +2486,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   async function guardarCronograma(rows: CronoRow[]) {
     setSavingCrono(true);
     const sorted = [...rows].sort((a, b) => {
+      // Primero por día (las filas sin día van al final), luego por hora de inicio.
+      const da = a.dia || "", db = b.dia || "";
+      if (da !== db) { if (!da) return 1; if (!db) return -1; return da.localeCompare(db); }
       if (!a.horaInicio && !b.horaInicio) return 0;
       if (!a.horaInicio) return 1;
       if (!b.horaInicio) return -1;
@@ -2500,20 +2503,28 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setSavingCrono(false);
   }
 
-  async function cargarPlantillaCrono() {
-    if (cronoRows.length > 0 && !await confirm({ message: "¿Reemplazar el cronograma actual con la plantilla base?", danger: false, confirmText: "Reemplazar" })) return;
+  async function cargarPlantillaCrono(dia?: string) {
     const horaInicio = proyecto?.horaInicioEvento ?? "";
     const horaFin = proyecto?.horaFinEvento ?? "";
-    const rows = CRONO_BASE.map(r => {
-      if (r.actividad === "Inicio de evento" && horaInicio) return { ...r, horaInicio };
-      if (r.actividad === "Fin de evento / Inicio de desmontaje" && horaFin) return { ...r, horaInicio: horaFin };
-      return { ...r };
+    const base = CRONO_BASE.map(r => {
+      const row: CronoRow = { ...r, ...(dia ? { dia } : {}) };
+      if (r.actividad === "Inicio de evento" && horaInicio) row.horaInicio = horaInicio;
+      if (r.actividad === "Fin de evento / Inicio de desmontaje" && horaFin) row.horaInicio = horaFin;
+      return row;
     });
-    setCronoRows(rows);
+    if (dia) {
+      // Multidía: reemplaza solo las filas de ese día (deja intactos los demás días).
+      const yaTiene = cronoRows.some(r => r.dia === dia);
+      if (yaTiene && !await confirm({ message: "¿Reemplazar el cronograma de este día con la plantilla base?", danger: false, confirmText: "Reemplazar" })) return;
+      setCronoRows(prev => [...prev.filter(r => r.dia !== dia), ...base]);
+      return;
+    }
+    if (cronoRows.length > 0 && !await confirm({ message: "¿Reemplazar el cronograma actual con la plantilla base?", danger: false, confirmText: "Reemplazar" })) return;
+    setCronoRows(base);
   }
 
-  function addCronoRow() {
-    setCronoRows(prev => [...prev, { horaInicio: "", horaFin: "", actividad: "", responsable: "", involucrados: "" }]);
+  function addCronoRow(dia?: string) {
+    setCronoRows(prev => [...prev, { horaInicio: "", horaFin: "", actividad: "", responsable: "", involucrados: "", ...(dia ? { dia } : {}) }]);
   }
 
   function updateCronoRow(i: number, field: keyof CronoRow, value: string) {
@@ -2524,6 +2535,58 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const next = cronoRows.filter((_, idx) => idx !== i);
     setCronoRows(next);
     guardarCronograma(next);
+  }
+
+  // Tabla de cronograma reutilizable: recibe las filas ya emparejadas con su índice real
+  // en `cronoRows` para que editar/eliminar funcione igual en modo un-día y por-día.
+  function renderCronoTabla(entries: { row: CronoRow; i: number }[]) {
+    return (
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[600px] text-xs">
+          <thead>
+            <tr className="text-gray-500 uppercase tracking-wider border-b border-[#222]">
+              <th className="text-left py-2 pr-2 font-medium w-24">Inicio</th>
+              <th className="text-left py-2 pr-2 font-medium w-24">Fin</th>
+              <th className="text-left py-2 pr-2 font-medium">Actividad</th>
+              <th className="text-left py-2 pr-2 font-medium w-28">Responsable</th>
+              <th className="text-left py-2 pr-2 font-medium w-32">Involucrados</th>
+              <th className="w-6" />
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map(({ row, i }, pos) => (
+              <tr key={i} className={`border-b border-[#1a1a1a] last:border-0 ${pos % 2 === 1 ? "bg-[#0d0d0d]" : ""}`}>
+                <td className="py-1 pr-2 w-[84px]">
+                  <InlinePicker value={row.horaInicio} onChange={v => updateCronoRow(i, "horaInicio", v)} />
+                </td>
+                <td className="py-1 pr-2 w-[84px]">
+                  <InlinePicker value={row.horaFin} onChange={v => updateCronoRow(i, "horaFin", v)} />
+                </td>
+                <td className="py-1 pr-2">
+                  <input value={row.actividad} onChange={e => updateCronoRow(i, "actividad", e.target.value)}
+                    placeholder="Actividad"
+                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
+                </td>
+                <td className="py-1 pr-2">
+                  <input value={row.responsable} onChange={e => updateCronoRow(i, "responsable", e.target.value)}
+                    placeholder="Responsable"
+                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
+                </td>
+                <td className="py-1 pr-2">
+                  <input value={row.involucrados} onChange={e => updateCronoRow(i, "involucrados", e.target.value)}
+                    placeholder="Involucrados"
+                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
+                </td>
+                <td className="py-1 text-center">
+                  <button onClick={() => removeCronoRow(i)}
+                    className="text-gray-600 hover:text-red-400 text-base leading-none transition-colors">×</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
   }
 
   // ── Guardar transportes ──
@@ -5395,17 +5458,23 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           {!esRenta && (
           <div className="ms-card p-5">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Cronología general del evento</p>
+              <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
+                {esMultidia ? "Cronología por día" : "Cronología general del evento"}
+              </p>
               <div className="flex items-center gap-2 flex-wrap">
                 {savingCrono && <span className="text-xs text-gray-600">Guardando...</span>}
-                <button onClick={cargarPlantillaCrono}
-                  className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
-                  Plantilla base
-                </button>
-                <button onClick={addCronoRow}
-                  className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
-                  + Agregar fila
-                </button>
+                {!esMultidia && (
+                  <>
+                    <button onClick={() => cargarPlantillaCrono()}
+                      className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
+                      Plantilla base
+                    </button>
+                    <button onClick={() => addCronoRow()}
+                      className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
+                      + Agregar fila
+                    </button>
+                  </>
+                )}
                 {cronoRows.length > 0 && (
                   <button onClick={() => guardarCronograma(cronoRows)} disabled={savingCrono}
                     className="text-xs bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black font-semibold px-3 py-1 rounded-lg transition-colors">
@@ -5414,57 +5483,46 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 )}
               </div>
             </div>
-            {cronoRows.length === 0 ? (
+            {esMultidia ? (
+              <div className="space-y-6">
+                {diasDelEvento.map((dia, di) => {
+                  const entries = cronoRows
+                    .map((row, i) => ({ row, i }))
+                    .filter(({ row }) => (row.dia && diasDelEvento.includes(row.dia)) ? row.dia === dia : di === 0);
+                  return (
+                    <div key={dia}>
+                      <div className="flex items-center justify-between mb-2 flex-wrap gap-2 border-b border-[#222] pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-semibold text-black bg-[#B3985B] rounded px-1.5 py-0.5 shrink-0">D{di + 1}</span>
+                          <span className="text-white text-sm capitalize font-medium">{fmtDiaCorto(dia)}</span>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button onClick={() => cargarPlantillaCrono(dia)}
+                            className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
+                            Plantilla base
+                          </button>
+                          <button onClick={() => addCronoRow(dia)}
+                            className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
+                            + Agregar fila
+                          </button>
+                        </div>
+                      </div>
+                      {entries.length === 0 ? (
+                        <p className="text-gray-600 text-xs py-3">Sin actividades para este día. Usa <span className="text-gray-400">Plantilla base</span> o <span className="text-gray-400">+ Agregar fila</span>.</p>
+                      ) : (
+                        renderCronoTabla(entries)
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : cronoRows.length === 0 ? (
               <div className="text-center py-8 space-y-2">
                 <p className="text-gray-600 text-sm">Sin actividades aún.</p>
                 <p className="text-gray-700 text-xs">Presiona <span className="text-gray-400 font-medium">Plantilla base</span> para cargar las 17 actividades estándar del evento.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[600px] text-xs">
-                  <thead>
-                    <tr className="text-gray-500 uppercase tracking-wider border-b border-[#222]">
-                      <th className="text-left py-2 pr-2 font-medium w-24">Inicio</th>
-                      <th className="text-left py-2 pr-2 font-medium w-24">Fin</th>
-                      <th className="text-left py-2 pr-2 font-medium">Actividad</th>
-                      <th className="text-left py-2 pr-2 font-medium w-28">Responsable</th>
-                      <th className="text-left py-2 pr-2 font-medium w-32">Involucrados</th>
-                      <th className="w-6" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cronoRows.map((row, i) => (
-                      <tr key={i} className={`border-b border-[#1a1a1a] last:border-0 ${i % 2 === 1 ? "bg-[#0d0d0d]" : ""}`}>
-                        <td className="py-1 pr-2 w-[84px]">
-                          <InlinePicker value={row.horaInicio} onChange={v => updateCronoRow(i, "horaInicio", v)} />
-                        </td>
-                        <td className="py-1 pr-2 w-[84px]">
-                          <InlinePicker value={row.horaFin} onChange={v => updateCronoRow(i, "horaFin", v)} />
-                        </td>
-                        <td className="py-1 pr-2">
-                          <input value={row.actividad} onChange={e => updateCronoRow(i, "actividad", e.target.value)}
-                            placeholder="Actividad"
-                            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
-                        </td>
-                        <td className="py-1 pr-2">
-                          <input value={row.responsable} onChange={e => updateCronoRow(i, "responsable", e.target.value)}
-                            placeholder="Responsable"
-                            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
-                        </td>
-                        <td className="py-1 pr-2">
-                          <input value={row.involucrados} onChange={e => updateCronoRow(i, "involucrados", e.target.value)}
-                            placeholder="Involucrados"
-                            className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
-                        </td>
-                        <td className="py-1 text-center">
-                          <button onClick={() => removeCronoRow(i)}
-                            className="text-gray-600 hover:text-red-400 text-base leading-none transition-colors">×</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              renderCronoTabla(cronoRows.map((row, i) => ({ row, i })))
             )}
           </div>
           )}
