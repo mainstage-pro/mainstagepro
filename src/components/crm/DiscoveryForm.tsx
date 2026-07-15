@@ -884,6 +884,24 @@ export default function DiscoveryForm({
               <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">
                 <p className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold">Detalles de renta</p>
 
+                {/* ── Selector de equipos del inventario (igual que producción) ── */}
+                <div>
+                  <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1">Equipos e inventario de interés</label>
+                  <p className="text-[11px] text-gray-600 mb-3">Paso 1: elige las categorías que te interesan. Paso 2: dentro de cada una, selecciona los equipos y las piezas que necesitas (o deja la cantidad a criterio del vendedor). Lo seleccionado se sugiere automáticamente al armar la cotización.</p>
+                  <SelectorEquiposInventario
+                    readOnly={readOnly}
+                    value={(() => {
+                      try { return discForm.equiposInteres ? JSON.parse(discForm.equiposInteres as string) : { categorias: [], equipos: [], cantidades: {} }; }
+                      catch { return { categorias: [], equipos: [], cantidades: {} }; }
+                    })()}
+                    onChange={(sel: SeleccionEquipos) => {
+                      setDiscForm(p => ({ ...p, equiposInteres: JSON.stringify(sel) }));
+                    }}
+                    notas={discForm.notasEquipos || ""}
+                    onNotasChange={(v) => setDiscForm(p => ({ ...p, notasEquipos: v }))}
+                  />
+                </div>
+
                 {/* Descripción de equipos */}
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Descripción del equipo solicitado (rider o listado libre)</label>
@@ -1171,9 +1189,9 @@ export default function DiscoveryForm({
             )}
             
             {/* ── Notas Técnicas / Equipos Adicionales (Manual) ───────────────────────
-                En producción técnica el campo lo maneja el selector (tras las categorías);
-                aquí solo para RENTA y Dirección Técnica. */}
-            {(discForm.tipoServicio === "RENTA" || discForm.tipoServicio === "DIRECCION_TECNICA") && (
+                En producción técnica y renta el campo lo maneja el selector (tras las
+                categorías); aquí solo para Dirección Técnica. */}
+            {discForm.tipoServicio === "DIRECCION_TECNICA" && (
             <div className="pt-2">
               <label className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold block mb-2">Notas Técnicas y Equipo Adicional (Manual)</label>
               <p className="text-[11px] text-gray-500 mb-2">Detalla marcas, modelos específicos, o lista cualquier equipo que no hayas encontrado en las categorías.</p>
@@ -1435,7 +1453,7 @@ export default function DiscoveryForm({
                       Hacer cotización →
                     </Link>
                   </div>
-                  {discForm.tipoServicio !== "RENTA" && (() => {
+                  {(() => {
                     let sel: SeleccionEquipos | null = null;
                     try { sel = discForm.equiposInteres ? JSON.parse(discForm.equiposInteres) : null; } catch { sel = null; }
                     const tiene = !!sel && ((sel.equipos?.length ?? 0) > 0 || (sel.categorias?.length ?? 0) > 0 || (sel.extras?.length ?? 0) > 0);
