@@ -958,78 +958,6 @@ export default function DiscoveryForm({
                   </div>
                 </div>
 
-                {/* Modalidad de entrega */}
-                <div>
-                  <label className="text-xs text-gray-400 block mb-2">Modalidad de entrega</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {RENTA_ENTREGA.map(e => (
-                      <button key={e.id} onClick={() => setDiscForm(p => ({ ...p, rentaModalidadEntrega: e.id }))}
-                        className={`px-3 py-2.5 rounded-lg text-left transition-colors border ${
-                          discForm.rentaModalidadEntrega === e.id
-                            ? "border-[#B3985B] bg-[#B3985B]/10"
-                            : "border-[#333] hover:border-[#555]"
-                        }`}>
-                        <p className={`text-xs font-medium ${discForm.rentaModalidadEntrega === e.id ? "text-[#B3985B]" : "text-white"}`}>{e.label}</p>
-                        <p className="text-[10px] text-gray-500 mt-0.5">{e.desc}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Dirección + fechas de entrega/devolución */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2">
-                    <label className="text-xs text-gray-400 block mb-1">Dirección de entrega (si aplica)</label>
-                    <input value={discForm.rentaDireccionEntrega}
-                      onChange={e => setDiscForm(p => ({ ...p, rentaDireccionEntrega: e.target.value }))}
-                      placeholder="Calle, colonia, ciudad, CP"
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Fecha de entrega del equipo</label>
-                    <input type="date" value={discForm.rentaFechaEntrega}
-                      onChange={e => setDiscForm(p => ({ ...p, rentaFechaEntrega: e.target.value }))}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Hora de entrega</label>
-                    <TimePicker value={discForm.rentaHoraEntrega} onChange={v => setDiscForm(p => ({ ...p, rentaHoraEntrega: v }))} placeholder="Hora entrega" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Fecha de devolución/recolección</label>
-                    <input type="date" value={discForm.rentaFechaDevolucion}
-                      onChange={e => setDiscForm(p => ({ ...p, rentaFechaDevolucion: e.target.value }))}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Hora de recolección</label>
-                    <TimePicker value={discForm.rentaHoraDevolucion} onChange={v => setDiscForm(p => ({ ...p, rentaHoraDevolucion: v }))} placeholder="Hora recolección" />
-                  </div>
-                </div>
-
-                {/* Técnico propio */}
-                <div>
-                  <label className="text-xs text-gray-400 block mb-2">¿El cliente tiene técnico propio?</label>
-                  <div className="flex gap-2">
-                    {["Sí", "No", "Parcialmente"].map(op => (
-                      <button key={op} onClick={() => setDiscForm(p => ({ ...p, rentaTecnicoPropio: op }))}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                          discForm.rentaTecnicoPropio === op
-                            ? "border-[#B3985B] text-black bg-[#B3985B]"
-                            : "border-[#333] text-gray-400 hover:border-[#555] hover:text-white"
-                        }`}>{op}</button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Notas de la renta */}
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Notas adicionales de la renta</label>
-                  <textarea value={discForm.rentaNotas}
-                    onChange={e => setDiscForm(p => ({ ...p, rentaNotas: e.target.value }))}
-                    rows={3} placeholder="Cualquier información adicional sobre la renta, condiciones especiales, preferencias del cliente..."
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
-                </div>
               </div>
             ) : discForm.tipoServicio === "DIRECCION_TECNICA" ? (
               /* ── DIRECCIÓN TÉCNICA: Alcance del servicio ── */
@@ -1236,8 +1164,87 @@ export default function DiscoveryForm({
 
               {/* El número de asistentes se captura en el paso 1 */}
 
-              {/* Referencias y archivos del cliente — solo en paso 2 para RENTA; en paso 3 para producción */}
-              {discForm.tipoServicio === "RENTA" && <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">
+            </div>)} {/* /paso2 */}
+
+            {/* PASO 3: Operativo y Logística — RENTA (entrega y devolución) */}
+            {discForm.tipoServicio === "RENTA" && pasoActivo === 3 && (<div className="space-y-4">
+              <p className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold">Logística de entrega y devolución</p>
+
+              {/* Modalidad de entrega */}
+              <div>
+                <label className="text-xs text-gray-400 block mb-2">Modalidad de entrega</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {RENTA_ENTREGA.map(e => (
+                    <button key={e.id} onClick={() => setDiscForm(p => ({ ...p, rentaModalidadEntrega: e.id }))}
+                      className={`px-3 py-2.5 rounded-lg text-left transition-colors border ${
+                        discForm.rentaModalidadEntrega === e.id
+                          ? "border-[#B3985B] bg-[#B3985B]/10"
+                          : "border-[#333] hover:border-[#555]"
+                      }`}>
+                      <p className={`text-xs font-medium ${discForm.rentaModalidadEntrega === e.id ? "text-[#B3985B]" : "text-white"}`}>{e.label}</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">{e.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Dirección + fechas de entrega/devolución */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="text-xs text-gray-400 block mb-1">Dirección de entrega (si aplica)</label>
+                  <input value={discForm.rentaDireccionEntrega}
+                    onChange={e => setDiscForm(p => ({ ...p, rentaDireccionEntrega: e.target.value }))}
+                    placeholder="Calle, colonia, ciudad, CP"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Fecha de entrega del equipo</label>
+                  <input type="date" value={discForm.rentaFechaEntrega}
+                    onChange={e => setDiscForm(p => ({ ...p, rentaFechaEntrega: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Hora de entrega</label>
+                  <TimePicker value={discForm.rentaHoraEntrega} onChange={v => setDiscForm(p => ({ ...p, rentaHoraEntrega: v }))} placeholder="Hora entrega" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Fecha de devolución/recolección</label>
+                  <input type="date" value={discForm.rentaFechaDevolucion}
+                    onChange={e => setDiscForm(p => ({ ...p, rentaFechaDevolucion: e.target.value }))}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 block mb-1">Hora de recolección</label>
+                  <TimePicker value={discForm.rentaHoraDevolucion} onChange={v => setDiscForm(p => ({ ...p, rentaHoraDevolucion: v }))} placeholder="Hora recolección" />
+                </div>
+              </div>
+
+              {/* Técnico propio */}
+              <div>
+                <label className="text-xs text-gray-400 block mb-2">¿El cliente tiene técnico propio?</label>
+                <div className="flex gap-2">
+                  {["Sí", "No", "Parcialmente"].map(op => (
+                    <button key={op} onClick={() => setDiscForm(p => ({ ...p, rentaTecnicoPropio: op }))}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                        discForm.rentaTecnicoPropio === op
+                          ? "border-[#B3985B] text-black bg-[#B3985B]"
+                          : "border-[#333] text-gray-400 hover:border-[#555] hover:text-white"
+                      }`}>{op}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Notas de la renta */}
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Notas adicionales de la renta</label>
+                <textarea value={discForm.rentaNotas}
+                  onChange={e => setDiscForm(p => ({ ...p, rentaNotas: e.target.value }))}
+                  rows={3} placeholder="Cualquier información adicional sobre la renta, condiciones especiales, preferencias del cliente..."
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+              </div>
+
+              {/* Referencias y archivos del cliente */}
+              <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">
                 <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Referencias y archivos del cliente</p>
                 {(["REFERENCIA", "DOCUMENTO"] as const).map((cat) => {
                   const catMeta = {
@@ -1287,9 +1294,8 @@ export default function DiscoveryForm({
                     </div>
                   );
                 })}
-              </div>}
-
-            </div>)} {/* /paso2 */}
+              </div>
+            </div>)} {/* /paso3 RENTA */}
 
             {/* PASO 3: Operativo y Logística */}
             {discForm.tipoServicio !== "RENTA" && pasoActivo === 3 && (<div className="space-y-4">
@@ -1413,7 +1419,7 @@ export default function DiscoveryForm({
 
 
             {/* PASO 4: Opciones comerciales */}
-            {(discForm.tipoServicio === "RENTA" ? pasoActivo === 3 : pasoActivo === 4) && (<div className="space-y-4">
+            {pasoActivo === 4 && (<div className="space-y-4">
 
               {/* Toggles: Mainstage Trade + Render — solo vendedor */}
               {!clientMode && (
