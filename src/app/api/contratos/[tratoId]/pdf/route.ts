@@ -8,6 +8,7 @@ import fs from "fs";
 import path from "path";
 
 import { validarTokenPresentacion } from "@/lib/presentacion-token";
+import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
 
 export async function GET(
   req: NextRequest,
@@ -24,6 +25,9 @@ export async function GET(
   }
 
   const { tratoId } = await params;
+
+  // Lee el trato con `include`; garantizar columnas nuevas antes de consultar.
+  await ensureProcesoVentaColumns();
 
   const trato = await prisma.trato.findUnique({
     where: { id: tratoId },

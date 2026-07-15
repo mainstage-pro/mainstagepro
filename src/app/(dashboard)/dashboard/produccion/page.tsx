@@ -4,6 +4,7 @@ import Link from "next/link";
 import DailyGreeting from "@/components/DailyGreeting";
 import TareasPendientesWidget from "@/components/TareasPendientesWidget";
 import { EventosWidget } from "@/components/dashboard/EventosWidget";
+import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
 
 
 function fmt(n: number) {
@@ -31,6 +32,8 @@ const ESTADO_COLORS: Record<string, string> = {
 
 export default async function DashboardProduccionPage() {
   const session = await getSession();
+  // Lee tratos con `include`; garantizar columnas nuevas del proceso de venta.
+  await ensureProcesoVentaColumns();
   const ahora = new Date();
   const en7dias = new Date(ahora.getTime() + 7 * 86400000);
   const en30dias = new Date(ahora.getTime() + 30 * 86400000);

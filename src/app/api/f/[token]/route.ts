@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cotejarOCrearCliente } from "@/lib/cotejo-cliente";
 import { ensureFormularioLeadTable, etapaDesdeMomento } from "@/lib/formulario-lead";
+import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
 
 // ─── Ensure formRecibidoEn column exists ─────────────────────────────────────
 let _colReady = false;
@@ -32,6 +33,7 @@ const DISCOVERY_KEYS = [
   "ventanaMontajeInicio", "ventanaMontajeFin", "horaTerminoMontaje",
   "contactoVenueNombre", "contactoVenueTelefono", "contactoDecisorNombre", "contactoDecisorCargo",
   "serviciosInteres", "equiposInteres", "ideasReferencias",
+  "preferenciaContacto",
 ] as const;
 
 function mapDiscoveryData(body: Record<string, unknown>): Record<string, unknown> {
@@ -57,6 +59,7 @@ function mapDiscoveryData(body: Record<string, unknown>): Record<string, unknown
 export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   await ensureFormRecibidoEn();
+  await ensureProcesoVentaColumns();
 
   const trato = await prisma.trato.findUnique({
     where: { formToken: token },
@@ -78,6 +81,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
       serviciosInteres: true,
       equiposInteres: true,
       ideasReferencias: true,
+      preferenciaContacto: true,
       familyAndFriends: true,
       realizarRender: true,
       tradeCalificado: true,
@@ -135,6 +139,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   await ensureFormRecibidoEn();
+  await ensureProcesoVentaColumns();
 
   const trato = await prisma.trato.findUnique({
     where: { formToken: token },
@@ -178,8 +183,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         await prisma.trato.update({ where: { id: trato.id }, data });
       }
       if (isFinal) {
+        // El cliente terminó el descubrimiento → se considera hecho y el trato
+        // avanza automáticamente a OPORTUNIDAD (listo para cotizar), salvo que ya
+        // esté en una etapa más avanzada (OPORTUNIDAD/VENTA_*).
         await prisma.$executeRawUnsafe(
-          `UPDATE tratos SET "formEstado" = 'COMPLETADO', "descubrimientoCompleto" = true, "formRecibidoEn" = NOW() WHERE id = $1`,
+          `UPDATE tratos
+             SET "formEstado" = 'COMPLETADO',
+                 "descubrimientoCompleto" = true,
+                 "formRecibidoEn" = NOW(),
+                 "modoDescubrimiento" = 'CLIENTE',
+                 "etapa" = CASE WHEN "etapa" IN ('LEAD', 'DESCUBRIMIENTO') THEN 'OPORTUNIDAD' ELSE "etapa" END
+           WHERE id = $1`,
           trato.id
         );
       }
@@ -227,7 +241,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         origenLead: formulario.origenLead,
         tipoLead: "INBOUND",
         origenVenta: "PUBLICIDAD",
-        etapa: etapaDesdeMomento(momentoH),
+        // El cliente llenó todo el descubrimiento → nace listo para cotizar.
+        etapa: "OPORTUNIDAD",
+        modoDescubrimiento: "CLIENTE",
         momentoContratacion: momentoH,
         posibleDuplicado: cotejo.estado === "DUPLICADO_POSIBLE",
         rutaEntrada: "DESCUBRIR",

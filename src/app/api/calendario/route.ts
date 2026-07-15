@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
 
 type Nivel = 'tentativo' | 'confirmado' | 'operativo';
 
@@ -19,6 +20,9 @@ function nivelTrato(confirmadaEn: Date | null, etapa: string): Nivel {
 export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  // Lee tratos con `include`; garantizar columnas nuevas antes de consultar.
+  await ensureProcesoVentaColumns();
 
   const sp = req.nextUrl.searchParams;
   const mes = sp.get("mes"); // "2026-04"

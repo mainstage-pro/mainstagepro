@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { agendarSeguimientoPorEtapa } from "@/lib/etapaSeguimientos";
 import { syncFechaProximaAccion } from "@/app/api/seguimientos/route";
+import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
 
 let _vendedorColReady = false;
 async function ensureVendedorId() {
@@ -34,6 +35,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   await ensureVendedorId();
   await ensureBriefCols();
+  await ensureProcesoVentaColumns();
   const { id } = await params;
 
   const trato = await prisma.trato.findUnique({
@@ -81,6 +83,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   await ensureVendedorId();
   await ensureBriefCols();
+  await ensureProcesoVentaColumns();
   const { id } = await params;
   const body = await request.json();
 
@@ -101,6 +104,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "descubrimientoCompleto", "posibleDuplicado",
     // Selección de equipos del inventario
     "equiposInteres",
+    // Proceso de ventas: rama del descubrimiento y preferencia del cliente
+    "modoDescubrimiento", "preferenciaContacto",
     // Horarios del evento
     "horaInicioEvento", "horaFinEvento", "duracionMontajeHrs",
     // Logística del venue

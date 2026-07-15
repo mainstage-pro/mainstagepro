@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
 
 function mesDeTrabajoNum(fechaInicio: Date, mesReporte: string): number {
   const [year, month] = mesReporte.split("-").map(Number);
@@ -23,6 +24,8 @@ function pisoDelMes(
 export async function GET(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  await ensureProcesoVentaColumns();
 
   const { searchParams } = new URL(request.url);
   // mes en formato "2026-04"

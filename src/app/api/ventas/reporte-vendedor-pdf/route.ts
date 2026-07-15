@@ -6,10 +6,13 @@ import { ReporteVendedorPDF } from "@/components/ReporteVendedorPDF";
 import React from "react";
 import fs from "fs";
 import path from "path";
+import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  await ensureProcesoVentaColumns();
 
   const body = await req.json();
   const { mes, vendedorId, analisis, propuestas, comentarios } = body;

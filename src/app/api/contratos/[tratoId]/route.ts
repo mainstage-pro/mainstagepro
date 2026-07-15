@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
 
 export async function GET(
   _req: NextRequest,
@@ -8,6 +9,9 @@ export async function GET(
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  // Lee el trato con `include`; garantizar columnas nuevas antes de consultar.
+  await ensureProcesoVentaColumns();
 
   const { tratoId } = await params;
 

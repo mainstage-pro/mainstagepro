@@ -28,3 +28,26 @@ export async function ensureOperacionTecnicaColumns() {
   } catch { /* ya existe */ }
   _ready = true;
 }
+
+/**
+ * Migraciones lazy del proceso de ventas (patrón Neon: ADD COLUMN IF NOT EXISTS).
+ * - tratos.modoDescubrimiento: "VENDEDOR" | "CLIENTE", define la rama del wizard.
+ * - tratos.preferenciaContacto: "LLAMADA" | "PROPUESTA", elegida por el cliente al llenar el form.
+ * Idempotente y seguro de correr múltiples veces.
+ */
+let _procesoVentaReady = false;
+
+export async function ensureProcesoVentaColumns() {
+  if (_procesoVentaReady) return;
+  try {
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "modoDescubrimiento" TEXT`
+    );
+  } catch { /* ya existe */ }
+  try {
+    await prisma.$executeRawUnsafe(
+      `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "preferenciaContacto" TEXT`
+    );
+  } catch { /* ya existe */ }
+  _procesoVentaReady = true;
+}

@@ -58,8 +58,16 @@ export type PaquetePublico = {
   conceptos: { tipo: string; descripcion: string }[];
 };
 
+/** Rol técnico vigente (para las categorías "Servicio de DJ" y "Operación técnica"). */
+export type RolPublico = {
+  id: string;
+  nombre: string;
+  disciplina: string | null;
+  descripcion: string | null;
+};
+
 export type SeleccionEquipos = {
-  /** IDs de CategoriaEquipo elegidas en el paso 1 */
+  /** IDs de CategoriaEquipo elegidas en el paso 1 (incluye categorías sintéticas de servicio) */
   categorias: string[];
   /** IDs de Equipo específico seleccionado en el paso 2 */
   equipos: string[];
@@ -71,7 +79,17 @@ export type SeleccionEquipos = {
   productos?: SeleccionProducto[];
   /** Paquetes comerciales seleccionados */
   paquetes?: SeleccionProducto[];
+  /** IDs de RolTecnico elegidos en las categorías de servicio (DJ / operación técnica) */
+  roles?: string[];
+  /** Si true, el cliente deja la cantidad/selección exacta de equipos a criterio del vendedor;
+   *  las categorías elegidas quedan solo como referencia de interés. */
+  aCriterioVendedor?: boolean;
 };
+
+// Categorías sintéticas de servicio (no existen en el inventario; se arman con roles técnicos)
+const CAT_SERVICIO_DJ = "__svc_dj__";
+const CAT_OPERACION_TECNICA = "__svc_optec__";
+const CATS_SERVICIO = new Set([CAT_SERVICIO_DJ, CAT_OPERACION_TECNICA]);
 
 const ETIQUETA_TIPO_EVENTO: Record<string, string> = {
   MUSICAL: "🎵 Musical",
@@ -132,7 +150,10 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
   const [categorias, setCategorias] = useState<CategoriaPublica[]>([]);
   const [productos, setProductos] = useState<ProductoPublico[]>([]);
   const [paquetes, setPaquetes] = useState<PaquetePublico[]>([]);
+  const [roles, setRoles] = useState<RolPublico[]>([]);
   const [loading, setLoading] = useState(true);
+  // Categorías expandidas en el paso 2 (por defecto todas colapsadas)
+  const [expandidas, setExpandidas] = useState<Set<string>>(new Set());
   const [paso, setPaso] = useState<1 | 2>(() =>
     value.categorias.length > 0 ||
     value.equipos.length > 0 ||
@@ -156,14 +177,52 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
       fetch("/api/inventario/publico").then((r) => r.json()).catch(() => ({})),
       fetch("/api/productos/publico").then((r) => r.json()).catch(() => ({})),
       fetch("/api/paquetes/publico").then((r) => r.json()).catch(() => ({})),
+      fetch("/api/roles-tecnicos/publico").then((r) => r.json()).catch(() => ({})),
     ])
-      .then(([inv, prod, paq]) => {
+      .then(([inv, prod, paq, rol]) => {
         if (inv.categorias) setCategorias(inv.categorias);
         if (prod.productos) setProductos(prod.productos);
         if (paq.paquetes) setPaquetes(paq.paquetes);
+        if (rol.roles) setRoles(rol.roles);
       })
       .finally(() => setLoading(false));
   }, []);
+
+  const rolesSel = value.roles ?? [];
+  const aCriterioVendedor = value.aCriterioVendedor ?? false;
+
+  // Categorías sintéticas de servicio, armadas con los roles técnicos vigentes.
+  const rolesDj = useMemo(
+    () => roles.filter((r) => (r.disciplina ?? "").toUpperCase() === "DJ"),
+    [roles]
+  );
+  const rolesOpTecnica = useMemo(
+    () => roles.filter((r) => (r.disciplina ?? "").toUpperCase() !== "DJ"),
+    [roles]
+  );
+
+  function toggleExpandida(catId: string) {
+    setExpandidas((prev) => {
+      const next = new Set(prev);
+      if (next.has(catId)) next.delete(catId);
+      else next.add(catId);
+      return next;
+    });
+  }
+
+  function toggleRol(rolId: string) {
+    if (readOnly) return;
+    const tiene = rolesSel.includes(rolId);
+    onChange({
+      ...value,
+      roles: tiene ? rolesSel.filter((id) => id !== rolId) : [...rolesSel, rolId],
+    });
+  }
+
+  function setACriterioVendedor(v: boolean) {
+    if (readOnly) return;
+    onChange({ ...value, aCriterioVendedor: v });
+  }
 
   // ── Mutadores de productos ──
   function toggleProducto(id: string) {
@@ -227,11 +286,38 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
     [categoriasVisibles, value.categorias]
   );
 
+  // Categorías de servicio (sintéticas) armadas con roles técnicos vigentes.
+  const serviciosCategorias = useMemo(() => {
+    const out: { id: string; nombre: string; emoji: string; roles: RolPublico[] }[] = [];
+    if (rolesDj.length > 0)
+      out.push({ id: CAT_SERVICIO_DJ, nombre: "Servicio de DJ", emoji: "💽", roles: rolesDj });
+    if (rolesOpTecnica.length > 0)
+      out.push({ id: CAT_OPERACION_TECNICA, nombre: "Operación técnica", emoji: "🎚️", roles: rolesOpTecnica });
+    return out;
+  }, [rolesDj, rolesOpTecnica]);
+
+  const serviciosElegidos = useMemo(
+    () => serviciosCategorias.filter((s) => value.categorias.includes(s.id)),
+    [serviciosCategorias, value.categorias]
+  );
+
   // ── Mutadores ──
   function toggleCategoria(catId: string) {
     if (readOnly) return;
     const tiene = value.categorias.includes(catId);
     if (tiene) {
+      // Categoría de servicio: al quitarla, soltamos también sus roles seleccionados.
+      if (CATS_SERVICIO.has(catId)) {
+        const rolesDeCat = new Set(
+          (catId === CAT_SERVICIO_DJ ? rolesDj : rolesOpTecnica).map((r) => r.id)
+        );
+        onChange({
+          ...value,
+          categorias: value.categorias.filter((id) => id !== catId),
+          roles: rolesSel.filter((id) => !rolesDeCat.has(id)),
+        });
+        return;
+      }
       // Al quitar la categoría, quitamos sus equipos y cantidades
       const cat = categorias.find((c) => c.id === catId);
       const idsCat = new Set((cat?.equipos ?? []).map((e) => e.id));
@@ -327,7 +413,8 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
     categoriasVisibles.length === 0 &&
     extras.length === 0 &&
     productos.length === 0 &&
-    paquetes.length === 0
+    paquetes.length === 0 &&
+    roles.length === 0
   ) {
     return (
       <p className="text-gray-600 text-sm py-4 text-center">
@@ -343,7 +430,9 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
   if (readOnly) {
     const conEquipos =
       categoriasElegidas.length > 0 ||
+      serviciosElegidos.length > 0 ||
       value.equipos.length > 0 ||
+      rolesSel.length > 0 ||
       extras.length > 0 ||
       productosElegidos.length > 0 ||
       paquetesElegidos.length > 0;
@@ -352,6 +441,35 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
     }
     return (
       <div className="space-y-3">
+        {aCriterioVendedor && (
+          <div className="bg-amber-500/10 border border-amber-500/40 rounded-xl p-3">
+            <p className="text-amber-400 text-xs font-medium">
+              🤝 El cliente deja la cantidad exacta de equipos a criterio del vendedor.
+              Las categorías marcadas son solo referencia de interés.
+            </p>
+          </div>
+        )}
+        {serviciosElegidos.map((svc) => {
+          const rs = svc.roles.filter((r) => rolesSel.includes(r.id));
+          return (
+            <div key={svc.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-3">
+              <p className="text-white text-sm font-medium mb-1.5">
+                {svc.emoji} {svc.nombre}
+              </p>
+              {rs.length === 0 ? (
+                <p className="text-amber-500/70 text-xs">Interés marcado · roles por definir</p>
+              ) : (
+                <ul className="space-y-1">
+                  {rs.map((r) => (
+                    <li key={r.id} className="text-gray-300 text-xs">
+                      {r.nombre}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          );
+        })}
         {paquetesElegidos.length > 0 && (
           <div className="bg-[#111] border border-[#B3985B]/40 rounded-xl p-3">
             <p className="text-white text-sm font-medium mb-1.5">✨ Paquetes</p>
@@ -439,7 +557,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
     );
   }
 
-  const totalEquipos = value.equipos.length + extras.length;
+  const totalEquipos = value.equipos.length + extras.length + rolesSel.length;
 
   // Control de cantidad reutilizable: −  [1–32 ▾]  +
   const controlCantidad = (
@@ -547,6 +665,39 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
             })}
           </div>
 
+          {/* Categorías de servicio (armadas con los roles técnicos vigentes) */}
+          {serviciosCategorias.length > 0 && (
+            <div className="space-y-2 pt-1">
+              <p className="text-[11px] text-[#B3985B] font-medium">Servicios de personal técnico</p>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                {serviciosCategorias.map((svc) => {
+                  const sel = value.categorias.includes(svc.id);
+                  return (
+                    <button
+                      key={svc.id}
+                      type="button"
+                      onClick={() => toggleCategoria(svc.id)}
+                      className={`relative flex flex-col items-start gap-0.5 rounded-lg border p-2 text-left transition-all ${
+                        sel
+                          ? "border-[#B3985B] bg-[#B3985B]/10"
+                          : "border-[#1e1e1e] bg-[#111] hover:border-[#B3985B]/40"
+                      }`}
+                    >
+                      <span className="text-lg leading-none">{svc.emoji}</span>
+                      <span className="text-white text-[11px] font-medium leading-tight line-clamp-2">{svc.nombre}</span>
+                      <span className="text-gray-600 text-[9px] leading-tight line-clamp-1">{svc.roles.length} rol{svc.roles.length !== 1 ? "es" : ""}</span>
+                      {sel && (
+                        <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-md bg-[#B3985B] flex items-center justify-center">
+                          <span className="text-black text-[8px] font-bold leading-none">✓</span>
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Notas técnicas / equipo faltante — capturar en cuanto se detecte */}
           {onNotasChange && (
             <div className="pt-1">
@@ -632,7 +783,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
           {/* ── Sub-pestaña: EQUIPOS INDIVIDUALES ── */}
           {subTab === "equipos" && (
           <div className="space-y-4">
-          {categoriasElegidas.length === 0 && extras.length === 0 ? (
+          {categoriasElegidas.length === 0 && serviciosElegidos.length === 0 && extras.length === 0 ? (
             <div className="text-center py-6">
               <p className="text-gray-500 text-sm mb-3">Primero elige una o más categorías.</p>
               <button
@@ -645,16 +796,124 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
             </div>
           ) : (
             <>
+              {/* Toggle: dejar la cantidad exacta de equipos a criterio del vendedor */}
+              <button
+                type="button"
+                onClick={() => setACriterioVendedor(!aCriterioVendedor)}
+                className={`w-full flex items-start gap-2.5 rounded-xl border p-3 text-left transition-all ${
+                  aCriterioVendedor
+                    ? "border-amber-500/50 bg-amber-500/10"
+                    : "border-[#1e1e1e] bg-[#0d0d0d] hover:border-amber-500/30"
+                }`}
+              >
+                <span className={`w-4 h-4 mt-0.5 rounded border-2 flex items-center justify-center shrink-0 ${aCriterioVendedor ? "bg-amber-500 border-amber-500" : "border-[#444]"}`}>
+                  {aCriterioVendedor && <span className="text-black text-[9px] font-bold leading-none">✓</span>}
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-white text-xs font-medium">
+                    🤝 Dejar la cantidad de equipos a criterio del vendedor
+                  </span>
+                  <span className="block text-gray-500 text-[10px] leading-tight mt-0.5">
+                    Marcas solo las categorías de interés y el vendedor define los equipos y las piezas exactas.
+                  </span>
+                </span>
+              </button>
+
+              {aCriterioVendedor ? (
+                <div className="space-y-1.5">
+                  <p className="text-gray-500 text-xs">
+                    Categorías marcadas como referencia. El vendedor propondrá los equipos:
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {categoriasElegidas.map((cat) => (
+                      <span key={cat.id} className="text-[11px] px-2 py-1 rounded-lg bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B]">
+                        {catEmoji(cat.nombre)} {cat.nombre}
+                      </span>
+                    ))}
+                    {serviciosElegidos.map((svc) => (
+                      <span key={svc.id} className="text-[11px] px-2 py-1 rounded-lg bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B]">
+                        {svc.emoji} {svc.nombre}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+              <>
               <p className="text-gray-500 text-xs">
-                Marca los equipos que necesitas y ajusta las piezas con − / + o el menú.
+                Toca cada categoría para desplegarla, marca los equipos y ajusta las piezas con − / + o el menú.
               </p>
 
-              {/* Todas las categorías elegidas, una debajo de otra */}
-              {categoriasElegidas.map((cat) => (
-                <div key={cat.id} className="space-y-1.5">
-                  <p className="text-[#B3985B] text-xs font-semibold sticky top-0 bg-black/80 backdrop-blur-sm py-1 z-10">
-                    {catEmoji(cat.nombre)} {cat.nombre}
-                  </p>
+              {/* Categorías de servicio (roles técnicos) — colapsables */}
+              {serviciosElegidos.map((svc) => {
+                const abierta = expandidas.has(svc.id);
+                const nSel = svc.roles.filter((r) => rolesSel.includes(r.id)).length;
+                return (
+                  <div key={svc.id} className="rounded-lg border border-[#1e1e1e] overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => toggleExpandida(svc.id)}
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-[#0d0d0d] hover:bg-[#141414] transition-colors"
+                    >
+                      <span className="text-[#B3985B] text-xs font-semibold flex items-center gap-1.5">
+                        {svc.emoji} {svc.nombre}
+                        {nSel > 0 && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#B3985B] text-black font-bold">{nSel}</span>
+                        )}
+                      </span>
+                      <span className="text-gray-500 text-xs">{abierta ? "▲ ocultar" : "▼ elegir roles"}</span>
+                    </button>
+                    {abierta && (
+                      <div className="p-2 space-y-1.5 bg-black/40">
+                        {svc.roles.map((r) => {
+                          const sel = rolesSel.includes(r.id);
+                          return (
+                            <button
+                              key={r.id}
+                              type="button"
+                              onClick={() => toggleRol(r.id)}
+                              className={`w-full flex items-center gap-2 rounded-lg border px-2 py-1.5 text-left transition-all ${
+                                sel ? "border-[#B3985B]/60 bg-[#B3985B]/[0.06]" : "border-[#1e1e1e] bg-[#0d0d0d]"
+                              }`}
+                            >
+                              <span className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${sel ? "bg-[#B3985B] border-[#B3985B]" : "border-[#333]"}`}>
+                                {sel && <span className="text-black text-[9px] font-bold leading-none">✓</span>}
+                              </span>
+                              <span className="flex flex-col min-w-0">
+                                <span className="text-white text-xs font-medium leading-tight truncate">{r.nombre}</span>
+                                {r.descripcion && (
+                                  <span className="text-gray-500 text-[10px] leading-tight line-clamp-1">{r.descripcion}</span>
+                                )}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Categorías de inventario — colapsables (colapsadas por defecto) */}
+              {categoriasElegidas.map((cat) => {
+                const abierta = expandidas.has(cat.id);
+                const nSel = cat.equipos.filter((e) => value.equipos.includes(e.id)).length;
+                return (
+                <div key={cat.id} className="rounded-lg border border-[#1e1e1e] overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => toggleExpandida(cat.id)}
+                    className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-[#0d0d0d] hover:bg-[#141414] transition-colors"
+                  >
+                    <span className="text-[#B3985B] text-xs font-semibold flex items-center gap-1.5">
+                      {catEmoji(cat.nombre)} {cat.nombre}
+                      {nSel > 0 && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#B3985B] text-black font-bold">{nSel}</span>
+                      )}
+                    </span>
+                    <span className="text-gray-500 text-xs">{abierta ? "▲ ocultar" : "▼ elegir equipo"}</span>
+                  </button>
+                  {abierta && (
+                  <div className="p-2 bg-black/40">
                   {cat.equipos.length === 0 ? (
                     <p className="text-gray-600 text-[11px] px-1">
                       Sin equipos listados — se queda marcada como interés, lo definimos juntos.
@@ -707,8 +966,13 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                       })}
                     </div>
                   )}
+                  </div>
+                  )}
                 </div>
-              ))}
+                );
+              })}
+              </>
+              )}
 
               {/* ── Categoría / equipo adicional (a mano, solo este trato) ── */}
               <div className="space-y-2 pt-1 border-t border-[#1a1a1a]">

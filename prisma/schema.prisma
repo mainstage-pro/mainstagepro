@@ -217,7 +217,9 @@ model Trato {
   rutaEntrada            String?   // DESCUBRIR | RIDER_DIRECTO
   continuarPor           String?   // WHATSAPP | LLAMADA | REUNION | COTIZACION
   descubrimientoCompleto Boolean   @default(false)
-  equiposInteres         String?   // JSON: { categorias: string[], equipos: string[] }
+  equiposInteres         String?   // JSON: { categorias: string[], equipos: string[], roles: string[], aCriterioVendedor: boolean }
+  modoDescubrimiento     String?   // VENDEDOR | CLIENTE — quién realiza el descubrimiento (define la rama del wizard)
+  preferenciaContacto    String?   // LLAMADA | PROPUESTA — sólo cuando el cliente llena el formulario
   // ──────────────────────────────────────────────────────────────────────────
 
   lugarEstimado       String?

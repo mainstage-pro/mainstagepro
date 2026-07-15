@@ -13,9 +13,12 @@ import DailyGreeting from "@/components/DailyGreeting";
 import TareasHoyWidget from "@/components/TareasHoyWidget";
 import PlanTrabajoWidget from "@/components/PlanTrabajoWidget";
 import { NuevoTratoDropdown } from "@/components/NuevoTratoDropdown";
+import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
 
 export default async function DashboardPage() {
   const session = await getSession();
+  // Lee tratos con `include`; garantizar columnas nuevas del proceso de venta.
+  await ensureProcesoVentaColumns();
 
   // Redirect non-admin users to their area-specific dashboard
   if (session && session.role !== "ADMIN" && session.area && session.area !== "GENERAL") {

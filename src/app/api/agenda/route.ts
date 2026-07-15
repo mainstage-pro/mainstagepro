@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
 
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  // Este endpoint lee tratos con `include` (todos los escalares), así que debe
+  // garantizar las columnas nuevas del proceso de venta antes de consultar.
+  await ensureProcesoVentaColumns();
 
   const ahora       = new Date();
   const inicioDeHoy = new Date(ahora.toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }));

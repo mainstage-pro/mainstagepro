@@ -251,6 +251,9 @@ export default function DiscoveryForm({
     rentaNotas: "",
     contactoDecisorNombre: "",
     contactoDecisorCargo: "",
+    // Solo modo cliente: prefiere una llamada para consolidar el descubrimiento
+    // o quiere la propuesta lo antes posible. "" = sin elegir.
+    preferenciaContacto: "",
   });
 
   // Refs de apoyo para el auto-guardado global: el último formulario conocido
@@ -320,6 +323,7 @@ export default function DiscoveryForm({
       contactoVenueTelefono: trato.contactoVenueTelefono || "",
       contactoDecisorNombre: trato.contactoDecisorNombre || "",
       contactoDecisorCargo: trato.contactoDecisorCargo || "",
+      preferenciaContacto: trato.preferenciaContacto || "",
       ideasReferencias: isRenta ? "" : (trato.ideasReferencias || ""),
       rentaModalidadServicio: renta.modalidadServicio || "",
       rentaModalidadEntrega: renta.modalidadEntrega || "",
@@ -384,6 +388,7 @@ export default function DiscoveryForm({
       contactoVenueTelefono: form.contactoVenueTelefono || null,
       contactoDecisorNombre: form.contactoDecisorNombre || null,
       contactoDecisorCargo: form.contactoDecisorCargo || null,
+      preferenciaContacto: form.preferenciaContacto || null,
       serviciosInteres: JSON.stringify(form.serviciosInteres),
       equiposInteres: form.equiposInteres || null,
       ideasReferencias: isRenta
@@ -537,6 +542,7 @@ export default function DiscoveryForm({
     };
     payload.contactoDecisorNombre = discForm.contactoDecisorNombre || null;
     payload.contactoDecisorCargo = discForm.contactoDecisorCargo || null;
+    payload.preferenciaContacto = discForm.preferenciaContacto || null;
     if (completar) {
       payload.descubrimientoCompleto = true;
       payload.etapa = "OPORTUNIDAD";
@@ -632,6 +638,19 @@ export default function DiscoveryForm({
 
             {/* PASO 1: Información básica */}
             {pasoActivo === 1 && (<div className="space-y-4">
+              {/* Título + agradecimiento — solo cuando el cliente llena el formulario */}
+              {clientMode && (
+                <div className="border border-[#B3985B]/30 bg-gradient-to-br from-[#B3985B]/10 to-transparent rounded-xl p-4">
+                  <p className="text-base sm:text-lg text-white font-semibold">
+                    Cuéntanos sobre tu evento ✨
+                  </p>
+                  <p className="text-xs sm:text-sm text-gray-400 mt-1.5 leading-relaxed">
+                    ¡Gracias por tu interés! Este formulario nos ayuda a <span className="text-[#B3985B]">descubrir
+                    exactamente lo que necesitas</span> para armarte una propuesta a la medida. Entre más
+                    detalles nos compartas, más precisa y personalizada será tu cotización.
+                  </p>
+                </div>
+              )}
               {/* Datos de contacto — solo en links huérfanos (sin trato previo) */}
               {clientMode && huerfano && (
                 <div className="border border-[#2a2a2a] bg-[#111] rounded-xl p-4 space-y-3">
@@ -775,7 +794,7 @@ export default function DiscoveryForm({
               </div>
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs text-gray-400">Ciudad / Lugar del evento *</label>
+                  <label className="text-xs text-gray-400">Lugar/salón del evento y ciudad *</label>
                   <button type="button" onClick={() => setDiscForm(p => ({ ...p, lugarEstimado: p.lugarEstimado === "por-definir" ? "" : "por-definir" }))}
                     className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${discForm.lugarEstimado === "por-definir" ? "border-[#B3985B]/60 text-[#B3985B] bg-[#B3985B]/10" : "border-[#333] text-gray-600 hover:text-gray-400"}`}>
                     Por definir
@@ -803,7 +822,57 @@ export default function DiscoveryForm({
                 </div>
               </div>
 
+              {/* Número de asistentes — se define desde el primer paso */}
+              <div>
+                <label className="text-xs text-gray-400 block mb-1">Número de asistentes estimado</label>
+                <input
+                  type="number" min="1"
+                  value={discForm.asistentesEstimados}
+                  onChange={e => setDiscForm(p => ({ ...p, asistentesEstimados: e.target.value }))}
+                  placeholder="Ej: 150"
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
+              </div>
 
+              {/* Cuéntanos más de tu proyecto — se convierte en la nota de la cotización */}
+              <div className="sm:col-span-2">
+                <label className="text-xs text-gray-400 block mb-1">
+                  {clientMode ? "Cuéntanos un poco más de tu proyecto a detalle" : "Detalle del proyecto (nota para la cotización)"}
+                </label>
+                <p className="text-[11px] text-gray-600 mb-1.5">
+                  {clientMode
+                    ? "Todo lo que nos quieras contar: la idea, el ambiente que buscas, referencias, requerimientos especiales… Esto nos ayuda a personalizar tu propuesta."
+                    : "Lo que el cliente comparte sobre su proyecto. Aparecerá como nota en la cotización."}
+                </p>
+                <textarea
+                  value={discForm.notas}
+                  onChange={e => setDiscForm(p => ({ ...p, notas: e.target.value }))}
+                  rows={4}
+                  placeholder="Ej: Queremos un ambiente elegante con iluminación cálida, tarima para grupo en vivo, y una entrada especial con humo bajo…"
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
+                />
+              </div>
+
+              {/* Preferencia de contacto — SOLO cuando el cliente llena el formulario */}
+              {clientMode && (
+                <div className="sm:col-span-2">
+                  <label className="text-xs text-gray-400 block mb-2">¿Cómo prefieres continuar?</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                      { value: "LLAMADA", icon: "📞", label: "Quiero una llamada", desc: "Prefiero que me contacten para consolidar juntos los detalles." },
+                      { value: "PROPUESTA", icon: "⚡", label: "Quiero mi propuesta ya", desc: "Prefiero recibir una propuesta lo antes posible." },
+                    ].map(pref => (
+                      <button key={pref.value} type="button"
+                        onClick={() => setDiscForm(p => ({ ...p, preferenciaContacto: p.preferenciaContacto === pref.value ? "" : pref.value }))}
+                        className={`text-left p-3 rounded-xl border transition-all ${discForm.preferenciaContacto === pref.value ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#222] bg-[#111] hover:border-[#444]"}`}>
+                        <div className="text-xl mb-1">{pref.icon}</div>
+                        <p className={`text-sm font-semibold mb-0.5 ${discForm.preferenciaContacto === pref.value ? "text-[#B3985B]" : "text-white"}`}>{pref.label}</p>
+                        <p className="text-[10px] text-gray-500 leading-tight">{pref.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
             </div>
 
@@ -1006,34 +1075,7 @@ export default function DiscoveryForm({
                     />
                   </div>
 
-                  {/* Asistentes estimados */}
-                  <div className="mb-4">
-                    <label className="text-xs text-gray-400 block mb-1">Rango de asistentes aproximados</label>
-                    <select
-                      value={discForm.asistentesEstimados}
-                      onChange={e => setDiscForm(p => ({ ...p, asistentesEstimados: e.target.value }))}
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                    >
-                      <option value="">— Seleccionar rango —</option>
-                      <option value="100">0 - 100 personas</option>
-                      <option value="300">100 - 300 personas</option>
-                      <option value="500">300 - 500 personas</option>
-                      <option value="1000">500 - 1,000 personas</option>
-                      <option value="2000">Más de 1,000 personas</option>
-                    </select>
-                  </div>
-
-                  {/* Notas de DT */}
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Notas del proyecto / expectativas del cliente</label>
-                    <textarea
-                      value={discForm.notas}
-                      onChange={e => setDiscForm(p => ({ ...p, notas: e.target.value }))}
-                      rows={4}
-                      placeholder="Describe las expectativas, complejidades, proveedores que ya tiene contratados, o cualquier información relevante para la dirección técnica..."
-                      className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
-                    />
-                  </div>
+                  {/* Asistentes y detalle del proyecto se capturan en el paso 1 */}
                 </div>
 
                 {/* CTA Hacer propuesta — en paso 2 para DT (último paso) — solo vendedor */}
@@ -1145,24 +1187,7 @@ export default function DiscoveryForm({
             </div>
             )}
 
-              {/* Asistentes estimados — visible en paso 2 para producción técnica (no DT ni RENTA) */}
-              {discForm.tipoServicio !== "RENTA" && discForm.tipoServicio !== "DIRECCION_TECNICA" && (
-                <div className="pt-2 border-t border-[#1a1a1a]">
-                  <label className="text-xs text-gray-400 block mb-1">Rango de asistentes aproximados</label>
-                  <select
-                    value={discForm.asistentesEstimados}
-                    onChange={e => setDiscForm(p => ({ ...p, asistentesEstimados: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  >
-                    <option value="">— Seleccionar rango —</option>
-                    <option value="100">0 - 100 personas</option>
-                    <option value="300">100 - 300 personas</option>
-                    <option value="500">300 - 500 personas</option>
-                    <option value="1000">500 - 1,000 personas</option>
-                    <option value="2000">Más de 1,000 personas</option>
-                  </select>
-                </div>
-              )}
+              {/* El número de asistentes se captura en el paso 1 */}
 
               {/* Referencias y archivos del cliente — solo en paso 2 para RENTA; en paso 3 para producción */}
               {discForm.tipoServicio === "RENTA" && <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">
@@ -1282,12 +1307,7 @@ export default function DiscoveryForm({
                 </div>
               </div>
 
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Notas del descubrimiento</label>
-                <textarea value={discForm.notas} onChange={e => setDiscForm(p => ({ ...p, notas: e.target.value }))}
-                  rows={4} placeholder="Detalles específicos, necesidades especiales, contexto del evento, expectativas del cliente..."
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
-              </div>
+              {/* Las notas del proyecto se capturan en el paso 1 ("Cuéntanos más de tu proyecto") */}
 
               {/* Referencias y archivos del cliente */}
               <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">
