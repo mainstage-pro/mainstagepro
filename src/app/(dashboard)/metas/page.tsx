@@ -1,23 +1,26 @@
-"use client";
+import ConfigHub from "@/components/ConfigHub";
 
-import HubTabs from "@/components/HubTabs";
-import ObjetivosPage from "../objetivos/page";
-import KpisDashboardPage from "../kpis/page";
-
-const TABS = [
-  { key: "objetivos", label: "Objetivos" },
-  { key: "kpis", label: "KPIs" },
-];
-
-export default function MetasHubPage() {
+export default function MetasPage() {
   return (
-    <HubTabs basePath="/metas" defaultVista="objetivos" tabs={TABS}>
-      {(active) => (
-        <>
-          {active === "objetivos" && <ObjetivosPage />}
-          {active === "kpis" && <KpisDashboardPage />}
-        </>
-      )}
-    </HubTabs>
+    <ConfigHub
+      title="Metas"
+      subtitle="Objetivos estratégicos y seguimiento de KPIs"
+      groups={[
+        {
+          items: [
+            {
+              label: "Objetivos",
+              description: "OKRs y metas globales por trimestre",
+              href: "/objetivos",
+            },
+            {
+              label: "KPIs",
+              description: "Tablero de indicadores clave de desempeño",
+              href: "/kpis",
+            },
+          ],
+        },
+      ]}
+    />
   );
 }

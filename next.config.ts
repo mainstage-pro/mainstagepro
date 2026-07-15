@@ -31,9 +31,6 @@ const nextConfig: NextConfig = {
       { source: "/finanzas/pagos",               destination: "/finanzas/cobros-pagos",             permanent: true },
       // ── Operaciones (legacy routes) ──────────────────────────────────────────
       { source: "/backlog",                      destination: "/operaciones",                       permanent: true },
-      // ── Metas (hub con pestañas) ─────────────────────────────────────────────
-      { source: "/objetivos",                    destination: "/metas?vista=objetivos",             permanent: true },
-      { source: "/kpis",                         destination: "/metas?vista=kpis",                  permanent: true },
       // ── RRHH (legacy routes) ─────────────────────────────────────────────────
       { source: "/rrhh/incidencias",             destination: "/rrhh/asistencia",                   permanent: true },
       // ── Comercial (legacy routes) ────────────────────────────────────────────

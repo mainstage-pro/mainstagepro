@@ -40,15 +40,7 @@ export const NAV: NavSection[] = [
     items: [
       { label: "Mi Dashboard", href: "/dashboard" },
       { key: "calendario", label: "Calendario de eventos", href: "/calendario" },
-      {
-        key: "metas",
-        label: "Metas",
-        icon: Target,
-        children: [
-          { key: "objetivos", label: "Objetivos", href: "/metas?vista=objetivos", adminOnly: true },
-          { key: "kpis-dashboard", label: "KPIs", href: "/metas?vista=kpis", adminOnly: true },
-        ],
-      },
+      { key: "metas", label: "Metas", href: "/metas", icon: Target, adminOnly: true },
     ],
   },
 

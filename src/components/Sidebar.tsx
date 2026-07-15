@@ -4,7 +4,7 @@ import React from "react";
 
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import BusquedaGlobal from "@/components/BusquedaGlobal";
 import NotificacionesBell from "@/components/NotificacionesBell";
@@ -38,7 +38,6 @@ function canAccess(key: string | undefined, isAdmin: boolean, userModuleKeys: st
 
 function getInitialOpen(pathname: string): Set<string> {
   const open = new Set<string>();
-  if (pathname.startsWith("/metas") || pathname.startsWith("/objetivos") || pathname.startsWith("/kpis")) open.add("metas");
   if (pathname.startsWith("/finanzas")) open.add("finanzas");
   if (pathname.startsWith("/inventario/analisis") || pathname.startsWith("/admin/valuacion")) open.add("activos");
   if (pathname.startsWith("/socios")) open.add("inversiones");
@@ -72,26 +71,8 @@ function getActiveSectionKey(pathname: string): string | null {
 
 const ALL_SECTION_KEYS = NAV.filter(s => s.section).map(s => s.key);
 
-// Para hubs con pestañas (`/base?vista=x`): la vista por defecto es la del
-// primer hijo, de modo que el sidebar resalte la pestaña correcta cuando la URL
-// aún no trae `?vista=`.
-const HUB_DEFAULT_VISTA: Record<string, string> = (() => {
-  const m: Record<string, string> = {};
-  for (const s of NAV) for (const it of s.items) {
-    if (!it.children) continue;
-    for (const c of it.children) {
-      const [p, q] = c.href.split("?");
-      if (!q) continue;
-      const v = new URLSearchParams(q).get("vista");
-      if (v && !(p in m)) m[p] = v;
-    }
-  }
-  return m;
-})();
-
 export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const router = useRouter();
   const isAdmin = user.role === "ADMIN";
   const storageKey = `sidebar-state-${user.id}`;
@@ -182,19 +163,9 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
     : "/dashboard";
 
   function isActive(href: string) {
-    const [path, query] = href.split("?");
-    if (path === "/dashboard") return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
-    if (!pathname.startsWith(path)) return false;
-    // Enlaces de hub (`/base?vista=x`): solo activo si la vista coincide (o si
-    // la URL no trae vista y este hijo es la pestaña por defecto).
-    if (query) {
-      const hrefVista = new URLSearchParams(query).get("vista");
-      if (hrefVista) {
-        const current = searchParams.get("vista");
-        return current ? current === hrefVista : hrefVista === HUB_DEFAULT_VISTA[path];
-      }
-    }
-    return true;
+    if (href === "/dashboard") return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+    if (href === "/metas") return pathname === "/metas" || pathname.startsWith("/objetivos") || pathname.startsWith("/kpis");
+    return pathname.startsWith(href);
   }
 
   const navContent = (
