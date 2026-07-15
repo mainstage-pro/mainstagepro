@@ -20,6 +20,7 @@ export const CONTACTOS_OUTBOUND = [
 
 export type ContactoPaso = { num: number; label: string; objetivo: string };
 export type NotaSeg = { texto: string; fecha: string };
+export type SegItem = { num: number; fecha: string; nota: string };
 
 const COPY_ICON = (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 opacity-50">
@@ -262,6 +263,193 @@ export function NotasSeguimiento({
         >
           {saving ? "Guardando..." : "Agregar nota"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Seguimientos (registro 1/2/3 antes del descubrimiento) ──────────────────
+export function SeguimientosTracker({
+  seguimientos,
+  maxSlots,
+  esOutbound,
+  saving,
+  onMarcar,
+  onAgregarSlot,
+  onPasarDescubrimiento,
+  onMarcarPerdida,
+}: {
+  seguimientos: SegItem[];
+  maxSlots: number;
+  esOutbound: boolean;
+  saving: boolean;
+  onMarcar: (num: number, nota: string) => void | Promise<void>;
+  onAgregarSlot: () => void;
+  onPasarDescubrimiento: (saltar: boolean) => void;
+  onMarcarPerdida: (motivo: string) => void | Promise<void>;
+}) {
+  const [nota, setNota] = useState("");
+  const [motivo, setMotivo] = useState("");
+  const [mostrarPerdida, setMostrarPerdida] = useState(false);
+
+  const hechos = seguimientos.length;
+  const proximoNum = hechos + 1;
+  const todosHechos = hechos >= maxSlots;
+
+  function fmt(iso: string) {
+    return new Date(iso).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  }
+
+  async function registrar() {
+    const t = nota.trim();
+    if (!t) return;
+    await onMarcar(proximoNum, t);
+    setNota("");
+  }
+
+  return (
+    <div className={`rounded-2xl p-5 border ${esOutbound ? "bg-[#0a1a0f] border-emerald-900/40" : "bg-[#1a1206] border-amber-900/40"}`}>
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">📌</span>
+          <p className="text-base font-bold text-white">Seguimientos del prospecto</p>
+        </div>
+        <span className={`text-xs font-semibold tabular-nums ${todosHechos ? (esOutbound ? "text-emerald-400" : "text-amber-400") : "text-gray-500"}`}>
+          {hechos}/{maxSlots}
+        </span>
+      </div>
+      <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+        Registra cada contacto antes de pasar al descubrimiento. Al 3.º seguimiento puedes marcar la venta como perdida o agregar más.
+      </p>
+
+      {/* Seguimientos ya registrados */}
+      <div className="space-y-2 mb-3">
+        {Array.from({ length: maxSlots }).map((_, i) => {
+          const num = i + 1;
+          const item = seguimientos.find(s => s.num === num);
+          const esProximo = num === proximoNum;
+          return (
+            <div
+              key={num}
+              className={`rounded-xl p-3 border ${
+                item
+                  ? esOutbound ? "bg-emerald-950/40 border-emerald-700/50" : "bg-amber-950/30 border-amber-700/40"
+                  : esProximo ? "bg-[#111] border-[#333]" : "bg-[#0d0d0d] border-[#1a1a1a] opacity-60"
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
+                  item
+                    ? esOutbound ? "bg-emerald-700/60 text-emerald-200" : "bg-amber-700/60 text-amber-200"
+                    : "bg-[#1e1e1e] text-gray-500"
+                }`}>
+                  {item ? "✓" : num}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-semibold ${item ? "text-white" : "text-gray-400"}`}>
+                    Seguimiento {num}
+                    {item && <span className="text-[10px] text-gray-500 font-normal ml-2 tabular-nums">{fmt(item.fecha)}</span>}
+                  </p>
+                  {item && <p className="text-gray-300 text-xs mt-1 whitespace-pre-wrap leading-relaxed">{item.nota}</p>}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Registrar el próximo seguimiento */}
+      {!todosHechos && (
+        <div className="mb-3">
+          <textarea
+            value={nota}
+            onChange={e => setNota(e.target.value)}
+            rows={2}
+            placeholder={`¿Cómo estuvo el seguimiento ${proximoNum}? Respuesta, interés, próximos pasos...`}
+            className={`w-full bg-[#111] border border-[#222] rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none placeholder-gray-700 transition-colors ${
+              esOutbound ? "focus:border-emerald-700/60" : "focus:border-amber-700/60"
+            }`}
+          />
+          <div className="flex justify-end mt-2">
+            <button
+              onClick={registrar}
+              disabled={saving || !nota.trim()}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40 ${
+                esOutbound
+                  ? "bg-emerald-700/20 border border-emerald-700/40 text-emerald-300 hover:bg-emerald-700/30"
+                  : "bg-[#B3985B] text-black hover:bg-[#c9a96a]"
+              }`}
+            >
+              {saving ? "Guardando..." : `Registrar seguimiento ${proximoNum}`}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Al completar los 3: marcar perdida o agregar seguimiento */}
+      {todosHechos && !mostrarPerdida && (
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <button
+            onClick={() => setMostrarPerdida(true)}
+            className="py-2.5 rounded-xl text-xs font-bold bg-red-900/20 border border-red-800/40 text-red-400 hover:bg-red-900/30 transition-colors"
+          >
+            ✕ Marcar como perdida
+          </button>
+          <button
+            onClick={onAgregarSlot}
+            className="py-2.5 rounded-xl text-xs font-bold bg-[#111] border border-[#2a2a2a] text-gray-300 hover:border-[#444] transition-colors"
+          >
+            + Agregar seguimiento
+          </button>
+        </div>
+      )}
+
+      {/* Formulario de motivo de pérdida */}
+      {mostrarPerdida && (
+        <div className="mb-3 p-3 rounded-xl border border-red-800/40 bg-red-900/10">
+          <p className="text-red-300 text-xs font-semibold mb-2">Motivo de la pérdida</p>
+          <textarea
+            value={motivo}
+            onChange={e => setMotivo(e.target.value)}
+            rows={2}
+            placeholder="Precio, tiempo, eligió a otro proveedor, sin presupuesto..."
+            className="w-full bg-[#111] border border-red-900/40 rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none focus:border-red-700/60 placeholder-gray-700"
+          />
+          <div className="flex justify-end gap-2 mt-2">
+            <button onClick={() => { setMostrarPerdida(false); setMotivo(""); }} className="px-3 py-2 text-xs text-gray-500 hover:text-white transition-colors">
+              Cancelar
+            </button>
+            <button
+              onClick={() => onMarcarPerdida(motivo.trim())}
+              disabled={saving || !motivo.trim()}
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-red-700/30 border border-red-700/50 text-red-200 hover:bg-red-700/40 transition-colors disabled:opacity-40"
+            >
+              {saving ? "Guardando..." : "Confirmar pérdida"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Pasar a descubrimiento / saltar */}
+      <div className="pt-3 border-t border-[#1e1e1e]">
+        <button
+          onClick={() => onPasarDescubrimiento(false)}
+          disabled={saving}
+          className={`w-full py-3 rounded-xl text-sm font-bold transition-colors disabled:opacity-40 ${
+            esOutbound
+              ? "bg-emerald-700/20 border border-emerald-700/40 text-emerald-300 hover:bg-emerald-700/30"
+              : "bg-violet-700/20 border border-violet-700/40 text-violet-300 hover:bg-violet-700/30"
+          }`}
+        >
+          🔍 Pasar a descubrimiento →
+        </button>
+        {hechos === 0 && (
+          <div className="flex justify-center mt-2">
+            <button onClick={() => onPasarDescubrimiento(true)} disabled={saving} className="text-[11px] text-gray-600 hover:text-white transition-colors">
+              Saltar seguimiento e ir directo al descubrimiento →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

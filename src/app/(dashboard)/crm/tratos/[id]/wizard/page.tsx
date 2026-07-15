@@ -12,7 +12,9 @@ import {
   PlanContactosSteps,
   MaterialCompartir,
   NotasSeguimiento,
+  SeguimientosTracker,
   type NotaSeg,
+  type SegItem,
 } from "@/components/crm/PlanContactos";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -41,6 +43,8 @@ type NurturingData = {
   notas?: Record<string, string>;
   notasSeguimiento?: NotaSeg[];
   pasosMarcados?: number[];
+  seguimientos?: SegItem[];
+  maxSeguimientos?: number;
 };
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
@@ -151,6 +155,43 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
     await guardarNurturing(u);
   }
 
+  // ── Seguimientos (registro 1/2/3 antes del descubrimiento) ──
+  async function marcarSeguimiento(num: number, nota: string) {
+    setSaving(true);
+    const item: SegItem = { num, fecha: new Date().toISOString(), nota };
+    const u = {
+      ...nurturing,
+      seguimientos: [...(nurturing.seguimientos ?? []).filter(s => s.num !== num), item].sort((a, b) => a.num - b.num),
+    };
+    setNurturing(u);
+    await guardarNurturing(u);
+    setSaving(false);
+  }
+
+  function agregarSlotSeguimiento() {
+    const cur = nurturing.maxSeguimientos ?? 3;
+    const u = { ...nurturing, maxSeguimientos: cur + 1 };
+    setNurturing(u);
+    guardarNurturing(u);
+  }
+
+  async function marcarPerdida(motivo: string) {
+    setSaving(true);
+    const res = await fetch(`/api/tratos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ etapa: "VENTA_PERDIDA", motivoPerdida: motivo }),
+    });
+    if (res.ok) {
+      toast.success("Trato marcado como perdido");
+      router.push(`/crm/tratos/${id}`);
+    } else {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al marcar como perdida");
+    }
+    setSaving(false);
+  }
+
   // Avanzar a descubrimiento
 
   async function crearNuevaCotizacion() {
@@ -246,6 +287,18 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
         ═══════════════════════════════════════════════════════════ */}
         {etapa === "LEAD" && (
           <>
+            {/* ── Seguimientos 1/2/3 antes del descubrimiento ── */}
+            <SeguimientosTracker
+              seguimientos={nurturing.seguimientos ?? []}
+              maxSlots={nurturing.maxSeguimientos ?? 3}
+              esOutbound={esOutbound}
+              saving={saving}
+              onMarcar={marcarSeguimiento}
+              onAgregarSlot={agregarSlotSeguimiento}
+              onPasarDescubrimiento={() => iniciarDescubrimiento()}
+              onMarcarPerdida={marcarPerdida}
+            />
+
             {/* ── Plan de contactos (pasos) ── */}
             <PlanContactosSteps
               contactos={contactos}
