@@ -45,8 +45,8 @@ export const NAV: NavSection[] = [
         label: "Metas",
         icon: Target,
         children: [
-          { key: "objetivos", label: "Objetivos", href: "/objetivos", adminOnly: true },
-          { key: "kpis-dashboard", label: "KPIs", href: "/kpis", adminOnly: true },
+          { key: "objetivos", label: "Objetivos", href: "/metas?vista=objetivos", adminOnly: true },
+          { key: "kpis-dashboard", label: "KPIs", href: "/metas?vista=kpis", adminOnly: true },
         ],
       },
     ],
