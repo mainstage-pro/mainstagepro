@@ -110,18 +110,13 @@ export const NAV: NavSection[] = [
       {
         key: "activos",
         label: "Activos",
+        href: "/activos",
         children: [
           { key: "inventario-activos-admin", label: "Inventario de activos", href: "/admin/valuacion", adminOnly: true },
           { key: "inv-analisis", label: "Análisis de uso de equipo", href: "/inventario/analisis" },
         ],
       },
-      {
-        key: "inversiones",
-        label: "Inversiones y Socios",
-        children: [
-          { key: "socios-constitutivos", label: "Socios Constitutivos", href: "/socios" },
-        ],
-      },
+      { key: "socios-constitutivos", label: "Socios Constitutivos", href: "/socios" },
       { key: "tabulador", label: "Tabulador Freelancers", href: "/catalogo/roles" },
       { key: "admin-reportes", label: "Reportes de administración", href: "/admin/reportes", adminOnly: true },
       // ── Recursos Humanos (dentro de Administración) ────────────────────────
@@ -140,6 +135,7 @@ export const NAV: NavSection[] = [
       {
         key: "capacitacion-grp",
         label: "Capacitación",
+        href: "/formacion",
         children: [
           { key: "capacitacion", label: "Portal de capacitación", href: "/capacitacion" },
           { key: "rrhh-capacitaciones", label: "Capacitaciones internas", href: "/rrhh/capacitaciones" },
@@ -149,6 +145,7 @@ export const NAV: NavSection[] = [
       {
         key: "ats",
         label: "Reclutamiento",
+        href: "/reclutamiento",
         children: [
           { key: "rrhh-candidatos", label: "Candidatos", href: "/rrhh/candidatos" },
           { key: "rrhh-puestos", label: "Puestos ideales", href: "/rrhh/puestos" },

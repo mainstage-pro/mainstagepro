@@ -36,13 +36,9 @@ function canAccess(key: string | undefined, isAdmin: boolean, userModuleKeys: st
   return userModuleKeys.includes(key);
 }
 
-function getInitialOpen(pathname: string): Set<string> {
-  const open = new Set<string>();
-  if (pathname.startsWith("/inventario/analisis") || pathname.startsWith("/admin/valuacion")) open.add("activos");
-  if (pathname.startsWith("/socios")) open.add("inversiones");
-  if (pathname.startsWith("/rrhh/candidatos") || pathname.startsWith("/rrhh/puestos") || pathname.startsWith("/rrhh/configuracion")) open.add("ats");
-  else if (pathname.startsWith("/rrhh/capacitaciones") || pathname.startsWith("/capacitacion")) open.add("capacitacion-grp");
-  return open;
+function getInitialOpen(): Set<string> {
+  // Todos los módulos son link único con pestañas (sin carpetas colapsables).
+  return new Set<string>();
 }
 
 function getActiveSectionKey(pathname: string): string | null {
@@ -51,7 +47,7 @@ function getActiveSectionKey(pathname: string): string | null {
   // Gestión Operativa (/proyectos-internos antes que /proyectos)
   if (pathname.startsWith("/gestion") || pathname.startsWith("/operaciones") || pathname.startsWith("/plan-trabajo") || pathname.startsWith("/proyectos-internos")) return "seccion-gestion";
   // Administración (RRHH/Personal vive aquí; /inventario/analisis y /catalogo/roles antes que Producción)
-  if (pathname.startsWith("/finanzas") || pathname.startsWith("/personal") || pathname.startsWith("/rrhh") || pathname.startsWith("/capacitacion") || pathname.startsWith("/inventario/analisis") || pathname.startsWith("/admin/valuacion") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles") || pathname.startsWith("/admin/reportes")) return "seccion-administracion";
+  if (pathname.startsWith("/finanzas") || pathname.startsWith("/personal") || pathname.startsWith("/rrhh") || pathname.startsWith("/capacitacion") || pathname.startsWith("/formacion") || pathname.startsWith("/reclutamiento") || pathname.startsWith("/activos") || pathname.startsWith("/inventario/analisis") || pathname.startsWith("/admin/valuacion") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles") || pathname.startsWith("/admin/reportes")) return "seccion-administracion";
   // Dirección
   if (pathname.startsWith("/direccion") || pathname.startsWith("/coordinacion") || pathname.startsWith("/juntas") || pathname.startsWith("/vision-semanal") || pathname.startsWith("/formularios") || pathname.startsWith("/presentaciones")) return "seccion-direccion";
   // Marketing
@@ -72,7 +68,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
   const storageKey = `sidebar-state-${user.id}`;
   const [badges, setBadges] = useState<Record<string, number>>({});
 
-  const [openGroups, setOpenGroups] = useState<Set<string>>(() => getInitialOpen(pathname));
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => getInitialOpen());
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set<string>(["seccion-gestion"]));
   const [stateLoaded, setStateLoaded] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
