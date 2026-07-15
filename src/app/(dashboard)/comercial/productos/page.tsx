@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
@@ -595,11 +595,11 @@ export default function ProductosPage() {
         ))}
       </div>
 
-      {/* Productos por categoría */}
+      {/* Productos por categoría — vista lista */}
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-          {[...Array(12)].map((_, i) => (
-            <div key={i} className="h-52 rounded-xl bg-[#111] animate-pulse" />
+        <div className="space-y-2">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="h-12 bg-[#111] rounded-lg animate-pulse" />
           ))}
         </div>
       ) : visibles.length === 0 ? (
@@ -613,60 +613,77 @@ export default function ProductosPage() {
           </button>
         </div>
       ) : (
-        <div className="space-y-8">
-          {porCategoria.map(({ cat, items }) => (
-            <div key={cat}>
-              <div className="flex items-center gap-3 mb-3">
-                <h2 className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">{cat}</h2>
-                <span className="text-[#333] text-[10px]">({items.length})</span>
-                <div className="flex-1 h-px bg-[#1a1a1a]" />
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-                {items.map((p) => (
-                  <div
-                    key={p.id}
-                    className="group ms-card p-3 cursor-pointer hover:border-[#B3985B]/30 transition-all relative"
-                    onClick={() => abrirEditar(p)}
-                  >
-                    <div className="aspect-square rounded-lg bg-[#0d0d0d] mb-2.5 flex items-center justify-center overflow-hidden">
-                      {p.imagenUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.imagenUrl} alt={p.nombre} className="w-full h-full object-contain p-2" />
-                      ) : (
-                        <svg className="w-8 h-8 text-[#2a2a2a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-white text-xs font-medium leading-snug group-hover:text-[#B3985B] transition-colors line-clamp-2">
-                        {p.nombre}
-                      </p>
-                      {p.descripcion && (
-                        <p className="text-[#555] text-[10px] truncate mt-0.5">{p.descripcion}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded text-[#6b7280] bg-[#1a1a1a]">
-                        {p.items.length} eq
-                      </span>
-                      <span className="text-sm font-bold text-[#B3985B]">{fmx(p.precioFinal)}</span>
-                    </div>
-                    <button
-                      onClick={(ev) => {
-                        ev.stopPropagation();
-                        eliminar(p);
-                      }}
-                      title="Eliminar"
-                      className="absolute top-2 right-2 w-6 h-6 rounded-md bg-black/60 text-gray-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all text-sm flex items-center justify-center"
-                    >
-                      ×
-                    </button>
-                  </div>
+        <div className="ms-table-wrapper">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
+                  <th className="text-left px-4 py-2.5 font-medium">Producto</th>
+                  <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Equipos que lo componen</th>
+                  <th className="text-center px-3 py-2.5 font-medium hidden sm:table-cell">Nº eq</th>
+                  <th className="text-right px-3 py-2.5 font-medium">Precio</th>
+                  <th className="px-3 py-2.5" />
+                </tr>
+              </thead>
+              <tbody>
+                {porCategoria.map(({ cat, items }) => (
+                  <Fragment key={`cat-${cat}`}>
+                    <tr className="border-t border-[#1a1a1a]">
+                      <td colSpan={5} className="px-4 py-1.5 bg-[#0d0d0d]">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">{cat}</span>
+                          <span className="text-[#333] text-[10px]">({items.length})</span>
+                        </div>
+                      </td>
+                    </tr>
+                    {items.map((p) => (
+                      <tr
+                        key={p.id}
+                        onClick={() => abrirEditar(p)}
+                        className="border-t border-[#161616] transition-colors group hover:bg-[#0d0d0d] cursor-pointer"
+                      >
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            {p.imagenUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={p.imagenUrl} alt="" className="w-8 h-8 object-contain rounded bg-[#0a0a0a] p-0.5 shrink-0" />
+                            ) : (
+                              <div className="w-8 h-8 rounded bg-[#1a1a1a] shrink-0 flex items-center justify-center text-gray-700 text-xs">📦</div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-white font-medium truncate">{p.nombre}</p>
+                              {p.descripcion && <p className="text-[#555] text-xs truncate">{p.descripcion}</p>}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2.5 hidden md:table-cell">
+                          <p className="text-[#6b7280] truncate max-w-[320px]">
+                            {p.items.map((it) => `${it.cantidad}× ${nombreEq(it.equipo)}`).join(", ")}
+                          </p>
+                        </td>
+                        <td className="px-3 py-2.5 text-center hidden sm:table-cell text-white tabular-nums">
+                          {p.items.length}
+                        </td>
+                        <td className="px-3 py-2.5 text-right">
+                          <span className="text-[#B3985B] font-semibold">{fmx(p.precioFinal)}</span>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="opacity-0 group-hover:opacity-100 transition-all flex items-center gap-2 justify-end">
+                            <button onClick={(ev) => { ev.stopPropagation(); abrirEditar(p); }} className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors">Editar</button>
+                            <button onClick={(ev) => { ev.stopPropagation(); eliminar(p); }} className="text-[10px] text-[#333] hover:text-red-400 transition-colors">Eliminar</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </Fragment>
                 ))}
-              </div>
-            </div>
-          ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="px-4 py-3 border-t border-[#1a1a1a] flex items-center justify-between">
+            <p className="text-[#555] text-xs">{visibles.length} productos mostrados</p>
+            <p className="text-[#444] text-xs">{porCategoria.length} categorías</p>
+          </div>
         </div>
       )}
 
