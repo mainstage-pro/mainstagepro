@@ -11,13 +11,15 @@ export async function register() {
       enabled: !!process.env.NEXT_PUBLIC_SENTRY_DSN,
     });
 
-    // Garantiza las columnas `fechasEvento` (Trato/Proyecto) al arrancar el proceso,
-    // ANTES de atender cualquier lectura que las incluya en el SELECT. Evita el gotcha
-    // de migración lazy donde una ruta de lectura rompe porque la columna aún no existe.
-    // Idempotente y nunca lanza (cada ALTER va en su propio try/catch interno).
+    // Garantiza TODAS las columnas de migración lazy al arrancar el proceso,
+    // ANTES de atender cualquier lectura. Idempotente y nunca lanza.
     try {
-      const { ensureMultidiaColumns } = await import("@/lib/migraciones-lazy");
-      await ensureMultidiaColumns();
+      const { ensureMultidiaColumns, ensureProcesoVentaColumns, ensureOperacionTecnicaColumns } = await import("@/lib/migraciones-lazy");
+      await Promise.all([
+        ensureMultidiaColumns(),
+        ensureProcesoVentaColumns(),
+        ensureOperacionTecnicaColumns(),
+      ]);
     } catch { /* el arranque no debe fallar por esto */ }
   }
 

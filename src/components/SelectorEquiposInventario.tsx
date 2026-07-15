@@ -163,7 +163,13 @@ function marcasPrincipales(cat: CategoriaPublica): string {
   return [...seen].slice(0, 3).join(" · ");
 }
 
-const CANTIDADES = Array.from({ length: 32 }, (_, i) => i + 1);
+// Opciones de cantidad: base 50; al alcanzar el tope se extiende de 20 en 20.
+const CANT_STEP = 20;
+function opcionesCantidad(cant: number): number[] {
+  let tope = 50;
+  while (cant >= tope) tope += CANT_STEP;
+  return Array.from({ length: tope }, (_, i) => i + 1);
+}
 
 // ── Componente ─────────────────────────────────────────────────────────────────
 
@@ -262,7 +268,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
   }
   function setProductoCantidad(id: string, cant: number) {
     if (readOnly) return;
-    const c = Math.max(1, Math.min(cant, 32));
+    const c = Math.max(1, cant);
     const existe = productosSel.some((p) => p.id === id);
     onChange({
       ...value,
@@ -285,7 +291,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
   }
   function setPaqueteCantidad(id: string, cant: number) {
     if (readOnly) return;
-    const c = Math.max(1, Math.min(cant, 32));
+    const c = Math.max(1, cant);
     const existe = paquetesSel.some((p) => p.id === id);
     onChange({
       ...value,
@@ -405,7 +411,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
     if (cant <= 0) {
       delete nuevasCant[eqId]; // "sin cantidad definida"
     } else {
-      nuevasCant[eqId] = Math.min(cant, 32);
+      nuevasCant[eqId] = cant;
     }
     onChange({
       ...value,
@@ -436,7 +442,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
     onChange({
       ...value,
       extras: extras.map((e) =>
-        e.id === id ? { ...e, cantidad: cant <= 0 ? undefined : Math.min(cant, 32) } : e
+        e.id === id ? { ...e, cantidad: cant <= 0 ? undefined : cant } : e
       ),
     });
   }
@@ -607,7 +613,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
 
   const totalEquipos = value.equipos.length + extras.length + rolesSel.length;
 
-  // Control de cantidad reutilizable: −  [1–32 ▾]  +
+  // Control de cantidad reutilizable: −  [1–50… ▾]  +
   const controlCantidad = (
     cant: number | undefined,
     onSet: (n: number) => void
@@ -626,7 +632,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
         className="h-6 bg-[#111] border border-[#2a2a2a] rounded-md text-white text-xs px-1 focus:outline-none focus:border-[#B3985B]"
       >
         <option value={0}>—</option>
-        {CANTIDADES.map((n) => (
+        {opcionesCantidad(cant ?? 0).map((n) => (
           <option key={n} value={n}>
             {n} pz
           </option>

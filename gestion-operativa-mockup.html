@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gestión Operativa — Mockup</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  html, body { background:#0a0a0a; font-family:'SF Pro Display','SF Pro Text',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+  ::-webkit-scrollbar { width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb { background:rgba(179,152,91,.25); border-radius:8px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  .ms-subtitle { font-size:12px; color:#555; }
+  [data-mod] { display:none; }
+  [data-mod].active { display:flex; }
+</style>
+</head>
+<body class="text-white">
+
+<div class="flex h-screen w-screen overflow-hidden">
+
+  <!-- ══════════ SIDEBAR GLOBAL: GESTIÓN OPERATIVA ══════════ -->
+  <aside class="w-56 shrink-0 bg-[#060606] border-r border-[#0f0f0f] flex flex-col">
+    <div class="px-4 py-4 border-b border-[#0f0f0f] shrink-0">
+      <p class="text-[10px] font-semibold tracking-widest uppercase text-[#B3985B]">Mainstage Pro</p>
+      <h2 class="text-white text-sm font-semibold mt-0.5">Gestión Operativa</h2>
+    </div>
+
+    <nav class="p-2 space-y-0.5">
+      <button onclick="showMod('centro',this)" class="mod-nav w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all bg-[#B3985B]/12 text-[#B3985B] font-medium">
+        <span class="w-4 text-center">🎯</span> Centro (Hoy)
+        <span class="ml-auto text-[10px] bg-[#B3985B]/20 text-[#B3985B] rounded-full px-1.5 py-0.5 font-bold">14</span>
+      </button>
+      <button onclick="showMod('bandeja',this)" class="mod-nav w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all text-[#888] hover:text-white hover:bg-[#0f0f0f]">
+        <span class="w-4 text-center">📥</span> Bandeja de entrada
+        <span class="ml-auto text-[10px] bg-[#e8a020]/20 text-[#e8a020] rounded-full px-1.5 py-0.5 font-bold">3</span>
+      </button>
+
+      <div class="pt-3 pb-1 px-3">
+        <span class="text-[10px] font-semibold tracking-widest uppercase text-[#3a3a3a]">Sistemas operativos</span>
+      </div>
+
+      <button onclick="showMod('plan',this)" class="mod-nav w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all text-[#888] hover:text-white hover:bg-[#0f0f0f]">
+        <span class="w-4 text-center">📋</span> Plan de Trabajo
+      </button>
+      <button onclick="showMod('tareas',this)" class="mod-nav w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all text-[#888] hover:text-white hover:bg-[#0f0f0f]">
+        <span class="w-4 text-center">✅</span> Tareas
+      </button>
+      <button onclick="showMod('proyectos',this)" class="mod-nav w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all text-[#888] hover:text-white hover:bg-[#0f0f0f]">
+        <span class="w-4 text-center">📁</span> Proyectos
+      </button>
+    </nav>
+
+    <div class="mt-auto p-3 border-t border-[#0f0f0f]">
+      <div class="flex items-center gap-2 px-1">
+        <span class="w-7 h-7 rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[11px] text-[#B3985B] flex items-center justify-center font-bold">M</span>
+        <div class="min-w-0">
+          <p class="text-xs text-white truncate">Mauricio H.</p>
+          <p class="text-[10px] text-[#555]">Dirección</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══════════ AREA PRINCIPAL ══════════ -->
+  <main class="flex-1 min-w-0 flex flex-col bg-[#0a0a0a] overflow-hidden">
+
+    <!-- ─────────── 1. CENTRO (HOY) ─────────── -->
+    <section data-mod="centro" class="active flex-1 flex flex-col overflow-hidden">
+      <div class="px-6 py-5 border-b border-white/[0.06] shrink-0">
+        <h1 class="text-white text-xl font-semibold tracking-tight">Buenas tardes, Mauricio 👋</h1>
+        <p class="ms-subtitle mt-0.5">Todo lo que hay que hacer hoy — Plan de Trabajo, Tareas y Proyectos en un solo lugar</p>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-6 py-5 max-w-3xl w-full mx-auto space-y-7">
+
+        <!-- SECCIÓN PLAN DE TRABAJO -->
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="w-6 h-6 rounded-lg bg-[#B3985B]/15 flex items-center justify-center text-sm">📋</span>
+            <h2 class="text-white text-sm font-semibold">Plan de Trabajo</h2>
+            <span class="text-[11px] text-[#555]">recurrente · hoy</span>
+            <span class="ml-auto text-[11px] text-[#B3985B]">5 pendientes</span>
+          </div>
+          <div class="bg-[#0c0c0c] border border-[#161616] rounded-2xl divide-y divide-[#131313]">
+            <!-- fila -->
+            <div class="group flex items-start gap-3 px-3 py-2.5 hover:bg-[#0d0d0d] transition-all">
+              <button class="mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 border-[#B3985B] bg-[#B3985B]/10 flex items-center justify-center"><span class="w-1 h-1 rounded-full bg-[#B3985B]"></span></button>
+              <div class="flex-1 min-w-0">
+                <p class="text-[15px] leading-snug text-[#d0d0d0]">Revisar pipeline de ventas y actualizar tratos</p>
+                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-green-900/30 text-green-400">Comercial</span>
+                  <span class="inline-flex items-center gap-1 text-[12px] text-[#444] px-1.5 py-0.5 rounded-md bg-[#0f0f0f]">↻ Diario</span>
+                  <span class="text-[11px] text-[#555]">🕙 antes 10:30</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold">D</span>
+                </div>
+              </div>
+            </div>
+            <div class="group flex items-start gap-3 px-3 py-2.5 hover:bg-[#0d0d0d] transition-all">
+              <button class="mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 border-orange-500 bg-orange-500/15 flex items-center justify-center"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span></button>
+              <div class="flex-1 min-w-0">
+                <p class="text-[15px] leading-snug text-[#d0d0d0]">Publicar contenido programado en redes</p>
+                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-pink-900/30 text-pink-400">Marketing</span>
+                  <span class="inline-flex items-center gap-1 text-[12px] text-[#444] px-1.5 py-0.5 rounded-md bg-[#0f0f0f]">↻ Diario</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold">A</span>
+                </div>
+              </div>
+            </div>
+            <div class="group flex items-start gap-3 px-3 py-2.5 hover:bg-[#0d0d0d] transition-all">
+              <button class="mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 border-[#B3985B] bg-[#B3985B]/10 flex items-center justify-center"><span class="w-1 h-1 rounded-full bg-[#B3985B]"></span></button>
+              <div class="flex-1 min-w-0">
+                <p class="text-[15px] leading-snug text-[#d0d0d0]">Checklist de mantenimiento de equipo de audio</p>
+                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-yellow-900/30 text-yellow-400">Producción</span>
+                  <span class="inline-flex items-center gap-1 text-[12px] text-[#444] px-1.5 py-0.5 rounded-md bg-[#0f0f0f]">↻ Semanal</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold">L</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN TAREAS -->
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="w-6 h-6 rounded-lg bg-[#B3985B]/15 flex items-center justify-center text-sm">✅</span>
+            <h2 class="text-white text-sm font-semibold">Tareas</h2>
+            <span class="text-[11px] text-[#555]">esporádicas · hoy y vencidas</span>
+            <span class="ml-auto text-[11px] text-[#B3985B]">6 pendientes</span>
+          </div>
+          <div class="bg-[#0c0c0c] border border-[#161616] rounded-2xl divide-y divide-[#131313]">
+            <div class="group flex items-start gap-3 px-3 py-2.5 hover:bg-[#0d0d0d] transition-all">
+              <button class="mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 border-red-500 bg-red-500/20 flex items-center justify-center"><span class="w-2 h-2 rounded-full bg-red-500"></span></button>
+              <div class="flex-1 min-w-0">
+                <p class="text-[15px] leading-snug text-[#d0d0d0]">Enviar cotización a Hotel Grand Velas</p>
+                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span class="inline-flex items-center gap-0.5 text-[10px] font-bold text-red-400 bg-red-950/60 border border-red-500/30 px-1.5 py-0.5 rounded-md">Urgente</span>
+                  <span class="inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium text-red-400 bg-red-950/30">jul 12</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-green-900/30 text-green-400">Comercial</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold">D</span>
+                </div>
+              </div>
+            </div>
+            <div class="group flex items-start gap-3 px-3 py-2.5 hover:bg-[#0d0d0d] transition-all">
+              <button class="mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 border-[#B3985B] bg-[#B3985B]/10 flex items-center justify-center"><span class="w-1 h-1 rounded-full bg-[#B3985B]"></span></button>
+              <div class="flex-1 min-w-0">
+                <p class="text-[15px] leading-snug text-[#d0d0d0]">Cotizar reemplazo de cable XLR dañado</p>
+                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span class="inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium text-emerald-400 bg-emerald-950/30">Hoy</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-blue-900/30 text-blue-400">Administración</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold">S</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECCIÓN PROYECTOS -->
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="w-6 h-6 rounded-lg bg-[#B3985B]/15 flex items-center justify-center text-sm">📁</span>
+            <h2 class="text-white text-sm font-semibold">Proyectos</h2>
+            <span class="text-[11px] text-[#555]">con actividad o entrega hoy</span>
+            <span class="ml-auto text-[11px] text-[#B3985B]">3 activos</span>
+          </div>
+          <div class="bg-[#0c0c0c] border border-[#161616] rounded-2xl divide-y divide-[#131313]">
+            <div class="group flex items-start gap-3 px-3 py-2.5 hover:bg-[#0d0d0d] transition-all">
+              <div class="mt-[1px] shrink-0 relative w-5 h-5">
+                <svg viewBox="0 0 20 20" class="w-5 h-5 -rotate-90"><circle cx="10" cy="10" r="8" fill="none" stroke="#1a1a1a" stroke-width="2"/><circle cx="10" cy="10" r="8" fill="none" stroke="#B3985B" stroke-width="2" stroke-dasharray="50.26" stroke-dashoffset="20" stroke-linecap="round"/></svg>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-[15px] leading-snug text-[#d0d0d0]">Lanzamiento nueva página web</p>
+                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-pink-900/30 text-pink-400">Marketing</span>
+                  <span class="text-[11px] text-[#555]">60% · 3/5 fases</span>
+                  <span class="inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium text-yellow-400 bg-yellow-950/20">entrega jul 20</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold">A</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ─────────── 2. BANDEJA DE ENTRADA ─────────── -->
+    <section data-mod="bandeja" class="flex-1 flex flex-col overflow-hidden">
+      <div class="px-6 py-5 border-b border-white/[0.06] shrink-0">
+        <h1 class="text-white text-xl font-semibold tracking-tight">Bandeja de entrada</h1>
+        <p class="ms-subtitle mt-0.5">Captura cualquier idea, tarea o compromiso. No se mueve a ningún sistema hasta clasificarlo.</p>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-6 py-5 max-w-3xl w-full mx-auto space-y-4">
+        <!-- Quick add -->
+        <div class="flex items-center gap-2 px-3 py-2.5 bg-[#B3985B]/[0.06] border border-[#B3985B]/20 rounded-xl">
+          <span class="w-5 h-5 rounded-full bg-[#B3985B]/20 flex items-center justify-center">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#B3985B" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </span>
+          <input placeholder="Escribe cualquier cosa que haya que registrar…" class="flex-1 bg-transparent text-sm text-white placeholder:text-[#555] focus:outline-none" />
+          <button class="text-[11px] text-[#B3985B] font-medium">Capturar</button>
+        </div>
+
+        <p class="text-[10px] font-semibold tracking-widest uppercase text-[#3a3a3a] pt-1">Sin clasificar (3)</p>
+
+        <!-- Item sin clasificar -->
+        <div class="bg-[#0c0c0c] border border-[#e8a020]/20 rounded-xl p-3.5">
+          <div class="flex items-start gap-2">
+            <span class="mt-0.5 text-[10px] font-bold text-[#e8a020] bg-[#e8a020]/10 border border-[#e8a020]/25 rounded-full px-2 py-0.5 shrink-0">Sin clasificar</span>
+            <p class="text-[15px] leading-snug text-[#d0d0d0] flex-1">Cotizar sistema de intercom para eventos grandes</p>
+          </div>
+          <div class="flex items-center gap-2 mt-3 pl-1">
+            <span class="text-[11px] text-[#555]">¿Qué es?</span>
+            <div class="flex gap-1">
+              <button onclick="pickType(this)" class="type-opt text-[11px] px-2.5 py-1 rounded-lg border border-[#2a2a2a] text-[#888] hover:border-[#B3985B]/50 hover:text-white transition-all">✅ Tarea</button>
+              <button onclick="pickType(this)" class="type-opt text-[11px] px-2.5 py-1 rounded-lg border border-[#2a2a2a] text-[#888] hover:border-[#B3985B]/50 hover:text-white transition-all">📁 Proyecto</button>
+              <button onclick="pickType(this)" class="type-opt text-[11px] px-2.5 py-1 rounded-lg border border-[#2a2a2a] text-[#888] hover:border-[#B3985B]/50 hover:text-white transition-all">📋 Compromiso de plan</button>
+            </div>
+            <button disabled class="mover-btn ml-auto text-[11px] px-3 py-1 rounded-lg bg-[#161616] text-[#444] cursor-not-allowed transition-all">Mover →</button>
+          </div>
+        </div>
+
+        <!-- Item sin clasificar 2 -->
+        <div class="bg-[#0c0c0c] border border-[#e8a020]/20 rounded-xl p-3.5">
+          <div class="flex items-start gap-2">
+            <span class="mt-0.5 text-[10px] font-bold text-[#e8a020] bg-[#e8a020]/10 border border-[#e8a020]/25 rounded-full px-2 py-0.5 shrink-0">Sin clasificar</span>
+            <p class="text-[15px] leading-snug text-[#d0d0d0] flex-1">Definir protocolo de entrega post-evento con el cliente</p>
+          </div>
+          <div class="flex items-center gap-2 mt-3 pl-1">
+            <span class="text-[11px] text-[#555]">¿Qué es?</span>
+            <div class="flex gap-1">
+              <button onclick="pickType(this)" class="type-opt text-[11px] px-2.5 py-1 rounded-lg border border-[#2a2a2a] text-[#888] hover:border-[#B3985B]/50 hover:text-white transition-all">✅ Tarea</button>
+              <button onclick="pickType(this)" class="type-opt text-[11px] px-2.5 py-1 rounded-lg border border-[#2a2a2a] text-[#888] hover:border-[#B3985B]/50 hover:text-white transition-all">📁 Proyecto</button>
+              <button onclick="pickType(this)" class="type-opt text-[11px] px-2.5 py-1 rounded-lg border border-[#2a2a2a] text-[#888] hover:border-[#B3985B]/50 hover:text-white transition-all">📋 Compromiso de plan</button>
+            </div>
+            <button disabled class="mover-btn ml-auto text-[11px] px-3 py-1 rounded-lg bg-[#161616] text-[#444] cursor-not-allowed transition-all">Mover →</button>
+          </div>
+        </div>
+
+        <p class="text-[10px] font-semibold tracking-widest uppercase text-[#3a3a3a] pt-3">Clasificado — listo para mover</p>
+        <div class="bg-[#0c0c0c] border border-[#161616] rounded-xl p-3.5">
+          <div class="flex items-start gap-2">
+            <span class="mt-0.5 text-[10px] font-bold text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/25 rounded-full px-2 py-0.5 shrink-0">📁 Proyecto</span>
+            <p class="text-[15px] leading-snug text-[#d0d0d0] flex-1">Migrar inventario a nuevo sistema de códigos QR</p>
+          </div>
+          <div class="flex items-center gap-2 mt-3 pl-1">
+            <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-blue-900/30 text-blue-400">Administración</span>
+            <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold">S</span>
+            <button class="ml-auto text-[11px] px-3 py-1 rounded-lg bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold transition-all">Mover →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 3. PLAN DE TRABAJO ─────────── -->
+    <section data-mod="plan" class="flex-1 flex flex-col overflow-hidden">
+      <div class="px-6 pt-5 pb-0 border-b border-white/[0.06] shrink-0">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-white text-xl font-semibold tracking-tight">Plan de Trabajo</h1>
+            <p class="ms-subtitle mt-0.5">Operación base recurrente — lo que se hace sí o sí</p>
+          </div>
+          <button class="text-[11px] px-3 py-1.5 rounded-lg bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold transition-all">+ Nueva actividad</button>
+        </div>
+        <div class="flex gap-5 mt-4 -mb-px text-sm">
+          <button class="pb-2.5 border-b-2 border-[#B3985B] text-white font-medium">Mi día</button>
+          <button class="pb-2.5 border-b-2 border-transparent text-[#666] hover:text-white">Plan (plantillas)</button>
+          <button class="pb-2.5 border-b-2 border-transparent text-[#666] hover:text-white">Rendimiento</button>
+          <button class="pb-2.5 border-b-2 border-transparent text-[#666] hover:text-white">Historial</button>
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-6 py-5 max-w-3xl w-full mx-auto space-y-6">
+
+        <!-- Área Dirección -->
+        <div>
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+            <h3 class="text-purple-400 text-xs font-semibold uppercase tracking-wider">Dirección</h3>
+            <span class="text-[11px] text-[#555]">1/2</span>
+          </div>
+          <div class="space-y-0.5">
+            <div class="group flex items-start gap-3 px-3 py-2 rounded-xl hover:bg-[#0d0d0d] transition-all">
+              <button class="mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 border-[#333] bg-[#1f1f1f] flex items-center justify-center"><svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="#555" stroke-width="2.5"><path d="M2 6l3 3 5-5"/></svg></button>
+              <div class="flex-1 min-w-0">
+                <p class="text-[15px] leading-snug line-through text-[#333]">Revisar KPIs del día anterior</p>
+                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span class="inline-flex items-center gap-1 text-[12px] text-[#444] px-1.5 py-0.5 rounded-md bg-[#0f0f0f]">↻ Diario</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold">M</span>
+                </div>
+              </div>
+            </div>
+            <div class="group flex items-start gap-3 px-3 py-2 rounded-xl hover:bg-[#0d0d0d] transition-all">
+              <button class="mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 border-[#B3985B] bg-[#B3985B]/10 flex items-center justify-center"><span class="w-1 h-1 rounded-full bg-[#B3985B]"></span></button>
+              <div class="flex-1 min-w-0">
+                <p class="text-[15px] leading-snug text-[#d0d0d0]">Junta de seguimiento con líderes de área</p>
+                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span class="inline-flex items-center gap-1 text-[12px] text-[#444] px-1.5 py-0.5 rounded-md bg-[#0f0f0f]">↻ Semanal · Lun</span>
+                  <span class="text-[11px] text-[#555]">🕙 9:00</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-[#B3985B]/15 text-[#B3985B]">Entregable</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold">M</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Área Comercial -->
+        <div>
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="w-2 h-2 rounded-full bg-green-400"></span>
+            <h3 class="text-green-400 text-xs font-semibold uppercase tracking-wider">Comercial</h3>
+            <span class="text-[11px] text-[#555]">0/2</span>
+          </div>
+          <div class="space-y-0.5">
+            <div class="group flex items-start gap-3 px-3 py-2 rounded-xl hover:bg-[#0d0d0d] transition-all">
+              <button class="mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 border-[#B3985B] bg-[#B3985B]/10 flex items-center justify-center"><span class="w-1 h-1 rounded-full bg-[#B3985B]"></span></button>
+              <div class="flex-1 min-w-0">
+                <p class="text-[15px] leading-snug text-[#d0d0d0]">Dar seguimiento a prospectos en Descubrimiento</p>
+                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span class="inline-flex items-center gap-1 text-[12px] text-[#444] px-1.5 py-0.5 rounded-md bg-[#0f0f0f]">↻ Diario</span>
+                  <span class="text-[11px] text-[#B3985B]/60">🔗 Ir a Pipeline</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold">D</span>
+                </div>
+              </div>
+            </div>
+            <div class="group flex items-start gap-3 px-3 py-2 rounded-xl hover:bg-[#0d0d0d] transition-all">
+              <button class="mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 border-orange-500 bg-orange-500/15 flex items-center justify-center"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span></button>
+              <div class="flex-1 min-w-0">
+                <p class="text-[15px] leading-snug text-[#d0d0d0]">Reporte semanal de cotizaciones enviadas</p>
+                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span class="inline-flex items-center gap-1 text-[12px] text-[#444] px-1.5 py-0.5 rounded-md bg-[#0f0f0f]">↻ Semanal · Vie</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-[#B3985B]/15 text-[#B3985B]">Entregable</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold">D</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Área Producción -->
+        <div>
+          <div class="flex items-center gap-2 mb-1.5">
+            <span class="w-2 h-2 rounded-full bg-yellow-400"></span>
+            <h3 class="text-yellow-400 text-xs font-semibold uppercase tracking-wider">Producción</h3>
+            <span class="text-[11px] text-[#555]">0/1</span>
+          </div>
+          <div class="space-y-0.5">
+            <div class="group flex items-start gap-3 px-3 py-2 rounded-xl hover:bg-[#0d0d0d] transition-all">
+              <button class="mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 border-[#B3985B] bg-[#B3985B]/10 flex items-center justify-center"><span class="w-1 h-1 rounded-full bg-[#B3985B]"></span></button>
+              <div class="flex-1 min-w-0">
+                <p class="text-[15px] leading-snug text-[#d0d0d0]">Verificar inventario de equipo antes de salida</p>
+                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span class="inline-flex items-center gap-1 text-[12px] text-[#444] px-1.5 py-0.5 rounded-md bg-[#0f0f0f]">↻ Por evento</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold">L</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ─────────── 4. TAREAS (tal cual está) ─────────── -->
+    <section data-mod="tareas" class="flex-1 overflow-hidden">
+      <div class="flex h-full">
+        <!-- Sub-sidebar interno del módulo tareas -->
+        <div class="w-52 shrink-0 bg-[#060606] border-r border-[#0f0f0f] flex flex-col py-3">
+          <div class="px-3 pb-2">
+            <button class="w-full flex items-center gap-2 px-3 py-2 bg-[#B3985B]/10 hover:bg-[#B3985B]/16 border border-[#B3985B]/20 text-[#B3985B] rounded-xl text-sm font-medium transition-all">
+              <span class="w-5 h-5 rounded-full bg-[#B3985B]/20 flex items-center justify-center"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#B3985B" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+              Nueva tarea
+            </button>
+          </div>
+          <nav class="px-2 space-y-0.5">
+            <button class="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm text-[#888] hover:bg-[#0f0f0f]">📥 Bandeja</button>
+            <button class="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm bg-[#111] text-white ring-1 ring-[#B3985B]/20">☀️ Hoy <span class="ml-auto text-[10px] text-[#B3985B]">6</span></button>
+            <button class="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm text-[#888] hover:bg-[#0f0f0f]">📅 Próximas</button>
+            <button class="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm text-[#888] hover:bg-[#0f0f0f]">👥 Equipo</button>
+          </nav>
+          <div class="px-3 py-1.5 mt-3">
+            <span class="text-xs text-[#3a3a3a] font-semibold tracking-widest uppercase">Áreas</span>
+          </div>
+          <div class="px-2 space-y-0.5 text-sm">
+            <button class="w-full flex items-center gap-2 px-3 py-1 rounded-lg text-[#888] hover:bg-[#0f0f0f]"><span class="w-2 h-2 rounded-full bg-purple-400"></span>Dirección</button>
+            <button class="w-full flex items-center gap-2 px-3 py-1 rounded-lg text-[#888] hover:bg-[#0f0f0f]"><span class="w-2 h-2 rounded-full bg-blue-400"></span>Administración</button>
+            <button class="w-full flex items-center gap-2 px-3 py-1 rounded-lg text-[#888] hover:bg-[#0f0f0f]"><span class="w-2 h-2 rounded-full bg-pink-400"></span>Marketing</button>
+            <button class="w-full flex items-center gap-2 px-3 py-1 rounded-lg text-[#888] hover:bg-[#0f0f0f]"><span class="w-2 h-2 rounded-full bg-green-400"></span>Comercial</button>
+            <button class="w-full flex items-center gap-2 px-3 py-1 rounded-lg text-[#888] hover:bg-[#0f0f0f]"><span class="w-2 h-2 rounded-full bg-yellow-400"></span>Producción</button>
+          </div>
+          <div class="px-3 pt-3 pb-1"><div class="h-px bg-white/[0.04] mb-2"></div><span class="text-[10px] font-semibold tracking-widest uppercase" style="color:#e8a020">Extra</span></div>
+          <div class="px-2 space-y-0.5 text-sm">
+            <button class="w-full flex items-center gap-2 px-3 py-1 rounded-lg text-[#888] hover:bg-[#0f0f0f]"><span>⚡</span>Optimización App</button>
+            <button class="w-full flex items-center gap-2 px-3 py-1 rounded-lg text-[#888] hover:bg-[#0f0f0f]"><span>🔗</span>Integraciones a Plan</button>
+            <button class="w-full flex items-center gap-2 px-3 py-1 rounded-lg text-[#888] hover:bg-[#0f0f0f]"><span>💬</span>Temas de Juntas</button>
+          </div>
+        </div>
+
+        <!-- Lista de tareas -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+          <div class="px-6 py-5 border-b border-white/[0.06] shrink-0 flex items-center justify-between">
+            <div><h1 class="text-white text-xl font-semibold tracking-tight">Hoy</h1><p class="ms-subtitle mt-0.5">6 tareas · sin cambios respecto al módulo actual</p></div>
+          </div>
+          <div class="flex-1 overflow-y-auto px-6 py-4 max-w-3xl w-full space-y-0.5">
+            <div class="group flex items-start gap-3 px-3 py-2 rounded-xl hover:bg-[#0d0d0d] transition-all">
+              <button class="mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 border-red-500 bg-red-500/20 ring-2 ring-red-500/25 ring-offset-1 ring-offset-[#0a0a0a] flex items-center justify-center"><span class="w-2 h-2 rounded-full bg-red-500"></span></button>
+              <div class="flex-1 min-w-0">
+                <p class="text-[15px] leading-snug text-[#d0d0d0]">Enviar cotización a Hotel Grand Velas</p>
+                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span class="inline-flex items-center gap-0.5 text-[10px] font-bold text-red-400 bg-red-950/60 border border-red-500/30 px-1.5 py-0.5 rounded-md">⚡ Urgente</span>
+                  <span class="inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium text-red-400 bg-red-950/30">jul 12</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-green-900/30 text-green-400">Comercial</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold">D</span>
+                </div>
+              </div>
+            </div>
+            <div class="group flex items-start gap-3 px-3 py-2 rounded-xl hover:bg-[#0d0d0d] transition-all">
+              <button class="mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 border-orange-500 bg-orange-500/15 flex items-center justify-center"><span class="w-1.5 h-1.5 rounded-full bg-orange-500"></span></button>
+              <div class="flex-1 min-w-0">
+                <p class="text-[15px] leading-snug text-[#d0d0d0]">Preparar demo de iluminación para reunión</p>
+                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span class="inline-flex items-center gap-0.5 text-[10px] font-semibold text-orange-400 bg-orange-950/50 border border-orange-500/25 px-1.5 py-0.5 rounded-md">Alta</span>
+                  <span class="inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium text-emerald-400 bg-emerald-950/30">Hoy</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-yellow-900/30 text-yellow-400">Producción</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold">L</span>
+                </div>
+              </div>
+            </div>
+            <div class="group flex items-start gap-3 px-3 py-2 rounded-xl hover:bg-[#0d0d0d] transition-all">
+              <button class="mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 border-[#B3985B] bg-[#B3985B]/10 flex items-center justify-center"><span class="w-1 h-1 rounded-full bg-[#B3985B]"></span></button>
+              <div class="flex-1 min-w-0">
+                <p class="text-[15px] leading-snug text-[#d0d0d0]">Ajustar plantilla de contrato de renta</p>
+                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                  <span class="inline-flex items-center gap-1 text-[13px] px-1.5 py-0.5 rounded-md font-medium text-emerald-400 bg-emerald-950/30">Hoy</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-blue-900/30 text-blue-400">Administración</span>
+                  <span class="inline-flex items-center gap-0.5 text-[13px] text-[#444]">💬 2</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[10px] text-[#B3985B] flex items-center justify-center font-bold">S</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────── 5. PROYECTOS (kanban) ─────────── -->
+    <section data-mod="proyectos" class="flex-1 flex flex-col overflow-hidden">
+      <div class="px-6 py-5 border-b border-white/[0.06] shrink-0 flex items-center justify-between">
+        <div>
+          <h1 class="text-white text-xl font-semibold tracking-tight">Proyectos internos</h1>
+          <p class="ms-subtitle mt-0.5">Iniciativas con objetivos, pasos y fecha de entrega · arrastra entre columnas para cambiar el estado</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="flex gap-1 mr-2 text-[11px]">
+            <button class="px-2.5 py-1 rounded-lg bg-[#B3985B] text-black font-medium">Kanban</button>
+            <button class="px-2.5 py-1 rounded-lg bg-[#111] border border-[#1a1a1a] text-[#666]">Lista</button>
+          </div>
+          <button class="text-[11px] px-3 py-1.5 rounded-lg bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold transition-all">+ Nuevo</button>
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-x-auto overflow-y-hidden">
+        <div class="flex gap-3 h-full p-4" style="min-width:1120px">
+
+          <!-- COL Planificación -->
+          <div class="flex flex-col w-64 shrink-0 h-full">
+            <div class="flex items-center justify-between px-3 py-2 mb-2 rounded-lg border border-white/10 bg-white/[0.02]">
+              <span class="text-xs font-semibold uppercase tracking-wider text-white/50">Planificación</span>
+              <span class="text-xs opacity-60 font-medium text-white/60">2</span>
+            </div>
+            <div class="flex-1 overflow-y-auto space-y-2">
+              <div class="bg-white/[0.025] border border-white/10 rounded-xl p-3 cursor-grab">
+                <div class="flex items-center gap-1.5 mb-2">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-purple-900/30 text-purple-400">Dirección</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold border border-orange-500/25 text-orange-400">Alta</span>
+                </div>
+                <p class="text-white/80 text-xs font-medium leading-snug mb-2">Plan estratégico 2027 y presupuesto anual</p>
+                <div class="flex items-center justify-between mt-2">
+                  <span class="text-white/25 text-[10px]">📅 entrega ago 15</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[9px] text-[#B3985B] flex items-center justify-center font-bold">M</span>
+                </div>
+              </div>
+              <div class="bg-white/[0.025] border border-white/10 rounded-xl p-3 cursor-grab">
+                <div class="flex items-center gap-1.5 mb-2">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-yellow-900/30 text-yellow-400">Producción</span>
+                </div>
+                <p class="text-white/80 text-xs font-medium leading-snug mb-2">Nuevo sistema de racks para transporte</p>
+                <div class="flex items-center justify-between mt-2">
+                  <span class="text-white/25 text-[10px]">📅 entrega sep 1</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[9px] text-[#B3985B] flex items-center justify-center font-bold">L</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- COL Activo -->
+          <div class="flex flex-col w-64 shrink-0 h-full">
+            <div class="flex items-center justify-between px-3 py-2 mb-2 rounded-lg border border-blue-700/30 bg-white/[0.02]">
+              <span class="text-xs font-semibold uppercase tracking-wider text-blue-400">Activo</span>
+              <span class="text-xs opacity-60 font-medium text-blue-400">2</span>
+            </div>
+            <div class="flex-1 overflow-y-auto space-y-2">
+              <div class="bg-white/[0.025] border border-white/10 rounded-xl p-3 cursor-grab">
+                <div class="flex items-center gap-1.5 mb-2">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-pink-900/30 text-pink-400">Marketing</span>
+                </div>
+                <p class="text-white/80 text-xs font-medium leading-snug mb-2">Lanzamiento nueva página web</p>
+                <div class="w-full h-1 rounded-full bg-white/10 mb-2 overflow-hidden"><div class="h-full bg-[#B3985B]" style="width:60%"></div></div>
+                <div class="flex items-center justify-between">
+                  <span class="text-white/30 text-[10px]">60% · 3/5 fases</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[9px] text-[#B3985B] flex items-center justify-center font-bold">A</span>
+                </div>
+              </div>
+              <div class="bg-white/[0.025] border border-white/10 rounded-xl p-3 cursor-grab">
+                <div class="flex items-center gap-1.5 mb-2">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-blue-900/30 text-blue-400">Administración</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-semibold border border-red-500/30 text-red-400">Urgente</span>
+                </div>
+                <p class="text-white/80 text-xs font-medium leading-snug mb-2">Migrar inventario a códigos QR</p>
+                <div class="w-full h-1 rounded-full bg-white/10 mb-2 overflow-hidden"><div class="h-full bg-[#B3985B]" style="width:30%"></div></div>
+                <div class="flex items-center justify-between">
+                  <span class="text-white/30 text-[10px]">30% · 1/4 fases</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[9px] text-[#B3985B] flex items-center justify-center font-bold">S</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- COL En pausa -->
+          <div class="flex flex-col w-64 shrink-0 h-full">
+            <div class="flex items-center justify-between px-3 py-2 mb-2 rounded-lg border border-yellow-700/30 bg-white/[0.02]">
+              <span class="text-xs font-semibold uppercase tracking-wider text-yellow-400">En pausa</span>
+              <span class="text-xs opacity-60 font-medium text-yellow-400">1</span>
+            </div>
+            <div class="flex-1 overflow-y-auto space-y-2">
+              <div class="bg-white/[0.025] border border-white/10 rounded-xl p-3 cursor-grab opacity-80">
+                <div class="flex items-center gap-1.5 mb-2">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-green-900/30 text-green-400">Comercial</span>
+                </div>
+                <p class="text-white/80 text-xs font-medium leading-snug mb-2">Programa de referidos para clientes</p>
+                <div class="flex items-center justify-between mt-2">
+                  <span class="text-white/25 text-[10px]">⏸ pausado</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[9px] text-[#B3985B] flex items-center justify-center font-bold">D</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- COL Completado -->
+          <div class="flex flex-col w-64 shrink-0 h-full">
+            <div class="flex items-center justify-between px-3 py-2 mb-2 rounded-lg border border-green-700/30 bg-white/[0.02]">
+              <span class="text-xs font-semibold uppercase tracking-wider text-green-400">Completado</span>
+              <span class="text-xs opacity-60 font-medium text-green-400">1</span>
+            </div>
+            <div class="flex-1 overflow-y-auto space-y-2">
+              <div class="bg-white/[0.025] border border-white/10 rounded-xl p-3 cursor-grab opacity-70">
+                <div class="flex items-center gap-1.5 mb-2">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-blue-900/30 text-blue-400">Administración</span>
+                </div>
+                <p class="text-white/80 text-xs font-medium leading-snug mb-2 line-through">Implementar firma digital en contratos</p>
+                <div class="flex items-center justify-between mt-2">
+                  <span class="text-green-400/60 text-[10px]">✓ 100% · 4/4 fases</span>
+                  <span class="w-[18px] h-[18px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[9px] text-[#B3985B] flex items-center justify-center font-bold">S</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  function showMod(id, btn) {
+    document.querySelectorAll('[data-mod]').forEach(s => s.classList.toggle('active', s.dataset.mod === id));
+    document.querySelectorAll('.mod-nav').forEach(b => {
+      b.classList.remove('bg-[#B3985B]/12','text-[#B3985B]','font-medium');
+      b.classList.add('text-[#888]');
+    });
+    btn.classList.add('bg-[#B3985B]/12','text-[#B3985B]','font-medium');
+    btn.classList.remove('text-[#888]');
+  }
+  // Clasificar item de bandeja: al elegir tipo, habilita "Mover"
+  function pickType(btn) {
+    const card = btn.closest('.bg-\\[\\#0c0c0c\\]');
+    card.querySelectorAll('.type-opt').forEach(o => {
+      o.classList.remove('border-[#B3985B]','text-[#B3985B]','bg-[#B3985B]/10');
+      o.classList.add('border-[#2a2a2a]','text-[#888]');
+    });
+    btn.classList.add('border-[#B3985B]','text-[#B3985B]','bg-[#B3985B]/10');
+    btn.classList.remove('border-[#2a2a2a]','text-[#888]');
+    const mover = card.querySelector('.mover-btn');
+    mover.disabled = false;
+    mover.classList.remove('bg-[#161616]','text-[#444]','cursor-not-allowed');
+    mover.classList.add('bg-[#B3985B]','hover:bg-[#c9a96a]','text-black','font-semibold','cursor-pointer');
+  }
+</script>
+</body>
+</html>

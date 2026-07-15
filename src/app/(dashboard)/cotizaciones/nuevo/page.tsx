@@ -2191,7 +2191,7 @@ function CotizadorForm() {
               {/* Cantidad */}
               <div className="shrink-0">
                 <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
-                <NumSelect value={selEqCant} onChange={setSelEqCant} max={20} className="w-20 py-2" />
+                <NumSelect value={selEqCant} onChange={setSelEqCant} max={50} className="w-20 py-2" />
               </div>
 
               {/* Días */}
@@ -2232,7 +2232,7 @@ function CotizadorForm() {
               </div>
               <div className="shrink-0">
                 <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
-                <NumSelect value={selPaqCant} onChange={setSelPaqCant} max={20} className="w-20 py-2" />
+                <NumSelect value={selPaqCant} onChange={setSelPaqCant} max={50} className="w-20 py-2" />
               </div>
               <div className="shrink-0">
                 <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
@@ -2271,7 +2271,7 @@ function CotizadorForm() {
                         )}
                       </div>
                       <div className="shrink-0 flex items-center gap-1.5">
-                        <NumSelect value={String(l.cantidad)} onChange={v => updatePaquete(l.id, "cantidad", parseInt(v) || 1)} max={20} className="w-16 py-1.5" />
+                        <NumSelect value={String(l.cantidad)} onChange={v => updatePaquete(l.id, "cantidad", parseInt(v) || 1)} max={50} className="w-16 py-1.5" />
                         <span className="text-gray-600 text-xs">×</span>
                         <NumSelect value={String(l.dias)} onChange={v => updatePaquete(l.id, "dias", parseInt(v) || 1)} max={10} className="w-16 py-1.5" />
                         <span className="text-gray-600 text-xs">días</span>
@@ -2400,7 +2400,7 @@ function CotizadorForm() {
                               </div>
                               {([l.marca, l.modelo].filter(Boolean).join(" ") !== l.descripcion) && <p className="text-gray-500 text-xs">{l.descripcion}</p>}
                             </div>
-                            <NumSelect value={l.cantidad} onChange={v => updateEquipo(l.id, "cantidad", parseFloat(v) || 1)} max={20} className="w-14 py-1" title="Cantidad" />
+                            <NumSelect value={l.cantidad} onChange={v => updateEquipo(l.id, "cantidad", parseFloat(v) || 1)} max={50} className="w-14 py-1" title="Cantidad" />
                             <NumSelect value={l.dias} onChange={v => updateEquipo(l.id, "dias", parseInt(v) || 1)} max={10} className="w-14 py-1" title="Días" />
                             <div className="flex flex-col items-end gap-0.5">
                               <input type="number" value={l.precioUnitario} min="0"
@@ -2656,7 +2656,7 @@ function CotizadorForm() {
               </div>
               <div>
                 <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
-                <NumSelect value={selExtCant} onChange={setSelExtCant} max={20} className="w-20 py-2" />
+                <NumSelect value={selExtCant} onChange={setSelExtCant} max={50} className="w-20 py-2" />
               </div>
               <div>
                 <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
@@ -2676,7 +2676,7 @@ function CotizadorForm() {
                       {l.marca && <p className="text-gray-500 text-xs">{l.descripcion}</p>}
                       <p className="text-[#555] text-[10px]">Costo proveedor: {formatCurrency(l.costoProveedor)}/u · Total costo: {formatCurrency(l.costoTotal)}</p>
                     </div>
-                    <NumSelect value={l.cantidad} onChange={v => updateExterno(l.id, "cantidad", parseFloat(v) || 1)} max={20} className="w-14 py-1" title="Cantidad" />
+                    <NumSelect value={l.cantidad} onChange={v => updateExterno(l.id, "cantidad", parseFloat(v) || 1)} max={50} className="w-14 py-1" title="Cantidad" />
                     <NumSelect value={l.dias} onChange={v => updateExterno(l.id, "dias", parseInt(v) || 1)} max={10} className="w-14 py-1" title="Días" />
                     <input type="number" value={l.precioUnitario} min="0" onChange={e => updateExterno(l.id, "precioUnitario", parseFloat(e.target.value) || 0)} className="w-22 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-sm text-right" title="Precio al cliente" />
                     <span className="w-22 text-right text-white text-sm font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
@@ -2725,7 +2725,7 @@ function CotizadorForm() {
               </div>
               <div>
                 <p className="text-[10px] text-[#555] mb-1 text-center">Cant</p>
-                <NumSelect value={selOcCant} onChange={setSelOcCant} max={20} className="w-16 py-2" />
+                <NumSelect value={selOcCant} onChange={setSelOcCant} max={50} className="w-16 py-2" />
               </div>
               <div>
                 <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
@@ -2913,7 +2913,7 @@ function CotizadorForm() {
                     </div>
                     <div>
                       <p className="text-[10px] text-[#555] mb-1 text-center">Cant.</p>
-                      <NumSelect value={pending.cantidad} onChange={v => setPendingSlots(p => ({ ...p, [jornada.id]: { ...pending, cantidad: v } }))} max={20} className="w-16 py-2" />
+                      <NumSelect value={pending.cantidad} onChange={v => setPendingSlots(p => ({ ...p, [jornada.id]: { ...pending, cantidad: v } }))} max={50} className="w-16 py-2" />
                     </div>
                     {pendingTarifa > 0 && (
                       <div className="self-end pb-2">
@@ -3042,7 +3042,7 @@ function CotizadorForm() {
                       className="flex-1 min-w-[160px] bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                     />
                     <input type="number" value={logPrecio[tipo]} onChange={e => setLogPrecio(p => ({ ...p, [tipo]: e.target.value }))} placeholder="$" className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                    <NumSelect value={logCant[tipo]} onChange={v => setLogCant(p => ({ ...p, [tipo]: v }))} max={20} className="w-16 py-2" title="Cantidad" />
+                    <NumSelect value={logCant[tipo]} onChange={v => setLogCant(p => ({ ...p, [tipo]: v }))} max={50} className="w-16 py-2" title="Cantidad" />
                     <NumSelect value={logDias[tipo]} onChange={v => setLogDias(p => ({ ...p, [tipo]: v }))} max={10} className="w-16 py-2" title="Días" />
                     <button onClick={() => {
                       const precio = parseFloat(logPrecio[tipo]) || 0;
@@ -3065,7 +3065,7 @@ function CotizadorForm() {
                             const p = parseFloat(e.target.value) || 0;
                             setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, precioUnitario: p, subtotal: p * x.cantidad * x.dias } : x));
                           }} className="w-20 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-xs text-right focus:outline-none" />
-                          <NumSelect value={l.cantidad} onChange={v => { const c = parseFloat(v) || 1; setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, cantidad: c, subtotal: x.precioUnitario * c * x.dias } : x)); }} max={20} className="w-14 py-1" />
+                          <NumSelect value={l.cantidad} onChange={v => { const c = parseFloat(v) || 1; setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, cantidad: c, subtotal: x.precioUnitario * c * x.dias } : x)); }} max={50} className="w-14 py-1" />
                           <NumSelect value={l.dias} onChange={v => { const d = parseInt(v) || 1; setLineasLog(pr => pr.map(x => x.id === l.id ? { ...x, dias: d, subtotal: x.precioUnitario * x.cantidad * d } : x)); }} max={10} className="w-14 py-1" />
                           <span className="w-20 text-right text-white text-sm font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
                           <button onClick={() => setLineasLog(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none shrink-0">×</button>

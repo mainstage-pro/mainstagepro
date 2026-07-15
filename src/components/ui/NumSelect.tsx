@@ -9,35 +9,28 @@ interface Props {
   title?: string;
 }
 
-export default function NumSelect({ value, onChange, max = 20, className = "", title }: Props) {
-  const num = parseInt(String(value)) || 1;
-  const [custom, setCustom] = useState(num > max);
+// Al elegir "Más…" la lista se extiende de STEP en STEP (50 → 70 → 90 …).
+const STEP = 20;
 
-  if (custom || num > max) {
-    return (
-      <input
-        type="number" min="1"
-        value={value}
-        autoFocus
-        onChange={e => onChange(e.target.value)}
-        onBlur={() => { if (parseInt(String(value)) <= max) setCustom(false); }}
-        title={title}
-        className={`bg-[#1a1a1a] border border-[#B3985B] rounded-lg px-2 text-white text-sm text-center focus:outline-none ${className}`}
-      />
-    );
-  }
+export default function NumSelect({ value, onChange, max = 50, className = "", title }: Props) {
+  const num = parseInt(String(value)) || 1;
+  const [extra, setExtra] = useState(0);
+
+  // El tope siempre cubre el valor actual (p. ej. al cargar una cotización existente).
+  let tope = max + extra;
+  while (num > tope) tope += STEP;
 
   return (
     <select
       value={String(num)}
       onChange={e => {
-        if (e.target.value === "mas") { setCustom(true); return; }
+        if (e.target.value === "mas") { setExtra(extra + STEP); return; }
         onChange(e.target.value);
       }}
       title={title}
       className={`bg-[#1a1a1a] border border-[#333] rounded-lg px-1 text-white text-sm text-center focus:outline-none focus:border-[#B3985B] ${className}`}
     >
-      {Array.from({ length: max }, (_, i) => i + 1).map(n => (
+      {Array.from({ length: tope }, (_, i) => i + 1).map(n => (
         <option key={n} value={n}>{n}</option>
       ))}
       <option value="mas">Más…</option>
