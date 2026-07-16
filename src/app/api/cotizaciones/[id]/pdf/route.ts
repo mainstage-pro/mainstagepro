@@ -85,24 +85,48 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .filter((id): id is string => Boolean(id))
   )];
   const productoImgMap = new Map<string, string | null>();
+  const productoMetaMap = new Map<string, { descripcion: string; marcaModelo: string }>();
   if (productoIds.length > 0) {
     const productos = await prisma.producto.findMany({
       where: { id: { in: productoIds } },
-      select: { id: true, imagenUrl: true },
+      select: {
+        id: true,
+        imagenUrl: true,
+        items: {
+          orderBy: { orden: "asc" },
+          select: { equipo: { select: { descripcion: true, marca: true, modelo: true } } },
+        },
+      },
     });
-    for (const p of productos) productoImgMap.set(p.id, p.imagenUrl ?? null);
+    for (const p of productos) {
+      productoImgMap.set(p.id, p.imagenUrl ?? null);
+      const descs = [...new Set(p.items.map(it => it.equipo?.descripcion).filter((d): d is string => Boolean(d)))];
+      const mms = [...new Set(p.items.map(it => [it.equipo?.marca, it.equipo?.modelo].filter(Boolean).join(" ")).filter(Boolean))];
+      productoMetaMap.set(p.id, { descripcion: descs.join(" · "), marcaModelo: mms.join(" · ") });
+    }
   }
 
   const cotizacionWithImgs = {
     ...cotizacion,
     tradeCalificado: cotizacion.trato?.tradeCalificado ?? false,
     mainstageTradeData: cotizacion.mainstageTradeData ?? null,
-    lineas: await Promise.all(cotizacion.lineas.map(async l => ({
-      ...l,
-      imagenUrl: await resolveImg(
-        l.tipo === "PAQUETE" ? productoImgMap.get(getProductoId(l.notasInternas) ?? "") : l.equipo?.imagenUrl
-      ),
-    }))),
+    lineas: await Promise.all(cotizacion.lineas.map(async l => {
+      if (l.tipo === "PAQUETE") {
+        const productoId = getProductoId(l.notasInternas) ?? "";
+        const meta = productoMetaMap.get(productoId);
+        return {
+          ...l,
+          descripcion: meta?.descripcion || l.descripcion,
+          marca: meta?.marcaModelo || l.marca,
+          modelo: null,
+          imagenUrl: await resolveImg(productoImgMap.get(productoId)),
+        };
+      }
+      return {
+        ...l,
+        imagenUrl: await resolveImg(l.equipo?.imagenUrl),
+      };
+    })),
   };
 
   const pdfStream = await ReactPDF.renderToStream(
