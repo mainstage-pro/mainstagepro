@@ -2,15 +2,12 @@
 // Al ENTRAR a cada etapa se agenda automáticamente la acción que corresponde,
 // para tener claridad de qué hacer una vez que se cierra la etapa anterior.
 import { prisma } from "@/lib/prisma";
+import { ensureSeguimientoColumns } from "@/lib/migraciones-lazy";
 
 // ── Migración lazy (Neon): asegura la columna "etapa" en seguimientos ────────
-let _etapaColReady = false;
+// Centralizada en migraciones-lazy.ts (también corre al arranque).
 export async function ensureSeguimientoEtapaCol() {
-  if (_etapaColReady) return;
-  try {
-    await prisma.$executeRawUnsafe(`ALTER TABLE seguimientos ADD COLUMN IF NOT EXISTS "etapa" TEXT`);
-  } catch { /* ya existe */ }
-  _etapaColReady = true;
+  await ensureSeguimientoColumns();
 }
 
 // ── Acción de entrada que se agenda al ENTRAR a cada etapa ───────────────────
@@ -60,13 +57,9 @@ export async function agendarSeguimientoPorEtapa(tratoId: string, nuevaEtapa: st
 
 // ── Presentaciones de venta (Descubrimiento) ─────────────────────────────────
 // Migración lazy: columna "tratoId" en presentaciones_venta (sin FK a propósito).
-let _pvTratoColReady = false;
+// Centralizada en migraciones-lazy.ts (también corre al arranque).
 export async function ensurePresentacionTratoCol() {
-  if (_pvTratoColReady) return;
-  try {
-    await prisma.$executeRawUnsafe(`ALTER TABLE presentaciones_venta ADD COLUMN IF NOT EXISTS "tratoId" TEXT`);
-  } catch { /* ya existe */ }
-  _pvTratoColReady = true;
+  await ensureSeguimientoColumns();
 }
 
 /**

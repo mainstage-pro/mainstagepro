@@ -112,3 +112,80 @@ export async function ensureMultidiaColumns() {
   _multidiaReady = true;
 }
 
+/**
+ * Migraciones lazy de finanzas (patrón Neon: ADD COLUMN IF NOT EXISTS).
+ * - cuentas_pagar.categoriaId: liga la CxP con una categoría financiera (FK opcional).
+ *   El dashboard lee CuentaPagar con findMany sin select, así que esta columna DEBE
+ *   existir en prod antes de cualquier lectura — por eso se garantiza al arranque.
+ * Idempotente y seguro de correr múltiples veces.
+ */
+let _finanzasReady = false;
+
+export async function ensureFinanzasColumns() {
+  if (_finanzasReady) return;
+  if (!await columnExists('cuentas_pagar', 'categoriaId')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE cuentas_pagar ADD COLUMN IF NOT EXISTS "categoriaId" TEXT REFERENCES categorias_financieras(id) ON DELETE SET NULL`
+      );
+    } catch { /* ya existe */ }
+  }
+  _finanzasReady = true;
+}
+
+/**
+ * Migraciones lazy de marketing (patrón Neon: ADD COLUMN IF NOT EXISTS).
+ * - tipos_campana.{categoria,vigenciaDesde,vigenciaHasta,briefTemplate}
+ * - ejecuciones_campana.{brief,briefCompleto}
+ * Todas declaradas en schema.prisma → Prisma las pide en cualquier findMany sin select.
+ * Idempotente y seguro de correr múltiples veces.
+ */
+let _marketingReady = false;
+
+export async function ensureMarketingColumns() {
+  if (_marketingReady) return;
+  const cols: [string, string, string][] = [
+    ['tipos_campana', 'categoria', `ADD COLUMN IF NOT EXISTS "categoria" TEXT NOT NULL DEFAULT 'base'`],
+    ['tipos_campana', 'vigenciaDesde', `ADD COLUMN IF NOT EXISTS "vigenciaDesde" TIMESTAMP(3)`],
+    ['tipos_campana', 'vigenciaHasta', `ADD COLUMN IF NOT EXISTS "vigenciaHasta" TIMESTAMP(3)`],
+    ['tipos_campana', 'briefTemplate', `ADD COLUMN IF NOT EXISTS "briefTemplate" TEXT`],
+    ['ejecuciones_campana', 'brief', `ADD COLUMN IF NOT EXISTS "brief" TEXT`],
+    ['ejecuciones_campana', 'briefCompleto', `ADD COLUMN IF NOT EXISTS "briefCompleto" BOOLEAN NOT NULL DEFAULT false`],
+  ];
+  for (const [table, column, clause] of cols) {
+    if (!await columnExists(table, column)) {
+      try {
+        await prisma.$executeRawUnsafe(`ALTER TABLE ${table} ${clause}`);
+      } catch { /* ya existe */ }
+    }
+  }
+  _marketingReady = true;
+}
+
+/**
+ * Migraciones lazy del pipeline de seguimientos (patrón Neon: ADD COLUMN IF NOT EXISTS).
+ * - seguimientos.etapa: etapa del pipeline en que se agendó el seguimiento.
+ * - presentaciones_venta.tratoId: liga la presentación con su trato (sin FK a propósito).
+ * Ambas declaradas en schema.prisma. Idempotente y seguro de correr múltiples veces.
+ */
+let _seguimientoReady = false;
+
+export async function ensureSeguimientoColumns() {
+  if (_seguimientoReady) return;
+  if (!await columnExists('seguimientos', 'etapa')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE seguimientos ADD COLUMN IF NOT EXISTS "etapa" TEXT`
+      );
+    } catch { /* ya existe */ }
+  }
+  if (!await columnExists('presentaciones_venta', 'tratoId')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE presentaciones_venta ADD COLUMN IF NOT EXISTS "tratoId" TEXT`
+      );
+    } catch { /* ya existe */ }
+  }
+  _seguimientoReady = true;
+}
+

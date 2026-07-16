@@ -14,11 +14,21 @@ export async function register() {
     // Garantiza TODAS las columnas de migración lazy al arrancar el proceso,
     // ANTES de atender cualquier lectura. Idempotente y nunca lanza.
     try {
-      const { ensureMultidiaColumns, ensureProcesoVentaColumns, ensureOperacionTecnicaColumns } = await import("@/lib/migraciones-lazy");
+      const {
+        ensureMultidiaColumns,
+        ensureProcesoVentaColumns,
+        ensureOperacionTecnicaColumns,
+        ensureFinanzasColumns,
+        ensureMarketingColumns,
+        ensureSeguimientoColumns,
+      } = await import("@/lib/migraciones-lazy");
       await Promise.all([
         ensureMultidiaColumns(),
         ensureProcesoVentaColumns(),
         ensureOperacionTecnicaColumns(),
+        ensureFinanzasColumns(),
+        ensureMarketingColumns(),
+        ensureSeguimientoColumns(),
       ]);
     } catch { /* el arranque no debe fallar por esto */ }
   }

@@ -1,22 +1,10 @@
 import { prisma } from "@/lib/prisma";
+import { ensureMarketingColumns } from "@/lib/migraciones-lazy";
 
-// Migración lazy (patrón Neon del proyecto): añade las columnas del brief la
-// primera vez que corre un endpoint de campañas, sin migración formal.
-let _colsReady = false;
-
+// Migración lazy de las columnas del brief. Centralizada en migraciones-lazy.ts
+// (también corre al arranque) para que ninguna lectura tope con una columna inexistente.
 export async function ensureCampanaBriefColumns() {
-  if (_colsReady) return;
-  try {
-    await prisma.$executeRawUnsafe(`ALTER TABLE tipos_campana ADD COLUMN IF NOT EXISTS "categoria" TEXT NOT NULL DEFAULT 'base'`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE tipos_campana ADD COLUMN IF NOT EXISTS "vigenciaDesde" TIMESTAMP(3)`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE tipos_campana ADD COLUMN IF NOT EXISTS "vigenciaHasta" TIMESTAMP(3)`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE tipos_campana ADD COLUMN IF NOT EXISTS "briefTemplate" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE ejecuciones_campana ADD COLUMN IF NOT EXISTS "brief" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE ejecuciones_campana ADD COLUMN IF NOT EXISTS "briefCompleto" BOOLEAN NOT NULL DEFAULT false`);
-  } catch {
-    /* columnas ya existen */
-  }
-  _colsReady = true;
+  await ensureMarketingColumns();
 }
 
 // Archiva (activo=false) los tipos "eventual" cuya vigencia ya venció. La fila

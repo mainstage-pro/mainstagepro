@@ -3,20 +3,16 @@
 
 import { prisma } from "@/lib/prisma";
 import { esRetornoAServicio } from "@/lib/equipo-estado";
+import { ensureFinanzasColumns } from "@/lib/migraciones-lazy";
 
 export { esRetornoAServicio };
 
 export const CATEGORIA_MANTENIMIENTO = "Mantenimiento de equipos";
 
-let columnaAsegurada = false;
-
-// Migración lazy: agrega la columna categoriaId a cuentas_pagar si no existe (patrón Neon).
+// Migración lazy de cuentas_pagar.categoriaId. Centralizada en migraciones-lazy.ts
+// (también corre al arranque) para que el dashboard nunca lea una columna inexistente.
 export async function ensureCuentaPagarCategoria(): Promise<void> {
-  if (columnaAsegurada) return;
-  await prisma.$executeRawUnsafe(
-    `ALTER TABLE cuentas_pagar ADD COLUMN IF NOT EXISTS "categoriaId" TEXT REFERENCES categorias_financieras(id) ON DELETE SET NULL`,
-  );
-  columnaAsegurada = true;
+  await ensureFinanzasColumns();
 }
 
 export type CostoMantenimientoInput = {
