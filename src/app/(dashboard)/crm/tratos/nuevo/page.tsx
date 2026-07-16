@@ -16,7 +16,7 @@ interface Cliente {
 // ── Etapas con descripciones ──────────────────────────────────────────────────
 const ETAPAS_CARDS = [
   {
-    value: "LEAD",
+    value: "PROSPECCION",
     icon: "🔭",
     label: "Prospección",
     color: "#F59E0B",
@@ -77,7 +77,7 @@ export default function NuevoContactoPage() {
 
 
   const [clienteId, setClienteId] = useState("");
-  const [etapa, setEtapa] = useState<string>("LEAD");
+  const [etapa, setEtapa] = useState<string>("PROSPECCION");
   const [momento, setMomento] = useState<string>("");
   const [cotejoEstado, setCotejoEstado] = useState<CotejoEstado>(null);
   const [cotejoCliente, setCotejoCliente] = useState<CotejoCliente | null>(null);
@@ -417,7 +417,7 @@ export default function NuevoContactoPage() {
               );
             })}
           </div>
-          {etapa !== "LEAD" && (
+          {etapa !== "PROSPECCION" && (
             <div className="mt-3 p-3 bg-[#0d0d0d] rounded-lg border border-[#1e1e1e]">
               <p className="text-[11px] text-gray-500">
                 ℹ️ Al crear el contacto en esta etapa, se abrirá directamente el wizard de descubrimiento para capturar la información del evento.

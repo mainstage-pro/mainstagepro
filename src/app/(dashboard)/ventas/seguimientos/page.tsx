@@ -75,7 +75,7 @@ function nextTuesdayOrThursday(): string {
 const CANAL_ICON: Record<string, string> = { whatsapp: "📱", llamada: "📞", reunion: "🤝" };
 const CANAL_LABEL: Record<string, string> = { whatsapp: "WhatsApp", llamada: "Llamada", reunion: "Reunión" };
 const ETAPA_BADGE: Record<string, { label: string; cls: string }> = {
-  LEAD:           { label: "Prospección",    cls: "bg-amber-900/20 text-amber-400" },
+  PROSPECCION:    { label: "Prospección",    cls: "bg-amber-900/20 text-amber-400" },
   DESCUBRIMIENTO: { label: "Descubrimiento", cls: "bg-blue-900/20 text-blue-400" },
   OPORTUNIDAD:    { label: "Oportunidad",    cls: "bg-violet-900/20 text-violet-400" },
   VENTA_CERRADA:  { label: "Cerrada",        cls: "bg-emerald-900/20 text-emerald-400" },

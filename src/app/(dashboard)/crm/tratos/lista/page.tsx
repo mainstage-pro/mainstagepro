@@ -14,6 +14,7 @@ import { BadgeDias } from "@/components/ui/BadgeDias";
 import { NuevoTratoDropdown } from "@/components/NuevoTratoDropdown";
 import { diasTrato } from "@/lib/contadores";
 import { EtapaInternaBar } from "@/components/crm/EtapaInternaBar";
+import { SUBETAPAS_DE_ETAPA, ETAPA_INTERNA_LABELS, ETAPA_DE_INTERNA, type EtapaTrato, type EtapaInterna } from "@/lib/proceso/valores";
 
 type Usuario = { id: string; name: string; area?: string };
 
@@ -44,6 +45,7 @@ type Trato = {
   momentoContratacion?: string | null;
   posibleDuplicado?: boolean;
   fechaProximaAccion: string | null;
+  proximaAccion?: string | null;
   createdAt: string;
   updatedAt?: string | null;
   etapaCambiadaEn?: string | null;
@@ -54,6 +56,7 @@ type Trato = {
   cotizaciones: Cotizacion[];
   nurturingData: string | null;
   descubrimientoCompleto?: boolean;
+  descubrimientoNivel?: string | null;
   formEstado?: string | null;
   modoDescubrimiento?: string | null;
   preferenciaContacto?: string | null;
@@ -62,7 +65,8 @@ type Trato = {
 type Cliente = { id: string; nombre: string; empresa: string | null; telefono: string | null };
 
 const ETAPA_COLORS: Record<string, string> = {
-  LEAD: "bg-violet-900/40 text-violet-300",
+  CONTACTO_INICIAL: "bg-amber-900/40 text-amber-300",
+  PROSPECCION: "bg-violet-900/40 text-violet-300",
   DESCUBRIMIENTO: "bg-blue-900/40 text-blue-300",
   OPORTUNIDAD: "bg-yellow-900/40 text-yellow-300",
   VENTA_CERRADA: "bg-green-900/40 text-green-300",
@@ -70,7 +74,8 @@ const ETAPA_COLORS: Record<string, string> = {
 };
 
 const ETAPA_TEXT: Record<string, string> = {
-  LEAD: "text-violet-500/60",
+  CONTACTO_INICIAL: "text-amber-500/60",
+  PROSPECCION:    "text-violet-500/60",
   DESCUBRIMIENTO: "text-blue-500/60",
   OPORTUNIDAD:    "text-yellow-500/60",
   VENTA_CERRADA:  "text-emerald-500/60",
@@ -216,16 +221,17 @@ function groupTratosByMes(tratos: Trato[], ordenTrato: OrdenTrato = 'fechaEvento
 }
 
 
-const ETAPAS = ["DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA"];
+const ETAPAS = ["CONTACTO_INICIAL", "PROSPECCION", "DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA"];
 const TIPOS_EVENTO = ["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"];
 
 const ALL_ETAPAS = [
-  { key: 'TODOS',          label: 'Todos',          color: '#6B7280' },
-  { key: 'LEAD',           label: 'Prospección',    color: '#F59E0B' },
-  { key: 'DESCUBRIMIENTO', label: 'Descubrimiento', color: '#3B82F6' },
-  { key: 'OPORTUNIDAD',    label: 'Oportunidad',    color: '#8B5CF6' },
-  { key: 'VENTA_CERRADA',  label: 'Cerrada',        color: '#10B981' },
-  { key: 'VENTA_PERDIDA',  label: 'Perdida',        color: '#EF4444' },
+  { key: 'TODOS',            label: 'Todos',          color: '#6B7280' },
+  { key: 'CONTACTO_INICIAL', label: 'Contacto inicial', color: '#F59E0B' },
+  { key: 'PROSPECCION',      label: 'Prospección',    color: '#A855F7' },
+  { key: 'DESCUBRIMIENTO',   label: 'Descubrimiento', color: '#3B82F6' },
+  { key: 'OPORTUNIDAD',      label: 'Oportunidad',    color: '#8B5CF6' },
+  { key: 'VENTA_CERRADA',    label: 'Cerrada',        color: '#10B981' },
+  { key: 'VENTA_PERDIDA',    label: 'Perdida',        color: '#EF4444' },
 ];
 
 function urgenciaColor(fechaProximaAccion: string | Date | null): string {
@@ -609,7 +615,7 @@ function SubProcesoChips({ t }: { t: Trato }) {
   const chips: { label: string; cls: string }[] = [];
 
   // Seguimientos registrados (solo relevante en prospección)
-  if (t.etapa === 'LEAD') {
+  if (t.etapa === 'CONTACTO_INICIAL' || t.etapa === 'PROSPECCION') {
     let hechos = 0, max = 3;
     try {
       const nd = t.nurturingData ? JSON.parse(t.nurturingData) : null;
@@ -629,6 +635,13 @@ function SubProcesoChips({ t }: { t: Trato }) {
     chips.push({ label: '🔍 Descubrimiento ✓', cls: 'text-emerald-400/80 bg-emerald-900/15' });
   } else if (['OPORTUNIDAD', 'VENTA_CERRADA'].includes(t.etapa)) {
     chips.push({ label: '🔍 Descubrimiento pendiente', cls: 'text-red-400/80 bg-red-900/15' });
+  }
+
+  // Nivel de descubrimiento (calculado)
+  if (t.descubrimientoNivel === 'TECNICO') {
+    chips.push({ label: 'Técnico', cls: 'text-blue-300 bg-blue-900/25' });
+  } else if (t.descubrimientoNivel === 'BASICO') {
+    chips.push({ label: 'Básico', cls: 'text-blue-300/80 bg-blue-900/15' });
   }
 
   // Quién hizo el descubrimiento
@@ -660,6 +673,7 @@ function CompactTratoRow({
   trato: t,
   onEliminar,
   onCambiarEtapa,
+  onCambiarSubetapa,
   onCambiarServicio,
   onQuickNote,
   onCambiarResponsable,
@@ -671,6 +685,7 @@ function CompactTratoRow({
   trato: Trato;
   onEliminar: () => void;
   onCambiarEtapa: (nuevaEtapa: string) => void;
+  onCambiarSubetapa: (etapaInterna: string) => void;
   onCambiarServicio: (servicio: string | null) => void;
   onQuickNote: () => void;
   onCambiarResponsable: (responsableId: string | null) => void;
@@ -721,7 +736,8 @@ function CompactTratoRow({
 
 
   const ETAPA_STYLE: Record<string, { dot: string; text: string; bg: string }> = {
-    LEAD:           { dot: 'bg-amber-400',   text: 'text-amber-400',   bg: 'bg-amber-900/20' },
+    CONTACTO_INICIAL: { dot: 'bg-amber-400',   text: 'text-amber-400',   bg: 'bg-amber-900/20' },
+    PROSPECCION:    { dot: 'bg-violet-400',  text: 'text-violet-400',  bg: 'bg-violet-900/20' },
     DESCUBRIMIENTO: { dot: 'bg-blue-400',    text: 'text-blue-400',    bg: 'bg-blue-900/20' },
     OPORTUNIDAD:    { dot: 'bg-violet-400',  text: 'text-violet-400',  bg: 'bg-violet-900/20' },
     VENTA_CERRADA:  { dot: 'bg-emerald-400', text: 'text-emerald-400', bg: 'bg-emerald-900/20' },
@@ -880,36 +896,59 @@ function CompactTratoRow({
           )}
         </div>
 
-        {/* ── COL 6 · Seguimiento ─────── 110px ────── */}
-        <div className="hidden lg:flex w-[110px] shrink-0 pr-3 items-center">
+        {/* ── COL 6 · Seguimiento ─────── 130px ────── */}
+        <div className="hidden lg:flex flex-col justify-center w-[130px] shrink-0 pr-3">
           {seg.variant === 'none' ? (
             <button
               onClick={e => { e.stopPropagation(); onQuickNote(); }}
-              className="text-[10px] text-[#2a2a2a] hover:text-[#B3985B] border border-[#1e1e1e] hover:border-[#B3985B]/30 rounded-md px-2 py-0.5 transition-colors whitespace-nowrap"
+              className="self-start text-[10px] text-[#2a2a2a] hover:text-[#B3985B] border border-[#1e1e1e] hover:border-[#B3985B]/30 rounded-md px-2 py-0.5 transition-colors whitespace-nowrap"
             >
               + Agendar
             </button>
           ) : (
-            <span className={`text-[11px] ${SEG_VARIANT_CLS[seg.variant]}`}>
-              {seg.label}
-            </span>
+            <>
+              <span className={`self-start text-[11px] ${SEG_VARIANT_CLS[seg.variant]}`}>
+                {seg.label}
+              </span>
+              {t.proximaAccion && (
+                <span className="text-[10px] text-[#555] truncate mt-0.5" title={t.proximaAccion}>
+                  {t.proximaAccion}
+                </span>
+              )}
+            </>
           )}
         </div>
 
-        {/* ── COL 7 · Etapa ───────────── 130px ────── */}
-        <div className="hidden sm:flex items-center gap-1.5 w-[130px] shrink-0 pr-3">
-          <span className={`w-2 h-2 rounded-full shrink-0 ${etapaStyle.dot}`} />
-          <select
-            value={t.etapa}
-            onChange={e => { e.stopPropagation(); onCambiarEtapa(e.target.value); }}
-            onClick={e => e.stopPropagation()}
-            className={`flex-1 min-w-0 bg-transparent border-none text-[11px] focus:outline-none cursor-pointer transition-colors ${etapaStyle.text}`}
-            title="Cambiar etapa"
-          >
-            {ALL_ETAPAS.filter(e => e.key !== 'TODOS').map(e => (
-              <option key={e.key} value={e.key} className="bg-[#111] text-white">{e.label}</option>
-            ))}
-          </select>
+        {/* ── COL 7 · Etapa + sub-etapa ── 130px ────── */}
+        <div className="hidden sm:flex flex-col justify-center gap-0.5 w-[130px] shrink-0 pr-3">
+          <div className="flex items-center gap-1.5">
+            <span className={`w-2 h-2 rounded-full shrink-0 ${etapaStyle.dot}`} />
+            <select
+              value={t.etapa}
+              onChange={e => { e.stopPropagation(); onCambiarEtapa(e.target.value); }}
+              onClick={e => e.stopPropagation()}
+              className={`flex-1 min-w-0 bg-transparent border-none text-[11px] focus:outline-none cursor-pointer transition-colors ${etapaStyle.text}`}
+              title="Cambiar etapa"
+            >
+              {ALL_ETAPAS.filter(e => e.key !== 'TODOS').map(e => (
+                <option key={e.key} value={e.key} className="bg-[#111] text-white">{e.label}</option>
+              ))}
+            </select>
+          </div>
+          {(SUBETAPAS_DE_ETAPA[t.etapa as EtapaTrato] ?? []).length > 0 && (
+            <select
+              value={t.etapaInterna ?? ''}
+              onChange={e => { e.stopPropagation(); if (e.target.value) onCambiarSubetapa(e.target.value); }}
+              onClick={e => e.stopPropagation()}
+              className="ml-3.5 bg-transparent border-none text-[10px] text-[#666] focus:outline-none cursor-pointer hover:text-[#B3985B] transition-colors"
+              title="Cambiar sub-etapa (mueve el proceso)"
+            >
+              {!t.etapaInterna && <option value="" className="bg-[#111] text-white">— sub-etapa —</option>}
+              {(SUBETAPAS_DE_ETAPA[t.etapa as EtapaTrato] ?? []).map(ei => (
+                <option key={ei} value={ei} className="bg-[#111] text-white">{ETAPA_INTERNA_LABELS[ei]}</option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* ── COL 8 · Acciones (hover) ── auto ───────────── */}
@@ -1305,6 +1344,29 @@ export default function TratosPage() {
     await ejecutarCambioEtapa(tratoId, nuevaEtapa, {});
   }
 
+  // Cambia la sub-etapa pasando por el motor de proceso (nunca escribe etapaInterna directo).
+  async function cambiarSubetapa(tratoId: string, etapaInterna: string) {
+    const nuevaEtapa = ETAPA_DE_INTERNA[etapaInterna as EtapaInterna] ?? undefined;
+    setTratos(prev => prev.map(t => t.id === tratoId ? { ...t, etapaInterna, ...(nuevaEtapa ? { etapa: nuevaEtapa } : {}) } : t));
+    try {
+      const res = await fetch(`/api/tratos/${tratoId}/proceso`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'cambiar-subetapa', etapaInterna }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || 'Error al cambiar sub-etapa');
+      } else {
+        toast.success(`Movido a ${ETAPA_INTERNA_LABELS[etapaInterna as EtapaInterna] ?? etapaInterna}`);
+      }
+    } catch {
+      toast.error('Error al cambiar sub-etapa');
+    }
+    const refreshed = await fetch('/api/tratos').then(r => r.json());
+    setTratos(refreshed.tratos ?? []);
+  }
+
   async function abrirCompletarSeguimiento(tratoId: string) {
     setActiveSeguimientoPopover(prev => prev === tratoId ? null : tratoId);
     setSeguimientoPendiente(null);
@@ -1578,11 +1640,12 @@ export default function TratosPage() {
             const perdidas = tratos.filter(t => t.etapa === 'VENTA_PERDIDA');
             const sinSeguimiento = activos.filter(t => !t.fechaProximaAccion);
             const hoyStr = new Date().toISOString().split('T')[0];
-            const vencidos = activos.filter(t => t.fechaProximaAccion && t.fechaProximaAccion < hoyStr);
+            const vencidos = activos.filter(t => t.fechaProximaAccion && t.fechaProximaAccion.slice(0, 10) < hoyStr);
+            const sinProceso = activos.filter(t => !t.etapaInterna);
             const valorPipeline = activos.reduce((s, t) => s + getTratoValor(t), 0);
             const valorCerrado = cerradas.reduce((s, t) => s + getTratoValor(t), 0);
             return (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-2 p-3 bg-[#080808] border border-[#141414] rounded-xl">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 mb-2 p-3 bg-[#080808] border border-[#141414] rounded-xl">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[9px] uppercase tracking-wider text-[#444] font-semibold">Activos</span>
                   <span className="text-xl font-bold text-white tabular-nums">{activos.length}</span>
@@ -1615,6 +1678,11 @@ export default function TratosPage() {
                   <span className={`text-xl font-bold tabular-nums ${vencidos.length > 0 ? 'text-red-400' : 'text-[#333]'}`}>{vencidos.length}</span>
                   <span className="text-[10px] text-[#555]">seguim. vencidos</span>
                 </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[9px] uppercase tracking-wider text-[#444] font-semibold">Sin proceso</span>
+                  <span className={`text-xl font-bold tabular-nums ${sinProceso.length > 0 ? 'text-orange-400' : 'text-[#333]'}`}>{sinProceso.length}</span>
+                  <span className="text-[10px] text-[#555]">sin sub-etapa</span>
+                </div>
               </div>
             );
           })()}
@@ -1635,15 +1703,26 @@ export default function TratosPage() {
                 inactiveDot: 'bg-gray-700',
               },
               {
-                filter: 'LEAD',
-                label: 'Prospección',
-                count: all.filter(t => t.etapa === 'LEAD').length,
-                valor: all.filter(t => t.etapa === 'LEAD').reduce((s, t) => s + getTratoValor(t), 0),
+                filter: 'CONTACTO_INICIAL',
+                label: 'Contacto inicial',
+                count: all.filter(t => t.etapa === 'CONTACTO_INICIAL').length,
+                valor: all.filter(t => t.etapa === 'CONTACTO_INICIAL').reduce((s, t) => s + getTratoValor(t), 0),
                 color: '#F59E0B',
                 activeGrad: 'from-amber-900/50 to-amber-950/30',
                 activeBorder: 'border-amber-500/40',
                 activeDot: 'bg-amber-400',
                 inactiveDot: 'bg-amber-900/60',
+              },
+              {
+                filter: 'PROSPECCION',
+                label: 'Prospección',
+                count: all.filter(t => t.etapa === 'PROSPECCION').length,
+                valor: all.filter(t => t.etapa === 'PROSPECCION').reduce((s, t) => s + getTratoValor(t), 0),
+                color: '#A855F7',
+                activeGrad: 'from-violet-900/50 to-violet-950/30',
+                activeBorder: 'border-violet-500/40',
+                activeDot: 'bg-violet-400',
+                inactiveDot: 'bg-violet-900/60',
               },
               {
                 filter: 'DESCUBRIMIENTO',
@@ -1883,6 +1962,7 @@ export default function TratosPage() {
                   trato={t}
                   onEliminar={() => eliminar(t.id, t.cliente.nombre)}
                   onCambiarEtapa={nuevaEtapa => cambiarEtapa(t.id, nuevaEtapa)}
+                  onCambiarSubetapa={ei => cambiarSubetapa(t.id, ei)}
                   onCambiarServicio={async (servicio) => {
                     setTratos(prev => prev.map(x => x.id === t.id ? { ...x, tipoServicio: servicio } : x));
                     await fetch(`/api/tratos/${t.id}`, {

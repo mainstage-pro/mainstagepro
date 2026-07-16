@@ -63,7 +63,7 @@ const ESTADO_COLORS: Record<string, { bar: string; dot: string; text: string }> 
   COMPLETADO:    { bar: "border-l-gray-600",   dot: "bg-gray-600",   text: "text-gray-400"  },
   VENTA_CERRADA: { bar: "border-l-amber-400",  dot: "bg-amber-400",  text: "text-amber-300" },
   // Etapas de trato
-  LEAD:           { bar: "border-l-amber-600",  dot: "bg-amber-500",  text: "text-amber-300" },
+  PROSPECCION:    { bar: "border-l-amber-600",  dot: "bg-amber-500",  text: "text-amber-300" },
   DESCUBRIMIENTO: { bar: "border-l-amber-600",  dot: "bg-amber-500",  text: "text-amber-300" },
   OPORTUNIDAD:    { bar: "border-l-amber-600",  dot: "bg-amber-500",  text: "text-amber-300" },
 };
@@ -75,7 +75,7 @@ const ESTADO_LABELS: Record<string, string> = {
   COMPLETADO:    "Completado",
   VENTA_CERRADA: "Venta cerrada",
   // Etapas de trato
-  LEAD:           "Lead",
+  PROSPECCION:    "Prospección",
   DESCUBRIMIENTO: "Descubrimiento",
   OPORTUNIDAD:    "Oportunidad",
 };

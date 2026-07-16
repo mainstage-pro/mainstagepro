@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const body = await req.json();
-  const { tratoId, tipo = "manual", canal = "whatsapp", titulo, nota, fechaProgramada, numero } = body;
+  const { tratoId, tipo = "MANUAL", canal = "WHATSAPP", titulo, nota, fechaProgramada, numero } = body;
 
   if (!tratoId || !titulo || !fechaProgramada) {
     return NextResponse.json({ error: "tratoId, titulo y fechaProgramada son requeridos" }, { status: 400 });
@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
       titulo,
       nota: nota ?? null,
       numero: numero ?? null,
-      etapa: tratoEtapa?.etapa ?? null,
+      etapaTrato: tratoEtapa?.etapa ?? null,
       fechaProgramada: new Date(fechaProgramada),
     },
     include: {

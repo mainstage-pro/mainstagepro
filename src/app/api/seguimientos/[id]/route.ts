@@ -34,6 +34,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ("nota" in body) data.nota = body.nota ?? null;
   if ("canal" in body) data.canal = body.canal;
   if ("titulo" in body) data.titulo = body.titulo;
+  if ("guionSnapshot" in body) data.guionSnapshot = body.guionSnapshot ?? null;
   if ("fechaProgramada" in body) data.fechaProgramada = new Date(body.fechaProgramada);
 
   const seguimiento = await prisma.seguimiento.update({
@@ -50,7 +51,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   });
 
   // Bloque 7: si se completó el seguimiento auto #3 y el trato sigue abierto, marcar requiereRevision
-  if (body.completado && seguimiento.tipo === "auto" && seguimiento.numero === 3) {
+  if (body.completado && seguimiento.tipo === "PROCESO" && seguimiento.numero === 3) {
     const etapaAbierta = ["DESCUBRIMIENTO", "OPORTUNIDAD"].includes(seguimiento.trato.etapa);
     if (etapaAbierta) {
       await prisma.$executeRawUnsafe(

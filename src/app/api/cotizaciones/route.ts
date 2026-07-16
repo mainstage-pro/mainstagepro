@@ -180,10 +180,10 @@ export async function POST(request: NextRequest) {
 
     await logActividad(session.id, "CREAR", "cotizacion", cotizacion.id, `Cotización ${numeroCotizacion} creada`);
 
-    // Auto-advance trato to OPORTUNIDAD if still in LEAD or DESCUBRIMIENTO
+    // Auto-advance trato to OPORTUNIDAD if still in PROSPECCION or DESCUBRIMIENTO
     if (body.tratoId) {
       const trato = await prisma.trato.findUnique({ where: { id: body.tratoId }, select: { etapa: true } });
-      if (trato?.etapa === 'LEAD' || trato?.etapa === 'DESCUBRIMIENTO') {
+      if (trato?.etapa === 'PROSPECCION' || trato?.etapa === 'DESCUBRIMIENTO') {
         await prisma.trato.update({
           where: { id: body.tratoId },
           data: { etapa: 'OPORTUNIDAD', etapaCambiadaEn: new Date() },

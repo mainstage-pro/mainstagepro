@@ -13,6 +13,7 @@ import { useCelebration } from "@/components/CelebrationToast";
 import { Combobox } from "@/components/Combobox";
 import { BackButton } from "@/components/BackButton";
 import { EtapaInternaBar, EtapaInternaSelect } from "@/components/crm/EtapaInternaBar";
+import { PasoActualPanel } from "@/components/crm/PasoActualPanel";
 import { SEGUIMIENTO_TIPOS, SEGUIMIENTO_TIPO_LABELS, getWaMensajePrimerContacto } from '@/lib/seguimientoTypes';
 import { SelectorEquiposInventario, type SeleccionEquipos } from '@/components/SelectorEquiposInventario';
 import DiscoveryForm from '@/components/crm/DiscoveryForm';
@@ -75,6 +76,7 @@ interface Trato {
   etapaContratacion: string | null;
   continuarPor: string | null;
   descubrimientoCompleto: boolean;
+  descubrimientoNivel: string | null;
   horaInicioEvento: string | null;
   horaFinEvento: string | null;
   duracionMontajeHrs: number | null;
@@ -129,18 +131,21 @@ interface Trato {
 }
 
 // ─── Catálogos / Constantes ───────────────────────────────────────────────────
-const ETAPAS = ["LEAD", "DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA"];
+const ETAPAS = ["CONTACTO_INICIAL", "PROSPECCION", "DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA"];
 const ETAPA_LABELS: Record<string, string> = {
-  LEAD: "Lead", DESCUBRIMIENTO: "Descubrimiento", OPORTUNIDAD: "Oportunidad",
+  CONTACTO_INICIAL: "Contacto inicial", PROSPECCION: "Prospección",
+  DESCUBRIMIENTO: "Descubrimiento", OPORTUNIDAD: "Oportunidad",
   VENTA_CERRADA: "Venta Cerrada", VENTA_PERDIDA: "Venta Perdida",
 };
 const ETAPA_COLORS: Record<string, string> = {
-  LEAD: "bg-violet-900/50 text-violet-300",
+  CONTACTO_INICIAL: "bg-amber-900/50 text-amber-300",
+  PROSPECCION: "bg-violet-900/50 text-violet-300",
   DESCUBRIMIENTO: "bg-gray-700 text-gray-200",
   OPORTUNIDAD: "bg-yellow-900/50 text-yellow-300",
   VENTA_CERRADA: "bg-green-900/50 text-green-300",
   VENTA_PERDIDA: "bg-red-900/50 text-red-300",
 };
+const ETAPAS_FRONTALES = ["CONTACTO_INICIAL", "PROSPECCION"];
 const TIPO_EVENTO_COLORS: Record<string, string> = {
   MUSICAL: "#1A2E4A", SOCIAL: "#B3985B", EMPRESARIAL: "#6B7280", OTRO: "#1F2937",
 };
@@ -1136,6 +1141,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
   // Estado para modal de seguimientos (elevado al padre para evitar problemas con ref)
   const [showSegModal, setShowSegModal] = useState(false);
+  const [pasoRefresh, setPasoRefresh] = useState(0);
 
   // Archivos del briefing
   const [archivos, setArchivos] = useState<TratoArchivo[]>([]);
@@ -1581,6 +1587,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   async function guardarDescubrimiento(completar = false) {
+    if (!trato) return;
     setSaving(true);
     const isRenta = discForm.tipoServicio === "RENTA";
     const payload: Record<string, unknown> = {
@@ -1624,12 +1631,19 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     };
     payload.contactoDecisorNombre = discForm.contactoDecisorNombre || null;
     payload.contactoDecisorCargo = discForm.contactoDecisorCargo || null;
-    if (completar) {
-      payload.descubrimientoCompleto = true;
-      payload.etapa = "OPORTUNIDAD";
-    }
+    // Nota: la etapa y descubrimientoCompleto NUNCA se escriben aquí. Al completar,
+    // el motor (camino 2 / LLAMADA) hace la transición a PROPUESTA_EN_ELABORACION.
     const d = await patch(payload);
     if (d) setTrato(prev => prev ? { ...prev, ...d.trato } : prev);
+    if (completar) {
+      await fetch(`/api/tratos/${trato.id}/proceso`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "descubrimiento", modo: "LLAMADA" }),
+      });
+      await recargarTrato();
+      setPasoRefresh(n => n + 1);
+    }
     setSaving(false);
   }
 
@@ -1732,10 +1746,24 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     setSaving(false);
   }
 
+  async function recargarTrato() {
+    const r = await fetch(`/api/tratos/${id}`);
+    const d = await r.json().catch(() => null);
+    if (d?.trato) setTrato(prev => prev ? { ...prev, ...d.trato } : d.trato);
+  }
+
+  // El cambio de sub-etapa pasa por el motor (cancela pendientes + genera el siguiente paso).
   async function cambiarEtapaInterna(etapaInterna: string) {
+    if (!etapaInterna) return;
     setSaving(true);
-    const d = await patch({ etapaInterna: etapaInterna || null });
-    if (d) setTrato(prev => prev ? { ...prev, etapaInterna: d.trato.etapaInterna ?? null } : prev);
+    const res = await fetch(`/api/tratos/${id}/proceso`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "cambiar-subetapa", etapaInterna }),
+    });
+    const d = await res.json().catch(() => null);
+    if (d?.trato) setTrato(prev => prev ? { ...prev, etapa: d.trato.etapa, etapaInterna: d.trato.etapaInterna ?? null, etapaCambiadaEn: d.trato.etapaCambiadaEn ?? null } : prev);
+    setPasoRefresh(n => n + 1);
     setSaving(false);
   }
 
@@ -1799,13 +1827,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     }
     setSavingCliente(false);
     setCambiarCliente(false);
-  }
-
-  async function generarBriefToken() {
-    const res = await fetch(`/api/tratos/${id}/brief`, { method: "POST" });
-    if (!res.ok) return;
-    const data = await res.json();
-    setTrato(prev => prev ? { ...prev, briefToken: data.token, briefRecibidoEn: null } : prev);
   }
 
   async function generarFormToken() {
@@ -1891,7 +1912,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const canalInfo = getCanal(trato.canalAtencion ?? "");
 
   const formUrl = trato.formToken ? `${typeof window !== "undefined" ? window.location.origin : ""}/f/${trato.formToken}` : "";
-  const briefUrl = trato.briefToken ? `${typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app"}/brief/${trato.briefToken}` : "";
   const _telefono = trato.cliente.telefono?.replace(/\D/g, "");
   const waUrl = _telefono ? `https://wa.me/52${_telefono}?text=${encodeURIComponent(`Hola ${trato.cliente.nombre.split(" ")[0]}, para prepararte una propuesta personalizada necesito que completes este breve formulario: ${formUrl}`)}` : null;
 
@@ -1943,11 +1963,16 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <span className="text-[10px] text-gray-600">
                 {trato.tipoEvento}
               </span>
-              {trato.etapa === 'LEAD' && (
+              {ETAPAS_FRONTALES.includes(trato.etapa) && (
                 <span className="text-[10px] text-amber-500/70">{tiempoSinContacto}</span>
               )}
               {trato.descubrimientoCompleto && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#B3985B]/20 text-[#B3985B]">✓ Descubrimiento</span>
+              )}
+              {trato.descubrimientoNivel && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/30 text-blue-300">
+                  {trato.descubrimientoNivel === "TECNICO" ? "Técnico" : "Básico"}
+                </span>
               )}
             </div>
             <div className="flex items-center gap-2 group">
@@ -1990,7 +2015,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <option key={e} value={e}>{ETAPA_LABELS[e] ?? e}</option>
             ))}
           </select>
-          {trato.etapa === 'LEAD' && (
+          {ETAPAS_FRONTALES.includes(trato.etapa) && (
             <button
               onClick={() => cambiarEtapa('DESCUBRIMIENTO')}
               disabled={saving}
@@ -2259,104 +2284,15 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       })()}
 
       {/* ══════════════════════════════════════════════════════════════════════
-          FICHA DEL EVENTO
-      ══════════════════════════════════════════════════════════════════════ */}
-      {trato.tipoProspecto === "ACTIVO" && (() => {
-        // Estado B — ficha recibida
-        if (trato.briefRecibidoEn) {
-          const fecha = new Date(trato.briefRecibidoEn).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
-
-          return (
-            <div className="bg-[#0d0d0d] border border-green-800/40 rounded-xl p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-green-900/30 flex items-center justify-center text-lg">✅</div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm font-semibold">Ficha recibida</p>
-                  <p className="text-green-400/70 text-xs">El cliente completó el formulario el {fecha}</p>
-                </div>
-                <button
-                  onClick={generarBriefToken}
-                  className="text-[10px] text-[#555] hover:text-white transition-colors shrink-0"
-                >
-                  Regenerar
-                </button>
-              </div>
-            </div>
-          );
-        }
-
-        // Estado A — sin brief o pendiente
-        const nombre1 = trato.cliente.nombre.split(" ")[0];
-        const waBrief = _telefono && briefUrl
-          ? `https://wa.me/52${_telefono}?text=${encodeURIComponent(`Hola ${nombre1} 👋, para prepararte la mejor propuesta para tu evento necesito que llenes este breve formulario (toma menos de 2 minutos): ${briefUrl}`)}`
-          : null;
-
-        return (
-          <div className="bg-[#0d0d0d] border border-[#B3985B]/20 rounded-xl p-4">
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-[#B3985B]/10 flex items-center justify-center text-base">📋</div>
-                <div>
-                  <p className="text-white text-sm font-semibold">Ficha del evento</p>
-                  <p className="text-[#555] text-xs">Comparte este link con el cliente para que llene los detalles de su evento</p>
-                </div>
-              </div>
-            </div>
-
-            {briefUrl ? (
-              <div className="space-y-2">
-                {/* Link copiable */}
-                <div className="flex items-center gap-2 bg-[#111] border border-[#222] rounded-lg px-3 py-2">
-                  <span className="text-[#666] text-xs truncate flex-1 font-mono">{briefUrl}</span>
-                  <button
-                    onClick={() => { navigator.clipboard.writeText(briefUrl); }}
-                    className="text-[#B3985B] text-xs hover:underline shrink-0"
-                  >
-                    Copiar
-                  </button>
-                </div>
-                {/* Botones de acción */}
-                <div className="flex gap-2">
-                  {waBrief && (
-                    <a
-                      href={waBrief}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold bg-green-900/20 border border-green-800/40 text-green-400 hover:border-green-700 transition-colors"
-                    >
-                      <span>📱</span> Enviar por WhatsApp
-                    </a>
-                  )}
-                  <button
-                    onClick={generarBriefToken}
-                    className="text-xs text-[#555] hover:text-white transition-colors px-2"
-                  >
-                    Regenerar link
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={generarBriefToken}
-                className="w-full py-2.5 rounded-xl text-xs font-semibold bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/20 transition-colors"
-              >
-                + Generar link de brief
-              </button>
-            )}
-          </div>
-        );
-      })()}
-
-      {/* ══════════════════════════════════════════════════════════════════════
           BRIEF TÉCNICO (DESCUBRIMIENTO)
       ══════════════════════════════════════════════════════════════════════ */}
 
       {/* ══════════════════════════════════════════════════════════════════════
-          MÓDULO DE PROSPECCIÓN (ETAPA: LEAD)
+          MÓDULO DE PROSPECCIÓN (ETAPAS FRONTALES: CONTACTO_INICIAL / PROSPECCION)
           Inbound: el cliente nos buscó → 3 contactos para calificar
           Outbound: nosotros los prospectamos → 5 contactos para generar interés
       ══════════════════════════════════════════════════════════════════════ */}
-      {trato.etapa === "LEAD" && (() => {
+      {ETAPAS_FRONTALES.includes(trato.etapa) && (() => {
         const esOutbound = trato.tipoLead === "OUTBOUND";
         const contactos = esOutbound ? CONTACTOS_OUTBOUND : CONTACTOS_INBOUND;
         const etapaKey = nurturing.etapa as keyof typeof NURTURING_PLAYBOOK;
@@ -2520,7 +2456,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
       
             {/* ═══ WIZARD DE DESCUBRIMIENTO EMBEBIDO ══════════════════════════════ */}
-      {trato.etapa !== "LEAD" && trato.etapa !== "VENTA_PERDIDA" && (
+      {!ETAPAS_FRONTALES.includes(trato.etapa) && trato.etapa !== "VENTA_PERDIDA" && (
         <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl p-6 space-y-6 my-8 ms-card-deep">
           <div className="flex items-center justify-between pb-4 border-b border-[#222]">
             <div className="flex items-center gap-3">
@@ -2764,6 +2700,23 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         <div className="flex-1 h-px bg-gradient-to-r from-blue-800/20 to-transparent" />
       </div>
 
+      {/* ── Paso actual del proceso (motor) ── */}
+      <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#141414]">
+          <div>
+            <h2 className="text-sm font-bold text-white tracking-tight">Paso actual</h2>
+            <p className="text-[10px] text-gray-600 mt-0.5">Lo genera el proceso estándar según la sub-etapa</p>
+          </div>
+        </div>
+        <div className="p-5">
+          <PasoActualPanel
+            key={`${trato.etapaInterna}-${pasoRefresh}`}
+            tratoId={trato.id}
+            onTransicion={() => { setPasoRefresh(n => n + 1); recargarTrato(); }}
+          />
+        </div>
+      </div>
+
       {/* ─────────────────────────────────────────────────────────────────
           SECCIÓN: SEGUIMIENTOS
       ───────────────────────────────────────────────────────────────── */}
@@ -2775,8 +2728,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <span className="text-sm">📅</span>
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white tracking-tight">Seguimientos</h2>
-              <p className="text-[10px] text-gray-600 mt-0.5">Historial y próximas acciones</p>
+              <h2 className="text-sm font-bold text-white tracking-tight">Recordatorios manuales</h2>
+              <p className="text-[10px] text-gray-600 mt-0.5">Agenda manual aparte del proceso</p>
             </div>
           </div>
           <button

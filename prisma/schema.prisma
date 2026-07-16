@@ -199,9 +199,17 @@ model Trato {
   tipoLead            String   @default("INBOUND")      // INBOUND | OUTBOUND
   origenLead          String   @default("ORGANICO")     // META_ADS | GOOGLE_ADS | ORGANICO | RECOMPRA | REFERIDO | PROSPECCION | OTRO
   estatusContacto     String   @default("PENDIENTE")    // PENDIENTE | CONTACTADO
-  etapa               String   @default("LEAD") // LEAD | DESCUBRIMIENTO | OPORTUNIDAD | VENTA_CERRADA | VENTA_PERDIDA
-  etapaInterna        String?  // sub-etapa dentro de la etapa del pipeline (ver src/lib/etapasInternas.ts)
+  etapa               String   @default("PROSPECCION") // PROSPECCION | DESCUBRIMIENTO | OPORTUNIDAD | VENTA_CERRADA | VENTA_PERDIDA
+  etapaInterna        String?  // sub-etapa del pipeline — valores en src/lib/proceso/valores.ts (ETAPAS_INTERNAS)
   clasificacion       String   @default("PROSPECTO")    // PROSPECTO | BASIC | REGULAR | PRIORITY
+
+  // ── DEPRECADOS (borrado físico diferido a la fase contract, tras reescribir UI Partes 6/7 + migrar datos Parte 8) ──
+  // tipoProspecto: reemplazado por etapaInterna === 'NURTURING'. nurturingData/preferenciaContacto: contienen datos
+  // capturados en tratos reales; se migran en la Parte 8 antes de eliminar. etapaContratacion: duplicado de momentoContratacion.
+  tipoProspecto       String   @default("ACTIVO")  // @deprecated ACTIVO | NURTURING
+  nurturingData       String?  // @deprecated JSON de nurturing
+  preferenciaContacto String?  // @deprecated LLAMADA | PROPUESTA
+  etapaContratacion   String?  // @deprecated duplicado de momentoContratacion
   tipoServicio        String?  // RENTA | PRODUCCION_TECNICA | DIRECCION_TECNICA
   subtipoEvento       String?  // CONCIERTO | FESTIVAL | ELECTRONICA | PRESENTACION_MUSICAL | FIESTA_PRIVADA | BODA | XV_ANOS | BAUTIZO | CUMPLEANIOS | CONGRESO | TALLER | LANZAMIENTO | FERIA | OTRO
 
@@ -212,15 +220,15 @@ model Trato {
   asistentesEstimados    Int?
   serviciosInteres       String?   // JSON: ["AUDIO_PA","ILUMINACION","VIDEO_LED",...]
   ideasReferencias       String?   // links o descripción de referencias
-  etapaContratacion      String?   // obsoleto — reemplazado por rutaEntrada
-  momentoContratacion    String?   // EXPLORANDO | COTIZANDO | LISTO_DECIDIR | URGENTE
+  momentoContratacion    String?   // EXPLORANDO | COTIZANDO | LISTO_PARA_DECIDIR | URGENTE
   posibleDuplicado       Boolean   @default(false) // lo marca el cotejo de cliente para revisión manual
   rutaEntrada            String?   // DESCUBRIR | RIDER_DIRECTO
   continuarPor           String?   // WHATSAPP | LLAMADA | REUNION | COTIZACION
   descubrimientoCompleto Boolean   @default(false)
+  descubrimientoNivel    String?   // BASICO | TECNICO — calculado, nunca capturado (ver lib/proceso/motor.ts)
+  descubrimientoPendiente Boolean  @default(false) // cotización sin descubrimiento registrado (bandera de migración)
   equiposInteres         String?   // JSON: { categorias: string[], equipos: string[], roles: string[], aCriterioVendedor: boolean }
-  modoDescubrimiento     String?   // VENDEDOR | CLIENTE — quién realiza el descubrimiento (define la rama del wizard)
-  preferenciaContacto    String?   // LLAMADA | PROPUESTA — sólo cuando el cliente llena el formulario
+  modoDescubrimiento     String?   // FORMULARIO | LLAMADA — cómo se levantó el descubrimiento
   // ──────────────────────────────────────────────────────────────────────────
 
   lugarEstimado       String?
@@ -258,9 +266,7 @@ model Trato {
   familyAndFriends    Boolean  @default(false)
   realizarRender      Boolean  @default(false)
   // ─────────────────────────────────────────────────────────────────────────────
-  tipoProspecto       String   @default("ACTIVO")  // ACTIVO | NURTURING
-  nurturingData       String?  // JSON: { etapa, temperatura, nextFollowup, nextMotivo, log[] }
-  motivoPerdida       String?
+  motivoPerdida       String?  // PRECIO | FECHA | COMPETENCIA | SIN_RESPUESTA | EVENTO_CANCELADO
   etapaCambiadaEn     DateTime?
   requiereRevision    Boolean  @default(false)
   briefToken          String?  @unique  // token público para el formulario del cliente
@@ -323,10 +329,14 @@ model Seguimiento {
   id              String    @id @default(cuid())
   tratoId         String
   trato           Trato     @relation(fields: [tratoId], references: [id], onDelete: Cascade)
-  tipo            String    // "auto" | "manual" | "auto_etapa"
-  numero          Int?      // 1, 2, 3 para los automáticos
-  etapa           String?   // etapa de compra del prospecto al agendar el seguimiento
-  canal           String    @default("whatsapp") // "whatsapp" | "llamada" | "reunion"
+  tipo            String    @default("PROCESO") // TipoSeguimiento: PROCESO | MANUAL
+  numero          Int?      // orden del paso dentro de la subetapa (para tipo PROCESO)
+  etapaTrato      String?   // etapa (EtapaTrato) del trato al agendar el seguimiento
+  etapaInterna    String?   // sub-etapa (EtapaInterna) al agendar el seguimiento
+  procesoPasoId   String?   // paso del estándar que generó este seguimiento
+  procesoPaso     ProcesoPaso? @relation(fields: [procesoPasoId], references: [id])
+  guionSnapshot   String?   // texto del guión congelado al momento de generarse
+  canal           String    @default("WHATSAPP") // CanalSeguimiento
   titulo          String
   nota            String?
   notaResultado   String?
@@ -337,6 +347,51 @@ model Seguimiento {
   actualizadoEn   DateTime  @updatedAt
 
   @@map("seguimientos")
+}
+
+// ─── PROCESO COMERCIAL ESTÁNDAR (editable en BD) ─────────────────────────────
+
+model ProcesoSubetapa {
+  id                   String        @id @default(cuid())
+  etapa                String        // EtapaTrato
+  etapaInterna         String        @unique // EtapaInterna
+  nombre               String
+  descripcion          String?
+  orden                Int
+  activa               Boolean       @default(true)
+  generacionAutomatica Boolean       @default(true)
+  pasos                ProcesoPaso[]
+
+  @@map("proceso_subetapas")
+}
+
+model ProcesoPaso {
+  id              String          @id @default(cuid())
+  subetapaId      String
+  subetapa        ProcesoSubetapa @relation(fields: [subetapaId], references: [id], onDelete: Cascade)
+  orden           Int
+  dia             Int             // días desde etapaCambiadaEn
+  diaUrgente      Int?
+  titulo          String
+  objetivo        String
+  guion           String
+  canal           String          // CanalSeguimiento
+  herramienta     String?
+  avanzaSubetapaA String?         // EtapaInterna
+  activo          Boolean         @default(true)
+  seguimientos    Seguimiento[]
+
+  @@map("proceso_pasos")
+}
+
+model ProcesoRegla {
+  id        String  @id @default(cuid())
+  orden     Int
+  texto     String
+  categoria String  // CategoriaRegla: COMUNICACION | CADENCIA
+  activa    Boolean @default(true)
+
+  @@map("proceso_reglas")
 }
 
 // ─── TRATO APOYO (equipo de apoyo en la gestión) ─────────────────────────────
@@ -3833,7 +3888,7 @@ model SolicitudCotizacion {
 
   fechaEvento    DateTime?
   lugarEvento    String?
-  etapa          String?  // LEAD | DESCUBRIMIENTO | OPORTUNIDAD | VENTA_CERRADA | VENTA_PERDIDA
+  etapa          String?  // PROSPECCION | DESCUBRIMIENTO | OPORTUNIDAD | VENTA_CERRADA | VENTA_PERDIDA
   tipoEvento     String?  // MUSICAL | SOCIAL | EMPRESARIAL | OTRO
   tipoServicio   String?  // RENTA | PRODUCCION_TECNICA | DIRECCION_TECNICA
   asistentes     Int?

@@ -53,11 +53,12 @@ export async function ensureOperacionTecnicaColumns() {
 
 /**
  * Migraciones lazy del proceso de ventas (patrón Neon: ADD COLUMN IF NOT EXISTS).
- * - tratos.modoDescubrimiento: "VENDEDOR" | "CLIENTE", define la rama del wizard.
- * - tratos.preferenciaContacto: "LLAMADA" | "PROPUESTA", elegida por el cliente al llenar el form.
- * - tratos.etapaInterna: sub-etapa dentro de la etapa del pipeline (ver src/lib/etapasInternas.ts).
+ * - tratos.modoDescubrimiento: "FORMULARIO" | "LLAMADA", define la rama del descubrimiento.
+ * - tratos.etapaInterna: sub-etapa dentro de la etapa del pipeline (ver src/lib/proceso/valores.ts).
  *   Declarada en schema.prisma → Prisma la pide en cualquier findMany de tratos sin select,
  *   por eso DEBE existir antes de cualquier lectura (corre también al arranque).
+ * - tratos.descubrimientoNivel: "BASICO" | "TECNICO", calculado, nunca capturado.
+ * - tratos.descubrimientoPendiente: marca que falta completar el descubrimiento.
  * Idempotente y seguro de correr múltiples veces.
  */
 let _procesoVentaReady = false;
@@ -85,19 +86,33 @@ export async function ensureProcesoVentaColumns() {
       );
     } catch { /* ya existe */ }
   }
+  if (!await columnExists('tratos', 'descubrimientoNivel')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "descubrimientoNivel" TEXT`
+      );
+    } catch { /* ya existe */ }
+  }
+  if (!await columnExists('tratos', 'descubrimientoPendiente')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "descubrimientoPendiente" BOOLEAN NOT NULL DEFAULT false`
+      );
+    } catch { /* ya existe */ }
+  }
   // Backfill: los tratos que ya existían nacen con etapaInterna null (barra vacía).
-  // Les inferimos una sub-etapa razonable según su etapa y señales reales del trato.
+  // Les asignamos la primera sub-etapa que pertenece a su etapa del pipeline.
   // Solo toca filas null → idempotente (tras la primera corrida actualiza 0 filas).
+  // Tolera datos legacy con etapa = 'LEAD' (front, equivale a CONTACTO_INICIAL).
   try {
     await prisma.$executeRawUnsafe(`
       UPDATE tratos SET "etapaInterna" = CASE
-        WHEN etapa = 'LEAD' AND "formEstado" = 'COMPLETADO'          THEN 'LISTO_DESCUBRIMIENTO'
-        WHEN etapa = 'LEAD'                                          THEN 'SIN_CONTACTAR'
-        WHEN etapa = 'DESCUBRIMIENTO' AND "descubrimientoCompleto"   THEN 'DESCUBRIMIENTO_COMPLETO'
-        WHEN etapa = 'DESCUBRIMIENTO'                                THEN 'MODALIDAD_DEFINIDA'
-        WHEN etapa = 'OPORTUNIDAD'                                   THEN 'COTIZACION_ENVIADA'
-        WHEN etapa = 'VENTA_CERRADA'                                 THEN 'CONFIRMACION_VERBAL'
-        WHEN etapa = 'VENTA_PERDIDA'                                 THEN 'MOTIVO_REGISTRADO'
+        WHEN etapa IN ('LEAD', 'CONTACTO_INICIAL')                   THEN 'PRIMER_CONTACTO'
+        WHEN etapa = 'PROSPECCION'                                   THEN 'NURTURING'
+        WHEN etapa = 'DESCUBRIMIENTO'                                THEN 'FORMULARIO_ENVIADO'
+        WHEN etapa = 'OPORTUNIDAD'                                   THEN 'PROPUESTA_EN_ELABORACION'
+        WHEN etapa = 'VENTA_CERRADA'                                 THEN 'CONFIRMADA'
+        WHEN etapa = 'VENTA_PERDIDA'                                 THEN 'PERDIDA'
         ELSE "etapaInterna"
       END
       WHERE "etapaInterna" IS NULL
@@ -200,13 +215,41 @@ let _seguimientoReady = false;
 
 export async function ensureSeguimientoColumns() {
   if (_seguimientoReady) return;
-  if (!await columnExists('seguimientos', 'etapa')) {
+  // Columnas nuevas del proceso comercial estándar en seguimientos.
+  for (const [col, type] of [
+    ['etapaTrato', 'TEXT'],
+    ['etapaInterna', 'TEXT'],
+    ['procesoPasoId', 'TEXT'],
+    ['guionSnapshot', 'TEXT'],
+  ] as const) {
+    if (!await columnExists('seguimientos', col)) {
+      try {
+        await prisma.$executeRawUnsafe(
+          `ALTER TABLE seguimientos ADD COLUMN IF NOT EXISTS "${col}" ${type}`
+        );
+      } catch { /* ya existe */ }
+    }
+  }
+  // Backfill: migrar la columna legacy "etapa" → "etapaTrato" si aún existe.
+  if (await columnExists('seguimientos', 'etapa')) {
     try {
       await prisma.$executeRawUnsafe(
-        `ALTER TABLE seguimientos ADD COLUMN IF NOT EXISTS "etapa" TEXT`
+        `UPDATE seguimientos SET "etapaTrato" = "etapa" WHERE "etapaTrato" IS NULL AND "etapa" IS NOT NULL`
       );
-    } catch { /* ya existe */ }
+    } catch { /* nada que migrar */ }
   }
+  // Normalizar tipo legacy: auto / auto_etapa → PROCESO, manual → MANUAL.
+  try {
+    await prisma.$executeRawUnsafe(
+      `UPDATE seguimientos SET "tipo" = CASE WHEN "tipo" IN ('auto', 'auto_etapa') THEN 'PROCESO' WHEN "tipo" = 'manual' THEN 'MANUAL' ELSE "tipo" END WHERE "tipo" IN ('auto', 'auto_etapa', 'manual')`
+    );
+  } catch { /* ya normalizado */ }
+  // Normalizar canal legacy en minúsculas → mayúsculas del enum CanalSeguimiento.
+  try {
+    await prisma.$executeRawUnsafe(
+      `UPDATE seguimientos SET "canal" = CASE WHEN "canal" = 'whatsapp' THEN 'WHATSAPP' WHEN "canal" = 'llamada' THEN 'LLAMADA' WHEN "canal" IN ('reunion', 'presencial') THEN 'PRESENCIAL' WHEN "canal" = 'email' THEN 'EMAIL' ELSE "canal" END WHERE "canal" IN ('whatsapp', 'llamada', 'reunion', 'presencial', 'email')`
+    );
+  } catch { /* ya normalizado */ }
   if (!await columnExists('presentaciones_venta', 'tratoId')) {
     try {
       await prisma.$executeRawUnsafe(
@@ -215,5 +258,55 @@ export async function ensureSeguimientoColumns() {
     } catch { /* ya existe */ }
   }
   _seguimientoReady = true;
+}
+
+/**
+ * Crea las tablas del proceso comercial estándar si aún no existen (patrón Neon).
+ * proceso_subetapas / proceso_pasos / proceso_reglas. Idempotente.
+ */
+let _procesoTablasReady = false;
+
+export async function ensureProcesoTablas() {
+  if (_procesoTablasReady) return;
+  try {
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS proceso_subetapas (
+        id TEXT PRIMARY KEY,
+        etapa TEXT NOT NULL,
+        "etapaInterna" TEXT NOT NULL UNIQUE,
+        nombre TEXT NOT NULL,
+        descripcion TEXT,
+        orden INTEGER NOT NULL,
+        activa BOOLEAN NOT NULL DEFAULT true,
+        "generacionAutomatica" BOOLEAN NOT NULL DEFAULT true
+      )
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS proceso_pasos (
+        id TEXT PRIMARY KEY,
+        "subetapaId" TEXT NOT NULL REFERENCES proceso_subetapas(id) ON DELETE CASCADE,
+        orden INTEGER NOT NULL,
+        dia INTEGER NOT NULL,
+        "diaUrgente" INTEGER,
+        titulo TEXT NOT NULL,
+        objetivo TEXT NOT NULL,
+        guion TEXT NOT NULL,
+        canal TEXT NOT NULL,
+        herramienta TEXT,
+        "avanzaSubetapaA" TEXT,
+        activo BOOLEAN NOT NULL DEFAULT true
+      )
+    `);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS proceso_reglas (
+        id TEXT PRIMARY KEY,
+        orden INTEGER NOT NULL,
+        texto TEXT NOT NULL,
+        categoria TEXT NOT NULL,
+        activa BOOLEAN NOT NULL DEFAULT true
+      )
+    `);
+  } catch { /* ya existen */ }
+  _procesoTablasReady = true;
 }
 

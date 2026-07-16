@@ -2,15 +2,15 @@ import { prisma } from "@/lib/prisma";
 
 /** Mapeo momento de contratación → etapa por defecto del pipeline. */
 export const MOMENTO_ETAPA: Record<string, string> = {
-  EXPLORANDO: "LEAD",
+  EXPLORANDO: "PROSPECCION",
   COTIZANDO: "DESCUBRIMIENTO",
-  LISTO_DECIDIR: "OPORTUNIDAD",
+  LISTO_PARA_DECIDIR: "OPORTUNIDAD",
   URGENTE: "OPORTUNIDAD",
 };
 
 export function etapaDesdeMomento(momento?: string | null): string {
-  if (!momento) return "LEAD";
-  return MOMENTO_ETAPA[momento] ?? "LEAD";
+  if (!momento) return "PROSPECCION";
+  return MOMENTO_ETAPA[momento] ?? "PROSPECCION";
 }
 
 // Crea la tabla formularios_lead de forma idempotente (migración lazy estilo Neon).

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cotejarOCrearCliente } from "@/lib/cotejo-cliente";
 import { ensureFormularioLeadTable, etapaDesdeMomento } from "@/lib/formulario-lead";
-import { ensureProcesoVentaColumns, ensureMultidiaColumns } from "@/lib/migraciones-lazy";
+import { ensureProcesoVentaColumns, ensureMultidiaColumns, ensureProcesoTablas, ensureSeguimientoColumns } from "@/lib/migraciones-lazy";
+import { completarDescubrimiento } from "@/lib/proceso/motor";
 
 // ─── Ensure formRecibidoEn column exists ─────────────────────────────────────
 let _colReady = false;
@@ -143,6 +144,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   await ensureFormRecibidoEn();
   await ensureProcesoVentaColumns();
   await ensureMultidiaColumns();
+  await ensureProcesoTablas();
+  await ensureSeguimientoColumns();
 
   const trato = await prisma.trato.findUnique({
     where: { formToken: token },
@@ -186,19 +189,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         await prisma.trato.update({ where: { id: trato.id }, data });
       }
       if (isFinal) {
-        // El cliente terminó el descubrimiento → se considera hecho y el trato
-        // avanza automáticamente a OPORTUNIDAD (listo para cotizar), salvo que ya
-        // esté en una etapa más avanzada (OPORTUNIDAD/VENTA_*).
+        // El cliente terminó el descubrimiento (camino 1 / FORMULARIO). El motor
+        // hace la transición de subetapa; aquí solo se marca el estado del form.
         await prisma.$executeRawUnsafe(
-          `UPDATE tratos
-             SET "formEstado" = 'COMPLETADO',
-                 "descubrimientoCompleto" = true,
-                 "formRecibidoEn" = NOW(),
-                 "modoDescubrimiento" = 'CLIENTE',
-                 "etapa" = CASE WHEN "etapa" IN ('LEAD', 'DESCUBRIMIENTO') THEN 'OPORTUNIDAD' ELSE "etapa" END
-           WHERE id = $1`,
+          `UPDATE tratos SET "formEstado" = 'COMPLETADO', "formRecibidoEn" = NOW() WHERE id = $1`,
           trato.id
         );
+        await completarDescubrimiento(trato.id, "FORMULARIO");
       }
       return NextResponse.json({
         ok: true,
@@ -246,7 +243,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
         origenVenta: "PUBLICIDAD",
         // El cliente llenó todo el descubrimiento → nace listo para cotizar.
         etapa: "OPORTUNIDAD",
-        modoDescubrimiento: "CLIENTE",
+        modoDescubrimiento: "FORMULARIO",
         momentoContratacion: momentoH,
         posibleDuplicado: cotejo.estado === "DUPLICADO_POSIBLE",
         rutaEntrada: "DESCUBRIR",
@@ -266,6 +263,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       `UPDATE tratos SET "formRecibidoEn" = NOW() WHERE id = $1`,
       nuevoTrato.id
     );
+
+    // Camino 1: el trato nace con descubrimiento completo → el motor lo coloca en
+    // la subetapa correcta y genera su primer paso.
+    await completarDescubrimiento(nuevoTrato.id, "FORMULARIO");
 
     await prisma.formularioLead.update({
       where: { id: formulario.id },
@@ -335,6 +336,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       nuevoTrato.id
     );
 
+    // Camino 1: descubrimiento completo → el motor asigna subetapa y primer paso.
+    await completarDescubrimiento(nuevoTrato.id, "FORMULARIO");
+
     await prisma.formularioLead.update({
       where: { id: formulario.id },
       data: { usado: true, tratoId: nuevoTrato.id },
@@ -398,7 +402,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     `UPDATE tratos SET
       "formRespuestas" = $1,
       "formEstado" = 'COMPLETADO',
-      "descubrimientoCompleto" = true,
       "camposCliente" = $2,
       "formRecibidoEn" = NOW()
     WHERE id = $3`,
@@ -429,6 +432,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       ...(equiposInteres != null && { equiposInteres }),
     },
   });
+
+  // Camino 1 (FORMULARIO): el cliente completó el brief → transición vía motor.
+  await completarDescubrimiento(trato.id, "FORMULARIO");
 
   return NextResponse.json({
     ok: true,

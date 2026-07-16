@@ -7,9 +7,9 @@ import { defaultEtapaInterna } from "@/lib/etapasInternas";
 
 // Mapeo momento de contratación → etapa por defecto del pipeline (el vendedor puede sobreescribir).
 const MOMENTO_ETAPA: Record<string, string> = {
-  EXPLORANDO: "LEAD",
+  EXPLORANDO: "PROSPECCION",
   COTIZANDO: "DESCUBRIMIENTO",
-  LISTO_DECIDIR: "OPORTUNIDAD",
+  LISTO_PARA_DECIDIR: "OPORTUNIDAD",
   URGENTE: "OPORTUNIDAD",
 };
 
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       tipoProspecto: true, nurturingData: true, proximaAccion: true,
       momentoContratacion: true, posibleDuplicado: true,
       updatedAt: true, etapaCambiadaEn: true, confirmadaEn: true,
-      descubrimientoCompleto: true, formEstado: true,
+      descubrimientoCompleto: true, descubrimientoNivel: true, formEstado: true,
       modoDescubrimiento: true, preferenciaContacto: true,
       cliente: { select: { id: true, nombre: true, empresa: true, telefono: true } },
       responsable: { select: { id: true, name: true } },
@@ -134,11 +134,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Cliente requerido" }, { status: 400 });
     }
 
-    // Determine etapa: NURTURING → LEAD; etapa explícita gana; si no, se deriva del momento; default DESCUBRIMIENTO.
+    // Determine etapa: nurturing → PROSPECCION; etapa explícita gana; si no, se deriva del momento; default DESCUBRIMIENTO.
+    const esNurturing = body.tipoProspecto === 'NURTURING';
     const momento: string | null = body.momentoContratacion || null;
-    const trato_etapa = body.tipoProspecto === 'NURTURING'
-      ? 'LEAD'
+    const trato_etapa = esNurturing
+      ? 'PROSPECCION'
       : (body.etapa || (momento && MOMENTO_ETAPA[momento]) || 'DESCUBRIMIENTO');
+    const trato_etapaInterna = esNurturing ? 'NURTURING' : defaultEtapaInterna(trato_etapa);
 
     const trato = await prisma.trato.create({
       data: {
@@ -152,7 +154,7 @@ export async function POST(request: NextRequest) {
         vendedorOrigenId: body.vendedorOrigenId || null,
         estatusContacto: "PENDIENTE",
         etapa: trato_etapa,
-        etapaInterna: defaultEtapaInterna(trato_etapa),
+        etapaInterna: trato_etapaInterna,
         clasificacion: body.clasificacion || "PROSPECTO",
         tipoServicio: body.tipoServicio || null,
         tipoProspecto: body.tipoProspecto || "ACTIVO",

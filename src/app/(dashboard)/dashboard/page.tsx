@@ -234,7 +234,7 @@ export default async function DashboardPage() {
 
     // ── LEADS RECIENTES ───────────────────────────
     prisma.trato.findMany({
-      where: { etapa: 'LEAD' },
+      where: { etapa: 'PROSPECCION' },
       select: {
         id: true,
         createdAt: true,

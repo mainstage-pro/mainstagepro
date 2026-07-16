@@ -4,7 +4,7 @@ import { etapasInternasDe, progresoEtapaInterna } from "@/lib/etapasInternas";
 
 // Color de la barra por etapa del pipeline (alineado con los colores de la lista de tratos).
 const ETAPA_ACCENT: Record<string, { on: string; off: string; text: string }> = {
-  LEAD:           { on: "bg-violet-500",  off: "bg-violet-900/30",  text: "text-violet-300" },
+  PROSPECCION:    { on: "bg-violet-500",  off: "bg-violet-900/30",  text: "text-violet-300" },
   DESCUBRIMIENTO: { on: "bg-blue-500",    off: "bg-blue-900/30",    text: "text-blue-300" },
   OPORTUNIDAD:    { on: "bg-yellow-500",  off: "bg-yellow-900/30",  text: "text-yellow-300" },
   VENTA_CERRADA:  { on: "bg-emerald-500", off: "bg-emerald-900/30", text: "text-emerald-300" },
@@ -28,7 +28,7 @@ export function EtapaInternaBar({
   if (pasos.length === 0) return null;
 
   const { index } = progresoEtapaInterna(etapa, etapaInterna);
-  const accent = ETAPA_ACCENT[etapa] ?? ETAPA_ACCENT.LEAD;
+  const accent = ETAPA_ACCENT[etapa] ?? ETAPA_ACCENT.PROSPECCION;
   const actual = index >= 0 ? pasos[index] : null;
 
   return (
@@ -77,7 +77,7 @@ export function EtapaInternaSelect({
       title="Cambiar sub-etapa interna"
       className={`bg-transparent border-none text-[11px] focus:outline-none cursor-pointer text-[#888] hover:text-white transition-colors ${className}`}
     >
-      <option value="" className="bg-[#111] text-white">Sin sub-etapa</option>
+      {!etapaInterna && <option value="" disabled className="bg-[#111] text-white">Elegir sub-etapa</option>}
       {pasos.map(p => (
         <option key={p.key} value={p.key} className="bg-[#111] text-white">{p.label}</option>
       ))}

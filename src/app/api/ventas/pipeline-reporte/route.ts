@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
   });
 
   // Funnel: count by etapa from tratos created in period
-  const funnelMap: Record<string, number> = { LEAD: 0, DESCUBRIMIENTO: 0, OPORTUNIDAD: 0, VENTA_CERRADA: 0 };
+  const funnelMap: Record<string, number> = { PROSPECCION: 0, DESCUBRIMIENTO: 0, OPORTUNIDAD: 0, VENTA_CERRADA: 0 };
   for (const t of tratosEnPeriodo) {
     if (t.etapa in funnelMap) funnelMap[t.etapa]++;
     // VENTA_PERDIDA: don't count in funnel
@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
   }
 
   const funnel = [
-    { etapa: 'Lead', count: funnelMap.LEAD },
+    { etapa: 'Prospección', count: funnelMap.PROSPECCION },
     { etapa: 'Descubrimiento', count: funnelMap.DESCUBRIMIENTO },
     { etapa: 'Oportunidad', count: funnelMap.OPORTUNIDAD },
     { etapa: 'Venta Cerrada', count: funnelMap.VENTA_CERRADA },

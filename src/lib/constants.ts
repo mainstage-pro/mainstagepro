@@ -15,6 +15,8 @@ export const TIPO_EVENTO_COLORS: Record<string, string> = {
 
 // Etapas del trato
 export const ETAPA_LABELS: Record<string, string> = {
+  CONTACTO_INICIAL: "Contacto inicial",
+  PROSPECCION: "Prospección",
   DESCUBRIMIENTO: "Descubrimiento",
   OPORTUNIDAD: "Oportunidad",
   VENTA_CERRADA: "Venta Cerrada",
@@ -25,21 +27,21 @@ export const ETAPA_LABELS: Record<string, string> = {
 export const MOMENTO_LABELS: Record<string, string> = {
   EXPLORANDO: "Explorando",
   COTIZANDO: "Cotizando",
-  LISTO_DECIDIR: "Listo para decidir",
+  LISTO_PARA_DECIDIR: "Listo para decidir",
   URGENTE: "Urgente",
 };
 
 export const MOMENTO_COLORS: Record<string, string> = {
   EXPLORANDO: "bg-sky-500/15 text-sky-300 border-sky-500/30",
   COTIZANDO: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-  LISTO_DECIDIR: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
+  LISTO_PARA_DECIDIR: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
   URGENTE: "bg-red-500/15 text-red-300 border-red-500/30",
 };
 
 export const MOMENTO_OPTIONS: { value: string; label: string; hint: string; etapa: string }[] = [
-  { value: "EXPLORANDO", label: "Explorando", hint: "Apenas investigando opciones", etapa: "LEAD" },
+  { value: "EXPLORANDO", label: "Explorando", hint: "Apenas investigando opciones", etapa: "PROSPECCION" },
   { value: "COTIZANDO", label: "Cotizando", hint: "Pidiendo precios / comparando", etapa: "DESCUBRIMIENTO" },
-  { value: "LISTO_DECIDIR", label: "Listo para decidir", hint: "Con presupuesto y fecha", etapa: "OPORTUNIDAD" },
+  { value: "LISTO_PARA_DECIDIR", label: "Listo para decidir", hint: "Con presupuesto y fecha", etapa: "OPORTUNIDAD" },
   { value: "URGENTE", label: "Urgente", hint: "Necesita cerrar ya", etapa: "OPORTUNIDAD" },
 ];
 

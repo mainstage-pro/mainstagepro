@@ -62,6 +62,8 @@ type NurturingData = {
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 const ETAPA_CONFIG: Record<string, { color: string; bg: string; border: string; label: string; icon: string }> = {
+  CONTACTO_INICIAL: { color: "text-amber-400", bg: "bg-amber-900/20", border: "border-amber-700/40", label: "Contacto inicial", icon: "🔭" },
+  PROSPECCION:  { color: "text-violet-400",  bg: "bg-violet-900/20",  border: "border-violet-700/40",  label: "Prospección",    icon: "🌱" },
   LEAD:         { color: "text-amber-400",   bg: "bg-amber-900/20",   border: "border-amber-700/40",   label: "Prospección",    icon: "🔭" },
   DESCUBRIMIENTO: { color: "text-blue-400",  bg: "bg-blue-900/20",    border: "border-blue-700/40",    label: "Descubrimiento", icon: "🔍" },
   OPORTUNIDAD:  { color: "text-violet-400",  bg: "bg-violet-900/20",  border: "border-violet-700/40",  label: "Oportunidad",    icon: "📋" },
@@ -297,7 +299,8 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
   }
 
   const etapa = trato.etapa;
-  const cfg = ETAPA_CONFIG[etapa] ?? ETAPA_CONFIG.LEAD;
+  const esProspeccion = etapa === "CONTACTO_INICIAL" || etapa === "PROSPECCION" || etapa === "LEAD";
+  const cfg = ETAPA_CONFIG[etapa] ?? ETAPA_CONFIG.CONTACTO_INICIAL;
   const nombre1 = trato.cliente.nombre.split(" ")[0];
   const esOutbound = trato.tipoLead === "OUTBOUND";
   const contactos = esOutbound ? CONTACTOS_OUTBOUND : CONTACTOS_INBOUND;
@@ -346,9 +349,9 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
 
         {/* ═══════════════════════════════════════════════════════════
-            PANEL: LEAD — Plan de contactos
+            PANEL: Prospección — Plan de contactos
         ═══════════════════════════════════════════════════════════ */}
-        {etapa === "LEAD" && (
+        {esProspeccion && (
           <>
             {/* ── Seguimientos 1/2/3 de la etapa de Prospección ── */}
             <SeguimientosTracker
@@ -761,7 +764,8 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
 
 // ─── Modal: editar los datos iniciales del trato (no re-crea, hace PATCH) ──────
 const ETAPAS_EDITABLES = [
-  { value: "LEAD", label: "🔭 Prospección" },
+  { value: "CONTACTO_INICIAL", label: "🔭 Contacto inicial" },
+  { value: "PROSPECCION", label: "🌱 Prospección" },
   { value: "DESCUBRIMIENTO", label: "🔍 Descubrimiento" },
   { value: "OPORTUNIDAD", label: "📋 Oportunidad" },
   { value: "VENTA_CERRADA", label: "✅ Venta Cerrada" },

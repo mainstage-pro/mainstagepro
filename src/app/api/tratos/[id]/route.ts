@@ -324,7 +324,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         });
       }
     } else {
-      // Etapa abierta (LEAD, DESCUBRIMIENTO, OPORTUNIDAD) → asegurar que sea prospecto
+      // Etapa abierta (PROSPECCION, DESCUBRIMIENTO, OPORTUNIDAD) → asegurar que sea prospecto
       // a menos que ya tenga al menos una VENTA_CERRADA en otro trato
       const tieneVentaCerrada = await prisma.trato.count({
         where: { clienteId: trato.clienteId, etapa: "VENTA_CERRADA" },

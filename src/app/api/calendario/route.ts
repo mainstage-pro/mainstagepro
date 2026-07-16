@@ -14,7 +14,7 @@ function nivelProyecto(estado: string): Nivel {
 
 function nivelTrato(confirmadaEn: Date | null, etapa: string): Nivel {
   if (confirmadaEn || etapa === 'VENTA_CERRADA') return 'confirmado';
-  if (['LEAD', 'DESCUBRIMIENTO', 'OPORTUNIDAD'].includes(etapa)) return 'tentativo';
+  if (['PROSPECCION', 'DESCUBRIMIENTO', 'OPORTUNIDAD'].includes(etapa)) return 'tentativo';
   return 'tentativo';
 }
 
@@ -110,7 +110,7 @@ export async function GET(req: NextRequest) {
   const eventosTratoCot = tratosConCot.flatMap(t => {
     const nivel = nivelTrato(
       (t as unknown as { confirmadaEn?: Date | null }).confirmadaEn ?? null,
-      (t as unknown as { etapa?: string }).etapa ?? 'LEAD',
+      (t as unknown as { etapa?: string }).etapa ?? 'PROSPECCION',
     );
     const cot = t.cotizaciones.find(c => c.fechaEvento);
     if (!cot) return [];
@@ -174,12 +174,12 @@ export async function GET(req: NextRequest) {
     ...tratosConfirmados.map(t => t.id),
   ]);
 
-  // ── 4. Tratos activos (LEAD / DESCUBRIMIENTO / OPORTUNIDAD) con fecha estimada ──
+  // ── 4. Tratos activos (PROSPECCION / DESCUBRIMIENTO / OPORTUNIDAD) con fecha estimada ──
   // Se muestran como eventos tentativos para que el equipo vea la carga potencial
   const tratosActivos = await prisma.trato.findMany({
     where: {
       proyectos: { none: {} },
-      etapa: { in: ['LEAD', 'DESCUBRIMIENTO', 'OPORTUNIDAD'] },
+      etapa: { in: ['PROSPECCION', 'DESCUBRIMIENTO', 'OPORTUNIDAD'] },
       fechaEventoEstimada: { gte: inicio, lte: fin, not: null },
       id: { notIn: [...idsCubiertos] },
     },

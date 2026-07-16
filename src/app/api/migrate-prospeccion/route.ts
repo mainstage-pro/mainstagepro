@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
-// Script de migración única: Prospeccion → Trato (etapa LEAD)
+// Script de migración única: Prospeccion → Trato (etapa PROSPECCION)
 // Ejecutar una sola vez con GET /api/migrate-prospeccion
 // Migra TODOS los registros de la tabla prospecciones que no tienen trato asociado
 export async function GET(request: NextRequest) {
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
         const trato = await prisma.trato.create({
           data: {
             clienteId:           p.clienteId,
-            etapa:               "LEAD",
+            etapa:               "PROSPECCION",
             tipoLead,
             origenLead:          origenMapped,
             origenVenta:         p.tipo === "CLIENTE_PROPIO" ? "CLIENTE_PROPIO" : "PUBLICIDAD",

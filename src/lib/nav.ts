@@ -179,6 +179,7 @@ export const NAV: NavSection[] = [
         badge: "leads",
         children: [
           { key: "crm-tratos", label: "Ventas", href: "/crm/tratos/lista" },
+          { key: "crm-proceso", accessKey: "crm-tratos", label: "Proceso", href: "/crm/proceso" },
           { key: "cotizaciones", accessKey: "crm-tratos", label: "Cotizaciones", href: "/cotizaciones" },
           { key: "cotizaciones-plantillas", accessKey: "crm-tratos", label: "Plantillas", href: "/cotizaciones/plantillas" },
           { key: "crm-base-de-datos", label: "Clientes", href: "/crm/base-de-datos" },

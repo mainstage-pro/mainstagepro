@@ -6,7 +6,7 @@ export type SeguimientoTipoItem = {
 };
 
 export const SEGUIMIENTO_TIPOS: Record<string, SeguimientoTipoItem[]> = {
-  LEAD: [
+  PROSPECCION: [
     {
       key: 'primer_contacto',
       label: 'Primer contacto',
@@ -155,7 +155,7 @@ export const SEGUIMIENTO_TIPO_LABELS: Record<string, string> = Object.fromEntrie
 
 // WA first contact message by tipoEvento
 export function getWaMensajePrimerContacto(nombre: string, tipoEvento: string): string {
-  const tipos = SEGUIMIENTO_TIPOS['LEAD'];
+  const tipos = SEGUIMIENTO_TIPOS['PROSPECCION'];
   const item = tipos.find(t => t.key === 'primer_contacto');
   return item ? item.getGuia(nombre, tipoEvento) : '';
 }

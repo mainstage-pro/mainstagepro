@@ -61,8 +61,8 @@ export async function POST(
     },
   });
 
-  // Si el trato estaba en LEAD o DESCUBRIMIENTO, avanzar a OPORTUNIDAD
-  if (["LEAD", "DESCUBRIMIENTO"].includes(trato.etapa)) {
+  // Si el trato estaba en PROSPECCION o DESCUBRIMIENTO, avanzar a OPORTUNIDAD
+  if (["PROSPECCION", "DESCUBRIMIENTO"].includes(trato.etapa)) {
     await prisma.trato.update({
       where: { id: tratoId },
       data: { etapa: "OPORTUNIDAD", etapaInterna: defaultEtapaInterna("OPORTUNIDAD") },
