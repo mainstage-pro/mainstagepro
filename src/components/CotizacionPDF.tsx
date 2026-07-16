@@ -181,11 +181,11 @@ const s = StyleSheet.create({
   colSubtotal: { flex: 1.5, textAlign: "right" },
   cellDesc: {
     fontSize: 8.5,
-    color: BLACK,
+    color: GRAY,
   },
   cellMarca: {
     fontSize: 8,
-    color: LIGHT_GRAY,
+    color: BLACK,
   },
   cellNum: {
     fontSize: 8.5,
