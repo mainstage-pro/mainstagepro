@@ -1,42 +1,79 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { upload } from "@vercel/blob/client";
 
 const GOLD = "#B3985B";
 const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20obtener%20informaci%C3%B3n%20sobre%20producci%C3%B3n%20para%20mi%20evento.";
 
 type EventoTipo = "musical" | "social" | "empresarial";
 
+const TIPO_EVENTO_MAP: Record<EventoTipo, string> = { musical: "MUSICAL", social: "SOCIAL", empresarial: "EMPRESARIAL" };
+const TIPO_NOMBRE:     Record<EventoTipo, string> = { musical: "Eventos Musicales", social: "Eventos Sociales", empresarial: "Eventos Empresariales" };
+
+// Los 3 servicios que ofrecemos, en el orden y jerarquía de la marca.
+// La `key` liga cada servicio al formulario de descubrimiento (tipoServicio).
+const SERVICIOS = [
+  {
+    key: "RENTA",
+    n: "01",
+    title: "Renta de equipo",
+    tagline: "El equipo correcto, listo y respaldado.",
+    detail: "Line arrays, subwoofers, consolas digitales, cabezas móviles y pantallas LED. Equipo profesional verificado antes de salir de bodega, disponible con o sin operador para completar tu producción o montarla desde cero.",
+    incluye: ["Audio: line array, subs y monitoreo", "Iluminación e intelligent lighting", "Video y pantallas LED", "Con o sin operador"],
+  },
+  {
+    key: "PRODUCCION_TECNICA",
+    n: "02",
+    title: "Producción técnica",
+    tagline: "Operadores que montan, prueban y operan tu show.",
+    detail: "Llevamos el equipo y a la gente que lo opera. Montaje, prueba de sonido y operación en vivo de audio, iluminación y video durante todo el evento, de principio a fin, con respaldo ante cualquier imprevisto.",
+    incluye: ["Montaje y prueba de sonido", "Técnicos de audio, luz y video", "Operación en vivo del show", "Respaldo ante imprevistos"],
+  },
+  {
+    key: "DIRECCION_TECNICA",
+    n: "03",
+    title: "Dirección técnica",
+    tagline: "Un solo responsable de que todo llegue junto.",
+    detail: "Un director de producción coordina cada área: el rider, los cues de luz por escena, la señal de video y la comunicación directa con el artista y su equipo. La cabeza que hace que audio, luz y video lleguen al mismo tiempo.",
+    incluye: ["Coordinación del rider", "Cues por escena", "Enlace directo con el artista", "Guion técnico del evento"],
+  },
+] as const;
+
 const CONFIG = {
   musical: {
     label:    "Producción técnica para eventos musicales",
+    kicker:   "Eventos musicales",
     hero:     "/images/presentacion/musicales/Musicales-016.jpg",
     headline: "Tu show en punto.\nNosotros lo hacemos posible.",
     sub:      "Desde el rider hasta el último beat — audio, luz y video operados por gente que vive el escenario.",
     insights: [
       {
-        title: "El rider cubierto antes de que llegue el artista",
-        body:  "Revisamos cada punto del rider con anticipación. Cuando el artista baja del camión, el soundcheck empieza de inmediato. No hay cables que conectar de último momento ni equipo incorrecto que retrasar la prueba.",
+        title: "El rider cubierto antes de que baje el artista",
+        body:  "Revisamos cada punto del rider con anticipación. Cuando el artista baja del camión, el soundcheck empieza de inmediato. No hay cables que conectar de último momento ni equipo incorrecto que retrase la prueba.",
       },
       {
-        title: "Audio que llega donde tiene que llegar",
+        title: "Audio que llega parejo, de la primera fila al fondo",
         body:  "Cobertura uniforme de frente a fondo, sin puntos muertos ni picos inesperados. El técnico de FOH conoce el sistema antes de la prueba de sonido, y los monitores de tarima están calibrados para el artista.",
       },
       {
-        title: "Luz y video que van con la música, no detrás",
+        title: "Luz y video que siguen la música, no la persiguen",
         body:  "No reaccionamos al show — lo seguimos. Cues programadas por escena, cambios coordinados con el set. Un operador dedicado a cada área para que audio, luz y video lleguen juntos.",
       },
       {
-        title: "Rentamos, producimos o dirigimos — lo que necesita tu evento",
+        title: "Rentamos, producimos o dirigimos — lo que tu evento necesite",
         body:  "Si ya tienes parte del equipo, rentamos lo que falta y lo integramos. Si necesitas equipo y operadores, los llevamos juntos. Si el evento necesita coordinación completa, ponemos un director técnico al frente.",
       },
     ],
-    servicios: [
-      { cat: "Renta de equipo",      detail: "Line arrays, subwoofers, consolas, cabezas móviles, pantallas LED. Equipo profesional disponible con o sin operador para completar o montar tu producción desde cero." },
-      { cat: "Producción técnica",   detail: "Operadores de audio, iluminación y video en el evento. Montaje, prueba de sonido y operación en vivo durante todo el show, de principio a fin." },
-      { cat: "Dirección técnica",    detail: "Un director de producción que coordina cada área: rider, cues de luz, señal de video y comunicación directa con el artista y su equipo." },
-      { cat: "DJ Setup completo",    detail: "CDJs, mezcladora profesional, booth de referencia y sistema de monitoreo. Todo verificado y en punto antes del soundcheck." },
+    tipos: ["Conciertos", "Festivales", "Música electrónica / Raves", "Presentaciones en vivo", "DJ Sets", "Showcases", "Fiestas privadas"],
+    cotizar: [
+      "Fecha del evento",
+      "Venue o lugar — interior o exterior",
+      "Aforo estimado",
+      "Lineup o artistas (si aplica)",
+      "Horarios: montaje, show y desmontaje",
+      "Qué servicio buscas: renta, producción o dirección",
+      "Rider técnico o referencias, si ya los tienes",
     ],
-    tipos:   "Festivales · Conciertos · DJ Sets · Showcases · Presentaciones en vivo · Raves · Fiestas privadas",
     gallery: [
       { src: "/images/presentacion/musicales/Musicales-016.jpg",                    caption: "Producción completa en vivo" },
       { src: "/images/presentacion/musicales/Musicales-037.jpg",                    caption: "Iluminación · Show en escenario" },
@@ -47,12 +84,13 @@ const CONFIG = {
       { src: "/images/presentacion/musicales/DSC07491.jpg",                         caption: "En vivo · Operación técnica" },
       { src: "/images/presentacion/musicales/Musicales-126.jpg",                    caption: "Show · Producción audiovisual" },
     ],
-    cta:    "Háblanos de tu evento",
+    cta:    "Cuéntanos de tu evento",
     ctaSub: "Dinos el artista, el venue y la fecha. Propuesta técnica en menos de 24 horas.",
   },
 
   social: {
     label:    "Producción técnica para eventos sociales",
+    kicker:   "Eventos sociales",
     hero:     "/images/presentacion/sociales/s-boda-elegante.jpg",
     headline: "Que los momentos\nsuenen y se vean perfectos.",
     sub:      "Primer baile, brindis, pista — cada instante con el sonido y la luz que merece, sin que notes que estamos ahí.",
@@ -74,13 +112,16 @@ const CONFIG = {
         body:  "Trabajamos alineados con el venue, el fotógrafo y el decorador. Llegamos, montamos con orden y nos hacemos a un lado. El protagonismo es de los festejados, no de la producción.",
       },
     ],
-    servicios: [
-      { cat: "Renta de equipo",      detail: "Sistema de audio para salón o exterior, pantallas para slideshow o ceremonia, iluminación de ambiente. Disponible con o sin operador según lo que necesites." },
-      { cat: "Producción técnica",   detail: "Operadores de audio e iluminación durante todo el evento. Micrófonos abiertos en el momento correcto, sistema de pista listo para cuando empiece el baile." },
-      { cat: "Dirección técnica",    detail: "Un coordinador técnico que planea cada cue con el organizador y los ejecuta en el momento exacto — primer baile, vals, brindis, apertura de pista, cierre." },
-      { cat: "DJ Setup",             detail: "Tornamesas, mezcladora y sistema de monitoreo para el DJ. Todo verificado antes de los primeros invitados para que el arranque sea limpio." },
+    tipos: ["Bodas", "XV Años", "Cocteles", "Cumpleaños", "Graduaciones", "Aniversarios", "Fiestas privadas"],
+    cotizar: [
+      "Fecha del evento",
+      "Venue o lugar — interior o exterior",
+      "Número de invitados",
+      "Momentos clave: ceremonia, brindis, baile",
+      "Horarios: montaje, evento y desmontaje",
+      "Qué servicio buscas: renta, producción o dirección",
+      "Referencias o inspiración, si ya las tienes",
     ],
-    tipos:   "Bodas · XV Años · Cocteles · Cumpleaños · Graduaciones · Aniversarios · Fiestas privadas",
     gallery: [
       { src: "/images/presentacion/sociales/s-dj-salon.png",          caption: "El ambiente que recordarán" },
       { src: "/images/presentacion/sociales/s-hacienda-iluminada.jpg", caption: "Hacienda · Iluminación dramática" },
@@ -95,12 +136,13 @@ const CONFIG = {
 
   empresarial: {
     label:    "Producción técnica para eventos corporativos",
+    kicker:   "Eventos corporativos",
     hero:     "/images/presentacion/empresariales/e-auditorio.jpg",
     headline: "La técnica invisible\nque hace ver bien a tu empresa.",
     sub:      "Audio claro para cada presentador, pantallas que no fallan, producción que no interrumpe.",
     insights: [
       {
-        title: "Un fallo técnico en tu evento no es solo un problema técnico",
+        title: "Un fallo técnico no es solo un problema técnico",
         body:  "En un evento corporativo, la producción es parte de la imagen de tu empresa. Un micrófono que no abre, una laptop que no conecta o una pantalla con resolución incorrecta deja una impresión que cuesta. Llegamos antes para verificar todo y evitarlo.",
       },
       {
@@ -116,13 +158,16 @@ const CONFIG = {
         body:  "Llegamos antes de tiempo y montamos con orden. Durante el evento operamos en silencio, resolvemos sin llamar la atención y desmontamos de forma ordenada al cierre. Nadie nota que estamos ahí hasta que algo necesita atención.",
       },
     ],
-    servicios: [
-      { cat: "Renta de equipo",              detail: "Micrófonos, pantallas, proyectores, sistemas de audio para sala o auditorio. Equipo de conferencia disponible con o sin operador, integrado a tu setup existente." },
-      { cat: "Producción técnica",           detail: "Operadores de audio y video durante toda la conferencia o evento. Micrófono abierto en el momento correcto, transiciones de presentación sin pausas ni interrupciones." },
-      { cat: "Dirección técnica",            detail: "Un director que coordina todo lo técnico con tu equipo de producción: cues, guión del evento, señales de video y apertura y cierre de micrófonos en tiempo real." },
-      { cat: "Streaming y networking",       detail: "Señal de video para transmisión en vivo o grabación del evento. Música de ambiente profesional para el área de networking o el cierre de la noche." },
+    tipos: ["Conferencias", "Congresos", "Lanzamientos", "Activaciones", "Networking", "Premiaciones", "Inauguraciones"],
+    cotizar: [
+      "Fecha del evento",
+      "Espacio o sede — sala, auditorio o exterior",
+      "Número de asistentes",
+      "Número de presentadores y formato",
+      "Horarios: montaje, evento y desmontaje",
+      "Qué servicio buscas: renta, producción o dirección",
+      "¿Requiere streaming o grabación?",
     ],
-    tipos:   "Conferencias · Congresos · Lanzamientos · Activaciones · Networking · Premiaciones · Inauguraciones",
     gallery: [
       { src: "/images/presentacion/empresariales/e-sala-pantallas.jpg",   caption: "Experiencias que generan impacto" },
       { src: "/images/presentacion/empresariales/e-auditorio.jpg",        caption: "Auditorio · Producción completa" },
@@ -135,13 +180,15 @@ const CONFIG = {
     ctaSub: "Espacio, número de presentadores y tipo de evento. Propuesta técnica a la medida en 24 horas.",
   },
 } satisfies Record<EventoTipo, {
-  label: string; hero: string; headline: string; sub: string;
+  label: string; kicker: string; hero: string; headline: string; sub: string;
   insights: { title: string; body: string }[];
-  servicios: { cat: string; detail: string }[];
-  tipos: string;
+  tipos: string[];
+  cotizar: string[];
   gallery: { src: string; caption: string }[];
   cta: string; ctaSub: string;
 }>;
+
+type Foto = { id: string | null; url: string; caption: string };
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 function useReveal(threshold = 0.12) {
@@ -165,6 +212,36 @@ function useScrollHeader() {
   return scrolled;
 }
 
+// Detecta si quien mira la presentación tiene sesión interna (para editar la galería).
+function useAdmin() {
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    fetch("/api/auth/me").then(r => (r.ok ? r.json() : null)).then(d => { if (d?.user) setIsAdmin(true); }).catch(() => {});
+  }, []);
+  return isAdmin;
+}
+
+// Carga las fotos del tipo de evento desde la BD, con fallback a las imágenes por defecto.
+function useGaleria(slug: EventoTipo, fallback: { src: string; caption: string }[]) {
+  const [fotos, setFotos]   = useState<Foto[]>(fallback.map(f => ({ id: null, url: f.src, caption: f.caption })));
+  const [tipoId, setTipoId] = useState<string | null>(null);
+  const cargar = useCallback(() => {
+    fetch(`/api/tipos-evento/${slug}/publico`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.tipo) {
+          setTipoId(d.tipo.id);
+          if (d.tipo.fotos?.length) {
+            setFotos(d.tipo.fotos.map((f: { id: string; url: string; caption: string | null }) => ({ id: f.id, url: f.url, caption: f.caption || "" })));
+          }
+        }
+      })
+      .catch(() => {});
+  }, [slug]);
+  useEffect(() => { cargar(); }, [cargar]);
+  return { fotos, tipoId, setTipoId, recargar: cargar };
+}
+
 function R({ children, delay = 0, y = 32, className = "" }: { children: React.ReactNode; delay?: number; y?: number; className?: string }) {
   const { ref, vis } = useReveal();
   return (
@@ -180,27 +257,25 @@ function R({ children, delay = 0, y = 32, className = "" }: { children: React.Re
   );
 }
 
-// ─── Cinematic Gallery ────────────────────────────────────────────────────────
-function CinematicGallery({ photos }: { photos: { src: string; caption: string }[] }) {
+// ─── Cinematic Gallery (banda destacada) ──────────────────────────────────────
+function CinematicGallery({ photos }: { photos: Foto[] }) {
   const [idx, setIdx]           = useState(0);
   const [progress, setProgress] = useState(0);
-  const [leaving, setLeaving]   = useState(false);
   const DURATION = 5500;
 
   useEffect(() => {
-    setProgress(0); setLeaving(false);
+    if (photos.length <= 1) return;
+    setProgress(0);
     const start = Date.now();
     const iv = setInterval(() => {
       const p = Math.min(1, (Date.now() - start) / DURATION);
       setProgress(p);
-      if (p >= 1) {
-        clearInterval(iv);
-        setLeaving(true);
-        setTimeout(() => setIdx(i => (i + 1) % photos.length), 900);
-      }
+      if (p >= 1) { clearInterval(iv); setTimeout(() => setIdx(i => (i + 1) % photos.length), 900); }
     }, 40);
     return () => clearInterval(iv);
   }, [idx, photos.length]);
+
+  if (!photos.length) return null;
 
   return (
     <div className="relative w-full overflow-hidden" style={{ height: "72vh", minHeight: "480px" }}>
@@ -210,7 +285,7 @@ function CinematicGallery({ photos }: { photos: { src: string; caption: string }
           <div key={i} className="absolute inset-0"
                style={{ opacity: isActive ? 1 : 0, transition: isActive ? "opacity 1.6s ease" : "opacity 1s ease", zIndex: isActive ? 2 : 0 }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={p.src} alt={p.caption} draggable={false}
+            <img src={p.url} alt={p.caption} draggable={false}
                  className="w-full h-full object-cover"
                  style={{ animation: isActive ? "kenBurns 10s ease forwards" : "none" }} />
           </div>
@@ -224,24 +299,23 @@ function CinematicGallery({ photos }: { photos: { src: string; caption: string }
           <p className="text-white/20 text-xs font-mono">{String(idx + 1).padStart(2, "0")} / {String(photos.length).padStart(2, "0")}</p>
         </div>
         <div className="relative h-px w-full bg-white/10">
-          <div className="absolute inset-y-0 left-0 bg-[#B3985B]"
-               style={{ width: `${progress * 100}%`, transition: "width 0.08s linear" }} />
+          <div className="absolute inset-y-0 left-0 bg-[#B3985B]" style={{ width: `${progress * 100}%`, transition: "width 0.08s linear" }} />
         </div>
       </div>
       <div className="absolute top-6 right-8 flex gap-2.5 items-center" style={{ zIndex: 4 }}>
         {photos.map((_, i) => (
-          <button key={i} onClick={() => setIdx(i)}
+          <button key={i} onClick={() => setIdx(i)} aria-label={`Foto ${i + 1}`}
                   className="rounded-full transition-all duration-300"
                   style={{ width: i === idx ? "22px" : "6px", height: "6px", background: i === idx ? GOLD : "rgba(255,255,255,0.2)" }} />
         ))}
       </div>
       <div className="absolute inset-y-0 left-0 right-0 flex items-center justify-between px-4 pointer-events-none" style={{ zIndex: 4 }}>
-        <button className="pointer-events-auto w-10 h-10 rounded-full flex items-center justify-center hover:scale-110 transition-all"
+        <button aria-label="Anterior" className="pointer-events-auto w-10 h-10 rounded-full flex items-center justify-center hover:scale-110 transition-all"
                 style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.1)" }}
                 onClick={() => setIdx(i => (i - 1 + photos.length) % photos.length)}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        <button className="pointer-events-auto w-10 h-10 rounded-full flex items-center justify-center hover:scale-110 transition-all"
+        <button aria-label="Siguiente" className="pointer-events-auto w-10 h-10 rounded-full flex items-center justify-center hover:scale-110 transition-all"
                 style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.1)" }}
                 onClick={() => setIdx(i => (i + 1) % photos.length)}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
@@ -251,7 +325,188 @@ function CinematicGallery({ photos }: { photos: { src: string; caption: string }
   );
 }
 
-// ─── Contact Form ─────────────────────────────────────────────────────────────
+// ─── Galería completa (grid + lightbox + edición inline para admins) ──────────
+function GaleriaCompleta({
+  slug, fotos, tipoId, setTipoId, isAdmin, recargar,
+}: {
+  slug: EventoTipo; fotos: Foto[]; tipoId: string | null;
+  setTipoId: (id: string) => void; isAdmin: boolean; recargar: () => void;
+}) {
+  const [lightbox, setLightbox] = useState<number | null>(null);
+  const [subiendo, setSubiendo] = useState(false);
+  const [progreso, setProgreso] = useState({ hechas: 0, total: 0 });
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const cerrar = useCallback(() => setLightbox(null), []);
+  useEffect(() => {
+    if (lightbox === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") cerrar();
+      if (e.key === "ArrowRight") setLightbox(i => (i === null ? 0 : (i + 1) % fotos.length));
+      if (e.key === "ArrowLeft")  setLightbox(i => (i === null ? 0 : (i - 1 + fotos.length) % fotos.length));
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightbox, fotos.length, cerrar]);
+
+  async function subir(files: FileList | null) {
+    if (!files || !files.length) return;
+    setSubiendo(true);
+    setProgreso({ hechas: 0, total: files.length });
+    try {
+      let id = tipoId;
+      if (!id) {
+        const r = await fetch("/api/tipos-evento/ensure", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug, nombre: TIPO_NOMBRE[slug] }),
+        });
+        const d = await r.json();
+        if (!d.id) throw new Error("No se pudo preparar el tipo de evento");
+        const nuevoId = d.id as string;
+        setTipoId(nuevoId);
+        id = nuevoId;
+      }
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const blob = await upload(file.name, file, { access: "public", handleUploadUrl: "/api/tipos-evento/imagenes" });
+        await fetch(`/api/tipos-evento/${id}/fotos`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: blob.url, orden: fotos.length + i }),
+        });
+        setProgreso({ hechas: i + 1, total: files.length });
+      }
+      recargar();
+    } catch (err) {
+      alert("No se pudieron subir las fotos: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setSubiendo(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
+
+  async function borrar(fotoId: string | null) {
+    if (!fotoId) return;
+    if (!confirm("¿Eliminar esta foto de la galería?")) return;
+    await fetch(`/api/tipos-evento/fotos/${fotoId}`, { method: "DELETE" });
+    recargar();
+  }
+
+  return (
+    <section id="galeria" className="py-28 px-6">
+      <div className="max-w-6xl mx-auto">
+        <R>
+          <div className="flex flex-wrap items-end justify-between gap-4 mb-12">
+            <div>
+              <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-4">Galería</p>
+              <h2 className="font-bold text-white leading-[1.05]" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
+                Lo que montamos, en fotos reales.
+              </h2>
+            </div>
+            {isAdmin && (
+              <div className="flex items-center gap-3">
+                <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
+                       onChange={e => subir(e.target.files)} />
+                <button onClick={() => fileRef.current?.click()} disabled={subiendo}
+                        className="text-xs font-semibold tracking-wide px-5 py-2.5 rounded-full transition-all disabled:opacity-50"
+                        style={{ background: "rgba(179,152,91,0.12)", border: `1px solid ${GOLD}55`, color: GOLD }}>
+                  {subiendo ? `Subiendo ${progreso.hechas}/${progreso.total}…` : "＋ Subir fotos"}
+                </button>
+              </div>
+            )}
+          </div>
+        </R>
+
+        <div className="columns-2 md:columns-3 gap-3 [column-fill:_balance]">
+          {fotos.map((f, i) => (
+            <div key={f.id ?? i} className="mb-3 break-inside-avoid relative group cursor-pointer overflow-hidden rounded-xl"
+                 onClick={() => setLightbox(i)}
+                 style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={f.url} alt={f.caption || `Foto ${i + 1}`} draggable={false} loading="lazy"
+                   className="w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]" />
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                   style={{ background: "linear-gradient(to top, rgba(0,0,0,0.6), transparent 55%)" }} />
+              {f.caption && (
+                <p className="absolute bottom-3 left-3 right-3 text-white/85 text-xs opacity-0 group-hover:opacity-100 transition-opacity">{f.caption}</p>
+              )}
+              {isAdmin && f.id && (
+                <button onClick={e => { e.stopPropagation(); borrar(f.id); }}
+                        aria-label="Eliminar foto"
+                        className="absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ background: "rgba(0,0,0,0.65)", border: "1px solid rgba(255,255,255,0.15)" }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff6b6b" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Lightbox */}
+      {lightbox !== null && fotos[lightbox] && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: "rgba(4,4,4,0.94)", backdropFilter: "blur(8px)" }}
+             onClick={cerrar}>
+          <button aria-label="Cerrar" onClick={cerrar}
+                  className="absolute top-5 right-5 w-11 h-11 rounded-full flex items-center justify-center hover:scale-110 transition-all"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          <button aria-label="Anterior" onClick={e => { e.stopPropagation(); setLightbox(i => (i === null ? 0 : (i - 1 + fotos.length) % fotos.length)); }}
+                  className="absolute left-4 sm:left-8 w-11 h-11 rounded-full flex items-center justify-center hover:scale-110 transition-all"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div className="max-w-5xl max-h-[85vh]" onClick={e => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={fotos[lightbox].url} alt={fotos[lightbox].caption} className="max-w-full max-h-[85vh] object-contain rounded-lg" />
+            {fotos[lightbox].caption && <p className="text-center text-white/50 text-sm mt-4">{fotos[lightbox].caption}</p>}
+          </div>
+          <button aria-label="Siguiente" onClick={e => { e.stopPropagation(); setLightbox(i => (i === null ? 0 : (i + 1) % fotos.length)); }}
+                  className="absolute right-4 sm:right-8 w-11 h-11 rounded-full flex items-center justify-center hover:scale-110 transition-all"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// ─── Modal de descubrimiento ──────────────────────────────────────────────────
+function DiscoveryModal({
+  tipo, servicio, loading, onConfirm, onClose,
+}: {
+  tipo: EventoTipo; servicio: string | null; loading: boolean;
+  onConfirm: () => void; onClose: () => void;
+}) {
+  const servLabel = SERVICIOS.find(s => s.key === servicio)?.title;
+  const eventoLabel = { musical: "musical", social: "social", empresarial: "corporativo" }[tipo];
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4" style={{ background: "rgba(4,4,4,0.9)", backdropFilter: "blur(8px)" }} onClick={onClose}>
+      <div className="w-full max-w-md rounded-2xl p-8" onClick={e => e.stopPropagation()}
+           style={{ background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <p className="text-[#B3985B] text-xs tracking-[0.24em] uppercase mb-4">Formulario de descubrimiento</p>
+        <h3 className="text-white font-bold text-2xl leading-tight mb-3" style={{ letterSpacing: "-0.02em" }}>
+          Cuéntanos de tu evento {eventoLabel}
+        </h3>
+        <p className="text-white/45 text-sm leading-relaxed mb-2">
+          Te haremos unas preguntas rápidas sobre tu evento{servLabel ? <> y tu interés en <span className="text-white/70">{servLabel.toLowerCase()}</span></> : null}. Toma unos 3 minutos y con eso preparamos tu propuesta técnica.
+        </p>
+        <p className="text-white/25 text-xs leading-relaxed mb-7">Al continuar, tu información llega directo a nuestro equipo. Te contactamos en menos de 24 horas.</p>
+        <button onClick={onConfirm} disabled={loading}
+                className="w-full py-4 rounded-full font-semibold text-black text-sm tracking-wide transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
+                style={{ background: GOLD }}>
+          {loading ? "Preparando tu formulario…" : "Continuar →"}
+        </button>
+        <button onClick={onClose} disabled={loading} className="w-full mt-3 text-white/30 text-xs hover:text-white/55 transition-colors">
+          Ahora no
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Contact Form (WhatsApp) ──────────────────────────────────────────────────
 function ContactForm({ tipo }: { tipo: EventoTipo }) {
   const tipoLabel = { musical: "Musical", social: "Social", empresarial: "Empresarial" }[tipo];
   const [form, setForm] = useState({ nombre: "", fechaEstimada: "", presupuesto: "", mensaje: "" });
@@ -325,19 +580,40 @@ function ContactForm({ tipo }: { tipo: EventoTipo }) {
 export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
   const c = CONFIG[tipo];
   const scrolled = useScrollHeader();
+  const isAdmin  = useAdmin();
+  const { fotos, tipoId, setTipoId, recargar } = useGaleria(tipo, c.gallery);
+
+  const [discOpen, setDiscOpen]       = useState(false);
+  const [discServicio, setDiscServicio] = useState<string | null>(null);
+  const [discLoading, setDiscLoading] = useState(false);
+
+  function abrirDescubrimiento(servicio: string | null = null) {
+    setDiscServicio(servicio);
+    setDiscOpen(true);
+  }
+
+  async function confirmarDescubrimiento() {
+    setDiscLoading(true);
+    try {
+      const r = await fetch("/api/leads/descubrimiento-publico", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipoEvento: TIPO_EVENTO_MAP[tipo], tipoServicio: discServicio }),
+      });
+      const d = await r.json();
+      if (d.url) { window.location.href = d.url; return; }
+      throw new Error("Sin URL");
+    } catch {
+      setDiscLoading(false);
+      alert("No se pudo abrir el formulario. Intenta de nuevo o contáctanos por WhatsApp.");
+    }
+  }
 
   return (
     <div className="bg-[#080808] text-white min-h-screen"
          style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
       <style>{`
-        @keyframes kenBurns {
-          from { transform: scale(1) translate(0, 0); }
-          to   { transform: scale(1.07) translate(-1.2%, -0.6%); }
-        }
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(28px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes kenBurns { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.07) translate(-1.2%, -0.6%); } }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
         html { scroll-behavior: smooth; }
         ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-track { background: #080808; }
@@ -357,10 +633,8 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
             <img src="/logo-white.png" alt="Mainstage Pro" className="h-7 object-contain" draggable={false} />
           </a>
           <div className="flex items-center gap-6">
-            <a href="/presentacion/inventario"
-               className="text-white/35 text-xs tracking-wide hidden sm:block hover:text-white/60 transition-colors">
-              Inventario
-            </a>
+            <a href="#servicios" className="text-white/35 text-xs tracking-wide hidden sm:block hover:text-white/60 transition-colors">Servicios</a>
+            <a href="/presentacion/inventario" className="text-white/35 text-xs tracking-wide hidden sm:block hover:text-white/60 transition-colors">Inventario</a>
             <a href={WA} target="_blank" rel="noopener noreferrer"
                className="text-xs font-semibold tracking-[0.14em] uppercase px-5 py-2.5 rounded-full transition-all duration-300 hover:opacity-85"
                style={{ background: GOLD, color: "#000" }}>
@@ -371,45 +645,46 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
       </nav>
 
       {/* ── Hero ── */}
-      <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden">
+      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden py-24">
         <div className="absolute inset-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={c.hero} alt={c.label} draggable={false}
-               className="w-full h-full object-cover"
-               style={{ animation: "kenBurns 18s ease forwards" }} />
-          <div className="absolute inset-0"
-               style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.25) 0%, rgba(8,8,8,0.5) 40%, rgba(8,8,8,0.9) 75%, #080808 100%)" }} />
+          <img src={c.hero} alt={c.label} draggable={false} className="w-full h-full object-cover" style={{ animation: "kenBurns 18s ease forwards" }} />
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.35) 0%, rgba(8,8,8,0.55) 40%, rgba(8,8,8,0.9) 78%, #080808 100%)" }} />
         </div>
 
         <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
-          <p className="text-[#B3985B] text-xs font-medium tracking-[0.32em] uppercase mb-8"
-             style={{ animation: "fadeUp 0.8s ease forwards 0.2s", opacity: 0 }}>
-            {c.label}
+          <p className="text-[#B3985B] font-semibold tracking-[0.34em] uppercase mb-7"
+             style={{ fontSize: "clamp(0.7rem, 1.4vw, 0.85rem)", animation: "fadeUp 0.8s ease forwards 0.2s", opacity: 0 }}>
+            {c.kicker}
           </p>
           <h1 className="font-bold text-white leading-[1.02]"
-              style={{
-                fontSize: "clamp(2.6rem, 7.5vw, 6.5rem)",
-                letterSpacing: "-0.03em",
-                whiteSpace: "pre-line",
-                animation: "fadeUp 0.95s ease forwards 0.4s",
-                opacity: 0,
-              }}>
+              style={{ fontSize: "clamp(2.6rem, 7.5vw, 6.5rem)", letterSpacing: "-0.03em", whiteSpace: "pre-line", animation: "fadeUp 0.95s ease forwards 0.4s", opacity: 0 }}>
             {c.headline}
           </h1>
-          <p className="text-white/45 mt-8 leading-relaxed max-w-xl mx-auto"
+          <p className="text-white/50 mt-8 leading-relaxed max-w-xl mx-auto"
              style={{ fontSize: "clamp(0.95rem, 1.6vw, 1.1rem)", animation: "fadeUp 0.95s ease forwards 0.65s", opacity: 0 }}>
             {c.sub}
           </p>
+
+          {/* Tira de tipos de evento — claridad inmediata */}
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-2.5 max-w-2xl mx-auto"
+               style={{ animation: "fadeUp 0.95s ease forwards 0.8s", opacity: 0 }}>
+            {c.tipos.map((t, i) => (
+              <span key={i} className="text-xs tracking-wide px-3.5 py-1.5 rounded-full"
+                    style={{ color: "rgba(255,255,255,0.7)", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                {t}
+              </span>
+            ))}
+          </div>
+
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
-               style={{ animation: "fadeUp 0.95s ease forwards 0.85s", opacity: 0 }}>
-            <a href="#contacto"
+               style={{ animation: "fadeUp 0.95s ease forwards 1s", opacity: 0 }}>
+            <button onClick={() => abrirDescubrimiento(null)}
                className="px-9 py-4 rounded-full font-semibold text-black text-sm tracking-wide transition-all duration-300 hover:scale-105"
                style={{ background: GOLD }}>
-              Solicitar propuesta
-            </a>
-            <a href="#galeria" className="text-white/35 text-sm hover:text-white/60 transition-colors">
-              Ver galería →
-            </a>
+              Iniciar descubrimiento
+            </button>
+            <a href="#servicios" className="text-white/40 text-sm hover:text-white/70 transition-colors">Ver servicios →</a>
           </div>
         </div>
 
@@ -418,13 +693,57 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
         </div>
       </section>
 
-      {/* ── Lo que sabemos de tu evento ── */}
-      <section className="py-32 px-6 bg-[#060606]">
+      {/* ── Los 3 servicios ── */}
+      <section id="servicios" className="py-32 px-6 bg-[#060606]">
         <div className="max-w-5xl mx-auto">
           <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Lo que sabemos de tu evento</p>
-            <h2 className="font-bold text-white leading-[1.05] mb-16"
-                style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
+            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Cómo trabajamos contigo</p>
+            <h2 className="font-bold text-white leading-[1.05] mb-4" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
+              Tres formas de llegar a tu evento.
+            </h2>
+            <p className="text-white/40 text-sm sm:text-base leading-relaxed max-w-2xl mb-16">
+              Renta si ya tienes equipo y operadores. Producción si necesitas equipo y gente que lo opere. Dirección si quieres una sola cabeza responsable de que todo llegue junto. Puedes combinarlas.
+            </p>
+          </R>
+
+          <div className="space-y-5">
+            {SERVICIOS.map((s, i) => (
+              <R key={s.key} delay={i * 80}>
+                <div className="grid md:grid-cols-[1fr_auto] gap-8 p-8 sm:p-10 rounded-3xl"
+                     style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div>
+                    <div className="flex items-center gap-4 mb-3">
+                      <span className="font-mono" style={{ fontSize: "0.7rem", color: GOLD, letterSpacing: "0.12em" }}>{s.n}</span>
+                      <h3 className="font-bold text-white" style={{ fontSize: "clamp(1.3rem, 2.5vw, 1.75rem)", letterSpacing: "-0.02em" }}>{s.title}</h3>
+                    </div>
+                    <p className="text-white/70 text-sm sm:text-base mb-4">{s.tagline}</p>
+                    <p className="text-white/40 text-sm leading-relaxed max-w-2xl mb-6">{s.detail}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {s.incluye.map((it, j) => (
+                        <span key={j} className="text-xs text-white/55 px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>{it}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex md:flex-col md:items-end md:justify-center">
+                    <button onClick={() => abrirDescubrimiento(s.key)}
+                            className="whitespace-nowrap text-xs font-semibold tracking-wide px-6 py-3 rounded-full transition-all hover:scale-105"
+                            style={{ background: "rgba(179,152,91,0.12)", border: `1px solid ${GOLD}55`, color: GOLD }}>
+                      Cotizar este servicio →
+                    </button>
+                  </div>
+                </div>
+              </R>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Propuesta de valor ── */}
+      <section className="py-32 px-6">
+        <div className="max-w-5xl mx-auto">
+          <R>
+            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Por qué Mainstage Pro</p>
+            <h2 className="font-bold text-white leading-[1.05] mb-16" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
               Conocemos cada detalle.
             </h2>
           </R>
@@ -435,14 +754,8 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
               <R key={i} delay={i * 80}>
                 <div className="p-8 sm:p-10 h-full"
                      style={{ background: "rgba(255,255,255,0.025)", borderRight: i % 2 === 0 ? "1px solid rgba(255,255,255,0.06)" : "none", borderBottom: i < 2 ? "1px solid rgba(255,255,255,0.06)" : "none" }}>
-                  <p className="font-mono mb-5"
-                     style={{ fontSize: "0.6rem", color: GOLD, letterSpacing: "0.12em" }}>
-                    {String(i + 1).padStart(2, "0")}
-                  </p>
-                  <h3 className="font-semibold text-white mb-3 leading-snug"
-                      style={{ fontSize: "clamp(0.95rem, 1.4vw, 1.05rem)" }}>
-                    {ins.title}
-                  </h3>
+                  <p className="font-mono mb-5" style={{ fontSize: "0.6rem", color: GOLD, letterSpacing: "0.12em" }}>{String(i + 1).padStart(2, "0")}</p>
+                  <h3 className="font-semibold text-white mb-3 leading-snug" style={{ fontSize: "clamp(0.95rem, 1.4vw, 1.05rem)" }}>{ins.title}</h3>
                   <p className="text-white/40 text-sm leading-relaxed">{ins.body}</p>
                 </div>
               </R>
@@ -451,57 +764,96 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
         </div>
       </section>
 
-      {/* ── Lo que cubrimos ── */}
-      <section className="py-28 px-6">
-        <div className="max-w-5xl mx-auto">
+      {/* ── Banda cinemática ── */}
+      <section>
+        <CinematicGallery photos={fotos} />
+      </section>
+
+      {/* ── Qué necesitamos para cotizar ── */}
+      <section className="py-32 px-6 bg-[#060606]">
+        <div className="max-w-5xl mx-auto grid md:grid-cols-[0.9fr_1.1fr] gap-12 items-start">
           <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Lo que llevamos a tu evento</p>
-            <h2 className="font-bold text-white leading-[1.05] mb-16"
-                style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
-              Un solo equipo.<br />
-              <span style={{ color: "rgba(255,255,255,0.3)" }}>Audio, iluminación, video y operadores.</span>
+            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Para darte una propuesta</p>
+            <h2 className="font-bold text-white leading-[1.05] mb-5" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
+              Esto es lo que necesitamos saber.
             </h2>
-          </R>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {c.servicios.map((s, i) => (
-              <R key={i} delay={i * 70}>
-                <div className="flex items-start gap-5 p-7 rounded-2xl"
-                     style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <div className="shrink-0 w-1.5 h-1.5 rounded-full mt-2" style={{ background: GOLD }} />
-                  <div>
-                    <p className="font-semibold text-white mb-1.5" style={{ fontSize: "0.95rem" }}>{s.cat}</p>
-                    <p className="text-white/40 text-sm leading-relaxed">{s.detail}</p>
-                  </div>
-                </div>
-              </R>
-            ))}
-          </div>
-
-          <R delay={350}>
-            <p className="text-white/20 text-xs tracking-[0.18em] uppercase mt-12 pt-8"
-               style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-              {c.tipos}
+            <p className="text-white/40 text-sm leading-relaxed mb-8">
+              Entre más claro el evento, más precisa la propuesta. No te preocupes si aún no tienes todo — el formulario de descubrimiento te guía paso a paso.
             </p>
+            <button onClick={() => abrirDescubrimiento(null)}
+                    className="px-8 py-4 rounded-full font-semibold text-black text-sm tracking-wide transition-all hover:scale-105"
+                    style={{ background: GOLD }}>
+              Llenar descubrimiento
+            </button>
+          </R>
+          <R delay={120}>
+            <ul className="space-y-3">
+              {c.cotizar.map((item, i) => (
+                <li key={i} className="flex items-start gap-4 p-4 rounded-xl" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <span className="shrink-0 mt-0.5 w-5 h-5 rounded-full flex items-center justify-center" style={{ background: "rgba(179,152,91,0.14)", border: `1px solid ${GOLD}55` }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                  </span>
+                  <span className="text-white/70 text-sm">{item}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="text-white/25 text-xs mt-5 text-center">Con esto te devolvemos propuesta técnica en menos de 24 horas.</p>
           </R>
         </div>
       </section>
 
-      {/* ── Gallery ── */}
-      <section id="galeria" className="pb-0">
-        <CinematicGallery photos={c.gallery} />
+      {/* ── Galería completa ── */}
+      <GaleriaCompleta slug={tipo} fotos={fotos} tipoId={tipoId} setTipoId={setTipoId} isAdmin={isAdmin} recargar={recargar} />
+
+      {/* ── Inventario ── */}
+      <section className="px-6 pb-8">
+        <div className="max-w-5xl mx-auto">
+          <R>
+            <a href="/presentacion/inventario"
+               className="group block rounded-3xl overflow-hidden relative"
+               style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
+              <div className="p-10 sm:p-14 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6"
+                   style={{ background: "linear-gradient(120deg, rgba(179,152,91,0.08), rgba(255,255,255,0.02))" }}>
+                <div>
+                  <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-4">Inventario</p>
+                  <h3 className="font-bold text-white mb-3" style={{ fontSize: "clamp(1.5rem, 3vw, 2.25rem)", letterSpacing: "-0.02em" }}>
+                    Explora el equipo con el que trabajamos.
+                  </h3>
+                  <p className="text-white/45 text-sm max-w-lg leading-relaxed">
+                    Audio, iluminación y video profesional — catálogo completo con marcas, disponibilidad y precios de renta.
+                  </p>
+                </div>
+                <span className="shrink-0 text-sm font-semibold px-6 py-3.5 rounded-full transition-all group-hover:scale-105"
+                      style={{ background: GOLD, color: "#000" }}>
+                  Ver inventario →
+                </span>
+              </div>
+            </a>
+          </R>
+        </div>
       </section>
 
-      {/* ── Contacto ── */}
-      <section id="contacto" className="py-28 px-6 bg-[#060606]">
+      {/* ── Cierre: descubrimiento + contacto ── */}
+      <section id="contacto" className="py-32 px-6">
         <div className="max-w-2xl mx-auto">
           <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-4 text-center">Cuéntanos tu evento</p>
-            <h2 className="font-bold text-white text-center mb-3"
-                style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
+            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-4 text-center">El siguiente paso</p>
+            <h2 className="font-bold text-white text-center mb-3" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
               {c.cta}
             </h2>
-            <p className="text-white/35 text-center mb-10 text-sm leading-relaxed">{c.ctaSub}</p>
+            <p className="text-white/40 text-center mb-8 text-sm leading-relaxed">{c.ctaSub}</p>
+            <div className="flex justify-center mb-12">
+              <button onClick={() => abrirDescubrimiento(null)}
+                      className="px-9 py-4 rounded-full font-semibold text-black text-sm tracking-wide transition-all hover:scale-105"
+                      style={{ background: GOLD }}>
+                Iniciar descubrimiento
+              </button>
+            </div>
+            <div className="flex items-center gap-4 mb-8">
+              <div className="flex-1 h-px bg-white/[0.06]" />
+              <span className="text-white/25 text-xs tracking-wide">o escríbenos directo</span>
+              <div className="flex-1 h-px bg-white/[0.06]" />
+            </div>
           </R>
           <ContactForm tipo={tipo} />
         </div>
@@ -513,6 +865,11 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
           © {new Date().getFullYear()} Mainstage Pro · Producción audiovisual profesional
         </p>
       </footer>
+
+      {discOpen && (
+        <DiscoveryModal tipo={tipo} servicio={discServicio} loading={discLoading}
+                        onConfirm={confirmarDescubrimiento} onClose={() => { if (!discLoading) setDiscOpen(false); }} />
+      )}
     </div>
   );
 }
