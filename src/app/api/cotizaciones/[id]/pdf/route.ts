@@ -31,6 +31,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
           id: true, tipo: true, descripcion: true, marca: true, modelo: true,
           nivel: true, jornada: true, cantidad: true, dias: true,
           precioUnitario: true, subtotal: true, esIncluido: true, notas: true,
+          notasInternas: true,
           equipo: { select: { imagenUrl: true } },
         },
       },
@@ -44,8 +45,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
     : null;
 
-  // Resolve equipment images to base64 for react-pdf
-  function resolveImg(url: string | null | undefined): string | null {
+  // Resolve equipment/product images to base64 for react-pdf.
+  // Local images (/public) are read from disk; remote images (Vercel Blob) are fetched.
+  async function resolveImg(url: string | null | undefined): Promise<string | null> {
     if (!url) return null;
     if (url.startsWith("data:")) return url; // already base64
     if (url.startsWith("/")) {
@@ -55,18 +57,51 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         const mime = ext === "jpg" ? "image/jpeg" : `image/${ext}`;
         return `data:${mime};base64,${fs.readFileSync(filePath).toString("base64")}`;
       }
+      return null;
+    }
+    if (url.startsWith("http")) {
+      try {
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const buf = Buffer.from(await res.arrayBuffer());
+        const mime = res.headers.get("content-type") ?? "image/png";
+        return `data:${mime};base64,${buf.toString("base64")}`;
+      } catch { return null; }
     }
     return null;
+  }
+
+  // Los paquetes (PAQUETE) no tienen equipo asociado; su ícono es la primera
+  // imagen del paquete, referenciado por paqueteId dentro de notasInternas.
+  function getPaqueteId(notasInternas: string | null): string | null {
+    if (!notasInternas) return null;
+    try { return (JSON.parse(notasInternas).paqueteId as string) || null; } catch { return null; }
+  }
+  const paqueteIds = [...new Set(
+    cotizacion.lineas
+      .filter(l => l.tipo === "PAQUETE")
+      .map(l => getPaqueteId(l.notasInternas))
+      .filter((id): id is string => Boolean(id))
+  )];
+  const paqueteImgMap = new Map<string, string | null>();
+  if (paqueteIds.length > 0) {
+    const paquetes = await prisma.paquete.findMany({
+      where: { id: { in: paqueteIds } },
+      select: { id: true, imagenes: { orderBy: { orden: "asc" }, take: 1, select: { url: true } } },
+    });
+    for (const p of paquetes) paqueteImgMap.set(p.id, p.imagenes[0]?.url ?? null);
   }
 
   const cotizacionWithImgs = {
     ...cotizacion,
     tradeCalificado: cotizacion.trato?.tradeCalificado ?? false,
     mainstageTradeData: cotizacion.mainstageTradeData ?? null,
-    lineas: cotizacion.lineas.map(l => ({
+    lineas: await Promise.all(cotizacion.lineas.map(async l => ({
       ...l,
-      imagenUrl: resolveImg(l.equipo?.imagenUrl),
-    })),
+      imagenUrl: await resolveImg(
+        l.tipo === "PAQUETE" ? paqueteImgMap.get(getPaqueteId(l.notasInternas) ?? "") : l.equipo?.imagenUrl
+      ),
+    }))),
   };
 
   const pdfStream = await ReactPDF.renderToStream(
