@@ -181,6 +181,8 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
   const [loading, setLoading] = useState(true);
   // Categorías expandidas en el paso 2 (por defecto todas colapsadas)
   const [expandidas, setExpandidas] = useState<Set<string>>(new Set());
+  // Grupos marca/modelo de productos expandidos (sub-pestaña Productos). Clave: `${categoria}::${marcaModelo}`.
+  const [marcasExpandidas, setMarcasExpandidas] = useState<Set<string>>(new Set());
   const [paso, setPaso] = useState<1 | 2>(() =>
     value.categorias.length > 0 ||
     value.equipos.length > 0 ||
@@ -337,25 +339,54 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
     [serviciosCategorias, value.categorias]
   );
 
-  // Productos armados agrupados por su categoría de origen, para mostrarlos
-  // seccionados igual que los equipos individuales. Los productos sin categoría
-  // caen en un grupo "Otros" que se muestra al final.
+  // Productos armados agrupados en dos niveles: por categoría de origen y, dentro
+  // de cada categoría, por marca/modelo del equipo dominante (el primer item, que
+  // viene ordenado por `orden`). Así el modelo dominante es el pilar y sus variantes
+  // (mismo modelo, distinta configuración) quedan juntas en un panel desplegable.
+  // Sin categoría → "Otros"; sin marca/modelo → "Sin marca/modelo", ambos al final.
   const productosPorCategoria = useMemo(() => {
-    const grupos = new Map<string, ProductoPublico[]>();
+    const cats = new Map<string, Map<string, ProductoPublico[]>>();
     for (const p of productos) {
       const cat = (p.categoria ?? "").trim() || "Otros";
-      const arr = grupos.get(cat);
+      const dom = p.items[0]?.equipo;
+      const marca = (dom?.marca ?? "").trim();
+      const modelo = (dom?.modelo ?? "").trim();
+      const claveMarca = [marca, modelo].filter(Boolean).join(" ").trim() || "Sin marca/modelo";
+      let porMarca = cats.get(cat);
+      if (!porMarca) {
+        porMarca = new Map();
+        cats.set(cat, porMarca);
+      }
+      const arr = porMarca.get(claveMarca);
       if (arr) arr.push(p);
-      else grupos.set(cat, [p]);
+      else porMarca.set(claveMarca, [p]);
     }
-    return [...grupos.entries()]
+    return [...cats.entries()]
       .sort(([a], [b]) => {
         if (a === "Otros") return 1;
         if (b === "Otros") return -1;
         return a.localeCompare(b, "es");
       })
-      .map(([nombre, items]) => ({ nombre, items }));
+      .map(([nombre, porMarca]) => ({
+        nombre,
+        marcas: [...porMarca.entries()]
+          .sort(([a], [b]) => {
+            if (a === "Sin marca/modelo") return 1;
+            if (b === "Sin marca/modelo") return -1;
+            return a.localeCompare(b, "es");
+          })
+          .map(([marcaModelo, items]) => ({ marcaModelo, items })),
+      }));
   }, [productos]);
+
+  function toggleMarca(clave: string) {
+    setMarcasExpandidas((prev) => {
+      const next = new Set(prev);
+      if (next.has(clave)) next.delete(clave);
+      else next.add(clave);
+      return next;
+    });
+  }
 
   // ── Mutadores ──
   function toggleCategoria(catId: string) {
@@ -1122,64 +1153,97 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
           {subTab === "productos" && (
             <div className="space-y-2">
               <p className="text-gray-500 text-xs">
-                Sistemas y productos ya armados, agrupados por categoría. Al elegir uno se consideran todos sus equipos para la disponibilidad.
+                Sistemas y productos ya armados, agrupados por categoría y por marca/modelo del equipo principal. Abre un modelo para ver sus opciones; al elegir un producto se consideran todos sus equipos para la disponibilidad.
               </p>
-              {productosPorCategoria.map((grupo) => (
+              {productosPorCategoria.map((grupo) => {
+                const totalCat = grupo.marcas.reduce((n, m) => n + m.items.length, 0);
+                return (
                 <div key={grupo.nombre} className="space-y-1.5">
                   <p className="flex items-center gap-1.5 text-[#B3985B] text-xs font-semibold uppercase tracking-wider pt-1">
                     {catEmoji(grupo.nombre)} {grupo.nombre}
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-gray-400 font-bold normal-case tracking-normal">
-                      {grupo.items.length}
+                      {totalCat}
                     </span>
                   </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {grupo.items.map((p) => {
-                      const sel = productosSel.some((s) => s.id === p.id);
-                      const cant = productosSel.find((s) => s.id === p.id)?.cantidad ?? 1;
+                  <div className="space-y-1.5">
+                    {grupo.marcas.map((marca) => {
+                      const clave = `${grupo.nombre}::${marca.marcaModelo}`;
+                      const abierta = marcasExpandidas.has(clave);
+                      const elegidos = marca.items.filter((p) => productosSel.some((s) => s.id === p.id)).length;
                       return (
-                        <div
-                          key={p.id}
-                          className={`rounded-xl border p-2.5 transition-all ${
-                            sel ? "border-[#B3985B] bg-[#B3985B]/[0.06]" : "border-[#1e1e1e] bg-[#0d0d0d]"
-                          }`}
-                        >
+                        <div key={clave} className="rounded-xl border border-[#1e1e1e] bg-[#0a0a0a] overflow-hidden">
                           <button
                             type="button"
-                            onClick={() => toggleProducto(p.id)}
-                            className="flex items-start gap-2.5 w-full text-left"
+                            onClick={() => toggleMarca(clave)}
+                            className="flex items-center gap-2 w-full text-left px-2.5 py-2 hover:bg-[#111]"
                           >
-                            <span className="w-12 h-12 rounded-lg bg-[#1a1a1a] overflow-hidden shrink-0 flex items-center justify-center">
-                              {p.imagenUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={p.imagenUrl} alt="" className="w-full h-full object-cover" />
-                              ) : (
-                                <span className="text-gray-700">📦</span>
-                              )}
+                            <span className={`text-gray-500 text-[10px] transition-transform ${abierta ? "rotate-90" : ""}`}>▶</span>
+                            <span className="text-white text-xs font-semibold leading-tight flex-1 min-w-0 truncate">
+                              {marca.marcaModelo}
                             </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="flex items-center gap-1.5">
-                                <span
-                                  className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
-                                    sel ? "bg-[#B3985B] border-[#B3985B]" : "border-[#333]"
-                                  }`}
-                                >
-                                  {sel && <span className="text-black text-[9px] font-bold leading-none">✓</span>}
-                                </span>
-                                <span className="text-white text-xs font-medium leading-tight">{p.nombre}</span>
+                            {elegidos > 0 && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#B3985B] text-black font-bold">
+                                {elegidos} ✓
                               </span>
-                              {p.descripcion && (
-                                <span className="block text-gray-500 text-[10px] leading-tight line-clamp-2 mt-0.5">
-                                  {p.descripcion}
-                                </span>
-                              )}
-                              <span className="block text-[#B3985B] text-[11px] font-semibold mt-1">
-                                ${p.precioFinal.toLocaleString("es-MX")}
-                              </span>
+                            )}
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-gray-400 font-bold">
+                              {marca.items.length}
                             </span>
                           </button>
-                          {sel && (
-                            <div className="flex items-center justify-end mt-1.5">
-                              {controlCantidad(cant, (n) => setProductoCantidad(p.id, n))}
+                          {abierta && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 pt-0">
+                              {marca.items.map((p) => {
+                                const sel = productosSel.some((s) => s.id === p.id);
+                                const cant = productosSel.find((s) => s.id === p.id)?.cantidad ?? 1;
+                                return (
+                                  <div
+                                    key={p.id}
+                                    className={`rounded-xl border p-2.5 transition-all ${
+                                      sel ? "border-[#B3985B] bg-[#B3985B]/[0.06]" : "border-[#1e1e1e] bg-[#0d0d0d]"
+                                    }`}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleProducto(p.id)}
+                                      className="flex items-start gap-2.5 w-full text-left"
+                                    >
+                                      <span className="w-12 h-12 rounded-lg bg-[#1a1a1a] overflow-hidden shrink-0 flex items-center justify-center">
+                                        {p.imagenUrl ? (
+                                          // eslint-disable-next-line @next/next/no-img-element
+                                          <img src={p.imagenUrl} alt="" className="w-full h-full object-cover" />
+                                        ) : (
+                                          <span className="text-gray-700">📦</span>
+                                        )}
+                                      </span>
+                                      <span className="min-w-0 flex-1">
+                                        <span className="flex items-center gap-1.5">
+                                          <span
+                                            className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
+                                              sel ? "bg-[#B3985B] border-[#B3985B]" : "border-[#333]"
+                                            }`}
+                                          >
+                                            {sel && <span className="text-black text-[9px] font-bold leading-none">✓</span>}
+                                          </span>
+                                          <span className="text-white text-xs font-medium leading-tight">{p.nombre}</span>
+                                        </span>
+                                        {p.descripcion && (
+                                          <span className="block text-gray-500 text-[10px] leading-tight line-clamp-2 mt-0.5">
+                                            {p.descripcion}
+                                          </span>
+                                        )}
+                                        <span className="block text-[#B3985B] text-[11px] font-semibold mt-1">
+                                          ${p.precioFinal.toLocaleString("es-MX")}
+                                        </span>
+                                      </span>
+                                    </button>
+                                    {sel && (
+                                      <div className="flex items-center justify-end mt-1.5">
+                                        {controlCantidad(cant, (n) => setProductoCantidad(p.id, n))}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
@@ -1187,7 +1251,8 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                     })}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
