@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
   const tratos = await prisma.trato.findMany({
     where,
     select: {
-      id: true, etapa: true, tipoEvento: true, tipoServicio: true, nombreEvento: true,
+      id: true, etapa: true, etapaInterna: true, tipoEvento: true, tipoServicio: true, nombreEvento: true,
       fechaEventoEstimada: true, presupuestoEstimado: true, lugarEstimado: true,
       origenLead: true, fechaProximaAccion: true, createdAt: true, fechaCierre: true,
       tipoProspecto: true, nurturingData: true, proximaAccion: true,

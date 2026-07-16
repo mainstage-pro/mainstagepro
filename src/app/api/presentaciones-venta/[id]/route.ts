@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { ensurePresentacionTratoCol, agendarSeguimientoPresentacionEnviada } from "@/lib/etapaSeguimientos";
-import { syncFechaProximaAccion } from "@/app/api/seguimientos/route";
+import { ensurePresentacionTratoCol } from "@/lib/etapaSeguimientos";
 
 export async function GET(
   _req: NextRequest,
@@ -47,13 +46,6 @@ export async function PATCH(
       ...(body.estado !== undefined && { estado: body.estado }),
     },
   });
-
-  // Al enviar la presentación al prospecto, agenda el seguimiento de revisión.
-  const seEnvio = body.estado === "ENVIADA" && presentacion.estado !== "ENVIADA";
-  if (seEnvio && presentacion.tratoId) {
-    await agendarSeguimientoPresentacionEnviada(presentacion.tratoId);
-    await syncFechaProximaAccion(presentacion.tratoId);
-  }
 
   return NextResponse.json({ ok: true, presentacion: updated });
 }

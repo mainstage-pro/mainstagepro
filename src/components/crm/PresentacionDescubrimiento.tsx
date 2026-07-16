@@ -69,7 +69,7 @@ export default function PresentacionDescubrimiento({ tratoId }: { tratoId: strin
         <p className="text-gray-500 text-xs">Cargando…</p>
       ) : items.length === 0 ? (
         <p className="text-gray-500 text-xs">
-          Aún no hay presentaciones para este prospecto. Crea una y, al enviarla, se agenda un seguimiento automático.
+          Aún no hay presentaciones para este prospecto. Crea una para compartirla con el cliente.
         </p>
       ) : (
         <div className="space-y-2">

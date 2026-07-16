@@ -200,6 +200,7 @@ model Trato {
   origenLead          String   @default("ORGANICO")     // META_ADS | GOOGLE_ADS | ORGANICO | RECOMPRA | REFERIDO | PROSPECCION | OTRO
   estatusContacto     String   @default("PENDIENTE")    // PENDIENTE | CONTACTADO
   etapa               String   @default("LEAD") // LEAD | DESCUBRIMIENTO | OPORTUNIDAD | VENTA_CERRADA | VENTA_PERDIDA
+  etapaInterna        String?  // sub-etapa dentro de la etapa del pipeline (ver src/lib/etapasInternas.ts)
   clasificacion       String   @default("PROSPECTO")    // PROSPECTO | BASIC | REGULAR | PRIORITY
   tipoServicio        String?  // RENTA | PRODUCCION_TECNICA | DIRECCION_TECNICA
   subtipoEvento       String?  // CONCIERTO | FESTIVAL | ELECTRONICA | PRESENTACION_MUSICAL | FIESTA_PRIVADA | BODA | XV_ANOS | BAUTIZO | CUMPLEANIOS | CONGRESO | TALLER | LANZAMIENTO | FERIA | OTRO

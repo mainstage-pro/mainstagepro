@@ -284,13 +284,12 @@ export function SeguimientosTracker({
   maxSlots: number;
   esOutbound: boolean;
   saving: boolean;
-  onMarcar: (num: number, nota: string) => void | Promise<void>;
+  onMarcar: (num: number) => void | Promise<void>;
   onAgregarSlot: () => void;
   onPasarDescubrimiento: (saltar: boolean) => void;
   onMarcarPerdida: (motivo: string) => void | Promise<void>;
   labelContinuar?: string;
 }) {
-  const [nota, setNota] = useState("");
   const [motivo, setMotivo] = useState("");
   const [mostrarPerdida, setMostrarPerdida] = useState(false);
 
@@ -300,13 +299,6 @@ export function SeguimientosTracker({
 
   function fmt(iso: string) {
     return new Date(iso).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-  }
-
-  async function registrar() {
-    const t = nota.trim();
-    if (!t) return;
-    await onMarcar(proximoNum, t);
-    setNota("");
   }
 
   return (
@@ -321,7 +313,7 @@ export function SeguimientosTracker({
         </span>
       </div>
       <p className="text-xs text-gray-500 mb-4 leading-relaxed">
-        Registra cada contacto antes de pasar al descubrimiento. Al 3.º seguimiento puedes marcar la venta como perdida o agregar más.
+        Marca cada contacto conforme lo realices. Al 3.º seguimiento puedes marcar la venta como perdida o agregar más.
       </p>
 
       {/* Seguimientos ya registrados */}
@@ -352,7 +344,7 @@ export function SeguimientosTracker({
                     Seguimiento {num}
                     {item && <span className="text-[10px] text-gray-500 font-normal ml-2 tabular-nums">{fmt(item.fecha)}</span>}
                   </p>
-                  {item && <p className="text-gray-300 text-xs mt-1 whitespace-pre-wrap leading-relaxed">{item.nota}</p>}
+                  {item && item.nota && <p className="text-gray-300 text-xs mt-1 whitespace-pre-wrap leading-relaxed">{item.nota}</p>}
                 </div>
               </div>
             </div>
@@ -360,31 +352,20 @@ export function SeguimientosTracker({
         })}
       </div>
 
-      {/* Registrar el próximo seguimiento */}
+      {/* Marcar el próximo seguimiento como completado */}
       {!todosHechos && (
         <div className="mb-3">
-          <textarea
-            value={nota}
-            onChange={e => setNota(e.target.value)}
-            rows={2}
-            placeholder={`¿Cómo estuvo el seguimiento ${proximoNum}? Respuesta, interés, próximos pasos...`}
-            className={`w-full bg-[#111] border border-[#222] rounded-xl px-4 py-3 text-white text-sm resize-none focus:outline-none placeholder-gray-700 transition-colors ${
-              esOutbound ? "focus:border-emerald-700/60" : "focus:border-amber-700/60"
+          <button
+            onClick={() => onMarcar(proximoNum)}
+            disabled={saving}
+            className={`w-full py-3 rounded-xl text-sm font-bold transition-colors disabled:opacity-40 ${
+              esOutbound
+                ? "bg-emerald-700/20 border border-emerald-700/40 text-emerald-300 hover:bg-emerald-700/30"
+                : "bg-[#B3985B] text-black hover:bg-[#c9a96a]"
             }`}
-          />
-          <div className="flex justify-end mt-2">
-            <button
-              onClick={registrar}
-              disabled={saving || !nota.trim()}
-              className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors disabled:opacity-40 ${
-                esOutbound
-                  ? "bg-emerald-700/20 border border-emerald-700/40 text-emerald-300 hover:bg-emerald-700/30"
-                  : "bg-[#B3985B] text-black hover:bg-[#c9a96a]"
-              }`}
-            >
-              {saving ? "Guardando..." : `Registrar seguimiento ${proximoNum}`}
-            </button>
-          </div>
+          >
+            {saving ? "Guardando..." : `✓ Marcar seguimiento ${proximoNum} como completado`}
+          </button>
         </div>
       )}
 
@@ -445,13 +426,6 @@ export function SeguimientosTracker({
         >
           {labelContinuar}
         </button>
-        {hechos === 0 && (
-          <div className="flex justify-center mt-2">
-            <button onClick={() => onPasarDescubrimiento(true)} disabled={saving} className="text-[11px] text-gray-600 hover:text-white transition-colors">
-              Saltar seguimiento e ir directo al descubrimiento →
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

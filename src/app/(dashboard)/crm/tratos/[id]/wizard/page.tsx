@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import DiscoveryForm from "@/components/crm/DiscoveryForm";
 import { useToast } from "@/components/Toast";
+import { Combobox } from "@/components/Combobox";
+import { ORIGEN_LEAD_OPTIONS, MOMENTO_OPTIONS } from "@/lib/constants";
 import {
   CONTACTOS_INBOUND,
   CONTACTOS_OUTBOUND,
@@ -36,6 +38,8 @@ interface Trato {
   momentoContratacion: string | null;
   modoDescubrimiento: string | null;
   preferenciaContacto: string | null;
+  origenVenta: string | null;
+  vendedorId: string | null;
 }
 
 type NurturingData = {
@@ -44,8 +48,13 @@ type NurturingData = {
   notas?: Record<string, string>;
   notasSeguimiento?: NotaSeg[];
   pasosMarcados?: number[];
+  // Legacy (una sola tanda de seguimientos, sin distinguir etapa). Se migra a
+  // seguimientosPorEtapa.LEAD al cargar; se conserva por compatibilidad.
   seguimientos?: SegItem[];
   maxSeguimientos?: number;
+  // Seguimientos independientes por etapa del pipeline (LEAD, DESCUBRIMIENTO, …).
+  seguimientosPorEtapa?: Record<string, SegItem[]>;
+  maxSeguimientosPorEtapa?: Record<string, number>;
   // Preparación previa al descubrimiento: seguimientos + modalidad de propuesta.
   preparacionHecha?: boolean;
   modalidadPropuesta?: "INVENTARIO" | "CONTRA_RIDER";
@@ -71,6 +80,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
   const [saving, setSaving] = useState(false);
   const [creandoCotizacion, setCreandoCotizacion] = useState(false);
   const [isEditingDiscovery, setIsEditingDiscovery] = useState(false);
+  const [showEditInicial, setShowEditInicial] = useState(false);
 
   // Estados para formulario cliente
   const [generandoToken, setGenerandoToken] = useState(false);
@@ -116,7 +126,15 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
         const t = d.trato as Trato;
         setTrato(t);
         if (t.nurturingData) {
-          try { setNurturing(JSON.parse(t.nurturingData)); } catch { /* noop */ }
+          try {
+            const parsed = JSON.parse(t.nurturingData) as NurturingData;
+            // Migración: la tanda antigua de seguimientos pertenece a la etapa LEAD.
+            if (parsed.seguimientos && !parsed.seguimientosPorEtapa) {
+              parsed.seguimientosPorEtapa = { LEAD: parsed.seguimientos };
+              parsed.maxSeguimientosPorEtapa = { LEAD: parsed.maxSeguimientos ?? 3 };
+            }
+            setNurturing(parsed);
+          } catch { /* noop */ }
         }
         setLoading(false);
       })
@@ -159,22 +177,30 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
     await guardarNurturing(u);
   }
 
-  // ── Seguimientos (registro 1/2/3 antes del descubrimiento) ──
-  async function marcarSeguimiento(num: number, nota: string) {
+  // ── Seguimientos por etapa (marcar 1/2/3 como completados) ──
+  const segsDe = (e: string): SegItem[] => nurturing.seguimientosPorEtapa?.[e] ?? [];
+  const maxDe = (e: string): number => nurturing.maxSeguimientosPorEtapa?.[e] ?? 3;
+
+  async function marcarSeguimiento(etapaKey: string, num: number) {
     setSaving(true);
-    const item: SegItem = { num, fecha: new Date().toISOString(), nota };
-    const u = {
+    const item: SegItem = { num, fecha: new Date().toISOString(), nota: "" };
+    const prev = nurturing.seguimientosPorEtapa?.[etapaKey] ?? [];
+    const nuevos = [...prev.filter(s => s.num !== num), item].sort((a, b) => a.num - b.num);
+    const u: NurturingData = {
       ...nurturing,
-      seguimientos: [...(nurturing.seguimientos ?? []).filter(s => s.num !== num), item].sort((a, b) => a.num - b.num),
+      seguimientosPorEtapa: { ...(nurturing.seguimientosPorEtapa ?? {}), [etapaKey]: nuevos },
     };
     setNurturing(u);
     await guardarNurturing(u);
     setSaving(false);
   }
 
-  function agregarSlotSeguimiento() {
-    const cur = nurturing.maxSeguimientos ?? 3;
-    const u = { ...nurturing, maxSeguimientos: cur + 1 };
+  function agregarSlotSeguimiento(etapaKey: string) {
+    const cur = maxDe(etapaKey);
+    const u: NurturingData = {
+      ...nurturing,
+      maxSeguimientosPorEtapa: { ...(nurturing.maxSeguimientosPorEtapa ?? {}), [etapaKey]: cur + 1 },
+    };
     setNurturing(u);
     guardarNurturing(u);
   }
@@ -295,11 +321,27 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
               )}
             </div>
           </div>
-          <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.bg} ${cfg.border} border ${cfg.color}`}>
-            {cfg.icon} {cfg.label}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowEditInicial(true)}
+              className="text-[11px] text-gray-500 hover:text-white border border-[#2a2a2a] hover:border-[#444] rounded-lg px-2.5 py-1 transition-colors"
+            >
+              ✎ Editar datos iniciales
+            </button>
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.bg} ${cfg.border} border ${cfg.color}`}>
+              {cfg.icon} {cfg.label}
+            </div>
           </div>
         </div>
       </div>
+
+      {showEditInicial && (
+        <EditarDatosInicialesModal
+          trato={trato}
+          onClose={() => setShowEditInicial(false)}
+          onSaved={(t) => { setTrato(prev => prev ? { ...prev, ...t } : prev); setShowEditInicial(false); }}
+        />
+      )}
 
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
 
@@ -308,14 +350,14 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
         ═══════════════════════════════════════════════════════════ */}
         {etapa === "LEAD" && (
           <>
-            {/* ── Seguimientos 1/2/3 antes del descubrimiento ── */}
+            {/* ── Seguimientos 1/2/3 de la etapa de Prospección ── */}
             <SeguimientosTracker
-              seguimientos={nurturing.seguimientos ?? []}
-              maxSlots={nurturing.maxSeguimientos ?? 3}
+              seguimientos={segsDe("LEAD")}
+              maxSlots={maxDe("LEAD")}
               esOutbound={esOutbound}
               saving={saving}
-              onMarcar={marcarSeguimiento}
-              onAgregarSlot={agregarSlotSeguimiento}
+              onMarcar={(num) => marcarSeguimiento("LEAD", num)}
+              onAgregarSlot={() => agregarSlotSeguimiento("LEAD")}
               onPasarDescubrimiento={() => iniciarDescubrimiento()}
               onMarcarPerdida={marcarPerdida}
             />
@@ -482,14 +524,14 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
                   </div>
                 </div>
 
-                {/* ── Seguimientos 1/2/3 antes del descubrimiento ── */}
+                {/* ── Seguimientos 1/2/3 propios de la etapa de Descubrimiento ── */}
                 <SeguimientosTracker
-                  seguimientos={nurturing.seguimientos ?? []}
-                  maxSlots={nurturing.maxSeguimientos ?? 3}
+                  seguimientos={segsDe("DESCUBRIMIENTO")}
+                  maxSlots={maxDe("DESCUBRIMIENTO")}
                   esOutbound={esOutbound}
                   saving={saving}
-                  onMarcar={marcarSeguimiento}
-                  onAgregarSlot={agregarSlotSeguimiento}
+                  onMarcar={(num) => marcarSeguimiento("DESCUBRIMIENTO", num)}
+                  onAgregarSlot={() => agregarSlotSeguimiento("DESCUBRIMIENTO")}
                   onPasarDescubrimiento={completarPreparacion}
                   onMarcarPerdida={marcarPerdida}
                   labelContinuar="🔍 Continuar al descubrimiento →"
@@ -712,6 +754,192 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
           </Link>
         </div>
 
+      </div>
+    </div>
+  );
+}
+
+// ─── Modal: editar los datos iniciales del trato (no re-crea, hace PATCH) ──────
+const ETAPAS_EDITABLES = [
+  { value: "LEAD", label: "🔭 Prospección" },
+  { value: "DESCUBRIMIENTO", label: "🔍 Descubrimiento" },
+  { value: "OPORTUNIDAD", label: "📋 Oportunidad" },
+  { value: "VENTA_CERRADA", label: "✅ Venta Cerrada" },
+];
+const ORIGEN_VENTA_OPTIONS = [
+  { value: "CLIENTE_PROPIO", label: "Cliente propio (10% comisión)" },
+  { value: "PUBLICIDAD",     label: "Lead por publicidad (5%)" },
+  { value: "ASIGNADO",       label: "Cliente asignado (5%+5%)" },
+];
+
+function EditarDatosInicialesModal({
+  trato,
+  onClose,
+  onSaved,
+}: {
+  trato: Trato;
+  onClose: () => void;
+  onSaved: (t: Partial<Trato>) => void;
+}) {
+  const toast = useToast();
+  const [clientes, setClientes] = useState<{ id: string; nombre: string; empresa: string | null }[]>([]);
+  const [usuarios, setUsuarios] = useState<{ id: string; name: string }[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  const [clienteId, setClienteId] = useState(trato.cliente.id);
+  const [etapa, setEtapa] = useState(trato.etapa);
+  const [momento, setMomento] = useState(trato.momentoContratacion ?? "");
+  const [origenLead, setOrigenLead] = useState(trato.origenLead);
+  const [tipoLead, setTipoLead] = useState(trato.tipoLead);
+  const [origenVenta, setOrigenVenta] = useState(trato.origenVenta ?? "CLIENTE_PROPIO");
+  const [vendedorId, setVendedorId] = useState(trato.vendedorId ?? "");
+
+  useEffect(() => {
+    fetch("/api/clientes").then(r => r.json()).then(d => setClientes(d.clientes || []));
+    fetch("/api/usuarios-activos").then(r => r.json()).then(d => setUsuarios(d.usuarios || []));
+  }, []);
+
+  async function guardar() {
+    setSaving(true);
+    try {
+      const payload = {
+        clienteId,
+        etapa,
+        momentoContratacion: momento || null,
+        origenLead,
+        tipoLead,
+        origenVenta,
+        vendedorId: vendedorId || null,
+      };
+      const res = await fetch(`/api/tratos/${trato.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "No se pudieron guardar los cambios");
+        return;
+      }
+      const cli = clientes.find(c => c.id === clienteId);
+      toast.success("Datos actualizados");
+      onSaved({
+        etapa,
+        momentoContratacion: momento || null,
+        origenLead,
+        tipoLead,
+        origenVenta,
+        vendedorId: vendedorId || null,
+        ...(cli ? { cliente: { id: cli.id, nombre: cli.nombre, empresa: cli.empresa, telefono: trato.cliente.telefono } } : {}),
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-[#0d0d0d] border border-[#222] rounded-2xl p-5 space-y-4"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <p className="text-white font-bold text-base">Editar datos iniciales</p>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors text-sm">✕</button>
+        </div>
+
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Cliente</label>
+          <Combobox
+            value={clienteId}
+            onChange={setClienteId}
+            options={clientes.map(c => ({ value: c.id, label: c.nombre + (c.empresa ? ` · ${c.empresa}` : "") }))}
+            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Momento de contratación</label>
+          <Combobox
+            value={momento}
+            onChange={v => {
+              setMomento(v);
+              const m = MOMENTO_OPTIONS.find(o => o.value === v);
+              if (m) setEtapa(m.etapa);
+            }}
+            options={[{ value: "", label: "Sin definir" }, ...MOMENTO_OPTIONS.map(m => ({ value: m.value, label: m.label }))]}
+            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs text-gray-500 mb-1 block">Etapa</label>
+          <Combobox
+            value={etapa}
+            onChange={setEtapa}
+            options={ETAPAS_EDITABLES}
+            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+          />
+          <p className="text-[11px] text-gray-600 mt-1">Cambiar la etapa reinicia su sub-etapa interna al primer paso.</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Origen del contacto</label>
+            <Combobox
+              value={origenLead}
+              onChange={setOrigenLead}
+              options={ORIGEN_LEAD_OPTIONS}
+              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Tipo de lead</label>
+            <Combobox
+              value={tipoLead}
+              onChange={setTipoLead}
+              options={[
+                { value: "INBOUND", label: "Inbound (nos buscó)" },
+                { value: "OUTBOUND", label: "Outbound (prospección)" },
+              ]}
+              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Origen de venta</label>
+            <Combobox
+              value={origenVenta}
+              onChange={setOrigenVenta}
+              options={ORIGEN_VENTA_OPTIONS}
+              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 mb-1 block">Comisión para</label>
+            <Combobox
+              value={vendedorId}
+              onChange={setVendedorId}
+              options={[{ value: "", label: "Yo (quien captura)" }, ...usuarios.map(u => ({ value: u.id, label: u.name }))]}
+              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+            />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button onClick={onClose} className="px-4 py-2 rounded-xl border border-[#333] text-gray-400 hover:text-white text-sm transition-colors">
+            Cancelar
+          </button>
+          <button
+            onClick={guardar}
+            disabled={saving}
+            className="px-5 py-2 rounded-xl bg-[#B3985B] text-black text-sm font-bold hover:bg-[#c9a96a] transition-colors disabled:opacity-40"
+          >
+            {saving ? "Guardando..." : "Guardar cambios"}
+          </button>
+        </div>
       </div>
     </div>
   );

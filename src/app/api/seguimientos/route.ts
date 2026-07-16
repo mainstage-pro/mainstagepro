@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureSeguimientoEtapaCol } from "@/lib/etapaSeguimientos";
+import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
 
 // ── Helper: recalculate and save fechaProximaAccion on the trato ─────────────
 // Sets it to the earliest pending (not completed) seguimiento, or null if none.
@@ -22,6 +23,7 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   await ensureSeguimientoEtapaCol();
+  await ensureProcesoVentaColumns();
 
   const { searchParams } = new URL(req.url);
   const tratoId = searchParams.get("tratoId");
@@ -57,6 +59,8 @@ export async function GET(req: NextRequest) {
           id: true,
           nombreEvento: true,
           fechaEventoEstimada: true,
+          etapa: true,
+          etapaInterna: true,
           cliente: { select: { nombre: true, empresa: true } },
         },
       },

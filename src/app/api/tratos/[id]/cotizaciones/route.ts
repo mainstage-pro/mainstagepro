@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { agendarSeguimientoPorEtapa } from "@/lib/etapaSeguimientos";
 import { syncFechaProximaAccion } from "@/app/api/seguimientos/route";
+import { defaultEtapaInterna } from "@/lib/etapasInternas";
 
 /**
  * POST /api/tratos/[id]/cotizaciones
@@ -65,9 +65,8 @@ export async function POST(
   if (["LEAD", "DESCUBRIMIENTO"].includes(trato.etapa)) {
     await prisma.trato.update({
       where: { id: tratoId },
-      data: { etapa: "OPORTUNIDAD" },
+      data: { etapa: "OPORTUNIDAD", etapaInterna: defaultEtapaInterna("OPORTUNIDAD") },
     });
-    await agendarSeguimientoPorEtapa(tratoId, "OPORTUNIDAD");
     await syncFechaProximaAccion(tratoId);
   }
 

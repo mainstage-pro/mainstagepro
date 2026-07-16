@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
+import { EtapaInternaBar } from "@/components/crm/EtapaInternaBar";
+import { etapaInternaLabel } from "@/lib/etapasInternas";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -22,6 +24,8 @@ type Seguimiento = {
     id: string;
     nombreEvento: string | null;
     fechaEventoEstimada: string | null;
+    etapa: string;
+    etapaInterna: string | null;
     cliente: { nombre: string; empresa: string | null };
   };
 };
@@ -301,11 +305,21 @@ function SeguimientoRow({ s, onComplete, onReprogramar, onDelete }: {
         {s.trato.cliente.empresa && (
           <p className="text-[10px] text-[#3a3a3a] truncate mt-0.5">{s.trato.cliente.empresa}</p>
         )}
-        {s.etapa && ETAPA_BADGE[s.etapa] && (
-          <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-medium ${ETAPA_BADGE[s.etapa].cls}`}>
-            {ETAPA_BADGE[s.etapa].label}
-          </span>
-        )}
+        <div className="flex items-center gap-1.5 mt-1">
+          {s.trato.etapa && ETAPA_BADGE[s.trato.etapa] && (
+            <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-medium ${ETAPA_BADGE[s.trato.etapa].cls}`}>
+              {ETAPA_BADGE[s.trato.etapa].label}
+            </span>
+          )}
+          {etapaInternaLabel(s.trato.etapa, s.trato.etapaInterna) && (
+            <span className="text-[9px] text-[#666] truncate">
+              · {etapaInternaLabel(s.trato.etapa, s.trato.etapaInterna)}
+            </span>
+          )}
+        </div>
+        <div className="mt-1.5 max-w-[160px]">
+          <EtapaInternaBar etapa={s.trato.etapa} etapaInterna={s.trato.etapaInterna} showLabel={false} />
+        </div>
       </div>
 
       {/* COL 2 · Proyecto */}

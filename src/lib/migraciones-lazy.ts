@@ -55,6 +55,9 @@ export async function ensureOperacionTecnicaColumns() {
  * Migraciones lazy del proceso de ventas (patrón Neon: ADD COLUMN IF NOT EXISTS).
  * - tratos.modoDescubrimiento: "VENDEDOR" | "CLIENTE", define la rama del wizard.
  * - tratos.preferenciaContacto: "LLAMADA" | "PROPUESTA", elegida por el cliente al llenar el form.
+ * - tratos.etapaInterna: sub-etapa dentro de la etapa del pipeline (ver src/lib/etapasInternas.ts).
+ *   Declarada en schema.prisma → Prisma la pide en cualquier findMany de tratos sin select,
+ *   por eso DEBE existir antes de cualquier lectura (corre también al arranque).
  * Idempotente y seguro de correr múltiples veces.
  */
 let _procesoVentaReady = false;
@@ -72,6 +75,13 @@ export async function ensureProcesoVentaColumns() {
     try {
       await prisma.$executeRawUnsafe(
         `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "preferenciaContacto" TEXT`
+      );
+    } catch { /* ya existe */ }
+  }
+  if (!await columnExists('tratos', 'etapaInterna')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "etapaInterna" TEXT`
       );
     } catch { /* ya existe */ }
   }

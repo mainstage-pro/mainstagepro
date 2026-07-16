@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { agendarSeguimientoPorEtapa } from "@/lib/etapaSeguimientos";
 import { syncFechaProximaAccion } from "@/app/api/seguimientos/route";
 import { ensureProcesoVentaColumns, ensureMultidiaColumns } from "@/lib/migraciones-lazy";
+import { defaultEtapaInterna, esEtapaInternaValida } from "@/lib/etapasInternas";
 
 let _vendedorColReady = false;
 async function ensureVendedorId() {
@@ -90,7 +90,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const allowed = [
     "clienteId",
-    "etapa", "estatusContacto", "tipoEvento", "tipoServicio", "lugarEstimado",
+    "etapa", "etapaInterna", "estatusContacto", "tipoEvento", "tipoServicio", "lugarEstimado",
     "fechaEventoEstimada", "presupuestoEstimado", "clasificacion", "notas",
     "proximaAccion", "fechaProximaAccion", "motivoPerdida", "etapaCambiadaEn", "origenLead", "tipoLead",
     "origenVenta", "vendedorOrigenId", "responsableId", "vendedorId",
@@ -162,6 +162,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (current && current.etapa !== body.etapa) {
       etapaCambio = true;
       data.etapaCambiadaEn = new Date();
+      // Al cambiar de etapa, arranca en la primera sub-etapa interna
+      // (a menos que el body traiga una etapaInterna válida explícita para la nueva etapa).
+      if (!("etapaInterna" in body) || !esEtapaInternaValida(body.etapa, body.etapaInterna)) {
+        data.etapaInterna = defaultEtapaInterna(body.etapa);
+      }
       if (["VENTA_CERRADA", "VENTA_PERDIDA"].includes(body.etapa) && !current.fechaCierre) {
         data.fechaCierre = new Date();
       }
@@ -211,9 +216,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     include: { cliente: { select: { nombre: true } } },
   });
 
-  // ── Agendar seguimiento de entrada cuando el trato cambia de etapa ──────────
+  // ── Sincronizar próxima acción cuando el trato cambia de etapa ──────────────
   if (etapaCambio) {
-    await agendarSeguimientoPorEtapa(id, body.etapa);
     await syncFechaProximaAccion(id);
   }
 

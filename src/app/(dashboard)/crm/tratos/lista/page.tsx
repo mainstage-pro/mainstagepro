@@ -13,6 +13,7 @@ import { SkeletonPage } from "@/components/Skeleton";
 import { BadgeDias } from "@/components/ui/BadgeDias";
 import { NuevoTratoDropdown } from "@/components/NuevoTratoDropdown";
 import { diasTrato } from "@/lib/contadores";
+import { EtapaInternaBar } from "@/components/crm/EtapaInternaBar";
 
 type Usuario = { id: string; name: string; area?: string };
 
@@ -31,6 +32,7 @@ type Cotizacion = {
 type Trato = {
   id: string;
   etapa: string;
+  etapaInterna?: string | null;
   tipoEvento: string;
   tipoServicio: string | null;
   tipoProspecto: string;
@@ -412,6 +414,7 @@ function KanbanCard({ trato, onDelete, deleting }: { trato: Trato; onDelete: () 
           </span>
         )}
       </div>
+      <EtapaInternaBar etapa={trato.etapa} etapaInterna={trato.etapaInterna} />
       {(trato.fechaEventoEstimada || trato.presupuestoEstimado || trato.confirmadaEn) && (
         <div className="flex items-center gap-2 flex-wrap">
           {trato.fechaEventoEstimada && (
@@ -539,6 +542,9 @@ function TratoTable({ tratos, showHace, expandedIds, toggleExpand, deletingId, e
                       {t.lugarEstimado && <span className="text-gray-700">· {t.lugarEstimado}</span>}
                       {cots.length > 0 && <span className="text-gray-700 ml-1">· {cots.length} cot.</span>}
                     </p>
+                  </div>
+                  <div className="mt-1.5 max-w-[220px]">
+                    <EtapaInternaBar etapa={t.etapa} etapaInterna={t.etapaInterna} compact />
                   </div>
                 </div>
 
