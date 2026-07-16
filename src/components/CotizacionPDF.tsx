@@ -599,8 +599,8 @@ function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSeccio
     return m ? m[1].trim() : "General";
   }
 
-  // Merge own + external equipment — client sees one unified list
-  const todasEquipo = lineas.filter(l => (l.tipo === "EQUIPO_PROPIO" || l.tipo === "EQUIPO_EXTERNO") && !l.esIncluido);
+  // Merge own + external equipment + products — client sees one unified list, grouped by category
+  const todasEquipo = lineas.filter(l => (l.tipo === "EQUIPO_PROPIO" || l.tipo === "EQUIPO_EXTERNO" || l.tipo === "PAQUETE") && !l.esIncluido);
   const incluidas   = lineas.filter(l => l.tipo === "EQUIPO_PROPIO" && l.esIncluido);
 
   if (todasEquipo.length + incluidas.length === 0) return null;
@@ -686,48 +686,6 @@ function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSeccio
         </>
       )}
 
-    </View>
-  );
-}
-
-// Productos: sección propia con detalle de cantidad, días y subtotal
-function TablaPaquetes({ lineas }: { lineas: Linea[] }) {
-  const paquetes = lineas.filter(l => l.tipo === "PAQUETE");
-  if (paquetes.length === 0) return null;
-  const subtotal = paquetes.reduce((s, l) => s + l.subtotal, 0);
-  return (
-    <View>
-      <View style={s.seccionTitulo}>
-        <View style={s.seccionLinea} />
-        <Text style={s.seccionNombre}>Productos</Text>
-      </View>
-      <View style={s.tablaHeader}>
-        <Text style={[s.tablaHeaderTexto, { flex: 3 }]}>DESCRIPCIÓN</Text>
-        <Text style={[s.tablaHeaderTexto, { flex: 1, textAlign: "center" }]}>CANT</Text>
-        <Text style={[s.tablaHeaderTexto, { flex: 1, textAlign: "center" }]}>DÍAS</Text>
-        <Text style={[s.tablaHeaderTexto, { flex: 1.2, textAlign: "right" }]}>P/U</Text>
-        <Text style={[s.tablaHeaderTexto, { flex: 1.2, textAlign: "right" }]}>SUBTOTAL</Text>
-      </View>
-      {paquetes.map((l, i) => (
-        <View key={l.id} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5, paddingHorizontal: 40, borderBottom: "1 solid #eeebe6", backgroundColor: i % 2 === 0 ? "#FDFCFA" : "#FFFFFF" }}>
-          <View style={{ flex: 3 }}>
-            <Text style={{ fontSize: 9, color: BLACK }}>{l.descripcion}</Text>
-            {getItemNota(l.notas) ? (
-              <Text style={{ fontSize: 7, color: GRAY, fontFamily: "Helvetica-Oblique", marginTop: 1.5 }}>
-                {getItemNota(l.notas)}
-              </Text>
-            ) : null}
-          </View>
-          <Text style={{ fontSize: 9, color: GRAY, flex: 1, textAlign: "center" }}>{l.cantidad}</Text>
-          <Text style={{ fontSize: 9, color: GRAY, flex: 1, textAlign: "center" }}>{l.dias}</Text>
-          <Text style={{ fontSize: 9, color: GRAY, flex: 1.2, textAlign: "right" }}>{fmtMXN(l.precioUnitario)}</Text>
-          <Text style={{ fontSize: 9, color: BLACK, fontFamily: "Helvetica-Bold", flex: 1.2, textAlign: "right" }}>{fmtMXN(l.subtotal)}</Text>
-        </View>
-      ))}
-      <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5, paddingHorizontal: 40, backgroundColor: "#F5F2ED" }}>
-        <Text style={{ fontSize: 8, color: GRAY, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.5 }}>Subtotal productos</Text>
-        <Text style={{ fontSize: 9, color: BLACK, fontFamily: "Helvetica-Bold" }}>{fmtMXN(subtotal)}</Text>
-      </View>
     </View>
   );
 }
@@ -871,8 +829,9 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
 
   const tieneDescuento = c.montoDescuento > 0;
 
-  // External equipment subtotal (merged into the equipment table, still needs its own totals line)
+  // External equipment + products subtotals (both merged into the equipment table & its totals line)
   const subtotalExternos = c.lineas.filter(l => l.tipo === "EQUIPO_EXTERNO").reduce((s, l) => s + l.subtotal, 0);
+  const subtotalPaquetes = c.lineas.filter(l => l.tipo === "PAQUETE").reduce((s, l) => s + l.subtotal, 0);
 
   // Build individual discount rows
   type DiscRow = { label: string; monto: number; gold?: boolean };
@@ -995,9 +954,6 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
         {/* ── EQUIPOS ── */}
         <TablaEquipos lineas={c.lineas} notasSecciones={c.notasSecciones ? JSON.parse(c.notasSecciones) : {}} />
 
-        {/* ── PAQUETES ARMADOS ── */}
-        <TablaPaquetes lineas={c.lineas} />
-
         {/* ── CONCEPTOS ADICIONALES (OTRO) ── */}
         <TablaAdicionales lineas={c.lineas} />
 
@@ -1013,16 +969,10 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
         {/* ── TOTALES ── */}
         <View style={s.totalesBloque}>
           <View style={s.totalesTabla}>
-            {(c.subtotalEquiposBruto + subtotalExternos) > 0 && (
+            {(c.subtotalEquiposBruto + subtotalExternos + subtotalPaquetes) > 0 && (
               <View style={s.totalFila}>
                 <Text style={s.totalFilaDes}>Equipo de audio, iluminación y video</Text>
-                <Text style={s.totalFilaMonto}>{fmtMXN(c.subtotalEquiposBruto + subtotalExternos)}</Text>
-              </View>
-            )}
-            {c.lineas.filter(l => l.tipo === "PAQUETE").reduce((sum, l) => sum + l.subtotal, 0) > 0 && (
-              <View style={s.totalFila}>
-                <Text style={s.totalFilaDes}>Productos</Text>
-                <Text style={s.totalFilaMonto}>{fmtMXN(c.lineas.filter(l => l.tipo === "PAQUETE").reduce((sum, l) => sum + l.subtotal, 0))}</Text>
+                <Text style={s.totalFilaMonto}>{fmtMXN(c.subtotalEquiposBruto + subtotalExternos + subtotalPaquetes)}</Text>
               </View>
             )}
             {discRows.map((r, i) => (
