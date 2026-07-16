@@ -71,25 +71,26 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     return null;
   }
 
-  // Los paquetes (PAQUETE) no tienen equipo asociado; su ícono es la primera
-  // imagen del paquete, referenciado por paqueteId dentro de notasInternas.
-  function getPaqueteId(notasInternas: string | null): string | null {
+  // Las líneas PAQUETE no tienen equipo asociado; representan un producto
+  // armado del catálogo. Su ícono es la imagen del producto, referenciado por
+  // su id dentro de notasInternas (guardado bajo la clave "paqueteId").
+  function getProductoId(notasInternas: string | null): string | null {
     if (!notasInternas) return null;
     try { return (JSON.parse(notasInternas).paqueteId as string) || null; } catch { return null; }
   }
-  const paqueteIds = [...new Set(
+  const productoIds = [...new Set(
     cotizacion.lineas
       .filter(l => l.tipo === "PAQUETE")
-      .map(l => getPaqueteId(l.notasInternas))
+      .map(l => getProductoId(l.notasInternas))
       .filter((id): id is string => Boolean(id))
   )];
-  const paqueteImgMap = new Map<string, string | null>();
-  if (paqueteIds.length > 0) {
-    const paquetes = await prisma.paquete.findMany({
-      where: { id: { in: paqueteIds } },
-      select: { id: true, imagenes: { orderBy: { orden: "asc" }, take: 1, select: { url: true } } },
+  const productoImgMap = new Map<string, string | null>();
+  if (productoIds.length > 0) {
+    const productos = await prisma.producto.findMany({
+      where: { id: { in: productoIds } },
+      select: { id: true, imagenUrl: true },
     });
-    for (const p of paquetes) paqueteImgMap.set(p.id, p.imagenes[0]?.url ?? null);
+    for (const p of productos) productoImgMap.set(p.id, p.imagenUrl ?? null);
   }
 
   const cotizacionWithImgs = {
@@ -99,7 +100,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     lineas: await Promise.all(cotizacion.lineas.map(async l => ({
       ...l,
       imagenUrl: await resolveImg(
-        l.tipo === "PAQUETE" ? paqueteImgMap.get(getPaqueteId(l.notasInternas) ?? "") : l.equipo?.imagenUrl
+        l.tipo === "PAQUETE" ? productoImgMap.get(getProductoId(l.notasInternas) ?? "") : l.equipo?.imagenUrl
       ),
     }))),
   };
