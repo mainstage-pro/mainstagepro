@@ -1170,6 +1170,9 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                       const clave = `${grupo.nombre}::${marca.marcaModelo}`;
                       const abierta = marcasExpandidas.has(clave);
                       const elegidos = marca.items.filter((p) => productosSel.some((s) => s.id === p.id)).length;
+                      // Miniatura del equipo dominante: usamos la imagen del primer producto
+                      // del grupo que tenga una (por defecto es la del equipo dominante).
+                      const miniatura = marca.items.find((p) => p.imagenUrl)?.imagenUrl ?? null;
                       return (
                         <div key={clave} className="rounded-xl border border-[#1e1e1e] bg-[#0a0a0a] overflow-hidden">
                           <button
@@ -1177,7 +1180,15 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                             onClick={() => toggleMarca(clave)}
                             className="flex items-center gap-2 w-full text-left px-2.5 py-2 hover:bg-[#111]"
                           >
-                            <span className={`text-gray-500 text-[10px] transition-transform ${abierta ? "rotate-90" : ""}`}>▶</span>
+                            <span className={`text-gray-500 text-[10px] transition-transform shrink-0 ${abierta ? "rotate-90" : ""}`}>▶</span>
+                            <span className="w-9 h-9 rounded-lg bg-[#1a1a1a] overflow-hidden shrink-0 flex items-center justify-center">
+                              {miniatura ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={miniatura} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-gray-700 text-sm">📦</span>
+                              )}
+                            </span>
                             <span className="text-white text-xs font-semibold leading-tight flex-1 min-w-0 truncate">
                               {marca.marcaModelo}
                             </span>
