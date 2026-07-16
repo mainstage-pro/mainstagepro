@@ -628,11 +628,13 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
   const lineasEquipo = cot.lineas.filter((l) => l.tipo === "EQUIPO_PROPIO");
   const lineasExterno = cot.lineas.filter((l) => l.tipo === "EQUIPO_EXTERNO");
+  const lineasPaquete = cot.lineas.filter((l) => l.tipo === "PAQUETE");
   const lineasOp = cot.lineas.filter((l) => l.tipo === "OPERACION_TECNICA" || l.tipo === "DJ");
   const lineasLog = cot.lineas.filter((l) => ["TRANSPORTE", "COMIDA", "HOSPEDAJE"].includes(l.tipo));
   const lineasOcasional = cot.lineas.filter((l) => l.tipo === "OTRO");
 
   const subtotalEquipo = lineasEquipo.reduce((s, l) => s + l.subtotal, 0);
+  const subtotalPaquete = lineasPaquete.reduce((s, l) => s + l.subtotal, 0);
   const subtotalExterno = lineasExterno.reduce((s, l) => s + l.subtotal, 0);
   const subtotalOp = lineasOp.reduce((s, l) => s + l.subtotal, 0);
   const subtotalLog = lineasLog.reduce((s, l) => s + l.subtotal, 0);
@@ -1315,6 +1317,29 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                   </>
                 );
               })()}
+            </div>
+          )}
+
+          {/* Paquetes armados */}
+          {lineasPaquete.length > 0 && (
+            <div className="ms-table-wrapper">
+              <div className="px-4 pt-4 pb-2">
+                <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">📦 Paquetes armados</h3>
+              </div>
+              {lineasPaquete.map((l) => (
+                <div key={l.id} className="flex justify-between items-start px-4 py-2 border-t border-[#1a1a1a] text-sm">
+                  <div>
+                    <span className="text-white">{l.descripcion}</span>
+                    <span className="text-gray-500 text-xs ml-2">×{l.cantidad} · {l.dias}d · {formatCurrency(l.precioUnitario)}</span>
+                    <NoteField linea={l} />
+                  </div>
+                  <span className="text-white font-medium shrink-0 w-24 text-right">{formatCurrency(l.subtotal)}</span>
+                </div>
+              ))}
+              <div className="flex justify-between items-center px-4 py-3 border-t border-[#333] bg-[#0d0d0d]">
+                <span className="text-xs text-gray-400 font-semibold uppercase">Subtotal paquetes</span>
+                <span className="text-white font-bold">{formatCurrency(subtotalPaquete)}</span>
+              </div>
             </div>
           )}
 

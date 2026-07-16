@@ -690,6 +690,48 @@ function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSeccio
   );
 }
 
+// Paquetes armados: sección propia con detalle de cantidad, días y subtotal
+function TablaPaquetes({ lineas }: { lineas: Linea[] }) {
+  const paquetes = lineas.filter(l => l.tipo === "PAQUETE");
+  if (paquetes.length === 0) return null;
+  const subtotal = paquetes.reduce((s, l) => s + l.subtotal, 0);
+  return (
+    <View>
+      <View style={s.seccionTitulo}>
+        <View style={s.seccionLinea} />
+        <Text style={s.seccionNombre}>Paquetes armados</Text>
+      </View>
+      <View style={s.tablaHeader}>
+        <Text style={[s.tablaHeaderTexto, { flex: 3 }]}>DESCRIPCIÓN</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1, textAlign: "center" }]}>CANT</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1, textAlign: "center" }]}>DÍAS</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1.2, textAlign: "right" }]}>P/U</Text>
+        <Text style={[s.tablaHeaderTexto, { flex: 1.2, textAlign: "right" }]}>SUBTOTAL</Text>
+      </View>
+      {paquetes.map((l, i) => (
+        <View key={l.id} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5, paddingHorizontal: 40, borderBottom: "1 solid #eeebe6", backgroundColor: i % 2 === 0 ? "#FDFCFA" : "#FFFFFF" }}>
+          <View style={{ flex: 3 }}>
+            <Text style={{ fontSize: 9, color: BLACK }}>{l.descripcion}</Text>
+            {getItemNota(l.notas) ? (
+              <Text style={{ fontSize: 7, color: GRAY, fontFamily: "Helvetica-Oblique", marginTop: 1.5 }}>
+                {getItemNota(l.notas)}
+              </Text>
+            ) : null}
+          </View>
+          <Text style={{ fontSize: 9, color: GRAY, flex: 1, textAlign: "center" }}>{l.cantidad}</Text>
+          <Text style={{ fontSize: 9, color: GRAY, flex: 1, textAlign: "center" }}>{l.dias}</Text>
+          <Text style={{ fontSize: 9, color: GRAY, flex: 1.2, textAlign: "right" }}>{fmtMXN(l.precioUnitario)}</Text>
+          <Text style={{ fontSize: 9, color: BLACK, fontFamily: "Helvetica-Bold", flex: 1.2, textAlign: "right" }}>{fmtMXN(l.subtotal)}</Text>
+        </View>
+      ))}
+      <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5, paddingHorizontal: 40, backgroundColor: "#F5F2ED" }}>
+        <Text style={{ fontSize: 8, color: GRAY, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.5 }}>Subtotal paquetes</Text>
+        <Text style={{ fontSize: 9, color: BLACK, fontFamily: "Helvetica-Bold" }}>{fmtMXN(subtotal)}</Text>
+      </View>
+    </View>
+  );
+}
+
 // Operación técnica: solo subtotal global (sin detallar quiénes ni cuántos técnicos)
 function SubtotalOperacion({ lineas, incluirChofer }: { lineas: Linea[]; incluirChofer?: boolean }) {
   const opLineas = lineas.filter(l => l.tipo === "OPERACION_TECNICA");
@@ -953,6 +995,9 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
         {/* ── EQUIPOS ── */}
         <TablaEquipos lineas={c.lineas} notasSecciones={c.notasSecciones ? JSON.parse(c.notasSecciones) : {}} />
 
+        {/* ── PAQUETES ARMADOS ── */}
+        <TablaPaquetes lineas={c.lineas} />
+
         {/* ── CONCEPTOS ADICIONALES (OTRO) ── */}
         <TablaAdicionales lineas={c.lineas} />
 
@@ -972,6 +1017,12 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
               <View style={s.totalFila}>
                 <Text style={s.totalFilaDes}>Equipo de audio, iluminación y video</Text>
                 <Text style={s.totalFilaMonto}>{fmtMXN(c.subtotalEquiposBruto + subtotalExternos)}</Text>
+              </View>
+            )}
+            {c.lineas.filter(l => l.tipo === "PAQUETE").reduce((sum, l) => sum + l.subtotal, 0) > 0 && (
+              <View style={s.totalFila}>
+                <Text style={s.totalFilaDes}>Paquetes armados</Text>
+                <Text style={s.totalFilaMonto}>{fmtMXN(c.lineas.filter(l => l.tipo === "PAQUETE").reduce((sum, l) => sum + l.subtotal, 0))}</Text>
               </View>
             )}
             {discRows.map((r, i) => (
