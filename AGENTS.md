@@ -5,5 +5,6 @@ This version has breaking changes — APIs, conventions, and file structure may 
 <!-- END:nextjs-agent-rules -->
 
 # Deployments
-- Para desplegar en Vercel, usa siempre el comando `npx vercel` sin el flag `--prod`. De esta forma los cambios se subirán a una URL de preview y no afectarán a producción.
-- Cuando necesites subir algo a producción, debes crear un Pull Request en GitHub. Yo lo revisaré y aprobaré, y al hacer merge se desplegará automáticamente.
+- El deploy a producción se hace con **push directo a `main`** (Vercel tiene integración Git y auto-despliega). No hace falta abrir Pull Request.
+- **Regla obligatoria antes de cualquier push a `main`:** correr `npm run build` y confirmar que compila en verde. Especialmente si el cambio toca `prisma/schema.prisma` o migraciones lazy — ese patrón ya causó dos caídas totales de producción.
+- Para una URL de preview sin afectar producción, usa `npx vercel` sin el flag `--prod`.
