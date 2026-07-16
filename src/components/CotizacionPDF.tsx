@@ -690,7 +690,7 @@ function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSeccio
   );
 }
 
-// Paquetes armados: sección propia con detalle de cantidad, días y subtotal
+// Productos: sección propia con detalle de cantidad, días y subtotal
 function TablaPaquetes({ lineas }: { lineas: Linea[] }) {
   const paquetes = lineas.filter(l => l.tipo === "PAQUETE");
   if (paquetes.length === 0) return null;
@@ -699,7 +699,7 @@ function TablaPaquetes({ lineas }: { lineas: Linea[] }) {
     <View>
       <View style={s.seccionTitulo}>
         <View style={s.seccionLinea} />
-        <Text style={s.seccionNombre}>Paquetes armados</Text>
+        <Text style={s.seccionNombre}>Productos</Text>
       </View>
       <View style={s.tablaHeader}>
         <Text style={[s.tablaHeaderTexto, { flex: 3 }]}>DESCRIPCIÓN</Text>
@@ -725,7 +725,7 @@ function TablaPaquetes({ lineas }: { lineas: Linea[] }) {
         </View>
       ))}
       <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 5, paddingHorizontal: 40, backgroundColor: "#F5F2ED" }}>
-        <Text style={{ fontSize: 8, color: GRAY, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.5 }}>Subtotal paquetes</Text>
+        <Text style={{ fontSize: 8, color: GRAY, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.5 }}>Subtotal productos</Text>
         <Text style={{ fontSize: 9, color: BLACK, fontFamily: "Helvetica-Bold" }}>{fmtMXN(subtotal)}</Text>
       </View>
     </View>
@@ -1021,7 +1021,7 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
             )}
             {c.lineas.filter(l => l.tipo === "PAQUETE").reduce((sum, l) => sum + l.subtotal, 0) > 0 && (
               <View style={s.totalFila}>
-                <Text style={s.totalFilaDes}>Paquetes armados</Text>
+                <Text style={s.totalFilaDes}>Productos</Text>
                 <Text style={s.totalFilaMonto}>{fmtMXN(c.lineas.filter(l => l.tipo === "PAQUETE").reduce((sum, l) => sum + l.subtotal, 0))}</Text>
               </View>
             )}

@@ -1320,11 +1320,11 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
             </div>
           )}
 
-          {/* Paquetes armados */}
+          {/* Productos */}
           {lineasPaquete.length > 0 && (
             <div className="ms-table-wrapper">
               <div className="px-4 pt-4 pb-2">
-                <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">📦 Paquetes armados</h3>
+                <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Productos</h3>
               </div>
               {lineasPaquete.map((l) => (
                 <div key={l.id} className="flex justify-between items-start px-4 py-2 border-t border-[#1a1a1a] text-sm">
@@ -1337,7 +1337,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                 </div>
               ))}
               <div className="flex justify-between items-center px-4 py-3 border-t border-[#333] bg-[#0d0d0d]">
-                <span className="text-xs text-gray-400 font-semibold uppercase">Subtotal paquetes</span>
+                <span className="text-xs text-gray-400 font-semibold uppercase">Subtotal productos</span>
                 <span className="text-white font-bold">{formatCurrency(subtotalPaquete)}</span>
               </div>
             </div>
