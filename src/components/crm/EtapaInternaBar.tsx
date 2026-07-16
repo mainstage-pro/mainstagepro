@@ -33,12 +33,12 @@ export function EtapaInternaBar({
 
   return (
     <div className="w-full">
-      <div className="flex items-center gap-0.5">
+      <div className="flex items-center gap-1">
         {pasos.map((p, i) => (
           <span
             key={p.key}
             title={p.label}
-            className={`h-1 flex-1 rounded-full transition-colors ${i <= index ? accent.on : accent.off}`}
+            className={`h-1.5 flex-1 rounded-full transition-colors ${i <= index ? accent.on : accent.off}`}
           />
         ))}
       </div>

@@ -12,6 +12,7 @@ import { SkeletonPage } from "@/components/Skeleton";
 import { useCelebration } from "@/components/CelebrationToast";
 import { Combobox } from "@/components/Combobox";
 import { BackButton } from "@/components/BackButton";
+import { EtapaInternaBar, EtapaInternaSelect } from "@/components/crm/EtapaInternaBar";
 import { SEGUIMIENTO_TIPOS, SEGUIMIENTO_TIPO_LABELS, getWaMensajePrimerContacto } from '@/lib/seguimientoTypes';
 import { SelectorEquiposInventario, type SeleccionEquipos } from '@/components/SelectorEquiposInventario';
 import DiscoveryForm from '@/components/crm/DiscoveryForm';
@@ -37,6 +38,7 @@ interface TratoArchivo {
 interface Trato {
   id: string;
   etapa: string;
+  etapaInterna: string | null;
   estatusContacto: string;
   tipoEvento: string;
   tipoLead: string;
@@ -1724,9 +1726,16 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     setSaving(true);
     const d = await patch({ etapa });
     if (d) {
-      setTrato(prev => prev ? { ...prev, etapa: d.trato.etapa, etapaCambiadaEn: d.trato.etapaCambiadaEn ?? null } : prev);
+      setTrato(prev => prev ? { ...prev, etapa: d.trato.etapa, etapaInterna: d.trato.etapaInterna ?? null, etapaCambiadaEn: d.trato.etapaCambiadaEn ?? null } : prev);
       if (etapa === "VENTA_CERRADA") celebrate("venta");
     }
+    setSaving(false);
+  }
+
+  async function cambiarEtapaInterna(etapaInterna: string) {
+    setSaving(true);
+    const d = await patch({ etapaInterna: etapaInterna || null });
+    if (d) setTrato(prev => prev ? { ...prev, etapaInterna: d.trato.etapaInterna ?? null } : prev);
     setSaving(false);
   }
 
@@ -2003,6 +2012,18 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           >
             + Otro trato
           </Link>
+        </div>
+        <div className="flex items-center gap-3 pt-3 mt-3 border-t border-[#1a1a1a] flex-wrap">
+          <span className="text-[10px] text-gray-600 uppercase tracking-wider shrink-0">Sub-etapa:</span>
+          <div className="flex-1 min-w-[160px]">
+            <EtapaInternaBar etapa={trato.etapa} etapaInterna={trato.etapaInterna} showLabel={false} />
+          </div>
+          <EtapaInternaSelect
+            etapa={trato.etapa}
+            etapaInterna={trato.etapaInterna}
+            onChange={cambiarEtapaInterna}
+            className="!bg-[#1a1a1a] !border !border-[#2a2a2a] rounded-lg px-3 py-1.5 disabled:opacity-40"
+          />
         </div>
       </div>
 

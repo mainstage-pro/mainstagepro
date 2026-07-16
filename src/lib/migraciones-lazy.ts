@@ -85,6 +85,24 @@ export async function ensureProcesoVentaColumns() {
       );
     } catch { /* ya existe */ }
   }
+  // Backfill: los tratos que ya existían nacen con etapaInterna null (barra vacía).
+  // Les inferimos una sub-etapa razonable según su etapa y señales reales del trato.
+  // Solo toca filas null → idempotente (tras la primera corrida actualiza 0 filas).
+  try {
+    await prisma.$executeRawUnsafe(`
+      UPDATE tratos SET "etapaInterna" = CASE
+        WHEN etapa = 'LEAD' AND "formEstado" = 'COMPLETADO'          THEN 'LISTO_DESCUBRIMIENTO'
+        WHEN etapa = 'LEAD'                                          THEN 'SIN_CONTACTAR'
+        WHEN etapa = 'DESCUBRIMIENTO' AND "descubrimientoCompleto"   THEN 'DESCUBRIMIENTO_COMPLETO'
+        WHEN etapa = 'DESCUBRIMIENTO'                                THEN 'MODALIDAD_DEFINIDA'
+        WHEN etapa = 'OPORTUNIDAD'                                   THEN 'COTIZACION_ENVIADA'
+        WHEN etapa = 'VENTA_CERRADA'                                 THEN 'CONFIRMACION_VERBAL'
+        WHEN etapa = 'VENTA_PERDIDA'                                 THEN 'MOTIVO_REGISTRADO'
+        ELSE "etapaInterna"
+      END
+      WHERE "etapaInterna" IS NULL
+    `);
+  } catch { /* backfill best-effort */ }
   _procesoVentaReady = true;
 }
 

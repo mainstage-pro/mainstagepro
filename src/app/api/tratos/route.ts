@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { cotejarOCrearCliente } from "@/lib/cotejo-cliente";
 import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
+import { defaultEtapaInterna } from "@/lib/etapasInternas";
 
 // Mapeo momento de contratación → etapa por defecto del pipeline (el vendedor puede sobreescribir).
 const MOMENTO_ETAPA: Record<string, string> = {
@@ -151,6 +152,7 @@ export async function POST(request: NextRequest) {
         vendedorOrigenId: body.vendedorOrigenId || null,
         estatusContacto: "PENDIENTE",
         etapa: trato_etapa,
+        etapaInterna: defaultEtapaInterna(trato_etapa),
         clasificacion: body.clasificacion || "PROSPECTO",
         tipoServicio: body.tipoServicio || null,
         tipoProspecto: body.tipoProspecto || "ACTIVO",
