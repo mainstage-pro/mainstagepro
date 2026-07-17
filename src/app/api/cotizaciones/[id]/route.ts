@@ -6,6 +6,7 @@ import { guardarVersion } from "@/lib/versiones";
 import { generarTokenPresentacion } from "@/lib/presentacion-token";
 import { syncFechaProximaAccion } from "@/app/api/seguimientos/route";
 import { defaultEtapaInterna } from "@/lib/etapasInternas";
+import { sincronizarProyectoDesdeCotizacion } from "@/lib/sync-cotizacion-proyecto";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -262,6 +263,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         }
       }
       // ─────────────────────────────────────────────────────────────────────────
+
+      // ── Sync automático: propagar equipos y operación técnica al proyecto ──
+      // Nunca borra datos manuales; marca lo removido con necesitaRevision.
+      if (prev?.proyecto?.id) {
+        await sincronizarProyectoDesdeCotizacion(id);
+      }
 
       await logActividad(session.id, "EDITAR", "cotizacion", id, `Cotización editada: ${nombreEvento ?? id}`);
       await guardarVersion(session.id, "cotizacion", id, { nombreEvento, granTotal, lineas: lineas.length });

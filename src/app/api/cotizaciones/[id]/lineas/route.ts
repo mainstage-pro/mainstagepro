@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { sincronizarProyectoDesdeCotizacion } from "@/lib/sync-cotizacion-proyecto";
 
 /**
  * POST /api/cotizaciones/[id]/lineas
@@ -74,6 +75,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     where: { id },
     select: { granTotal: true },
   });
+
+  // Propagar la línea nueva al proyecto ligado (equipos / operación técnica).
+  await sincronizarProyectoDesdeCotizacion(id);
 
   return NextResponse.json({ linea, granTotal: cotActualizada?.granTotal });
 }

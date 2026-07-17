@@ -40,6 +40,7 @@ interface Personal {
   confirmToken: string | null; confirmRespuesta: string | null;
   rolEnEvento: string | null;
   esAdicional: boolean;
+  necesitaRevision: boolean;
   tecnico: { id: string; nombre: string; celular: string | null; rol: { nombre: string } | null } | null;
   rolTecnico: { nombre: string } | null;
 }
@@ -55,7 +56,7 @@ interface GastoOp { id: string; tipo: string; concepto: string; monto: number; c
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string; empresa?: string | null } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null }
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null }
 interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number }
-interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: { nombre: string }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; riderAccesorios: RiderAccesorio[] }
+interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; necesitaRevision: boolean; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: { nombre: string }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; riderAccesorios: RiderAccesorio[] }
 interface CronoRow { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string; dia?: string }
 interface TransporteSlot { vehiculoId: string; choferId: string; horaSalida: string; comentarios: string }
 interface Proyecto {
@@ -535,7 +536,10 @@ function EquipoRow({ eq, proyectoId, fichaCompleta, fichaTooltip, onToggleConfir
         />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-white text-sm font-medium truncate">{eq.equipo.descripcion}</p>
+        <div className="flex items-center gap-2">
+          <p className="text-white text-sm font-medium truncate">{eq.equipo.descripcion}</p>
+          {eq.necesitaRevision && <span className="shrink-0 px-1.5 py-0.5 rounded border border-amber-700/50 bg-amber-900/20 text-amber-300 text-[10px] font-medium" title="Este equipo se quitó o cambió en la cotización — revísalo (no se borró automáticamente)">Revisar</span>}
+        </div>
         <p className="text-gray-500 text-xs">{eq.equipo.categoria.nombre}{eq.equipo.marca ? ` · ${eq.equipo.marca}` : ""}</p>
         {eq.proveedor && <p className="text-[#B3985B] text-xs">{eq.proveedor.empresa || eq.proveedor.nombre}</p>}
       </div>
@@ -5019,6 +5023,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               <span className="text-gray-500 text-sm">Pendiente de asignar</span>
                               {p.nivel && <span className={`text-xs font-semibold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
                               <span className={`px-1.5 py-0.5 rounded border text-[10px] font-medium ${badge.cls}`}>{badge.label}</span>
+                              {p.necesitaRevision && <span className="px-1.5 py-0.5 rounded border border-amber-700/50 bg-amber-900/20 text-amber-300 text-[10px] font-medium" title="Este rol se quitó o cambió en la cotización — revísalo (no se borró automáticamente)">Revisar</span>}
                               <button onClick={() => { setAsignandoId(p.id); setSelAsignar(""); setCrearParaSlotId(null); }} className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-2 py-0.5 rounded transition-colors">Asignar</button>
                             </div>
                           )
@@ -5063,6 +5068,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               {p.nivel && <span className={`text-xs font-semibold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
                               <span className={`px-1.5 py-0.5 rounded border text-[10px] font-medium ${badge.cls}`}>{badge.label}</span>
                               {p.esAdicional && <span className="px-1.5 py-0.5 rounded border border-fuchsia-800/40 bg-fuchsia-900/20 text-fuchsia-300 text-[10px] font-medium" title="Agregado fuera de lo cotizado — solo visible internamente">Adicional</span>}
+                              {p.necesitaRevision && <span className="px-1.5 py-0.5 rounded border border-amber-700/50 bg-amber-900/20 text-amber-300 text-[10px] font-medium" title="Este rol se quitó o cambió en la cotización — revísalo (no se borró automáticamente)">Revisar</span>}
                             </div>
                           )
                         )}

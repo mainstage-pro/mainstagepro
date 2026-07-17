@@ -156,6 +156,37 @@ export async function ensureMultidiaColumns() {
 }
 
 /**
+ * Migraciones lazy de la sincronización cotización → proyecto (patrón Neon).
+ * - proyecto_equipos.necesitaRevision: el equipo se quitó/redujo en la cotización
+ *   pero tiene datos manuales (proveedor, notas, rider) — no se borra, se marca.
+ * - proyecto_personal.necesitaRevision: el rol de operación técnica se quitó de la
+ *   cotización pero el slot puede tener técnico asignado — no se borra, se marca.
+ * Ambas declaradas en schema.prisma → Prisma las pide en cualquier findMany sin
+ * select, por eso DEBEN existir antes de cualquier lectura (corre al arranque).
+ * Idempotente y seguro de correr múltiples veces.
+ */
+let _syncReady = false;
+
+export async function ensureSyncColumns() {
+  if (_syncReady) return;
+  if (!await columnExists('proyecto_equipos', 'necesitaRevision')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE proyecto_equipos ADD COLUMN IF NOT EXISTS "necesitaRevision" BOOLEAN NOT NULL DEFAULT false`
+      );
+    } catch { /* ya existe */ }
+  }
+  if (!await columnExists('proyecto_personal', 'necesitaRevision')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE proyecto_personal ADD COLUMN IF NOT EXISTS "necesitaRevision" BOOLEAN NOT NULL DEFAULT false`
+      );
+    } catch { /* ya existe */ }
+  }
+  _syncReady = true;
+}
+
+/**
  * Migraciones lazy de finanzas (patrón Neon: ADD COLUMN IF NOT EXISTS).
  * - cuentas_pagar.categoriaId: liga la CxP con una categoría financiera (FK opcional).
  *   El dashboard lee CuentaPagar con findMany sin select, así que esta columna DEBE

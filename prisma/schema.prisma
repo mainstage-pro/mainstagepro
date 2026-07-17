@@ -687,6 +687,7 @@ model ProyectoPersonal {
   notas           String?
   rolEnEvento     String?  // Rol específico en este evento (ej: Operador de audio, Iluminación)
   esAdicional     Boolean  @default(false) // Técnico agregado fuera de lo cotizado (marcador interno; NO afecta PDFs)
+  necesitaRevision Boolean @default(false) // El rol se quitó de la cotización — revisar sin borrar (sync)
 
   @@map("proyecto_personal")
 }
@@ -707,6 +708,7 @@ model ProyectoEquipo {
   confirmDisponible Boolean? // Respuesta del proveedor sobre disponibilidad
   confirmToken     String?   @unique // Token para link de confirmación al proveedor
   notas            String?   // Comentarios / instrucciones de carga para este equipo
+  necesitaRevision Boolean   @default(false) // El equipo se quitó/redujo en la cotización — revisar sin borrar (sync)
   riderAccesorios  RiderAccesorio[]
 
   @@map("proyecto_equipos")
