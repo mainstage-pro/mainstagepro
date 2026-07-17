@@ -85,9 +85,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const trato = await prisma.trato.findUnique({
     where: { id: tratoId },
-    select: { etapaInterna: true },
+    select: { etapaInterna: true, cliente: { select: { telefono: true } } },
   });
-  if (!trato?.etapaInterna) return NextResponse.json({ subetapa: null, pasoActual: null, historial: [] });
+  if (!trato?.etapaInterna) return NextResponse.json({ subetapa: null, pasoActual: null, historial: [], telefono: null });
 
   const [subetapa, pasoActual, historial] = await Promise.all([
     prisma.procesoSubetapa.findUnique({
@@ -105,5 +105,5 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     }),
   ]);
 
-  return NextResponse.json({ subetapa, pasoActual, historial });
+  return NextResponse.json({ subetapa, pasoActual, historial, telefono: trato.cliente?.telefono ?? null });
 }

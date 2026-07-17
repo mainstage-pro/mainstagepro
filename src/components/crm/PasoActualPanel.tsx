@@ -46,6 +46,17 @@ function canalLabel(c: string) {
   return CANAL_LABELS[c as CanalSeguimiento] ?? c;
 }
 
+// Arma el link de WhatsApp con el teléfono del cliente y el mensaje (guion).
+// Sanitiza el número y antepone 52 si viene sin lada de país.
+function waLink(telefono: string | null | undefined, mensaje: string): string | null {
+  if (!telefono) return null;
+  let num = telefono.replace(/\D/g, "");
+  if (!num) return null;
+  if (num.length === 10) num = `52${num}`;
+  const texto = mensaje ? `?text=${encodeURIComponent(mensaje)}` : "";
+  return `https://wa.me/${num}${texto}`;
+}
+
 // Puntos de decisión donde el motor no avanza solo: el vendedor elige el destino.
 type Tono = "gold" | "green" | "red" | "amber" | "sky";
 type AvanzarOpcion = { label: string; hint?: string; body: Record<string, unknown>; tono: Tono };
@@ -179,6 +190,7 @@ export function PasoActualPanel({ tratoId, onTransicion }: { tratoId: string; on
   const [subetapa, setSubetapa] = useState<Subetapa | null>(null);
   const [pasoActual, setPasoActual] = useState<Seguimiento | null>(null);
   const [historial, setHistorial] = useState<Seguimiento[]>([]);
+  const [telefono, setTelefono] = useState<string | null>(null);
   const [guion, setGuion] = useState("");
   const [cargando, setCargando] = useState(true);
   const [verHistorial, setVerHistorial] = useState(false);
@@ -192,6 +204,7 @@ export function PasoActualPanel({ tratoId, onTransicion }: { tratoId: string; on
     setSubetapa(d.subetapa);
     setPasoActual(d.pasoActual);
     setHistorial(d.historial ?? []);
+    setTelefono(d.telefono ?? null);
     setGuion(d.pasoActual?.guionSnapshot ?? "");
     setCargando(false);
   }, [tratoId]);
@@ -269,6 +282,7 @@ export function PasoActualPanel({ tratoId, onTransicion }: { tratoId: string; on
         {pasoActual && (
           <PasoActivoBloque
             paso={pasoActual} guion={guion} setGuion={setGuion} onGuardarGuion={guardarGuion}
+            telefono={telefono}
             nota={nota} setNota={setNota} onHecho={marcarHecho} onReprogramar={reprogramar}
             busy={busy} total={subetapa.pasos.length}
           />
@@ -303,6 +317,7 @@ export function PasoActualPanel({ tratoId, onTransicion }: { tratoId: string; on
     <div className="space-y-3">
       <PasoActivoBloque
         paso={pasoActual} guion={guion} setGuion={setGuion} onGuardarGuion={guardarGuion}
+        telefono={telefono}
         nota={nota} setNota={setNota} onHecho={marcarHecho} onReprogramar={reprogramar}
         busy={busy} total={total}
       />
@@ -336,12 +351,13 @@ export function PasoActualPanel({ tratoId, onTransicion }: { tratoId: string; on
 }
 
 function PasoActivoBloque({
-  paso, guion, setGuion, onGuardarGuion, nota, setNota, onHecho, onReprogramar, busy, total,
+  paso, guion, setGuion, onGuardarGuion, telefono, nota, setNota, onHecho, onReprogramar, busy, total,
 }: {
   paso: Seguimiento;
   guion: string;
   setGuion: (v: string) => void;
   onGuardarGuion: () => void;
+  telefono: string | null;
   nota: string;
   setNota: (v: string) => void;
   onHecho: () => void;
@@ -350,6 +366,7 @@ function PasoActivoBloque({
   total: number;
 }) {
   const [copiado, setCopiado] = useState(false);
+  const wa = waLink(telefono, guion);
   return (
     <div className="rounded-lg border border-[#262626] bg-[#111111] p-3 space-y-2">
       <div className="flex items-center justify-between">
@@ -372,10 +389,19 @@ function PasoActivoBloque({
           rows={4}
           className="w-full bg-[#0a0a0a] border border-[#262626] rounded px-2 py-1.5 text-xs text-gray-200 resize-y focus:border-[#b3985b] outline-none"
         />
-        <button
-          onClick={() => { navigator.clipboard.writeText(guion); setCopiado(true); setTimeout(() => setCopiado(false), 1500); }}
-          className="absolute top-1.5 right-1.5 text-[10px] px-1.5 py-0.5 rounded bg-[#1a1a1a] text-gray-400 hover:text-[#b3985b]"
-        >{copiado ? "Copiado" : "Copiar"}</button>
+        <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
+          {wa && (
+            <a
+              href={wa} target="_blank" rel="noopener noreferrer"
+              title="Abrir WhatsApp con este mensaje"
+              className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/25 border border-green-800/40 text-green-400 hover:border-green-600"
+            >WhatsApp</a>
+          )}
+          <button
+            onClick={() => { navigator.clipboard.writeText(guion); setCopiado(true); setTimeout(() => setCopiado(false), 1500); }}
+            className="text-[10px] px-1.5 py-0.5 rounded bg-[#1a1a1a] text-gray-400 hover:text-[#b3985b]"
+          >{copiado ? "Copiado" : "Copiar"}</button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
