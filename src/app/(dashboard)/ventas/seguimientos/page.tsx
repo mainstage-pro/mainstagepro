@@ -16,6 +16,7 @@ type Seguimiento = {
   titulo: string;
   nota: string | null;
   notaResultado: string | null;
+  guionSnapshot: string | null;
   fechaProgramada: string;
   fechaCompletado: string | null;
   completado: boolean;
@@ -26,7 +27,7 @@ type Seguimiento = {
     fechaEventoEstimada: string | null;
     etapa: string;
     etapaInterna: string | null;
-    cliente: { nombre: string; empresa: string | null };
+    cliente: { nombre: string; empresa: string | null; telefono: string | null };
   };
 };
 
@@ -61,6 +62,17 @@ function fmtMes(iso: string): string {
 function mesKey(iso: string): string {
   const d = new Date(iso);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+// Arma el link de WhatsApp con el teléfono del cliente y el mensaje preestablecido.
+// Sanitiza el número (solo dígitos) y antepone 52 si viene sin lada de país.
+function waLink(telefono: string | null | undefined, mensaje: string): string | null {
+  if (!telefono) return null;
+  let num = telefono.replace(/\D/g, "");
+  if (!num) return null;
+  if (num.length === 10) num = `52${num}`;
+  const texto = mensaje ? `?text=${encodeURIComponent(mensaje)}` : "";
+  return `https://wa.me/${num}${texto}`;
 }
 
 function nextTuesdayOrThursday(): string {
@@ -364,7 +376,18 @@ function SeguimientoRow({ s, onComplete, onReprogramar, onDelete }: {
       </div>
 
       {/* Acciones hover */}
-      <div className="flex items-center gap-1 w-[116px] shrink-0 justify-end pr-3 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex items-center gap-1 w-[150px] shrink-0 justify-end pr-3 opacity-0 group-hover:opacity-100 transition-opacity">
+        {(() => {
+          const url = waLink(s.trato.cliente.telefono, s.guionSnapshot ?? s.nota ?? "");
+          if (!url) return null;
+          return (
+            <a href={url} target="_blank" rel="noopener noreferrer"
+              title="Abrir WhatsApp con el mensaje preestablecido"
+              className="text-[11px] px-2 py-1 rounded-md bg-green-900/20 border border-green-800/40 text-green-400 hover:border-green-600 transition-colors whitespace-nowrap">
+              WhatsApp
+            </a>
+          );
+        })()}
         {!s.completado && (
           <button onClick={() => setCompletando(true)}
             className="text-[10px] px-2 py-1 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] text-[#888] hover:text-green-400 hover:border-green-900/40 transition-colors whitespace-nowrap">
@@ -628,7 +651,7 @@ export default function SeguimientosPage() {
             <div className="hidden lg:block w-[120px] shrink-0 pr-3">F. seguimiento</div>
             <div className="hidden xl:block w-[95px] shrink-0 pr-3">F. evento</div>
             <div className="hidden md:block w-[90px] shrink-0 pr-3">Estado</div>
-            <div className="w-[116px] shrink-0" />
+            <div className="w-[150px] shrink-0" />
           </div>
 
           {/* Grupos por mes */}

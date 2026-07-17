@@ -40,6 +40,16 @@ interface Trato {
   preferenciaContacto: string | null;
   origenVenta: string | null;
   vendedorId: string | null;
+  // Respuestas del descubrimiento (las llena el cliente vía formulario)
+  fechaEventoEstimada: string | null;
+  lugarEstimado: string | null;
+  asistentesEstimados: number | null;
+  presupuestoEstimado: number | null;
+  serviciosInteres: string | null;
+  equiposInteres: string | null;
+  notas: string | null;
+  contactoDecisorNombre: string | null;
+  contactoDecisorCargo: string | null;
 }
 
 type NurturingData = {
@@ -563,7 +573,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
             </div>
 
             {/* El cliente completó su descubrimiento por su cuenta → retomar y cotizar */}
-            {trato.modoDescubrimiento === "CLIENTE" && trato.formEstado === "COMPLETADO" && (
+            {(trato.modoDescubrimiento === "FORMULARIO" || trato.modoDescubrimiento === "CLIENTE") && trato.formEstado === "COMPLETADO" && (
               <div className="p-3 rounded-xl border border-emerald-800/40 bg-emerald-900/15">
                 <p className="text-emerald-300 text-xs font-semibold mb-1">👤 El cliente completó su descubrimiento</p>
                 <p className="text-emerald-200/70 text-[11px] leading-relaxed">
@@ -603,70 +613,80 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
             ) : (
               <>
                 <p className="text-gray-500 text-sm leading-relaxed mb-2">
-                  El descubrimiento está completo. A continuación la guía rápida del proyecto para elaborar tu cotización.
+                  El descubrimiento está completo. Revisa lo que contestó el cliente y elabora tu cotización.
                 </p>
 
-                {/* Guía minimalista para el vendedor */}
-                <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4 mb-4">
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Tipo de Evento</p>
-                      <p className="text-white text-sm font-medium">{trato.tipoEvento || "—"}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Nombre del Proyecto</p>
-                      <p className="text-white text-sm font-medium">{trato.nombreEvento || "—"}</p>
-                    </div>
-                  </div>
-
-                  {(() => {
-                    let equipos = [];
+                {/* Respuestas del cliente: guía rápida para el vendedor */}
+                {(() => {
+                  const fmtFecha = (iso: string | null) =>
+                    iso ? new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" }) : null;
+                  const parseLista = (raw: string | null): string[] => {
+                    if (!raw) return [];
                     try {
-                      // Obtenemos los equipos directamente del campo de descubrimiento, o del brief
-                      const dbForm = (trato as any).brief ? JSON.parse((trato as any).brief) : {};
-                      if (dbForm.equiposInteres) {
-                        const parsed = typeof dbForm.equiposInteres === "string" ? JSON.parse(dbForm.equiposInteres) : dbForm.equiposInteres;
-                        equipos = parsed.categorias || [];
-                      }
-                    } catch (e) {}
+                      const p = JSON.parse(raw);
+                      if (Array.isArray(p)) return p as string[];
+                      if (p && Array.isArray(p.categorias)) return p.categorias as string[];
+                    } catch { /* no es JSON: intenta separado por comas */ }
+                    return raw.split(",").map(s => s.trim()).filter(Boolean);
+                  };
+                  const servicios = parseLista(trato.serviciosInteres);
+                  const categorias = parseLista(trato.equiposInteres);
+                  const decisor = [trato.contactoDecisorNombre, trato.contactoDecisorCargo].filter(Boolean).join(" · ");
+                  const datos = [
+                    { label: "Tipo de evento", val: trato.tipoEvento },
+                    { label: "Nombre del proyecto", val: trato.nombreEvento },
+                    { label: "Fecha del evento", val: fmtFecha(trato.fechaEventoEstimada) },
+                    { label: "Lugar", val: trato.lugarEstimado },
+                    { label: "Asistentes", val: trato.asistentesEstimados != null ? String(trato.asistentesEstimados) : null },
+                    { label: "Presupuesto estimado", val: trato.presupuestoEstimado != null ? `$${trato.presupuestoEstimado.toLocaleString("es-MX")}` : null },
+                    { label: "Quién decide", val: decisor || null },
+                    { label: "Prefiere contacto por", val: trato.preferenciaContacto },
+                  ].filter(d => d.val);
 
-                    if (equipos.length > 0) {
-                      return (
+                  return (
+                    <div className="bg-[#111] border border-[#1a1a1a] rounded-xl p-4 mb-4">
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        {datos.map(d => (
+                          <div key={d.label}>
+                            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">{d.label}</p>
+                            <p className="text-white text-sm font-medium">{d.val}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {servicios.length > 0 && (
                         <div className="mb-4">
-                          <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Categorías Seleccionadas</p>
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Servicios de interés</p>
                           <div className="flex flex-wrap gap-1.5">
-                            {equipos.map((cat: string) => (
-                              <span key={cat} className="px-2 py-1 bg-[#222] border border-[#333] text-gray-300 text-xs rounded-md">
-                                {cat}
-                              </span>
+                            {servicios.map(s => (
+                              <span key={s} className="px-2 py-1 bg-[#222] border border-[#333] text-gray-300 text-xs rounded-md">{s}</span>
                             ))}
                           </div>
                         </div>
-                      );
-                    }
-                    return null;
-                  })()}
+                      )}
 
-                  {(() => {
-                    let notasGenerales = "";
-                    try {
-                      const dbForm = (trato as any).brief ? JSON.parse((trato as any).brief) : {};
-                      notasGenerales = dbForm.notasEquipos || dbForm.notas || "";
-                    } catch (e) {}
+                      {categorias.length > 0 && (
+                        <div className="mb-4">
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Categorías seleccionadas</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {categorias.map(cat => (
+                              <span key={cat} className="px-2 py-1 bg-[#222] border border-[#333] text-gray-300 text-xs rounded-md">{cat}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-                    if (notasGenerales) {
-                      return (
+                      {trato.notas && (
                         <div>
-                          <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Notas / Equipo Manual</p>
+                          <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Notas del cliente</p>
                           <p className="text-gray-300 text-xs leading-relaxed whitespace-pre-wrap bg-[#080808] p-3 rounded-lg border border-[#1a1a1a]">
-                            {notasGenerales}
+                            {trato.notas}
                           </p>
                         </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <button
                   onClick={crearNuevaCotizacion}
