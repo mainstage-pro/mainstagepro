@@ -2788,18 +2788,35 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setSugerenciasLoading(null);
   }
 
+  // Extrae fecha (YYYY-MM-DD) y fase de la descripción de una línea de operación,
+  // p.ej. "Operador de Audio (Operación · 2026-07-24)" o "Montaje / Desmontaje (Montaje · 2026-07-23)".
+  // Así cada slot conserva su jornada real en vez de caer todos en el día 1 del evento.
+  function datosOperacionDeLinea(desc: string | null | undefined): { fechaJornada: string | null; participacion: string } {
+    const d = desc ?? "";
+    const mFecha = d.match(/·\s*(\d{4}-\d{2}-\d{2})/);
+    const mFase = d.match(/\(\s*(Montaje|Desmontaje|Operaci[óo]n)\b/i);
+    let participacion = "OPERACION";
+    if (mFase) {
+      const f = mFase[1].toLowerCase();
+      participacion = f.startsWith("montaje") ? "MONTAJE" : f.startsWith("desmontaje") ? "DESMONTAJE" : "OPERACION";
+    }
+    return { fechaJornada: mFecha ? mFecha[1] : null, participacion };
+  }
+
   // ── Agregar técnico sugerido a la operación (ya asignado según la línea cotizada) ──
   async function agregarTecnicoSugerido(
     tecnico: SugerenciaTecnico,
     linea: NonNullable<NonNullable<typeof proyecto>["cotizacion"]>["lineas"][0],
   ) {
     setAgregandoSugerido(tecnico.id);
+    const { fechaJornada, participacion } = datosOperacionDeLinea(linea.descripcion);
     const res = await fetch(`/api/proyectos/${id}/personal`, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         tecnicoId: tecnico.id,
         rolTecnicoId: linea.rolTecnicoId || null,
-        participacion: "OPERACION",
+        participacion,
+        fechaJornada,
         nivel: linea.nivel || tecnico.nivel || "A",
         jornada: linea.jornada || "MEDIA",
         tarifaAcordada: linea.precioUnitario > 0 ? linea.precioUnitario : null,
@@ -2827,6 +2844,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // ── Agregar slot(s) desde sugerencia de cotización ──
   async function agregarDesdeLinea(linea: NonNullable<NonNullable<typeof proyecto>["cotizacion"]>["lineas"][0]) {
     setAgregandoLinea(linea.id);
+    const { fechaJornada, participacion } = datosOperacionDeLinea(linea.descripcion);
     const slots: Personal[] = [];
     for (let i = 0; i < linea.cantidad; i++) {
       const res = await fetch(`/api/proyectos/${id}/personal`, {
@@ -2834,7 +2852,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         body: JSON.stringify({
           tecnicoId: null,
           rolTecnicoId: linea.rolTecnicoId || null,
-          participacion: "OPERACION",
+          participacion,
+          fechaJornada,
           nivel: linea.nivel || "A",
           jornada: linea.jornada || "MEDIA",
           tarifaAcordada: linea.precioUnitario > 0 ? linea.precioUnitario : null,

@@ -1,9 +1,11 @@
 import { neon } from "@neondatabase/serverless";
 import { readFileSync } from "fs";
 
-const env = readFileSync(".env", "utf-8");
+const ENV_FILE = process.env.ENV_FILE || ".env";
+const env = readFileSync(ENV_FILE, "utf-8");
 const match = env.match(/^DATABASE_URL="?([^"\n]+)"?/m);
 const sql = neon(match[1]);
+console.log(`BD: ${ENV_FILE} (host ${match[1].match(/@([^/.]+)/)[1]})`);
 
 // IDs exactos del evento Expo Supraterra (cliente Kathya Medina).
 const TRATO_ID = "cmqsj41st0001f64gfppsveum";
