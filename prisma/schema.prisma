@@ -1177,10 +1177,24 @@ model CuentaBancaria {
   @@map("cuentas_bancarias")
 }
 
+model TipoMovimiento {
+  id              String  @id @default(cuid())
+  clave           String  @unique // llave usada en MovimientoFinanciero.tipo / CategoriaFinanciera.tipo
+  nombre          String
+  naturaleza      String  @default("SALIDA") // ENTRADA (entra a caja) | SALIDA (sale de caja) | NEUTRO (entre cuentas)
+  afectaResultado Boolean @default(true) // cuenta en el estado de resultados (ingreso/gasto operativo)
+  color           String  @default("gray")
+  orden           Int     @default(0)
+  sistema         Boolean @default(false) // tipos base: no se pueden eliminar ni renombrar la clave
+  activo          Boolean @default(true)
+
+  @@map("tipos_movimiento")
+}
+
 model CategoriaFinanciera {
   id          String  @id @default(cuid())
   nombre      String
-  tipo        String // INGRESO | GASTO | TRANSFERENCIA | INVERSION | RETIRO
+  tipo        String // clave de TipoMovimiento (INGRESO | GASTO | TRANSFERENCIA | INVERSION | RETIRO | personalizados)
   orden       Int     @default(0)
   descripcion String?
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getTipoMovimientoMap, esIngresoResultado, esGastoResultado } from "@/lib/tipos-movimiento";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -26,6 +27,10 @@ export async function GET(req: NextRequest) {
     prisma.cuentaBancaria.findMany({ where: { activa: true }, select: { id: true, nombre: true, banco: true } }),
   ]);
 
+  const tipoMap = await getTipoMovimientoMap();
+  const esIng = (t: string) => esIngresoResultado(tipoMap, t);
+  const esGas = (t: string) => esGastoResultado(tipoMap, t);
+
   // ── Por mes ──────────────────────────────────────────────────────────────
   const porMes: Record<string, { mes: string; ingresos: number; egresos: number }> = {};
   for (let i = meses - 1; i >= 0; i--) {
@@ -36,30 +41,31 @@ export async function GET(req: NextRequest) {
   for (const m of movimientos) {
     const key = m.fecha.toISOString().slice(0, 7);
     if (!porMes[key]) continue;
-    if (m.tipo === "INGRESO") porMes[key].ingresos += m.monto;
-    else if (m.tipo === "GASTO") porMes[key].egresos += m.monto;
+    if (esIng(m.tipo)) porMes[key].ingresos += m.monto;
+    else if (esGas(m.tipo)) porMes[key].egresos += m.monto;
   }
 
   // ── Por categoría ────────────────────────────────────────────────────────
   const porCategoria: Record<string, { nombre: string; tipo: string; total: number; count: number }> = {};
   for (const m of movimientos) {
-    if (m.tipo !== "INGRESO" && m.tipo !== "GASTO") continue;
+    const ing = esIng(m.tipo);
+    if (!ing && !esGas(m.tipo)) continue;
     const key = m.categoriaId ?? "_sin_cat";
     const nombre = m.categoria?.nombre ?? "Sin categoría";
-    const tipo = m.tipo;
+    const tipo = ing ? "INGRESO" : "GASTO";
     if (!porCategoria[key]) porCategoria[key] = { nombre, tipo, total: 0, count: 0 };
     porCategoria[key].total += m.monto;
     porCategoria[key].count++;
   }
 
   // ── KPIs globales ────────────────────────────────────────────────────────
-  const totalIngresos = movimientos.filter(m => m.tipo === "INGRESO").reduce((s, m) => s + m.monto, 0);
-  const totalEgresos  = movimientos.filter(m => m.tipo === "GASTO").reduce((s, m) => s + m.monto, 0);
+  const totalIngresos = movimientos.filter(m => esIng(m.tipo)).reduce((s, m) => s + m.monto, 0);
+  const totalEgresos  = movimientos.filter(m => esGas(m.tipo)).reduce((s, m) => s + m.monto, 0);
 
   const mesActual = ahora.toISOString().slice(0, 7);
   const movMes = movimientos.filter(m => m.fecha.toISOString().slice(0, 7) === mesActual);
-  const ingresosMes = movMes.filter(m => m.tipo === "INGRESO").reduce((s, m) => s + m.monto, 0);
-  const egresosMes  = movMes.filter(m => m.tipo === "GASTO").reduce((s, m) => s + m.monto, 0);
+  const ingresosMes = movMes.filter(m => esIng(m.tipo)).reduce((s, m) => s + m.monto, 0);
+  const egresosMes  = movMes.filter(m => esGas(m.tipo)).reduce((s, m) => s + m.monto, 0);
 
   const cxcTotal = cxc.reduce((s, c) => s + (c.monto - c.montoCobrado), 0);
   const cxpTotal = cxp.reduce((s, c) => s + c.monto, 0);

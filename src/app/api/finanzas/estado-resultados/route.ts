@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getTipoMovimientoMap, esIngresoResultado, esGastoResultado } from "@/lib/tipos-movimiento";
 
 function groupByCategoria(movs: { categoria: { nombre: string } | null; monto: number }[]) {
   const map: Record<string, { nombre: string; total: number; count: number }> = {};
@@ -118,8 +119,9 @@ export async function GET(req: NextRequest) {
 
   // ── P&L Classification ──────────────────────────────────────────────────
 
-  const ingresosMovs    = movimientos.filter(m => m.tipo === "INGRESO");
-  const gastosMovs      = movimientos.filter(m => m.tipo === "GASTO");
+  const tipoMap = await getTipoMovimientoMap();
+  const ingresosMovs    = movimientos.filter(m => esIngresoResultado(tipoMap, m.tipo));
+  const gastosMovs      = movimientos.filter(m => esGastoResultado(tipoMap, m.tipo));
 
   const ingresos = ingresosMovs.reduce((s, m) => s + m.monto, 0);
 

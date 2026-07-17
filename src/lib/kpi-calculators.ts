@@ -1,4 +1,5 @@
 import { prisma } from './prisma'
+import { getClavesResultado } from './tipos-movimiento'
 
 interface KPIPeriodParams {
   mes?: number       // 1-12
@@ -28,9 +29,11 @@ function periodRange(params: KPIPeriodParams): { fechaInicio: Date; fechaFin: Da
 }
 
 async function sumMovimientos(tipo: 'INGRESO' | 'GASTO', fechaInicio: Date, fechaFin: Date): Promise<number> {
+  const claves = await getClavesResultado()
+  const enGrupo = tipo === 'INGRESO' ? claves.ingreso : claves.gasto
   const result = await prisma.movimientoFinanciero.aggregate({
     _sum: { monto: true },
-    where: { tipo, fecha: { gte: fechaInicio, lte: fechaFin } },
+    where: { tipo: { in: enGrupo }, fecha: { gte: fechaInicio, lte: fechaFin } },
   })
   return result._sum.monto ?? 0
 }

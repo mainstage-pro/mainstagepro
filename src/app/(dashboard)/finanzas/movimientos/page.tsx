@@ -6,8 +6,10 @@ import { formatCurrency } from "@/lib/cotizador";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { badgeClass } from "@/lib/tipo-colores";
 
 interface Categoria { id: string; nombre: string; tipo: string; }
+interface TipoMov { clave: string; nombre: string; naturaleza: string; afectaResultado: boolean; color: string; }
 interface Cuenta { id: string; nombre: string; banco: string | null; }
 interface Movimiento {
   id: string;
@@ -27,18 +29,6 @@ interface Movimiento {
   cuentaDestino: { id: string; nombre: string; banco: string | null } | null;
 }
 
-const TIPO_COLORS: Record<string, string> = {
-  INGRESO: "bg-green-900/40 text-green-300",
-  GASTO: "bg-red-900/40 text-red-300",
-  TRANSFERENCIA: "bg-blue-900/40 text-blue-300",
-  INVERSION: "bg-purple-900/40 text-purple-300",
-  RETIRO: "bg-orange-900/40 text-orange-300",
-};
-const TIPO_LABELS: Record<string, string> = {
-  INGRESO: "Ingreso", GASTO: "Gasto", TRANSFERENCIA: "Transferencia",
-  INVERSION: "Inversión", RETIRO: "Retiro",
-};
-
 function fmtDate(s: string) {
   const [y, m, d] = s.substring(0, 10).split("-").map(Number);
   return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
@@ -51,6 +41,7 @@ export default function MovimientosPage() {
   const confirm = useConfirm();
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [tipos, setTipos] = useState<TipoMov[]>([]);
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
   const [cuentaFiltro, setCuentaFiltro] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,12 +59,14 @@ export default function MovimientosPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [rc, rcu] = await Promise.all([
+      const [rc, rcu, rt] = await Promise.all([
         fetch("/api/categorias-financieras", { cache: "no-store" }).then(r => r.json()),
         fetch("/api/cuentas", { cache: "no-store" }).then(r => r.json()),
+        fetch("/api/tipos-movimiento", { cache: "no-store" }).then(r => r.json()),
       ]);
       setCategorias(rc.categorias ?? []);
       setCuentas(rcu.cuentas ?? []);
+      setTipos(rt.tipos ?? []);
       await loadMovimientos(null);
     } finally {
       setLoading(false);
@@ -102,10 +95,13 @@ export default function MovimientosPage() {
     setGuardando(true);
     try {
       const payload: Record<string, unknown> = { ...editForm, monto: parseFloat(editForm.monto) };
-      // Solo enviar los campos de cuenta relevantes según el tipo
-      if (editando.tipo === "GASTO" || editando.tipo === "RETIRO") {
+      // Solo enviar los campos de cuenta relevantes según la naturaleza del tipo
+      const nat = tipos.find(t => t.clave === editando.tipo)?.naturaleza
+        ?? (editando.tipo === "GASTO" || editando.tipo === "RETIRO" ? "SALIDA"
+            : editando.tipo === "TRANSFERENCIA" ? "NEUTRO" : "ENTRADA");
+      if (nat === "SALIDA") {
         delete payload.cuentaDestinoId;
-      } else if (editando.tipo === "INGRESO" || editando.tipo === "INVERSION") {
+      } else if (nat === "ENTRADA") {
         delete payload.cuentaOrigenId;
       }
       const res = await fetch(`/api/movimientos/${editando.id}`, {
@@ -134,20 +130,37 @@ export default function MovimientosPage() {
     }
   }
 
+  // Helpers de tipo — leen del catálogo dinámico con fallback al comportamiento base
+  const tipoMap = new Map(tipos.map(t => [t.clave, t]));
+  const tNombre = (clave: string) => tipoMap.get(clave)?.nombre ?? clave;
+  const tBadge = (clave: string) => badgeClass(tipoMap.get(clave)?.color ?? "gray");
+  const tNaturaleza = (clave: string): string => {
+    const t = tipoMap.get(clave);
+    if (t) return t.naturaleza;
+    if (clave === "GASTO" || clave === "RETIRO") return "SALIDA";
+    if (clave === "TRANSFERENCIA") return "NEUTRO";
+    return "ENTRADA";
+  };
+  const tAfectaResultado = (clave: string): boolean => {
+    const t = tipoMap.get(clave);
+    if (t) return t.afectaResultado;
+    return clave === "INGRESO" || clave === "GASTO";
+  };
+
   // Cuando hay filtro, la API ya devuelve solo los de esa cuenta (server-side)
   const movimientosFiltrados = movimientos;
 
   // Cuando hay filtro de cuenta: entradas/salidas por flujo real en esa cuenta (incluye transferencias)
-  // Sin filtro: visión general ingresos vs gastos del negocio
+  // Sin filtro: visión general ingresos vs gastos del negocio (solo tipos que afectan resultado)
   const ingresos = cuentaFiltro
     ? movimientosFiltrados.filter(m => m.cuentaDestino?.id === cuentaFiltro).reduce((s, m) => s + m.monto, 0)
-    : movimientosFiltrados.filter(m => m.tipo === "INGRESO").reduce((s, m) => s + m.monto, 0);
+    : movimientosFiltrados.filter(m => tNaturaleza(m.tipo) === "ENTRADA" && tAfectaResultado(m.tipo)).reduce((s, m) => s + m.monto, 0);
   const gastos = cuentaFiltro
     ? movimientosFiltrados.filter(m => m.cuentaOrigen?.id === cuentaFiltro).reduce((s, m) => s + m.monto, 0)
-    : movimientosFiltrados.filter(m => m.tipo === "GASTO").reduce((s, m) => s + m.monto, 0);
+    : movimientosFiltrados.filter(m => tNaturaleza(m.tipo) === "SALIDA" && tAfectaResultado(m.tipo)).reduce((s, m) => s + m.monto, 0);
 
   const categoriasFiltradas = categorias.filter(c =>
-    editando ? (editando.tipo === "INGRESO" ? c.tipo === "INGRESO" : c.tipo === "GASTO") : true
+    editando ? c.tipo === editando.tipo : true
   );
 
   return (
@@ -246,23 +259,23 @@ export default function MovimientosPage() {
                   </td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">{mov.categoria?.nombre ?? "—"}</td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">
-                    {mov.tipo === "TRANSFERENCIA" && mov.cuentaOrigen && mov.cuentaDestino
+                    {tNaturaleza(mov.tipo) === "NEUTRO" && mov.cuentaOrigen && mov.cuentaDestino
                       ? <span>{mov.cuentaOrigen.nombre} <span className="text-[#555]">→</span> {mov.cuentaDestino.nombre}</span>
                       : mov.cuentaDestino?.nombre ?? mov.cuentaOrigen?.nombre ?? "—"}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${TIPO_COLORS[mov.tipo] ?? "bg-gray-800 text-gray-400"}`}>
-                      {TIPO_LABELS[mov.tipo] ?? mov.tipo}
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${tBadge(mov.tipo)}`}>
+                      {tNombre(mov.tipo)}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-sm font-medium text-right whitespace-nowrap">
                     {(() => {
                       const esEntrada = cuentaFiltro
                         ? mov.cuentaDestino?.id === cuentaFiltro
-                        : mov.tipo === "INGRESO";
+                        : tNaturaleza(mov.tipo) === "ENTRADA";
                       const esSalida = cuentaFiltro
                         ? mov.cuentaOrigen?.id === cuentaFiltro
-                        : mov.tipo === "GASTO";
+                        : tNaturaleza(mov.tipo) === "SALIDA";
                       return (
                         <span className={esEntrada ? "text-green-400" : esSalida ? "text-red-400" : "text-white"}>
                           {esSalida ? "-" : "+"}{formatCurrency(mov.monto)}
@@ -303,8 +316,8 @@ export default function MovimientosPage() {
           <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl shadow-2xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-3">
-                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${TIPO_COLORS[detalle.tipo] ?? "bg-gray-800 text-gray-400"}`}>
-                  {TIPO_LABELS[detalle.tipo] ?? detalle.tipo}
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${tBadge(detalle.tipo)}`}>
+                  {tNombre(detalle.tipo)}
                 </span>
                 <span className="text-[#6b7280] text-xs">{fmtDate(detalle.fecha)}</span>
               </div>
@@ -316,14 +329,14 @@ export default function MovimientosPage() {
               cuentaFiltro
                 ? detalle.cuentaDestino?.id === cuentaFiltro ? "text-green-400"
                   : detalle.cuentaOrigen?.id === cuentaFiltro ? "text-red-400" : "text-white"
-                : detalle.tipo === "INGRESO" ? "text-green-400" : detalle.tipo === "GASTO" ? "text-red-400" : "text-white"
+                : tNaturaleza(detalle.tipo) === "ENTRADA" ? "text-green-400" : tNaturaleza(detalle.tipo) === "SALIDA" ? "text-red-400" : "text-white"
             }`}>
               {formatCurrency(detalle.monto)}
             </p>
 
             <div className="space-y-2 text-sm">
               {/* Cuenta origen / destino */}
-              {detalle.tipo === "TRANSFERENCIA" && detalle.cuentaOrigen && detalle.cuentaDestino ? (
+              {tNaturaleza(detalle.tipo) === "NEUTRO" && detalle.cuentaOrigen && detalle.cuentaDestino ? (
                 <div className="flex justify-between">
                   <span className="text-[#6b7280]">Cuenta</span>
                   <span className="text-white text-right">{detalle.cuentaOrigen.nombre} → {detalle.cuentaDestino.nombre}</span>
@@ -427,16 +440,16 @@ export default function MovimientosPage() {
                   className={inputCls}
                 />
               </div>
-              {/* Cuenta — solo para movimientos no-TRANSFERENCIA */}
-              {editando && editando.tipo !== "TRANSFERENCIA" && cuentas.length > 0 && (
+              {/* Cuenta — solo para movimientos no-transferencia (naturaleza NEUTRO) */}
+              {editando && tNaturaleza(editando.tipo) !== "NEUTRO" && cuentas.length > 0 && (
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">
-                    {editando.tipo === "INGRESO" || editando.tipo === "INVERSION" ? "Cuenta destino (ingresa a)" : "Cuenta origen (sale de)"}
+                    {tNaturaleza(editando.tipo) === "ENTRADA" ? "Cuenta destino (ingresa a)" : "Cuenta origen (sale de)"}
                   </label>
                   <Combobox
-                    value={editando.tipo === "INGRESO" || editando.tipo === "INVERSION" ? editForm.cuentaDestinoId : editForm.cuentaOrigenId}
+                    value={tNaturaleza(editando.tipo) === "ENTRADA" ? editForm.cuentaDestinoId : editForm.cuentaOrigenId}
                     onChange={v => {
-                      if (editando.tipo === "INGRESO" || editando.tipo === "INVERSION") {
+                      if (tNaturaleza(editando.tipo) === "ENTRADA") {
                         setEditForm(p => ({ ...p, cuentaDestinoId: v }));
                       } else {
                         setEditForm(p => ({ ...p, cuentaOrigenId: v }));

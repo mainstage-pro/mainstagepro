@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getTipoMovimientoMap, naturalezaDe } from "@/lib/tipos-movimiento";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -39,19 +40,22 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Para TRANSFERENCIA entre cuentas se envía cuentaId (origen) y cuentaDestinoId (destino)
-    // Para INGRESO: la plata entra → cuentaDestinoId = cuentaId
-    // Para GASTO: la plata sale → cuentaOrigenId = cuentaId
+    // La naturaleza del tipo determina el flujo de caja:
+    //   NEUTRO   → transferencia: cuentaId (origen) + cuentaDestinoId (destino)
+    //   SALIDA   → el dinero sale: cuentaOrigenId = cuentaId
+    //   ENTRADA  → el dinero entra: cuentaDestinoId = cuentaId
+    const tipoMap = await getTipoMovimientoMap();
+    const naturaleza = naturalezaDe(tipoMap, body.tipo);
+
     let cuentaOrigenId: string | null = null;
     let cuentaDestinoId: string | null = null;
 
-    if (body.tipo === "TRANSFERENCIA") {
+    if (naturaleza === "NEUTRO") {
       cuentaOrigenId = body.cuentaId || null;
       cuentaDestinoId = body.cuentaDestinoId || null;
-    } else if (body.tipo === "GASTO" || body.tipo === "RETIRO") {
+    } else if (naturaleza === "SALIDA") {
       cuentaOrigenId = body.cuentaId || null;
     } else {
-      // INGRESO, INVERSION u otro
       cuentaDestinoId = body.cuentaId || null;
     }
 

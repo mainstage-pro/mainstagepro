@@ -3,18 +3,14 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Combobox } from "@/components/Combobox";
+import { buttonClass } from "@/lib/tipo-colores";
 
 interface Cuenta { id: string; nombre: string; banco: string | null; }
 interface Categoria { id: string; nombre: string; tipo: string; }
 interface Proveedor { id: string; nombre: string; empresa: string | null; }
 interface Cliente { id: string; nombre: string; empresa: string | null; }
 interface Proyecto { id: string; nombre: string; numeroProyecto: string; estado: string; }
-
-const TIPO_OPTIONS = [
-  { value: "INGRESO", label: "Ingreso", color: "green" },
-  { value: "GASTO", label: "Gasto", color: "red" },
-  { value: "ENTRE_CUENTAS", label: "Entre cuentas", color: "blue" },
-];
+interface TipoMov { clave: string; nombre: string; naturaleza: string; color: string; }
 
 const METODO_PAGO_OPTIONS = [
   { value: "TRANSFERENCIA", label: "Transferencia" },
@@ -29,6 +25,7 @@ const labelCls = "block text-xs text-gray-400 mb-1";
 
 export default function NuevoMovimientoPage() {
   const router = useRouter();
+  const [tipos, setTipos] = useState<TipoMov[]>([]);
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [proveedores, setProveedores] = useState<Proveedor[]>([]);
@@ -41,7 +38,7 @@ export default function NuevoMovimientoPage() {
 
   const [form, setForm] = useState({
     fecha: today,
-    tipo: "INGRESO",
+    tipo: "",
     cuentaId: "",
     cuentaDestinoId: "",
     concepto: "",
@@ -57,12 +54,16 @@ export default function NuevoMovimientoPage() {
 
   useEffect(() => {
     Promise.all([
+      fetch("/api/tipos-movimiento?activos=true").then(r => r.json()),
       fetch("/api/cuentas").then(r => r.json()),
       fetch("/api/categorias-financieras").then(r => r.json()),
       fetch("/api/proveedores").then(r => r.json()),
       fetch("/api/clientes").then(r => r.json()),
       fetch("/api/proyectos").then(r => r.json()),
-    ]).then(([c, cat, p, cl, pr]) => {
+    ]).then(([t, c, cat, p, cl, pr]) => {
+      const ts: TipoMov[] = t.tipos ?? [];
+      setTipos(ts);
+      setForm(f => ({ ...f, tipo: f.tipo || ts[0]?.clave || "" }));
       setCuentas(c.cuentas ?? []);
       setCategorias(cat.categorias ?? []);
       setProveedores(p.proveedores ?? []);
@@ -71,19 +72,20 @@ export default function NuevoMovimientoPage() {
     });
   }, []);
 
-  const categoriasFiltradas = categorias.filter(c => {
-    if (form.tipo === "INGRESO") return c.tipo === "INGRESO";
-    if (form.tipo === "GASTO") return c.tipo === "GASTO";
-    return true;
-  });
+  const tipoActual = tipos.find(t => t.clave === form.tipo);
+  const naturaleza = tipoActual?.naturaleza ?? "ENTRADA";
+  const esNeutro = naturaleza === "NEUTRO";
+  const esEntrada = naturaleza === "ENTRADA";
+
+  const categoriasFiltradas = categorias.filter(c => c.tipo === form.tipo);
+
+  function seleccionarTipo(clave: string) {
+    setForm(prev => ({ ...prev, tipo: clave, categoriaId: "", clienteId: "", proveedorId: "", proyectoId: "", cuentaDestinoId: "" }));
+  }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
     const { name, value } = e.target;
-    setForm(prev => ({
-      ...prev,
-      [name]: value,
-      ...(name === "tipo" ? { categoriaId: "", clienteId: "", proveedorId: "", proyectoId: "" } : {}),
-    }));
+    setForm(prev => ({ ...prev, [name]: value }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -91,22 +93,18 @@ export default function NuevoMovimientoPage() {
     setLoading(true);
     setError("");
 
+    if (!form.tipo) { setError("Selecciona un tipo de movimiento"); setLoading(false); return; }
     if (!form.cuentaId) { setError("Selecciona una cuenta"); setLoading(false); return; }
     if (!form.concepto.trim()) { setError("El concepto es requerido"); setLoading(false); return; }
     if (!form.monto || parseFloat(form.monto) <= 0) { setError("Ingresa un monto válido"); setLoading(false); return; }
-    if (form.tipo === "ENTRE_CUENTAS" && !form.cuentaDestinoId) { setError("Selecciona la cuenta destino"); setLoading(false); return; }
-    if (form.tipo === "ENTRE_CUENTAS" && form.cuentaId === form.cuentaDestinoId) { setError("La cuenta origen y destino no pueden ser la misma"); setLoading(false); return; }
-
-    const payload = {
-      ...form,
-      tipo: form.tipo === "ENTRE_CUENTAS" ? "TRANSFERENCIA" : form.tipo,
-    };
+    if (esNeutro && !form.cuentaDestinoId) { setError("Selecciona la cuenta destino"); setLoading(false); return; }
+    if (esNeutro && form.cuentaId === form.cuentaDestinoId) { setError("La cuenta origen y destino no pueden ser la misma"); setLoading(false); return; }
 
     try {
       const res = await fetch("/api/movimientos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(form),
       });
       if (!res.ok) {
         const d = await res.json();
@@ -121,35 +119,31 @@ export default function NuevoMovimientoPage() {
     }
   }
 
-  const tipoColor = form.tipo === "INGRESO" ? "text-green-400" : form.tipo === "GASTO" ? "text-red-400" : "text-blue-400";
+  const montoColor = esEntrada ? "text-green-400" : esNeutro ? "text-blue-400" : "text-red-400";
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
       <div className="mb-6">
         <h1 className="ms-h1">Registrar Movimiento</h1>
-        <p className="text-gray-400 text-sm mt-1">Ingreso, gasto o movimiento entre cuentas</p>
+        <p className="text-gray-400 text-sm mt-1">Ingreso, gasto, transferencia u otro tipo de movimiento</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Tipo */}
         <div className="ms-card p-5">
           <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Tipo de movimiento</h2>
-          <div className="flex gap-3">
-            {TIPO_OPTIONS.map(o => (
-              <button key={o.value} type="button"
-                onClick={() => setForm(prev => ({ ...prev, tipo: o.value, categoriaId: "", clienteId: "", proveedorId: "", proyectoId: "" }))}
-                className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors border ${
-                  form.tipo === o.value
-                    ? o.color === "green" ? "bg-green-900/40 border-green-600 text-green-400"
-                    : o.color === "red" ? "bg-red-900/40 border-red-600 text-red-400"
-                    : "bg-blue-900/40 border-blue-600 text-blue-400"
-                    : "bg-[#1a1a1a] border-[#333] text-gray-400 hover:text-white"
+          <div className="flex flex-wrap gap-2">
+            {tipos.map(o => (
+              <button key={o.clave} type="button"
+                onClick={() => seleccionarTipo(o.clave)}
+                className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors border ${
+                  form.tipo === o.clave ? buttonClass(o.color) : "bg-[#1a1a1a] border-[#333] text-gray-400 hover:text-white"
                 }`}>
-                {o.label}
+                {o.nombre}
               </button>
             ))}
           </div>
-          {form.tipo === "ENTRE_CUENTAS" && (
+          {esNeutro && (
             <p className="text-xs text-blue-400/70 mt-3">Registra un movimiento interno entre tus cuentas. No afecta ingresos ni gastos.</p>
           )}
         </div>
@@ -165,7 +159,7 @@ export default function NuevoMovimientoPage() {
               </div>
               <div>
                 <label className={labelCls}>
-                  Monto <span className={tipoColor}>({form.tipo === "ENTRE_CUENTAS" ? "transferencia" : form.tipo.toLowerCase()})</span>
+                  Monto <span className={montoColor}>({tipoActual?.nombre.toLowerCase() ?? ""})</span>
                 </label>
                 <input name="monto" type="number" value={form.monto} onChange={handleChange}
                   className={inputCls} placeholder="0.00" min="0" step="0.01" />
@@ -180,11 +174,11 @@ export default function NuevoMovimientoPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className={labelCls}>{form.tipo === "ENTRE_CUENTAS" ? "Cuenta origen" : "Cuenta"}</label>
+                <label className={labelCls}>{esNeutro ? "Cuenta origen" : "Cuenta"}</label>
                 <Combobox value={form.cuentaId} onChange={v => setForm(p => ({ ...p, cuentaId: v }))}
                   options={[{ value: "", label: "— Selecciona —" }, ...cuentas.map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]} />
               </div>
-              {form.tipo === "ENTRE_CUENTAS" && (
+              {esNeutro && (
                 <div>
                   <label className={labelCls}>Cuenta destino</label>
                   <Combobox value={form.cuentaDestinoId} onChange={v => setForm(p => ({ ...p, cuentaDestinoId: v }))}
@@ -193,7 +187,7 @@ export default function NuevoMovimientoPage() {
               )}
             </div>
 
-            {form.tipo !== "ENTRE_CUENTAS" && (
+            {!esNeutro && (
               <div>
                 <label className={labelCls}>Categoría</label>
                 <Combobox value={form.categoriaId} onChange={v => setForm(p => ({ ...p, categoriaId: v }))}
@@ -203,22 +197,19 @@ export default function NuevoMovimientoPage() {
           </div>
         </div>
 
-        {/* Información adicional — condicional por tipo */}
-        {form.tipo !== "ENTRE_CUENTAS" && (
+        {/* Información adicional — condicional por naturaleza */}
+        {!esNeutro && (
           <div className="ms-card p-5">
             <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Información adicional</h2>
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* INGRESO → cliente */}
-                {form.tipo === "INGRESO" && (
+                {esEntrada ? (
                   <div>
                     <label className={labelCls}>Cliente (opcional)</label>
                     <Combobox value={form.clienteId} onChange={v => setForm(p => ({ ...p, clienteId: v }))}
                       options={[{ value: "", label: "— Sin cliente —" }, ...clientes.map(c => ({ value: c.id, label: c.nombre + (c.empresa ? ` · ${c.empresa}` : "") }))]} />
                   </div>
-                )}
-                {/* GASTO → proveedor */}
-                {form.tipo === "GASTO" && (
+                ) : (
                   <div>
                     <label className={labelCls}>Proveedor (opcional)</label>
                     <Combobox value={form.proveedorId} onChange={v => setForm(p => ({ ...p, proveedorId: v }))}
@@ -232,11 +223,16 @@ export default function NuevoMovimientoPage() {
                 </div>
               </div>
 
-              {/* Proyecto */}
               <div>
                 <label className={labelCls}>Proyecto (opcional)</label>
                 <Combobox value={form.proyectoId} onChange={v => setForm(p => ({ ...p, proyectoId: v }))}
                   options={[{ value: "", label: "— Sin proyecto —" }, ...proyectos.map(p => ({ value: p.id, label: `${p.numeroProyecto} · ${p.nombre}` }))]} />
+              </div>
+
+              <div>
+                <label className={labelCls}>Método de pago</label>
+                <Combobox value={form.metodoPago} onChange={v => setForm(p => ({ ...p, metodoPago: v }))}
+                  options={METODO_PAGO_OPTIONS} />
               </div>
 
               <div>
@@ -249,8 +245,8 @@ export default function NuevoMovimientoPage() {
           </div>
         )}
 
-        {/* ENTRE_CUENTAS — solo notas y referencia */}
-        {form.tipo === "ENTRE_CUENTAS" && (
+        {/* NEUTRO — solo notas y referencia */}
+        {esNeutro && (
           <div className="ms-card p-5">
             <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Información adicional</h2>
             <div className="space-y-3">

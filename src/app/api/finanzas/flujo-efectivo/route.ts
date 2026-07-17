@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getTipoMovimientoMap, esIngresoResultado, esGastoResultado, esTransferencia } from "@/lib/tipos-movimiento";
 
 function groupByCategoria(
   movs: { categoria: { nombre: string; tipo: string } | null; monto: number }[]
@@ -129,17 +130,19 @@ export async function GET(req: NextRequest) {
     }),
   ]);
 
-  // ── Clasificar movimientos ───────────────────────────────────────────────
-  const ingresoMovs   = movimientos.filter(m => m.tipo === "INGRESO");
-  const gastoMovs     = movimientos.filter(m => m.tipo === "GASTO");
-  const transMovs     = movimientos.filter(m => m.tipo === "TRANSFERENCIA");
-  const inversionMovs = movimientos.filter(m => m.tipo === "INVERSION");
-  const retiroMovs    = movimientos.filter(m => m.tipo === "RETIRO");
+  // ── Clasificar movimientos según el catálogo de tipos ────────────────────
+  const tipoMap = await getTipoMovimientoMap();
+  const ingresoMovs = movimientos.filter(m => esIngresoResultado(tipoMap, m.tipo));
+  const gastoMovs   = movimientos.filter(m => esGastoResultado(tipoMap, m.tipo));
+  const transMovs   = movimientos.filter(m => esTransferencia(tipoMap, m.tipo));
+  // Otras operaciones: no cuentan en resultado y no son transferencias (INVERSION, RETIRO y tipos personalizados)
+  const otrasMovs   = movimientos.filter(m =>
+    !esIngresoResultado(tipoMap, m.tipo) && !esGastoResultado(tipoMap, m.tipo) && !esTransferencia(tipoMap, m.tipo)
+  );
 
   const totalIngresos  = ingresoMovs.reduce((s, m) => s + m.monto, 0);
   const totalGastos    = gastoMovs.reduce((s, m) => s + m.monto, 0);
-  const totalInvRetiro = inversionMovs.reduce((s, m) => s + m.monto, 0)
-                       + retiroMovs.reduce((s, m) => s + m.monto, 0);
+  const totalInvRetiro = otrasMovs.reduce((s, m) => s + m.monto, 0);
 
   // Orphaned totals (abonos sin conciliar — fallback)
   const orphanIngresos = abonosOrfanos.reduce((s, a) => s + a.monto, 0);
@@ -220,7 +223,7 @@ export async function GET(req: NextRequest) {
 
     otrasOperaciones: {
       total:   totalInvRetiro,
-      detalle: [...inversionMovs, ...retiroMovs].map(m => ({
+      detalle: otrasMovs.map(m => ({
         tipo: m.tipo, concepto: m.concepto, monto: m.monto, fecha: m.fecha,
         categoria: m.categoria?.nombre ?? "—",
       })),
