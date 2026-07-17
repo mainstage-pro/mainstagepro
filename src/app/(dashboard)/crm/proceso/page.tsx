@@ -62,11 +62,22 @@ async function api(url: string, method: string, body?: unknown) {
 
 const GOLD = "#C9A84C";
 
+// Color de acento por etapa (consistente con EtapaInternaBar).
+const ETAPA_COLOR: Record<EtapaTrato, string> = {
+  CONTACTO_INICIAL: "#8b8bd6",
+  PROSPECCION: "#a78bfa",
+  DESCUBRIMIENTO: "#60a5fa",
+  OPORTUNIDAD: "#eab308",
+  VENTA_CERRADA: "#34d399",
+  VENTA_PERDIDA: "#f87171",
+};
+
 export default function ProcesoPage() {
   const [subetapas, setSubetapas] = useState<Subetapa[]>([]);
   const [reglas, setReglas] = useState<Regla[]>([]);
   const [conteo, setConteo] = useState<Record<string, number>>({});
   const [abierta, setAbierta] = useState<Record<string, boolean>>({ PROSPECCION: true });
+  const [modo, setModo] = useState<"vista" | "editar">("vista");
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -146,6 +157,10 @@ export default function ProcesoPage() {
   if (cargando) return <div className="p-6 text-[#888]">Cargando proceso…</div>;
   if (error) return <div className="p-6 text-red-400">{error}</div>;
 
+  const expandirTodo = () =>
+    setAbierta(Object.fromEntries(ETAPAS.map((e) => [e, true])));
+  const colapsarTodo = () => setAbierta({});
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-[#f0f0f0] p-4 md:p-6 space-y-6">
       {/* Encabezado */}
@@ -153,22 +168,106 @@ export default function ProcesoPage() {
         <div>
           <h1 className="text-2xl font-semibold" style={{ color: GOLD }}>Proceso comercial</h1>
           <p className="text-sm text-[#888] mt-1">
-            El estándar editable que el motor usa para generar cada seguimiento.
+            {modo === "vista"
+              ? "Vista para presentar el proceso con el equipo, etapa por etapa."
+              : "El estándar editable que el motor usa para generar cada seguimiento."}
           </p>
         </div>
-        <div className="flex gap-4 text-sm">
+        <div className="flex flex-wrap items-center gap-4 text-sm">
           <span className="text-[#888]">Subetapas activas: <b className="text-[#f0f0f0]">{totalSubetapas}</b></span>
           <span className="text-[#888]">Pasos activos: <b className="text-[#f0f0f0]">{totalPasos}</b></span>
+          <div className="flex items-center rounded-lg border border-[#262626] overflow-hidden">
+            <button
+              onClick={() => setModo("vista")}
+              className={`px-3 py-1.5 text-sm transition ${modo === "vista" ? "text-black" : "text-[#888] hover:text-[#f0f0f0]"}`}
+              style={modo === "vista" ? { background: GOLD } : undefined}
+            >Vista</button>
+            <button
+              onClick={() => setModo("editar")}
+              className={`px-3 py-1.5 text-sm transition ${modo === "editar" ? "text-black" : "text-[#888] hover:text-[#f0f0f0]"}`}
+              style={modo === "editar" ? { background: GOLD } : undefined}
+            >Editar</button>
+          </div>
         </div>
       </header>
 
-      {/* Aviso permanente */}
+      {/* Vista de solo lectura para presentar */}
+      {modo === "vista" && (
+        <>
+          <div className="flex items-center gap-3 text-xs">
+            <button onClick={expandirTodo} className="text-[#b3985b] hover:underline">Desplegar todo</button>
+            <span className="text-[#333]">·</span>
+            <button onClick={colapsarTodo} className="text-[#b3985b] hover:underline">Colapsar todo</button>
+          </div>
+
+          {ETAPAS.map((etapa) => {
+            const subs = subetapas
+              .filter((s) => s.etapa === etapa && s.activa)
+              .sort((a, b) => a.orden - b.orden);
+            if (subs.length === 0) return null;
+            const color = ETAPA_COLOR[etapa];
+            const abiertaEtapa = abierta[etapa];
+            const nPasos = subs.reduce((n, s) => n + s.pasos.filter((p) => p.activo).length, 0);
+            return (
+              <section key={etapa} className="rounded-xl border border-[#262626] bg-[#111111] overflow-hidden">
+                <button
+                  onClick={() => setAbierta((p) => ({ ...p, [etapa]: !p[etapa] }))}
+                  className="w-full flex items-center justify-between px-4 py-4 hover:bg-[#1a1a1a] transition"
+                  style={{ borderLeft: `4px solid ${color}` }}
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+                    <span className="text-lg font-semibold">{ETAPA_LABELS[etapa as EtapaTrato]}</span>
+                  </span>
+                  <span className="text-[#666] text-sm">
+                    {subs.length} subetapa(s) · {nPasos} paso(s) <span className="text-[#888] ml-1">{abiertaEtapa ? "−" : "+"}</span>
+                  </span>
+                </button>
+
+                {abiertaEtapa && (
+                  <div className="px-4 pb-5 pt-1 space-y-6">
+                    {subs.map((sub) => (
+                      <VistaSubetapa key={sub.id} sub={sub} conteo={conteo[sub.etapaInterna] ?? 0} color={color} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
+
+          {/* Reglas en solo lectura */}
+          <section className="rounded-xl border border-[#262626] bg-[#111111] p-5 space-y-4">
+            <h2 className="font-semibold text-lg" style={{ color: GOLD }}>Reglas del proceso</h2>
+            {CATEGORIAS_REGLA.map((cat) => {
+              const rs = reglas.filter((r) => r.categoria === cat && r.activa).sort((a, b) => a.orden - b.orden);
+              if (rs.length === 0) return null;
+              return (
+                <div key={cat} className="space-y-2">
+                  <h3 className="text-sm font-medium text-[#aaa]">{CATEGORIA_REGLA_LABELS[cat]}</h3>
+                  <ol className="space-y-1.5">
+                    {rs.map((r) => (
+                      <li key={r.id} className="flex items-start gap-3 text-sm">
+                        <span className="text-[#555] mt-0.5">{r.orden}.</span>
+                        <span className="flex-1 whitespace-pre-wrap leading-relaxed text-[#ddd]">{r.texto}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              );
+            })}
+          </section>
+        </>
+      )}
+
+      {/* Aviso permanente (modo editar) */}
+      {modo === "editar" && (
       <div className="rounded-lg border border-[#262626] bg-[#111111] px-4 py-3 text-xs text-[#b3985b]">
         Editar un guion no modifica los seguimientos ya generados. El texto se congela al momento de generarse; solo aplica a los nuevos.
       </div>
+      )}
 
-      {/* Acordeón por etapa */}
-      {ETAPAS.map((etapa) => {
+      {/* Acordeón por etapa (modo editar) */}
+      {modo === "editar" && ETAPAS.map((etapa) => {
         const subs = subetapas
           .filter((s) => s.etapa === etapa)
           .sort((a, b) => a.orden - b.orden);
@@ -204,7 +303,8 @@ export default function ProcesoPage() {
         );
       })}
 
-      {/* Panel de reglas */}
+      {/* Panel de reglas (modo editar) */}
+      {modo === "editar" && (
       <section className="rounded-xl border border-[#262626] bg-[#111111] p-4 space-y-4">
         <h2 className="font-medium" style={{ color: GOLD }}>Reglas del proceso</h2>
         {CATEGORIAS_REGLA.map((cat) => (
@@ -230,6 +330,82 @@ export default function ProcesoPage() {
           </div>
         ))}
       </section>
+      )}
+    </div>
+  );
+}
+
+// ─── VistaSubetapa (solo lectura, para presentar) ─────────────────────────────
+function VistaSubetapa({ sub, conteo, color }: { sub: Subetapa; conteo: number; color: string }) {
+  const pasos = sub.pasos.filter((p) => p.activo).sort((a, b) => a.orden - b.orden);
+  return (
+    <div className="rounded-lg border border-[#262626] bg-[#0a0a0a] overflow-hidden">
+      <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-[#262626]">
+        <span className="font-semibold">{sub.nombre}</span>
+        <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#1a1a1a] text-[#888] border border-[#262626]">
+          {ETAPA_INTERNA_LABELS[sub.etapaInterna as keyof typeof ETAPA_INTERNA_LABELS] ?? sub.etapaInterna}
+        </span>
+        <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "#1a1a1a", color: GOLD }}>
+          {conteo} trato(s)
+        </span>
+        {!sub.generacionAutomatica && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#1a1a1a] text-[#888] border border-[#262626]">
+            Elección manual
+          </span>
+        )}
+        {sub.descripcion && <p className="w-full text-sm text-[#888] mt-1 whitespace-pre-wrap leading-relaxed">{sub.descripcion}</p>}
+      </div>
+
+      {pasos.length === 0 ? (
+        <p className="px-4 py-3 text-sm text-[#666]">Sin pasos definidos.</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-[#666] text-left border-b border-[#1a1a1a]">
+              <th className="px-4 py-2 font-normal w-16">Día</th>
+              <th className="px-4 py-2 font-normal w-48">Título</th>
+              <th className="px-4 py-2 font-normal">Objetivo y guion</th>
+              <th className="px-4 py-2 font-normal w-40">Canal / avance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pasos.map((p) => (
+              <tr key={p.id} className="border-b border-[#1a1a1a] last:border-0 align-top">
+                <td className="px-4 py-3">
+                  <span className="inline-flex items-center justify-center h-7 min-w-7 px-1.5 rounded-full text-xs font-semibold text-black" style={{ background: color }}>
+                    {p.dia}
+                  </span>
+                  {p.diaUrgente != null && (
+                    <div className="text-[11px] text-[#f87171] mt-1">urg: {p.diaUrgente}</div>
+                  )}
+                </td>
+                <td className="px-4 py-3 font-medium text-[#f0f0f0] whitespace-pre-wrap leading-relaxed">{p.titulo}</td>
+                <td className="px-4 py-3 space-y-1.5">
+                  {p.objetivo && <div className="text-[#aaa] whitespace-pre-wrap leading-relaxed">{p.objetivo}</div>}
+                  {p.guion && (
+                    <div className="rounded border border-[#1a1a1a] bg-[#111111] px-3 py-2 text-[#ddd] whitespace-pre-wrap leading-relaxed">
+                      {p.guion}
+                    </div>
+                  )}
+                </td>
+                <td className="px-4 py-3 space-y-1.5">
+                  <span className="inline-block text-xs px-2 py-0.5 rounded bg-[#1a1a1a] border border-[#262626] text-[#ccc]">
+                    {CANAL_LABELS[p.canal as keyof typeof CANAL_LABELS] ?? p.canal}
+                  </span>
+                  {p.herramienta && (
+                    <div className="text-xs text-[#888]">Herramienta: <span className="text-[#ccc]">{p.herramienta}</span></div>
+                  )}
+                  {p.avanzaSubetapaA && (
+                    <div className="text-xs text-[#888]">
+                      Avanza a: <span className="text-[#ccc]">{ETAPA_INTERNA_LABELS[p.avanzaSubetapaA as keyof typeof ETAPA_INTERNA_LABELS] ?? p.avanzaSubetapaA}</span>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
