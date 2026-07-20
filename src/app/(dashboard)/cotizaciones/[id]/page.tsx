@@ -1102,6 +1102,21 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
         </Link>
       )}
 
+      {/* Banner trato vinculado */}
+      {cot.trato && (
+        <Link href={`/crm/tratos/${cot.trato.id}`}
+          className="flex items-center justify-between bg-[#B3985B]/10 border border-[#B3985B]/40 rounded-xl px-4 py-3 hover:bg-[#B3985B]/20 transition-colors">
+          <div className="flex items-center gap-3">
+            <Handshake className="w-5 h-5 text-[#B3985B]" />
+            <div>
+              <p className="text-[#B3985B] text-sm font-semibold">Trato: {cot.trato.tipoEvento}</p>
+              <p className="text-[#B3985B]/60 text-xs">Haz clic para abrir el trato en el CRM</p>
+            </div>
+          </div>
+          <span className="text-[#B3985B] text-xs px-2 py-1 bg-[#B3985B]/15 rounded-full">{cot.trato.etapa.replace(/_/g, " ")}</span>
+        </Link>
+      )}
+
       {/* Estado flujo */}
       <div className="ms-stat-card">
         <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider">Estado</p>
