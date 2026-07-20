@@ -7,11 +7,13 @@
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import {
-  C, base, fmtFecha, fmtFechaCorta, fmtHora, duracion, nowStr,
+  C, base, fmtFecha, fmtHora, duracion, nowStr,
   agruparPorCategoria, EquipoFlat, CronoRow, TransporteSlot,
   DocsData, EquipoRiderExtra, ProveedorRenta, MAPS,
 } from "./PdfShared";
-import { diasEvento, agruparPorDia, horarioDeDia } from "@/lib/fechas-evento";
+import { diasEvento, agruparPorDia } from "@/lib/fechas-evento";
+import { CronologiaEvento } from "./CronologiaEvento";
+import { construirCronologia } from "@/lib/cronologia-evento";
 
 const s = StyleSheet.create({
   // Sección numerada con badge negro
@@ -130,6 +132,7 @@ export interface FichaOperativaData {
   fechaMontaje: string | null; horaInicioMontaje: string | null; duracionMontajeHrs: number | null;
   horaMontaje: string | null;
   horaSalidaBodega: string | null; puntoSalidaBodega: string | null;
+  lugarLlamado: string | null;
   lugarEvento: string | null; direccionVenue: string | null;
   linkMaps: string | null; indicacionesAcceso: string | null;
   indicacionesCliente: string | null;
@@ -200,44 +203,14 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
   const programa = data.docsTecnicos?.programaEvento?.filter(r => r.actividad || r.hora) ?? [];
   const coordProv = data.docsTecnicos?.coordinacionProveedores?.filter(r => r.proveedor) ?? [];
 
-  // Extract time from llamadoBodega ISO datetime
-  const llamadoBodegaHora = data.llamadoBodega
-    ? new Date(data.llamadoBodega).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })
-    : null;
-  const llamadoBodegaFecha = data.llamadoBodega
-    ? fmtFechaCorta(data.llamadoBodega)
-    : null;
-
-  // Horarios del día — solo filas con hora
-  type HoraItem = { label: string; hora: string; ref: string; fecha: string };
-  const eventoHoras: HoraItem[] = esMultidiaCrono
-    ? diasCrono.flatMap((fecha, di) => {
-        const h = horarioDeDia(fecha, di, diasCrono, data.horariosEvento, {
-          inicio: data.horaInicioEvento,
-          fin: data.horaFinEvento,
-          llamado: llamadoBodegaHora,
-          montaje: data.horaMontaje || data.horaInicioMontaje,
-        });
-        const rows: HoraItem[] = [];
-        if (h.llamado) rows.push({ label: `Llamado en bodega · Día ${di + 1}`, hora: fmtHora(h.llamado), ref: "", fecha: fmtFechaCorta(fecha) });
-        if ((di === 0 || h.aplicaMontaje) && h.montaje) rows.push({ label: `Montaje · Día ${di + 1}`, hora: fmtHora(h.montaje), ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(fecha) });
-        if (h.inicio) rows.push({ label: `Inicio del evento · Día ${di + 1}`, hora: fmtHora(h.inicio), ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(fecha) });
-        if (h.fin) rows.push({ label: `Fin del evento · Día ${di + 1}`, hora: fmtHora(h.fin), ref: "", fecha: fmtFechaCorta(fecha) });
-        return rows;
-      })
-    : [
-        { label: "Inicio del evento", hora: horaIni, ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(data.fechaEvento) },
-        { label: "Fin / inicio de desmontaje", hora: horaFin, ref: "", fecha: fmtFechaCorta(data.fechaEvento) },
-      ];
-  const horariosDia: HoraItem[] = [
-    // En eventos de un día: llamado y montaje van como filas únicas. En multidía se detallan por día en eventoHoras.
-    ...(esMultidiaCrono ? [] : [
-      { label: "Llamado en bodega", hora: llamadoBodegaHora ?? "", ref: "", fecha: llamadoBodegaFecha ?? fmtFechaCorta(data.fechaMontaje) ?? fmtFechaCorta(data.fechaEvento) },
-      { label: "Llegada / inicio de montaje", hora: horaMontaje, ref: data.lugarEvento ?? "", fecha: fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento) },
-    ]),
-    { label: "Salida desde bodega", hora: horaSalida, ref: "", fecha: fmtFechaCorta(data.fechaMontaje) || fmtFechaCorta(data.fechaEvento) },
-    ...eventoHoras,
-  ].filter(h => h.hora);
+  // Cronología unificada (montaje/logística primero, luego cada día en orden).
+  const bloquesCrono = construirCronologia({
+    fechaEvento: data.fechaEvento, fechasEvento: data.fechasEvento, horariosEvento: data.horariosEvento,
+    horaInicioEvento: data.horaInicioEvento, horaFinEvento: data.horaFinEvento,
+    fechaMontaje: data.fechaMontaje, horaInicioMontaje: data.horaMontaje || data.horaInicioMontaje,
+    horaSalidaBodega: data.horaSalidaBodega, horaDesmontaje: data.horaDesmontaje,
+    llamadoBodega: data.llamadoBodega, lugarLlamado: data.lugarLlamado, lugarEvento: data.lugarEvento,
+  });
 
   let seccion = 0;
   const sec = (titulo: string) => { seccion++; return String(seccion); };
@@ -309,26 +282,18 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
 
         <View style={base.body}>
 
-          {/* 1. HORARIOS DEL DÍA */}
-          {horariosDia.length > 0 && (
+          {/* 1. CRONOLOGÍA Y LOGÍSTICA */}
+          {bloquesCrono.length > 0 && (
             <View style={base.section}>
-              <SecNum num={sec("horarios")} titulo="Horarios del día" />
-              <View style={s.horaTable}>
-                {horariosDia.map((h, i) => (
-                  <View key={i} style={i < horariosDia.length - 1 ? s.horaRow : s.horaRowLast} wrap={false}>
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: C.dorado, marginRight: 14, marginTop: 1, flexShrink: 0 }} />
-                    <Text style={s.horaLabel}>{h.label}</Text>
-                    {h.fecha
-                      ? <Text style={s.horaFecha}>{h.fecha}</Text>
-                      : <View style={s.horaFechaBlank} />}
-                    <Text style={s.horaHora}>{h.hora}</Text>
-                    {h.ref ? <Text style={s.horaRef}>{h.ref}</Text> : null}
-                  </View>
-                ))}
-              </View>
-              {dur && (
+              <SecNum num={sec("horarios")} titulo="Cronología y logística" />
+              <CronologiaEvento bloques={bloquesCrono} />
+              {(data.puntoSalidaBodega || data.duracionMontajeHrs != null || dur) && (
                 <Text style={{ fontSize: 7.5, color: C.grisMedio, marginTop: 4 }}>
-                  Duración del evento: {dur}
+                  {[
+                    dur ? `Duración del evento: ${dur}` : null,
+                    data.puntoSalidaBodega ? `Punto de salida: ${data.puntoSalidaBodega}` : null,
+                    data.duracionMontajeHrs != null ? `Montaje est.: ${data.duracionMontajeHrs} hrs` : null,
+                  ].filter(Boolean).join("  ·  ")}
                 </Text>
               )}
             </View>

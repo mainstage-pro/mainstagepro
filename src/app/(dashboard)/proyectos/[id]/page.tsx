@@ -22,6 +22,7 @@ import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem }
 import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
 import { contarRespondidos, contarIncidencias, promedioCalificaciones, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
 import { diasEvento, parseHorariosEvento, horarioDeDia } from "@/lib/fechas-evento";
+import { construirCronologia } from "@/lib/cronologia-evento";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
@@ -8169,6 +8170,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
       const accesoLink = `https://mainstagepro.vercel.app/proyectos/${proyecto.id}`;
 
+      const bloquesBrief = construirCronologia({
+        fechaEvento: proyecto.fechaEvento, fechasEvento: proyecto.fechasEvento, horariosEvento: proyecto.horariosEvento,
+        horaInicioEvento: proyecto.horaInicioEvento, horaFinEvento: proyecto.horaFinEvento,
+        fechaMontaje: proyecto.fechaMontaje, horaInicioMontaje: proyecto.horaMontaje || proyecto.horaInicioMontaje,
+        horaSalidaBodega: proyecto.horaSalidaBodega, horaDesmontaje: proyecto.horaDesmontaje,
+        llamadoBodega: proyecto.llamadoBodega, lugarLlamado: proyecto.lugarLlamado, lugarEvento: proyecto.lugarEvento,
+      });
+      const cronoTexto = bloquesBrief.map(b => {
+        const head = b.subtitulo ? `${b.titulo} — ${b.subtitulo}` : b.titulo;
+        const items = b.items.map(it => `   ${it.hora}  ${it.label}${it.nota ? ` (${it.nota})` : ""}`).join("\n");
+        return `${head}\n${items}`;
+      }).join("\n");
+
       const briefText = [
         "🎉 ¡Servicio confirmado!",
         "",
@@ -8177,8 +8191,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         tipoServicioLabel ? `🎛️ Servicio: ${tipoServicioLabel}${proyecto.tipoEvento ? ` · ${proyecto.tipoEvento}` : ""}` : (proyecto.tipoEvento ? `🎭 Evento: ${proyecto.tipoEvento}` : null),
         `📅 Fecha: ${fmtDate(proyecto.fechaEvento)}`,
         proyecto.lugarEvento ? `📍 Lugar: ${proyecto.lugarEvento}` : null,
-        (proyecto.horaInicioEvento || proyecto.horaFinEvento) ? `⏰ Horario: ${proyecto.horaInicioEvento ?? ""}${proyecto.horaFinEvento ? ` – ${proyecto.horaFinEvento}` : ""}` : null,
-        proyecto.fechaMontaje ? `🔧 Montaje: ${fmtDate(proyecto.fechaMontaje)}${proyecto.horaInicioMontaje ? ` desde ${proyecto.horaInicioMontaje}` : ""}` : null,
+        cronoTexto ? `\n🗓️ Cronología:\n${cronoTexto}` : null,
         proyecto.equipos.length > 0 ? `\nEquipos:\n${equiposLineas}` : null,
         personalConfirmado.length > 0 ? `\nPersonal confirmado:\n${personalLineas}` : null,
         `\n🔗 Acceso: ${accesoLink}`,

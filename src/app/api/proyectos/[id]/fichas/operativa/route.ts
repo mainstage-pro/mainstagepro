@@ -126,6 +126,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     horaMontaje: proyecto.horaMontaje ?? null,
     horaSalidaBodega: proyecto.horaSalidaBodega ?? null,
     puntoSalidaBodega: proyecto.puntoSalidaBodega ?? null,
+    lugarLlamado: proyecto.lugarLlamado ?? null,
     lugarEvento: proyecto.lugarEvento ?? null,
     direccionVenue: proyecto.direccionVenue ?? null,
     linkMaps: proyecto.linkMaps ?? null,

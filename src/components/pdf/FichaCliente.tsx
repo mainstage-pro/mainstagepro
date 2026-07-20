@@ -5,6 +5,8 @@
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import { C, base, fmtFecha, fmtHora, duracion, nowStr, agruparPorCategoria, EquipoFlat, MAPS } from "./PdfShared";
+import { CronologiaEvento } from "./CronologiaEvento";
+import { construirCronologia } from "@/lib/cronologia-evento";
 
 const s = StyleSheet.create({
   // Chips de horario
@@ -35,6 +37,8 @@ export interface FichaClienteData {
   nombre: string; numeroProyecto: string; estado: string;
   tipoEvento: string; tipoServicio: string | null; zona: string;
   fechaEvento: string | null;
+  fechasEvento: string | null; horariosEvento: string | null;
+  fechaMontaje: string | null; horaInicioMontaje: string | null;
   horaInicioEvento: string | null; horaFinEvento: string | null;
   horaInicio: string | null; horaDesmontaje: string | null;
   lugarEvento: string | null; direccionVenue: string | null; linkMaps: string | null;
@@ -56,6 +60,14 @@ export function FichaCliente({ data }: { data: FichaClienteData }) {
   const gruposPropios = agruparPorCategoria(propios);
   const gruposExternos = agruparPorCategoria(externos);
   const inicial = data.encargadoNombre ? data.encargadoNombre.charAt(0).toUpperCase() : "M";
+  const bloques = construirCronologia({
+    fechaEvento: data.fechaEvento, fechasEvento: data.fechasEvento, horariosEvento: data.horariosEvento,
+    horaInicioEvento: data.horaInicioEvento, horaFinEvento: data.horaFinEvento,
+    fechaMontaje: data.fechaMontaje, horaInicioMontaje: data.horaInicioMontaje,
+    horaSalidaBodega: null, horaDesmontaje: null, llamadoBodega: null, lugarLlamado: null,
+    lugarEvento: data.lugarEvento,
+  }, { interno: false });
+  const esMultidia = bloques.filter(b => b.titulo !== "Montaje y logística").length > 1;
 
   return (
     <Document title={`Confirmación ${data.numeroProyecto}`} author="Mainstage Pro">
@@ -139,8 +151,8 @@ export function FichaCliente({ data }: { data: FichaClienteData }) {
               )}
             </View>
 
-            {/* Chips de horario */}
-            {(horaIni || horaFin || dur) && (
+            {/* Chips de horario (evento de un solo día) */}
+            {!esMultidia && (horaIni || horaFin || dur) && (
               <View style={s.chipsRow}>
                 {horaIni && (
                   <View style={s.chip}>
@@ -189,6 +201,14 @@ export function FichaCliente({ data }: { data: FichaClienteData }) {
                 </View>
               )}
             </View>
+
+            {/* Cronología por día (eventos de varios días) */}
+            {esMultidia && bloques.length > 0 && (
+              <View style={{ marginTop: 6 }}>
+                <Text style={[base.kvLabel, { marginBottom: 6 }]}>Programa por día</Text>
+                <CronologiaEvento bloques={bloques} />
+              </View>
+            )}
           </View>
 
           {/* EQUIPO CONFIRMADO */}

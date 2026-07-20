@@ -6,39 +6,8 @@
  */
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
-import { C, base } from "./PdfShared";
-
-// ─── Helper: formatear fecha en español ───────────────────────────────────────
-function formatFechaES(date: Date | string | null | undefined): string {
-  if (!date) return "Por definir";
-  try {
-    const d = new Date(date);
-    return d
-      .toLocaleDateString("es-MX", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        timeZone: "UTC",
-      })
-      .replace(/^./, (c) => c.toUpperCase());
-  } catch {
-    return String(date);
-  }
-}
-
-function formatHoraES(date: Date | string | null | undefined): string | null {
-  if (!date) return null;
-  try {
-    return new Date(date).toLocaleTimeString("es-MX", {
-      hour: "2-digit",
-      minute: "2-digit",
-      timeZone: "UTC",
-    });
-  } catch {
-    return null;
-  }
-}
+import { CronologiaEvento } from "./CronologiaEvento";
+import { construirCronologia } from "@/lib/cronologia-evento";
 
 // ─── Estilos locales B&W ──────────────────────────────────────────────────────
 const s = StyleSheet.create({
@@ -204,6 +173,8 @@ export interface BriefTecnicoData {
     tipoEvento: string;
     tipoServicio: string | null;
     fechaEvento: Date | string;
+    fechasEvento: string | null;
+    horariosEvento: string | null;
     horaInicioEvento: string | null;
     horaFinEvento: string | null;
     fechaMontaje: Date | string | null;
@@ -267,12 +238,21 @@ export function BriefTecnico({ proyecto, logoSrc }: BriefTecnicoData) {
     ? `${p.cliente.nombre} (${p.cliente.empresa})`
     : p.cliente.nombre;
 
-  // Fechas
-  const fechaEventoStr = formatFechaES(p.fechaEvento);
-  const fechaMontajeStr = formatFechaES(p.fechaMontaje);
-  const llamadoFechaStr = p.llamadoBodega ? formatFechaES(p.llamadoBodega) : null;
-  const llamadoHoraStr = formatHoraES(p.llamadoBodega);
-  const hasLlamado = !!(llamadoFechaStr || llamadoHoraStr || p.lugarLlamado);
+  // Cronología unificada (montaje primero, luego cada día en orden)
+  const bloques = construirCronologia({
+    fechaEvento: p.fechaEvento,
+    fechasEvento: p.fechasEvento,
+    horariosEvento: p.horariosEvento,
+    horaInicioEvento: p.horaInicioEvento,
+    horaFinEvento: p.horaFinEvento,
+    fechaMontaje: p.fechaMontaje,
+    horaInicioMontaje: p.horaInicioMontaje,
+    horaSalidaBodega: p.horaSalidaBodega,
+    horaDesmontaje: p.horaDesmontaje,
+    llamadoBodega: p.llamadoBodega,
+    lugarLlamado: p.lugarLlamado,
+    lugarEvento: p.lugarEvento,
+  });
 
   // Transportes: intentar parsear JSON, mostrar representación legible
   let transportesStr: string | null = null;
@@ -349,25 +329,6 @@ export function BriefTecnico({ proyecto, logoSrc }: BriefTecnicoData) {
         {/* ── BODY ── */}
         <View style={s.body}>
 
-          {/* 0. LLAMADO (destacado, siempre al inicio) */}
-          {hasLlamado && (
-            <View style={s.llamadoBox}>
-              {(llamadoFechaStr || llamadoHoraStr) && (
-                <View style={s.llamadoCol}>
-                  <Text style={s.llamadoLabel}>Llamado</Text>
-                  <Text style={s.llamadoVal}>{llamadoHoraStr ?? "Por definir"}</Text>
-                  {llamadoFechaStr && <Text style={s.llamadoValSm}>{llamadoFechaStr}</Text>}
-                </View>
-              )}
-              {p.lugarLlamado && (
-                <View style={s.llamadoCol}>
-                  <Text style={s.llamadoLabel}>Lugar de llamado</Text>
-                  <Text style={s.llamadoVal}>{p.lugarLlamado}</Text>
-                </View>
-              )}
-            </View>
-          )}
-
           {/* 1. DATOS DEL EVENTO */}
           <View style={s.section}>
             <SecTitle title="Datos del Evento" />
@@ -380,33 +341,21 @@ export function BriefTecnico({ proyecto, logoSrc }: BriefTecnicoData) {
             </View>
           </View>
 
-          {/* 2. FECHAS Y HORARIOS */}
-          <View style={s.section}>
-            <SecTitle title="Fechas y Horarios" />
-            <View style={s.kvGrid}>
-              <KV label="Fecha del evento" value={fechaEventoStr} bold full />
-              <KV label="Hora inicio" value={p.horaInicioEvento} />
-              <KV label="Hora fin" value={p.horaFinEvento} />
-              <KV label="Hora de desmontaje" value={p.horaDesmontaje} />
-            </View>
-          </View>
-
-          {/* 3. MONTAJE */}
-          <View style={s.section}>
-            <SecTitle title="Montaje y Logística de Salida" />
-            <View style={s.kvGrid}>
-              <KV label="Fecha de montaje" value={fechaMontajeStr} bold full />
-              <KV label="Hora de salida de bodega" value={p.horaSalidaBodega} />
-              <KV label="Punto de salida" value={p.puntoSalidaBodega} />
-              <KV label="Hora inicio montaje" value={p.horaInicioMontaje} />
-              {p.duracionMontajeHrs != null && (
-                <KV
-                  label="Duración estimada montaje"
-                  value={`${p.duracionMontajeHrs} hrs`}
-                />
+          {/* 2. CRONOLOGÍA Y LOGÍSTICA — orden cronológico: montaje primero, luego cada día */}
+          {bloques.length > 0 && (
+            <View style={s.section}>
+              <SecTitle title="Cronología y logística" />
+              <CronologiaEvento bloques={bloques} />
+              {(p.puntoSalidaBodega || p.duracionMontajeHrs != null) && (
+                <View style={[s.kvGrid, { marginTop: 6 }]}>
+                  <KV label="Punto de salida" value={p.puntoSalidaBodega} />
+                  {p.duracionMontajeHrs != null && (
+                    <KV label="Duración estimada montaje" value={`${p.duracionMontajeHrs} hrs`} />
+                  )}
+                </View>
               )}
             </View>
-          </View>
+          )}
 
           {/* 4. LUGAR Y ACCESO (condicional) */}
           {hasLugar && (

@@ -1,5 +1,6 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
+import { construirCronologia } from "@/lib/cronologia-evento";
 
 const GOLD  = "#B3985B";
 const BLACK = "#0a0a0a";
@@ -152,6 +153,21 @@ const s = StyleSheet.create({
     fontSize: 10,
     color: WHITE,
   },
+  // ── Cronología ───────────────────────────────────────────────────────────────
+  cronoBloque: { marginBottom: 10 },
+  cronoBloqueHd: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    marginBottom: 5, paddingBottom: 3, borderBottomWidth: 1, borderBottomColor: "#222222",
+  },
+  cronoTitulo: {
+    fontSize: 8, color: GOLD, fontFamily: "Helvetica-Bold",
+    textTransform: "uppercase", letterSpacing: 1,
+  },
+  cronoFecha: { fontSize: 8, color: GRAY, textTransform: "capitalize" },
+  cronoItem: { flexDirection: "row", alignItems: "flex-start", marginBottom: 4 },
+  cronoHora: { width: 52, fontSize: 10, color: GOLD, fontFamily: "Helvetica-Bold" },
+  cronoLabel: { flex: 1, fontSize: 9.5, color: WHITE },
+  cronoNota: { fontSize: 8, color: GRAY, maxWidth: 150, textAlign: "right" },
   // ── Link ─────────────────────────────────────────────────────────────────────
   linkBox: {
     backgroundColor: "#0d0d0d",
@@ -205,6 +221,17 @@ export interface BriefData {
   tipoEvento: string;
   tipoServicio: string | null;
   fechaEvento: string | null;
+  fechasEvento: string | null;
+  horariosEvento: string | null;
+  horaInicioEvento: string | null;
+  horaFinEvento: string | null;
+  fechaMontaje: Date | string | null;
+  horaInicioMontaje: string | null;
+  horaMontaje: string | null;
+  horaSalidaBodega: string | null;
+  horaDesmontaje: string | null;
+  llamadoBodega: Date | string | null;
+  lugarLlamado: string | null;
   lugarEvento: string | null;
   cliente: { nombre: string; empresa: string | null };
   equipos: {
@@ -242,6 +269,14 @@ export function BriefPDF({
     : (proyecto.tipoEvento ?? "Servicio");
 
   const accesoLink = `https://mainstagepro.vercel.app/proyectos/${proyecto.id}`;
+
+  const bloquesCrono = construirCronologia({
+    fechaEvento: proyecto.fechaEvento, fechasEvento: proyecto.fechasEvento, horariosEvento: proyecto.horariosEvento,
+    horaInicioEvento: proyecto.horaInicioEvento, horaFinEvento: proyecto.horaFinEvento,
+    fechaMontaje: proyecto.fechaMontaje, horaInicioMontaje: proyecto.horaMontaje || proyecto.horaInicioMontaje,
+    horaSalidaBodega: proyecto.horaSalidaBodega, horaDesmontaje: proyecto.horaDesmontaje,
+    llamadoBodega: proyecto.llamadoBodega, lugarLlamado: proyecto.lugarLlamado, lugarEvento: proyecto.lugarEvento,
+  });
 
   const generado = new Date().toLocaleDateString("es-MX", {
     day: "2-digit", month: "long", year: "numeric",
@@ -314,6 +349,32 @@ export function BriefPDF({
               )}
             </View>
           </View>
+
+          {/* Card: Cronología */}
+          {bloquesCrono.length > 0 && (
+            <View style={s.card}>
+              <View style={s.cardHeader}>
+                <Text style={s.cardTitle}>Cronología y logística</Text>
+              </View>
+              <View style={s.cardBody}>
+                {bloquesCrono.map((b, bi) => (
+                  <View key={bi} style={s.cronoBloque}>
+                    <View style={s.cronoBloqueHd}>
+                      <Text style={s.cronoTitulo}>{b.titulo}</Text>
+                      {b.subtitulo ? <Text style={s.cronoFecha}>{b.subtitulo}</Text> : null}
+                    </View>
+                    {b.items.map((it, ii) => (
+                      <View key={ii} style={s.cronoItem}>
+                        <Text style={s.cronoHora}>{it.hora}</Text>
+                        <Text style={s.cronoLabel}>{it.label}</Text>
+                        {it.nota ? <Text style={s.cronoNota}>{it.nota}</Text> : null}
+                      </View>
+                    ))}
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
 
           {/* Card: Equipos */}
           {proyecto.equipos.length > 0 && (
