@@ -1273,7 +1273,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
               )}
               <div className="space-y-2">
                 {grupo.items.map(c => (
-            <div key={c.id} className={`bg-[#111] border rounded-xl px-4 py-3 ${c.esVencida ? "border-red-900/40" : "border-[#1e1e1e]"}`}>
+            <div key={c.id} className={`relative hover:z-50 focus-within:z-50 bg-[#111] border rounded-xl px-4 py-3 ${c.esVencida ? "border-red-900/40" : "border-[#1e1e1e]"}`}>
               <div className="flex items-start gap-3">
                 {/* Info principal */}
                 <div className="flex-1 min-w-0">
@@ -1548,7 +1548,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
             const beneficiario = c.socio?.nombre ?? c.empresa?.nombre ?? c.proveedor?.nombre ?? c.tecnico?.nombre ?? "—";
             const telefono = c.empresa?.telefono ?? c.proveedor?.telefono ?? c.tecnico?.celular ?? null;
             return (
-              <div key={c.id} className={`bg-[#111] border rounded-xl px-4 py-3 ${c.esVencida ? "border-red-900/40" : "border-[#1e1e1e]"}`}>
+              <div key={c.id} className={`relative hover:z-50 focus-within:z-50 bg-[#111] border rounded-xl px-4 py-3 ${c.esVencida ? "border-red-900/40" : "border-[#1e1e1e]"}`}>
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
