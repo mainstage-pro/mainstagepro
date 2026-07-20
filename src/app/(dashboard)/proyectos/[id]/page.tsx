@@ -109,6 +109,7 @@ interface Proyecto {
   notasPortal: string | null;
   responsables: string | null;
   llamadoBodega: string | null;
+  lugarLlamado: string | null;
   notasBriefTecnico: string | null;
   proveedoresEvento: { id: string; nombreProveedor: string; servicioEquipo: string | null; telefonoProveedor: string | null }[];
   createdAt: string;
@@ -4136,6 +4137,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       </div>
                     </div>
                   )}
+                  {/* ── Lugar de llamado ── */}
+                  <div className="col-span-2">
+                    <Campo label="Lugar de llamado" value={proyecto.lugarLlamado} field="lugarLlamado" onSave={guardarCampo} />
+                  </div>
                   <Campo label="Fecha de montaje" value={proyecto.fechaMontaje?.toString().substring(0, 10) ?? null} field="fechaMontaje" type="date" onSave={guardarCampo} />
                   {!esMultidia && (
                     <HourPicker label="Hora de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" onSave={guardarCampo} />
@@ -7700,12 +7705,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               )}
               {proyecto.tipoServicio === 'PRODUCCION_TECNICA' && (
                 <button
-                  onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/brief-tecnico`, `brief-tecnico-${proyecto.numeroProyecto}.pdf`)}
+                  onClick={() => downloadPdf(`/api/proyectos/${proyecto.id}/brief-tecnico`, `info-tecnicos-${proyecto.numeroProyecto}.pdf`)}
                   disabled={!!downloading}
                   className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:text-white hover:border-[#444] text-xs font-medium transition-colors disabled:opacity-60"
                 >
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                  {downloading === `brief-tecnico-${proyecto.numeroProyecto}.pdf` ? 'Generando...' : 'Brief Técnico'}
+                  {downloading === `info-tecnicos-${proyecto.numeroProyecto}.pdf` ? 'Generando...' : 'Info para Técnicos'}
                 </button>
               )}
               {!esRenta && (
@@ -7723,7 +7728,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 hover:text-white hover:border-[#444] text-xs font-medium transition-colors"
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                Brief del evento
+                Confirmación a Team Mainstage
               </button>
             </div>
           </div>
@@ -8143,7 +8148,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       </div>
     )}
 
-    {/* ── Modal Brief del evento ── */}
+    {/* ── Modal Confirmación a Team Mainstage ── */}
     {showAnuncioCierre && (() => {
       const TIPO_SERVICIO_LABEL: Record<string, string> = {
         PRODUCCION_TECNICA: "Producción técnica",
@@ -8183,7 +8188,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
           <div className="bg-[#0f0f0f] border border-[#222] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="px-5 py-4 border-b border-[#1e1e1e] flex items-center justify-between">
-              <h2 className="text-white font-semibold text-sm">Brief del evento</h2>
+              <h2 className="text-white font-semibold text-sm">Confirmación a Team Mainstage</h2>
               <button onClick={() => setShowAnuncioCierre(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
             </div>
             <div className="p-5 space-y-4">

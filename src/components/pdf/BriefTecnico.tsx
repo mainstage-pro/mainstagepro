@@ -1,7 +1,8 @@
 /**
- * BriefTecnico.tsx — Brief técnico interno para equipo de Mainstage Pro
- * Documento B&W de uso interno para el equipo técnico que va al evento.
- * Muestra logística completa: fechas, horarios, montaje, lugar, contactos, notas.
+ * BriefTecnico.tsx — Info para Técnicos (Mainstage Pro)
+ * Documento de uso interno para el equipo técnico que va al evento.
+ * Comunica los generales: llamado, fechas, horarios, montaje, lugar, contactos, notas.
+ * Diseño alineado con la Ficha Técnica (acentos dorados) pero simplificado.
  */
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
@@ -26,27 +27,16 @@ function formatFechaES(date: Date | string | null | undefined): string {
   }
 }
 
-function formatDateTimeES(date: Date | string | null | undefined): string {
-  if (!date) return "Por definir";
+function formatHoraES(date: Date | string | null | undefined): string | null {
+  if (!date) return null;
   try {
-    const d = new Date(date);
-    const fechaPart = d
-      .toLocaleDateString("es-MX", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        timeZone: "UTC",
-      })
-      .replace(/^./, (c) => c.toUpperCase());
-    const horaPart = d.toLocaleTimeString("es-MX", {
+    return new Date(date).toLocaleTimeString("es-MX", {
       hour: "2-digit",
       minute: "2-digit",
       timeZone: "UTC",
     });
-    return `${fechaPart}, ${horaPart}`;
   } catch {
-    return String(date);
+    return null;
   }
 }
 
@@ -91,18 +81,47 @@ const s = StyleSheet.create({
   body: { paddingHorizontal: 28, paddingTop: 14 },
   // Sección
   section: { marginBottom: 12 },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
   sectionTitle: {
-    fontSize: 7,
+    fontSize: 8,
     fontFamily: "Helvetica-Bold",
-    color: "#ffffff",
+    color: "#B3985B",
     textTransform: "uppercase",
     letterSpacing: 1.4,
-    backgroundColor: "#333333",
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    marginBottom: 7,
-    borderRadius: 2,
   },
+  sectionLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#B3985B",
+    opacity: 0.5,
+    marginLeft: 10,
+  },
+  // Caja destacada del llamado (hero)
+  llamadoBox: {
+    flexDirection: "row",
+    backgroundColor: "#000000",
+    borderLeftWidth: 3,
+    borderLeftColor: "#B3985B",
+    borderLeftStyle: "solid",
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 3,
+    marginBottom: 14,
+  },
+  llamadoCol: { flex: 1, paddingRight: 12 },
+  llamadoLabel: {
+    fontSize: 6.5,
+    color: "#B3985B",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 3,
+  },
+  llamadoVal: { fontSize: 11, fontFamily: "Helvetica-Bold", color: "#ffffff" },
+  llamadoValSm: { fontSize: 9, color: "#dddddd" },
   // Grid KV
   kvGrid: { flexDirection: "row", flexWrap: "wrap" },
   kvCell: { width: "50%", paddingRight: 10, marginBottom: 5 },
@@ -168,7 +187,12 @@ function KV({
 }
 
 function SecTitle({ title }: { title: string }) {
-  return <Text style={s.sectionTitle}>{title}</Text>;
+  return (
+    <View style={s.sectionHeader}>
+      <Text style={s.sectionTitle}>{title}</Text>
+      <View style={s.sectionLine} />
+    </View>
+  );
 }
 
 // ─── Interface ────────────────────────────────────────────────────────────────
@@ -189,6 +213,7 @@ export interface BriefTecnicoData {
     puntoSalidaBodega: string | null;
     horaDesmontaje: string | null;
     llamadoBodega: Date | string | null;
+    lugarLlamado: string | null;
     lugarEvento: string | null;
     direccionVenue: string | null;
     linkMaps: string | null;
@@ -245,7 +270,9 @@ export function BriefTecnico({ proyecto, logoSrc }: BriefTecnicoData) {
   // Fechas
   const fechaEventoStr = formatFechaES(p.fechaEvento);
   const fechaMontajeStr = formatFechaES(p.fechaMontaje);
-  const llamadoBodegaStr = formatDateTimeES(p.llamadoBodega);
+  const llamadoFechaStr = p.llamadoBodega ? formatFechaES(p.llamadoBodega) : null;
+  const llamadoHoraStr = formatHoraES(p.llamadoBodega);
+  const hasLlamado = !!(llamadoFechaStr || llamadoHoraStr || p.lugarLlamado);
 
   // Transportes: intentar parsear JSON, mostrar representación legible
   let transportesStr: string | null = null;
@@ -294,9 +321,9 @@ export function BriefTecnico({ proyecto, logoSrc }: BriefTecnicoData) {
 
   return (
     <Document
-      title={`Brief Técnico — ${p.nombre}`}
+      title={`Info para Técnicos — ${p.nombre}`}
       author="Mainstage Pro"
-      subject={`Brief técnico ${p.numeroProyecto}`}
+      subject={`Info para técnicos ${p.numeroProyecto}`}
     >
       <Page
         size="LETTER"
@@ -307,8 +334,8 @@ export function BriefTecnico({ proyecto, logoSrc }: BriefTecnicoData) {
         <View style={s.header}>
           <View style={s.headerLeft}>
             {logoSrc && <Image src={logoSrc} style={s.logoImg} />}
-            <Text style={s.headerTitle}>BRIEF TÉCNICO</Text>
-            <Text style={s.headerSub}>Documento de uso interno · Equipo técnico</Text>
+            <Text style={s.headerTitle}>INFO PARA TÉCNICOS</Text>
+            <Text style={s.headerSub}>Generales del evento · Equipo técnico</Text>
           </View>
           <View style={s.headerRight}>
             <Text style={s.headerProyecto}>{p.numeroProyecto}</Text>
@@ -321,6 +348,25 @@ export function BriefTecnico({ proyecto, logoSrc }: BriefTecnicoData) {
 
         {/* ── BODY ── */}
         <View style={s.body}>
+
+          {/* 0. LLAMADO (destacado, siempre al inicio) */}
+          {hasLlamado && (
+            <View style={s.llamadoBox}>
+              {(llamadoFechaStr || llamadoHoraStr) && (
+                <View style={s.llamadoCol}>
+                  <Text style={s.llamadoLabel}>Llamado</Text>
+                  <Text style={s.llamadoVal}>{llamadoHoraStr ?? "Por definir"}</Text>
+                  {llamadoFechaStr && <Text style={s.llamadoValSm}>{llamadoFechaStr}</Text>}
+                </View>
+              )}
+              {p.lugarLlamado && (
+                <View style={s.llamadoCol}>
+                  <Text style={s.llamadoLabel}>Lugar de llamado</Text>
+                  <Text style={s.llamadoVal}>{p.lugarLlamado}</Text>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* 1. DATOS DEL EVENTO */}
           <View style={s.section}>
@@ -350,7 +396,6 @@ export function BriefTecnico({ proyecto, logoSrc }: BriefTecnicoData) {
             <SecTitle title="Montaje y Logística de Salida" />
             <View style={s.kvGrid}>
               <KV label="Fecha de montaje" value={fechaMontajeStr} bold full />
-              <KV label="Llamado en bodega" value={llamadoBodegaStr} bold full />
               <KV label="Hora de salida de bodega" value={p.horaSalidaBodega} />
               <KV label="Punto de salida" value={p.puntoSalidaBodega} />
               <KV label="Hora inicio montaje" value={p.horaInicioMontaje} />

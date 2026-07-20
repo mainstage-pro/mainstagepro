@@ -641,7 +641,8 @@ model Proyecto {
   planProduccionAprobadoEn DateTime? // timestamp de aprobación
   zona                   String    @default("LOCAL") // LOCAL | BAJIO | NACIONAL
   // Brief Técnico
-  llamadoBodega          DateTime? // hora de presentación en bodega
+  llamadoBodega          DateTime? // hora de presentación en bodega (llamado)
+  lugarLlamado           String?   // lugar de presentación (llamado)
   notasBriefTecnico      String?   @db.Text
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
