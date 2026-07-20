@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { formatearRecurrencia, parsearRecurrencia } from "@/lib/recurrencia";
 import DatePicker from "@/components/ui/DatePicker";
 import QuickAdd from "./QuickAdd";
@@ -7,15 +7,6 @@ import TaskItem, { type TareaItem } from "./TaskItem";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { Link2 } from "lucide-react";
-import {
-  DndContext, closestCenter, PointerSensor, KeyboardSensor, useSensor, useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext, useSortable, verticalListSortingStrategy, arrayMove,
-  sortableKeyboardCoordinates,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 
 interface Usuario { id: string; name: string }
 interface Proyecto { id: string; nombre: string; color: string | null }
@@ -59,14 +50,7 @@ export interface TareaDetalle {
   subtareas: Subtarea[];
   comentarios: Comentario[];
   archivos: Archivo[];
-  // Campos de contexto de delegación
-  paraQueSirve: string | null;
-  quePasaSiNoSeHace: string | null;
-  dondeSeEjecuta: string | null;
-  pasos: unknown; // JSON: [{orden, texto}]
 }
-
-interface PasoItem { _id: string; orden: number; texto: string }
 
 interface Props {
   tarea: TareaDetalle | null;
@@ -91,8 +75,6 @@ const PRIOS: { key: string; label: string; color: string }[] = [
   { key: "BAJA",    label: "Baja",    color: "#6b7280" },
 ];
 
-const DORADO = "#c9a96a";
-
 function FlagIcon({ color, filled }: { color: string; filled: boolean }) {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill={filled ? color : "none"}
@@ -101,92 +83,6 @@ function FlagIcon({ color, filled }: { color: string; filled: boolean }) {
       <line x1="4" y1="22" x2="4" y2="15"/>
     </svg>
   );
-}
-
-function ChevronIcon({ open }: { open: boolean }) {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-      style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.2s ease" }}>
-      <polyline points="9 18 15 12 9 6"/>
-    </svg>
-  );
-}
-
-// ── Sortable Paso ─────────────────────────────────────────────────────────────
-function SortablePaso({ paso, idx, onChange, onDelete }: {
-  paso: PasoItem; idx: number;
-  onChange: (id: string, texto: string) => void;
-  onDelete: (id: string) => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: paso._id });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  };
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  function autoResize(el: HTMLTextAreaElement | null) {
-    if (!el) return; el.style.height = "auto"; el.style.height = el.scrollHeight + "px";
-  }
-  useEffect(() => { autoResize(textareaRef.current); }, [paso.texto]);
-
-  return (
-    <div ref={setNodeRef} style={style}
-      className="flex items-start gap-2 group py-2 px-2.5 rounded-lg bg-[#080808] border border-[#1a1a1a] mb-1.5">
-      <div {...attributes} {...listeners}
-        className="mt-1.5 cursor-grab active:cursor-grabbing text-[#2a2a2a] hover:text-[#555] transition-colors shrink-0 select-none text-base leading-none"
-        title="Arrastrar para reordenar">
-        ⠿
-      </div>
-      <span
-        className="w-5 h-5 rounded-full border text-[10px] flex items-center justify-center shrink-0 mt-0.5 font-semibold"
-        style={{ backgroundColor: DORADO + "18", borderColor: DORADO + "55", color: DORADO }}>
-        {idx + 1}
-      </span>
-      <textarea
-        ref={textareaRef}
-        value={paso.texto}
-        onChange={e => { onChange(paso._id, e.target.value); autoResize(e.target); }}
-        className="flex-1 bg-transparent text-sm text-[#ccc] resize-none focus:outline-none placeholder:text-[#444] min-h-[18px]"
-        rows={1}
-        placeholder="Describe este paso…"
-      />
-      <button onClick={() => onDelete(paso._id)}
-        className="opacity-0 group-hover:opacity-100 text-[#333] hover:text-red-400 transition-all shrink-0 mt-0.5">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
-      </button>
-    </div>
-  );
-}
-
-// ── Dot indicator ─────────────────────────────────────────────────────────────
-function Dot({ filled, label }: { filled: boolean; label: string }) {
-  return (
-    <span
-      title={label}
-      className="w-2 h-2 rounded-full shrink-0 transition-colors duration-200"
-      style={{ backgroundColor: filled ? DORADO : "#2a2a2a" }}
-    />
-  );
-}
-
-let _pasoCnt = 0;
-function newPasoId() { return `p-${++_pasoCnt}-${Date.now()}`; }
-
-function parsePasos(raw: unknown): PasoItem[] {
-  try {
-    const arr = Array.isArray(raw) ? raw : (raw ? JSON.parse(raw as string) : []);
-    return (arr as { orden: number; texto: string }[])
-      .sort((a, b) => a.orden - b.orden)
-      .map((p, i) => ({ _id: newPasoId(), orden: i + 1, texto: p.texto }));
-  } catch { return []; }
-}
-
-function pasosToJson(pasos: PasoItem[]) {
-  return pasos.map((p, i) => ({ orden: i + 1, texto: p.texto }));
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -220,52 +116,13 @@ export default function TaskModal({
   const [dirty, setDirty]             = useState(false);
   const [saving, setSaving]           = useState(false);
 
-  // ── New state: context fields ──
-  const [paraQueSirve, setParaQueSirve]           = useState("");
-  const [quePasaSiNoSeHace, setQuePasaSiNoSeHace] = useState("");
-  const [dondeSeEjecuta, setDondeSeEjecuta]       = useState("");
-  const [pasos, setPasos]                         = useState<PasoItem[]>([]);
-
-  // ── Collapsible state (localStorage persisted) ──
-  const [contextoOpen, setContextoOpen] = useState(false);
-  const [pasosOpen,    setPasosOpen]    = useState(false);
-
   const overlayRef = useRef<HTMLDivElement>(null);
   const titleRef   = useRef<HTMLTextAreaElement>(null);
   const descRef    = useRef<HTMLTextAreaElement>(null);
-  const debounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-
-  // ── dnd-kit sensors ──
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
 
   function autoResize(el: HTMLTextAreaElement | null) {
     if (!el) return; el.style.height = "auto"; el.style.height = el.scrollHeight + "px";
   }
-
-  // ── Debounced field save ──
-  const debounceSave = useCallback((field: string, value: unknown, delay = 800) => {
-    if (!tarea) return;
-    const tareaId = tarea.id;
-    if (debounceRef.current[field]) clearTimeout(debounceRef.current[field]);
-    debounceRef.current[field] = setTimeout(() => {
-      fetch(`/api/tareas/${tareaId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [field]: value || null }),
-      });
-    }, delay);
-  }, [tarea]);
-
-  // ── Load localStorage block state ──
-  useEffect(() => {
-    const c = localStorage.getItem("tarea-bloque-contexto-abierto");
-    const p = localStorage.getItem("tarea-bloque-pasos-abierto");
-    if (c !== null) setContextoOpen(c === "true");
-    if (p !== null) setPasosOpen(p === "true");
-  }, []);
 
   // ── Reset state when task changes ──
   useEffect(() => {
@@ -287,23 +144,6 @@ export default function TaskModal({
     setComentariosLocal(tarea.comentarios ?? []);
     setArchivosLocal(tarea.archivos ?? []);
 
-    // New fields
-    setParaQueSirve(tarea.paraQueSirve ?? "");
-    setQuePasaSiNoSeHace(tarea.quePasaSiNoSeHace ?? "");
-    setDondeSeEjecuta(tarea.dondeSeEjecuta ?? "");
-    const parsedPasos = parsePasos(tarea.pasos);
-    setPasos(parsedPasos);
-
-    // Auto-open blocks if content exists (only if no localStorage preference)
-    const storedContexto = localStorage.getItem("tarea-bloque-contexto-abierto");
-    const storedPasos    = localStorage.getItem("tarea-bloque-pasos-abierto");
-    if (storedContexto === null) {
-      setContextoOpen(!!(tarea.paraQueSirve || tarea.quePasaSiNoSeHace || tarea.dondeSeEjecuta));
-    }
-    if (storedPasos === null) {
-      setPasosOpen(parsedPasos.length > 0);
-    }
-
     setTimeout(() => titleRef.current?.focus(), 80);
   }, [tarea?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -318,58 +158,6 @@ export default function TaskModal({
   }, [onClose]);
 
   if (!tarea && !loading) return null;
-
-  // ── Toggle block helpers ──
-  function toggleContexto() {
-    setContextoOpen(v => {
-      const next = !v;
-      localStorage.setItem("tarea-bloque-contexto-abierto", String(next));
-      return next;
-    });
-  }
-  function togglePasos() {
-    setPasosOpen(v => {
-      const next = !v;
-      localStorage.setItem("tarea-bloque-pasos-abierto", String(next));
-      return next;
-    });
-  }
-
-  // ── Pasos handlers ──
-  function addPaso() {
-    setPasos(prev => {
-      const next = [...prev, { _id: newPasoId(), orden: prev.length + 1, texto: "" }];
-      debounceSave("pasos", pasosToJson(next));
-      return next;
-    });
-    setPasosOpen(true);
-    localStorage.setItem("tarea-bloque-pasos-abierto", "true");
-  }
-  function changePaso(id: string, texto: string) {
-    setPasos(prev => {
-      const next = prev.map(p => p._id === id ? { ...p, texto } : p);
-      debounceSave("pasos", pasosToJson(next));
-      return next;
-    });
-  }
-  function deletePaso(id: string) {
-    setPasos(prev => {
-      const next = prev.filter(p => p._id !== id).map((p, i) => ({ ...p, orden: i + 1 }));
-      debounceSave("pasos", pasosToJson(next));
-      return next;
-    });
-  }
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    setPasos(prev => {
-      const oldIdx = prev.findIndex(p => p._id === active.id);
-      const newIdx = prev.findIndex(p => p._id === over.id);
-      const next = arrayMove(prev, oldIdx, newIdx).map((p, i) => ({ ...p, orden: i + 1 }));
-      debounceSave("pasos", pasosToJson(next));
-      return next;
-    });
-  }
 
   async function handleSave() {
     if (!tarea) return;
@@ -469,42 +257,6 @@ export default function TaskModal({
   }
 
   const isCompleted = tarea?.estado === "COMPLETADA";
-
-  // ── Completeness indicator data ──
-  const completitudDots = [
-    { key: "descripcion",    label: "¿Qué hay que hacer?",      filled: !!descripcion },
-    { key: "paraQueSirve",   label: "¿Para qué sirve?",         filled: !!paraQueSirve },
-    { key: "quePasa",        label: "¿Qué pasa si no se hace?", filled: !!quePasaSiNoSeHace },
-    { key: "donde",          label: "¿Dónde se ejecuta?",       filled: !!dondeSeEjecuta },
-    { key: "pasos",          label: "Paso a paso",              filled: pasos.length > 0 },
-  ];
-
-  // ── Inline label for collapsible block header ──
-  function BlockHeader({ label, open, onToggle, count }: {
-    label: string; open: boolean; onToggle: () => void; count?: number;
-  }) {
-    return (
-      <button
-        onClick={onToggle}
-        className="w-full flex items-center justify-between py-2 group"
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-[#444] uppercase tracking-widest font-semibold">
-            {label}
-          </span>
-          {count !== undefined && count > 0 && (
-            <span className="text-[9px] px-1.5 py-0.5 rounded-full"
-              style={{ background: DORADO + "18", color: DORADO }}>
-              {count}
-            </span>
-          )}
-        </div>
-        <span className="text-[#333] group-hover:text-[#666] transition-colors">
-          <ChevronIcon open={open} />
-        </span>
-      </button>
-    );
-  }
 
   return (
     <div
@@ -611,107 +363,6 @@ export default function TaskModal({
                   className="w-full bg-transparent text-sm text-[#777] resize-none overflow-hidden focus:outline-none placeholder:text-[#444] leading-relaxed"
                   rows={1}
                 />
-              </div>
-
-              {/* ── BLOQUE CONTEXTO ─────────────────────────────────────────── */}
-              <div className="border-t border-[#141414] pt-3">
-                <BlockHeader label="Contexto" open={contextoOpen} onToggle={toggleContexto}
-                  count={(paraQueSirve ? 1 : 0) + (quePasaSiNoSeHace ? 1 : 0) + (dondeSeEjecuta ? 1 : 0)} />
-
-                {contextoOpen && (
-                  <div className="mt-2 space-y-4">
-                    {/* Para qué sirve */}
-                    <div>
-                      <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-1.5">
-                        ¿Para qué sirve?
-                      </p>
-                      <textarea
-                        value={paraQueSirve}
-                        onChange={e => {
-                          setParaQueSirve(e.target.value);
-                          debounceSave("paraQueSirve", e.target.value);
-                          autoResize(e.target);
-                        }}
-                        placeholder="¿Qué impacto positivo tiene completar esta tarea?"
-                        className="w-full bg-[#080808] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-[#aaa] resize-none focus:outline-none focus:border-[#2a2a2a] placeholder:text-[#444] leading-relaxed"
-                        rows={2}
-                      />
-                    </div>
-
-                    {/* Qué pasa si no se hace */}
-                    <div>
-                      <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-1.5">
-                        ¿Qué pasa si no se hace?
-                      </p>
-                      <textarea
-                        value={quePasaSiNoSeHace}
-                        onChange={e => {
-                          setQuePasaSiNoSeHace(e.target.value);
-                          debounceSave("quePasaSiNoSeHace", e.target.value);
-                          autoResize(e.target);
-                        }}
-                        placeholder="¿Qué consecuencia tiene no ejecutarla o retrasarla?"
-                        className="w-full bg-[#080808] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-[#aaa] resize-none focus:outline-none focus:border-[#2a2a2a] placeholder:text-[#444] leading-relaxed"
-                        rows={2}
-                      />
-                    </div>
-
-                    {/* Dónde se ejecuta */}
-                    <div>
-                      <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-1.5">
-                        ¿Dónde se ejecuta?
-                      </p>
-                      <input
-                        type="text"
-                        value={dondeSeEjecuta}
-                        onChange={e => {
-                          setDondeSeEjecuta(e.target.value);
-                          debounceSave("dondeSeEjecuta", e.target.value);
-                        }}
-                        placeholder="Módulo, herramienta, plataforma o espacio físico"
-                        className="w-full bg-[#080808] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-[#aaa] focus:outline-none focus:border-[#2a2a2a] placeholder:text-[#444]"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* ── BLOQUE PASO A PASO ──────────────────────────────────────── */}
-              <div className="border-t border-[#141414] pt-3">
-                <BlockHeader label="Paso a paso" open={pasosOpen} onToggle={togglePasos}
-                  count={pasos.length} />
-
-                {pasosOpen && (
-                  <div className="mt-2">
-                    {pasos.length === 0 && (
-                      <p className="text-xs text-[#2a2a2a] py-1 mb-2">Sin pasos todavía</p>
-                    )}
-
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                      <SortableContext items={pasos.map(p => p._id)} strategy={verticalListSortingStrategy}>
-                        {pasos.map((paso, idx) => (
-                          <SortablePaso
-                            key={paso._id}
-                            paso={paso}
-                            idx={idx}
-                            onChange={changePaso}
-                            onDelete={deletePaso}
-                          />
-                        ))}
-                      </SortableContext>
-                    </DndContext>
-
-                    <button
-                      onClick={addPaso}
-                      className="flex items-center gap-1.5 text-xs text-[#444] hover:text-[#777] transition-colors mt-1 py-1"
-                    >
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                      </svg>
-                      Agregar paso
-                    </button>
-                  </div>
-                )}
               </div>
 
               {/* ── Subtareas ── */}
@@ -1025,16 +676,6 @@ export default function TaskModal({
                       </button>
                     );
                   })}
-                </div>
-              </div>
-
-              {/* ── Ficha de completitud ── */}
-              <div>
-                <p className="text-[10px] text-[#333] uppercase tracking-widest font-semibold mb-2">Ficha</p>
-                <div className="flex items-center gap-1.5">
-                  {completitudDots.map(d => (
-                    <Dot key={d.key} filled={d.filled} label={d.label} />
-                  ))}
                 </div>
               </div>
 

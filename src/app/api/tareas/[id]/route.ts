@@ -17,10 +17,6 @@ const SELECT = {
   recurrencia: true,
   notas: true,
   etiquetas: true,
-  paraQueSirve: true,
-  quePasaSiNoSeHace: true,
-  dondeSeEjecuta: true,
-  pasos: true,
   orden: true,
   parentId: true,
   createdAt: true,
@@ -91,7 +87,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     "titulo", "descripcion", "prioridad", "area", "estado",
     "asignadoAId", "iniciativaId", "proyectoTareaId", "seccionId", "carpetaId", "parentId",
     "fecha", "fechaVencimiento", "recurrencia", "notas", "etiquetas", "orden",
-    "paraQueSirve", "quePasaSiNoSeHace", "dondeSeEjecuta", "pasos",
   ];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -161,11 +156,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           notas:           tarea.notas,
           etiquetas:       tarea.etiquetas,
           orden:           tarea.orden,
-          // Carry context fields into the next recurrence
-          paraQueSirve:      (tarea as Record<string, unknown>).paraQueSirve as string | null,
-          quePasaSiNoSeHace: (tarea as Record<string, unknown>).quePasaSiNoSeHace as string | null,
-          dondeSeEjecuta:    (tarea as Record<string, unknown>).dondeSeEjecuta as string | null,
-          pasos:             (tarea as Record<string, unknown>).pasos ?? undefined,
         },
         select: SELECT,
       });

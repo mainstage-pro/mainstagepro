@@ -2018,11 +2018,6 @@ model Tarea {
   // ── Content ──────────────────────────────────────────────────────────────
   notas            String?
   etiquetas        String?    // JSON string[]
-  // ── Contexto de delegaci\u00f3n ──────────────────────────────────────────────
-  paraQueSirve      String?   // \u00bfPara qu\u00e9 sirve? impacto positivo
-  quePasaSiNoSeHace String?   // \u00bfQu\u00e9 pasa si no se hace?
-  dondeSeEjecuta    String?   // M\u00f3dulo, herramienta o espacio
-  pasos             Json?     // [{orden: number, texto: string}]
   // ── Origen ───────────────────────────────────────────────────────────────
   juntaOrigenId    String?
   juntaOrigen      Junta?             @relation("JuntaOrigen", fields: [juntaOrigenId], references: [id], onDelete: SetNull)

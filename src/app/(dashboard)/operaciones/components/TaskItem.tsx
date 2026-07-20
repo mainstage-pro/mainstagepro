@@ -22,11 +22,6 @@ export interface TareaItem {
   _count: { subtareas: number; comentarios: number; archivos: number };
   createdAt: string;
   fechaCompletada?: string | null;
-  // Campos de contexto de delegación (opcionales — sólo presentes cuando se carga el detalle)
-  paraQueSirve?: string | null;
-  quePasaSiNoSeHace?: string | null;
-  dondeSeEjecuta?: string | null;
-  pasos?: unknown;
 }
 
 const PRIO: Record<string, { ring: string; dot: string; glow: string; fill: string; dotSize: string }> = {
@@ -351,37 +346,6 @@ export default function TaskItem({
             {tarea.descripcion}
           </p>
         )}
-
-        {/* Compact completeness dots — only if at least one context field has content */}
-        {!isCompleted && (() => {
-          const hasPasos = (() => {
-            try {
-              const p = tarea.pasos;
-              if (!p) return false;
-              const arr = Array.isArray(p) ? p : JSON.parse(p as string);
-              return Array.isArray(arr) && arr.length > 0;
-            } catch { return false; }
-          })();
-          const dots = [
-            !!tarea.descripcion,
-            !!tarea.paraQueSirve,
-            !!tarea.quePasaSiNoSeHace,
-            !!tarea.dondeSeEjecuta,
-            hasPasos,
-          ];
-          const anyFilled = dots.some(Boolean);
-          if (!anyFilled) return null;
-          return (
-            <div className="flex items-center gap-1 mt-1">
-              {dots.map((filled, i) => (
-                <span key={i}
-                  className="w-1.5 h-1.5 rounded-full shrink-0 transition-colors"
-                  style={{ backgroundColor: filled ? "#c9a96a" : "#1e1e1e" }}
-                />
-              ))}
-            </div>
-          );
-        })()}
 
         {(!isCompleted || showProject) && (
           <div className="flex flex-wrap items-center gap-1.5 mt-1">
