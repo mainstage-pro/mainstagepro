@@ -2368,6 +2368,9 @@ model EjecucionCampana {
   notas          String?
   mes            String       // YYYY-MM
   idMetaAds      String?
+  audiencia      String?      // segmentación heredada de la plantilla, editable
+  ubicaciones    String?      // CSV de ubicaciones (FEED_IG, REELS_IG, ...)
+  // KPIs planos legacy: se conservan pero el sistema nuevo usa resultados[] por periodo.
   alcance        Int?
   impresiones    Int?
   clics          Int?
@@ -2377,7 +2380,50 @@ model EjecucionCampana {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
+  anuncios       AnuncioCampana[]
+  resultados     ResultadoCampana[]
+
   @@map("ejecuciones_campana")
+}
+
+// Anuncio (creativo) dentro de una campaña. Reemplaza a MetaAnuncio en el sistema unificado.
+model AnuncioCampana {
+  id          String           @id @default(cuid())
+  ejecucionId String
+  ejecucion   EjecucionCampana @relation(fields: [ejecucionId], references: [id], onDelete: Cascade)
+  nombre      String
+  formato     String           @default("IMAGEN") // IMAGEN | VIDEO | CARRUSEL | REEL | HISTORIA | COLECCION
+  titular     String?
+  copy        String?          // texto principal del anuncio
+  cta         String?          // MAS_INFORMACION | CONTACTAR | ENVIAR_MENSAJE | ...
+  urlDestino  String?
+  estado      String           @default("ACTIVO") // ACTIVO | PAUSADO | RECHAZADO
+  createdAt   DateTime         @default(now())
+
+  @@index([ejecucionId])
+  @@map("anuncios_campana")
+}
+
+// Resultado por periodo de una campaña. Reemplaza a MetaResultado en el sistema unificado.
+model ResultadoCampana {
+  id          String           @id @default(cuid())
+  ejecucionId String
+  ejecucion   EjecucionCampana @relation(fields: [ejecucionId], references: [id], onDelete: Cascade)
+  fecha       DateTime
+  impresiones Int              @default(0)
+  alcance     Int              @default(0)
+  clics       Int              @default(0)
+  leads       Int              @default(0)
+  gastado     Float            @default(0)
+  cpm         Float?
+  cpc         Float?
+  cpl         Float?
+  frecuencia  Float?
+  notas       String?
+  createdAt   DateTime         @default(now())
+
+  @@index([ejecucionId])
+  @@map("resultados_campana")
 }
 
 // ─── META ADS ─────────────────────────────────────────────────────────────────

@@ -225,6 +225,8 @@ export async function ensureMarketingColumns() {
     ['tipos_campana', 'briefTemplate', `ADD COLUMN IF NOT EXISTS "briefTemplate" TEXT`],
     ['ejecuciones_campana', 'brief', `ADD COLUMN IF NOT EXISTS "brief" TEXT`],
     ['ejecuciones_campana', 'briefCompleto', `ADD COLUMN IF NOT EXISTS "briefCompleto" BOOLEAN NOT NULL DEFAULT false`],
+    ['ejecuciones_campana', 'audiencia', `ADD COLUMN IF NOT EXISTS "audiencia" TEXT`],
+    ['ejecuciones_campana', 'ubicaciones', `ADD COLUMN IF NOT EXISTS "ubicaciones" TEXT`],
   ];
   for (const [table, column, clause] of cols) {
     if (!await columnExists(table, column)) {
@@ -233,6 +235,44 @@ export async function ensureMarketingColumns() {
       } catch { /* ya existe */ }
     }
   }
+  // Tablas del sistema unificado de publicidad (anuncios y resultados por campaña).
+  // Solo se leen con include explícito en los endpoints, pero se crean al arranque.
+  try {
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS anuncios_campana (
+        id TEXT PRIMARY KEY,
+        "ejecucionId" TEXT NOT NULL REFERENCES ejecuciones_campana(id) ON DELETE CASCADE,
+        nombre TEXT NOT NULL,
+        formato TEXT NOT NULL DEFAULT 'IMAGEN',
+        titular TEXT,
+        copy TEXT,
+        cta TEXT,
+        "urlDestino" TEXT,
+        estado TEXT NOT NULL DEFAULT 'ACTIVO',
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "anuncios_campana_ejecucionId_idx" ON anuncios_campana("ejecucionId")`);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS resultados_campana (
+        id TEXT PRIMARY KEY,
+        "ejecucionId" TEXT NOT NULL REFERENCES ejecuciones_campana(id) ON DELETE CASCADE,
+        fecha TIMESTAMP(3) NOT NULL,
+        impresiones INTEGER NOT NULL DEFAULT 0,
+        alcance INTEGER NOT NULL DEFAULT 0,
+        clics INTEGER NOT NULL DEFAULT 0,
+        leads INTEGER NOT NULL DEFAULT 0,
+        gastado DOUBLE PRECISION NOT NULL DEFAULT 0,
+        cpm DOUBLE PRECISION,
+        cpc DOUBLE PRECISION,
+        cpl DOUBLE PRECISION,
+        frecuencia DOUBLE PRECISION,
+        notas TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS "resultados_campana_ejecucionId_idx" ON resultados_campana("ejecucionId")`);
+  } catch { /* ya existen */ }
   _marketingReady = true;
 }
 

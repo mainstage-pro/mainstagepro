@@ -12,7 +12,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const body = await request.json();
   const {
     nombre, objetivo, canal, color, fechaInicio, fechaFin, estado,
-    presupuesto, notas, mes, tipoId, brief,
+    presupuesto, notas, mes, tipoId, brief, audiencia, ubicaciones,
     idMetaAds, alcance, impresiones, clics, ctr, cantResultados, costoResultado,
   } = body;
 
@@ -45,6 +45,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       ...(notas !== undefined && { notas: notas || null }),
       ...(mes !== undefined && { mes }),
       ...(tipoId !== undefined && { tipoId: tipoId || null }),
+      ...(audiencia !== undefined && { audiencia: audiencia || null }),
+      ...(ubicaciones !== undefined && { ubicaciones: ubicaciones || null }),
       ...(idMetaAds !== undefined && { idMetaAds: idMetaAds || null }),
       ...(alcance !== undefined && { alcance: alcance ? parseInt(alcance) : null }),
       ...(impresiones !== undefined && { impresiones: impresiones ? parseInt(impresiones) : null }),
@@ -53,7 +55,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       ...(cantResultados !== undefined && { cantResultados: cantResultados ? parseInt(cantResultados) : null }),
       ...(costoResultado !== undefined && { costoResultado: costoResultado ? parseFloat(costoResultado) : null }),
     },
-    include: { tipo: true },
+    include: { tipo: true, resultados: { orderBy: { fecha: "desc" } }, anuncios: { orderBy: { createdAt: "asc" } } },
   });
   return NextResponse.json({ ejecucion });
 }

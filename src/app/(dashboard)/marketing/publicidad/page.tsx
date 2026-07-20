@@ -2,26 +2,25 @@
 import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
+import CampanasDashboard from "../campanas/calendario/page";
 import TiposCampanaContent from "../campanas/page";
-import CalendarioCampanasContent from "../campanas/calendario/page";
-import MetaAdsContent from "../meta-ads/page";
 
-type Vista = "campanas" | "calendario" | "meta";
+type Vista = "campanas" | "plantillas";
 
 const TABS: { key: Vista; label: string }[] = [
-  { key: "campanas",   label: "Campañas"   },
-  { key: "calendario", label: "Calendario" },
-  { key: "meta",       label: "Meta Ads"   },
+  { key: "campanas",   label: "Campañas"  },
+  { key: "plantillas", label: "Plantillas" },
 ];
 
 function PublicidadInner() {
   const params = useSearchParams();
   const router = useRouter();
-  const vista = (params.get("vista") as Vista) ?? "campanas";
+  // Compat: rutas viejas (?vista=calendario / meta) caen en Campañas.
+  const raw = params.get("vista");
+  const vista: Vista = raw === "plantillas" ? "plantillas" : "campanas";
 
   return (
     <div className="flex flex-col min-h-full">
-      {/* Tab bar */}
       <div className="border-b border-[#1a1a1a] px-4 flex items-center gap-1 shrink-0">
         {TABS.map(t => (
           <button
@@ -38,11 +37,9 @@ function PublicidadInner() {
         ))}
       </div>
 
-      {/* Tab content */}
       <div className="flex-1">
-        {vista === "campanas"   && <TiposCampanaContent />}
-        {vista === "calendario" && <CalendarioCampanasContent />}
-        {vista === "meta"       && <MetaAdsContent />}
+        {vista === "campanas"   && <CampanasDashboard />}
+        {vista === "plantillas" && <TiposCampanaContent />}
       </div>
     </div>
   );

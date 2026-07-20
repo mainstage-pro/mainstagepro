@@ -13,7 +13,11 @@ export async function GET(request: NextRequest) {
   const where = mes ? { mes } : {};
   const ejecuciones = await prisma.ejecucionCampana.findMany({
     where,
-    include: { tipo: true },
+    include: {
+      tipo: true,
+      resultados: { orderBy: { fecha: "desc" } },
+      anuncios: { orderBy: { createdAt: "asc" } },
+    },
     orderBy: { fechaInicio: "asc" },
   });
   return NextResponse.json({ ejecuciones });
@@ -26,7 +30,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
   const {
     tipoId, nombre, objetivo, canal, color, fechaInicio, fechaFin,
-    estado, presupuesto, notas, mes, brief,
+    estado, presupuesto, notas, mes, brief, audiencia, ubicaciones,
     idMetaAds, alcance, impresiones, clics, ctr, cantResultados, costoResultado,
   } = body;
   if (!nombre?.trim()) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
@@ -61,6 +65,8 @@ export async function POST(request: NextRequest) {
       presupuesto: presupuesto ? parseFloat(presupuesto) : null,
       notas: notas || null,
       mes: mes ?? fechaInicio.slice(0, 7),
+      audiencia: audiencia || null,
+      ubicaciones: ubicaciones || null,
       idMetaAds: idMetaAds || null,
       alcance: alcance ? parseInt(alcance) : null,
       impresiones: impresiones ? parseInt(impresiones) : null,
@@ -69,7 +75,7 @@ export async function POST(request: NextRequest) {
       cantResultados: cantResultados ? parseInt(cantResultados) : null,
       costoResultado: costoResultado ? parseFloat(costoResultado) : null,
     },
-    include: { tipo: true },
+    include: { tipo: true, resultados: true, anuncios: true },
   });
   return NextResponse.json({ ejecucion }, { status: 201 });
 }
