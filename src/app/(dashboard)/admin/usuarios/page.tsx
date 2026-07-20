@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { Combobox } from "@/components/Combobox";
 import { Modal } from "@/components/Modal";
+import RowActions from "@/components/ui/RowActions";
 import { MODULOS_POR_SECCION, ALL_MODULE_KEYS, AREA_MODULE_PRESETS } from "@/lib/nav";
 
 type User = {
@@ -326,20 +327,20 @@ export default function UsuariosPage() {
           <div>
             <label className="text-xs text-[#6b7280] mb-1 block">Nombre completo *</label>
             <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-              className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+              className="ms-input"
               placeholder="Ej. Ana García" />
           </div>
           <div>
             <label className="text-xs text-[#6b7280] mb-1 block">Correo electrónico *</label>
             <input type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-              className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+              className="ms-input"
               placeholder="ana@mainstagepro.mx" />
           </div>
           {isCurrentAdmin && (
             <div>
               <label className="text-xs text-[#6b7280] mb-1 block">Contraseña {editing ? "(vacío = sin cambio)" : "*"}</label>
               <input type="password" value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-                className="w-full bg-[#1a1a1a] border border-[#333] text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-[#B3985B]"
+                className="ms-input"
                 placeholder="Mínimo 6 caracteres" />
             </div>
           )}
@@ -366,8 +367,7 @@ export default function UsuariosPage() {
         </div>
         {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
         <div className="flex gap-3 mt-4">
-          <button onClick={save} disabled={saving}
-            className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black text-sm font-semibold px-4 py-2 rounded-md transition-colors">
+          <button onClick={save} disabled={saving} className="ms-btn-primary">
             {saving ? "Guardando..." : "Guardar"}
           </button>
         </div>
@@ -420,34 +420,24 @@ export default function UsuariosPage() {
                     </div>
                     <p className="text-[#555] text-xs">{u.email}</p>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                  <div className="flex items-center gap-2 shrink-0 justify-end">
                     {!isAdminUser && (
                       <button onClick={() => openPermisos(isExpanded ? null : u.id)}
-                        className={`text-xs px-2 py-1 border rounded transition-colors ${
+                        className={`text-xs px-2.5 py-1.5 border rounded-lg transition-colors ${
                           isExpanded ? "text-[#B3985B] border-[#B3985B]/40" : "text-[#6b7280] hover:text-white border-[#333]"
                         }`}>
                         Permisos
                       </button>
                     )}
                     {isAdminUser && <span className="text-xs text-[#B3985B]/60 px-2">Acceso total</span>}
-                    <button onClick={() => startEdit(u)}
-                      className="text-xs text-[#B3985B] hover:text-white px-2 py-1 border border-[#333] rounded transition-colors">
-                      Editar
-                    </button>
-                    {isCurrentAdmin && (
-                      <button onClick={() => resetPassword(u)}
-                        className="text-xs text-[#6b7280] hover:text-white px-2 py-1 border border-[#333] rounded transition-colors">
-                        Contraseña
-                      </button>
-                    )}
-                    <button onClick={() => toggleActive(u)}
-                      className="text-xs text-[#6b7280] hover:text-white px-2 py-1 border border-[#333] rounded transition-colors">
-                      {u.active ? "Desactivar" : "Activar"}
-                    </button>
-                    <button onClick={() => deleteUser(u)} disabled={deletingId === u.id}
-                      className="text-xs text-red-500 hover:text-red-400 disabled:opacity-40 px-2 py-1 border border-red-900/40 rounded transition-colors">
-                      {deletingId === u.id ? "..." : "Eliminar"}
-                    </button>
+                    <RowActions
+                      actions={[
+                        { label: "Editar usuario", onClick: () => startEdit(u) },
+                        isCurrentAdmin && { label: "Cambiar contraseña", onClick: () => resetPassword(u) },
+                        { label: u.active ? "Desactivar" : "Activar", onClick: () => toggleActive(u) },
+                        { label: deletingId === u.id ? "Eliminando…" : "Eliminar", onClick: () => deleteUser(u), variant: "danger", disabled: deletingId === u.id },
+                      ]}
+                    />
                   </div>
                 </div>
 
@@ -507,7 +497,7 @@ export default function UsuariosPage() {
                     <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                       {MODULOS_POR_SECCION.map(sec => (
                         <div key={sec.seccion}>
-                          <p className="text-[10px] text-[#3a3a3a] uppercase tracking-widest font-bold mb-2">
+                          <p className="text-[10px] text-[#6b7280] uppercase tracking-widest font-bold mb-2">
                             {sec.seccion}
                           </p>
                           <div className="space-y-1">
@@ -549,7 +539,7 @@ export default function UsuariosPage() {
                     {draft.has("proyectos") && (
                       <div className="mx-4 mb-4 pt-4 border-t border-[#1a1a1a]">
                         <div className="flex items-center gap-2 mb-3">
-                          <p className="text-[10px] text-[#3a3a3a] uppercase tracking-widest font-bold">Restricción por proyecto</p>
+                          <p className="text-[10px] text-[#6b7280] uppercase tracking-widest font-bold">Restricción por proyecto</p>
                           <span className="text-[10px] text-gray-700">Si no se selecciona ninguno, el usuario ve todos</span>
                         </div>
                         {loadingProyectos ? (
@@ -594,7 +584,7 @@ export default function UsuariosPage() {
           </p>
           {MODULOS_POR_SECCION.map(sec => (
             <div key={sec.seccion}>
-              <p className="text-[10px] text-[#3a3a3a] uppercase tracking-widest font-bold mb-3">{sec.seccion}</p>
+              <p className="text-[10px] text-[#6b7280] uppercase tracking-widest font-bold mb-3">{sec.seccion}</p>
               <div className="space-y-2">
                 {sec.items.map(mod => {
                   const usersWithAccess = nonAdminUsers.filter(u => effectiveKeysFor(u).has(mod.key));
