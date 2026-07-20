@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getTipoMovimientoMap, naturalezaDe } from "@/lib/tipos-movimiento";
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -22,6 +23,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ("categoriaId" in body) data.categoriaId = body.categoriaId || null;
   if ("cuentaOrigenId" in body) data.cuentaOrigenId = body.cuentaOrigenId || null;
   if ("cuentaDestinoId" in body) data.cuentaDestinoId = body.cuentaDestinoId || null;
+
+  // Cambio de tipo: recalcula la naturaleza y reasigna cuenta origen/destino
+  // igual que al crear (ver api/movimientos/route.ts POST).
+  if ("tipo" in body && body.tipo && body.tipo !== mov.tipo) {
+    data.tipo = body.tipo;
+    const tipoMap = await getTipoMovimientoMap();
+    const naturaleza = naturalezaDe(tipoMap, body.tipo);
+    if (naturaleza === "NEUTRO") {
+      data.cuentaOrigenId = body.cuentaOrigenId || null;
+      data.cuentaDestinoId = body.cuentaDestinoId || null;
+    } else if (naturaleza === "SALIDA") {
+      data.cuentaOrigenId = body.cuentaOrigenId || null;
+      data.cuentaDestinoId = null;
+    } else {
+      data.cuentaDestinoId = body.cuentaDestinoId || null;
+      data.cuentaOrigenId = null;
+    }
+  }
 
   const updated = await prisma.movimientoFinanciero.update({ where: { id }, data });
   return NextResponse.json({ movimiento: updated });

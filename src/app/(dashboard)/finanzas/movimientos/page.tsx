@@ -6,7 +6,7 @@ import { formatCurrency } from "@/lib/cotizador";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
-import { badgeClass } from "@/lib/tipo-colores";
+import { badgeClass, buttonClass } from "@/lib/tipo-colores";
 
 interface Categoria { id: string; nombre: string; tipo: string; }
 interface TipoMov { clave: string; nombre: string; naturaleza: string; afectaResultado: boolean; color: string; }
@@ -47,7 +47,7 @@ export default function MovimientosPage() {
   const [loading, setLoading] = useState(true);
   const [detalle, setDetalle] = useState<Movimiento | null>(null);
   const [editando, setEditando] = useState<Movimiento | null>(null);
-  const [editForm, setEditForm] = useState({ concepto: "", monto: "", fecha: "", notas: "", referencia: "", metodoPago: "", categoriaId: "", cuentaOrigenId: "", cuentaDestinoId: "" });
+  const [editForm, setEditForm] = useState({ tipo: "", concepto: "", monto: "", fecha: "", notas: "", referencia: "", metodoPago: "", categoriaId: "", cuentaOrigenId: "", cuentaDestinoId: "" });
   const [guardando, setGuardando] = useState(false);
 
   const loadMovimientos = useCallback(async (cuentaId: string | null) => {
@@ -78,6 +78,7 @@ export default function MovimientosPage() {
   function abrirEditar(mov: Movimiento) {
     setEditando(mov);
     setEditForm({
+      tipo: mov.tipo,
       concepto: mov.concepto,
       monto: String(mov.monto),
       fecha: mov.fecha.slice(0, 10),
@@ -90,15 +91,31 @@ export default function MovimientosPage() {
     });
   }
 
+  // Cambiar el tipo dentro del modal: al pasar de entrada↔salida conservamos la
+  // cuenta seleccionada (vive en destino para ENTRADA, en origen para SALIDA) y
+  // reiniciamos la categoría porque las categorías son por tipo.
+  function seleccionarTipoEdit(clave: string) {
+    const nat = tNaturaleza(clave);
+    setEditForm(p => {
+      const next = { ...p, tipo: clave, categoriaId: "" };
+      if (nat === "ENTRADA") {
+        next.cuentaDestinoId = p.cuentaDestinoId || p.cuentaOrigenId;
+        next.cuentaOrigenId = "";
+      } else if (nat === "SALIDA") {
+        next.cuentaOrigenId = p.cuentaOrigenId || p.cuentaDestinoId;
+        next.cuentaDestinoId = "";
+      }
+      return next;
+    });
+  }
+
   async function guardarEdicion() {
     if (!editando) return;
     setGuardando(true);
     try {
+      const nat = tNaturaleza(editForm.tipo);
       const payload: Record<string, unknown> = { ...editForm, monto: parseFloat(editForm.monto) };
       // Solo enviar los campos de cuenta relevantes según la naturaleza del tipo
-      const nat = tipos.find(t => t.clave === editando.tipo)?.naturaleza
-        ?? (editando.tipo === "GASTO" || editando.tipo === "RETIRO" ? "SALIDA"
-            : editando.tipo === "TRANSFERENCIA" ? "NEUTRO" : "ENTRADA");
       if (nat === "SALIDA") {
         delete payload.cuentaDestinoId;
       } else if (nat === "ENTRADA") {
@@ -160,7 +177,7 @@ export default function MovimientosPage() {
     : movimientosFiltrados.filter(m => tNaturaleza(m.tipo) === "SALIDA" && tAfectaResultado(m.tipo)).reduce((s, m) => s + m.monto, 0);
 
   const categoriasFiltradas = categorias.filter(c =>
-    editando ? c.tipo === editando.tipo : true
+    editando ? c.tipo === editForm.tipo : true
   );
 
   return (
@@ -417,6 +434,22 @@ export default function MovimientosPage() {
 
             <div className="space-y-3">
               <div>
+                <label className="text-xs text-gray-500 block mb-1">Tipo de movimiento</label>
+                <div className="flex flex-wrap gap-2">
+                  {tipos.map(o => (
+                    <button key={o.clave} type="button" onClick={() => seleccionarTipoEdit(o.clave)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                        editForm.tipo === o.clave ? buttonClass(o.color) : "bg-[#1a1a1a] border-[#333] text-gray-400 hover:text-white"
+                      }`}>
+                      {o.nombre}
+                    </button>
+                  ))}
+                </div>
+                {tNaturaleza(editForm.tipo) === "NEUTRO" && (
+                  <p className="text-xs text-blue-400/70 mt-2">Movimiento interno entre cuentas. No afecta ingresos ni gastos.</p>
+                )}
+              </div>
+              <div>
                 <label className="text-xs text-gray-500 block mb-1">Concepto</label>
                 <input value={editForm.concepto} onChange={e => setEditForm(p => ({ ...p, concepto: e.target.value }))} className={inputCls} />
               </div>
@@ -440,25 +473,48 @@ export default function MovimientosPage() {
                   className={inputCls}
                 />
               </div>
-              {/* Cuenta — solo para movimientos no-transferencia (naturaleza NEUTRO) */}
-              {editando && tNaturaleza(editando.tipo) !== "NEUTRO" && cuentas.length > 0 && (
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">
-                    {tNaturaleza(editando.tipo) === "ENTRADA" ? "Cuenta destino (ingresa a)" : "Cuenta origen (sale de)"}
-                  </label>
-                  <Combobox
-                    value={tNaturaleza(editando.tipo) === "ENTRADA" ? editForm.cuentaDestinoId : editForm.cuentaOrigenId}
-                    onChange={v => {
-                      if (tNaturaleza(editando.tipo) === "ENTRADA") {
-                        setEditForm(p => ({ ...p, cuentaDestinoId: v }));
-                      } else {
-                        setEditForm(p => ({ ...p, cuentaOrigenId: v }));
-                      }
-                    }}
-                    options={[{ value: "", label: "— Sin cuenta —" }, ...cuentas.map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]}
-                    className={inputCls}
-                  />
-                </div>
+              {/* Cuenta(s) según la naturaleza del tipo seleccionado */}
+              {cuentas.length > 0 && (
+                tNaturaleza(editForm.tipo) === "NEUTRO" ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Cuenta origen (sale de)</label>
+                      <Combobox
+                        value={editForm.cuentaOrigenId}
+                        onChange={v => setEditForm(p => ({ ...p, cuentaOrigenId: v }))}
+                        options={[{ value: "", label: "— Sin cuenta —" }, ...cuentas.filter(c => c.id !== editForm.cuentaDestinoId).map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]}
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Cuenta destino (ingresa a)</label>
+                      <Combobox
+                        value={editForm.cuentaDestinoId}
+                        onChange={v => setEditForm(p => ({ ...p, cuentaDestinoId: v }))}
+                        options={[{ value: "", label: "— Sin cuenta —" }, ...cuentas.filter(c => c.id !== editForm.cuentaOrigenId).map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]}
+                        className={inputCls}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">
+                      {tNaturaleza(editForm.tipo) === "ENTRADA" ? "Cuenta destino (ingresa a)" : "Cuenta origen (sale de)"}
+                    </label>
+                    <Combobox
+                      value={tNaturaleza(editForm.tipo) === "ENTRADA" ? editForm.cuentaDestinoId : editForm.cuentaOrigenId}
+                      onChange={v => {
+                        if (tNaturaleza(editForm.tipo) === "ENTRADA") {
+                          setEditForm(p => ({ ...p, cuentaDestinoId: v }));
+                        } else {
+                          setEditForm(p => ({ ...p, cuentaOrigenId: v }));
+                        }
+                      }}
+                      options={[{ value: "", label: "— Sin cuenta —" }, ...cuentas.map(c => ({ value: c.id, label: c.nombre + (c.banco ? ` · ${c.banco}` : "") }))]}
+                      className={inputCls}
+                    />
+                  </div>
+                )
               )}
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Referencia / Folio</label>
