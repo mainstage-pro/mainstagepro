@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
 import { Combobox } from "@/components/Combobox";
+import { Zap, AlertTriangle } from "lucide-react";
 
 interface Tipo {
   id: string; nombre: string; formato: string;
@@ -414,8 +415,8 @@ export default function MarketingCalendarioPage({
             </button>
           )}
           <button onClick={generarMes} disabled={generating}
-            className="bg-[#1a1a1a] border border-[#B3985B]/40 hover:bg-[#B3985B]/10 text-[#B3985B] text-xs px-3 py-2 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap">
-            {generating ? "Generando..." : "⚡ Generar mes"}
+            className="inline-flex items-center gap-1.5 bg-[#1a1a1a] border border-[#B3985B]/40 hover:bg-[#B3985B]/10 text-[#B3985B] text-xs px-3 py-2 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap">
+            {generating ? "Generando..." : <><Zap strokeWidth={1.75} className="w-3.5 h-3.5" /> Generar mes</>}
           </button>
           <button onClick={() => openNueva()}
             className="bg-[#B3985B] hover:bg-[#d4b068] text-black text-xs font-semibold px-3 py-2 rounded-lg transition-colors whitespace-nowrap">
@@ -644,8 +645,8 @@ export default function MarketingCalendarioPage({
           <p className="text-gray-500 text-sm">Sin publicaciones para {mesLabel(mes)}</p>
           <p className="text-gray-600 text-xs">Usa &ldquo;⚡ Generar mes&rdquo; para crear automáticamente las publicaciones del mes</p>
           <button onClick={generarMes} disabled={generating}
-            className="mt-2 bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] text-sm px-5 py-2 rounded-lg hover:bg-[#B3985B]/20 transition-colors disabled:opacity-50">
-            {generating ? "Generando..." : "⚡ Generar publicaciones"}
+            className="inline-flex items-center gap-1.5 mt-2 bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] text-sm px-5 py-2 rounded-lg hover:bg-[#B3985B]/20 transition-colors disabled:opacity-50">
+            {generating ? "Generando..." : <><Zap strokeWidth={1.75} className="w-3.5 h-3.5" /> Generar publicaciones</>}
           </button>
         </div>
       ) : vista === "parrilla" ? (
@@ -1050,8 +1051,8 @@ function VistaProximas({ publicaciones, openEdit, deletePub, quickEstado, onNuev
         <p className="text-gray-500 text-sm">Sin publicaciones programadas para {mesLabel}</p>
         <div className="flex items-center justify-center gap-3 mt-2">
           <button onClick={onGenerar} disabled={generating}
-            className="bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] text-sm px-5 py-2 rounded-lg hover:bg-[#B3985B]/20 transition-colors disabled:opacity-50">
-            {generating ? "Generando..." : "⚡ Generar desde estrategia"}
+            className="inline-flex items-center gap-1.5 bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] text-sm px-5 py-2 rounded-lg hover:bg-[#B3985B]/20 transition-colors disabled:opacity-50">
+            {generating ? "Generando..." : <><Zap strokeWidth={1.75} className="w-3.5 h-3.5" /> Generar desde estrategia</>}
           </button>
           <button onClick={onNueva}
             className="bg-[#1a1a1a] border border-[#333] text-gray-400 text-sm px-5 py-2 rounded-lg hover:text-white transition-colors">
@@ -1095,7 +1096,7 @@ function VistaProximas({ publicaciones, openEdit, deletePub, quickEstado, onNuev
                       <span className="text-white text-xs font-medium">{p.tipo?.nombre ?? <span className="text-gray-600 italic">Sin tipo</span>}</span>
                       {formato && <span className={`text-[10px] font-bold ${FORMATO_COLORS[formato] ?? "text-gray-600"}`}>{formato}</span>}
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${ESTADO_COLORS[p.estado]}`}>{ESTADO_LABEL[p.estado]}</span>
-                      {isPast && !isToday && <span className="text-[10px] text-red-400 font-medium">⚠ Atrasada</span>}
+                      {isPast && !isToday && <span className="inline-flex items-center gap-1 text-[10px] text-red-400 font-medium"><AlertTriangle strokeWidth={1.75} className="w-3 h-3" /> Atrasada</span>}
                     </div>
                     {p.descripcion && <p className="text-gray-500 text-[10px] mt-0.5 truncate">{p.descripcion}</p>}
                     <div className="flex gap-1 mt-1">

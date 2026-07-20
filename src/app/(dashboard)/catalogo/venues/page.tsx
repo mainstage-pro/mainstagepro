@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
+import { Landmark, Users, Ruler, Zap, Phone, Volume2, Clock, Wrench } from "lucide-react";
 
 interface Venue {
   id: string;
@@ -263,7 +264,7 @@ export default function VenuesPage() {
       {/* Lista */}
       {filtered.length === 0 ? (
         <div className="text-center py-16">
-          <p className="text-gray-600 text-4xl mb-4">🏛️</p>
+          <Landmark strokeWidth={1.75} className="w-10 h-10 mx-auto mb-4 text-gray-600" />
           <p className="text-gray-400 text-sm">{search ? "Sin resultados" : "Sin venues registrados"}</p>
           {!search && <button onClick={openNew} className="mt-4 text-[#B3985B] text-sm hover:underline">Agregar el primero →</button>}
         </div>
@@ -280,7 +281,7 @@ export default function VenuesPage() {
                     <img src={v.fotoPortada} alt={v.nombre} className="w-16 h-16 object-cover rounded-lg shrink-0 border border-[#2a2a2a]" />
                   ) : (
                     <div className="w-16 h-16 bg-[#1a1a1a] rounded-lg flex items-center justify-center shrink-0 border border-[#2a2a2a]">
-                      <span className="text-2xl">🏛️</span>
+                      <Landmark strokeWidth={1.75} className="w-7 h-7 text-gray-600" />
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
@@ -301,16 +302,16 @@ export default function VenuesPage() {
                     </div>
                     <div className="flex items-center gap-4 mt-2 flex-wrap">
                       {v.capacidadPersonas && (
-                        <span className="text-gray-400 text-xs">👥 {v.capacidadPersonas.toLocaleString()} personas</span>
+                        <span className="inline-flex items-center gap-1.5 text-gray-400 text-xs"><Users strokeWidth={1.75} className="w-3.5 h-3.5" />{v.capacidadPersonas.toLocaleString()} personas</span>
                       )}
                       {(v.largoM && v.anchoM) && (
-                        <span className="text-gray-400 text-xs">📐 {v.largoM}×{v.anchoM}m{v.alturaMaximaM ? ` h${v.alturaMaximaM}m` : ""}</span>
+                        <span className="inline-flex items-center gap-1.5 text-gray-400 text-xs"><Ruler strokeWidth={1.75} className="w-3.5 h-3.5" />{v.largoM}×{v.anchoM}m{v.alturaMaximaM ? ` h${v.alturaMaximaM}m` : ""}</span>
                       )}
                       {v.amperajeTotal && (
-                        <span className="text-gray-400 text-xs">⚡ {v.amperajeTotal}A{v.voltajeDisponible ? ` · ${v.voltajeDisponible}V` : ""}</span>
+                        <span className="inline-flex items-center gap-1.5 text-gray-400 text-xs"><Zap strokeWidth={1.75} className="w-3.5 h-3.5" />{v.amperajeTotal}A{v.voltajeDisponible ? ` · ${v.voltajeDisponible}V` : ""}</span>
                       )}
                       {v.telefonoContacto && (
-                        <span className="text-gray-400 text-xs">📞 {v.telefonoContacto}</span>
+                        <span className="inline-flex items-center gap-1.5 text-gray-400 text-xs"><Phone strokeWidth={1.75} className="w-3.5 h-3.5" />{v.telefonoContacto}</span>
                       )}
                     </div>
                   </div>
@@ -376,9 +377,9 @@ export default function VenuesPage() {
                       <div>
                         <p className="text-gray-500 text-xs mb-2 uppercase tracking-wider">Restricciones</p>
                         <div className="space-y-1">
-                          {v.restriccionDecibeles && <p className="text-sm text-orange-300">🔊 {v.restriccionDecibeles}</p>}
-                          {v.restriccionHorario && <p className="text-sm text-orange-300">🕐 {v.restriccionHorario}</p>}
-                          {v.restriccionInstalacion && <p className="text-sm text-orange-300">🔧 {v.restriccionInstalacion}</p>}
+                          {v.restriccionDecibeles && <p className="inline-flex items-center gap-1.5 text-sm text-orange-300"><Volume2 strokeWidth={1.75} className="w-3.5 h-3.5" />{v.restriccionDecibeles}</p>}
+                          {v.restriccionHorario && <p className="inline-flex items-center gap-1.5 text-sm text-orange-300"><Clock strokeWidth={1.75} className="w-3.5 h-3.5" />{v.restriccionHorario}</p>}
+                          {v.restriccionInstalacion && <p className="inline-flex items-center gap-1.5 text-sm text-orange-300"><Wrench strokeWidth={1.75} className="w-3.5 h-3.5" />{v.restriccionInstalacion}</p>}
                         </div>
                       </div>
                     )}

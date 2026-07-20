@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { FileText, ClipboardList, Shield, CreditCard, Send, type LucideIcon } from "lucide-react";
 
 interface CotizacionLite {
   id: string;
@@ -82,7 +83,7 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
     key: string;
     label: string;
     desc: string;
-    icon: string;
+    icon: LucideIcon;
     enabled: boolean;
     hint?: string;
     onClick?: () => void;
@@ -91,7 +92,7 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
       key: "contrato",
       label: "Contrato",
       desc: "Contrato de servicios con anticipo y saldo",
-      icon: "📄",
+      icon: FileText,
       enabled: !!selectedCot,
       onClick: () => selectedCot && abrir(`/api/contratos/${trato.id}/pdf?cotizacionId=${selectedCot.id}`),
     },
@@ -99,7 +100,7 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
       key: "listado",
       label: "Listado de equipos",
       desc: "Relación de equipos incluidos",
-      icon: "📋",
+      icon: ClipboardList,
       enabled: !!selectedCot,
       onClick: () => selectedCot && abrir(`/api/cotizaciones/${selectedCot.id}/listado-equipos-pdf`),
     },
@@ -107,7 +108,7 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
       key: "responsiva",
       label: "Carta responsiva",
       desc: proyecto ? "Responsiva para el recinto / sede" : "Disponible al crear el proyecto",
-      icon: "🛡️",
+      icon: Shield,
       enabled: !!proyecto,
       hint: proyecto ? undefined : "Requiere proyecto",
       onClick: () => proyecto && abrir(`/api/proyectos/${proyecto.id}/carta-responsiva?preview=1`),
@@ -122,7 +123,7 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
         : proyecto
         ? "No hay anticipo registrado en el proyecto"
         : "Disponible al crear el proyecto",
-      icon: "💳",
+      icon: CreditCard,
       enabled: !!anticipoCxcId,
       hint: !proyecto ? "Requiere proyecto" : !anticipoCxcId && !cargandoAnticipo ? "Sin anticipo" : undefined,
       onClick: () => anticipoCxcId && abrir(`/api/cuentas-cobrar/${anticipoCxcId}/nota`),
@@ -135,7 +136,7 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
         onClick={() => setOpen(true)}
         className="w-full py-2.5 bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] text-sm font-semibold rounded-xl hover:bg-[#B3985B]/15 hover:border-[#B3985B]/50 transition-colors flex items-center justify-center gap-2"
       >
-        📨 Documentos para el cliente
+        <Send strokeWidth={1.75} className="w-4 h-4" /> Documentos para el cliente
       </button>
 
       {open && (
@@ -193,7 +194,7 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
                       : "bg-[#0f0f0f] border-[#161616] opacity-50 cursor-not-allowed"
                   }`}
                 >
-                  <span className="text-lg shrink-0">{doc.icon}</span>
+                  <doc.icon strokeWidth={1.75} className="w-4 h-4 shrink-0 text-gray-500" />
                   <span className="flex-1 min-w-0">
                     <span className="flex items-center gap-2">
                       <span className="text-sm font-semibold text-white truncate">{doc.label}</span>

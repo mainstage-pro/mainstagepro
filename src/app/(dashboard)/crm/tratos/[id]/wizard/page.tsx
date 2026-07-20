@@ -3,6 +3,7 @@
 import { use, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Telescope, Sprout, Search, ClipboardList, CheckCircle2, Megaphone, Mic, Hourglass, Smartphone, Package, FileText, User, AlertTriangle, Target, type LucideIcon } from "lucide-react";
 import DiscoveryForm from "@/components/crm/DiscoveryForm";
 import { useToast } from "@/components/Toast";
 import { Combobox } from "@/components/Combobox";
@@ -71,13 +72,13 @@ type NurturingData = {
 };
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
-const ETAPA_CONFIG: Record<string, { color: string; bg: string; border: string; label: string; icon: string }> = {
-  CONTACTO_INICIAL: { color: "text-amber-400", bg: "bg-amber-900/20", border: "border-amber-700/40", label: "Contacto inicial", icon: "🔭" },
-  PROSPECCION:  { color: "text-violet-400",  bg: "bg-violet-900/20",  border: "border-violet-700/40",  label: "Prospección",    icon: "🌱" },
-  LEAD:         { color: "text-amber-400",   bg: "bg-amber-900/20",   border: "border-amber-700/40",   label: "Prospección",    icon: "🔭" },
-  DESCUBRIMIENTO: { color: "text-blue-400",  bg: "bg-blue-900/20",    border: "border-blue-700/40",    label: "Descubrimiento", icon: "🔍" },
-  OPORTUNIDAD:  { color: "text-violet-400",  bg: "bg-violet-900/20",  border: "border-violet-700/40",  label: "Oportunidad",    icon: "📋" },
-  VENTA_CERRADA:{ color: "text-emerald-400", bg: "bg-emerald-900/20", border: "border-emerald-700/40", label: "Venta Cerrada",  icon: "✅" },
+const ETAPA_CONFIG: Record<string, { color: string; bg: string; border: string; label: string; icon: LucideIcon }> = {
+  CONTACTO_INICIAL: { color: "text-amber-400", bg: "bg-amber-900/20", border: "border-amber-700/40", label: "Contacto inicial", icon: Telescope },
+  PROSPECCION:  { color: "text-violet-400",  bg: "bg-violet-900/20",  border: "border-violet-700/40",  label: "Prospección",    icon: Sprout },
+  LEAD:         { color: "text-amber-400",   bg: "bg-amber-900/20",   border: "border-amber-700/40",   label: "Prospección",    icon: Telescope },
+  DESCUBRIMIENTO: { color: "text-blue-400",  bg: "bg-blue-900/20",    border: "border-blue-700/40",    label: "Descubrimiento", icon: Search },
+  OPORTUNIDAD:  { color: "text-violet-400",  bg: "bg-violet-900/20",  border: "border-violet-700/40",  label: "Oportunidad",    icon: ClipboardList },
+  VENTA_CERRADA:{ color: "text-emerald-400", bg: "bg-emerald-900/20", border: "border-emerald-700/40", label: "Venta Cerrada",  icon: CheckCircle2 },
 };
 
 // ─── Componente principal ─────────────────────────────────────────────────────
@@ -342,7 +343,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
               ✎ Editar datos iniciales
             </button>
             <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.bg} ${cfg.border} border ${cfg.color}`}>
-              {cfg.icon} {cfg.label}
+              <cfg.icon strokeWidth={1.75} className="w-3.5 h-3.5" /> {cfg.label}
             </div>
           </div>
         </div>
@@ -415,7 +416,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
                     <>
                       {esPublicidad && !ofrecerFormulario && (
                         <div className="mb-4 p-3 rounded-xl border border-amber-700/40 bg-amber-900/10">
-                          <p className="text-amber-300 text-xs font-semibold mb-1">📣 Lead de publicidad</p>
+                          <p className="text-amber-300 text-xs font-semibold mb-1 inline-flex items-center gap-1.5"><Megaphone strokeWidth={1.75} className="w-3.5 h-3.5" /> Lead de publicidad</p>
                           <p className="text-gray-500 text-[11px] leading-relaxed">
                             Primero comparte la presentación (arriba). Cuando muestre interés concreto en cotizar,
                             se habilita el formulario para que el cliente lo llene.
@@ -429,7 +430,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
                           disabled={saving}
                           className="border border-[#2a2a2a] bg-[#111] hover:bg-[#1a1a1a] rounded-xl p-4 text-left transition-all group disabled:opacity-50"
                         >
-                          <div className="text-2xl mb-2">🎙️</div>
+                          <div className="mb-2"><Mic strokeWidth={1.75} className="w-6 h-6 text-gray-500" /></div>
                           <p className="text-white text-sm font-semibold group-hover:text-[#B3985B] transition-colors">Yo recopilo (Vendedor)</p>
                           <p className="text-gray-600 text-xs mt-1 leading-relaxed">Lleno el brief en llamada o reunión con el cliente</p>
                         </button>
@@ -442,7 +443,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
                             disabled={generandoToken || saving}
                             className="border border-[#B3985B]/30 bg-[#B3985B]/5 hover:bg-[#B3985B]/10 rounded-xl p-4 text-left transition-all group disabled:opacity-50"
                           >
-                            <div className="text-2xl mb-2">{generandoToken ? "⏳" : "📲"}</div>
+                            <div className="mb-2">{generandoToken ? <Hourglass strokeWidth={1.75} className="w-6 h-6 text-[#B3985B]" /> : <Smartphone strokeWidth={1.75} className="w-6 h-6 text-[#B3985B]" />}</div>
                             <p className="text-[#B3985B] text-sm font-semibold group-hover:text-[#c9a96a] transition-colors">
                               {generandoToken ? "Generando..." : "El cliente llena"}
                             </p>
@@ -518,8 +519,8 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {([
-                      { value: "INVENTARIO", icon: "📦", label: "Inventario Mainstage", desc: "Armamos la propuesta con nuestro equipo. Recomendado.", recomendado: true },
-                      { value: "CONTRA_RIDER", icon: "📄", label: "Rider específico / Contra-rider", desc: "El cliente necesita otras marcas o quiere subir su rider técnico para que propongamos un contra-rider.", recomendado: false },
+                      { value: "INVENTARIO", icon: Package, label: "Inventario Mainstage", desc: "Armamos la propuesta con nuestro equipo. Recomendado.", recomendado: true },
+                      { value: "CONTRA_RIDER", icon: FileText, label: "Rider específico / Contra-rider", desc: "El cliente necesita otras marcas o quiere subir su rider técnico para que propongamos un contra-rider.", recomendado: false },
                     ] as const).map(m => {
                       const activo = (nurturing.modalidadPropuesta ?? "INVENTARIO") === m.value;
                       return (
@@ -528,7 +529,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
                           {m.recomendado && (
                             <span className="absolute top-2 right-2 text-[9px] font-bold uppercase tracking-wider text-[#B3985B] bg-[#B3985B]/15 px-1.5 py-0.5 rounded">Recomendado</span>
                           )}
-                          <div className="text-2xl mb-2">{m.icon}</div>
+                          <div className="mb-2"><m.icon strokeWidth={1.75} className={`w-6 h-6 ${activo ? "text-[#B3985B]" : "text-gray-500"}`} /></div>
                           <p className={`text-sm font-semibold mb-1 ${activo ? "text-[#B3985B]" : "text-white"}`}>{m.label}</p>
                           <p className="text-[11px] text-gray-500 leading-relaxed">{m.desc}</p>
                         </button>
@@ -547,7 +548,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
                   onAgregarSlot={() => agregarSlotSeguimiento("DESCUBRIMIENTO")}
                   onPasarDescubrimiento={completarPreparacion}
                   onMarcarPerdida={marcarPerdida}
-                  labelContinuar="🔍 Continuar al descubrimiento →"
+                  labelContinuar="Continuar al descubrimiento →"
                 />
               </>
             ) : (
@@ -565,7 +566,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
         {etapa === "OPORTUNIDAD" && (
           <div className="bg-[#0d0a1a] border border-violet-800/30 rounded-2xl p-5 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-violet-900/30 flex items-center justify-center text-xl">📋</div>
+              <div className="w-10 h-10 rounded-full bg-violet-900/30 flex items-center justify-center text-violet-400"><ClipboardList strokeWidth={1.75} className="w-5 h-5" /></div>
               <div>
                 <p className="text-white font-bold text-base">Oportunidad activa</p>
                 <p className="text-violet-400/70 text-xs mt-0.5">{nombre1} está en proceso de decisión</p>
@@ -575,7 +576,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
             {/* El cliente completó su descubrimiento por su cuenta → retomar y cotizar */}
             {(trato.modoDescubrimiento === "FORMULARIO" || trato.modoDescubrimiento === "CLIENTE") && trato.formEstado === "COMPLETADO" && (
               <div className="p-3 rounded-xl border border-emerald-800/40 bg-emerald-900/15">
-                <p className="text-emerald-300 text-xs font-semibold mb-1">👤 El cliente completó su descubrimiento</p>
+                <p className="text-emerald-300 text-xs font-semibold mb-1 inline-flex items-center gap-1.5"><User strokeWidth={1.75} className="w-3.5 h-3.5" /> El cliente completó su descubrimiento</p>
                 <p className="text-emerald-200/70 text-[11px] leading-relaxed">
                   Avanzó automáticamente a oportunidad. Retoma el proceso y arma la cotización con la información que dejó.
                   {trato.preferenciaContacto === "LLAMADA" && " Pidió que lo contacten por llamada primero."}
@@ -588,7 +589,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
               <div className="mt-4">
                 {!trato.descubrimientoCompleto && (
                   <div className="p-3 bg-red-900/20 border border-red-800/40 rounded-lg mb-4">
-                    <p className="text-red-400 text-xs font-semibold mb-1">⚠️ Acción requerida</p>
+                    <p className="text-red-400 text-xs font-semibold mb-1 inline-flex items-center gap-1.5"><AlertTriangle strokeWidth={1.75} className="w-3.5 h-3.5" /> Acción requerida</p>
                     <p className="text-red-300/80 text-[11px] leading-relaxed">
                       Antes de poder generar una cotización para esta oportunidad, debes completar el formulario de descubrimiento con los detalles técnicos del evento.
                     </p>
@@ -693,7 +694,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
                   disabled={creandoCotizacion}
                   className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-violet-700/20 border border-violet-700/40 text-violet-300 text-sm font-bold hover:bg-violet-700/30 transition-colors disabled:opacity-40 cursor-pointer mb-3"
                 >
-                  {creandoCotizacion ? "Creando..." : "📄 Retomar el proceso y cotizar →"}
+                  {creandoCotizacion ? "Creando..." : <span className="inline-flex items-center gap-1.5"><FileText strokeWidth={1.75} className="w-4 h-4" /> Retomar el proceso y cotizar →</span>}
                 </button>
 
                 <div className="flex justify-center border-t border-[#1a1a1a] pt-3">
@@ -712,7 +713,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
         {etapa === "VENTA_CERRADA" && (
           <div className="bg-[#061209] border border-emerald-800/30 rounded-2xl p-5 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-emerald-900/30 flex items-center justify-center text-xl">✅</div>
+              <div className="w-10 h-10 rounded-full bg-emerald-900/30 flex items-center justify-center text-emerald-400"><CheckCircle2 strokeWidth={1.75} className="w-5 h-5" /></div>
               <div>
                 <p className="text-white font-bold text-base">¡Venta cerrada!</p>
                 <p className="text-emerald-400/70 text-xs mt-0.5">{nombre1} ya confirmó — iniciamos producción</p>
@@ -723,7 +724,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
               <div className="mt-4">
                 {!trato.descubrimientoCompleto && (
                   <div className="p-3 bg-amber-900/20 border border-amber-800/40 rounded-lg mb-4">
-                    <p className="text-amber-400 text-xs font-semibold mb-1">⚠️ Información faltante</p>
+                    <p className="text-amber-400 text-xs font-semibold mb-1 inline-flex items-center gap-1.5"><AlertTriangle strokeWidth={1.75} className="w-3.5 h-3.5" /> Información faltante</p>
                     <p className="text-amber-300/80 text-[11px] leading-relaxed">
                       Aunque la fecha ya está apartada, debes recabar la información técnica (descubrimiento) para poder operar el evento correctamente.
                     </p>
@@ -754,7 +755,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
                   href={`/crm/tratos/${id}`}
                   className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-emerald-700/20 border border-emerald-700/40 text-emerald-300 text-sm font-bold hover:bg-emerald-700/30 transition-colors mb-3"
                 >
-                  🎯 Ver trato y confirmar evento →
+                  <Target strokeWidth={1.75} className="w-4 h-4" /> Ver trato y confirmar evento →
                 </Link>
 
                 <div className="flex justify-center border-t border-[#1a1a1a] pt-3">
@@ -773,7 +774,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
             href={`/crm/tratos/${id}`}
             className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#1a1a1a] border border-[#333] text-gray-300 text-sm font-semibold hover:bg-[#222] hover:text-white transition-colors"
           >
-            📋 Ver trato completo
+            <ClipboardList strokeWidth={1.75} className="w-4 h-4" /> Ver trato completo
           </Link>
         </div>
 

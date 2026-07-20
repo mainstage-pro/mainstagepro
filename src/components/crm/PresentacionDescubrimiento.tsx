@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { Clapperboard } from "lucide-react";
 
 interface PV {
   id: string;
@@ -51,7 +52,7 @@ export default function PresentacionDescubrimiento({ tratoId }: { tratoId: strin
     <div className="bg-[#0a1420] border border-blue-800/30 rounded-2xl p-5 space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-blue-900/30 flex items-center justify-center text-xl">🎬</div>
+          <div className="w-10 h-10 rounded-full bg-blue-900/30 flex items-center justify-center text-blue-400"><Clapperboard strokeWidth={1.75} className="w-5 h-5" /></div>
           <div>
             <p className="text-white font-bold text-base">Presentación de venta</p>
             <p className="text-blue-400/70 text-xs mt-0.5">Genera y envía una presentación para el descubrimiento</p>

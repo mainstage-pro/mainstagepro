@@ -8,6 +8,7 @@ import {
   Tooltip, ResponsiveContainer, Legend,
   PieChart, Pie, Cell,
 } from "recharts";
+import { ClipboardList, BarChart3, Megaphone, Target, Construction, Link2, Save, type LucideIcon } from "lucide-react";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -93,11 +94,11 @@ const METRICS_COLS = [
   { key: "publicaciones", label: "Publicaciones" },
 ] as const;
 
-const TABS: { key: TabKey; label: string; icon: string }[] = [
-  { key: "ejecucion-organica",    label: "Ejecución Orgánica",   icon: "📋" },
-  { key: "resultados-organicos",  label: "Resultados Orgánicos", icon: "📊" },
-  { key: "ejecucion-campanas",    label: "Ejecución Campañas",   icon: "📣" },
-  { key: "resultados-campanas",   label: "Resultados Campañas",  icon: "🎯" },
+const TABS: { key: TabKey; label: string; icon: LucideIcon }[] = [
+  { key: "ejecucion-organica",    label: "Ejecución Orgánica",   icon: ClipboardList },
+  { key: "resultados-organicos",  label: "Resultados Orgánicos", icon: BarChart3 },
+  { key: "ejecucion-campanas",    label: "Ejecución Campañas",   icon: Megaphone },
+  { key: "resultados-campanas",   label: "Resultados Campañas",  icon: Target },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -202,7 +203,7 @@ function AnalisisSection({ title, color, fields, values, onChange, saving }: {
 function DevBanner() {
   return (
     <div className="flex items-center gap-3 bg-purple-950/30 border border-purple-500/20 rounded-xl px-5 py-3">
-      <span className="text-xl">🚧</span>
+      <Construction strokeWidth={1.75} className="w-5 h-5 text-purple-300 shrink-0" />
       <div>
         <p className="text-purple-300 text-sm font-semibold">Módulo en desarrollo</p>
         <p className="text-purple-400/70 text-xs">La estructura y los campos están listos para conectarse cuando se active el módulo de campañas.</p>
@@ -216,7 +217,7 @@ function ConexionPublicidadInfo({ tab }: { tab: "ejecucion" | "resultados" }) {
   return (
     <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4 text-xs space-y-3">
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-[#B3985B]">🔗</span>
+        <Link2 strokeWidth={1.75} className="w-3.5 h-3.5 text-[#B3985B]" />
         <p className="text-[#9ca3af] font-semibold uppercase tracking-wider text-[10px]">Conexión con el Módulo de Publicidad</p>
       </div>
       {tab === "ejecucion" ? (
@@ -735,7 +736,7 @@ export default function ResultadosMarketingPage() {
                 tab === t.key ? "border-[#B3985B] text-white font-medium" : "border-transparent text-white/40 hover:text-white/70"
               }`}
             >
-              <span>{t.icon}</span> {t.label}
+              <t.icon strokeWidth={1.75} className="w-3.5 h-3.5" /> {t.label}
             </button>
           ))}
         </div>
@@ -921,8 +922,8 @@ export default function ResultadosMarketingPage() {
             {/* Botones */}
             <div className="flex items-center gap-3 no-print">
               <button onClick={() => saveReporteOrganico(rpOrganicoForm)} disabled={savingRpOrg}
-                className="px-4 py-2 bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg hover:border-[#444] transition-colors disabled:opacity-50">
-                {savingRpOrg ? "Guardando…" : "💾 Guardar análisis"}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg hover:border-[#444] transition-colors disabled:opacity-50">
+                {savingRpOrg ? "Guardando…" : <><Save strokeWidth={1.75} className="w-3.5 h-3.5" /> Guardar análisis</>}
               </button>
             </div>
           </div>
@@ -1047,8 +1048,8 @@ export default function ResultadosMarketingPage() {
 
             <div className="flex items-center gap-3 no-print">
               <button onClick={() => saveReporteResultados(rpResultadosForm)} disabled={savingRpRes}
-                className="px-4 py-2 bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg hover:border-[#444] transition-colors disabled:opacity-50">
-                {savingRpRes ? "Guardando…" : "💾 Guardar análisis"}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg hover:border-[#444] transition-colors disabled:opacity-50">
+                {savingRpRes ? "Guardando…" : <><Save strokeWidth={1.75} className="w-3.5 h-3.5" /> Guardar análisis</>}
               </button>
             </div>
           </div>
@@ -1141,8 +1142,8 @@ export default function ResultadosMarketingPage() {
 
             <div className="flex items-center gap-3 no-print">
               <button onClick={() => saveReporteCampEj(rpCampEjForm)} disabled={savingRpCampEj}
-                className="px-4 py-2 bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg hover:border-[#444] transition-colors disabled:opacity-50">
-                {savingRpCampEj ? "Guardando…" : "💾 Guardar comentarios"}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg hover:border-[#444] transition-colors disabled:opacity-50">
+                {savingRpCampEj ? "Guardando…" : <><Save strokeWidth={1.75} className="w-3.5 h-3.5" /> Guardar comentarios</>}
               </button>
             </div>
           </div>
@@ -1239,8 +1240,8 @@ export default function ResultadosMarketingPage() {
 
             <div className="flex items-center gap-3 no-print">
               <button onClick={() => saveReporteCampRes(rpCampResForm)} disabled={savingRpCampRes}
-                className="px-4 py-2 bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg hover:border-[#444] transition-colors disabled:opacity-50">
-                {savingRpCampRes ? "Guardando…" : "💾 Guardar análisis"}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#1a1a1a] border border-[#333] text-white text-sm rounded-lg hover:border-[#444] transition-colors disabled:opacity-50">
+                {savingRpCampRes ? "Guardando…" : <><Save strokeWidth={1.75} className="w-3.5 h-3.5" /> Guardar análisis</>}
               </button>
             </div>
           </div>

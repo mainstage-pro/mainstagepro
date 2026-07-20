@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PartyPopper } from "lucide-react";
 
 const FRASES_TAREA = [
   "Hecho. Cada detalle cuenta.",
@@ -48,7 +49,7 @@ export function CelebrationToast({ type, onDone }: Props) {
     <div className={`fixed right-4 z-[200] transition-all duration-300 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`} style={{ bottom: "calc(env(safe-area-inset-bottom) + 180px)" }}>
       {type === "venta" ? (
         <div className="bg-[#B3985B] text-black px-5 py-3.5 rounded-2xl shadow-2xl shadow-black/60 max-w-xs">
-          <p className="text-xs font-bold uppercase tracking-wider mb-0.5">¡Venta cerrada! 🎉</p>
+          <p className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider mb-0.5">¡Venta cerrada! <PartyPopper strokeWidth={1.75} className="w-3.5 h-3.5" /></p>
           <p className="text-sm font-medium leading-snug">{frase}</p>
         </div>
       ) : (

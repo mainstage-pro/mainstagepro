@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { AREA_LABELS, AREA_COLORS, TIPO_AGENDA_LABELS, TIPO_AGENDA_COLORS, type AreaJunta, type TipoAgenda } from "@/lib/junta-templates";
+import { Users, Video, FileText } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -437,9 +438,9 @@ function ItemAgenda({ item, juntaId, juntaArea, onUpdate }: {
     switch (item.tipo) {
       case "MODALIDAD": {
         const MODS = [
-          { key: "PRESENCIAL", emoji: "🟢", label: "Presencial", sub: "Todos en el mismo espacio" },
-          { key: "VIRTUAL",    emoji: "🔵", label: "Virtual",    sub: "Por videollamada" },
-          { key: "DOCUMENTO",  emoji: "📄", label: "Solo documento", sub: "Se comparte sin junta en vivo" },
+          { key: "PRESENCIAL", Icon: Users,    label: "Presencial", sub: "Todos en el mismo espacio" },
+          { key: "VIRTUAL",    Icon: Video,    label: "Virtual",    sub: "Por videollamada" },
+          { key: "DOCUMENTO",  Icon: FileText, label: "Solo documento", sub: "Se comparte sin junta en vivo" },
         ];
         return (
           <div className="flex gap-2 flex-wrap">
@@ -454,8 +455,8 @@ function ItemAgenda({ item, juntaId, juntaArea, onUpdate }: {
                     : "bg-[#0d0d0d] border-[#1a1a1a] hover:border-[#2a2a2a]"
                 }`}
               >
-                <p className={`text-xs font-medium ${respuesta === m.key ? "text-[#c9a96a]" : "text-gray-400"}`}>
-                  {m.emoji} {m.label}
+                <p className={`inline-flex items-center gap-1.5 text-xs font-medium ${respuesta === m.key ? "text-[#c9a96a]" : "text-gray-400"}`}>
+                  <m.Icon strokeWidth={1.75} className="w-3.5 h-3.5" /> {m.label}
                 </p>
                 <p className="text-[10px] text-gray-600 mt-0.5">{m.sub}</p>
               </button>

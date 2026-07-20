@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Combobox } from "@/components/Combobox";
+import { FileText } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -511,9 +512,9 @@ export default function PagosPersonalPage() {
                             <button
                               onClick={() => generarCxP(row)}
                               disabled={generandoCxP === row.tecnicoId}
-                              className="w-full py-1.5 rounded-lg border border-[#333] hover:border-[#B3985B]/40 text-gray-500 hover:text-[#B3985B] text-xs transition-colors disabled:opacity-40"
+                              className="w-full py-1.5 rounded-lg border border-[#333] hover:border-[#B3985B]/40 text-gray-500 hover:text-[#B3985B] text-xs transition-colors disabled:opacity-40 inline-flex items-center justify-center gap-1.5"
                             >
-                              {generandoCxP === row.tecnicoId ? "Generando..." : "📄 Generar nota por pagar (CxP)"}
+                              {generandoCxP === row.tecnicoId ? "Generando..." : <><FileText strokeWidth={1.75} className="w-3.5 h-3.5" /> Generar nota por pagar (CxP)</>}
                             </button>
                           )}
                         </div>

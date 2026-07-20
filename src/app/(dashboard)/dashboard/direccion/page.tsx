@@ -1,6 +1,10 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import {
+  Briefcase, SlidersHorizontal, BarChart3, Users, Megaphone,
+  Package, CheckCircle2, TrendingUp,
+} from "lucide-react";
 import DailyGreeting from "@/components/DailyGreeting";
 import TareasPendientesWidget from "@/components/TareasPendientesWidget";
 import { EventosWidget } from "@/components/dashboard/EventosWidget";
@@ -253,21 +257,21 @@ export default async function DashboardDireccionPage() {
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { href: "/crm/tratos",    label: "CRM",          desc: `${tratosPipeline} tratos activos`,           icon: "💼" },
-            { href: "/proyectos",     label: "Proyectos",    desc: `${proyActivos} en producción`,               icon: "🎛️" },
-            { href: "/finanzas/cxc",  label: "Finanzas",     desc: cxcVencidas > 0 ? `${cxcVencidas} cobros vencidos` : "Al corriente", icon: "📊" },
-            { href: "/rrhh/personal", label: "RR.HH.",       desc: `${personalActivo} colaboradores activos`,    icon: "👥" },
-            { href: "/marketing/calendario", label: "Marketing", desc: "Calendario de contenido",                icon: "📣" },
-            { href: "/inventario/disponibilidad", label: "Inventario", desc: "Disponibilidad de equipos",        icon: "📦" },
-            { href: "/operaciones/equipo", label: "Equipo",  desc: `${totalPendientes} tareas pendientes`,       icon: "✅" },
-            { href: "/reportes",      label: "Reportes",     desc: "Análisis y reportes",                        icon: "📈" },
+            { href: "/crm/tratos",    label: "CRM",          desc: `${tratosPipeline} tratos activos`,           Icon: Briefcase },
+            { href: "/proyectos",     label: "Proyectos",    desc: `${proyActivos} en producción`,               Icon: SlidersHorizontal },
+            { href: "/finanzas/cxc",  label: "Finanzas",     desc: cxcVencidas > 0 ? `${cxcVencidas} cobros vencidos` : "Al corriente", Icon: BarChart3 },
+            { href: "/rrhh/personal", label: "RR.HH.",       desc: `${personalActivo} colaboradores activos`,    Icon: Users },
+            { href: "/marketing/calendario", label: "Marketing", desc: "Calendario de contenido",                Icon: Megaphone },
+            { href: "/inventario/disponibilidad", label: "Inventario", desc: "Disponibilidad de equipos",        Icon: Package },
+            { href: "/operaciones/equipo", label: "Equipo",  desc: `${totalPendientes} tareas pendientes`,       Icon: CheckCircle2 },
+            { href: "/reportes",      label: "Reportes",     desc: "Análisis y reportes",                        Icon: TrendingUp },
           ].map(m => (
             <Link
               key={m.href}
               href={m.href}
               className="ms-stat-card hover:border-[#2a2a2a] hover:bg-[#141414] transition-all flex items-start gap-3"
             >
-              <span className="text-xl shrink-0 mt-0.5">{m.icon}</span>
+              <m.Icon strokeWidth={1.75} className="w-5 h-5 shrink-0 mt-0.5 text-gray-500" />
               <div className="min-w-0">
                 <p className="text-white text-sm font-semibold truncate">{m.label}</p>
                 <p className="text-[#555] text-[11px] mt-0.5 truncate">{m.desc}</p>

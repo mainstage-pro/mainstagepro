@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import MigrarCapturaModal from "./MigrarCapturaModal";
+import { AlertTriangle } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type CapturaItem = {
@@ -174,7 +175,7 @@ export function VistaCapturaRapida() {
                       <span className="text-[10px] text-[#333]">Sin área</span>
                     )}
                     {isOld(item.creadoEn) && (
-                      <span className="text-[10px] text-[#e8a020]/60">⚠ Antiguo</span>
+                      <span className="inline-flex items-center gap-1 text-[10px] text-[#e8a020]/60"><AlertTriangle strokeWidth={1.75} className="w-3 h-3" /> Antiguo</span>
                     )}
                   </div>
                 </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Map, ClipboardList, Sliders, Guitar, PartyPopper, Building2, Camera, Pin, Search, type LucideIcon } from "lucide-react";
 import { useToast } from "@/components/Toast";
 
 // ─── Constantes compartidas ──────────────────────────────────────────────────
@@ -52,7 +53,7 @@ export function PlanContactosSteps({
       {/* Progreso */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-xl">{esOutbound ? "🗺️" : "📋"}</span>
+          {esOutbound ? <Map strokeWidth={1.75} className="w-5 h-5 text-emerald-400" /> : <ClipboardList strokeWidth={1.75} className="w-5 h-5 text-amber-400" />}
           <p className="text-base font-bold text-white">
             Plan de contactos {esOutbound ? "outbound" : "inbound"}
           </p>
@@ -144,13 +145,13 @@ export function MaterialCompartir({
   const toast = useToast();
   const origin = typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app";
 
-  const materiales = [
-    { id: "servicios",   label: "📋 Presentación de Servicios",          url: `${origin}/presentacion/servicios` },
-    { id: "inventario",  label: "🎛 Catálogo de Inventario",              url: `${origin}/presentacion/inventario` },
-    { id: "musical",     label: "🎸 Presentación Eventos Musicales",      url: `${origin}/presentacion/evento/musical` },
-    { id: "social",      label: "🎊 Presentación Eventos Sociales",       url: `${origin}/presentacion/evento/social` },
-    { id: "empresarial", label: "🏢 Presentación Eventos Empresariales",  url: `${origin}/presentacion/evento/empresarial` },
-    { id: "galeria",     label: "📸 Galería de Eventos",                  url: `${origin}/presentacion/galeria` },
+  const materiales: Array<{ id: string; icon: LucideIcon; label: string; url: string }> = [
+    { id: "servicios",   icon: ClipboardList, label: "Presentación de Servicios",          url: `${origin}/presentacion/servicios` },
+    { id: "inventario",  icon: Sliders,       label: "Catálogo de Inventario",              url: `${origin}/presentacion/inventario` },
+    { id: "musical",     icon: Guitar,        label: "Presentación Eventos Musicales",      url: `${origin}/presentacion/evento/musical` },
+    { id: "social",      icon: PartyPopper,   label: "Presentación Eventos Sociales",       url: `${origin}/presentacion/evento/social` },
+    { id: "empresarial", icon: Building2,     label: "Presentación Eventos Empresariales",  url: `${origin}/presentacion/evento/empresarial` },
+    { id: "galeria",     icon: Camera,        label: "Galería de Eventos",                  url: `${origin}/presentacion/galeria` },
   ];
 
   // Colocar la presentación del tipo de evento seleccionado al principio si existe
@@ -176,7 +177,7 @@ export function MaterialCompartir({
                   ? (esOutbound ? "bg-emerald-900/10 border-emerald-700/30 hover:bg-emerald-900/20" : "bg-[#B3985B]/10 border-[#B3985B]/30 hover:bg-[#B3985B]/20")
                   : "bg-[#111] border-[#2a2a2a] hover:border-[#444]"
               }`}>
-              <span className={`text-sm font-medium ${i === 0 ? "text-white" : "text-gray-300"}`}>{m.label}</span>
+              <span className={`inline-flex items-center gap-2 text-sm font-medium ${i === 0 ? "text-white" : "text-gray-300"}`}><m.icon strokeWidth={1.75} className="w-4 h-4 shrink-0 text-gray-500" />{m.label}</span>
             </a>
             <button
               onClick={() => {
@@ -278,7 +279,7 @@ export function SeguimientosTracker({
   onAgregarSlot,
   onPasarDescubrimiento,
   onMarcarPerdida,
-  labelContinuar = "🔍 Pasar a descubrimiento →",
+  labelContinuar = "Pasar a descubrimiento →",
 }: {
   seguimientos: SegItem[];
   maxSlots: number;
@@ -305,7 +306,7 @@ export function SeguimientosTracker({
     <div className={`rounded-2xl p-5 border ${esOutbound ? "bg-[#0a1a0f] border-emerald-900/40" : "bg-[#1a1206] border-amber-900/40"}`}>
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-2">
-          <span className="text-xl">📌</span>
+          <Pin strokeWidth={1.75} className="w-5 h-5 text-gray-500" />
           <p className="text-base font-bold text-white">Seguimientos del prospecto</p>
         </div>
         <span className={`text-xs font-semibold tabular-nums ${todosHechos ? (esOutbound ? "text-emerald-400" : "text-amber-400") : "text-gray-500"}`}>
@@ -424,7 +425,7 @@ export function SeguimientosTracker({
               : "bg-violet-700/20 border border-violet-700/40 text-violet-300 hover:bg-violet-700/30"
           }`}
         >
-          {labelContinuar}
+          <span className="inline-flex items-center justify-center gap-1.5"><Search strokeWidth={1.75} className="w-4 h-4" />{labelContinuar}</span>
         </button>
       </div>
     </div>

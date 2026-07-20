@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { BackButton } from "@/components/BackButton";
+import { MessageCircle, FileText, ClipboardList, Link2 } from "lucide-react";
 
 interface Puesto {
   id: string; titulo: string; area: string; descripcion?: string | null;
@@ -288,21 +289,21 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
           {candidato.telefono && (
             <a href={buildWA()} target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 border border-green-800/50 text-green-400 hover:bg-green-900/20 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
-              📲 WhatsApp
+              <MessageCircle strokeWidth={1.75} className="w-3.5 h-3.5" />WhatsApp
             </a>
           )}
           {post && etapa !== "CONTRATADO" && etapa !== "RECHAZADO" && (
             <a href={`/api/rrhh/candidatos/${id}/propuesta?postulacionId=${post.id}`}
               target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 border border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B]/10 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
-              📄 Propuesta PDF
+              <FileText strokeWidth={1.75} className="w-3.5 h-3.5" />Propuesta PDF
             </a>
           )}
           {(etapa === "APROBADO" || etapa === "CONTRATADO") && post && (
             <a href={`/api/rrhh/candidatos/${id}/contrato?postulacionId=${post.id}`}
               target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 border border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B]/10 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
-              📋 Contrato PDF
+              <ClipboardList strokeWidth={1.75} className="w-3.5 h-3.5" />Contrato PDF
             </a>
           )}
           {etapa === "APROBADO" && !post?.contratoGenerado && (
@@ -540,7 +541,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
               {candidato.telefono && (
                 <a href={buildWAPresentation()} target="_blank" rel="noopener noreferrer"
                   className="flex items-center justify-between bg-green-900/20 hover:bg-green-900/30 border border-green-800/30 rounded-lg px-4 py-3 transition-colors">
-                  <span className="text-sm text-green-300">📲 Enviar presentación de Mainstage Pro</span>
+                  <span className="inline-flex items-center gap-1.5 text-sm text-green-300"><MessageCircle strokeWidth={1.75} className="w-4 h-4" />Enviar presentación de Mainstage Pro</span>
                   <span className="text-xs text-green-700">→</span>
                 </a>
               )}
@@ -551,20 +552,20 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
                   <a href={`/api/rrhh/candidatos/${id}/propuesta?postulacionId=${post.id}`}
                     target="_blank" rel="noopener noreferrer"
                     className="flex items-center justify-between bg-[#0d0d0d] hover:bg-[#151515] border border-[#222] rounded-lg px-4 py-3 transition-colors">
-                    <span className="text-sm text-white">📄 Descargar Propuesta PDF</span>
+                    <span className="inline-flex items-center gap-1.5 text-sm text-white"><FileText strokeWidth={1.75} className="w-4 h-4" />Descargar Propuesta PDF</span>
                     <span className="text-xs text-gray-600">→</span>
                   </a>
                 )}
                 {candidato.telefono && (
                   <a href={buildWA()} target="_blank" rel="noopener noreferrer"
                     className="flex items-center justify-between bg-green-900/20 hover:bg-green-900/30 border border-green-800/30 rounded-lg px-4 py-3 transition-colors">
-                    <span className="text-sm text-green-300">📲 Enviar por WhatsApp</span>
+                    <span className="inline-flex items-center gap-1.5 text-sm text-green-300"><MessageCircle strokeWidth={1.75} className="w-4 h-4" />Enviar por WhatsApp</span>
                     <span className="text-xs text-green-700">→</span>
                   </a>
                 )}
                 {/* Link de aceptación para el candidato */}
                 <div className="bg-[#0d0d0d] border border-[#222] rounded-lg px-4 py-3 space-y-2">
-                  <p className="text-xs text-gray-500">🔗 Link de aceptación para el candidato</p>
+                  <p className="inline-flex items-center gap-1.5 text-xs text-gray-500"><Link2 strokeWidth={1.75} className="w-3.5 h-3.5" />Link de aceptación para el candidato</p>
                   {propuestaLink || post?.propuestaToken ? (
                     <div className="flex items-center gap-2">
                       <input readOnly
@@ -662,7 +663,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
                   <a href={`/api/rrhh/candidatos/${id}/contrato?postulacionId=${post.id}`}
                     target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 border border-[#B3985B]/40 text-[#B3985B] text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#B3985B]/10 transition-colors">
-                    📋 Vista previa del contrato
+                    <ClipboardList strokeWidth={1.75} className="w-4 h-4" />Vista previa del contrato
                   </a>
                 )}
                 <button onClick={contratar} disabled={saving}
@@ -683,7 +684,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
                   <a href={`/api/rrhh/candidatos/${id}/contrato?postulacionId=${post.id}`}
                     target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 border border-[#B3985B]/40 text-[#B3985B] text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#B3985B]/10 transition-colors">
-                    📋 Descargar contrato
+                    <ClipboardList strokeWidth={1.75} className="w-4 h-4" />Descargar contrato
                   </a>
                 )}
                 {post?.personalInternoId && (

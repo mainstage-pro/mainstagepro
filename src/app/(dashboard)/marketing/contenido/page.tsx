@@ -1,6 +1,7 @@
 "use client";
 import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { Settings, type LucideIcon } from "lucide-react";
 
 import MarketingCalendarioPage from "../calendario/page";
 import LevantamientosPage from "../levantamientos/page";
@@ -10,7 +11,7 @@ import ContenidosPage from "../contenidos/page";
 type TabKey = "calendario" | "parrilla" | "proximas" | "tipo" | "feed" | "shoots" | "kanban" | "tipos";
 type Vista   = "calendario" | "proximas" | "parrilla" | "tipo" | "feed";
 
-const TABS: { key: TabKey; label: string }[] = [
+const TABS: { key: TabKey; label: string; icon?: LucideIcon }[] = [
   { key: "calendario", label: "Calendario" },
   { key: "parrilla",   label: "Parrilla"   },
   { key: "proximas",   label: "Próximas"   },
@@ -18,7 +19,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: "feed",       label: "Feed IG"    },
   { key: "shoots",     label: "Shoots"     },
   { key: "kanban",     label: "Kanban"     },
-  { key: "tipos",      label: "⚙ Tipos"   },
+  { key: "tipos",      label: "Tipos", icon: Settings },
 ];
 
 const CALENDAR_VISTAS: TabKey[] = ["calendario", "parrilla", "proximas", "tipo", "feed"];
@@ -39,12 +40,13 @@ function ContenidoInner() {
           <button
             key={t.key}
             onClick={() => router.push(`/marketing/contenido?vista=${t.key}`)}
-            className={`px-4 py-3 text-sm border-b-2 transition-colors whitespace-nowrap shrink-0 ${
+            className={`inline-flex items-center gap-1.5 px-4 py-3 text-sm border-b-2 transition-colors whitespace-nowrap shrink-0 ${
               tab === t.key
                 ? "border-[#B3985B] text-white font-medium"
                 : "border-transparent text-white/40 hover:text-white"
             }`}
           >
+            {t.icon && <t.icon strokeWidth={1.75} className="w-3.5 h-3.5" />}
             {t.label}
           </button>
         ))}

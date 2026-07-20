@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { PartyPopper, Trophy, Zap, AlertTriangle, ClipboardList } from 'lucide-react'
 import { showUndoToast } from '@/components/ui/undo-toast'
 import MiDiaItem, { type Instancia } from './MiDiaItem'
 
@@ -140,7 +141,7 @@ function CircularProgress({ pct, completadas, total }: { pct: number; completada
         </div>
       </div>
       {total > 0 && pct === 100 && (
-        <p className="text-xs text-green-400 mt-3">🎉 ¡Todo completado!</p>
+        <p className="inline-flex items-center gap-1.5 text-xs text-green-400 mt-3"><PartyPopper strokeWidth={1.75} className="w-3.5 h-3.5" /> ¡Todo completado!</p>
       )}
     </div>
   )
@@ -166,8 +167,10 @@ function DayPanel({ pct, completadas, total }: { pct: number; completadas: numbe
           </div>
           {pct >= 80 && (
             <div className="mt-2 pt-2 border-t border-[#1a1a1a]">
-              <p className="text-xs text-[#c9a96a]">
-                {pct === 100 ? '🏆 Día perfecto' : '⚡ Casi listo'}
+              <p className="inline-flex items-center gap-1.5 text-xs text-[#c9a96a]">
+                {pct === 100
+                  ? <><Trophy strokeWidth={1.75} className="w-3.5 h-3.5" /> Día perfecto</>
+                  : <><Zap strokeWidth={1.75} className="w-3.5 h-3.5" /> Casi listo</>}
               </p>
             </div>
           )}
@@ -574,7 +577,7 @@ export default function MiDiaPage() {
           {!modoArranque && !viendoUsuarioId && atrasadas.filter(i => i.estado !== 'COMPLETADA').length > 0 && (
             <div className="mb-5 border border-amber-700/30 bg-amber-950/10 rounded-2xl overflow-hidden">
               <div className="px-4 pt-4 pb-2 flex items-center gap-2">
-                <span className="text-amber-400 text-base">⚠️</span>
+                <AlertTriangle strokeWidth={1.75} className="w-4 h-4 text-amber-400" />
                 <p className="text-[11px] font-bold text-amber-400 uppercase tracking-widest">
                   Sin completar de días anteriores
                 </p>
@@ -611,7 +614,7 @@ export default function MiDiaPage() {
             <div className="text-center py-16 text-gray-600 text-sm">Cargando compromisos del día...</div>
           ) : instancias.length === 0 ? (
             <div className="bg-[#111] border border-dashed border-[#2a2a2a] rounded-2xl p-12 text-center">
-              <p className="text-4xl mb-3">📋</p>
+              <ClipboardList strokeWidth={1.5} className="w-10 h-10 mx-auto mb-3 text-gray-600" />
               <p className="text-white font-semibold mb-1">No hay compromisos generados para este día</p>
               <p className="text-gray-500 text-sm mb-6">
                 Genera las instancias del día a partir del plan de actividades.
@@ -637,8 +640,8 @@ export default function MiDiaPage() {
                   </span>
                 </div>
                 {pendientes.length === 0 ? (
-                  <div className="text-center py-8 text-gray-500 text-sm">
-                    🎉 ¡Todo completado por hoy!
+                  <div className="flex items-center justify-center gap-1.5 py-8 text-gray-500 text-sm">
+                    <PartyPopper strokeWidth={1.75} className="w-4 h-4" /> ¡Todo completado por hoy!
                   </div>
                 ) : (
                   <div>

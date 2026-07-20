@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { showUndoToast } from '@/components/ui/undo-toast'
 import DatePicker from '@/components/ui/DatePicker'
 import { getAreaColor } from '@/lib/areaColors'
+import { Calendar, CheckCircle2, Sun } from 'lucide-react'
 
 type Tab = 'midia' | 'tareas'
 
@@ -298,7 +299,7 @@ export default function QuickAccessPanel() {
                   : 'text-gray-600 hover:text-gray-300 hover:bg-[#111]'
               }`}
             >
-              📅 Mi Día
+              <span className="inline-flex items-center gap-1.5"><Calendar strokeWidth={1.75} className="w-3.5 h-3.5" /> Mi Día</span>
             </button>
             <button
               onClick={() => setTab('tareas')}
@@ -308,7 +309,7 @@ export default function QuickAccessPanel() {
                   : 'text-gray-600 hover:text-gray-300 hover:bg-[#111]'
               }`}
             >
-              ✅ Tareas
+              <span className="inline-flex items-center gap-1.5"><CheckCircle2 strokeWidth={1.75} className="w-3.5 h-3.5" /> Tareas</span>
             </button>
           </div>
           <div className="flex items-center gap-2">
@@ -525,7 +526,7 @@ export default function QuickAccessPanel() {
                 </div>
               ) : tareas.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-2xl mb-2">☀️</p>
+                  <Sun strokeWidth={1.75} className="w-6 h-6 mx-auto mb-2 text-amber-400" />
                   <p className="text-gray-600 text-sm font-medium">Nada para hoy</p>
                   <p className="text-gray-700 text-xs mt-1">Todas las tareas completadas</p>
                   <button

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { Rocket } from "lucide-react";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Plan = any;
@@ -76,7 +77,7 @@ export default function OnboardingPage() {
         </div>
       ) : planes.length === 0 ? (
         <div className="ms-card text-center py-20">
-          <p className="text-4xl mb-3">🚀</p>
+          <Rocket strokeWidth={1.75} className="w-10 h-10 mx-auto mb-3 text-gray-600" />
           <p className="text-gray-400 font-medium mb-1">Sin planes de integración</p>
           <p className="text-gray-600 text-sm mb-4">Crea el primer plan para un nuevo colaborador.</p>
           <Link href="/rrhh/onboarding/nuevo"

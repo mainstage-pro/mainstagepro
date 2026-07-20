@@ -2,10 +2,14 @@
 
 import { useState } from "react";
 import ModuleTabs from "@/components/ModuleTabs";
+import { SlidersHorizontal, Compass, Palette, Music, Wine, Building2, Camera, Handshake, Package, type LucideIcon } from "lucide-react";
 
 const BASE_URL = typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app";
 
-const PRESENTACIONES = [
+const PRESENTACIONES: {
+  grupo: string;
+  items: { key: string; label: string; desc: string; href: string; icon: LucideIcon; audience: string }[];
+}[] = [
   {
     grupo: "Negocio",
     items: [
@@ -14,7 +18,7 @@ const PRESENTACIONES = [
         label: "Servicios",
         desc: "Presentación general de Mainstage Pro: lo que ofrecemos, cómo trabajamos y por qué elegirnos.",
         href: "/presentacion/servicios",
-        icon: "🎛",
+        icon: SlidersHorizontal,
         audience: "Clientes potenciales",
       },
       {
@@ -22,7 +26,7 @@ const PRESENTACIONES = [
         label: "Alineación de equipo 2026",
         desc: "Propósito, visión, misión, valores, principios y mentalidad Mainstage. Para alinear a todo el equipo.",
         href: "/presentacion/alineacion-2026",
-        icon: "🧭",
+        icon: Compass,
         audience: "Equipo interno",
       },
       {
@@ -30,7 +34,7 @@ const PRESENTACIONES = [
         label: "Brandbook",
         desc: "Identidad visual: logotipo, paleta de color, tipografía, tono de voz y guía de uso de marca.",
         href: "/presentacion/brandbook",
-        icon: "🎨",
+        icon: Palette,
         audience: "Equipo interno · Agencias",
       },
     ],
@@ -43,7 +47,7 @@ const PRESENTACIONES = [
         label: "Eventos musicales",
         desc: "Conciertos, festivales, DJ sets y showcases. Audio, iluminación y video para shows en vivo.",
         href: "/presentacion/evento/musical",
-        icon: "🎵",
+        icon: Music,
         audience: "Promotores · Artistas",
       },
       {
@@ -51,7 +55,7 @@ const PRESENTACIONES = [
         label: "Eventos sociales",
         desc: "Bodas, XV años, fiestas privadas. La producción técnica que hace memorables los momentos que importan.",
         href: "/presentacion/evento/social",
-        icon: "🥂",
+        icon: Wine,
         audience: "Parejas · Familias",
       },
       {
@@ -59,7 +63,7 @@ const PRESENTACIONES = [
         label: "Eventos empresariales",
         desc: "Conferencias, lanzamientos, corporativos. La imagen de tu empresa cuidada en cada detalle técnico.",
         href: "/presentacion/evento/empresarial",
-        icon: "🏢",
+        icon: Building2,
         audience: "Empresas · Agencias",
       },
       {
@@ -67,7 +71,7 @@ const PRESENTACIONES = [
         label: "Galería de eventos",
         desc: "Nuestro trabajo en imágenes: musicales, sociales y empresariales.",
         href: "/presentacion/galeria",
-        icon: "📸",
+        icon: Camera,
         audience: "Clientes potenciales · Redes sociales",
       },
     ],
@@ -80,7 +84,7 @@ const PRESENTACIONES = [
         label: "Únete al equipo",
         desc: "Por qué trabajar en Mainstage Pro, valores, beneficios y proceso de integración.",
         href: "/presentacion/equipo",
-        icon: "🤝",
+        icon: Handshake,
         audience: "Candidatos",
       },
     ],
@@ -93,7 +97,7 @@ const PRESENTACIONES = [
         label: "Inventario de equipo",
         desc: "Catálogo completo del inventario audiovisual de Mainstage Pro.",
         href: "/presentacion/inventario",
-        icon: "📦",
+        icon: Package,
         audience: "Clientes · Equipo interno",
       },
     ],
@@ -135,7 +139,7 @@ export default function PresentacionesPage() {
             >
               {/* Top */}
               <div className="flex items-start gap-3">
-                <span className="text-2xl mt-0.5">{item.icon}</span>
+                <item.icon strokeWidth={1.75} className="w-5 h-5 mt-0.5 shrink-0 text-[#8b8f97]" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className="text-white font-semibold text-sm">{item.label}</h3>

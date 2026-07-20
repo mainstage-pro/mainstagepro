@@ -2,15 +2,24 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ClipboardList, AlertTriangle, Star, SlidersHorizontal, type LucideIcon } from "lucide-react";
 
 // Definición de formularios disponibles — agregar más aquí en el futuro
-const FORMULARIOS = [
+const FORMULARIOS: {
+  id: string;
+  titulo: string;
+  descripcion: string;
+  icono: LucideIcon;
+  href: string;
+  hrefNuevo: string;
+  disponible: boolean;
+}[] = [
   {
     id: "reporte-semanal",
     titulo: "Reporte General Semanal",
     descripcion:
       "Formulario semanal para que el equipo reporte logros, pendientes, tareas próximas e incidencias de la semana.",
-    icono: "📋",
+    icono: ClipboardList,
     href: "/formularios/reporte-semanal",
     hrefNuevo: "/formularios/reporte-semanal/nuevo",
     disponible: true,
@@ -20,7 +29,7 @@ const FORMULARIOS = [
     titulo: "Incidencias Semanales",
     descripcion:
       "Documenta y clasifica por urgencia las incidencias operativas de cada área durante la semana. Con exportación a PDF.",
-    icono: "⚠️",
+    icono: AlertTriangle,
     href: "/formularios/incidencias-semanales",
     hrefNuevo: "/formularios/incidencias-semanales/nuevo",
     disponible: true,
@@ -30,7 +39,7 @@ const FORMULARIOS = [
     id: "satisfaccion-cliente",
     titulo: "Satisfacción del Cliente",
     descripcion: "Reporte post-evento para evaluar la experiencia del cliente y áreas de mejora.",
-    icono: "⭐",
+    icono: Star,
     href: "/formularios/satisfaccion-cliente",
     hrefNuevo: "/formularios/satisfaccion-cliente/nuevo",
     disponible: false,
@@ -39,7 +48,7 @@ const FORMULARIOS = [
     id: "reporte-post-evento",
     titulo: "Reporte Post-Evento",
     descripcion: "Evaluación técnica y operativa después de cada evento producido.",
-    icono: "🎛️",
+    icono: SlidersHorizontal,
     href: "/formularios/reporte-post-evento",
     hrefNuevo: "/formularios/reporte-post-evento/nuevo",
     disponible: false,
@@ -123,8 +132,8 @@ export default function FormulariosPage() {
             }`}
           >
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-xl shrink-0">
-                {f.icono}
+              <div className="w-12 h-12 rounded-xl bg-[#1a1a1a] border border-[#2a2a2a] flex items-center justify-center text-gray-400 shrink-0">
+                <f.icono strokeWidth={1.75} className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">

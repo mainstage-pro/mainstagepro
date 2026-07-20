@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { Bell, Camera, Megaphone, Radio, Briefcase, Banknote, PartyPopper, User, CheckCircle2 } from "lucide-react";
 
 interface Notificacion {
   id: string;
@@ -38,20 +39,20 @@ function NotifIcon({ tipo, url }: { tipo: string; url: string | null }) {
   if (tipo === "TAREA")
     return <div className={`${base} bg-blue-900/30 text-blue-400`}>✓</div>;
   if (tipo === "LEVANTAMIENTO")
-    return <div className={`${base} bg-purple-900/30 text-purple-400`}>📸</div>;
+    return <div className={`${base} bg-purple-900/30 text-purple-400`}><Camera strokeWidth={1.75} className="w-4 h-4" /></div>;
   if (tipo === "PUBLICACION")
-    return <div className={`${base} bg-pink-900/30 text-pink-400`}>📢</div>;
+    return <div className={`${base} bg-pink-900/30 text-pink-400`}><Megaphone strokeWidth={1.75} className="w-4 h-4" /></div>;
   if (tipo === "CAMPANA")
-    return <div className={`${base} bg-cyan-900/30 text-cyan-400`}>📣</div>;
+    return <div className={`${base} bg-cyan-900/30 text-cyan-400`}><Radio strokeWidth={1.75} className="w-4 h-4" /></div>;
   if (url?.includes("cotizacion"))
-    return <div className={`${base} bg-yellow-900/30 text-yellow-400`}>💼</div>;
+    return <div className={`${base} bg-yellow-900/30 text-yellow-400`}><Briefcase strokeWidth={1.75} className="w-4 h-4" /></div>;
   if (url?.includes("finanzas"))
-    return <div className={`${base} bg-green-900/30 text-green-400`}>💸</div>;
+    return <div className={`${base} bg-green-900/30 text-green-400`}><Banknote strokeWidth={1.75} className="w-4 h-4" /></div>;
   if (url?.includes("proyecto"))
-    return <div className={`${base} bg-orange-900/30 text-orange-400`}>🎪</div>;
+    return <div className={`${base} bg-orange-900/30 text-orange-400`}><PartyPopper strokeWidth={1.75} className="w-4 h-4" /></div>;
   if (url?.includes("crm"))
-    return <div className={`${base} bg-indigo-900/30 text-indigo-400`}>👤</div>;
-  return <div className={`${base} bg-white/5 text-white/40`}>🔔</div>;
+    return <div className={`${base} bg-indigo-900/30 text-indigo-400`}><User strokeWidth={1.75} className="w-4 h-4" /></div>;
+  return <div className={`${base} bg-white/5 text-white/40`}><Bell strokeWidth={1.75} className="w-4 h-4" /></div>;
 }
 
 export default function NotificacionesBell() {
@@ -193,7 +194,7 @@ export default function NotificacionesBell() {
               <div className="max-h-[420px] overflow-y-auto divide-y divide-white/[0.04]" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(179,152,91,0.2) transparent" }}>
                 {notifs.length === 0 ? (
                   <div className="px-4 py-10 text-center">
-                    <p className="text-2xl mb-2">🔔</p>
+                    <Bell strokeWidth={1.75} className="w-6 h-6 mx-auto mb-2 text-white/30" />
                     <p className="text-white/30 text-sm">Sin notificaciones</p>
                   </div>
                 ) : notifs.map(n => (
@@ -257,7 +258,7 @@ export default function NotificacionesBell() {
               <div className="max-h-[400px] overflow-y-auto divide-y divide-white/[0.04]" style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(179,152,91,0.2) transparent" }}>
                 {alertas.length === 0 ? (
                   <div className="text-center py-10">
-                    <p className="text-2xl mb-2">✅</p>
+                    <CheckCircle2 strokeWidth={1.75} className="w-6 h-6 mx-auto mb-2 text-emerald-400" />
                     <p className="text-white/50 text-sm font-medium">Todo al día</p>
                     <p className="text-white/20 text-xs mt-1">No hay alertas pendientes</p>
                   </div>

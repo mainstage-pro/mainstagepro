@@ -17,6 +17,7 @@ import VersionHistorial from "@/components/VersionHistorial";
 import { Combobox } from "@/components/Combobox";
 import ProyectoTareas from "./ProyectoTareas";
 import { BackButton } from "@/components/BackButton";
+import { Package, AlertTriangle, Smartphone, Truck, Home, Radio, MessageCircle, FileText, Bell, User, Factory, ClipboardList, FileImage } from "lucide-react";
 import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem } from "@/components/proyectos/ViabilidadWidget";
 import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
 import { contarRespondidos, contarIncidencias, promedioCalificaciones, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
@@ -429,7 +430,7 @@ function ProtocoloPanel({ tipo, data, onSave }: {
   onSave: (tipo: "salida" | "entrada", data: ProtocoloData) => Promise<void>;
 }) {
   const title = tipo === "salida" ? "Salida de equipos" : "Entrada de equipos";
-  const icon = tipo === "salida" ? "🚚" : "🏠";
+  const Icon = tipo === "salida" ? Truck : Home;
   const desc = tipo === "salida" ? "Verificación antes de llevar al evento" : "Verificación al regresar a bodega";
   const [local, setLocal] = useState<ProtocoloData>(data);
   const [saving, setSaving] = useState(false);
@@ -449,7 +450,7 @@ function ProtocoloPanel({ tipo, data, onSave }: {
     <div className="ms-table-wrapper">
       <div className="flex items-center justify-between px-5 py-4 border-b border-[#222]">
         <div className="flex items-center gap-3">
-          <span className="text-2xl">{icon}</span>
+          <Icon strokeWidth={1.75} className="w-6 h-6 text-gray-300" />
           <div><p className="text-white text-sm font-semibold">{title}</p><p className="text-gray-500 text-xs">{desc}</p></div>
         </div>
         <div className="flex gap-2">
@@ -584,8 +585,8 @@ function EquipoRow({ eq, proyectoId, fichaCompleta, fichaTooltip, onToggleConfir
                 await onRefresh();
               }
             }}
-            className={`text-[10px] px-2 py-0.5 rounded-full font-medium border transition-colors ${fichaCompleta ? "border-blue-800/50 text-blue-400 hover:bg-blue-900/20 hover:border-blue-600 cursor-pointer" : "border-[#333] text-gray-600 cursor-not-allowed opacity-50"}`}>
-            📲 Proveedor
+            className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium border transition-colors ${fichaCompleta ? "border-blue-800/50 text-blue-400 hover:bg-blue-900/20 hover:border-blue-600 cursor-pointer" : "border-[#333] text-gray-600 cursor-not-allowed opacity-50"}`}>
+            <Smartphone strokeWidth={1.75} className="w-3 h-3" /> Proveedor
           </button>
         )}
         <button onClick={() => onEliminar(eq.id)} className="text-gray-600 hover:text-red-400 text-xs transition-colors">✕</button>
@@ -864,7 +865,7 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
 
   if (!data || data.lineas.length === 0) return (
     <div className="text-center py-16 text-[#333]">
-      <p className="text-4xl mb-3">📦</p>
+      <Package strokeWidth={1.75} className="w-9 h-9 mx-auto mb-3" />
       <p className="text-sm">Este proyecto no tiene equipos cotizados vinculados al inventario.</p>
       <p className="text-xs text-[#444] mt-1">Agrega equipos desde la cotización para verlos aquí.</p>
     </div>
@@ -902,7 +903,7 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
             </p>
             {(linea.marca || linea.modelo) && <p className="text-[#555] text-[10px]">{linea.descripcion}</p>}
             {linea.clasificacion === 'PROPIO_MANUAL' && (
-              <p className="text-[10px] text-yellow-700 mt-0.5">⚠ Sin vínculo al inventario</p>
+              <p className="inline-flex items-center gap-1 text-[10px] text-yellow-700 mt-0.5"><AlertTriangle strokeWidth={1.75} className="w-3 h-3" /> Sin vínculo al inventario</p>
             )}
           </td>
           {/* Cantidad */}
@@ -914,7 +915,7 @@ function EquiposTab({ proyectoId }: { proyectoId: string }) {
           <td className="px-3 py-2.5 text-center">
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium ${cfg.bg} ${cfg.text}`}>
               {esConflicto && linea.tipo === 'EQUIPO_PROPIO'
-                ? <>⚠ Conflicto</>
+                ? <><AlertTriangle strokeWidth={1.75} className="w-3 h-3" /> Conflicto</>
                 : cfg.label
               }
             </span>
@@ -3910,7 +3911,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
             {!fichaCompleta && (
               <div className="bg-yellow-900/20 border border-yellow-800/30 rounded-xl px-4 py-3 flex items-center gap-3">
-                <span className="text-yellow-400">⚠</span>
+                <AlertTriangle strokeWidth={1.75} className="w-4 h-4 shrink-0 text-yellow-400" />
                 <p className="text-yellow-400/80 text-xs">
                   <span className="font-semibold text-yellow-400">Ficha incompleta — </span>
                   falta: <span className="font-medium">{fichaCamposFaltantes.join(", ")}</span>.
@@ -4226,7 +4227,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         <div className="space-y-4">
           {!fichaCompleta && (
             <div className="bg-yellow-900/20 border border-yellow-800/30 rounded-xl px-4 py-3 flex items-center gap-3">
-              <span className="text-yellow-400">⚠</span>
+              <AlertTriangle strokeWidth={1.75} className="w-4 h-4 shrink-0 text-yellow-400" />
               <p className="text-yellow-400/80 text-xs">
                 <span className="font-semibold text-yellow-400">Ficha incompleta — </span>
                 para enviar invitaciones a técnicos y proveedores necesitas llenar: <span className="font-medium">{fichaCamposFaltantes.join(", ")}</span>.
@@ -4528,8 +4529,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             return (
               <div className={`border rounded-xl p-5 ${sc.border} ${sc.bg}`}>
                 <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#B3985B" }}>
-                    📦 Recolección de equipo
+                  <p className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider" style={{ color: "#B3985B" }}>
+                    <Package strokeWidth={1.75} className="w-3.5 h-3.5" /> Recolección de equipo
                   </p>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sc.text} bg-black/20`}>{sc.label}</span>
                 </div>
@@ -4570,8 +4571,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       <button onClick={async () => {
                         await fetch(`/api/proyectos/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ recoleccionStatus: "EN_CAMINO" }) });
                         setProyecto(prev => prev ? { ...prev, recoleccionStatus: "EN_CAMINO" } : prev);
-                      }} className="px-3 py-1.5 rounded-lg bg-blue-900/30 border border-blue-800/40 text-blue-400 text-xs font-semibold hover:bg-blue-900/50 transition-colors">
-                        🚚 Salió a recolectar
+                      }} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-900/30 border border-blue-800/40 text-blue-400 text-xs font-semibold hover:bg-blue-900/50 transition-colors">
+                        <Truck strokeWidth={1.75} className="w-3.5 h-3.5" /> Salió a recolectar
                       </button>
                     )}
                     <button onClick={async () => {
@@ -4606,7 +4607,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       className="text-xs text-green-400 hover:text-green-300 transition-colors font-medium border border-green-800/40 rounded-lg px-2 py-1"
                       title="Enviar detalles del evento a todo el equipo por WhatsApp"
                     >
-                      📣 Broadcast WA
+                      <span className="inline-flex items-center gap-1.5"><Radio strokeWidth={1.75} className="w-3.5 h-3.5" /> Broadcast WA</span>
                     </button>
                   )}
                   <button onClick={() => setShowAddPersonal(v => !v)}
@@ -4716,7 +4717,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             className={`w-full bg-[#1a1a1a] border rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] ${disponibilidad && !disponibilidad.disponible ? "border-red-500/60" : "border-[#333]"}`}
                           />
                           {disponibilidad && !disponibilidad.disponible && (
-                            <p className="text-red-400 text-xs mt-1">⚠ Conflicto en {disponibilidad.conflictos.map(c => c.nombre).join(", ")}</p>
+                            <p className="inline-flex items-center gap-1 text-red-400 text-xs mt-1"><AlertTriangle strokeWidth={1.75} className="w-3 h-3 shrink-0" /> Conflicto en {disponibilidad.conflictos.map(c => c.nombre).join(", ")}</p>
                           )}
                           {disponibilidad?.disponible && selTecnico && (
                             <p className="text-green-500 text-xs mt-1">✓ Disponible</p>
@@ -5136,12 +5137,12 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             if (d.whatsappUrl) { window.open(d.whatsappUrl, "_blank"); await load(); }
                             else if (d.token) { const url = `${window.location.origin}/confirmar/tecnico/${d.token}`; await navigator.clipboard.writeText(url).catch(() => {}); toast.info("Sin número registrado. Link copiado al portapapeles."); await load(); }
                           }}
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${fichaCompleta ? "border-green-800/50 text-green-500 hover:bg-green-900/20 hover:border-green-600 cursor-pointer" : "border-[#333] text-gray-600 cursor-not-allowed opacity-50"}`}>
-                          📲 Invitar
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border transition-colors ${fichaCompleta ? "border-green-800/50 text-green-500 hover:bg-green-900/20 hover:border-green-600 cursor-pointer" : "border-[#333] text-gray-600 cursor-not-allowed opacity-50"}`}>
+                          <Smartphone strokeWidth={1.75} className="w-3 h-3" /> Invitar
                         </button>
                       )}
                       {p.tecnico && (
-                        <a href={`/api/proyectos/${proyecto.id}/personal/${p.id}/carta`} target="_blank" rel="noopener noreferrer" title="Descargar carta responsiva freelance" className="px-2 py-0.5 rounded-full text-[10px] font-medium border border-[#333] text-gray-500 hover:border-[#B3985B]/50 hover:text-[#B3985B] transition-colors">📄 Carta</a>
+                        <a href={`/api/proyectos/${proyecto.id}/personal/${p.id}/carta`} target="_blank" rel="noopener noreferrer" title="Descargar carta responsiva freelance" className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border border-[#333] text-gray-500 hover:border-[#B3985B]/50 hover:text-[#B3985B] transition-colors"><FileText strokeWidth={1.75} className="w-3 h-3" /> Carta</a>
                       )}
                     </div>
                   </div>
@@ -5551,8 +5552,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       dispEquipo.disponible ? (
                         <p className="text-green-500 text-xs mt-1">✓ Disponible: {dispEquipo.cantidadDisponible} de {dispEquipo.cantidadTotal} unidades libres</p>
                       ) : (
-                        <p className="text-red-400 text-xs mt-1">
-                          ⚠ Solo {dispEquipo.cantidadDisponible} disponibles de {dispEquipo.cantidadTotal} · comprometido en: {dispEquipo.conflictos.map(c => c.nombre).join(", ")}
+                        <p className="inline-flex items-center gap-1 text-red-400 text-xs mt-1">
+                          <AlertTriangle strokeWidth={1.75} className="w-3 h-3 shrink-0" /> Solo {dispEquipo.cantidadDisponible} disponibles de {dispEquipo.cantidadTotal} · comprometido en: {dispEquipo.conflictos.map(c => c.nombre).join(", ")}
                         </p>
                       )
                     )}
@@ -5921,7 +5922,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                         onClick={ev => { ev.stopPropagation(); setRiderNotasEditId(e.id); setRiderNotasText(e.notas ?? ""); }}
                                         className={`text-xs transition-colors opacity-0 group-hover:opacity-100 ${e.notas ? "text-[#B3985B]" : "text-gray-600 hover:text-[#B3985B]"}`}
                                         title={e.notas ? "Editar nota" : "Agregar nota"}
-                                      >📝</button>
+                                      ><FileText strokeWidth={1.75} className="w-3.5 h-3.5" /></button>
                                       <button
                                         onClick={async ev => { ev.stopPropagation(); await eliminarEquipo(e.id); }}
                                         className="text-xs text-gray-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
@@ -5953,7 +5954,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                   className="px-4 pb-2 flex items-start gap-2 group/notas cursor-pointer"
                                   onClick={() => { setRiderNotasEditId(e.id); setRiderNotasText(e.notas ?? ""); }}
                                 >
-                                  <span className="text-[10px] text-gray-600 mt-0.5">📝</span>
+                                  <FileText strokeWidth={1.75} className="w-3 h-3 text-gray-600 mt-0.5 shrink-0" />
                                   <p className="text-xs text-gray-500 flex-1 leading-relaxed">{e.notas}</p>
                                   <span className="text-[10px] text-gray-700 opacity-0 group-hover/notas:opacity-100 transition-opacity shrink-0">Editar</span>
                                 </div>
@@ -8096,7 +8097,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       <div className="fixed bottom-6 right-6 z-50 bg-[#111] border border-[#B3985B]/50 rounded-xl p-5 shadow-2xl w-80">
         <div className="flex items-start justify-between mb-3">
           <div>
-            <p className="text-white font-semibold text-sm">🔔 Notificar cambio al equipo</p>
+            <p className="inline-flex items-center gap-1.5 text-white font-semibold text-sm"><Bell strokeWidth={1.75} className="w-4 h-4" /> Notificar cambio al equipo</p>
             <p className="text-gray-500 text-xs mt-0.5">
               <span className="text-[#B3985B]">{pendingNotif.campoLabel}</span> actualizado
               {pendingNotif.valor ? `: ${pendingNotif.valor}` : ""}
@@ -8108,13 +8109,13 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           {pendingNotif.contactos.map((c, i) => (
             <div key={i} className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0">
-                <span className="text-xs shrink-0">{c.tipo === "tecnico" ? "👤" : "🏭"}</span>
+                <span className="shrink-0 text-gray-500">{c.tipo === "tecnico" ? <User strokeWidth={1.75} className="w-3.5 h-3.5" /> : <Factory strokeWidth={1.75} className="w-3.5 h-3.5" />}</span>
                 <span className="text-white text-xs truncate">{c.nombre}</span>
               </div>
               {c.waUrl ? (
                 <a href={c.waUrl} target="_blank" rel="noopener noreferrer"
-                  className="shrink-0 bg-green-800 hover:bg-green-700 text-white text-[11px] font-semibold px-3 py-1 rounded-lg transition-colors">
-                  💬 WA
+                  className="inline-flex items-center gap-1 shrink-0 bg-green-800 hover:bg-green-700 text-white text-[11px] font-semibold px-3 py-1 rounded-lg transition-colors">
+                  <MessageCircle strokeWidth={1.75} className="w-3.5 h-3.5" /> WA
                 </a>
               ) : (
                 <span className="text-gray-600 text-xs shrink-0">Sin tel.</span>
@@ -8128,8 +8129,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               pendingNotif.contactos.filter(c => c.waUrl).forEach(c => window.open(c.waUrl!, "_blank"));
               setPendingNotif(null);
             }}
-            className="w-full bg-green-800 hover:bg-green-700 text-white text-xs font-semibold py-2 rounded-lg transition-colors">
-            💬 Notificar a todos ({pendingNotif.contactos.filter(c => c.waUrl).length})
+            className="w-full inline-flex items-center justify-center gap-1.5 bg-green-800 hover:bg-green-700 text-white text-xs font-semibold py-2 rounded-lg transition-colors">
+            <MessageCircle strokeWidth={1.75} className="w-3.5 h-3.5" /> Notificar a todos ({pendingNotif.contactos.filter(c => c.waUrl).length})
           </button>
         )}
       </div>
@@ -8185,17 +8186,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               <div className="flex gap-2">
                 <button
                   onClick={() => { navigator.clipboard.writeText(briefText); }}
-                  className="flex-1 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold py-2.5 rounded-xl transition-colors"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold py-2.5 rounded-xl transition-colors"
                 >
-                  📋 Copiar texto
+                  <ClipboardList strokeWidth={1.75} className="w-3.5 h-3.5" /> Copiar texto
                 </button>
                 <a
                   href={`/api/proyectos/${proyecto.id}/brief-imagen`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold py-2.5 rounded-xl transition-colors text-center"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold py-2.5 rounded-xl transition-colors text-center"
                 >
-                  🖼️ Descargar imagen
+                  <FileImage strokeWidth={1.75} className="w-3.5 h-3.5" /> Descargar imagen
                 </a>
               </div>
             </div>

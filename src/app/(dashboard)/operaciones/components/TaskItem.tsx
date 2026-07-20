@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { formatearRecurrencia } from "@/lib/recurrencia";
 import DatePicker from "@/components/ui/DatePicker";
 import { BadgeDias } from "@/components/ui/BadgeDias";
+import { ClipboardList } from "lucide-react";
 
 export interface TareaItem {
   id: string;
@@ -408,7 +409,7 @@ export default function TaskItem({
             {tarea.juntaOrigen && (
               <a href={`/juntas/${tarea.juntaOrigen.id}/reporte`} onClick={e => e.stopPropagation()}
                 className="flex items-center gap-1 text-[12px] text-[#B3985B]/60 hover:text-[#B3985B] transition-colors">
-                <span>📋</span>
+                <ClipboardList strokeWidth={1.75} className="w-3 h-3" />
                 <span>
                   {tarea.juntaOrigen.area === "GLOBAL" ? "Global" : tarea.juntaOrigen.area.charAt(0) + tarea.juntaOrigen.area.slice(1).toLowerCase()}
                   {" · "}

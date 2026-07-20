@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useToast } from "@/components/Toast";
+import { Sliders, Armchair, Lightbulb, Plug } from "lucide-react";
 
 type Equipo = {
   id: string;
@@ -443,7 +444,7 @@ export default function InventarioActivosPage() {
                       <p className="text-[10px] text-amber-500/80 uppercase tracking-widest font-semibold">Administrado por Mainstage</p>
                       <p className="text-sm text-white/80 mt-0.5">Equipos de Producción</p>
                     </div>
-                    <span className="text-xl">🎛</span>
+                    <Sliders strokeWidth={1.75} className="w-5 h-5 text-gray-400" />
                   </div>
                   <p className="text-2xl font-bold text-amber-400 tabular-nums">{fmx(valorTotalProd)}</p>
                   <p className="text-[10px] text-[#555] mt-1">Valor de adquisición · {equiposProd.length} equipos</p>
@@ -467,7 +468,7 @@ export default function InventarioActivosPage() {
                       <p className="text-[10px] text-[#B3985B] uppercase tracking-widest font-semibold">Activo Propio Mainstage</p>
                       <p className="text-sm text-white/80 mt-0.5">Oficina y Mobiliario</p>
                     </div>
-                    <span className="text-xl">🪑</span>
+                    <Armchair strokeWidth={1.75} className="w-5 h-5 text-gray-400" />
                   </div>
                   {resumenTotalOficina > 0
                     ? <p className="text-2xl font-bold text-[#B3985B] tabular-nums">{fmx(resumenTotalOficina)}</p>
@@ -484,7 +485,7 @@ export default function InventarioActivosPage() {
                       <p className="text-[10px] text-purple-400 uppercase tracking-widest font-semibold">Activo Propio Mainstage</p>
                       <p className="text-sm text-white/80 mt-0.5">Activos Intangibles</p>
                     </div>
-                    <span className="text-xl">💡</span>
+                    <Lightbulb strokeWidth={1.75} className="w-5 h-5 text-gray-400" />
                   </div>
                   {resumenTotalIntangibles > 0
                     ? <p className="text-2xl font-bold text-purple-400 tabular-nums">{fmx(resumenTotalIntangibles)}</p>
@@ -596,7 +597,7 @@ export default function InventarioActivosPage() {
                 <div className="divide-y divide-[#1a1a1a]">
                   <div className="flex items-center justify-between px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <span className="text-lg">🎛</span>
+                      <Sliders strokeWidth={1.75} className="w-4 h-4 text-gray-400" />
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="text-sm text-white/90">Equipos de Producción</p>
@@ -612,7 +613,7 @@ export default function InventarioActivosPage() {
                   </div>
                   <div className="flex items-center justify-between px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <span className="text-lg">🪑</span>
+                      <Armchair strokeWidth={1.75} className="w-4 h-4 text-gray-400" />
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="text-sm text-white/90">Equipos y Mobiliario de Oficina</p>
@@ -628,7 +629,7 @@ export default function InventarioActivosPage() {
                   </div>
                   <div className="flex items-center justify-between px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <span className="text-lg">🔌</span>
+                      <Plug strokeWidth={1.75} className="w-4 h-4 text-gray-400" />
                       <div>
                         <p className="text-sm text-white/90">Accesorios de Producción</p>
                         <p className="text-xs text-[#555]">{accesoriosProd.length} accesorios catalogados</p>
@@ -641,7 +642,7 @@ export default function InventarioActivosPage() {
                   </div>
                   <div className="flex items-center justify-between px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <span className="text-lg">💡</span>
+                      <Lightbulb strokeWidth={1.75} className="w-4 h-4 text-gray-400" />
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="text-sm text-white/90">Activos Intangibles</p>

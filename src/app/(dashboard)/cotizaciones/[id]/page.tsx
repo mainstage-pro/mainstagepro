@@ -11,6 +11,7 @@ import { CopyButton } from "@/components/CopyButton";
 import VersionHistorial from "@/components/VersionHistorial";
 import { BackButton } from "@/components/BackButton";
 import { CerrarVentaModal } from "@/components/crm/CerrarVentaModal";
+import { Handshake, Smartphone, PartyPopper, ClipboardList, SlidersHorizontal, Guitar, Building2, Camera, type LucideIcon } from "lucide-react";
 
 interface Linea {
   id: string;
@@ -1706,7 +1707,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm">🤝</span>
+                    <Handshake strokeWidth={1.75} className="w-4 h-4 text-[#8b8f97]" />
                     <p className="text-white text-sm font-semibold">Mainstage Trade</p>
                     {tradeUrl && (
                       <a href={tradeUrl} target="_blank" rel="noopener noreferrer"
@@ -1749,7 +1750,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                         href={`https://wa.me/${cot.cliente.telefono.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${cot.cliente.nombre}, te comparto la propuesta de colaboración Mainstage Trade para tu evento. Elige tu nivel y obtén un descuento adicional:\n\n${tradeUrl}`)}`}
                         target="_blank" rel="noopener noreferrer"
                         className="flex items-center gap-1.5 text-xs text-green-400 hover:text-green-300 transition-colors">
-                        <span>📱</span> Enviar por WhatsApp
+                        <Smartphone strokeWidth={1.75} className="w-3.5 h-3.5" /> Enviar por WhatsApp
                       </a>
                     )}
                   </div>
@@ -2030,7 +2031,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           </div>
 
           <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl px-3 py-2">
-            <p className="text-[11px] text-gray-500">📲 Se enviará a <span className="text-white font-medium">Carlos Luna</span> vía WhatsApp</p>
+            <p className="text-[11px] text-gray-500 inline-flex items-center gap-1.5"><Smartphone strokeWidth={1.75} className="w-3.5 h-3.5 shrink-0" /> <span>Se enviará a <span className="text-white font-medium">Carlos Luna</span> vía WhatsApp</span></p>
           </div>
           <div className="space-y-3">
             <div>
@@ -2120,7 +2121,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
         <div className="bg-[#111] border border-[#222] rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-white text-lg font-bold">Cotización Enviada 🎉</h3>
+              <h3 className="text-white text-lg font-bold inline-flex items-center gap-2">Cotización Enviada <PartyPopper strokeWidth={1.75} className="w-4 h-4 text-[#B3985B]" /></h3>
               <p className="text-gray-400 text-xs mt-1">Comparte presentaciones para generar más valor.</p>
             </div>
             <button onClick={() => setShowShareModal(false)} className="text-gray-500 hover:text-white p-2">✕</button>
@@ -2129,13 +2130,13 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           <div className="flex flex-col gap-2.5">
             {(() => {
               const origin = typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app";
-              const MATERIALES_COMPARTIR = [
-                { id: 'servicios', label: "📋 Presentación de Servicios", url: `${origin}/presentacion/servicios` },
-                { id: 'inventario', label: "🎛 Catálogo de Inventario", url: `${origin}/presentacion/inventario` },
-                { id: 'musical', label: "🎸 Presentación Eventos Musicales", url: `${origin}/presentacion/evento/musical` },
-                { id: 'social', label: "🎊 Presentación Eventos Sociales", url: `${origin}/presentacion/evento/social` },
-                { id: 'empresarial', label: "🏢 Presentación Eventos Empresariales", url: `${origin}/presentacion/evento/empresarial` },
-                { id: 'galeria', label: "📸 Galería de Eventos", url: `${origin}/presentacion/galeria` },
+              const MATERIALES_COMPARTIR: { id: string; icon: LucideIcon; label: string; url: string }[] = [
+                { id: 'servicios', icon: ClipboardList, label: "Presentación de Servicios", url: `${origin}/presentacion/servicios` },
+                { id: 'inventario', icon: SlidersHorizontal, label: "Catálogo de Inventario", url: `${origin}/presentacion/inventario` },
+                { id: 'musical', icon: Guitar, label: "Presentación Eventos Musicales", url: `${origin}/presentacion/evento/musical` },
+                { id: 'social', icon: PartyPopper, label: "Presentación Eventos Sociales", url: `${origin}/presentacion/evento/social` },
+                { id: 'empresarial', icon: Building2, label: "Presentación Eventos Empresariales", url: `${origin}/presentacion/evento/empresarial` },
+                { id: 'galeria', icon: Camera, label: "Galería de Eventos", url: `${origin}/presentacion/galeria` },
               ];
               // Priorizar el tipo de evento actual
               const eventoMapping: Record<string, string> = { MUSICAL: 'musical', SOCIAL: 'social', EMPRESARIAL: 'empresarial' };
@@ -2156,7 +2157,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                         ? "bg-blue-900/10 border-blue-700/30 hover:bg-blue-900/20"
                         : "bg-[#151515] border-[#2a2a2a] hover:border-[#444]"
                     }`}>
-                    <span className={`text-sm font-medium ${i === 0 ? "text-white" : "text-gray-300"}`}>{m.label}</span>
+                    <span className={`text-sm font-medium inline-flex items-center gap-2 ${i === 0 ? "text-white" : "text-gray-300"}`}><m.icon strokeWidth={1.75} className="w-4 h-4 shrink-0 text-[#8b8f97]" /> {m.label}</span>
                   </a>
                   <button
                     onClick={() => {

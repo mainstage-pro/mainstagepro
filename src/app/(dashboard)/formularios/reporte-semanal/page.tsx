@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
+import { Calendar, ClipboardList } from "lucide-react";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -142,7 +143,7 @@ export default function ReporteSemanalHistorialPage() {
       {session?.role === "ADMIN" && reportesSemanaActual.length > 0 && (
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-[#B3985B] font-bold text-sm">📅 Compromisos para esta semana</span>
+            <span className="inline-flex items-center gap-1.5 text-[#B3985B] font-bold text-sm"><Calendar strokeWidth={1.75} className="w-3.5 h-3.5" /> Compromisos para esta semana</span>
             <span className="text-[10px] text-gray-600 border border-[#2a2a2a] px-2 py-0.5 rounded-full">
               S{semanaActual} · {reportesSemanaActual.length} reporte{reportesSemanaActual.length !== 1 ? "s" : ""}
             </span>
@@ -217,7 +218,7 @@ export default function ReporteSemanalHistorialPage() {
       {/* Empty state */}
       {!loading && reportes.length === 0 && (
         <div className="ms-card rounded-2xl p-12 text-center">
-          <p className="text-5xl mb-4">📋</p>
+          <ClipboardList strokeWidth={1.5} className="w-12 h-12 mx-auto mb-4 text-gray-600" />
           <p className="text-white font-semibold mb-1">Sin reportes aún</p>
           <p className="text-gray-500 text-sm mb-6">
             Comparte el link del formulario con tu equipo para que empiecen a reportar.

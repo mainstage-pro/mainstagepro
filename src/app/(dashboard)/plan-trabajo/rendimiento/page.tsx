@@ -7,6 +7,7 @@ import {
   LineChart, Line,
 } from 'recharts'
 import type { BarShapeProps } from 'recharts/types/cartesian/Bar'
+import { Trophy, Zap, ThumbsUp, TrendingUp, Clock } from 'lucide-react'
 import { getAreaColor } from '@/lib/areaColors'
 
 function getLunesAnterior() {
@@ -372,12 +373,12 @@ export default function RendimientoPage() {
                         }`}>
                           {u.pct}%
                         </p>
-                        <p className="text-[9px] tabular-nums" style={{ color: getAreaColor(u.area ?? ''), opacity: 0.7 }}>
-                          {u.pct === 100 ? '🏆 Perfecto' :
-                           u.pct >= 80 ? '⚡ Excelente' :
-                           u.pct >= 60 ? '👍 Buen avance' :
-                           u.pct >= 30 ? '📈 En progreso' :
-                           u.total === 0 ? '—' : '⏳ Por comenzar'}
+                        <p className="inline-flex items-center gap-1 text-[9px] tabular-nums" style={{ color: getAreaColor(u.area ?? ''), opacity: 0.7 }}>
+                          {u.pct === 100 ? <><Trophy strokeWidth={1.75} className="w-2.5 h-2.5" /> Perfecto</> :
+                           u.pct >= 80 ? <><Zap strokeWidth={1.75} className="w-2.5 h-2.5" /> Excelente</> :
+                           u.pct >= 60 ? <><ThumbsUp strokeWidth={1.75} className="w-2.5 h-2.5" /> Buen avance</> :
+                           u.pct >= 30 ? <><TrendingUp strokeWidth={1.75} className="w-2.5 h-2.5" /> En progreso</> :
+                           u.total === 0 ? '—' : <><Clock strokeWidth={1.75} className="w-2.5 h-2.5" /> Por comenzar</>}
                         </p>
                       </div>
                     </div>

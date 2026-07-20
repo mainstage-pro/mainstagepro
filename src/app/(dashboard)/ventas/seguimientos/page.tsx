@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { EtapaInternaBar } from "@/components/crm/EtapaInternaBar";
 import { etapaInternaLabel } from "@/lib/etapasInternas";
+import { MessageCircle, Phone, Handshake, ClipboardList, type LucideIcon } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -84,7 +85,7 @@ function nextTuesdayOrThursday(): string {
   return d.toISOString().substring(0, 10);
 }
 
-const CANAL_ICON: Record<string, string> = { whatsapp: "📱", llamada: "📞", reunion: "🤝" };
+const CANAL_ICON: Record<string, LucideIcon> = { whatsapp: MessageCircle, llamada: Phone, reunion: Handshake };
 const CANAL_LABEL: Record<string, string> = { whatsapp: "WhatsApp", llamada: "Llamada", reunion: "Reunión" };
 const ETAPA_BADGE: Record<string, { label: string; cls: string }> = {
   PROSPECCION:    { label: "Prospección",    cls: "bg-amber-900/20 text-amber-400" },
@@ -144,7 +145,7 @@ function ModalReprogramar({ segId, onClose, onSaved }: {
               {["whatsapp", "llamada", "reunion"].map(c => (
                 <button key={c} onClick={() => setCanal(c)}
                   className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-colors ${canal === c ? "bg-[#B3985B] border-[#B3985B] text-black" : "bg-[#0d0d0d] border-[#2a2a2a] text-[#666] hover:text-white"}`}>
-                  {CANAL_ICON[c]} {CANAL_LABEL[c]}
+                  {(() => { const Ico = CANAL_ICON[c]; return <Ico strokeWidth={1.75} className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />; })()}{CANAL_LABEL[c]}
                 </button>
               ))}
             </div>
@@ -239,7 +240,7 @@ function ModalNuevo({ onClose, onSave }: { onClose: () => void; onSave: () => vo
               {["whatsapp", "llamada", "reunion"].map(c => (
                 <button key={c} onClick={() => setCanal(c)}
                   className={`flex-1 py-2 rounded-lg text-xs font-semibold border transition-colors ${canal === c ? "bg-[#B3985B] border-[#B3985B] text-black" : "bg-[#0d0d0d] border-[#2a2a2a] text-[#666] hover:text-white"}`}>
-                  {CANAL_ICON[c]} {CANAL_LABEL[c]}
+                  {(() => { const Ico = CANAL_ICON[c]; return <Ico strokeWidth={1.75} className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" />; })()}{CANAL_LABEL[c]}
                 </button>
               ))}
             </div>
@@ -344,7 +345,7 @@ function SeguimientoRow({ s, onComplete, onReprogramar, onDelete }: {
 
       {/* COL 3 · Canal */}
       <div className="hidden md:flex w-[90px] shrink-0 pr-3 items-center gap-1 py-2.5">
-        <span className="text-sm">{CANAL_ICON[s.canal] ?? "📋"}</span>
+        {(() => { const Ico = CANAL_ICON[s.canal] ?? ClipboardList; return <Ico strokeWidth={1.75} className="w-3.5 h-3.5 text-[#666]" />; })()}
         <span className="text-[11px] text-[#555]">{CANAL_LABEL[s.canal] ?? s.canal}</span>
       </div>
 

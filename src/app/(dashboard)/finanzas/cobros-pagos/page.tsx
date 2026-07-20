@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import RowActions from "@/components/ui/RowActions";
+import { Calendar } from "lucide-react";
 
 // Test de despliegue automático en Vercel
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -1757,8 +1758,9 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
             {/* Header */}
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h3 className="text-white font-semibold text-base">
-                  {plan.tipo === 'cxc' ? '📅 Plan de cobros' : '📅 Plan de pagos'}
+                <h3 className="inline-flex items-center gap-1.5 text-white font-semibold text-base">
+                  <Calendar strokeWidth={1.75} className="w-4 h-4" />
+                  {plan.tipo === 'cxc' ? 'Plan de cobros' : 'Plan de pagos'}
                 </h3>
                 <p className="text-gray-500 text-xs mt-0.5 truncate max-w-xs">{plan.concepto}</p>
               </div>

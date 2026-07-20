@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { BarChart2 } from 'lucide-react';
+import { BarChart2, Circle, ClipboardList, Target, Hash, BarChart3, Settings, FileText, PenLine, Wrench, AlertTriangle } from 'lucide-react';
 import React from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -144,9 +144,9 @@ function semaforo(
 }
 
 const SEM: Record<'verde' | 'rojo' | 'sin-dato', React.ReactNode> = {
-  verde:      <span className="text-emerald-400 text-sm">🟢</span>,
-  rojo:       <span className="text-red-400 text-sm">🔴</span>,
-  'sin-dato': <span className="text-gray-600 text-sm">⚪</span>,
+  verde:      <Circle className="w-2.5 h-2.5 fill-current text-emerald-400" />,
+  rojo:       <Circle className="w-2.5 h-2.5 fill-current text-red-400" />,
+  'sin-dato': <Circle className="w-2.5 h-2.5 fill-current text-gray-600" />,
 };
 
 function Separador() {
@@ -869,7 +869,7 @@ function KpiCard({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Descripción */}
             <div>
-              <p className="text-gray-500 text-[10px] font-semibold uppercase tracking-wider mb-1">📋 Descripción</p>
+              <p className="inline-flex items-center gap-1.5 text-gray-500 text-[10px] font-semibold uppercase tracking-wider mb-1"><ClipboardList strokeWidth={1.75} className="w-3.5 h-3.5" /> Descripción</p>
               {editingField?.kpiId === kpi.id && editingField.field === 'descripcion' ? (
                 <div className="flex gap-2">
                   <textarea value={editValue} onChange={e => setEditValue(e.target.value)}
@@ -884,13 +884,13 @@ function KpiCard({
                 <div className="flex items-start gap-2">
                   <p className="text-gray-300 text-sm flex-1">{kpi.descripcion || <span className="text-gray-600 italic">Sin descripción definida</span>}</p>
                   {isAdmin && <button onClick={e => { e.stopPropagation(); setEditingField({ kpiId: kpi.id, field: 'descripcion' }); setEditValue(kpi.descripcion || ''); }}
-                    className="text-gray-600 hover:text-[#B3985B] text-xs shrink-0">✏️</button>}
+                    className="text-gray-600 hover:text-[#B3985B] shrink-0"><PenLine strokeWidth={1.75} className="w-3.5 h-3.5" /></button>}
                 </div>
               )}
             </div>
             {/* Propósito */}
             <div>
-              <p className="text-gray-500 text-[10px] font-semibold uppercase tracking-wider mb-1">🎯 Propósito</p>
+              <p className="inline-flex items-center gap-1.5 text-gray-500 text-[10px] font-semibold uppercase tracking-wider mb-1"><Target strokeWidth={1.75} className="w-3.5 h-3.5" /> Propósito</p>
               {editingField?.kpiId === kpi.id && editingField.field === 'proposito' ? (
                 <div className="flex gap-2">
                   <textarea value={editValue} onChange={e => setEditValue(e.target.value)}
@@ -905,7 +905,7 @@ function KpiCard({
                 <div className="flex items-start gap-2">
                   <p className="text-gray-300 text-sm flex-1">{kpi.proposito || <span className="text-gray-600 italic">Sin propósito definido</span>}</p>
                   {isAdmin && <button onClick={e => { e.stopPropagation(); setEditingField({ kpiId: kpi.id, field: 'proposito' }); setEditValue(kpi.proposito || ''); }}
-                    className="text-gray-600 hover:text-[#B3985B] text-xs shrink-0">✏️</button>}
+                    className="text-gray-600 hover:text-[#B3985B] shrink-0"><PenLine strokeWidth={1.75} className="w-3.5 h-3.5" /></button>}
                 </div>
               )}
             </div>
@@ -914,15 +914,15 @@ function KpiCard({
           {/* Fórmula + fuente + tipo */}
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <p className="text-gray-500 text-[10px] font-semibold uppercase tracking-wider mb-1">🔢 Fórmula</p>
+              <p className="inline-flex items-center gap-1.5 text-gray-500 text-[10px] font-semibold uppercase tracking-wider mb-1"><Hash strokeWidth={1.75} className="w-3.5 h-3.5" /> Fórmula</p>
               <p className="text-gray-300 text-sm">{kpi.formula || '—'}</p>
             </div>
             <div>
-              <p className="text-gray-500 text-[10px] font-semibold uppercase tracking-wider mb-1">📊 Fuente</p>
+              <p className="inline-flex items-center gap-1.5 text-gray-500 text-[10px] font-semibold uppercase tracking-wider mb-1"><BarChart3 strokeWidth={1.75} className="w-3.5 h-3.5" /> Fuente</p>
               <p className="text-gray-300 text-sm">{kpi.fuente || '—'}</p>
             </div>
             <div>
-              <p className="text-gray-500 text-[10px] font-semibold uppercase tracking-wider mb-1">⚙️ Tipo</p>
+              <p className="inline-flex items-center gap-1.5 text-gray-500 text-[10px] font-semibold uppercase tracking-wider mb-1"><Settings strokeWidth={1.75} className="w-3.5 h-3.5" /> Tipo</p>
               <TipoBadge tipo={kpi.tipoCalculo} />
             </div>
           </div>
@@ -930,7 +930,7 @@ function KpiCard({
           {/* Nota de cálculo (admin editable) */}
           {isAdmin && (
             <div>
-              <p className="text-gray-500 text-[10px] font-semibold uppercase tracking-wider mb-1">📝 Nota de cálculo</p>
+              <p className="inline-flex items-center gap-1.5 text-gray-500 text-[10px] font-semibold uppercase tracking-wider mb-1"><FileText strokeWidth={1.75} className="w-3.5 h-3.5" /> Nota de cálculo</p>
               {editingField?.kpiId === kpi.id && editingField.field === 'notaCalculo' ? (
                 <div className="flex gap-2">
                   <input value={editValue} onChange={e => setEditValue(e.target.value)}
@@ -943,7 +943,7 @@ function KpiCard({
                 <div className="flex items-center gap-2">
                   <p className="text-gray-400 text-sm flex-1">{kpi.notaCalculo || <span className="italic text-gray-600">Sin nota</span>}</p>
                   <button onClick={e => { e.stopPropagation(); setEditingField({ kpiId: kpi.id, field: 'notaCalculo' }); setEditValue(kpi.notaCalculo || ''); }}
-                    className="text-gray-600 hover:text-[#B3985B] text-xs">✏️</button>
+                    className="text-gray-600 hover:text-[#B3985B]"><PenLine strokeWidth={1.75} className="w-3.5 h-3.5" /></button>
                 </div>
               )}
             </div>
@@ -952,7 +952,7 @@ function KpiCard({
           {/* Valor manual (if not automatico) */}
           {kpi.tipoCalculo !== 'automatico' && (
             <div className="border-t border-[#1a1a1a] pt-4">
-              <p className="text-gray-500 text-[10px] font-semibold uppercase tracking-wider mb-2">✏️ Valor manual</p>
+              <p className="inline-flex items-center gap-1.5 text-gray-500 text-[10px] font-semibold uppercase tracking-wider mb-2"><PenLine strokeWidth={1.75} className="w-3.5 h-3.5" /> Valor manual</p>
               <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
                 <input type="number"
                   value={manualInput[kpi.id] ?? ''}
@@ -988,7 +988,7 @@ function KpiCard({
                 </div>
               ) : (
                 <button onClick={e => { e.stopPropagation(); setEditingField({ kpiId: kpi.id, field: 'meta' }); setEditValue(kpi.meta); }}
-                  className="text-gray-600 hover:text-[#B3985B] text-[10px]">🔧 Editar meta</button>
+                  className="inline-flex items-center gap-1 text-gray-600 hover:text-[#B3985B] text-[10px]"><Wrench strokeWidth={1.75} className="w-3 h-3" /> Editar meta</button>
               )}
             </div>
           )}
@@ -1175,7 +1175,7 @@ function ResumenTab({
                             ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(val)
                             : val.toLocaleString('es-MX')}
                         </span>
-                        <span className="text-[10px]">{s === 'verde' ? '🟢' : s === 'rojo' ? '🔴' : '⚪'}</span>
+                        <Circle className={`w-2.5 h-2.5 fill-current ${s === 'verde' ? 'text-emerald-400' : s === 'rojo' ? 'text-red-400' : 'text-gray-600'}`} />
                       </div>
                     </div>
                   );
@@ -1193,7 +1193,7 @@ function ResumenTab({
       {/* Top alerts */}
       {topAlertas.length > 0 && (
         <div className="bg-[#0d0d0d] border border-red-900/30 rounded-xl p-5">
-          <p className="text-[10px] uppercase tracking-[0.15em] text-red-400 font-semibold mb-4">⚠ Requieren atención</p>
+          <p className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-[0.15em] text-red-400 font-semibold mb-4"><AlertTriangle strokeWidth={1.75} className="w-3.5 h-3.5" /> Requieren atención</p>
           <div className="space-y-3">
             {topAlertas.map(({ kpi, val }) => (
               <div key={kpi.id} className="flex items-center justify-between">
@@ -1205,7 +1205,7 @@ function ResumenTab({
                       ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(val)
                       : val.toLocaleString('es-MX')}
                   </span>
-                  <span>🔴</span>
+                  <Circle className="w-2.5 h-2.5 fill-current text-red-400" />
                 </div>
               </div>
             ))}

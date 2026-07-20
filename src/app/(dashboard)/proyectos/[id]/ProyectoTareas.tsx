@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import DatePicker from "@/components/ui/DatePicker";
 import { Combobox } from "@/components/Combobox";
+import { Calendar, User, MessageCircle, Link2, Zap, ClipboardList } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface TareaProyecto {
@@ -182,11 +183,11 @@ function TareaRow({
           </span>
           {tarea.fecha && (() => {
             const { label, cls } = formatFecha(tarea.fecha!);
-            return <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${cls}`}>📅 {label}</span>;
+            return <span className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium ${cls}`}><Calendar strokeWidth={1.75} className="w-3 h-3" /> {label}</span>;
           })()}
           {tarea.asignadoA && (
-            <span className="text-[10px] text-gray-500 px-2 py-0.5 rounded-full bg-[#1a1a1a] font-medium">
-              👤 {tarea.asignadoA.name}
+            <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 px-2 py-0.5 rounded-full bg-[#1a1a1a] font-medium">
+              <User strokeWidth={1.75} className="w-3 h-3" /> {tarea.asignadoA.name}
             </span>
           )}
           {tarea._count.subtareas > 0 && (
@@ -195,8 +196,8 @@ function TareaRow({
             </span>
           )}
           {tarea._count.comentarios > 0 && (
-            <span className="text-[10px] text-gray-600 px-2 py-0.5 rounded-full bg-[#111]">
-              💬 {tarea._count.comentarios}
+            <span className="inline-flex items-center gap-1 text-[10px] text-gray-600 px-2 py-0.5 rounded-full bg-[#111]">
+              <MessageCircle strokeWidth={1.75} className="w-3 h-3" /> {tarea._count.comentarios}
             </span>
           )}
         </div>
@@ -659,8 +660,8 @@ function ProyectoTaskModal({
                           onChange={e => { Array.from(e.target.files ?? []).forEach(subirArchivo); }} />
                         ↑ Subir
                       </label>
-                      <button onClick={() => setAddingUrl(!addingUrl)} className="text-xs text-[#555] hover:text-[#B3985B] transition-colors">
-                        🔗 URL
+                      <button onClick={() => setAddingUrl(!addingUrl)} className="inline-flex items-center gap-1 text-xs text-[#555] hover:text-[#B3985B] transition-colors">
+                        <Link2 strokeWidth={1.75} className="w-3.5 h-3.5" /> URL
                       </button>
                     </div>
                   </div>
@@ -970,7 +971,7 @@ export default function ProyectoTareas({ proyectoId, proyectoNombre = "Proyecto"
                 <span className="text-[10px] text-blue-400 bg-blue-950/30 px-2 py-0.5 rounded-full">◑ {enProgreso} en progreso</span>
               )}
               {urgentes > 0 && (
-                <span className="text-[10px] text-red-400 bg-red-950/30 px-2 py-0.5 rounded-full">⚡ {urgentes} urgente{urgentes > 1 ? "s" : ""}</span>
+                <span className="inline-flex items-center gap-1 text-[10px] text-red-400 bg-red-950/30 px-2 py-0.5 rounded-full"><Zap strokeWidth={1.75} className="w-3 h-3" /> {urgentes} urgente{urgentes > 1 ? "s" : ""}</span>
               )}
             </div>
           </div>
@@ -1006,7 +1007,7 @@ export default function ProyectoTareas({ proyectoId, proyectoNombre = "Proyecto"
         <div className="text-center py-12 text-gray-600">
           {total === 0 ? (
             <div className="space-y-2">
-              <div className="text-4xl">📋</div>
+              <ClipboardList strokeWidth={1.75} className="w-9 h-9 mx-auto text-gray-600" />
               <p className="text-sm">Sin tareas aún</p>
               <p className="text-xs">Agrega la primera tarea para este proyecto</p>
             </div>

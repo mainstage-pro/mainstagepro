@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import TaskModal, { type TareaDetalle } from "../components/TaskModal";
+import { Calendar, MessageSquare, Zap, AlertTriangle, PartyPopper } from "lucide-react";
 
 interface TareaEquipo {
   id: string;
@@ -123,9 +124,9 @@ function TareaCard({ t, showArea, onDateChange, onSelect }: {
             <button
               onClick={() => dateRef.current?.showPicker?.()}
               title="Reagendar"
-              className={`relative text-[9px] px-1.5 py-0.5 rounded font-semibold cursor-pointer hover:brightness-125 transition-all ${chip.cls}`}
+              className={`relative inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded font-semibold cursor-pointer hover:brightness-125 transition-all ${chip.cls}`}
             >
-              📅 {chip.label}
+              <Calendar strokeWidth={1.75} className="w-2.5 h-2.5" /> {chip.label}
               <input
                 ref={dateRef}
                 type="date"
@@ -153,7 +154,7 @@ function TareaCard({ t, showArea, onDateChange, onSelect }: {
             <span className="text-[10px] text-[#3a3a3a]">◫ {t._count.subtareas}</span>
           )}
           {t._count.comentarios > 0 && (
-            <span className="text-[10px] text-[#3a3a3a]">💬 {t._count.comentarios}</span>
+            <span className="inline-flex items-center gap-1 text-[10px] text-[#3a3a3a]"><MessageSquare strokeWidth={1.75} className="w-2.5 h-2.5" /> {t._count.comentarios}</span>
           )}
         </div>
       </div>
@@ -161,8 +162,8 @@ function TareaCard({ t, showArea, onDateChange, onSelect }: {
       {/* Badge prioridad alta/urgente */}
       {prioBadge && (
         <div className="flex items-center pr-2.5">
-          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${prioBadge}`}>
-            {t.prioridad === "URGENTE" ? "⚡ Urg." : "Alta"}
+          <span className={`inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded font-bold ${prioBadge}`}>
+            {t.prioridad === "URGENTE" ? <><Zap strokeWidth={1.75} className="w-2.5 h-2.5" /> Urg.</> : "Alta"}
           </span>
         </div>
       )}
@@ -339,13 +340,13 @@ export default function EquipoPage() {
             <div className="flex flex-wrap items-center gap-2 mt-1.5">
               <span className="text-[#555] text-sm">{tareasFiltradas.length} tarea{tareasFiltradas.length !== 1 ? "s" : ""}</span>
               {totalVencidas > 0 && (
-                <span className="text-[11px] bg-red-950/50 text-red-400 px-2 py-0.5 rounded-full font-medium">
-                  ⚠ {totalVencidas} vencida{totalVencidas !== 1 ? "s" : ""}
+                <span className="inline-flex items-center gap-1 text-[11px] bg-red-950/50 text-red-400 px-2 py-0.5 rounded-full font-medium">
+                  <AlertTriangle strokeWidth={1.75} className="w-3 h-3" /> {totalVencidas} vencida{totalVencidas !== 1 ? "s" : ""}
                 </span>
               )}
               {totalUrgentes > 0 && (
-                <span className="text-[11px] bg-red-900/30 text-red-400 px-2 py-0.5 rounded-full font-medium">
-                  ⚡ {totalUrgentes} urgente{totalUrgentes !== 1 ? "s" : ""}
+                <span className="inline-flex items-center gap-1 text-[11px] bg-red-900/30 text-red-400 px-2 py-0.5 rounded-full font-medium">
+                  <Zap strokeWidth={1.75} className="w-3 h-3" /> {totalUrgentes} urgente{totalUrgentes !== 1 ? "s" : ""}
                 </span>
               )}
               {totalHoy > 0 && (
@@ -470,7 +471,7 @@ export default function EquipoPage() {
         </div>
       ) : orderedUsers.length === 0 ? (
         <div className="bg-[#111] border border-[#1a1a1a] rounded-xl text-center py-24">
-          <p className="text-4xl mb-4">🎉</p>
+          <div className="flex justify-center mb-4 text-[#B3985B]"><PartyPopper strokeWidth={1.5} className="w-9 h-9" /></div>
           <p className="text-white font-semibold text-base">Sin tareas pendientes</p>
           <p className="text-[#444] text-sm mt-1">Todo el equipo está al día</p>
         </div>
@@ -516,10 +517,10 @@ export default function EquipoPage() {
                     <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                       <span className="text-[#444] text-[10px]">{userTareas.length} tarea{userTareas.length !== 1 ? "s" : ""}</span>
                       {vencidas > 0 && (
-                        <span className="text-[10px] text-red-400 font-medium">⚠ {vencidas} vencida{vencidas !== 1 ? "s" : ""}</span>
+                        <span className="inline-flex items-center gap-1 text-[10px] text-red-400 font-medium"><AlertTriangle strokeWidth={1.75} className="w-2.5 h-2.5" /> {vencidas} vencida{vencidas !== 1 ? "s" : ""}</span>
                       )}
                       {urgentes > 0 && (
-                        <span className="text-[10px] text-red-400 font-medium">⚡ {urgentes} urgente{urgentes !== 1 ? "s" : ""}</span>
+                        <span className="inline-flex items-center gap-1 text-[10px] text-red-400 font-medium"><Zap strokeWidth={1.75} className="w-2.5 h-2.5" /> {urgentes} urgente{urgentes !== 1 ? "s" : ""}</span>
                       )}
                       {hoy > 0 && !vencidas && (
                         <span className="text-[10px] text-[#B3985B] font-medium">{hoy} para hoy</span>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { CheckCircle2 } from "lucide-react";
 
 interface Alerta {
   tipo: string;
@@ -104,7 +105,7 @@ export default function AlertasPanelV2() {
                 <div className="text-center py-8">
                   {total === 0 ? (
                     <>
-                      <p className="text-2xl mb-2">✅</p>
+                      <CheckCircle2 strokeWidth={1.75} className="w-6 h-6 mx-auto mb-2 text-emerald-400" />
                       <p className="text-gray-500 text-sm font-medium">Todo al día</p>
                       <p className="text-gray-700 text-xs mt-1">No hay alertas pendientes</p>
                     </>

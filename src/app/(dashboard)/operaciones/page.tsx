@@ -17,6 +17,7 @@ import { useCelebration } from "@/components/CelebrationToast";
 import type { TareaIntegrada } from "@/lib/tareas-integradas";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
+import { Users, Zap, Building2, Sun, Calendar, Inbox, ClipboardList, MapPin, User } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -1792,7 +1793,7 @@ export default function OperacionesPage() {
           ) : vista === "equipo" ? (
             <div className="max-w-3xl mx-auto px-3 py-4 pb-24">
               {equipoGroups.length === 0 ? (
-                <EmptyState icon="👥" title="Sin tareas de equipo" sub="No hay tareas personales asignadas a ningún usuario" />
+                <EmptyState icon={<Users strokeWidth={1.5} className="w-9 h-9" />} title="Sin tareas de equipo" sub="No hay tareas personales asignadas a ningún usuario" />
               ) : (
                 <>
                   {/* Resumen general del equipo */}
@@ -1871,7 +1872,7 @@ export default function OperacionesPage() {
           ) : vista === "integrada" ? (
             <div className="max-w-2xl mx-auto px-4 py-5 space-y-2">
               {integradas.length === 0 ? (
-                <EmptyState icon="⚡" title="Sin alertas" sub="Todo en orden en todos los módulos" />
+                <EmptyState icon={<Zap strokeWidth={1.5} className="w-9 h-9" />} title="Sin alertas" sub="Todo en orden en todos los módulos" />
               ) : integradas.map(t => (
                 <Link key={t.id} href={t.href}
                   className={`flex items-start gap-3 p-4 rounded-xl bg-[#080808] border-l-2 hover:bg-[#0d0d0d] transition-colors ${severityColor(t.severidad)}`}>
@@ -1895,7 +1896,7 @@ export default function OperacionesPage() {
           ) : typeof vista === "object" && vista.tipo === "area" ? (
             <div className="max-w-2xl mx-auto px-2 py-4 pb-24">
               {tareasOrdenadas.length === 0 ? (
-                <EmptyState icon="🏢" title={`Sin tareas en ${AREA_LABELS[vista.nombre] ?? vista.nombre}`} sub="No hay tareas activas en esta área" />
+                <EmptyState icon={<Building2 strokeWidth={1.5} className="w-9 h-9" />} title={`Sin tareas en ${AREA_LABELS[vista.nombre] ?? vista.nombre}`} sub="No hay tareas activas en esta área" />
               ) : tareasOrdenadas.map(t => (
                 <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
                   onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
@@ -1927,7 +1928,7 @@ export default function OperacionesPage() {
 
               {tareasOrdenadas.length === 0 && !hoyGrouped ? (
                 <EmptyState
-                  icon={vista === "hoy" ? "☀️" : vista === "proximas" ? "📅" : "📥"}
+                  icon={vista === "hoy" ? <Sun strokeWidth={1.5} className="w-9 h-9" /> : vista === "proximas" ? <Calendar strokeWidth={1.5} className="w-9 h-9" /> : <Inbox strokeWidth={1.5} className="w-9 h-9" />}
                   title={vista === "hoy" ? "Nada para hoy" : vista === "proximas" ? "Sin tareas próximas" : "Bandeja vacía"}
                   sub={vista === "bandeja" ? "Escribe una tarea arriba y presiona Enter" : ""}
                 />
@@ -2563,7 +2564,7 @@ function ProyectosEventoView({ proyectos, selectedId, onSelectTarea, onCompleteT
   if (proyectos.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
-        <span className="text-4xl mb-4 opacity-60">📋</span>
+        <span className="mb-4 opacity-60 text-[#555]"><ClipboardList strokeWidth={1.5} className="w-9 h-9" /></span>
         <p className="text-sm font-medium text-[#444]">Sin proyectos con tareas</p>
         <p className="text-xs text-[#333] mt-1">Agrega tareas a tus proyectos desde el módulo de Proyectos</p>
         <Link href="/proyectos" className="mt-4 text-xs text-[#B3985B] hover:underline">
@@ -2630,11 +2631,11 @@ function ProyectosEventoView({ proyectos, selectedId, onSelectTarea, onCompleteT
                   {proyecto.nombre}
                 </h3>
                 <div className="flex items-center gap-3 mt-1">
-                  <span className="text-xs text-[#555]">
-                    📅 {new Date(proyecto.fechaEvento.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" })}
+                  <span className="inline-flex items-center gap-1 text-xs text-[#555]">
+                    <Calendar strokeWidth={1.75} className="w-3 h-3" /> {new Date(proyecto.fechaEvento.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" })}
                   </span>
                   {proyecto.lugarEvento && (
-                    <span className="text-xs text-[#444] truncate max-w-[180px]">📍 {proyecto.lugarEvento}</span>
+                    <span className="inline-flex items-center gap-1 text-xs text-[#444] truncate max-w-[180px]"><MapPin strokeWidth={1.75} className="w-3 h-3 shrink-0" /> {proyecto.lugarEvento}</span>
                   )}
                 </div>
               </div>
@@ -2711,18 +2712,18 @@ function ProyectosEventoView({ proyectos, selectedId, onSelectTarea, onCompleteT
                               const hoyTarea = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
                               const diff = Math.round((new Date(t.fecha.substring(0, 10)).getTime() - new Date(hoyTarea).getTime()) / 86400000);
                               return (
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                                <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${
                                   diff < 0  ? "bg-red-950/30 text-red-400" :
                                   diff === 0 ? "bg-emerald-950/30 text-emerald-400" :
                                   "bg-[#111] text-[#555]"
                                 }`}>
-                                  📅 {diff < 0 ? `Venció hace ${Math.abs(diff)}d` : diff === 0 ? "Hoy" : new Date(t.fecha.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", day: "2-digit", month: "short" })}
+                                  <Calendar strokeWidth={1.75} className="w-3 h-3" /> {diff < 0 ? `Venció hace ${Math.abs(diff)}d` : diff === 0 ? "Hoy" : new Date(t.fecha.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", day: "2-digit", month: "short" })}
                                 </span>
                               );
                             })()}
                             {(t as { asignadoA?: { name: string } | null }).asignadoA && (
-                              <span className="text-[10px] text-[#444]">
-                                👤 {(t as { asignadoA?: { name: string } | null }).asignadoA!.name}
+                              <span className="inline-flex items-center gap-1 text-[10px] text-[#444]">
+                                <User strokeWidth={1.75} className="w-3 h-3" /> {(t as { asignadoA?: { name: string } | null }).asignadoA!.name}
                               </span>
                             )}
                           </div>
@@ -2781,10 +2782,10 @@ function SideItem({ icon, label, isActive, onClick, count, countColor }: {
 
 // ── EmptyState ───────────────────────────────────────────────────────────────
 
-function EmptyState({ icon, title, sub }: { icon: string; title: string; sub?: string }) {
+function EmptyState({ icon, title, sub }: { icon: React.ReactNode; title: string; sub?: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
-      <span className="text-4xl mb-4 opacity-60">{icon}</span>
+      <span className="mb-4 opacity-60 text-[#555]">{icon}</span>
       <p className="text-sm font-medium text-[#444]">{title}</p>
       {sub && <p className="text-xs text-[#2a2a2a] mt-1">{sub}</p>}
     </div>

@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { ClipboardList, Settings, Truck, Handshake, Music, Wine, Building2, Calendar, Package, Palette, Sliders, DollarSign, Eye, Image as ImageIcon, Folder, FileText, PenLine, BarChart3, Paperclip, Lightbulb, Phone, Zap, Camera, Monitor, Sparkles, PartyPopper, type LucideIcon } from "lucide-react";
 import TimePicker from "@/components/ui/TimePicker";
 import VenuePicker from "@/components/ui/VenuePicker";
 import { SelectorEquiposInventario, type SeleccionEquipos } from '@/components/SelectorEquiposInventario';
@@ -8,11 +9,11 @@ import { useToast } from "@/components/Toast";
 import { isLegacyString, parseLinks } from "@/utils/legacyText";
 import { parseFechasEvento } from "@/lib/fechas-evento";
 
-const PASOS_DISCOVERY = [
-  { id: 1, label: "Info Básica", icon: "📋" },
-  { id: 2, label: "Producción", icon: "⚙️" },
-  { id: 3, label: "Operativo", icon: "🚚" },
-  { id: 4, label: "Comercial", icon: "🤝" },
+const PASOS_DISCOVERY: Array<{ id: number; label: string; icon: LucideIcon }> = [
+  { id: 1, label: "Info Básica", icon: ClipboardList },
+  { id: 2, label: "Producción", icon: Settings },
+  { id: 3, label: "Operativo", icon: Truck },
+  { id: 4, label: "Comercial", icon: Handshake },
 ];
 
 const RENTA_NIVEL = [
@@ -656,7 +657,7 @@ export default function DiscoveryForm({
                         ? "bg-[#B3985B] text-black"
                         : "bg-[#111] text-gray-500 hover:text-white border border-[#222] hover:border-[#444]"
                     }`}>
-                    {paso.icon} {paso.label}
+                    <paso.icon strokeWidth={1.75} className="w-3.5 h-3.5" /> {paso.label}
                   </button>
                 ))}
               </div>
@@ -669,8 +670,8 @@ export default function DiscoveryForm({
               {/* Título + agradecimiento — solo cuando el cliente llena el formulario */}
               {clientMode && (
                 <div className="border border-[#B3985B]/30 bg-gradient-to-br from-[#B3985B]/10 to-transparent rounded-xl p-4">
-                  <p className="text-base sm:text-lg text-white font-semibold">
-                    Cuéntanos sobre tu evento ✨
+                  <p className="text-base sm:text-lg text-white font-semibold inline-flex items-center gap-1.5">
+                    Cuéntanos sobre tu evento <Sparkles strokeWidth={1.75} className="w-4 h-4 text-[#B3985B]" />
                   </p>
                   <p className="text-xs sm:text-sm text-gray-400 mt-1.5 leading-relaxed">
                     ¡Gracias por tu interés! Este formulario nos ayuda a <span className="text-[#B3985B]">descubrir
@@ -714,15 +715,15 @@ export default function DiscoveryForm({
                   <label className="text-xs text-gray-400 uppercase tracking-wider">Tipo de evento</label>
                 </div>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    {[
-                      { te: "MUSICAL", icon: "🎵", label: "Musical", desc: "Conciertos, festivales, giras, etc." },
-                      { te: "SOCIAL", icon: "🥂", label: "Social", desc: "Bodas, XV años, fiestas privadas." },
-                      { te: "EMPRESARIAL", icon: "🏢", label: "Empresarial", desc: "Congresos, lanzamientos, expos." },
-                      { te: "OTRO", icon: "📅", label: "Otro", desc: "Algún otro tipo de evento." }
-                    ].map(t => (
+                    {([
+                      { te: "MUSICAL", icon: Music, label: "Musical", desc: "Conciertos, festivales, giras, etc." },
+                      { te: "SOCIAL", icon: Wine, label: "Social", desc: "Bodas, XV años, fiestas privadas." },
+                      { te: "EMPRESARIAL", icon: Building2, label: "Empresarial", desc: "Congresos, lanzamientos, expos." },
+                      { te: "OTRO", icon: Calendar, label: "Otro", desc: "Algún otro tipo de evento." }
+                    ] as const).map(t => (
                       <button key={t.te} type="button" onClick={() => setDiscForm(p => ({ ...p, tipoEvento: t.te, subtipoEvento: "", serviciosInteres: [] }))}
                         className={`text-left p-3 rounded-xl border transition-all ${discForm.tipoEvento === t.te ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#222] bg-[#111] hover:border-[#444]"}`}>
-                        <div className="text-xl mb-1">{t.icon}</div>
+                        <div className="mb-1"><t.icon strokeWidth={1.75} className={`w-5 h-5 ${discForm.tipoEvento === t.te ? "text-[#B3985B]" : "text-gray-500"}`} /></div>
                         <p className={`text-sm font-semibold mb-0.5 ${discForm.tipoEvento === t.te ? "text-[#B3985B]" : "text-white"}`}>{t.label}</p>
                         <p className="text-[10px] text-gray-500 leading-tight">{t.desc}</p>
                       </button>
@@ -779,14 +780,14 @@ export default function DiscoveryForm({
               <div className="sm:col-span-2">
                 <label className="text-xs text-gray-400 block mb-2">Tipo de servicio</label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {[
-                    { value: "RENTA", label: "Renta de equipo", icon: "📦", desc: "Solo equipo sin operación técnica compleja." },
-                    { value: "PRODUCCION_TECNICA", label: "Producción Técnica", icon: "⚙️", desc: "Equipo, montaje y operación técnica." },
-                    { value: "DIRECCION_TECNICA", label: "Dirección Técnica", icon: "📋", desc: "Desarrollo conceptual, producción técnica y gestión completa de producción." }
-                  ].map(ts => (
+                  {([
+                    { value: "RENTA", label: "Renta de equipo", icon: Package, desc: "Solo equipo sin operación técnica compleja." },
+                    { value: "PRODUCCION_TECNICA", label: "Producción Técnica", icon: Settings, desc: "Equipo, montaje y operación técnica." },
+                    { value: "DIRECCION_TECNICA", label: "Dirección Técnica", icon: ClipboardList, desc: "Desarrollo conceptual, producción técnica y gestión completa de producción." }
+                  ] as const).map(ts => (
                     <button key={ts.value} type="button" onClick={() => setDiscForm(p => ({ ...p, tipoServicio: ts.value }))}
                       className={`text-left p-4 rounded-xl border transition-all ${discForm.tipoServicio === ts.value ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#222] bg-[#111] hover:border-[#444]"}`}>
-                      <div className="text-2xl mb-2">{ts.icon}</div>
+                      <div className="mb-2"><ts.icon strokeWidth={1.75} className={`w-6 h-6 ${discForm.tipoServicio === ts.value ? "text-[#B3985B]" : "text-gray-500"}`} /></div>
                       <p className={`text-sm font-semibold mb-1 ${discForm.tipoServicio === ts.value ? "text-[#B3985B]" : "text-white"}`}>{ts.label}</p>
                       <p className="text-xs text-gray-500 leading-relaxed">{ts.desc}</p>
                     </button>
@@ -917,7 +918,7 @@ export default function DiscoveryForm({
               {modalidad === "CONTRA_RIDER" && (
                 <div className="rounded-xl border border-blue-800/40 bg-blue-950/20 p-4 space-y-3">
                   <div className="flex items-start gap-3">
-                    <span className="text-xl">📄</span>
+                    <FileText strokeWidth={1.75} className="w-5 h-5 text-blue-300 shrink-0 mt-0.5" />
                     <div>
                       <p className="text-blue-200 text-sm font-semibold">Rider específico / Contra-rider</p>
                       <p className="text-[11px] text-blue-300/70 leading-relaxed mt-0.5">
@@ -939,7 +940,7 @@ export default function DiscoveryForm({
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs text-gray-400 font-medium">📁 Rider técnico (archivo)</p>
+                      <p className="text-xs text-gray-400 font-medium inline-flex items-center gap-1.5"><Folder strokeWidth={1.75} className="w-3.5 h-3.5" /> Rider técnico (archivo)</p>
                       <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[11px] cursor-pointer transition-colors ${uploadingTipo === "DOCUMENTO" ? "opacity-40 pointer-events-none text-gray-500" : "text-gray-500 hover:text-white hover:border-[#444]"}`}>
                         {uploadingTipo === "DOCUMENTO" ? "Subiendo..." : "+ Subir rider"}
                         <input type="file" className="hidden" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip" multiple onChange={e => subirArchivo(e, "DOCUMENTO")} />
@@ -951,7 +952,7 @@ export default function DiscoveryForm({
                       <ul className="space-y-1">
                         {archivos.filter(a => a.tipo === "DOCUMENTO").map(a => (
                           <li key={a.id} className="flex items-center gap-2 text-[11px] text-blue-300">
-                            <span>📎</span>
+                            <Paperclip strokeWidth={1.75} className="w-3 h-3 shrink-0" />
                             <a href={a.url} target="_blank" rel="noopener noreferrer" className="truncate hover:underline">{a.nombre || a.url}</a>
                           </li>
                         ))}
@@ -1020,14 +1021,14 @@ export default function DiscoveryForm({
                   <div className="mb-4">
                     <label className="text-xs text-gray-400 block mb-2">¿Qué áreas abarca este proyecto? <span className="text-gray-600">(selecciona las que apliquen)</span></label>
                     <div className="flex flex-wrap gap-2">
-                      {[
-                        { id: "DT_CONCEPTUAL",    icon: "🎨", label: "Desarrollo conceptual",    desc: "Concepto creativo, ambientación, propuesta visual" },
-                        { id: "DT_PROVEEDORES",   icon: "🤝", label: "Gestión de proveedores",   desc: "Coordinación, contratación y supervisión de terceros" },
-                        { id: "DT_PT_PROPIA",     icon: "🎛", label: "PT propia Mainstage",      desc: "Nuestro propio servicio de producción técnica incluido" },
-                        { id: "DT_LOGISTICA",     icon: "📦", label: "Logística integral",        desc: "Transporte, tiempos, cronograma y coordinación general" },
-                        { id: "DT_PRESUPUESTO",   icon: "💰", label: "Control de presupuesto",   desc: "Gestión del presupuesto global del evento" },
-                        { id: "DT_SUPERVISIÓN",   icon: "👁", label: "Supervisión en sitio",     desc: "Director técnico presente el día del evento" },
-                      ].map(area => (
+                      {([
+                        { id: "DT_CONCEPTUAL",    icon: Palette,     label: "Desarrollo conceptual",    desc: "Concepto creativo, ambientación, propuesta visual" },
+                        { id: "DT_PROVEEDORES",   icon: Handshake,   label: "Gestión de proveedores",   desc: "Coordinación, contratación y supervisión de terceros" },
+                        { id: "DT_PT_PROPIA",     icon: Sliders,     label: "PT propia Mainstage",      desc: "Nuestro propio servicio de producción técnica incluido" },
+                        { id: "DT_LOGISTICA",     icon: Package,     label: "Logística integral",        desc: "Transporte, tiempos, cronograma y coordinación general" },
+                        { id: "DT_PRESUPUESTO",   icon: DollarSign,  label: "Control de presupuesto",   desc: "Gestión del presupuesto global del evento" },
+                        { id: "DT_SUPERVISIÓN",   icon: Eye,         label: "Supervisión en sitio",     desc: "Director técnico presente el día del evento" },
+                      ] as const).map(area => (
                         <button key={area.id}
                           onClick={() => toggleServicio(area.id)}
                           title={area.desc}
@@ -1036,7 +1037,7 @@ export default function DiscoveryForm({
                               ? "border-[#B3985B] bg-[#B3985B]/10 text-[#B3985B]"
                               : "border-[#2a2a2a] text-gray-300 hover:border-[#555] hover:text-white"
                           }`}>
-                          <span>{area.icon}</span>
+                          <area.icon strokeWidth={1.75} className="w-3.5 h-3.5" />
                           <span>{area.label}</span>
                         </button>
                       ))}
@@ -1145,20 +1146,20 @@ export default function DiscoveryForm({
                 <div className="pt-2 border-t border-[#1a1a1a]">
                   <label className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold block mb-3">Servicios Adicionales (Opcionales)</label>
                   <div className="flex flex-col gap-3 mb-3">
-                    {[
-                      { 
-                        id: "SA_FOTO_VIDEO", 
-                        emoji: "📸",
-                        label: "Fotografía y Video", 
+                    {([
+                      {
+                        id: "SA_FOTO_VIDEO",
+                        icon: Camera,
+                        label: "Fotografía y Video",
                         desc: "Levantamiento y entrega de material de fotografía y video profesional, fotografías editadas, videos after movie, videos formato corto o videovlog."
                       },
-                      { 
-                        id: "SA_RENDER", 
-                        emoji: "🖥️",
-                        label: "Render de Producción", 
+                      {
+                        id: "SA_RENDER",
+                        icon: Monitor,
+                        label: "Render de Producción",
                         desc: "Propuesta de render de la producción, imágenes con diferentes vistas, render a escala real, videos de la producción en operación (principalmente iluminación) y plots técnicos de producción (audio, luces, stage, estructuras etc) y entrega de materiales de imagen y videos así como los plots de producción."
                       }
-                    ].map(srv => {
+                    ] as const).map(srv => {
                       const isSelected = discForm.serviciosInteres.includes(srv.id);
                       return (
                         <div key={srv.id} onClick={() => toggleServicio(srv.id)}
@@ -1174,8 +1175,8 @@ export default function DiscoveryForm({
                             {isSelected && <span className="text-black text-[10px]">✓</span>}
                           </div>
                           <div>
-                            <p className={`text-sm font-medium ${isSelected ? "text-[#B3985B]" : "text-gray-300"}`}>
-                              {srv.emoji} {srv.label}
+                            <p className={`text-sm font-medium inline-flex items-center gap-1.5 ${isSelected ? "text-[#B3985B]" : "text-gray-300"}`}>
+                              <srv.icon strokeWidth={1.75} className="w-4 h-4" /> {srv.label}
                             </p>
                             <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
                               {srv.desc}
@@ -1299,8 +1300,8 @@ export default function DiscoveryForm({
                 <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Referencias y archivos del cliente</p>
                 {(["REFERENCIA", "DOCUMENTO"] as const).map((cat) => {
                   const catMeta = {
-                    REFERENCIA: { label: "Referencias del cliente", icon: "🖼️", accept: "image/*,.pdf", hint: "Imágenes o docs que el cliente comparte como inspiración" },
-                    DOCUMENTO:  { label: "Otros documentos",  icon: "📁", accept: "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip", hint: "Contratos, riders, planos, cualquier archivo" },
+                    REFERENCIA: { label: "Referencias del cliente", icon: ImageIcon, accept: "image/*,.pdf", hint: "Imágenes o docs que el cliente comparte como inspiración" },
+                    DOCUMENTO:  { label: "Otros documentos",  icon: Folder, accept: "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip", hint: "Contratos, riders, planos, cualquier archivo" },
                   }[cat];
                   const catArchivos = archivos.filter(a => a.tipo === cat);
                   const uploading = uploadingTipo === cat;
@@ -1308,7 +1309,7 @@ export default function DiscoveryForm({
                     <div key={cat}>
                       <div className="flex items-center justify-between mb-2">
                         <div>
-                          <p className="text-xs text-gray-400 font-medium">{catMeta.icon} {catMeta.label}</p>
+                          <p className="text-xs text-gray-400 font-medium inline-flex items-center gap-1.5"><catMeta.icon strokeWidth={1.75} className="w-3.5 h-3.5" /> {catMeta.label}</p>
                           <p className="text-[11px] text-gray-600 mt-0.5">{catMeta.hint}</p>
                         </div>
                         <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[11px] cursor-pointer transition-colors ${uploading ? "opacity-40 pointer-events-none text-gray-500" : "text-gray-500 hover:text-white hover:border-[#444]"}`}>
@@ -1331,7 +1332,7 @@ export default function DiscoveryForm({
                                   </a>
                                 ) : (
                                   <a href={a.url} target="_blank" rel="noreferrer" className="flex flex-col items-center justify-center gap-1 px-2 py-4 hover:bg-[#1a1a1a] transition-colors min-h-[5rem]">
-                                    <span className="text-xl">{/\.pdf$/i.test(a.url) ? "📄" : /\.(doc|docx)$/i.test(a.url) ? "📝" : /\.(xls|xlsx)$/i.test(a.url) ? "📊" : "📎"}</span>
+                                    {/\.pdf$/i.test(a.url) ? <FileText strokeWidth={1.75} className="w-5 h-5 text-gray-500" /> : /\.(doc|docx)$/i.test(a.url) ? <PenLine strokeWidth={1.75} className="w-5 h-5 text-gray-500" /> : /\.(xls|xlsx)$/i.test(a.url) ? <BarChart3 strokeWidth={1.75} className="w-5 h-5 text-gray-500" /> : <Paperclip strokeWidth={1.75} className="w-5 h-5 text-gray-500" />}
                                     <span className="text-gray-400 text-[10px] truncate w-full text-center px-1">{a.nombre}</span>
                                   </a>
                                 )}
@@ -1364,7 +1365,7 @@ export default function DiscoveryForm({
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider block mb-1.5">💡 Ideas / Referencias (links)</label>
+                  <label className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-1.5 inline-flex items-center gap-1.5"><Lightbulb strokeWidth={1.75} className="w-3.5 h-3.5" /> Ideas / Referencias (links)</label>
                   <p className="text-[11px] text-gray-500 mb-3">Links de Pinterest, Instagram, Google Drive o cualquier sitio web que sirva de inspiración (ej: fotos de otros eventos, ideas de internet, etc.) para entender el mood del proyecto.</p>
                   {/* Legacy text — show as text, don't edit */}
                   {isLegacyString(discForm.ideasReferencias) && (
@@ -1418,8 +1419,8 @@ export default function DiscoveryForm({
                 <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">Referencias y archivos del cliente</p>
                 {(["REFERENCIA", "DOCUMENTO"] as const).map((cat) => {
                   const catMeta = {
-                    REFERENCIA: { label: "Referencias del cliente", icon: "🖼️", accept: "image/*,.pdf", hint: "Imágenes o docs que el cliente comparte como inspiración" },
-                    DOCUMENTO:  { label: "Otros documentos",  icon: "📁", accept: "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip", hint: "Contratos, riders, planos, cualquier archivo" },
+                    REFERENCIA: { label: "Referencias del cliente", icon: ImageIcon, accept: "image/*,.pdf", hint: "Imágenes o docs que el cliente comparte como inspiración" },
+                    DOCUMENTO:  { label: "Otros documentos",  icon: Folder, accept: "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip", hint: "Contratos, riders, planos, cualquier archivo" },
                   }[cat];
                   const catArchivos = archivos.filter(a => a.tipo === cat);
                   const uploading = uploadingTipo === cat;
@@ -1427,7 +1428,7 @@ export default function DiscoveryForm({
                     <div key={cat}>
                       <div className="flex items-center justify-between mb-2">
                         <div>
-                          <p className="text-xs text-gray-400 font-medium">{catMeta.icon} {catMeta.label}</p>
+                          <p className="text-xs text-gray-400 font-medium inline-flex items-center gap-1.5"><catMeta.icon strokeWidth={1.75} className="w-3.5 h-3.5" /> {catMeta.label}</p>
                           <p className="text-[11px] text-gray-600 mt-0.5">{catMeta.hint}</p>
                         </div>
                         <label className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#2a2a2a] text-[11px] cursor-pointer transition-colors ${uploading ? "opacity-40 pointer-events-none text-gray-500" : "text-gray-500 hover:text-white hover:border-[#444]"}`}>
@@ -1450,7 +1451,7 @@ export default function DiscoveryForm({
                                   </a>
                                 ) : (
                                   <a href={a.url} target="_blank" rel="noreferrer" className="flex flex-col items-center justify-center gap-1 px-2 py-4 hover:bg-[#1a1a1a] transition-colors min-h-[5rem]">
-                                    <span className="text-xl">{/\.pdf$/i.test(a.url) ? "📄" : /\.(doc|docx)$/i.test(a.url) ? "📝" : /\.(xls|xlsx)$/i.test(a.url) ? "📊" : "📎"}</span>
+                                    {/\.pdf$/i.test(a.url) ? <FileText strokeWidth={1.75} className="w-5 h-5 text-gray-500" /> : /\.(doc|docx)$/i.test(a.url) ? <PenLine strokeWidth={1.75} className="w-5 h-5 text-gray-500" /> : /\.(xls|xlsx)$/i.test(a.url) ? <BarChart3 strokeWidth={1.75} className="w-5 h-5 text-gray-500" /> : <Paperclip strokeWidth={1.75} className="w-5 h-5 text-gray-500" />}
                                     <span className="text-gray-400 text-[10px] truncate w-full text-center px-1">{a.nombre}</span>
                                   </a>
                                 )}
@@ -1511,14 +1512,14 @@ export default function DiscoveryForm({
                 <div>
                   <label className="text-xs text-gray-400 block mb-2">¿Cómo prefieres continuar?</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {[
-                      { value: "LLAMADA", icon: "📞", label: "Quiero una llamada", desc: "Prefiero que me contacten para consolidar juntos los detalles." },
-                      { value: "PROPUESTA", icon: "⚡", label: "Quiero mi propuesta ya", desc: "Prefiero recibir una propuesta lo antes posible." },
-                    ].map(pref => (
+                    {([
+                      { value: "LLAMADA", icon: Phone, label: "Quiero una llamada", desc: "Prefiero que me contacten para consolidar juntos los detalles." },
+                      { value: "PROPUESTA", icon: Zap, label: "Quiero mi propuesta ya", desc: "Prefiero recibir una propuesta lo antes posible." },
+                    ] as const).map(pref => (
                       <button key={pref.value} type="button"
                         onClick={() => setDiscForm(p => ({ ...p, preferenciaContacto: p.preferenciaContacto === pref.value ? "" : pref.value }))}
                         className={`text-left p-3 rounded-xl border transition-all ${discForm.preferenciaContacto === pref.value ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#222] bg-[#111] hover:border-[#444]"}`}>
-                        <div className="text-xl mb-1">{pref.icon}</div>
+                        <div className="mb-1"><pref.icon strokeWidth={1.75} className={`w-5 h-5 ${discForm.preferenciaContacto === pref.value ? "text-[#B3985B]" : "text-gray-500"}`} /></div>
                         <p className={`text-sm font-semibold mb-0.5 ${discForm.preferenciaContacto === pref.value ? "text-[#B3985B]" : "text-white"}`}>{pref.label}</p>
                         <p className="text-[10px] text-gray-500 leading-tight">{pref.desc}</p>
                       </button>
@@ -1530,7 +1531,7 @@ export default function DiscoveryForm({
               {/* Panel de envío del cliente — solo modo público */}
               {clientMode && (
                 <div className="border border-[#B3985B]/30 bg-[#B3985B]/5 rounded-xl p-5 text-center space-y-3">
-                  <p className="text-white text-base font-semibold">¡Ya casi terminas! 🎉</p>
+                  <p className="text-white text-base font-semibold inline-flex items-center gap-1.5">¡Ya casi terminas! <PartyPopper strokeWidth={1.75} className="w-4 h-4 text-[#B3985B]" /></p>
                   <p className="text-gray-400 text-xs leading-relaxed">
                     Revisa que la información esté completa y envíanos tu solicitud.
                     Nuestro equipo te contactará con una propuesta a la medida.

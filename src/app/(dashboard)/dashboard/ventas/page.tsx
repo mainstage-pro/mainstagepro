@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { Zap } from "lucide-react";
 import DailyGreeting from "@/components/DailyGreeting";
 import TareasPendientesWidget from "@/components/TareasPendientesWidget";
 import { EventosWidget } from "@/components/dashboard/EventosWidget";
@@ -127,8 +128,8 @@ export default async function DashboardVentasPage() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {cotizacionesVencen3dias.length > 0 && (
-            <span className="bg-orange-900/20 border border-orange-800/40 text-orange-400 px-3 py-1.5 rounded-lg font-semibold text-[10px]">
-              ⚡ {cotizacionesVencen3dias.length} cots. vencen en 3 días
+            <span className="inline-flex items-center gap-1.5 bg-orange-900/20 border border-orange-800/40 text-orange-400 px-3 py-1.5 rounded-lg font-semibold text-[10px]">
+              <Zap strokeWidth={1.75} className="w-3 h-3" /> {cotizacionesVencen3dias.length} cots. vencen en 3 días
             </span>
           )}
           <Link href="/crm/tratos/nuevo" className="ms-btn-primary">

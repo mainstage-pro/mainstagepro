@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 
 interface AreaResumen {
   id: string;
@@ -67,7 +68,7 @@ export default function PlanTrabajoWidget() {
       <div className="flex items-center gap-2 flex-wrap">
         {data.totalVencidas > 0 && (
           <span className="flex items-center gap-1.5 bg-red-900/20 border border-red-900/40 text-red-400 text-xs font-semibold px-3 py-1 rounded-full">
-            ⚠ {data.totalVencidas} vencida{data.totalVencidas !== 1 ? "s" : ""}
+            <AlertTriangle strokeWidth={1.75} className="w-3.5 h-3.5" /> {data.totalVencidas} vencida{data.totalVencidas !== 1 ? "s" : ""}
           </span>
         )}
         {todasAlDia && (

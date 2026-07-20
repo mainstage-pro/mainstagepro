@@ -12,6 +12,7 @@ import NumSelect from "@/components/ui/NumSelect";
 import SearchableSelect from "@/components/ui/SearchableSelect";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
+import { ClipboardList, Sparkles, Package, SlidersHorizontal, AlertTriangle, Ban, Utensils, Bus, BedDouble, File, FileText, BarChart3, Paperclip, type LucideIcon } from "lucide-react";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Equipo {
@@ -1635,9 +1636,9 @@ function CotizadorForm() {
           {plantillas.length > 0 && (
             <button
               onClick={() => setShowPlantillas(true)}
-              className="px-4 py-2 rounded-lg border border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B]/10 text-sm font-medium"
+              className="px-4 py-2 rounded-lg border border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B]/10 text-sm font-medium inline-flex items-center gap-1.5"
             >
-              📋 Cargar plantilla
+              <ClipboardList strokeWidth={1.75} className="w-3.5 h-3.5" /> Cargar plantilla
             </button>
           )}
           <button onClick={() => router.back()} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 hover:text-white text-sm">Cancelar</button>
@@ -1886,8 +1887,8 @@ function CotizadorForm() {
                         <img src={a.url} alt={a.nombre} className="w-full h-20 object-cover" />
                       ) : (
                         <div className="flex items-center gap-2 px-3 py-3">
-                          <span className="text-xl">
-                            {/\.pdf$/i.test(a.url) ? "📄" : /\.(doc|docx)$/i.test(a.url) ? "📝" : /\.(xls|xlsx)$/i.test(a.url) ? "📊" : "📎"}
+                          <span className="text-gray-500">
+                            {/\.pdf$/i.test(a.url) ? <File strokeWidth={1.75} className="w-5 h-5" /> : /\.(doc|docx)$/i.test(a.url) ? <FileText strokeWidth={1.75} className="w-5 h-5" /> : /\.(xls|xlsx)$/i.test(a.url) ? <BarChart3 strokeWidth={1.75} className="w-5 h-5" /> : <Paperclip strokeWidth={1.75} className="w-5 h-5" />}
                           </span>
                           <span className="text-gray-400 text-xs truncate">{a.nombre}</span>
                         </div>
@@ -1979,7 +1980,7 @@ function CotizadorForm() {
                 <div className="px-5 pb-5 space-y-4">
                   {paqComSel.length > 0 && (
                     <div>
-                      <p className="text-[#B3985B] text-[10px] font-bold uppercase tracking-wider mb-2">✨ Paquetes seleccionados</p>
+                      <p className="text-[#B3985B] text-[10px] font-bold uppercase tracking-wider mb-2 inline-flex items-center gap-1.5"><Sparkles strokeWidth={1.75} className="w-3.5 h-3.5" /> Paquetes seleccionados</p>
                       <div className="space-y-1.5">
                         {paqComSel.map(paq => {
                           const sel = equiposInteres.paquetes.find(p => p.id === paq.id);
@@ -2015,7 +2016,7 @@ function CotizadorForm() {
                   )}
                   {paqSel.length > 0 && (
                     <div>
-                      <p className="text-[#B3985B] text-[10px] font-bold uppercase tracking-wider mb-2">📦 Productos seleccionados</p>
+                      <p className="text-[#B3985B] text-[10px] font-bold uppercase tracking-wider mb-2 inline-flex items-center gap-1.5"><Package strokeWidth={1.75} className="w-3.5 h-3.5" /> Productos seleccionados</p>
                       <div className="space-y-1.5">
                         {paqSel.map(prod => {
                           const sel = equiposInteres.productos.find(p => p.id === prod.id);
@@ -2151,23 +2152,23 @@ function CotizadorForm() {
               <button
                 type="button"
                 onClick={() => setEquipoTab("individual")}
-                className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors inline-flex items-center justify-center gap-1.5 ${
                   equipoTab === "individual" ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
                 }`}
               >
-                🎛️ Equipo individual
+                <SlidersHorizontal strokeWidth={1.75} className="w-3.5 h-3.5" /> Equipo individual
               </button>
               {productosCatalogo.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setEquipoTab("paquete")}
-                  className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
+                  className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all inline-flex items-center justify-center gap-1.5 ${
                     equipoTab === "paquete"
                       ? "bg-gradient-to-r from-[#B3985B] to-[#d4b876] text-black shadow-lg shadow-[#B3985B]/25"
                       : "text-[#B3985B] bg-gradient-to-r from-[#B3985B]/15 to-[#B3985B]/5 ring-1 ring-[#B3985B]/40 hover:from-[#B3985B]/25"
                   }`}
                 >
-                  ✨ Del catálogo de paquetes
+                  <Sparkles strokeWidth={1.75} className="w-3.5 h-3.5" /> Del catálogo de paquetes
                 </button>
               )}
             </div>
@@ -2253,7 +2254,7 @@ function CotizadorForm() {
             {lineasPaquete.length > 0 && (
               <div className="mb-4 border border-[#B3985B]/30 rounded-lg overflow-hidden">
                 <div className="flex items-center justify-between bg-[#B3985B]/[0.07] px-3 py-2">
-                  <span className="text-[10px] font-semibold text-[#B3985B] uppercase tracking-wider">📦 Paquetes armados</span>
+                  <span className="text-[10px] font-semibold text-[#B3985B] uppercase tracking-wider inline-flex items-center gap-1.5"><Package strokeWidth={1.75} className="w-3.5 h-3.5" /> Paquetes armados</span>
                   <span className="text-xs text-gray-400">{formatCurrency(lineasPaquete.reduce((s, l) => s + l.subtotal, 0))}</span>
                 </div>
                 {lineasPaquete.map(l => (
@@ -2361,7 +2362,7 @@ function CotizadorForm() {
                           if (totalEnCot > d.total) {
                             return (
                               <div className="mx-3 mt-1 bg-red-900/20 border border-red-800/40 rounded-lg px-3 py-1.5 flex items-start gap-2">
-                                <span className="text-red-400 text-xs font-semibold shrink-0">⛔ Sobrestock</span>
+                                <span className="text-red-400 text-xs font-semibold shrink-0 inline-flex items-center gap-1"><Ban strokeWidth={1.75} className="w-3.5 h-3.5" /> Sobrestock</span>
                                 <span className="text-red-300 text-xs">
                                   Tienes {totalEnCot} unid. en esta cotización pero solo hay {d.total} en inventario.
                                   {d.comprometido > 0 && ` Comprometido en: ${d.eventos.map(e => e.ref).join(", ")}.`}
@@ -2372,7 +2373,7 @@ function CotizadorForm() {
                           if (d.disponible < totalEnCot) {
                             return (
                               <div className="mx-3 mt-1 bg-yellow-900/20 border border-yellow-800/40 rounded-lg px-3 py-1.5 flex items-start gap-2">
-                                <span className="text-yellow-400 text-xs font-semibold shrink-0">⚠ Stock comprometido</span>
+                                <span className="text-yellow-400 text-xs font-semibold shrink-0 inline-flex items-center gap-1"><AlertTriangle strokeWidth={1.75} className="w-3.5 h-3.5" /> Stock comprometido</span>
                                 <span className="text-yellow-300 text-xs">
                                   Quedan {d.disponible} disp. para {evento.fechaEvento}.
                                   {d.comprometido > 0 && ` En uso: ${d.eventos.map(e => e.ref).join(", ")}.`}
@@ -3021,15 +3022,15 @@ function CotizadorForm() {
           {/* ── Logística ── */}
           <Seccion titulo="Logística" hint="sin descuento">
             {([
-              { tipo: "COMIDA" as const, label: "Comida", conceptos: CONCEPTOS_COMIDA, icon: "🍽" },
-              { tipo: "TRANSPORTE" as const, label: "Transporte", conceptos: CONCEPTOS_TRANSPORTE, icon: "🚐" },
-              { tipo: "HOSPEDAJE" as const, label: "Hospedaje", conceptos: CONCEPTOS_HOSPEDAJE, icon: "🏨" },
-            ]).map(({ tipo, label, conceptos, icon }) => {
+              { tipo: "COMIDA" as const, label: "Comida", conceptos: CONCEPTOS_COMIDA, icon: Utensils as LucideIcon },
+              { tipo: "TRANSPORTE" as const, label: "Transporte", conceptos: CONCEPTOS_TRANSPORTE, icon: Bus as LucideIcon },
+              { tipo: "HOSPEDAJE" as const, label: "Hospedaje", conceptos: CONCEPTOS_HOSPEDAJE, icon: BedDouble as LucideIcon },
+            ]).map(({ tipo, label, conceptos, icon: Icon }) => {
               const lineas = lineasLog.filter(l => l.tipo === tipo);
               const subtotal = lineas.reduce((s, l) => s + l.subtotal, 0);
               return (
                 <div key={tipo} className="mb-4 last:mb-0">
-                  <p className="text-xs font-semibold text-[#888] mb-2 uppercase tracking-wider">{icon} {label}</p>
+                  <p className="text-xs font-semibold text-[#888] mb-2 uppercase tracking-wider inline-flex items-center gap-1.5"><Icon strokeWidth={1.75} className="w-3.5 h-3.5" /> {label}</p>
                   <div className="flex gap-2 mb-2 flex-wrap items-end">
                     <Combobox
                       value={logConcepto[tipo]}
@@ -3378,7 +3379,7 @@ function CotizadorForm() {
                   <span>{formatCurrency(resumen.subtotalEquiposNeto)}</span>
                 </div>
               )}
-              {resumen.subtotalPaquetes > 0 && <div className="flex justify-between text-gray-400"><span>📦 Paquetes armados</span><span>{formatCurrency(resumen.subtotalPaquetes)}</span></div>}
+              {resumen.subtotalPaquetes > 0 && <div className="flex justify-between text-gray-400"><span className="inline-flex items-center gap-1.5"><Package strokeWidth={1.75} className="w-3.5 h-3.5" /> Paquetes armados</span><span>{formatCurrency(resumen.subtotalPaquetes)}</span></div>}
               {resumen.subtotalExternos > 0 && <div className="flex justify-between text-gray-400"><span>Equipos terceros</span><span>{formatCurrency(resumen.subtotalExternos)}</span></div>}
               {resumen.subtotalOcasionales > 0 && <div className="flex justify-between text-gray-400"><span>Adicionales</span><span>{formatCurrency(resumen.subtotalOcasionales)}</span></div>}
               {resumen.subtotalOperacion > 0 && <div className="flex justify-between text-gray-400"><span>Operación técnica</span><span>{formatCurrency(resumen.subtotalOperacion)}</span></div>}

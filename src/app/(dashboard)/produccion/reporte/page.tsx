@@ -7,6 +7,9 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell, PieChart, Pie,
 } from "recharts";
+import {
+  CheckCircle2, Package, AlertTriangle, Circle, DollarSign, Trash2,
+} from "lucide-react";
 
 // ─── TIPOS ───────────────────────────────────────────────────────────────────
 
@@ -237,10 +240,10 @@ function SeccionChecklist({ data, mes }: { data: ReporteData["checklistSemanal"]
             </div>
             <ProgressBar value={cl.stats.cumplimiento} color={avanceColor(cl.stats.cumplimiento)} />
             <div className="flex flex-wrap gap-3 mt-2 text-[10px] text-[#6b7280]">
-              <span>✅ {cl.stats.enBodega} en bodega</span>
-              <span>📦 {cl.stats.enRenta} en uso</span>
-              {cl.stats.extraviados > 0 && <span className="text-[#fbbf24]">⚠ {cl.stats.extraviados} extraviados</span>}
-              {cl.stats.perdidos > 0 && <span className="text-[#f87171]">🔴 {cl.stats.perdidos} perdidos</span>}
+              <span className="inline-flex items-center gap-1"><CheckCircle2 strokeWidth={1.75} className="w-3 h-3" /> {cl.stats.enBodega} en bodega</span>
+              <span className="inline-flex items-center gap-1"><Package strokeWidth={1.75} className="w-3 h-3" /> {cl.stats.enRenta} en uso</span>
+              {cl.stats.extraviados > 0 && <span className="inline-flex items-center gap-1 text-[#fbbf24]"><AlertTriangle strokeWidth={1.75} className="w-3 h-3" /> {cl.stats.extraviados} extraviados</span>}
+              {cl.stats.perdidos > 0 && <span className="inline-flex items-center gap-1 text-[#f87171]"><Circle className="w-2.5 h-2.5 fill-current text-red-400" /> {cl.stats.perdidos} perdidos</span>}
             </div>
             {cl.cerradoEn && <p className="text-[#444] text-[9px] mt-1">Cerrado: {fmtFecha(cl.cerradoEn)}</p>}
           </button>
@@ -419,7 +422,7 @@ function SeccionMantenimiento({ data, mes, onActualizar }: { data: ReporteData["
       {/* Equipos en reparación activa */}
       {equiposEnMantenimientoActual.length > 0 && (
         <div className="bg-[#111] border border-[#92400e] rounded-xl p-5">
-          <p className="text-[#fbbf24] text-xs font-semibold uppercase tracking-wider mb-3">⚠ En reparación actualmente</p>
+          <p className="inline-flex items-center gap-1.5 text-[#fbbf24] text-xs font-semibold uppercase tracking-wider mb-3"><AlertTriangle strokeWidth={1.75} className="w-3.5 h-3.5" /> En reparación actualmente</p>
           <div className="space-y-3">
             {equiposEnMantenimientoActual.map(eq => {
               const ultimo = eq.mantenimientos[0];
@@ -443,18 +446,19 @@ function SeccionMantenimiento({ data, mes, onActualizar }: { data: ReporteData["
                     <button
                       onClick={() => ultimo && patch(ultimo.id, { costoReparacion: parseFloat(costoEdit[ultimo.id] ?? "0") })}
                       disabled={saving === ultimo?.id}
-                      className="text-[10px] px-2 py-1 rounded-lg bg-[#1a1a1a] border border-[#333] text-[#9ca3af] hover:text-white transition-colors disabled:opacity-50"
-                    >💰</button>
+                      className="inline-flex items-center text-[10px] px-2 py-1 rounded-lg bg-[#1a1a1a] border border-[#333] text-[#9ca3af] hover:text-white transition-colors disabled:opacity-50"
+                      title="Guardar costo"
+                    ><DollarSign strokeWidth={1.75} className="w-3.5 h-3.5" /></button>
                     <button
                       onClick={() => ultimo && patch(ultimo.id, { nuevoEstadoEquipo: "ACTIVO" })}
                       disabled={saving === ultimo?.id}
-                      className="text-[10px] px-3 py-1 rounded-lg bg-[#052e16] border border-[#166534] text-[#4ade80] hover:opacity-80 transition-opacity disabled:opacity-50"
-                    >✅ Devuelto</button>
+                      className="inline-flex items-center gap-1 text-[10px] px-3 py-1 rounded-lg bg-[#052e16] border border-[#166534] text-[#4ade80] hover:opacity-80 transition-opacity disabled:opacity-50"
+                    ><CheckCircle2 strokeWidth={1.75} className="w-3 h-3" /> Devuelto</button>
                     <button
                       onClick={() => ultimo && patch(ultimo.id, { nuevoEstadoEquipo: "DADO_DE_BAJA" })}
                       disabled={saving === ultimo?.id}
-                      className="text-[10px] px-3 py-1 rounded-lg bg-[#450a0a] border border-[#991b1b] text-[#f87171] hover:opacity-80 transition-opacity disabled:opacity-50"
-                    >🗑 Dar de baja</button>
+                      className="inline-flex items-center gap-1 text-[10px] px-3 py-1 rounded-lg bg-[#450a0a] border border-[#991b1b] text-[#f87171] hover:opacity-80 transition-opacity disabled:opacity-50"
+                    ><Trash2 strokeWidth={1.75} className="w-3 h-3" /> Dar de baja</button>
                   </div>
                 </div>
               );
@@ -565,7 +569,7 @@ function SeccionInventario({ data, mes }: { data: ReporteData["inventario"]; mes
 
         {/* Altas */}
         <div className="ms-card p-5 md:col-span-1">
-          <p className="text-[#4ade80] text-xs font-semibold uppercase tracking-wider mb-3">📦 Altas ({altas.length})</p>
+          <p className="inline-flex items-center gap-1.5 text-[#4ade80] text-xs font-semibold uppercase tracking-wider mb-3"><Package strokeWidth={1.75} className="w-3.5 h-3.5" /> Altas ({altas.length})</p>
           {altas.length === 0 && <p className="text-[#555] text-xs text-center py-4">Sin altas en este mes</p>}
           <div className="space-y-2">
             {altas.map(e => (
@@ -587,7 +591,7 @@ function SeccionInventario({ data, mes }: { data: ReporteData["inventario"]; mes
 
         {/* Bajas */}
         <div className="ms-card p-5 md:col-span-1">
-          <p className="text-[#f87171] text-xs font-semibold uppercase tracking-wider mb-3">🗑 Bajas ({bajas.length})</p>
+          <p className="inline-flex items-center gap-1.5 text-[#f87171] text-xs font-semibold uppercase tracking-wider mb-3"><Trash2 strokeWidth={1.75} className="w-3.5 h-3.5" /> Bajas ({bajas.length})</p>
           {bajas.length === 0 && <p className="text-[#555] text-xs text-center py-4">Sin bajas en este mes</p>}
           <div className="space-y-2">
             {bajas.map(e => (

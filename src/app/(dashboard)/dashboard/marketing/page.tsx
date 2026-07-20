@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { Calendar } from "lucide-react";
 import DailyGreeting from "@/components/DailyGreeting";
 import TareasPendientesWidget from "@/components/TareasPendientesWidget";
 import { EventosWidget } from "@/components/dashboard/EventosWidget";
@@ -89,8 +90,8 @@ export default async function DashboardMarketingPage() {
           <DailyGreeting nombre={session?.name ?? "Equipo"} />
         </div>
         {pubsProximas7.length > 0 && (
-          <Link href="/marketing/calendario" className="bg-orange-900/20 border border-orange-800/40 text-orange-400 text-[10px] px-3 py-1.5 rounded-lg font-semibold">
-            📅 {pubsProximas7.length} publicaciones esta semana
+          <Link href="/marketing/calendario" className="inline-flex items-center gap-1.5 bg-orange-900/20 border border-orange-800/40 text-orange-400 text-[10px] px-3 py-1.5 rounded-lg font-semibold">
+            <Calendar strokeWidth={1.75} className="w-3 h-3" /> {pubsProximas7.length} publicaciones esta semana
           </Link>
         )}
       </div>

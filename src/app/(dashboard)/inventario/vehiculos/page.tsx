@@ -5,6 +5,7 @@ import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { Modal } from "@/components/Modal";
+import { Camera, AlertTriangle, Clock, Calendar, CalendarDays, DollarSign, Route, FastForward, Droplet, Snowflake, Disc } from "lucide-react";
 
 interface Mantenimiento {
   id: string;
@@ -159,8 +160,8 @@ function FotoUpload({ fotos, onChange, label = "Agregar fotos" }: { fotos: strin
         type="button"
         onClick={() => ref.current?.click()}
         disabled={compressing}
-        className="text-[10px] text-gray-500 hover:text-white border border-dashed border-[#333] hover:border-[#B3985B]/50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
-        {compressing ? "Comprimiendo..." : `📷 ${label}`}
+        className="inline-flex items-center gap-1.5 text-[10px] text-gray-500 hover:text-white border border-dashed border-[#333] hover:border-[#B3985B]/50 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+        {compressing ? "Comprimiendo..." : <><Camera strokeWidth={1.75} className="w-3.5 h-3.5" /> {label}</>}
       </button>
     </div>
   );
@@ -337,7 +338,7 @@ export default function VehiculosPage() {
         <div className="space-y-2 mb-5">
           {urgentes.map(v => (
             <div key={v.id} className="flex items-center gap-3 bg-red-900/15 border border-red-900/40 rounded-xl px-4 py-3">
-              <span className="text-red-400 text-lg">⚠</span>
+              <AlertTriangle strokeWidth={1.75} className="w-5 h-5 shrink-0 text-red-400" />
               <div>
                 <p className="text-red-300 text-sm font-medium">{v.nombre} — servicio vencido</p>
                 <p className="text-red-400/70 text-xs">
@@ -444,8 +445,8 @@ export default function VehiculosPage() {
                   <div className="px-4 py-3">
                     <div className="flex items-center justify-between">
                       <p className="text-white text-sm font-medium truncate">{v.nombre}</p>
-                      {alerta === "urgente" && <span className="text-red-400 text-xs shrink-0">⚠</span>}
-                      {alerta === "proximo" && <span className="text-yellow-400 text-xs shrink-0">⏰</span>}
+                      {alerta === "urgente" && <AlertTriangle strokeWidth={1.75} className="w-3.5 h-3.5 shrink-0 text-red-400" />}
+                      {alerta === "proximo" && <Clock strokeWidth={1.75} className="w-3.5 h-3.5 shrink-0 text-yellow-400" />}
                     </div>
                     <p className="text-gray-600 text-xs mt-0.5">
                       {[v.marca, v.modelo, v.anio].filter(Boolean).join(" ")}
@@ -680,17 +681,17 @@ export default function VehiculosPage() {
                                 )}
                               </div>
                               <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-[11px] text-gray-600">
-                                <span>📅 {fmtDate(m.fecha)}</span>
+                                <span className="inline-flex items-center gap-1"><Calendar strokeWidth={1.75} className="w-3 h-3" /> {fmtDate(m.fecha)}</span>
                                 {m.createdAt && m.createdAt.substring(0, 10) !== m.fecha.substring(0, 10) && (
                                   <span className="text-gray-700">registrado {fmtDate(m.createdAt)}</span>
                                 )}
-                                {m.km && <span>🛣 {fmtKm(m.km)}</span>}
-                                {m.costo && <span className="text-[#B3985B]">💰 {fmt(m.costo)}</span>}
-                                {m.proximoKm && <span>⏭ Próx: {fmtKm(m.proximoKm)}</span>}
-                                {m.proximaFecha && <span>📆 Próx: {fmtDate(m.proximaFecha)}</span>}
-                                {m.aceite && <span>🛢 Aceite: {m.aceite}</span>}
-                                {m.anticongelante && <span>❄ Anticong: {m.anticongelante}</span>}
-                                {m.estadoLlantas && <span>🔘 Llantas: {m.estadoLlantas}</span>}
+                                {m.km && <span className="inline-flex items-center gap-1"><Route strokeWidth={1.75} className="w-3 h-3" /> {fmtKm(m.km)}</span>}
+                                {m.costo && <span className="inline-flex items-center gap-1 text-[#B3985B]"><DollarSign strokeWidth={1.75} className="w-3 h-3" /> {fmt(m.costo)}</span>}
+                                {m.proximoKm && <span className="inline-flex items-center gap-1"><FastForward strokeWidth={1.75} className="w-3 h-3" /> Próx: {fmtKm(m.proximoKm)}</span>}
+                                {m.proximaFecha && <span className="inline-flex items-center gap-1"><CalendarDays strokeWidth={1.75} className="w-3 h-3" /> Próx: {fmtDate(m.proximaFecha)}</span>}
+                                {m.aceite && <span className="inline-flex items-center gap-1"><Droplet strokeWidth={1.75} className="w-3 h-3" /> Aceite: {m.aceite}</span>}
+                                {m.anticongelante && <span className="inline-flex items-center gap-1"><Snowflake strokeWidth={1.75} className="w-3 h-3" /> Anticong: {m.anticongelante}</span>}
+                                {m.estadoLlantas && <span className="inline-flex items-center gap-1"><Disc strokeWidth={1.75} className="w-3 h-3" /> Llantas: {m.estadoLlantas}</span>}
                               </div>
                               {m.comentarios && (
                                 <p className="text-gray-700 text-xs mt-1.5">{m.comentarios}</p>

@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, use, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { Calendar, CalendarDays, Target, PenLine, Megaphone, DollarSign, MapPin, Trash2, Search, CheckCircle2, Sprout, Zap, Ticket, Settings, Clapperboard, Smartphone, Phone, Handshake, Mail, Pin, type LucideIcon } from "lucide-react";
 import { FORM_KEY_LABELS } from "@/lib/form-labels";
 import TimePicker from "@/components/ui/TimePicker";
 import VenuePicker from "@/components/ui/VenuePicker";
@@ -416,10 +417,10 @@ function EventoFechaInline({
   return (
     <button
       onClick={() => setEditing(true)}
-      className="text-gray-500 text-xs hover:text-[#B3985B] transition-colors"
+      className="inline-flex items-center gap-1.5 text-gray-500 text-xs hover:text-[#B3985B] transition-colors"
       title="Cambiar fecha del evento"
     >
-      📅 {label ?? "Definir fecha"} ✎
+      <Calendar strokeWidth={1.75} className="w-3.5 h-3.5" /> {label ?? "Definir fecha"} ✎
     </button>
   );
 }
@@ -460,7 +461,7 @@ function ConfirmarEventoPanel({
       {/* Botón de confirmación */}
       <div className="bg-[#0d0d0d] border border-amber-800/30 rounded-xl p-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-amber-900/20 flex items-center justify-center text-base">🎯</div>
+          <div className="w-8 h-8 rounded-full bg-amber-900/20 flex items-center justify-center text-amber-400"><Target strokeWidth={1.75} className="w-4 h-4" /></div>
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-semibold">Evento sin confirmar</p>
             <p className="text-[#555] text-xs">El cliente aún no ha confirmado formalmente</p>
@@ -883,11 +884,11 @@ type SeguimientoItem = {
   fechaProgramada: string; fechaCompletado: string | null; completado: boolean;
 };
 
-const TIPO_SEG = [
-  { key: "whatsapp", label: "WhatsApp", icon: "📱" },
-  { key: "llamada",  label: "Llamada",  icon: "📞" },
-  { key: "reunion",  label: "Reunión",  icon: "🤝" },
-  { key: "email",    label: "Email",    icon: "📧" },
+const TIPO_SEG: Array<{ key: string; label: string; icon: LucideIcon }> = [
+  { key: "whatsapp", label: "WhatsApp", icon: Smartphone },
+  { key: "llamada",  label: "Llamada",  icon: Phone },
+  { key: "reunion",  label: "Reunión",  icon: Handshake },
+  { key: "email",    label: "Email",    icon: Mail },
 ];
 
 function SeguimientosPanel({ tratoId, telefono, showModal, setShowModal }: {
@@ -1016,7 +1017,7 @@ function SeguimientosPanel({ tratoId, telefono, showModal, setShowModal }: {
             return (
               <div key={seg.id} className={`flex items-start gap-3 p-3 rounded-xl border transition-colors ${vencido ? "border-red-900/30 bg-red-900/5" : "border-[#1e1e1e] bg-[#0d0d0d]"}`}>
                 <div className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 ${vencido ? "bg-red-900/30 text-red-400" : "bg-[#1a1a1a] text-gray-500"}`}>
-                  {TIPO_SEG.find(t => t.key === seg.canal)?.icon ?? "📌"}
+                  {(() => { const SegIcon = TIPO_SEG.find(t => t.key === seg.canal)?.icon ?? Pin; return <SegIcon strokeWidth={1.75} className="w-3.5 h-3.5" />; })()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-xs font-medium">{seg.titulo}</p>
@@ -1043,7 +1044,7 @@ function SeguimientosPanel({ tratoId, telefono, showModal, setShowModal }: {
               <div className="mt-2 space-y-1.5 pl-3 border-l border-[#1a1a1a]">
                 {completados.map(seg => (
                   <div key={seg.id} className="flex items-center gap-2 py-0.5">
-                    <span className="text-[10px]">{TIPO_SEG.find(t => t.key === seg.canal)?.icon ?? "📌"}</span>
+                    {(() => { const SegIcon = TIPO_SEG.find(t => t.key === seg.canal)?.icon ?? Pin; return <SegIcon strokeWidth={1.75} className="w-3 h-3 text-gray-600" />; })()}
                     <span className="text-[10px] text-gray-700 line-through flex-1">{seg.titulo}</span>
                     <span className="text-[9px] text-gray-800">{seg.fechaCompletado ? new Date(seg.fechaCompletado).toLocaleDateString("es-MX", { day: "numeric", month: "short" }) : ""}</span>
                   </div>
@@ -1072,7 +1073,7 @@ function SeguimientosPanel({ tratoId, telefono, showModal, setShowModal }: {
                   <button key={t.key} type="button" onClick={() => setTipo(t.key)}
                     className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-medium transition-all ${tipo === t.key ? "border-[#B3985B]/50 bg-[#B3985B]/10 text-[#B3985B]" : "border-[#1e1e1e] bg-[#0d0d0d] text-gray-500 hover:border-[#2a2a2a] hover:text-gray-300"}`}
                   >
-                    <span>{t.icon}</span> {t.label}
+                    <t.icon strokeWidth={1.75} className="w-4 h-4" /> {t.label}
                   </button>
                 ))}
               </div>
@@ -1977,7 +1978,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </div>
             <div className="flex items-center gap-2 group">
               <h1 className="ms-h1 truncate">{trato.cliente.nombre}</h1>
-              <button onClick={() => setModalEditarCliente(true)} className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-white text-sm transition-all" title="Editar contacto">✏️</button>
+              <button onClick={() => setModalEditarCliente(true)} className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-white transition-all" title="Editar contacto"><PenLine strokeWidth={1.75} className="w-3.5 h-3.5" /></button>
             </div>
             {trato.cliente.empresa && <p className="text-gray-500 text-sm">{trato.cliente.empresa}</p>}
             {(trato.nombreEvento || trato.cotizaciones[0]?.fechaEvento || trato.fechaEventoEstimada) && (
@@ -1985,12 +1986,12 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 {trato.nombreEvento && <span>&ldquo;{trato.nombreEvento}&rdquo;</span>}
                 {(() => {
                   const f = fmtFechaEventoCorta(trato.cotizaciones[0]?.fechaEvento ?? trato.fechaEventoEstimada);
-                  return f ? <span className="not-italic text-gray-500 text-xs">📅 {f}</span> : null;
+                  return f ? <span className="not-italic text-gray-500 text-xs inline-flex items-center gap-1"><Calendar strokeWidth={1.75} className="w-3.5 h-3.5" /> {f}</span> : null;
                 })()}
               </p>
             )}
             {notaInicial && <p className="text-gray-600 text-xs mt-1.5 line-clamp-2">{notaInicial}</p>}
-            {campanaOrigen && <p className="text-gray-700 text-[10px] mt-1">📣 {campanaOrigen}</p>}
+            {campanaOrigen && <p className="text-gray-700 text-[10px] mt-1 inline-flex items-center gap-1"><Megaphone strokeWidth={1.75} className="w-3 h-3" /> {campanaOrigen}</p>}
           </div>
           {waLink && (
             <a href={waLink} target="_blank" rel="noopener noreferrer"
@@ -2056,7 +2057,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       {trato._canViewFinances !== false && (
         <div className="flex items-center gap-3 px-1">
           <div className="w-5 h-5 rounded-md bg-[#B3985B]/15 border border-[#B3985B]/25 flex items-center justify-center shrink-0">
-            <span className="text-[10px]">💰</span>
+            <DollarSign strokeWidth={1.75} className="w-3 h-3 text-[#B3985B]" />
           </div>
           <span className="text-[10px] font-bold text-[#B3985B]/60 uppercase tracking-[0.12em]">Propuesta Económica</span>
           <div className="flex-1 h-px bg-gradient-to-r from-[#B3985B]/20 to-transparent" />
@@ -2070,7 +2071,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#141414]">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-[#B3985B]/10 border border-[#B3985B]/20 flex items-center justify-center shrink-0">
-              <span className="text-sm">💰</span>
+              <DollarSign strokeWidth={1.75} className="w-4 h-4 text-[#B3985B]" />
             </div>
             <div>
               <h2 className="text-sm font-bold text-white tracking-tight">Cotizaciones del proyecto</h2>
@@ -2152,7 +2153,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                             onSaved={handleFechaEventoGuardada}
                           />
                           {principal.lugarEvento && (
-                            <span className="text-gray-600 text-xs truncate max-w-[180px]">· 📍 {principal.lugarEvento}</span>
+                            <span className="text-gray-600 text-xs truncate max-w-[180px] inline-flex items-center gap-1">· <MapPin strokeWidth={1.75} className="w-3 h-3 shrink-0" /> {principal.lugarEvento}</span>
                           )}
                         </div>
                       </div>
@@ -2198,7 +2199,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                             className="opacity-0 group-hover:opacity-100 mr-3 p-1.5 rounded text-red-500/60 hover:text-red-400 hover:bg-red-900/20 transition-all disabled:opacity-30 shrink-0"
                             title="Eliminar cotización"
                           >
-                            {eliminandoCotizacion === op.id ? "..." : "🗑"}
+                            {eliminandoCotizacion === op.id ? "..." : <Trash2 strokeWidth={1.75} className="w-3.5 h-3.5" />}
                           </button>
                         </div>
                       ))}
@@ -2234,7 +2235,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       {/* ═══ DIVIDER: PROCESO COMERCIAL ══════════════════════════════ */}
       <div className="flex items-center gap-3 px-1">
         <div className="w-5 h-5 rounded-md bg-blue-900/20 border border-blue-700/20 flex items-center justify-center shrink-0">
-          <span className="text-[10px]">🔍</span>
+          <Search strokeWidth={1.75} className="w-3 h-3 text-blue-400" />
         </div>
         <span className="text-[10px] font-bold text-blue-400/50 uppercase tracking-[0.12em]">Proceso Comercial</span>
         <div className="flex-1 h-px bg-gradient-to-r from-blue-800/20 to-transparent" />
@@ -2261,7 +2262,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           return (
             <div className="bg-[#0d0d0d] border border-emerald-800/40 rounded-xl p-4">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-emerald-900/30 flex items-center justify-center text-base">✅</div>
+                <div className="w-8 h-8 rounded-full bg-emerald-900/30 flex items-center justify-center text-emerald-400"><CheckCircle2 strokeWidth={1.75} className="w-4 h-4" /></div>
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-sm font-semibold">Evento confirmado</p>
                   <p className="text-emerald-400/70 text-xs">{fechaConf} · {metodoLabel[trato.metodoConfirmacion ?? ''] ?? trato.metodoConfirmacion}</p>
@@ -2316,7 +2317,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <div className="flex items-center gap-3">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-lg ${
                   esOutbound ? "bg-emerald-700/20" : "bg-amber-700/20"
-                }`}>{esOutbound ? "🌱" : "⚡"}</div>
+                }`}>{esOutbound ? <Sprout strokeWidth={1.75} className="w-4 h-4 text-emerald-400" /> : <Zap strokeWidth={1.75} className="w-4 h-4 text-amber-400" />}</div>
                 <div>
                   <p className="text-white font-bold text-base">Prospección</p>
                   <p className={`text-xs ${esOutbound ? "text-emerald-600" : "text-amber-600"}`}>
@@ -2444,7 +2445,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   disabled={saving}
                   className="w-full py-3 rounded-xl text-sm font-semibold bg-[#B3985B] hover:bg-[#c9a96a] text-black transition-colors disabled:opacity-40"
                 >
-                  🔍 Iniciar descubrimiento de necesidades →
+                  <span className="inline-flex items-center justify-center gap-1.5"><Search strokeWidth={1.75} className="w-4 h-4" /> Iniciar descubrimiento de necesidades →</span>
                 </button>
               </div>
 
@@ -2460,8 +2461,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl p-6 space-y-6 my-8 ms-card-deep">
           <div className="flex items-center justify-between pb-4 border-b border-[#222]">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-violet-900/20 border border-violet-800/30 flex items-center justify-center text-xl">
-                🎯
+              <div className="w-10 h-10 rounded-full bg-violet-900/20 border border-violet-800/30 flex items-center justify-center text-violet-400">
+                <Target strokeWidth={1.75} className="w-5 h-5" />
               </div>
               <div>
                 <p className="text-white font-bold text-lg">Descubrimiento y Brief Técnico</p>
@@ -2472,7 +2473,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               href={`/crm/tratos/${id}/wizard`}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-700/20 hover:bg-violet-700/30 border border-violet-700/40 text-violet-300 font-bold transition-colors text-sm"
             >
-              ✏️ Abrir Wizard (Modo Edición)
+              <PenLine strokeWidth={1.75} className="w-4 h-4" /> Abrir Wizard (Modo Edición)
             </Link>
           </div>
           
@@ -2694,7 +2695,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       {/* ═══ DIVIDER: SEGUIMIENTO COMERCIAL ═════════════════════════ */}
       <div className="flex items-center gap-3 px-1">
         <div className="w-5 h-5 rounded-md bg-blue-900/20 border border-blue-700/20 flex items-center justify-center shrink-0">
-          <span className="text-[10px]">📅</span>
+          <Calendar strokeWidth={1.75} className="w-3 h-3 text-blue-400" />
         </div>
         <span className="text-[10px] font-bold text-blue-400/50 uppercase tracking-[0.12em]">Agenda & Seguimiento</span>
         <div className="flex-1 h-px bg-gradient-to-r from-blue-800/20 to-transparent" />
@@ -2725,7 +2726,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#141414]">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-blue-900/20 border border-blue-800/30 flex items-center justify-center shrink-0">
-              <span className="text-sm">📅</span>
+              <Calendar strokeWidth={1.75} className="w-4 h-4 text-blue-400" />
             </div>
             <div>
               <h2 className="text-sm font-bold text-white tracking-tight">Recordatorios manuales</h2>
@@ -2866,19 +2867,19 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               </div>
               {trato.tipoEvento && (
                 <div className="flex items-start gap-2">
-                  <span className="text-gray-700 text-xs shrink-0">🎫</span>
+                  <Ticket strokeWidth={1.75} className="w-3.5 h-3.5 shrink-0 text-gray-500 mt-0.5" />
                   <p className="text-gray-300 text-xs capitalize">{trato.tipoEvento.toLowerCase()}</p>
                 </div>
               )}
               {tipoServicio && (
                 <div className="flex items-start gap-2">
-                  <span className="text-gray-700 text-xs shrink-0">⚙️</span>
+                  <Settings strokeWidth={1.75} className="w-3.5 h-3.5 shrink-0 text-gray-500 mt-0.5" />
                   <p className="text-[#B3985B] text-xs">{tipoServicio}</p>
                 </div>
               )}
               {fechaAutoritativa && (
                 <div className="flex items-start gap-2">
-                  <span className="text-gray-700 text-xs shrink-0">📅</span>
+                  <Calendar strokeWidth={1.75} className="w-3.5 h-3.5 shrink-0 text-gray-500 mt-0.5" />
                   <p className="text-gray-300 text-xs">
                     {fmtFechaEvento(fechaAutoritativa)}
                   </p>
@@ -2886,13 +2887,13 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               )}
               {lugarAutoritativo && (
                 <div className="flex items-start gap-2">
-                  <span className="text-gray-700 text-xs shrink-0">📍</span>
+                  <MapPin strokeWidth={1.75} className="w-3.5 h-3.5 shrink-0 text-gray-500 mt-0.5" />
                   <p className="text-gray-300 text-xs">{lugarAutoritativo}</p>
                 </div>
               )}
               {trato.presupuestoEstimado && (
                 <div className="flex items-start gap-2">
-                  <span className="text-gray-700 text-xs shrink-0">💰</span>
+                  <DollarSign strokeWidth={1.75} className="w-3.5 h-3.5 shrink-0 text-gray-500 mt-0.5" />
                   <p className="text-[#B3985B] text-xs font-medium">
                     {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(trato.presupuestoEstimado)}
                   </p>
@@ -2904,7 +2905,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Registro del trato */}
         <div className="ms-card px-4 py-3 flex items-center gap-2">
-          <span className="text-gray-700 text-xs">🗓</span>
+          <CalendarDays strokeWidth={1.75} className="w-3.5 h-3.5 shrink-0 text-gray-500" />
           <span className="text-[10px] text-gray-600">Registro del trato:</span>
           <span className="text-gray-500 text-[10px] font-medium">
             {new Date(trato.createdAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -2948,7 +2949,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <div className="px-4 pt-3 pb-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-md bg-emerald-900/30 border border-emerald-800/30 flex items-center justify-center">
-                    <span className="text-[11px]">🎬</span>
+                    <Clapperboard strokeWidth={1.75} className="w-3.5 h-3.5 text-emerald-400" />
                   </div>
                   <p className="text-[10px] text-emerald-500/60 uppercase tracking-wider font-bold">Proyecto</p>
                 </div>
@@ -2995,13 +2996,13 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               <div className="px-4 pb-3 space-y-1">
                 {fechaProy && (
                   <div className="flex items-center gap-2">
-                    <span className="text-emerald-900/60 text-[10px]">📅</span>
+                    <Calendar strokeWidth={1.75} className="w-3 h-3 shrink-0 text-emerald-700" />
                     <p className="text-gray-500 text-[10px]">{fechaProy}</p>
                   </div>
                 )}
                 {proy.lugarEvento && (
                   <div className="flex items-center gap-2">
-                    <span className="text-emerald-900/60 text-[10px]">📍</span>
+                    <MapPin strokeWidth={1.75} className="w-3 h-3 shrink-0 text-emerald-700" />
                     <p className="text-gray-500 text-[10px] truncate">{proy.lugarEvento}</p>
                   </div>
                 )}
@@ -3028,7 +3029,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             onClick={() => setEditando(true)}
             className="w-full py-2 bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 text-sm rounded-xl hover:border-[#3a3a3a] hover:text-white transition-colors"
           >
-            ✏️ Editar trato
+            <span className="inline-flex items-center justify-center gap-1.5"><PenLine strokeWidth={1.75} className="w-4 h-4" /> Editar trato</span>
           </button>
           <button
             onClick={async () => {
@@ -3052,7 +3053,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             }}
             className="w-full py-2 bg-transparent border border-red-900/30 text-red-600 text-sm rounded-xl hover:bg-red-900/10 hover:text-red-400 transition-colors"
           >
-            🗑 Eliminar
+            <span className="inline-flex items-center justify-center gap-1.5"><Trash2 strokeWidth={1.75} className="w-4 h-4" /> Eliminar</span>
           </button>
         </div>
       </div>

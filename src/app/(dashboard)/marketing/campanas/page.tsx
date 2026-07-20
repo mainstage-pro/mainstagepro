@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { Modal } from "@/components/Modal";
 import { BriefEditor } from "@/components/BriefEditor";
 import { CampanaBrief, defaultBrief, parseBrief } from "@/lib/campana-brief";
+import { Megaphone, Image, Video, GalleryHorizontal, Film, Smartphone, Layers, type LucideIcon } from "lucide-react";
 
 interface TipoCampana {
   id: string; nombre: string;
@@ -223,8 +224,8 @@ const REC_COLOR: Record<string,string> = {
   QUINCENAL:"bg-teal-900/30 text-teal-400",
   SEMANAL:"bg-orange-900/30 text-orange-400",
 };
-const FORMATO_ICON: Record<string,string> = {
-  IMAGEN:"🖼", VIDEO:"🎬", CARRUSEL:"🎠", REEL:"🎞", HISTORIA:"📱", COLECCION:"🗃",
+const FORMATO_ICON: Record<string, LucideIcon> = {
+  IMAGEN: Image, VIDEO: Video, CARRUSEL: GalleryHorizontal, REEL: Film, HISTORIA: Smartphone, COLECCION: Layers,
 };
 
 function UbicTag({ k }: { k: string }) {
@@ -489,12 +490,15 @@ export default function TiposCampanaPage() {
           <div className="space-y-2">
             <label className="text-xs text-white/40 uppercase tracking-wider">Formato del anuncio</label>
             <div className="flex gap-2 flex-wrap">
-              {FORMATOS.map(f => (
+              {FORMATOS.map(f => {
+                const FIcon = FORMATO_ICON[f];
+                return (
                 <button key={f} onClick={() => setForm(s => ({ ...s, formato: f }))}
-                  className={`text-xs px-3 py-1.5 rounded-lg border transition-colors ${form.formato === f ? "border-[#B3985B] bg-[#B3985B]/10 text-[#B3985B]" : "border-white/10 text-white/40 hover:border-white/20 hover:text-white"}`}>
-                  {FORMATO_ICON[f]} {FORMATO_LABEL[f]}
+                  className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors ${form.formato === f ? "border-[#B3985B] bg-[#B3985B]/10 text-[#B3985B]" : "border-white/10 text-white/40 hover:border-white/20 hover:text-white"}`}>
+                  {FIcon && <FIcon strokeWidth={1.75} className="w-3.5 h-3.5" />} {FORMATO_LABEL[f]}
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -639,7 +643,7 @@ export default function TiposCampanaPage() {
       {/* Empty state */}
       {!loading && tipos.length === 0 && (
         <div className="ms-empty-state space-y-3">
-          <div className="text-3xl opacity-20">📣</div>
+          <div className="flex justify-center opacity-20"><Megaphone strokeWidth={1.75} className="w-8 h-8" /></div>
           <p className="text-white/40 text-sm">Sin tipos de campaña</p>
           <p className="text-white/25 text-xs max-w-xs mx-auto leading-relaxed">
             Carga las 14 campañas del documento de planeación para empezar a programarlas en el calendario.
@@ -708,8 +712,8 @@ export default function TiposCampanaPage() {
                                 <span className={`text-xs px-2 py-0.5 rounded-full ${OBJ_META_COLOR[t.objetivoMeta] ?? "bg-white/10 text-white/50"}`}>
                                   {OBJ_META_LABEL[t.objetivoMeta]}
                                 </span>
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-white/[0.06] text-white/40">
-                                  {FORMATO_ICON[t.formato]} {FORMATO_LABEL[t.formato]}
+                                <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-white/[0.06] text-white/40">
+                                  {(() => { const FIcon = FORMATO_ICON[t.formato]; return FIcon ? <FIcon strokeWidth={1.75} className="w-3 h-3" /> : null; })()} {FORMATO_LABEL[t.formato]}
                                 </span>
                                 <span className={`text-xs px-2 py-0.5 rounded-full ${REC_COLOR[t.recurrencia]}`}>
                                   {REC_LABEL[t.recurrencia]}

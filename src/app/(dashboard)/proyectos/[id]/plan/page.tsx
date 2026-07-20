@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
+import { AlertTriangle } from "lucide-react";
 
 type PersonalItem = { id: string; nombre: string; rol: string; confirmado: boolean; telefono?: string | null };
 type EquipoItem = { id: string; nombre: string; cantidad: number };
@@ -406,7 +407,7 @@ export default function PlanProduccionPage() {
       {/* Alerta 72h */}
       {!esAprobado && esInminente && (
         <div className="bg-red-950/20 border border-red-800/50 rounded-xl p-4 flex items-center gap-3">
-          <span className="text-2xl shrink-0">⚠</span>
+          <AlertTriangle strokeWidth={1.75} className="w-5 h-5 shrink-0 text-red-400" />
           <div>
             <p className="text-red-400 font-bold text-sm">Plan no aprobado — evento en menos de 72 horas</p>
             <p className="text-red-300/70 text-xs mt-0.5">

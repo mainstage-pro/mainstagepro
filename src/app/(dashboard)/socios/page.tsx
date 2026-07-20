@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
+import { AlertTriangle, Mail, Phone } from "lucide-react";
 
 type Socio = {
   id: string;
@@ -175,7 +176,7 @@ export default function SociosConstitutivosPage() {
           })}
         </div>
         {totalPct !== 100 && (
-          <p className="text-[10px] text-yellow-500/70 mt-2">⚠ Suma de participaciones: {totalPct}% (debe ser 100%)</p>
+          <p className="inline-flex items-center gap-1.5 text-[10px] text-yellow-500/70 mt-2"><AlertTriangle strokeWidth={1.75} className="w-3 h-3" /> Suma de participaciones: {totalPct}% (debe ser 100%)</p>
         )}
       </div>
 
@@ -241,13 +242,13 @@ export default function SociosConstitutivosPage() {
                   {/* Contacto */}
                   <div className="flex flex-wrap gap-4 mt-3">
                     {s.email && (
-                      <a href={`mailto:${s.email}`} className="text-xs text-[#555] hover:text-white transition-colors">
-                        ✉ {s.email}
+                      <a href={`mailto:${s.email}`} className="inline-flex items-center gap-1.5 text-xs text-[#555] hover:text-white transition-colors">
+                        <Mail strokeWidth={1.75} className="w-3.5 h-3.5" /> {s.email}
                       </a>
                     )}
                     {s.telefono && (
-                      <a href={`tel:${s.telefono}`} className="text-xs text-[#555] hover:text-white transition-colors">
-                        ☎ {s.telefono}
+                      <a href={`tel:${s.telefono}`} className="inline-flex items-center gap-1.5 text-xs text-[#555] hover:text-white transition-colors">
+                        <Phone strokeWidth={1.75} className="w-3.5 h-3.5" /> {s.telefono}
                       </a>
                     )}
                   </div>
@@ -282,8 +283,8 @@ export default function SociosConstitutivosPage() {
                       const label = fecha.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
                       return (
                         <div key={c.id} className="flex items-center justify-between">
-                          <span className={`text-[11px] ${c.estado === "VENCIDO" ? "text-red-400 font-medium" : "text-[#555]"}`}>
-                            {label}{c.estado === "VENCIDO" && " ⚠"}
+                          <span className={`inline-flex items-center gap-1 text-[11px] ${c.estado === "VENCIDO" ? "text-red-400 font-medium" : "text-[#555]"}`}>
+                            {label}{c.estado === "VENCIDO" && <AlertTriangle strokeWidth={1.75} className="w-3 h-3" />}
                           </span>
                           <div className="flex items-center gap-2">
                             <span className="text-[11px] text-white/60">{fmt(c.monto)}</span>

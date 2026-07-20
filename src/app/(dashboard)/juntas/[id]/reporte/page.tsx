@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { AREA_LABELS, AREA_COLORS, TIPO_AGENDA_LABELS, type AreaJunta, type TipoAgenda } from "@/lib/junta-templates";
+import { Users, Video, FileText, type LucideIcon } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -162,16 +163,16 @@ function PanelAgendaReporte({
 
     case "MODALIDAD": {
       if (!respuesta) return <p className="text-gray-700 text-xs italic">Sin modalidad registrada</p>;
-      const MOD_MAP: Record<string, { emoji: string; label: string; sub: string }> = {
-        PRESENCIAL: { emoji: "🟢", label: "Presencial",      sub: "Todos en el mismo espacio" },
-        VIRTUAL:    { emoji: "🔵", label: "Virtual",         sub: "Por videollamada" },
-        DOCUMENTO:  { emoji: "📄", label: "Solo documento",  sub: "Se comparte sin junta en vivo" },
+      const MOD_MAP: Record<string, { Icon: LucideIcon; label: string; sub: string }> = {
+        PRESENCIAL: { Icon: Users,    label: "Presencial",      sub: "Todos en el mismo espacio" },
+        VIRTUAL:    { Icon: Video,    label: "Virtual",         sub: "Por videollamada" },
+        DOCUMENTO:  { Icon: FileText, label: "Solo documento",  sub: "Se comparte sin junta en vivo" },
       };
       const mod = MOD_MAP[respuesta];
       if (!mod) return <p className="text-gray-300 text-sm">{respuesta}</p>;
       return (
         <div className="inline-flex items-center gap-2 bg-[#141414] border border-[#222] rounded-lg px-3 py-2">
-          <span className="text-base">{mod.emoji}</span>
+          <mod.Icon strokeWidth={1.75} className="w-4 h-4 text-gray-400" />
           <div>
             <p className="text-sm text-white font-medium">{mod.label}</p>
             <p className="text-[10px] text-gray-600">{mod.sub}</p>

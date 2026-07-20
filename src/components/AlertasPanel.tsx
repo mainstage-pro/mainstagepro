@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { AlertTriangle, Banknote, Phone, User } from "lucide-react";
 
 interface CxCVencida {
   id: string;
@@ -52,9 +53,9 @@ export default function AlertasPanel({ total, cxcVencidas, tratosVencidos, proye
     <>
       <button
         onClick={() => setOpen(true)}
-        className="bg-red-900/20 border border-red-700/40 hover:bg-red-900/40 hover:border-red-600/60 rounded-xl px-4 py-2 text-sm text-red-300 transition-colors cursor-pointer"
+        className="inline-flex items-center gap-1.5 bg-red-900/20 border border-red-700/40 hover:bg-red-900/40 hover:border-red-600/60 rounded-xl px-4 py-2 text-sm text-red-300 transition-colors cursor-pointer"
       >
-        ⚠ {total} alerta{total !== 1 ? "s" : ""} requieren atención
+        <AlertTriangle strokeWidth={1.75} className="w-3.5 h-3.5" /> {total} alerta{total !== 1 ? "s" : ""} requieren atención
       </button>
 
       {/* Backdrop */}
@@ -92,8 +93,8 @@ export default function AlertasPanel({ total, cxcVencidas, tratosVencidos, proye
           {cxcVencidas.length > 0 && (
             <section>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-red-400 text-xs font-bold uppercase tracking-wider">
-                  💸 Cobros vencidos ({cxcVencidas.length})
+                <h3 className="inline-flex items-center gap-1.5 text-red-400 text-xs font-bold uppercase tracking-wider">
+                  <Banknote strokeWidth={1.75} className="w-3.5 h-3.5" /> Cobros vencidos ({cxcVencidas.length})
                 </h3>
                 <Link
                   href="/finanzas/cxc"
@@ -129,8 +130,8 @@ export default function AlertasPanel({ total, cxcVencidas, tratosVencidos, proye
           {tratosVencidos.length > 0 && (
             <section>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-yellow-400 text-xs font-bold uppercase tracking-wider">
-                  📞 Seguimiento vencido ({tratosVencidos.length})
+                <h3 className="inline-flex items-center gap-1.5 text-yellow-400 text-xs font-bold uppercase tracking-wider">
+                  <Phone strokeWidth={1.75} className="w-3.5 h-3.5" /> Seguimiento vencido ({tratosVencidos.length})
                 </h3>
                 <Link
                   href="/crm/tratos"
@@ -174,8 +175,8 @@ export default function AlertasPanel({ total, cxcVencidas, tratosVencidos, proye
           {proyectosSinPersonal.length > 0 && (
             <section>
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-orange-400 text-xs font-bold uppercase tracking-wider">
-                  👤 Sin personal confirmado ({proyectosSinPersonal.length})
+                <h3 className="inline-flex items-center gap-1.5 text-orange-400 text-xs font-bold uppercase tracking-wider">
+                  <User strokeWidth={1.75} className="w-3.5 h-3.5" /> Sin personal confirmado ({proyectosSinPersonal.length})
                 </h3>
                 <Link
                   href="/proyectos"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { Users, Zap, Volume2, Clock } from "lucide-react";
 
 interface VenueOption {
   id: string;
@@ -108,20 +109,20 @@ export default function VenuePicker({ value, onChange, placeholder = "Escribe o 
                 </div>
                 <div className="shrink-0 flex flex-col items-end gap-0.5">
                   {v.capacidadPersonas && (
-                    <span className="text-gray-600 text-[10px]">👥 {v.capacidadPersonas.toLocaleString()}</span>
+                    <span className="inline-flex items-center gap-1 text-gray-600 text-[10px]"><Users strokeWidth={1.75} className="w-3 h-3" /> {v.capacidadPersonas.toLocaleString()}</span>
                   )}
                   {v.amperajeTotal && (
-                    <span className="text-gray-600 text-[10px]">⚡ {v.amperajeTotal}A</span>
+                    <span className="inline-flex items-center gap-1 text-gray-600 text-[10px]"><Zap strokeWidth={1.75} className="w-3 h-3" /> {v.amperajeTotal}A</span>
                   )}
                 </div>
               </div>
               {(v.restriccionDecibeles || v.restriccionHorario) && (
                 <div className="mt-1 flex gap-2 flex-wrap">
                   {v.restriccionDecibeles && (
-                    <span className="text-[10px] text-orange-400/70">🔊 {v.restriccionDecibeles}</span>
+                    <span className="inline-flex items-center gap-1 text-[10px] text-orange-400/70"><Volume2 strokeWidth={1.75} className="w-3 h-3" /> {v.restriccionDecibeles}</span>
                   )}
                   {v.restriccionHorario && (
-                    <span className="text-[10px] text-orange-400/70">🕐 {v.restriccionHorario}</span>
+                    <span className="inline-flex items-center gap-1 text-[10px] text-orange-400/70"><Clock strokeWidth={1.75} className="w-3 h-3" /> {v.restriccionHorario}</span>
                   )}
                 </div>
               )}

@@ -13,6 +13,7 @@ import DailyGreeting from "@/components/DailyGreeting";
 import TareasHoyWidget from "@/components/TareasHoyWidget";
 import PlanTrabajoWidget from "@/components/PlanTrabajoWidget";
 import { NuevoTratoDropdown } from "@/components/NuevoTratoDropdown";
+import { AlertTriangle, Zap } from "lucide-react";
 
 
 export const dynamic = "force-dynamic";
@@ -460,7 +461,7 @@ export default async function DashboardPage() {
                     </div>
                     <p className="text-gray-600 text-[10px] mt-0.5">{p.cliente.nombre}</p>
                     {sinConfirmar > 0 && (
-                      <p className="text-orange-400 text-[10px] mt-0.5">⚠ {sinConfirmar} técnico{sinConfirmar !== 1 ? "s" : ""} sin confirmar</p>
+                      <p className="inline-flex items-center gap-1 text-orange-400 text-[10px] mt-0.5"><AlertTriangle strokeWidth={1.75} className="w-3 h-3" /> {sinConfirmar} técnico{sinConfirmar !== 1 ? "s" : ""} sin confirmar</p>
                     )}
                   </a>
                 );
@@ -811,7 +812,7 @@ export default async function DashboardPage() {
           <div className="bg-[#0a0a0a] border border-[#111] rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-[#111] flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-sm">⚡</span>
+                <Zap strokeWidth={1.75} className="w-3.5 h-3.5 text-gray-500" />
                 <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Leads por contactar</p>
                 <span className="text-[10px] text-gray-700">({(leadsRecientes as unknown[]).length})</span>
               </div>

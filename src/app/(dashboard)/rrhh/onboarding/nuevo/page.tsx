@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
+import { Bot, Sparkles, Target } from "lucide-react";
 
 interface TareaGen {
   titulo: string; descripcion: string; tipo: string; orden: number; recurso: string | null;
@@ -179,7 +180,7 @@ export default function NuevoOnboardingPage() {
       {/* ── CONTEXTO PARA LA IA ── */}
       <div className="ms-card p-5 space-y-4">
         <div className="flex items-center gap-2">
-          <span className="text-base">🤖</span>
+          <Bot strokeWidth={1.75} className="w-4 h-4 text-gray-500" />
           <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Contexto para la IA</p>
           <span className="text-[10px] text-[#B3985B] bg-[#B3985B]/10 px-2 py-0.5 rounded-full">Más contexto = mejor plan</span>
         </div>
@@ -208,9 +209,9 @@ export default function NuevoOnboardingPage() {
               Generando plan con IA...
             </>
           ) : planGenerado ? (
-            "✨ Regenerar plan"
+            <><Sparkles strokeWidth={1.75} className="w-4 h-4" />Regenerar plan</>
           ) : (
-            "✨ Generar plan con IA"
+            <><Sparkles strokeWidth={1.75} className="w-4 h-4" />Generar plan con IA</>
           )}
         </button>
       </div>
@@ -245,7 +246,7 @@ export default function NuevoOnboardingPage() {
           {/* Resumen */}
           <div className="bg-[#B3985B]/10 border border-[#B3985B]/30 rounded-xl p-4">
             <div className="flex items-start gap-3">
-              <span className="text-2xl shrink-0">🎯</span>
+              <Target strokeWidth={1.75} className="w-6 h-6 shrink-0 text-[#B3985B]" />
               <div>
                 <p className="text-[#B3985B] font-semibold text-sm mb-0.5">Plan generado</p>
                 <p className="text-white text-sm">{planGenerado.resumen}</p>

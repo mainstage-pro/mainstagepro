@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Target, BarChart3, CheckCircle2, Unlock, FolderOpen, MessageCircle,
+  TrendingUp, Inbox, AlertTriangle, Calendar, type LucideIcon,
+} from "lucide-react";
 import TaskItem, { type TareaItem } from "@/app/(dashboard)/operaciones/components/TaskItem";
 import { usePdfDownload } from "@/hooks/usePdfDownload";
 
@@ -139,12 +143,12 @@ function SelectorSemana({ semana, setSemana }: { semana: string; setSemana: (s: 
 
 // ─── Componentes de campo ────────────────────────────────────────────────────
 function Seccion({
-  n, icon, titulo, hint, children,
-}: { n: number; icon: string; titulo: string; hint?: string; children: React.ReactNode }) {
+  n, icon: Icon, titulo, hint, children,
+}: { n: number; icon: LucideIcon; titulo: string; hint?: string; children: React.ReactNode }) {
   return (
     <section className="space-y-2.5">
       <div className="flex items-center gap-2.5">
-        <span className="w-7 h-7 shrink-0 rounded-lg bg-[#B3985B]/12 flex items-center justify-center text-sm">{icon}</span>
+        <span className="w-7 h-7 shrink-0 rounded-lg bg-[#B3985B]/12 flex items-center justify-center text-[#B3985B]"><Icon strokeWidth={1.75} className="w-3.5 h-3.5" /></span>
         <div className="min-w-0">
           <h2 className="text-white text-[15px] font-semibold leading-tight">
             <span className="text-[#B3985B]/60 mr-1.5">{n}.</span>{titulo}
@@ -559,14 +563,14 @@ function DocumentoView({
               </div>
 
               {/* 1. Enfoque */}
-              <Seccion n={1} icon="🎯" titulo="Enfoque de la semana"
+              <Seccion n={1} icon={Target} titulo="Enfoque de la semana"
                 hint={tipo === "PREPRODUCCION" ? "Lo que viene esta semana" : "Define el enfoque principal del área para esta semana"}>
                 <CampoTexto value={enfoque} onChange={marcar(setEnfoque)} editable={editable} rows={2}
                   placeholder="Escribe el enfoque de la semana…" />
               </Seccion>
 
               {/* 2. Entrega de información */}
-              <Seccion n={2} icon="📊" titulo={data.config.entregaLabel}
+              <Seccion n={2} icon={BarChart3} titulo={data.config.entregaLabel}
                 hint="Temas guía para desarrollar. Puedes editar el texto de cada punto o agregar otro.">
                 <div className="space-y-3">
                   {entregaInfo.map((p) => (
@@ -608,7 +612,7 @@ function DocumentoView({
               {tipo === "STANDARD" && (
                 <>
                   {/* 3. Revisión de tareas pendientes */}
-                  <Seccion n={3} icon="✅" titulo="Revisión de tareas pendientes"
+                  <Seccion n={3} icon={CheckCircle2} titulo="Revisión de tareas pendientes"
                     hint="Todas las tareas asignadas y con fecha del área o de sus proyectos. Edita fecha, prioridad, responsable o descripción.">
                     <ListaTareas
                       tareas={tareas} usuarios={usuarios} editable={editable}
@@ -621,20 +625,20 @@ function DocumentoView({
                   </Seccion>
 
                   {/* 4. Desbloqueo de tareas */}
-                  <Seccion n={4} icon="🔓" titulo="Desbloqueo de tareas"
+                  <Seccion n={4} icon={Unlock} titulo="Desbloqueo de tareas"
                     hint="¿Necesitas información, herramientas o consejo para llevar a cabo alguna tarea?">
                     <CampoTexto value={desbloqueo} onChange={marcar(setDesbloqueo)} editable={editable} rows={3}
                       placeholder="Describe qué necesitas para desbloquear tus tareas…" />
                   </Seccion>
 
                   {/* 5. Avances en proyectos */}
-                  <Seccion n={5} icon="📁" titulo="Avances en proyectos"
+                  <Seccion n={5} icon={FolderOpen} titulo="Avances en proyectos"
                     hint="Proyectos del área dentro del módulo de Proyectos.">
                     <ListaProyectos proyectos={data.proyectos} />
                   </Seccion>
 
                   {/* 6. Comentarios finales */}
-                  <Seccion n={6} icon="💬" titulo="Comentarios finales" hint="Opcional">
+                  <Seccion n={6} icon={MessageCircle} titulo="Comentarios finales" hint="Opcional">
                     <CampoTexto value={comentarios} onChange={marcar(setComentarios)} editable={editable} rows={2}
                       placeholder="Comentarios adicionales (opcional)…" />
                   </Seccion>
@@ -645,14 +649,14 @@ function DocumentoView({
               {tipo === "PREPRODUCCION" && (
                 <>
                   {/* 3. Mejoras de la semana pasada */}
-                  <Seccion n={3} icon="📈" titulo="Mejoras respecto a la semana pasada"
+                  <Seccion n={3} icon={TrendingUp} titulo="Mejoras respecto a la semana pasada"
                     hint="Qué pudimos mejorar de la operación la semana pasada.">
                     <CampoTexto value={extra.mejoras} onChange={(v) => setExtraCampo("mejoras", v)} editable={editable} rows={3}
                       placeholder="Describe las mejoras logradas en la operación…" />
                   </Seccion>
 
                   {/* 4. Solicitudes */}
-                  <Seccion n={4} icon="📮" titulo="Solicitudes"
+                  <Seccion n={4} icon={Inbox} titulo="Solicitudes"
                     hint="Herramientas, recurso humano y presupuesto que se necesitan.">
                     <div className="space-y-3">
                       <SubCampo label="Herramientas" value={extra.solicitudesHerramientas}
@@ -668,7 +672,7 @@ function DocumentoView({
                   </Seccion>
 
                   {/* 5. Incidencias operativas */}
-                  <Seccion n={5} icon="⚠️" titulo="Incidencias operativas"
+                  <Seccion n={5} icon={AlertTriangle} titulo="Incidencias operativas"
                     hint="Situaciones frente a la operación con intención de mejorar.">
                     <div className="space-y-3">
                       <SubCampo label="Fallas en el transporte" value={extra.fallasTransporte}
@@ -684,13 +688,13 @@ function DocumentoView({
                   </Seccion>
 
                   {/* 6. Próximos eventos y proyectos */}
-                  <Seccion n={6} icon="📁" titulo="Próximos eventos y proyectos a trabajar"
+                  <Seccion n={6} icon={FolderOpen} titulo="Próximos eventos y proyectos a trabajar"
                     hint="Proyectos y avances relacionados a la operación.">
                     <ListaProyectos proyectos={data.proyectos} />
                   </Seccion>
 
                   {/* 7. Comentarios finales */}
-                  <Seccion n={7} icon="💬" titulo="Comentarios finales" hint="Opcional">
+                  <Seccion n={7} icon={MessageCircle} titulo="Comentarios finales" hint="Opcional">
                     <CampoTexto value={comentarios} onChange={marcar(setComentarios)} editable={editable} rows={2}
                       placeholder="Comentarios adicionales (opcional)…" />
                   </Seccion>
@@ -863,7 +867,7 @@ function ListaProyectos({ proyectos }: { proyectos: VisionProyecto[] }) {
             <div className="flex items-center justify-between text-[11px] text-[#666]">
               <span>{p.porcentajeAvance}% · {p.fasesCompletadas}/{p.totalFases} fases</span>
               <span className="flex items-center gap-2">
-                {p.fechaFin && <span>📅 {fmtFecha(p.fechaFin)}</span>}
+                {p.fechaFin && <span className="inline-flex items-center gap-1"><Calendar strokeWidth={1.75} className="w-3 h-3" /> {fmtFecha(p.fechaFin)}</span>}
                 {p.lider && (
                   <span className="w-[16px] h-[16px] rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 text-[9px] text-[#B3985B] flex items-center justify-center font-bold">
                     {p.lider.name.charAt(0).toUpperCase()}

@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { Telescope, Search, ClipboardList, CheckCircle2, AlertTriangle, Smartphone, type LucideIcon } from "lucide-react";
+
 import { Combobox } from "@/components/Combobox";
 import { ORIGEN_LEAD_OPTIONS, MOMENTO_OPTIONS } from "@/lib/constants";
 
@@ -17,7 +19,7 @@ interface Cliente {
 const ETAPAS_CARDS = [
   {
     value: "PROSPECCION",
-    icon: "🔭",
+    icon: Telescope,
     label: "Prospección",
     color: "#F59E0B",
     borderActive: "border-amber-500",
@@ -27,7 +29,7 @@ const ETAPAS_CARDS = [
   },
   {
     value: "DESCUBRIMIENTO",
-    icon: "🔍",
+    icon: Search,
     label: "Descubrimiento",
     color: "#3B82F6",
     borderActive: "border-blue-500",
@@ -37,7 +39,7 @@ const ETAPAS_CARDS = [
   },
   {
     value: "OPORTUNIDAD",
-    icon: "📋",
+    icon: ClipboardList,
     label: "Oportunidad",
     color: "#8B5CF6",
     borderActive: "border-violet-500",
@@ -47,7 +49,7 @@ const ETAPAS_CARDS = [
   },
   {
     value: "VENTA_CERRADA",
-    icon: "✅",
+    icon: CheckCircle2,
     label: "Venta Cerrada",
     color: "#10B981",
     borderActive: "border-emerald-500",
@@ -343,9 +345,9 @@ export default function NuevoContactoPage() {
                 </div>
               )}
               {cotejoEstado === "DUPLICADO_POSIBLE" && cotejoCliente && (
-                <div className="text-xs px-3 py-2 rounded-lg border border-amber-700/50 bg-amber-900/15 text-amber-300">
-                  ⚠️ Posible duplicado de <span className="font-semibold">{cotejoCliente.nombre}</span>
-                  {cotejoCliente.telefono && <span className="text-amber-400/70"> · {cotejoCliente.telefono}</span>}. Se marcará para revisión.
+                <div className="text-xs px-3 py-2 rounded-lg border border-amber-700/50 bg-amber-900/15 text-amber-300 inline-flex items-start gap-1.5">
+                  <AlertTriangle strokeWidth={1.75} className="w-3.5 h-3.5 mt-0.5 shrink-0" /> <span>Posible duplicado de <span className="font-semibold">{cotejoCliente.nombre}</span>
+                  {cotejoCliente.telefono && <span className="text-amber-400/70"> · {cotejoCliente.telefono}</span>}. Se marcará para revisión.</span>
                 </div>
               )}
               {cotejoEstado === "NUEVO" && (
@@ -400,7 +402,7 @@ export default function NuevoContactoPage() {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <span className="text-xl mt-0.5">{e.icon}</span>
+                    <e.icon strokeWidth={1.75} className={`w-5 h-5 mt-0.5 shrink-0 ${isActive ? e.textActive : "text-gray-500"}`} />
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <p className={`text-sm font-semibold ${isActive ? e.textActive : "text-white"}`}>{e.label}</p>
@@ -530,7 +532,7 @@ export default function NuevoContactoPage() {
               disabled={generandoLink}
               className="text-sm px-4 py-2 rounded-lg border border-[#B3985B]/30 bg-[#B3985B]/5 text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors disabled:opacity-50"
             >
-              {generandoLink ? "Generando…" : "📲 Generar link para el cliente"}
+              {generandoLink ? "Generando…" : <span className="inline-flex items-center gap-1.5"><Smartphone strokeWidth={1.75} className="w-4 h-4" /> Generar link para el cliente</span>}
             </button>
           ) : (
             <div className="flex items-center gap-2 bg-[#000] border border-[#222] rounded-lg px-3 py-2">

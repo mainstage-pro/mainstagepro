@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Wrench, Package, AlertTriangle } from "lucide-react";
 
 interface EnTaller {
   tipoRegistro: "unidad" | "equipo";
@@ -127,7 +128,7 @@ export default function TableroProduccionPage() {
         </div>
         {enTaller.length === 0 ? (
           <div className="ms-card p-8 text-center">
-            <p className="text-3xl mb-2">🔧</p>
+            <Wrench strokeWidth={1.5} className="w-8 h-8 mx-auto mb-2 text-gray-600" />
             <p className="text-gray-400 text-sm">Ningún equipo en taller</p>
           </div>
         ) : (
@@ -180,7 +181,7 @@ export default function TableroProduccionPage() {
         </div>
         {fuera.length === 0 ? (
           <div className="ms-card p-8 text-center">
-            <p className="text-3xl mb-2">📦</p>
+            <Package strokeWidth={1.5} className="w-8 h-8 mx-auto mb-2 text-gray-600" />
             <p className="text-gray-400 text-sm">Sin equipo fuera pendiente de recolectar</p>
           </div>
         ) : (
@@ -212,7 +213,7 @@ export default function TableroProduccionPage() {
                 </div>
                 <div className="md:col-span-2 text-center self-center">
                   {p.vencida
-                    ? <span className="text-xs bg-red-900/40 text-red-400 px-2 py-0.5 rounded-full font-medium">⚠ {diasLabel(p.diasAtraso)}</span>
+                    ? <span className="inline-flex items-center gap-1 text-xs bg-red-900/40 text-red-400 px-2 py-0.5 rounded-full font-medium"><AlertTriangle strokeWidth={1.75} className="w-3 h-3" /> {diasLabel(p.diasAtraso)}</span>
                     : <span className="text-gray-600 text-xs">—</span>}
                 </div>
                 <div className="md:col-span-2 text-center self-center text-gray-300 text-xs">{p.equiposCount}</div>

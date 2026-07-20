@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { AlertOctagon, AlertTriangle, Wrench } from "lucide-react";
 import DailyGreeting from "@/components/DailyGreeting";
 import TareasPendientesWidget from "@/components/TareasPendientesWidget";
 import { EventosWidget } from "@/components/dashboard/EventosWidget";
@@ -191,18 +192,18 @@ export default async function DashboardProduccionPage() {
         </div>
         <div className="flex gap-2 text-[10px]">
           {proyectosSinPlan.length > 0 && (
-            <Link href={`/proyectos/${proyectosSinPlan[0].id}/plan`} className="bg-red-900/20 border border-red-800/40 text-red-400 px-3 py-1.5 rounded-lg font-semibold">
-              🚨 {proyectosSinPlan.length} sin plan aprobado (72h)
+            <Link href={`/proyectos/${proyectosSinPlan[0].id}/plan`} className="inline-flex items-center gap-1.5 bg-red-900/20 border border-red-800/40 text-red-400 px-3 py-1.5 rounded-lg font-semibold">
+              <AlertOctagon strokeWidth={1.75} className="w-3.5 h-3.5" /> {proyectosSinPlan.length} sin plan aprobado (72h)
             </Link>
           )}
           {proyectosSinPersonal > 0 && (
-            <Link href="/proyectos" className="bg-red-900/20 border border-red-800/40 text-red-400 px-3 py-1.5 rounded-lg font-semibold">
-              ⚠ {proyectosSinPersonal} sin personal confirmado
+            <Link href="/proyectos" className="inline-flex items-center gap-1.5 bg-red-900/20 border border-red-800/40 text-red-400 px-3 py-1.5 rounded-lg font-semibold">
+              <AlertTriangle strokeWidth={1.75} className="w-3.5 h-3.5" /> {proyectosSinPersonal} sin personal confirmado
             </Link>
           )}
           {equiposMantenimiento > 0 && (
-            <span className="bg-yellow-900/20 border border-yellow-800/40 text-yellow-400 px-3 py-1.5 rounded-lg font-semibold">
-              🔧 {equiposMantenimiento} equipos en mantenimiento
+            <span className="inline-flex items-center gap-1.5 bg-yellow-900/20 border border-yellow-800/40 text-yellow-400 px-3 py-1.5 rounded-lg font-semibold">
+              <Wrench strokeWidth={1.75} className="w-3.5 h-3.5" /> {equiposMantenimiento} equipos en mantenimiento
             </span>
           )}
         </div>

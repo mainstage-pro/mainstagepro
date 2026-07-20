@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { AlertTriangle } from "lucide-react";
 import DailyGreeting from "@/components/DailyGreeting";
 import TareasPendientesWidget from "@/components/TareasPendientesWidget";
 import { EventosWidget } from "@/components/dashboard/EventosWidget";
@@ -133,8 +134,8 @@ export default async function DashboardAdminPage() {
         </div>
         <div className="flex items-center gap-2 text-[10px]">
           {cxcVencMonto > 0 && (
-            <Link href="/finanzas/cobros-pagos" className="bg-red-900/20 border border-red-800/40 text-red-400 px-3 py-1.5 rounded-lg font-semibold">
-              ⚠ {fmt(cxcVencMonto)} vencido por cobrar
+            <Link href="/finanzas/cobros-pagos" className="inline-flex items-center gap-1.5 bg-red-900/20 border border-red-800/40 text-red-400 px-3 py-1.5 rounded-lg font-semibold">
+              <AlertTriangle strokeWidth={1.75} className="w-3.5 h-3.5" /> {fmt(cxcVencMonto)} vencido por cobrar
             </Link>
           )}
         </div>

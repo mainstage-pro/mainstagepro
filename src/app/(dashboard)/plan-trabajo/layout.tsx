@@ -3,15 +3,16 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { UndoToastContainer } from '@/components/ui/undo-toast'
+import { Calendar, ClipboardList, BarChart3, History } from 'lucide-react'
 
 export default function PlanTrabajoLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
   const tabs = [
-    { href: '/plan-trabajo/hoy',          label: '📅 Mi día'      },
-    { href: '/plan-trabajo/plan',         label: '📋 Plan'        },
-    { href: '/plan-trabajo/rendimiento',  label: '📊 Rendimiento' },
-    { href: '/plan-trabajo/historial',    label: '📋 Historial'   },
+    { href: '/plan-trabajo/hoy',          label: 'Mi día',       Icon: Calendar      },
+    { href: '/plan-trabajo/plan',         label: 'Plan',         Icon: ClipboardList },
+    { href: '/plan-trabajo/rendimiento',  label: 'Rendimiento',  Icon: BarChart3     },
+    { href: '/plan-trabajo/historial',    label: 'Historial',    Icon: History       },
   ]
 
   return (
@@ -32,12 +33,13 @@ export default function PlanTrabajoLayout({ children }: { children: React.ReactN
               <Link
                 key={tab.href}
                 href={tab.href}
-                className={`px-5 py-2.5 text-sm font-medium rounded-t-lg border border-b-0 transition-all ${
+                className={`inline-flex items-center gap-1.5 px-5 py-2.5 text-sm font-medium rounded-t-lg border border-b-0 transition-all ${
                   isActive
                     ? 'bg-[#111] border-[#2a2a2a] text-white'
                     : 'border-transparent text-gray-500 hover:text-gray-300 hover:bg-[#0d0d0d]'
                 }`}
               >
+                <tab.Icon strokeWidth={1.75} className="w-3.5 h-3.5" />
                 {tab.label}
               </Link>
             )

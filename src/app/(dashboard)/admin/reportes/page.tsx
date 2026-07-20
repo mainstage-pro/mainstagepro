@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { Scale, Banknote, ClipboardList, TrendingUp, AlertTriangle, type LucideIcon } from "lucide-react";
 import { ReporteAnalisisSection } from '@/components/ui/ReporteAnalisisSection';
 import {
   BarChart as RBarChart,
@@ -774,7 +775,7 @@ function TabFlujo({ mes, onDataLoad }: { mes: string; onDataLoad?: (d: FlujoData
             <div className="border border-yellow-900/30 rounded-xl overflow-hidden mt-2">
               <div className="flex items-center justify-between px-4 py-3 bg-yellow-900/10">
                 <div>
-                  <p className="text-xs font-semibold text-yellow-400">⚠ Sin categorizar</p>
+                  <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-yellow-400"><AlertTriangle strokeWidth={1.75} className="w-3.5 h-3.5" /> Sin categorizar</p>
                   <p className="text-[10px] text-gray-600">{data.entradas.detalle.filter(m => !m.categoria || m.categoria === 'Sin categoría').length} movimiento(s)</p>
                 </div>
                 <span className="text-sm font-bold tabular-nums text-yellow-400">
@@ -823,7 +824,7 @@ function TabFlujo({ mes, onDataLoad }: { mes: string; onDataLoad?: (d: FlujoData
             <div className="border border-yellow-900/30 rounded-xl overflow-hidden mt-2">
               <div className="flex items-center justify-between px-4 py-3 bg-yellow-900/10">
                 <div>
-                  <p className="text-xs font-semibold text-yellow-400">⚠ Sin categorizar</p>
+                  <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-yellow-400"><AlertTriangle strokeWidth={1.75} className="w-3.5 h-3.5" /> Sin categorizar</p>
                   <p className="text-[10px] text-gray-600">{data.salidas.operativas.detalle.filter(m => !m.categoria || m.categoria === 'Sin categoría').length} movimiento(s) sin categoría</p>
                 </div>
                 <span className="text-sm font-bold tabular-nums text-yellow-400">
@@ -1115,7 +1116,7 @@ function TabAsistencias({ mes, onDataLoad }: { mes: string; onDataLoad?: (d: Asi
                 })}
               </div>
               {p.minRetardoTotal > 0 && (
-                <p className="text-yellow-500 text-[10px] mt-2">⚠ {p.minRetardoTotal} minutos de retardo acumulados</p>
+                <p className="inline-flex items-center gap-1.5 text-yellow-500 text-[10px] mt-2"><AlertTriangle strokeWidth={1.75} className="w-3 h-3" /> {p.minRetardoTotal} minutos de retardo acumulados</p>
               )}
             </div>
           ))}
@@ -1437,11 +1438,11 @@ export default function ReportesAdminPage() {
   const onFlujoLoad = useCallback((d: FlujoData) => setFlujoData(d), []);
   const onAsistLoad = useCallback((d: AsistData) => setAsistData(d), []);
 
-  const TABS: { key: Tab; label: string; icon: string }[] = [
-    { key: "balance", label: "Balance General", icon: "⚖️" },
-    { key: "flujo", label: "Flujo de Caja", icon: "💸" },
-    { key: "asistencias", label: "Asistencias", icon: "📋" },
-    { key: "rentabilidad", label: "Rentabilidad por evento", icon: "📈" },
+  const TABS: { key: Tab; label: string; icon: LucideIcon }[] = [
+    { key: "balance", label: "Balance General", icon: Scale },
+    { key: "flujo", label: "Flujo de Caja", icon: Banknote },
+    { key: "asistencias", label: "Asistencias", icon: ClipboardList },
+    { key: "rentabilidad", label: "Rentabilidad por evento", icon: TrendingUp },
   ];
 
   const razonSocial = balanceData?.estructura.razonSocial ?? "Escenario Principal S.A. de C.V.";
@@ -1500,7 +1501,7 @@ export default function ReportesAdminPage() {
                 tab === t.key ? 'border-[#B3985B] text-white font-medium' : 'border-transparent text-white/40 hover:text-white/70'
               }`}
             >
-              <span>{t.icon}</span>
+              <t.icon strokeWidth={1.75} className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">{t.label}</span>
               <span className="sm:hidden">{t.label.split(" ")[0]}</span>
             </button>

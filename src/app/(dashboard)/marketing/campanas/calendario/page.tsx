@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { Modal } from "@/components/Modal";
 import { BriefEditor } from "@/components/BriefEditor";
 import { CampanaBrief, defaultBrief, parseBrief, isBriefCompleto } from "@/lib/campana-brief";
+import { Calendar } from "lucide-react";
 
 interface TipoCampana {
   id: string; nombre: string; objetivo: string; objetivoMeta: string;
@@ -487,7 +488,7 @@ export default function CalendarioCampanasPage() {
 
       {!loading && ejecuciones.length === 0 && !showForm && (
         <div className="ms-empty-state space-y-3">
-          <div className="text-3xl opacity-20">📅</div>
+          <div className="flex justify-center opacity-20"><Calendar strokeWidth={1.75} className="w-8 h-8" /></div>
           <p className="text-white/40 text-sm">Sin campañas en {mesLabel(mes)}</p>
           <button onClick={startNew}
             className="text-xs px-4 py-2 rounded-lg bg-[#B3985B] text-black font-semibold hover:bg-[#c9a96a] transition-colors">

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import { ClipboardList } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -350,7 +351,7 @@ export default function PasivosPage() {
         <div className="text-center py-16 text-gray-600">Cargando...</div>
       ) : pasivos.length === 0 ? (
         <div className="text-center py-16 text-gray-600 border border-dashed border-[#222] rounded-2xl">
-          <p className="text-4xl mb-3">📋</p>
+          <ClipboardList strokeWidth={1.5} className="w-9 h-9 mx-auto mb-3 text-gray-700" />
           <p className="text-sm">No hay deudas registradas</p>
           <p className="text-xs mt-1">Registra deudas estructurales que no forman parte del flujo operativo diario</p>
         </div>

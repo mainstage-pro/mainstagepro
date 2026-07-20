@@ -7,6 +7,7 @@ import { Modal } from "@/components/Modal";
 import ModuleTabs from "@/components/ModuleTabs";
 import PaquetesSection from "./PaquetesSection";
 import GruposEquipoPage from "../../admin/grupos-equipo/page";
+import { Guitar, PartyPopper, Briefcase, Package, type LucideIcon } from "lucide-react";
 
 // ── Tipos ───────────────────────────────────────────────────────────────────
 type EquipoItem = {
@@ -41,10 +42,10 @@ type Producto = {
 
 type EquipoSinPaquetear = EquipoItem;
 
-const TIPOS_EVENTO = [
-  { key: "MUSICAL", label: "Musical", emoji: "🎸" },
-  { key: "SOCIAL", label: "Social", emoji: "🎉" },
-  { key: "EMPRESARIAL", label: "Empresarial", emoji: "💼" },
+const TIPOS_EVENTO: { key: string; label: string; icon: LucideIcon }[] = [
+  { key: "MUSICAL", label: "Musical", icon: Guitar },
+  { key: "SOCIAL", label: "Social", icon: PartyPopper },
+  { key: "EMPRESARIAL", label: "Empresarial", icon: Briefcase },
 ];
 
 const CATEGORIAS_PRODUCTO = ["AUDIO", "ILUMINACION", "VIDEO", "DJ", "ESTRUCTURA", "OTRO"];
@@ -216,11 +217,11 @@ function ProductoEditor({
                   key={t.key}
                   type="button"
                   onClick={() => toggleTag(t.key)}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
+                  className={`px-2.5 py-1.5 rounded-lg text-xs transition-colors inline-flex items-center gap-1.5 ${
                     on ? "bg-[#B3985B] text-black font-semibold" : "bg-[#1a1a1a] text-gray-400 hover:text-white"
                   }`}
                 >
-                  {t.emoji} {t.label}
+                  <t.icon strokeWidth={1.75} className="w-3.5 h-3.5" /> {t.label}
                 </button>
               );
             })}
@@ -261,7 +262,7 @@ function ProductoEditor({
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={eq.imagenUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-gray-700">📦</span>
+                      <Package strokeWidth={1.75} className="w-4 h-4 text-gray-700" />
                     )}
                   </span>
                   <div className="flex-1 min-w-0">
@@ -351,7 +352,7 @@ function ProductoEditor({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={imgPreview} alt="" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-gray-700 text-2xl">📦</span>
+                <Package strokeWidth={1.75} className="w-6 h-6 text-gray-700" />
               )}
             </span>
             <div className="space-y-1">
@@ -566,7 +567,7 @@ function ProductosSection() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={e.imagenUrl} alt="" className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-gray-700 text-xs">📦</span>
+                      <Package strokeWidth={1.75} className="w-3.5 h-3.5 text-gray-700" />
                     )}
                   </span>
                   <span className="min-w-0">
@@ -648,7 +649,7 @@ function ProductosSection() {
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={p.imagenUrl} alt="" className="w-8 h-8 object-contain rounded bg-[#0a0a0a] p-0.5 shrink-0" />
                             ) : (
-                              <div className="w-8 h-8 rounded bg-[#1a1a1a] shrink-0 flex items-center justify-center text-gray-700 text-xs">📦</div>
+                              <div className="w-8 h-8 rounded bg-[#1a1a1a] shrink-0 flex items-center justify-center text-gray-700"><Package strokeWidth={1.75} className="w-4 h-4" /></div>
                             )}
                             <div className="min-w-0">
                               <p className="text-white font-medium truncate">{p.nombre}</p>

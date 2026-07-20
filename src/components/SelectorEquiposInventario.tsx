@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Sparkles, Package, Plus, SlidersHorizontal, Handshake, Users, Settings } from "lucide-react";
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
 
@@ -529,7 +530,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
         {aCriterioVendedor && (
           <div className="bg-amber-500/10 border border-amber-500/40 rounded-xl p-3">
             <p className="text-amber-400 text-xs font-medium">
-              🤝 El cliente deja la cantidad exacta de equipos a criterio del vendedor.
+              <Handshake strokeWidth={1.75} className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" /> El cliente deja la cantidad exacta de equipos a criterio del vendedor.
               Las categorías marcadas son solo referencia de interés.
             </p>
           </div>
@@ -557,7 +558,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
         })}
         {paquetesElegidos.length > 0 && (
           <div className="bg-[#111] border border-[#B3985B]/40 rounded-xl p-3">
-            <p className="text-white text-sm font-medium mb-1.5">✨ Paquetes</p>
+            <p className="inline-flex items-center gap-1.5 text-white text-sm font-medium mb-1.5"><Sparkles strokeWidth={1.75} className="w-3.5 h-3.5" /> Paquetes</p>
             <ul className="space-y-1">
               {paquetesElegidos.map((p) => {
                 const cant = paquetesSel.find((s) => s.id === p.id)?.cantidad ?? 1;
@@ -579,7 +580,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
         )}
         {productosElegidos.length > 0 && (
           <div className="bg-[#111] border border-[#B3985B]/30 rounded-xl p-3">
-            <p className="text-white text-sm font-medium mb-1.5">📦 Productos armados</p>
+            <p className="inline-flex items-center gap-1.5 text-white text-sm font-medium mb-1.5"><Package strokeWidth={1.75} className="w-3.5 h-3.5" /> Productos armados</p>
             <ul className="space-y-1">
               {productosElegidos.map((p) => {
                 const cant = productosSel.find((s) => s.id === p.id)?.cantidad ?? 1;
@@ -622,7 +623,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
         })}
         {extras.length > 0 && (
           <div className="bg-[#111] border border-dashed border-[#2a2a2a] rounded-xl p-3">
-            <p className="text-white text-sm font-medium mb-1.5">➕ Adicionales (a mano)</p>
+            <p className="inline-flex items-center gap-1.5 text-white text-sm font-medium mb-1.5"><Plus strokeWidth={1.75} className="w-3.5 h-3.5" /> Adicionales (a mano)</p>
             <ul className="space-y-1">
               {extras.map((ex) => (
                 <li key={ex.id} className="text-gray-300 text-xs flex justify-between gap-2">
@@ -823,21 +824,21 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
             <button
               type="button"
               onClick={() => setSubTab("equipos")}
-              className={`flex-1 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors ${
+              className={`inline-flex items-center justify-center gap-1.5 flex-1 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors ${
                 subTab === "equipos" ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
               }`}
             >
-              🎛️ Equipos
+              <SlidersHorizontal strokeWidth={1.75} className="w-3.5 h-3.5" /> Equipos
             </button>
             {productos.length > 0 && (
               <button
                 type="button"
                 onClick={() => setSubTab("productos")}
-                className={`relative flex-1 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors ${
+                className={`relative inline-flex items-center justify-center gap-1.5 flex-1 px-2.5 py-2 rounded-lg text-xs font-medium transition-colors ${
                   subTab === "productos" ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
                 }`}
               >
-                📦 Productos
+                <Package strokeWidth={1.75} className="w-3.5 h-3.5" /> Productos
                 {subTab !== "productos" && (
                   <span className="ml-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-[#1e1e1e] text-gray-400 text-[9px] font-bold align-middle">
                     {productos.length}
@@ -848,13 +849,13 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
             <button
               type="button"
               onClick={() => setSubTab("paquetes")}
-              className={`relative flex-1 px-2.5 py-2 rounded-lg text-xs font-semibold transition-all overflow-hidden ${
+              className={`relative inline-flex items-center justify-center gap-1.5 flex-1 px-2.5 py-2 rounded-lg text-xs font-semibold transition-all overflow-hidden ${
                 subTab === "paquetes"
                   ? "bg-gradient-to-r from-[#B3985B] to-[#d4b876] text-black shadow-lg shadow-[#B3985B]/25"
                   : "text-[#B3985B] bg-gradient-to-r from-[#B3985B]/15 to-[#B3985B]/5 ring-1 ring-[#B3985B]/40 hover:from-[#B3985B]/25"
               }`}
             >
-              ✨ Paquetes
+              <Sparkles strokeWidth={1.75} className="w-3.5 h-3.5" /> Paquetes
               {subTab !== "paquetes" && paquetes.length > 0 && (
                 <span className="ml-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-[#B3985B] text-black text-[9px] font-bold align-middle">
                   {paquetes.length}
@@ -894,7 +895,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                 </span>
                 <span className="min-w-0">
                   <span className="block text-white text-xs font-medium">
-                    🤝 Dejar la cantidad de equipos a criterio del vendedor
+                    <Handshake strokeWidth={1.75} className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" /> Dejar la cantidad de equipos a criterio del vendedor
                   </span>
                   <span className="block text-gray-500 text-[10px] leading-tight mt-0.5">
                     Marcas solo las categorías de interés y el vendedor define los equipos y las piezas exactas.
@@ -1060,8 +1061,8 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
 
               {/* ── Categoría / equipo adicional (a mano, solo este trato) ── */}
               <div className="space-y-2 pt-1 border-t border-[#1a1a1a]">
-                <p className="text-gray-400 text-xs font-medium">
-                  ➕ ¿Falta una categoría o equipo?
+                <p className="inline-flex items-center gap-1.5 text-gray-400 text-xs font-medium">
+                  <Plus strokeWidth={1.75} className="w-3.5 h-3.5" /> ¿Falta una categoría o equipo?
                 </p>
                 <p className="text-gray-600 text-[10px] -mt-1">
                   Agrégalo a mano solo para este trato (no se guarda en el inventario).
@@ -1186,7 +1187,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={miniatura} alt="" className="w-full h-full object-cover" />
                               ) : (
-                                <span className="text-gray-700 text-sm">📦</span>
+                                <Package strokeWidth={1.75} className="w-4 h-4 text-gray-700" />
                               )}
                             </span>
                             <span className="text-white text-xs font-semibold leading-tight flex-1 min-w-0 truncate">
@@ -1223,7 +1224,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                                           // eslint-disable-next-line @next/next/no-img-element
                                           <img src={p.imagenUrl} alt="" className="w-full h-full object-cover" />
                                         ) : (
-                                          <span className="text-gray-700">📦</span>
+                                          <Package strokeWidth={1.75} className="w-4 h-4 text-gray-700" />
                                         )}
                                       </span>
                                       <span className="min-w-0 flex-1">
@@ -1275,7 +1276,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
               </p>
               {paquetes.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-[#2a2a2a] bg-[#0d0d0d] px-4 py-8 text-center">
-                  <p className="text-3xl mb-2">✨</p>
+                  <Sparkles strokeWidth={1.75} className="w-8 h-8 mx-auto mb-2 text-gray-600" />
                   <p className="text-gray-400 text-sm font-medium">Aún no hay paquetes armados</p>
                   <p className="text-gray-600 text-[11px] leading-relaxed mt-1">
                     Crea paquetes comerciales en el módulo de Paquetes y productos y aparecerán aquí para elegirlos en el descubrimiento.
@@ -1304,7 +1305,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={p.imagenes[0].url} alt="" className="w-full h-full object-cover" />
                           ) : (
-                            <span className="text-gray-700">✨</span>
+                            <Sparkles strokeWidth={1.75} className="w-4 h-4 text-gray-700" />
                           )}
                         </span>
                         <span className="min-w-0 flex-1">
@@ -1328,18 +1329,18 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                               {ETIQUETA_TIPO_EVENTO[p.tipoEvento] ?? p.tipoEvento}
                             </span>
                             {p.rangoPersonas && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-gray-400">
-                                👥 {p.rangoPersonas}
+                              <span className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-gray-400">
+                                <Users strokeWidth={1.75} className="w-3 h-3" /> {p.rangoPersonas}
                               </span>
                             )}
                             {numEquipos > 0 && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-gray-400">
-                                🎛️ {numEquipos}
+                              <span className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-gray-400">
+                                <SlidersHorizontal strokeWidth={1.75} className="w-3 h-3" /> {numEquipos}
                               </span>
                             )}
                             {p.conceptos.length > 0 && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-gray-400">
-                                ⚙️ {p.conceptos.length}
+                              <span className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-gray-400">
+                                <Settings strokeWidth={1.75} className="w-3 h-3" /> {p.conceptos.length}
                               </span>
                             )}
                           </span>

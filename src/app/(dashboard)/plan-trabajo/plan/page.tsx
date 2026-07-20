@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { Calendar, Zap, CheckCircle2, Users, AlertTriangle, type LucideIcon } from 'lucide-react'
 import { getAreaColor } from '@/lib/areaColors'
 import { GRUPOS_MODULOS } from '@/lib/modulosEjecucion'
 
@@ -127,10 +128,10 @@ const IMPACTO_LABEL: Record<string, { color: string; label: string }> = {
   estandar: { color: 'text-gray-600',   label: 'Estándar' },
 }
 
-const CONTEXTO_BADGE: Record<string, { label: string; cls: string }> = {
-  evento:        { label: '📅 Evento',   cls: 'bg-blue-900/30 text-blue-400 border-blue-800/40' },
-  hibrida:       { label: '⚡ Híbrida',  cls: 'bg-yellow-900/30 text-yellow-400 border-yellow-800/40' },
-  independiente: { label: '✅ Indep.',   cls: 'bg-[#111] text-gray-600 border-[#222]' },
+const CONTEXTO_BADGE: Record<string, { label: string; Icon: LucideIcon; cls: string }> = {
+  evento:        { label: 'Evento',  Icon: Calendar,    cls: 'bg-blue-900/30 text-blue-400 border-blue-800/40' },
+  hibrida:       { label: 'Híbrida', Icon: Zap,         cls: 'bg-yellow-900/30 text-yellow-400 border-yellow-800/40' },
+  independiente: { label: 'Indep.',  Icon: CheckCircle2, cls: 'bg-[#111] text-gray-600 border-[#222]' },
 }
 
 // ── ResponsableBtn ─────────────────────────────────────────────────────────────
@@ -165,7 +166,7 @@ function ResponsableBtn({
         className="text-xs text-gray-500 hover:text-white transition-colors text-left"
       >
         {tarea.tipoAsignacion === 'todos' ? (
-          <span className="text-[10px] bg-[#1a1a1a] text-gray-400 px-2 py-0.5 rounded-full border border-[#2a2a2a]">👥 Todo el equipo</span>
+          <span className="inline-flex items-center gap-1 text-[10px] bg-[#1a1a1a] text-gray-400 px-2 py-0.5 rounded-full border border-[#2a2a2a]"><Users strokeWidth={1.75} className="w-3 h-3" /> Todo el equipo</span>
         ) : tarea.tipoAsignacion === 'area' ? (
           <span className="text-[10px] bg-[#1a1a1a] text-gray-400 px-2 py-0.5 rounded-full border border-[#2a2a2a]">
             <span style={{ color: getAreaColor(tarea.areaAsignada ?? '') }}>●</span> {tarea.areaAsignada}
@@ -197,7 +198,7 @@ function ResponsableBtn({
                     : 'text-gray-400 hover:bg-[#111] hover:text-white'
                 }`}
               >
-                <span className="text-base leading-none">👥</span>
+                <Users strokeWidth={1.75} className="w-4 h-4" />
                 <span>Todo el equipo</span>
               </button>
 
@@ -786,13 +787,13 @@ function FrecuenciaBtn({
         {tarea.frecuencia === 'MENSUAL'
           ? (
             tarea.semanaDeMes.length === 0
-              ? <span className="flex items-center gap-1">Mensual <span className="text-yellow-500 text-[9px]" title="Falta indicar qué semana del mes">⚠</span></span>
+              ? <span className="flex items-center gap-1">Mensual <AlertTriangle strokeWidth={1.75} className="w-3 h-3 text-yellow-500" aria-label="Falta indicar qué semana del mes" /></span>
               : formatMensualLabel(tarea.semanaDeMes, tarea.diasSemana)
           )
           : tarea.frecuencia === 'QUINCENAL'
             ? (
               tarea.semanaDeMes.length === 0
-                ? <span className="flex items-center gap-1">Quincenal <span className="text-yellow-500 text-[9px]" title="Falta indicar qué semanas">⚠</span></span>
+                ? <span className="flex items-center gap-1">Quincenal <AlertTriangle strokeWidth={1.75} className="w-3 h-3 text-yellow-500" aria-label="Falta indicar qué semanas" /></span>
                 : formatMensualLabel(tarea.semanaDeMes, tarea.diasSemana)
             )
             : (FRECUENCIA_LABEL[tarea.frecuencia] ?? tarea.frecuencia)
@@ -822,7 +823,7 @@ function FrecuenciaBtn({
               <div className="mx-3 my-1.5 h-px bg-[#1e1e1e]" />
               <p className="text-[9px] text-gray-600 uppercase tracking-wider px-3 pb-1.5">
                 {tarea.semanaDeMes.length === 0
-                  ? <span className="text-yellow-500">⚠ ¿Qué semana del mes?</span>
+                  ? <span className="inline-flex items-center gap-1 text-yellow-500"><AlertTriangle strokeWidth={1.75} className="w-3 h-3" /> ¿Qué semana del mes?</span>
                   : '¿Qué semana?'}
               </p>
               <div className="flex gap-1 px-3 pb-2 flex-wrap">
@@ -944,7 +945,7 @@ function TemplateRow({
           </div>
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
             <span className={`text-[9px] ${imp.color}`}>{imp.label}</span>
-            <span className={`text-[9px] px-1.5 py-0.5 rounded-full border ${ctx.cls}`}>{ctx.label}</span>
+            <span className={`inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-full border ${ctx.cls}`}><ctx.Icon strokeWidth={1.75} className="w-2.5 h-2.5" />{ctx.label}</span>
             {t.tipo === 'ENTREGABLE' && (
               <span className="text-[9px] px-1.5 py-0.5 rounded-full border border-[#c9a96a]/30 text-[#c9a96a]">Entregable</span>
             )}

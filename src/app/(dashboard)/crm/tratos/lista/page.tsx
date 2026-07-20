@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useEffect, useState, useRef } from "react";
+import { Inbox, MailX } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ETAPA_LABELS, TIPO_EVENTO_LABELS, ORIGEN_LEAD_LABELS, MOMENTO_LABELS, MOMENTO_COLORS } from "@/lib/constants";
@@ -1847,7 +1848,7 @@ export default function TratosPage() {
                     : 'bg-[#0d0d0d] border-[#181818] hover:border-[#B3985B]/30'
                 }`}
               >
-                <span className="text-lg">📥</span>
+                <Inbox strokeWidth={1.75} className="w-5 h-5 text-[#B3985B]" />
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-semibold ${activo ? 'text-[#B3985B]' : 'text-white'}`}>
                     Formularios contestados
@@ -1944,7 +1945,7 @@ export default function TratosPage() {
             if (tabTratos.length === 0) {
               return (
                 <div className="text-center py-20 text-[#555]">
-                  <p className="text-3xl mb-3">📭</p>
+                  <MailX strokeWidth={1.5} className="w-8 h-8 mx-auto mb-3" />
                   <p className="text-sm">
                     {busqueda ? `Sin resultados para "${busqueda}"` : `No hay tratos en ${ALL_ETAPAS.find(e => e.key === filtroEtapa)?.label ?? filtroEtapa}`}
                   </p>

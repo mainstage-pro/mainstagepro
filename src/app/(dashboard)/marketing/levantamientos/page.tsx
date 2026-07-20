@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { Modal } from "@/components/Modal";
+import { Camera, Lightbulb, FolderOpen, Link2 } from "lucide-react";
 
 const GOLD = "#B3985B";
 const PLANES: Record<string, { label: string; color: string }> = {
@@ -227,7 +228,7 @@ export default function LevantamientosPage() {
           </div>
         ) : levantamientos.length === 0 ? (
           <div className="text-center py-20">
-            <p className="text-4xl mb-3">📷</p>
+            <div className="flex justify-center mb-3 text-white/30"><Camera strokeWidth={1.75} className="w-9 h-9" /></div>
             <p className="text-white/50">No hay levantamientos en {fmtMes(mes)}</p>
             <p className="text-white/25 text-xs mt-1">Los levantamientos se crean desde la etapa de Descubrimiento en el CRM</p>
           </div>
@@ -345,8 +346,8 @@ export default function LevantamientosPage() {
               <button onClick={() => setSelected(null)} className="text-white/30 hover:text-white text-xl shrink-0 mt-0.5">×</button>
             </div>
             {selected.temasSugeridos && (
-              <p className="text-white/40 text-xs mt-3 p-2 bg-white/[0.03] rounded-lg border border-white/5 leading-relaxed">
-                💡 {selected.temasSugeridos}
+              <p className="inline-flex items-start gap-1.5 text-white/40 text-xs mt-3 p-2 bg-white/[0.03] rounded-lg border border-white/5 leading-relaxed">
+                <Lightbulb strokeWidth={1.75} className="w-3.5 h-3.5 mt-0.5 shrink-0" /> {selected.temasSugeridos}
               </p>
             )}
             <button
@@ -412,7 +413,7 @@ export default function LevantamientosPage() {
               </div>
             ) : activos.length === 0 ? (
               <div className="text-center py-10">
-                <p className="text-3xl mb-2">📂</p>
+                <div className="flex justify-center mb-2 text-white/25"><FolderOpen strokeWidth={1.75} className="w-7 h-7" /></div>
                 <p className="text-white/30 text-xs">Sin activos registrados</p>
               </div>
             ) : (
@@ -434,8 +435,8 @@ export default function LevantamientosPage() {
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <a href={a.url} target="_blank" rel="noopener noreferrer"
-                         className="text-[#B3985B] text-[10px] hover:underline truncate">
-                        🔗 Ver archivo →
+                         className="inline-flex items-center gap-1 text-[#B3985B] text-[10px] hover:underline truncate">
+                        <Link2 strokeWidth={1.75} className="w-3 h-3" /> Ver archivo →
                       </a>
                       <Combobox
                         value={a.estado}

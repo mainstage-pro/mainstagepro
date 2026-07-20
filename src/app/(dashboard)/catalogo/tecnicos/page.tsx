@@ -5,6 +5,7 @@ import { CopyButton } from "@/components/CopyButton";
 import { Combobox } from "@/components/Combobox";
 import { Modal } from "@/components/Modal";
 import { DISCIPLINA_COLORS, DISCIPLINA_LABELS, DISCIPLINAS } from "@/lib/disciplinaColors";
+import { Sliders, Users } from "lucide-react";
 
 type Rol = { id: string; nombre: string };
 type Tecnico = {
@@ -555,7 +556,9 @@ export default function TecnicosPage() {
 
       {filtered.length === 0 && !creating ? (
         <div className="text-center py-16">
-          <p className="text-3xl mb-3">{filterDisciplina !== 'TODOS' ? '🎛️' : '👥'}</p>
+          {filterDisciplina !== 'TODOS'
+            ? <Sliders strokeWidth={1.75} className="w-9 h-9 mx-auto mb-3 text-gray-600" />
+            : <Users strokeWidth={1.75} className="w-9 h-9 mx-auto mb-3 text-gray-600" />}
           <p className="text-gray-500 text-sm font-medium">
             {filterDisciplina !== 'TODOS'
               ? `No hay técnicos registrados en ${DISCIPLINA_LABELS[filterDisciplina]} aún.`

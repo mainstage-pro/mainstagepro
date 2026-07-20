@@ -5,13 +5,14 @@ import { upload } from "@vercel/blob/client";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
+import { Music, Wine, Building2, Sparkles, ImageIcon, Package, Puzzle, type LucideIcon } from "lucide-react";
 
 // ── Constantes ────────────────────────────────────────────────────────────────
-const TIPOS_EVENTO = [
-  { key: "MUSICAL", label: "Musical", emoji: "🎵" },
-  { key: "SOCIAL", label: "Social", emoji: "🥂" },
-  { key: "EMPRESARIAL", label: "Empresarial", emoji: "🏢" },
-] as const;
+const TIPOS_EVENTO: { key: string; label: string; icon: LucideIcon }[] = [
+  { key: "MUSICAL", label: "Musical", icon: Music },
+  { key: "SOCIAL", label: "Social", icon: Wine },
+  { key: "EMPRESARIAL", label: "Empresarial", icon: Building2 },
+];
 
 const RANGOS_PERSONAS = [
   "1-100", "100-300", "300-500", "500-800", "800-1000",
@@ -345,8 +346,8 @@ function PaqueteEditor({
         <div className="flex items-center justify-between">
           <p className="text-white text-sm font-medium">Descripción del paquete</p>
           <button type="button" onClick={onGenerarIA} disabled={generandoIA}
-            className="text-[11px] px-3 py-1.5 rounded-lg bg-[#B3985B]/15 text-[#B3985B] hover:bg-[#B3985B]/30 disabled:opacity-40 transition-colors font-semibold">
-            {generandoIA ? "Generando…" : "✨ Generar con IA"}
+            className="text-[11px] px-3 py-1.5 rounded-lg bg-[#B3985B]/15 text-[#B3985B] hover:bg-[#B3985B]/30 disabled:opacity-40 transition-colors font-semibold inline-flex items-center gap-1.5">
+            {generandoIA ? "Generando…" : <><Sparkles strokeWidth={1.75} className="w-3.5 h-3.5" /> Generar con IA</>}
           </button>
         </div>
         <div>
@@ -390,8 +391,8 @@ function PaqueteEditor({
         <div className="flex items-center justify-between mb-1">
           <label className={`${labelCls} mb-0`}>Equipos y productos ({form.items.length})</label>
           <button type="button" onClick={() => setPickerOpen(true)}
-            className="text-[11px] px-3 py-1.5 rounded-lg bg-[#B3985B] text-black font-semibold hover:bg-[#c9a96a] transition-colors">
-            🖼️ Explorar inventario
+            className="text-[11px] px-3 py-1.5 rounded-lg bg-[#B3985B] text-black font-semibold hover:bg-[#c9a96a] transition-colors inline-flex items-center gap-1.5">
+            <ImageIcon strokeWidth={1.75} className="w-3.5 h-3.5" /> Explorar inventario
           </button>
         </div>
         {form.items.length > 0 && (
@@ -408,7 +409,7 @@ function PaqueteEditor({
                     {img ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={img} alt="" className="w-full h-full object-cover" />
-                    ) : <span className="text-gray-700">{it.tipo === "PRODUCTO" ? "🧩" : "📦"}</span>}
+                    ) : (it.tipo === "PRODUCTO" ? <Puzzle strokeWidth={1.75} className="w-4 h-4 text-gray-700" /> : <Package strokeWidth={1.75} className="w-4 h-4 text-gray-700" />)}
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-white text-xs font-medium truncate">{nombre}</p>
@@ -648,12 +649,12 @@ function CatalogoPicker({
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1 p-1 bg-[#1a1a1a] rounded-lg">
               <button onClick={() => setTab("equipos")}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === "equipos" ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"}`}>
-                📦 Equipos ({equipos.length})
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors inline-flex items-center gap-1.5 ${tab === "equipos" ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"}`}>
+                <Package strokeWidth={1.75} className="w-3.5 h-3.5" /> Equipos ({equipos.length})
               </button>
               <button onClick={() => setTab("productos")}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${tab === "productos" ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"}`}>
-                🧩 Productos ({productos.length})
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors inline-flex items-center gap-1.5 ${tab === "productos" ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"}`}>
+                <Puzzle strokeWidth={1.75} className="w-3.5 h-3.5" /> Productos ({productos.length})
               </button>
             </div>
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar…"
@@ -697,7 +698,7 @@ function CatalogoPicker({
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img src={e.imagenUrl} alt="" className="w-full h-full object-cover" />
                               ) : (
-                                <span className="text-gray-700 text-lg">📦</span>
+                                <Package strokeWidth={1.75} className="w-5 h-5 text-gray-700" />
                               )}
                             </span>
                             <span className="flex-1 min-w-0">
@@ -732,7 +733,7 @@ function CatalogoPicker({
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={p.imagenUrl} alt="" className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-gray-700 text-lg">🧩</span>
+                        <Puzzle strokeWidth={1.75} className="w-5 h-5 text-gray-700" />
                       )}
                     </span>
                     <span className="flex-1 min-w-0">
@@ -922,8 +923,8 @@ export default function PaquetesSection() {
         <div className="flex items-center gap-1.5 p-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl">
           {TIPOS_EVENTO.map((t) => (
             <button key={t.key} onClick={() => setTipoTab(t.key)}
-              className={`px-4 py-2 rounded-lg text-sm transition-colors ${tipoTab === t.key ? "bg-[#B3985B] text-black font-semibold" : "text-gray-400 hover:text-white"}`}>
-              {t.emoji} {t.label}
+              className={`px-4 py-2 rounded-lg text-sm transition-colors inline-flex items-center gap-1.5 ${tipoTab === t.key ? "bg-[#B3985B] text-black font-semibold" : "text-gray-400 hover:text-white"}`}>
+              <t.icon strokeWidth={1.75} className="w-3.5 h-3.5" /> {t.label}
             </button>
           ))}
         </div>
@@ -954,7 +955,7 @@ export default function PaquetesSection() {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={p.imagenes[0].url} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-700 text-3xl">🧩</div>
+                    <div className="w-full h-full flex items-center justify-center text-gray-700"><Puzzle strokeWidth={1.5} className="w-8 h-8" /></div>
                   )}
                   {p.rangoPersonas && (
                     <span className="absolute top-2 left-2 text-[10px] bg-black/70 text-white rounded-full px-2 py-0.5">{p.rangoPersonas} pers.</span>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
 import { BackButton } from "@/components/BackButton";
+import { AlertTriangle, Circle } from "lucide-react";
 
 interface EquipoInfo {
   id: string; descripcion: string; cantidadTotal: number; estado: string; imagenUrl: string | null;
@@ -186,12 +187,12 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
       {/* Alertas */}
       {rojos > 0 && (
         <div className="bg-red-900/10 border border-red-900/30 rounded-xl px-5 py-3">
-          <p className="text-red-400 text-sm font-semibold">⚠ {rojos} equipo{rojos > 1 ? "s" : ""} faltante{rojos > 1 ? "s" : ""} sin justificación — verificar</p>
+          <p className="inline-flex items-center gap-1.5 text-red-400 text-sm font-semibold"><AlertTriangle strokeWidth={1.75} className="w-3.5 h-3.5 shrink-0" /> {rojos} equipo{rojos > 1 ? "s" : ""} faltante{rojos > 1 ? "s" : ""} sin justificación — verificar</p>
         </div>
       )}
       {naranjas > 0 && rojos === 0 && (
         <div className="bg-orange-900/10 border border-orange-900/30 rounded-xl px-5 py-3">
-          <p className="text-orange-400 text-sm">🟠 {naranjas} equipo{naranjas > 1 ? "s" : ""} fuera de bodega — marcado{naranjas > 1 ? "s" : ""} en renta/uso</p>
+          <p className="inline-flex items-center gap-1.5 text-orange-400 text-sm"><Circle className="w-2.5 h-2.5 shrink-0 fill-current text-orange-400" /> {naranjas} equipo{naranjas > 1 ? "s" : ""} fuera de bodega — marcado{naranjas > 1 ? "s" : ""} en renta/uso</p>
         </div>
       )}
 
@@ -206,8 +207,8 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{cat}</p>
               <div className="flex items-center gap-3 text-xs">
                 <span className="text-gray-600">{catVerdes}/{items.length}</span>
-                {catRojos > 0 && <span className="text-red-400 font-semibold">⚠ {catRojos} faltante{catRojos > 1 ? "s" : ""}</span>}
-                {catNaranjas > 0 && catRojos === 0 && <span className="text-orange-400">🟠 {catNaranjas} en renta</span>}
+                {catRojos > 0 && <span className="inline-flex items-center gap-1 text-red-400 font-semibold"><AlertTriangle strokeWidth={1.75} className="w-3 h-3 shrink-0" /> {catRojos} faltante{catRojos > 1 ? "s" : ""}</span>}
+                {catNaranjas > 0 && catRojos === 0 && <span className="inline-flex items-center gap-1 text-orange-400"><Circle className="w-2 h-2 shrink-0 fill-current text-orange-400" /> {catNaranjas} en renta</span>}
               </div>
             </div>
 

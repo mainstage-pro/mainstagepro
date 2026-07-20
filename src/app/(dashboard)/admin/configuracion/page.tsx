@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
+import { ShieldCheck } from "lucide-react";
 
 // ─── Módulos / Etiquetas ──────────────────────────────────────────────────────
 
@@ -448,7 +449,7 @@ export default function ConfiguracionPage() {
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h2 className="text-white font-semibold text-sm flex items-center gap-2">
-              🛡 Respaldos de datos
+              <ShieldCheck strokeWidth={1.75} className="w-3.5 h-3.5" /> Respaldos de datos
             </h2>
             <p className="text-gray-600 text-xs mt-0.5">
               Se genera automáticamente cada día a las 2am · Incluye clientes, proyectos, cotizaciones, finanzas

@@ -6,6 +6,7 @@ import QuickAdd from "./QuickAdd";
 import TaskItem, { type TareaItem } from "./TaskItem";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
+import { Link2 } from "lucide-react";
 
 interface Usuario { id: string; name: string }
 interface Proyecto { id: string; nombre: string; color: string | null }
@@ -525,8 +526,8 @@ export default function TaskPanel({
                 />
                 ↑ Subir
               </label>
-              <button type="button" onClick={() => setAddingUrl(!addingUrl)} className="text-xs text-[#555] hover:text-[#B3985B] transition-colors">
-                🔗 URL
+              <button type="button" onClick={() => setAddingUrl(!addingUrl)} className="inline-flex items-center gap-1 text-xs text-[#555] hover:text-[#B3985B] transition-colors">
+                <Link2 strokeWidth={1.75} className="w-3 h-3" /> URL
               </button>
             </div>
           </div>

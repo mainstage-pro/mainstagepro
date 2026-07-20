@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
+import { AlertTriangle, Circle } from "lucide-react";
 
 interface RegistroItem {
   id: string;
@@ -75,7 +76,7 @@ export default function IncidenciasHistorialPage() {
       {/* Empty */}
       {!loading && registros.length === 0 && (
         <div className="ms-card rounded-2xl p-12 text-center">
-          <p className="text-5xl mb-4">⚠️</p>
+          <AlertTriangle strokeWidth={1.5} className="w-12 h-12 mx-auto mb-4 text-gray-600" />
           <p className="text-white font-semibold mb-1">Sin registros aún</p>
           <p className="text-gray-500 text-sm mb-6">Crea tu primer registro de incidencias semanales.</p>
           <Link
@@ -108,13 +109,13 @@ export default function IncidenciasHistorialPage() {
                         {incs.length} incidencia{incs.length !== 1 ? "s" : ""}
                       </span>
                       {criticas > 0 && (
-                        <span className="text-[10px] text-red-400 bg-red-900/20 border border-red-900/30 px-2 py-0.5 rounded-full font-semibold">
-                          🔴 {criticas} crítica{criticas !== 1 ? "s" : ""}
+                        <span className="inline-flex items-center gap-1 text-[10px] text-red-400 bg-red-900/20 border border-red-900/30 px-2 py-0.5 rounded-full font-semibold">
+                          <Circle className="w-2.5 h-2.5 fill-current text-red-400" /> {criticas} crítica{criticas !== 1 ? "s" : ""}
                         </span>
                       )}
                       {importantes > 0 && (
-                        <span className="text-[10px] text-yellow-400 bg-yellow-900/20 border border-yellow-900/30 px-2 py-0.5 rounded-full">
-                          🟡 {importantes}
+                        <span className="inline-flex items-center gap-1 text-[10px] text-yellow-400 bg-yellow-900/20 border border-yellow-900/30 px-2 py-0.5 rounded-full">
+                          <Circle className="w-2.5 h-2.5 fill-current text-amber-400" /> {importantes}
                         </span>
                       )}
                       <span className="text-[10px] text-gray-600">{r.user.name}</span>

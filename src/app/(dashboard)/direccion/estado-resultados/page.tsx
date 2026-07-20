@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { BarChart3, Landmark } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface ERProyecto {
@@ -298,7 +299,7 @@ export default function EstadoResultadosDireccionPage() {
 
   if (!data) return (
     <div className="p-8 max-w-6xl mx-auto text-center py-24">
-      <p className="text-4xl mb-3">📊</p>
+      <BarChart3 strokeWidth={1.5} className="w-9 h-9 mx-auto mb-3 text-gray-700" />
       <p className="text-gray-600 font-medium">Sin datos para {mesLabel(mes)}</p>
       <p className="text-gray-700 text-xs mt-2">Verifica que haya proyectos registrados en este período.</p>
     </div>
@@ -862,7 +863,7 @@ export default function EstadoResultadosDireccionPage() {
           {/* 4. ISR / Cuenta Fiscal */}
           <div className="bg-amber-950/15 border border-amber-500/25 rounded-2xl p-6 space-y-5">
             <div className="flex items-center gap-3">
-              <span className="text-amber-400 text-xl">🏦</span>
+              <Landmark strokeWidth={1.75} className="w-5 h-5 text-amber-400" />
               <div>
                 <h3 className="text-[10px] font-bold text-amber-400 uppercase tracking-widest">Cuenta Fiscal & ISR</h3>
                 <p className="text-[10px] text-amber-800 mt-0.5">Monitoreo del saldo fiscal para prevenir contingencias de ISR</p>

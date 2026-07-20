@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { Package, AlertTriangle } from "lucide-react";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface EquipoDisp {
@@ -283,7 +284,7 @@ export default function DisponibilidadPage() {
                               </td>
                               <td className="px-3 py-3 text-center">
                                 {esConflicto ? (
-                                  <span className="text-red-400 font-bold">−{eq.sobredemanda} ⚠</span>
+                                  <span className="inline-flex items-center gap-1 text-red-400 font-bold">−{eq.sobredemanda} <AlertTriangle strokeWidth={1.75} className="w-3.5 h-3.5" /></span>
                                 ) : (
                                   <span className={eq.disponible === eq.cantidadTotal ? "text-green-400" : "text-white"}>
                                     {eq.disponible}
@@ -393,7 +394,7 @@ export default function DisponibilidadPage() {
 
       {!resultado && !loading && (
         <div className="ms-card p-12 text-center">
-          <p className="text-3xl mb-3">📦</p>
+          <Package strokeWidth={1.75} className="w-8 h-8 mx-auto mb-3 text-gray-600" />
           <p className="text-gray-400 text-sm">Agrega hasta {MAX_FECHAS} fechas y presiona <strong className="text-white">Consultar disponibilidad</strong></p>
           <p className="text-gray-600 text-xs mt-1">
             Verás todos tus equipos propios con cuántos están comprometidos en cotizaciones pendientes y proyectos activos.

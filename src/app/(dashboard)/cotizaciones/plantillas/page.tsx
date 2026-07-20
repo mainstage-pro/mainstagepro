@@ -5,6 +5,7 @@ import Link from "next/link";
 import { formatCurrency } from "@/lib/cotizador";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { Lightbulb, ClipboardList } from "lucide-react";
 
 interface Linea {
   id: string; tipo: string; descripcion: string; cantidad: number;
@@ -73,7 +74,7 @@ export default function PlantillasPage() {
 
       {/* Tip */}
       <div className="ms-card px-4 py-3 mb-4 flex items-start gap-3">
-        <span className="text-base shrink-0 mt-0.5">💡</span>
+        <Lightbulb strokeWidth={1.75} className="w-4 h-4 shrink-0 mt-0.5 text-gray-500" />
         <p className="text-gray-500 text-xs">
           Las plantillas se crean desde una cotización con <span className="text-white font-medium">Guardar como plantilla</span> y se cargan al crear una cotización nueva con <span className="text-white font-medium">Cargar plantilla</span>. Solo guardan los equipos/conceptos cotizados, nunca el cliente ni los datos del evento. Editarlas aquí <span className="text-white font-medium">no modifica</span> la cotización original.
         </p>
@@ -85,7 +86,7 @@ export default function PlantillasPage() {
         </div>
       ) : plantillas.length === 0 ? (
         <div className="ms-empty-state">
-          <p className="text-2xl mb-2">📋</p>
+          <ClipboardList strokeWidth={1.75} className="w-8 h-8 mb-2 mx-auto text-gray-600" />
           <p className="text-gray-500 text-sm">Sin plantillas guardadas</p>
           <p className="text-gray-700 text-xs mt-1">Abre una cotización y usa &quot;Guardar como plantilla&quot; para crear la primera.</p>
         </div>

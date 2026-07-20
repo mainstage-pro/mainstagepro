@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useToast } from '@/components/Toast';
+import { Globe, Building2, Megaphone, Settings, Calendar, type LucideIcon } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -217,11 +218,14 @@ function JuntaTab({ junta }: { junta: JuntaConAgenda }) {
 
 const TABS = ['GLOBAL', 'ADMINISTRACION', 'MARKETING', 'PRODUCCION'];
 const TAB_LABELS: Record<string, string> = {
-  GLOBAL: '🌐 Global', ADMINISTRACION: '🏢 Admón', MARKETING: '📣 Marketing', PRODUCCION: '⚙️ Producción',
+  GLOBAL: 'Global', ADMINISTRACION: 'Admón', MARKETING: 'Marketing', PRODUCCION: 'Producción',
 };
 const AREA_LABEL: Record<string, string> = {
-  GLOBAL: '🌐 Global', ADMINISTRACION: '🏢 Administración',
-  MARKETING: '📣 Marketing', PRODUCCION: '⚙️ Producción',
+  GLOBAL: 'Global', ADMINISTRACION: 'Administración',
+  MARKETING: 'Marketing', PRODUCCION: 'Producción',
+};
+const AREA_ICON: Record<string, LucideIcon> = {
+  GLOBAL: Globe, ADMINISTRACION: Building2, MARKETING: Megaphone, PRODUCCION: Settings,
 };
 
 export default function PrepararSemanaPage() {
@@ -328,7 +332,7 @@ export default function PrepararSemanaPage() {
         ) : !hayJuntas ? (
           /* ── Empty state ── */
           <div className="bg-[#111] border border-dashed border-[#2a2a2a] rounded-2xl p-12 text-center">
-            <p className="text-3xl mb-3">📅</p>
+            <div className="flex justify-center mb-3 text-gray-500"><Calendar strokeWidth={1.5} className="w-8 h-8" /></div>
             <p className="text-white font-semibold mb-1">No hay juntas para esta semana</p>
             <p className="text-gray-500 text-sm mb-6">
               Crea las 4 juntas de la semana (Global + 3 de área) con un solo click.
@@ -352,12 +356,13 @@ export default function PrepararSemanaPage() {
                   <button
                     key={area}
                     onClick={() => setActiveTab(area)}
-                    className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
+                    className={`inline-flex items-center justify-center gap-1.5 flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
                       activeTab === area
                         ? 'bg-[#1a1a1a] text-white border border-[#2a2a2a]'
                         : 'text-gray-500 hover:text-gray-300'
                     }`}
                   >
+                    {(() => { const AIcon = AREA_ICON[area]; return AIcon ? <AIcon strokeWidth={1.75} className="w-3.5 h-3.5" /> : null; })()}
                     {TAB_LABELS[area]}
                     {j && (
                       <span className={`ml-1 inline-block w-1.5 h-1.5 rounded-full ${

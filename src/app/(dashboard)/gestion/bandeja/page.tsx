@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import { AREAS, AREA_LABELS, PRIORIDADES, PRIO_META } from "@/lib/gestion";
 
 type CapturaItem = {
@@ -266,7 +267,7 @@ export default function BandejaPage() {
                   <p className="text-[12.5px] text-[#ddd] leading-snug">{item.contenido}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-[10.5px] text-[#555]">{timeAgo(item.creadoEn)}</span>
-                    {isOld(item.creadoEn) && <span className="text-[10px] text-[#e8a020]/60">⚠ Antiguo</span>}
+                    {isOld(item.creadoEn) && <span className="inline-flex items-center gap-1 text-[10px] text-[#e8a020]/60"><AlertTriangle strokeWidth={1.75} className="w-3 h-3" /> Antiguo</span>}
                   </div>
                 </div>
                 <button onClick={() => openClassify(item)}

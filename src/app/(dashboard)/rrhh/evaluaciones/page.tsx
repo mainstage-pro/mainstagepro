@@ -6,6 +6,7 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { Modal } from "@/components/Modal";
+import { AlertTriangle, Ban } from "lucide-react";
 
 interface Personal { id: string; nombre: string; puesto: string; departamento: string; }
 interface Evaluacion {
@@ -188,13 +189,13 @@ export default function EvaluacionesPage() {
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-green-500/50 resize-none" />
             </div>
             <div>
-              <label className="text-xs text-orange-400 mb-1 block font-semibold">⚠ Áreas de mejora</label>
+              <label className="text-xs text-orange-400 mb-1 flex items-center gap-1.5 font-semibold"><AlertTriangle strokeWidth={1.75} className="w-3.5 h-3.5" />Áreas de mejora</label>
               <textarea value={form.areasMejora} onChange={e=>setForm(p=>({...p,areasMejora:e.target.value}))} rows={3}
                 placeholder="Qué debe mejorar, habilidades a desarrollar..."
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-orange-500/50 resize-none" />
             </div>
             <div>
-              <label className="text-xs text-red-400 mb-1 block font-semibold">⛔ Incidentes / Negligencias</label>
+              <label className="text-xs text-red-400 mb-1 flex items-center gap-1.5 font-semibold"><Ban strokeWidth={1.75} className="w-3.5 h-3.5" />Incidentes / Negligencias</label>
               <textarea value={form.incidentesNota} onChange={e=>setForm(p=>({...p,incidentesNota:e.target.value}))} rows={2}
                 placeholder="Situaciones que requieren atención..."
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-red-500/50 resize-none" />

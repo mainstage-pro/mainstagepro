@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Combobox } from "@/components/Combobox";
+import { AlertTriangle, Lightbulb, Printer, Trophy, Zap } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface EquipoStat {
@@ -237,8 +238,8 @@ export default function AnalisisInventarioPage() {
               className="bg-[#111] border border-[#333] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B] w-60"
             />
             <button onClick={() => setSoloAlertas(v => !v)}
-              className={`text-sm px-3 py-2 rounded-lg border transition-colors ${soloAlertas ? "bg-red-900/30 border-red-700/40 text-red-400" : "bg-[#111] border-[#333] text-gray-400 hover:text-white"}`}>
-              {soloAlertas ? "⚠ Solo alertas" : "Todas"}
+              className={`inline-flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border transition-colors ${soloAlertas ? "bg-red-900/30 border-red-700/40 text-red-400" : "bg-[#111] border-[#333] text-gray-400 hover:text-white"}`}>
+              {soloAlertas ? <><AlertTriangle strokeWidth={1.75} className="w-3.5 h-3.5" /> Solo alertas</> : "Todas"}
             </button>
             <span className="text-gray-600 text-xs ml-auto">{equiposFiltrados.length} equipos</span>
           </div>
@@ -385,8 +386,8 @@ export default function AnalisisInventarioPage() {
                         </td>
                         <td className="p-3 pr-4 text-center">
                           {e.inversionPotencial ? (
-                            <span className="text-[10px] bg-[#B3985B]/20 text-[#B3985B] border border-[#B3985B]/30 px-2 py-0.5 rounded-full font-medium">
-                              💡 Considerar
+                            <span className="inline-flex items-center gap-1 text-[10px] bg-[#B3985B]/20 text-[#B3985B] border border-[#B3985B]/30 px-2 py-0.5 rounded-full font-medium">
+                              <Lightbulb strokeWidth={1.75} className="w-3 h-3" /> Considerar
                             </span>
                           ) : <span className="text-gray-700">—</span>}
                         </td>
@@ -506,8 +507,8 @@ export default function AnalisisInventarioPage() {
                   <p className="text-gray-500 text-xs mt-0.5">{mesLabel} · Listo para compartir con socios</p>
                 </div>
                 <button onClick={() => window.print()}
-                  className="text-xs bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 px-3 py-1.5 rounded-lg transition-colors">
-                  🖨 Imprimir / PDF
+                  className="inline-flex items-center gap-1.5 text-xs bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 px-3 py-1.5 rounded-lg transition-colors">
+                  <Printer strokeWidth={1.75} className="w-3.5 h-3.5" /> Imprimir / PDF
                 </button>
               </div>
 
@@ -530,7 +531,7 @@ export default function AnalisisInventarioPage() {
               {/* Top rentados */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-2">🏆 Más rentados este mes</p>
+                  <p className="inline-flex items-center gap-1.5 text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-2"><Trophy strokeWidth={1.75} className="w-3 h-3" /> Más rentados este mes</p>
                   <div className="space-y-1.5">
                     {d.topMasUsados.length === 0
                       ? <p className="text-gray-600 text-xs">Sin datos</p>
@@ -551,7 +552,7 @@ export default function AnalisisInventarioPage() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-2">⚠️ Más subarrendados (costo externo)</p>
+                  <p className="inline-flex items-center gap-1.5 text-[10px] text-gray-500 uppercase tracking-wider font-semibold mb-2"><AlertTriangle strokeWidth={1.75} className="w-3 h-3" /> Más subarrendados (costo externo)</p>
                   <div className="space-y-1.5">
                     {oportunidades.length === 0
                       ? <p className="text-gray-600 text-xs">Sin subrentas frecuentes este mes</p>
@@ -604,7 +605,7 @@ export default function AnalisisInventarioPage() {
                             <p className="text-gray-600 text-[10px] mt-0.5">{e.proveedorNombre}</p>
                           </div>
                           <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ml-2 ${prioridad === "alta" ? "bg-[#B3985B]/20 text-[#B3985B] border border-[#B3985B]/30" : "bg-[#1a1a1a] text-gray-400 border border-[#222]"}`}>
-                            {prioridad === "alta" ? "⚡ Alta prioridad" : "💡 Considerar"}
+                            {prioridad === "alta" ? <span className="inline-flex items-center gap-1"><Zap strokeWidth={1.75} className="w-3 h-3" /> Alta prioridad</span> : <span className="inline-flex items-center gap-1"><Lightbulb strokeWidth={1.75} className="w-3 h-3" /> Considerar</span>}
                           </span>
                         </div>
                         <div className="grid grid-cols-2 gap-2 mt-3">

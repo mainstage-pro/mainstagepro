@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
+import { Package, AlertTriangle, ClipboardList } from "lucide-react";
 
 interface Equipo {
   id: string; tipo: string; cantidad: number;
@@ -253,7 +254,7 @@ export default function RecoleccionesPage() {
       {/* Lista */}
       {lista.length === 0 ? (
         <div className="ms-card p-12 text-center">
-          <p className="text-4xl mb-3">📦</p>
+          <Package strokeWidth={1.75} className="w-9 h-9 mx-auto mb-3 text-gray-600" />
           <p className="text-gray-400 font-medium">Sin recolecciones {filtro === "completadas" ? "completadas" : "activas"}</p>
           <p className="text-gray-600 text-sm mt-1">Los proyectos de renta aparecerán aquí automáticamente</p>
         </div>
@@ -261,7 +262,7 @@ export default function RecoleccionesPage() {
         <div className="space-y-3">
           {filtro !== "completadas" && vencidas.length > 0 && (
             <div className="bg-red-900/20 border border-red-700/40 rounded-xl px-4 py-3 flex items-center gap-3">
-              <span className="text-red-400">⚠</span>
+              <AlertTriangle strokeWidth={1.75} className="w-4 h-4 shrink-0 text-red-400" />
               <p className="text-red-400 text-sm font-medium">
                 {vencidas.length} {vencidas.length === 1 ? "recolección venció" : "recolecciones vencieron"} — el equipo debió regresar a bodega
               </p>
@@ -286,7 +287,7 @@ export default function RecoleccionesPage() {
                     <Link href={`/proyectos/${p.id}`} className="text-white font-semibold text-sm hover:text-[#B3985B] transition-colors">
                       {p.nombre}
                     </Link>
-                    {esVencida && <span className="text-xs bg-red-900/50 text-red-400 px-2 py-0.5 rounded-full font-medium">⚠ VENCIDA</span>}
+                    {esVencida && <span className="inline-flex items-center gap-1 text-xs bg-red-900/50 text-red-400 px-2 py-0.5 rounded-full font-medium"><AlertTriangle strokeWidth={1.75} className="w-3 h-3" /> VENCIDA</span>}
                     {esHoy && <span className="text-xs bg-yellow-900/50 text-yellow-400 px-2 py-0.5 rounded-full font-medium">HOY</span>}
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sc.bg} ${sc.text}`}>{sc.label}</span>
@@ -374,8 +375,8 @@ export default function RecoleccionesPage() {
                         {!salida ? (
                           <div className="space-y-1">
                             <button onClick={() => openModal(p, "salida")}
-                              className="w-full py-2 rounded-lg bg-blue-900/30 border border-blue-800/40 text-blue-400 text-xs font-semibold hover:bg-blue-900/50 transition-colors">
-                              📋 Protocolo de salida
+                              className="w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-lg bg-blue-900/30 border border-blue-800/40 text-blue-400 text-xs font-semibold hover:bg-blue-900/50 transition-colors">
+                              <ClipboardList strokeWidth={1.75} className="w-3.5 h-3.5" /> Protocolo de salida
                             </button>
                             <button onClick={() => saltarSalida(p.id)}
                               className="w-full text-center text-[10px] text-gray-600 hover:text-gray-400 transition-colors py-0.5">

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { Lock } from 'lucide-react'
 import { getAreaColor } from '@/lib/areaColors'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -295,7 +296,7 @@ export default function HistorialPage() {
   if (sinAcceso) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
-        <p className="text-2xl">🔒</p>
+        <Lock strokeWidth={1.5} className="w-7 h-7 text-gray-500" />
         <p className="text-white font-semibold">Solo disponible para Dirección</p>
         <p className="text-[#444] text-sm">Esta sección es exclusiva para el rol Admin / Director.</p>
       </div>

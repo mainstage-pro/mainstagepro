@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
+import { DollarSign } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -298,7 +299,7 @@ export default function RepartosPage() {
         <div className="text-center py-16 text-gray-600">Cargando...</div>
       ) : repartos.length === 0 ? (
         <div className="text-center py-16 text-gray-600 border border-dashed border-[#222] rounded-2xl">
-          <p className="text-4xl mb-3">💰</p>
+          <DollarSign strokeWidth={1.5} className="w-9 h-9 mx-auto mb-3 text-gray-700" />
           <p className="text-sm">No hay repartos de utilidades</p>
         </div>
       ) : (

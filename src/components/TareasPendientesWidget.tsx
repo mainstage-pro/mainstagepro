@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
+import { PartyPopper, Zap, AlertTriangle, CheckCircle2 } from "lucide-react";
 
 // ── Constantes ───────────────────────────────────────────────────────────────
 
@@ -123,7 +124,7 @@ function CeoWidget({ tareas }: { tareas: TareaRow[] }) {
   if (tareas.length === 0) {
     return (
       <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-10 text-center">
-        <p className="text-2xl mb-2">🎉</p>
+        <PartyPopper strokeWidth={1.75} className="w-6 h-6 mx-auto mb-2 text-[#B3985B]" />
         <p className="text-[#555] text-sm">Sin tareas pendientes para hoy</p>
       </div>
     );
@@ -135,13 +136,13 @@ function CeoWidget({ tareas }: { tareas: TareaRow[] }) {
       <div className="flex items-center gap-3 px-1">
         <span className="text-[11px] text-[#555]">{tareas.length} tarea{tareas.length !== 1 ? "s" : ""} pendientes</span>
         {urgentes > 0 && (
-          <span className="text-[10px] bg-red-900/30 text-red-400 px-2 py-0.5 rounded-full font-semibold">
-            ⚡ {urgentes} urgente{urgentes !== 1 ? "s" : ""}
+          <span className="inline-flex items-center gap-1 text-[10px] bg-red-900/30 text-red-400 px-2 py-0.5 rounded-full font-semibold">
+            <Zap strokeWidth={1.75} className="w-3 h-3" /> {urgentes} urgente{urgentes !== 1 ? "s" : ""}
           </span>
         )}
         {vencidas > 0 && (
-          <span className="text-[10px] bg-orange-900/30 text-orange-400 px-2 py-0.5 rounded-full font-semibold">
-            ⚠ {vencidas} vencida{vencidas !== 1 ? "s" : ""}
+          <span className="inline-flex items-center gap-1 text-[10px] bg-orange-900/30 text-orange-400 px-2 py-0.5 rounded-full font-semibold">
+            <AlertTriangle strokeWidth={1.75} className="w-3 h-3" /> {vencidas} vencida{vencidas !== 1 ? "s" : ""}
           </span>
         )}
         <Link href="/operaciones/equipo" className="ml-auto text-[10px] text-[#444] hover:text-[#B3985B] transition-colors">
@@ -170,13 +171,13 @@ function CeoWidget({ tareas }: { tareas: TareaRow[] }) {
                 </p>
                 <div className="flex items-center gap-1">
                   {urg > 0 && (
-                    <span className="text-[9px] bg-red-900/50 text-red-400 px-1.5 py-0.5 rounded font-bold">
-                      {urg}⚡
+                    <span className="inline-flex items-center gap-0.5 text-[9px] bg-red-900/50 text-red-400 px-1.5 py-0.5 rounded font-bold">
+                      {urg}<Zap strokeWidth={1.75} className="w-2.5 h-2.5" />
                     </span>
                   )}
                   {venc > 0 && (
-                    <span className="text-[9px] bg-orange-900/40 text-orange-400 px-1.5 py-0.5 rounded font-bold">
-                      {venc}⚠
+                    <span className="inline-flex items-center gap-0.5 text-[9px] bg-orange-900/40 text-orange-400 px-1.5 py-0.5 rounded font-bold">
+                      {venc}<AlertTriangle strokeWidth={1.75} className="w-2.5 h-2.5" />
                     </span>
                   )}
                   <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${col.badge}`}>
@@ -217,7 +218,7 @@ function AreaWidget({ tareas, area }: { tareas: TareaRow[]; area: string }) {
   if (tareas.length === 0) {
     return (
       <div className="bg-[#111] border border-[#1e1e1e] rounded-xl py-8 text-center">
-        <p className="text-2xl mb-2">✅</p>
+        <CheckCircle2 strokeWidth={1.75} className="w-6 h-6 mx-auto mb-2 text-emerald-400" />
         <p className="text-[#555] text-sm">Sin tareas para hoy en esta área</p>
       </div>
     );

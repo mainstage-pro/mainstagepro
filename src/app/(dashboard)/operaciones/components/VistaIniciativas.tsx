@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { User, Calendar } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Subtarea = { id: string; titulo: string; completada: boolean; orden: number; };
@@ -165,10 +166,10 @@ function IniciativaCard({
               </span>
             )}
             {ini.responsable && (
-              <span className="text-[10.5px] text-[#555]">👤 {ini.responsable}</span>
+              <span className="inline-flex items-center gap-1 text-[10.5px] text-[#555]"><User strokeWidth={1.75} className="w-3 h-3" /> {ini.responsable}</span>
             )}
             {ini.fechaLimite && (
-              <span className="text-[10.5px] text-[#555]">📅 {formatDate(ini.fechaLimite)}</span>
+              <span className="inline-flex items-center gap-1 text-[10.5px] text-[#555]"><Calendar strokeWidth={1.75} className="w-3 h-3" /> {formatDate(ini.fechaLimite)}</span>
             )}
           </div>
           {/* Progress bar */}

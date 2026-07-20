@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Users } from 'lucide-react'
 
 // ── Tipo compartido de instancia del plan de trabajo ────────────────────────────
 
@@ -175,7 +176,7 @@ export default function MiDiaItem({
           {instancia.responsable ? (
             <span className="text-xs text-gray-500">{instancia.responsable.name.split(' ')[0]}</span>
           ) : t.puestoDefault === 'Todo el equipo' ? (
-            <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full">👥 Todos</span>
+            <span className="inline-flex items-center gap-1 text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded-full"><Users strokeWidth={1.75} className="w-3 h-3" /> Todos</span>
           ) : null}
         </td>
 

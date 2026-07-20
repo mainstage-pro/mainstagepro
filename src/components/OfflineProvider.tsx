@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { getQueueSize, requestSync, clearQueue } from "@/lib/offline-queue";
+import { WifiOff } from "lucide-react";
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 export function useOnlineStatus() {
@@ -148,7 +149,7 @@ export default function OfflineProvider() {
       >
         {!online && (
           <>
-            <span className="text-base">📡</span>
+            <WifiOff strokeWidth={1.75} className="w-4 h-4" />
             <span>Sin conexión{queueSize > 0 ? ` · ${queueSize} cambio${queueSize !== 1 ? "s" : ""} pendiente${queueSize !== 1 ? "s" : ""}` : ""}</span>
           </>
         )}
