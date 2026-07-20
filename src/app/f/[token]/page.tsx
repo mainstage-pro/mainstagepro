@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
+import { ClipboardList, MessageCircle } from "lucide-react";
 import DiscoveryForm from "@/components/crm/DiscoveryForm";
 import { ToastProvider } from "@/components/Toast";
 
@@ -80,7 +81,7 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
   if (completado && trato) return (
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
       <div className="max-w-md w-full text-center space-y-4">
-        <div className="w-14 h-14 rounded-full bg-[#B3985B]/20 border border-[#B3985B]/40 flex items-center justify-center mx-auto text-2xl">📋</div>
+        <div className="w-14 h-14 rounded-full bg-[#B3985B]/20 border border-[#B3985B]/40 flex items-center justify-center mx-auto"><ClipboardList strokeWidth={1.75} className="w-6 h-6 text-[#B3985B]" /></div>
         <h1 className="text-white text-lg font-semibold">Ya enviaste este formulario</h1>
         <p className="text-gray-400 text-sm">¿Cambió algo? Puedes actualizar tu información cuando quieras.</p>
         <button
@@ -94,9 +95,9 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
             `Hola, soy ${trato.cliente?.nombre ?? "tu cliente"} y tengo dudas sobre mi evento`
           )}`}
           target="_blank" rel="noopener noreferrer"
-          className="block text-sm text-green-500 hover:text-green-400 transition-colors"
+          className="inline-flex items-center justify-center gap-1.5 text-sm text-green-500 hover:text-green-400 transition-colors"
         >
-          💬 Contactar a mi asesor por WhatsApp
+          <MessageCircle strokeWidth={1.75} className="w-4 h-4" /> Contactar a mi asesor por WhatsApp
         </a>
       </div>
     </div>

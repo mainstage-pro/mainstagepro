@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { CheckCircle2, Lock } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import TaskItem, { type TareaItem } from "@/app/(dashboard)/operaciones/components/TaskItem";
 import TaskPanel, { type TareaDetalle } from "@/app/(dashboard)/operaciones/components/TaskPanel";
@@ -428,7 +429,7 @@ export default function ReporteSemanalLandingPage() {
           {/* ── Confirmación ── */}
           <div className="text-center">
             <div className="w-20 h-20 bg-[#B3985B]/10 border border-[#B3985B]/20 rounded-2xl flex items-center justify-center mx-auto mb-5">
-              <span className="text-4xl">✅</span>
+              <CheckCircle2 strokeWidth={1.75} className="w-9 h-9 text-[#B3985B]" />
             </div>
             <h1 className="text-white font-bold text-xl mb-2">¡Reporte enviado!</h1>
             <p className="text-gray-500 text-sm leading-relaxed mb-2">
@@ -523,7 +524,7 @@ export default function ReporteSemanalLandingPage() {
             </p>
 
             <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl p-4 mb-5 text-left space-y-1.5">
-              <p className="text-[#B3985B] text-xs font-semibold mb-2">🔒 Lo que escribas aquí:</p>
+              <p className="text-[#B3985B] text-xs font-semibold mb-2 inline-flex items-center gap-1.5"><Lock strokeWidth={1.75} className="w-3.5 h-3.5" /> Lo que escribas aquí:</p>
               <p className="text-gray-500 text-xs">• No es visible para otros compañeros del equipo</p>
               <p className="text-gray-500 text-xs">• Solo lo lee Dirección</p>
               <p className="text-gray-500 text-xs">• Sirve para mejorar condiciones y tomar mejores decisiones</p>
@@ -569,8 +570,8 @@ export default function ReporteSemanalLandingPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-[10px] text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/20 px-2 py-0.5 rounded-full font-medium">
-              🔒 Solo Dirección
+            <span className="inline-flex items-center gap-1 text-[10px] text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/20 px-2 py-0.5 rounded-full font-medium">
+              <Lock strokeWidth={1.75} className="w-3 h-3" /> Solo Dirección
             </span>
             <div className="text-right hidden sm:block">
               <p className="text-white text-xs font-semibold">{session.name}</p>
@@ -910,8 +911,8 @@ export default function ReporteSemanalLandingPage() {
               {enviando ? "Enviando reporte..." : `Enviar reporte — Semana ${semana} ✓`}
             </button>
             <div className="flex items-center justify-center">
-              <span className="text-[10px] text-[#B3985B]/70 bg-[#B3985B]/5 border border-[#B3985B]/15 px-3 py-0.5 rounded-full">
-                🔒 Solo Dirección tiene acceso a tus respuestas
+              <span className="inline-flex items-center gap-1 text-[10px] text-[#B3985B]/70 bg-[#B3985B]/5 border border-[#B3985B]/15 px-3 py-0.5 rounded-full">
+                <Lock strokeWidth={1.75} className="w-3 h-3" /> Solo Dirección tiene acceso a tus respuestas
               </span>
             </div>
             <p className="text-center text-gray-700 text-[10px]">

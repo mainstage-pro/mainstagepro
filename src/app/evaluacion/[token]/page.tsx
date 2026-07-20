@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { AlertTriangle, CheckCircle2, PartyPopper } from "lucide-react";
 
 // ─── 5 preguntas fijas ────────────────────────────────────────────────────────
 
@@ -135,7 +136,7 @@ export default function EvaluacionPage() {
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">⚠️</span>
+            <AlertTriangle strokeWidth={1.75} className="w-7 h-7 text-red-400" />
           </div>
           <h1 className="text-white font-bold text-lg mb-2">Enlace no válido</h1>
           <p className="text-gray-500 text-sm">{error}</p>
@@ -151,7 +152,7 @@ export default function EvaluacionPage() {
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <div className="w-20 h-20 bg-[#B3985B]/10 border border-[#B3985B]/20 rounded-2xl flex items-center justify-center mx-auto mb-5">
-            <span className="text-4xl">✅</span>
+            <CheckCircle2 strokeWidth={1.75} className="w-9 h-9 text-[#B3985B]" />
           </div>
           <h1 className="text-white font-bold text-xl mb-2">¡Ya enviaste tu evaluación!</h1>
           <p className="text-gray-500 text-sm leading-relaxed mb-6">
@@ -171,7 +172,7 @@ export default function EvaluacionPage() {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
-          <div className="text-6xl mb-5">🎉</div>
+          <div className="flex justify-center mb-5"><PartyPopper strokeWidth={1.75} className="w-12 h-12 text-[#B3985B]" /></div>
           <h1 className="text-white font-bold text-xl mb-3">¡Muchas gracias!</h1>
           <p className="text-gray-400 text-sm leading-relaxed mb-2">
             Recibimos tu evaluación

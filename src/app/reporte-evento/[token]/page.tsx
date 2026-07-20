@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
+import { SearchX } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -269,7 +270,7 @@ export default function ReportePostEventoPage() {
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
       <div className="text-center max-w-sm">
         <div className="w-16 h-16 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <span className="text-2xl">🔍</span>
+          <SearchX strokeWidth={1.75} className="w-7 h-7 text-red-400" />
         </div>
         <h1 className="text-white font-bold text-lg mb-2">Link no válido</h1>
         <p className="text-gray-500 text-sm">Este reporte no existe o el link ha expirado.</p>

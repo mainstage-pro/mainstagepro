@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { Link2, PartyPopper } from "lucide-react";
 
 type Trato = {
   id: string;
@@ -89,7 +90,7 @@ export default function BriefPage() {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
         <div className="text-center">
-          <p className="text-4xl mb-4">🔗</p>
+          <div className="flex justify-center mb-4"><Link2 strokeWidth={1.75} className="w-9 h-9 text-[#666]" /></div>
           <p className="text-white text-lg font-semibold mb-2">Link inválido</p>
           <p className="text-[#666] text-sm">Este enlace no es válido o ya expiró.</p>
         </div>
@@ -109,7 +110,7 @@ export default function BriefPage() {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
         <div className="text-center max-w-sm">
-          <p className="text-5xl mb-5">🎉</p>
+          <div className="flex justify-center mb-5"><PartyPopper strokeWidth={1.75} className="w-11 h-11 text-[#B3985B]" /></div>
           <p className="text-white text-xl font-bold mb-2">¡Información recibida!</p>
           <p className="text-[#666] text-sm">
             Gracias {trato.clienteNombre}. Tu equipo de Mainstage revisará los detalles y se pondrá en contacto pronto.

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
+import { Music, Wine, Building2, type LucideIcon } from "lucide-react";
 
 const GOLD = "#B3985B";
 const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20obtener%20informaci%C3%B3n%20sobre%20producci%C3%B3n%20para%20mi%20evento.";
@@ -11,7 +12,7 @@ const CATEGORIAS = [
     label: "Eventos Musicales",
     sub: "Conciertos · Festivales · DJ Sets · Shows en vivo",
     cover: "/images/presentacion/musicales/Musicales-076.jpg",
-    emoji: "🎵",
+    icon: Music as LucideIcon,
     fotos: [
       { src: "/images/presentacion/musicales/Musicales-016.jpg",                    caption: "Producción completa en vivo" },
       { src: "/images/presentacion/musicales/Musicales-037.jpg",                    caption: "Iluminación · Show en escenario" },
@@ -28,7 +29,7 @@ const CATEGORIAS = [
     label: "Eventos Sociales",
     sub: "Bodas · XV Años · Celebraciones privadas",
     cover: "/images/presentacion/sociales/s-boda-elegante.jpg",
-    emoji: "🥂",
+    icon: Wine as LucideIcon,
     fotos: [
       { src: "/images/presentacion/sociales/s-boda-elegante.jpg",   caption: "Boda · Producción exterior elegante" },
       { src: "/images/presentacion/sociales/s-dj-salon.png",        caption: "DJ · Ambiente de salón" },
@@ -43,7 +44,7 @@ const CATEGORIAS = [
     label: "Eventos Empresariales",
     sub: "Conferencias · Lanzamientos · Corporativos",
     cover: "/images/presentacion/empresariales/e-auditorio.jpg",
-    emoji: "🏢",
+    icon: Building2 as LucideIcon,
     fotos: [
       { src: "/images/presentacion/empresariales/e-auditorio.jpg",        caption: "Auditorio · Producción completa" },
       { src: "/images/presentacion/empresariales/e-sala-pantallas.jpg",   caption: "Sala · Conferencia profesional" },
@@ -243,7 +244,7 @@ function CatCard({
       {/* Content */}
       <div className="absolute inset-0 flex flex-col justify-end p-8">
         <div className="flex items-center gap-3 mb-3">
-          <span className="text-3xl">{cat.emoji}</span>
+          <cat.icon strokeWidth={1.75} className="w-7 h-7" style={{ color: active ? GOLD : "rgba(255,255,255,0.85)" }} />
           {active && (
             <span
               className="text-[10px] font-semibold uppercase tracking-widest px-2.5 py-1 rounded-full"
@@ -466,7 +467,7 @@ export default function GaleriaClient() {
               {/* Section header */}
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-1">{activeCat.emoji} {activeCat.id}</p>
+                  <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-1 inline-flex items-center gap-1.5"><activeCat.icon strokeWidth={1.75} className="w-3.5 h-3.5" /> {activeCat.id}</p>
                   <h2 className="font-bold text-white text-2xl" style={{ letterSpacing: "-0.02em" }}>
                     {activeCat.label}
                   </h2>

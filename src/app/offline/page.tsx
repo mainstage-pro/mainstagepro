@@ -1,8 +1,10 @@
+import { WifiOff } from "lucide-react";
+
 export default function OfflinePage() {
   return (
     <div className="min-h-screen bg-[#0d0d0d] flex items-center justify-center p-6">
       <div className="bg-[#111] border border-[#222] rounded-2xl p-10 max-w-sm w-full text-center">
-        <p className="text-5xl mb-5">📡</p>
+        <div className="flex justify-center mb-5"><WifiOff strokeWidth={1.75} className="w-11 h-11 text-[#B3985B]" /></div>
         <h1 className="text-[#B3985B] text-2xl font-bold mb-3">Sin conexión</h1>
         <p className="text-gray-500 text-sm leading-relaxed mb-6">
           No hay conexión a internet. Cuando te reconectes, todos los cambios pendientes se sincronizarán automáticamente.

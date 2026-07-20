@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
+import { Link2, Briefcase, Camera, File } from "lucide-react";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface EquipoProveedor {
@@ -375,7 +376,7 @@ function EquipoCard({ equipo, token, onUpdated, onDeleted }: {
           {equipo.pesoKg && <span className="text-[11px] bg-[#0d0d0d] text-white/70 px-2.5 py-1 rounded-lg">{equipo.pesoKg}kg</span>}
           {equipo.dimensiones && <span className="text-[11px] bg-[#0d0d0d] text-white/70 px-2.5 py-1 rounded-lg">{equipo.dimensiones}</span>}
           {equipo.tiempoSetupMin && <span className="text-[11px] bg-[#0d0d0d] text-white/40 px-2.5 py-1 rounded-lg">Setup {equipo.tiempoSetupMin}min</span>}
-          {equipo.incluyeCase && <span className="text-[11px] bg-[#0d0d0d] text-white/70 px-2.5 py-1 rounded-lg">🧳 Case incluido</span>}
+          {equipo.incluyeCase && <span className="inline-flex items-center gap-1 text-[11px] bg-[#0d0d0d] text-white/70 px-2.5 py-1 rounded-lg"><Briefcase strokeWidth={1.75} className="w-3.5 h-3.5" /> Case incluido</span>}
         </div>
       )}
 
@@ -387,11 +388,11 @@ function EquipoCard({ equipo, token, onUpdated, onDeleted }: {
         <div className="flex gap-3 mb-3">
           {equipo.fotosUrls && (
             <a href={equipo.fotosUrls} target="_blank" rel="noopener noreferrer"
-              className="text-xs text-[#B3985B] hover:underline">📷 Ver fotos →</a>
+              className="inline-flex items-center gap-1 text-xs text-[#B3985B] hover:underline"><Camera strokeWidth={1.75} className="w-3.5 h-3.5" /> Ver fotos →</a>
           )}
           {equipo.fichaTecnicaUrl && (
             <a href={equipo.fichaTecnicaUrl} target="_blank" rel="noopener noreferrer"
-              className="text-xs text-[#B3985B] hover:underline">📄 Ficha técnica →</a>
+              className="inline-flex items-center gap-1 text-xs text-[#B3985B] hover:underline"><File strokeWidth={1.75} className="w-3.5 h-3.5" /> Ficha técnica →</a>
           )}
         </div>
       )}
@@ -498,7 +499,7 @@ export default function PortalProveedorPage({ params }: { params: Promise<{ toke
   if (error || !proveedor) return (
     <div className="min-h-screen bg-[#080808] flex items-center justify-center p-6">
       <div className="bg-white/[0.025] border border-red-800/40 rounded-2xl p-8 max-w-md text-center">
-        <p className="text-4xl mb-4">🔗</p>
+        <div className="flex justify-center mb-4"><Link2 strokeWidth={1.75} className="w-9 h-9 text-white/40" /></div>
         <p className="text-white font-semibold text-lg mb-2">Link inválido o expirado</p>
         <p className="text-white/30 text-sm">Este enlace de registro no es válido. Solicita uno nuevo a Mainstage Pro.</p>
       </div>

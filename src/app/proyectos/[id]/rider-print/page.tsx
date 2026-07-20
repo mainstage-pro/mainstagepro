@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
+import { Printer } from "lucide-react";
 
 export default async function RiderPrintPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -86,8 +87,8 @@ export default async function RiderPrintPage({ params }: { params: Promise<{ id:
 
         {/* Print button */}
         <div className="no-print" style={{ marginBottom: 16, display: "flex", gap: 8 }}>
-          <button id="btn-print" style={{ background: "#111", color: "white", border: "none", padding: "8px 20px", borderRadius: 6, fontSize: 13, cursor: "pointer", fontWeight: 600 }}>
-            🖨️ Imprimir / Guardar PDF
+          <button id="btn-print" style={{ background: "#111", color: "white", border: "none", padding: "8px 20px", borderRadius: 6, fontSize: 13, cursor: "pointer", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Printer strokeWidth={1.75} style={{ width: 14, height: 14 }} /> Imprimir / Guardar PDF
           </button>
           <a href={`/proyectos/${id}`} style={{ background: "#f0f0f0", color: "#333", border: "none", padding: "8px 16px", borderRadius: 6, fontSize: 13, cursor: "pointer", textDecoration: "none", display: "inline-flex", alignItems: "center" }}>
             ← Volver al proyecto

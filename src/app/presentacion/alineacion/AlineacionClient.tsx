@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ClipboardList, Shirt, Wrench, Target, RefreshCw, TrendingUp, type LucideIcon } from "lucide-react";
 
 const GOLD = "#B3985B";
 
@@ -517,18 +518,18 @@ export default function AlineacionClient() {
           <SectionTitle tag="05 — Estándares de ejecución">Cómo operamos<br />en la práctica.</SectionTitle>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-            {[
-              { icon: "📋", title: "Orden maestro",      body: "Todo en la plataforma Mainstage. Nada fuera del sistema." },
-              { icon: "👔", title: "Imagen profesional", body: "En el evento, en el taller, con el cliente." },
-              { icon: "🔧", title: "Espacios limpios",   body: "Al cierre de cada jornada, sin excepción." },
-              { icon: "🎯", title: "Anticipación",       body: "Resolver antes de que se vuelva visible." },
-              { icon: "🔄", title: "Consistencia",       body: "Mejor bien siempre que brillante una vez." },
-              { icon: "📈", title: "Mejora continua",    body: "Todos proponen. No solo se reportan problemas." },
-            ].map((item, i) => (
+            {([
+              { icon: ClipboardList, title: "Orden maestro",      body: "Todo en la plataforma Mainstage. Nada fuera del sistema." },
+              { icon: Shirt,         title: "Imagen profesional", body: "En el evento, en el taller, con el cliente." },
+              { icon: Wrench,        title: "Espacios limpios",   body: "Al cierre de cada jornada, sin excepción." },
+              { icon: Target,        title: "Anticipación",       body: "Resolver antes de que se vuelva visible." },
+              { icon: RefreshCw,     title: "Consistencia",       body: "Mejor bien siempre que brillante una vez." },
+              { icon: TrendingUp,    title: "Mejora continua",    body: "Todos proponen. No solo se reportan problemas." },
+            ] as { icon: LucideIcon; title: string; body: string }[]).map((item, i) => (
               <R key={item.title} delay={i * 55}>
                 <div className="rounded-xl p-5 h-full"
                      style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                  <div className="text-xl mb-3">{item.icon}</div>
+                  <item.icon strokeWidth={1.75} className="w-5 h-5 mb-3" style={{ color: GOLD }} />
                   <p className="text-white font-semibold text-sm mb-1">{item.title}</p>
                   <p className="text-white/35 text-xs">{item.body}</p>
                 </div>

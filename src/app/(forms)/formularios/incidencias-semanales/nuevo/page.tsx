@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { CheckCircle2, AlertTriangle, Lock, Circle } from "lucide-react";
 import { useToast } from "@/components/Toast";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
@@ -228,13 +229,13 @@ export default function IncidenciasLandingPage() {
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <div className="w-20 h-20 bg-[#B3985B]/10 border border-[#B3985B]/20 rounded-2xl flex items-center justify-center mx-auto mb-5">
-            <span className="text-4xl">✅</span>
+            <CheckCircle2 strokeWidth={1.75} className="w-9 h-9 text-[#B3985B]" />
           </div>
           <h1 className="text-white font-bold text-xl mb-2">¡Incidencias registradas!</h1>
           <p className="text-gray-500 text-sm leading-relaxed mb-2">
             Gracias, <span className="text-white font-semibold">{session.name}</span>. Se registraron <strong className="text-white">{total}</strong> incidencias para la semana {semana}.
           </p>
-          {criticas > 0 && <p className="text-red-400 text-xs mb-4">🔴 {criticas} incidencia{criticas !== 1 ? "s" : ""} crítica{criticas !== 1 ? "s" : ""} notificada{criticas !== 1 ? "s" : ""} a Dirección.</p>}
+          {criticas > 0 && <p className="text-red-400 text-xs mb-4 inline-flex items-center gap-1.5"><Circle className="w-2.5 h-2.5 fill-current text-red-400" /> {criticas} incidencia{criticas !== 1 ? "s" : ""} crítica{criticas !== 1 ? "s" : ""} notificada{criticas !== 1 ? "s" : ""} a Dirección.</p>}
           <p className="text-gray-700 text-xs">Solo Dirección tiene acceso a esta información.</p>
           <div className="mt-8 pt-6 border-t border-[#1e1e1e] flex items-center justify-center gap-2">
             <div className="w-6 h-6 rounded-md bg-[#111] border border-[#2a2a2a] flex items-center justify-center">
@@ -265,7 +266,7 @@ export default function IncidenciasLandingPage() {
 
           <div className="bg-[#111] border border-[#1e1e1e] rounded-2xl p-7 text-center">
             <div className="w-14 h-14 bg-[#B3985B]/10 border border-[#B3985B]/20 rounded-2xl flex items-center justify-center mx-auto mb-5">
-              <span className="text-3xl">⚠️</span>
+              <AlertTriangle strokeWidth={1.75} className="w-7 h-7 text-[#B3985B]" />
             </div>
             <h1 className="text-white font-bold text-lg mb-3">Incidencias Semanales — Privado</h1>
             <p className="text-gray-400 text-sm leading-relaxed mb-5">
@@ -273,7 +274,7 @@ export default function IncidenciasLandingPage() {
             </p>
 
             <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-xl p-4 mb-5 text-left space-y-1.5">
-              <p className="text-[#B3985B] text-xs font-semibold mb-2">🔒 Importante saber:</p>
+              <p className="text-[#B3985B] text-xs font-semibold mb-2 inline-flex items-center gap-1.5"><Lock strokeWidth={1.75} className="w-3.5 h-3.5" /> Importante saber:</p>
               <p className="text-gray-500 text-xs">• Ningún compañero verá lo que escribas</p>
               <p className="text-gray-500 text-xs">• Solo lo lee Dirección para tomar acciones</p>
               <p className="text-gray-500 text-xs">• Reportar incidencias ayuda a mejorar los procesos</p>
@@ -314,8 +315,8 @@ export default function IncidenciasLandingPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-[10px] text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/20 px-2 py-0.5 rounded-full font-medium">
-              🔒 Solo Dirección
+            <span className="inline-flex items-center gap-1 text-[10px] text-[#B3985B] bg-[#B3985B]/10 border border-[#B3985B]/20 px-2 py-0.5 rounded-full font-medium">
+              <Lock strokeWidth={1.75} className="w-3 h-3" /> Solo Dirección
             </span>
             <div className="text-right hidden sm:block">
               <p className="text-white text-xs font-semibold">{session.name}</p>
@@ -367,8 +368,8 @@ export default function IncidenciasLandingPage() {
               {guardando ? "Guardando..." : total === 0 ? "Agrega al menos una incidencia" : `Guardar registro — ${total} incidencia${total !== 1 ? "s" : ""} ✓`}
             </button>
             <div className="flex items-center justify-center">
-              <span className="text-[10px] text-[#B3985B]/70 bg-[#B3985B]/5 border border-[#B3985B]/15 px-3 py-0.5 rounded-full">
-                🔒 Solo Dirección tiene acceso a tus respuestas
+              <span className="inline-flex items-center gap-1 text-[10px] text-[#B3985B]/70 bg-[#B3985B]/5 border border-[#B3985B]/15 px-3 py-0.5 rounded-full">
+                <Lock strokeWidth={1.75} className="w-3 h-3" /> Solo Dirección tiene acceso a tus respuestas
               </span>
             </div>
           </div>

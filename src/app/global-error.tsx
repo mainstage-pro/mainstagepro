@@ -1,6 +1,7 @@
 "use client";
 
 import * as Sentry from "@sentry/nextjs";
+import { AlertTriangle } from "lucide-react";
 import { useEffect } from "react";
 
 export default function GlobalError({
@@ -18,7 +19,9 @@ export default function GlobalError({
     <html lang="es">
       <body style={{ background: "#0a0a0a", color: "#fff", fontFamily: "system-ui, sans-serif", display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", margin: 0 }}>
         <div style={{ textAlign: "center", maxWidth: 420 }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+            <AlertTriangle size={44} strokeWidth={1.75} color="#B3985B" />
+          </div>
           <h2 style={{ color: "#B3985B", fontSize: 22, marginBottom: 8 }}>
             Algo salió mal
           </h2>

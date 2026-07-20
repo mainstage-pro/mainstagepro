@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
+import { PartyPopper, Heart } from "lucide-react";
 
 interface PropuestaData {
   candidatoNombre: string;
@@ -93,8 +94,8 @@ export default function PropuestaPublicaPage({ params }: { params: Promise<{ tok
   if (respuesta === "aceptada") return (
     <div className="min-h-screen bg-black flex items-center justify-center p-6">
       <div className="max-w-lg w-full text-center space-y-6">
-        <div className="w-16 h-16 rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 flex items-center justify-center mx-auto text-3xl">
-          🎉
+        <div className="w-16 h-16 rounded-full bg-[#B3985B]/20 border border-[#B3985B]/30 flex items-center justify-center mx-auto">
+          <PartyPopper strokeWidth={1.75} className="w-7 h-7 text-[#B3985B]" />
         </div>
         <div>
           <h1 className="text-2xl font-bold text-white mb-2">¡Bienvenido al equipo, {data.candidatoNombre.split(" ")[0]}!</h1>
@@ -126,8 +127,8 @@ export default function PropuestaPublicaPage({ params }: { params: Promise<{ tok
   if (respuesta === "rechazada") return (
     <div className="min-h-screen bg-black flex items-center justify-center p-6">
       <div className="max-w-lg w-full text-center space-y-5">
-        <div className="w-14 h-14 rounded-full bg-[#1a1a1a] border border-[#333] flex items-center justify-center mx-auto text-2xl">
-          🙏
+        <div className="w-14 h-14 rounded-full bg-[#1a1a1a] border border-[#333] flex items-center justify-center mx-auto">
+          <Heart strokeWidth={1.75} className="w-6 h-6 text-white/40" />
         </div>
         <div>
           <h1 className="text-xl font-semibold text-white mb-2">Gracias, {data.candidatoNombre.split(" ")[0]}</h1>
