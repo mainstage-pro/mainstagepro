@@ -6,6 +6,7 @@ import { formatCurrency } from "@/lib/cotizador";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
+import RowActions from "@/components/ui/RowActions";
 
 // Test de despliegue automático en Vercel
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -1381,97 +1382,87 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
               )}
 
               {/* Acciones */}
-              <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-[#1a1a1a] flex-wrap">
-                {c.estado === "CANCELADO" && (
+              <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-[#1a1a1a]">
+                {c.estado === "CANCELADO" ? (
                   <p className="text-xs text-gray-600 italic">Cancelado — trato marcado como Venta Perdida</p>
-                )}
-                {c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO" && (
+                ) : (
                   <>
-                    <button onClick={() => openModal(c, "cobro")}
-                      className="flex items-center gap-1.5 text-xs font-medium text-black bg-[#B3985B] hover:bg-[#c9a96a] px-3 py-1.5 rounded-lg transition-colors">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                      </svg>
-                      Registrar abono
-                    </button>
-                    <button
-                      onClick={() => openPlan(c.id, 'cxc', c.monto, c.montoCobrado, c.concepto)}
-                      className="flex items-center gap-1.5 text-xs text-purple-400 border border-purple-900/40 hover:border-purple-600/60 hover:bg-purple-900/10 px-3 py-1.5 rounded-lg transition-colors"
-                    >
-                      📅 Plan de cobros
-                    </button>
-                    <button onClick={() => openEdit(c, "cxc")}
-                      className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                      Editar
-                    </button>
-                    <button onClick={() => marcarCobradoManual(c)}
-                      disabled={marcandoLiquidado === c.id}
-                      title="El movimiento ya se registró por otra vía — solo actualiza el estado de esta cuenta"
-                      className="flex items-center gap-1.5 text-xs text-green-500/70 border border-green-900/30 hover:border-green-600/50 hover:text-green-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40">
-                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
-                      <span>Ya cobré<span className="hidden sm:inline"> (sin movimiento)</span></span>
-                    </button>
+                    {c.estado === "LIQUIDADO" && (
+                      <span className="text-xs text-green-400/60 flex items-center gap-1">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        Liquidado
+                      </span>
+                    )}
+                    {(() => {
+                      const activo = c.estado !== "LIQUIDADO";
+                      const tel = (c.empresa?.telefono ?? c.cliente?.telefono) ?? null;
+                      const nom = c.empresa?.nombre ?? c.cliente?.nombre ?? "";
+                      const saldo = c.monto - c.montoCobrado;
+                      return (
+                        <div className="ml-auto">
+                          <RowActions
+                            primary={activo ? {
+                              label: "Registrar abono",
+                              onClick: () => openModal(c, "cobro"),
+                              icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>,
+                            } : undefined}
+                            actions={[
+                              activo && {
+                                label: "Plan de cobros",
+                                onClick: () => openPlan(c.id, 'cxc', c.monto, c.montoCobrado, c.concepto),
+                                icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>,
+                              },
+                              activo && {
+                                label: "Editar",
+                                onClick: () => openEdit(c, "cxc"),
+                                icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
+                              },
+                              activo && {
+                                label: "Ya cobré (sin movimiento)",
+                                onClick: () => marcarCobradoManual(c),
+                                disabled: marcandoLiquidado === c.id,
+                                title: "El movimiento ya se registró por otra vía — solo actualiza el estado de esta cuenta",
+                                icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>,
+                              },
+                              {
+                                label: "Nota de cobro",
+                                href: `/api/cuentas-cobrar/${c.id}/nota`,
+                                external: true,
+                                variant: "gold" as const,
+                                icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
+                              },
+                              c.cotizacion && {
+                                label: "Ver cotización",
+                                href: `/cotizaciones/${c.cotizacion.id}`,
+                                icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
+                              },
+                              c.cotizacion && {
+                                label: "Cotización PDF",
+                                href: `/api/cotizaciones/${c.cotizacion.id}/pdf`,
+                                external: true,
+                                icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>,
+                              },
+                              activo && !!tel && {
+                                label: "WhatsApp",
+                                href: `https://wa.me/${tel.replace(/\D/g, "")}?text=${waMsgCobro(nom, saldo, c.concepto)}`,
+                                external: true,
+                                icon: <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.556 4.122 1.528 5.855L0 24l6.335-1.652A11.954 11.954 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-4.964-1.342l-.356-.212-3.762.98 1.003-3.659-.233-.374A9.818 9.818 0 1112 21.818z"/></svg>,
+                              },
+                              {
+                                label: "Eliminar",
+                                onClick: () => eliminar(c.id, "cxc", c.estado === "LIQUIDADO"),
+                                variant: "danger" as const,
+                                icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>,
+                              },
+                            ]}
+                          />
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
-                {/* Nota de cobro — visible para todas las CxC */}
-                <a href={`/api/cuentas-cobrar/${c.id}/nota`} target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/25 hover:border-[#B3985B]/60 hover:bg-[#B3985B]/5 px-3 py-1.5 rounded-lg transition-colors">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Nota de cobro
-                </a>
-                {c.cotizacion && (
-                  <>
-                    <Link href={`/cotizaciones/${c.cotizacion.id}`}
-                      className="flex items-center gap-1.5 text-xs text-[#6b7280] border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Ver cotización
-                    </Link>
-                    <a href={`/api/cotizaciones/${c.cotizacion.id}/pdf`} target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-xs text-[#6b7280] border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                      Cotización PDF
-                    </a>
-                  </>
-                )}
-                {(() => {
-                  const tel = (c.empresa?.telefono ?? c.cliente?.telefono) ?? null;
-                  const nom = c.empresa?.nombre ?? c.cliente?.nombre ?? "";
-                  const saldo = c.monto - c.montoCobrado;
-                  return c.estado !== "LIQUIDADO" && c.estado !== "CANCELADO" && tel ? (
-                    <a href={`https://wa.me/${tel.replace(/\D/g, "")}?text=${waMsgCobro(nom, saldo, c.concepto)}`}
-                      target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-xs text-green-400 border border-green-900/40 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors">
-                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                        <path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.556 4.122 1.528 5.855L0 24l6.335-1.652A11.954 11.954 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-4.964-1.342l-.356-.212-3.762.98 1.003-3.659-.233-.374A9.818 9.818 0 1112 21.818z"/>
-                      </svg>
-                      WhatsApp
-                    </a>
-                  ) : null;
-                })()}
-                {c.estado === "LIQUIDADO" && (
-                  <span className="text-xs text-green-400/60 flex items-center gap-1">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                    Liquidado
-                  </span>
-                )}
-                <button onClick={() => eliminar(c.id, "cxc", c.estado === "LIQUIDADO")}
-                  className="ml-auto text-xs text-gray-700 hover:text-red-500 px-2 py-1.5 rounded-lg transition-colors">
-                  Eliminar
-                </button>
               </div>
             </div>
           ))}
@@ -1630,71 +1621,69 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                   </div>
                 )}
 
-                <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-[#1a1a1a] flex-wrap">
-                  {c.estado !== "LIQUIDADO" && (
-                    <>
-                      <button onClick={() => openModal(c, "pago")}
-                        className="flex items-center gap-1.5 text-xs font-medium text-black bg-[#B3985B] hover:bg-[#c9a96a] px-3 py-1.5 rounded-lg transition-colors">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                        </svg>
-                        Registrar abono
-                      </button>
-                      <button
-                        onClick={() => openPlan(c.id, 'cxp', c.monto, c.montoPagado, c.concepto)}
-                        className="flex items-center gap-1.5 text-xs text-purple-400 border border-purple-900/40 hover:border-purple-600/60 hover:bg-purple-900/10 px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        📅 Plan de pagos
-                      </button>
-                      <button onClick={() => openEdit(c, "cxp")}
-                        className="flex items-center gap-1.5 text-xs text-gray-400 border border-[#2a2a2a] hover:border-[#B3985B]/40 hover:text-[#B3985B] px-3 py-1.5 rounded-lg transition-colors">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                        Editar
-                      </button>
-                    </>
-                  )}
-                  {telefono && (
-                    <a
-                      href={`https://wa.me/${telefono.replace(/\D/g, "")}?text=${c.estado === "LIQUIDADO"
-                        ? waMsgPago(beneficiario, c.monto, c.concepto)
-                        : encodeURIComponent(`Hola ${beneficiario}, te contactamos de Mainstage Pro respecto al pago de ${formatCurrency(c.monto - c.montoPagado)} por ${c.concepto}.`)}`}
-                      target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-xs text-green-400 border border-green-900/40 hover:border-green-600 px-3 py-1.5 rounded-lg transition-colors">
-                      <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                        <path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.556 4.122 1.528 5.855L0 24l6.335-1.652A11.954 11.954 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-4.964-1.342l-.356-.212-3.762.98 1.003-3.659-.233-.374A9.818 9.818 0 1112 21.818z"/>
-                      </svg>
-                      WhatsApp
-                    </a>
-                  )}
+                <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-[#1a1a1a]">
                   {c.estado === "LIQUIDADO" && (
-                    <>
-                      <span className="text-xs text-green-400/60 flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                        Pagado
-                      </span>
-                      <button onClick={() => anular(c.id, "pago")} disabled={anulando === c.id}
-                        className="text-xs text-red-400/70 border border-red-900/30 hover:border-red-700 hover:text-red-400 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40">
-                        {anulando === c.id ? "Anulando..." : "Anular pago"}
-                      </button>
-                    </>
+                    <span className="text-xs text-green-400/60 flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      Pagado
+                    </span>
                   )}
-                  {/* Nota de pago — visible para todas las CxP */}
-                  <a href={`/api/cuentas-pagar/${c.id}/nota`} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-xs text-[#B3985B] border border-[#B3985B]/25 hover:border-[#B3985B]/60 hover:bg-[#B3985B]/5 px-3 py-1.5 rounded-lg transition-colors">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Nota de pago
-                  </a>
-                  <button onClick={() => eliminar(c.id, "cxp", c.estado === "LIQUIDADO")}
-                    className="ml-auto text-xs text-gray-700 hover:text-red-500 px-2 py-1.5 rounded-lg transition-colors">
-                    Eliminar
-                  </button>
+                  {(() => {
+                    const activo = c.estado !== "LIQUIDADO";
+                    return (
+                      <div className="ml-auto">
+                        <RowActions
+                          primary={activo ? {
+                            label: "Registrar abono",
+                            onClick: () => openModal(c, "pago"),
+                            icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>,
+                          } : undefined}
+                          actions={[
+                            activo && {
+                              label: "Plan de pagos",
+                              onClick: () => openPlan(c.id, 'cxp', c.monto, c.montoPagado, c.concepto),
+                              icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>,
+                            },
+                            activo && {
+                              label: "Editar",
+                              onClick: () => openEdit(c, "cxp"),
+                              icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>,
+                            },
+                            !!telefono && {
+                              label: "WhatsApp",
+                              href: `https://wa.me/${telefono.replace(/\D/g, "")}?text=${c.estado === "LIQUIDADO"
+                                ? waMsgPago(beneficiario, c.monto, c.concepto)
+                                : encodeURIComponent(`Hola ${beneficiario}, te contactamos de Mainstage Pro respecto al pago de ${formatCurrency(c.monto - c.montoPagado)} por ${c.concepto}.`)}`,
+                              external: true,
+                              icon: <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.556 4.122 1.528 5.855L0 24l6.335-1.652A11.954 11.954 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-4.964-1.342l-.356-.212-3.762.98 1.003-3.659-.233-.374A9.818 9.818 0 1112 21.818z"/></svg>,
+                            },
+                            {
+                              label: "Nota de pago",
+                              href: `/api/cuentas-pagar/${c.id}/nota`,
+                              external: true,
+                              variant: "gold" as const,
+                              icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
+                            },
+                            !activo && {
+                              label: anulando === c.id ? "Anulando..." : "Anular pago",
+                              onClick: () => anular(c.id, "pago"),
+                              disabled: anulando === c.id,
+                              variant: "danger" as const,
+                              icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M10 9v6m4-6v6m-9-3a9 9 0 1018 0 9 9 0 00-18 0z" /></svg>,
+                            },
+                            {
+                              label: "Eliminar",
+                              onClick: () => eliminar(c.id, "cxp", c.estado === "LIQUIDADO"),
+                              variant: "danger" as const,
+                              icon: <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>,
+                            },
+                          ]}
+                        />
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             );

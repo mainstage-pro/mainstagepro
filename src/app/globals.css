@@ -9,7 +9,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -351,7 +350,8 @@ input[type="number"]::-webkit-inner-spin-button {
   .ms-page-narrow   { @apply p-4 md:p-6 max-w-3xl mx-auto; }
 
   /* ── Tipografía de página ────────────────────────────────────────────────── */
-  .ms-h1            { @apply text-xl font-semibold text-white; }
+  .ms-h1            { @apply text-xl font-semibold text-white; font-family: var(--font-heading), -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: -0.01em; }
+  .ms-h2            { @apply text-base font-semibold text-white; font-family: var(--font-heading), -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: -0.01em; }
   .ms-subtitle      { @apply text-sm text-[#6b7280]; }
   .ms-section-label { @apply text-xs font-semibold text-[#B3985B] uppercase tracking-wider; }
   .ms-label         { @apply text-[10px] text-gray-500 uppercase tracking-wider font-medium; }
