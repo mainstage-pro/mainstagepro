@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { upload } from "@vercel/blob/client";
 import {
   getEvalConfig,
   SECCION_CALIF_COLOR,
@@ -15,6 +16,7 @@ import {
   type EvalPostEventoData,
   type EvalItem,
   type RespValor,
+  type FotoReporte,
 } from "@/lib/evaluacion-post-evento";
 
 type MiembroEquipo = { id: string; nombre: string; rol: string | null };
@@ -104,6 +106,7 @@ export default function EvaluacionPostEventoPage() {
   const [data, setData] = useState<EvalPostEventoData>(emptyEvalData());
   const [loading, setLoading] = useState(true);
   const [estado, setEstado] = useState<"idle" | "saving" | "saved">("idle");
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -150,6 +153,7 @@ export default function EvaluacionPostEventoPage() {
         calificacionFinal: next.calificacionFinal,
         propuestasMejora: next.propuestasMejora,
         comentariosFinales: next.comentariosFinales,
+        fotos: next.fotos,
       }),
     });
     if (r.ok) {
@@ -200,6 +204,62 @@ export default function EvaluacionPostEventoPage() {
   const setLlenadoPor = (tecnicoId: string) => {
     const m = equipo.find(e => e.id === tecnicoId);
     actualizar(prev => ({ ...prev, llenadoPorId: tecnicoId || null, llenadoPorNombre: m?.nombre ?? null }));
+  };
+
+  // ── Evidencia (fotos / videos) para el reporte al cliente ──
+  // Se guarda de inmediato (sin debounce): las subidas son intencionales y no deben perderse.
+  const subirEvidencia = async (file: File): Promise<FotoReporte | null> => {
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "bin";
+    const pathname = `proyectos/${id}/reporte/${Date.now()}.${ext}`;
+    const blob = await upload(pathname, file, { access: "public", handleUploadUrl: "/api/upload/token" });
+    const tipo: FotoReporte["tipo"] = file.type.startsWith("video") ? "video" : "imagen";
+    return { url: blob.url, nombre: file.name, tipo };
+  };
+
+  const onAgregarFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0) return;
+    setSubiendoFoto(true);
+    try {
+      const nuevas: FotoReporte[] = [];
+      for (const f of files) {
+        const foto = await subirEvidencia(f);
+        if (foto) nuevas.push(foto);
+      }
+      if (nuevas.length) setData(prev => {
+        const next = { ...prev, fotos: [...(prev.fotos ?? []), ...nuevas] };
+        persistir(next);
+        return next;
+      });
+    } finally {
+      setSubiendoFoto(false);
+    }
+  };
+
+  const onSustituirFoto = async (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setSubiendoFoto(true);
+    try {
+      const foto = await subirEvidencia(file);
+      if (foto) setData(prev => {
+        const next = { ...prev, fotos: (prev.fotos ?? []).map((f, i) => (i === idx ? foto : f)) };
+        persistir(next);
+        return next;
+      });
+    } finally {
+      setSubiendoFoto(false);
+    }
+  };
+
+  const eliminarFoto = (idx: number) => {
+    setData(prev => {
+      const next = { ...prev, fotos: (prev.fotos ?? []).filter((_, i) => i !== idx) };
+      persistir(next);
+      return next;
+    });
   };
 
   if (loading) return <div className="p-6 text-center text-[#444] text-sm">Cargando...</div>;
@@ -480,6 +540,83 @@ export default function EvaluacionPostEventoPage() {
           rows={5}
           className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl px-4 py-3 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/50 resize-none"
         />
+      </div>
+
+      {/* Evidencia y reporte para el cliente */}
+      <div>
+        <SeccionHeader
+          titulo="Evidencia y reporte para el cliente"
+          descripcion="Sube las fotos y videos del evento. Con esta evidencia se genera el reporte de servicio que se entrega al cliente."
+          color={SECCION_MEJORA_COLOR}
+          numero={config.secciones.length + (config.variante === "renta" ? 4 : 5)}
+        />
+
+        <div className="ms-card-deep p-4 space-y-4">
+          {/* Grid de evidencia */}
+          {(data.fotos ?? []).length === 0 ? (
+            <p className="text-[#555] text-sm">Aún no hay evidencia. Sube las primeras fotos o videos del evento.</p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {(data.fotos ?? []).map((f, i) => (
+                <div key={`${f.url}-${i}`} className="group relative rounded-lg overflow-hidden border border-[#252525] bg-[#0d0d0d]">
+                  <div className="aspect-square w-full flex items-center justify-center bg-black">
+                    {f.tipo === "video" ? (
+                      <video src={f.url} className="w-full h-full object-cover" muted playsInline />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={f.url} alt={f.nombre} className="w-full h-full object-cover" />
+                    )}
+                  </div>
+                  {f.tipo === "video" && (
+                    <span className="absolute top-1.5 left-1.5 text-[9px] font-semibold bg-black/70 text-white rounded px-1.5 py-0.5">
+                      VIDEO
+                    </span>
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 flex opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-black/90 to-transparent">
+                    <label className="flex-1 text-center text-[10px] text-[#B3985B] hover:text-white py-1.5 cursor-pointer">
+                      {subiendoFoto ? "…" : "Sustituir"}
+                      <input type="file" accept="image/*,video/*" className="hidden" disabled={subiendoFoto}
+                        onChange={e => onSustituirFoto(e, i)} />
+                    </label>
+                    <button type="button" onClick={() => eliminarFoto(i)}
+                      className="flex-1 text-[10px] text-[#888] hover:text-red-400 py-1.5">
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Subir + generar PDF */}
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <label className={`text-xs rounded-lg border px-3 py-2 transition-colors cursor-pointer ${
+              subiendoFoto ? "border-[#333] text-[#666]" : "border-[#B3985B]/40 text-[#B3985B] hover:border-[#B3985B] hover:text-white"
+            }`}>
+              {subiendoFoto ? "Subiendo…" : "+ Agregar fotos / videos"}
+              <input type="file" accept="image/*,video/*" multiple className="hidden" disabled={subiendoFoto}
+                onChange={onAgregarFoto} />
+            </label>
+
+            <a
+              href={`/api/proyectos/${id}/reporte-servicio-cliente/pdf?preview=1`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs rounded-lg border border-[#2a2a2a] text-gray-300 hover:border-[#B3985B]/50 hover:text-white px-3 py-2 transition-colors"
+            >
+              Ver reporte del cliente (PDF)
+            </a>
+            <a
+              href={`/api/proyectos/${id}/reporte-servicio-cliente/pdf`}
+              className="text-xs rounded-lg bg-[#B3985B] text-black font-semibold hover:bg-[#c9ad6f] px-3 py-2 transition-colors"
+            >
+              Descargar reporte
+            </a>
+          </div>
+          <p className="text-[#555] text-[11px]">
+            El reporte incluye solo las fotos (los videos quedan guardados como evidencia interna). Puedes sustituir cualquier foto pasando el cursor sobre ella.
+          </p>
+        </div>
       </div>
 
       {/* Pie */}

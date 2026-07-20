@@ -8,6 +8,9 @@ export type RespValor = "si" | "no" | "na";
 
 export type ItemResp = { valor: RespValor | null; comentario: string };
 
+// Evidencia (fotos / videos) que sube el coordinador para el reporte al cliente.
+export type FotoReporte = { url: string; nombre: string; tipo: "imagen" | "video" };
+
 export type EvalPostEventoData = {
   llenadoPorId: string | null;
   llenadoPorNombre: string | null;
@@ -18,6 +21,7 @@ export type EvalPostEventoData = {
   calificacionFinal: number | null; // calificación global del coordinador 1..5
   propuestasMejora: string[];
   comentariosFinales: string;
+  fotos: FotoReporte[]; // evidencia fotográfica / video para el reporte al cliente
 };
 
 export type EvalItem = {
@@ -196,6 +200,7 @@ export function emptyEvalData(): EvalPostEventoData {
     calificacionFinal: null,
     propuestasMejora: [],
     comentariosFinales: "",
+    fotos: [],
   };
 }
 

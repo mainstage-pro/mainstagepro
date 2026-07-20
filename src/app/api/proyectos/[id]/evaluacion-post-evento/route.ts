@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureOperacionTecnicaColumns } from "@/lib/migraciones-lazy";
-import { emptyEvalData, type EvalPostEventoData, type ItemResp } from "@/lib/evaluacion-post-evento";
+import { emptyEvalData, type EvalPostEventoData, type ItemResp, type FotoReporte } from "@/lib/evaluacion-post-evento";
 
 export async function GET(
   _req: NextRequest,
@@ -83,6 +83,7 @@ export async function PUT(
     propuestasMejora: Array.isArray(body.propuestasMejora) ? body.propuestasMejora : prev.propuestasMejora ?? [],
     comentariosFinales:
       typeof body.comentariosFinales === "string" ? body.comentariosFinales : prev.comentariosFinales ?? "",
+    fotos: Array.isArray(body.fotos) ? (body.fotos as FotoReporte[]) : prev.fotos ?? [],
   };
 
   await prisma.proyecto.update({
