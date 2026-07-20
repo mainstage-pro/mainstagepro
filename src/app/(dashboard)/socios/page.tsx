@@ -182,8 +182,13 @@ export default function SociosConstitutivosPage() {
       {/* Tarjetas de socios */}
       <div className="space-y-4">
         {constitutivos.map((s, i) => {
-          const colorsAccent = ["[#B3985B]", "purple-400", "blue-400", "green-400"];
-          const accent = colorsAccent[i % colorsAccent.length];
+          const accents = [
+            { border: "border-[#B3985B]/40", text: "text-[#B3985B]" },
+            { border: "border-purple-400/40", text: "text-purple-400" },
+            { border: "border-blue-400/40", text: "text-blue-400" },
+            { border: "border-green-400/40", text: "text-green-400" },
+          ];
+          const accent = accents[i % accents.length];
           const rSocio = repartosPorSocio[s.id] ?? [];
           const rActivo = rSocio.find(r => r.activo);
           const ultimasCuotas = rActivo?.cuotas
@@ -197,8 +202,8 @@ export default function SociosConstitutivosPage() {
               {/* Top: info principal */}
               <div className="flex items-start gap-4 p-5">
                 {/* Avatar */}
-                <div className={`w-12 h-12 rounded-full bg-[#1a1a1a] border border-${accent}/40 flex items-center justify-center shrink-0`}>
-                  <span className={`text-${accent} text-sm font-bold`}>
+                <div className={`w-12 h-12 rounded-full bg-[#1a1a1a] border ${accent.border} flex items-center justify-center shrink-0`}>
+                  <span className={`${accent.text} text-sm font-bold`}>
                     <Initials name={s.nombre} />
                   </span>
                 </div>
@@ -226,7 +231,7 @@ export default function SociosConstitutivosPage() {
                     </div>
                     {/* % participación */}
                     <div className="text-right">
-                      <div className={`text-2xl font-bold text-${accent}`}>
+                      <div className={`text-2xl font-bold ${accent.text}`}>
                         {s.pctParticipacion}%
                       </div>
                       <div className="text-[10px] text-[#555]">participación</div>

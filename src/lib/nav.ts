@@ -1,5 +1,12 @@
 import type React from "react";
-import { Target } from "lucide-react";
+import {
+  LayoutDashboard, CalendarDays, ClipboardList, Target, FolderKanban,
+  LineChart, CalendarClock, Presentation, Wallet, Landmark, Handshake,
+  Table2, FileBarChart, Users, GraduationCap, UserPlus, UserSearch,
+  PenTool, Megaphone, BarChart3, SlidersHorizontal, BadgeDollarSign,
+  Package, TrendingUp, Settings, Speaker, BookUser, ClipboardCheck,
+  ShieldCheck, ScrollText, Settings2,
+} from "lucide-react";
 
 // ── Tipos de navegación ──────────────────────────────────────────────────────
 export interface NavChild {
@@ -38,13 +45,14 @@ export const NAV: NavSection[] = [
     key: "seccion-top",
     section: "",
     items: [
-      { label: "Mi Dashboard", href: "/dashboard" },
-      { key: "calendario", label: "Calendario de eventos", href: "/calendario" },
+      { label: "Mi Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { key: "calendario", label: "Calendario de eventos", href: "/calendario", icon: CalendarDays },
       {
         key: "gestion-operativa",
         accessKey: "operaciones",
         label: "Gestión Operativa",
         href: "/gestion",
+        icon: ClipboardList,
         children: [
           { accessKey: "operaciones", label: "Centro Operativo", href: "/gestion/resumen" },
           { key: "plan-trabajo", label: "Plan de trabajo", href: "/plan-trabajo" },
@@ -72,7 +80,7 @@ export const NAV: NavSection[] = [
     key: "seccion-proyectos",
     section: "Proyectos",
     items: [
-      { key: "proyectos", label: "Todos los proyectos", href: "/proyectos" },
+      { key: "proyectos", label: "Todos los proyectos", href: "/proyectos", icon: FolderKanban },
     ],
   },
 
@@ -81,18 +89,19 @@ export const NAV: NavSection[] = [
     key: "seccion-direccion",
     section: "Dirección",
     items: [
-      { key: "dir-estado-resultados", label: "Estado de Resultados", href: "/direccion/estado-resultados", adminOnly: true },
+      { key: "dir-estado-resultados", label: "Estado de Resultados", href: "/direccion/estado-resultados", adminOnly: true, icon: LineChart },
       {
         key: "coordinacion",
         label: "Coordinación",
         href: "/coordinacion",
+        icon: CalendarClock,
         children: [
           { key: "juntas", label: "Juntas", href: "/juntas" },
           { key: "vision-semanal", label: "Visión semanal", href: "/vision-semanal" },
           { key: "formularios", label: "Formularios", href: "/formularios", adminOnly: true },
         ],
       },
-      { key: "presentaciones", label: "Presentaciones", href: "/presentaciones" },
+      { key: "presentaciones", label: "Presentaciones", href: "/presentaciones", icon: Presentation },
     ],
   },
 
@@ -105,6 +114,7 @@ export const NAV: NavSection[] = [
         key: "finanzas",
         label: "Finanzas",
         href: "/finanzas",
+        icon: Wallet,
         children: [
           { key: "finanzas-cobros", label: "Cobros y pagos", href: "/finanzas/cobros-pagos" },
           { key: "finanzas-pagos-personal", label: "Pagos a personal", href: "/finanzas/pagos-personal" },
@@ -120,19 +130,21 @@ export const NAV: NavSection[] = [
         key: "activos",
         label: "Activos",
         href: "/activos",
+        icon: Landmark,
         children: [
           { key: "inventario-activos-admin", label: "Inventario de activos", href: "/admin/valuacion", adminOnly: true },
           { key: "inv-analisis", label: "Análisis de uso de equipo", href: "/inventario/analisis" },
         ],
       },
-      { key: "socios-constitutivos", label: "Socios Constitutivos", href: "/socios" },
-      { key: "tabulador", label: "Tabulador Freelancers", href: "/catalogo/roles" },
-      { key: "admin-reportes", label: "Reportes de administración", href: "/admin/reportes", adminOnly: true },
+      { key: "socios-constitutivos", label: "Socios Constitutivos", href: "/socios", icon: Handshake },
+      { key: "tabulador", label: "Tabulador Freelancers", href: "/catalogo/roles", icon: Table2 },
+      { key: "admin-reportes", label: "Reportes de administración", href: "/admin/reportes", adminOnly: true, icon: FileBarChart },
       // ── Recursos Humanos (dentro de Administración) ────────────────────────
       {
         key: "rrhh",
         label: "Personal",
         href: "/personal",
+        icon: Users,
         children: [
           { key: "rrhh-personal", label: "Personal interno", href: "/rrhh/personal" },
           { key: "rrhh-nomina", label: "Nómina", href: "/rrhh/nomina" },
@@ -145,16 +157,18 @@ export const NAV: NavSection[] = [
         key: "capacitacion-grp",
         label: "Capacitación",
         href: "/formacion",
+        icon: GraduationCap,
         children: [
           { key: "capacitacion", label: "Portal de capacitación", href: "/capacitacion" },
           { key: "rrhh-capacitaciones", label: "Capacitaciones internas", href: "/rrhh/capacitaciones" },
         ],
       },
-      { key: "rrhh-onboarding", label: "Integración / Onboarding", href: "/rrhh/onboarding" },
+      { key: "rrhh-onboarding", label: "Integración / Onboarding", href: "/rrhh/onboarding", icon: UserPlus },
       {
         key: "ats",
         label: "Reclutamiento",
         href: "/reclutamiento",
+        icon: UserSearch,
         children: [
           { key: "rrhh-candidatos", label: "Candidatos", href: "/rrhh/candidatos" },
           { key: "rrhh-puestos", label: "Puestos ideales", href: "/rrhh/puestos" },
@@ -169,10 +183,10 @@ export const NAV: NavSection[] = [
     key: "seccion-marketing",
     section: "Marketing",
     items: [
-      { key: "mkt-contenido",   label: "Contenido",        href: "/marketing/contenido" },
-      { key: "mkt-publicidad",  label: "Publicidad",        href: "/marketing/publicidad" },
-      { key: "mkt-resultados",  label: "Reporte de marketing", href: "/marketing/resultados", adminOnly: true },
-      { key: "mkt-config",      label: "Configuración",        href: "/marketing/configuracion" },
+      { key: "mkt-contenido",   label: "Contenido",        href: "/marketing/contenido", icon: PenTool },
+      { key: "mkt-publicidad",  label: "Publicidad",        href: "/marketing/publicidad", icon: Megaphone },
+      { key: "mkt-resultados",  label: "Reporte de marketing", href: "/marketing/resultados", adminOnly: true, icon: BarChart3 },
+      { key: "mkt-config",      label: "Configuración",        href: "/marketing/configuracion", icon: SlidersHorizontal },
     ],
   },
 
@@ -186,6 +200,7 @@ export const NAV: NavSection[] = [
         label: "Ventas",
         href: "/crm/tratos",
         badge: "leads",
+        icon: BadgeDollarSign,
         children: [
           { key: "crm-tratos", label: "Ventas", href: "/crm/tratos/lista" },
           { key: "crm-proceso", accessKey: "crm-tratos", label: "Proceso", href: "/crm/proceso" },
@@ -199,13 +214,14 @@ export const NAV: NavSection[] = [
         key: "comercial-productos",
         label: "Productos y paquetes",
         href: "/comercial/productos",
+        icon: Package,
         children: [
           { key: "comercial-productos", label: "Productos y paquetes", href: "/comercial/productos" },
           { key: "grupos-equipo", label: "Grupos de equipo", href: "/admin/grupos-equipo", adminOnly: true },
         ],
       },
-      { key: "ventas-reporte",          label: "Reporte de ventas",          href: "/ventas/reporte" },
-      { key: "ventas-config",           label: "Configuración",              href: "/ventas/configuracion", adminOnly: true },
+      { key: "ventas-reporte",          label: "Reporte de ventas",          href: "/ventas/reporte", icon: TrendingUp },
+      { key: "ventas-config",           label: "Configuración",              href: "/ventas/configuracion", adminOnly: true, icon: Settings },
     ],
   },
 
@@ -218,6 +234,7 @@ export const NAV: NavSection[] = [
         key: "inventario",
         label: "Equipos",
         href: "/equipos",
+        icon: Speaker,
         children: [
           { key: "inv-maestro", label: "Inventario de equipos", href: "/inventario/maestro" },
           { key: "produccion-tablero", label: "Estado de equipos", href: "/produccion/tablero" },
@@ -232,6 +249,7 @@ export const NAV: NavSection[] = [
         key: "catalogo",
         label: "Directorio",
         href: "/directorio",
+        icon: BookUser,
         children: [
           { key: "bd-proveedores", label: "Proveedores", href: "/catalogo/proveedores" },
           { key: "bd-tecnicos", label: "Técnicos freelance", href: "/catalogo/tecnicos" },
@@ -239,8 +257,8 @@ export const NAV: NavSection[] = [
           { key: "bd-empresas", accessKey: "catalogo", label: "Empresas", href: "/catalogo/empresas" },
         ],
       },
-      { key: "reporte-produccion", label: "Reporte de producción", href: "/produccion/reporte" },
-      { key: "produccion-config", label: "Configuración", href: "/produccion/configuracion" },
+      { key: "reporte-produccion", label: "Reporte de producción", href: "/produccion/reporte", icon: ClipboardCheck },
+      { key: "produccion-config", label: "Configuración", href: "/produccion/configuracion", icon: Settings },
     ],
   },
 
@@ -249,9 +267,9 @@ export const NAV: NavSection[] = [
     key: "seccion-config",
     section: "Configuración",
     items: [
-      { key: "admin-usuarios", label: "Usuarios y accesos", href: "/admin/usuarios" },
-      { key: "admin-actividad", label: "Log de actividad", href: "/admin/actividad" },
-      { key: "configuracion", label: "Configuración global", href: "/admin/configuracion", adminOnly: true },
+      { key: "admin-usuarios", label: "Usuarios y accesos", href: "/admin/usuarios", icon: ShieldCheck },
+      { key: "admin-actividad", label: "Log de actividad", href: "/admin/actividad", icon: ScrollText },
+      { key: "configuracion", label: "Configuración global", href: "/admin/configuracion", adminOnly: true, icon: Settings2 },
     ],
   },
 ];

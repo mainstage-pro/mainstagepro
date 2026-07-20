@@ -215,14 +215,14 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
                     <Link
                       key={item.href}
                       href={href}
-                      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13.5px] transition-colors ${
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                         active
                           ? "bg-[#1a1a1a] text-white font-semibold"
                           : "text-[#8b8f97] hover:text-white hover:bg-[#161616]"
                       }`}
                     >
                       {Icon
-                        ? <Icon className={`w-3.5 h-3.5 shrink-0 ${active ? "text-[#B3985B]" : "opacity-60"}`} />
+                        ? <Icon strokeWidth={1.75} className={`w-[18px] h-[18px] shrink-0 ${active ? "text-[#B3985B]" : "opacity-70"}`} />
                         : <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${active ? "bg-[#B3985B]" : "bg-[#333]"}`} />
                       }
                       <span className="flex-1">{itemLabel}</span>
