@@ -156,6 +156,46 @@ export async function ensureMultidiaColumns() {
 }
 
 /**
+ * Migraciones lazy del día de montaje/desmontaje opcional (patrón Neon).
+ * - proyectos.montajeDiaAparte / desmontajeDiaAparte: si el montaje/desmontaje es un día
+ *   adicional (día antes / día después) o el mismo día del evento.
+ * - proyectos.fechaDesmontaje / duracionDesmontajeHrs: fecha y duración del desmontaje.
+ * Las 4 se declaran en schema.prisma → Prisma las pide en cualquier findMany de proyectos
+ * sin select, por eso DEBEN existir antes de cualquier lectura (corre al arranque).
+ * Backfill: los proyectos con fechaMontaje en un día distinto al del evento nacen con
+ * montajeDiaAparte=true, preservando el comportamiento previo. Idempotente.
+ */
+let _montajeDiaReady = false;
+
+export async function ensureMontajeDesmontajeColumns() {
+  if (_montajeDiaReady) return;
+  const cols: [string, string][] = [
+    ['montajeDiaAparte', `ADD COLUMN IF NOT EXISTS "montajeDiaAparte" BOOLEAN NOT NULL DEFAULT false`],
+    ['desmontajeDiaAparte', `ADD COLUMN IF NOT EXISTS "desmontajeDiaAparte" BOOLEAN NOT NULL DEFAULT false`],
+    ['fechaDesmontaje', `ADD COLUMN IF NOT EXISTS "fechaDesmontaje" TIMESTAMP(3)`],
+    ['duracionDesmontajeHrs', `ADD COLUMN IF NOT EXISTS "duracionDesmontajeHrs" DOUBLE PRECISION`],
+  ];
+  for (const [column, clause] of cols) {
+    if (!await columnExists('proyectos', column)) {
+      try {
+        await prisma.$executeRawUnsafe(`ALTER TABLE proyectos ${clause}`);
+      } catch { /* ya existe */ }
+    }
+  }
+  // Backfill: montaje en fecha distinta al evento ⇒ era un día aparte (comportamiento previo).
+  // Solo toca filas donde ambas fechas existen y difieren; idempotente tras la primera corrida.
+  try {
+    await prisma.$executeRawUnsafe(`
+      UPDATE proyectos SET "montajeDiaAparte" = true
+      WHERE "fechaMontaje" IS NOT NULL
+        AND "montajeDiaAparte" = false
+        AND date("fechaMontaje") < date("fechaEvento")
+    `);
+  } catch { /* backfill best-effort */ }
+  _montajeDiaReady = true;
+}
+
+/**
  * Migraciones lazy de la sincronización cotización → proyecto (patrón Neon).
  * - proyecto_equipos.necesitaRevision: el equipo se quitó/redujo en la cotización
  *   pero tiene datos manuales (proveedor, notas, rider) — no se borra, se marca.

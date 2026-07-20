@@ -181,6 +181,10 @@ export interface BriefTecnicoData {
     horaMontaje: string | null;
     horaInicioMontaje: string | null;
     duracionMontajeHrs: number | null;
+    montajeDiaAparte: boolean | null;
+    desmontajeDiaAparte: boolean | null;
+    fechaDesmontaje: Date | string | null;
+    duracionDesmontajeHrs: number | null;
     horaSalidaBodega: string | null;
     puntoSalidaBodega: string | null;
     horaDesmontaje: string | null;
@@ -250,8 +254,12 @@ export function BriefTecnico({ proyecto, logoSrc }: BriefTecnicoData) {
     horaMontaje: p.horaMontaje,
     horaInicioMontaje: p.horaInicioMontaje,
     duracionMontajeHrs: p.duracionMontajeHrs,
+    montajeDiaAparte: p.montajeDiaAparte,
     horaSalidaBodega: p.horaSalidaBodega,
     horaDesmontaje: p.horaDesmontaje,
+    duracionDesmontajeHrs: p.duracionDesmontajeHrs,
+    desmontajeDiaAparte: p.desmontajeDiaAparte,
+    fechaDesmontaje: p.fechaDesmontaje,
     llamadoBodega: p.llamadoBodega,
     lugarLlamado: p.lugarLlamado,
     lugarEvento: p.lugarEvento,

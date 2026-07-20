@@ -66,6 +66,8 @@ interface Proyecto {
   tipoEvento: string; tipoServicio: string | null;
   fechaEvento: string; fechasEvento: string | null; horaInicioEvento: string | null; horaFinEvento: string | null; horariosEvento: string | null;
   fechaMontaje: string | null; horaInicioMontaje: string | null; duracionMontajeHrs: number | null;
+  montajeDiaAparte: boolean | null; desmontajeDiaAparte: boolean | null;
+  fechaDesmontaje: string | null; duracionDesmontajeHrs: number | null;
   horaMontaje: string | null; horaInicio: string | null; horaDesmontaje: string | null;
   direccionVenue: string | null; linkMaps: string | null; indicacionesAcceso: string | null;
   puntoSalidaBodega: string | null; horaSalidaBodega: string | null;
@@ -2326,6 +2328,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setProyecto(p => p ? { ...p, horariosEvento: json } : p);
   }
 
+  // ── Guardar un campo booleano (toggle) ──
+  async function guardarBool(field: string, value: boolean) {
+    await fetch(`/api/proyectos/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [field]: value }),
+    });
+    setProyecto(p => p ? { ...p, [field]: value } : p);
+  }
+
   // ── Guardar cronograma (auto-sort por hora) ──
   async function guardarCronograma(rows: CronoRow[]) {
     setSavingCrono(true);
@@ -4103,14 +4114,28 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <div className="flex-1 h-px bg-[#1e1e1e]" />
                 </div>
                 <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                  {esMultidia && (
-                    <p className="col-span-2 text-[11px] text-gray-600">
-                      Aquí van los datos del <b>día de montaje</b> (previo al evento). El horario de llamado de cada día del evento se captura arriba, en “Horarios por día”.
-                    </p>
+                  {/* ── Toggle: montaje como día adicional ── */}
+                  <label className="col-span-2 flex items-start gap-2 cursor-pointer rounded-lg border border-[#1e1e1e] bg-[#141414] p-3">
+                    <input
+                      type="checkbox"
+                      checked={proyecto.montajeDiaAparte ?? false}
+                      onChange={e => guardarBool("montajeDiaAparte", e.target.checked)}
+                      className="accent-[#B3985B] w-3.5 h-3.5 mt-0.5"
+                    />
+                    <span className="text-xs text-gray-300">
+                      El montaje es un <b>día adicional</b> (día previo al evento)
+                      <span className="block text-[11px] text-gray-600 mt-0.5">
+                        Actívalo solo si el montaje se hace un día antes. Si el montaje es el mismo día del evento, déjalo desactivado y no contará como día extra.
+                      </span>
+                    </span>
+                  </label>
+                  {/* ── Fecha de montaje (solo si es día aparte) ── */}
+                  {proyecto.montajeDiaAparte && (
+                    <>
+                      <Campo label="Fecha de montaje" value={proyecto.fechaMontaje?.toString().substring(0, 10) ?? null} field="fechaMontaje" type="date" onSave={guardarCampo} />
+                      <div className="col-span-1" />
+                    </>
                   )}
-                  {/* ── Fecha de montaje ── */}
-                  <Campo label="Fecha de montaje" value={proyecto.fechaMontaje?.toString().substring(0, 10) ?? null} field="fechaMontaje" type="date" onSave={guardarCampo} />
-                  <div className="col-span-1" />
                   {/* ── Llamado en bodega (fecha + hora) ── */}
                   <div className="col-span-2">
                     <label className="text-xs text-gray-500 block mb-1">Llamado en bodega</label>
@@ -4156,6 +4181,39 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <HourPicker label="Llegada al venue" value={proyecto.horaMontaje} field="horaMontaje" onSave={guardarCampo} />
                   <HourPicker label="Inicio de montaje" value={proyecto.horaInicioMontaje} field="horaInicioMontaje" onSave={guardarCampo} />
                   <Campo label="Duración montaje (hrs)" value={proyecto.duracionMontajeHrs?.toString() ?? null} field="duracionMontajeHrs" type="number" onSave={guardarCampo} />
+                </div>
+
+                {/* ── Subsección 4: Logística de desmontaje ── */}
+                <div className="flex items-center gap-3 mb-3 mt-5">
+                  <p className="text-[10px] text-gray-600 uppercase tracking-widest font-semibold whitespace-nowrap">Logística de desmontaje</p>
+                  <div className="flex-1 h-px bg-[#1e1e1e]" />
+                </div>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                  {/* ── Toggle: desmontaje como día adicional ── */}
+                  <label className="col-span-2 flex items-start gap-2 cursor-pointer rounded-lg border border-[#1e1e1e] bg-[#141414] p-3">
+                    <input
+                      type="checkbox"
+                      checked={proyecto.desmontajeDiaAparte ?? false}
+                      onChange={e => guardarBool("desmontajeDiaAparte", e.target.checked)}
+                      className="accent-[#B3985B] w-3.5 h-3.5 mt-0.5"
+                    />
+                    <span className="text-xs text-gray-300">
+                      El desmontaje es un <b>día adicional</b> (día posterior al evento)
+                      <span className="block text-[11px] text-gray-600 mt-0.5">
+                        Actívalo solo si el desmontaje se hace un día después. Si el desmontaje es el mismo día que termina el evento, déjalo desactivado y no contará como día extra.
+                      </span>
+                    </span>
+                  </label>
+                  {/* ── Fecha de desmontaje (solo si es día aparte) ── */}
+                  {proyecto.desmontajeDiaAparte && (
+                    <>
+                      <Campo label="Fecha de desmontaje" value={proyecto.fechaDesmontaje?.toString().substring(0, 10) ?? null} field="fechaDesmontaje" type="date" onSave={guardarCampo} />
+                      <div className="col-span-1" />
+                    </>
+                  )}
+                  {/* ── Secuencia del desmontaje ── */}
+                  <HourPicker label="Inicio de desmontaje" value={proyecto.horaDesmontaje} field="horaDesmontaje" onSave={guardarCampo} />
+                  <Campo label="Duración desmontaje (hrs)" value={proyecto.duracionDesmontajeHrs?.toString() ?? null} field="duracionDesmontajeHrs" type="number" onSave={guardarCampo} />
                 </div>
               </>)}
 
@@ -8182,8 +8240,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         fechaEvento: proyecto.fechaEvento, fechasEvento: proyecto.fechasEvento, horariosEvento: proyecto.horariosEvento,
         horaInicioEvento: proyecto.horaInicioEvento, horaFinEvento: proyecto.horaFinEvento,
         fechaMontaje: proyecto.fechaMontaje, horaMontaje: proyecto.horaMontaje, horaInicioMontaje: proyecto.horaInicioMontaje,
-        duracionMontajeHrs: proyecto.duracionMontajeHrs,
+        duracionMontajeHrs: proyecto.duracionMontajeHrs, montajeDiaAparte: proyecto.montajeDiaAparte,
         horaSalidaBodega: proyecto.horaSalidaBodega, horaDesmontaje: proyecto.horaDesmontaje,
+        duracionDesmontajeHrs: proyecto.duracionDesmontajeHrs, desmontajeDiaAparte: proyecto.desmontajeDiaAparte,
+        fechaDesmontaje: proyecto.fechaDesmontaje,
         llamadoBodega: proyecto.llamadoBodega, lugarLlamado: proyecto.lugarLlamado, lugarEvento: proyecto.lugarEvento,
       });
       const cronoTexto = bloquesBrief.map(b => {

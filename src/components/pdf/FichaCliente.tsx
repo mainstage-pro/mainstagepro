@@ -39,6 +39,8 @@ export interface FichaClienteData {
   fechaEvento: string | null;
   fechasEvento: string | null; horariosEvento: string | null;
   fechaMontaje: string | null; horaInicioMontaje: string | null;
+  montajeDiaAparte: boolean | null; desmontajeDiaAparte: boolean | null;
+  fechaDesmontaje: string | null;
   horaInicioEvento: string | null; horaFinEvento: string | null;
   horaInicio: string | null; horaDesmontaje: string | null;
   lugarEvento: string | null; direccionVenue: string | null; linkMaps: string | null;
@@ -64,11 +66,13 @@ export function FichaCliente({ data }: { data: FichaClienteData }) {
     fechaEvento: data.fechaEvento, fechasEvento: data.fechasEvento, horariosEvento: data.horariosEvento,
     horaInicioEvento: data.horaInicioEvento, horaFinEvento: data.horaFinEvento,
     fechaMontaje: data.fechaMontaje, horaMontaje: null, horaInicioMontaje: data.horaInicioMontaje,
-    duracionMontajeHrs: null,
-    horaSalidaBodega: null, horaDesmontaje: null, llamadoBodega: null, lugarLlamado: null,
+    duracionMontajeHrs: null, montajeDiaAparte: data.montajeDiaAparte,
+    horaSalidaBodega: null, horaDesmontaje: null, duracionDesmontajeHrs: null,
+    desmontajeDiaAparte: data.desmontajeDiaAparte, fechaDesmontaje: data.fechaDesmontaje,
+    llamadoBodega: null, lugarLlamado: null,
     lugarEvento: data.lugarEvento,
   }, { interno: false });
-  const esMultidia = bloques.filter(b => b.titulo !== "Montaje y logística").length > 1;
+  const esMultidia = bloques.filter(b => b.titulo !== "Montaje" && b.titulo !== "Desmontaje").length > 1;
 
   return (
     <Document title={`Confirmación ${data.numeroProyecto}`} author="Mainstage Pro">

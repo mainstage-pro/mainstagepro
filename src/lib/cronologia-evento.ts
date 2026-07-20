@@ -2,10 +2,13 @@
  * cronologia-evento.ts — Cronología unificada de un proyecto para todos los documentos.
  *
  * Construye una lista de bloques en ORDEN CRONOLÓGICO ESTRICTO:
- *   1. Montaje y logística (llamado, salida de bodega, montaje, desmontaje)
+ *   1. Montaje (si es día aparte: bloque propio antes del evento; si es mismo día:
+ *      se antepone a los ítems del Día 1)
  *   2. Día 1 (llamado, inicio, fin)
  *   3. Día 2 ...
  *   N. Día N
+ *   N+1. Desmontaje (si es día aparte: bloque propio después del evento; si es mismo
+ *      día: se agrega al final del último día)
  *
  * Se apoya en el modelo multi-día (`horariosEvento`) para dar los horarios por día.
  * Todos los PDFs deben usar esto para que la información esté completa y ordenada igual.
@@ -41,8 +44,17 @@ export type ProyectoCronologia = {
   horaInicioMontaje: string | null;
   /** Duración estimada del montaje (hrs) → término aproximado = inicio + duración. */
   duracionMontajeHrs: number | null;
+  /** true = el montaje es un día adicional (día antes); false = mismo día del evento. */
+  montajeDiaAparte?: boolean | null;
   horaSalidaBodega: string | null;
+  /** Hora de inicio del desmontaje. */
   horaDesmontaje: string | null;
+  /** Duración estimada del desmontaje (hrs) → término aproximado = inicio + duración. */
+  duracionDesmontajeHrs?: number | null;
+  /** true = el desmontaje es un día adicional (día después); false = mismo día (último día). */
+  desmontajeDiaAparte?: boolean | null;
+  /** Fecha del desmontaje cuando es día aparte. */
+  fechaDesmontaje?: Date | string | null;
   llamadoBodega: Date | string | null;
   lugarLlamado: string | null;
   lugarEvento: string | null;
@@ -106,38 +118,31 @@ export function construirCronologia(
   const dias = diasEvento(p.fechaEvento, p.fechasEvento);
   const bloques: BloqueCronologia[] = [];
 
-  // ── Bloque 1: Montaje y logística ──
-  // Orden cronológico del día de montaje: llamado en bodega → salida de bodega →
-  // llegada al venue → inicio de montaje → término aproximado de montaje → desmontaje.
+  const montajeDiaAparte = p.montajeDiaAparte === true;
+  const desmontajeDiaAparte = p.desmontajeDiaAparte === true;
+
+  // ── Ítems de montaje ──
+  // Orden cronológico: llamado en bodega → salida de bodega → llegada al venue →
+  // inicio de montaje → término aproximado de montaje.
   const llamadoHora = horaDeDateTime(p.llamadoBodega);
   const llamadoFecha = p.llamadoBodega ? fechaISOaDia(p.llamadoBodega) : null;
   const montajeFecha = p.fechaMontaje ? fechaISOaDia(p.fechaMontaje) : llamadoFecha;
   const terminoMontaje = sumarHoras(p.horaInicioMontaje, p.duracionMontajeHrs);
   const itemsMontaje: ItemCronologia[] = [];
-
   if (interno && (llamadoHora || p.lugarLlamado)) {
     itemsMontaje.push({
       label: "Llamado en bodega",
       hora: llamadoHora ?? "Por definir",
-      fecha: fechaCorta(llamadoFecha ?? montajeFecha),
+      // Solo mostramos la fecha del llamado si el montaje es día aparte (contexto distinto al día del evento).
+      fecha: montajeDiaAparte ? fechaCorta(llamadoFecha ?? montajeFecha) : null,
       nota: p.lugarLlamado,
     });
   }
   if (interno && p.horaSalidaBodega) {
-    itemsMontaje.push({
-      label: "Salida de bodega",
-      hora: p.horaSalidaBodega,
-      fecha: null,
-      nota: null,
-    });
+    itemsMontaje.push({ label: "Salida de bodega", hora: p.horaSalidaBodega, fecha: null, nota: null });
   }
   if (p.horaMontaje) {
-    itemsMontaje.push({
-      label: "Llegada al venue",
-      hora: p.horaMontaje,
-      fecha: null,
-      nota: p.lugarEvento,
-    });
+    itemsMontaje.push({ label: "Llegada al venue", hora: p.horaMontaje, fecha: null, nota: p.lugarEvento });
   }
   if (p.horaInicioMontaje) {
     itemsMontaje.push({
@@ -148,30 +153,26 @@ export function construirCronologia(
     });
   }
   if (terminoMontaje) {
-    itemsMontaje.push({
-      label: "Término aprox. de montaje",
-      hora: terminoMontaje,
-      fecha: null,
-      nota: null,
-    });
+    itemsMontaje.push({ label: "Término aprox. de montaje", hora: terminoMontaje, fecha: null, nota: null });
   }
+
+  // ── Ítems de desmontaje (solo interno) ──
+  const terminoDesmontaje = sumarHoras(p.horaDesmontaje, p.duracionDesmontajeHrs);
+  const itemsDesmontaje: ItemCronologia[] = [];
   if (interno && p.horaDesmontaje) {
-    itemsMontaje.push({
-      label: "Desmontaje",
-      hora: p.horaDesmontaje,
-      fecha: null,
-      nota: null,
-    });
+    itemsDesmontaje.push({ label: "Inicio de desmontaje", hora: p.horaDesmontaje, fecha: null, nota: null });
   }
-  if (itemsMontaje.length) {
-    bloques.push({
-      titulo: "Montaje y logística",
-      subtitulo: fechaCorta(montajeFecha),
-      items: itemsMontaje,
-    });
+  if (interno && terminoDesmontaje) {
+    itemsDesmontaje.push({ label: "Término aprox. de desmontaje", hora: terminoDesmontaje, fecha: null, nota: null });
+  }
+
+  // ── Montaje como día adicional (antes de los días del evento) ──
+  if (montajeDiaAparte && itemsMontaje.length) {
+    bloques.push({ titulo: "Montaje", subtitulo: fechaCorta(montajeFecha), items: itemsMontaje });
   }
 
   // ── Bloques por día del evento ──
+  const ultimoDia = dias.length - 1;
   dias.forEach((fecha, i) => {
     // base.llamado/montaje = null → el día 1 no hereda el llamado de bodega (ya va en Montaje).
     const h = horarioDeDia(fecha, i, dias, p.horariosEvento, {
@@ -181,6 +182,10 @@ export function construirCronologia(
       montaje: null,
     });
     const items: ItemCronologia[] = [];
+    // Montaje el mismo día → se antepone al día 1 (no cuenta como día adicional).
+    if (!montajeDiaAparte && i === 0) {
+      items.push(...itemsMontaje);
+    }
     if (interno && h.llamado) {
       items.push({ label: "Llamado", hora: h.llamado, fecha: null, nota: p.lugarLlamado });
     }
@@ -193,6 +198,10 @@ export function construirCronologia(
     if (h.fin) {
       items.push({ label: "Fin del evento", hora: h.fin, fecha: null, nota: null });
     }
+    // Desmontaje el mismo día → se agrega al final del último día del evento.
+    if (!desmontajeDiaAparte && i === ultimoDia) {
+      items.push(...itemsDesmontaje);
+    }
     if (items.length) {
       bloques.push({
         titulo: dias.length > 1 ? `Día ${i + 1}` : "Día del evento",
@@ -201,6 +210,12 @@ export function construirCronologia(
       });
     }
   });
+
+  // ── Desmontaje como día adicional (después de los días del evento) ──
+  if (desmontajeDiaAparte && itemsDesmontaje.length) {
+    const desmontajeFecha = p.fechaDesmontaje ? fechaISOaDia(p.fechaDesmontaje) : null;
+    bloques.push({ titulo: "Desmontaje", subtitulo: fechaCorta(desmontajeFecha), items: itemsDesmontaje });
+  }
 
   return bloques;
 }

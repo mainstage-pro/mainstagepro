@@ -585,6 +585,10 @@ model Proyecto {
   fechaMontaje           DateTime?
   horaInicioMontaje      String?
   duracionMontajeHrs     Float?
+  montajeDiaAparte       Boolean   @default(false) // true = el montaje es un día adicional (día antes); false = mismo día del evento
+  desmontajeDiaAparte    Boolean   @default(false) // true = el desmontaje es un día adicional (día después); false = mismo día (último día del evento)
+  fechaDesmontaje        DateTime? // fecha del desmontaje cuando es día aparte
+  duracionDesmontajeHrs  Float?    // duración estimada del desmontaje (hrs) → término aproximado = inicio + duración
   // ─ Logística del día del evento ─
   horaMontaje            String?   // Hora de llegada/montaje al venue (día del evento)
   horaInicio             String?   // Hora de inicio del evento

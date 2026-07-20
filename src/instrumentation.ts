@@ -16,6 +16,7 @@ export async function register() {
     try {
       const {
         ensureMultidiaColumns,
+        ensureMontajeDesmontajeColumns,
         ensureProcesoVentaColumns,
         ensureOperacionTecnicaColumns,
         ensureFinanzasColumns,
@@ -25,6 +26,7 @@ export async function register() {
       } = await import("@/lib/migraciones-lazy");
       await Promise.all([
         ensureMultidiaColumns(),
+        ensureMontajeDesmontajeColumns(),
         ensureProcesoVentaColumns(),
         ensureOperacionTecnicaColumns(),
         ensureFinanzasColumns(),

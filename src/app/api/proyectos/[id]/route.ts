@@ -234,11 +234,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "direccionVenue", "linkMaps", "indicacionesAcceso",
     "puntoSalidaBodega", "horaSalidaBodega", "indicacionesCliente",
     "notasBriefTecnico", "llamadoBodega", "lugarLlamado",
+    // Día de montaje/desmontaje opcional
+    "fechaDesmontaje",
   ];
   const relationFields = ["encargadoId"];
   // Campos con tipos especiales (boolean/number/fecha) que no deben pasar por `|| null`
-  const booleanFields = ["choferExterno", "aplicaCatering"];
-  const numberFields = ["choferCosto"];
+  const booleanFields = ["choferExterno", "aplicaCatering", "montajeDiaAparte", "desmontajeDiaAparte"];
+  const numberFields = ["choferCosto", "duracionDesmontajeHrs"];
   const textNullableFields = ["choferNombre", "recoleccionStatus", "recoleccionNotas", "protocoloSalida", "protocoloEntrada"];
 
   const data: Record<string, unknown> = {};
@@ -246,6 +248,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (key in body) {
       if ((key === "fechaMontaje" || key === "llamadoBodega") && body[key]) {
         data[key] = new Date(body[key]);
+      } else if (key === "fechaDesmontaje") {
+        data[key] = body[key] ? new Date(body[key]) : null;
       } else if (key === "fechaEvento" && body[key]) {
         // Parse date-only string as UTC noon to avoid timezone shifting
         data[key] = new Date(body[key].substring(0, 10) + "T12:00:00Z");

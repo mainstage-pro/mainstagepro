@@ -130,6 +130,8 @@ export interface FichaOperativaData {
   horaInicioEvento: string | null; horaFinEvento: string | null;
   horaInicio: string | null; horaDesmontaje: string | null;
   fechaMontaje: string | null; horaInicioMontaje: string | null; duracionMontajeHrs: number | null;
+  montajeDiaAparte: boolean | null; desmontajeDiaAparte: boolean | null;
+  fechaDesmontaje: string | null; duracionDesmontajeHrs: number | null;
   horaMontaje: string | null;
   horaSalidaBodega: string | null; puntoSalidaBodega: string | null;
   lugarLlamado: string | null;
@@ -208,8 +210,10 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
     fechaEvento: data.fechaEvento, fechasEvento: data.fechasEvento, horariosEvento: data.horariosEvento,
     horaInicioEvento: data.horaInicioEvento, horaFinEvento: data.horaFinEvento,
     fechaMontaje: data.fechaMontaje, horaMontaje: data.horaMontaje, horaInicioMontaje: data.horaInicioMontaje,
-    duracionMontajeHrs: data.duracionMontajeHrs,
+    duracionMontajeHrs: data.duracionMontajeHrs, montajeDiaAparte: data.montajeDiaAparte,
     horaSalidaBodega: data.horaSalidaBodega, horaDesmontaje: data.horaDesmontaje,
+    duracionDesmontajeHrs: data.duracionDesmontajeHrs, desmontajeDiaAparte: data.desmontajeDiaAparte,
+    fechaDesmontaje: data.fechaDesmontaje,
     llamadoBodega: data.llamadoBodega, lugarLlamado: data.lugarLlamado, lugarEvento: data.lugarEvento,
   });
 

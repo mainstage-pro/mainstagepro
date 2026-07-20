@@ -229,6 +229,10 @@ export interface BriefData {
   horaInicioMontaje: string | null;
   horaMontaje: string | null;
   duracionMontajeHrs: number | null;
+  montajeDiaAparte: boolean | null;
+  desmontajeDiaAparte: boolean | null;
+  fechaDesmontaje: Date | string | null;
+  duracionDesmontajeHrs: number | null;
   horaSalidaBodega: string | null;
   horaDesmontaje: string | null;
   llamadoBodega: Date | string | null;
@@ -275,8 +279,10 @@ export function BriefPDF({
     fechaEvento: proyecto.fechaEvento, fechasEvento: proyecto.fechasEvento, horariosEvento: proyecto.horariosEvento,
     horaInicioEvento: proyecto.horaInicioEvento, horaFinEvento: proyecto.horaFinEvento,
     fechaMontaje: proyecto.fechaMontaje, horaMontaje: proyecto.horaMontaje, horaInicioMontaje: proyecto.horaInicioMontaje,
-    duracionMontajeHrs: proyecto.duracionMontajeHrs,
+    duracionMontajeHrs: proyecto.duracionMontajeHrs, montajeDiaAparte: proyecto.montajeDiaAparte,
     horaSalidaBodega: proyecto.horaSalidaBodega, horaDesmontaje: proyecto.horaDesmontaje,
+    duracionDesmontajeHrs: proyecto.duracionDesmontajeHrs, desmontajeDiaAparte: proyecto.desmontajeDiaAparte,
+    fechaDesmontaje: proyecto.fechaDesmontaje,
     llamadoBodega: proyecto.llamadoBodega, lugarLlamado: proyecto.lugarLlamado, lugarEvento: proyecto.lugarEvento,
   });
 
