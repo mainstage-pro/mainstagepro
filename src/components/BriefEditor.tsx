@@ -87,11 +87,14 @@ export function BriefEditor({ value, onChange }: { value: CampanaBrief; onChange
   const b = value;
   const set = (patch: Partial<CampanaBrief>) => onChange({ ...b, ...patch });
   const kpisSugeridos = b.objetivo ? KPIS_POR_OBJETIVO[b.objetivo] ?? [] : [];
+  // Numeración dinámica: cada sección visible toma el siguiente número.
+  // El bloque condicional (n5) solo suma cuando se renderiza, evitando huecos.
+  let step = 0;
 
   return (
     <div className="space-y-2">
-      {/* 1. Datos generales */}
-      <Section n={1} title="Datos generales" hint="Nombre, fechas y presupuesto se toman de la campaña." defaultOpen>
+      {/* Datos generales */}
+      <Section n={(step += 1)} title="Datos generales" hint="Nombre, fechas y presupuesto se toman de la campaña." defaultOpen>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={LABEL}>Marca</label>
@@ -105,7 +108,7 @@ export function BriefEditor({ value, onChange }: { value: CampanaBrief; onChange
       </Section>
 
       {/* 2. Objetivo */}
-      <Section n={2} title="Objetivo" hint="Un solo objetivo por campaña." done={!!b.objetivo}>
+      <Section n={(step += 1)} title="Objetivo" hint="Un solo objetivo por campaña." done={!!b.objetivo}>
         <div className="flex gap-2 flex-wrap">
           {OBJETIVOS_BRIEF.map((o) => (
             <button
@@ -125,7 +128,7 @@ export function BriefEditor({ value, onChange }: { value: CampanaBrief; onChange
       </Section>
 
       {/* 3. Audiencia */}
-      <Section n={3} title="Audiencia">
+      <Section n={(step += 1)} title="Audiencia">
         <div className="grid grid-cols-3 gap-3">
           <div className="col-span-3">
             <label className={LABEL}>Ubicación</label>
@@ -157,7 +160,7 @@ export function BriefEditor({ value, onChange }: { value: CampanaBrief; onChange
       </Section>
 
       {/* 4. Creatividad */}
-      <Section n={4} title="Creatividad" hint="Mínimo 2 variantes de copy.">
+      <Section n={(step += 1)} title="Creatividad" hint="Mínimo 2 variantes de copy.">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={LABEL}>Formato</label>
@@ -206,7 +209,7 @@ export function BriefEditor({ value, onChange }: { value: CampanaBrief; onChange
 
       {/* 5. Bloque condicional según objetivo */}
       {(b.objetivo === "LEADS" || b.objetivo === "MENSAJES" || b.objetivo === "CONVERSION") && (
-        <Section n={5} title={`Específico de ${OBJETIVO_BRIEF_LABEL[b.objetivo]}`} defaultOpen>
+        <Section n={(step += 1)} title={`Específico de ${OBJETIVO_BRIEF_LABEL[b.objetivo]}`} defaultOpen>
           {b.objetivo === "LEADS" && (
             <>
               <div>
@@ -250,8 +253,8 @@ export function BriefEditor({ value, onChange }: { value: CampanaBrief; onChange
         </Section>
       )}
 
-      {/* 6. Atención al prospecto */}
-      <Section n={6} title="Atención al prospecto (SLA)">
+      {/* Atención al prospecto */}
+      <Section n={(step += 1)} title="Atención al prospecto (SLA)">
         <div className="space-y-2">
           {b.atencion.map((et, i) => (
             <div key={i} className="grid grid-cols-[90px_1fr_1fr] gap-2 items-center">
@@ -274,7 +277,7 @@ export function BriefEditor({ value, onChange }: { value: CampanaBrief; onChange
       </Section>
 
       {/* 7. Herramientas de venta */}
-      <Section n={7} title="Herramientas de venta requeridas">
+      <Section n={(step += 1)} title="Herramientas de venta requeridas">
         <div className="grid grid-cols-2 gap-2">
           {(Object.keys(HERRAMIENTAS_LABEL) as (keyof HerramientasVenta)[]).map((k) => (
             <Check
@@ -288,7 +291,7 @@ export function BriefEditor({ value, onChange }: { value: CampanaBrief; onChange
       </Section>
 
       {/* 8. KPIs */}
-      <Section n={8} title="KPIs a medir" hint={b.objetivo ? "Sugeridos según el objetivo." : "Elige un objetivo para ver los KPIs sugeridos."}>
+      <Section n={(step += 1)} title="KPIs a medir" hint={b.objetivo ? "Sugeridos según el objetivo." : "Elige un objetivo para ver los KPIs sugeridos."}>
         <div className="flex gap-2 flex-wrap">
           {kpisSugeridos.map((k) => {
             const on = b.kpis.includes(k);
@@ -309,7 +312,7 @@ export function BriefEditor({ value, onChange }: { value: CampanaBrief; onChange
       </Section>
 
       {/* 9. Checklist de lanzamiento */}
-      <Section n={9} title="Checklist de lanzamiento" hint="Define si el brief está completo." done={isBriefCompleto(b)} defaultOpen>
+      <Section n={(step += 1)} title="Checklist de lanzamiento" hint="Define si el brief está completo." done={isBriefCompleto(b)} defaultOpen>
         <div className="grid grid-cols-2 gap-2">
           {(Object.keys(LANZAMIENTO_LABEL) as (keyof ChecklistLanzamiento)[]).map((k) => (
             <Check
