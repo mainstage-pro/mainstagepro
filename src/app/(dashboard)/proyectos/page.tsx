@@ -75,6 +75,23 @@ function fmtFecha(iso: string | null) {
   } catch { return iso; }
 }
 
+function ProyectosThead() {
+  return (
+    <thead className="ms-thead">
+      <tr>
+        <th className="ms-th">Proyecto</th>
+        <th className="ms-th hidden sm:table-cell">Tipo</th>
+        <th className="ms-th hidden sm:table-cell">Estado</th>
+        <th className="ms-th hidden md:table-cell">Servicio</th>
+        <th className="ms-th hidden md:table-cell">Venue</th>
+        <th className="ms-th hidden sm:table-cell">Fecha</th>
+        <th className="ms-th hidden sm:table-cell w-28">Avance</th>
+        <th className="ms-th w-10"></th>
+      </tr>
+    </thead>
+  );
+}
+
 function ProyectoRow({ p, onEliminar, deletingId }: {
   p: Proyecto;
   onEliminar: () => void;
@@ -337,18 +354,7 @@ export default function ProyectosPage() {
               </div>
               <div className="rounded-xl border border-[#1a1a1a] bg-[#0a0a0a] overflow-hidden overflow-x-auto">
                 <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-[#1a1a1a] bg-[#111] text-[10px] uppercase tracking-wider text-gray-500">
-                      <th className="px-4 py-2.5 font-semibold">Proyecto</th>
-                      <th className="hidden sm:table-cell px-3 py-2.5 font-semibold">Tipo</th>
-                      <th className="hidden sm:table-cell px-3 py-2.5 font-semibold">Estado</th>
-                      <th className="hidden md:table-cell px-3 py-2.5 font-semibold">Servicio</th>
-                      <th className="hidden md:table-cell px-3 py-2.5 font-semibold">Venue</th>
-                      <th className="hidden sm:table-cell px-3 py-2.5 font-semibold">Fecha</th>
-                      <th className="hidden sm:table-cell px-3 py-2.5 font-semibold w-28">Avance</th>
-                      <th className="px-3 py-2.5 w-10"></th>
-                    </tr>
-                  </thead>
+                  <ProyectosThead />
                   <tbody>
                     {g.items.map(renderRow)}
                   </tbody>
@@ -367,18 +373,7 @@ export default function ProyectosPage() {
               </div>
               <div className="rounded-xl border border-[#1a1a1a] bg-[#0a0a0a] overflow-hidden overflow-x-auto opacity-60 hover:opacity-100 transition-opacity duration-300">
                 <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-[#1a1a1a] bg-[#111] text-[10px] uppercase tracking-wider text-gray-500">
-                      <th className="px-4 py-2.5 font-semibold">Proyecto</th>
-                      <th className="hidden sm:table-cell px-3 py-2.5 font-semibold">Tipo</th>
-                      <th className="hidden sm:table-cell px-3 py-2.5 font-semibold">Estado</th>
-                      <th className="hidden md:table-cell px-3 py-2.5 font-semibold">Servicio</th>
-                      <th className="hidden md:table-cell px-3 py-2.5 font-semibold">Venue</th>
-                      <th className="hidden sm:table-cell px-3 py-2.5 font-semibold">Fecha</th>
-                      <th className="hidden sm:table-cell px-3 py-2.5 font-semibold w-28">Avance</th>
-                      <th className="px-3 py-2.5 w-10"></th>
-                    </tr>
-                  </thead>
+                  <ProyectosThead />
                   <tbody>
                     {pasados.map(renderRow)}
                   </tbody>

@@ -179,7 +179,7 @@ export default function CentroOperativoPage() {
     <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-5">
       <div>
         <p className="ms-section-label">Gestión Operativa</p>
-        <h1 className="text-white text-2xl font-bold mt-1">Centro Operativo</h1>
+        <h1 className="ms-h1 mt-1">Centro Operativo</h1>
         <p className="text-[#555] text-sm mt-1 capitalize">{hoy}</p>
       </div>
 

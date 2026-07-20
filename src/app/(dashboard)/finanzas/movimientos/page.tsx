@@ -238,8 +238,8 @@ export default function MovimientosPage() {
           </div>
         ) : (
           <table className="w-full min-w-[700px]">
-            <thead>
-              <tr className="border-b border-[#1e1e1e]">
+            <thead className="ms-thead">
+              <tr>
                 {["Fecha", "Concepto", "Categoría", "Cuenta", "Tipo", "Monto", ""].map((h, i) => (
                   <th key={i} className="ms-th last:w-16">
                     {h}
@@ -249,26 +249,26 @@ export default function MovimientosPage() {
             </thead>
             <tbody className="divide-y divide-[#1a1a1a]">
               {movimientosFiltrados.map(mov => (
-                <tr key={mov.id} onClick={() => setDetalle(mov)} className="hover:bg-[#1a1a1a] transition-colors group cursor-pointer">
-                  <td className="px-4 py-3 text-xs text-[#6b7280] whitespace-nowrap">{fmtDate(mov.fecha)}</td>
-                  <td className="px-4 py-3">
+                <tr key={mov.id} onClick={() => setDetalle(mov)} className="ms-tr group cursor-pointer">
+                  <td className="ms-td text-xs text-[#6b7280] whitespace-nowrap">{fmtDate(mov.fecha)}</td>
+                  <td className="ms-td">
                     <p className="text-white text-sm">{mov.concepto}</p>
                     {mov.cliente && <Link href={`/crm/clientes/${mov.cliente.id}`} className="text-[#6b7280] text-xs hover:text-[#B3985B] transition-colors">{mov.cliente.nombre}</Link>}
                     {mov.proyecto && <Link href={`/proyectos/${mov.proyecto.id}`} className="text-[#555] text-xs hover:text-[#B3985B] transition-colors block">{mov.proyecto.nombre}</Link>}
                     {mov.referencia && <span className="text-[#555] text-[10px]">Ref: {mov.referencia}</span>}
                   </td>
-                  <td className="px-4 py-3 text-xs text-[#6b7280]">{mov.categoria?.nombre ?? "—"}</td>
-                  <td className="px-4 py-3 text-xs text-[#6b7280]">
+                  <td className="ms-td text-xs text-[#6b7280]">{mov.categoria?.nombre ?? "—"}</td>
+                  <td className="ms-td text-xs text-[#6b7280]">
                     {tNaturaleza(mov.tipo) === "NEUTRO" && mov.cuentaOrigen && mov.cuentaDestino
                       ? <span>{mov.cuentaOrigen.nombre} <span className="text-[#555]">→</span> {mov.cuentaDestino.nombre}</span>
                       : mov.cuentaDestino?.nombre ?? mov.cuentaOrigen?.nombre ?? "—"}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="ms-td">
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${tBadge(mov.tipo)}`}>
                       {tNombre(mov.tipo)}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm font-medium text-right whitespace-nowrap">
+                  <td className="ms-td font-medium text-right whitespace-nowrap">
                     {(() => {
                       const esEntrada = cuentaFiltro
                         ? mov.cuentaDestino?.id === cuentaFiltro
@@ -283,7 +283,7 @@ export default function MovimientosPage() {
                       );
                     })()}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="ms-td">
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={e => { e.stopPropagation(); abrirEditar(mov); }}
                         className="p-1.5 rounded text-[#555] hover:text-[#B3985B] hover:bg-[#B3985B]/10 transition-colors"

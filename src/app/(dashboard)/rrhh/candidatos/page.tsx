@@ -102,7 +102,7 @@ export default function CandidatosPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="ms-h1">Candidatos</h1>
-          <p className="text-gray-500 text-sm">{candidatos.length} registros · Pipeline de contratación</p>
+          <p className="ms-subtitle">{candidatos.length} registros · Pipeline de contratación</p>
         </div>
         <div className="flex items-center gap-3">
           {/* Toggle view */}
@@ -180,10 +180,10 @@ export default function CandidatosPage() {
         /* ── Lista ── */
         <div className="ms-card overflow-x-auto">
           <table className="w-full min-w-[600px] text-sm">
-            <thead>
-              <tr className="border-b border-[#1a1a1a]">
+            <thead className="ms-thead">
+              <tr>
                 {["Candidato","Puesto","Ciudad","Salario esperado","Etapa",""].map(h => (
-                  <th key={h} className="text-left text-[10px] text-gray-600 uppercase tracking-wider px-4 py-3 font-medium">{h}</th>
+                  <th key={h} className="ms-th">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -192,20 +192,20 @@ export default function CandidatosPage() {
                 const post = c.postulaciones[0];
                 const etapa = getEtapa(c);
                 return (
-                  <tr key={c.id} className="border-b border-[#1a1a1a] last:border-0 hover:bg-[#0d0d0d] transition-colors">
-                    <td className="px-4 py-3">
+                  <tr key={c.id} className="ms-tr last:border-0">
+                    <td className="ms-td">
                       <p className="text-white font-medium">{c.nombre}</p>
                       {c.correo && <p className="text-gray-600 text-xs">{c.correo}</p>}
                     </td>
-                    <td className="px-4 py-3 text-gray-400 text-xs">{getPuestoLabel(post)}</td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">{c.ciudad ?? "—"}</td>
-                    <td className="px-4 py-3 text-[#B3985B] text-xs">{c.salarioEsperado ? fmt(c.salarioEsperado) : "—"}</td>
-                    <td className="px-4 py-3">
+                    <td className="ms-td text-gray-400 text-xs">{getPuestoLabel(post)}</td>
+                    <td className="ms-td text-gray-500 text-xs">{c.ciudad ?? "—"}</td>
+                    <td className="ms-td text-[#B3985B] text-xs">{c.salarioEsperado ? fmt(c.salarioEsperado) : "—"}</td>
+                    <td className="ms-td">
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${ETAPA_COLORS[etapa]}`}>
                         {ETAPA_LABELS[etapa]}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="ms-td">
                       <Link href={`/rrhh/candidatos/${c.id}`} className="text-xs text-[#B3985B] hover:underline">Ver →</Link>
                     </td>
                   </tr>

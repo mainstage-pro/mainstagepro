@@ -55,28 +55,28 @@ export default function ActividadPage() {
       ) : (
         <div className="ms-card overflow-x-auto">
           <table className="w-full min-w-[600px]">
-            <thead>
-              <tr className="border-b border-[#1e1e1e]">
+            <thead className="ms-thead">
+              <tr>
                 {["Usuario", "Acción", "Entidad", "Descripción", "Fecha"].map(h => (
                   <th key={h} className="ms-th">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#1a1a1a]">
+            <tbody>
               {actividades.map(a => (
-                <tr key={a.id} className="hover:bg-[#1a1a1a] transition-colors">
-                  <td className="px-4 py-2.5">
+                <tr key={a.id} className="ms-tr">
+                  <td className="ms-td">
                     <p className="text-white text-sm font-medium">{a.usuario.name}</p>
                     <p className="text-gray-600 text-xs">{a.usuario.area ?? "General"}</p>
                   </td>
-                  <td className="px-4 py-2.5">
+                  <td className="ms-td">
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${ACCION_COLORS[a.accion] ?? "text-gray-400 bg-gray-800"}`}>
                       {a.accion}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5 text-gray-400 text-xs">{a.entidad}</td>
-                  <td className="px-4 py-2.5 text-gray-300 text-sm max-w-xs truncate">{a.descripcion}</td>
-                  <td className="px-4 py-2.5 text-gray-500 text-xs whitespace-nowrap">{fmtDate(a.createdAt)}</td>
+                  <td className="ms-td text-gray-400 text-xs">{a.entidad}</td>
+                  <td className="ms-td text-gray-300 max-w-xs truncate">{a.descripcion}</td>
+                  <td className="ms-td text-gray-500 text-xs whitespace-nowrap">{fmtDate(a.createdAt)}</td>
                 </tr>
               ))}
             </tbody>

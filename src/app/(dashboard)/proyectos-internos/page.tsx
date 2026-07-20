@@ -300,8 +300,8 @@ export default function ProyectosInternosPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[#B3985B] text-xs uppercase tracking-widest font-semibold mb-1">Gestión Operativa</p>
-          <h1 className="text-white text-2xl font-bold">Proyectos internos</h1>
-          <p className="text-[#555] text-sm mt-1">Mejoras, implementaciones y desarrollo de la empresa</p>
+          <h1 className="ms-h1">Proyectos internos</h1>
+          <p className="ms-subtitle mt-1">Mejoras, implementaciones y desarrollo de la empresa</p>
         </div>
         <button onClick={() => setShowModal(true)}
           className="shrink-0 ms-btn-primary">

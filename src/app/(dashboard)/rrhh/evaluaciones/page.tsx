@@ -145,11 +145,11 @@ export default function EvaluacionesPage() {
             <div><label className="text-xs text-gray-500 mb-1 block">Período</label>
               <input value={form.periodo} onChange={e=>setForm(p=>({...p,periodo:e.target.value}))}
                 placeholder="Ej: Abril 2026, Q1 2026..."
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
+                className="ms-input" /></div>
             <div><label className="text-xs text-gray-500 mb-1 block">Evaluador</label>
               <input value={form.evaluador} onChange={e=>setForm(p=>({...p,evaluador:e.target.value}))}
                 placeholder="Nombre del evaluador..."
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" /></div>
+                className="ms-input" /></div>
           </div>
 
           {/* Métricas */}
@@ -203,7 +203,7 @@ export default function EvaluacionesPage() {
               <label className="text-xs text-gray-500 mb-1 block font-semibold">Observaciones generales</label>
               <textarea value={form.observaciones} onChange={e=>setForm(p=>({...p,observaciones:e.target.value}))} rows={2}
                 placeholder="Notas adicionales..."
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+                className="ms-input resize-none" />
             </div>
           </div>
 
@@ -218,7 +218,7 @@ export default function EvaluacionesPage() {
       {/* Lista */}
       <div className="space-y-3">
         {evaluaciones.length === 0 ? (
-          <div className="ms-card py-14 text-center">
+          <div className="ms-empty-state">
             <p className="text-gray-500 text-sm">Sin evaluaciones registradas</p>
           </div>
         ) : evaluaciones.map(e => (

@@ -487,7 +487,7 @@ export default function KpisDashboardPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 mb-1">
             <BarChart2 className="w-5 h-5 text-[#B3985B]" />
-            <h1 className="text-2xl font-bold tracking-tight">KPIs y Resultados</h1>
+            <h1 className="ms-h1">KPIs y Resultados</h1>
           </div>
           {/* PDF button — unchanged */}
           <button

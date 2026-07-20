@@ -297,7 +297,7 @@ export default function PrepararSemanaPage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[10px] text-[#B3985B] uppercase tracking-[0.2em] font-semibold mb-1">Preparación</p>
-            <h1 className="text-2xl font-bold tracking-tight">Preparar semana</h1>
+            <h1 className="ms-h1">Preparar semana</h1>
           </div>
         </div>
       </div>

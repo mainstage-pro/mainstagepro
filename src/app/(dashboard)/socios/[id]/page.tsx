@@ -113,7 +113,7 @@ const DarkInput = ({ value, onChange, placeholder, type = "text", readOnly, requ
   <input type={type} value={value} readOnly={readOnly} required={required}
     onChange={onChange ? (e) => onChange(e.target.value) : undefined}
     placeholder={placeholder}
-    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] disabled:opacity-50" />
+    className="ms-input disabled:opacity-50" />
 );
 
 const DarkSelect = ({ value, onChange, options }: {
@@ -162,7 +162,7 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Información del socio</p>
+        <p className="ms-section-label">Información del socio</p>
         {edit ? (
           <div className="flex gap-3">
             <button onClick={() => { setEdit(false); setForm({ ...socio }); }}
@@ -265,14 +265,14 @@ function TabPerfil({ socio, reload }: { socio: Socio; reload: () => void }) {
           <FieldLabel>Notas internas</FieldLabel>
           {edit ? (
             <textarea value={form.notas || ""} onChange={(e) => f("notas", e.target.value)} rows={3}
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+              className="ms-textarea" />
           ) : <p className="ms-subtitle">{socio.notas || <span className="text-[#555]">Sin notas</span>}</p>}
         </div>
       </div>
 
       {/* Checklist */}
       <div>
-        <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-3">Requisitos de ingreso</p>
+        <p className="ms-section-label mb-3">Requisitos de ingreso</p>
         <div className="space-y-2">
           {socio.checklist.map((r) => (
             <div key={r.id} className="flex items-center gap-3 px-3 py-2.5 bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg">
@@ -364,7 +364,7 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
+        <p className="ms-section-label">
           Equipos — {activos.length} registrados
         </p>
           <button onClick={() => { setForm(EMPTY_A); setEditId(null); setShowForm(true); }}
@@ -417,8 +417,8 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
       ) : (
         <div className="ms-card overflow-x-auto">
           <table className="w-full min-w-[600px]">
-            <thead>
-              <tr className="border-b border-[#1e1e1e]">
+            <thead className="ms-thead">
+              <tr>
                 {["Código","Equipo","Cat.","Condición","Valor declarado","Precio/día","Split","Rentas",""].map((h) => (
                   <th key={h} className="ms-th">{h}</th>
                 ))}
@@ -429,28 +429,28 @@ function TabActivos({ socio, activos, reload }: { socio: Socio; activos: Activo[
                 const pS = a.pctSocioOverride ?? socio.pctSocio;
                 const pM = a.pctMainstageOverride ?? socio.pctMainstage;
                 return (
-                  <tr key={a.id} className="hover:bg-[#1a1a1a] transition-colors">
-                    <td className="px-4 py-3 font-mono text-[10px] text-[#555]">{a.codigoInventario}</td>
-                    <td className="px-4 py-3">
+                  <tr key={a.id} className="ms-tr">
+                    <td className="ms-td font-mono text-[10px] text-[#555]">{a.codigoInventario}</td>
+                    <td className="ms-td">
                       <p className="text-white text-sm font-medium">{a.nombre}</p>
                       {(a.marca || a.modelo) && (
                         <p className="text-[#555] text-[10px]">{[a.marca, a.modelo].filter(Boolean).join(" · ")}</p>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="ms-td">
                       <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${CAT_COLORS[a.categoria] || "text-gray-500 bg-gray-800/20 border-gray-700/40"}`}>
                         {a.categoria}
                       </span>
                     </td>
-                    <td className={`px-4 py-3 text-xs font-semibold ${COND_COLORS[a.condicion]}`}>{a.condicion}</td>
-                    <td className="px-4 py-3 ms-subtitle">{fmt(a.valorDeclarado)}</td>
-                    <td className="px-4 py-3 text-white text-sm font-semibold">{fmt(a.precioDia)}</td>
-                    <td className="px-4 py-3 text-[#6b7280] text-xs">
+                    <td className={`ms-td text-xs font-semibold ${COND_COLORS[a.condicion]}`}>{a.condicion}</td>
+                    <td className="ms-td ms-subtitle">{fmt(a.valorDeclarado)}</td>
+                    <td className="ms-td text-white text-sm font-semibold">{fmt(a.precioDia)}</td>
+                    <td className="ms-td text-[#6b7280] text-xs">
                       {pS}% / {pM}%
                       {a.pctSocioOverride !== null && <span className="ml-1 text-[#B3985B]">*</span>}
                     </td>
-                    <td className="px-4 py-3 ms-subtitle text-center">{a._count.rentas}</td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="ms-td ms-subtitle text-center">{a._count.rentas}</td>
+                    <td className="ms-td text-right">
                       <div className="flex justify-end gap-3">
                         <button onClick={() => editar(a)} className="text-[#B3985B] text-xs hover:underline">Editar</button>
                         <button onClick={() => eliminar(a.id)} className="text-gray-600 text-xs hover:text-red-400 transition-colors">Baja</button>
@@ -540,7 +540,7 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
     <div>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Rentas</p>
+          <p className="ms-section-label">Rentas</p>
           <Combobox
             value={String(filMes)}
             onChange={v => setFilMes(parseInt(v))}
@@ -618,8 +618,8 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
       ) : (
         <div className="ms-card overflow-x-auto">
           <table className="w-full min-w-[600px]">
-            <thead>
-              <tr className="border-b border-[#1e1e1e]">
+            <thead className="ms-thead">
+              <tr>
                 {["Evento","Equipo","Días","Precio/día","Subtotal","Socio","Fee Mainstage",""].map((h) => (
                   <th key={h} className="ms-th">{h}</th>
                 ))}
@@ -627,15 +627,15 @@ function TabRentas({ socio, activos, reload }: { socio: Socio; activos: Activo[]
             </thead>
             <tbody className="divide-y divide-[#1a1a1a]">
               {rentas.map((r) => (
-                <tr key={r.id} className="hover:bg-[#1a1a1a] transition-colors">
-                  <td className="px-4 py-3 text-white text-sm font-medium">{r.descripcion}</td>
-                  <td className="px-4 py-3 text-[#6b7280] text-xs">{r.activo.codigoInventario}<br/>{r.activo.nombre}</td>
-                  <td className="px-4 py-3 ms-subtitle text-center">{r.dias}</td>
-                  <td className="px-4 py-3 ms-subtitle">{fmt(r.precioDia)}</td>
-                  <td className="px-4 py-3 text-white text-sm font-semibold">{fmt(r.subtotal)}</td>
-                  <td className="px-4 py-3 text-green-400 text-sm font-semibold">{fmt(r.montoSocio)}</td>
-                  <td className="px-4 py-3 text-[#B3985B] text-sm font-semibold">{fmt(r.montoMainstage)}</td>
-                  <td className="px-4 py-3 text-right">
+                <tr key={r.id} className="ms-tr">
+                  <td className="ms-td text-white text-sm font-medium">{r.descripcion}</td>
+                  <td className="ms-td text-[#6b7280] text-xs">{r.activo.codigoInventario}<br/>{r.activo.nombre}</td>
+                  <td className="ms-td ms-subtitle text-center">{r.dias}</td>
+                  <td className="ms-td ms-subtitle">{fmt(r.precioDia)}</td>
+                  <td className="ms-td text-white text-sm font-semibold">{fmt(r.subtotal)}</td>
+                  <td className="ms-td text-green-400 text-sm font-semibold">{fmt(r.montoSocio)}</td>
+                  <td className="ms-td text-[#B3985B] text-sm font-semibold">{fmt(r.montoMainstage)}</td>
+                  <td className="ms-td text-right">
                     <button onClick={() => eliminar(r.id)} className="text-gray-600 text-xs hover:text-red-400 transition-colors">Eliminar</button>
                   </td>
                 </tr>
@@ -698,7 +698,7 @@ function TabReportes({ socio, reload }: { socio: Socio; reload: () => void }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-5">
-        <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Reportes mensuales</p>
+        <p className="ms-section-label">Reportes mensuales</p>
         <div className="flex items-center gap-2">
           <Combobox
             value={String(genMes)}
@@ -819,7 +819,7 @@ function TabMantenimiento({ socio, activos }: { socio: Socio; activos: Activo[] 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Mantenimiento</p>
+        <p className="ms-section-label">Mantenimiento</p>
           <button onClick={() => setShowForm(true)}
             className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors">
             + Registrar
@@ -936,7 +936,7 @@ function TabCapital({ config, valorEfectivo, montoFijoMensual, pisoAbsolutoPeso 
 
   return (
     <div className="space-y-6">
-      <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Estructura de Capital · HERVAM</p>
+      <p className="ms-section-label">Estructura de Capital · HERVAM</p>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
@@ -955,7 +955,7 @@ function TabCapital({ config, valorEfectivo, montoFijoMensual, pisoAbsolutoPeso 
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="ms-card p-5 space-y-3">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Modo de cálculo</p>
+          <p className="ms-section-label">Modo de cálculo</p>
           <div className="flex items-center gap-2">
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
               config.modoActivo === "FIJO" ? "text-blue-400 bg-blue-900/20 border-blue-700/40"
@@ -988,7 +988,7 @@ function TabCapital({ config, valorEfectivo, montoFijoMensual, pisoAbsolutoPeso 
         </div>
 
         <div className="ms-card p-5 space-y-3">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Crédito personal HERVAM</p>
+          <p className="ms-section-label">Crédito personal HERVAM</p>
           <div className="space-y-1.5 text-sm">
             <div className="flex justify-between">
               <span className="text-[#555]">Saldo inicial</span>
@@ -1039,7 +1039,7 @@ function TabActivosHervam({ activos }: { activos: HervamActivo[] }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Activos declarados HERVAM · {activos.length} registros</p>
+        <p className="ms-section-label">Activos declarados HERVAM · {activos.length} registros</p>
         <a href="/admin/valuacion" className="text-xs text-[#555] hover:text-[#B3985B] transition-colors">
           Administrar en Estructura de Capital →
         </a>
@@ -1064,8 +1064,8 @@ function TabActivosHervam({ activos }: { activos: HervamActivo[] }) {
       ) : (
         <div className="ms-card overflow-x-auto">
           <table className="w-full min-w-[500px]">
-            <thead>
-              <tr className="border-b border-[#1e1e1e]">
+            <thead className="ms-thead">
+              <tr>
                 {["Activo","Categoría","V. Adquisición","V. Actual","Fecha",""].map(h => (
                   <th key={h} className="ms-th">{h}</th>
                 ))}
@@ -1073,22 +1073,22 @@ function TabActivosHervam({ activos }: { activos: HervamActivo[] }) {
             </thead>
             <tbody className="divide-y divide-[#1a1a1a]">
               {activos.map(a => (
-                <tr key={a.id} className="hover:bg-[#1a1a1a] transition-colors">
-                  <td className="px-4 py-3">
+                <tr key={a.id} className="ms-tr">
+                  <td className="ms-td">
                     <p className="text-white text-sm font-medium">{a.nombre}</p>
                     {a.descripcion && <p className="text-[#555] text-xs mt-0.5">{a.descripcion}</p>}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="ms-td">
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${CAT_HERVAM[a.categoria] || CAT_HERVAM.OTRO}`}>
                       {a.categoria}
                     </span>
                   </td>
-                  <td className="px-4 py-3 ms-subtitle">{fmt(a.valorAdquisicion)}</td>
-                  <td className="px-4 py-3 text-white text-sm font-semibold">{fmt(a.valorActual)}</td>
-                  <td className="px-4 py-3 text-[#555] text-xs">
+                  <td className="ms-td ms-subtitle">{fmt(a.valorAdquisicion)}</td>
+                  <td className="ms-td text-white text-sm font-semibold">{fmt(a.valorActual)}</td>
+                  <td className="ms-td text-[#555] text-xs">
                     {a.fechaAdquisicion ? (() => { const iso = typeof a.fechaAdquisicion === "string" ? a.fechaAdquisicion : (a.fechaAdquisicion as Date).toISOString(); const [y, m, d] = iso.substring(0, 10).split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("es-MX"); })() : "—"}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="ms-td text-right">
                     <span className={`text-[10px] ${a.activo ? "text-green-400" : "text-gray-600"}`}>
                       {a.activo ? "Activo" : "Inactivo"}
                     </span>
@@ -1119,7 +1119,7 @@ function TabPagosHervam({ pagos }: { pagos: HervamPago[] }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Historial de pagos · HERVAM</p>
+        <p className="ms-section-label">Historial de pagos · HERVAM</p>
         <a href="/admin/valuacion" className="text-xs text-[#555] hover:text-[#B3985B] transition-colors">
           Registrar en Estructura de Capital →
         </a>
@@ -1143,8 +1143,8 @@ function TabPagosHervam({ pagos }: { pagos: HervamPago[] }) {
       ) : (
         <div className="ms-card overflow-x-auto">
           <table className="w-full min-w-[600px]">
-            <thead>
-              <tr className="border-b border-[#1e1e1e]">
+            <thead className="ms-thead">
+              <tr>
                 {["Mes","Renta fija","Variable","Acordado","Pagado","Estado","Pagado en"].map(h => (
                   <th key={h} className="ms-th">{h}</th>
                 ))}
@@ -1152,18 +1152,18 @@ function TabPagosHervam({ pagos }: { pagos: HervamPago[] }) {
             </thead>
             <tbody className="divide-y divide-[#1a1a1a]">
               {pagos.map(p => (
-                <tr key={p.id} className="hover:bg-[#1a1a1a] transition-colors">
-                  <td className="px-4 py-3 text-white text-sm font-semibold">{MESES_H[p.mes]} {p.anio}</td>
-                  <td className="px-4 py-3 ms-subtitle">{fmt(p.montoFijo)}</td>
-                  <td className="px-4 py-3 ms-subtitle">{p.montoVariable != null ? fmt(p.montoVariable) : "—"}</td>
-                  <td className="px-4 py-3 text-white text-sm font-semibold">{fmt(p.montoAcordado)}</td>
-                  <td className="px-4 py-3 text-green-400 text-sm font-semibold">{fmt(p.montoPagado)}</td>
-                  <td className="px-4 py-3">
+                <tr key={p.id} className="ms-tr">
+                  <td className="ms-td text-white text-sm font-semibold">{MESES_H[p.mes]} {p.anio}</td>
+                  <td className="ms-td ms-subtitle">{fmt(p.montoFijo)}</td>
+                  <td className="ms-td ms-subtitle">{p.montoVariable != null ? fmt(p.montoVariable) : "—"}</td>
+                  <td className="ms-td text-white text-sm font-semibold">{fmt(p.montoAcordado)}</td>
+                  <td className="ms-td text-green-400 text-sm font-semibold">{fmt(p.montoPagado)}</td>
+                  <td className="ms-td">
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${PAGO_COLORS[p.estado] || PAGO_COLORS.PENDIENTE}`}>
                       {p.estado}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-[#555] text-xs">
+                  <td className="ms-td text-[#555] text-xs">
                     {p.pagadoEn ? new Date(p.pagadoEn).toLocaleDateString("es-MX") : "—"}
                   </td>
                 </tr>

@@ -156,37 +156,37 @@ export default function CuentasPage() {
               <label className="text-xs text-gray-500 mb-1 block">Nombre / Alias *</label>
               <input value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
                 placeholder="Ej: BBVA Principal"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                className="ms-input" />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Banco</label>
               <input value={form.banco ?? ""} onChange={e => setForm(p => ({ ...p, banco: e.target.value }))}
                 placeholder="Ej: BBVA Bancomer"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                className="ms-input" />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Número de cuenta</label>
               <input value={form.numeroCuenta ?? ""} onChange={e => setForm(p => ({ ...p, numeroCuenta: e.target.value }))}
                 placeholder="0000 0000 0000 0000"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                className="ms-input" />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">CLABE interbancaria</label>
               <input value={form.clabe ?? ""} onChange={e => setForm(p => ({ ...p, clabe: e.target.value }))}
                 placeholder="18 dígitos"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                className="ms-input" />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Titular</label>
               <input value={form.titular ?? ""} onChange={e => setForm(p => ({ ...p, titular: e.target.value }))}
                 placeholder="Nombre del titular"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                className="ms-input" />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">RFC</label>
               <input value={form.rfc ?? ""} onChange={e => setForm(p => ({ ...p, rfc: e.target.value }))}
                 placeholder="RFC del titular"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                className="ms-input" />
             </div>
           </div>
           <div className="flex gap-3 pt-1">
@@ -209,8 +209,8 @@ export default function CuentasPage() {
           <div className="py-12 text-center text-gray-600 text-sm">Sin cuentas bancarias registradas</div>
         ) : (
           <table className="w-full min-w-[600px]">
-            <thead>
-              <tr className="border-b border-[#1e1e1e]">
+            <thead className="ms-thead">
+              <tr>
                 {["Nombre / Banco", "Número de cuenta", "CLABE", "Titular", "Estado", ""].map(h => (
                   <th key={h} className="ms-th">{h}</th>
                 ))}
@@ -218,24 +218,24 @@ export default function CuentasPage() {
             </thead>
             <tbody className="divide-y divide-[#1a1a1a]">
               {cuentas.map(c => (
-                <tr key={c.id} className={`hover:bg-[#1a1a1a] transition-colors ${!c.activa ? "opacity-50" : ""}`}>
-                  <td className="px-4 py-3">
+                <tr key={c.id} className={`ms-tr ${!c.activa ? "opacity-50" : ""}`}>
+                  <td className="ms-td">
                     <p className="text-white text-sm font-medium">{c.nombre}</p>
                     {c.banco && <p className="text-gray-500 text-xs">{c.banco}</p>}
                   </td>
-                  <td className="px-4 py-3 text-sm text-[#9ca3af] font-mono">{c.numeroCuenta ?? "—"}</td>
-                  <td className="px-4 py-3 text-sm text-[#9ca3af] font-mono">{c.clabe ?? "—"}</td>
-                  <td className="px-4 py-3">
+                  <td className="ms-td text-[#9ca3af] font-mono">{c.numeroCuenta ?? "—"}</td>
+                  <td className="ms-td text-[#9ca3af] font-mono">{c.clabe ?? "—"}</td>
+                  <td className="ms-td">
                     <p className="text-sm text-[#9ca3af]">{c.titular ?? "—"}</p>
                     {c.rfc && <p className="text-xs text-gray-600">{c.rfc}</p>}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="ms-td">
                     <button onClick={() => toggleActiva(c)}
                       className={`text-[10px] px-2 py-0.5 rounded-full font-medium transition-colors ${c.activa ? "bg-green-900/50 text-green-300 hover:bg-green-900/70" : "bg-gray-800 text-gray-500 hover:bg-gray-700"}`}>
                       {c.activa ? "Activa" : "Inactiva"}
                     </button>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="ms-td">
                     <div className="flex gap-3 justify-end">
                       <button onClick={() => { setSaldoModal({ id: c.id, nombre: c.nombre }); setSaldoMonto(""); setSaldoFecha(new Date().toISOString().split("T")[0]); }} className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors">Saldo inicial</button>
                       <button onClick={() => startEdit(c)} className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors">Editar</button>

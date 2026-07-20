@@ -137,8 +137,8 @@ export default function CapacitacionesPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[#B3985B] text-xs uppercase tracking-widest font-semibold mb-1">RR.HH. · Capacitaciones</p>
-          <h1 className="text-white text-2xl font-bold">Ciclo de Capacitaciones</h1>
-          <p className="text-[#555] text-sm mt-1">Programación y seguimiento de formación del equipo</p>
+          <h1 className="ms-h1">Ciclo de Capacitaciones</h1>
+          <p className="ms-subtitle mt-1">Programación y seguimiento de formación del equipo</p>
         </div>
         <button
           onClick={() => setShowForm(true)}

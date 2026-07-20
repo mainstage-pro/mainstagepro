@@ -125,13 +125,13 @@ export default function NuevoMovimientoPage() {
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
       <div className="mb-6">
         <h1 className="ms-h1">Registrar Movimiento</h1>
-        <p className="text-gray-400 text-sm mt-1">Ingreso, gasto, transferencia u otro tipo de movimiento</p>
+        <p className="ms-subtitle mt-1">Ingreso, gasto, transferencia u otro tipo de movimiento</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Tipo */}
         <div className="ms-card p-5">
-          <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Tipo de movimiento</h2>
+          <h2 className="ms-section-label mb-4">Tipo de movimiento</h2>
           <div className="flex flex-wrap gap-2">
             {tipos.map(o => (
               <button key={o.clave} type="button"
@@ -150,7 +150,7 @@ export default function NuevoMovimientoPage() {
 
         {/* Datos principales */}
         <div className="ms-card p-5">
-          <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Datos del movimiento</h2>
+          <h2 className="ms-section-label mb-4">Datos del movimiento</h2>
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -200,7 +200,7 @@ export default function NuevoMovimientoPage() {
         {/* Información adicional — condicional por naturaleza */}
         {!esNeutro && (
           <div className="ms-card p-5">
-            <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Información adicional</h2>
+            <h2 className="ms-section-label mb-4">Información adicional</h2>
             <div className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {esEntrada ? (
@@ -248,7 +248,7 @@ export default function NuevoMovimientoPage() {
         {/* NEUTRO — solo notas y referencia */}
         {esNeutro && (
           <div className="ms-card p-5">
-            <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Información adicional</h2>
+            <h2 className="ms-section-label mb-4">Información adicional</h2>
             <div className="space-y-3">
               <div>
                 <label className={labelCls}>Referencia / Folio</label>

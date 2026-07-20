@@ -662,8 +662,8 @@ export default function ProveedoresPage() {
         /* ── LISTA ── */
         <div className="ms-card overflow-x-auto">
           <table className="w-full min-w-[700px]">
-            <thead>
-              <tr className="border-b border-[#1e1e1e]">
+            <thead className="ms-thead">
+              <tr>
                 {["Proveedor", "Empresa", "Giro", "Prioridad", "Teléfono", "Correo", ""].map(h => (
                   <th key={h} className="ms-th">{h}</th>
                 ))}

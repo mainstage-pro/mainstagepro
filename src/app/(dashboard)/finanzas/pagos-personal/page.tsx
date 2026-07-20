@@ -289,7 +289,7 @@ export default function PagosPersonalPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="ms-h1">Pagos a Personal</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Ciclo semanal · miércoles de pago</p>
+          <p className="ms-subtitle mt-0.5">Ciclo semanal · miércoles de pago</p>
         </div>
         <div className="flex items-center gap-2 ms-card px-3 py-2">
           <button onClick={() => setCiclo(prevCiclo(ciclo))} className="text-gray-400 hover:text-white px-1 transition-colors">‹</button>

@@ -583,15 +583,15 @@ export default function TecnicosPage() {
         /* ── LISTA ── */
         <div className="ms-card overflow-x-auto">
           <table className="w-full min-w-[700px]">
-            <thead>
-              <tr className="border-b border-[#1e1e1e]">
-                <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Técnico</th>
-                <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Rol</th>
-                <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Categoría</th>
-                <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Prioridad</th>
-                <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Zona</th>
-                <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider">Contacto</th>
-                <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-600 uppercase tracking-wider"></th>
+            <thead className="ms-thead">
+              <tr>
+                <th className="ms-th">Técnico</th>
+                <th className="ms-th">Rol</th>
+                <th className="ms-th">Categoría</th>
+                <th className="ms-th">Prioridad</th>
+                <th className="ms-th">Zona</th>
+                <th className="ms-th">Contacto</th>
+                <th className="ms-th"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1a1a1a]">
@@ -799,8 +799,8 @@ export default function TecnicosPage() {
           ) : (
             <div className="ms-table-wrapper overflow-x-auto">
               <table className="w-full min-w-[700px]">
-                <thead>
-                  <tr className="border-b border-[#1e1e1e]">
+                <thead className="ms-thead">
+                  <tr>
                     {["#", "Técnico", "Rol", "Nivel", "Proyectos", "Score", "Puntualidad", "Último evento", "Últimos"].map(h => (
                       <th key={h} className="ms-th">{h}</th>
                     ))}

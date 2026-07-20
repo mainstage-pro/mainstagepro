@@ -113,8 +113,8 @@ export default function SatisfaccionPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[#B3985B] text-xs uppercase tracking-widest font-semibold mb-1">RR.HH. · Satisfacción</p>
-          <h1 className="text-white text-2xl font-bold">Encuestas de Satisfacción</h1>
-          <p className="text-[#555] text-sm mt-1">Pulso del equipo por período</p>
+          <h1 className="ms-h1">Encuestas de Satisfacción</h1>
+          <p className="ms-subtitle mt-1">Pulso del equipo por período</p>
         </div>
         <button
           onClick={() => setShowNew(true)}

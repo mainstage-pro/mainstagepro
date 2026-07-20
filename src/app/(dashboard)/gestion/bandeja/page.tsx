@@ -209,7 +209,7 @@ export default function BandejaPage() {
       {/* Header */}
       <div>
         <p className="ms-section-label">Gestión Operativa</p>
-        <h1 className="text-white text-2xl font-bold mt-1">Bandeja de entrada</h1>
+        <h1 className="ms-h1 mt-1">Bandeja de entrada</h1>
         <p className="text-[#555] text-sm mt-1">Captura sin fricción. Nada se mueve hasta clasificarlo.</p>
       </div>
 

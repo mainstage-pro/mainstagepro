@@ -111,7 +111,7 @@ export default function PersonalPage() {
             <div className="col-span-2">
               <label className="text-xs text-gray-500 mb-1 block">Nombre completo *</label>
               <input value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))} placeholder="Nombre"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                className="ms-input" />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Tipo</label>
@@ -122,7 +122,7 @@ export default function PersonalPage() {
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Puesto *</label>
               <input value={form.puesto} onChange={e => setForm(p => ({ ...p, puesto: e.target.value }))} placeholder="Ej: Encargado de bodega"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                className="ms-input" />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Departamento</label>
@@ -133,22 +133,22 @@ export default function PersonalPage() {
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Ingreso</label>
               <input type="date" value={form.fechaIngreso} onChange={e => setForm(p => ({ ...p, fechaIngreso: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                className="ms-input" />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Teléfono</label>
               <input value={form.telefono} onChange={e => setForm(p => ({ ...p, telefono: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                className="ms-input" />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Correo</label>
               <input value={form.correo} onChange={e => setForm(p => ({ ...p, correo: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                className="ms-input" />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Salario / tarifa</label>
               <input type="number" value={form.salario} onChange={e => setForm(p => ({ ...p, salario: e.target.value }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                className="ms-input" />
             </div>
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Periodo de pago</label>
@@ -159,12 +159,12 @@ export default function PersonalPage() {
             <div className="col-span-3">
               <label className="text-xs text-gray-500 mb-1 block">Cuenta bancaria</label>
               <input value={form.cuentaBancaria} onChange={e => setForm(p => ({ ...p, cuentaBancaria: e.target.value }))} placeholder="CLABE / número de cuenta"
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                className="ms-input" />
             </div>
           </div>
           <div className="flex gap-3 mt-4">
             <button onClick={crear} disabled={saving || !form.nombre || !form.puesto}
-              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
+              className="ms-btn-primary">
               {saving ? "Guardando..." : "Crear"}
             </button>
           </div>
@@ -174,7 +174,7 @@ export default function PersonalPage() {
       {loading ? (
         <SkeletonCards count={5} />
       ) : personal.length === 0 ? (
-        <div className="ms-card py-12 text-center">
+        <div className="ms-empty-state">
           <p className="text-gray-600 text-sm">Sin personal registrado</p>
         </div>
       ) : view === "list" ? (

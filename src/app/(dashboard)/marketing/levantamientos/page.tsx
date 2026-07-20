@@ -195,8 +195,8 @@ export default function LevantamientosPage() {
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-white font-bold text-xl">Levantamientos de contenido</h1>
-            <p className="text-white/40 text-xs mt-0.5">Shoots agendados desde el CRM · haz clic en un evento para ver sus activos</p>
+            <h1 className="ms-h1">Levantamientos de contenido</h1>
+            <p className="ms-subtitle mt-0.5">Shoots agendados desde el CRM · haz clic en un evento para ver sus activos</p>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={prevMes} className="px-3 py-1.5 rounded-lg border border-white/10 text-white/50 hover:text-white text-sm transition-colors">‹</button>

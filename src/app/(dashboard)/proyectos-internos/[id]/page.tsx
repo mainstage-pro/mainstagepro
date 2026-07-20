@@ -94,7 +94,7 @@ export default function ProyectoInternoPage({ params }: { params: Promise<{ id: 
                 className="text-xs text-[#B3985B] hover:underline">Guardar</button>
             </div>
           ) : (
-            <h1 className="text-white text-2xl font-bold cursor-pointer hover:text-[#ccc] transition-colors"
+            <h1 className="ms-h1 cursor-pointer hover:text-[#ccc] transition-colors"
               onClick={() => setEditNombre(true)}>
               {proyecto.nombre}
             </h1>

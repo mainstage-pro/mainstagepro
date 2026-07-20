@@ -143,7 +143,7 @@ export default function NuevoOnboardingPage() {
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="ms-h1">Nuevo plan de integración</h1>
-        <p className="text-gray-500 text-sm">Completa la información del puesto y usa la IA para generar el plan completo.</p>
+        <p className="ms-subtitle">Completa la información del puesto y usa la IA para generar el plan completo.</p>
       </div>
 
       {/* ── DATOS DEL COLABORADOR ── */}

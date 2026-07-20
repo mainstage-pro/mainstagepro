@@ -171,7 +171,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
           </div>
           <div>
             <h1 className="ms-h1">{persona.nombre}</h1>
-            <p className="text-gray-500 text-sm">{persona.puesto} · {persona.departamento}</p>
+            <p className="ms-subtitle">{persona.puesto} · {persona.departamento}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -422,7 +422,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Periodo</label>
                   <input type="month" value={pagoForm.periodo} onChange={e => setPagoForm(p => ({ ...p, periodo: e.target.value }))}
-                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    className="ms-input" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Tipo</label>
@@ -436,12 +436,12 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Monto *</label>
                   <input type="number" value={pagoForm.monto} onChange={e => setPagoForm(p => ({ ...p, monto: e.target.value }))}
-                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    className="ms-input" />
                 </div>
                 <div className="col-span-2">
                   <label className="text-xs text-gray-500 mb-1 block">Concepto</label>
                   <input value={pagoForm.concepto} onChange={e => setPagoForm(p => ({ ...p, concepto: e.target.value }))} placeholder="Opcional"
-                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                    className="ms-input" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 mb-1 block">Cuenta origen</label>

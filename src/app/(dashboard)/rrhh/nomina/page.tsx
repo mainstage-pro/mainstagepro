@@ -229,7 +229,7 @@ export default function NominaPage() {
       )}
 
       {!loading && pendientes.length === 0 && (
-        <div className="ms-card py-10 text-center">
+        <div className="ms-empty-state">
           <p className="text-green-400 text-sm font-medium">Sin pagos pendientes</p>
           <p className="text-gray-600 text-xs mt-1">No hay pagos pendientes en este momento</p>
         </div>
@@ -277,8 +277,8 @@ export default function NominaPage() {
             <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Historial de pagos</p>
           </div>
           <table className="w-full min-w-[600px]">
-            <thead>
-              <tr className="border-b border-[#1e1e1e]">
+            <thead className="ms-thead">
+              <tr>
                 {["Persona", "Período", "Concepto", "Monto", "Fecha", "Método"].map(h => (
                   <th key={h} className="ms-th">{h}</th>
                 ))}
@@ -286,18 +286,18 @@ export default function NominaPage() {
             </thead>
             <tbody className="divide-y divide-[#1a1a1a]">
               {historial.map(p => (
-                <tr key={p.id} className="hover:bg-[#1a1a1a] transition-colors">
-                  <td className="px-4 py-3">
+                <tr key={p.id} className="ms-tr">
+                  <td className="ms-td">
                     <Link href={`/rrhh/personal/${p.personal.id}`} className="text-white text-sm hover:text-[#B3985B]">{p.personal.nombre}</Link>
                     <p className="text-gray-600 text-xs">{p.personal.puesto}</p>
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">{p.periodo}</td>
-                  <td className="px-4 py-3 text-xs text-gray-400 max-w-[200px] truncate">{p.concepto ?? "—"}</td>
-                  <td className="px-4 py-3 text-sm text-white font-medium">{fmt(p.monto)}</td>
-                  <td className="px-4 py-3 text-xs text-gray-500">
+                  <td className="ms-td text-xs text-gray-500">{p.periodo}</td>
+                  <td className="ms-td text-xs text-gray-400 max-w-[200px] truncate">{p.concepto ?? "—"}</td>
+                  <td className="ms-td text-white font-medium">{fmt(p.monto)}</td>
+                  <td className="ms-td text-xs text-gray-500">
                     {p.fechaPago ? (() => { const [y,m,d] = p.fechaPago!.substring(0,10).split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("es-MX",{day:"numeric",month:"short"}); })() : "—"}
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-500 capitalize">{p.metodoPago?.toLowerCase() ?? "—"}</td>
+                  <td className="ms-td text-xs text-gray-500 capitalize">{p.metodoPago?.toLowerCase() ?? "—"}</td>
                 </tr>
               ))}
             </tbody>

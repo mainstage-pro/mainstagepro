@@ -192,7 +192,7 @@ export default function CategoriasPage() {
             <label className="text-xs text-gray-500 mb-1 block">Nombre *</label>
             <input value={form.nombre} onChange={e => setForm(p => ({ ...p, nombre: e.target.value }))}
               placeholder="Ej: Honorarios técnicos"
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              className="ms-input" />
           </div>
           <div>
             <label className="text-xs text-gray-500 mb-1 block">Tipo *</label>
@@ -209,12 +209,12 @@ export default function CategoriasPage() {
           <textarea value={form.descripcion} onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))}
             rows={3}
             placeholder="¿Qué incluye esta categoría? Ej: Pagos a técnicos externos por evento"
-            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
+            className="ms-textarea" />
         </div>
         <div className="w-32 mt-4">
           <label className="text-xs text-gray-500 mb-1 block">Orden</label>
           <input type="number" value={form.orden} onChange={e => setForm(p => ({ ...p, orden: parseInt(e.target.value) || 0 }))}
-            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+            className="ms-input" />
         </div>
         <div className="flex gap-3 mt-4">
           <button onClick={save} disabled={saving || !form.nombre.trim()}
@@ -231,7 +231,7 @@ export default function CategoriasPage() {
             <label className="text-xs text-gray-500 mb-1 block">Nombre *</label>
             <input value={tipoForm.nombre} onChange={e => setTipoForm(p => ({ ...p, nombre: e.target.value }))}
               placeholder="Ej: Préstamo, Anticipo de socio..."
-              className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+              className="ms-input" />
           </div>
           <div>
             <label className="text-xs text-gray-500 mb-1 block">¿Cómo afecta el dinero? *</label>
@@ -275,7 +275,7 @@ export default function CategoriasPage() {
             <div>
               <label className="text-xs text-gray-500 mb-1 block">Orden</label>
               <input type="number" value={tipoForm.orden} onChange={e => setTipoForm(p => ({ ...p, orden: parseInt(e.target.value) || 0 }))}
-                className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
+                className="ms-input" />
             </div>
           </div>
 

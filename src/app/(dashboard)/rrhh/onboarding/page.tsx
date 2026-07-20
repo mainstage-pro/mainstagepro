@@ -60,7 +60,7 @@ export default function OnboardingPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="ms-h1">Planes de integración</h1>
-          <p className="text-gray-500 text-sm">
+          <p className="ms-subtitle">
             {loading ? "Cargando..." : `${activos.length} activo${activos.length !== 1 ? "s" : ""} · ${otros.length} completado${otros.length !== 1 ? "s" : ""}`}
           </p>
         </div>
@@ -123,7 +123,7 @@ function PlanCard({ plan, onEliminar }: { plan: Plan; onEliminar: (id: string, n
 
   return (
     <Link href={`/rrhh/onboarding/${plan.id}`}>
-      <div className="bg-[#111] border border-[#1e1e1e] hover:border-[#333] rounded-xl p-5 transition-colors">
+      <div className="ms-card hover:border-[#333] p-5 transition-colors">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1 flex-wrap">

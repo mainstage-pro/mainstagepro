@@ -253,8 +253,8 @@ export default function AnalisisInventarioPage() {
           {/* Table */}
           <div className="ms-card overflow-x-auto">
             <table className="w-full min-w-[600px] text-sm">
-              <thead>
-                <tr className="border-b border-[#1e1e1e]">
+              <thead className="ms-thead">
+                <tr>
                   <th className="text-left p-3 pl-4 w-[30%]"><SortBtn field="descripcion" label="Equipo" current={sortField} dir={sortDir} onToggle={toggleSort} /></th>
                   <th className="text-left p-3 hidden md:table-cell"><span className="text-[10px] uppercase tracking-wider font-semibold text-gray-500">Categoría</span></th>
                   <th className="text-center p-3"><SortBtn field="vecesAprobadas" label="Aprobado" current={sortField} dir={sortDir} onToggle={toggleSort} /></th>
@@ -340,8 +340,8 @@ export default function AnalisisInventarioPage() {
 
               <div className="ms-card overflow-x-auto">
                 <table className="w-full min-w-[600px] text-sm">
-                  <thead>
-                    <tr className="border-b border-[#1e1e1e]">
+                  <thead className="ms-thead">
+                    <tr>
                       <th className="text-left p-3 pl-4">
                         <span className="text-[10px] uppercase tracking-wider font-semibold text-gray-500">Equipo / Proveedor</span>
                       </th>
@@ -411,8 +411,8 @@ export default function AnalisisInventarioPage() {
           ) : (
             <div className="ms-card overflow-x-auto">
               <table className="w-full min-w-[600px] text-sm">
-                <thead>
-                  <tr className="border-b border-[#1e1e1e]">
+                <thead className="ms-thead">
+                  <tr>
                     <th className="text-left p-3 pl-4"><span className="text-[10px] uppercase tracking-wider font-semibold text-gray-500">Descripción</span></th>
                     <th className="text-center p-3"><span className="text-[10px] uppercase tracking-wider font-semibold text-gray-500">Cotizado</span></th>
                     <th className="text-center p-3"><span className="text-[10px] uppercase tracking-wider font-semibold text-gray-500">Aprobado</span></th>

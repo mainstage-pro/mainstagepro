@@ -166,7 +166,7 @@ export default function PuestosPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="ms-h1">Puestos Ideales</h1>
-          <p className="text-gray-500 text-sm">Perfiles de roles que la organización busca desarrollar</p>
+          <p className="ms-subtitle">Perfiles de roles que la organización busca desarrollar</p>
         </div>
         <button onClick={openNew} className="ms-btn-primary">
           + Nuevo puesto

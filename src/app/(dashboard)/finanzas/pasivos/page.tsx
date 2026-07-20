@@ -253,10 +253,10 @@ export default function PasivosPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="ms-h1">Pasivos y Deudas</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Deudas estructurales — fuera del flujo operativo</p>
+          <p className="ms-subtitle mt-0.5">Deudas estructurales — fuera del flujo operativo</p>
         </div>
         <button onClick={() => setShowForm(true)}
-          className="px-4 py-2 rounded-xl bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9aa67] transition-colors flex-shrink-0">
+          className="ms-btn-primary flex-shrink-0">
           + Nueva deuda
         </button>
       </div>

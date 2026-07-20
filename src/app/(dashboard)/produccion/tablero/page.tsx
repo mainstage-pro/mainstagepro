@@ -122,7 +122,7 @@ export default function TableroProduccionPage() {
       {/* En taller */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-white font-semibold text-sm">En taller — mantenimiento y reparación ({enTaller.length})</h2>
+          <h2 className="ms-h2">En taller — mantenimiento y reparación ({enTaller.length})</h2>
           <Link href="/inventario/mantenimiento" className="text-xs text-[#B3985B] hover:underline">Ir a mantenimiento →</Link>
         </div>
         {enTaller.length === 0 ? (
@@ -175,7 +175,7 @@ export default function TableroProduccionPage() {
       {/* Fuera / pendientes de recolección */}
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-white font-semibold text-sm">Equipo fuera — pendiente de recolección ({fuera.length})</h2>
+          <h2 className="ms-h2">Equipo fuera — pendiente de recolección ({fuera.length})</h2>
           <Link href="/inventario/recolecciones" className="text-xs text-[#B3985B] hover:underline">Ir a recolecciones →</Link>
         </div>
         {fuera.length === 0 ? (

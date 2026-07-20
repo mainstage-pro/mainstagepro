@@ -74,8 +74,8 @@ export default function CotizacionesPage() {
         ) : (
           <div className="overflow-x-auto">
           <table className="w-full min-w-[600px]">
-            <thead>
-              <tr className="border-b border-[#1e1e1e]">
+            <thead className="ms-thead">
+              <tr>
                 {["Número", "Cliente", "Evento", "Total", "Estado", "Fecha", ""].map((h) => (
                   <th key={h} className="ms-th">
                     {h}

@@ -274,7 +274,7 @@ export default function CajaChicaPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="ms-h1">Caja Chica</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Gastos operativos y emergencias de oficina</p>
+          <p className="ms-subtitle mt-0.5">Gastos operativos y emergencias de oficina</p>
         </div>
         <div className="flex items-center gap-2">
           <button
