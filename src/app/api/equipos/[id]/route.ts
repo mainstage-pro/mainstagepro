@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { esRetornoAServicio, registrarCostoMantenimiento } from "@/lib/mantenimiento-costo";
+import { recalcularPrecioFinal } from "@/lib/productos";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -82,6 +83,22 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       estadoAnterior: previo.estado,
       equipoDescripcion: previo.descripcion,
     });
+  }
+
+  // Al cambiar el precio de renta, recalcular el precioFinal (denormalizado) de
+  // los productos que usan este equipo. Los paquetes suman ese precioFinal y se
+  // calculan al vuelo, así que se actualizan solos una vez corregidos los productos.
+  if ("precioRenta" in data) {
+    try {
+      const afectados = await prisma.productoEquipo.findMany({
+        where: { equipoId: id },
+        select: { productoId: true },
+        distinct: ["productoId"],
+      });
+      await Promise.all(afectados.map((p) => recalcularPrecioFinal(p.productoId)));
+    } catch (e) {
+      console.error("No se pudo recalcular precioFinal de productos afectados", e);
+    }
   }
 
   // Add the computed fields back manually so the list row can update
