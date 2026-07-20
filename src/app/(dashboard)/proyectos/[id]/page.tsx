@@ -114,6 +114,7 @@ interface Proyecto {
   createdAt: string;
   updatedAt: string;
   _canViewFinances?: boolean;
+  _canViewTecnicoCosts?: boolean;
 }
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
@@ -4827,9 +4828,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                       <span className="text-[10px] text-[#B3985B] font-bold uppercase tracking-wider">Roles cotizados (referencia)</span>
                       <span className="text-[10px] text-gray-600 bg-[#1a1a1a] px-2 py-0.5 rounded">{lineas.length} rol{lineas.length !== 1 ? "es" : ""}</span>
                     </div>
-                    <div className={`text-xs font-semibold ${restante >= 0 ? "text-green-400" : "text-red-400"}`}>
-                      {restante >= 0 ? `${fmt(restante)} disponible` : `${fmt(Math.abs(restante))} sobre presupuesto`}
-                    </div>
+                    {proyecto._canViewTecnicoCosts && (
+                      <div className={`text-xs font-semibold ${restante >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        {restante >= 0 ? `${fmt(restante)} disponible` : `${fmt(Math.abs(restante))} sobre presupuesto`}
+                      </div>
+                    )}
                   </div>
                   <div className="divide-y divide-[#1a1a1a]">
                     {lineas.map(linea => {
@@ -5105,8 +5108,10 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             <Combobox value={editPersonalForm.jornada} onChange={v => setEditPersonalForm(prev => ({ ...prev, jornada: v }))} options={[{ value: "CORTA", label: "0–8 hrs" }, { value: "MEDIA", label: "8–12 hrs" }, { value: "LARGA", label: "12+ hrs" }]} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
                           <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Nivel</label>
                             <Combobox value={editPersonalForm.nivel} onChange={v => setEditPersonalForm(prev => ({ ...prev, nivel: v }))} options={[{ value: "AAA", label: "AAA" }, { value: "AA", label: "AA" }, { value: "A", label: "A" }]} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
+                          {proyecto._canViewTecnicoCosts && (
                           <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Tarifa acordada ($)</label>
                             <input type="number" value={editPersonalForm.tarifa} onChange={e => setEditPersonalForm(prev => ({ ...prev, tarifa: e.target.value }))} placeholder="0" className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#555]" /></div>
+                          )}
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div><label className="text-[10px] text-gray-500 uppercase tracking-wide block mb-1">Fecha de jornada (override)</label>
@@ -5125,7 +5130,9 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 flex-wrap mt-2">
-                      <span className={`text-sm font-medium ${p.tarifaAcordada != null ? "text-gray-300" : "text-gray-600 italic"}`}>{p.tarifaAcordada != null ? fmt(p.tarifaAcordada) : "Sin tarifa"}</span>
+                      {proyecto._canViewTecnicoCosts && (
+                        <span className={`text-sm font-medium ${p.tarifaAcordada != null ? "text-gray-300" : "text-gray-600 italic"}`}>{p.tarifaAcordada != null ? fmt(p.tarifaAcordada) : "Sin tarifa"}</span>
+                      )}
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${p.estadoPago === "PAGADO" ? "bg-green-900/40 text-green-400" : "bg-[#1a1a1a] text-gray-500 border border-[#2a2a2a]"}`}>{p.estadoPago === "PAGADO" ? "Pagado" : "Pendiente"}</span>
                       {p.confirmRespuesta && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${p.confirmRespuesta === "CONFIRMADO" ? "bg-green-900/40 text-green-300" : "bg-red-900/40 text-red-300"}`}>{p.confirmRespuesta === "CONFIRMADO" ? "✓ Confirmó" : "✗ Rechazó"}</span>}
                       <button onClick={() => toggleConfirmar(p.id, p.confirmado)} className={`px-2 py-0.5 rounded-full text-xs font-medium border transition-colors ${p.confirmado ? "border-green-700 text-green-400 hover:bg-red-900/20 hover:text-red-400 hover:border-red-700" : "border-[#333] text-gray-500 hover:border-green-700 hover:text-green-400"}`}>{p.confirmado ? "✓ Confirmado" : "Confirmar"}</button>

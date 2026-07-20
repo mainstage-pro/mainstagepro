@@ -178,6 +178,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const allowedNames = ["mauricio", "emiliano", "carlos"];
   const canViewFinances = allowedNames.some(name => session.name.toLowerCase().includes(name));
 
+  // Costos/tarifas de técnicos: visibilidad más restringida que el resto de finanzas.
+  const allowedTecnicoNames = ["mauricio", "emiliano"];
+  const canViewTecnicoCosts = allowedTecnicoNames.some(name => session.name.toLowerCase().includes(name));
+
   if (!canViewFinances) {
     proyecto = {
       ...proyecto,
@@ -191,6 +195,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         costoExterno: null,
         precioUnitario: null,
       })) : [],
+    } as unknown as typeof proyecto;
+  }
+
+  if (!canViewTecnicoCosts) {
+    proyecto = {
+      ...proyecto,
       personal: Array.isArray(proyecto.personal) ? proyecto.personal.map((p: any) => ({
         ...p,
         tarifaAcordada: null,
@@ -199,7 +209,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     } as unknown as typeof proyecto;
   }
 
-  return NextResponse.json({ proyecto: { ...proyecto, avance, _canViewFinances: canViewFinances } });
+  return NextResponse.json({ proyecto: { ...proyecto, avance, _canViewFinances: canViewFinances, _canViewTecnicoCosts: canViewTecnicoCosts } });
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

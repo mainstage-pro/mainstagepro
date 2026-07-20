@@ -21,13 +21,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { personalId } = await params;
   const body = await req.json();
 
+  // Solo Mauricio/Emiliano pueden ver y modificar tarifas de técnicos.
+  const allowedTecnicoNames = ["mauricio", "emiliano"];
+  const canEditTecnicoCosts = allowedTecnicoNames.some(name => session.name.toLowerCase().includes(name));
+
   const data: Record<string, unknown> = {};
   if ("esAdicional" in body) data.esAdicional = body.esAdicional === true;
   if ("tecnicoId" in body) data.tecnicoId = body.tecnicoId || null;
   if ("rolTecnicoId" in body) data.rolTecnicoId = body.rolTecnicoId || null;
   if ("participacion" in body) data.participacion = body.participacion || null;
   if ("confirmado" in body) data.confirmado = body.confirmado;
-  if ("tarifaAcordada" in body) data.tarifaAcordada = body.tarifaAcordada != null ? parseFloat(body.tarifaAcordada) : null;
+  if ("tarifaAcordada" in body && canEditTecnicoCosts) data.tarifaAcordada = body.tarifaAcordada != null ? parseFloat(body.tarifaAcordada) : null;
   if ("estadoPago" in body) data.estadoPago = body.estadoPago;
   if ("nivel" in body) data.nivel = body.nivel || null;
   if ("jornada" in body) data.jornada = body.jornada || null;
