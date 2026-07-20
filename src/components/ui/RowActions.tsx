@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 export type RowAction = {
@@ -30,21 +29,31 @@ export default function RowActions({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const router = useRouter();
 
   const items = actions.filter(Boolean) as RowAction[];
 
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
+
+    function handleClickOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+
+    const timer = setTimeout(() => {
+      document.addEventListener("click", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }, 0);
+
     return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
+      clearTimeout(timer);
+      document.removeEventListener("click", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [open]);
 
@@ -52,6 +61,7 @@ export default function RowActions({
     <div className={`flex items-center gap-2 ${align === "end" ? "justify-end" : ""}`}>
       {primary && (
         <button
+          type="button"
           onClick={primary.onClick}
           disabled={primary.disabled}
           title={primary.title}
@@ -65,7 +75,11 @@ export default function RowActions({
       {items.length > 0 && (
         <div className="relative" ref={ref}>
           <button
-            onClick={() => setOpen(v => !v)}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen((prev) => !prev);
+            }}
             aria-label="Más acciones"
             className={`ms-btn-icon ${open ? "text-white border-[#444]" : ""}`}
           >
@@ -92,39 +106,46 @@ export default function RowActions({
                     <span className="truncate">{a.label}</span>
                   </>
                 );
-                const close = () => setOpen(false);
-                const execute = (e: React.MouseEvent) => {
-                  e.preventDefault();
+
+                const handleAction = (e: React.MouseEvent) => {
                   e.stopPropagation();
+                  setOpen(false);
                   if (a.onClick) {
                     a.onClick();
-                  } else if (a.href) {
-                    if (a.external) {
-                      window.open(a.href, "_blank");
-                    } else {
-                      router.push(a.href);
-                    }
                   }
-                  close();
                 };
 
                 if (a.href) {
                   return a.external ? (
-                    <a key={i} href={a.href} target="_blank" rel="noopener noreferrer" className={cls} onClick={execute} onMouseDown={execute} title={a.title}>
+                    <a
+                      key={i}
+                      href={a.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cls}
+                      onClick={handleAction}
+                      title={a.title}
+                    >
                       {content}
                     </a>
                   ) : (
-                    <Link key={i} href={a.href} className={cls} onClick={execute} onMouseDown={execute} title={a.title}>
+                    <Link
+                      key={i}
+                      href={a.href}
+                      className={cls}
+                      onClick={handleAction}
+                      title={a.title}
+                    >
                       {content}
                     </Link>
                   );
                 }
+
                 return (
                   <button
                     key={i}
                     type="button"
-                    onClick={execute}
-                    onMouseDown={execute}
+                    onClick={handleAction}
                     disabled={a.disabled}
                     title={a.title}
                     className={cls}
