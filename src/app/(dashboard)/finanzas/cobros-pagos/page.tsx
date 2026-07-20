@@ -2198,7 +2198,10 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                           placeholder="Clic para ver lista o escribe para buscar…"
                           className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                         {dropdownOpen === "cxc" && (
-                          <div className="absolute z-10 left-0 right-0 mt-1 bg-[#1c1c1c] border border-[#333] rounded-lg shadow-xl max-h-52 overflow-y-auto">
+                          <div
+                            onMouseDown={e => e.preventDefault()}
+                            className="absolute z-10 left-0 right-0 mt-1 bg-[#1c1c1c] border border-[#333] rounded-lg shadow-xl max-h-52 overflow-y-auto"
+                          >
                             {clientes
                               .filter(c => {
                                 if (!empresaQuery) return true;
@@ -2277,7 +2280,10 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                             className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                           />
                           {dropdownOpen === "cxp_tec" && (
-                            <div className="absolute z-10 left-0 right-0 mt-1 bg-[#1c1c1c] border border-[#333] rounded-lg shadow-xl max-h-44 overflow-y-auto">
+                            <div
+                              onMouseDown={e => e.preventDefault()}
+                              className="absolute z-10 left-0 right-0 mt-1 bg-[#1c1c1c] border border-[#333] rounded-lg shadow-xl max-h-44 overflow-y-auto"
+                            >
                               {tecnicos
                                 .filter(t => !tecnicoQuery || t.nombre.toLowerCase().includes(tecnicoQuery.toLowerCase()))
                                 .map(t => (

@@ -69,14 +69,15 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     React.createElement(HojaEntregaRentaPDF, { proyecto: proyectoData as any, logoSrc }) as React.ReactElement<React.ComponentProps<typeof Document>>
   );
 
-  const chunks: Uint8Array[] = [];
-  for await (const chunk of pdfStream) {
-    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
-  }
-  const pdfBuffer = Buffer.concat(chunks);
+  const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    pdfStream.on("data", (chunk: any) => chunks.push(Buffer.from(chunk)));
+    pdfStream.on("error", reject);
+    pdfStream.on("end", () => resolve(Buffer.concat(chunks)));
+  });
 
   const isPreview = req.nextUrl?.searchParams?.get("preview") === "1";
-  return new NextResponse(pdfBuffer, {
+  return new NextResponse(pdfBuffer as any, {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",

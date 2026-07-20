@@ -212,11 +212,12 @@ export async function GET(request: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pdfStream = await ReactPDF.renderToStream(React.createElement(ReporteMarketingPDF, { data }) as any);
 
-  const chunks: Buffer[] = [];
-  for await (const chunk of pdfStream as unknown as AsyncIterable<Buffer>) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string));
-  }
-  const pdfBuffer = Buffer.concat(chunks);
+  const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    pdfStream.on("data", (chunk: any) => chunks.push(Buffer.from(chunk)));
+    pdfStream.on("error", reject);
+    pdfStream.on("end", () => resolve(Buffer.concat(chunks)));
+  });
 
   const TIPO_LABELS: Record<string, string> = {
     "ejecucion-organica":   "Ejecucion-Organica",
@@ -227,7 +228,7 @@ export async function GET(request: NextRequest) {
 
   const filename = `Reporte-Marketing-${TIPO_LABELS[tipo] ?? tipo}-${mes}.pdf`;
 
-  return new NextResponse(pdfBuffer, {
+  return new NextResponse(pdfBuffer as any, {
     status: 200,
     headers: {
       "Content-Type":        "application/pdf",

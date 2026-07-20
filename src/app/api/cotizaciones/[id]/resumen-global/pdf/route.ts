@@ -143,16 +143,17 @@ export async function GET(
     React.createElement(ResumenGlobalPDF, { data, logoSrc }) as React.ReactElement<React.ComponentProps<typeof Document>>
   );
 
-  const chunks: Uint8Array[] = [];
-  for await (const chunk of pdfStream) {
-    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
-  }
-  const pdfBuffer = Buffer.concat(chunks);
+  const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    pdfStream.on("data", (chunk: any) => chunks.push(Buffer.from(chunk)));
+    pdfStream.on("error", reject);
+    pdfStream.on("end", () => resolve(Buffer.concat(chunks)));
+  });
 
   const proyectoLabel = cotizacion.trato?.nombreEvento || cotizacion.cliente.nombre;
   const filename = `CotizacionGlobal-${proyectoLabel.replace(/[^a-zA-Z0-9\-_]/g, "_")}.pdf`;
 
-  return new NextResponse(pdfBuffer, {
+  return new NextResponse(pdfBuffer as any, {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",

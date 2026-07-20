@@ -72,14 +72,15 @@ export async function GET(req: NextRequest,
     }) as React.ReactElement<React.ComponentProps<typeof Document>>
   );
 
-  const chunks: Uint8Array[] = [];
-  for await (const chunk of pdfStream) {
-    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
-  }
-  const buf = Buffer.concat(chunks);
+  const buf = await new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    pdfStream.on("data", (chunk: any) => chunks.push(Buffer.from(chunk)));
+    pdfStream.on("error", reject);
+    pdfStream.on("end", () => resolve(Buffer.concat(chunks)));
+  });
 
   const isPreview = req.nextUrl?.searchParams?.get('preview') === '1';
-  return new NextResponse(buf, {
+  return new NextResponse(buf as any, {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",

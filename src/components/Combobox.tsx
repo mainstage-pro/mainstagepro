@@ -79,7 +79,10 @@ export function Combobox({
         <button
           key={opt.value}
           type="button"
-          onMouseDown={() => select(opt)}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            select(opt);
+          }}
           className={`w-full text-left px-3 py-2 text-sm hover:bg-[#1a1a1a] transition-colors border-b border-[#1a1a1a] last:border-0 ${
             opt.value === value ? "text-[#B3985B] font-medium" : "text-white"
           }`}
