@@ -207,7 +207,8 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
   const bloquesCrono = construirCronologia({
     fechaEvento: data.fechaEvento, fechasEvento: data.fechasEvento, horariosEvento: data.horariosEvento,
     horaInicioEvento: data.horaInicioEvento, horaFinEvento: data.horaFinEvento,
-    fechaMontaje: data.fechaMontaje, horaInicioMontaje: data.horaMontaje || data.horaInicioMontaje,
+    fechaMontaje: data.fechaMontaje, horaMontaje: data.horaMontaje, horaInicioMontaje: data.horaInicioMontaje,
+    duracionMontajeHrs: data.duracionMontajeHrs,
     horaSalidaBodega: data.horaSalidaBodega, horaDesmontaje: data.horaDesmontaje,
     llamadoBodega: data.llamadoBodega, lugarLlamado: data.lugarLlamado, lugarEvento: data.lugarEvento,
   });

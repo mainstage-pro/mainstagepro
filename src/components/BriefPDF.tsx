@@ -228,6 +228,7 @@ export interface BriefData {
   fechaMontaje: Date | string | null;
   horaInicioMontaje: string | null;
   horaMontaje: string | null;
+  duracionMontajeHrs: number | null;
   horaSalidaBodega: string | null;
   horaDesmontaje: string | null;
   llamadoBodega: Date | string | null;
@@ -273,7 +274,8 @@ export function BriefPDF({
   const bloquesCrono = construirCronologia({
     fechaEvento: proyecto.fechaEvento, fechasEvento: proyecto.fechasEvento, horariosEvento: proyecto.horariosEvento,
     horaInicioEvento: proyecto.horaInicioEvento, horaFinEvento: proyecto.horaFinEvento,
-    fechaMontaje: proyecto.fechaMontaje, horaInicioMontaje: proyecto.horaMontaje || proyecto.horaInicioMontaje,
+    fechaMontaje: proyecto.fechaMontaje, horaMontaje: proyecto.horaMontaje, horaInicioMontaje: proyecto.horaInicioMontaje,
+    duracionMontajeHrs: proyecto.duracionMontajeHrs,
     horaSalidaBodega: proyecto.horaSalidaBodega, horaDesmontaje: proyecto.horaDesmontaje,
     llamadoBodega: proyecto.llamadoBodega, lugarLlamado: proyecto.lugarLlamado, lugarEvento: proyecto.lugarEvento,
   });

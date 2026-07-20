@@ -63,7 +63,8 @@ export function FichaCliente({ data }: { data: FichaClienteData }) {
   const bloques = construirCronologia({
     fechaEvento: data.fechaEvento, fechasEvento: data.fechasEvento, horariosEvento: data.horariosEvento,
     horaInicioEvento: data.horaInicioEvento, horaFinEvento: data.horaFinEvento,
-    fechaMontaje: data.fechaMontaje, horaInicioMontaje: data.horaInicioMontaje,
+    fechaMontaje: data.fechaMontaje, horaMontaje: null, horaInicioMontaje: data.horaInicioMontaje,
+    duracionMontajeHrs: null,
     horaSalidaBodega: null, horaDesmontaje: null, llamadoBodega: null, lugarLlamado: null,
     lugarEvento: data.lugarEvento,
   }, { interno: false });

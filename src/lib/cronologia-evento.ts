@@ -35,7 +35,12 @@ export type ProyectoCronologia = {
   horaInicioEvento: string | null;
   horaFinEvento: string | null;
   fechaMontaje: Date | string | null;
+  /** Hora de llegada al venue para montar. */
+  horaMontaje: string | null;
+  /** Hora en que arranca el montaje ya en el venue. */
   horaInicioMontaje: string | null;
+  /** Duración estimada del montaje (hrs) → término aproximado = inicio + duración. */
+  duracionMontajeHrs: number | null;
   horaSalidaBodega: string | null;
   horaDesmontaje: string | null;
   llamadoBodega: Date | string | null;
@@ -55,6 +60,18 @@ function horaDeDateTime(dt: Date | string | null | undefined): string | null {
   } catch {
     return null;
   }
+}
+
+/** Suma horas (float) a una hora "HH:MM"; devuelve "HH:MM" o null. */
+function sumarHoras(hhmm: string | null | undefined, horas: number | null | undefined): string | null {
+  if (!hhmm || horas == null || !isFinite(horas)) return null;
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
+  if (!m) return null;
+  const total = Number(m[1]) * 60 + Number(m[2]) + Math.round(horas * 60);
+  const min = ((total % 1440) + 1440) % 1440;
+  const hh = Math.floor(min / 60);
+  const mm = min % 60;
+  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
 }
 
 /** "lun 5 jul" desde "YYYY-MM-DD" | Date | ISO. */
@@ -90,14 +107,17 @@ export function construirCronologia(
   const bloques: BloqueCronologia[] = [];
 
   // ── Bloque 1: Montaje y logística ──
+  // Orden cronológico del día de montaje: llamado en bodega → salida de bodega →
+  // llegada al venue → inicio de montaje → término aproximado de montaje → desmontaje.
   const llamadoHora = horaDeDateTime(p.llamadoBodega);
   const llamadoFecha = p.llamadoBodega ? fechaISOaDia(p.llamadoBodega) : null;
   const montajeFecha = p.fechaMontaje ? fechaISOaDia(p.fechaMontaje) : llamadoFecha;
+  const terminoMontaje = sumarHoras(p.horaInicioMontaje, p.duracionMontajeHrs);
   const itemsMontaje: ItemCronologia[] = [];
 
   if (interno && (llamadoHora || p.lugarLlamado)) {
     itemsMontaje.push({
-      label: "Llamado",
+      label: "Llamado en bodega",
       hora: llamadoHora ?? "Por definir",
       fecha: fechaCorta(llamadoFecha ?? montajeFecha),
       nota: p.lugarLlamado,
@@ -111,12 +131,28 @@ export function construirCronologia(
       nota: null,
     });
   }
-  if (p.horaInicioMontaje) {
+  if (p.horaMontaje) {
     itemsMontaje.push({
-      label: "Montaje en venue",
-      hora: p.horaInicioMontaje,
+      label: "Llegada al venue",
+      hora: p.horaMontaje,
       fecha: null,
       nota: p.lugarEvento,
+    });
+  }
+  if (p.horaInicioMontaje) {
+    itemsMontaje.push({
+      label: "Inicio de montaje",
+      hora: p.horaInicioMontaje,
+      fecha: null,
+      nota: p.horaMontaje ? null : p.lugarEvento,
+    });
+  }
+  if (terminoMontaje) {
+    itemsMontaje.push({
+      label: "Término aprox. de montaje",
+      hora: terminoMontaje,
+      fecha: null,
+      nota: null,
     });
   }
   if (interno && p.horaDesmontaje) {
@@ -146,7 +182,7 @@ export function construirCronologia(
     });
     const items: ItemCronologia[] = [];
     if (interno && h.llamado) {
-      items.push({ label: "Llamado", hora: h.llamado, fecha: null, nota: null });
+      items.push({ label: "Llamado", hora: h.llamado, fecha: null, nota: p.lugarLlamado });
     }
     if (interno && i > 0 && h.aplicaMontaje && h.montaje) {
       items.push({ label: "Montaje", hora: h.montaje, fecha: null, nota: p.lugarEvento });
