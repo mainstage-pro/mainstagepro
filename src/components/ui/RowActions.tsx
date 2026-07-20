@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 export type RowAction = {
@@ -29,6 +30,7 @@ export default function RowActions({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   const items = actions.filter(Boolean) as RowAction[];
 
@@ -91,13 +93,28 @@ export default function RowActions({
                   </>
                 );
                 const close = () => setOpen(false);
+                const execute = (e: React.MouseEvent) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (a.onClick) {
+                    a.onClick();
+                  } else if (a.href) {
+                    if (a.external) {
+                      window.open(a.href, "_blank");
+                    } else {
+                      router.push(a.href);
+                    }
+                  }
+                  close();
+                };
+
                 if (a.href) {
                   return a.external ? (
-                    <a key={i} href={a.href} target="_blank" rel="noopener noreferrer" className={cls} onClick={close} title={a.title}>
+                    <a key={i} href={a.href} target="_blank" rel="noopener noreferrer" className={cls} onClick={execute} onMouseDown={execute} title={a.title}>
                       {content}
                     </a>
                   ) : (
-                    <Link key={i} href={a.href} className={cls} onClick={close} title={a.title}>
+                    <Link key={i} href={a.href} className={cls} onClick={execute} onMouseDown={execute} title={a.title}>
                       {content}
                     </Link>
                   );
@@ -105,7 +122,9 @@ export default function RowActions({
                 return (
                   <button
                     key={i}
-                    onClick={() => { a.onClick?.(); close(); }}
+                    type="button"
+                    onClick={execute}
+                    onMouseDown={execute}
                     disabled={a.disabled}
                     title={a.title}
                     className={cls}
