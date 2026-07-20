@@ -41,27 +41,6 @@ function getInitialOpen(): Set<string> {
   return new Set<string>();
 }
 
-function getActiveSectionKey(pathname: string): string | null {
-  // Configuración (sistema)
-  if (pathname.startsWith("/admin/usuarios") || pathname.startsWith("/admin/actividad") || pathname.startsWith("/admin/configuracion")) return "seccion-config";
-  // Gestión Operativa vive como link único en seccion-top (sin encabezado);
-  // no resaltar ninguna sección para sus rutas (antes que Producción por /proyectos-internos).
-  if (pathname.startsWith("/gestion") || pathname.startsWith("/operaciones") || pathname.startsWith("/plan-trabajo") || pathname.startsWith("/proyectos-internos")) return null;
-  // Administración (RRHH/Personal vive aquí; /inventario/analisis y /catalogo/roles antes que Producción)
-  if (pathname.startsWith("/finanzas") || pathname.startsWith("/personal") || pathname.startsWith("/rrhh") || pathname.startsWith("/capacitacion") || pathname.startsWith("/formacion") || pathname.startsWith("/reclutamiento") || pathname.startsWith("/activos") || pathname.startsWith("/inventario/analisis") || pathname.startsWith("/admin/valuacion") || pathname.startsWith("/socios") || pathname.startsWith("/catalogo/roles") || pathname.startsWith("/admin/reportes")) return "seccion-administracion";
-  // Dirección
-  if (pathname.startsWith("/direccion") || pathname.startsWith("/coordinacion") || pathname.startsWith("/juntas") || pathname.startsWith("/vision-semanal") || pathname.startsWith("/formularios") || pathname.startsWith("/presentaciones")) return "seccion-direccion";
-  // Marketing
-  if (pathname.startsWith("/marketing")) return "seccion-marketing";
-  // Comercial (/admin/grupos-equipo vive aquí)
-  if (pathname.startsWith("/crm") || pathname.startsWith("/cotizaciones") || pathname.startsWith("/ventas") || pathname.startsWith("/comercial") || pathname.startsWith("/admin/grupos-equipo")) return "seccion-ventas";
-  // Producción
-  if (pathname.startsWith("/proyectos") || pathname.startsWith("/produccion") || pathname.startsWith("/equipos") || pathname.startsWith("/directorio") || pathname.startsWith("/inventario") || pathname.startsWith("/catalogo")) return "seccion-produccion";
-  return null;
-}
-
-const ALL_SECTION_KEYS = NAV.filter(s => s.section).map(s => s.key);
-
 export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -70,7 +49,6 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
   const [badges, setBadges] = useState<Record<string, number>>({});
 
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => getInitialOpen());
-  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set<string>());
   const [stateLoaded, setStateLoaded] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -79,9 +57,8 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
     try {
       const raw = localStorage.getItem(storageKey);
       if (raw) {
-        const stored = JSON.parse(raw) as { openGroups?: string[]; openSections?: string[] };
+        const stored = JSON.parse(raw) as { openGroups?: string[] };
         if (stored.openGroups)   setOpenGroups(new Set(stored.openGroups));
-        if (stored.openSections) setOpenSections(new Set(stored.openSections));
       }
     } catch {}
     setStateLoaded(true);
@@ -93,10 +70,9 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
     try {
       localStorage.setItem(storageKey, JSON.stringify({
         openGroups:   [...openGroups],
-        openSections: [...openSections],
       }));
     } catch {}
-  }, [openGroups, openSections, stateLoaded, storageKey]);
+  }, [openGroups, stateLoaded, storageKey]);
 
   // Fetch badge counts
   useEffect(() => {
@@ -119,15 +95,6 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
 
   function toggleGroup(key: string) {
     setOpenGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
-
-  function toggleSection(key: string) {
-    setOpenSections(prev => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -169,7 +136,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
 
   const navContent = (
     <>
-      <nav className="flex-1 px-2 py-3 overflow-y-auto">
+      <nav className="flex-1 px-3 py-2 overflow-y-auto">
         {NAV.map((section) => {
           const sectionLabel = resolveLabel(section.key, section.section, labels);
           const visibleItems = section.items.filter(item => {
@@ -182,30 +149,14 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
           });
           if (visibleItems.length === 0) return null;
 
-          const isSectionOpen = !section.section || openSections.has(section.key);
-          const isSectionActive = section.section ? getActiveSectionKey(pathname) === section.key : false;
-
           return (
-            <div key={section.key} className={section.section ? "mb-1" : "mb-2 pb-2 border-b border-[#1a1a1a]"}>
+            <div key={section.key} className={section.section ? "mb-1" : "mb-2 pb-3 border-b border-[#1a1a1a]"}>
               {section.section && (
-                <button
-                  onClick={() => toggleSection(section.key)}
-                  className="w-full flex items-center justify-between px-3 py-2 mb-0.5 rounded-md group hover:bg-[#151515] transition-colors"
-                >
-                  <span className={`text-sm font-semibold tracking-wide transition-colors ${
-                    isSectionActive && !isSectionOpen ? "text-white" : "text-white/50 group-hover:text-white/80"
-                  }`}>
-                    {sectionLabel}
-                  </span>
-                  <svg
-                    className={`w-3.5 h-3.5 text-white/30 group-hover:text-white/60 transition-transform shrink-0 ${isSectionOpen ? "rotate-180" : ""}`}
-                    fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
+                <p className="px-3 pt-5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/35">
+                  {sectionLabel}
+                </p>
               )}
-              {isSectionOpen && <div className="space-y-0.5">
+              <div className="space-y-0.5">
                 {visibleItems.map((item) => {
                   const itemLabel = resolveLabel(item.key, item.label, labels);
                   if (item.children && !item.href) {
@@ -264,10 +215,10 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
                     <Link
                       key={item.href}
                       href={href}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+                      className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13.5px] transition-colors ${
                         active
                           ? "bg-[#1a1a1a] text-white font-semibold"
-                          : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
+                          : "text-[#8b8f97] hover:text-white hover:bg-[#161616]"
                       }`}
                     >
                       {Icon
@@ -283,7 +234,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
                     </Link>
                   );
                 })}
-              </div>}
+              </div>
             </div>
           );
         })}
@@ -317,7 +268,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
   return (
     <>
       {/* DESKTOP */}
-      <aside className="hidden md:flex w-56 bg-[#0d0d0d] border-r border-[#1a1a1a] flex-col h-full shrink-0">
+      <aside className="hidden md:flex w-64 bg-[#0d0d0d] border-r border-[#1a1a1a] flex-col h-full shrink-0">
         <div className="px-4 py-4 border-b border-[#1a1a1a]">
           <Link href={dashboardHref} className="flex items-center gap-2 hover:opacity-80 transition-opacity mb-3">
             <Image src="/logo-icon.png" alt="Mainstage Pro" width={28} height={28} className="shrink-0" />

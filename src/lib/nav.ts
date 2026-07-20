@@ -67,6 +67,15 @@ export const NAV: NavSection[] = [
     ],
   },
 
+  // ── PROYECTOS ──────────────────────────────────────────────────────────────
+  {
+    key: "seccion-proyectos",
+    section: "Proyectos",
+    items: [
+      { key: "proyectos", label: "Todos los proyectos", href: "/proyectos" },
+    ],
+  },
+
   // ── DIRECCIÓN ──────────────────────────────────────────────────────────────
   {
     key: "seccion-direccion",
@@ -205,7 +214,6 @@ export const NAV: NavSection[] = [
     key: "seccion-produccion",
     section: "Producción",
     items: [
-      { key: "proyectos", label: "Proyectos de evento", href: "/proyectos" },
       {
         key: "inventario",
         label: "Equipos",
