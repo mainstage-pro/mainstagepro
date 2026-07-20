@@ -117,7 +117,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         return {
           ...l,
           descripcion: meta?.descripcion || l.descripcion,
-          marca: meta?.marcaModelo || l.marca,
+          marca: l.descripcion,
           modelo: null,
           imagenUrl: await resolveImg(productoImgMap.get(productoId)),
         };
