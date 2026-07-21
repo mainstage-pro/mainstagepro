@@ -11,7 +11,7 @@ type EventoTipo = "musical" | "social" | "empresarial";
 const TIPO_EVENTO_MAP: Record<EventoTipo, string> = { musical: "MUSICAL", social: "SOCIAL", empresarial: "EMPRESARIAL" };
 const TIPO_NOMBRE:     Record<EventoTipo, string> = { musical: "Eventos Musicales", social: "Eventos Sociales", empresarial: "Eventos Empresariales" };
 
-// Dos niveles de servicio + Dirección técnica como add-on.
+// Los 3 servicios que ofrecemos, en el orden y jerarquía de la marca.
 // La `key` liga cada servicio al formulario de descubrimiento (tipoServicio).
 const SERVICIOS = [
   {
@@ -30,15 +30,15 @@ const SERVICIOS = [
     detail: "Llevamos el equipo y a la gente que lo opera. Montaje, prueba de sonido y operación en vivo de audio, iluminación y video durante todo el evento, de principio a fin, con respaldo ante cualquier imprevisto.",
     incluye: ["Montaje y prueba de sonido", "Técnicos de audio, luz y video", "Operación en vivo del show", "Respaldo ante imprevistos"],
   },
+  {
+    key: "DIRECCION_TECNICA",
+    n: "03",
+    title: "Dirección técnica",
+    tagline: "Un solo responsable de que todo llegue junto.",
+    detail: "Un director de producción coordina cada área: el rider, los cues de luz por escena, la señal de video y la comunicación directa con el artista y su equipo. La cabeza que hace que audio, luz y video lleguen al mismo tiempo.",
+    incluye: ["Coordinación del rider", "Cues por escena", "Enlace directo con el artista", "Guion técnico del evento"],
+  },
 ] as const;
-
-// Add-on que se suma a cualquiera de los dos niveles.
-const ADDON = {
-  key: "DIRECCION_TECNICA",
-  title: "Dirección técnica",
-  tagline: "Un solo responsable de que todo llegue junto.",
-  detail: "Un director de producción coordina cada área: el rider, los cues de luz por escena, la señal de video y la comunicación directa con el artista y su equipo. La cabeza que hace que audio, luz y video lleguen al mismo tiempo.",
-} as const;
 
 const CONFIG = {
   musical: {
@@ -72,7 +72,7 @@ const CONFIG = {
       "Aforo estimado",
       "Lineup o artistas (si aplica)",
       "Horarios: montaje, show y desmontaje",
-      "Qué servicio buscas: renta o producción (dirección técnica opcional)",
+      "Qué servicio buscas: renta, producción o dirección",
       "Rider técnico o referencias, si ya los tienes",
     ],
     gallery: [
@@ -120,7 +120,7 @@ const CONFIG = {
       "Número de invitados",
       "Momentos clave: ceremonia, brindis, baile",
       "Horarios: montaje, evento y desmontaje",
-      "Qué servicio buscas: renta o producción (dirección técnica opcional)",
+      "Qué servicio buscas: renta, producción o dirección",
       "Referencias o inspiración, si ya las tienes",
     ],
     gallery: [
@@ -166,7 +166,7 @@ const CONFIG = {
       "Número de asistentes",
       "Número de presentadores y formato",
       "Horarios: montaje, evento y desmontaje",
-      "Qué servicio buscas: renta o producción (dirección técnica opcional)",
+      "Qué servicio buscas: renta, producción o dirección",
       "¿Requiere streaming o grabación?",
     ],
     gallery: [
@@ -573,7 +573,7 @@ function DiscoveryModal({
   tipo: EventoTipo; servicio: string | null; loading: boolean;
   onConfirm: () => void; onClose: () => void;
 }) {
-  const servLabel = [...SERVICIOS, ADDON].find(s => s.key === servicio)?.title;
+  const servLabel = SERVICIOS.find(s => s.key === servicio)?.title;
   const eventoLabel = { musical: "musical", social: "social", empresarial: "corporativo" }[tipo];
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4" style={{ background: "rgba(4,4,4,0.9)", backdropFilter: "blur(8px)" }} onClick={onClose}>
@@ -791,16 +791,16 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
         </div>
       </section>
 
-      {/* ── Los 2 servicios + add-on ── */}
+      {/* ── Los 3 servicios ── */}
       <section id="servicios" className="py-32 px-6 bg-[#060606]">
         <div className="max-w-5xl mx-auto">
           <R>
             <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Cómo trabajamos contigo</p>
             <h2 className="font-bold text-white leading-[1.05] mb-4" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
-              Dos formas de llegar a tu evento.
+              Tres formas de llegar a tu evento.
             </h2>
             <p className="text-white/40 text-sm sm:text-base leading-relaxed max-w-2xl mb-16">
-              Renta si ya tienes operadores y solo necesitas el equipo. Producción si quieres equipo y la gente que lo opera. Y si buscas una sola cabeza responsable de que todo llegue junto, súmale dirección técnica.
+              Renta si ya tienes equipo y operadores. Producción si necesitas equipo y gente que lo opere. Dirección si quieres una sola cabeza responsable de que todo llegue junto. Puedes combinarlas.
             </p>
           </R>
 
@@ -832,29 +832,6 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
                 </div>
               </R>
             ))}
-
-            {/* Add-on: Dirección técnica */}
-            <R delay={SERVICIOS.length * 80}>
-              <div className="grid md:grid-cols-[1fr_auto] gap-8 p-8 sm:p-10 rounded-3xl"
-                   style={{ background: "rgba(179,152,91,0.06)", border: `1px solid ${GOLD}22` }}>
-                <div>
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="text-[10px] font-semibold tracking-[0.16em] uppercase px-2.5 py-1 rounded-full"
-                          style={{ background: `${GOLD}20`, color: GOLD }}>Add-on</span>
-                    <h3 className="font-bold text-white" style={{ fontSize: "clamp(1.3rem, 2.5vw, 1.75rem)", letterSpacing: "-0.02em" }}>{ADDON.title}</h3>
-                  </div>
-                  <p className="text-white/70 text-sm sm:text-base mb-4">{ADDON.tagline}</p>
-                  <p className="text-white/40 text-sm leading-relaxed max-w-2xl">{ADDON.detail}</p>
-                </div>
-                <div className="flex md:flex-col md:items-end md:justify-center">
-                  <button onClick={() => abrirDescubrimiento(ADDON.key)}
-                          className="whitespace-nowrap text-xs font-semibold tracking-wide px-6 py-3 rounded-full transition-all hover:scale-105"
-                          style={{ background: GOLD, color: "#000" }}>
-                    Súmalo a tu evento →
-                  </button>
-                </div>
-              </div>
-            </R>
           </div>
         </div>
       </section>
