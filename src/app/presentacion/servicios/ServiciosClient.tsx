@@ -200,18 +200,18 @@ export default function ServiciosClient() {
         </div>
       </section>
 
-      {/* ── Servicios: 2 niveles + add-on ── */}
+      {/* ── Servicios: 3 niveles ── */}
       <section id="servicios" className="py-24 px-6">
         <div className="max-w-6xl mx-auto">
           <R>
             <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Lo que ofrecemos</p>
             <h2 className="font-bold text-white leading-tight mb-12"
                 style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
-              Dos formas de trabajar<br />con Mainstage Pro
+              Tres formas de trabajar<br />con Mainstage Pro
             </h2>
           </R>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
               {
                 num: "01",
@@ -227,6 +227,13 @@ export default function ServiciosClient() {
                 detail: "Ingenieros especializados · Operación completa",
                 delay: 120,
               },
+              {
+                num: "03",
+                title: "Dirección técnica",
+                body: "Un solo responsable de que todo llegue junto, de la planeación al cierre.",
+                detail: "Coordinación integral · Rider · Cues por escena",
+                delay: 240,
+              },
             ].map(s => (
               <R key={s.num} delay={s.delay}>
                 <div className="group relative rounded-2xl p-8 h-full flex flex-col cursor-default transition-all duration-300"
@@ -241,28 +248,6 @@ export default function ServiciosClient() {
               </R>
             ))}
           </div>
-
-          {/* Add-on: Dirección técnica */}
-          <R delay={200}>
-            <div className="mt-5 rounded-2xl px-8 py-7 flex flex-col sm:flex-row sm:items-center gap-4"
-                 style={{ background: "rgba(179,152,91,0.06)", border: `1px solid ${GOLD}22` }}>
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-[10px] font-semibold tracking-[0.16em] uppercase px-2.5 py-1 rounded-full"
-                        style={{ background: `${GOLD}20`, color: GOLD }}>Add-on</span>
-                  <h3 className="font-bold text-white text-lg leading-tight">Dirección técnica</h3>
-                </div>
-                <p className="text-white/55 text-sm leading-relaxed">
-                  Un solo responsable de que todo llegue junto: coordinación integral de la planeación al cierre.
-                </p>
-              </div>
-              <a href={WA} target="_blank" rel="noopener noreferrer"
-                 className="shrink-0 text-center text-xs font-semibold tracking-wide uppercase px-6 py-3 rounded-full transition-all duration-300 hover:scale-105"
-                 style={{ background: GOLD, color: "#000" }}>
-                Consultar
-              </a>
-            </div>
-          </R>
         </div>
       </section>
 
