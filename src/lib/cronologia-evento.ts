@@ -173,12 +173,17 @@ export function construirCronologia(
 
   // ── Bloques por día del evento ──
   const ultimoDia = dias.length - 1;
+  // Llamado base para el día 1:
+  //  - Montaje día aparte → el día 1 (día del evento) muestra su llamado desde llamadoBodega,
+  //    sin duplicar, porque el bloque "Montaje" va en otro día.
+  //  - Montaje el mismo día → null: el llamado ya se antepone al día 1 dentro de itemsMontaje
+  //    ("Llamado en bodega"), así que no se repite.
+  const baseLlamadoDia1 = montajeDiaAparte ? llamadoHora : null;
   dias.forEach((fecha, i) => {
-    // base.llamado/montaje = null → el día 1 no hereda el llamado de bodega (ya va en Montaje).
     const h = horarioDeDia(fecha, i, dias, p.horariosEvento, {
       inicio: p.horaInicioEvento,
       fin: p.horaFinEvento,
-      llamado: null,
+      llamado: baseLlamadoDia1,
       montaje: null,
     });
     const items: ItemCronologia[] = [];
