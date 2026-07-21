@@ -73,15 +73,14 @@ function R({ children, delay = 0, y = 40, className = "" }: { children: React.Re
 function StatCount({ target, suffix = "", label }: { target: number; suffix?: string; label: string }) {
   const { count, ref } = useCounter(target);
   return (
-    <div ref={ref} className="flex flex-col items-center">
-      <span className="font-bold tabular-nums leading-none" style={{ fontSize: "clamp(3rem,7vw,6rem)", color: GOLD }}>
+    <div ref={ref} className="flex flex-col items-center text-center">
+      <span className="font-bold tabular-nums leading-none" style={{ fontSize: "clamp(2.4rem,5vw,3.6rem)", color: GOLD }}>
         {count}{suffix}
       </span>
-      <span className="text-white/50 text-sm tracking-[0.14em] uppercase mt-2">{label}</span>
+      <span className="text-white/45 text-[11px] sm:text-xs tracking-[0.12em] uppercase mt-2">{label}</span>
     </div>
   );
 }
-
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function ServiciosClient() {
@@ -97,10 +96,7 @@ export default function ServiciosClient() {
     <div className="bg-[#080808] text-white min-h-screen" style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
 
       <style>{`
-        @keyframes kenBurns { from { transform:scale(1) translate(0,0); } to { transform:scale(1.06) translate(-1%,-0.8%); } }
         @keyframes fadeUp { from { opacity:0; transform:translateY(32px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes marquee { from { transform:translateX(0); } to { transform:translateX(-50%); } }
-        @keyframes pulse-ring { 0% { transform:scale(1); opacity:0.4; } 100% { transform:scale(1.4); opacity:0; } }
         html { scroll-behavior: smooth; }
         ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-track { background: #000; }
@@ -123,7 +119,6 @@ export default function ServiciosClient() {
 
       {/* ── Hero con slideshow ── */}
       <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden">
-        {/* Slideshow */}
         {HERO_SLIDES.map((slide, i) => (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -141,11 +136,9 @@ export default function ServiciosClient() {
           />
         ))}
 
-        {/* Gradient overlay */}
         <div className="absolute inset-0 z-10" style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.25) 0%, rgba(8,8,8,0.45) 40%, rgba(8,8,8,0.82) 80%, #080808 100%)" }} />
 
-        {/* Slide type indicator */}
-        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-20 flex gap-2">
           {HERO_SLIDES.map((s, i) => (
             <button
               key={s.label}
@@ -165,7 +158,7 @@ export default function ServiciosClient() {
         <div className="relative z-20 text-center px-6 max-w-4xl mx-auto">
           <p className="text-[#B3985B] text-xs font-semibold tracking-[0.28em] uppercase mb-6"
              style={{ animation: "fadeUp 0.8s ease forwards 0.2s", opacity: 0 }}>
-            Mainstage Pro · Soluciones Audiovisuales
+            Mainstage Pro · Producción técnica de eventos
           </p>
           <h1 className="font-bold text-white leading-[1.0]"
               style={{ fontSize: "clamp(2.8rem,8vw,7rem)", letterSpacing: "-0.03em", animation: "fadeUp 0.9s ease forwards 0.4s", opacity: 0 }}>
@@ -174,112 +167,111 @@ export default function ServiciosClient() {
           </h1>
           <p className="text-white/60 mt-8 max-w-lg mx-auto"
              style={{ fontSize: "clamp(1rem,2vw,1.15rem)", animation: "fadeUp 0.9s ease forwards 0.65s", opacity: 0 }}>
-            Audio, iluminación, video y operadores expertos. Un solo equipo que lo maneja todo — antes, durante y después de tu evento.
+            Audio, iluminación, video y operadores expertos. Un solo equipo que lo maneja todo.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
                style={{ animation: "fadeUp 0.9s ease forwards 0.85s", opacity: 0 }}>
             <a href={WA} target="_blank" rel="noopener noreferrer"
                className="px-8 py-4 rounded-full font-semibold text-black text-sm tracking-wide transition-all duration-300 hover:scale-105"
                style={{ background: GOLD }}>
-              Habla con nosotros
+              Contactar
             </a>
-            <a href="#servicios"
+            <a href="/presentacion/inventario"
                className="px-8 py-4 rounded-full font-semibold text-white/70 text-sm tracking-wide border border-white/15 hover:border-white/30 transition-all duration-300">
-              Ver servicios
+              Ver inventario
             </a>
           </div>
         </div>
 
-        {/* Scroll indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-40 z-20"
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-40 z-20"
              style={{ animation: "fadeUp 1s ease forwards 1.2s" }}>
           <span className="text-xs tracking-[0.18em] uppercase text-white/50">Scroll</span>
           <div className="w-px h-10 bg-gradient-to-b from-white/40 to-transparent" />
         </div>
       </section>
 
-      {/* ── Statement ── */}
-      <section className="py-28 px-6 max-w-5xl mx-auto">
-        <R>
-          <h2 className="font-bold text-white leading-[1.1]"
-              style={{ fontSize: "clamp(2rem,5vw,4rem)", letterSpacing: "-0.025em" }}>
-            Nuestro trabajo es que<br />
-            <span style={{ color: GOLD }}>tú no tengas que preocuparte.</span>
-          </h2>
-          <p className="text-white/50 mt-6 max-w-xl" style={{ fontSize: "clamp(1rem,1.8vw,1.15rem)" }}>
-            Técnica impecable, operadores que saben lo que hacen y un solo responsable para cualquier cosa.
-            Así de simple.
-          </p>
-        </R>
-      </section>
-
-      {/* ── Stats ── */}
-      <section className="py-20 px-6 border-t border-b border-white/[0.04]">
-        <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-10 sm:gap-4">
-          <StatCount target={7}   suffix="+"  label="Años de experiencia" />
-          <StatCount target={750} suffix="+"  label="Eventos realizados"  />
-          <StatCount target={5}   suffix=""   label="Zonas de servicio"   />
-          <StatCount target={100} suffix="%"  label="Compromiso con cada evento" />
+      {/* ── Stats (franja compacta) ── */}
+      <section className="py-14 px-6 border-b border-white/[0.05]">
+        <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-4 gap-8 sm:gap-4">
+          <StatCount target={7}   suffix="+" label="Años de experiencia" />
+          <StatCount target={750} suffix="+" label="Eventos realizados"  />
+          <StatCount target={5}   suffix=""  label="Zonas de servicio"   />
+          <StatCount target={100} suffix="%" label="Compromiso" />
         </div>
       </section>
 
-      {/* ── Servicios ── */}
-      <section id="servicios" className="py-28 px-6">
+      {/* ── Servicios: 2 niveles + add-on ── */}
+      <section id="servicios" className="py-24 px-6">
         <div className="max-w-6xl mx-auto">
           <R>
             <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Lo que ofrecemos</p>
-            <h2 className="font-bold text-white leading-tight mb-16"
+            <h2 className="font-bold text-white leading-tight mb-12"
                 style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
-              Tres formas de trabajar<br />con Mainstage Pro
+              Dos formas de trabajar<br />con Mainstage Pro
             </h2>
           </R>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {[
               {
-                num: "L1",
+                num: "01",
                 title: "Renta de equipo",
-                body: "El equipo correcto para tu fecha.",
+                body: "El equipo correcto para tu fecha, listo y respaldado.",
                 detail: "Audio · Iluminación · Video · DJ Gear",
                 delay: 0,
               },
               {
-                num: "L2",
+                num: "02",
                 title: "Producción técnica",
-                body: "Equipo y operadores. Sin coordinar piezas sueltas.",
+                body: "Equipo y operadores expertos. Sin coordinar piezas sueltas.",
                 detail: "Ingenieros especializados · Operación completa",
                 delay: 120,
               },
-              {
-                num: "L3",
-                title: "Dirección técnica",
-                body: "De la planeación al cierre. Todo resuelto.",
-                detail: "Coordinación integral · Un solo responsable",
-                delay: 240,
-              },
             ].map(s => (
               <R key={s.num} delay={s.delay}>
-                <div className="group relative rounded-2xl p-8 h-full flex flex-col cursor-default"
+                <div className="group relative rounded-2xl p-8 h-full flex flex-col cursor-default transition-all duration-300"
                      style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
                      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = `${GOLD}40`; (e.currentTarget as HTMLDivElement).style.background = "rgba(179,152,91,0.04)"; }}
                      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.06)"; (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.025)"; }}>
                   <span className="text-[#B3985B]/40 text-xs font-mono tracking-widest mb-6">{s.num}</span>
-                  <h3 className="font-bold text-white text-xl mb-4 leading-tight">{s.title}</h3>
-                  <p className="text-white/50 text-sm leading-relaxed flex-1">{s.body}</p>
+                  <h3 className="font-bold text-white text-2xl mb-3 leading-tight">{s.title}</h3>
+                  <p className="text-white/55 text-sm leading-relaxed flex-1">{s.body}</p>
                   <p className="text-[#B3985B]/60 text-xs mt-6 leading-relaxed border-t border-white/[0.05] pt-5">{s.detail}</p>
                 </div>
               </R>
             ))}
           </div>
+
+          {/* Add-on: Dirección técnica */}
+          <R delay={200}>
+            <div className="mt-5 rounded-2xl px-8 py-7 flex flex-col sm:flex-row sm:items-center gap-4"
+                 style={{ background: "rgba(179,152,91,0.06)", border: `1px solid ${GOLD}22` }}>
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-[10px] font-semibold tracking-[0.16em] uppercase px-2.5 py-1 rounded-full"
+                        style={{ background: `${GOLD}20`, color: GOLD }}>Add-on</span>
+                  <h3 className="font-bold text-white text-lg leading-tight">Dirección técnica</h3>
+                </div>
+                <p className="text-white/55 text-sm leading-relaxed">
+                  Un solo responsable de que todo llegue junto: coordinación integral de la planeación al cierre.
+                </p>
+              </div>
+              <a href={WA} target="_blank" rel="noopener noreferrer"
+                 className="shrink-0 text-center text-xs font-semibold tracking-wide uppercase px-6 py-3 rounded-full transition-all duration-300 hover:scale-105"
+                 style={{ background: GOLD, color: "#000" }}>
+                Consultar
+              </a>
+            </div>
+          </R>
         </div>
       </section>
 
       {/* ── Tipos de eventos ── */}
-      <section className="py-28 px-6 bg-[#060606]">
+      <section className="py-24 px-6 bg-[#060606]">
         <div className="max-w-6xl mx-auto">
           <R>
             <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Para qué eventos trabajamos</p>
-            <h2 className="font-bold text-white leading-tight mb-16"
+            <h2 className="font-bold text-white leading-tight mb-12"
                 style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
               Cada evento, con la producción<br />que merece
             </h2>
@@ -287,27 +279,9 @@ export default function ServiciosClient() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {[
-              {
-                title: "Musicales",
-                sub: "Conciertos · Festivales · DJ Sets · Showcases",
-                img: "/images/presentacion/musicales/Musicales-016.jpg",
-                href: "/presentacion/evento/musical",
-                delay: 0,
-              },
-              {
-                title: "Sociales",
-                sub: "Bodas · XV Años · Fiestas privadas · Celebraciones",
-                img: "/images/presentacion/sociales/s-hacienda-iluminada.jpg",
-                href: "/presentacion/evento/social",
-                delay: 120,
-              },
-              {
-                title: "Empresariales",
-                sub: "Conferencias · Lanzamientos · Corporativos · Ferias",
-                img: "/images/presentacion/empresariales/e-sala-pantallas.jpg",
-                href: "/presentacion/evento/empresarial",
-                delay: 240,
-              },
+              { title: "Musicales",     sub: "Conciertos · Festivales · DJ Sets",   img: "/images/presentacion/musicales/Musicales-016.jpg",        href: "/presentacion/evento/musical",     delay: 0 },
+              { title: "Sociales",      sub: "Bodas · XV Años · Fiestas privadas",  img: "/images/presentacion/sociales/s-hacienda-iluminada.jpg",  href: "/presentacion/evento/social",      delay: 120 },
+              { title: "Empresariales", sub: "Conferencias · Lanzamientos · Ferias",img: "/images/presentacion/empresariales/e-sala-pantallas.jpg", href: "/presentacion/evento/empresarial", delay: 240 },
             ].map(ev => (
               <R key={ev.title} delay={ev.delay}>
                 <a href={ev.href}
@@ -335,30 +309,27 @@ export default function ServiciosClient() {
         </div>
       </section>
 
-      {/* ── Por qué Mainstage ── */}
-      <section className="py-24 px-6 bg-[#060606]">
+      {/* ── Por qué Mainstage (razones de una línea) ── */}
+      <section className="py-24 px-6">
         <div className="max-w-6xl mx-auto">
           <R>
             <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Por qué Mainstage Pro</p>
-            <h2 className="font-bold text-white leading-tight mb-14"
+            <h2 className="font-bold text-white leading-tight mb-12"
                 style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
-              Lo que nos hace<br />
-              <span style={{ color: GOLD }}>la opción correcta.</span>
+              Lo que nos hace<br /><span style={{ color: GOLD }}>la opción correcta.</span>
             </h2>
           </R>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { title: "Llegas a disfrutar, no a resolver.", body: "Anticipamos cada detalle técnico antes del evento. Tú te enfocas en tus invitados." },
-              { title: "Operadores que viven en escena.",    body: "No enviamos asistentes sin experiencia. El que operó cientos de eventos es el que opera el tuyo." },
-              { title: "Todo listo antes del primero.",      body: "Sistema montado y calibrado antes de que llegue el primer invitado. Sin excusas." },
-              { title: "Una llamada lo resuelve todo.",      body: "Cualquier ajuste, cambio o emergencia: un solo responsable, antes y durante el evento." },
-            ].map((item, i) => (
-              <R key={item.title} delay={i * 90}>
-                <div className="rounded-2xl p-6 h-full"
-                     style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              "Llegas a disfrutar, no a resolver.",
+              "Operadores que viven en escena.",
+              "Todo listo antes del primer invitado.",
+              "Una llamada lo resuelve todo.",
+            ].map((title, i) => (
+              <R key={title} delay={i * 90}>
+                <div className="rounded-2xl p-6 h-full" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
                   <div className="w-8 h-px mb-6" style={{ background: GOLD }} />
-                  <h4 className="font-semibold text-white text-sm mb-3 leading-snug">{item.title}</h4>
-                  <p className="text-white/40 text-xs leading-relaxed">{item.body}</p>
+                  <h4 className="font-semibold text-white text-sm leading-snug">{title}</h4>
                 </div>
               </R>
             ))}
@@ -366,101 +337,113 @@ export default function ServiciosClient() {
         </div>
       </section>
 
-      {/* ── Proceso ── */}
-      <section className="py-28 px-6">
-        <div className="max-w-5xl mx-auto">
-          <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Cómo trabajamos</p>
-            <h2 className="font-bold text-white leading-tight mb-16"
-                style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
-              De cero a evento impecable —<br />en cinco pasos
-            </h2>
-          </R>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12 gap-y-10 mb-14">
-            {[
-              { n: "1", title: "Contáctanos",            body: "Cuéntanos tu evento. Respondemos en menos de 24h." },
-              { n: "2", title: "Levantamiento técnico",  body: "Analizamos el espacio y el programa. La propuesta es precisa desde el primer borrador." },
-              { n: "3", title: "Cotización personalizada", body: "Clara, sin letra chica. Ajustamos lo que necesites." },
-              { n: "4", title: "Confirmación y reserva", body: "Contrato, anticipo y la fecha bloqueada en nuestra agenda." },
-              { n: "5", title: "Coordinación previa",    body: "Revisamos el programa contigo. Llegamos listos para ejecutar." },
-            ].map((step, i) => (
-              <R key={step.n} delay={i * 80}>
-                <div className="flex gap-6">
-                  <div className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold"
-                       style={{ background: "rgba(179,152,91,0.1)", color: GOLD, border: `1px solid ${GOLD}25` }}>
-                    {step.n}
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-white mb-1.5">{step.title}</h4>
-                    <p className="text-white/45 text-sm leading-relaxed">{step.body}</p>
-                  </div>
-                </div>
-              </R>
-            ))}
-          </div>
-
-          {/* Frase final — no es paso */}
-          <R delay={400}>
-            <div className="rounded-2xl px-8 py-7 text-center"
-                 style={{ background: `rgba(179,152,91,0.06)`, border: `1px solid ${GOLD}22` }}>
-              <p className="font-bold text-white" style={{ fontSize: "clamp(1.3rem,3vw,2rem)", letterSpacing: "-0.02em" }}>
-                El día de tu evento,<br />
-                <span style={{ color: GOLD }}>solo disfruta.</span>
-              </p>
-            </div>
-          </R>
-        </div>
-      </section>
-
-      {/* ── Zonas de servicio ── */}
-      <section className="py-24 px-6 border-t border-white/[0.04]">
-        <div className="max-w-5xl mx-auto">
-          <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Zonas de servicio</p>
-            <h2 className="font-bold text-white leading-tight mb-6"
-                style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
-              Donde trabajamos
-            </h2>
-            <p className="text-white/40 text-sm max-w-lg mb-16 leading-relaxed">
-              Nuestra base de operaciones está en el corazón de México. Producimos eventos en las principales ciudades del país y nos desplazamos a donde el proyecto lo requiera.
-            </p>
-          </R>
-
-          {/* Ciudades principales */}
-          <R delay={80}>
-            <div className="border-t border-white/[0.06]">
+      {/* ── Cómo trabajamos + Zonas (bloque compacto fusionado) ── */}
+      <section className="py-24 px-6 bg-[#060606] border-t border-white/[0.04]">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16">
+          {/* Cómo trabajamos — timeline horizontal compacto */}
+          <div>
+            <R>
+              <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Cómo trabajamos</p>
+              <h2 className="font-bold text-white leading-tight mb-10"
+                  style={{ fontSize: "clamp(1.6rem,3.5vw,2.4rem)", letterSpacing: "-0.02em" }}>
+                De cero a evento impecable
+              </h2>
+            </R>
+            <div className="space-y-5">
               {[
-                { ciudad: "Querétaro",       detalle: "Base de operaciones",          primary: true  },
-                { ciudad: "León",            detalle: "Guanajuato · El Bajío",        primary: true  },
-                { ciudad: "San Miguel de Allende", detalle: "Guanajuato",             primary: false },
-                { ciudad: "Ciudad de México",detalle: "CDMX y Zona Metropolitana",    primary: true  },
-                { ciudad: "Puebla",          detalle: "Puebla · Tlaxcala",            primary: false },
-              ].map((z, i) => (
-                <div key={i} className="flex items-center justify-between py-5 border-b border-white/[0.06] group">
-                  <div className="flex items-center gap-4">
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${z.primary ? "bg-[#B3985B]" : "bg-white/20"}`} />
-                    <span className={`font-semibold tracking-tight ${z.primary ? "text-white" : "text-white/50"}`}
-                          style={{ fontSize: "clamp(1.1rem,2.5vw,1.5rem)" }}>
-                      {z.ciudad}
-                    </span>
+                { n: "1", title: "Contáctanos",             body: "Respondemos en menos de 24 h." },
+                { n: "2", title: "Levantamiento técnico",   body: "Analizamos espacio y programa." },
+                { n: "3", title: "Cotización personalizada",body: "Clara, sin letra chica." },
+                { n: "4", title: "Confirmación y reserva",  body: "Fecha bloqueada en agenda." },
+                { n: "5", title: "Coordinación previa",     body: "Llegamos listos para ejecutar." },
+              ].map((step, i) => (
+                <R key={step.n} delay={i * 70}>
+                  <div className="flex gap-4 items-start">
+                    <div className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
+                         style={{ background: "rgba(179,152,91,0.1)", color: GOLD, border: `1px solid ${GOLD}25` }}>
+                      {step.n}
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white text-sm">{step.title}</h4>
+                      <p className="text-white/40 text-xs leading-relaxed">{step.body}</p>
+                    </div>
                   </div>
-                  <span className="text-white/30 text-sm">{z.detalle}</span>
-                </div>
+                </R>
               ))}
             </div>
-          </R>
+          </div>
 
-          {/* Nota república */}
-          <R delay={180}>
-            <div className="mt-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
-              <p className="text-white/25 text-sm leading-relaxed max-w-sm">
-                ¿Tu evento es fuera de estas ciudades?<br/>
-                Nos desplazamos a cualquier punto de la República.
+          {/* Zonas — lista corta */}
+          <div>
+            <R>
+              <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Zonas de servicio</p>
+              <h2 className="font-bold text-white leading-tight mb-10"
+                  style={{ fontSize: "clamp(1.6rem,3.5vw,2.4rem)", letterSpacing: "-0.02em" }}>
+                Dónde trabajamos
+              </h2>
+            </R>
+            <R delay={80}>
+              <div className="border-t border-white/[0.06]">
+                {[
+                  { ciudad: "Querétaro",              detalle: "Base de operaciones",       primary: true  },
+                  { ciudad: "León",                   detalle: "El Bajío",                  primary: true  },
+                  { ciudad: "San Miguel de Allende",  detalle: "Guanajuato",                primary: false },
+                  { ciudad: "Ciudad de México",       detalle: "CDMX y ZMVM",               primary: true  },
+                  { ciudad: "Puebla",                 detalle: "Puebla · Tlaxcala",         primary: false },
+                ].map((z, i) => (
+                  <div key={i} className="flex items-center justify-between py-4 border-b border-white/[0.06]">
+                    <div className="flex items-center gap-3">
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${z.primary ? "bg-[#B3985B]" : "bg-white/20"}`} />
+                      <span className={`font-semibold tracking-tight ${z.primary ? "text-white" : "text-white/50"}`}
+                            style={{ fontSize: "clamp(1rem,2vw,1.2rem)" }}>
+                        {z.ciudad}
+                      </span>
+                    </div>
+                    <span className="text-white/30 text-xs">{z.detalle}</span>
+                  </div>
+                ))}
+              </div>
+            </R>
+            <R delay={160}>
+              <p className="text-white/25 text-xs leading-relaxed mt-6">
+                ¿Tu evento es fuera de estas ciudades? Nos desplazamos a cualquier punto de la República.
               </p>
-              <a href="/presentacion/inventario"
-                 className="text-[#B3985B] text-sm font-semibold tracking-wide inline-flex items-center gap-2 hover:gap-3 transition-all shrink-0">
-                Ver inventario de equipo
+            </R>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Prueba social: nuestro trabajo ── */}
+      <section className="py-20 px-6">
+        <div className="max-w-6xl mx-auto">
+          <R>
+            <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Nuestro trabajo</p>
+            <h2 className="font-bold text-white leading-tight mb-10"
+                style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
+              Cada evento, una producción<br /><span style={{ color: GOLD }}>hecha a medida.</span>
+            </h2>
+          </R>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {[
+              "/images/presentacion/musicales/Musicales-016.jpg",
+              "/images/presentacion/sociales/s-hacienda-iluminada.jpg",
+              "/images/presentacion/empresariales/e-sala-pantallas.jpg",
+              "/images/presentacion/musicales/Musicales-037.jpg",
+              "/images/presentacion/sociales/s-piano-pista.jpg",
+              "/images/presentacion/empresariales/e-auditorio.jpg",
+            ].map((src, i) => (
+              <R key={i} delay={i * 50} className="overflow-hidden rounded-xl">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt="Producción Mainstage Pro" draggable={false}
+                     className="w-full h-full object-cover aspect-[4/3] hover:scale-105 transition-transform duration-500" />
+              </R>
+            ))}
+          </div>
+          <R delay={120}>
+            <div className="mt-8 text-center">
+              <a href="/presentacion/galeria"
+                 className="text-[#B3985B] text-sm font-semibold tracking-wide inline-flex items-center gap-2 hover:gap-3 transition-all">
+                Ver galería completa
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M5 12h14M12 5l7 7-7 7"/>
                 </svg>
@@ -470,67 +453,13 @@ export default function ServiciosClient() {
         </div>
       </section>
 
-      {/* ── Tagline ── */}
-      <section className="py-32 px-6 relative overflow-hidden" style={{ background: "#040404" }}>
-        <div className="max-w-4xl mx-auto text-center relative z-10">
-          <R y={20}>
-            <div className="mb-8">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="absolute inset-0 rounded-full pointer-events-none"
-                     style={{ border: `1px solid ${GOLD}18`, animation: `pulse-ring ${2 + i * 0.5}s ease-out ${i * 0.8}s infinite`, margin: "auto", width: "60%", height: "200%" }} />
-              ))}
-            </div>
-            <p className="font-bold text-white leading-[1.08]"
-               style={{ fontSize: "clamp(2rem,6vw,5rem)", letterSpacing: "-0.03em" }}>
-              Para que mañana,<br />
-              <span style={{ color: GOLD }}>todos sigan hablando de tu evento.</span>
-            </p>
-          </R>
-        </div>
-      </section>
-
-      {/* ── Galería ── */}
-      <section className="py-20 px-6 bg-[#060606]">
-        <div className="max-w-6xl mx-auto">
-          <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Nuestro trabajo</p>
-            <h2 className="font-bold text-white leading-tight mb-12"
-                style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
-              Cada evento, una producción<br /><span style={{ color: GOLD }}>hecha a medida.</span>
-            </h2>
-          </R>
-          <div className="columns-2 sm:columns-3 gap-3 space-y-3">
-            {[
-              { src: "/images/presentacion/musicales/Musicales-016.jpg",      alt: "Musical" },
-              { src: "/images/presentacion/sociales/s-hacienda-iluminada.jpg", alt: "Social" },
-              { src: "/images/presentacion/empresariales/e-sala-pantallas.jpg",alt: "Empresarial" },
-              { src: "/images/presentacion/musicales/Musicales-037.jpg",      alt: "Musical" },
-              { src: "/images/presentacion/sociales/s-piano-pista.jpg",       alt: "Social" },
-              { src: "/images/presentacion/empresariales/e-auditorio.jpg",    alt: "Empresarial" },
-              { src: "/images/presentacion/musicales/MAGIC_ROOM_260307_GUANAJUATO_078.jpg", alt: "Musical" },
-              { src: "/images/presentacion/sociales/s-boda-colonial.jpg",     alt: "Social" },
-              { src: "/images/presentacion/empresariales/e-networking.jpg",   alt: "Empresarial" },
-              { src: "/images/presentacion/musicales/Musicales-076.jpg",      alt: "Musical" },
-              { src: "/images/presentacion/sociales/s-dj-salon.png",          alt: "Social" },
-              { src: "/images/presentacion/empresariales/e-edificio-azul.jpg",alt: "Empresarial" },
-            ].map((p, i) => (
-              <R key={i} delay={i * 40} className="break-inside-avoid">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.src} alt={p.alt} draggable={false}
-                     className="w-full rounded-xl object-cover hover:opacity-90 transition-opacity duration-300" />
-              </R>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ── CTA Final ── */}
-      <section className="py-28 px-6">
+      <section className="py-28 px-6" style={{ background: "#040404" }}>
         <div className="max-w-3xl mx-auto text-center">
           <R>
             <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-6">Siguiente paso</p>
             <h2 className="font-bold text-white leading-tight mb-6"
-                style={{ fontSize: "clamp(1.8rem,4vw,3.2rem)", letterSpacing: "-0.025em" }}>
+                style={{ fontSize: "clamp(1.9rem,5vw,3.4rem)", letterSpacing: "-0.025em" }}>
               Tu próximo evento,<br />
               <span style={{ color: GOLD }}>en buenas manos.</span>
             </h2>
@@ -538,8 +467,8 @@ export default function ServiciosClient() {
               Escríbenos. Respondemos en menos de 24 horas.
             </p>
             <a href={WA} target="_blank" rel="noopener noreferrer"
-               className="inline-flex items-center gap-3 px-10 py-5 rounded-full font-semibold text-black text-sm tracking-wide transition-all duration-300 hover:scale-105 hover:shadow-xl"
-               style={{ background: GOLD, boxShadow: `0 0 0 0 ${GOLD}40` }}>
+               className="inline-flex items-center gap-3 px-10 py-5 rounded-full font-semibold text-black text-sm tracking-wide transition-all duration-300 hover:scale-105"
+               style={{ background: GOLD }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
               </svg>
@@ -552,7 +481,7 @@ export default function ServiciosClient() {
       {/* ── Footer ── */}
       <footer className="py-10 px-6 border-t border-white/[0.04] text-center">
         <p className="text-white/20 text-xs tracking-wide">
-          © {new Date().getFullYear()} Mainstage Pro · Soluciones Audiovisuales Profesionales
+          © {new Date().getFullYear()} Mainstage Pro · Producción técnica de eventos
         </p>
       </footer>
 
