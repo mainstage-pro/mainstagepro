@@ -158,7 +158,7 @@ function useCounter(target: number, duration = 2000) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const el = ref.current; if (!el) return;
-    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setStarted(true); obs.disconnect(); } }, { threshold: 0.5 });
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setStarted(true); obs.disconnect(); } }, { threshold: 0, rootMargin: "0px 0px -10% 0px" });
     obs.observe(el); return () => obs.disconnect();
   }, []);
   useEffect(() => {
