@@ -66,7 +66,7 @@ export default function PresentacionHomeClient() {
       <PresentacionNav />
 
       {/* ── Hero ── */}
-      <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden">
+      <section className="relative min-h-[82vh] flex flex-col items-center justify-center overflow-hidden py-24">
         {HERO_SLIDES.map((slide, i) => (
           <EditableImage
             key={slide.src}

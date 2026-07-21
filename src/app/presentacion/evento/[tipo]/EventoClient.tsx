@@ -49,8 +49,8 @@ const CONFIG = {
     headline: "El sonido y la luz\nque encienden al público.",
     sub:      "Del primer acorde al último beat: producción que se siente en el cuerpo y sostiene la energía toda la noche.",
     problema: {
-      title: "El problema que resolvemos",
-      body:  "En un evento musical, un solo detalle técnico apaga la energía: audio disparejo, un cambio de luz a destiempo, un soundcheck que se retrasa. Nos hacemos cargo de que la técnica desaparezca y solo quede el show.",
+      title: "Por qué importa la producción",
+      body:  "En un evento musical, la técnica bien resuelta es lo que enciende al público. Nos encargamos de que el audio, la luz y el video trabajen a favor del artista, para que la energía suba desde el primer acorde y se sostenga toda la noche.",
     },
     recomendaciones: [
       "Comparte el rider técnico o referencias del artista lo antes posible.",
@@ -107,8 +107,8 @@ const CONFIG = {
     headline: "Que cada momento\nse viva perfecto.",
     sub:      "Primer baile, brindis, pista — el sonido y la luz justos en cada instante, sin que notes que estamos ahí.",
     problema: {
-      title: "El problema que resolvemos",
-      body:  "En una celebración no hay segunda toma. Un micrófono que falla en el brindis o una luz a destiempo se queda en el recuerdo. Cuidamos que cada momento suene y se vea como lo imaginaste, sin robarle protagonismo a los festejados.",
+      title: "Por qué importa la producción",
+      body:  "Una celebración se vive una sola vez, y cada momento merece verse y escucharse en su punto. Cuidamos que el sonido y la luz acompañen la ceremonia, el brindis y la pista tal como lo imaginaste, dejando siempre el protagonismo a los festejados.",
     },
     recomendaciones: [
       "Comparte el programa: ceremonia, brindis, primer baile y pastel.",
@@ -163,8 +163,8 @@ const CONFIG = {
     headline: "Cada mensaje,\nclaro y con presencia.",
     sub:      "Audio nítido para cada presentador, pantallas que responden y una producción que refuerza la imagen de tu marca.",
     problema: {
-      title: "El problema que resolvemos",
-      body:  "En un evento corporativo, la producción es parte de la imagen de tu empresa. Un micrófono que no abre o una pantalla con la resolución incorrecta deja una impresión que cuesta. Llegamos antes, verificamos todo y hacemos que la técnica nunca sea el tema.",
+      title: "Por qué importa la producción",
+      body:  "En un evento corporativo, la producción es parte de la imagen de tu marca. Nos aseguramos de que cada presentador se escuche con claridad y cada pantalla luzca impecable, para que toda la atención esté siempre en tu mensaje.",
     },
     recomendaciones: [
       "Comparte la sede y el formato: sala, auditorio o exterior.",
@@ -742,7 +742,7 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
       <PresentacionNav />
 
       {/* ── Hero ── */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden py-24">
+      <section className="relative min-h-[68vh] flex flex-col items-center justify-center overflow-hidden py-20">
         <div className="absolute inset-0">
           <EditableImage
             edit={edit}
@@ -813,12 +813,12 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
       <section id="servicios" className="py-32 px-6 bg-[#060606]">
         <div className="max-w-5xl mx-auto">
           <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Cómo trabajamos contigo</p>
+            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Nuestros servicios</p>
             <h2 className="font-bold text-white leading-[1.05] mb-4" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
-              Tres formas de llegar a tu evento.
+              Tres niveles de servicio para tu evento.
             </h2>
             <p className="text-white/40 text-sm sm:text-base leading-relaxed max-w-2xl mb-16">
-              Renta si ya tienes equipo y operadores. Producción si necesitas equipo y gente que lo opere. Dirección si quieres una sola cabeza responsable de que todo llegue junto. Puedes combinarlas.
+              Desde la renta del equipo indicado hasta la dirección integral de la producción. Elige el alcance que tu evento necesita — y combínalos cuando haga falta.
             </p>
           </R>
 
@@ -892,12 +892,12 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
       <section className="py-32 px-6">
         <div className="max-w-5xl mx-auto">
           <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Antes de contratar</p>
+            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Planeación</p>
             <h2 className="font-bold text-white leading-[1.05] mb-5" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
-              Lo que conviene tener en cuenta.
+              Detalles que aseguran una producción impecable.
             </h2>
             <p className="text-white/40 text-sm sm:text-base leading-relaxed max-w-2xl mb-14">
-              Unos cuantos detalles que, resueltos a tiempo, hacen que tu evento salga impecable. Si aún no los tienes, no te preocupes: los definimos juntos.
+              Definir estos puntos con anticipación nos permite diseñar la propuesta más precisa para tu evento. Si aún no los tienes resueltos, los trabajamos juntos durante el descubrimiento.
             </p>
           </R>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -918,17 +918,17 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
       <section className="py-32 px-6 bg-[#060606]">
         <div className="max-w-5xl mx-auto grid md:grid-cols-[0.9fr_1.1fr] gap-12 items-start">
           <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Para darte una propuesta</p>
+            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Descubrimiento</p>
             <h2 className="font-bold text-white leading-[1.05] mb-5" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
-              Esto es lo que necesitamos saber.
+              El primer paso hacia tu cotización.
             </h2>
             <p className="text-white/40 text-sm leading-relaxed mb-8">
-              Entre más claro el evento, más precisa la propuesta. No te preocupes si aún no tienes todo — el formulario de descubrimiento te guía paso a paso.
+              Todo comienza conociendo tu evento. Con estos datos preparamos una propuesta a la medida; el resto del proceso —cotización, presentación y cierre— lo recorremos contigo paso a paso.
             </p>
             <button onClick={() => abrirDescubrimiento(null)}
                     className="px-8 py-4 rounded-full font-semibold text-black text-sm tracking-wide transition-all hover:scale-105"
                     style={{ background: GOLD }}>
-              Llenar descubrimiento
+              Iniciar descubrimiento
             </button>
           </R>
           <R delay={120}>
