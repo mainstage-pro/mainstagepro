@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import type { Proyecto } from "@/lib/proyectos";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
+import { usePresentacionEdit, EditableImage } from "@/components/presentacion/editable";
 
 const GOLD = "#B3985B";
 
@@ -45,8 +46,18 @@ const CONFIG = {
     label:    "Producción técnica para eventos musicales",
     kicker:   "Eventos musicales",
     hero:     "/images/presentacion/musicales/Musicales-016.jpg",
-    headline: "Tu show en punto.\nNosotros lo hacemos posible.",
-    sub:      "Desde el rider hasta el último beat — audio, luz y video operados por gente que vive el escenario.",
+    headline: "El sonido y la luz\nque encienden al público.",
+    sub:      "Del primer acorde al último beat: producción que se siente en el cuerpo y sostiene la energía toda la noche.",
+    problema: {
+      title: "El problema que resolvemos",
+      body:  "En un evento musical, un solo detalle técnico apaga la energía: audio disparejo, un cambio de luz a destiempo, un soundcheck que se retrasa. Nos hacemos cargo de que la técnica desaparezca y solo quede el show.",
+    },
+    recomendaciones: [
+      "Comparte el rider técnico o referencias del artista lo antes posible.",
+      "Define el aforo y si el venue es interior o exterior — cambia el sistema de audio.",
+      "Reserva tiempo suficiente de montaje y soundcheck antes de abrir puertas.",
+      "Confirma los horarios del lineup para coordinar los cambios entre artistas.",
+    ],
     insights: [
       {
         title: "El rider cubierto antes de que baje el artista",
@@ -93,8 +104,18 @@ const CONFIG = {
     label:    "Producción técnica para eventos sociales",
     kicker:   "Eventos sociales",
     hero:     "/images/presentacion/sociales/s-boda-elegante.jpg",
-    headline: "Que los momentos\nsuenen y se vean perfectos.",
-    sub:      "Primer baile, brindis, pista — cada instante con el sonido y la luz que merece, sin que notes que estamos ahí.",
+    headline: "Que cada momento\nse viva perfecto.",
+    sub:      "Primer baile, brindis, pista — el sonido y la luz justos en cada instante, sin que notes que estamos ahí.",
+    problema: {
+      title: "El problema que resolvemos",
+      body:  "En una celebración no hay segunda toma. Un micrófono que falla en el brindis o una luz a destiempo se queda en el recuerdo. Cuidamos que cada momento suene y se vea como lo imaginaste, sin robarle protagonismo a los festejados.",
+    },
+    recomendaciones: [
+      "Comparte el programa: ceremonia, brindis, primer baile y pastel.",
+      "Dinos el número de invitados y si el venue es interior o exterior.",
+      "Confirma si habrá discursos o participaciones con micrófono.",
+      "Coordinemos los horarios de montaje junto con el venue y los demás proveedores.",
+    ],
     insights: [
       {
         title: "Coordinamos el programa contigo desde antes",
@@ -139,8 +160,18 @@ const CONFIG = {
     label:    "Producción técnica para eventos corporativos",
     kicker:   "Eventos corporativos",
     hero:     "/images/presentacion/empresariales/e-auditorio.jpg",
-    headline: "La técnica invisible\nque hace ver bien a tu empresa.",
-    sub:      "Audio claro para cada presentador, pantallas que no fallan, producción que no interrumpe.",
+    headline: "Cada mensaje,\nclaro y con presencia.",
+    sub:      "Audio nítido para cada presentador, pantallas que responden y una producción que refuerza la imagen de tu marca.",
+    problema: {
+      title: "El problema que resolvemos",
+      body:  "En un evento corporativo, la producción es parte de la imagen de tu empresa. Un micrófono que no abre o una pantalla con la resolución incorrecta deja una impresión que cuesta. Llegamos antes, verificamos todo y hacemos que la técnica nunca sea el tema.",
+    },
+    recomendaciones: [
+      "Comparte la sede y el formato: sala, auditorio o exterior.",
+      "Dinos el número de asistentes y de presentadores.",
+      "Confirma si habrá streaming, grabación o presentaciones remotas.",
+      "Facilítanos las presentaciones y equipos de los ponentes para probarlos antes.",
+    ],
     insights: [
       {
         title: "Un fallo técnico no es solo un problema técnico",
@@ -182,6 +213,8 @@ const CONFIG = {
   },
 } satisfies Record<EventoTipo, {
   label: string; kicker: string; hero: string; headline: string; sub: string;
+  problema: { title: string; body: string };
+  recomendaciones: string[];
   insights: { title: string; body: string }[];
   tipos: string[];
   cotizar: string[];
@@ -664,6 +697,7 @@ function ContactForm({ tipo }: { tipo: EventoTipo }) {
 export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
   const c = CONFIG[tipo];
   const isAdmin  = useAdmin();
+  const edit = usePresentacionEdit();
   const { fotos, tipoId, setTipoId, recargar } = useGaleria(tipo, c.gallery);
   const proyectos = useProyectos(tipo);
 
@@ -710,9 +744,16 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
       {/* ── Hero ── */}
       <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden py-24">
         <div className="absolute inset-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={c.hero} alt={c.label} draggable={false} className="w-full h-full object-cover" style={{ animation: "kenBurns 18s ease forwards" }} />
-          <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.35) 0%, rgba(8,8,8,0.55) 40%, rgba(8,8,8,0.9) 78%, #080808 100%)" }} />
+          <EditableImage
+            edit={edit}
+            okey={`evento.${tipo}.hero`}
+            fallback={c.hero}
+            alt={c.label}
+            wrapClassName="w-full h-full"
+            imgClassName="w-full h-full object-cover"
+            imgStyle={{ animation: "kenBurns 18s ease forwards" }}
+          />
+          <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.35) 0%, rgba(8,8,8,0.55) 40%, rgba(8,8,8,0.9) 78%, #080808 100%)" }} />
         </div>
 
         <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
@@ -720,8 +761,8 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
              style={{ fontSize: "clamp(0.7rem, 1.4vw, 0.85rem)", animation: "fadeUp 0.8s ease forwards 0.2s", opacity: 0 }}>
             {c.kicker}
           </p>
-          <h1 className="font-bold text-white leading-[1.02]"
-              style={{ fontSize: "clamp(2.6rem, 7.5vw, 6.5rem)", letterSpacing: "-0.03em", whiteSpace: "pre-line", animation: "fadeUp 0.95s ease forwards 0.4s", opacity: 0 }}>
+          <h1 className="font-bold text-white leading-[1.04]"
+              style={{ fontSize: "clamp(2.1rem, 5.6vw, 4.4rem)", letterSpacing: "-0.03em", whiteSpace: "pre-line", animation: "fadeUp 0.95s ease forwards 0.4s", opacity: 0 }}>
             {c.headline}
           </h1>
           <p className="text-white/50 mt-8 leading-relaxed max-w-xl mx-auto"
@@ -753,6 +794,18 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
 
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 opacity-20">
           <div className="w-px h-12 bg-gradient-to-b from-white/60 to-transparent mx-auto" />
+        </div>
+      </section>
+
+      {/* ── El problema que resolvemos ── */}
+      <section className="py-28 px-6">
+        <div className="max-w-3xl mx-auto text-center">
+          <R>
+            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-6">{c.problema.title}</p>
+            <p className="text-white/80 leading-[1.6]" style={{ fontSize: "clamp(1.25rem, 2.6vw, 1.9rem)", letterSpacing: "-0.015em" }}>
+              {c.problema.body}
+            </p>
+          </R>
         </div>
       </section>
 
@@ -805,9 +858,9 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
       <section className="py-32 px-6">
         <div className="max-w-5xl mx-auto">
           <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Por qué Mainstage Pro</p>
+            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Por qué confiar en nosotros</p>
             <h2 className="font-bold text-white leading-[1.05] mb-16" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
-              Conocemos cada detalle.
+              Cuidamos cada detalle.
             </h2>
           </R>
 
@@ -834,6 +887,32 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
 
       {/* ── Proyectos ── */}
       <ProyectosSection proyectos={proyectos} isAdmin={isAdmin} tipo={tipo} />
+
+      {/* ── Recomendaciones antes de contratar ── */}
+      <section className="py-32 px-6">
+        <div className="max-w-5xl mx-auto">
+          <R>
+            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Antes de contratar</p>
+            <h2 className="font-bold text-white leading-[1.05] mb-5" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
+              Lo que conviene tener en cuenta.
+            </h2>
+            <p className="text-white/40 text-sm sm:text-base leading-relaxed max-w-2xl mb-14">
+              Unos cuantos detalles que, resueltos a tiempo, hacen que tu evento salga impecable. Si aún no los tienes, no te preocupes: los definimos juntos.
+            </p>
+          </R>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {c.recomendaciones.map((rec, i) => (
+              <R key={i} delay={i * 70}>
+                <div className="flex items-start gap-5 p-6 rounded-2xl h-full"
+                     style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <span className="shrink-0 font-mono text-lg" style={{ color: GOLD, letterSpacing: "0.06em" }}>{String(i + 1).padStart(2, "0")}</span>
+                  <p className="text-white/70 text-sm sm:text-base leading-relaxed">{rec}</p>
+                </div>
+              </R>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* ── Qué necesitamos para cotizar ── */}
       <section className="py-32 px-6 bg-[#060606]">

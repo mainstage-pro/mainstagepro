@@ -1,13 +1,27 @@
 "use client";
+import { Speaker, Lightbulb, MonitorPlay, Disc3, Frame, Cable, type LucideIcon } from "lucide-react";
 import type { ServicioDetalle } from "@/lib/presentacion-servicios";
 import { SERVICIOS_DETALLE } from "@/lib/presentacion-servicios";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import { R, GOLD } from "@/components/presentacion/anim";
 import { WA_URL, useDescubrimiento } from "@/components/presentacion/descubrimiento";
+import { usePresentacionEdit, EditableImage } from "@/components/presentacion/editable";
+
+// Categorías del inventario para el servicio de Renta (con icono representativo).
+const RENTA_CATEGORIAS: { label: string; Icon: LucideIcon }[] = [
+  { label: "Audio profesional", Icon: Speaker },
+  { label: "Iluminación", Icon: Lightbulb },
+  { label: "Video y pantallas LED", Icon: MonitorPlay },
+  { label: "DJ y backline", Icon: Disc3 },
+  { label: "Estructura y truss", Icon: Frame },
+  { label: "Cableado y energía", Icon: Cable },
+];
 
 export default function ServicioClient({ servicio }: { servicio: ServicioDetalle }) {
   const { iniciar, loading } = useDescubrimiento();
+  const edit = usePresentacionEdit();
   const otros = SERVICIOS_DETALLE.filter((s) => s.slug !== servicio.slug);
+  const esRenta = servicio.slug === "renta";
 
   return (
     <div className="bg-[#080808] text-white min-h-screen" style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
@@ -23,9 +37,16 @@ export default function ServicioClient({ servicio }: { servicio: ServicioDetalle
 
       {/* ── Hero ── */}
       <section className="relative min-h-[78vh] flex flex-col justify-end overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={servicio.hero} alt={servicio.title} draggable={false} className="absolute inset-0 w-full h-full object-cover" style={{ transform: "scale(1.04)" }} />
-        <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.5) 0%, rgba(8,8,8,0.4) 40%, rgba(8,8,8,0.9) 85%, #080808 100%)" }} />
+        <EditableImage
+          edit={edit}
+          okey={`servicio.${servicio.slug}.hero`}
+          fallback={servicio.hero}
+          alt={servicio.title}
+          wrapClassName="absolute inset-0"
+          imgClassName="w-full h-full object-cover"
+          imgStyle={{ transform: "scale(1.04)" }}
+        />
+        <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.5) 0%, rgba(8,8,8,0.4) 40%, rgba(8,8,8,0.9) 85%, #080808 100%)" }} />
         <div className="relative z-10 max-w-5xl mx-auto w-full px-6 pb-16">
           <p className="text-[#B3985B] text-xs font-semibold tracking-[0.24em] uppercase mb-4" style={{ animation: "fadeUp 0.8s ease forwards 0.15s", opacity: 0 }}>
             Servicio {servicio.n} · Mainstage Pro
@@ -55,27 +76,61 @@ export default function ServicioClient({ servicio }: { servicio: ServicioDetalle
         </div>
       </section>
 
-      {/* ── Qué incluye ── */}
-      <section className="py-20 px-6 bg-[#060606] border-y border-white/[0.04]">
-        <div className="max-w-5xl mx-auto">
-          <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Qué incluye</p>
-            <h2 className="font-bold text-white leading-tight mb-10" style={{ fontSize: "clamp(1.7rem,3.5vw,2.6rem)", letterSpacing: "-0.02em" }}>
-              Todo lo que necesitas, cubierto.
-            </h2>
-          </R>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {servicio.incluye.map((it, i) => (
-              <R key={it} delay={i * 60}>
-                <div className="flex items-center gap-3 rounded-xl px-5 py-4" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="2.2" className="shrink-0"><path d="M20 6L9 17l-5-5" /></svg>
-                  <span className="text-white/75 text-sm">{it}</span>
-                </div>
-              </R>
-            ))}
+      {/* ── Qué incluye / Inventario (renta) ── */}
+      {esRenta ? (
+        <section className="py-20 px-6 bg-[#060606] border-y border-white/[0.04]">
+          <div className="max-w-5xl mx-auto">
+            <R>
+              <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Inventario de equipos</p>
+              <h2 className="font-bold text-white leading-tight mb-3" style={{ fontSize: "clamp(1.7rem,3.5vw,2.6rem)", letterSpacing: "-0.02em" }}>
+                Todo el equipo, por categoría.
+              </h2>
+              <p className="text-white/45 text-sm sm:text-base leading-relaxed max-w-2xl mb-10">
+                Explora nuestro catálogo completo con lista de precios y cotizador en línea. Selecciona lo que necesitas y arma tu presupuesto al instante.
+              </p>
+            </R>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-10">
+              {RENTA_CATEGORIAS.map(({ label, Icon }, i) => (
+                <R key={label} delay={i * 60}>
+                  <a href="/presentacion/inventario" className="group flex flex-col items-start gap-4 rounded-2xl px-6 py-7 h-full transition-all duration-300"
+                     style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
+                     onMouseEnter={(e) => { e.currentTarget.style.borderColor = `${GOLD}40`; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; }}>
+                    <Icon size={28} strokeWidth={1.4} style={{ color: GOLD }} />
+                    <span className="text-white/80 text-sm font-medium leading-snug">{label}</span>
+                  </a>
+                </R>
+              ))}
+            </div>
+            <R delay={120}>
+              <a href="/presentacion/inventario" className="inline-flex items-center gap-2 px-8 py-4 rounded-full font-semibold text-black text-sm tracking-wide transition-all duration-300 hover:scale-105" style={{ background: GOLD }}>
+                Ver inventario y cotizador
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+              </a>
+            </R>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : (
+        <section className="py-20 px-6 bg-[#060606] border-y border-white/[0.04]">
+          <div className="max-w-5xl mx-auto">
+            <R>
+              <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Qué incluye</p>
+              <h2 className="font-bold text-white leading-tight mb-10" style={{ fontSize: "clamp(1.7rem,3.5vw,2.6rem)", letterSpacing: "-0.02em" }}>
+                Todo lo que necesitas, cubierto.
+              </h2>
+            </R>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {servicio.incluye.map((it, i) => (
+                <R key={it} delay={i * 60}>
+                  <div className="flex items-center gap-3 rounded-xl px-5 py-4" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="2.2" className="shrink-0"><path d="M20 6L9 17l-5-5" /></svg>
+                    <span className="text-white/75 text-sm">{it}</span>
+                  </div>
+                </R>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Entregables ── */}
       <section className="py-20 px-6">

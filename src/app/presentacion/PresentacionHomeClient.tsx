@@ -1,10 +1,19 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Boxes, SlidersHorizontal, Compass, type LucideIcon } from "lucide-react";
 import type { Proyecto } from "@/lib/proyectos";
 import { SERVICIOS_DETALLE } from "@/lib/presentacion-servicios";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import { R, StatCount, GOLD } from "@/components/presentacion/anim";
 import { WA_URL, useDescubrimiento } from "@/components/presentacion/descubrimiento";
+import { usePresentacionEdit, EditableImage, EditableFigure } from "@/components/presentacion/editable";
+
+// Icono representativo de cada servicio (equipo · operación · coordinación).
+const SERVICE_ICONS: Record<string, LucideIcon> = {
+  RENTA: Boxes,
+  PRODUCCION_TECNICA: SlidersHorizontal,
+  DIRECCION_TECNICA: Compass,
+};
 
 const HERO_SLIDES = [
   { src: "/images/presentacion/musicales/Musicales-016.jpg", label: "Musicales" },
@@ -37,6 +46,7 @@ export default function PresentacionHomeClient() {
   const [heroIdx, setHeroIdx] = useState(0);
   const proyectos = useProyectos();
   const { iniciar, loading } = useDescubrimiento();
+  const edit = usePresentacionEdit();
 
   useEffect(() => {
     const t = setInterval(() => setHeroIdx((i) => (i + 1) % HERO_SLIDES.length), 5000);
@@ -58,22 +68,24 @@ export default function PresentacionHomeClient() {
       {/* ── Hero ── */}
       <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden">
         {HERO_SLIDES.map((slide, i) => (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <EditableImage
             key={slide.src}
-            src={slide.src}
-            alt=""
-            draggable={false}
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{
+            edit={edit}
+            okey={`home.hero.${i}`}
+            fallback={slide.src}
+            alt={slide.label}
+            showEditButton={i === heroIdx}
+            wrapClassName="absolute inset-0"
+            wrapStyle={{ zIndex: i === heroIdx ? 1 : 0 }}
+            imgClassName="w-full h-full object-cover"
+            imgStyle={{
               opacity: i === heroIdx ? 1 : 0,
               transform: i === heroIdx ? "scale(1.04)" : "scale(1)",
               transition: "opacity 1.4s ease-in-out, transform 8s ease-out",
-              zIndex: i === heroIdx ? 1 : 0,
             }}
           />
         ))}
-        <div className="absolute inset-0 z-10" style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.3) 0%, rgba(8,8,8,0.5) 40%, rgba(8,8,8,0.85) 82%, #080808 100%)" }} />
+        <div className="absolute inset-0 z-10 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.3) 0%, rgba(8,8,8,0.5) 40%, rgba(8,8,8,0.85) 82%, #080808 100%)" }} />
 
         <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-20 flex gap-2">
           {HERO_SLIDES.map((s, i) => (
@@ -93,15 +105,15 @@ export default function PresentacionHomeClient() {
         </div>
 
         <div className="relative z-20 text-center px-6 max-w-4xl mx-auto">
-          <p className="text-[#B3985B] text-xs font-semibold tracking-[0.28em] uppercase mb-6" style={{ animation: "fadeUp 0.8s ease forwards 0.2s", opacity: 0 }}>
-            Mainstage Pro · Producción técnica de eventos
+          <p className="text-[#B3985B] text-sm font-semibold tracking-[0.24em] uppercase mb-6" style={{ animation: "fadeUp 0.8s ease forwards 0.2s", opacity: 0 }}>
+            Mainstage Pro · Experiencias que generan impacto
           </p>
-          <h1 className="font-bold text-white leading-[1.0]" style={{ fontSize: "clamp(2.8rem,8vw,7rem)", letterSpacing: "-0.03em", animation: "fadeUp 0.9s ease forwards 0.4s", opacity: 0 }}>
-            Todo resuelto.<br />
-            <span style={{ color: GOLD }}>Tú solo disfruta.</span>
+          <h1 className="font-bold text-white leading-[1.03]" style={{ fontSize: "clamp(2.4rem,6.5vw,5.4rem)", letterSpacing: "-0.03em", animation: "fadeUp 0.9s ease forwards 0.4s", opacity: 0 }}>
+            La producción técnica<br />
+            detrás de cada <span style={{ color: GOLD }}>gran evento.</span>
           </h1>
-          <p className="text-white/60 mt-8 max-w-xl mx-auto" style={{ fontSize: "clamp(1rem,2vw,1.15rem)", animation: "fadeUp 0.9s ease forwards 0.65s", opacity: 0 }}>
-            Audio, iluminación, video y operadores expertos. Un solo equipo que produce tu evento de principio a fin.
+          <p className="text-white/60 mt-8 max-w-2xl mx-auto" style={{ fontSize: "clamp(1rem,2vw,1.2rem)", animation: "fadeUp 0.9s ease forwards 0.65s", opacity: 0 }}>
+            Desde el equipo exacto que tu evento necesita hasta la coordinación completa de la producción. Audio, iluminación y video en manos de un solo equipo que responde por cada detalle.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4" style={{ animation: "fadeUp 0.9s ease forwards 0.85s", opacity: 0 }}>
             <button onClick={() => iniciar()} disabled={loading} className="px-8 py-4 rounded-full font-semibold text-black text-sm tracking-wide transition-all duration-300 hover:scale-105 disabled:opacity-60" style={{ background: GOLD }}>
@@ -133,13 +145,13 @@ export default function PresentacionHomeClient() {
       <section className="py-24 px-6">
         <div className="max-w-5xl mx-auto">
           <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">El problema que resolvemos</p>
+            <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-4">El problema que resolvemos</p>
             <h2 className="font-bold text-white leading-[1.1] mb-6" style={{ fontSize: "clamp(1.9rem,4.5vw,3.4rem)", letterSpacing: "-0.025em" }}>
               Un evento tiene mil piezas técnicas.<br />
               <span style={{ color: GOLD }}>Nosotros somos la única que necesitas coordinar.</span>
             </h2>
             <p className="text-white/45 text-base leading-relaxed max-w-2xl">
-              Audio que se escucha parejo, luz que acompaña cada momento, video que no falla y gente que lo opera con criterio. En lugar de perseguir proveedores sueltos, tienes un solo equipo responsable de que todo llegue junto y a tiempo.
+              Audio nítido y balanceado, iluminación que da forma a cada momento, video en alta definición y un equipo que lo opera con criterio. En lugar de coordinar proveedores sueltos, cuentas con un solo responsable de que todo llegue junto y a tiempo.
             </p>
           </R>
         </div>
@@ -149,8 +161,8 @@ export default function PresentacionHomeClient() {
       <section className="py-24 px-6 bg-[#060606] border-y border-white/[0.04]">
         <div className="max-w-6xl mx-auto">
           <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Quiénes somos</p>
-            <h2 className="font-bold text-white leading-tight mb-12" style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
+            <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-4">Quiénes somos</p>
+            <h2 className="font-bold text-white leading-tight mb-12" style={{ fontSize: "clamp(1.5rem,3.3vw,2.5rem)", letterSpacing: "-0.02em" }}>
               Creamos experiencias<br /><span style={{ color: GOLD }}>que generan impacto.</span>
             </h2>
           </R>
@@ -176,8 +188,8 @@ export default function PresentacionHomeClient() {
       <section id="servicios" className="py-24 px-6">
         <div className="max-w-6xl mx-auto">
           <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Lo que ofrecemos</p>
-            <h2 className="font-bold text-white leading-tight mb-3" style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
+            <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-4">Lo que ofrecemos</p>
+            <h2 className="font-bold text-white leading-tight mb-3" style={{ fontSize: "clamp(1.5rem,3.3vw,2.5rem)", letterSpacing: "-0.02em" }}>
               Tres formas de trabajar<br />con Mainstage Pro
             </h2>
             <p className="text-white/40 text-sm sm:text-base leading-relaxed max-w-2xl mb-12">
@@ -194,7 +206,16 @@ export default function PresentacionHomeClient() {
                   onMouseEnter={(e) => { e.currentTarget.style.borderColor = `${GOLD}40`; e.currentTarget.style.background = "rgba(179,152,91,0.04)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.background = "rgba(255,255,255,0.025)"; }}
                 >
-                  <span className="text-[#B3985B]/40 text-xs font-mono tracking-widest mb-6">{s.n}</span>
+                  <div className="flex items-center justify-between mb-6">
+                    <EditableFigure
+                      edit={edit}
+                      okey={`home.servicio.${s.tipoServicio}.img`}
+                      alt={s.title}
+                      imgClassName="w-11 h-11 rounded-xl object-cover"
+                      placeholder={(() => { const Icon = SERVICE_ICONS[s.tipoServicio]; return Icon ? <Icon size={30} strokeWidth={1.4} style={{ color: GOLD }} /> : <span />; })()}
+                    />
+                    <span className="text-[#B3985B]/40 text-xs font-mono tracking-widest">{s.n}</span>
+                  </div>
                   <h3 className="font-bold text-white text-2xl mb-3 leading-tight">{s.title}</h3>
                   <p className="text-white/55 text-sm leading-relaxed flex-1">{s.tagline}</p>
                   <p className="text-[#B3985B]/60 text-xs mt-6 leading-relaxed border-t border-white/[0.05] pt-5">{s.detailChips}</p>
@@ -212,8 +233,8 @@ export default function PresentacionHomeClient() {
       <section id="eventos" className="py-24 px-6 bg-[#060606]">
         <div className="max-w-6xl mx-auto">
           <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Para qué eventos trabajamos</p>
-            <h2 className="font-bold text-white leading-tight mb-12" style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
+            <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-4">Para qué eventos trabajamos</p>
+            <h2 className="font-bold text-white leading-tight mb-12" style={{ fontSize: "clamp(1.5rem,3.3vw,2.5rem)", letterSpacing: "-0.02em" }}>
               Cada evento, con la producción<br />que merece
             </h2>
           </R>
@@ -221,9 +242,15 @@ export default function PresentacionHomeClient() {
             {EVENTOS.map((ev, i) => (
               <R key={ev.title} delay={i * 120}>
                 <a href={ev.href} className="group block relative rounded-2xl overflow-hidden" style={{ height: "360px" }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={ev.img} alt={ev.title} draggable={false} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                  <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.2) 55%, transparent 100%)" }} />
+                  <EditableImage
+                    edit={edit}
+                    okey={`home.evento.${i}.img`}
+                    fallback={ev.img}
+                    alt={ev.title}
+                    wrapClassName="w-full h-full"
+                    imgClassName="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.2) 55%, transparent 100%)" }} />
                   <div className="absolute bottom-0 left-0 right-0 p-7">
                     <p className="text-[#B3985B] text-[10px] tracking-[0.16em] uppercase mb-2">{ev.para}</p>
                     <h3 className="font-bold text-white text-xl mb-1">{ev.title}</h3>
@@ -245,11 +272,17 @@ export default function PresentacionHomeClient() {
         <div className="max-w-6xl mx-auto">
           <R>
             <div className="rounded-3xl overflow-hidden relative" style={{ border: "1px solid rgba(255,255,255,0.07)" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/images/presentacion/musicales/Musicales-126.jpg" alt="" draggable={false} className="absolute inset-0 w-full h-full object-cover opacity-30" />
-              <div className="absolute inset-0" style={{ background: "linear-gradient(to right, #060606 10%, rgba(6,6,6,0.7) 60%, rgba(6,6,6,0.4) 100%)" }} />
+              <EditableImage
+                edit={edit}
+                okey="home.inventario.img"
+                fallback="/images/presentacion/musicales/Musicales-126.jpg"
+                alt="Inventario Mainstage Pro"
+                wrapClassName="absolute inset-0"
+                imgClassName="w-full h-full object-cover opacity-30"
+              />
+              <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to right, #060606 10%, rgba(6,6,6,0.7) 60%, rgba(6,6,6,0.4) 100%)" }} />
               <div className="relative p-10 sm:p-14 max-w-xl">
-                <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Inventario de equipo</p>
+                <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-4">Inventario de equipo</p>
                 <h2 className="font-bold text-white leading-tight mb-4" style={{ fontSize: "clamp(1.6rem,3.5vw,2.6rem)", letterSpacing: "-0.02em" }}>
                   Explora el equipo y arma tu presupuesto.
                 </h2>
@@ -271,8 +304,8 @@ export default function PresentacionHomeClient() {
         <section id="proyectos" className="py-24 px-6 bg-[#060606]">
           <div className="max-w-6xl mx-auto">
             <R>
-              <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Proyectos</p>
-              <h2 className="font-bold text-white leading-tight mb-12" style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
+              <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-4">Proyectos</p>
+              <h2 className="font-bold text-white leading-tight mb-12" style={{ fontSize: "clamp(1.5rem,3.3vw,2.5rem)", letterSpacing: "-0.02em" }}>
                 Eventos que hemos producido
               </h2>
             </R>
@@ -306,8 +339,8 @@ export default function PresentacionHomeClient() {
       <section className="py-24 px-6">
         <div className="max-w-6xl mx-auto">
           <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Por qué Mainstage Pro</p>
-            <h2 className="font-bold text-white leading-tight mb-12" style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
+            <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-4">Por qué Mainstage Pro</p>
+            <h2 className="font-bold text-white leading-tight mb-12" style={{ fontSize: "clamp(1.5rem,3.3vw,2.5rem)", letterSpacing: "-0.02em" }}>
               Lo que nos hace<br /><span style={{ color: GOLD }}>la opción correcta.</span>
             </h2>
           </R>
@@ -333,8 +366,8 @@ export default function PresentacionHomeClient() {
       <section className="py-20 px-6 bg-[#060606]">
         <div className="max-w-6xl mx-auto">
           <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Nuestro trabajo</p>
-            <h2 className="font-bold text-white leading-tight mb-10" style={{ fontSize: "clamp(1.8rem,4vw,3rem)", letterSpacing: "-0.02em" }}>
+            <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-4">Nuestro trabajo</p>
+            <h2 className="font-bold text-white leading-tight mb-10" style={{ fontSize: "clamp(1.5rem,3.3vw,2.5rem)", letterSpacing: "-0.02em" }}>
               Cada evento, una producción<br /><span style={{ color: GOLD }}>hecha a medida.</span>
             </h2>
           </R>
@@ -348,8 +381,14 @@ export default function PresentacionHomeClient() {
               "/images/presentacion/empresariales/e-auditorio.jpg",
             ].map((src, i) => (
               <R key={i} delay={i * 50} className="overflow-hidden rounded-xl">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={src} alt="Producción Mainstage Pro" draggable={false} className="w-full h-full object-cover aspect-[4/3] hover:scale-105 transition-transform duration-500" />
+                <EditableImage
+                  edit={edit}
+                  okey={`home.galeria.${i}`}
+                  fallback={src}
+                  alt="Producción Mainstage Pro"
+                  wrapClassName="w-full h-full"
+                  imgClassName="w-full h-full object-cover aspect-[4/3] hover:scale-105 transition-transform duration-500"
+                />
               </R>
             ))}
           </div>
@@ -369,18 +408,18 @@ export default function PresentacionHomeClient() {
         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16">
           <div>
             <R>
-              <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Cómo trabajamos</p>
-              <h2 className="font-bold text-white leading-tight mb-10" style={{ fontSize: "clamp(1.6rem,3.5vw,2.4rem)", letterSpacing: "-0.02em" }}>
-                De cero a evento impecable
+              <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-4">Cómo trabajamos</p>
+              <h2 className="font-bold text-white leading-tight mb-10" style={{ fontSize: "clamp(1.5rem,3.3vw,2.3rem)", letterSpacing: "-0.02em" }}>
+                Contratarnos, paso a paso
               </h2>
             </R>
             <div className="space-y-5">
               {[
-                { n: "1", title: "Contáctanos", body: "Respondemos en menos de 24 h." },
-                { n: "2", title: "Levantamiento técnico", body: "Analizamos espacio y programa." },
-                { n: "3", title: "Cotización personalizada", body: "Clara, sin letra chica." },
-                { n: "4", title: "Confirmación y reserva", body: "Fecha bloqueada en agenda." },
-                { n: "5", title: "Coordinación previa", body: "Llegamos listos para ejecutar." },
+                { n: "1", title: "Contáctanos", body: "Nos escribes y respondemos en menos de 24 horas." },
+                { n: "2", title: "Descubrimiento de necesidades", body: "Entendemos tu evento, tu espacio y lo que quieres lograr." },
+                { n: "3", title: "Desarrollamos tu cotización", body: "Armamos una propuesta a la medida, clara y sin letra chica." },
+                { n: "4", title: "Presentación y negociación", body: "Te presentamos la propuesta y ajustamos hasta que encaje." },
+                { n: "5", title: "Cierre del proyecto", body: "Confirmamos, bloqueamos la fecha y coordinamos la ejecución." },
               ].map((step, i) => (
                 <R key={step.n} delay={i * 70}>
                   <div className="flex gap-4 items-start">
@@ -396,7 +435,7 @@ export default function PresentacionHomeClient() {
           </div>
           <div>
             <R>
-              <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Zonas de servicio</p>
+              <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-4">Zonas de servicio</p>
               <h2 className="font-bold text-white leading-tight mb-10" style={{ fontSize: "clamp(1.6rem,3.5vw,2.4rem)", letterSpacing: "-0.02em" }}>
                 Dónde trabajamos
               </h2>
