@@ -749,7 +749,7 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
             okey={`evento.${tipo}.hero`}
             fallback={c.hero}
             alt={c.label}
-            wrapClassName="w-full h-full"
+            wrapClassName="relative w-full h-full"
             imgClassName="w-full h-full object-cover"
             imgStyle={{ animation: "kenBurns 18s ease forwards" }}
           />

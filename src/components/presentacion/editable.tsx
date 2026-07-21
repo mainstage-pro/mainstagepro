@@ -99,8 +99,11 @@ export function EditableImage({
     }
   }
 
+  // El caller controla el posicionamiento (absolute inset-0 / relative w-full…).
+  // No forzamos `relative` aquí porque sobrescribiría un `absolute` entrante en
+  // Tailwind y rompería el apilado (imágenes a tamaño natural → gigantes).
   return (
-    <div className={`relative ${wrapClassName}`} style={wrapStyle}>
+    <div className={wrapClassName} style={wrapStyle}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt={alt} draggable={draggable} loading={loading} className={imgClassName} style={imgStyle} />
       {edit.isAdmin && showEditButton && (

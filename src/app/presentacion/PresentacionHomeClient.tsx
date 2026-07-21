@@ -247,7 +247,7 @@ export default function PresentacionHomeClient() {
                     okey={`home.evento.${i}.img`}
                     fallback={ev.img}
                     alt={ev.title}
-                    wrapClassName="w-full h-full"
+                    wrapClassName="relative w-full h-full"
                     imgClassName="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
                   <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.2) 55%, transparent 100%)" }} />
@@ -386,7 +386,7 @@ export default function PresentacionHomeClient() {
                   okey={`home.galeria.${i}`}
                   fallback={src}
                   alt="Producción Mainstage Pro"
-                  wrapClassName="w-full h-full"
+                  wrapClassName="relative w-full h-full"
                   imgClassName="w-full h-full object-cover aspect-[4/3] hover:scale-105 transition-transform duration-500"
                 />
               </R>
