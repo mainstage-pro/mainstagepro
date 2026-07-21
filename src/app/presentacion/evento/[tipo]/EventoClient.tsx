@@ -255,20 +255,53 @@ function useProyectos(tipo: EventoTipo) {
   return proyectos;
 }
 
-function ProyectosSection({ proyectos }: { proyectos: Proyecto[] }) {
-  if (!proyectos.length) return null;
+function ProyectosSection({ proyectos, isAdmin, tipo }: { proyectos: Proyecto[]; isAdmin: boolean; tipo: EventoTipo }) {
+  const [creando, setCreando] = useState(false);
+  if (!proyectos.length && !isAdmin) return null;
+
+  async function crear() {
+    setCreando(true);
+    try {
+      const r = await fetch("/api/presentacion/proyectos", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipoEvento: TIPO_EVENTO_MAP[tipo], titulo: "Nuevo proyecto" }),
+      });
+      const d = await r.json();
+      if (d.proyecto?.slug) { window.location.href = `/presentacion/proyecto/${d.proyecto.slug}`; return; }
+      throw new Error(d.error || "No se pudo crear");
+    } catch (err) {
+      setCreando(false);
+      alert("Error al crear proyecto: " + (err instanceof Error ? err.message : String(err)));
+    }
+  }
+
   return (
     <section id="proyectos" className="py-32 px-6">
       <div className="max-w-6xl mx-auto">
         <R>
-          <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Proyectos</p>
-          <h2 className="font-bold text-white leading-[1.05] mb-4" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
-            Eventos que ya resolvimos.
-          </h2>
+          <div className="flex flex-wrap items-end justify-between gap-4 mb-4">
+            <div>
+              <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Proyectos</p>
+              <h2 className="font-bold text-white leading-[1.05]" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
+                Eventos que ya resolvimos.
+              </h2>
+            </div>
+            {isAdmin && (
+              <button onClick={crear} disabled={creando}
+                className="text-xs font-semibold tracking-wide px-5 py-2.5 rounded-full transition-all disabled:opacity-50"
+                style={{ background: "rgba(179,152,91,0.12)", border: `1px solid ${GOLD}55`, color: GOLD }}>
+                {creando ? "Creando…" : "＋ Nuevo proyecto"}
+              </button>
+            )}
+          </div>
           <p className="text-white/40 text-sm sm:text-base leading-relaxed max-w-2xl mb-14">
             Una muestra de cómo trabajamos, del reto a la ejecución. Cada proyecto con su historia.
           </p>
         </R>
+
+        {proyectos.length === 0 && isAdmin && (
+          <p className="text-white/30 text-sm">Aún no hay proyectos de este tipo. Crea el primero con el botón de arriba.</p>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {proyectos.map((p, i) => (
@@ -835,7 +868,7 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
       </section>
 
       {/* ── Proyectos ── */}
-      <ProyectosSection proyectos={proyectos} />
+      <ProyectosSection proyectos={proyectos} isAdmin={isAdmin} tipo={tipo} />
 
       {/* ── Qué necesitamos para cotizar ── */}
       <section className="py-32 px-6 bg-[#060606]">

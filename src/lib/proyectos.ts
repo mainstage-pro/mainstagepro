@@ -301,9 +301,136 @@ export async function getProyectoBySlug(slug: string): Promise<Proyecto | null> 
   );
   const row = rows[0];
   if (!row) return null;
-  const imgs = await prisma.$queryRawUnsafe<ProyectoImagen[]>(
-    `SELECT "id","url","caption","orden" FROM "proyecto_imagenes" WHERE "proyectoId" = $1 ORDER BY "orden" ASC;`,
-    row.id
-  );
+  const imgs = await imagenesDe(row.id);
   return mapRow(row, imgs);
+}
+
+async function imagenesDe(proyectoId: string): Promise<ProyectoImagen[]> {
+  return prisma.$queryRawUnsafe<ProyectoImagen[]>(
+    `SELECT "id","url","caption","orden" FROM "proyecto_imagenes" WHERE "proyectoId" = $1 ORDER BY "orden" ASC;`,
+    proyectoId
+  );
+}
+
+export async function getProyectoById(id: string): Promise<Proyecto | null> {
+  await ensureProyectosTables();
+  const rows = await prisma.$queryRawUnsafe<Row[]>(
+    `SELECT * FROM "proyectos_presentacion" WHERE "id" = $1 LIMIT 1;`,
+    id
+  );
+  const row = rows[0];
+  if (!row) return null;
+  return mapRow(row, await imagenesDe(row.id));
+}
+
+// ─── Escritura (solo admin, desde endpoints con requireAdmin) ──────────────────
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "proyecto";
+}
+
+async function slugUnico(base: string, excluirId?: string): Promise<string> {
+  let slug = base;
+  let n = 1;
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const rows = await prisma.$queryRawUnsafe<{ id: string }[]>(
+      `SELECT "id" FROM "proyectos_presentacion" WHERE "slug" = $1 LIMIT 1;`,
+      slug
+    );
+    if (!rows[0] || rows[0].id === excluirId) return slug;
+    n += 1;
+    slug = `${base}-${n}`;
+  }
+}
+
+export type ProyectoInput = Partial<{
+  titulo: string; tipoEvento: string; cliente: string | null; ubicacion: string | null;
+  fecha: string | null; resumen: string | null; reto: string | null; solucion: string | null;
+  resultado: string | null; asistentes: number | null; servicios: string[]; portada: string | null;
+  esBorrador: boolean; destacado: boolean; orden: number;
+}>;
+
+export async function createProyecto(input: ProyectoInput): Promise<Proyecto> {
+  await ensureProyectosTables();
+  const id = cuidish();
+  const titulo = input.titulo?.trim() || "Nuevo proyecto";
+  const tipoEvento = TIPOS_EVENTO_PROYECTO.includes(input.tipoEvento as TipoEventoProyecto)
+    ? input.tipoEvento! : "MUSICAL";
+  const slug = await slugUnico(slugify(titulo));
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO "proyectos_presentacion"
+      ("id","slug","tipoEvento","titulo","cliente","ubicacion","fecha","resumen","reto","solucion","resultado","asistentes","servicios","portada","esBorrador","destacado","activo","orden","updatedAt")
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,true,$17,CURRENT_TIMESTAMP);`,
+    id, slug, tipoEvento, titulo, input.cliente ?? null, input.ubicacion ?? null, input.fecha ?? null,
+    input.resumen ?? null, input.reto ?? null, input.solucion ?? null, input.resultado ?? null,
+    input.asistentes ?? null, JSON.stringify(input.servicios ?? []), input.portada ?? null,
+    input.esBorrador ?? true, input.destacado ?? false, input.orden ?? 0
+  );
+  return (await getProyectoById(id))!;
+}
+
+const CAMPOS_TEXTO = ["titulo", "cliente", "ubicacion", "fecha", "resumen", "reto", "solucion", "resultado", "portada", "tipoEvento"] as const;
+
+export async function updateProyecto(id: string, input: ProyectoInput): Promise<Proyecto | null> {
+  await ensureProyectosTables();
+  const sets: string[] = [];
+  const vals: unknown[] = [];
+  let n = 1;
+
+  for (const campo of CAMPOS_TEXTO) {
+    if (campo in input) {
+      sets.push(`"${campo}" = $${n++}`);
+      vals.push((input as Record<string, unknown>)[campo] ?? null);
+    }
+  }
+  if ("asistentes" in input) { sets.push(`"asistentes" = $${n++}`); vals.push(input.asistentes ?? null); }
+  if ("servicios" in input) { sets.push(`"servicios" = $${n++}`); vals.push(JSON.stringify(input.servicios ?? [])); }
+  if ("esBorrador" in input) { sets.push(`"esBorrador" = $${n++}`); vals.push(input.esBorrador); }
+  if ("destacado" in input) { sets.push(`"destacado" = $${n++}`); vals.push(input.destacado); }
+  if ("orden" in input) { sets.push(`"orden" = $${n++}`); vals.push(input.orden); }
+
+  if (input.titulo) {
+    const nuevoSlug = await slugUnico(slugify(input.titulo), id);
+    sets.push(`"slug" = $${n++}`); vals.push(nuevoSlug);
+  }
+
+  if (sets.length === 0) return getProyectoById(id);
+  sets.push(`"updatedAt" = CURRENT_TIMESTAMP`);
+  vals.push(id);
+  await prisma.$executeRawUnsafe(
+    `UPDATE "proyectos_presentacion" SET ${sets.join(", ")} WHERE "id" = $${n};`,
+    ...vals
+  );
+  return getProyectoById(id);
+}
+
+export async function deleteProyecto(id: string): Promise<void> {
+  await ensureProyectosTables();
+  await prisma.$executeRawUnsafe(`DELETE FROM "proyectos_presentacion" WHERE "id" = $1;`, id);
+}
+
+export async function addImagen(proyectoId: string, url: string, caption?: string | null): Promise<ProyectoImagen> {
+  await ensureProyectosTables();
+  const orden = await prisma.$queryRawUnsafe<{ max: number | null }[]>(
+    `SELECT MAX("orden") AS max FROM "proyecto_imagenes" WHERE "proyectoId" = $1;`,
+    proyectoId
+  );
+  const nextOrden = (orden[0]?.max ?? -1) + 1;
+  const id = cuidish();
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO "proyecto_imagenes" ("id","proyectoId","url","caption","orden") VALUES ($1,$2,$3,$4,$5);`,
+    id, proyectoId, url, caption ?? null, nextOrden
+  );
+  return { id, url, caption: caption ?? null, orden: nextOrden };
+}
+
+export async function deleteImagen(imgId: string): Promise<void> {
+  await ensureProyectosTables();
+  await prisma.$executeRawUnsafe(`DELETE FROM "proyecto_imagenes" WHERE "id" = $1;`, imgId);
 }
