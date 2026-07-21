@@ -73,7 +73,7 @@ export default function RowActions({
       )}
 
       {items.length > 0 && (
-        <div className="relative" ref={ref}>
+        <div className={`relative ${open ? "z-50" : ""}`} ref={ref}>
           <button
             type="button"
             onClick={(e) => {

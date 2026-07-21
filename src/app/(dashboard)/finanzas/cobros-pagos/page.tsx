@@ -1240,7 +1240,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                 </div>
               )}
               {monthHeader}
-              <div className={isPasado ? "opacity-50" : ""}>
+              <div className={isPasado ? "relative hover:z-30 focus-within:z-30 opacity-50 transition-all" : "relative hover:z-30 focus-within:z-30"}>
               {grupo.isEntityGroup ? (
                 <div className="flex items-center justify-between gap-2 mb-2 px-1 border-b border-[#222] pb-2">
                   <span className="text-sm font-semibold text-[#B3985B]">
@@ -1512,7 +1512,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
                 </div>
               )}
               {monthHeaderP}
-              <div className={isPasadoP ? "opacity-50" : ""}>
+              <div className={isPasadoP ? "relative hover:z-30 focus-within:z-30 opacity-50 transition-all" : "relative hover:z-30 focus-within:z-30"}>
               {grupo.isEntityGroup ? (
                 <div className="flex items-center justify-between gap-2 mb-2 px-1 border-b border-[#222] pb-2">
                   <span className="text-sm font-semibold text-[#B3985B]">
