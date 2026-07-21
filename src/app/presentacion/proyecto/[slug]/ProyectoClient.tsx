@@ -1,0 +1,215 @@
+"use client";
+import { useEffect, useRef, useState } from "react";
+import type { Proyecto } from "@/lib/proyectos";
+
+const GOLD = "#B3985B";
+const WA = "https://wa.me/524461432565?text=Hola%2C%20vi%20un%20proyecto%20en%20su%20presentaci%C3%B3n%20y%20me%20gustar%C3%ADa%20informaci%C3%B3n%20para%20mi%20evento.";
+
+const TIPO_LABEL: Record<string, string> = {
+  MUSICAL: "Evento musical",
+  SOCIAL: "Evento social",
+  EMPRESARIAL: "Evento empresarial",
+};
+const TIPO_HREF: Record<string, string> = {
+  MUSICAL: "/presentacion/evento/musical",
+  SOCIAL: "/presentacion/evento/social",
+  EMPRESARIAL: "/presentacion/evento/empresarial",
+};
+
+function useReveal(threshold = 0.12) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [vis, setVis] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) { setVis(true); obs.disconnect(); }
+    }, { threshold });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return { ref, vis };
+}
+
+function R({ children, delay = 0, y = 28, className = "" }: { children: React.ReactNode; delay?: number; y?: number; className?: string }) {
+  const { ref, vis } = useReveal();
+  return (
+    <div ref={ref} className={className}
+      style={{ opacity: vis ? 1 : 0, transform: vis ? "translateY(0)" : `translateY(${y}px)`, transition: `opacity 0.7s ${delay}ms ease, transform 0.7s ${delay}ms ease` }}>
+      {children}
+    </div>
+  );
+}
+
+export default function ProyectoClient({ proyecto: p }: { proyecto: Proyecto }) {
+  const tipoLabel = TIPO_LABEL[p.tipoEvento] ?? "Proyecto";
+  const tipoHref = TIPO_HREF[p.tipoEvento] ?? "/presentacion";
+  const bloques = [
+    { label: "El reto", body: p.reto },
+    { label: "Lo que hicimos", body: p.solucion },
+    { label: "El resultado", body: p.resultado },
+  ].filter((b) => b.body);
+
+  return (
+    <div className="bg-[#080808] text-white min-h-screen"
+      style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
+      <style>{`
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: translateY(0); } }
+        html { scroll-behavior: smooth; }
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-track { background: #080808; }
+        ::-webkit-scrollbar-thumb { background: rgba(179,152,91,0.35); border-radius: 2px; }
+      `}</style>
+
+      {/* Nav */}
+      <nav className="fixed top-0 inset-x-0 z-50" style={{ background: "rgba(8,8,8,0.9)", backdropFilter: "blur(16px)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+          <a href="/presentacion/servicios">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-white.png" alt="Mainstage Pro" className="h-7 object-contain" draggable={false} />
+          </a>
+          <a href={WA} target="_blank" rel="noopener noreferrer"
+            className="text-xs font-semibold tracking-[0.14em] uppercase px-5 py-2.5 rounded-full transition-all duration-300 hover:opacity-85"
+            style={{ background: GOLD, color: "#000" }}>
+            Contactar
+          </a>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <section className="relative min-h-[72vh] flex flex-col justify-end overflow-hidden pb-16">
+        <div className="absolute inset-0">
+          {p.portada ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={p.portada} alt={p.titulo} draggable={false} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full" style={{ background: "radial-gradient(circle at 30% 20%, rgba(179,152,91,0.22), #080808 60%)" }} />
+          )}
+          <div className="absolute inset-0" style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.5) 0%, rgba(8,8,8,0.6) 45%, rgba(8,8,8,0.92) 82%, #080808 100%)" }} />
+        </div>
+
+        <div className="relative z-10 px-6 max-w-5xl mx-auto w-full">
+          <a href={tipoHref} className="inline-flex items-center gap-2 text-white/45 text-xs tracking-wide hover:text-white/75 transition-colors mb-6"
+            style={{ animation: "fadeUp 0.7s ease forwards 0.1s", opacity: 0 }}>
+            <span aria-hidden>←</span> {tipoLabel}
+          </a>
+          {p.esBorrador && (
+            <div className="mb-4" style={{ animation: "fadeUp 0.7s ease forwards 0.15s", opacity: 0 }}>
+              <span className="text-[10px] font-semibold tracking-[0.18em] uppercase px-3 py-1.5 rounded-full"
+                style={{ background: "rgba(179,152,91,0.14)", border: `1px solid ${GOLD}55`, color: GOLD }}>
+                Borrador · pendiente de revisión
+              </span>
+            </div>
+          )}
+          <h1 className="font-bold text-white leading-[1.04]"
+            style={{ fontSize: "clamp(2.2rem, 6vw, 4.5rem)", letterSpacing: "-0.03em", animation: "fadeUp 0.9s ease forwards 0.25s", opacity: 0 }}>
+            {p.titulo}
+          </h1>
+          {p.resumen && (
+            <p className="text-white/55 mt-6 leading-relaxed max-w-2xl"
+              style={{ fontSize: "clamp(0.95rem, 1.6vw, 1.15rem)", animation: "fadeUp 0.9s ease forwards 0.4s", opacity: 0 }}>
+              {p.resumen}
+            </p>
+          )}
+        </div>
+      </section>
+
+      {/* Ficha */}
+      <section className="px-6 -mt-4">
+        <div className="max-w-5xl mx-auto">
+          <R>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+              {[
+                { k: "Tipo", v: tipoLabel },
+                p.ubicacion ? { k: "Lugar", v: p.ubicacion } : null,
+                p.fecha ? { k: "Fecha", v: p.fecha } : null,
+                p.asistentes ? { k: "Asistentes", v: `${p.asistentes.toLocaleString("es-MX")}+` } : null,
+              ].filter(Boolean).map((f, i) => {
+                const item = f as { k: string; v: string };
+                return (
+                  <div key={i} className="p-5 sm:p-6" style={{ background: "rgba(255,255,255,0.025)" }}>
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-white/30 mb-2">{item.k}</p>
+                    <p className="text-white/85 text-sm sm:text-base font-medium">{item.v}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </R>
+
+          {p.servicios.length > 0 && (
+            <R delay={80}>
+              <div className="flex flex-wrap gap-2 mt-6">
+                {p.servicios.map((s, i) => (
+                  <span key={i} className="text-xs text-white/60 px-3.5 py-1.5 rounded-full"
+                    style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>{s}</span>
+                ))}
+              </div>
+            </R>
+          )}
+        </div>
+      </section>
+
+      {/* Reto / Solución / Resultado */}
+      {bloques.length > 0 && (
+        <section className="py-24 px-6">
+          <div className="max-w-3xl mx-auto space-y-16">
+            {bloques.map((b, i) => (
+              <R key={i} delay={i * 60}>
+                <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-4">{b.label}</p>
+                <p className="text-white/70 leading-relaxed" style={{ fontSize: "clamp(1.05rem, 2vw, 1.35rem)" }}>{b.body}</p>
+              </R>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Galería */}
+      {p.imagenes.length > 0 && (
+        <section className="pb-24 px-6">
+          <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {p.imagenes.map((img, i) => (
+              <R key={img.id} delay={i * 60} className={i === 0 && p.imagenes.length > 2 ? "sm:col-span-2" : ""}>
+                <figure className="relative rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={img.url} alt={img.caption ?? p.titulo} draggable={false}
+                    className="w-full h-full object-cover" style={{ aspectRatio: i === 0 && p.imagenes.length > 2 ? "21/9" : "4/3" }} />
+                  {img.caption && (
+                    <figcaption className="absolute bottom-0 inset-x-0 p-4 text-xs text-white/80"
+                      style={{ background: "linear-gradient(to top, rgba(8,8,8,0.85), transparent)" }}>{img.caption}</figcaption>
+                  )}
+                </figure>
+              </R>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* CTA */}
+      <section className="pb-32 px-6">
+        <div className="max-w-3xl mx-auto text-center">
+          <R>
+            <h2 className="font-bold text-white leading-[1.08] mb-5" style={{ fontSize: "clamp(1.6rem, 3.5vw, 2.6rem)", letterSpacing: "-0.025em" }}>
+              ¿Tienes un evento en mente?
+            </h2>
+            <p className="text-white/45 text-sm sm:text-base leading-relaxed mb-9 max-w-xl mx-auto">
+              Cuéntanos qué necesitas y te devolvemos una propuesta técnica a la medida en menos de 24 horas.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <a href={WA} target="_blank" rel="noopener noreferrer"
+                className="px-9 py-4 rounded-full font-semibold text-black text-sm tracking-wide transition-all hover:scale-105" style={{ background: GOLD }}>
+                Contactar por WhatsApp
+              </a>
+              <a href={tipoHref} className="text-white/40 text-sm hover:text-white/70 transition-colors">Ver más de {tipoLabel.toLowerCase()} →</a>
+            </div>
+          </R>
+        </div>
+      </section>
+
+      <footer className="border-t border-white/[0.06] px-6 py-10">
+        <div className="max-w-5xl mx-auto text-center text-xs text-white/30">
+          Mainstage Pro · Producción técnica de eventos
+        </div>
+      </footer>
+    </div>
+  );
+}

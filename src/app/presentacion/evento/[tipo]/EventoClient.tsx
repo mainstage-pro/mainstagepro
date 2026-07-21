@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
+import type { Proyecto } from "@/lib/proyectos";
 
 const GOLD = "#B3985B";
 const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20obtener%20informaci%C3%B3n%20sobre%20producci%C3%B3n%20para%20mi%20evento.";
@@ -240,6 +241,66 @@ function useGaleria(slug: EventoTipo, fallback: { src: string; caption: string }
   }, [slug]);
   useEffect(() => { cargar(); }, [cargar]);
   return { fotos, tipoId, setTipoId, recargar: cargar };
+}
+
+// Carga los proyectos publicados para este tipo de evento.
+function useProyectos(tipo: EventoTipo) {
+  const [proyectos, setProyectos] = useState<Proyecto[]>([]);
+  useEffect(() => {
+    fetch(`/api/proyectos/publico?tipo=${TIPO_EVENTO_MAP[tipo]}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (Array.isArray(d?.proyectos)) setProyectos(d.proyectos); })
+      .catch(() => {});
+  }, [tipo]);
+  return proyectos;
+}
+
+function ProyectosSection({ proyectos }: { proyectos: Proyecto[] }) {
+  if (!proyectos.length) return null;
+  return (
+    <section id="proyectos" className="py-32 px-6">
+      <div className="max-w-6xl mx-auto">
+        <R>
+          <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Proyectos</p>
+          <h2 className="font-bold text-white leading-[1.05] mb-4" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
+            Eventos que ya resolvimos.
+          </h2>
+          <p className="text-white/40 text-sm sm:text-base leading-relaxed max-w-2xl mb-14">
+            Una muestra de cómo trabajamos, del reto a la ejecución. Cada proyecto con su historia.
+          </p>
+        </R>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {proyectos.map((p, i) => (
+            <R key={p.id} delay={i * 70}>
+              <a href={`/presentacion/proyecto/${p.slug}`}
+                 className="group block h-full rounded-3xl overflow-hidden transition-all duration-500"
+                 style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
+                <div className="relative aspect-[4/3] overflow-hidden">
+                  {p.portada ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={p.portada} alt={p.titulo} draggable={false}
+                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                  ) : (
+                    <div className="w-full h-full" style={{ background: "radial-gradient(circle at 30% 20%, rgba(179,152,91,0.22), #0c0c0c 65%)" }} />
+                  )}
+                  <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(8,8,8,0.75), transparent 55%)" }} />
+                </div>
+                <div className="p-6">
+                  {p.ubicacion && <p className="text-[11px] uppercase tracking-[0.14em] text-white/30 mb-2">{p.ubicacion}{p.fecha ? ` · ${p.fecha}` : ""}</p>}
+                  <h3 className="font-semibold text-white leading-snug mb-2" style={{ fontSize: "1.15rem", letterSpacing: "-0.01em" }}>{p.titulo}</h3>
+                  {p.resumen && <p className="text-white/45 text-sm leading-relaxed line-clamp-2">{p.resumen}</p>}
+                  <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium transition-transform duration-300 group-hover:translate-x-1" style={{ color: GOLD }}>
+                    Ver proyecto <span aria-hidden>→</span>
+                  </span>
+                </div>
+              </a>
+            </R>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function R({ children, delay = 0, y = 32, className = "" }: { children: React.ReactNode; delay?: number; y?: number; className?: string }) {
@@ -582,6 +643,7 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
   const scrolled = useScrollHeader();
   const isAdmin  = useAdmin();
   const { fotos, tipoId, setTipoId, recargar } = useGaleria(tipo, c.gallery);
+  const proyectos = useProyectos(tipo);
 
   const [discOpen, setDiscOpen]       = useState(false);
   const [discServicio, setDiscServicio] = useState<string | null>(null);
@@ -634,6 +696,9 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
           </a>
           <div className="flex items-center gap-6">
             <a href="#servicios" className="text-white/35 text-xs tracking-wide hidden sm:block hover:text-white/60 transition-colors">Servicios</a>
+            {proyectos.length > 0 && (
+              <a href="#proyectos" className="text-white/35 text-xs tracking-wide hidden sm:block hover:text-white/60 transition-colors">Proyectos</a>
+            )}
             <a href="/presentacion/inventario" className="text-white/35 text-xs tracking-wide hidden sm:block hover:text-white/60 transition-colors">Inventario</a>
             <a href={WA} target="_blank" rel="noopener noreferrer"
                className="text-xs font-semibold tracking-[0.14em] uppercase px-5 py-2.5 rounded-full transition-all duration-300 hover:opacity-85"
@@ -768,6 +833,9 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
       <section>
         <CinematicGallery photos={fotos} />
       </section>
+
+      {/* ── Proyectos ── */}
+      <ProyectosSection proyectos={proyectos} />
 
       {/* ── Qué necesitamos para cotizar ── */}
       <section className="py-32 px-6 bg-[#060606]">
