@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import PresentacionNav from "@/components/presentacion/PresentacionNav";
 
 const GOLD = "#B3985B";
 const WA_BASE = "https://wa.me/524461432565?text=";
@@ -190,22 +191,8 @@ export default function PaquetesClient() {
         ::-webkit-scrollbar-thumb { background: rgba(179,152,91,0.35); border-radius: 2px; }
       `}</style>
 
-      {/* Nav */}
-      <nav className="fixed top-0 inset-x-0 z-50" style={{ background: "rgba(8,8,8,0.9)", backdropFilter: "blur(16px)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <a href="/presentacion/servicios">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-white.png" alt="Mainstage Pro" className="h-7 object-contain" draggable={false} />
-          </a>
-          <div className="flex items-center gap-6">
-            <a href="/presentacion/inventario" className="text-white/35 text-xs tracking-wide hidden sm:block hover:text-white/60 transition-colors">Inventario</a>
-            <a href={wa("Hola, me gustaría información sobre sus paquetes para mi evento.")} target="_blank" rel="noopener noreferrer"
-              className="text-xs font-semibold tracking-[0.14em] uppercase px-5 py-2.5 rounded-full transition-all duration-300 hover:opacity-85" style={{ background: GOLD, color: "#000" }}>
-              Contactar
-            </a>
-          </div>
-        </div>
-      </nav>
+      {/* Nav unificada */}
+      <PresentacionNav />
 
       {/* Hero */}
       <section className="mx-auto max-w-6xl px-6 pt-32 pb-10 sm:pt-40">

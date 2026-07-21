@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import PresentacionNav from "@/components/presentacion/PresentacionNav";
 
 const GOLD = "#B3985B";
 const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20obtener%20m%C3%A1s%20informaci%C3%B3n%20sobre%20los%20servicios%20de%20Mainstage%20Pro.";
@@ -43,16 +44,6 @@ function useCounter(target: number, duration = 1800) {
   return { count, ref };
 }
 
-function useScrollHeader() {
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 60);
-    window.addEventListener("scroll", fn, { passive: true }); fn();
-    return () => window.removeEventListener("scroll", fn);
-  }, []);
-  return scrolled;
-}
-
 // ─── Animation wrapper ────────────────────────────────────────────────────────
 function R({ children, delay = 0, y = 40, className = "" }: { children: React.ReactNode; delay?: number; y?: number; className?: string }) {
   const { ref, vis } = useReveal();
@@ -84,7 +75,6 @@ function StatCount({ target, suffix = "", label }: { target: number; suffix?: st
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function ServiciosClient() {
-  const scrolled  = useScrollHeader();
   const [heroIdx, setHeroIdx] = useState(0);
 
   useEffect(() => {
@@ -103,19 +93,8 @@ export default function ServiciosClient() {
         ::-webkit-scrollbar-thumb { background: rgba(179,152,91,0.35); border-radius: 2px; }
       `}</style>
 
-      {/* ── Nav ── */}
-      <nav className="fixed top-0 inset-x-0 z-50 transition-all duration-500"
-           style={{ background: scrolled ? "rgba(8,8,8,0.95)" : "transparent", backdropFilter: scrolled ? "blur(12px)" : "none", borderBottom: scrolled ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
-        <div className="max-w-7xl mx-auto px-6 sm:px-10 h-16 flex items-center justify-between">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-white.png" alt="Mainstage Pro" className="h-7 object-contain" draggable={false} />
-          <a href={WA} target="_blank" rel="noopener noreferrer"
-             className="text-xs font-semibold tracking-[0.14em] uppercase px-5 py-2.5 rounded-full transition-all duration-300"
-             style={{ background: GOLD, color: "#000" }}>
-            Contactar
-          </a>
-        </div>
-      </nav>
+      {/* ── Nav unificada ── */}
+      <PresentacionNav />
 
       {/* ── Hero con slideshow ── */}
       <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden">

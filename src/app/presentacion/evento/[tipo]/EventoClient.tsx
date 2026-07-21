@@ -2,9 +2,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import type { Proyecto } from "@/lib/proyectos";
+import PresentacionNav from "@/components/presentacion/PresentacionNav";
 
 const GOLD = "#B3985B";
-const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20obtener%20informaci%C3%B3n%20sobre%20producci%C3%B3n%20para%20mi%20evento.";
 
 type EventoTipo = "musical" | "social" | "empresarial";
 
@@ -201,16 +201,6 @@ function useReveal(threshold = 0.12) {
     obs.observe(el); return () => obs.disconnect();
   }, [threshold]);
   return { ref, vis };
-}
-
-function useScrollHeader() {
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 60);
-    window.addEventListener("scroll", fn, { passive: true }); fn();
-    return () => window.removeEventListener("scroll", fn);
-  }, []);
-  return scrolled;
 }
 
 // Detecta si quien mira la presentación tiene sesión interna (para editar la galería).
@@ -673,7 +663,6 @@ function ContactForm({ tipo }: { tipo: EventoTipo }) {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
   const c = CONFIG[tipo];
-  const scrolled = useScrollHeader();
   const isAdmin  = useAdmin();
   const { fotos, tipoId, setTipoId, recargar } = useGaleria(tipo, c.gallery);
   const proyectos = useProyectos(tipo);
@@ -715,32 +704,8 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
         ::-webkit-scrollbar-thumb { background: rgba(179,152,91,0.35); border-radius: 2px; }
       `}</style>
 
-      {/* Nav */}
-      <nav className="fixed top-0 inset-x-0 z-50 transition-all duration-500"
-           style={{
-             background:    scrolled ? "rgba(8,8,8,0.96)" : "transparent",
-             backdropFilter: scrolled ? "blur(16px)" : "none",
-             borderBottom:  scrolled ? "1px solid rgba(255,255,255,0.04)" : "none",
-           }}>
-        <div className="max-w-7xl mx-auto px-6 sm:px-10 h-16 flex items-center justify-between">
-          <a href="/presentacion/servicios">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-white.png" alt="Mainstage Pro" className="h-7 object-contain" draggable={false} />
-          </a>
-          <div className="flex items-center gap-6">
-            <a href="#servicios" className="text-white/35 text-xs tracking-wide hidden sm:block hover:text-white/60 transition-colors">Servicios</a>
-            {proyectos.length > 0 && (
-              <a href="#proyectos" className="text-white/35 text-xs tracking-wide hidden sm:block hover:text-white/60 transition-colors">Proyectos</a>
-            )}
-            <a href="/presentacion/inventario" className="text-white/35 text-xs tracking-wide hidden sm:block hover:text-white/60 transition-colors">Inventario</a>
-            <a href={WA} target="_blank" rel="noopener noreferrer"
-               className="text-xs font-semibold tracking-[0.14em] uppercase px-5 py-2.5 rounded-full transition-all duration-300 hover:opacity-85"
-               style={{ background: GOLD, color: "#000" }}>
-              Contactar
-            </a>
-          </div>
-        </div>
-      </nav>
+      {/* Nav unificada */}
+      <PresentacionNav />
 
       {/* ── Hero ── */}
       <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden py-24">

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
 import type { Proyecto } from "@/lib/proyectos";
+import PresentacionNav from "@/components/presentacion/PresentacionNav";
 
 const GOLD = "#B3985B";
 const WA = "https://wa.me/524461432565?text=Hola%2C%20vi%20un%20proyecto%20en%20su%20presentaci%C3%B3n%20y%20me%20gustar%C3%ADa%20informaci%C3%B3n%20para%20mi%20evento.";
@@ -274,29 +275,17 @@ export default function ProyectoClient({ proyecto: inicial }: { proyecto: Proyec
         ::-webkit-scrollbar-thumb { background: rgba(179,152,91,0.35); border-radius: 2px; }
       `}</style>
 
-      {/* Nav */}
-      <nav className="fixed top-0 inset-x-0 z-50" style={{ background: "rgba(8,8,8,0.9)", backdropFilter: "blur(16px)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-          <a href="/presentacion/servicios">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-white.png" alt="Mainstage Pro" className="h-7 object-contain" draggable={false} />
-          </a>
-          <div className="flex items-center gap-3">
-            {isAdmin && (
-              <button onClick={() => setEdit(v => !v)}
-                className="text-xs font-semibold tracking-wide px-4 py-2.5 rounded-full transition-all"
-                style={{ background: edit ? GOLD : "rgba(179,152,91,0.12)", border: `1px solid ${GOLD}55`, color: edit ? "#000" : GOLD }}>
-                {edit ? "Cerrar edición" : "Editar"}
-              </button>
-            )}
-            <a href={WA} target="_blank" rel="noopener noreferrer"
-              className="text-xs font-semibold tracking-[0.14em] uppercase px-5 py-2.5 rounded-full transition-all duration-300 hover:opacity-85"
-              style={{ background: GOLD, color: "#000" }}>
-              Contactar
-            </a>
-          </div>
-        </div>
-      </nav>
+      {/* Nav unificada */}
+      <PresentacionNav />
+
+      {/* Toggle de edición para admins (flotante, no rompe la nav compartida) */}
+      {isAdmin && (
+        <button onClick={() => setEdit(v => !v)}
+          className="fixed top-20 right-4 z-[90] text-xs font-semibold tracking-wide px-4 py-2.5 rounded-full transition-all shadow-lg"
+          style={{ background: edit ? GOLD : "rgba(8,8,8,0.85)", backdropFilter: "blur(8px)", border: `1px solid ${GOLD}55`, color: edit ? "#000" : GOLD }}>
+          {edit ? "Cerrar edición" : "Editar"}
+        </button>
+      )}
 
       {isAdmin && edit && (
         <section className="pt-24 px-6">

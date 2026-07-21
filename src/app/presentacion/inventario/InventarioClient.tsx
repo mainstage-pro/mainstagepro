@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import PresentacionNav from "@/components/presentacion/PresentacionNav";
 
 const GOLD = "#B3985B";
 const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20conocer%20el%20equipo%20disponible%20para%20mi%20evento.";
@@ -168,15 +169,6 @@ function useCounter(target: number, duration = 2000) {
     return () => clearInterval(t);
   }, [started, target, duration]);
   return { count, ref };
-}
-function useScrollHeader() {
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 60);
-    window.addEventListener("scroll", fn, { passive: true }); fn();
-    return () => window.removeEventListener("scroll", fn);
-  }, []);
-  return scrolled;
 }
 
 // ─── Reveal wrapper ─────────────────────────────────────────────────────────────
@@ -880,7 +872,6 @@ function CotizadorTab({ categorias, quoteItems, onAddItem, onUpdateQty, onRemove
 
 // ─── Main ─────────────────────────────────────────────────────────────────────────
 export default function InventarioClient({ data }: Props) {
-  const scrolled = useScrollHeader();
   const [activeTab, setActiveTab]         = useState<Tab>("catalogo");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [lightbox, setLightbox]           = useState<{ src: string; alt: string } | null>(null);
@@ -978,21 +969,8 @@ export default function InventarioClient({ data }: Props) {
         </div>
       )}
 
-      {/* ── Nav ── */}
-      <nav className="fixed top-0 inset-x-0 z-50 transition-all duration-500"
-           style={{ background: scrolled ? "rgba(5,5,5,0.97)" : "transparent", backdropFilter: scrolled ? "blur(20px)" : "none", borderBottom: scrolled ? `1px solid ${GOLD}12` : "none" }}>
-        <div className="max-w-7xl mx-auto px-6 sm:px-10 h-16 flex items-center justify-between">
-          <a href="/presentacion/servicios">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-white.png" alt="Mainstage Pro" className="h-7 object-contain" draggable={false} />
-          </a>
-          <a href={WA} target="_blank" rel="noopener noreferrer"
-             className="text-xs font-semibold tracking-[0.14em] uppercase px-5 py-2.5 rounded-full transition-all duration-300 hover:scale-105"
-             style={{ background: GOLD, color: "#000" }}>
-            Agenda tu equipo
-          </a>
-        </div>
-      </nav>
+      {/* ── Nav unificada ── */}
+      <PresentacionNav />
 
       {/* ── Hero ── */}
       <section className="relative flex flex-col items-center justify-center overflow-hidden text-center" style={{ minHeight: "100svh" }}>

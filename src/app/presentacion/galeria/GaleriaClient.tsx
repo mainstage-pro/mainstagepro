@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Music, Wine, Building2, type LucideIcon } from "lucide-react";
+import PresentacionNav from "@/components/presentacion/PresentacionNav";
 
 const GOLD = "#B3985B";
 const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20obtener%20informaci%C3%B3n%20sobre%20producci%C3%B3n%20para%20mi%20evento.";
@@ -58,16 +59,6 @@ const CATEGORIAS = [
 
 type CatId = typeof CATEGORIAS[number]["id"];
 
-// ─── Hooks ────────────────────────────────────────────────────────────────────
-function useScrollHeader() {
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 60);
-    window.addEventListener("scroll", fn, { passive: true }); fn();
-    return () => window.removeEventListener("scroll", fn);
-  }, []);
-  return scrolled;
-}
 
 function useReveal(threshold = 0.1) {
   const ref = useRef<HTMLDivElement>(null);
@@ -325,7 +316,6 @@ function ThumbnailGrid({
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function GaleriaClient() {
-  const scrolled      = useScrollHeader();
   const [active, setActive]   = useState<CatId | null>(null);
   const [lightbox, setLightbox] = useState<{ catId: CatId; idx: number } | null>(null);
   const galleryRef    = useRef<HTMLDivElement>(null);
@@ -378,31 +368,8 @@ export default function GaleriaClient() {
         />
       )}
 
-      {/* ── Nav ── */}
-      <nav className="fixed top-0 inset-x-0 z-50 transition-all duration-500"
-           style={{
-             background:     scrolled ? "rgba(8,8,8,0.96)" : "transparent",
-             backdropFilter: scrolled ? "blur(16px)" : "none",
-             borderBottom:   scrolled ? "1px solid rgba(255,255,255,0.04)" : "none",
-           }}>
-        <div className="max-w-7xl mx-auto px-6 sm:px-10 h-16 flex items-center justify-between">
-          <a href="/presentacion/servicios">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-white.png" alt="Mainstage Pro" className="h-7 object-contain" draggable={false} />
-          </a>
-          <div className="flex items-center gap-6">
-            <a href="/presentacion/inventario"
-               className="text-white/35 text-xs tracking-wide hidden sm:block hover:text-white/60 transition-colors">
-              Inventario
-            </a>
-            <a href={WA} target="_blank" rel="noopener noreferrer"
-               className="text-xs font-semibold tracking-[0.14em] uppercase px-5 py-2.5 rounded-full transition-all duration-300 hover:opacity-85"
-               style={{ background: GOLD, color: "#000" }}>
-              Contactar
-            </a>
-          </div>
-        </div>
-      </nav>
+      {/* ── Nav unificada ── */}
+      <PresentacionNav />
 
       {/* ── Hero ── */}
       <section className="relative flex flex-col items-center justify-center overflow-hidden" style={{ height: "55vh", minHeight: "320px" }}>
