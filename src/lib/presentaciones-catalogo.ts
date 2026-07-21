@@ -8,6 +8,7 @@ import {
   Camera,
   Handshake,
   Package,
+  Gift,
   type LucideIcon,
 } from "lucide-react";
 
@@ -54,6 +55,14 @@ export const PRESENTACIONES_COMERCIAL: PresentacionItem[] = [
     href: "/presentacion/evento/empresarial",
     icon: Building2,
     audience: "Empresas · Agencias",
+  },
+  {
+    key: "paquetes",
+    label: "Paquetes",
+    desc: "Paquetes armados para bodas, XV años, conciertos y corporativos. Todo lo que incluye, listo para cotizar.",
+    href: "/presentacion/paquetes",
+    icon: Gift,
+    audience: "Parejas · Familias · Empresas",
   },
   {
     key: "galeria",
