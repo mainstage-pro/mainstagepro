@@ -222,9 +222,9 @@ export default function MigrarCapturaModal({
                 {/* ── TAREA ─────────────────────────────────────────────── */}
                 {destino === "tarea" && (
                   <>
-                    <Field label="Proyecto / Área" required>
+                    <Field label="Área" required>
                       <select value={proyectoTareaId} onChange={e => setProyectoTareaId(e.target.value)} className={inputCls}>
-                        <option value="">Selecciona un proyecto…</option>
+                        <option value="">Selecciona un área…</option>
                         {proyectosTarea.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
                       </select>
                     </Field>

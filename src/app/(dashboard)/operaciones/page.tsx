@@ -1103,7 +1103,7 @@ export default function OperacionesPage() {
     vista === "iniciativas"      ? "Iniciativas" :
     vista === "rendimiento"      ? "Rendimiento" :
     typeof vista === "object" && vista.tipo === "area" ? `Área · ${AREA_LABELS[vista.nombre] ?? vista.nombre}` :
-    proyectoDetalle?.nombre ?? "Proyecto";
+    proyectoDetalle?.nombre ?? "Área";
 
   // ── Proyecto/Carpeta CRUD ────────────────────────────────────────────────
   async function renameProyecto(id: string, nombre: string) {
@@ -1394,7 +1394,7 @@ export default function OperacionesPage() {
             <button
               onClick={() => { setShowNuevoProyecto(true); setTimeout(() => proyectoInputRef.current?.focus(), 50); }}
               className="w-5 h-5 flex items-center justify-center rounded text-[#2a2a2a] hover:text-[#B3985B] hover:bg-[#B3985B]/10 transition-all"
-              title="Nuevo proyecto"
+              title="Nueva área"
             >
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
@@ -1487,7 +1487,7 @@ export default function OperacionesPage() {
               className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-[#3a3a3a] hover:text-[#777] hover:bg-[#0f0f0f] transition-all"
             >
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-              Acceso a proyectos
+              Acceso a áreas
             </button>
           </div>
         )}
@@ -1590,7 +1590,7 @@ export default function OperacionesPage() {
                   <div className="px-4 py-3 border-b border-[#161616]">
                     <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-2">Agrupar por</p>
                     <div className="grid grid-cols-2 gap-1">
-                      {([["none","Ninguno"],["proyecto","Proyecto"],["prioridad","Prioridad"],["fecha","Fecha"]] as const).map(([val, label]) => (
+                      {([["none","Ninguno"],["proyecto","Área"],["prioridad","Prioridad"],["fecha","Fecha"]] as const).map(([val, label]) => (
                         <button key={val} onClick={() => setVistaOpts(o => ({ ...o, groupBy: val }))}
                           className={`px-2 py-1.5 rounded-lg text-xs font-medium text-left transition-all ${vistaOpts.groupBy === val ? "bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/30" : "bg-[#141414] text-[#555] hover:text-[#aaa] border border-transparent"}`}>
                           {label}
@@ -2618,7 +2618,7 @@ export default function OperacionesPage() {
                     </div>
                   ))}
                   {proyectosSinCarpeta.length === 0 && carpetas.length === 0 && (
-                    <p className="text-center text-[#444] text-sm py-8">Sin proyectos aún</p>
+                    <p className="text-center text-[#444] text-sm py-8">Sin áreas aún</p>
                   )}
                 </>
               )}
@@ -2631,12 +2631,12 @@ export default function OperacionesPage() {
       {showNuevoProyecto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={() => setShowNuevoProyecto(false)}>
           <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-2xl p-6 w-80 space-y-4 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-white font-semibold">Nuevo proyecto</h3>
+            <h3 className="text-white font-semibold">Nueva área</h3>
             <div className="space-y-3">
               <input ref={proyectoInputRef} value={nuevoProyectoNombre}
                 onChange={e => setNuevoProyectoNombre(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter") crearProyecto(); if (e.key === "Escape") setShowNuevoProyecto(false); }}
-                placeholder="Nombre del proyecto"
+                placeholder="Nombre del área"
                 className="w-full ms-card px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]" />
               <div className="space-y-1.5">
                 <label className="text-[11px] text-[#444] uppercase tracking-wider">Color</label>

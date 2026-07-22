@@ -487,7 +487,7 @@ export default function QuickAdd({
           {!compact && (
             <>
               <ToolbarBtn icon={<IconFolder />}
-                label={proyectoInfo?.nombre ?? (requiredFields.includes("proyecto") ? "Área" : "Proyecto")} active={!!proyectoInfo} activeColor="#B3985B"
+                label={proyectoInfo?.nombre ?? "Área"} active={!!proyectoInfo} activeColor="#B3985B"
                 required={requiredFields.includes("proyecto") && !proyectoSel}
                 isOpen={panel === "proyecto"} onClick={() => togglePanel("proyecto")} />
 
