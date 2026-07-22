@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import {
   ShieldCheck, CheckCircle2, XCircle, Camera, FileText, ExternalLink,
-  StickyNote, CalendarClock, ClipboardCheck, X,
+  StickyNote, CalendarClock, ClipboardCheck, X, Trash2,
 } from "lucide-react";
 
 interface Archivo { id: string; nombre: string; url: string; tipo: string | null; tamano: number | null }
@@ -112,6 +112,17 @@ export default function VerificacionClient() {
     } finally { setBusyId(null); }
   }
 
+  async function eliminar(id: string) {
+    if (!confirm("¿Eliminar esta tarea? Se borra por completo (útil para pruebas). No se puede deshacer.")) return;
+    setBusyId(id);
+    try {
+      const res = await fetch(`/api/tareas/${id}`, { method: "DELETE" });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al eliminar"); return; }
+      setTareas(prev => prev.filter(t => t.id !== id));
+      toast.success("Tarea eliminada");
+    } finally { setBusyId(null); }
+  }
+
   // Agrupación
   const grupos = tareas.reduce((acc, t) => {
     const key = agrupacion === "area" ? areaLabel(t.area) : (t.asignadoA?.name ?? "Sin responsable");
@@ -127,7 +138,7 @@ export default function VerificacionClient() {
       {/* Header */}
       <div className="mb-5">
         <p className="text-[10px] text-[#B3985B] uppercase tracking-[0.2em] font-semibold flex items-center gap-1.5">
-          <ShieldCheck strokeWidth={2} className="w-3.5 h-3.5" /> Verificación
+          <ShieldCheck strokeWidth={2} className="w-3.5 h-3.5" /> Verificación Operativa
         </p>
         <p className="ms-h1 mt-1 text-white">Tareas pendientes de verificación</p>
         <p className="text-gray-500 text-sm mt-1">
@@ -218,6 +229,7 @@ export default function VerificacionClient() {
                     onAbrirRechazo={() => { setRechazandoId(t.id); setMotivo(""); }}
                     onCancelarRechazo={() => { setRechazandoId(null); setMotivo(""); }}
                     onConfirmarRechazo={() => rechazar(t.id)}
+                    onEliminar={() => eliminar(t.id)}
                     onLightbox={setLightbox}
                   />
                 ))}
@@ -242,11 +254,12 @@ export default function VerificacionClient() {
 }
 
 function VerifRow({
-  t, busy, rechazando, motivo, onMotivo, onVerificar, onAbrirRechazo, onCancelarRechazo, onConfirmarRechazo, onLightbox,
+  t, busy, rechazando, motivo, onMotivo, onVerificar, onAbrirRechazo, onCancelarRechazo, onConfirmarRechazo, onEliminar, onLightbox,
 }: {
   t: TareaVerif; busy: boolean; rechazando: boolean; motivo: string;
   onMotivo: (v: string) => void;
   onVerificar: () => void; onAbrirRechazo: () => void; onCancelarRechazo: () => void; onConfirmarRechazo: () => void;
+  onEliminar: () => void;
   onLightbox: (url: string) => void;
 }) {
   const imagenes = t.archivos.filter(a => (a.tipo ?? "").toLowerCase().startsWith("image/"));
@@ -350,6 +363,10 @@ function VerifRow({
               <XCircle strokeWidth={2} className="w-3.5 h-3.5" /> Rechazar
             </button>
           )}
+          <button onClick={onEliminar} disabled={busy} title="Eliminar tarea (pruebas)"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e1e1e] text-gray-500 text-xs font-medium hover:text-red-400 hover:border-red-500/25 transition-all disabled:opacity-40">
+            <Trash2 strokeWidth={2} className="w-3.5 h-3.5" /> Eliminar
+          </button>
         </div>
       </div>
 

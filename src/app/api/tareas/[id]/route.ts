@@ -109,6 +109,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     "fecha", "fechaVencimiento", "recurrencia", "notas", "etiquetas", "orden",
     // Campos de ficha (editables para tareas creadas a mano) + evidencia
     "porqueSeHace", "estandarMinimo", "siNoSeHace", "cuando", "evidenciaNota",
+    "requiereEvidencia", "tipoEvidencia",
   ];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

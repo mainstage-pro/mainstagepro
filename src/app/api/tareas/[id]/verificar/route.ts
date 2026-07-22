@@ -23,24 +23,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       estadoVerificacion: true,
       asignadoAId: true,
       titulo: true,
-      requiereEvidencia: true,
-      evidenciaEnviadaAt: true,
     },
   });
   if (!actual) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
   if (accion === "VERIFICAR") {
-    // Precondición: si la tarea requiere evidencia, ésta debe haberse enviado
-    // por WhatsApp al grupo correspondiente antes de poder marcarse verificada.
-    if (actual.requiereEvidencia && !actual.evidenciaEnviadaAt) {
-      return NextResponse.json(
-        {
-          error: "La evidencia aún no se ha enviado al grupo de WhatsApp",
-          code: "EVIDENCIA_NO_ENVIADA",
-        },
-        { status: 422 },
-      );
-    }
     const tarea = await prisma.tarea.update({
       where: { id },
       data: {

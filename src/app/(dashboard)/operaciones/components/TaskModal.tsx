@@ -6,7 +6,7 @@ import QuickAdd from "./QuickAdd";
 import TaskItem, { type TareaItem } from "./TaskItem";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
-import { Link2, Camera, Paperclip, FileText, ExternalLink, ChevronDown, ChevronRight, ShieldCheck, ClipboardCheck, AlertTriangle, Send, CheckCircle2 } from "lucide-react";
+import { Link2, Camera, Paperclip, FileText, ExternalLink, ChevronDown, ChevronRight, ShieldCheck, ClipboardCheck, AlertTriangle } from "lucide-react";
 
 // ── Bloque 5: tag de origen (mismo esquema que TaskItem) ──
 const TIPO_ORIGEN: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -144,9 +144,9 @@ export default function TaskModal({
   const [evidenciaNota, setEvidenciaNota] = useState("");
   const [fichaOpen, setFichaOpen]     = useState(false);
   const [savingNota, setSavingNota]   = useState(false);
-  // ── Envío de evidencia por WhatsApp (precondición para verificar) ──
-  const [evidenciaEnviadaAt, setEvidenciaEnviadaAt] = useState<string | null>(null);
-  const [enviandoWa, setEnviandoWa]   = useState(false);
+  // ── Configuración de evidencia (editable en los 4 sistemas) ──
+  const [requiereEvidencia, setRequiereEvidencia] = useState(false);
+  const [tipoEvidencia, setTipoEvidencia] = useState<string | null>(null);
 
   const overlayRef = useRef<HTMLDivElement>(null);
   const titleRef   = useRef<HTMLTextAreaElement>(null);
@@ -176,7 +176,8 @@ export default function TaskModal({
     setComentariosLocal(tarea.comentarios ?? []);
     setArchivosLocal(tarea.archivos ?? []);
     setEvidenciaNota(tarea.evidenciaNota ?? "");
-    setEvidenciaEnviadaAt(tarea.evidenciaEnviadaAt ?? null);
+    setRequiereEvidencia(!!tarea.requiereEvidencia);
+    setTipoEvidencia(tarea.tipoEvidencia ?? null);
     setFichaOpen(false);
 
     setTimeout(() => titleRef.current?.focus(), 80);
@@ -303,32 +304,21 @@ export default function TaskModal({
     } finally { setSavingNota(false); }
   }
 
-  // ── Enviar evidencia por WhatsApp al grupo del área ──
-  async function enviarPorWhatsApp() {
+  // ── Cambiar configuración de evidencia (persiste de inmediato) ──
+  function toggleRequiereEvidencia(next: boolean) {
     if (!tarea) return;
-    setEnviandoWa(true);
-    try {
-      const res = await fetch(`/api/tareas/${tarea.id}/enviar-evidencia`, { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) { toast.error(data.error ?? "No se pudo preparar el envío"); return; }
-      setEvidenciaEnviadaAt(new Date().toISOString());
-      // Abre WhatsApp (grupo configurado o share universal con el texto prellenado)
-      if (data.waUrl) window.open(data.waUrl, "_blank", "noopener,noreferrer");
-      if (!data.grupoConfigurado) {
-        toast.success("Aún no hay grupo configurado — se abrió WhatsApp para elegir destino.");
-      }
-    } catch {
-      toast.error("Error de red al enviar la evidencia");
-    } finally {
-      setEnviandoWa(false);
-    }
+    setRequiereEvidencia(next);
+    onSave(tarea.id, { requiereEvidencia: next });
+  }
+  function cambiarTipoEvidencia(next: string | null) {
+    if (!tarea) return;
+    setTipoEvidencia(next);
+    onSave(tarea.id, { tipoEvidencia: next });
   }
 
   const isCompleted = tarea?.estado === "COMPLETADA";
 
   // ── Bloque 3: evidencia — ¿está cumplido el requisito para completar? ──
-  const requiereEvidencia = !!tarea?.requiereEvidencia;
-  const tipoEvidencia = tarea?.tipoEvidencia ?? null;
   const tieneImagen = archivosLocal.some(a => (a.tipo ?? "").toLowerCase().startsWith("image/"));
   const tieneArchivo = archivosLocal.length > 0;
   const notaValida = evidenciaNota.trim().length >= 10;
@@ -664,42 +654,6 @@ export default function TaskModal({
                 </div>
               )}
 
-              {/* ── Envío por WhatsApp (tras completar, antes de verificar) ── */}
-              {requiereEvidencia && isCompleted && tarea.estadoVerificacion !== "VERIFICADA" && (
-                <div className={`border rounded-xl p-3.5 ${evidenciaEnviadaAt ? "border-[#1f2f1f] bg-[#0a0f0a]" : "border-[#25D366]/25 bg-[#25D366]/[0.06]"}`}>
-                  {evidenciaEnviadaAt ? (
-                    <div className="flex items-start gap-2.5">
-                      <CheckCircle2 strokeWidth={1.75} className="w-4 h-4 mt-0.5 shrink-0 text-green-500" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[11px] uppercase tracking-widest font-semibold text-[#888]">Evidencia enviada</p>
-                        <p className="text-xs text-[#999] leading-relaxed mt-0.5">
-                          Compartida al grupo de WhatsApp. En espera de verificación.
-                        </p>
-                        <button onClick={enviarPorWhatsApp} disabled={enviandoWa}
-                          className="text-[11px] text-[#555] hover:text-[#25D366] transition-colors mt-1.5 disabled:opacity-50">
-                          {enviandoWa ? "Abriendo…" : "Volver a enviar"}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Send strokeWidth={1.75} className="w-3.5 h-3.5 text-[#25D366]" />
-                        <span className="text-[11px] uppercase tracking-widest font-semibold text-[#aaa]">Compartir comprobación</span>
-                      </div>
-                      <p className="text-xs text-[#888] leading-relaxed mb-2.5">
-                        Envía la evidencia al grupo de WhatsApp del área. Hasta que se envíe, la tarea no puede verificarse.
-                      </p>
-                      <button onClick={enviarPorWhatsApp} disabled={enviandoWa}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#25D366]/15 border border-[#25D366]/40 text-[#25D366] hover:bg-[#25D366]/25 text-sm font-medium transition-all disabled:opacity-50">
-                        <Send strokeWidth={2} className="w-3.5 h-3.5" />
-                        {enviandoWa ? "Preparando…" : "Enviar por WhatsApp"}
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
-
               {/* ── Subtareas ── */}
               <div className="border-t border-[#141414] pt-3">
                 <p className="text-[11px] text-[#444] uppercase tracking-widest font-semibold mb-2">Subtareas</p>
@@ -905,6 +859,34 @@ export default function TaskModal({
                   />
                 </div>
               )}
+
+              {/* Evidencia — configuración (editable en los 4 sistemas) */}
+              <div>
+                <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-2">Evidencia</p>
+                <label className="flex items-center gap-2 cursor-pointer mb-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleRequiereEvidencia(!requiereEvidencia)}
+                    className={`w-8 h-[18px] rounded-full transition-colors relative shrink-0 ${requiereEvidencia ? "bg-[#B3985B]" : "bg-[#222]"}`}
+                  >
+                    <span className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white transition-all ${requiereEvidencia ? "left-[15px]" : "left-0.5"}`} />
+                  </button>
+                  <span className="text-xs text-[#999]">Requiere evidencia</span>
+                </label>
+                {requiereEvidencia && (
+                  <select
+                    value={tipoEvidencia ?? ""}
+                    onChange={e => cambiarTipoEvidencia(e.target.value || null)}
+                    className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]"
+                  >
+                    <option value="">Nota o archivo</option>
+                    <option value="FOTO">Foto</option>
+                    <option value="ARCHIVO">Archivo</option>
+                    <option value="NOTA">Nota</option>
+                    <option value="ENLACE_MODULO">Confirmación / enlace</option>
+                  </select>
+                )}
+              </div>
 
               {/* Fecha / Recurrencia */}
               <div>
