@@ -15,7 +15,7 @@ import { getSession } from '@/lib/auth'
 
 const ORDEN_NOMBRES = ['mauricio', 'emiliano', 'sebastian', 'rodrigo', 'zaid', 'daniel']
 
-const SISTEMAS = ['TAREA', 'PLAN', 'EVENTO', 'PROYECTO'] as const
+const SISTEMAS = ['TAREA', 'EVENTO', 'PROYECTO'] as const
 type Sistema = (typeof SISTEMAS)[number]
 
 function rankUsuario(name: string): number {
@@ -53,6 +53,11 @@ export async function GET() {
       asignadoAId: { in: userIds },
       estado: { not: 'CANCELADA' },
       parentId: null,
+      // Plan de trabajo eliminado de la plataforma: no cuenta ni se muestra
+      tipoOrigen: { not: 'PLAN' },
+      origenPlan: false,
+      // Solo tareas ejecutables: deben tener fecha asignada. Sin fecha no cuentan.
+      fecha: { not: null },
     },
     select: {
       id: true,
@@ -96,7 +101,7 @@ export async function GET() {
       asignadas: 0,
       completadas: 0,
       vencidas: 0,
-      sistemas: { TAREA: [], PLAN: [], EVENTO: [], PROYECTO: [] },
+      sistemas: { TAREA: [], EVENTO: [], PROYECTO: [] },
     })
   }
 

@@ -10,7 +10,6 @@ import { useEffect, useState } from "react";
 
 const SISTEMAS: { key: string; label: string; color: string }[] = [
   { key: "TAREA",    label: "Tareas",              color: "#9ca3af" },
-  { key: "PLAN",     label: "Plan de trabajo",     color: "#34d399" },
   { key: "EVENTO",   label: "Proyectos de evento", color: "#60a5fa" },
   { key: "PROYECTO", label: "Proyectos de empresa",color: "#818cf8" },
 ];
@@ -124,7 +123,7 @@ function UsuarioCard({ u, esYo }: { u: UsuarioResumen; esYo: boolean }) {
       </div>
 
       {/* 4 columnas horizontales — pendientes de corrido */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 divide-y xl:divide-y-0 xl:divide-x divide-white/[0.05]">
+      <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-white/[0.05]">
         {SISTEMAS.map(sis => {
           const bloque = u.sistemas.find(s => s.key === sis.key);
           const items = bloque?.pendientes ?? [];
