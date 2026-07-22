@@ -31,16 +31,6 @@ const PRIORIDADES = [
   { key: "BAJA",    label: "Baja",    color: "#555" },
 ] as const;
 
-const AREAS = [
-  { key: "GENERAL",        label: "General"    },
-  { key: "DIRECCION",      label: "Dirección"  },
-  { key: "ADMINISTRACION", label: "Administración" },
-  { key: "MARKETING",      label: "Marketing"  },
-  { key: "VENTAS",         label: "Comercial"  },
-  { key: "PRODUCCION",     label: "Producción" },
-  { key: "RRHH",           label: "RR.HH."     },
-] as const;
-
 // ── Opciones de fuentes (eventos por mes + proyectos internos) ──────────────────
 interface EventoOpt { id: string; nombre: string; numeroProyecto: string; estado: string; fechaEvento: string; cliente: string | null }
 interface MesGrupo  { clave: string; etiqueta: string; eventos: EventoOpt[] }
@@ -317,20 +307,6 @@ export default function NuevaTareaModal({
                       color: prioridad === p.key ? p.color : "#555",
                     }}>
                     {p.label}
-                  </button>
-                ))}
-              </div>
-            </Campo>
-
-            {/* Área (para PROYECTO se hereda pero se puede ajustar) */}
-            <Campo label="Área">
-              <div className="flex flex-wrap gap-1.5">
-                {AREAS.map(a => (
-                  <button key={a.key} onClick={() => setArea(a.key)}
-                    className={`px-2.5 py-1 rounded-lg border text-[12px] transition-all ${
-                      area === a.key ? "border-[#B3985B]/40 bg-[#B3985B]/10 text-[#B3985B]" : "border-[#1a1a1a] text-[#555] hover:text-[#999]"
-                    }`}>
-                    {a.label}
                   </button>
                 ))}
               </div>
