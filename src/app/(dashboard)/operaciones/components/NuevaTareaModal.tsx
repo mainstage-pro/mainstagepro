@@ -55,14 +55,21 @@ interface Props {
   usuarios: Usuario[];
   defaultAsignadoId?: string | null;
   defaultArea?: string | null;
-  // Fija el tipo al abrir (p.ej. desde un hub de área). Si se da, se salta el selector.
+  // Proyecto de operaciones al que se adjunta la tarea (cuando se crea dentro de un proyecto).
+  proyectoTareaId?: string | null;
+  // Sección del proyecto (cuando se crea dentro de una sección específica).
+  seccionId?: string | null;
+  // Fija el tipo al abrir (p.ej. desde una pestaña del hub). Si se da, se salta el selector.
   tipoInicial?: TipoKey | null;
+  // Pre-carga el título (p.ej. al convertir una idea en tarea).
+  tituloInicial?: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onCreated: (tarea: any) => void;
 }
 
 export default function NuevaTareaModal({
-  open, onClose, usuarios, defaultAsignadoId = null, defaultArea = null, tipoInicial = null, onCreated,
+  open, onClose, usuarios, defaultAsignadoId = null, defaultArea = null,
+  proyectoTareaId = null, seccionId = null, tipoInicial = null, tituloInicial = null, onCreated,
 }: Props) {
   const [tipo, setTipo]           = useState<TipoKey | null>(null);
   const [titulo, setTitulo]       = useState("");
@@ -88,13 +95,13 @@ export default function NuevaTareaModal({
   useEffect(() => {
     if (open) {
       setTipo(tipoInicial ?? null);
-      setTitulo(""); setDescripcion(""); setPrioridad("MEDIA");
+      setTitulo(tituloInicial ?? ""); setDescripcion(""); setPrioridad("MEDIA");
       setArea(defaultArea || "GENERAL"); setAsignadoId(defaultAsignadoId);
       setFecha(""); setFechaVen(""); setRecurrencia(null); setComprobacion("");
       setProyectoEventoId(null); setProyectoInternoId(null); setFaseId(null);
       setError(null); setSaving(false);
     }
-  }, [open, tipoInicial, defaultArea, defaultAsignadoId]);
+  }, [open, tipoInicial, tituloInicial, defaultArea, defaultAsignadoId]);
 
   // Carga las fuentes (eventos/proyectos internos) la primera vez que se necesitan
   useEffect(() => {
@@ -142,6 +149,8 @@ export default function NuevaTareaModal({
       fechaVencimiento: fechaVen || null,
       recurrencia: recurrencia || null,
       tipoOrigen: tipo,
+      proyectoTareaId: proyectoTareaId || null,
+      seccionId: seccionId || null,
       proyectoEventoId: tipo === "EVENTO" ? proyectoEventoId : null,
       proyectoInternoId: tipo === "PROYECTO" ? proyectoInternoId : null,
       faseInternaId: tipo === "PROYECTO" ? (faseId || null) : null,

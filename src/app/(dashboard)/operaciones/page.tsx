@@ -1,13 +1,10 @@
 "use client";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { flushSync } from "react-dom";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import TaskItem, { type TareaItem } from "./components/TaskItem";
 import TaskModal, { type TareaDetalle } from "./components/TaskModal";
-import QuickAdd from "./components/QuickAdd";
 import NuevaTareaModal from "./components/NuevaTareaModal";
-import MobileQuickAdd, { type MobileQuickAddHandle } from "./components/MobileQuickAdd";
 import UndoToast, { type UndoState } from "./components/UndoToast";
 import ProyectoAccesoPanel from "./components/ProyectoAccesoPanel";
 import { VistaCapturaRapida } from "./components/VistaCapturaRapida";
@@ -86,21 +83,13 @@ const PROJECT_COLORS = [
   "#B3985B","#e85d04","#e63946","#2ec4b6","#3d85c8","#9b5de5","#f15bb5","#00bbf9",
 ];
 
-// ── Fase 2: áreas de gestión operativa (sidebar seccionado + hub por área) ──
-// "Comercial" es sólo etiqueta visible; el código interno sigue siendo VENTAS.
-const GESTION_AREAS: { key: string; label: string; color: string }[] = [
-  { key: "DIRECCION",      label: "Dirección",      color: "#B3985B" },
-  { key: "ADMINISTRACION", label: "Administración", color: "#60a5fa" },
-  { key: "MARKETING",      label: "Marketing",      color: "#f472b6" },
-  { key: "VENTAS",         label: "Comercial",      color: "#34d399" },
-  { key: "PRODUCCION",     label: "Producción",     color: "#fb923c" },
-];
-// Sub-módulos del hub de cada área (los 4 sistemas del módulo unificado).
-const AREA_SUBMODULOS: { key: string; label: string; short: string }[] = [
-  { key: "TAREA",    label: "Tareas del área",      short: "Tareas" },
-  { key: "PLAN",     label: "Plan de trabajo",      short: "Plan" },
-  { key: "EVENTO",   label: "Proyectos de evento",  short: "Eventos" },
-  { key: "PROYECTO", label: "Proyecto de empresa",  short: "Empresa" },
+// ── Hub de 4 sub-módulos dentro de un proyecto (los 4 sistemas del módulo unificado).
+// Se muestran como pestañas en la vista de proyecto y filtran por tipoOrigen.
+const AREA_SUBMODULOS: { key: string; label: string; short: string; color: string }[] = [
+  { key: "TAREA",    label: "Tareas",               short: "Tareas",  color: "#9ca3af" },
+  { key: "PLAN",     label: "Compromisos de plan",  short: "Plan",    color: "#34d399" },
+  { key: "EVENTO",   label: "Proyectos de evento",  short: "Eventos", color: "#60a5fa" },
+  { key: "PROYECTO", label: "Proyecto de empresa",  short: "Empresa", color: "#818cf8" },
 ];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -122,8 +111,8 @@ export default function OperacionesPage() {
   const [sessionId, setSessionId]               = useState<string>("");
   const [sessionRole, setSessionRole]           = useState<string>("");
   const [sessionArea, setSessionArea]           = useState<string>("");
-  // Fase 2: sub-módulo activo dentro del hub de un área (TAREA|PLAN|EVENTO|PROYECTO)
-  const [areaSub, setAreaSub]                   = useState<string>("TAREA");
+  // Sub-módulo activo dentro del hub de un proyecto (TAREA|PLAN|EVENTO|PROYECTO)
+  const [proyectoSub, setProyectoSub]           = useState<string>("TAREA");
 
   const [capturaCounts, setCapturaCounts] = useState({ captura: 0, ideas: 0, iniciativas: 0 });
   const [vista, setVista]                             = useState<VistaKey>(() => {
@@ -421,6 +410,8 @@ export default function OperacionesPage() {
 
   function applyProyFilter(tareas: TareaItem[]): TareaItem[] {
     let r = tareas;
+    // Hub: filtra por el sub-módulo activo (TAREA|PLAN|EVENTO|PROYECTO).
+    r = r.filter(t => (t.tipoOrigen ?? "TAREA") === proyectoSub);
     if (!proyViewOpts.showCompleted) r = r.filter(t => t.estado !== "COMPLETADA");
     if (filterUserProy) r = r.filter(t => t.asignadoA?.id === filterUserProy);
     if (proyViewOpts.filterPrio.length > 0) r = r.filter(t => proyViewOpts.filterPrio.includes(t.prioridad));
@@ -517,6 +508,10 @@ export default function OperacionesPage() {
       }
     }
   }, [vista, proyectoDetalle]);
+
+  // Al cambiar de proyecto, vuelve a la pestaña "Tareas" del hub.
+  const proyectoActivoId = typeof vista !== "string" && vista.tipo === "proyecto" ? vista.id : null;
+  useEffect(() => { setProyectoSub("TAREA"); }, [proyectoActivoId]);
 
   const completeTarea = useCallback(async (id: string) => {
     // Find titulo for undo toast
@@ -1218,12 +1213,29 @@ export default function OperacionesPage() {
     });
   }
 
-  const [mobileQuickAdd, setMobileQuickAdd] = useState(false);
   const [mobileProyectos, setMobileProyectos] = useState(false);
-  const mobileQARef = useRef<MobileQuickAddHandle>(null);
-  const [quickAddTrigger, setQuickAddTrigger] = useState(0);
   // Modal unificado "Nueva tarea" (selector de 4 tipos)
   const [nuevaTareaOpen, setNuevaTareaOpen] = useState(false);
+  // Contexto con el que se abre el modal (proyecto y tipo pre-seleccionado).
+  const [nuevaTareaCtx, setNuevaTareaCtx] = useState<{
+    proyectoTareaId?: string | null;
+    seccionId?: string | null;
+    tipoInicial?: "TAREA" | "PLAN" | "EVENTO" | "PROYECTO" | null;
+    tituloInicial?: string | null;
+    defaultArea?: string | null;
+  }>({});
+
+  // Abre el modal unificado. Si se pasa contexto (proyecto/tipo), lo pre-carga.
+  const abrirNuevaTarea = useCallback((ctx?: {
+    proyectoTareaId?: string | null;
+    seccionId?: string | null;
+    tipoInicial?: "TAREA" | "PLAN" | "EVENTO" | "PROYECTO" | null;
+    tituloInicial?: string | null;
+    defaultArea?: string | null;
+  }) => {
+    setNuevaTareaCtx(ctx ?? {});
+    setNuevaTareaOpen(true);
+  }, []);
 
   // Inserta en el estado una tarea recién creada desde el modal unificado.
   const handleTareaCreada = useCallback((tarea: TareaItem) => {
@@ -1231,25 +1243,25 @@ export default function OperacionesPage() {
     setAddToast({ msg, visible: true });
     setTimeout(() => setAddToast(t => t ? { ...t, visible: false } : null), 1800);
     setTimeout(() => setAddToast(null), 2150);
-    // Sólo insertamos en listas planas (vistas string). Las vistas por proyecto/
-    // integrada/hoy se recargan solas al navegar; evitamos duplicar.
+    // Insertamos en listas planas (vistas string). Las vistas integrada/hoy se
+    // recargan solas al navegar; evitamos duplicar.
     if (typeof vista === "string" && vista !== "integrada") {
       setTareas(prev => prev.some(t => t.id === tarea.id) ? prev : [...prev, tarea]);
     }
+    // Si estamos dentro de un proyecto y la tarea pertenece a él, insértala en vivo.
+    if (typeof vista !== "string" && vista.tipo === "proyecto" && tarea.proyectoTarea?.id === vista.id) {
+      setProyectoDetalle(prev => prev && !prev.tareas.some(t => t.id === tarea.id)
+        ? { ...prev, tareas: [tarea, ...prev.tareas] }
+        : prev);
+    }
   }, [vista]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Abrir captura rápida si la URL trae ?nueva=1 (acceso directo desde pantalla bloqueada)
+  // Abrir el modal unificado si la URL trae ?nueva=1 (acceso directo).
   useEffect(() => {
     if (searchParams.get("nueva") !== "1") return;
     window.history.replaceState(null, "", "/operaciones");
-    const isMobile = window.innerWidth < 768;
-    if (isMobile) {
-      setMobileQuickAdd(true);
-    } else {
-      setVista("bandeja");
-      setQuickAddTrigger(n => n + 1);
-    }
-  }, []);
+    abrirNuevaTarea();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex h-full overflow-hidden bg-[#0a0a0a]">
@@ -1301,7 +1313,11 @@ export default function OperacionesPage() {
         {/* ── Nueva tarea (CTA) ──────────────────────────────────────────── */}
         <div className="p-3 shrink-0">
           <button
-            onClick={() => setNuevaTareaOpen(true)}
+            onClick={() => abrirNuevaTarea(
+              typeof vista !== "string" && vista.tipo === "proyecto"
+                ? { proyectoTareaId: vista.id, tipoInicial: proyectoSub as "TAREA" | "PLAN" | "EVENTO" | "PROYECTO" }
+                : undefined,
+            )}
             className="w-full flex items-center gap-2 px-3 py-2 bg-[#B3985B]/10 hover:bg-[#B3985B]/16 border border-[#B3985B]/20 hover:border-[#B3985B]/35 text-[#B3985B] rounded-xl text-sm font-medium transition-all group"
           >
             <span className="w-5 h-5 rounded-full bg-[#B3985B]/20 group-hover:bg-[#B3985B]/30 flex items-center justify-center transition-colors">
@@ -1360,31 +1376,6 @@ export default function OperacionesPage() {
             onClick={() => setVista("rendimiento")}
           />
         </nav>
-
-        {/* ── Áreas de gestión operativa (hub por área) ──────────────────── */}
-        {(() => {
-          const puedeVerTodo = sessionRole === "ADMIN" || sessionArea === "DIRECCION";
-          const areasVisibles = GESTION_AREAS.filter(a => puedeVerTodo || a.key === sessionArea);
-          if (areasVisibles.length === 0) return null;
-          return (
-            <div className="mt-4 shrink-0">
-              <div className="px-3 py-1.5">
-                <span className="text-xs text-[#3a3a3a] font-semibold tracking-widest uppercase select-none">Gestión operativa</span>
-              </div>
-              <nav className="px-2 space-y-0.5">
-                {areasVisibles.map(a => (
-                  <SideItem
-                    key={a.key}
-                    icon={<span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: a.color }} />}
-                    label={a.label}
-                    isActive={vistaKey === `area-${a.key}`}
-                    onClick={() => { setVista({ tipo: "area", nombre: a.key }); setAreaSub("TAREA"); }}
-                  />
-                ))}
-              </nav>
-            </div>
-          );
-        })()}
 
         {/* ── Áreas section (carpetas y proyectos) ───────────────────────── */}
         <div className="mt-4 flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -1876,7 +1867,7 @@ export default function OperacionesPage() {
             <VistaIdeas
               onConvertirATarea={(texto) => {
                 setVista("bandeja");
-                setTimeout(() => setQuickAddTrigger(n => n + 1), 50);
+                setTimeout(() => abrirNuevaTarea({ tituloInicial: texto }), 50);
               }}
             />
 
@@ -2017,70 +2008,20 @@ export default function OperacionesPage() {
               ))}
             </div>
 
-          ) : typeof vista === "object" && vista.tipo === "area" ? (
-            (() => {
-              const areaColor = GESTION_AREAS.find(a => a.key === vista.nombre)?.color ?? "#B3985B";
-              const sub = AREA_SUBMODULOS.find(s => s.key === areaSub) ?? AREA_SUBMODULOS[0];
-              const subTareas = tareasOrdenadas.filter(t => (t.tipoOrigen ?? "TAREA") === areaSub);
-              const counts: Record<string, number> = { TAREA: 0, PLAN: 0, EVENTO: 0, PROYECTO: 0 };
-              for (const t of tareasOrdenadas) counts[t.tipoOrigen ?? "TAREA"] = (counts[t.tipoOrigen ?? "TAREA"] ?? 0) + 1;
-              return (
-                <div className="max-w-2xl mx-auto px-2 py-4 pb-24">
-                  {/* Tab bar de sub-módulos del hub de área */}
-                  <div className="flex items-center gap-1 mb-4 overflow-x-auto no-scrollbar border-b border-[#161616] pb-px">
-                    {AREA_SUBMODULOS.map(s => {
-                      const active = s.key === areaSub;
-                      return (
-                        <button
-                          key={s.key}
-                          onClick={() => setAreaSub(s.key)}
-                          className={`shrink-0 flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium border-b-2 -mb-px transition-colors ${active ? "text-white" : "text-[#666] border-transparent hover:text-[#999]"}`}
-                          style={active ? { borderColor: areaColor, color: "#fff" } : undefined}
-                        >
-                          <span className="hidden sm:inline">{s.label}</span>
-                          <span className="sm:hidden">{s.short}</span>
-                          {counts[s.key] > 0 && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-[#777]">{counts[s.key]}</span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {subTareas.length === 0 ? (
-                    <EmptyState
-                      icon={<Building2 strokeWidth={1.5} className="w-9 h-9" />}
-                      title={`Sin ${sub.label.toLowerCase()} en ${AREA_LABELS[vista.nombre] ?? vista.nombre}`}
-                      sub="No hay registros activos en este sub-módulo"
-                    />
-                  ) : subTareas.map(t => (
-                    <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
-                      onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
-                      onDateChange={(id, val) => saveTarea(id, { fecha: val || null })}
-                      onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
-                      onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
-                      onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
-                      projects={proyectosNav}
-                      users={usuarios}
-                      showProject
-                    />
-                  ))}
-                </div>
-              );
-            })()
-
           ) : typeof vista === "string" ? (
             <div className="max-w-2xl mx-auto px-2 py-4 pb-24">
-              {/* Quick add at top for bandeja/proximas */}
+              {/* Nueva tarea (modal 4 tipos) al tope para bandeja/proximas/hoy */}
               {(vista === "bandeja" || vista === "proximas" || vista === "hoy") && (
                 <div className="mb-3">
-                  <QuickAdd
-                    onAdd={addTarea}
-                    placeholder={vista === "hoy" ? "Agregar tarea para hoy…" : "Agregar tarea…"}
-                    proyectos={proyectosNav}
-                    usuarios={usuarios}
-                    triggerOpen={quickAddTrigger}
-                  />
+                  <button
+                    onClick={() => abrirNuevaTarea()}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#0d0d0d] border border-[#1a1a1a] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/30 transition-all text-sm font-medium"
+                  >
+                    <span className="w-5 h-5 rounded-full bg-[#B3985B]/15 flex items-center justify-center">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </span>
+                    Nueva tarea
+                  </button>
                 </div>
               )}
 
@@ -2144,14 +2085,57 @@ export default function OperacionesPage() {
             <div className="max-w-2xl mx-auto px-2 py-4 pb-24">
               {proyectoDetalle && (
                 <>
-                  {/* ── Agregar tarea (siempre arriba) ── */}
-                  <QuickAdd
-                    proyectoTareaId={proyectoDetalle.id} onAdd={addTarea}
-                    placeholder="Agregar tarea…" proyectos={proyectosNav} usuarios={usuarios}
-                  />
+                  {/* ── Hub: pestañas de los 4 sub-módulos (filtran por tipoOrigen) ── */}
+                  {(() => {
+                    const todas = [
+                      ...proyectoDetalle.tareas,
+                      ...proyectoDetalle.secciones.flatMap(s => s.tareas),
+                    ];
+                    const counts: Record<string, number> = { TAREA: 0, PLAN: 0, EVENTO: 0, PROYECTO: 0 };
+                    for (const t of todas) {
+                      if (t.estado === "COMPLETADA" || t.estado === "CANCELADA") continue;
+                      const k = t.tipoOrigen ?? "TAREA";
+                      counts[k] = (counts[k] ?? 0) + 1;
+                    }
+                    return (
+                      <div className="flex items-center gap-1 mb-4 overflow-x-auto no-scrollbar border-b border-[#161616]">
+                        {AREA_SUBMODULOS.map(s => {
+                          const active = s.key === proyectoSub;
+                          return (
+                            <button
+                              key={s.key}
+                              onClick={() => setProyectoSub(s.key)}
+                              className={`shrink-0 flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium border-b-2 -mb-px transition-colors ${active ? "" : "text-[#666] border-transparent hover:text-[#999]"}`}
+                              style={active ? { borderColor: s.color, color: "#fff" } : undefined}
+                            >
+                              <span className="hidden sm:inline">{s.label}</span>
+                              <span className="sm:hidden">{s.short}</span>
+                              {counts[s.key] > 0 && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-[#777]">{counts[s.key]}</span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
 
-                  {/* ── Agregar sección (solo aquí) ── */}
-                  <div className="mb-4">
+                  {/* ── Nueva tarea (abre el modal de 4 tipos con contexto de proyecto+pestaña) ── */}
+                  <button
+                    onClick={() => abrirNuevaTarea({
+                      proyectoTareaId: proyectoDetalle.id,
+                      tipoInicial: proyectoSub as "TAREA" | "PLAN" | "EVENTO" | "PROYECTO",
+                    })}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 mb-3 rounded-xl bg-[#0d0d0d] border border-[#1a1a1a] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/30 transition-all text-sm font-medium"
+                  >
+                    <span className="w-5 h-5 rounded-full bg-[#B3985B]/15 flex items-center justify-center">
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    </span>
+                    Nuevo registro
+                  </button>
+
+                  {/* ── Agregar sección (solo en la pestaña de Tareas) ── */}
+                  <div className={`mb-4 ${proyectoSub === "TAREA" ? "" : "hidden"}`}>
                     {showNuevaSeccion ? (
                       <div className="px-3 py-3 border border-dashed border-[#2a2a2a] rounded-xl space-y-2 bg-[#0a0a0a]">
                         <input autoFocus value={nuevaSeccionNombre}
@@ -2235,13 +2219,14 @@ export default function OperacionesPage() {
                     </div>
                   ))}
 
-                  {/* ── Secciones ── */}
-                  {proyectoDetalle.secciones.map((seccion) => (
+                  {/* ── Secciones (solo en la pestaña de Tareas) ── */}
+                  {proyectoSub === "TAREA" && proyectoDetalle.secciones.map((seccion) => (
                     <SectionBlock
                       key={seccion.id} seccion={seccion} proyectoId={proyectoDetalle.id}
                       selectedId={selectedId}
                       onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
                       onAddTarea={addTarea} draggingId={draggingId}
+                      onNuevoRegistro={(secId) => abrirNuevaTarea({ proyectoTareaId: proyectoDetalle.id, seccionId: secId, tipoInicial: "TAREA" })}
                       ptrTargetSec={ptrTargetSec}
                       onPtrDragStart={startPtrDrag}
                       onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
@@ -2458,13 +2443,7 @@ export default function OperacionesPage() {
 
       {/* FAB */}
       <button
-        onClick={() => {
-          // flushSync forces the DOM to update synchronously (sheet slides visible)
-          // before focus() — iOS only shows keyboard when element is on-screen
-          // and still within the same user-gesture call stack
-          flushSync(() => setMobileQuickAdd(true));
-          mobileQARef.current?.focus();
-        }}
+        onClick={() => abrirNuevaTarea()}
         className="lg:hidden fixed right-5 z-40 w-14 h-14 rounded-full bg-[#B3985B] flex items-center justify-center shadow-[0_4px_24px_rgba(179,152,91,0.45)] active:scale-95 transition-transform"
         style={{ bottom: "calc(env(safe-area-inset-bottom) + 100px)" }}
       >
@@ -2473,23 +2452,16 @@ export default function OperacionesPage() {
         </svg>
       </button>
 
-      {/* Mobile Quick Add bottom sheet */}
-      <MobileQuickAdd
-        ref={mobileQARef}
-        open={mobileQuickAdd}
-        onClose={() => setMobileQuickAdd(false)}
-        onAdd={addTarea}
-        proyectos={proyectosNav}
-        usuarios={usuarios}
-        defaultProyectoId={typeof vista !== "string" && vista.tipo === "proyecto" ? vista.id : null}
-      />
-
       {/* Modal unificado "Nueva tarea" (selector de 4 tipos) */}
       <NuevaTareaModal
         open={nuevaTareaOpen}
         onClose={() => setNuevaTareaOpen(false)}
         usuarios={usuarios}
-        defaultArea={typeof vista !== "string" && vista.tipo === "area" ? vista.nombre : null}
+        proyectoTareaId={nuevaTareaCtx.proyectoTareaId ?? null}
+        seccionId={nuevaTareaCtx.seccionId ?? null}
+        tipoInicial={nuevaTareaCtx.tipoInicial ?? null}
+        tituloInicial={nuevaTareaCtx.tituloInicial ?? null}
+        defaultArea={nuevaTareaCtx.defaultArea ?? null}
         onCreated={handleTareaCreada}
       />
 
@@ -3122,7 +3094,7 @@ function NavCarpeta({ carpeta, open, vistaKey, onToggle, onSelectProyecto, onRen
 
 function SectionBlock({
   seccion, proyectoId, selectedId,
-  onComplete, onSelect, onDelete, onAddTarea,
+  onComplete, onSelect, onDelete, onAddTarea, onNuevoRegistro,
   onToggleCollapse, onDeleteSection, onRename,
   draggingId, onDragStart, onDragEnd, onDrop, onDropSection,
   onPriorityChange, onAssign, onProjectChange, users, projects, viewFilter,
@@ -3146,6 +3118,7 @@ function SectionBlock({
     proyectoTareaId: string | null; seccionId: string | null; parentId: string | null;
     asignadoAId: string | null;
   }) => void;
+  onNuevoRegistro?: (seccionId: string) => void;
   onToggleCollapse: (id: string, colapsada: boolean) => void;
   onDeleteSection: (id: string) => void;
   onRename: (id: string, nombre: string) => Promise<void>;
@@ -3380,9 +3353,15 @@ function SectionBlock({
               onPtrDragStart={onPtrDragStart}
             />
           ))}
-          <QuickAdd proyectoTareaId={proyectoId} seccionId={seccion.id}
-            placeholder={`Tarea en ${seccion.nombre}…`} onAdd={onAddTarea}
-            usuarios={users ?? []} proyectos={projects ?? []} />
+          <button
+            onClick={() => onNuevoRegistro?.(seccion.id)}
+            className="w-full flex items-center gap-2 px-3 py-2 mt-1 rounded-lg text-[#555] hover:text-[#B3985B] transition-colors text-[13px]"
+          >
+            <span className="w-4 h-4 rounded-full bg-[#B3985B]/15 flex items-center justify-center shrink-0">
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </span>
+            Nuevo registro en {seccion.nombre}
+          </button>
         </>
       )}
 
