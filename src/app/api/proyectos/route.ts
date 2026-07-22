@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { calcularAvanceProyecto } from "@/lib/proyecto-avance";
+import { calcularAvanceProduccion } from "@/lib/proyecto-avance";
 
 export async function GET(req: Request) {
   const session = await getSession();
@@ -56,12 +56,18 @@ export async function GET(req: Request) {
     const canViewFinances = allowedNames.some(name => session.name.toLowerCase().includes(name));
 
     const proyectosConAvance = proyectos.map(p => {
-      const avance = calcularAvanceProyecto({
-        tipoServicio: p.tipoServicio ?? null,
-        planProduccionAprobado: p.planProduccionAprobado,
-        recoleccionStatus: p.recoleccionStatus,
-        checklist: p.checklist,
+      const avance = calcularAvanceProduccion({
+        lugarEvento: p.lugarEvento,
+        tieneEncargado: !!p.encargado,
         equiposCount: p._count?.equipos ?? 0,
+        personalCount: p.personal?.length ?? 0,
+        protocoloSalida: p.protocoloSalida,
+        direccionVenue: p.direccionVenue,
+        linkMaps: p.linkMaps,
+        fechaMontaje: p.fechaMontaje,
+        horaInicioMontaje: p.horaInicioMontaje,
+        encargadoLugar: p.encargadoLugar,
+        encargadoCliente: p.encargadoCliente,
       });
       const liquidacionCobrada = (p.cuentasCobrar ?? []).some(
         (c: { tipoPago: string; estado: string }) =>

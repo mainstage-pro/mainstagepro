@@ -23,6 +23,7 @@ import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
 import { contarRespondidos, contarIncidencias, promedioCalificaciones, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
 import { diasEvento, parseHorariosEvento, horarioDeDia } from "@/lib/fechas-evento";
 import { construirCronologia } from "@/lib/cronologia-evento";
+import { checksAvanceProduccion } from "@/lib/proyecto-avance";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Tecnico { id: string; nombre: string; nivel: string; rol: { nombre: string } | null }
@@ -110,6 +111,8 @@ interface Proyecto {
   movimientos: Gasto[];
   cierreFinanciero: { cerradoEn: string; notas: string | null; totalCobrado: number; totalGastado: number; utilidadReal: number; margenReal: number; granTotalEstimado: number; costoEstimado: number; utilidadEstimada: number } | null;
   portalToken: string | null;
+  infoToken: string | null;
+  infoRecibidoEn: string | null;
   notasPortal: string | null;
   responsables: string | null;
   llamadoBodega: string | null;
@@ -1362,6 +1365,52 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
       return;
     }
     setRevocandoToken(false);
+    toast.success("Enlace revocado");
+    await load();
+  }
+
+  // Enlace de confirmación de información (cliente completa el resumen)
+  const [generandoInfoToken, setGenerandoInfoToken] = useState(false);
+  const [revocandoInfoToken, setRevocandoInfoToken] = useState(false);
+
+  async function generarInfoToken() {
+    setGenerandoInfoToken(true);
+    const res = await fetch(`/api/proyectos/${id}/info-token`, { method: "POST" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al generar enlace");
+      setGenerandoInfoToken(false);
+      return;
+    }
+    const d = await res.json();
+    if (d.token) {
+      const url = `${window.location.origin}/confirmar/proyecto/${d.token}`;
+      await navigator.clipboard.writeText(url).catch(() => {});
+      toast.success("Enlace generado y copiado al portapapeles");
+    }
+    setGenerandoInfoToken(false);
+    await load();
+  }
+
+  async function copiarInfoLink() {
+    if (!proyecto?.infoToken) return;
+    const url = `${window.location.origin}/confirmar/proyecto/${proyecto.infoToken}`;
+    await navigator.clipboard.writeText(url).catch(() => {});
+    toast.success("Enlace copiado");
+  }
+
+  async function revocarInfoToken() {
+    const ok = await confirm({ message: "¿Revocar el enlace de confirmación? El cliente ya no podrá acceder con el enlace anterior.", danger: true, confirmText: "Revocar" });
+    if (!ok) return;
+    setRevocandoInfoToken(true);
+    const res = await fetch(`/api/proyectos/${id}/info-token`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al revocar");
+      setRevocandoInfoToken(false);
+      return;
+    }
+    setRevocandoInfoToken(false);
     toast.success("Enlace revocado");
     await load();
   }
@@ -3723,6 +3772,62 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         {activeTab === 'resumen' && (
           <div className="space-y-4">
 
+      {/* ── Confirmación de información del cliente ── */}
+      <div className="ms-card p-5 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Confirmación del cliente</p>
+            <p className="text-gray-500 text-xs mt-0.5">Enlace para que el cliente confirme y complete los datos del evento. Al guardar, se llenan aquí automáticamente.</p>
+          </div>
+          {proyecto.infoToken ? (
+            <span className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-semibold ${proyecto.infoRecibidoEn ? "bg-green-900/50 text-green-300" : "bg-yellow-900/50 text-yellow-300"}`}>
+              {proyecto.infoRecibidoEn ? "Recibido" : "Pendiente"}
+            </span>
+          ) : null}
+        </div>
+
+        {!proyecto.infoToken ? (
+          <button
+            onClick={generarInfoToken}
+            disabled={generandoInfoToken}
+            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] disabled:opacity-50 text-white text-xs px-4 py-2 rounded-lg transition-colors"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+            {generandoInfoToken ? "Generando..." : "Generar enlace de confirmación"}
+          </button>
+        ) : (
+          <div className="space-y-2">
+            <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2.5 flex items-center gap-2">
+              <span className="text-gray-500 text-xs flex-1 truncate font-mono">{`${typeof window !== "undefined" ? window.location.origin : ""}/confirmar/proyecto/${proyecto.infoToken}`}</span>
+              <button onClick={copiarInfoLink} className="text-[10px] text-[#B3985B] hover:text-white shrink-0 transition-colors">Copiar</button>
+              {proyecto.cliente.telefono && (
+                <a
+                  href={`https://wa.me/${proyecto.cliente.telefono.replace(/\D/g, "")}?text=${encodeURIComponent(`Hola ${proyecto.cliente.nombre}, para tu evento "${proyecto.nombre}" nos ayudas confirmando los datos en este enlace: ${window.location.origin}/confirmar/proyecto/${proyecto.infoToken}`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] text-green-400 hover:text-green-300 shrink-0 transition-colors flex items-center gap-1"
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.999 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.984-1.31A9.944 9.944 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
+                  WhatsApp
+                </a>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              {proyecto.infoRecibidoEn && (
+                <span className="text-xs text-gray-500">Recibido {fmtDateTime(proyecto.infoRecibidoEn)}</span>
+              )}
+              <button
+                onClick={revocarInfoToken}
+                disabled={revocandoInfoToken}
+                className="text-[10px] text-red-400/70 hover:text-red-400 disabled:opacity-50 transition-colors ml-auto"
+              >
+                {revocandoInfoToken ? "Revocando..." : "Revocar enlace"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* ── Progreso del proyecto (Avance) ── */}
       {(() => {
         // ── Protocolo salida / entrada ──────────────────────────────────────
@@ -3738,18 +3843,21 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
 
         // ── Campos ponderados de PRODUCCIÓN (suman 100) ─────────────────────
         // El progreso mide únicamente pre-producción / producción técnica.
-        // Nada de finanzas ni cobranza entra en esta medición.
-        type WCheck = { ok: boolean; label: string; peso: number };
-        const wChecks: WCheck[] = [
-          { ok: !!proyecto.lugarEvento,                                                                       label: "Lugar del evento",          peso: 15 },
-          { ok: !!proyecto.encargado,                                                                          label: "Coordinador de producción", peso: 10 },
-          { ok: proyecto.equipos.length > 0,                                                                  label: "Equipo registrado",         peso: 20 },
-          { ok: proyecto.personal.length > 0,                                                                 label: "Personal asignado",         peso: 15 },
-          { ok: _salidaData.estado === "OK",                                                                   label: "Protocolo de salida",       peso: 12 },
-          { ok: !!(proyecto.direccionVenue || proyecto.linkMaps),                                              label: "Info del venue",            peso: 8  },
-          { ok: !!proyecto.fechaMontaje && !!proyecto.horaInicioMontaje,                                      label: "Logística de montaje",      peso: 12 },
-          { ok: !!proyecto.encargadoLugar || !!proyecto.encargadoCliente,                                     label: "Encargado del lugar",       peso: 8  },
-        ];
+        // Nada de finanzas ni cobranza entra en esta medición. Fuente única
+        // compartida con la lista de proyectos (src/lib/proyecto-avance.ts).
+        const wChecks = checksAvanceProduccion({
+          lugarEvento: proyecto.lugarEvento,
+          tieneEncargado: !!proyecto.encargado,
+          equiposCount: proyecto.equipos.length,
+          personalCount: proyecto.personal.length,
+          protocoloSalida: proyecto.protocoloSalida,
+          direccionVenue: proyecto.direccionVenue,
+          linkMaps: proyecto.linkMaps,
+          fechaMontaje: proyecto.fechaMontaje,
+          horaInicioMontaje: proyecto.horaInicioMontaje,
+          encargadoLugar: proyecto.encargadoLugar,
+          encargadoCliente: proyecto.encargadoCliente,
+        });
 
         const pct = Math.round(wChecks.reduce((sum, c) => sum + (c.ok ? c.peso : 0), 0));
         const barColor = pct >= 90 ? "#10b981" : pct >= 71 ? "#60a5fa" : pct >= 41 ? "#f59e0b" : "#ef4444";
@@ -5141,7 +5249,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                           ) : (
                             <div className="flex items-center gap-2 flex-wrap">
                               <p className="text-white text-sm font-medium">{p.tecnico.nombre}</p>
-                              {p.nivel && <span className={`text-xs font-semibold ${NIVEL_COLORS[p.nivel] ?? "text-gray-400"}`}>{p.nivel}</span>}
                               <span className={`px-1.5 py-0.5 rounded border text-[10px] font-medium ${badge.cls}`}>{badge.label}</span>
                               {p.esAdicional && <span className="px-1.5 py-0.5 rounded border border-fuchsia-800/40 bg-fuchsia-900/20 text-fuchsia-300 text-[10px] font-medium" title="Agregado fuera de lo cotizado — solo visible internamente">Adicional</span>}
                               {p.necesitaRevision && <span className="px-1.5 py-0.5 rounded border border-amber-700/50 bg-amber-900/20 text-amber-300 text-[10px] font-medium" title="Este rol se quitó o cambió en la cotización — revísalo (no se borró automáticamente)">Revisar</span>}
