@@ -1006,6 +1006,12 @@ export default function OperacionesPage() {
     let base = applyBusqueda(vistaOpts.showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA"));
     if (vistaOpts.filterPrio.length > 0) base = base.filter(t => vistaOpts.filterPrio.includes(t.prioridad));
     if (vistaOpts.filterTipo.length > 0) base = base.filter(t => vistaOpts.filterTipo.includes(t.tipoOrigen ?? "TAREA"));
+    // Las vistas personales (bandeja/hoy/próximas) solo muestran tareas sueltas
+    // (tipoOrigen TAREA); los compromisos de plan / eventos / proyectos viven en
+    // su propio hub de proyectos.
+    if (vista === "bandeja" || vista === "hoy" || vista === "proximas") {
+      base = base.filter(t => (t.tipoOrigen ?? "TAREA") === "TAREA");
+    }
 
     function applySort(arr: TareaItem[]): TareaItem[] {
       if (vistaOpts.sortBy === "prioridad") return [...arr].sort((a, b) => (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3));
@@ -1066,11 +1072,15 @@ export default function OperacionesPage() {
     let base = applyBusqueda(vistaOpts.showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA"));
     if (vistaOpts.filterPrio.length > 0) base = base.filter(t => vistaOpts.filterPrio.includes(t.prioridad));
     if (vistaOpts.filterTipo.length > 0) base = base.filter(t => vistaOpts.filterTipo.includes(t.tipoOrigen ?? "TAREA"));
+    // Vistas personales (bandeja/hoy/próximas): solo tareas sueltas (tipoOrigen TAREA).
+    if (vista === "bandeja" || vista === "hoy" || vista === "proximas") {
+      base = base.filter(t => (t.tipoOrigen ?? "TAREA") === "TAREA");
+    }
     if (vistaOpts.sortBy === "prioridad") return [...base].sort((a, b) => (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3));
     if (vistaOpts.sortBy === "fecha")     return [...base].sort((a, b) => { if (!a.fecha) return 1; if (!b.fecha) return -1; return a.fecha.localeCompare(b.fecha); });
     if (vistaOpts.sortBy === "nombre")    return [...base].sort((a, b) => a.titulo.localeCompare(b.titulo, "es"));
     return sortCronoPrio(base);
-  }, [tareas, vistaOpts, busqueda]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tareas, vistaOpts, busqueda, vista]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const proyectosSinCarpeta = useMemo(() =>
     proyectosNav.filter(p => !carpetas.some(c => c.proyectos.some(cp => cp.id === p.id))),
@@ -1194,7 +1204,7 @@ export default function OperacionesPage() {
   const hoyCount = useMemo(() => {
     const hoy = new Date(); hoy.setHours(23,59,59,999);
     if (typeof vista === "string" && vista === "hoy") {
-      return tareas.filter(t => t.estado !== "COMPLETADA").length;
+      return tareas.filter(t => t.estado !== "COMPLETADA" && (t.tipoOrigen ?? "TAREA") === "TAREA").length;
     }
     return 0; // don't calculate cross-view for perf
   }, [tareas, vista]);
