@@ -62,7 +62,7 @@ export const NAV: NavSection[] = [
       {
         key: "verificacion",
         accessKey: "verificacion",
-        label: "Verificación",
+        label: "Verificación Operativa",
         href: "/verificacion",
         icon: ClipboardCheck,
         badge: "verificacion",
@@ -301,7 +301,7 @@ const MODULE_META: Record<string, { label?: string; desc?: string }> = {
   "vision-semanal":      { desc: "Visión semanal del equipo" },
   operaciones:           { label: "Centro Operativo", desc: "Centro operativo, bandeja de entrada y módulo de tareas" },
   "plan-trabajo":        { desc: "Plan de trabajo y tareas personales" },
-  verificacion:          { label: "Verificación", desc: "Verificar evidencia de tareas completadas (Administración y Dirección)" },
+  verificacion:          { label: "Verificación Operativa", desc: "Verificar evidencia de tareas completadas (Administración y Dirección)" },
   proyectos:             { label: "Proyectos", desc: "Proyectos de evento e internos" },
   juntas:                { desc: "Minutas y acuerdos de juntas" },
   presentaciones:        { desc: "Presentaciones de ventas y dirección" },
