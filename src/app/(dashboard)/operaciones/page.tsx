@@ -108,7 +108,7 @@ export default function OperacionesPage() {
   const [capturaCounts, setCapturaCounts] = useState({ captura: 0, ideas: 0, iniciativas: 0 });
   const [vista, setVista]                             = useState<VistaKey>(() => {
     if (typeof window === "undefined") return "bandeja";
-    try { const s = localStorage.getItem("op_vista"); if (s) { const v = JSON.parse(s) as VistaKey; if (v === "plan") return "bandeja"; return v; } } catch {}
+    try { const s = localStorage.getItem("op_vista"); if (s) { const v = JSON.parse(s); if (v === "plan") return "bandeja"; return v as VistaKey; } } catch {}
     return "bandeja";
   });
   const [tareas, setTareas]                           = useState<TareaItem[]>([]);
