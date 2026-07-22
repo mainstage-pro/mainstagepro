@@ -22,6 +22,8 @@ export async function GET() {
     asignadoAId: { not: null as string | null },
     estado: { not: 'CANCELADA' },
     parentId: null as string | null,
+    // Excluye las tareas generadas por el motor de plan de trabajo (dado de baja).
+    ptTemplateId: null as string | null,
   }
 
   // 1. Weekly stats — uses fecha to bucket tasks into weeks (only tasks with fecha)
