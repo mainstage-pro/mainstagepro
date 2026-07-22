@@ -54,11 +54,8 @@ export const NAV: NavSection[] = [
         href: "/gestion",
         icon: ClipboardList,
         children: [
-          { accessKey: "operaciones", label: "Centro Operativo", href: "/gestion/resumen" },
-          { key: "plan-trabajo", label: "Plan de trabajo", href: "/plan-trabajo" },
-          { key: "operaciones", label: "Módulo de tareas", href: "/operaciones" },
+          { key: "operaciones", label: "Gestión Operativa", href: "/operaciones" },
           { accessKey: "proyectos", label: "Proyectos internos", href: "/proyectos-internos" },
-          { accessKey: "operaciones", label: "Bandeja de entrada", href: "/gestion/bandeja" },
         ],
       },
       {
