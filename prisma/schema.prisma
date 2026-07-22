@@ -32,6 +32,7 @@ model User {
   moduloAccesos   ModuloAcceso[]
   tareasAsignadas       Tarea[]           @relation("TareasAsignadas")
   tareasCreadoPor       Tarea[]           @relation("TareasCreadoPor")
+  tareasVerificadas     Tarea[]           @relation("TareasVerificadas")
   iniciativasCreadas    IniciativaExterna[] @relation("IniciativasCreadas")
   carpetasCreadas       TareaCarpeta[]    @relation("CarpetasCreadas")
   proyectosTareaCreados TareaProyecto[]   @relation("ProyectosTareaCreados")
@@ -2034,12 +2035,37 @@ model Tarea {
   proyectoInterno   ProyectoInterno? @relation("TareasDeProyectoInterno", fields: [proyectoInternoId], references: [id], onDelete: SetNull)
   faseInternaId     String?
   faseInterna       FaseProyectoInterno? @relation("TareasDeFase", fields: [faseInternaId], references: [id], onDelete: SetNull)
+  // ── Capa aditiva: hub de ejecución ────────────────────────────────────────
+  tipoOrigen         String   @default("TAREA")           // TAREA | PLAN | PROYECTO | EVENTO
+  requiereEvidencia  Boolean  @default(false)
+  tipoEvidencia      String?                              // FOTO | ARCHIVO | ENLACE_MODULO | NOTA
+  evidenciaNota      String?  @db.Text
+  estadoVerificacion String   @default("NO_REQUIERE")     // NO_REQUIERE | PENDIENTE_VERIFICACION | VERIFICADA | RECHAZADA
+  verificadaPorId    String?
+  verificadaPor      User?    @relation("TareasVerificadas", fields: [verificadaPorId], references: [id], onDelete: SetNull)
+  verificadaAt       DateTime?
+  motivoRechazo      String?  @db.Text
+  porqueSeHace       String?  @db.Text
+  estandarMinimo     String?  @db.Text
+  siNoSeHace         String?  @db.Text
+  cuando             String?                              // texto ej: "Cada lunes antes de 10:30"
+  moduloDestino      String?
+  moduloTexto        String?
+  moduloDisponible   Boolean  @default(true)
+  esAccionCampo      Boolean  @default(false)
+  ptTemplateId       String?
+  ptTemplate         PTTareaTemplate? @relation("TareasDeTemplate", fields: [ptTemplateId], references: [id], onDelete: SetNull)
+
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
   comentarios      TareaComentario[]
   archivos         TareaArchivo[]
 
+  @@index([tipoOrigen, estado])
+  @@index([estadoVerificacion])
+  @@index([asignadoAId, fecha])
+  @@index([ptTemplateId])
   @@map("tareas")
 }
 
@@ -3325,6 +3351,10 @@ model PTTareaTemplate {
 
   instancias  PTTareaInstancia[]
   subtareas   PTSubTarea[]
+
+  // ── Capa aditiva: generación de tareas ────────────────────────────────────
+  tareasGeneradas        Tarea[]  @relation("TareasDeTemplate")
+  ultimaTareaGeneradaAt  DateTime?
 
   @@index([areaId, activa])
   @@index([responsableId])
