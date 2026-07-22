@@ -11,7 +11,6 @@ import { VistaCapturaRapida } from "./components/VistaCapturaRapida";
 import { VistaIdeas }        from "./components/VistaIdeas";
 import { VistaIniciativas }  from "./components/VistaIniciativas";
 import { VistaRendimiento } from "./components/VistaRendimiento";
-import { VistaGestionResumen } from "./components/VistaGestionResumen";
 import { useCelebration } from "@/components/CelebrationToast";
 import type { TareaIntegrada } from "@/lib/tareas-integradas";
 import { Combobox } from "@/components/Combobox";
@@ -40,7 +39,7 @@ interface Iniciativa { id: string; nombre: string; color: string | null }
 interface Usuario   { id: string; name: string }
 
 type VistaKey = "bandeja" | "hoy" | "proximas" | "integrada" | "proyectos-evento" | "equipo"
-  | "captura" | "ideas" | "iniciativas" | "rendimiento" | "resumen"
+  | "captura" | "ideas" | "iniciativas" | "rendimiento"
   | { tipo: "proyecto"; id: string } | { tipo: "area"; nombre: string };
 
 interface ProyectoEventoConTareas {
@@ -1103,7 +1102,6 @@ export default function OperacionesPage() {
     vista === "ideas"            ? "Ideas" :
     vista === "iniciativas"      ? "Iniciativas" :
     vista === "rendimiento"      ? "Rendimiento" :
-    vista === "resumen"          ? "Resumen de gestión" :
     typeof vista === "object" && vista.tipo === "area" ? `Área · ${AREA_LABELS[vista.nombre] ?? vista.nombre}` :
     proyectoDetalle?.nombre ?? "Proyecto";
 
@@ -1381,12 +1379,6 @@ export default function OperacionesPage() {
               label="Equipo" isActive={vistaKey === "equipo"} onClick={() => setVista("equipo")}
             />
           )}
-          <SideItem
-            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>}
-            label="Resumen de gestión"
-            isActive={vistaKey === "resumen"}
-            onClick={() => setVista("resumen")}
-          />
           <SideItem
             icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>}
             label="Rendimiento"
@@ -1891,9 +1883,6 @@ export default function OperacionesPage() {
 
           ) : vista === "iniciativas" ? (
             <VistaIniciativas />
-
-          ) : vista === "resumen" ? (
-            <VistaGestionResumen />
 
           ) : vista === "rendimiento" ? (
             <VistaRendimiento />
