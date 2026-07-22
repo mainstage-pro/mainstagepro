@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { formatearRecurrencia } from "@/lib/recurrencia";
 import DatePicker from "@/components/ui/DatePicker";
 import { BadgeDias } from "@/components/ui/BadgeDias";
-import { ClipboardList, ExternalLink } from "lucide-react";
+import { ClipboardList, ExternalLink, AlertTriangle } from "lucide-react";
 
 export interface TareaItem {
   id: string;
@@ -22,6 +22,8 @@ export interface TareaItem {
   moduloDestino?: string | null;
   moduloTexto?: string | null;
   moduloDisponible?: boolean | null;
+  estadoVerificacion?: string | null;
+  motivoRechazo?: string | null;
   _count: { subtareas: number; comentarios: number; archivos: number };
   createdAt: string;
   fechaCompletada?: string | null;
@@ -348,6 +350,16 @@ export default function TaskItem({
           <p className="text-[13px] text-[#3a3a3a] leading-snug mt-0.5 line-clamp-2">
             {tarea.descripcion}
           </p>
+        )}
+
+        {tarea.estadoVerificacion === "RECHAZADA" && !isCompleted && (
+          <div className="flex items-start gap-1.5 mt-1 text-[12px] text-red-300/90 bg-red-950/30 border border-red-500/30 rounded-lg px-2 py-1.5 leading-snug">
+            <AlertTriangle strokeWidth={2} className="w-3.5 h-3.5 mt-[1px] shrink-0 text-red-400" />
+            <span>
+              <span className="font-semibold text-red-400">Evidencia rechazada.</span>
+              {tarea.motivoRechazo ? <> {tarea.motivoRechazo}</> : <> Vuelve a completarla con nueva evidencia.</>}
+            </span>
+          </div>
         )}
 
         {(!isCompleted || showProject) && (

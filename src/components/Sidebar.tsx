@@ -76,14 +76,16 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
 
   // Fetch badge counts
   useEffect(() => {
-    fetch("/api/seguimientos/badge").then(r => r.ok ? r.json() : null).then(d => {
-      if (d) setBadges({ seguimientos: d.urgentes ?? 0, leads: d.leads ?? 0 });
-    }).catch(() => {});
-    const iv = setInterval(() => {
+    const load = () => {
       fetch("/api/seguimientos/badge").then(r => r.ok ? r.json() : null).then(d => {
-        if (d) setBadges({ seguimientos: d.urgentes ?? 0, leads: d.leads ?? 0 });
+        if (d) setBadges(prev => ({ ...prev, seguimientos: d.urgentes ?? 0, leads: d.leads ?? 0 }));
       }).catch(() => {});
-    }, 60_000);
+      fetch("/api/verificacion/count").then(r => r.ok ? r.json() : null).then(d => {
+        if (d) setBadges(prev => ({ ...prev, verificacion: d.count ?? 0 }));
+      }).catch(() => {});
+    };
+    load();
+    const iv = setInterval(load, 60_000);
     return () => clearInterval(iv);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

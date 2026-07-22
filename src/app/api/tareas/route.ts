@@ -40,6 +40,9 @@ const SELECT = {
   moduloDestino: true,
   moduloTexto: true,
   moduloDisponible: true,
+  // ── Bloque 4: estado de verificación (distintivo RECHAZADA) ──
+  estadoVerificacion: true,
+  motivoRechazo: true,
   asignadoA:     { select: { id: true, name: true } },
   creadoPor:     { select: { id: true, name: true } },
   iniciativa:    { select: { id: true, nombre: true, color: true } },

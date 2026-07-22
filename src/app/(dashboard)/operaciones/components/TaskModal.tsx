@@ -6,7 +6,7 @@ import QuickAdd from "./QuickAdd";
 import TaskItem, { type TareaItem } from "./TaskItem";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
-import { Link2, Camera, Paperclip, FileText, ExternalLink, ChevronDown, ChevronRight, ShieldCheck, ClipboardCheck } from "lucide-react";
+import { Link2, Camera, Paperclip, FileText, ExternalLink, ChevronDown, ChevronRight, ShieldCheck, ClipboardCheck, AlertTriangle } from "lucide-react";
 
 interface Usuario { id: string; name: string }
 interface Proyecto { id: string; nombre: string; color: string | null }
@@ -56,6 +56,7 @@ export interface TareaDetalle {
   tipoEvidencia?: string | null;
   evidenciaNota?: string | null;
   estadoVerificacion?: string | null;
+  motivoRechazo?: string | null;
   porqueSeHace?: string | null;
   estandarMinimo?: string | null;
   siNoSeHace?: string | null;
@@ -466,6 +467,19 @@ export default function TaskModal({
                   <span className="text-sm font-medium flex-1">{moduloLabel}</span>
                   <ChevronRight strokeWidth={2} className="w-4 h-4 opacity-50 group-hover:translate-x-0.5 transition-transform" />
                 </a>
+              )}
+
+              {/* ── Evidencia rechazada (Bloque 4) ── */}
+              {tarea.estadoVerificacion === "RECHAZADA" && !isCompleted && (
+                <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-xl bg-red-950/30 border border-red-500/30">
+                  <AlertTriangle strokeWidth={2} className="w-4 h-4 mt-0.5 shrink-0 text-red-400" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] uppercase tracking-widest font-semibold text-red-400">Evidencia rechazada</p>
+                    <p className="text-xs text-red-200/90 leading-relaxed mt-1 whitespace-pre-wrap">
+                      {tarea.motivoRechazo || "Vuelve a completar la tarea con nueva evidencia."}
+                    </p>
+                  </div>
+                </div>
               )}
 
               {/* ── Ficha del estándar (Bloque 3) ── */}

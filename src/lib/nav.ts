@@ -62,6 +62,14 @@ export const NAV: NavSection[] = [
         ],
       },
       {
+        key: "verificacion",
+        accessKey: "verificacion",
+        label: "Verificación",
+        href: "/verificacion",
+        icon: ClipboardCheck,
+        badge: "verificacion",
+      },
+      {
         key: "metas",
         label: "Metas",
         href: "/metas",
@@ -295,6 +303,7 @@ const MODULE_META: Record<string, { label?: string; desc?: string }> = {
   "vision-semanal":      { desc: "Visión semanal del equipo" },
   operaciones:           { label: "Centro Operativo", desc: "Centro operativo, bandeja de entrada y módulo de tareas" },
   "plan-trabajo":        { desc: "Plan de trabajo y tareas personales" },
+  verificacion:          { label: "Verificación", desc: "Verificar evidencia de tareas completadas (Administración y Dirección)" },
   proyectos:             { label: "Proyectos", desc: "Proyectos de evento e internos" },
   juntas:                { desc: "Minutas y acuerdos de juntas" },
   presentaciones:        { desc: "Presentaciones de ventas y dirección" },
@@ -411,6 +420,7 @@ export const AREA_MODULE_PRESETS: Record<string, string[]> = {
     "rrhh-personal", "rrhh-nomina", "rrhh-asistencia", "rrhh-evaluaciones", "rrhh-satisfaccion", "rrhh-capacitaciones", "rrhh-onboarding",
     "rrhh-candidatos", "rrhh-puestos", "rrhh-config",
     "socios-constitutivos", "tabulador",
+    "verificacion",
     "tareas-administracion",
   ],
   MARKETING: [
@@ -437,6 +447,7 @@ export const AREA_MODULE_PRESETS: Record<string, string[]> = {
   DIRECCION: [
     "plan-trabajo", "operaciones", "calendario", "vision-semanal",
     "juntas", "presentaciones", "capacitacion",
+    "verificacion",
     "tareas-direccion",
   ],
   GENERAL: [

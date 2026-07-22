@@ -29,6 +29,7 @@ const SELECT = {
   tipoEvidencia: true,
   evidenciaNota: true,
   estadoVerificacion: true,
+  motivoRechazo: true,
   porqueSeHace: true,
   estandarMinimo: true,
   siNoSeHace: true,

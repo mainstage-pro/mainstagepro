@@ -66,3 +66,12 @@ export async function requireAdmin() {
   if (!session || session.role !== "ADMIN") return null;
   return session;
 }
+
+// ── Bloque 4: permiso de verificación de tareas ──
+// Sólo Administración (Emiliano) y Dirección revisan/verifican evidencia.
+// ADMIN siempre puede (rol de dirección técnica).
+type SessionLike = { role?: string | null; area?: string | null } | null;
+export function puedeVerificar(session: SessionLike): boolean {
+  if (!session) return false;
+  return session.role === "ADMIN" || session.area === "ADMINISTRACION" || session.area === "DIRECCION";
+}
