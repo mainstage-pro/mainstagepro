@@ -100,6 +100,7 @@ export async function GET(req: NextRequest) {
     const searchWhere: Record<string, any> = {
       estado:   { not: "CANCELADA" },
       parentId: null,
+      ptTemplateId: null,
       OR: [
         { titulo:      { contains: term, mode: "insensitive" } },
         { descripcion: { contains: term, mode: "insensitive" } },
@@ -130,6 +131,12 @@ export async function GET(req: NextRequest) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: Record<string, any> = {};
+
+  // Exterminado del módulo de operaciones: las tareas generadas por el motor de
+  // "plan de trabajo" (tipoOrigen=PLAN con ptTemplateId) ya no se muestran aquí.
+  // Solo sobreviven los compromisos hechos a mano (ptTemplateId=null), incluidos
+  // los recurrentes de las áreas.
+  where.ptTemplateId = null;
 
   // Módulo unificado: se gestionan los 4 sistemas (TAREA | PLAN | PROYECTO | EVENTO).
   // Filtro opcional por tipoOrigen vía ?tipoOrigen=PLAN,EVENTO
@@ -225,16 +232,20 @@ export async function GET(req: NextRequest) {
     orderBy: [{ fecha: "asc" }, { orden: "asc" }, { createdAt: "asc" }],
   });
 
-  // ── Vista HOY: incluir compromisos recurrentes (PLAN u otros) que ocurren hoy ──
-  // Estos se guardan con fecha=null, así que la query por fecha no los captura.
-  // Traemos las tareas recurrentes del usuario y filtramos las que "tocan" hoy.
+  // ── Vista HOY: incluir compromisos recurrentes sin fecha que ocurren hoy ──
+  // Un compromiso recurrente se guarda con fecha=null; su patrón decide en qué días
+  // aparece. En cambio, cuando se completa se genera la siguiente ocurrencia CON
+  // fecha concreta (p.ej. el próximo miércoles): esa instancia ya la captura la query
+  // por fecha en su día, así que aquí se EXCLUYE (fecha:null) para no mostrarla hoy.
   if (vista === "hoy") {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const recWhere: Record<string, any> = {
-      recurrencia: { not: null },
-      estado:      { notIn: ["COMPLETADA", "CANCELADA"] },
-      parentId:    null,
-      OR:          [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }],
+      recurrencia:  { not: null },
+      fecha:        null,
+      ptTemplateId: null,
+      estado:       { notIn: ["COMPLETADA", "CANCELADA"] },
+      parentId:     null,
+      OR:           [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }],
     };
     if (proyectosPermitidos !== null) {
       recWhere.AND = [

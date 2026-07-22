@@ -46,10 +46,6 @@
       "schedule": "0 14 * * 1-5"
     },
     {
-      "path": "/api/cron/plan-trabajo-diario",
-      "schedule": "0 7 * * 1-5"
-    },
-    {
       "path": "/api/cron/sincronizar-estados-proyectos",
       "schedule": "0 6 * * *"
     },

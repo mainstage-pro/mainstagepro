@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generarTareasDelDia } from "@/lib/plan-trabajo/motor";
 
-// Vercel Cron: runs daily at 07:00 UTC = 01:00 AM America/Mexico_City
+// DESACTIVADO: el motor de "plan de trabajo" ya no genera tareas en el módulo de
+// operaciones. Este cron se retiró de vercel.json y queda como no-op para que,
+// aunque alguien lo dispare manualmente, no vuelva a inundar la bandeja.
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
@@ -10,9 +11,5 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  // Genera las Tarea (tipoOrigen="PLAN") del día. El vencimiento se calcula
-  // dinámicamente desde fechaVencimiento, ya no se marca estado VENCIDA.
-  const generadas = await generarTareasDelDia(new Date());
-
-  return NextResponse.json({ ok: true, generadas });
+  return NextResponse.json({ ok: true, generadas: 0, desactivado: true });
 }
