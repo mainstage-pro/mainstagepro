@@ -86,6 +86,23 @@ const PROJECT_COLORS = [
   "#B3985B","#e85d04","#e63946","#2ec4b6","#3d85c8","#9b5de5","#f15bb5","#00bbf9",
 ];
 
+// ── Fase 2: áreas de gestión operativa (sidebar seccionado + hub por área) ──
+// "Comercial" es sólo etiqueta visible; el código interno sigue siendo VENTAS.
+const GESTION_AREAS: { key: string; label: string; color: string }[] = [
+  { key: "DIRECCION",      label: "Dirección",      color: "#B3985B" },
+  { key: "ADMINISTRACION", label: "Administración", color: "#60a5fa" },
+  { key: "MARKETING",      label: "Marketing",      color: "#f472b6" },
+  { key: "VENTAS",         label: "Comercial",      color: "#34d399" },
+  { key: "PRODUCCION",     label: "Producción",     color: "#fb923c" },
+];
+// Sub-módulos del hub de cada área (los 4 sistemas del módulo unificado).
+const AREA_SUBMODULOS: { key: string; label: string; short: string }[] = [
+  { key: "TAREA",    label: "Tareas del área",      short: "Tareas" },
+  { key: "PLAN",     label: "Plan de trabajo",      short: "Plan" },
+  { key: "EVENTO",   label: "Proyectos de evento",  short: "Eventos" },
+  { key: "PROYECTO", label: "Proyecto de empresa",  short: "Empresa" },
+];
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function severityColor(s: string) {
@@ -105,6 +122,8 @@ export default function OperacionesPage() {
   const [sessionId, setSessionId]               = useState<string>("");
   const [sessionRole, setSessionRole]           = useState<string>("");
   const [sessionArea, setSessionArea]           = useState<string>("");
+  // Fase 2: sub-módulo activo dentro del hub de un área (TAREA|PLAN|EVENTO|PROYECTO)
+  const [areaSub, setAreaSub]                   = useState<string>("TAREA");
 
   const [capturaCounts, setCapturaCounts] = useState({ captura: 0, ideas: 0, iniciativas: 0 });
   const [vista, setVista]                             = useState<VistaKey>(() => {
@@ -1342,6 +1361,31 @@ export default function OperacionesPage() {
           />
         </nav>
 
+        {/* ── Áreas de gestión operativa (hub por área) ──────────────────── */}
+        {(() => {
+          const puedeVerTodo = sessionRole === "ADMIN" || sessionArea === "DIRECCION";
+          const areasVisibles = GESTION_AREAS.filter(a => puedeVerTodo || a.key === sessionArea);
+          if (areasVisibles.length === 0) return null;
+          return (
+            <div className="mt-4 shrink-0">
+              <div className="px-3 py-1.5">
+                <span className="text-xs text-[#3a3a3a] font-semibold tracking-widest uppercase select-none">Gestión operativa</span>
+              </div>
+              <nav className="px-2 space-y-0.5">
+                {areasVisibles.map(a => (
+                  <SideItem
+                    key={a.key}
+                    icon={<span className="w-2.5 h-2.5 rounded-full inline-block" style={{ backgroundColor: a.color }} />}
+                    label={a.label}
+                    isActive={vistaKey === `area-${a.key}`}
+                    onClick={() => { setVista({ tipo: "area", nombre: a.key }); setAreaSub("TAREA"); }}
+                  />
+                ))}
+              </nav>
+            </div>
+          );
+        })()}
+
         {/* ── Áreas section (carpetas y proyectos) ───────────────────────── */}
         <div className="mt-4 flex-1 min-h-0 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between px-3 py-1.5 shrink-0">
@@ -1974,22 +2018,56 @@ export default function OperacionesPage() {
             </div>
 
           ) : typeof vista === "object" && vista.tipo === "area" ? (
-            <div className="max-w-2xl mx-auto px-2 py-4 pb-24">
-              {tareasOrdenadas.length === 0 ? (
-                <EmptyState icon={<Building2 strokeWidth={1.5} className="w-9 h-9" />} title={`Sin tareas en ${AREA_LABELS[vista.nombre] ?? vista.nombre}`} sub="No hay tareas activas en esta área" />
-              ) : tareasOrdenadas.map(t => (
-                <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
-                  onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
-                  onDateChange={(id, val) => saveTarea(id, { fecha: val || null })}
-                  onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
-                  onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
-                  onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
-                  projects={proyectosNav}
-                  users={usuarios}
-                  showProject
-                />
-              ))}
-            </div>
+            (() => {
+              const areaColor = GESTION_AREAS.find(a => a.key === vista.nombre)?.color ?? "#B3985B";
+              const sub = AREA_SUBMODULOS.find(s => s.key === areaSub) ?? AREA_SUBMODULOS[0];
+              const subTareas = tareasOrdenadas.filter(t => (t.tipoOrigen ?? "TAREA") === areaSub);
+              const counts: Record<string, number> = { TAREA: 0, PLAN: 0, EVENTO: 0, PROYECTO: 0 };
+              for (const t of tareasOrdenadas) counts[t.tipoOrigen ?? "TAREA"] = (counts[t.tipoOrigen ?? "TAREA"] ?? 0) + 1;
+              return (
+                <div className="max-w-2xl mx-auto px-2 py-4 pb-24">
+                  {/* Tab bar de sub-módulos del hub de área */}
+                  <div className="flex items-center gap-1 mb-4 overflow-x-auto no-scrollbar border-b border-[#161616] pb-px">
+                    {AREA_SUBMODULOS.map(s => {
+                      const active = s.key === areaSub;
+                      return (
+                        <button
+                          key={s.key}
+                          onClick={() => setAreaSub(s.key)}
+                          className={`shrink-0 flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium border-b-2 -mb-px transition-colors ${active ? "text-white" : "text-[#666] border-transparent hover:text-[#999]"}`}
+                          style={active ? { borderColor: areaColor, color: "#fff" } : undefined}
+                        >
+                          <span className="hidden sm:inline">{s.label}</span>
+                          <span className="sm:hidden">{s.short}</span>
+                          {counts[s.key] > 0 && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-[#777]">{counts[s.key]}</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {subTareas.length === 0 ? (
+                    <EmptyState
+                      icon={<Building2 strokeWidth={1.5} className="w-9 h-9" />}
+                      title={`Sin ${sub.label.toLowerCase()} en ${AREA_LABELS[vista.nombre] ?? vista.nombre}`}
+                      sub="No hay registros activos en este sub-módulo"
+                    />
+                  ) : subTareas.map(t => (
+                    <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
+                      onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
+                      onDateChange={(id, val) => saveTarea(id, { fecha: val || null })}
+                      onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
+                      onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
+                      onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
+                      projects={proyectosNav}
+                      users={usuarios}
+                      showProject
+                    />
+                  ))}
+                </div>
+              );
+            })()
 
           ) : typeof vista === "string" ? (
             <div className="max-w-2xl mx-auto px-2 py-4 pb-24">
