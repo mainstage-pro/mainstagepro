@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generarInstanciasDelDia, marcarVencidasAnteriores } from "@/lib/plan-trabajo/motor";
+import { generarTareasDelDia } from "@/lib/plan-trabajo/motor";
 
 // Vercel Cron: runs daily at 07:00 UTC = 01:00 AM America/Mexico_City
 export const dynamic = "force-dynamic";
@@ -10,11 +10,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   }
 
-  // 1. Primero: marcar vencidas del día anterior
-  const vencidas = await marcarVencidasAnteriores(new Date());
+  // Genera las Tarea (tipoOrigen="PLAN") del día. El vencimiento se calcula
+  // dinámicamente desde fechaVencimiento, ya no se marca estado VENCIDA.
+  const generadas = await generarTareasDelDia(new Date());
 
-  // 2. Después: generar instancias del día actual
-  const generadas = await generarInstanciasDelDia(new Date());
-
-  return NextResponse.json({ ok: true, vencidas, generadas });
+  return NextResponse.json({ ok: true, generadas });
 }

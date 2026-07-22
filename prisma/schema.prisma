@@ -3376,6 +3376,8 @@ model PTTareaInstancia {
   completadaAt   DateTime?
   completadaPorId String?
   completadaPor  User?    @relation("PTInstanciaCompletadaPor", fields: [completadaPorId], references: [id], onDelete: SetNull)
+  // Capa aditiva: marca de migración una-sola-vez a Tarea (Bloque 2)
+  migradaATareaId String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -3386,6 +3388,7 @@ model PTTareaInstancia {
   @@index([responsableId, fechaVencimiento])
   @@index([templateId, fechaVencimiento])
   @@index([estado])
+  @@index([migradaATareaId])
   @@map("pt_tarea_instancias")
 }
 

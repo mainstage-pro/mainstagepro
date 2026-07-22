@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { generarInstanciasDelDia } from "@/lib/plan-trabajo/motor";
 
 // GET /api/plan-trabajo/instancias?fecha=2026-05-27&vista=dia|semana|todas
 export async function GET(req: NextRequest) {
@@ -119,46 +118,8 @@ export async function GET(req: NextRequest) {
     orderBy: { fechaVencimiento: "asc" },
   });
 
-  // Auto-generate if no instances for today (lazy generation)
-  if (instancias.length === 0 && vista === "dia") {
-    try {
-      await generarInstanciasDelDia(hoy);
-      // Re-fetch after generation
-      const instanciasNuevas = await prisma.pTTareaInstancia.findMany({
-        where: {
-          fechaVencimiento: { gte: fechaInicio, lte: fechaFin },
-          ...(areaFiltro ? { template: { areaId: areaFiltro } } : {}),
-          OR: [
-            { responsableId },
-            { template: { puestoDefault: 'Todo el equipo' } },
-          ],
-        },
-        include: {
-          template: { include: { area: true, subArea: true } },
-          responsable: { select: { id: true, name: true, email: true } },
-          subtareasInstancia: {
-            include: { subtarea: true },
-            orderBy: { subtarea: { orden: "asc" } },
-          },
-          comentarios: {
-            include: { autor: { select: { id: true, name: true } } },
-            orderBy: { createdAt: "asc" },
-            take: 20,
-          },
-          historial: {
-            include: { usuario: { select: { id: true, name: true } } },
-            orderBy: { createdAt: "desc" },
-            take: 10,
-          },
-        },
-        orderBy: { fechaVencimiento: "asc" },
-      });
-      return NextResponse.json({ instancias: instanciasNuevas, fecha: dateStr, generadas: true });
-    } catch {
-      // Motor failed — return empty
-    }
-  }
-
+  // Nota: la generación ya no ocurre aquí. El plan genera Tarea (tipoOrigen="PLAN")
+  // vía el motor. Este endpoint solo sirve lectura histórica de PTTareaInstancia.
   return NextResponse.json({ instancias, fecha: dateStr });
 }
 

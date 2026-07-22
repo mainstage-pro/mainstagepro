@@ -1,20 +1,14 @@
 /**
- * Motor de Recurrencia — Plan de Trabajo
- * Genera las instancias del día según la frecuencia definida en cada TareaTemplate.
+ * Motor de Recurrencia — Plan de Trabajo (Bloque 2: genera Tarea, no PTTareaInstancia)
+ * Genera las Tarea del día según la frecuencia definida en cada PTTareaTemplate.
+ * El modelo Tarea es el hub central de ejecución (tipoOrigen="PLAN", ptTemplateId).
  *
  * Zonas horarias: toda la lógica trabaja en America/Mexico_City.
  */
 
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/prisma";
 
 // ── Helpers de fecha en zona México ──────────────────────────────────────────
-
-function toMexicoDate(date: Date): Date {
-  const str = date.toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
-  return new Date(str + "T12:00:00.000-06:00");
-}
 
 function getMexicoDayOfWeek(date: Date): number {
   // 0=dom, 1=lun, 2=mar, 3=mie, 4=jue, 5=vie, 6=sab
@@ -46,7 +40,7 @@ function getWeekOfMonth(date: Date): number {
 function isLastWeekOfMonth(date: Date): boolean {
   const year = getMexicoYear(date);
   const month = getMexicoMonth(date);
-  const lastDay = new Date(year, month, 0).getDate(); // último día del mes
+  const lastDay = new Date(year, month, 0).getDate();
   const day = getMexicoDayOfMonth(date);
   return day > lastDay - 7;
 }
@@ -70,41 +64,32 @@ function debeGenerarse(template: {
   switch (template.frecuencia) {
     case "DIARIO":
       return isWorkDay(dow);
-
     case "SEMANAL":
       return template.diasSemana.includes(dow);
-
     case "QUINCENAL": {
-      // Cada dos semanas en los días indicados — basado en número de semana del año
       const startOfYear = new Date(getMexicoYear(fecha), 0, 1);
       const dayOfYear = Math.floor((fecha.getTime() - startOfYear.getTime()) / 86400000);
       const weekOfYear = Math.floor(dayOfYear / 7);
       return weekOfYear % 2 === 0 && template.diasSemana.includes(dow);
     }
-
     case "MENSUAL":
       if (template.diaDelMes !== null && template.diaDelMes !== undefined) {
         return dom === template.diaDelMes;
       }
       if (template.semanaDeMes && template.semanaDeMes.length > 0) {
-        const matchesSemana = template.semanaDeMes.some(s => {
-          if (s === 5) return isLastWeekOfMonth(fecha) && template.diasSemana.includes(dow)
-          return weekOfMonth === s && template.diasSemana.includes(dow)
-        })
-        return matchesSemana
+        return template.semanaDeMes.some((s) => {
+          if (s === 5) return isLastWeekOfMonth(fecha) && template.diasSemana.includes(dow);
+          return weekOfMonth === s && template.diasSemana.includes(dow);
+        });
       }
-      // Retrocompat: empty semanaDeMes → show on all matching weekdays
       return template.diasSemana.includes(dow);
-
     case "TRIMESTRAL": {
       const month = getMexicoMonth(fecha);
       const isFirstMonthOfQuarter = [1, 4, 7, 10].includes(month);
       return isFirstMonthOfQuarter && weekOfMonth === 1 && template.diasSemana.includes(dow);
     }
-
     case "POR_EVENTO":
-      return false; // Se genera manualmente al crear un proyecto
-
+      return false;
     default:
       return false;
   }
@@ -112,156 +97,214 @@ function debeGenerarse(template: {
 
 // ── Calcular la fecha/hora de vencimiento ────────────────────────────────────
 
-function calcularVencimiento(template: {
-  frecuencia: string;
-  diasSemana: number[];
-  horaLimite: string | null;
-}, fecha: Date): Date {
+function calcularVencimiento(template: { horaLimite: string | null }, fecha: Date): Date {
   const dateStr = fecha.toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
   const hora = template.horaLimite ?? "23:59";
-  // Construir fecha en México y convertir a UTC
   return new Date(`${dateStr}T${hora}:00.000-06:00`);
 }
 
-// ── Calcular la etiqueta del período ─────────────────────────────────────────
+// ── Ventana del período (idempotencia: 1 Tarea por template+usuario/período) ──
 
-function calcularPeriodoLabel(template: { frecuencia: string }, fecha: Date): string {
-  const opts: Intl.DateTimeFormatOptions = { timeZone: "America/Mexico_City" };
-  const dow = new Intl.DateTimeFormat("es-MX", { ...opts, weekday: "long" }).format(fecha);
-  const dom = getMexicoDayOfMonth(fecha);
-  const mes = new Intl.DateTimeFormat("es-MX", { ...opts, month: "long" }).format(fecha);
-  const year = getMexicoYear(fecha);
+function periodoWindow(frecuencia: string, fecha: Date): { inicio: Date; fin: Date } {
+  const tz = "America/Mexico_City";
+  const dateStr = fecha.toLocaleDateString("en-CA", { timeZone: tz });
+  const dayInicio = new Date(`${dateStr}T00:00:00.000-06:00`);
+  const dayFin = new Date(`${dateStr}T23:59:59.999-06:00`);
 
-  switch (template.frecuencia) {
-    case "DIARIO":
-      return `${dow.charAt(0).toUpperCase() + dow.slice(1)} ${dom} ${mes}`;
+  switch (frecuencia) {
     case "SEMANAL":
     case "QUINCENAL": {
-      // Número de semana del año
-      const start = new Date(year, 0, 1);
-      const week = Math.ceil(((fecha.getTime() - start.getTime()) / 86400000 + start.getDay() + 1) / 7);
-      return `Semana ${week} · ${year}`;
+      const dow = getMexicoDayOfWeek(fecha); // 0=dom
+      const offsetLunes = (dow + 6) % 7;
+      const lunes = new Date(dayInicio); lunes.setDate(dayInicio.getDate() - offsetLunes);
+      const domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6); domingo.setHours(23, 59, 59, 999);
+      return { inicio: lunes, fin: domingo };
     }
-    case "MENSUAL":
-      return `${mes.charAt(0).toUpperCase() + mes.slice(1)} ${year}`;
+    case "MENSUAL": {
+      const y = getMexicoYear(fecha), m = getMexicoMonth(fecha);
+      return {
+        inicio: new Date(`${y}-${String(m).padStart(2, "0")}-01T00:00:00.000-06:00`),
+        fin: new Date(new Date(y, m, 0, 23, 59, 59, 999)),
+      };
+    }
     case "TRIMESTRAL": {
-      const month = getMexicoMonth(fecha);
-      const q = Math.ceil(month / 3);
-      return `Q${q} ${year}`;
+      const y = getMexicoYear(fecha), m = getMexicoMonth(fecha);
+      const qStart = Math.floor((m - 1) / 3) * 3 + 1;
+      return {
+        inicio: new Date(`${y}-${String(qStart).padStart(2, "0")}-01T00:00:00.000-06:00`),
+        fin: new Date(new Date(y, qStart + 2, 0, 23, 59, 59, 999)),
+      };
     }
     default:
-      return `${dom} ${mes} ${year}`;
+      return { inicio: dayInicio, fin: dayFin };
   }
 }
 
-// ── Motor principal ───────────────────────────────────────────────────────────
+// ── Normalización de área (nombre PTArea → código de Tarea.area) ─────────────
 
-export async function generarInstanciasDelDia(fecha: Date = new Date()): Promise<{
-  generadas: number;
-  omitidas: number;
-  errores: number;
+function normalizeArea(nombre: string | null | undefined): string {
+  if (!nombre) return "GENERAL";
+  const n = nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+  if (n.includes("VENTA")) return "VENTAS";
+  if (n.includes("MARKETING")) return "MARKETING";
+  if (n.includes("PRODUCC")) return "PRODUCCION";
+  if (n.includes("ADMINISTRA")) return "ADMINISTRACION";
+  if (n.includes("DIRECC")) return "DIRECCION";
+  if (n.includes("RRHH") || n.includes("RECURSOS")) return "RRHH";
+  return "GENERAL";
+}
+
+function impactoAPrioridad(impacto: string | null | undefined): string {
+  switch (impacto) {
+    case "critico": return "URGENTE";
+    case "alto": return "ALTA";
+    default: return "MEDIA";
+  }
+}
+
+// Regla de evidencia al generar (orden estricto)
+function reglaEvidencia(template: { esAccionCampo: boolean; tipo: string; moduloDestino: string | null }): {
+  requiereEvidencia: boolean; tipoEvidencia: string;
+} {
+  if (template.esAccionCampo) return { requiereEvidencia: true, tipoEvidencia: "FOTO" };
+  if (template.tipo === "ENTREGABLE") return { requiereEvidencia: true, tipoEvidencia: "ARCHIVO" };
+  if (template.moduloDestino) return { requiereEvidencia: true, tipoEvidencia: "ENLACE_MODULO" };
+  return { requiereEvidencia: true, tipoEvidencia: "NOTA" };
+}
+
+type TemplateConArea = {
+  id: string; nombre: string; descripcion: string | null; tipo: string;
+  frecuencia: string; diasSemana: number[]; diaDelMes: number | null; semanaDeMes: number[];
+  horaLimite: string | null; responsableId: string | null; tipoAsignacion: string;
+  puestoDefault: string | null; areaAsignada: string | null; impacto: string;
+  esAccionCampo: boolean; moduloDestino: string | null; moduloTexto: string | null;
+  moduloDisponible: boolean; cuando: string | null; porqueSeHace: string | null;
+  estandarMinimo: string | null; siNoSeHace: string | null;
+  area: { nombre: string } | null;
+};
+
+// Resolver a qué usuarios se asigna (fan-out para area/todos)
+async function resolverAsignados(template: TemplateConArea, areaCode: string): Promise<(string | null)[]> {
+  const tipo = template.tipoAsignacion;
+  if (tipo === "todos") {
+    const users = await prisma.user.findMany({ where: { active: true }, select: { id: true } });
+    return users.length ? users.map((u) => u.id) : [null];
+  }
+  if (tipo === "area") {
+    const users = await prisma.user.findMany({ where: { active: true, area: areaCode }, select: { id: true } });
+    if (users.length) return users.map((u) => u.id);
+    return template.responsableId ? [template.responsableId] : [null];
+  }
+  // individual
+  return [template.responsableId ?? null];
+}
+
+// ── Motor principal: genera Tarea del día ────────────────────────────────────
+
+export async function generarTareasDelDia(fecha: Date = new Date()): Promise<{
+  generadas: number; subtareas: number; omitidas: number; errores: number;
 }> {
-  let generadas = 0;
-  let omitidas = 0;
-  let errores = 0;
+  let generadas = 0, subtareas = 0, omitidas = 0, errores = 0;
 
-  const templates = await prisma.pTTareaTemplate.findMany({
-    where: { activa: true }, // genera para TODOS — con o sin responsable asignado
-    include: { area: true, subArea: true },
-  });
+  const templates = (await prisma.pTTareaTemplate.findMany({
+    where: { activa: true },
+    include: { area: { select: { nombre: true } } },
+  })) as unknown as TemplateConArea[];
 
-  // Rango de hoy en México (00:00 a 23:59:59)
-  const dateStr = fecha.toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
-  const inicioDelDia = new Date(`${dateStr}T00:00:00.000-06:00`);
-  const finDelDia    = new Date(`${dateStr}T23:59:59.999-06:00`);
+  const tz = "America/Mexico_City";
+  const dateStr = fecha.toLocaleDateString("en-CA", { timeZone: tz });
+  const fechaTarea = new Date(`${dateStr}T12:00:00.000-06:00`);
 
   for (const template of templates) {
     try {
       if (!debeGenerarse(template, fecha)) continue;
 
-      // Verificar si ya existe una instancia para hoy
-      const existe = await prisma.pTTareaInstancia.findFirst({
-        where: {
-          templateId: template.id,
-          responsableId: template.responsableId!,
-          fechaVencimiento: { gte: inicioDelDia, lte: finDelDia },
-        },
-      });
-
-      if (existe) {
-        omitidas++;
-        continue;
-      }
-
+      const areaCode = normalizeArea(template.area?.nombre ?? template.areaAsignada);
+      const asignados = await resolverAsignados(template, areaCode);
+      const { inicio, fin } = periodoWindow(template.frecuencia, fecha);
       const fechaVencimiento = calcularVencimiento(template, fecha);
-      const periodoLabel = calcularPeriodoLabel(template, fecha);
+      const ev = reglaEvidencia(template);
+      const prioridad = impactoAPrioridad(template.impacto);
 
-      const instancia = await prisma.pTTareaInstancia.create({
-        data: {
-          templateId: template.id,
-          responsableId: template.responsableId ?? undefined,
-          fechaVencimiento,
-          estado: "PENDIENTE",
-          esEntregable: template.tipo === "ENTREGABLE",
-          periodoLabel,
-        },
-      });
-
-      // Crear instancias de subtareas si existen
-      const subtareas = await prisma.pTSubTarea.findMany({
+      const subActivas = await prisma.pTSubTarea.findMany({
         where: { templateId: template.id, activa: true },
+        orderBy: { orden: "asc" },
       });
-      if (subtareas.length > 0) {
-        await prisma.pTSubTareaInstancia.createMany({
-          data: subtareas.map(st => ({
-            subtareaId: st.id,
-            instanciaId: instancia.id,
-            completada: false,
-          })),
-        });
-      }
 
-      // Registrar en historial solo si hay responsable
-      if (template.responsableId) {
-        await prisma.pTHistorialEjecucion.create({
+      let generoAlguna = false;
+
+      for (const asignadoId of asignados) {
+        const existe = await prisma.tarea.findFirst({
+          where: {
+            ptTemplateId: template.id,
+            parentId: null,
+            asignadoAId: asignadoId ?? null,
+            fecha: { gte: inicio, lte: fin },
+          },
+          select: { id: true },
+        });
+        if (existe) { omitidas++; continue; }
+
+        const tarea = await prisma.tarea.create({
           data: {
-            instanciaId: instancia.id,
-            usuarioId: template.responsableId,
-            accion: "CREADA",
-            detalles: JSON.stringify({ periodoLabel, fechaVencimiento }),
+            titulo: template.nombre,
+            descripcion: template.descripcion ?? undefined,
+            prioridad,
+            area: areaCode,
+            estado: "PENDIENTE",
+            tipoOrigen: "PLAN",
+            ptTemplateId: template.id,
+            asignadoAId: asignadoId ?? undefined,
+            fecha: fechaTarea,
+            fechaVencimiento,
+            cuando: template.cuando ?? undefined,
+            porqueSeHace: template.porqueSeHace ?? undefined,
+            estandarMinimo: template.estandarMinimo ?? undefined,
+            siNoSeHace: template.siNoSeHace ?? undefined,
+            moduloDestino: template.moduloDestino ?? undefined,
+            moduloTexto: template.moduloTexto ?? undefined,
+            moduloDisponible: template.moduloDisponible,
+            esAccionCampo: template.esAccionCampo,
+            requiereEvidencia: ev.requiereEvidencia,
+            tipoEvidencia: ev.tipoEvidencia,
           },
         });
+        generadas++;
+        generoAlguna = true;
+
+        if (subActivas.length > 0) {
+          await prisma.tarea.createMany({
+            data: subActivas.map((st, i) => ({
+              titulo: st.nombre,
+              prioridad,
+              area: areaCode,
+              estado: "PENDIENTE",
+              tipoOrigen: "PLAN",
+              ptTemplateId: template.id,
+              parentId: tarea.id,
+              asignadoAId: asignadoId ?? undefined,
+              fecha: fechaTarea,
+              fechaVencimiento,
+              orden: i,
+              requiereEvidencia: false,
+            })),
+          });
+          subtareas += subActivas.length;
+        }
       }
 
-      generadas++;
+      if (generoAlguna) {
+        await prisma.pTTareaTemplate.update({
+          where: { id: template.id },
+          data: { ultimaTareaGeneradaAt: new Date() },
+        });
+      }
     } catch (err) {
       console.error(`[motor] Error en template ${template.id}:`, err);
       errores++;
     }
   }
 
-  console.log(`[motor] ${dateStr}: ${generadas} generadas, ${omitidas} ya existían, ${errores} errores`);
-  return { generadas, omitidas, errores };
-}
-
-// ── Sweep de tareas vencidas ──────────────────────────────────────────────────
-/**
- * Marca como VENCIDA todas las instancias PENDIENTE o EN_PROGRESO
- * cuya fechaVencimiento es anterior al inicio del día actual (México).
- * Debe ejecutarse ANTES de generarInstanciasDelDia en el cron.
- */
-export async function marcarVencidasAnteriores(fecha: Date = new Date()): Promise<{ vencidas: number }> {
-  const dateStr = fecha.toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
-  const inicioDeHoy = new Date(`${dateStr}T00:00:00.000-06:00`);
-
-  const result = await prisma.pTTareaInstancia.updateMany({
-    where: {
-      estado: { in: ["PENDIENTE", "EN_PROGRESO"] },
-      fechaVencimiento: { lt: inicioDeHoy },
-    },
-    data: { estado: "VENCIDA" },
-  });
-
-  console.log(`[motor] sweep vencidas: ${result.count} instancias marcadas como VENCIDA`);
-  return { vencidas: result.count };
+  console.log(`[motor] ${dateStr}: ${generadas} tareas, ${subtareas} subtareas, ${omitidas} ya existían, ${errores} errores`);
+  return { generadas, subtareas, omitidas, errores };
 }
