@@ -8,6 +8,7 @@ import { logoBase64, logoBase64Dark, fmtFecha } from "@/components/pdf/PdfShared
 import type { EvalPostEventoData } from "@/lib/evaluacion-post-evento";
 import React from "react";
 import path from "path";
+import sharp from "sharp";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -66,15 +67,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     .filter((f) => f.tipo === "imagen" && typeof f.url === "string" && f.url.startsWith("http"))
     .map((f) => f.url);
 
-  // react-pdf no descarga imágenes remotas de forma fiable en el server (fallan
-  // en silencio). Las resolvemos a base64 antes de construir el documento.
+  // react-pdf no descarga imágenes remotas de forma fiable y solo decodifica
+  // JPEG/PNG. Las fotos suelen subirse como WebP/HEIC (el navegador las muestra
+  // pero react-pdf no): las bajamos y normalizamos a JPEG con sharp.
   async function resolveImg(url: string): Promise<string | null> {
     try {
       const res = await fetch(url);
       if (!res.ok) return null;
-      const buf = Buffer.from(await res.arrayBuffer());
-      const mime = res.headers.get("content-type") ?? "image/jpeg";
-      return `data:${mime};base64,${buf.toString("base64")}`;
+      const input = Buffer.from(await res.arrayBuffer());
+      const jpeg = await sharp(input)
+        .rotate()
+        .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
+        .jpeg({ quality: 78 })
+        .toBuffer();
+      return `data:image/jpeg;base64,${jpeg.toString("base64")}`;
     } catch { return null; }
   }
   const fotos = (await Promise.all(fotosUrls.map(resolveImg))).filter(
