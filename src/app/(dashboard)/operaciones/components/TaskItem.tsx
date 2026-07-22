@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { formatearRecurrencia } from "@/lib/recurrencia";
 import DatePicker from "@/components/ui/DatePicker";
 import { BadgeDias } from "@/components/ui/BadgeDias";
-import { ClipboardList, ExternalLink, AlertTriangle } from "lucide-react";
+import { ClipboardList, ExternalLink, AlertTriangle, Camera, Paperclip } from "lucide-react";
 
 export interface TareaItem {
   id: string;
@@ -24,10 +24,21 @@ export interface TareaItem {
   moduloDisponible?: boolean | null;
   estadoVerificacion?: string | null;
   motivoRechazo?: string | null;
+  tipoOrigen?: string | null;
+  requiereEvidencia?: boolean | null;
+  tipoEvidencia?: string | null;
   _count: { subtareas: number; comentarios: number; archivos: number };
   createdAt: string;
   fechaCompletada?: string | null;
 }
+
+// ── Bloque 5: tag de origen (chip de color en fila + modal) ──
+const TIPO_ORIGEN: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  TAREA:    { label: "Tarea",    color: "#9ca3af", bg: "rgba(107,114,128,0.12)", border: "rgba(107,114,128,0.30)" },
+  PLAN:     { label: "Plan",     color: "#B3985B", bg: "rgba(179,152,91,0.12)",  border: "rgba(179,152,91,0.35)" },
+  PROYECTO: { label: "Proyecto", color: "#818cf8", bg: "rgba(99,102,241,0.14)",  border: "rgba(99,102,241,0.35)" },
+  EVENTO:   { label: "Evento",   color: "#60a5fa", bg: "rgba(59,130,246,0.14)",  border: "rgba(59,130,246,0.35)" },
+};
 
 const PRIO: Record<string, { ring: string; dot: string; glow: string; fill: string; dotSize: string }> = {
   URGENTE: { ring: "border-red-500",    dot: "bg-red-500",    glow: "shadow-red-500/50",    fill: "bg-red-500/20",    dotSize: "w-2 h-2" },
@@ -201,6 +212,16 @@ export default function TaskItem({
   const prio     = PRIO[tarea.prioridad] ?? PRIO.BAJA;
   const fecha = tarea.fecha ? formatFecha(tarea.fecha) : null;
   const showDrop = isDragOver;
+  const tipoTag  = tarea.tipoOrigen ? (TIPO_ORIGEN[tarea.tipoOrigen] ?? null) : null;
+  // Punto de estado de verificación: ámbar=pendiente, verde=verificada, rojo=rechazada
+  const verifDot = (() => {
+    switch (tarea.estadoVerificacion) {
+      case "PENDIENTE_VERIFICACION": return { color: "#f59e0b", title: "Evidencia pendiente de verificación" };
+      case "VERIFICADA":             return { color: "#22c55e", title: "Evidencia verificada" };
+      case "RECHAZADA":              return { color: "#ef4444", title: "Evidencia rechazada" };
+      default:                        return null;
+    }
+  })();
 
   const recurrenciaDisplay = (() => {
     if (!tarea.recurrencia) return null;
@@ -240,7 +261,7 @@ export default function TaskItem({
       role="button" tabIndex={0} aria-selected={isSelected}
       draggable={isDraggable}
       data-task-id={isDraggable ? tarea.id : undefined}
-      className={`group relative flex items-start gap-3 px-3 py-2 rounded-xl cursor-pointer transition-all duration-100 outline-none select-none ${
+      className={`group relative flex items-start gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-100 outline-none select-none ${
         isBeingDragged ? "opacity-30 scale-[0.98]" : ""
       } ${
         dropIndicatorSubtask
@@ -311,16 +332,16 @@ export default function TaskItem({
       {multiSelected ? (
         <div
           onClick={e => { e.stopPropagation(); onMultiSelect?.(tarea.id); }}
-          className="mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full bg-[#B3985B] border-2 border-[#B3985B] flex items-center justify-center cursor-pointer"
+          className="mt-[2px] w-5 h-5 shrink-0 rounded-full bg-[#B3985B] border-2 border-[#B3985B] flex items-center justify-center cursor-pointer"
         >
-          <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="black" strokeWidth="2.5">
+          <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="black" strokeWidth="2.5">
             <path d="M2 6l3 3 5-5"/>
           </svg>
         </div>
       ) : (
         <button type="button"
           onClick={handleComplete}
-          className={`mt-[3px] w-[17px] h-[17px] shrink-0 rounded-full border-2 flex items-center justify-center transition-all duration-150 ${
+          className={`mt-[2px] w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-all duration-150 ${
             isCompleted  ? "border-[#333] bg-[#1f1f1f]"
             : completing ? `${prio.ring} ${prio.fill} animate-pulse`
             : `${prio.ring} ${prio.fill}
@@ -330,7 +351,7 @@ export default function TaskItem({
           aria-label="Completar"
         >
           {isCompleted && (
-            <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="#555" strokeWidth="2.5">
+            <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="#555" strokeWidth="2.5">
               <path d="M2 6l3 3 5-5"/>
             </svg>
           )}
@@ -342,7 +363,7 @@ export default function TaskItem({
       )}
 
       <div className="flex-1 min-w-0">
-        <p className={`text-[15px] leading-snug transition-colors ${isCompleted ? "line-through text-[#333]" : "text-[#d0d0d0]"}`}>
+        <p className={`text-[15px] font-medium leading-snug transition-colors ${isCompleted ? "line-through text-[#333]" : "text-[#f0f0f0]"}`}>
           {tarea.titulo}
         </p>
 
@@ -364,6 +385,13 @@ export default function TaskItem({
 
         {(!isCompleted || showProject) && (
           <div className="flex flex-wrap items-center gap-1.5 mt-1">
+            {/* ── Bloque 5: tag de tipoOrigen ── */}
+            {tipoTag && (
+              <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md select-none shrink-0"
+                style={{ color: tipoTag.color, backgroundColor: tipoTag.bg, border: `1px solid ${tipoTag.border}` }}>
+                {tipoTag.label}
+              </span>
+            )}
             {/* Priority chip — only for URGENTE and ALTA */}
             {!isCompleted && tarea.prioridad === "URGENTE" && (
               <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-red-400 bg-red-950/60 border border-red-500/30 px-1.5 py-0.5 rounded-md select-none shrink-0">
@@ -455,6 +483,23 @@ export default function TaskItem({
                 <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-[12px] text-white whitespace-nowrap opacity-0 group-hover/av:opacity-100 transition-opacity duration-150 pointer-events-none z-50 shadow-xl">
                   {tarea.asignadoA.name}
                 </span>
+              </span>
+            )}
+
+            {/* ── Bloque 5: indicador de evidencia requerida ── */}
+            {tarea.requiereEvidencia && !isCompleted && (
+              <span title={tarea.tipoEvidencia === "FOTO" ? "Requiere foto" : tarea.tipoEvidencia === "ARCHIVO" ? "Requiere archivo" : "Requiere evidencia"}
+                className="inline-flex items-center text-[#B3985B]/60 shrink-0">
+                {tarea.tipoEvidencia === "FOTO"
+                  ? <Camera strokeWidth={2} className="w-3.5 h-3.5" />
+                  : <Paperclip strokeWidth={2} className="w-3.5 h-3.5" />}
+              </span>
+            )}
+
+            {/* ── Bloque 5: punto de estado de verificación ── */}
+            {verifDot && !isCompleted && (
+              <span title={verifDot.title} className="inline-flex items-center shrink-0">
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: verifDot.color, boxShadow: `0 0 5px ${verifDot.color}66` }} />
               </span>
             )}
 

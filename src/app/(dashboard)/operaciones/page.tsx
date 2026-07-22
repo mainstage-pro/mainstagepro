@@ -62,16 +62,26 @@ interface ProyViewOpts {
   sortBy:        "none" | "prioridad" | "fecha" | "nombre" | "creacion";
   groupBy:       "none" | "prioridad";
   filterPrio:    string[];
+  filterTipo:    string[];
 }
-const PROY_VIEW_DEFAULT: ProyViewOpts = { showCompleted: false, sortBy: "none", groupBy: "none", filterPrio: [] };
+const PROY_VIEW_DEFAULT: ProyViewOpts = { showCompleted: false, sortBy: "none", groupBy: "none", filterPrio: [], filterTipo: [] };
 
 interface VistaOpts {
   showCompleted: boolean;
   sortBy:   "none" | "prioridad" | "fecha" | "nombre" | "creacion";
   groupBy:  "none" | "proyecto" | "prioridad" | "fecha";
   filterPrio: string[];
+  filterTipo: string[];
 }
-const VISTA_DEFAULT: VistaOpts = { showCompleted: false, sortBy: "none", groupBy: "none", filterPrio: [] };
+const VISTA_DEFAULT: VistaOpts = { showCompleted: false, sortBy: "none", groupBy: "none", filterPrio: [], filterTipo: [] };
+
+// ── Bloque 5: opciones de tag de origen para filtro ──
+const TIPO_ORIGEN_OPTS: { key: string; label: string; color: string }[] = [
+  { key: "TAREA",    label: "Tarea",    color: "#9ca3af" },
+  { key: "PLAN",     label: "Plan",     color: "#B3985B" },
+  { key: "PROYECTO", label: "Proyecto", color: "#818cf8" },
+  { key: "EVENTO",   label: "Evento",   color: "#60a5fa" },
+];
 const PRIO_ORDER: Record<string, number> = { URGENTE: 0, ALTA: 1, MEDIA: 2, BAJA: 3 };
 const PROJECT_COLORS = [
   "#B3985B","#e85d04","#e63946","#2ec4b6","#3d85c8","#9b5de5","#f15bb5","#00bbf9",
@@ -396,6 +406,7 @@ export default function OperacionesPage() {
     if (!proyViewOpts.showCompleted) r = r.filter(t => t.estado !== "COMPLETADA");
     if (filterUserProy) r = r.filter(t => t.asignadoA?.id === filterUserProy);
     if (proyViewOpts.filterPrio.length > 0) r = r.filter(t => proyViewOpts.filterPrio.includes(t.prioridad));
+    if (proyViewOpts.filterTipo.length > 0) r = r.filter(t => proyViewOpts.filterTipo.includes(t.tipoOrigen ?? "TAREA"));
     if (proyViewOpts.sortBy === "prioridad") r = [...r].sort((a, b) => (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3));
     // FIX: Ordenar por fecha de creación
     if (proyViewOpts.sortBy === "creacion") r = [...r].sort((a, b) => {
@@ -431,8 +442,8 @@ export default function OperacionesPage() {
     return [{ label: "", items: tareas }];
   }
 
-  const hasActiveProyOpts  = proyViewOpts.filterPrio.length > 0 || proyViewOpts.sortBy !== "none" || proyViewOpts.groupBy !== "none" || proyViewOpts.showCompleted || !!filterUserProy;
-  const hasActiveVistaOpts = vistaOpts.filterPrio.length > 0 || vistaOpts.sortBy !== "none" || vistaOpts.groupBy !== "none" || vistaOpts.showCompleted;
+  const hasActiveProyOpts  = proyViewOpts.filterPrio.length > 0 || proyViewOpts.filterTipo.length > 0 || proyViewOpts.sortBy !== "none" || proyViewOpts.groupBy !== "none" || proyViewOpts.showCompleted || !!filterUserProy;
+  const hasActiveVistaOpts = vistaOpts.filterPrio.length > 0 || vistaOpts.filterTipo.length > 0 || vistaOpts.sortBy !== "none" || vistaOpts.groupBy !== "none" || vistaOpts.showCompleted;
 
   const ADD_MSGS = [
     "Tarea registrada",
@@ -981,6 +992,7 @@ export default function OperacionesPage() {
 
     let base = applyBusqueda(vistaOpts.showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA"));
     if (vistaOpts.filterPrio.length > 0) base = base.filter(t => vistaOpts.filterPrio.includes(t.prioridad));
+    if (vistaOpts.filterTipo.length > 0) base = base.filter(t => vistaOpts.filterTipo.includes(t.tipoOrigen ?? "TAREA"));
 
     function applySort(arr: TareaItem[]): TareaItem[] {
       if (vistaOpts.sortBy === "prioridad") return [...arr].sort((a, b) => (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3));
@@ -1040,6 +1052,7 @@ export default function OperacionesPage() {
   const tareasOrdenadas = useMemo(() => {
     let base = applyBusqueda(vistaOpts.showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA"));
     if (vistaOpts.filterPrio.length > 0) base = base.filter(t => vistaOpts.filterPrio.includes(t.prioridad));
+    if (vistaOpts.filterTipo.length > 0) base = base.filter(t => vistaOpts.filterTipo.includes(t.tipoOrigen ?? "TAREA"));
     if (vistaOpts.sortBy === "prioridad") return [...base].sort((a, b) => (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3));
     if (vistaOpts.sortBy === "fecha")     return [...base].sort((a, b) => { if (!a.fecha) return 1; if (!b.fecha) return -1; return a.fecha.localeCompare(b.fecha); });
     if (vistaOpts.sortBy === "nombre")    return [...base].sort((a, b) => a.titulo.localeCompare(b.titulo, "es"));
@@ -1554,6 +1567,26 @@ export default function OperacionesPage() {
                     </div>
                   </div>
 
+                  {/* Filtrar por tipo (tipoOrigen) */}
+                  <div className="px-4 py-3 border-t border-[#161616]">
+                    <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-2">Filtrar por tipo</p>
+                    <div className="flex gap-1 flex-wrap">
+                      {TIPO_ORIGEN_OPTS.map(({ key, label, color }) => {
+                        const active = vistaOpts.filterTipo.includes(key);
+                        return (
+                          <button key={key}
+                            onClick={() => setVistaOpts(o => ({ ...o, filterTipo: active ? o.filterTipo.filter(p => p !== key) : [...o.filterTipo, key] }))}
+                            className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-all border"
+                            style={{ borderColor: active ? color + "60" : "#1e1e1e", backgroundColor: active ? color + "18" : "transparent", color: active ? color : "#555" }}
+                          >
+                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   {/* Reset */}
                   {hasActiveVistaOpts && (
                     <div className="px-4 pb-3">
@@ -1706,6 +1739,26 @@ export default function OperacionesPage() {
                             <svg width="9" height="9" viewBox="0 0 24 24" fill={active ? color : "none"} stroke={color} strokeWidth="2">
                               <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/>
                             </svg>
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Filtrar por tipo (tipoOrigen) */}
+                  <div className="px-4 py-3 border-t border-[#161616]">
+                    <p className="text-[10px] text-[#555] uppercase tracking-widest font-semibold mb-2">Filtrar por tipo</p>
+                    <div className="flex gap-1 flex-wrap">
+                      {TIPO_ORIGEN_OPTS.map(({ key, label, color }) => {
+                        const active = proyViewOpts.filterTipo.includes(key);
+                        return (
+                          <button key={key}
+                            onClick={() => setProyViewOpts(o => ({ ...o, filterTipo: active ? o.filterTipo.filter(p => p !== key) : [...o.filterTipo, key] }))}
+                            className="flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-all border"
+                            style={{ borderColor: active ? color + "60" : "#1e1e1e", backgroundColor: active ? color + "18" : "transparent", color: active ? color : "#555" }}
+                          >
+                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
                             {label}
                           </button>
                         );
@@ -3110,7 +3163,7 @@ function SectionBlock({
 
       {/* Section header */}
       <div
-        className={`flex items-center gap-1.5 group cursor-pointer mb-1 px-2 py-1 rounded-lg transition-all ${
+        className={`flex items-center gap-2 group cursor-pointer mb-1 mt-1 px-2 py-2 rounded-lg border-b border-[#161616] transition-all ${
           headerOver && !isCrossDrag ? "bg-[#B3985B]/10 ring-1 ring-[#B3985B]/40" : ""
         }`}
         onMouseEnter={() => setHov(true)} onMouseLeave={() => setHov(false)}
@@ -3123,7 +3176,7 @@ function SectionBlock({
         onDrop={e => { e.preventDefault(); e.stopPropagation(); setHeaderOver(false); onDropSection?.(); }}
       >
         {/* Collapse chevron */}
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={headerOver ? "#B3985B" : "#444"} strokeWidth="2"
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={headerOver ? "#B3985B" : "#555"} strokeWidth="2.5"
           style={{ transform: seccion.colapsada ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s", flexShrink: 0 }}>
           <polyline points="6 9 12 15 18 9"/>
         </svg>
@@ -3170,11 +3223,11 @@ function SectionBlock({
               if (e.key === "Escape") { setEditando(false); setEditNombre(seccion.nombre); }
             }}
             onClick={e => e.stopPropagation()}
-            className="text-xs font-semibold text-white bg-[#1a1a1a] border border-[#B3985B]/50 rounded px-2 py-0.5 outline-none w-40 max-w-full"
+            className="text-sm font-semibold text-white bg-[#1a1a1a] border border-[#B3985B]/50 rounded px-2 py-0.5 outline-none w-40 max-w-full"
           />
         ) : (
-          <span className={`text-xs font-semibold transition-colors ${
-            headerOver ? "text-[#B3985B]" : "text-[#666] group-hover:text-white"
+          <span className={`text-[15px] font-semibold transition-colors ${
+            headerOver ? "text-[#B3985B]" : "text-[#d0d0d0] group-hover:text-white"
           }`}>
             {seccion.nombre}
           </span>
@@ -3183,7 +3236,7 @@ function SectionBlock({
         {!headerOver && !editando && (() => {
           const visible = viewFilter ? viewFilter(seccion.tareas) : seccion.tareas;
           return visible.length > 0
-            ? <span className="text-[11px] text-[#333]">({visible.length})</span>
+            ? <span className="min-w-[20px] h-5 px-1.5 inline-flex items-center justify-center rounded-full bg-[#161616] text-[11px] font-semibold text-[#666]">{visible.length}</span>
             : null;
         })()}
 

@@ -322,38 +322,56 @@ export default function QuickAdd({
 
       {/* ── Title textarea (auto-resize, Enter submits, Shift+Enter = newline) ── */}
       <div className="px-4 pt-3.5 pb-1">
-        <textarea
-          ref={titleRef}
-          autoFocus
-          value={titulo}
-          rows={1}
-          onChange={e => setTitulo(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
-            if (e.key === "Escape") reset();
-            if (e.key === "Tab" && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-              e.preventDefault();
-              descRef.current?.focus();
-            }
-          }}
-          onPaste={e => {
-            // Read raw clipboard text to detect lines (works even if textarea collapses newlines)
-            const text = e.clipboardData.getData("text");
-            const lines = text
-              .split(/\r?\n|\r|\u2028|\u2029/)
-              .map(cleanLine)
-              .filter(l => l.length > 0);
-            if (lines.length >= 2) {
-              // Don't prevent default — let text paste normally into textarea
-              // Just store the parsed lines for the banner
-              setPastedLines(lines);
-            } else {
-              setPastedLines(null);
-            }
-          }}
-          placeholder={placeholder}
-          className="w-full bg-transparent text-[16px] text-white placeholder-[#252525] focus:outline-none leading-snug resize-none"
-        />
+        <div className="relative">
+          {/* Inline highlight overlay (mirror) — subraya el token detectado estilo Todoist */}
+          {deteccion?.textoDetectado && (() => {
+            const tok = deteccion.textoDetectado!;
+            const idx = titulo.toLowerCase().indexOf(tok.toLowerCase());
+            if (idx < 0) return null;
+            return (
+              <div aria-hidden
+                className="absolute inset-0 pointer-events-none text-[16px] leading-snug whitespace-pre-wrap break-words text-transparent select-none">
+                {titulo.slice(0, idx)}
+                <span className="rounded-[3px] bg-[#B3985B]/15 box-decoration-clone underline decoration-[#B3985B] decoration-2 underline-offset-2">
+                  {titulo.slice(idx, idx + tok.length)}
+                </span>
+                {titulo.slice(idx + tok.length)}
+              </div>
+            );
+          })()}
+          <textarea
+            ref={titleRef}
+            autoFocus
+            value={titulo}
+            rows={1}
+            onChange={e => setTitulo(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
+              if (e.key === "Escape") reset();
+              if (e.key === "Tab" && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                descRef.current?.focus();
+              }
+            }}
+            onPaste={e => {
+              // Read raw clipboard text to detect lines (works even if textarea collapses newlines)
+              const text = e.clipboardData.getData("text");
+              const lines = text
+                .split(/\r?\n|\r|\u2028|\u2029/)
+                .map(cleanLine)
+                .filter(l => l.length > 0);
+              if (lines.length >= 2) {
+                // Don't prevent default — let text paste normally into textarea
+                // Just store the parsed lines for the banner
+                setPastedLines(lines);
+              } else {
+                setPastedLines(null);
+              }
+            }}
+            placeholder={placeholder}
+            className="relative w-full bg-transparent text-[16px] text-white placeholder-[#252525] focus:outline-none leading-snug resize-none"
+          />
+        </div>
       </div>
 
       {/* ── Description input ────────────────────────────────────────────── */}

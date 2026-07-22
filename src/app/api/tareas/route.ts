@@ -43,6 +43,10 @@ const SELECT = {
   // ── Bloque 4: estado de verificación (distintivo RECHAZADA) ──
   estadoVerificacion: true,
   motivoRechazo: true,
+  // ── Bloque 5: tipoOrigen (tag) + indicadores de evidencia ──
+  tipoOrigen: true,
+  requiereEvidencia: true,
+  tipoEvidencia: true,
   asignadoA:     { select: { id: true, name: true } },
   creadoPor:     { select: { id: true, name: true } },
   iniciativa:    { select: { id: true, nombre: true, color: true } },

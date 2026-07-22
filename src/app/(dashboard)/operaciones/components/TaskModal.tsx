@@ -8,6 +8,14 @@ import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { Link2, Camera, Paperclip, FileText, ExternalLink, ChevronDown, ChevronRight, ShieldCheck, ClipboardCheck, AlertTriangle } from "lucide-react";
 
+// ── Bloque 5: tag de origen (mismo esquema que TaskItem) ──
+const TIPO_ORIGEN: Record<string, { label: string; color: string; bg: string; border: string }> = {
+  TAREA:    { label: "Tarea",    color: "#9ca3af", bg: "rgba(107,114,128,0.12)", border: "rgba(107,114,128,0.30)" },
+  PLAN:     { label: "Plan",     color: "#B3985B", bg: "rgba(179,152,91,0.12)",  border: "rgba(179,152,91,0.35)" },
+  PROYECTO: { label: "Proyecto", color: "#818cf8", bg: "rgba(99,102,241,0.14)",  border: "rgba(99,102,241,0.35)" },
+  EVENTO:   { label: "Evento",   color: "#60a5fa", bg: "rgba(59,130,246,0.14)",  border: "rgba(59,130,246,0.35)" },
+};
+
 interface Usuario { id: string; name: string }
 interface Proyecto { id: string; nombre: string; color: string | null }
 interface Iniciativa { id: string; nombre: string; color: string | null }
@@ -431,6 +439,18 @@ export default function TaskModal({
 
             {/* ── LEFT COLUMN ─────────────────────────────────────────────── */}
             <div className="md:overflow-y-auto p-5 space-y-4 border-b md:border-b-0 md:border-r border-[#141414]">
+
+              {/* ── Bloque 5: tag de tipoOrigen ── */}
+              {tarea.tipoOrigen && TIPO_ORIGEN[tarea.tipoOrigen] && (
+                <span className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-md select-none"
+                  style={{
+                    color: TIPO_ORIGEN[tarea.tipoOrigen].color,
+                    backgroundColor: TIPO_ORIGEN[tarea.tipoOrigen].bg,
+                    border: `1px solid ${TIPO_ORIGEN[tarea.tipoOrigen].border}`,
+                  }}>
+                  {TIPO_ORIGEN[tarea.tipoOrigen].label}
+                </span>
+              )}
 
               {/* Title */}
               <textarea
