@@ -499,7 +499,12 @@ export default function OperacionesPage() {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ estado: "COMPLETADA" }),
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      // Gate de evidencia (422) u otro error: avisar y no marcar completada
+      toast.error(d.error ?? "No se pudo completar la tarea");
+      return;
+    }
     const { nextTarea } = await res.json();
 
     // Mark completed in state (keep visible for undo window)

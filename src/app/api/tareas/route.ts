@@ -36,6 +36,10 @@ const SELECT = {
   carpetaId: true,
   juntaOrigenId: true,
   fechaCompletada: true,
+  // ── Bloque 3: acceso directo a módulo desde la lista ──
+  moduloDestino: true,
+  moduloTexto: true,
+  moduloDisponible: true,
   asignadoA:     { select: { id: true, name: true } },
   creadoPor:     { select: { id: true, name: true } },
   iniciativa:    { select: { id: true, nombre: true, color: true } },

@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { formatearRecurrencia } from "@/lib/recurrencia";
 import DatePicker from "@/components/ui/DatePicker";
 import { BadgeDias } from "@/components/ui/BadgeDias";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, ExternalLink } from "lucide-react";
 
 export interface TareaItem {
   id: string;
@@ -19,6 +19,9 @@ export interface TareaItem {
   asignadoA: { id: string; name: string } | null;
   juntaOrigenId?: string | null;
   juntaOrigen?: { id: string; area: string; fecha: string } | null;
+  moduloDestino?: string | null;
+  moduloTexto?: string | null;
+  moduloDisponible?: boolean | null;
   _count: { subtareas: number; comentarios: number; archivos: number };
   createdAt: string;
   fechaCompletada?: string | null;
@@ -379,6 +382,15 @@ export default function TaskItem({
                   {" · "}
                   {new Date(tarea.juntaOrigen.fecha).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
                 </span>
+              </a>
+            )}
+
+            {tarea.moduloDestino && tarea.moduloDisponible && (
+              <a href={tarea.moduloDestino} onClick={e => e.stopPropagation()}
+                title={tarea.moduloTexto || "Abrir módulo"}
+                className="inline-flex items-center gap-1 text-[12px] text-[#B3985B]/70 hover:text-[#B3985B] bg-[#B3985B]/5 hover:bg-[#B3985B]/10 border border-[#B3985B]/20 px-1.5 py-0.5 rounded-md transition-colors">
+                <ExternalLink strokeWidth={2} className="w-3 h-3" />
+                <span className="max-w-[120px] truncate">{tarea.moduloTexto || "Abrir módulo"}</span>
               </a>
             )}
 

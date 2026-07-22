@@ -23,6 +23,21 @@ const SELECT = {
   updatedAt: true,
   asignadoAId: true,
   creadoPorId: true,
+  // ── Capa aditiva (Bloque 3): evidencia, verificación y ficha del estándar ──
+  tipoOrigen: true,
+  requiereEvidencia: true,
+  tipoEvidencia: true,
+  evidenciaNota: true,
+  estadoVerificacion: true,
+  porqueSeHace: true,
+  estandarMinimo: true,
+  siNoSeHace: true,
+  cuando: true,
+  moduloDestino: true,
+  moduloTexto: true,
+  moduloDisponible: true,
+  esAccionCampo: true,
+  ptTemplateId: true,
   iniciativaId: true,
   proyectoTareaId: true,
   seccionId: true,
@@ -87,6 +102,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     "titulo", "descripcion", "prioridad", "area", "estado",
     "asignadoAId", "iniciativaId", "proyectoTareaId", "seccionId", "carpetaId", "parentId",
     "fecha", "fechaVencimiento", "recurrencia", "notas", "etiquetas", "orden",
+    // Campos de ficha (editables para tareas creadas a mano) + evidencia
+    "porqueSeHace", "estandarMinimo", "siNoSeHace", "cuando", "evidenciaNota",
   ];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -100,9 +117,60 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
+  // ── Gate de evidencia (server-side): al completar, validar según tipoEvidencia ──
+  if ("estado" in data && data.estado === "COMPLETADA") {
+    const actual = await prisma.tarea.findUnique({
+      where: { id },
+      select: {
+        requiereEvidencia: true,
+        tipoEvidencia: true,
+        evidenciaNota: true,
+        archivos: { select: { tipo: true } },
+      },
+    });
+    if (!actual) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+    if (actual.requiereEvidencia) {
+      // Nota efectiva: la que llega en el body (si viene) o la persistida
+      const notaEfectiva = ("evidenciaNota" in data ? data.evidenciaNota : actual.evidenciaNota) as string | null;
+      const archivos = actual.archivos;
+      const tieneImagen = archivos.some((a) => (a.tipo ?? "").toLowerCase().startsWith("image/"));
+      const tieneArchivo = archivos.length > 0;
+      const notaValida = !!notaEfectiva && notaEfectiva.trim().length >= 10;
+
+      let falta: string | null = null;
+      switch (actual.tipoEvidencia) {
+        case "FOTO":
+          if (!tieneImagen) falta = "Adjunta al menos una foto (imagen) para completar esta tarea.";
+          break;
+        case "ARCHIVO":
+          if (!tieneArchivo) falta = "Adjunta al menos un archivo para completar esta tarea.";
+          break;
+        case "NOTA":
+          if (!notaValida) falta = "Escribe una nota de evidencia (mínimo 10 caracteres) para completar esta tarea.";
+          break;
+        case "ENLACE_MODULO":
+          if (!notaValida && !tieneArchivo) falta = "Confirma con una nota (mínimo 10 caracteres) o adjunta un archivo para completar esta tarea.";
+          break;
+        default:
+          // tipoEvidencia null pero requiereEvidencia true → exigir al menos nota o archivo
+          if (!notaValida && !tieneArchivo) falta = "Agrega evidencia (nota o archivo) para completar esta tarea.";
+      }
+
+      if (falta) {
+        return NextResponse.json({ error: falta, code: "EVIDENCIA_REQUERIDA", tipoEvidencia: actual.tipoEvidencia }, { status: 422 });
+      }
+    }
+
+    // estadoVerificacion según si requiere evidencia
+    data.estadoVerificacion = actual.requiereEvidencia ? "PENDIENTE_VERIFICACION" : "NO_REQUIERE";
+  }
+
   // Auto-manage fechaCompletada
   if ("estado" in data) {
     data.fechaCompletada = data.estado === "COMPLETADA" ? new Date() : null;
+    // Reabrir: al salir de COMPLETADA se vuelve a estado sin verificación pendiente
+    if (data.estado !== "COMPLETADA") data.estadoVerificacion = "NO_REQUIERE";
   }
 
   // Capture previous assignee before updating (only when assignment is being changed)
@@ -156,6 +224,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           notas:           tarea.notas,
           etiquetas:       tarea.etiquetas,
           orden:           tarea.orden,
+          // Copiar ficha del estándar, origen y config de evidencia a la nueva ocurrencia
+          tipoOrigen:        tarea.tipoOrigen,
+          ptTemplateId:      tarea.ptTemplateId,
+          requiereEvidencia: tarea.requiereEvidencia,
+          tipoEvidencia:     tarea.tipoEvidencia,
+          // Nace PENDIENTE: sin verificación hasta que se complete con evidencia
+          estadoVerificacion: "NO_REQUIERE",
+          porqueSeHace:      tarea.porqueSeHace,
+          estandarMinimo:    tarea.estandarMinimo,
+          siNoSeHace:        tarea.siNoSeHace,
+          cuando:            tarea.cuando,
+          moduloDestino:     tarea.moduloDestino,
+          moduloTexto:       tarea.moduloTexto,
+          moduloDisponible:  tarea.moduloDisponible,
+          esAccionCampo:     tarea.esAccionCampo,
         },
         select: SELECT,
       });

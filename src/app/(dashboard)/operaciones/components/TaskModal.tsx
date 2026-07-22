@@ -6,7 +6,7 @@ import QuickAdd from "./QuickAdd";
 import TaskItem, { type TareaItem } from "./TaskItem";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
-import { Link2 } from "lucide-react";
+import { Link2, Camera, Paperclip, FileText, ExternalLink, ChevronDown, ChevronRight, ShieldCheck, ClipboardCheck } from "lucide-react";
 
 interface Usuario { id: string; name: string }
 interface Proyecto { id: string; nombre: string; color: string | null }
@@ -50,6 +50,20 @@ export interface TareaDetalle {
   subtareas: Subtarea[];
   comentarios: Comentario[];
   archivos: Archivo[];
+  // ── Capa aditiva (Bloque 3): evidencia, ficha del estándar y acceso a módulo ──
+  tipoOrigen?: string | null;
+  requiereEvidencia?: boolean | null;
+  tipoEvidencia?: string | null;
+  evidenciaNota?: string | null;
+  estadoVerificacion?: string | null;
+  porqueSeHace?: string | null;
+  estandarMinimo?: string | null;
+  siNoSeHace?: string | null;
+  cuando?: string | null;
+  moduloDestino?: string | null;
+  moduloTexto?: string | null;
+  moduloDisponible?: boolean | null;
+  esAccionCampo?: boolean | null;
 }
 
 interface Props {
@@ -115,6 +129,10 @@ export default function TaskModal({
   const [showFechaVenPicker, setShowFechaVenPicker] = useState(false);
   const [dirty, setDirty]             = useState(false);
   const [saving, setSaving]           = useState(false);
+  // ── Bloque 3: evidencia + ficha ──
+  const [evidenciaNota, setEvidenciaNota] = useState("");
+  const [fichaOpen, setFichaOpen]     = useState(false);
+  const [savingNota, setSavingNota]   = useState(false);
 
   const overlayRef = useRef<HTMLDivElement>(null);
   const titleRef   = useRef<HTMLTextAreaElement>(null);
@@ -143,6 +161,8 @@ export default function TaskModal({
     setSubtareasLocal(tarea.subtareas ?? []);
     setComentariosLocal(tarea.comentarios ?? []);
     setArchivosLocal(tarea.archivos ?? []);
+    setEvidenciaNota(tarea.evidenciaNota ?? "");
+    setFichaOpen(false);
 
     setTimeout(() => titleRef.current?.focus(), 80);
   }, [tarea?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -256,7 +276,75 @@ export default function TaskModal({
     setArchivosLocal(prev => prev.filter(a => a.id !== aid));
   }
 
+  // ── Bloque 3: guardar nota de evidencia (persistir sin cerrar modal) ──
+  async function guardarNota() {
+    if (!tarea) return;
+    setSavingNota(true);
+    try {
+      await fetch(`/api/tareas/${tarea.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ evidenciaNota: evidenciaNota || null }),
+      });
+    } finally { setSavingNota(false); }
+  }
+
   const isCompleted = tarea?.estado === "COMPLETADA";
+
+  // ── Bloque 3: evidencia — ¿está cumplido el requisito para completar? ──
+  const requiereEvidencia = !!tarea?.requiereEvidencia;
+  const tipoEvidencia = tarea?.tipoEvidencia ?? null;
+  const tieneImagen = archivosLocal.some(a => (a.tipo ?? "").toLowerCase().startsWith("image/"));
+  const tieneArchivo = archivosLocal.length > 0;
+  const notaValida = evidenciaNota.trim().length >= 10;
+
+  let evidenciaCumplida = true;
+  let evidenciaFalta = "";
+  if (requiereEvidencia && !isCompleted) {
+    switch (tipoEvidencia) {
+      case "FOTO":
+        evidenciaCumplida = tieneImagen;
+        evidenciaFalta = "Adjunta al menos una foto para poder completar.";
+        break;
+      case "ARCHIVO":
+        evidenciaCumplida = tieneArchivo;
+        evidenciaFalta = "Adjunta al menos un archivo para poder completar.";
+        break;
+      case "NOTA":
+        evidenciaCumplida = notaValida;
+        evidenciaFalta = "Escribe una nota de evidencia (mínimo 10 caracteres).";
+        break;
+      case "ENLACE_MODULO":
+        evidenciaCumplida = notaValida || tieneArchivo;
+        evidenciaFalta = "Confirma con una nota (mínimo 10 caracteres) o adjunta un archivo.";
+        break;
+      default:
+        evidenciaCumplida = notaValida || tieneArchivo;
+        evidenciaFalta = "Agrega evidencia (nota o archivo) para completar.";
+    }
+  }
+  const bloqueaCompletar = requiereEvidencia && !isCompleted && !evidenciaCumplida;
+
+  // Wrapper: al completar, primero persiste la nota (si aplica) y luego completa
+  async function handleComplete() {
+    if (!tarea) return;
+    if (bloqueaCompletar) { toast.error(evidenciaFalta); return; }
+    if (requiereEvidencia && evidenciaNota !== (tarea.evidenciaNota ?? "")) {
+      await guardarNota();
+    }
+    onComplete(tarea.id);
+  }
+
+  // ── Bloque 3: ficha del estándar — sólo si hay al menos un dato ──
+  const tieneFicha = !!(tarea?.porqueSeHace || tarea?.estandarMinimo || tarea?.siNoSeHace || tarea?.cuando);
+  const fichaReadonly = tarea?.tipoOrigen === "PLAN";
+
+  // ── Bloque 3: acceso directo a módulo ──
+  const moduloUrl = tarea?.moduloDestino && tarea?.moduloDisponible ? tarea.moduloDestino : null;
+  const moduloLabel = tarea?.moduloTexto || "Abrir módulo";
+
+  const EVIDENCIA_LABEL: Record<string, string> = {
+    FOTO: "Foto", ARCHIVO: "Archivo", NOTA: "Nota", ENLACE_MODULO: "Confirmación / enlace",
+  };
 
   return (
     <div
@@ -269,9 +357,12 @@ export default function TaskModal({
         {/* ── TOP BAR ───────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-2 px-5 py-3 border-b border-[#1a1a1a] shrink-0">
           <button
-            onClick={() => tarea && onComplete(tarea.id)}
+            onClick={handleComplete}
+            title={bloqueaCompletar ? evidenciaFalta : isCompleted ? "Completada" : "Marcar completada"}
             className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-all ${
-              isCompleted ? "bg-[#B3985B] border-[#B3985B]" : "border-[#333] hover:border-[#B3985B]"
+              isCompleted ? "bg-[#B3985B] border-[#B3985B]"
+                : bloqueaCompletar ? "border-[#2a2a2a] opacity-60 cursor-not-allowed"
+                : "border-[#333] hover:border-[#B3985B]"
             }`}
           >
             {isCompleted && (
@@ -364,6 +455,153 @@ export default function TaskModal({
                   rows={1}
                 />
               </div>
+
+              {/* ── Acceso directo a módulo (Bloque 3) ── */}
+              {moduloUrl && (
+                <a
+                  href={moduloUrl}
+                  className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/20 transition-all group"
+                >
+                  <ExternalLink strokeWidth={2} className="w-4 h-4 shrink-0" />
+                  <span className="text-sm font-medium flex-1">{moduloLabel}</span>
+                  <ChevronRight strokeWidth={2} className="w-4 h-4 opacity-50 group-hover:translate-x-0.5 transition-transform" />
+                </a>
+              )}
+
+              {/* ── Ficha del estándar (Bloque 3) ── */}
+              {tieneFicha && (
+                <div className="border border-[#1a1a1a] rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => setFichaOpen(o => !o)}
+                    className="w-full flex items-center gap-2 px-3.5 py-2.5 bg-[#0a0a0a] hover:bg-[#111] transition-colors"
+                  >
+                    <ClipboardCheck strokeWidth={1.75} className="w-3.5 h-3.5 text-[#B3985B]" />
+                    <span className="text-[11px] uppercase tracking-widest font-semibold text-[#888]">Ficha del estándar</span>
+                    {fichaReadonly && <span className="text-[9px] text-[#444] border border-[#222] rounded px-1.5 py-0.5">Solo lectura</span>}
+                    {fichaOpen
+                      ? <ChevronDown strokeWidth={2} className="w-3.5 h-3.5 text-[#444] ml-auto" />
+                      : <ChevronRight strokeWidth={2} className="w-3.5 h-3.5 text-[#444] ml-auto" />}
+                  </button>
+                  {fichaOpen && (
+                    <div className="px-3.5 py-3 space-y-3 border-t border-[#1a1a1a]">
+                      {tarea.cuando && (
+                        <div>
+                          <p className="text-[9px] text-[#555] uppercase tracking-widest font-semibold mb-0.5">Cuándo</p>
+                          <p className="text-xs text-[#aaa] leading-relaxed whitespace-pre-wrap">{tarea.cuando}</p>
+                        </div>
+                      )}
+                      {tarea.porqueSeHace && (
+                        <div>
+                          <p className="text-[9px] text-[#555] uppercase tracking-widest font-semibold mb-0.5">Por qué se hace</p>
+                          <p className="text-xs text-[#aaa] leading-relaxed whitespace-pre-wrap">{tarea.porqueSeHace}</p>
+                        </div>
+                      )}
+                      {tarea.estandarMinimo && (
+                        <div>
+                          <p className="text-[9px] text-[#555] uppercase tracking-widest font-semibold mb-0.5">Estándar mínimo</p>
+                          <p className="text-xs text-[#aaa] leading-relaxed whitespace-pre-wrap">{tarea.estandarMinimo}</p>
+                        </div>
+                      )}
+                      {tarea.siNoSeHace && (
+                        <div>
+                          <p className="text-[9px] text-[#555] uppercase tracking-widest font-semibold mb-0.5">Si no se hace</p>
+                          <p className="text-xs text-[#aaa] leading-relaxed whitespace-pre-wrap">{tarea.siNoSeHace}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Evidencia requerida (Bloque 3) ── */}
+              {requiereEvidencia && (
+                <div className={`border rounded-xl p-3.5 ${evidenciaCumplida ? "border-[#1f2f1f] bg-[#0a0f0a]" : "border-[#B3985B]/25 bg-[#B3985B]/5"}`}>
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <ShieldCheck strokeWidth={1.75} className={`w-3.5 h-3.5 ${evidenciaCumplida ? "text-green-500" : "text-[#B3985B]"}`} />
+                    <span className="text-[11px] uppercase tracking-widest font-semibold text-[#aaa]">Evidencia requerida</span>
+                    {tipoEvidencia && (
+                      <span className="text-[9px] text-[#B3985B] border border-[#B3985B]/30 rounded px-1.5 py-0.5">
+                        {EVIDENCIA_LABEL[tipoEvidencia] ?? tipoEvidencia}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* FOTO / ARCHIVO → subida */}
+                  {(tipoEvidencia === "FOTO" || tipoEvidencia === "ARCHIVO" || tipoEvidencia === "ENLACE_MODULO" || !tipoEvidencia) && (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        {tipoEvidencia === "FOTO" ? (
+                          <>
+                            <label className="flex-1 cursor-pointer flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[#111] border border-[#222] text-xs text-[#ccc] hover:border-[#B3985B]/40 transition-all">
+                              <Camera strokeWidth={1.75} className="w-3.5 h-3.5" /> Tomar foto
+                              <input type="file" accept="image/*" capture="environment" className="hidden"
+                                onChange={e => { Array.from(e.target.files ?? []).forEach(subirArchivo); e.target.value = ""; }} />
+                            </label>
+                            <label className="cursor-pointer flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[#111] border border-[#222] text-xs text-[#ccc] hover:border-[#B3985B]/40 transition-all">
+                              <Paperclip strokeWidth={1.75} className="w-3.5 h-3.5" /> Galería
+                              <input type="file" accept="image/*" multiple className="hidden"
+                                onChange={e => { Array.from(e.target.files ?? []).forEach(subirArchivo); e.target.value = ""; }} />
+                            </label>
+                          </>
+                        ) : (
+                          <label className="flex-1 cursor-pointer flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-[#111] border border-[#222] text-xs text-[#ccc] hover:border-[#B3985B]/40 transition-all">
+                            <Paperclip strokeWidth={1.75} className="w-3.5 h-3.5" /> Adjuntar archivo
+                            <input type="file" multiple className="hidden"
+                              onChange={e => { Array.from(e.target.files ?? []).forEach(subirArchivo); e.target.value = ""; }} />
+                          </label>
+                        )}
+                      </div>
+                      {uploading && <p className="text-[11px] text-[#555]">Subiendo…</p>}
+                      {/* Miniaturas de imágenes / lista de archivos */}
+                      {archivosLocal.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {archivosLocal.map(a => (
+                            (a.tipo ?? "").toLowerCase().startsWith("image/") ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer" className="block w-14 h-14 rounded-lg overflow-hidden border border-[#222]">
+                                <img src={a.url} alt={a.nombre} className="w-full h-full object-cover" />
+                              </a>
+                            ) : (
+                              <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#111] border border-[#222] text-[11px] text-[#999] hover:text-white max-w-[140px]">
+                                <FileText strokeWidth={1.75} className="w-3 h-3 shrink-0" />
+                                <span className="truncate">{a.nombre}</span>
+                              </a>
+                            )
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* NOTA / ENLACE_MODULO → textarea */}
+                  {(tipoEvidencia === "NOTA" || tipoEvidencia === "ENLACE_MODULO" || !tipoEvidencia) && (
+                    <div className={tipoEvidencia === "ENLACE_MODULO" || !tipoEvidencia ? "mt-2" : ""}>
+                      <textarea
+                        value={evidenciaNota}
+                        onChange={e => setEvidenciaNota(e.target.value)}
+                        onBlur={() => { if (evidenciaNota !== (tarea.evidenciaNota ?? "")) guardarNota(); }}
+                        placeholder={tipoEvidencia === "ENLACE_MODULO" ? "Confirma qué hiciste en el módulo (mín. 10 caracteres)…" : "Escribe la nota de evidencia (mín. 10 caracteres)…"}
+                        className="w-full bg-[#080808] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-white resize-none focus:outline-none focus:border-[#B3985B]/40 placeholder:text-[#444]"
+                        rows={2}
+                      />
+                      <div className="flex items-center justify-between mt-1">
+                        <span className={`text-[10px] ${notaValida ? "text-green-600" : "text-[#555]"}`}>
+                          {evidenciaNota.trim().length}/10 caracteres
+                        </span>
+                        {savingNota && <span className="text-[10px] text-[#555]">Guardando…</span>}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Estado del gate */}
+                  {!isCompleted && (
+                    <p className={`text-[11px] mt-2.5 ${evidenciaCumplida ? "text-green-600" : "text-[#B3985B]"}`}>
+                      {evidenciaCumplida ? "✓ Evidencia lista — ya puedes completar la tarea." : evidenciaFalta}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* ── Subtareas ── */}
               <div className="border-t border-[#141414] pt-3">
@@ -663,12 +901,19 @@ export default function TaskModal({
                       COMPLETADA: "Completada", CANCELADA: "Cancelada",
                     };
                     const isActive = tarea.estado === est;
+                    const blocked = est === "COMPLETADA" && bloqueaCompletar;
                     return (
                       <button
                         key={est}
-                        onClick={() => onSave(tarea.id, { estado: est })}
+                        onClick={() => {
+                          if (est === "COMPLETADA") { handleComplete(); return; }
+                          onSave(tarea.id, { estado: est });
+                        }}
+                        title={blocked ? evidenciaFalta : undefined}
                         className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all ${
-                          isActive ? "border-transparent" : "border-[#1a1a1a] text-[#444] hover:text-[#666]"
+                          isActive ? "border-transparent"
+                            : blocked ? "border-[#1a1a1a] text-[#333] opacity-60 cursor-not-allowed"
+                            : "border-[#1a1a1a] text-[#444] hover:text-[#666]"
                         }`}
                         style={isActive ? { background: colors[est] + "22", borderColor: colors[est] + "55", color: colors[est] } : {}}
                       >
