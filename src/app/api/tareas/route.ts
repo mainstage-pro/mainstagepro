@@ -88,6 +88,8 @@ export async function GET(req: NextRequest) {
     const searchWhere: Record<string, any> = {
       estado:   { not: "CANCELADA" },
       parentId: null,
+      // El módulo de tareas no muestra compromisos del plan de trabajo (tipoOrigen=PLAN)
+      tipoOrigen: { not: "PLAN" },
       OR: [
         { titulo:      { contains: term, mode: "insensitive" } },
         { descripcion: { contains: term, mode: "insensitive" } },
@@ -118,6 +120,9 @@ export async function GET(req: NextRequest) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: Record<string, any> = {};
+
+  // El módulo de tareas no muestra compromisos del plan de trabajo (tipoOrigen=PLAN)
+  where.tipoOrigen = { not: "PLAN" };
 
   if (area)         where.area            = area;
   if (asignadoAId)  where.asignadoAId     = asignadoAId;

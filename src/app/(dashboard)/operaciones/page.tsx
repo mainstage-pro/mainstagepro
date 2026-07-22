@@ -13,7 +13,6 @@ import { VistaCapturaRapida } from "./components/VistaCapturaRapida";
 import { VistaIdeas }        from "./components/VistaIdeas";
 import { VistaIniciativas }  from "./components/VistaIniciativas";
 import { VistaRendimiento } from "./components/VistaRendimiento";
-import PlanDiaPanel from "./components/PlanDiaPanel";
 import { useCelebration } from "@/components/CelebrationToast";
 import type { TareaIntegrada } from "@/lib/tareas-integradas";
 import { Combobox } from "@/components/Combobox";
@@ -42,7 +41,7 @@ interface Iniciativa { id: string; nombre: string; color: string | null }
 interface Usuario   { id: string; name: string }
 
 type VistaKey = "bandeja" | "hoy" | "proximas" | "integrada" | "proyectos-evento" | "equipo"
-  | "captura" | "ideas" | "iniciativas" | "rendimiento" | "plan"
+  | "captura" | "ideas" | "iniciativas" | "rendimiento"
   | { tipo: "proyecto"; id: string } | { tipo: "area"; nombre: string };
 
 interface ProyectoEventoConTareas {
@@ -78,7 +77,6 @@ const VISTA_DEFAULT: VistaOpts = { showCompleted: false, sortBy: "none", groupBy
 // ── Bloque 5: opciones de tag de origen para filtro ──
 const TIPO_ORIGEN_OPTS: { key: string; label: string; color: string }[] = [
   { key: "TAREA",    label: "Tarea",    color: "#9ca3af" },
-  { key: "PLAN",     label: "Plan",     color: "#B3985B" },
   { key: "PROYECTO", label: "Proyecto", color: "#818cf8" },
   { key: "EVENTO",   label: "Evento",   color: "#60a5fa" },
 ];
@@ -110,7 +108,7 @@ export default function OperacionesPage() {
   const [capturaCounts, setCapturaCounts] = useState({ captura: 0, ideas: 0, iniciativas: 0 });
   const [vista, setVista]                             = useState<VistaKey>(() => {
     if (typeof window === "undefined") return "bandeja";
-    try { const s = localStorage.getItem("op_vista"); if (s) return JSON.parse(s) as VistaKey; } catch {}
+    try { const s = localStorage.getItem("op_vista"); if (s) { const v = JSON.parse(s) as VistaKey; if (v === "plan") return "bandeja"; return v; } } catch {}
     return "bandeja";
   });
   const [tareas, setTareas]                           = useState<TareaItem[]>([]);
@@ -122,10 +120,10 @@ export default function OperacionesPage() {
   const searchParams = useSearchParams();
   const [selectedId, setSelectedId]             = useState<string | null>(() => searchParams.get("open"));
 
-  // Permite abrir una vista concreta desde otra ruta (ej. redirect /plan-trabajo/hoy → ?vista=plan)
+  // Permite abrir una vista concreta desde otra ruta vía ?vista=
   useEffect(() => {
     const v = searchParams.get("vista");
-    if (v) setVista(v as VistaKey);
+    if (v && v !== "plan") setVista(v as VistaKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [selectedTask, setSelectedTask]         = useState<TareaDetalle | null>(null);
@@ -1079,7 +1077,6 @@ export default function OperacionesPage() {
     vista === "ideas"            ? "Ideas" :
     vista === "iniciativas"      ? "Iniciativas" :
     vista === "rendimiento"      ? "Rendimiento" :
-    vista === "plan"             ? "Plan del día" :
     typeof vista === "object" && vista.tipo === "area" ? `Área · ${AREA_LABELS[vista.nombre] ?? vista.nombre}` :
     proyectoDetalle?.nombre ?? "Proyecto";
 
@@ -1314,10 +1311,6 @@ export default function OperacionesPage() {
           <SideItem
             icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>}
             label="Próximas" isActive={vistaKey === "proximas"} onClick={() => setVista("proximas")}
-          />
-          <SideItem
-            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>}
-            label="Plan del día" isActive={vistaKey === "plan"} onClick={() => setVista("plan")}
           />
           {sessionRole === "ADMIN" && (
             <SideItem
@@ -1815,9 +1808,6 @@ export default function OperacionesPage() {
             <div className="flex items-center justify-center h-40">
               <div className="w-5 h-5 border border-[#222] border-t-[#B3985B] rounded-full animate-spin" />
             </div>
-
-          ) : vista === "plan" ? (
-            <PlanDiaPanel isAdmin={sessionRole === "ADMIN" || sessionRole === "DIRECTOR"} />
 
           ) : vista === "captura" ? (
             <VistaCapturaRapida />

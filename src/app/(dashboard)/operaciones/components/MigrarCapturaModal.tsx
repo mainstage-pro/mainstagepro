@@ -1,38 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AREAS as AREAS_NEG, AREA_LABELS as AREA_LABELS_NEG } from "@/lib/gestion";
 
 // ── Tipos de lookups ────────────────────────────────────────────────────────
 type TareaProyecto = { id: string; nombre: string; color?: string | null };
 type Usuario = { id: string; name: string; area?: string | null };
-type PTSubArea = { id: string; nombre: string };
-type PTArea = { id: string; nombre: string; color?: string; subareas: PTSubArea[] };
 
-type Destino = "tarea" | "proyecto" | "compromiso" | "idea" | "iniciativa" | "backlog";
+type Destino = "tarea" | "proyecto" | "idea" | "iniciativa" | "backlog";
 
 // ── Constantes ──────────────────────────────────────────────────────────────
 const DESTINOS: { key: Destino; label: string; color: string; desc: string }[] = [
   { key: "tarea",      label: "Tarea",      color: "#B3985B", desc: "Al módulo de tareas" },
   { key: "proyecto",   label: "Proyecto",   color: "#4ade80", desc: "A proyectos internos" },
-  { key: "compromiso", label: "Compromiso", color: "#e8a020", desc: "Al plan de trabajo" },
   { key: "idea",       label: "Idea",       color: "#a78bfa", desc: "Guardar como idea" },
   { key: "iniciativa", label: "Iniciativa", color: "#3b82f6", desc: "Guardar como iniciativa" },
   { key: "backlog",    label: "Backlog",    color: "#666",    desc: "Archivar en backlog" },
 ];
 
 const PRIORIDADES: [string, string][] = [["URGENTE", "Urgente"], ["ALTA", "Alta"], ["MEDIA", "Media"], ["BAJA", "Baja"]];
-const FRECUENCIAS: [string, string][] = [
-  ["DIARIO", "Diario"], ["SEMANAL", "Semanal"], ["QUINCENAL", "Quincenal"],
-  ["MENSUAL", "Mensual"], ["TRIMESTRAL", "Trimestral"], ["POR_EVENTO", "Por evento"],
-];
-const DIAS: { n: number; l: string }[] = [
-  { n: 1, l: "L" }, { n: 2, l: "M" }, { n: 3, l: "X" }, { n: 4, l: "J" }, { n: 5, l: "V" }, { n: 6, l: "S" }, { n: 0, l: "D" },
-];
-const SEMANAS: [number, string][] = [[1, "1ª"], [2, "2ª"], [3, "3ª"], [4, "4ª"], [5, "Última"]];
-const IMPACTOS: [string, string][] = [["critico", "Crítico"], ["alto", "Alto"], ["estandar", "Estándar"]];
-const CONTEXTOS: [string, string][] = [["independiente", "Independiente"], ["evento", "Evento"], ["hibrida", "Híbrida"]];
 
 const inputCls = "w-full bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-[12.5px] text-white placeholder-[#444] focus:outline-none focus:border-[#e8a020]/40 transition-colors";
 const labelCls = "block text-[10.5px] uppercase tracking-wider font-semibold text-[#777] mb-1.5";
@@ -58,12 +45,10 @@ export default function MigrarCapturaModal({
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState<string | null>(null);
   const [success, setSuccess]   = useState<{ label: string; href: string } | null>(null);
-  const [showDetalles, setShowDetalles] = useState(false);
 
   // Lookups compartidos
   const [proyectosTarea, setProyectosTarea] = useState<TareaProyecto[]>([]);
   const [usuarios, setUsuarios]             = useState<Usuario[]>([]);
-  const [ptAreas, setPtAreas]               = useState<PTArea[]>([]);
 
   // Campos comunes
   const [titulo, setTitulo] = useState(captura.contenido);
@@ -82,33 +67,13 @@ export default function MigrarCapturaModal({
   const [pFin, setPFin]             = useState("");
   const [pDescripcion, setPDescripcion] = useState("");
 
-  // Compromiso (plan de trabajo)
-  const [cAreaId, setCAreaId]         = useState("");
-  const [cSubAreaId, setCSubAreaId]   = useState("");
-  const [cFrecuencia, setCFrecuencia] = useState("DIARIO");
-  const [cDias, setCDias]             = useState<number[]>([]);
-  const [cSemanas, setCSemanas]       = useState<number[]>([]);
-  const [cImpacto, setCImpacto]       = useState("estandar");
-  const [cContexto, setCContexto]     = useState("independiente");
-  const [cResponsable, setCResponsable] = useState("");
-  const [cHora, setCHora]             = useState("");
-  const [cEstandar, setCEstandar]     = useState("");
-  const [cPorque, setCPorque]         = useState("");
-  const [cSiNo, setCSiNo]             = useState("");
-
   // Idea / iniciativa / backlog
   const [ligeraArea, setLigeraArea] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/operaciones/proyectos").then(r => r.ok ? r.json() : { proyectos: [] }).then(d => setProyectosTarea(d.proyectos ?? [])).catch(() => {});
     fetch("/api/usuarios").then(r => r.ok ? r.json() : { usuarios: [] }).then(d => setUsuarios(d.usuarios ?? [])).catch(() => {});
-    fetch("/api/plan-trabajo/sistema-operativo").then(r => r.ok ? r.json() : { areas: [] }).then(d => setPtAreas(d.areas ?? [])).catch(() => {});
   }, []);
-
-  const subareasDeArea = useMemo(
-    () => ptAreas.find(a => a.id === cAreaId)?.subareas ?? [],
-    [ptAreas, cAreaId],
-  );
 
   async function marcarClasificado(tipo: string, area?: string | null) {
     await fetch(`/api/captura/${captura.id}`, {
@@ -157,31 +122,6 @@ export default function MigrarCapturaModal({
       const { proyecto } = await res.json();
       await marcarClasificado("proyecto", pArea);
       setSuccess({ label: "Ver en Proyectos", href: `/proyectos-internos/${proyecto.id}` });
-      setSaving(false);
-      return;
-    }
-
-    if (destino === "compromiso") {
-      if (!cAreaId) { setError("Elige el área del compromiso."); return; }
-      if (!cSubAreaId) { setError("Elige la subárea."); return; }
-      if ((cFrecuencia === "MENSUAL" || cFrecuencia === "QUINCENAL") && cSemanas.length === 0) {
-        setError("Elige al menos una semana del mes."); return;
-      }
-      setSaving(true);
-      const res = await fetch("/api/plan-trabajo/templates", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          areaId: cAreaId, subAreaId: cSubAreaId, nombre,
-          frecuencia: cFrecuencia, diasSemana: cDias, semanaDeMes: cSemanas,
-          impacto: cImpacto, contexto: cContexto,
-          responsableId: cResponsable || null, horaLimite: cHora || null,
-          estandarMinimo: cEstandar || null, porqueSeHace: cPorque || null, siNoSeHace: cSiNo || null,
-        }),
-      });
-      if (res.status === 403) { setError("Crear compromisos requiere permiso de administrador."); setSaving(false); return; }
-      if (!res.ok) { setError("No se pudo crear el compromiso."); setSaving(false); return; }
-      await marcarClasificado("compromiso");
-      setSuccess({ label: "Ver en Plan de Trabajo", href: `/plan-trabajo/plan` });
       setSaving(false);
       return;
     }
@@ -275,7 +215,7 @@ export default function MigrarCapturaModal({
             {destino && (
               <>
                 {/* Título / nombre — común a todos */}
-                <Field label={destino === "compromiso" ? "Nombre del compromiso" : destino === "proyecto" ? "Nombre del proyecto" : "Título"} required>
+                <Field label={destino === "proyecto" ? "Nombre del proyecto" : "Título"} required>
                   <input value={titulo} onChange={e => setTitulo(e.target.value)} className={inputCls} placeholder="Escribe un título claro…" />
                 </Field>
 
@@ -343,102 +283,6 @@ export default function MigrarCapturaModal({
                     <Field label="Propósito / descripción">
                       <textarea value={pDescripcion} onChange={e => setPDescripcion(e.target.value)} rows={2} className={inputCls} placeholder="¿Qué resultado busca este proyecto?" />
                     </Field>
-                  </>
-                )}
-
-                {/* ── COMPROMISO PLAN DE TRABAJO ────────────────────────── */}
-                {destino === "compromiso" && (
-                  <>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Área" required>
-                        <select value={cAreaId} onChange={e => { setCAreaId(e.target.value); setCSubAreaId(""); }} className={inputCls}>
-                          <option value="">Selecciona…</option>
-                          {ptAreas.map(a => <option key={a.id} value={a.id}>{a.nombre}</option>)}
-                        </select>
-                      </Field>
-                      <Field label="Subárea" required>
-                        <select value={cSubAreaId} onChange={e => setCSubAreaId(e.target.value)} className={inputCls} disabled={!cAreaId}>
-                          <option value="">{cAreaId ? "Selecciona…" : "Elige área primero"}</option>
-                          {subareasDeArea.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-                        </select>
-                      </Field>
-                    </div>
-                    <Field label="Frecuencia" required>
-                      <select value={cFrecuencia} onChange={e => { setCFrecuencia(e.target.value); setCSemanas([]); }} className={inputCls}>
-                        {FRECUENCIAS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                      </select>
-                    </Field>
-                    {(cFrecuencia === "DIARIO" || cFrecuencia === "SEMANAL") && (
-                      <Field label="Días de la semana">
-                        <div className="flex gap-1.5">
-                          {DIAS.map(d => {
-                            const on = cDias.includes(d.n);
-                            return (
-                              <button key={d.n} onClick={() => setCDias(prev => on ? prev.filter(x => x !== d.n) : [...prev, d.n])}
-                                className="flex-1 py-1.5 rounded-lg text-[11.5px] font-medium border transition-all"
-                                style={{ background: on ? "#e8a02018" : "#111", borderColor: on ? "#e8a02055" : "#1e1e1e", color: on ? "#e8a020" : "#666" }}>
-                                {d.l}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </Field>
-                    )}
-                    {(cFrecuencia === "MENSUAL" || cFrecuencia === "QUINCENAL") && (
-                      <Field label="Semana del mes" required>
-                        <div className="flex gap-1.5">
-                          {SEMANAS.map(([v, l]) => {
-                            const on = cSemanas.includes(v);
-                            return (
-                              <button key={v} onClick={() => setCSemanas(prev => on ? prev.filter(x => x !== v) : [...prev, v])}
-                                className="flex-1 py-1.5 rounded-lg text-[11px] font-medium border transition-all"
-                                style={{ background: on ? "#e8a02018" : "#111", borderColor: on ? "#e8a02055" : "#1e1e1e", color: on ? "#e8a020" : "#666" }}>
-                                {l}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </Field>
-                    )}
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Impacto">
-                        <select value={cImpacto} onChange={e => setCImpacto(e.target.value)} className={inputCls}>
-                          {IMPACTOS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                        </select>
-                      </Field>
-                      <Field label="Contexto">
-                        <select value={cContexto} onChange={e => setCContexto(e.target.value)} className={inputCls}>
-                          {CONTEXTOS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                        </select>
-                      </Field>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Responsable">
-                        <select value={cResponsable} onChange={e => setCResponsable(e.target.value)} className={inputCls}>
-                          <option value="">Sin asignar</option>
-                          {usuarios.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                        </select>
-                      </Field>
-                      <Field label="Hora límite">
-                        <input type="time" value={cHora} onChange={e => setCHora(e.target.value)} className={inputCls} />
-                      </Field>
-                    </div>
-                    <button onClick={() => setShowDetalles(v => !v)} className="text-[11px] text-[#e8a020]/80 hover:text-[#e8a020] transition-colors">
-                      {showDetalles ? "− Ocultar detalles" : "+ Añadir detalles (estándar, por qué, consecuencias)"}
-                    </button>
-                    {showDetalles && (
-                      <div className="space-y-3">
-                        <Field label="Estándar mínimo">
-                          <textarea value={cEstandar} onChange={e => setCEstandar(e.target.value)} rows={2} className={inputCls} placeholder="Qué cuenta como hecho correctamente…" />
-                        </Field>
-                        <Field label="Por qué se hace">
-                          <textarea value={cPorque} onChange={e => setCPorque(e.target.value)} rows={2} className={inputCls} placeholder="Razón de existir del compromiso…" />
-                        </Field>
-                        <Field label="Si no se hace">
-                          <textarea value={cSiNo} onChange={e => setCSiNo(e.target.value)} rows={2} className={inputCls} placeholder="Consecuencias si no se ejecuta…" />
-                        </Field>
-                      </div>
-                    )}
                   </>
                 )}
 
