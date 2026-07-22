@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureTareaColumns } from "@/lib/ensure-tarea-columns";
+import { recurrenciaOcurreHoy } from "@/lib/recurrencia";
 
 const AREA_TO_MODULE_KEY: Record<string, string> = {
   VENTAS: "tareas-ventas",
@@ -223,6 +224,37 @@ export async function GET(req: NextRequest) {
     select: SELECT,
     orderBy: [{ fecha: "asc" }, { orden: "asc" }, { createdAt: "asc" }],
   });
+
+  // ── Vista HOY: incluir compromisos recurrentes (PLAN u otros) que ocurren hoy ──
+  // Estos se guardan con fecha=null, así que la query por fecha no los captura.
+  // Traemos las tareas recurrentes del usuario y filtramos las que "tocan" hoy.
+  if (vista === "hoy") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const recWhere: Record<string, any> = {
+      recurrencia: { not: null },
+      estado:      { notIn: ["COMPLETADA", "CANCELADA"] },
+      parentId:    null,
+      OR:          [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }],
+    };
+    if (proyectosPermitidos !== null) {
+      recWhere.AND = [
+        { OR: recWhere.OR },
+        { OR: [{ proyectoTareaId: null }, { proyectoTareaId: { in: proyectosPermitidos } }] },
+      ];
+      delete recWhere.OR;
+    }
+    const recurrentes = await prisma.tarea.findMany({
+      where: recWhere,
+      select: SELECT,
+      orderBy: [{ orden: "asc" }, { createdAt: "asc" }],
+    });
+    const ocurrenHoy = recurrentes.filter(t => recurrenciaOcurreHoy(t.recurrencia));
+    // Merge deduplicado por id (una tarea recurrente podría tener fecha y ya venir en la 1ª query)
+    const yaIncluidos = new Set(tareas.map(t => t.id));
+    for (const t of ocurrenHoy) {
+      if (!yaIncluidos.has(t.id)) { tareas.push(t); yaIncluidos.add(t.id); }
+    }
+  }
 
   return NextResponse.json({ tareas });
 }

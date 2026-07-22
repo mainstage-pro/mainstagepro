@@ -457,3 +457,49 @@ export function aparecerEnHoy(fecha: Date | null | undefined, estado: string): b
   hoy.setHours(23, 59, 59, 999);
   return fecha <= hoy;
 }
+
+/**
+ * True si el patrón de recurrencia cae en la fecha `ref` (por defecto hoy).
+ * Sirve para que los compromisos recurrentes (que se guardan con fecha=null)
+ * aparezcan en "Hoy" el día que toca, sin depender de un campo `fecha`.
+ * Nota: para patrones "cada N" sin fecha ancla se aproxima al patrón base
+ * (p.ej. "cada 2 semanas los lunes" se muestra todos los lunes).
+ */
+export function recurrenciaOcurreEnFecha(cfg: RecurrenciaConfig, ref: Date = new Date()): boolean {
+  const d = new Date(ref);
+  d.setHours(0, 0, 0, 0);
+
+  if (cfg.tipo === "diario") return true;
+
+  if (cfg.tipo === "semanal") {
+    const dias = cfg.diasSemana ?? [];
+    return dias.includes(d.getDay());
+  }
+
+  if (cfg.tipo === "mensual") {
+    if (cfg.semanaMes?.length && cfg.diasSemana?.length) {
+      for (const s of cfg.semanaMes) {
+        for (const w of cfg.diasSemana) {
+          const f = fechaSemanaMes(d.getFullYear(), d.getMonth(), w, s);
+          if (f && f.getDate() === d.getDate()) return true;
+        }
+      }
+      return false;
+    }
+    const dia = cfg.diaMes ?? 1;
+    const maxDia = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    return d.getDate() === Math.min(dia, maxDia);
+  }
+
+  // anual: sin fecha ancla no se puede determinar de forma fiable
+  return false;
+}
+
+/** Igual que `recurrenciaOcurreEnFecha` pero recibe el JSON crudo de recurrencia. */
+export function recurrenciaOcurreHoy(recurrenciaRaw: string | null | undefined, ref: Date = new Date()): boolean {
+  if (!recurrenciaRaw) return false;
+  let cfg: RecurrenciaConfig | null = null;
+  try { cfg = JSON.parse(recurrenciaRaw) as RecurrenciaConfig; } catch { return false; }
+  if (!cfg || !cfg.tipo) return false;
+  return recurrenciaOcurreEnFecha(cfg, ref);
+}

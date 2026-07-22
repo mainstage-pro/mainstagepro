@@ -1006,11 +1006,15 @@ export default function OperacionesPage() {
     let base = applyBusqueda(vistaOpts.showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA"));
     if (vistaOpts.filterPrio.length > 0) base = base.filter(t => vistaOpts.filterPrio.includes(t.prioridad));
     if (vistaOpts.filterTipo.length > 0) base = base.filter(t => vistaOpts.filterTipo.includes(t.tipoOrigen ?? "TAREA"));
-    // Las vistas personales (bandeja/hoy/próximas) solo muestran tareas sueltas
-    // (tipoOrigen TAREA); los compromisos de plan / eventos / proyectos viven en
-    // su propio hub de proyectos.
-    if (vista === "bandeja" || vista === "hoy" || vista === "proximas") {
+    // Bandeja/próximas solo muestran tareas sueltas (tipoOrigen TAREA).
+    // "Hoy" además incluye los compromisos de plan (PLAN) que tocan hoy.
+    if (vista === "bandeja" || vista === "proximas") {
       base = base.filter(t => (t.tipoOrigen ?? "TAREA") === "TAREA");
+    } else if (vista === "hoy") {
+      base = base.filter(t => {
+        const tipo = t.tipoOrigen ?? "TAREA";
+        return tipo === "TAREA" || tipo === "PLAN";
+      });
     }
 
     function applySort(arr: TareaItem[]): TareaItem[] {
@@ -1072,9 +1076,14 @@ export default function OperacionesPage() {
     let base = applyBusqueda(vistaOpts.showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA"));
     if (vistaOpts.filterPrio.length > 0) base = base.filter(t => vistaOpts.filterPrio.includes(t.prioridad));
     if (vistaOpts.filterTipo.length > 0) base = base.filter(t => vistaOpts.filterTipo.includes(t.tipoOrigen ?? "TAREA"));
-    // Vistas personales (bandeja/hoy/próximas): solo tareas sueltas (tipoOrigen TAREA).
-    if (vista === "bandeja" || vista === "hoy" || vista === "proximas") {
+    // Bandeja/próximas: solo tareas sueltas. "Hoy" incluye compromisos de plan (PLAN).
+    if (vista === "bandeja" || vista === "proximas") {
       base = base.filter(t => (t.tipoOrigen ?? "TAREA") === "TAREA");
+    } else if (vista === "hoy") {
+      base = base.filter(t => {
+        const tipo = t.tipoOrigen ?? "TAREA";
+        return tipo === "TAREA" || tipo === "PLAN";
+      });
     }
     if (vistaOpts.sortBy === "prioridad") return [...base].sort((a, b) => (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3));
     if (vistaOpts.sortBy === "fecha")     return [...base].sort((a, b) => { if (!a.fecha) return 1; if (!b.fecha) return -1; return a.fecha.localeCompare(b.fecha); });
