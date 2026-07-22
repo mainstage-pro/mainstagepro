@@ -6,6 +6,7 @@ import Link from "next/link";
 import TaskItem, { type TareaItem } from "./components/TaskItem";
 import TaskModal, { type TareaDetalle } from "./components/TaskModal";
 import QuickAdd from "./components/QuickAdd";
+import NuevaTareaModal from "./components/NuevaTareaModal";
 import MobileQuickAdd, { type MobileQuickAddHandle } from "./components/MobileQuickAdd";
 import UndoToast, { type UndoState } from "./components/UndoToast";
 import ProyectoAccesoPanel from "./components/ProyectoAccesoPanel";
@@ -1202,6 +1203,21 @@ export default function OperacionesPage() {
   const [mobileProyectos, setMobileProyectos] = useState(false);
   const mobileQARef = useRef<MobileQuickAddHandle>(null);
   const [quickAddTrigger, setQuickAddTrigger] = useState(0);
+  // Modal unificado "Nueva tarea" (selector de 4 tipos)
+  const [nuevaTareaOpen, setNuevaTareaOpen] = useState(false);
+
+  // Inserta en el estado una tarea recién creada desde el modal unificado.
+  const handleTareaCreada = useCallback((tarea: TareaItem) => {
+    const msg = ADD_MSGS[Math.floor(Math.random() * ADD_MSGS.length)];
+    setAddToast({ msg, visible: true });
+    setTimeout(() => setAddToast(t => t ? { ...t, visible: false } : null), 1800);
+    setTimeout(() => setAddToast(null), 2150);
+    // Sólo insertamos en listas planas (vistas string). Las vistas por proyecto/
+    // integrada/hoy se recargan solas al navegar; evitamos duplicar.
+    if (typeof vista === "string" && vista !== "integrada") {
+      setTareas(prev => prev.some(t => t.id === tarea.id) ? prev : [...prev, tarea]);
+    }
+  }, [vista]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Abrir captura rápida si la URL trae ?nueva=1 (acceso directo desde pantalla bloqueada)
   useEffect(() => {
@@ -1266,7 +1282,7 @@ export default function OperacionesPage() {
         {/* ── Nueva tarea (CTA) ──────────────────────────────────────────── */}
         <div className="p-3 shrink-0">
           <button
-            onClick={() => { setVista("bandeja"); setQuickAddTrigger(n => n + 1); }}
+            onClick={() => setNuevaTareaOpen(true)}
             className="w-full flex items-center gap-2 px-3 py-2 bg-[#B3985B]/10 hover:bg-[#B3985B]/16 border border-[#B3985B]/20 hover:border-[#B3985B]/35 text-[#B3985B] rounded-xl text-sm font-medium transition-all group"
           >
             <span className="w-5 h-5 rounded-full bg-[#B3985B]/20 group-hover:bg-[#B3985B]/30 flex items-center justify-center transition-colors">
@@ -2388,6 +2404,15 @@ export default function OperacionesPage() {
         proyectos={proyectosNav}
         usuarios={usuarios}
         defaultProyectoId={typeof vista !== "string" && vista.tipo === "proyecto" ? vista.id : null}
+      />
+
+      {/* Modal unificado "Nueva tarea" (selector de 4 tipos) */}
+      <NuevaTareaModal
+        open={nuevaTareaOpen}
+        onClose={() => setNuevaTareaOpen(false)}
+        usuarios={usuarios}
+        defaultArea={typeof vista !== "string" && vista.tipo === "area" ? vista.nombre : null}
+        onCreated={handleTareaCreada}
       />
 
       {/* Bottom Tab Bar */}

@@ -6,7 +6,7 @@ import QuickAdd from "./QuickAdd";
 import TaskItem, { type TareaItem } from "./TaskItem";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
-import { Link2, Camera, Paperclip, FileText, ExternalLink, ChevronDown, ChevronRight, ShieldCheck, ClipboardCheck, AlertTriangle } from "lucide-react";
+import { Link2, Camera, Paperclip, FileText, ExternalLink, ChevronDown, ChevronRight, ShieldCheck, ClipboardCheck, AlertTriangle, Send, CheckCircle2 } from "lucide-react";
 
 // ── Bloque 5: tag de origen (mismo esquema que TaskItem) ──
 const TIPO_ORIGEN: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -65,6 +65,8 @@ export interface TareaDetalle {
   evidenciaNota?: string | null;
   estadoVerificacion?: string | null;
   motivoRechazo?: string | null;
+  evidenciaEnviadaAt?: string | null;
+  evidenciaEnviadaCanal?: string | null;
   porqueSeHace?: string | null;
   estandarMinimo?: string | null;
   siNoSeHace?: string | null;
@@ -142,6 +144,9 @@ export default function TaskModal({
   const [evidenciaNota, setEvidenciaNota] = useState("");
   const [fichaOpen, setFichaOpen]     = useState(false);
   const [savingNota, setSavingNota]   = useState(false);
+  // ── Envío de evidencia por WhatsApp (precondición para verificar) ──
+  const [evidenciaEnviadaAt, setEvidenciaEnviadaAt] = useState<string | null>(null);
+  const [enviandoWa, setEnviandoWa]   = useState(false);
 
   const overlayRef = useRef<HTMLDivElement>(null);
   const titleRef   = useRef<HTMLTextAreaElement>(null);
@@ -171,6 +176,7 @@ export default function TaskModal({
     setComentariosLocal(tarea.comentarios ?? []);
     setArchivosLocal(tarea.archivos ?? []);
     setEvidenciaNota(tarea.evidenciaNota ?? "");
+    setEvidenciaEnviadaAt(tarea.evidenciaEnviadaAt ?? null);
     setFichaOpen(false);
 
     setTimeout(() => titleRef.current?.focus(), 80);
@@ -295,6 +301,27 @@ export default function TaskModal({
         body: JSON.stringify({ evidenciaNota: evidenciaNota || null }),
       });
     } finally { setSavingNota(false); }
+  }
+
+  // ── Enviar evidencia por WhatsApp al grupo del área ──
+  async function enviarPorWhatsApp() {
+    if (!tarea) return;
+    setEnviandoWa(true);
+    try {
+      const res = await fetch(`/api/tareas/${tarea.id}/enviar-evidencia`, { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { toast.error(data.error ?? "No se pudo preparar el envío"); return; }
+      setEvidenciaEnviadaAt(new Date().toISOString());
+      // Abre WhatsApp (grupo configurado o share universal con el texto prellenado)
+      if (data.waUrl) window.open(data.waUrl, "_blank", "noopener,noreferrer");
+      if (!data.grupoConfigurado) {
+        toast.success("Aún no hay grupo configurado — se abrió WhatsApp para elegir destino.");
+      }
+    } catch {
+      toast.error("Error de red al enviar la evidencia");
+    } finally {
+      setEnviandoWa(false);
+    }
   }
 
   const isCompleted = tarea?.estado === "COMPLETADA";
@@ -633,6 +660,42 @@ export default function TaskModal({
                     <p className={`text-[11px] mt-2.5 ${evidenciaCumplida ? "text-green-600" : "text-[#B3985B]"}`}>
                       {evidenciaCumplida ? "✓ Evidencia lista — ya puedes completar la tarea." : evidenciaFalta}
                     </p>
+                  )}
+                </div>
+              )}
+
+              {/* ── Envío por WhatsApp (tras completar, antes de verificar) ── */}
+              {requiereEvidencia && isCompleted && tarea.estadoVerificacion !== "VERIFICADA" && (
+                <div className={`border rounded-xl p-3.5 ${evidenciaEnviadaAt ? "border-[#1f2f1f] bg-[#0a0f0a]" : "border-[#25D366]/25 bg-[#25D366]/[0.06]"}`}>
+                  {evidenciaEnviadaAt ? (
+                    <div className="flex items-start gap-2.5">
+                      <CheckCircle2 strokeWidth={1.75} className="w-4 h-4 mt-0.5 shrink-0 text-green-500" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[11px] uppercase tracking-widest font-semibold text-[#888]">Evidencia enviada</p>
+                        <p className="text-xs text-[#999] leading-relaxed mt-0.5">
+                          Compartida al grupo de WhatsApp. En espera de verificación.
+                        </p>
+                        <button onClick={enviarPorWhatsApp} disabled={enviandoWa}
+                          className="text-[11px] text-[#555] hover:text-[#25D366] transition-colors mt-1.5 disabled:opacity-50">
+                          {enviandoWa ? "Abriendo…" : "Volver a enviar"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Send strokeWidth={1.75} className="w-3.5 h-3.5 text-[#25D366]" />
+                        <span className="text-[11px] uppercase tracking-widest font-semibold text-[#aaa]">Compartir comprobación</span>
+                      </div>
+                      <p className="text-xs text-[#888] leading-relaxed mb-2.5">
+                        Envía la evidencia al grupo de WhatsApp del área. Hasta que se envíe, la tarea no puede verificarse.
+                      </p>
+                      <button onClick={enviarPorWhatsApp} disabled={enviandoWa}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#25D366]/15 border border-[#25D366]/40 text-[#25D366] hover:bg-[#25D366]/25 text-sm font-medium transition-all disabled:opacity-50">
+                        <Send strokeWidth={2} className="w-3.5 h-3.5" />
+                        {enviandoWa ? "Preparando…" : "Enviar por WhatsApp"}
+                      </button>
+                    </>
                   )}
                 </div>
               )}

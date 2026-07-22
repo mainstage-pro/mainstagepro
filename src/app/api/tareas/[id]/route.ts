@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { ensureTareaColumns } from "@/lib/ensure-tarea-columns";
 import { calcularProximaFecha, type RecurrenciaConfig } from "@/lib/recurrencia";
 
 // Explicit SELECT — avoids selecting proyectoEventoId which may not exist in DB yet
@@ -30,6 +31,8 @@ const SELECT = {
   evidenciaNota: true,
   estadoVerificacion: true,
   motivoRechazo: true,
+  evidenciaEnviadaAt: true,
+  evidenciaEnviadaCanal: true,
   porqueSeHace: true,
   estandarMinimo: true,
   siNoSeHace: true,
@@ -55,6 +58,7 @@ const SELECT = {
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  await ensureTareaColumns();
 
   const { id } = await params;
   const tarea = await prisma.tarea.findUnique({

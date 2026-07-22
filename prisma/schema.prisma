@@ -2055,6 +2055,10 @@ model Tarea {
   esAccionCampo      Boolean  @default(false)
   ptTemplateId       String?
   ptTemplate         PTTareaTemplate? @relation("TareasDeTemplate", fields: [ptTemplateId], references: [id], onDelete: SetNull)
+  // ── Envío de evidencia (WhatsApp) — precondición para verificar ──
+  evidenciaEnviadaAt    DateTime?
+  evidenciaEnviadaPorId String?
+  evidenciaEnviadaCanal String?                              // WHATSAPP | ...
 
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt

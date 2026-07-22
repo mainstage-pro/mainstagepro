@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { ensureTareaColumns } from "@/lib/ensure-tarea-columns";
 
 const AREA_TO_MODULE_KEY: Record<string, string> = {
   VENTAS: "tareas-ventas",
@@ -11,7 +12,8 @@ const AREA_TO_MODULE_KEY: Record<string, string> = {
   DIRECCION: "tareas-direccion",
 };
 
-// Explicit SELECT — avoids selecting proyectoEventoId which may not exist in DB yet
+// Explicit SELECT. Las columnas nuevas (proyectoEventoId, evidenciaEnviada*)
+// se aseguran vía ensureTareaColumns() antes de cada query.
 const SELECT = {
   id: true,
   titulo: true,
@@ -32,6 +34,9 @@ const SELECT = {
   creadoPorId: true,
   iniciativaId: true,
   proyectoTareaId: true,
+  proyectoEventoId: true,
+  proyectoInternoId: true,
+  faseInternaId: true,
   seccionId: true,
   carpetaId: true,
   juntaOrigenId: true,
@@ -47,10 +52,15 @@ const SELECT = {
   tipoOrigen: true,
   requiereEvidencia: true,
   tipoEvidencia: true,
+  // ── Envío de evidencia (WhatsApp) previo a verificación ──
+  evidenciaEnviadaAt: true,
+  evidenciaEnviadaCanal: true,
   asignadoA:     { select: { id: true, name: true } },
   creadoPor:     { select: { id: true, name: true } },
   iniciativa:    { select: { id: true, nombre: true, color: true } },
   proyectoTarea: { select: { id: true, nombre: true, color: true } },
+  proyectoEvento:{ select: { id: true, nombre: true, fechaEvento: true } },
+  proyectoInterno:{ select: { id: true, nombre: true, area: true } },
   seccion:       { select: { id: true, nombre: true } },
   carpeta:       { select: { id: true, nombre: true } },
   juntaOrigen:   { select: { id: true, area: true, fecha: true } },
@@ -60,6 +70,7 @@ const SELECT = {
 export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  await ensureTareaColumns();
 
   // Proyectos accesibles para no-admin
   let proyectosPermitidos: string[] | null = null;
@@ -88,8 +99,6 @@ export async function GET(req: NextRequest) {
     const searchWhere: Record<string, any> = {
       estado:   { not: "CANCELADA" },
       parentId: null,
-      // El módulo de tareas no muestra compromisos del plan de trabajo (tipoOrigen=PLAN)
-      tipoOrigen: { not: "PLAN" },
       OR: [
         { titulo:      { contains: term, mode: "insensitive" } },
         { descripcion: { contains: term, mode: "insensitive" } },
@@ -121,8 +130,13 @@ export async function GET(req: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: Record<string, any> = {};
 
-  // El módulo de tareas no muestra compromisos del plan de trabajo (tipoOrigen=PLAN)
-  where.tipoOrigen = { not: "PLAN" };
+  // Módulo unificado: se gestionan los 4 sistemas (TAREA | PLAN | PROYECTO | EVENTO).
+  // Filtro opcional por tipoOrigen vía ?tipoOrigen=PLAN,EVENTO
+  const tipoOrigenParam = searchParams.get("tipoOrigen");
+  if (tipoOrigenParam) {
+    const tipos = tipoOrigenParam.split(",").map(s => s.trim()).filter(Boolean);
+    if (tipos.length > 0) where.tipoOrigen = { in: tipos };
+  }
 
   if (area)         where.area            = area;
   if (asignadoAId)  where.asignadoAId     = asignadoAId;
@@ -216,16 +230,29 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  await ensureTareaColumns();
 
   const body = await req.json();
   const {
     titulo, descripcion, prioridad, area, asignadoAId, notas, etiquetas,
     iniciativaId, proyectoTareaId, seccionId, carpetaId,
-    proyectoInternoId, faseInternaId,
+    proyectoInternoId, faseInternaId, proyectoEventoId,
     parentId, fecha, fechaVencimiento, recurrencia, orden, juntaOrigenId,
+    // Hub unificado: tipo de registro + comprobación
+    tipoOrigen, tipoEvidencia, requiereEvidencia,
+    porqueSeHace, estandarMinimo, siNoSeHace, cuando,
   } = body;
 
   if (!titulo?.trim()) return NextResponse.json({ error: "Título requerido" }, { status: 400 });
+
+  // Deriva tipoOrigen automáticamente si no viene explícito, según el vínculo.
+  const tipoResuelto: string =
+    (typeof tipoOrigen === "string" && tipoOrigen) ||
+    (proyectoEventoId ? "EVENTO" : proyectoInternoId ? "PROYECTO" : "TAREA");
+
+  // La comprobación (NOTA | FOTO | ARCHIVO | ENLACE_MODULO) implica requiereEvidencia.
+  const evidenciaTipo = typeof tipoEvidencia === "string" && tipoEvidencia ? tipoEvidencia : null;
+  const requiere = requiereEvidencia === true || !!evidenciaTipo;
 
   const tarea = await prisma.tarea.create({
     data: {
@@ -237,6 +264,7 @@ export async function POST(req: NextRequest) {
       creadoPorId:     session.id,
       iniciativaId:    iniciativaId     || null,
       proyectoTareaId: proyectoTareaId  || null,
+      proyectoEventoId: proyectoEventoId || null,
       proyectoInternoId: proyectoInternoId || null,
       faseInternaId:   faseInternaId    || null,
       seccionId:       seccionId        || null,
@@ -249,6 +277,14 @@ export async function POST(req: NextRequest) {
       etiquetas:       etiquetas        ? (typeof etiquetas === "string" ? etiquetas : JSON.stringify(etiquetas)) : null,
       orden:           orden            ?? 0,
       juntaOrigenId:   juntaOrigenId    || null,
+      // Hub unificado (la verificación arranca al completar, no al crear)
+      tipoOrigen:        tipoResuelto,
+      requiereEvidencia: requiere,
+      tipoEvidencia:     evidenciaTipo,
+      porqueSeHace:      porqueSeHace   || null,
+      estandarMinimo:    estandarMinimo || null,
+      siNoSeHace:        siNoSeHace     || null,
+      cuando:            cuando         || null,
     },
     select: SELECT,
   });

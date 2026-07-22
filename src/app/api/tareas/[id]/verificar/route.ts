@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession, puedeVerificar } from "@/lib/auth";
+import { ensureTareaColumns } from "@/lib/ensure-tarea-columns";
 
 // POST /api/tareas/[id]/verificar
 // Body: { accion: "VERIFICAR" } | { accion: "RECHAZAR", motivoRechazo: string }
@@ -9,6 +10,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   if (!puedeVerificar(session)) return NextResponse.json({ error: "Sin permiso para verificar" }, { status: 403 });
+  await ensureTareaColumns();
 
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
@@ -16,11 +18,29 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const actual = await prisma.tarea.findUnique({
     where: { id },
-    select: { id: true, estadoVerificacion: true, asignadoAId: true, titulo: true },
+    select: {
+      id: true,
+      estadoVerificacion: true,
+      asignadoAId: true,
+      titulo: true,
+      requiereEvidencia: true,
+      evidenciaEnviadaAt: true,
+    },
   });
   if (!actual) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
   if (accion === "VERIFICAR") {
+    // Precondición: si la tarea requiere evidencia, ésta debe haberse enviado
+    // por WhatsApp al grupo correspondiente antes de poder marcarse verificada.
+    if (actual.requiereEvidencia && !actual.evidenciaEnviadaAt) {
+      return NextResponse.json(
+        {
+          error: "La evidencia aún no se ha enviado al grupo de WhatsApp",
+          code: "EVIDENCIA_NO_ENVIADA",
+        },
+        { status: 422 },
+      );
+    }
     const tarea = await prisma.tarea.update({
       where: { id },
       data: {
