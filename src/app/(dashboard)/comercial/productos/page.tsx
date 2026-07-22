@@ -4,9 +4,8 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
-import ModuleTabs from "@/components/ModuleTabs";
-import PaquetesSection from "./PaquetesSection";
-import GruposEquipoPage from "../../admin/grupos-equipo/page";
+import ModuleIndexRedirect from "@/components/ModuleIndexRedirect";
+import { comercialProductosTabs } from "./tabs";
 import { Guitar, PartyPopper, Briefcase, Package, type LucideIcon } from "lucide-react";
 
 // ── Tipos ───────────────────────────────────────────────────────────────────
@@ -394,7 +393,7 @@ function ProductoEditor({
 }
 
 // ── Sección: Productos de equipos ─────────────────────────────────────────────
-function ProductosSection() {
+export function ProductosSection() {
   const toast = useToast();
   const confirm = useConfirm();
 
@@ -716,39 +715,7 @@ function ProductosSection() {
   );
 }
 
-// ── Página del módulo: Productos de equipos + Paquetes + Grupos de equipo ──────
+// ── Página del módulo: redirige a la primera sección accesible ─────────────────
 export default function ProductosModulePage() {
-  return (
-    <ModuleTabs
-      tabs={[
-        {
-          key: "productos",
-          label: "Productos de equipos",
-          accessKey: "comercial-productos",
-          content: (
-            <div className="p-4 md:p-8 max-w-7xl mx-auto">
-              <ProductosSection />
-            </div>
-          ),
-        },
-        {
-          key: "paquetes",
-          label: "Paquetes",
-          accessKey: "comercial-productos",
-          content: (
-            <div className="p-4 md:p-8 max-w-7xl mx-auto">
-              <PaquetesSection />
-            </div>
-          ),
-        },
-        {
-          key: "grupos-equipo",
-          label: "Grupos de equipo",
-          accessKey: "grupos-equipo",
-          adminOnly: true,
-          content: <GruposEquipoPage />,
-        },
-      ]}
-    />
-  );
+  return <ModuleIndexRedirect tabs={comercialProductosTabs} />;
 }

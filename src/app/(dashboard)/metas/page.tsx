@@ -1,16 +1,6 @@
-"use client";
-
-import ModuleTabs from "@/components/ModuleTabs";
-import ObjetivosPage from "../objetivos/page";
-import KpisDashboardPage from "../kpis/page";
+import ModuleIndexRedirect from "@/components/ModuleIndexRedirect";
+import { metasTabs } from "./tabs";
 
 export default function MetasPage() {
-  return (
-    <ModuleTabs
-      tabs={[
-        { key: "objetivos", label: "Objetivos", content: <ObjetivosPage /> },
-        { key: "kpis", label: "KPIs", content: <KpisDashboardPage /> },
-      ]}
-    />
-  );
+  return <ModuleIndexRedirect tabs={metasTabs} />;
 }

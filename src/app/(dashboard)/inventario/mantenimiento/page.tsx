@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { SkeletonPage } from "@/components/Skeleton";
 import { useConfirm } from "@/components/Confirm";
@@ -141,6 +141,7 @@ function MantenimientoContent() {
   const confirm = useConfirm();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
   const urlEquipoId = searchParams.get("equipoId");
 
   const [equipos, setEquipos] = useState<Equipo[]>([]);
@@ -245,7 +246,7 @@ function MantenimientoContent() {
 
   function selectEquipo(id: string) {
     setSelectedEquipoId(id);
-    router.replace(`/inventario/mantenimiento?equipoId=${id}`, { scroll: false });
+    router.replace(`${pathname}?equipoId=${id}`, { scroll: false });
   }
 
   async function guardar(costo?: CostoMantenimiento) {
