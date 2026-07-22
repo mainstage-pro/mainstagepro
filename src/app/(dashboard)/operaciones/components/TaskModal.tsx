@@ -7,6 +7,7 @@ import TaskItem, { type TareaItem } from "./TaskItem";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { Link2, Camera, Paperclip, FileText, ExternalLink, ChevronDown, ChevronRight, ShieldCheck, ClipboardCheck, AlertTriangle } from "lucide-react";
+import { GRUPOS_MODULOS, MODULOS_EJECUCION } from "@/lib/modulosEjecucion";
 
 // ── Bloque 5: tag de origen (mismo esquema que TaskItem) ──
 const TIPO_ORIGEN: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -147,6 +148,13 @@ export default function TaskModal({
   // ── Configuración de evidencia (editable en los 4 sistemas) ──
   const [requiereEvidencia, setRequiereEvidencia] = useState(false);
   const [tipoEvidencia, setTipoEvidencia] = useState<string | null>(null);
+  // ── Acceso directo: módulo interno o enlace externo (editable) ──
+  const [moduloDestino, setModuloDestino] = useState("");
+  const [moduloTexto, setModuloTexto] = useState("");
+  const [accesoModo, setAccesoModo] = useState<"interno" | "externo">("interno");
+  // ── Envío de evidencia al grupo (WhatsApp) ──
+  const [enviandoGrupo, setEnviandoGrupo] = useState(false);
+  const [evidenciaEnviadaAt, setEvidenciaEnviadaAt] = useState<string | null>(null);
 
   const overlayRef = useRef<HTMLDivElement>(null);
   const titleRef   = useRef<HTMLTextAreaElement>(null);
@@ -178,6 +186,10 @@ export default function TaskModal({
     setEvidenciaNota(tarea.evidenciaNota ?? "");
     setRequiereEvidencia(!!tarea.requiereEvidencia);
     setTipoEvidencia(tarea.tipoEvidencia ?? null);
+    setModuloDestino(tarea.moduloDestino ?? "");
+    setModuloTexto(tarea.moduloTexto ?? "");
+    setAccesoModo(/^https?:\/\//i.test(tarea.moduloDestino ?? "") ? "externo" : "interno");
+    setEvidenciaEnviadaAt(tarea.evidenciaEnviadaAt ?? null);
     setFichaOpen(false);
 
     setTimeout(() => titleRef.current?.focus(), 80);
@@ -315,6 +327,40 @@ export default function TaskModal({
     setTipoEvidencia(next);
     onSave(tarea.id, { tipoEvidencia: next });
   }
+  // ── Acceso directo: persistir destino + texto ──
+  function guardarAcceso(destino: string, texto: string) {
+    if (!tarea) return;
+    setModuloDestino(destino);
+    setModuloTexto(texto);
+    onSave(tarea.id, {
+      moduloDestino: destino || null,
+      moduloTexto: texto || null,
+      moduloDisponible: true,
+    });
+  }
+  function limpiarAcceso() {
+    if (!tarea) return;
+    setModuloDestino("");
+    setModuloTexto("");
+    onSave(tarea.id, { moduloDestino: null, moduloTexto: null });
+  }
+  // ── Enviar evidencia al grupo de WhatsApp ──
+  async function enviarAlGrupo() {
+    if (!tarea) return;
+    setEnviandoGrupo(true);
+    try {
+      const res = await fetch(`/api/tareas/${tarea.id}/enviar-evidencia`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) { toast.error(data.error ?? "Error al enviar la evidencia"); return; }
+      setEvidenciaEnviadaAt(new Date().toISOString());
+      if (data.waUrl) window.open(data.waUrl, "_blank", "noopener,noreferrer");
+      toast.success(data.grupoConfigurado ? "Abriendo el grupo de WhatsApp…" : "Abriendo WhatsApp con el mensaje…");
+    } catch {
+      toast.error("Error de conexión al enviar la evidencia");
+    } finally {
+      setEnviandoGrupo(false);
+    }
+  }
 
   const isCompleted = tarea?.estado === "COMPLETADA";
 
@@ -364,9 +410,10 @@ export default function TaskModal({
   const tieneFicha = !!(tarea?.porqueSeHace || tarea?.estandarMinimo || tarea?.siNoSeHace || tarea?.cuando);
   const fichaReadonly = tarea?.tipoOrigen === "PLAN";
 
-  // ── Bloque 3: acceso directo a módulo ──
-  const moduloUrl = tarea?.moduloDestino && tarea?.moduloDisponible ? tarea.moduloDestino : null;
-  const moduloLabel = tarea?.moduloTexto || "Abrir módulo";
+  // ── Bloque 3: acceso directo a módulo / enlace externo ──
+  const moduloUrl = moduloDestino || null;
+  const moduloEsExterno = /^https?:\/\//i.test(moduloDestino);
+  const moduloLabel = moduloTexto || (moduloEsExterno ? "Abrir enlace" : "Abrir módulo");
 
   const EVIDENCIA_LABEL: Record<string, string> = {
     FOTO: "Foto", ARCHIVO: "Archivo", NOTA: "Nota", ENLACE_MODULO: "Confirmación / enlace",
@@ -498,6 +545,8 @@ export default function TaskModal({
               {moduloUrl && (
                 <a
                   href={moduloUrl}
+                  target={moduloEsExterno ? "_blank" : undefined}
+                  rel={moduloEsExterno ? "noopener noreferrer" : undefined}
                   className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B] hover:bg-[#B3985B]/20 transition-all group"
                 >
                   <ExternalLink strokeWidth={2} className="w-4 h-4 shrink-0" />
@@ -651,6 +700,24 @@ export default function TaskModal({
                       {evidenciaCumplida ? "✓ Evidencia lista — ya puedes completar la tarea." : evidenciaFalta}
                     </p>
                   )}
+
+                  {/* Enviar al grupo (WhatsApp) */}
+                  <div className="mt-3 pt-3 border-t border-[#1a1a1a]/60">
+                    <button
+                      onClick={enviarAlGrupo}
+                      disabled={enviandoGrupo || !evidenciaCumplida}
+                      title={!evidenciaCumplida ? evidenciaFalta : "Enviar la evidencia al grupo"}
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#111] border border-[#25502f] text-xs font-medium text-[#4ade80] hover:bg-[#0f1f14] disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.9 4.44-9.9 9.9 0 1.75.46 3.45 1.32 4.95L2.05 22l5.3-1.38a9.87 9.87 0 004.69 1.19h.01c5.46 0 9.9-4.44 9.9-9.9 0-2.64-1.03-5.13-2.9-7A9.82 9.82 0 0012.04 2zm5.8 14.15c-.24.68-1.42 1.3-1.95 1.34-.5.05-.98.24-3.3-.69-2.78-1.1-4.55-3.96-4.69-4.15-.14-.19-1.13-1.5-1.13-2.86 0-1.36.72-2.03.97-2.31.24-.28.53-.35.71-.35l.5.01c.16.01.38-.06.59.45.24.58.81 2 .88 2.14.07.14.12.31.02.5-.09.19-.14.31-.28.48l-.42.49c-.14.14-.28.29-.12.57.16.28.71 1.17 1.53 1.9 1.05.94 1.94 1.23 2.22 1.37.28.14.44.12.6-.07.16-.19.69-.81.88-1.09.19-.28.37-.23.62-.14.25.09 1.61.76 1.89.9.28.14.46.21.53.33.07.12.07.68-.17 1.36z"/></svg>
+                      {enviandoGrupo ? "Abriendo…" : evidenciaEnviadaAt ? "Reenviar al grupo" : "Enviar al grupo"}
+                    </button>
+                    {evidenciaEnviadaAt && (
+                      <p className="text-[10px] text-green-600/80 mt-1.5 text-center">
+                        ✓ Enviado {new Date(evidenciaEnviadaAt).toLocaleDateString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -885,6 +952,80 @@ export default function TaskModal({
                     <option value="NOTA">Nota</option>
                     <option value="ENLACE_MODULO">Confirmación / enlace</option>
                   </select>
+                )}
+              </div>
+
+              {/* Acceso directo — módulo interno o enlace externo (editable) */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold">Acceso directo</p>
+                  {moduloDestino && (
+                    <button onClick={limpiarAcceso} className="text-[10px] text-[#444] hover:text-red-400 transition-colors">Quitar</button>
+                  )}
+                </div>
+
+                <div className="flex rounded-lg overflow-hidden border border-[#1a1a1a] mb-2">
+                  <button
+                    onClick={() => setAccesoModo("interno")}
+                    className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-medium transition-all ${
+                      accesoModo === "interno" ? "bg-[#1a1a1a] text-white" : "text-[#444] hover:text-[#777]"
+                    }`}
+                  >
+                    <ExternalLink strokeWidth={2} className="w-3 h-3" /> Módulo
+                  </button>
+                  <div className="w-px bg-[#1a1a1a]" />
+                  <button
+                    onClick={() => setAccesoModo("externo")}
+                    className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-medium transition-all ${
+                      accesoModo === "externo" ? "bg-[#1a1a1a] text-[#B3985B]" : "text-[#444] hover:text-[#777]"
+                    }`}
+                  >
+                    <Link2 strokeWidth={2} className="w-3 h-3" /> Enlace
+                  </button>
+                </div>
+
+                {accesoModo === "interno" ? (
+                  <select
+                    value={moduloEsExterno ? "" : moduloDestino}
+                    onChange={e => {
+                      const ruta = e.target.value;
+                      const nombre = ruta ? MODULOS_EJECUCION.find(m => m.ruta === ruta)?.nombre ?? "" : "";
+                      if (ruta) guardarAcceso(ruta, nombre); else limpiarAcceso();
+                    }}
+                    className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]"
+                  >
+                    <option value="">— Sin módulo —</option>
+                    {GRUPOS_MODULOS.map(grupo => (
+                      <optgroup key={grupo.grupo} label={grupo.grupo}>
+                        {grupo.modulos.map(m => (
+                          <option key={m.ruta} value={m.ruta}>{m.nombre}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="space-y-1.5">
+                    <input
+                      value={moduloEsExterno ? moduloDestino : ""}
+                      onChange={e => setModuloDestino(e.target.value)}
+                      onBlur={e => {
+                        const url = e.target.value.trim();
+                        if (url && url !== (tarea.moduloDestino ?? "")) guardarAcceso(url, moduloTexto);
+                        else if (!url && tarea.moduloDestino) limpiarAcceso();
+                      }}
+                      placeholder="https://drive.google.com/…"
+                      className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]"
+                    />
+                    <input
+                      value={moduloTexto}
+                      onChange={e => setModuloTexto(e.target.value)}
+                      onBlur={e => {
+                        if (moduloEsExterno && e.target.value !== (tarea.moduloTexto ?? "")) guardarAcceso(moduloDestino, e.target.value.trim());
+                      }}
+                      placeholder="Texto del botón (opcional)"
+                      className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]"
+                    />
+                  </div>
                 )}
               </div>
 

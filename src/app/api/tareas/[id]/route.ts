@@ -110,6 +110,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     // Campos de ficha (editables para tareas creadas a mano) + evidencia
     "porqueSeHace", "estandarMinimo", "siNoSeHace", "cuando", "evidenciaNota",
     "requiereEvidencia", "tipoEvidencia",
+    // Acceso directo a módulo / enlace externo (editable en el hub)
+    "moduloDestino", "moduloTexto", "moduloDisponible",
   ];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
