@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getEquipoImage, type FotoPresentacion } from "@/lib/presentacion-imagenes";
-import { useEquipoGaleria, GaleriaCombinada } from "./_galeria";
+import { useEquipoGaleria } from "./_galeria";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Linea {
@@ -191,7 +191,7 @@ function EquipoRow({ linea, index }: { linea: Linea; index: number }) {
           )}
           {tieneGaleria && (
             <button type="button" onClick={abrir} className="text-[#B3985B]/70 hover:text-[#B3985B] text-[10px] mt-1 transition-colors">
-              Ver galería ({fotos.length} fotos) →
+              Ver galería ({fotos.length} {fotos.length === 1 ? "foto" : "fotos"}) →
             </button>
           )}
         </div>
@@ -564,12 +564,6 @@ Mainstage Pro puede proveer soporte técnico básico vía WhatsApp durante el us
               <p className="text-white/30 text-sm italic">El equipo específico se coordinará directamente.</p>
             </R>
           )}
-
-          <GaleriaCombinada
-            lineas={cotizacion.lineas}
-            className="mt-20 pt-14 border-t border-white/[0.06]"
-            subtitulo="El equipo de tu renta, en eventos reales. Haz click en cualquier foto para ampliar."
-          />
         </div>
       </section>
 

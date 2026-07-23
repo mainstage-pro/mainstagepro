@@ -116,8 +116,9 @@ export function getEquipoImage(linea: EquipoLinea): string | null {
 }
 
 // ─── Galería de fotos por equipo (inventario) ─────────────────────────────────
-// Devuelve las fotos EXTERNO de imagenesUrls, con la imagen principal al frente.
-// Si el equipo no tiene fotos propias, cae al mapeo de marca/modelo (una sola).
+// Devuelve SOLO las fotos reales EXTERNO cargadas en imagenesUrls (fotos del
+// equipo en eventos). No incluye la imagen principal (imagenUrl) ni el mapeo
+// de marca/modelo PNG — esos son solo para el thumbnail de la tarjeta.
 export function getEquipoImagenes(linea: EquipoLinea): GaleriaItem[] {
   const items: GaleriaItem[] = [];
   const seen = new Set<string>();
@@ -128,8 +129,6 @@ export function getEquipoImagenes(linea: EquipoLinea): GaleriaItem[] {
     seen.add(src);
     items.push({ src, caption });
   };
-
-  push(linea.equipo?.imagenUrl, nombre);
 
   const raw = linea.equipo?.imagenesUrls;
   if (raw) {
@@ -148,11 +147,6 @@ export function getEquipoImagenes(linea: EquipoLinea): GaleriaItem[] {
     } catch {
       /* ignora JSON inválido */
     }
-  }
-
-  if (items.length === 0) {
-    const fallback = getEquipoImage(linea);
-    if (fallback) push(fallback, nombre);
   }
 
   return items;

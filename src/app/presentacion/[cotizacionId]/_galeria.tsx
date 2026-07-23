@@ -119,7 +119,7 @@ export function useEquipoGaleria(linea: EquipoLinea) {
   const fotos = getEquipoImagenes(linea);
   const [open, setOpen] = useState(false);
   const [index, setIndex] = useState(0);
-  const tieneGaleria = fotos.length > 1;
+  const tieneGaleria = fotos.length >= 1;
 
   const abrir = () => { if (fotos.length) { setIndex(0); setOpen(true); } };
   const lightbox = open ? (
@@ -127,69 +127,4 @@ export function useEquipoGaleria(linea: EquipoLinea) {
   ) : null;
 
   return { fotos, tieneGaleria, abrir, lightbox };
-}
-
-// ─── Galería combinada de todos los equipos de la cotización ──────────────────
-export function GaleriaCombinada({
-  lineas,
-  className = "",
-  titulo = "Galería del equipo",
-  subtitulo = "El equipo de tu propuesta, en eventos reales. Haz click en cualquier foto para ampliar.",
-}: {
-  lineas: EquipoLinea[];
-  className?: string;
-  titulo?: string;
-  subtitulo?: string;
-}) {
-  const fotos: GaleriaItem[] = [];
-  const seen = new Set<string>();
-  for (const l of lineas) {
-    for (const f of getEquipoImagenes(l)) {
-      if (seen.has(f.src)) continue;
-      seen.add(f.src);
-      fotos.push(f);
-    }
-  }
-
-  const [open, setOpen] = useState(false);
-  const [index, setIndex] = useState(0);
-
-  if (fotos.length < 2) return null;
-
-  const abrir = (i: number) => { setIndex(i); setOpen(true); };
-
-  return (
-    <div className={className}>
-      <div className="mb-7">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-0.5 h-5 bg-[#B3985B] rounded-full shrink-0" />
-          <h3 className="text-white font-semibold" style={{ fontSize: "clamp(1.15rem,2.2vw,1.6rem)", letterSpacing: "-0.02em" }}>
-            {titulo}
-          </h3>
-        </div>
-        <p className="text-white/35 text-sm leading-relaxed pl-4">{subtitulo}</p>
-      </div>
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-        {fotos.map((f, i) => (
-          <button
-            key={`${f.src}-${i}`}
-            type="button"
-            onClick={() => abrir(i)}
-            className="group relative aspect-square rounded-xl overflow-hidden bg-[#070707] border border-white/8 hover:border-[#B3985B]/40 transition-colors"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={f.src}
-              alt={f.caption}
-              draggable={false}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            />
-          </button>
-        ))}
-      </div>
-      {open && (
-        <EquipoLightbox items={fotos} index={index} setIndex={setIndex} onClose={() => setOpen(false)} />
-      )}
-    </div>
-  );
 }
