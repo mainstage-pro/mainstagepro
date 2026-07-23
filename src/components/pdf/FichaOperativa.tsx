@@ -430,12 +430,13 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                     const displayName = [e.marca, e.modelo].filter(Boolean).join(" ") || e.descripcion;
                     const showDesc = displayName !== e.descripcion && Boolean(e.descripcion);
                     const accs = e.accesorios.filter(a => a.nombre);
+                    const nota = (e.notas ?? "").trim();
                     return (
                       <View key={idx} style={s.riderEquipCard} wrap={false}>
                         {/* Header del equipo */}
                         <View style={[
                           s.riderEquipHead,
-                          accs.length > 0 ? { borderBottomWidth: 1, borderBottomColor: "#e0e0e0" } : {},
+                          (accs.length > 0 || nota) ? { borderBottomWidth: 1, borderBottomColor: "#e0e0e0" } : {},
                         ]}>
                           <View style={s.riderCheckBox} />
                           <Text style={s.riderEquipName}>{displayName}</Text>
@@ -452,6 +453,13 @@ export function FichaOperativa({ data }: { data: FichaOperativaData }) {
                             </View>
                           )}
                         </View>
+
+                        {/* Nota del concepto (viene de la cotización o del proyecto) */}
+                        {nota && (
+                          <View style={s.riderNotaRow}>
+                            <Text style={s.riderNotaTxt}>Nota: {nota}</Text>
+                          </View>
+                        )}
 
                         {/* Accesorios en grid de 2 columnas */}
                         {accs.length > 0 && (

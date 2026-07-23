@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ensureSyncColumns } from "@/lib/migraciones-lazy";
+import { sembrarNotasEquiposProyecto } from "@/lib/notas-equipos";
 
 /**
  * Motor de sincronización cotización → proyecto.
@@ -279,6 +280,10 @@ export async function sincronizarProyectoDesdeCotizacion(
         data: { necesitaRevision: false },
       });
     }
+
+    // Sembrar notas de equipo desde la cotización hacia los ProyectoEquipo que
+    // aún no tienen (incluye los recién creados). No sobrescribe notas manuales.
+    await sembrarNotasEquiposProyecto(proyectoId);
 
     return { sincronizado: true };
   } catch (err) {

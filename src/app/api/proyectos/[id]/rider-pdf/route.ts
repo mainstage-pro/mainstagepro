@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
 import ReactPDF, { Document } from '@react-pdf/renderer'
 import { RiderPDF } from '@/components/RiderPDF'
+import { sembrarNotasEquiposProyecto } from '@/lib/notas-equipos'
 import React from 'react'
 import path from 'path'
 import fs from 'fs'
@@ -14,6 +15,9 @@ export async function GET(req: NextRequest,
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const { id } = await params
+
+  // Auto-siembra notas de equipo desde la cotización antes de armar el rider.
+  await sembrarNotasEquiposProyecto(id)
 
   const proyecto = await prisma.proyecto.findUnique({
     where: { id },

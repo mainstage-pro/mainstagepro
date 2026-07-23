@@ -227,6 +227,8 @@ export async function crearProyectoDesdeCotizacion(
           dias: l.dias,
           costoExterno: l.tipo === "EQUIPO_EXTERNO" ? l.costoUnitario : null,
           proveedorId: l.tipo === "EQUIPO_EXTERNO" ? (l.proveedorId ?? null) : null,
+          // Copia la nota del concepto de la cotización como semilla editable.
+          notas: (l.notas ?? "").trim() || null,
         })),
         ...equiposDePaquetes.map((c) => ({
           proyectoId: proy.id,

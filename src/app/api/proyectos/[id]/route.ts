@@ -6,6 +6,7 @@ import { guardarVersion } from "@/lib/versiones";
 import { createExpiringToken } from "@/lib/tokens";
 import { calcularAvanceProyecto } from "@/lib/proyecto-avance";
 import { ensureOperacionTecnicaColumns } from "@/lib/migraciones-lazy";
+import { sembrarNotasEquiposProyecto } from "@/lib/notas-equipos";
 
 function proximoMiercolesTraEvento(fecha: Date): Date {
   const d = new Date(fecha);
@@ -37,6 +38,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   await ensureOperacionTecnicaColumns();
+
+  // Auto-siembra notas de equipo desde la cotización (solo rellena vacías).
+  await sembrarNotasEquiposProyecto(id);
 
   // Try with rider accessories (new tables); fall back without them if tables don't exist yet
   let proyecto = null;

@@ -7,6 +7,7 @@ import {
   logoBase64, logoBase64Dark, EquipoFlat, CronoRow, TransporteSlot,
   DocsData, EquipoRiderExtra, ProveedorRenta,
 } from "@/components/pdf/PdfShared";
+import { sembrarNotasEquiposProyecto } from "@/lib/notas-equipos";
 import React from "react";
 import path from "path";
 
@@ -15,6 +16,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
+
+  // Auto-siembra notas de equipo desde la cotización (solo rellena vacías).
+  await sembrarNotasEquiposProyecto(id);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const proyecto = await (prisma.proyecto.findUnique as any)({
@@ -98,6 +102,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     tipo: e.tipo,
     confirmado: e.confirmado,
     proveedor: e.proveedor?.nombre ?? null,
+    notas: e.notas ?? null,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     accesorios: (e.riderAccesorios ?? []).map((a: any) => ({
       nombre: a.nombre,
