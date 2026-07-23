@@ -195,6 +195,11 @@ export default function CalendarioPage() {
             className="ms-btn-secondary">
             Siguiente →
           </button>
+          <a href={`/api/produccion/agenda/pdf?mes=${year}-${String(month + 1).padStart(2, "0")}`}
+            target="_blank" rel="noopener noreferrer"
+            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+            Descargar PDF
+          </a>
         </div>
       </div>
 

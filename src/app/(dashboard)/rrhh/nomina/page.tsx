@@ -125,6 +125,10 @@ export default function NominaPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <a href="/api/rrhh/nomina/pdf" target="_blank" rel="noopener noreferrer"
+            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm px-4 py-2 rounded-lg font-medium transition-colors">
+            Descargar PDF
+          </a>
           <Link href="/rrhh/personal" className="bg-[#1a1a1a] border border-[#333] hover:bg-[#222] text-gray-300 text-sm px-4 py-2 rounded-lg transition-colors">
             Personal
           </Link>

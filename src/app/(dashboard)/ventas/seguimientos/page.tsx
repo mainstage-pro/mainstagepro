@@ -585,10 +585,16 @@ export default function SeguimientosPage() {
             )}
           </p>
         </div>
-        <button onClick={() => setShowModal(true)}
-          className="ms-btn-primary">
-          + Seguimiento
-        </button>
+        <div className="flex items-center gap-2">
+          <a href="/api/ventas/embudo/pdf" target="_blank" rel="noopener noreferrer"
+            className="bg-[#1a1a1a] border border-[#333] hover:bg-[#222] text-gray-300 text-sm px-4 py-2 rounded-lg transition-colors">
+            Reporte embudo
+          </a>
+          <button onClick={() => setShowModal(true)}
+            className="ms-btn-primary">
+            + Seguimiento
+          </button>
+        </div>
       </div>
 
       {/* Métricas */}

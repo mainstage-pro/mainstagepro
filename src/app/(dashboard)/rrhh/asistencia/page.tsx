@@ -484,6 +484,10 @@ function TabReporte({ personal }: { personal: Personal[] }) {
         <button onClick={() => { const d = new Date(`${mes}-15`); d.setMonth(d.getMonth() + 1); setMes(toMes(d)); }}
           className="w-8 h-8 ms-btn-icon">→</button>
         <span className="text-gray-600 text-xs ml-2">{laborales} días laborales</span>
+        <a href={`/api/rrhh/asistencia/pdf?mes=${mes}`} target="_blank" rel="noopener noreferrer"
+          className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium bg-[#B3985B] text-black hover:bg-[#c9a96a] transition-colors">
+          Descargar PDF
+        </a>
       </div>
 
       {loading ? (

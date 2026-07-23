@@ -277,6 +277,10 @@ export default function CajaChicaPage() {
           <p className="ms-subtitle mt-0.5">Gastos operativos y emergencias de oficina</p>
         </div>
         <div className="flex items-center gap-2">
+          <a href="/api/finanzas/caja-chica/pdf" target="_blank" rel="noopener noreferrer"
+            className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+            Descargar PDF
+          </a>
           <button
             onClick={() => formTipo === "RECARGA" ? setFormTipo(null) : abrirForm("RECARGA")}
             className="bg-[#1a1a1a] border border-green-700/50 hover:bg-green-900/20 text-green-400 text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
