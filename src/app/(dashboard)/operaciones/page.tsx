@@ -33,6 +33,7 @@ interface ProyectoDetalle {
 }
 interface SeccionDetalle {
   id: string; nombre: string; orden: number; colapsada: boolean;
+  tipoModulo?: string;
   tareas: TareaItem[];
 }
 interface Iniciativa { id: string; nombre: string; color: string | null }
@@ -914,6 +915,7 @@ export default function OperacionesPage() {
         nombre: nuevaSeccionNombre.trim(),
         proyectoId: (vista as { tipo: "proyecto"; id: string }).id,
         orden: proyectoDetalle?.secciones.length ?? 0,
+        tipoModulo: proyectoSub === "PLAN" ? "PLAN" : "TAREA",
       }),
     });
     if (res.ok) {
@@ -923,7 +925,7 @@ export default function OperacionesPage() {
       } : null);
       setNuevaSeccionNombre(""); setShowNuevaSeccion(false);
     }
-  }, [nuevaSeccionNombre, vista]);
+  }, [nuevaSeccionNombre, vista, proyectoSub, proyectoDetalle]);
 
   // ── Reorder sections via drag-and-drop ─────────────────────────────────
   async function reorderSecciones(draggedId: string, targetId: string, pos: "before" | "after") {
@@ -2238,8 +2240,8 @@ export default function OperacionesPage() {
                     </div>
                   ))}
 
-                  {/* ── Secciones (pestañas de Tareas y Plan) ── */}
-                  {(proyectoSub === "TAREA" || proyectoSub === "PLAN") && proyectoDetalle.secciones.map((seccion) => (
+                  {/* ── Secciones (por sub-módulo: Tareas y Plan tienen las suyas) ── */}
+                  {(proyectoSub === "TAREA" || proyectoSub === "PLAN") && proyectoDetalle.secciones.filter(s => (s.tipoModulo ?? "TAREA") === proyectoSub).map((seccion) => (
                     <SectionBlock
                       key={seccion.id} seccion={seccion} proyectoId={proyectoDetalle.id}
                       selectedId={selectedId}

@@ -2117,6 +2117,7 @@ model TareaSeccion {
   nombre     String
   orden      Int           @default(0)
   colapsada  Boolean       @default(false)
+  tipoModulo String        @default("TAREA")   // TAREA | PLAN — sub-módulo del hub al que pertenece
   proyectoId String
   proyecto   TareaProyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
   tareas     Tarea[]
