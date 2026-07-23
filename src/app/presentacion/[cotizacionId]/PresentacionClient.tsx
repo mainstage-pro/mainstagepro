@@ -227,7 +227,7 @@ function CinematicGallery({ photos }: { photos: { src: string; caption: string }
 // ─── Equipment card ───────────────────────────────────────────────────────────
 function EquipoCard({ linea, delay = 0 }: { linea: Linea; delay?: number }) {
   const { fotos, tieneGaleria, abrir, lightbox } = useEquipoGaleria(linea);
-  const img = fotos[0]?.src ?? getEquipoImage(linea);
+  const img = getEquipoImage(linea);
   return (
     <R delay={delay} y={24}>
       <div

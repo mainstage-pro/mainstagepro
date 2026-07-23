@@ -145,7 +145,7 @@ function CatIcon({ cat }: { cat: string }) {
 // ─── Single equipment row (technical, spec-focused) ───────────────────────────
 function EquipoRow({ linea, index }: { linea: Linea; index: number }) {
   const { fotos, tieneGaleria, abrir, lightbox } = useEquipoGaleria(linea);
-  const img = fotos[0]?.src ?? getEquipoImage(linea);
+  const img = getEquipoImage(linea);
   return (
     <R delay={index * 50} y={20}>
       <div className="flex items-center gap-4 py-4 border-b border-white/[0.06] group"

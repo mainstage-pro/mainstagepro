@@ -79,13 +79,13 @@ export function EquipoLightbox({
         </>
       )}
 
-      <div className="max-w-5xl w-full flex flex-col items-center gap-4" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full flex flex-col items-center gap-4" onClick={(e) => e.stopPropagation()}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={foto.src}
           alt={foto.caption}
           draggable={false}
-          className="max-w-full max-h-[78vh] object-contain rounded-xl"
+          className="max-w-[96vw] max-h-[86vh] object-contain rounded-xl"
         />
         <div className="text-center">
           {foto.caption && <p className="text-white/80 text-sm">{foto.caption}</p>}
