@@ -71,10 +71,11 @@ const s = StyleSheet.create({
   tbodyRow: { flexDirection: "row", paddingHorizontal: 10, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: MID },
   tbodyRowAlt: { flexDirection: "row", paddingHorizontal: 10, paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: MID, backgroundColor: "#FAFAF8" },
   tdFecha: { width: 62, fontSize: 7.5, color: GRAY },
-  tdEquipo: { flex: 2.6, fontSize: 7.5, color: BLACK },
+  tdEquipoCol: { flex: 2.6, paddingRight: 4 },
+  tdEquipo: { fontSize: 7.5, color: BLACK },
   tdEquipoSub: { fontSize: 6, color: "#999999" },
-  tdTipo: { width: 52, fontSize: 6.5 },
-  tdAccion: { flex: 3, fontSize: 7.5, color: GRAY },
+  tdTipo: { width: 52, fontSize: 6.5, paddingRight: 4 },
+  tdAccion: { flex: 3, fontSize: 7.5, color: GRAY, paddingRight: 4 },
   tdProximo: { width: 62, fontSize: 7, color: GRAY },
 
   tipoPrev: { color: "#16a34a" },
@@ -122,6 +123,7 @@ export interface MantenimientoEquiposPDFData {
   categorias: MantenimientoCategoriaData[];
   totalRegistros: number;
   totalEquipos: number;
+  diaLabel?: string | null;
   generadoEn: string;
 }
 
@@ -160,7 +162,9 @@ export function MantenimientoEquiposPDF({ data }: { data: MantenimientoEquiposPD
           </View>
           <View style={s.headerRight}>
             <Text style={s.docTitle}>MANTENIMIENTO DE EQUIPOS</Text>
-            <Text style={s.docSub}>Bitácora · {fmtDateLong(data.generadoEn)}</Text>
+            <Text style={s.docSub}>
+              {data.diaLabel ? `Registros del ${data.diaLabel}` : `Bitácora · ${fmtDateLong(data.generadoEn)}`}
+            </Text>
           </View>
         </View>
 
@@ -185,14 +189,14 @@ export function MantenimientoEquiposPDF({ data }: { data: MantenimientoEquiposPD
           </View>
 
           {data.categorias.map(cat => (
-            <View key={cat.nombre} style={s.seccion} wrap={false}>
-              <View style={s.seccionHeader}>
+            <View key={cat.nombre} style={s.seccion}>
+              <View style={s.seccionHeader} wrap={false}>
                 <Text style={s.seccionNombre}>{cat.nombre.toUpperCase()}</Text>
                 <Text style={s.seccionCount}>{cat.registros.length} registro{cat.registros.length !== 1 ? "s" : ""}</Text>
               </View>
 
               <View style={s.table}>
-                <View style={s.thead}>
+                <View style={s.thead} fixed>
                   <Text style={s.thFecha}>FECHA</Text>
                   <Text style={s.thEquipo}>EQUIPO</Text>
                   <Text style={s.thTipo}>TIPO</Text>
@@ -200,9 +204,9 @@ export function MantenimientoEquiposPDF({ data }: { data: MantenimientoEquiposPD
                   <Text style={s.thProximo}>PRÓXIMO</Text>
                 </View>
                 {cat.registros.map((r, i) => (
-                  <View key={r.id} style={i % 2 === 0 ? s.tbodyRow : s.tbodyRowAlt}>
+                  <View key={r.id} style={i % 2 === 0 ? s.tbodyRow : s.tbodyRowAlt} wrap={false}>
                     <Text style={s.tdFecha}>{fmtDate(r.fecha)}</Text>
-                    <View style={{ flex: 2.6 }}>
+                    <View style={s.tdEquipoCol}>
                       <Text style={s.tdEquipo}>{r.equipoDescripcion}</Text>
                       <Text style={s.tdEquipoSub}>
                         {[r.equipoMarca, r.equipoModelo].filter(Boolean).join(" ")}

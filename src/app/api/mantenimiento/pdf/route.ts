@@ -1,15 +1,28 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import ReactPDF, { Document } from "@react-pdf/renderer";
 import { MantenimientoEquiposPDF, type MantenimientoRegistroData } from "@/components/MantenimientoEquiposPDF";
 import React from "react";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
+  // Filtro opcional por día: ?fecha=YYYY-MM-DD
+  const fechaParam = req.nextUrl.searchParams.get("fecha");
+  let where: Record<string, unknown> = {};
+  let diaLabel: string | null = null;
+  if (fechaParam && /^\d{4}-\d{2}-\d{2}$/.test(fechaParam)) {
+    const [y, m, d] = fechaParam.split("-").map(Number);
+    const desde = new Date(y, m - 1, d, 0, 0, 0, 0);
+    const hasta = new Date(y, m - 1, d, 23, 59, 59, 999);
+    where = { fecha: { gte: desde, lte: hasta } };
+    diaLabel = desde.toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
+  }
+
   const registros = await prisma.mantenimientoEquipo.findMany({
+    where,
     include: {
       equipo: {
         select: {
@@ -52,6 +65,7 @@ export async function GET() {
     categorias,
     totalRegistros: registros.length,
     totalEquipos: equiposConHistorial.size,
+    diaLabel,
     generadoEn: new Date().toISOString(),
   };
 
@@ -68,7 +82,7 @@ export async function GET() {
     pdfStream.on("end", () => resolve(Buffer.concat(chunks)));
   });
 
-  const fecha = new Date().toISOString().slice(0, 10);
+  const fecha = fechaParam && diaLabel ? fechaParam : new Date().toISOString().slice(0, 10);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return new NextResponse(pdfBuffer as any, {
     status: 200,

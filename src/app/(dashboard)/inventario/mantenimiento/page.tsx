@@ -162,6 +162,7 @@ function MantenimientoContent() {
   const [umbralAmarillo, setUmbralAmarillo] = useState(UMBRAL_AMARILLO_DEFAULT);
   const [umbralRojo, setUmbralRojo] = useState(UMBRAL_ROJO_DEFAULT);
   const [showUmbral, setShowUmbral] = useState(false);
+  const [pdfFecha, setPdfFecha] = useState("");
 
   // Cargar umbrales guardados
   useEffect(() => {
@@ -367,9 +368,12 @@ function MantenimientoContent() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <a href="/api/mantenimiento/pdf"
+          <input type="date" value={pdfFecha} onChange={e => setPdfFecha(e.target.value)}
+            title="Filtra el reporte por un día específico (vacío = bitácora completa)"
+            className="text-xs bg-[#111] border border-[#222] text-gray-300 px-2 py-2 rounded-lg focus:outline-none focus:border-[#B3985B]/40 [color-scheme:dark]" />
+          <a href={pdfFecha ? `/api/mantenimiento/pdf?fecha=${pdfFecha}` : "/api/mantenimiento/pdf"}
             className="text-xs text-black bg-[#B3985B] hover:bg-[#d4b068] font-semibold px-3 py-2 rounded-lg transition-colors whitespace-nowrap">
-            Descargar PDF
+            {pdfFecha ? "PDF del día" : "Descargar PDF"}
           </a>
           <Link href="/catalogo/equipos"
             className="text-xs text-gray-500 hover:text-gray-300 border border-[#222] px-3 py-2 rounded-lg transition-colors whitespace-nowrap">

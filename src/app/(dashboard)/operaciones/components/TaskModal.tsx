@@ -657,16 +657,29 @@ export default function TaskModal({
                         <div className="flex flex-wrap gap-2">
                           {archivosLocal.map(a => (
                             (a.tipo ?? "").toLowerCase().startsWith("image/") ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer" className="block w-14 h-14 rounded-lg overflow-hidden border border-[#222]">
-                                <img src={a.url} alt={a.nombre} className="w-full h-full object-cover" />
-                              </a>
+                              <div key={a.id} className="relative group w-14 h-14">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <a href={a.url} target="_blank" rel="noopener noreferrer" className="block w-full h-full rounded-lg overflow-hidden border border-[#222]">
+                                  <img src={a.url} alt={a.nombre} className="w-full h-full object-cover" />
+                                </a>
+                                <button type="button" onClick={() => eliminarArchivo(a.id)}
+                                  title="Borrar evidencia"
+                                  className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-600 hover:bg-red-500 text-white text-[9px] font-bold leading-none flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  ✕
+                                </button>
+                              </div>
                             ) : (
-                              <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#111] border border-[#222] text-[11px] text-[#999] hover:text-white max-w-[140px]">
-                                <FileText strokeWidth={1.75} className="w-3 h-3 shrink-0" />
-                                <span className="truncate">{a.nombre}</span>
-                              </a>
+                              <div key={a.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#111] border border-[#222] text-[11px] text-[#999] max-w-[160px]">
+                                <a href={a.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 min-w-0 hover:text-white">
+                                  <FileText strokeWidth={1.75} className="w-3 h-3 shrink-0" />
+                                  <span className="truncate">{a.nombre}</span>
+                                </a>
+                                <button type="button" onClick={() => eliminarArchivo(a.id)}
+                                  title="Borrar evidencia"
+                                  className="shrink-0 text-red-500 hover:text-red-400 text-[11px] leading-none">
+                                  ✕
+                                </button>
+                              </div>
                             )
                           ))}
                         </div>
