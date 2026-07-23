@@ -405,6 +405,23 @@ export default function EvaluacionPostEventoPage() {
             )}
           </p>
         )}
+        <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-[#1a1a1a]">
+          <a
+            href={`/api/proyectos/${id}/reporte-evaluacion/pdf?preview=1`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs rounded-lg border border-[#2a2a2a] text-gray-300 hover:border-[#B3985B]/50 hover:text-white px-3 py-2 transition-colors"
+          >
+            Ver {config.variante === "renta" ? "evaluación de renta" : "evaluación"} (PDF)
+          </a>
+          <a
+            href={`/api/proyectos/${id}/reporte-evaluacion/pdf`}
+            className="text-xs rounded-lg bg-[#B3985B] text-black font-semibold hover:bg-[#c9ad6f] px-3 py-2 transition-colors"
+          >
+            Descargar evaluación
+          </a>
+          <span className="text-[#555] text-[11px]">Reporte interno con respuestas, incidencias y calificaciones para la junta.</span>
+        </div>
       </div>
 
       {/* Secciones Sí/No */}
