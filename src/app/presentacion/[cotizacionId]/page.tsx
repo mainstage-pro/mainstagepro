@@ -101,6 +101,24 @@ export default async function PresentacionPage({
     fechaVencimiento: cotizacion.fechaVencimiento?.toISOString() ?? null,
   };
 
+  // Galerías vivas por tipo de evento (FotoTipoEvento, gestionables por UI).
+  // El tipoEvento viene en MAYÚSCULAS; TipoEvento.slug en minúsculas.
+  const slug = (cotizacion.trato?.tipoEvento ?? cotizacion.tipoEvento ?? "").toLowerCase().trim();
+  const tipoEvento = slug
+    ? await prisma.tipoEvento.findUnique({
+        where: { slug },
+        include: { fotos: { orderBy: { orden: "asc" } } },
+      })
+    : null;
+  const galeriaFotos = (tipoEvento?.fotos ?? []).map((f) => ({
+    id: f.id,
+    url: f.url,
+    caption: f.caption,
+    orden: f.orden,
+    destacada: f.destacada,
+  }));
+  const heroFotos = galeriaFotos.filter((f) => f.destacada);
+
   const defaultNiveles = [
     { nivel: 1, nombre: "Base",        tagline: "Visibilidad esencial",  pct: 5,  destacado: false, beneficios: ["Logo en materiales digitales del evento","1 mención en redes sociales","2 a 4 accesos al evento","Acceso a métricas de alcance post-evento"] },
     { nivel: 2, nombre: "Estratégico", tagline: "Máximo alcance",        pct: 10, destacado: true,  beneficios: ["Logo en materiales digitales y físicos","3 menciones en redes + etiqueta en contenido","4 a 8 accesos al evento","Repost en @mainstagepro","Reporte de métricas detallado"] },
@@ -109,8 +127,8 @@ export default async function PresentacionPage({
   const tradeNiveles = await getConfigJSON("trade.niveles", defaultNiveles);
 
   if (cotizacion.tipoServicio === "RENTA") {
-    return <PresentacionRentaClient cotizacion={data} token={token} />;
+    return <PresentacionRentaClient cotizacion={data} token={token} galeriaFotos={galeriaFotos} heroFotos={heroFotos} />;
   }
 
-  return <PresentacionClient cotizacion={data} tradeNiveles={tradeNiveles} token={token} />;
+  return <PresentacionClient cotizacion={data} tradeNiveles={tradeNiveles} token={token} galeriaFotos={galeriaFotos} heroFotos={heroFotos} />;
 }

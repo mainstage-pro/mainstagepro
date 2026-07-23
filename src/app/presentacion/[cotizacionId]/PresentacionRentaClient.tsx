@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { getEquipoImage, type FotoPresentacion } from "@/lib/presentacion-imagenes";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Linea {
@@ -14,7 +15,7 @@ interface Linea {
   esIncluido: boolean;
   notas: string | null;
   jornada: string | null;
-  equipo?: { categoria: { nombre: string } | null } | null;
+  equipo?: { categoria: { nombre: string } | null; imagenUrl?: string | null } | null;
 }
 interface Cotizacion {
   id: string;
@@ -34,105 +35,6 @@ interface Cotizacion {
   cliente: { nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
   trato: { tipoEvento: string; ideasReferencias?: string | null } | null;
   lineas: Linea[];
-}
-
-// ─── Equipment images ─────────────────────────────────────────────────────────
-const MARCA_POOL: Record<string, string[]> = {
-  "rcf":           ["/images/presentacion/rcf-hdl30a.png", "/images/presentacion/rcf-sub8006.png"],
-  "electro voice": ["/images/presentacion/ev-ekx12p.png", "/images/presentacion/ev-ekx18p.png"],
-  "electro-voice": ["/images/presentacion/ev-ekx12p.png", "/images/presentacion/ev-ekx18p.png"],
-  "ev":            ["/images/presentacion/ev-ekx12p.png", "/images/presentacion/ev-ekx18p.png"],
-  "allen & heath": ["/images/presentacion/allen-heath-dlive.png", "/images/presentacion/allen-heath-sq5.png"],
-  "allen&heath":   ["/images/presentacion/allen-heath-dlive.png", "/images/presentacion/allen-heath-sq5.png"],
-  "shure":         ["/images/presentacion/shure-axient.png", "/images/presentacion/shure-slxd.png", "/images/presentacion/shure-sm58.png", "/images/presentacion/shure-beta52a.png"],
-  "pioneer":       ["/images/presentacion/pioneer-cdj3000.png", "/images/presentacion/pioneer-djmv10.png"],
-  "pioneer dj":    ["/images/presentacion/pioneer-cdj3000.png", "/images/presentacion/pioneer-djmv10.png"],
-  "grand ma":      ["/images/presentacion/grandma-ma3.png", "/images/presentacion/ma-command-wing.png"],
-  "grandma":       ["/images/presentacion/grandma-ma3.png", "/images/presentacion/ma-command-wing.png"],
-  "ma":            ["/images/presentacion/grandma-ma3.png", "/images/presentacion/ma-command-wing.png"],
-  "ma lighting":   ["/images/presentacion/grandma-ma3.png", "/images/presentacion/ma-command-wing.png"],
-  "chauvet":       ["/images/presentacion/chauvet-spot260.png", "/images/presentacion/chauvet-slimpar.png", "/images/presentacion/chauvet-pinspot-bar.png"],
-  "lite tek":      ["/images/presentacion/lite-tek-beam280.png", "/images/presentacion/lite-tek-bar824i.png", "/images/presentacion/lite-tek-blinder200.png", "/images/presentacion/lite-tek-flasher200.png", "/images/presentacion/lite-tek-par.png"],
-  "litetek":       ["/images/presentacion/lite-tek-beam280.png", "/images/presentacion/lite-tek-bar824i.png", "/images/presentacion/lite-tek-blinder200.png", "/images/presentacion/lite-tek-par.png"],
-  "lumos":         ["/images/presentacion/lumos-l7.png", "/images/presentacion/lumos-l1-retro.png", "/images/presentacion/lumos-maple-lamp.png", "/images/presentacion/lumos-sixaline.png"],
-  "sunstar":       ["/images/presentacion/sunstar-kaleidos.png", "/images/presentacion/sunstar-soul-rgbw.png"],
-  "sun star":      ["/images/presentacion/sunstar-kaleidos.png", "/images/presentacion/sunstar-soul-rgbw.png"],
-};
-const MARCA_IMAGES: Record<string, string> = {
-  "midas":      "/images/presentacion/midas-m32.png",
-  "sennheiser": "/images/presentacion/sennheiser-iem.png",
-  "rode":       "/images/presentacion/rode-m5.png",
-  "astera":     "/images/presentacion/astera-ax1.png",
-  "steel pro":  "/images/presentacion/steel-pro-razor.png",
-  "blackmagic": "/images/presentacion/blackmagic-atem.png",
-  "predator":   "/images/presentacion/predator-9500.png",
-  "wacker":     "/images/presentacion/wacker-g120.png",
-};
-
-function idHash(id: string): number {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (Math.imul(31, h) + id.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-const MODELO_IMAGES: Record<string, string> = {
-  "DJM A9": "/images/presentacion/pioneer-djmv10.png",
-  "DJM V10": "/images/presentacion/pioneer-djmv10.png",
-  "DJM-V10": "/images/presentacion/pioneer-djmv10.png",
-  "DJM 900 NXS2": "/images/presentacion/pioneer-djmv10.png",
-  "DJM S11": "/images/presentacion/pioneer-djmv10.png",
-  "EKX 18P": "/images/presentacion/ev-ekx18p.png",
-  "EKX 12P": "/images/presentacion/ev-ekx12p.png",
-  "HDL 30A": "/images/presentacion/rcf-hdl30a.png",
-  "HDL 6A": "/images/presentacion/rcf-hdl30a.png",
-  "SUB 8006 AS": "/images/presentacion/rcf-sub8006.png",
-  "SQ5": "/images/presentacion/allen-heath-sq5.png",
-  "AR24/12": "/images/presentacion/allen-heath-dlive.png",
-  "SLXD B58": "/images/presentacion/shure-slxd.png",
-  "BLX24 SM58": "/images/presentacion/shure-slxd.png",
-  "AXIENT B58/SM58": "/images/presentacion/shure-axient.png",
-  "IEM G4": "/images/presentacion/sennheiser-iem.png",
-  "EK IEM G4": "/images/presentacion/sennheiser-iem.png",
-  "PSM1000": "/images/presentacion/shure-axient.png",
-  "BAR 824i": "/images/presentacion/lite-tek-bar824i.png",
-  "BEAM 280": "/images/presentacion/lite-tek-beam280.png",
-  "BLINDER 200": "/images/presentacion/lite-tek-blinder200.png",
-  "FLASHER 200": "/images/presentacion/lite-tek-flasher200.png",
-  "18X10 Ambar": "/images/presentacion/lite-tek-par.png",
-  "Fazer 1500": "/images/presentacion/lite-tek-fazer1500.png",
-  "Int SPOT 260": "/images/presentacion/chauvet-spot260.png",
-  "Slimpar Q12 BT": "/images/presentacion/chauvet-slimpar.png",
-  "Pinspot Bar": "/images/presentacion/chauvet-pinspot-bar.png",
-  "KALEIDOS": "/images/presentacion/sunstar-kaleidos.png",
-  "SM58": "/images/presentacion/shure-sm58.png",
-  "SM57": "/images/presentacion/shure-sm58.png",
-  "SM31": "/images/presentacion/shure-sm58.png",
-  "SM81": "/images/presentacion/shure-sm58.png",
-  "BETA 52A": "/images/presentacion/shure-beta52a.png",
-  "BETA91A": "/images/presentacion/shure-beta52a.png",
-  "Command Wing": "/images/presentacion/ma-command-wing.png",
-  "MA3 Compact XT": "/images/presentacion/grandma-ma3.png",
-  "L7": "/images/presentacion/lumos-l7.png",
-  "L1 Retro": "/images/presentacion/lumos-l1-retro.png",
-  "Maple Lamp": "/images/presentacion/lumos-maple-lamp.png",
-  "Sixaline": "/images/presentacion/lumos-sixaline.png",
-  "SOUL RGBW": "/images/presentacion/sunstar-soul-rgbw.png",
-  "Atem Mini Pro": "/images/presentacion/blackmagic-atem.png",
-  "Truss": "/images/presentacion/truss.png",
-};
-
-function getEquipoImage(linea: Linea): string | null {
-  if (linea.modelo && MODELO_IMAGES[linea.modelo]) return MODELO_IMAGES[linea.modelo];
-  const marca = (linea.marca ?? "").toLowerCase().trim();
-  for (const key of Object.keys(MARCA_POOL)) {
-    if (marca.includes(key) || key.includes(marca)) {
-      const pool = MARCA_POOL[key];
-      return pool[idHash(linea.id) % pool.length];
-    }
-  }
-  for (const key of Object.keys(MARCA_IMAGES)) {
-    if (marca.includes(key) || key.includes(marca)) return MARCA_IMAGES[key];
-  }
-  return null;
 }
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
@@ -319,7 +221,10 @@ function CategorySection({ cat, lineas, index }: { cat: string; lineas: Linea[];
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function PresentacionRentaClient({ cotizacion, token }: { cotizacion: Cotizacion; token?: string }) {
+// La presentación de renta no muestra galería de producciones por tipo de evento
+// (su hero es un diseño técnico sin fotos), por eso galeriaFotos/heroFotos se
+// aceptan por paridad con la de producción pero no se consumen aquí.
+export default function PresentacionRentaClient({ cotizacion, token }: { cotizacion: Cotizacion; token?: string; galeriaFotos?: FotoPresentacion[]; heroFotos?: FotoPresentacion[] }) {
   const scrollY    = useScrollY();
   const [contractOpen, setContract] = useState(false);
   const [printing, setPrinting]       = useState(false);

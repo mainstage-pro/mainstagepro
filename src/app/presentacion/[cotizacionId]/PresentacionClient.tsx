@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { getEquipoImage, resolverGaleria, resolverHero, type FotoPresentacion } from "@/lib/presentacion-imagenes";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Linea {
@@ -21,106 +22,6 @@ interface Cotizacion {
   cliente: { nombre: string; empresa: string | null; telefono: string | null; correo: string | null };
   trato: { tipoEvento: string; tradeCalificado: boolean } | null; lineas: Linea[];
 }
-
-// ─── Equipment Image Mapping ──────────────────────────────────────────────────
-const MARCA_POOL: Record<string, string[]> = {
-  "rcf":           ["/images/presentacion/rcf-hdl30a.png", "/images/presentacion/rcf-sub8006.png"],
-  "electro voice": ["/images/presentacion/ev-ekx12p.png", "/images/presentacion/ev-ekx18p.png"],
-  "electro-voice": ["/images/presentacion/ev-ekx12p.png", "/images/presentacion/ev-ekx18p.png"],
-  "ev":            ["/images/presentacion/ev-ekx12p.png", "/images/presentacion/ev-ekx18p.png"],
-  "allen & heath": ["/images/presentacion/allen-heath-dlive.png", "/images/presentacion/allen-heath-sq5.png"],
-  "allen&heath":   ["/images/presentacion/allen-heath-dlive.png", "/images/presentacion/allen-heath-sq5.png"],
-  "shure":         ["/images/presentacion/shure-axient.png", "/images/presentacion/shure-slxd.png", "/images/presentacion/shure-sm58.png", "/images/presentacion/shure-beta52a.png"],
-  "pioneer":       ["/images/presentacion/pioneer-cdj3000.png", "/images/presentacion/pioneer-djmv10.png"],
-  "pioneer dj":    ["/images/presentacion/pioneer-cdj3000.png", "/images/presentacion/pioneer-djmv10.png"],
-  "grand ma":      ["/images/presentacion/grandma-ma3.png", "/images/presentacion/ma-command-wing.png"],
-  "grandma":       ["/images/presentacion/grandma-ma3.png", "/images/presentacion/ma-command-wing.png"],
-  "ma":            ["/images/presentacion/grandma-ma3.png", "/images/presentacion/ma-command-wing.png"],
-  "ma lighting":   ["/images/presentacion/grandma-ma3.png", "/images/presentacion/ma-command-wing.png"],
-  "chauvet":       ["/images/presentacion/chauvet-spot260.png", "/images/presentacion/chauvet-slimpar.png", "/images/presentacion/chauvet-pinspot-bar.png"],
-  "lite tek":      ["/images/presentacion/lite-tek-beam280.png", "/images/presentacion/lite-tek-bar824i.png", "/images/presentacion/lite-tek-blinder200.png", "/images/presentacion/lite-tek-flasher200.png", "/images/presentacion/lite-tek-par.png"],
-  "litetek":       ["/images/presentacion/lite-tek-beam280.png", "/images/presentacion/lite-tek-bar824i.png", "/images/presentacion/lite-tek-blinder200.png", "/images/presentacion/lite-tek-par.png"],
-  "lumos":         ["/images/presentacion/lumos-l7.png", "/images/presentacion/lumos-l1-retro.png", "/images/presentacion/lumos-maple-lamp.png", "/images/presentacion/lumos-sixaline.png"],
-  "sunstar":       ["/images/presentacion/sunstar-kaleidos.png", "/images/presentacion/sunstar-soul-rgbw.png"],
-  "sun star":      ["/images/presentacion/sunstar-kaleidos.png", "/images/presentacion/sunstar-soul-rgbw.png"],
-};
-const MARCA_IMAGES: Record<string, string> = {
-  "midas": "/images/presentacion/midas-m32.png", "sennheiser": "/images/presentacion/sennheiser-iem.png",
-  "rode": "/images/presentacion/rode-m5.png", "astera": "/images/presentacion/astera-ax1.png",
-  "steel pro": "/images/presentacion/steel-pro-razor.png", "blackmagic": "/images/presentacion/blackmagic-atem.png",
-  "predator": "/images/presentacion/predator-9500.png", "wacker": "/images/presentacion/wacker-g120.png",
-};
-function idHash(id: string): number {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (Math.imul(31, h) + id.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-const MODELO_IMAGES: Record<string, string> = {
-  "DJM A9": "/images/presentacion/pioneer-djmv10.png", "DJM V10": "/images/presentacion/pioneer-djmv10.png",
-  "DJM-V10": "/images/presentacion/pioneer-djmv10.png", "DJM 900 NXS2": "/images/presentacion/pioneer-djmv10.png",
-  "DJM S11": "/images/presentacion/pioneer-djmv10.png", "EKX 18P": "/images/presentacion/ev-ekx18p.png",
-  "EKX 12P": "/images/presentacion/ev-ekx12p.png", "HDL 30A": "/images/presentacion/rcf-hdl30a.png",
-  "HDL 6A": "/images/presentacion/rcf-hdl30a.png", "SUB 8006 AS": "/images/presentacion/rcf-sub8006.png",
-  "SQ5": "/images/presentacion/allen-heath-sq5.png", "AR24/12": "/images/presentacion/allen-heath-dlive.png",
-  "SLXD B58": "/images/presentacion/shure-slxd.png", "BLX24 SM58": "/images/presentacion/shure-slxd.png",
-  "AXIENT B58/SM58": "/images/presentacion/shure-axient.png", "IEM G4": "/images/presentacion/sennheiser-iem.png",
-  "EK IEM G4": "/images/presentacion/sennheiser-iem.png", "PSM1000": "/images/presentacion/shure-axient.png",
-  "BAR 824i": "/images/presentacion/lite-tek-bar824i.png", "BEAM 280": "/images/presentacion/lite-tek-beam280.png",
-  "BLINDER 200": "/images/presentacion/lite-tek-blinder200.png", "FLASHER 200": "/images/presentacion/lite-tek-flasher200.png",
-  "18X10 Ambar": "/images/presentacion/lite-tek-par.png", "Fazer 1500": "/images/presentacion/lite-tek-fazer1500.png",
-  "Int SPOT 260": "/images/presentacion/chauvet-spot260.png", "Slimpar Q12 BT": "/images/presentacion/chauvet-slimpar.png",
-  "Pinspot Bar": "/images/presentacion/chauvet-pinspot-bar.png", "KALEIDOS": "/images/presentacion/sunstar-kaleidos.png",
-  "SM58": "/images/presentacion/shure-sm58.png", "SM57": "/images/presentacion/shure-sm58.png",
-  "SM31": "/images/presentacion/shure-sm58.png", "SM81": "/images/presentacion/shure-sm58.png",
-  "BETA 52A": "/images/presentacion/shure-beta52a.png", "BETA91A": "/images/presentacion/shure-beta52a.png",
-  "Command Wing": "/images/presentacion/ma-command-wing.png", "MA3 Compact XT": "/images/presentacion/grandma-ma3.png",
-  "L7": "/images/presentacion/lumos-l7.png", "L1 Retro": "/images/presentacion/lumos-l1-retro.png",
-  "Maple Lamp": "/images/presentacion/lumos-maple-lamp.png", "Sixaline": "/images/presentacion/lumos-sixaline.png",
-  "SOUL RGBW": "/images/presentacion/sunstar-soul-rgbw.png", "Atem Mini Pro": "/images/presentacion/blackmagic-atem.png",
-  "Truss": "/images/presentacion/truss.png",
-};
-function getEquipoImage(linea: Linea): string | null {
-  if (linea.equipo?.imagenUrl) return linea.equipo.imagenUrl;
-  if (linea.modelo && MODELO_IMAGES[linea.modelo]) return MODELO_IMAGES[linea.modelo];
-  const marca = (linea.marca ?? "").toLowerCase().trim();
-  for (const key of Object.keys(MARCA_POOL)) {
-    if (marca.includes(key) || key.includes(marca)) {
-      const pool = MARCA_POOL[key];
-      return pool[idHash(linea.id) % pool.length];
-    }
-  }
-  for (const key of Object.keys(MARCA_IMAGES)) {
-    if (marca.includes(key) || key.includes(marca)) return MARCA_IMAGES[key];
-  }
-  return null;
-}
-
-// ─── Gallery Data ─────────────────────────────────────────────────────────────
-const GALLERY_MUSICAL = [
-  { src: "/images/presentacion/musicales/Musicales-194.jpg",                    caption: "Show · Producción completa" },
-  { src: "/images/presentacion/musicales/Musicales-037.jpg",                    caption: "Lasers · Show de iluminación" },
-  { src: "/images/presentacion/musicales/Musicales-154.jpg",                    caption: "Club · Disco ball y efectos" },
-  { src: "/images/presentacion/musicales/Musicales-016.jpg",                    caption: "Festival · Escenario outdoor" },
-  { src: "/images/presentacion/musicales/Musicales-076.jpg",                    caption: "DJ · Performance con humo" },
-  { src: "/images/presentacion/musicales/Musicales-055.jpg",                    caption: "En vivo · Artista y video wall" },
-  { src: "/images/presentacion/musicales/MAGIC_ROOM_260307_GUANAJUATO_078.jpg", caption: "DJ Booth · Vista del crowd" },
-];
-const GALLERY_SOCIAL = [
-  { src: "/images/presentacion/sociales/s-dj-salon.png",        caption: "El ambiente que recordarán" },
-  { src: "/images/presentacion/sociales/s-hacienda-aerea.jpg",  caption: "Cada rincón, perfectamente iluminado" },
-  { src: "/images/presentacion/sociales/s-boda-colonial.jpg",   caption: "Producción a la altura del momento" },
-  { src: "/images/presentacion/sociales/s-piano-pista.jpg",     caption: "Detalles que marcan la diferencia" },
-  { src: "/images/presentacion/sociales/s-boda-elegante.jpg",   caption: "Sonido, luz y escenario — todo en uno" },
-  { src: "/images/presentacion/sociales/s-hacienda-iluminada.jpg", caption: "Tu evento, en manos expertas" },
-];
-const GALLERY_CORP = [
-  { src: "/images/presentacion/empresariales/e-sala-pantallas.jpg",   caption: "Experiencias que generan impacto" },
-  { src: "/images/presentacion/empresariales/e-auditorio.jpg",        caption: "Producción que refleja tu marca" },
-  { src: "/images/presentacion/empresariales/e-carpa-led.jpg",        caption: "Tecnología LED de alto nivel" },
-  { src: "/images/presentacion/empresariales/e-networking.jpg",       caption: "Ambientes que invitan a conectar" },
-  { src: "/images/presentacion/empresariales/e-edificio-azul.jpg",    caption: "Iluminación arquitectónica de impacto" },
-  { src: "/images/presentacion/empresariales/e-proyeccion-mural.jpg", caption: "Creatividad sin límites" },
-];
 
 // ─── Copy por tipoServicio ────────────────────────────────────────────────────
 const SERVICIO_CONFIG: Record<string, { heroTagline: string }> = {
@@ -357,7 +258,7 @@ function EquipoCard({ linea, delay = 0 }: { linea: Linea; delay?: number }) {
 interface TradeNivel { nivel: number; nombre: string; tagline: string; pct: number; destacado: boolean; beneficios: string[]; }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function PresentacionClient({ cotizacion, tradeNiveles , token}: { cotizacion: Cotizacion; tradeNiveles?: TradeNivel[] ; token?: string}) {
+export default function PresentacionClient({ cotizacion, tradeNiveles , token, galeriaFotos = [], heroFotos = [] }: { cotizacion: Cotizacion; tradeNiveles?: TradeNivel[] ; token?: string; galeriaFotos?: FotoPresentacion[]; heroFotos?: FotoPresentacion[] }) {
   const TRADE_NIVELES: TradeNivel[] = tradeNiveles ?? [
     { nivel: 1, nombre: "Base",        tagline: "Visibilidad esencial",  pct: 5,  destacado: false, beneficios: ["Logo en materiales digitales del evento","1 mención en redes sociales","2 a 4 accesos al evento","Acceso a métricas de alcance post-evento"] },
     { nivel: 2, nombre: "Estratégico", tagline: "Máximo alcance",        pct: 10, destacado: true,  beneficios: ["Logo en materiales digitales y físicos","3 menciones en redes + etiqueta en contenido","4 a 8 accesos al evento","Repost en @mainstagepro","Reporte de métricas detallado"] },
@@ -476,15 +377,14 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token}: 
   const svc = SERVICIO_CONFIG[tipoServicio] ?? DEFAULT_SVC;
   const ev  = EVENTO_CONFIG[tipoEvento] ?? DEFAULT_EVENTO;
 
-  const gallery =
-    tipoEvento === "SOCIAL"      ? GALLERY_SOCIAL :
-    tipoEvento === "EMPRESARIAL" ? GALLERY_CORP :
-                                   GALLERY_MUSICAL;
+  // Galería viva desde BD (FotoTipoEvento) con fallback a las imágenes hardcodeadas.
+  const gallery  = resolverGaleria(tipoEvento, galeriaFotos);
+  const heroImgs = resolverHero(tipoEvento, galeriaFotos, heroFotos);
 
   useEffect(() => {
-    const t = setInterval(() => setHeroIdx(i => (i + 1) % gallery.length), 5500);
+    const t = setInterval(() => setHeroIdx(i => (i + 1) % heroImgs.length), 5500);
     return () => clearInterval(t);
-  }, [gallery.length]);
+  }, [heroImgs.length]);
 
   /* eslint-disable react-hooks/rules-of-hooks */
   const stats = [
@@ -552,7 +452,7 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token}: 
 
       {/* ── HERO ── */}
       <section className="relative h-screen min-h-[600px] flex items-center justify-center overflow-hidden">
-        {gallery.map((p, i) => (
+        {heroImgs.map((p, i) => (
           // eslint-disable-next-line @next/next/no-img-element
           <img key={i} src={p.src} alt="" draggable={false}
                className="absolute inset-0 w-full h-full object-cover pointer-events-none"
