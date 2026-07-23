@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { getEquipoImagenes, type EquipoLinea, type GaleriaItem } from "@/lib/presentacion-imagenes";
 
 // ─── Lightbox / carrusel controlado ───────────────────────────────────────────
@@ -16,10 +17,13 @@ export function EquipoLightbox({
   setIndex: (i: number) => void;
 }) {
   const total = items.length;
+  const [mounted, setMounted] = useState(false);
   const go = useCallback(
     (dir: number) => setIndex((index + dir + total) % total),
     [index, total, setIndex],
   );
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -36,11 +40,11 @@ export function EquipoLightbox({
   }, [go, onClose]);
 
   const foto = items[index];
-  if (!foto) return null;
+  if (!foto || !mounted) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[90] bg-black/95 backdrop-blur-sm flex flex-col items-center justify-center p-4 sm:p-8"
+      className="fixed inset-0 z-[90] bg-black/90 backdrop-blur-xl flex flex-col items-center justify-center p-4 sm:p-8"
       onClick={onClose}
     >
       <button
@@ -110,7 +114,8 @@ export function EquipoLightbox({
           ))}
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
