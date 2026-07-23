@@ -16,6 +16,7 @@ import { SkeletonPage } from "@/components/Skeleton";
 import VersionHistorial from "@/components/VersionHistorial";
 import { Combobox } from "@/components/Combobox";
 import ProyectoTareas from "./ProyectoTareas";
+import ChecklistEventoTab from "./ChecklistEventoTab";
 import { BackButton } from "@/components/BackButton";
 import { Package, AlertTriangle, Smartphone, Truck, Home, Radio, MessageCircle, FileText, Bell, User, Factory, ClipboardList, FileImage } from "lucide-react";
 import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem } from "@/components/proyectos/ViabilidadWidget";
@@ -1696,7 +1697,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Estado para confirmación de borrado
   const [confirmarBorrado, setConfirmarBorrado] = useState(false);
   const [borrando, setBorrando] = useState(false);
-  const [activeTab, setActiveTab] = useState<'resumen'|'operacion'|'extras'|'finanzas'>('resumen');
+  const [activeTab, setActiveTab] = useState<'resumen'|'operacion'|'extras'|'finanzas'|'tareas'>('resumen');
 
   // ── Pago a inversionistas por uso de equipos propios ──────────────────────
   type PagoSociosData = {
@@ -3752,6 +3753,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
               { id: 'operacion', label: 'Operación' },
               { id: 'extras',    label: 'Producción' },
               ...(proyecto?._canViewFinances ? [{ id: 'finanzas', label: 'Finanzas' } as const] : []),
+              { id: 'tareas',    label: 'Tareas' },
             ] as const).map(item => (
               <button
                 key={item.id}
@@ -6678,6 +6680,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         )}
 
         {/* ──── FINANZAS tab ──── */}
+        {activeTab === 'tareas' && (
+          <div id="section-tareas" className="scroll-mt-14">
+            <ChecklistEventoTab
+              proyectoId={proyecto.id}
+              proyectoNombre={proyecto.nombre}
+              tipoServicio={proyecto.tipoServicio ?? null}
+              usuarios={usuariosActivos}
+            />
+          </div>
+        )}
+
         {activeTab === 'finanzas' && (
           <div id="section-finanzas" className="scroll-mt-14">
       {(() => {

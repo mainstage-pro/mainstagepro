@@ -53,13 +53,17 @@ interface Props {
   tipoInicial?: TipoKey | null;
   // Pre-carga el título (p.ej. al convertir una idea en tarea).
   tituloInicial?: string | null;
+  // Fija el proyecto de evento y bloquea el selector (al crear desde el detalle de un proyecto).
+  proyectoEventoIdInicial?: string | null;
+  proyectoEventoNombre?: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onCreated: (tarea: any) => void;
 }
 
 export default function NuevaTareaModal({
   open, onClose, usuarios, defaultAsignadoId = null, defaultArea = null,
-  proyectoTareaId = null, seccionId = null, tipoInicial = null, tituloInicial = null, onCreated,
+  proyectoTareaId = null, seccionId = null, tipoInicial = null, tituloInicial = null,
+  proyectoEventoIdInicial = null, proyectoEventoNombre = null, onCreated,
 }: Props) {
   const [tipo, setTipo]           = useState<TipoKey | null>(null);
   const [titulo, setTitulo]       = useState("");
@@ -88,15 +92,15 @@ export default function NuevaTareaModal({
       setTitulo(tituloInicial ?? ""); setDescripcion(""); setPrioridad("MEDIA");
       setArea(defaultArea || "GENERAL"); setAsignadoId(defaultAsignadoId);
       setFecha(""); setFechaVen(""); setRecurrencia(null); setComprobacion("");
-      setProyectoEventoId(null); setProyectoInternoId(null); setFaseId(null);
+      setProyectoEventoId(proyectoEventoIdInicial ?? null); setProyectoInternoId(null); setFaseId(null);
       setError(null); setSaving(false);
     }
-  }, [open, tipoInicial, tituloInicial, defaultArea, defaultAsignadoId]);
+  }, [open, tipoInicial, tituloInicial, defaultArea, defaultAsignadoId, proyectoEventoIdInicial]);
 
   // Carga las fuentes (eventos/proyectos internos) la primera vez que se necesitan
   useEffect(() => {
     if (!open) return;
-    if ((tipo === "EVENTO" || tipo === "PROYECTO") && eventosPorMes.length === 0 && internos.length === 0 && !loadingOpts) {
+    if (!proyectoEventoIdInicial && (tipo === "EVENTO" || tipo === "PROYECTO") && eventosPorMes.length === 0 && internos.length === 0 && !loadingOpts) {
       setLoadingOpts(true);
       fetch("/api/tareas/opciones")
         .then(r => r.json())
@@ -107,7 +111,7 @@ export default function NuevaTareaModal({
         .catch(() => {})
         .finally(() => setLoadingOpts(false));
     }
-  }, [open, tipo, eventosPorMes.length, internos.length, loadingOpts]);
+  }, [open, tipo, eventosPorMes.length, internos.length, loadingOpts, proyectoEventoIdInicial]);
 
   const internoSel = useMemo(() => internos.find(p => p.id === proyectoInternoId) ?? null, [internos, proyectoInternoId]);
 
@@ -228,7 +232,12 @@ export default function NuevaTareaModal({
             {/* Fuente específica del tipo */}
             {tipo === "EVENTO" && (
               <Campo label="Evento">
-                {loadingOpts ? <Cargando /> : (
+                {proyectoEventoIdInicial ? (
+                  <div className="w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white/80 flex items-center gap-2">
+                    <Calendar size={14} className="text-[#60a5fa] shrink-0" />
+                    <span className="truncate">{proyectoEventoNombre ?? "Este proyecto"}</span>
+                  </div>
+                ) : loadingOpts ? <Cargando /> : (
                   <select value={proyectoEventoId ?? ""} onChange={e => setProyectoEventoId(e.target.value || null)}
                     className="w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-[#B3985B]/40">
                     <option value="">Selecciona un evento…</option>
@@ -243,7 +252,7 @@ export default function NuevaTareaModal({
                     ))}
                   </select>
                 )}
-                {!loadingOpts && eventosPorMes.length === 0 && (
+                {!proyectoEventoIdInicial && !loadingOpts && eventosPorMes.length === 0 && (
                   <p className="text-[11px] text-[#555] mt-1">No hay eventos activos.</p>
                 )}
               </Campo>
