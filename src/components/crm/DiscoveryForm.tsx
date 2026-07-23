@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { ClipboardList, Settings, Truck, Handshake, Music, Wine, Building2, Calendar, Package, Palette, Sliders, DollarSign, Eye, Image as ImageIcon, Folder, FileText, PenLine, BarChart3, Paperclip, Lightbulb, Phone, Zap, Camera, Monitor, Sparkles, PartyPopper, type LucideIcon } from "lucide-react";
+import { ClipboardList, Settings, Truck, Handshake, Music, Wine, Building2, Calendar, Package, Palette, Sliders, DollarSign, Eye, Image as ImageIcon, Folder, FileText, PenLine, BarChart3, Paperclip, Lightbulb, Phone, Zap, Camera, Monitor, Sparkles, PartyPopper, Clock, type LucideIcon } from "lucide-react";
 import TimePicker from "@/components/ui/TimePicker";
 import VenuePicker from "@/components/ui/VenuePicker";
 import { SelectorEquiposInventario, type SeleccionEquipos } from '@/components/SelectorEquiposInventario';
@@ -69,6 +69,23 @@ function calcFechasEvento(form: { fechaEventoEstimada: string; fechasEventoExtra
   const lista = Array.from(new Set([dia1, ...form.fechasEventoExtra.filter(Boolean)])).sort();
   if (lista.length <= 1) return { fechasEvento: null, diasDerivados: null };
   return { fechasEvento: JSON.stringify(lista), diasDerivados: lista.length };
+}
+
+// Duración del evento a partir de las horas de inicio y fin ("HH:MM"). Si el fin
+// es menor o igual al inicio, se asume que cruza medianoche (+24h). Devuelve un
+// texto legible ("5h", "5h 30min") o null si faltan datos. Se guarda en
+// `duracionEvento` para alimentar cotización, contrato y fichas operativas.
+function calcDuracionEvento(inicio: string, fin: string): string | null {
+  if (!inicio || !fin) return null;
+  const [sh, sm] = inicio.split(":").map(Number);
+  const [eh, em] = fin.split(":").map(Number);
+  if ([sh, sm, eh, em].some(Number.isNaN)) return null;
+  let m = (eh * 60 + em) - (sh * 60 + sm);
+  if (m <= 0) m += 24 * 60; // cruza medianoche
+  const h = Math.floor(m / 60);
+  const min = m % 60;
+  if (h === 0) return `${min}min`;
+  return min === 0 ? `${h}h` : `${h}h ${min}min`;
 }
 
 export default function DiscoveryForm({
@@ -407,6 +424,7 @@ export default function DiscoveryForm({
       tradeCalificado: form.tradeAplica,
       horaInicioEvento: form.horaInicioEvento || null,
       horaFinEvento: form.horaFinEvento || null,
+      duracionEvento: calcDuracionEvento(form.horaInicioEvento, form.horaFinEvento),
       duracionMontajeHrs: form.duracionMontajeHrs ? parseFloat(form.duracionMontajeHrs) : null,
       ventanaMontajeInicio: form.ventanaMontajeInicio || null,
       ventanaMontajeFin: form.ventanaMontajeFin || null,
@@ -546,6 +564,7 @@ export default function DiscoveryForm({
       tradeCalificado: discForm.tradeAplica,
       horaInicioEvento:     discForm.horaInicioEvento || null,
       horaFinEvento:        discForm.horaFinEvento || null,
+      duracionEvento:       calcDuracionEvento(discForm.horaInicioEvento, discForm.horaFinEvento),
       duracionMontajeHrs:   discForm.duracionMontajeHrs ? parseFloat(discForm.duracionMontajeHrs) : null,
       ventanaMontajeInicio: discForm.ventanaMontajeInicio || null,
       ventanaMontajeFin:    discForm.ventanaMontajeFin || null,
@@ -835,6 +854,27 @@ export default function DiscoveryForm({
                   <VenuePicker value={discForm.lugarEstimado} onChange={(v) => setDiscForm(p => ({ ...p, lugarEstimado: v }))} placeholder="Ej: CDMX · Salón Versalles" />
                 )}
               </div>
+
+              {/* Horario del evento — inicio/fin y duración autocalculada. Dato clave
+                  para cotización, contrato y fichas operativas; por eso vive junto a
+                  fecha y lugar desde el primer paso. */}
+              {discForm.tipoServicio !== "RENTA" && (
+                <div className="sm:col-span-2">
+                  <label className="text-xs text-gray-400 block mb-1">Horario del evento (inicio y fin)</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <TimePicker value={discForm.horaInicioEvento || ""} onChange={v => setDiscForm(p => ({ ...p, horaInicioEvento: v }))} placeholder="Inicio" />
+                    <TimePicker value={discForm.horaFinEvento || ""} onChange={v => setDiscForm(p => ({ ...p, horaFinEvento: v }))} placeholder="Fin" />
+                  </div>
+                  {(() => {
+                    const dur = calcDuracionEvento(discForm.horaInicioEvento, discForm.horaFinEvento);
+                    return dur ? (
+                      <p className="text-[11px] text-[#B3985B] mt-1.5 inline-flex items-center gap-1">
+                        <Clock strokeWidth={1.75} className="w-3 h-3" /> Duración del evento: {dur}
+                      </p>
+                    ) : null;
+                  })()}
+                </div>
+              )}
 
               {/* Días del evento — servicio de uno o varios días con fecha específica */}
               {discForm.fechaEventoEstimada && discForm.fechaEventoEstimada !== "por-definir" && (
@@ -1352,18 +1392,6 @@ export default function DiscoveryForm({
             {/* PASO 3: Operativo y Logística */}
             {discForm.tipoServicio !== "RENTA" && pasoActivo === 3 && (<div className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* ── Horarios del evento ─────────────────────── */}
-                <div className="sm:col-span-2 grid grid-cols-2 gap-4 pb-4 border-b border-[#1a1a1a]">
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Hora de inicio del evento (opcional)</label>
-                    <TimePicker value={discForm.horaInicioEvento || ""} onChange={v => setDiscForm(p => ({ ...p, horaInicioEvento: v }))} placeholder="Inicio" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-400 block mb-1">Hora de fin del evento (opcional)</label>
-                    <TimePicker value={discForm.horaFinEvento || ""} onChange={v => setDiscForm(p => ({ ...p, horaFinEvento: v }))} placeholder="Fin" />
-                  </div>
-                </div>
-
                 <div className="sm:col-span-2">
                   <label className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider mb-1.5 inline-flex items-center gap-1.5"><Lightbulb strokeWidth={1.75} className="w-3.5 h-3.5" /> Ideas / Referencias (links)</label>
                   <p className="text-[11px] text-gray-500 mb-3">Links de Pinterest, Instagram, Google Drive o cualquier sitio web que sirva de inspiración (ej: fotos de otros eventos, ideas de internet, etc.) para entender el mood del proyecto.</p>

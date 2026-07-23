@@ -30,7 +30,7 @@ const DISCOVERY_KEYS = [
   "tipoEvento", "subtipoEvento", "nombreEvento", "fechaEventoEstimada", "lugarEstimado",
   "asistentesEstimados", "diasServicio", "fechasEvento", "presupuestoEstimado", "tipoServicio", "notas",
   "familyAndFriends", "realizarRender", "tradeCalificado",
-  "horaInicioEvento", "horaFinEvento", "duracionMontajeHrs",
+  "horaInicioEvento", "horaFinEvento", "duracionEvento", "duracionMontajeHrs",
   "ventanaMontajeInicio", "ventanaMontajeFin", "horaTerminoMontaje",
   "contactoVenueNombre", "contactoVenueTelefono", "contactoDecisorNombre", "contactoDecisorCargo",
   "serviciosInteres", "equiposInteres", "ideasReferencias",
