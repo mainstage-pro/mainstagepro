@@ -1,3 +1,5 @@
+"use client";
+
 import PresentacionesGrupo from "../PresentacionesGrupo";
 import { PRESENTACIONES_INTERNO } from "@/lib/presentaciones-catalogo";
 
