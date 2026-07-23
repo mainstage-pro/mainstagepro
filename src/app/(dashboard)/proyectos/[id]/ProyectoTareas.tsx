@@ -55,7 +55,7 @@ interface TareaDetalle extends TareaProyecto {
   archivos: ArchivoDetalle[];
 }
 
-interface Usuario {
+export interface Usuario {
   id: string;
   name: string;
 }
@@ -207,7 +207,7 @@ function TareaRow({
 }
 
 // ─── ProyectoTaskModal ────────────────────────────────────────────────────────
-function ProyectoTaskModal({
+export function ProyectoTaskModal({
   tareaId,
   proyectoId,
   proyectoNombre,

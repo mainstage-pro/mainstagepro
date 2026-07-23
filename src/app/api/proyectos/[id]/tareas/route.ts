@@ -57,6 +57,7 @@ export async function POST(
       asignadoAId:      asignadoAId      || null,
       creadoPorId:      session.id,
       proyectoEventoId: proyectoId,
+      tipoOrigen:       "EVENTO",
       fecha:            fecha            ? new Date(fecha) : null,
       fechaVencimiento: fechaVencimiento ? new Date(fechaVencimiento) : null,
       notas:            notas            || null,

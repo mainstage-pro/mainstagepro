@@ -1,27 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Calendar, User, Plus, ClipboardList } from "lucide-react";
-import NuevaTareaModal from "../../operaciones/components/NuevaTareaModal";
+import { Calendar, User, ClipboardList } from "lucide-react";
+import { ProyectoTaskModal, type TareaProyecto, type Usuario } from "./ProyectoTareas";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
-interface TareaEvento {
-  id: string;
-  titulo: string;
-  estado: string;
-  prioridad: string;
-  area: string;
-  fecha: string | null;
-  asignadoA: { id: string; name: string } | null;
-}
-interface Usuario { id: string; name: string }
-
 interface GrupoChecklist { grupo: string; area: string; items: string[] }
 
 // ─── Plantillas por tipo de servicio ────────────────────────────────────────────
-// Cada ítem se corresponde 1:1 con una "Tarea de proyecto de evento" que se da de
-// alta desde aquí (mismo formato del hub de Gestión Operativa). El emparejamiento
-// checklist ↔ tarea creada se hace por título normalizado.
+// Cada ítem se corresponde 1:1 con una tarea del proyecto que se abre/edita con el
+// mismo editor de detalle. El emparejamiento checklist ↔ tarea se hace por título
+// normalizado.
 const CHECKLIST_PRODUCCION_TECNICA: GrupoChecklist[] = [
   {
     grupo: "Resumen",
@@ -100,11 +89,10 @@ export default function ChecklistEventoTab({
 }) {
   const plantilla = tipoServicio ? PLANTILLAS[tipoServicio] : undefined;
 
-  const [tareas, setTareas]   = useState<TareaEvento[]>([]);
+  const [tareas, setTareas]   = useState<TareaProyecto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen]     = useState(false);
-  const [modalTitulo, setModalTitulo] = useState<string>("");
-  const [modalArea, setModalArea]     = useState<string>("PRODUCCION");
+  const [editId, setEditId]   = useState<string | null>(null);
+  const [creando, setCreando] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -116,14 +104,13 @@ export default function ChecklistEventoTab({
 
   useEffect(() => { if (plantilla) load(); else setLoading(false); }, [load, plantilla]);
 
-  // Mapa título normalizado → tarea creada (primera coincidencia)
+  // Mapa título normalizado → tarea (primera coincidencia)
   const porTitulo = useMemo(() => {
-    const m = new Map<string, TareaEvento>();
+    const m = new Map<string, TareaProyecto>();
     for (const t of tareas) { const k = norm(t.titulo); if (!m.has(k)) m.set(k, t); }
     return m;
   }, [tareas]);
 
-  // Progreso global respecto a la plantilla
   const stats = useMemo(() => {
     if (!plantilla) return { total: 0, creadas: 0, completadas: 0 };
     let total = 0, creadas = 0, completadas = 0;
@@ -135,7 +122,8 @@ export default function ChecklistEventoTab({
     return { total, creadas, completadas };
   }, [plantilla, porTitulo]);
 
-  async function toggle(t: TareaEvento) {
+  async function toggle(e: React.MouseEvent, t: TareaProyecto) {
+    e.stopPropagation();
     const next = t.estado === "COMPLETADA" ? "PENDIENTE" : "COMPLETADA";
     setTareas(prev => prev.map(x => x.id === t.id ? { ...x, estado: next } : x));
     const res = await fetch(`/api/tareas/${t.id}`, {
@@ -149,10 +137,25 @@ export default function ChecklistEventoTab({
     }
   }
 
-  function abrirCrear(titulo: string, area: string) {
-    setModalTitulo(titulo);
-    setModalArea(area);
-    setModalOpen(true);
+  // Click en la fila: abre el editor de detalle. Si la tarea aún no existe, la crea
+  // al vuelo (con el título del checklist y su área) y abre el editor sobre ella.
+  async function abrirFila(item: string, area: string, existente?: TareaProyecto) {
+    if (existente) { setEditId(existente.id); return; }
+    if (creando) return;
+    setCreando(item);
+    try {
+      const res = await fetch(`/api/proyectos/${proyectoId}/tareas`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titulo: item, area }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setTareas(prev => [...prev, d.tarea]);
+        setEditId(d.tarea.id);
+      }
+    } finally {
+      setCreando(null);
+    }
   }
 
   if (!plantilla) {
@@ -170,13 +173,11 @@ export default function ChecklistEventoTab({
     <div className="space-y-4">
       {/* ── Encabezado + progreso ── */}
       <div className="ms-card rounded-2xl p-5">
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div>
-            <h3 className="text-white font-semibold text-base">Tareas del proyecto</h3>
-            <p className="text-gray-500 text-xs mt-0.5">
-              Checklist del proceso de producción técnica. Cada tarea se asigna con el mismo formato de Gestión Operativa y le aparece a su responsable por proyecto.
-            </p>
-          </div>
+        <div className="mb-3">
+          <h3 className="text-white font-semibold text-base">Tareas del proyecto</h3>
+          <p className="text-gray-500 text-xs mt-0.5">
+            Checklist del proceso de producción técnica. Haz clic en una tarea para abrirla y editarla (responsable, fecha, evidencia). Aparece para su responsable en Gestión Operativa por proyecto.
+          </p>
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-gray-500">
@@ -205,12 +206,17 @@ export default function ChecklistEventoTab({
                 {grupo.items.map(item => {
                   const tarea = porTitulo.get(norm(item));
                   const done  = tarea?.estado === "COMPLETADA";
+                  const isCreando = creando === item;
                   return (
-                    <div key={item} className="flex items-start gap-3 px-5 py-3">
+                    <div
+                      key={item}
+                      onClick={() => abrirFila(item, grupo.area, tarea)}
+                      className="group flex items-start gap-3 px-5 py-3 cursor-pointer hover:bg-[#0f0f0f] transition-colors"
+                    >
                       {/* Casilla */}
                       {tarea ? (
                         <button
-                          onClick={() => toggle(tarea)}
+                          onClick={(e) => toggle(e, tarea)}
                           title={done ? "Marcar como pendiente" : "Marcar como completada"}
                           className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
                             done ? "border-green-500 bg-green-500/20 text-green-400 text-[10px]"
@@ -220,12 +226,12 @@ export default function ChecklistEventoTab({
                           {done ? "✓" : ""}
                         </button>
                       ) : (
-                        <span className="mt-0.5 w-5 h-5 rounded-full border-2 border-dashed border-[#2a2a2a] shrink-0" />
+                        <span className={`mt-0.5 w-5 h-5 rounded-full border-2 border-dashed shrink-0 ${isCreando ? "border-[#B3985B] animate-pulse" : "border-[#2a2a2a] group-hover:border-[#B3985B]/50"} transition-colors`} />
                       )}
 
                       {/* Contenido */}
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm leading-snug ${done ? "line-through text-gray-600" : tarea ? "text-white" : "text-gray-400"}`}>
+                        <p className={`text-sm leading-snug ${done ? "line-through text-gray-600" : tarea ? "text-white" : "text-gray-300 group-hover:text-white"} transition-colors`}>
                           {item}
                         </p>
                         {tarea && (
@@ -250,15 +256,10 @@ export default function ChecklistEventoTab({
                         )}
                       </div>
 
-                      {/* Acción crear */}
-                      {!tarea && (
-                        <button
-                          onClick={() => abrirCrear(item, grupo.area)}
-                          className="shrink-0 inline-flex items-center gap-1 text-[11px] font-semibold text-[#B3985B] hover:text-[#c9aa6a] px-2.5 py-1 rounded-lg border border-[#B3985B]/30 hover:border-[#B3985B]/60 transition-all"
-                        >
-                          <Plus className="w-3.5 h-3.5" /> Asignar
-                        </button>
-                      )}
+                      {/* Hint de acción */}
+                      <span className="shrink-0 self-center text-[11px] text-[#555] opacity-0 group-hover:opacity-100 transition-opacity">
+                        {isCreando ? "Abriendo…" : tarea ? "Abrir →" : "Asignar →"}
+                      </span>
                     </div>
                   );
                 })}
@@ -268,18 +269,18 @@ export default function ChecklistEventoTab({
         })
       )}
 
-      {/* ── Modal de alta (mismo formato de Gestión Operativa) ── */}
-      <NuevaTareaModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        usuarios={usuarios}
-        tipoInicial="EVENTO"
-        tituloInicial={modalTitulo}
-        defaultArea={modalArea}
-        proyectoEventoIdInicial={proyectoId}
-        proyectoEventoNombre={proyectoNombre}
-        onCreated={() => { setModalOpen(false); load(); }}
-      />
+      {/* ── Editor de detalle (mismo de Gestión Operativa / proyecto) ── */}
+      {editId && (
+        <ProyectoTaskModal
+          tareaId={editId}
+          proyectoId={proyectoId}
+          proyectoNombre={proyectoNombre}
+          usuarios={usuarios}
+          onClose={() => { setEditId(null); load(); }}
+          onSaved={(t) => setTareas(prev => prev.map(x => x.id === t.id ? { ...x, ...t } : x))}
+          onDeleted={(id) => { setTareas(prev => prev.filter(x => x.id !== id)); setEditId(null); }}
+        />
+      )}
     </div>
   );
 }
