@@ -366,10 +366,16 @@ function MantenimientoContent() {
             {sinRegistros > 0 && <> · <span className="text-gray-600">{sinRegistros} sin historial</span></>}
           </p>
         </div>
-        <Link href="/catalogo/equipos"
-          className="text-xs text-gray-500 hover:text-gray-300 border border-[#222] px-3 py-2 rounded-lg transition-colors whitespace-nowrap">
-          Inv. equipos
-        </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          <a href="/api/mantenimiento/pdf"
+            className="text-xs text-black bg-[#B3985B] hover:bg-[#d4b068] font-semibold px-3 py-2 rounded-lg transition-colors whitespace-nowrap">
+            Descargar PDF
+          </a>
+          <Link href="/catalogo/equipos"
+            className="text-xs text-gray-500 hover:text-gray-300 border border-[#222] px-3 py-2 rounded-lg transition-colors whitespace-nowrap">
+            Inv. equipos
+          </Link>
+        </div>
       </div>
 
       {/* Stats */}

@@ -156,9 +156,15 @@ export default function ChecklistDetailPage({ params }: { params: Promise<{ id: 
             <p className="text-gray-600 text-xs">Creado por {checklist.creadoPor ?? "—"}</p>
           </div>
         </div>
-        <div className="text-right shrink-0">
-          <p className="text-white text-2xl font-bold">{pct}%</p>
-          <p className="text-gray-600 text-xs">{revisados}/{total} revisados</p>
+        <div className="flex items-center gap-3 shrink-0">
+          <a href={`/api/bodega/checklist/${id}/pdf`}
+            className="text-xs text-black bg-[#B3985B] hover:bg-[#d4b068] font-semibold px-3 py-2 rounded-lg transition-colors whitespace-nowrap">
+            Descargar PDF
+          </a>
+          <div className="text-right">
+            <p className="text-white text-2xl font-bold">{pct}%</p>
+            <p className="text-gray-600 text-xs">{revisados}/{total} revisados</p>
+          </div>
         </div>
       </div>
 

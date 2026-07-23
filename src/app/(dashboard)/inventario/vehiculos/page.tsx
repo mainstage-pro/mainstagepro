@@ -485,6 +485,10 @@ export default function VehiculosPage() {
                         className="text-xs bg-[#B3985B] hover:bg-[#d4b068] text-black font-semibold px-3 py-1.5 rounded-lg transition-colors">
                         + Registro
                       </button>
+                      <a href={`/api/vehiculos/${selected.id}/pdf`}
+                        className="text-xs text-gray-500 hover:text-white border border-[#333] px-3 py-1.5 rounded-lg transition-colors">
+                        PDF
+                      </a>
                       <button onClick={() => toggleActivo(selected)}
                         className="text-xs text-gray-500 hover:text-white border border-[#333] px-3 py-1.5 rounded-lg transition-colors">
                         {selected.activo ? "Desactivar" : "Activar"}
