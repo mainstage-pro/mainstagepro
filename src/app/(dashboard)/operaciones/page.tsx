@@ -2153,8 +2153,8 @@ export default function OperacionesPage() {
                     Nuevo registro
                   </button>
 
-                  {/* ── Agregar sección (solo en la pestaña de Tareas) ── */}
-                  <div className={`mb-4 ${proyectoSub === "TAREA" ? "" : "hidden"}`}>
+                  {/* ── Agregar sección (pestañas de Tareas y Plan) ── */}
+                  <div className={`mb-4 ${(proyectoSub === "TAREA" || proyectoSub === "PLAN") ? "" : "hidden"}`}>
                     {showNuevaSeccion ? (
                       <div className="px-3 py-3 border border-dashed border-[#2a2a2a] rounded-xl space-y-2 bg-[#0a0a0a]">
                         <input autoFocus value={nuevaSeccionNombre}
@@ -2238,14 +2238,14 @@ export default function OperacionesPage() {
                     </div>
                   ))}
 
-                  {/* ── Secciones (solo en la pestaña de Tareas) ── */}
-                  {proyectoSub === "TAREA" && proyectoDetalle.secciones.map((seccion) => (
+                  {/* ── Secciones (pestañas de Tareas y Plan) ── */}
+                  {(proyectoSub === "TAREA" || proyectoSub === "PLAN") && proyectoDetalle.secciones.map((seccion) => (
                     <SectionBlock
                       key={seccion.id} seccion={seccion} proyectoId={proyectoDetalle.id}
                       selectedId={selectedId}
                       onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
                       onAddTarea={addTarea} draggingId={draggingId}
-                      onNuevoRegistro={(secId) => abrirNuevaTarea({ proyectoTareaId: proyectoDetalle.id, seccionId: secId, tipoInicial: "TAREA" })}
+                      onNuevoRegistro={(secId) => abrirNuevaTarea({ proyectoTareaId: proyectoDetalle.id, seccionId: secId, tipoInicial: proyectoSub as "TAREA" | "PLAN" | "EVENTO" | "PROYECTO" })}
                       ptrTargetSec={ptrTargetSec}
                       onPtrDragStart={startPtrDrag}
                       onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
