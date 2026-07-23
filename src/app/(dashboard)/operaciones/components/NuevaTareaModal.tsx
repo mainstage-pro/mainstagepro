@@ -56,6 +56,8 @@ interface Props {
   // Fija el proyecto de evento y bloquea el selector (al crear desde el detalle de un proyecto).
   proyectoEventoIdInicial?: string | null;
   proyectoEventoNombre?: string | null;
+  // Modo edición: si se da, el modal carga esa tarea y guarda con PATCH en vez de crear.
+  tareaIdEdicion?: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   onCreated: (tarea: any) => void;
 }
@@ -63,7 +65,7 @@ interface Props {
 export default function NuevaTareaModal({
   open, onClose, usuarios, defaultAsignadoId = null, defaultArea = null,
   proyectoTareaId = null, seccionId = null, tipoInicial = null, tituloInicial = null,
-  proyectoEventoIdInicial = null, proyectoEventoNombre = null, onCreated,
+  proyectoEventoIdInicial = null, proyectoEventoNombre = null, tareaIdEdicion = null, onCreated,
 }: Props) {
   const [tipo, setTipo]           = useState<TipoKey | null>(null);
   const [titulo, setTitulo]       = useState("");
@@ -84,6 +86,9 @@ export default function NuevaTareaModal({
   const [eventosPorMes, setEventosPorMes] = useState<MesGrupo[]>([]);
   const [internos, setInternos]           = useState<InternoOpt[]>([]);
   const [loadingOpts, setLoadingOpts]     = useState(false);
+  const [loadingEdit, setLoadingEdit]     = useState(false);
+
+  const modoEdicion = !!tareaIdEdicion;
 
   // Reset al abrir/cerrar
   useEffect(() => {
@@ -96,6 +101,29 @@ export default function NuevaTareaModal({
       setError(null); setSaving(false);
     }
   }, [open, tipoInicial, tituloInicial, defaultArea, defaultAsignadoId, proyectoEventoIdInicial]);
+
+  // Modo edición: carga la tarea y precarga los campos (corre después del reset).
+  useEffect(() => {
+    if (!open || !tareaIdEdicion) return;
+    setLoadingEdit(true);
+    fetch(`/api/tareas/${tareaIdEdicion}`)
+      .then(r => r.json())
+      .then(d => {
+        const t = d.tarea;
+        if (!t) return;
+        setTipo("EVENTO");
+        setTitulo(t.titulo ?? "");
+        setDescripcion(t.descripcion ?? "");
+        setPrioridad(t.prioridad ?? "MEDIA");
+        setArea(t.area ?? "GENERAL");
+        setAsignadoId(t.asignadoAId ?? t.asignadoA?.id ?? null);
+        setFecha(t.fecha ? String(t.fecha).substring(0, 10) : "");
+        setFechaVen(t.fechaVencimiento ? String(t.fechaVencimiento).substring(0, 10) : "");
+        setComprobacion(t.tipoEvidencia ?? "");
+      })
+      .catch(() => {})
+      .finally(() => setLoadingEdit(false));
+  }, [open, tareaIdEdicion]);
 
   // Carga las fuentes (eventos/proyectos internos) la primera vez que se necesitan
   useEffect(() => {
@@ -133,6 +161,35 @@ export default function NuevaTareaModal({
 
     setSaving(true);
     setError(null);
+
+    // ── Modo edición: PATCH sobre la tarea existente ──────────────────────────
+    if (modoEdicion) {
+      try {
+        const res = await fetch(`/api/tareas/${tareaIdEdicion}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            titulo: titulo.trim(),
+            descripcion: descripcion.trim() || null,
+            prioridad,
+            area,
+            asignadoAId: asignadoId || null,
+            fecha: fecha || null,
+            fechaVencimiento: fechaVen || null,
+            tipoEvidencia: comprobacion || null,
+            requiereEvidencia: !!comprobacion,
+          }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) { setError(json.error ?? "No se pudo guardar la tarea"); setSaving(false); return; }
+        onCreated(json.tarea);
+        onClose();
+      } catch {
+        setError("Error de red. Intenta de nuevo.");
+        setSaving(false);
+      }
+      return;
+    }
+
     const payload = {
       titulo: titulo.trim(),
       descripcion: descripcion.trim() || null,
@@ -212,7 +269,12 @@ export default function NuevaTareaModal({
         )}
 
         {/* ── Paso 2: formulario por tipo ────────────────────────────────── */}
-        {tipo && (
+        {tipo && modoEdicion && loadingEdit && (
+          <div className="flex items-center justify-center py-24">
+            <div className="w-6 h-6 border border-[#333] border-t-[#B3985B] rounded-full animate-spin" />
+          </div>
+        )}
+        {tipo && !(modoEdicion && loadingEdit) && (
           <div className="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
 
             {/* Título */}
@@ -373,7 +435,7 @@ export default function NuevaTareaModal({
             </button>
             <button onClick={submit} disabled={saving || !titulo.trim()}
               className="text-[12px] font-semibold px-4 py-1.5 rounded-lg bg-[#B3985B] hover:bg-[#c9aa6a] text-[#080808] transition-all disabled:opacity-30 disabled:cursor-not-allowed">
-              {saving ? "Creando…" : "Crear tarea"}
+              {modoEdicion ? (saving ? "Guardando…" : "Guardar cambios") : (saving ? "Creando…" : "Crear tarea")}
             </button>
           </div>
         )}

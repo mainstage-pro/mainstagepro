@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Calendar, User, ClipboardList } from "lucide-react";
-import { ProyectoTaskModal, type TareaProyecto, type Usuario } from "./ProyectoTareas";
+import NuevaTareaModal from "../../operaciones/components/NuevaTareaModal";
+import { type TareaProyecto, type Usuario } from "./ProyectoTareas";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface GrupoChecklist { grupo: string; area: string; items: string[] }
@@ -91,8 +92,13 @@ export default function ChecklistEventoTab({
 
   const [tareas, setTareas]   = useState<TareaProyecto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editId, setEditId]   = useState<string | null>(null);
-  const [creando, setCreando] = useState<string | null>(null);
+  // Modal: crear (título + área precargados) o editar (tarea existente). Mismo modal
+  // "Tarea de proyecto de evento" que en Gestión Operativa.
+  const [modal, setModal] = useState<
+    | { mode: "crear"; item: string; area: string }
+    | { mode: "editar"; tareaId: string }
+    | null
+  >(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -137,25 +143,21 @@ export default function ChecklistEventoTab({
     }
   }
 
-  // Click en la fila: abre el editor de detalle. Si la tarea aún no existe, la crea
-  // al vuelo (con el título del checklist y su área) y abre el editor sobre ella.
-  async function abrirFila(item: string, area: string, existente?: TareaProyecto) {
-    if (existente) { setEditId(existente.id); return; }
-    if (creando) return;
-    setCreando(item);
-    try {
-      const res = await fetch(`/api/proyectos/${proyectoId}/tareas`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ titulo: item, area }),
-      });
-      if (res.ok) {
-        const d = await res.json();
-        setTareas(prev => [...prev, d.tarea]);
-        setEditId(d.tarea.id);
-      }
-    } finally {
-      setCreando(null);
-    }
+  // Click en la fila: abre el mismo modal de "Tarea de proyecto de evento". Si la
+  // tarea ya existe se abre en modo edición; si no, en modo creación con el título y
+  // el área precargados (el evento queda fijo a este proyecto).
+  function abrirFila(item: string, area: string, existente?: TareaProyecto) {
+    if (existente) setModal({ mode: "editar", tareaId: existente.id });
+    else setModal({ mode: "crear", item, area });
+  }
+
+  // Alta/edición confirmada en el modal → refleja la tarea en la lista.
+  function upsertTarea(t: TareaProyecto) {
+    setTareas(prev => {
+      const i = prev.findIndex(x => x.id === t.id);
+      if (i >= 0) { const c = [...prev]; c[i] = { ...c[i], ...t }; return c; }
+      return [...prev, t];
+    });
   }
 
   if (!plantilla) {
@@ -206,7 +208,6 @@ export default function ChecklistEventoTab({
                 {grupo.items.map(item => {
                   const tarea = porTitulo.get(norm(item));
                   const done  = tarea?.estado === "COMPLETADA";
-                  const isCreando = creando === item;
                   return (
                     <div
                       key={item}
@@ -226,7 +227,7 @@ export default function ChecklistEventoTab({
                           {done ? "✓" : ""}
                         </button>
                       ) : (
-                        <span className={`mt-0.5 w-5 h-5 rounded-full border-2 border-dashed shrink-0 ${isCreando ? "border-[#B3985B] animate-pulse" : "border-[#2a2a2a] group-hover:border-[#B3985B]/50"} transition-colors`} />
+                        <span className="mt-0.5 w-5 h-5 rounded-full border-2 border-dashed shrink-0 border-[#2a2a2a] group-hover:border-[#B3985B]/50 transition-colors" />
                       )}
 
                       {/* Contenido */}
@@ -258,7 +259,7 @@ export default function ChecklistEventoTab({
 
                       {/* Hint de acción */}
                       <span className="shrink-0 self-center text-[11px] text-[#555] opacity-0 group-hover:opacity-100 transition-opacity">
-                        {isCreando ? "Abriendo…" : tarea ? "Abrir →" : "Asignar →"}
+                        {tarea ? "Abrir →" : "Asignar →"}
                       </span>
                     </div>
                   );
@@ -269,16 +270,19 @@ export default function ChecklistEventoTab({
         })
       )}
 
-      {/* ── Editor de detalle (mismo de Gestión Operativa / proyecto) ── */}
-      {editId && (
-        <ProyectoTaskModal
-          tareaId={editId}
-          proyectoId={proyectoId}
-          proyectoNombre={proyectoNombre}
+      {/* ── Mismo modal "Tarea de proyecto de evento" de Gestión Operativa ── */}
+      {modal && (
+        <NuevaTareaModal
+          open
+          onClose={() => { setModal(null); load(); }}
           usuarios={usuarios}
-          onClose={() => { setEditId(null); load(); }}
-          onSaved={(t) => setTareas(prev => prev.map(x => x.id === t.id ? { ...x, ...t } : x))}
-          onDeleted={(id) => { setTareas(prev => prev.filter(x => x.id !== id)); setEditId(null); }}
+          tipoInicial="EVENTO"
+          proyectoEventoIdInicial={proyectoId}
+          proyectoEventoNombre={proyectoNombre}
+          tituloInicial={modal.mode === "crear" ? modal.item : null}
+          defaultArea={modal.mode === "crear" ? modal.area : null}
+          tareaIdEdicion={modal.mode === "editar" ? modal.tareaId : null}
+          onCreated={(t) => upsertTarea(t as TareaProyecto)}
         />
       )}
     </div>
