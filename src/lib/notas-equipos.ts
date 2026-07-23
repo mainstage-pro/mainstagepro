@@ -1,6 +1,25 @@
 import { prisma } from "@/lib/prisma";
 
 /**
+ * Extrae la nota visible del usuario del campo `notas` de una línea de
+ * cotización. En la BD ese campo codifica la categoría y la nota juntas:
+ *   "cat:Cat|nota:Texto" · "nota:Texto" · "cat:Cat" (sin nota) · texto plano.
+ * Mismo criterio que `getItemNota` en CotizacionPDF, para no filtrar el
+ * prefijo `cat:` hacia ficha operativa / rider.
+ */
+export function notaVisibleDeCotizacion(notas: string | null | undefined): string | null {
+  if (!notas) return null;
+  if (notas.includes("|nota:")) return notas.split("|nota:")[1]?.trim() || null;
+  if (notas.startsWith("nota:")) return notas.slice(5).trim() || null;
+  if (notas.startsWith("cat:")) return null; // solo categoría, sin nota
+  return notas.trim() || null; // nota plana (legado)
+}
+
+function esCodificada(n: string): boolean {
+  return n.startsWith("cat:") || n.startsWith("nota:") || n.includes("|nota:");
+}
+
+/**
  * Siembra `ProyectoEquipo.notas` a partir de `CotizacionLinea.notas`.
  *
  * La nota que se escribe en el concepto de cada equipo dentro de la cotización
@@ -12,15 +31,26 @@ import { prisma } from "@/lib/prisma";
  * - Empareja por `equipoId` en orden: `crear-proyecto` crea las filas 1:1 con
  *   las líneas de equipo de la cotización, así que la N-ésima fila de un equipo
  *   corresponde a la N-ésima línea de ese equipo.
+ * - Limpia filas ya sembradas con el formato codificado (`cat:…|nota:…`) para
+ *   dejar solo la nota visible.
  *
  * Idempotente y no lanza: cualquier error se registra y se traga para no romper
  * la ruta que lo invoca.
  */
 export async function sembrarNotasEquiposProyecto(proyectoId: string): Promise<void> {
   try {
-    // Fast path: si no hay equipos sin nota, no hay nada que sembrar.
+    // Fast path: solo trabajar si hay filas sin nota o con formato codificado.
     const pendientes = await prisma.proyectoEquipo.count({
-      where: { proyectoId, OR: [{ notas: null }, { notas: "" }] },
+      where: {
+        proyectoId,
+        OR: [
+          { notas: null },
+          { notas: "" },
+          { notas: { startsWith: "cat:" } },
+          { notas: { startsWith: "nota:" } },
+          { notas: { contains: "|nota:" } },
+        ],
+      },
     });
     if (pendientes === 0) return;
 
@@ -42,31 +72,35 @@ export async function sembrarNotasEquiposProyecto(proyectoId: string): Promise<v
         },
       },
     });
-    if (!proyecto?.cotizacion) return;
+    if (!proyecto) return;
 
-    // Notas de cotización agrupadas por equipoId, en orden de línea (se incluyen
-    // las vacías como null para conservar la alineación posicional).
+    // Notas de cotización (ya limpias) agrupadas por equipoId, en orden de línea.
     const notasPorEquipo = new Map<string, (string | null)[]>();
-    for (const l of proyecto.cotizacion.lineas) {
+    for (const l of proyecto.cotizacion?.lineas ?? []) {
       if (!l.equipoId) continue;
       const arr = notasPorEquipo.get(l.equipoId) ?? [];
-      arr.push((l.notas ?? "").trim() || null);
+      arr.push(notaVisibleDeCotizacion(l.notas));
       notasPorEquipo.set(l.equipoId, arr);
     }
 
-    // Empareja cada ProyectoEquipo con su línea correspondiente (mismo equipoId,
-    // mismo orden). El cursor avanza incluso cuando la fila ya tiene nota, para
-    // no desalinear las siguientes.
     const cursor = new Map<string, number>();
-    const updates: { id: string; notas: string }[] = [];
+    const updates: { id: string; notas: string | null }[] = [];
     for (const eq of proyecto.equipos) {
-      const notas = notasPorEquipo.get(eq.equipoId);
-      if (!notas) continue;
+      const stored = eq.notas ?? "";
+      const notasLinea = notasPorEquipo.get(eq.equipoId);
       const i = cursor.get(eq.equipoId) ?? 0;
-      cursor.set(eq.equipoId, i + 1);
-      if ((eq.notas ?? "").trim()) continue; // conserva edición manual
-      const nota = notas[i];
-      if (nota) updates.push({ id: eq.id, notas: nota });
+      if (notasLinea) cursor.set(eq.equipoId, i + 1);
+
+      if (stored.trim() === "") {
+        // Semilla desde la cotización (nota ya limpia).
+        const nota = notasLinea ? notasLinea[i] : null;
+        if (nota) updates.push({ id: eq.id, notas: nota });
+      } else if (esCodificada(stored)) {
+        // Limpia una fila ya sembrada con el formato codificado.
+        const limpio = notaVisibleDeCotizacion(stored);
+        if ((limpio ?? "") !== stored) updates.push({ id: eq.id, notas: limpio });
+      }
+      // Nota manual en texto plano → se respeta tal cual.
     }
 
     if (updates.length === 0) return;

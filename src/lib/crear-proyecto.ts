@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { notaVisibleDeCotizacion } from "@/lib/notas-equipos";
 
 // Migración lazy: hasta hoy un trato tenía a lo más un proyecto (índice único en
 // proyectos.tratoId). Ahora un trato puede generar varios proyectos (uno por
@@ -227,8 +228,9 @@ export async function crearProyectoDesdeCotizacion(
           dias: l.dias,
           costoExterno: l.tipo === "EQUIPO_EXTERNO" ? l.costoUnitario : null,
           proveedorId: l.tipo === "EQUIPO_EXTERNO" ? (l.proveedorId ?? null) : null,
-          // Copia la nota del concepto de la cotización como semilla editable.
-          notas: (l.notas ?? "").trim() || null,
+          // Copia la nota del concepto de la cotización como semilla editable
+          // (sin el prefijo interno "cat:…" que codifica la categoría).
+          notas: notaVisibleDeCotizacion(l.notas),
         })),
         ...equiposDePaquetes.map((c) => ({
           proyectoId: proy.id,
