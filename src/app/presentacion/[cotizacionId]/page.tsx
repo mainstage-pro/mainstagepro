@@ -83,6 +83,7 @@ export default async function PresentacionPage({
             select: {
               categoria: { select: { nombre: true } },
               imagenUrl: true,
+              imagenesUrls: true,
             },
           },
         },

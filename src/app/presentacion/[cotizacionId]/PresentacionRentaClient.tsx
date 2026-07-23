@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getEquipoImage, type FotoPresentacion } from "@/lib/presentacion-imagenes";
+import { useEquipoGaleria, GaleriaCombinada } from "./_galeria";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Linea {
@@ -15,7 +16,7 @@ interface Linea {
   esIncluido: boolean;
   notas: string | null;
   jornada: string | null;
-  equipo?: { categoria: { nombre: string } | null; imagenUrl?: string | null } | null;
+  equipo?: { categoria: { nombre: string } | null; imagenUrl?: string | null; imagenesUrls?: string | null } | null;
 }
 interface Cotizacion {
   id: string;
@@ -143,13 +144,19 @@ function CatIcon({ cat }: { cat: string }) {
 
 // ─── Single equipment row (technical, spec-focused) ───────────────────────────
 function EquipoRow({ linea, index }: { linea: Linea; index: number }) {
-  const img = getEquipoImage(linea);
+  const { fotos, tieneGaleria, abrir, lightbox } = useEquipoGaleria(linea);
+  const img = fotos[0]?.src ?? getEquipoImage(linea);
   return (
     <R delay={index * 50} y={20}>
       <div className="flex items-center gap-4 py-4 border-b border-white/[0.06] group"
            style={{ borderColor: "rgba(179,152,91,0.08)" }}>
         {/* Thumbnail */}
-        <div className="shrink-0 w-14 h-14 rounded-lg bg-[#0d0d0d] border border-white/[0.06] flex items-center justify-center overflow-hidden">
+        <button
+          type="button"
+          onClick={tieneGaleria ? abrir : undefined}
+          disabled={!tieneGaleria}
+          className={`relative shrink-0 w-14 h-14 rounded-lg bg-[#0d0d0d] border flex items-center justify-center overflow-hidden transition-colors ${tieneGaleria ? "border-[#B3985B]/25 hover:border-[#B3985B]/60 cursor-pointer" : "border-white/[0.06]"}`}
+        >
           {img ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={img} alt={linea.modelo ?? linea.descripcion} draggable={false}
@@ -159,7 +166,12 @@ function EquipoRow({ linea, index }: { linea: Linea; index: number }) {
               {(linea.marca ?? linea.descripcion).charAt(0).toUpperCase()}
             </span>
           )}
-        </div>
+          {tieneGaleria && (
+            <span className="absolute bottom-0.5 right-0.5 bg-black/75 text-[#B3985B] text-[8px] font-bold px-1 py-0.5 rounded leading-none">
+              {fotos.length}
+            </span>
+          )}
+        </button>
 
         {/* Info */}
         <div className="flex-1 min-w-0">
@@ -177,6 +189,11 @@ function EquipoRow({ linea, index }: { linea: Linea; index: number }) {
           {linea.notas && (
             <p className="text-white/30 text-xs mt-1 italic">{linea.notas}</p>
           )}
+          {tieneGaleria && (
+            <button type="button" onClick={abrir} className="text-[#B3985B]/70 hover:text-[#B3985B] text-[10px] mt-1 transition-colors">
+              Ver galería ({fotos.length} fotos) →
+            </button>
+          )}
         </div>
 
         {/* Qty badge */}
@@ -192,6 +209,7 @@ function EquipoRow({ linea, index }: { linea: Linea; index: number }) {
           </div>
         )}
       </div>
+      {lightbox}
     </R>
   );
 }
@@ -546,6 +564,12 @@ Mainstage Pro puede proveer soporte técnico básico vía WhatsApp durante el us
               <p className="text-white/30 text-sm italic">El equipo específico se coordinará directamente.</p>
             </R>
           )}
+
+          <GaleriaCombinada
+            lineas={cotizacion.lineas}
+            className="mt-20 pt-14 border-t border-white/[0.06]"
+            subtitulo="El equipo de tu renta, en eventos reales. Haz click en cualquier foto para ampliar."
+          />
         </div>
       </section>
 

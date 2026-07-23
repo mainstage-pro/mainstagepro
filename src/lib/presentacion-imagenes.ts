@@ -94,7 +94,7 @@ export type EquipoLinea = {
   id: string;
   marca: string | null;
   modelo: string | null;
-  equipo?: { imagenUrl?: string | null } | null;
+  equipo?: { imagenUrl?: string | null; imagenesUrls?: string | null } | null;
 };
 
 // Prefiere la referencia viva del inventario (equipo.imagenUrl); si no, resuelve
@@ -113,6 +113,49 @@ export function getEquipoImage(linea: EquipoLinea): string | null {
     if (marca.includes(key) || key.includes(marca)) return MARCA_IMAGES[key];
   }
   return null;
+}
+
+// ─── Galería de fotos por equipo (inventario) ─────────────────────────────────
+// Devuelve las fotos EXTERNO de imagenesUrls, con la imagen principal al frente.
+// Si el equipo no tiene fotos propias, cae al mapeo de marca/modelo (una sola).
+export function getEquipoImagenes(linea: EquipoLinea): GaleriaItem[] {
+  const items: GaleriaItem[] = [];
+  const seen = new Set<string>();
+  const nombre = [linea.marca, linea.modelo].filter(Boolean).join(" ").trim();
+
+  const push = (src: string | null | undefined, caption: string) => {
+    if (!src || seen.has(src)) return;
+    seen.add(src);
+    items.push({ src, caption });
+  };
+
+  push(linea.equipo?.imagenUrl, nombre);
+
+  const raw = linea.equipo?.imagenesUrls;
+  if (raw) {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr)) {
+        for (const item of arr) {
+          if (typeof item === "string") {
+            push(item, nombre);
+          } else if (item && typeof item === "object" && typeof item.url === "string") {
+            if (item.uso === "INTERNO") continue;
+            push(item.url, typeof item.nombre === "string" && item.nombre ? item.nombre : nombre);
+          }
+        }
+      }
+    } catch {
+      /* ignora JSON inválido */
+    }
+  }
+
+  if (items.length === 0) {
+    const fallback = getEquipoImage(linea);
+    if (fallback) push(fallback, nombre);
+  }
+
+  return items;
 }
 
 // ─── Galerías hardcodeadas (fallback) ─────────────────────────────────────────

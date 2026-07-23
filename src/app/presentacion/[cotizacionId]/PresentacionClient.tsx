@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getEquipoImage, resolverGaleria, resolverHero, type FotoPresentacion } from "@/lib/presentacion-imagenes";
+import { useEquipoGaleria, GaleriaCombinada } from "./_galeria";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Linea {
   id: string; tipo: string; descripcion: string; marca: string | null; modelo: string | null;
   cantidad: number; subtotal: number; esIncluido: boolean; notas: string | null;
-  equipo?: { categoria: { nombre: string } | null; imagenUrl?: string | null } | null;
+  equipo?: { categoria: { nombre: string } | null; imagenUrl?: string | null; imagenesUrls?: string | null } | null;
 }
 interface Cotizacion {
   id: string; numeroCotizacion: string; nombreEvento: string | null; tipoEvento: string | null;
@@ -225,11 +226,15 @@ function CinematicGallery({ photos }: { photos: { src: string; caption: string }
 
 // ─── Equipment card ───────────────────────────────────────────────────────────
 function EquipoCard({ linea, delay = 0 }: { linea: Linea; delay?: number }) {
-  const img = getEquipoImage(linea);
+  const { fotos, tieneGaleria, abrir, lightbox } = useEquipoGaleria(linea);
+  const img = fotos[0]?.src ?? getEquipoImage(linea);
   return (
     <R delay={delay} y={24}>
-      <div className="bg-white/[0.03] border border-white/8 rounded-2xl overflow-hidden hover:border-[#B3985B]/30 transition-all duration-300 group">
-        <div className="h-40 bg-[#070707] flex items-center justify-center p-4">
+      <div
+        onClick={tieneGaleria ? abrir : undefined}
+        className={`bg-white/[0.03] border border-white/8 rounded-2xl overflow-hidden transition-all duration-300 group ${tieneGaleria ? "hover:border-[#B3985B]/50 cursor-pointer" : "hover:border-[#B3985B]/30"}`}
+      >
+        <div className="relative h-40 bg-[#070707] flex items-center justify-center p-4">
           {img ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={img} alt={linea.modelo ?? linea.descripcion} draggable={false}
@@ -239,6 +244,14 @@ function EquipoCard({ linea, delay = 0 }: { linea: Linea; delay?: number }) {
               <span className="text-[#B3985B]/60 text-sm font-bold">{(linea.marca ?? linea.descripcion).charAt(0).toUpperCase()}</span>
             </div>
           )}
+          {tieneGaleria && (
+            <div className="absolute bottom-2 right-2 flex items-center gap-1 bg-black/70 backdrop-blur-sm text-[#B3985B] text-[10px] font-semibold px-2 py-1 rounded-full border border-[#B3985B]/25 opacity-90 group-hover:opacity-100 transition-opacity">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="1.5" /><path d="m21 15-5-5L5 21" />
+              </svg>
+              {fotos.length} fotos
+            </div>
+          )}
         </div>
         <div className="px-3 py-3 border-t border-white/5 flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -246,10 +259,12 @@ function EquipoCard({ linea, delay = 0 }: { linea: Linea; delay?: number }) {
             {linea.modelo && <p className="text-white text-sm font-semibold truncate mt-0.5">{linea.modelo}</p>}
             {linea.descripcion && <p className="text-white/40 text-[11px] truncate mt-0.5">{linea.descripcion}</p>}
             {!linea.modelo && !linea.marca && <p className="text-white text-sm font-semibold truncate">{linea.descripcion}</p>}
+            {tieneGaleria && <p className="text-[#B3985B]/70 text-[10px] mt-1">Haz click para ver la galería →</p>}
           </div>
           <span className="text-[#B3985B] text-xs font-bold shrink-0 mt-1">×{linea.cantidad}</span>
         </div>
       </div>
+      {lightbox}
     </R>
   );
 }
@@ -571,6 +586,16 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token, g
                 </div>
               ))}
             </div>
+
+            {(() => {
+              const todosEquipos = equipoCats.flatMap((c) => c.lineas);
+              return (
+                <GaleriaCombinada
+                  lineas={todosEquipos}
+                  className="mt-20 pt-16 border-t border-white/[0.05]"
+                />
+              );
+            })()}
           </div>
         </section>
       )}
