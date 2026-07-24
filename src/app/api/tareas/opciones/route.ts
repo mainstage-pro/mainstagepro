@@ -16,9 +16,9 @@ export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  // ── Proyectos de evento (activos: no cancelados ni completados) ────────────
+  // ── Proyectos de evento (planeación, en curso y completados; sin cancelados) ──
   const proyectos = await prisma.proyecto.findMany({
-    where: { estado: { notIn: ["CANCELADO", "COMPLETADO"] } },
+    where: { estado: { not: "CANCELADO" } },
     orderBy: { fechaEvento: "asc" },
     select: {
       id: true,

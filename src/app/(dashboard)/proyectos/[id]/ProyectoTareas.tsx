@@ -113,11 +113,13 @@ function formatFecha(iso: string): { label: string; cls: string } {
 // ─── TareaRow ─────────────────────────────────────────────────────────────────
 function TareaRow({
   tarea,
+  proyectoNombre,
   onToggleEstado,
   onOpen,
   onDelete,
 }: {
   tarea: TareaProyecto;
+  proyectoNombre: string;
   onToggleEstado: (id: string, next: string) => void;
   onOpen: (id: string) => void;
   onDelete: (id: string) => void;
@@ -175,6 +177,13 @@ function TareaRow({
         )}
 
         <div className="flex items-center flex-wrap gap-1.5 mt-2">
+          <span
+            className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md max-w-[180px] truncate"
+            style={{ color: "#60a5fa", backgroundColor: "rgba(59,130,246,0.14)", border: "1px solid rgba(59,130,246,0.35)" }}
+            title={proyectoNombre}
+          >
+            {proyectoNombre}
+          </span>
           <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${estado.cls}`}>
             {estado.icon} {estado.label}
           </span>
@@ -863,6 +872,8 @@ export default function ProyectoTareas({ proyectoId, proyectoNombre = "Proyecto"
   const [modalOpen, setModalOpen]       = useState(false);
   const [modalTareaId, setModalTareaId] = useState<string | null>(null);
   const [filterEstado, setFilterEstado] = useState<string>("activas");
+  const [quickTitulo, setQuickTitulo]   = useState("");
+  const [addingQuick, setAddingQuick]   = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -895,6 +906,26 @@ export default function ProyectoTareas({ proyectoId, proyectoNombre = "Proyecto"
     if (!confirm("¿Eliminar esta tarea?")) return;
     setTareas(prev => prev.filter(t => t.id !== id));
     await fetch(`/api/tareas/${id}`, { method: "DELETE" });
+  }
+
+  async function quickAdd() {
+    const t = quickTitulo.trim();
+    if (!t || addingQuick) return;
+    setAddingQuick(true);
+    try {
+      const res = await fetch(`/api/proyectos/${proyectoId}/tareas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titulo: t }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTareas(prev => [...prev, data.tarea]);
+        setQuickTitulo("");
+      }
+    } finally {
+      setAddingQuick(false);
+    }
   }
 
   function openNew() {
@@ -978,6 +1009,28 @@ export default function ProyectoTareas({ proyectoId, proyectoNombre = "Proyecto"
         )}
       </div>
 
+      {/* ── Recuadro rápido: agregar tarea a este proyecto ── */}
+      <div className="ms-card rounded-2xl p-2 flex items-center gap-2">
+        <span className="text-[#B3985B] text-lg leading-none pl-2 select-none">+</span>
+        <input
+          value={quickTitulo}
+          onChange={e => setQuickTitulo(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") quickAdd(); }}
+          placeholder="Agregar tarea a este proyecto…"
+          disabled={addingQuick}
+          className="flex-1 bg-transparent text-sm text-white placeholder:text-[#555] focus:outline-none py-2"
+        />
+        {quickTitulo.trim() && (
+          <button
+            onClick={quickAdd}
+            disabled={addingQuick}
+            className="text-xs font-semibold text-black bg-[#B3985B] hover:bg-[#c9a96a] px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
+          >
+            {addingQuick ? "…" : "Agregar"}
+          </button>
+        )}
+      </div>
+
       {/* ── Filters ── */}
       {total > 0 && (
         <div className="flex items-center gap-1">
@@ -1021,6 +1074,7 @@ export default function ProyectoTareas({ proyectoId, proyectoNombre = "Proyecto"
             <TareaRow
               key={t.id}
               tarea={t}
+              proyectoNombre={proyectoNombre}
               onToggleEstado={toggleEstado}
               onOpen={openEdit}
               onDelete={deleteTarea}

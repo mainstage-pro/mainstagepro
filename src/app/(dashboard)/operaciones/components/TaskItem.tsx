@@ -15,6 +15,7 @@ export interface TareaItem {
   fecha: string | null;
   recurrencia: string | null;
   proyectoTarea: { id: string; nombre: string; color: string | null } | null;
+  proyectoEvento?: { id: string; nombre: string; fechaEvento?: string | null } | null;
   seccion: { id: string; nombre: string } | null;
   asignadoA: { id: string; name: string } | null;
   juntaOrigenId?: string | null;
@@ -213,6 +214,10 @@ export default function TaskItem({
   const fecha = tarea.fecha ? formatFecha(tarea.fecha) : null;
   const showDrop = isDragOver;
   const tipoTag  = tarea.tipoOrigen ? (TIPO_ORIGEN[tarea.tipoOrigen] ?? null) : null;
+  // Para tareas de proyecto de evento, el tag muestra el nombre del proyecto asignado.
+  const tipoTagLabel = tarea.tipoOrigen === "EVENTO" && tarea.proyectoEvento
+    ? tarea.proyectoEvento.nombre
+    : tipoTag?.label;
   // Punto de estado de verificación: ámbar=pendiente, verde=verificada, rojo=rechazada
   const verifDot = (() => {
     switch (tarea.estadoVerificacion) {
@@ -387,9 +392,10 @@ export default function TaskItem({
           <div className="flex flex-wrap items-center gap-1.5 mt-1">
             {/* ── Bloque 5: tag de tipoOrigen ── */}
             {tipoTag && (
-              <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md select-none shrink-0"
-                style={{ color: tipoTag.color, backgroundColor: tipoTag.bg, border: `1px solid ${tipoTag.border}` }}>
-                {tipoTag.label}
+              <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md select-none shrink-0 max-w-[180px] truncate"
+                style={{ color: tipoTag.color, backgroundColor: tipoTag.bg, border: `1px solid ${tipoTag.border}` }}
+                title={tipoTagLabel}>
+                {tipoTagLabel}
               </span>
             )}
             {/* Priority chip — only for URGENTE and ALTA */}
