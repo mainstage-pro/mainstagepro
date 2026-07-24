@@ -39,7 +39,7 @@ interface SeccionDetalle {
 interface Iniciativa { id: string; nombre: string; color: string | null }
 interface Usuario   { id: string; name: string }
 
-type VistaKey = "bandeja" | "hoy" | "proximas" | "integrada" | "proyectos-evento" | "tratos" | "equipo"
+type VistaKey = "bandeja" | "hoy" | "proximas" | "integrada" | "proyectos-evento" | "proyectos-empresa" | "tratos" | "equipo"
   | "captura" | "ideas" | "iniciativas" | "rendimiento"
   | { tipo: "proyecto"; id: string } | { tipo: "area"; nombre: string };
 
@@ -51,6 +51,17 @@ interface ProyectoEventoConTareas {
   estado: string;
   lugarEvento: string | null;
   encargado: { id: string; name: string } | null;
+  tareas: TareaItem[];
+}
+
+interface ProyectoInternoConTareas {
+  id: string;
+  nombre: string;
+  area: string;
+  estado: string;
+  prioridad: string;
+  fechaFin: string | null;
+  lider: { id: string; name: string } | null;
   tareas: TareaItem[];
 }
 
@@ -139,6 +150,7 @@ export default function OperacionesPage() {
   const [integradas, setIntegradas]                   = useState<TareaIntegrada[]>([]);
   const [proyectoDetalle, setProyectoDetalle]         = useState<ProyectoDetalle | null>(null);
   const [proyectosEvento, setProyectosEvento]         = useState<ProyectoEventoConTareas[]>([]);
+  const [proyectosEmpresa, setProyectosEmpresa]       = useState<ProyectoInternoConTareas[]>([]);
   const [tratosOp, setTratosOp]                       = useState<TratoConTareas[]>([]);
   const [loadingMain, setLoadingMain]                 = useState(false);
 
@@ -404,6 +416,14 @@ export default function OperacionesPage() {
       fetch("/api/tareas/por-proyecto")
         .then(r => r.json())
         .then(d => { setProyectosEvento(d.proyectos ?? []); })
+        .catch(() => {})
+        .finally(() => setLoadingMain(false));
+      return;
+    }
+    if (vista === "proyectos-empresa") {
+      fetch("/api/tareas/por-proyecto-interno")
+        .then(r => r.json())
+        .then(d => { setProyectosEmpresa(d.proyectos ?? []); })
         .catch(() => {})
         .finally(() => setLoadingMain(false));
       return;
@@ -1081,7 +1101,7 @@ export default function OperacionesPage() {
   };
 
   const hoyGrouped = useMemo(() => {
-    if (typeof vista !== "string" || vista === "integrada" || vista === "proyectos-evento" || vista === "tratos") return null;
+    if (typeof vista !== "string" || vista === "integrada" || vista === "proyectos-evento" || vista === "proyectos-empresa" || vista === "tratos") return null;
 
     let base = applyBusqueda(vistaOpts.showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA"));
     if (vistaOpts.filterPrio.length > 0) base = base.filter(t => vistaOpts.filterPrio.includes(t.prioridad));
@@ -1176,6 +1196,7 @@ export default function OperacionesPage() {
     vista === "proximas"         ? "Próximas" :
     vista === "integrada"        ? "Alertas" :
     vista === "proyectos-evento" ? "Proyectos / Eventos" :
+    vista === "proyectos-empresa" ? "Proyectos de empresa" :
     vista === "tratos"           ? "Tratos / Ventas" :
     vista === "equipo"           ? "Vista equipo" :
     vista === "captura"          ? "Captura rápida" :
@@ -1470,6 +1491,18 @@ export default function OperacionesPage() {
             label="Tratos"
             isActive={vistaKey === "tratos"}
             onClick={() => setVista("tratos")}
+          />
+          <SideItem
+            icon={<Calendar strokeWidth={1.5} className="w-3.5 h-3.5" />}
+            label="Proyectos de evento"
+            isActive={vistaKey === "proyectos-evento"}
+            onClick={() => setVista("proyectos-evento")}
+          />
+          <SideItem
+            icon={<Building2 strokeWidth={1.5} className="w-3.5 h-3.5" />}
+            label="Proyectos de empresa"
+            isActive={vistaKey === "proyectos-empresa"}
+            onClick={() => setVista("proyectos-empresa")}
           />
         </nav>
 
@@ -2061,6 +2094,46 @@ export default function OperacionesPage() {
                 fetch("/api/tareas/por-trato")
                   .then(r => r.json())
                   .then(d => { setTratosOp(d.tratos ?? []); setLoadingMain(false); });
+              }}
+            />
+
+          ) : vista === "proyectos-empresa" ? (
+            <ProyectosEmpresaView
+              proyectos={proyectosEmpresa}
+              onSelectTarea={setSelectedId}
+              selectedId={selectedId}
+              onCompleteTarea={async (id) => {
+                setProyectosEmpresa(prev => prev.map(p => ({
+                  ...p,
+                  tareas: p.tareas.map(t => t.id === id ? { ...t, estado: "COMPLETADA" } : t),
+                })));
+                const res = await fetch(`/api/tareas/${id}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ estado: "COMPLETADA" }),
+                });
+                if (!res.ok) {
+                  const d = await res.json().catch(() => ({}));
+                  toast.error(d.error ?? "Error al guardar");
+                  setProyectosEmpresa(prev => prev.map(p => ({
+                    ...p,
+                    tareas: p.tareas.map(t => t.id === id ? { ...t, estado: "PENDIENTE" } : t),
+                  })));
+                  return;
+                }
+                const { reagendada, tarea } = await res.json();
+                if (reagendada && tarea) {
+                  setProyectosEmpresa(prev => prev.map(p => ({
+                    ...p,
+                    tareas: p.tareas.map(t => t.id === id ? { ...t, estado: "PENDIENTE", fecha: tarea.fecha } : t),
+                  })));
+                }
+              }}
+              onRefresh={() => {
+                setLoadingMain(true);
+                fetch("/api/tareas/por-proyecto-interno")
+                  .then(r => r.json())
+                  .then(d => { setProyectosEmpresa(d.proyectos ?? []); setLoadingMain(false); });
               }}
             />
 
@@ -3237,6 +3310,208 @@ function TratosView({ tratos, selectedId, onSelectTarea, onCompleteTarea, onRefr
                     className="text-[11px] text-[#333] hover:text-[#B3985B] transition-colors flex items-center gap-1"
                   >
                     Ver el trato en el CRM
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── ProyectosEmpresaView ─────────────────────────────────────────────────────
+// Espejo de ProyectosEventoView para proyectos internos de la empresa.
+// Agrupa las tareas por proyecto interno, con enlace al detalle en el módulo.
+
+const AREA_BADGE_COLOR: Record<string, string> = {
+  DIRECCION:      "bg-amber-950/40 text-amber-400",
+  ADMINISTRACION: "bg-teal-950/40 text-teal-400",
+  MARKETING:      "bg-pink-950/40 text-pink-400",
+  VENTAS:         "bg-blue-950/40 text-blue-400",
+  PRODUCCION:     "bg-purple-950/40 text-purple-400",
+};
+
+interface ProyectosEmpresaViewProps {
+  proyectos: ProyectoInternoConTareas[];
+  selectedId: string | null;
+  onSelectTarea: (id: string) => void;
+  onCompleteTarea: (id: string) => void;
+  onRefresh: () => void;
+}
+
+function ProyectosEmpresaView({ proyectos, selectedId, onSelectTarea, onCompleteTarea, onRefresh }: ProyectosEmpresaViewProps) {
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+
+  function toggleCollapse(id: string) {
+    setCollapsed(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  if (proyectos.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <span className="mb-4 opacity-60 text-[#555]"><Building2 strokeWidth={1.5} className="w-9 h-9" /></span>
+        <p className="text-sm font-medium text-[#444]">Sin proyectos de empresa con tareas</p>
+        <p className="text-xs text-[#333] mt-1">Agrega tareas a un proyecto interno desde su detalle</p>
+        <Link href="/proyectos-de-empresa" className="mt-4 text-xs text-[#B3985B] hover:underline">
+          Ir a Proyectos de empresa →
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-5 space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-[#444]">
+          {proyectos.length} proyecto{proyectos.length !== 1 ? "s" : ""} con tareas activas
+        </p>
+        <button onClick={onRefresh} className="text-xs text-[#333] hover:text-[#B3985B] transition-colors flex items-center gap-1">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          Actualizar
+        </button>
+      </div>
+
+      {proyectos.map(proyecto => {
+        const isCollapsed = collapsed.has(proyecto.id);
+        const total       = proyecto.tareas.length;
+        const completadas = proyecto.tareas.filter(t => t.estado === "COMPLETADA").length;
+        const pct         = total > 0 ? Math.round((completadas / total) * 100) : 0;
+        const activas     = proyecto.tareas.filter(t => t.estado !== "COMPLETADA" && t.estado !== "CANCELADA");
+        const areaColor   = AREA_BADGE_COLOR[proyecto.area?.toUpperCase()] ?? "bg-gray-800 text-gray-400";
+
+        return (
+          <div key={proyecto.id} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden">
+            <button
+              onClick={() => toggleCollapse(proyecto.id)}
+              className="w-full flex items-start gap-3 px-5 py-4 hover:bg-[#111] transition-colors text-left group"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${areaColor}`}>
+                    {proyecto.area}
+                  </span>
+                </div>
+                <h3 className="text-white font-semibold text-sm mt-1.5 group-hover:text-[#B3985B] transition-colors">
+                  {proyecto.nombre}
+                </h3>
+                <div className="flex items-center gap-3 mt-1">
+                  {proyecto.lider && (
+                    <span className="inline-flex items-center gap-1 text-xs text-[#555]">
+                      <User strokeWidth={1.75} className="w-3 h-3" /> {proyecto.lider.name}
+                    </span>
+                  )}
+                  {proyecto.fechaFin && (
+                    <span className="inline-flex items-center gap-1 text-xs text-[#444]">
+                      <Calendar strokeWidth={1.75} className="w-3 h-3" /> {new Date(proyecto.fechaFin.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", day: "2-digit", month: "short", year: "numeric" })}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="text-right">
+                  <p className={`text-xs font-semibold ${pct === 100 ? "text-green-400" : "text-[#B3985B]"}`}>{pct}%</p>
+                  <p className="text-[10px] text-[#444]">{completadas}/{total}</p>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="2" strokeLinecap="round"
+                  className={`transition-transform duration-200 ${isCollapsed ? "rotate-0" : "rotate-180"}`}>
+                  <polyline points="18 15 12 9 6 15"/>
+                </svg>
+              </div>
+            </button>
+
+            {!isCollapsed && total > 0 && (
+              <div className="px-5 pb-1">
+                <div className="w-full h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${pct === 100 ? "bg-green-500" : "bg-[#B3985B]"}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {!isCollapsed && (
+              <div className="px-3 pb-3 space-y-1 mt-1">
+                {activas.length === 0 && completadas === total && total > 0 ? (
+                  <div className="text-center py-4">
+                    <span className="text-green-400 text-sm">✓ Todas las tareas completadas</span>
+                  </div>
+                ) : activas.length === 0 ? (
+                  <div className="text-center py-4">
+                    <p className="text-xs text-[#444]">Sin tareas activas</p>
+                  </div>
+                ) : (
+                  activas.map(t => {
+                    const dot  = PRIO_DOT[t.prioridad] ?? PRIO_DOT.MEDIA;
+                    const icon = ESTADO_ICON[t.estado]  ?? "○";
+                    const isSelected = selectedId === t.id;
+                    return (
+                      <div
+                        key={t.id}
+                        className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
+                          isSelected
+                            ? "bg-[#1a1a1a] border border-[#B3985B]/30"
+                            : "hover:bg-[#111] border border-transparent"
+                        }`}
+                        onClick={() => onSelectTarea(t.id)}
+                      >
+                        <button
+                          onClick={e => { e.stopPropagation(); onCompleteTarea(t.id); }}
+                          title="Marcar como completada"
+                          className="mt-0.5 w-4 h-4 rounded-full border border-[#2a2a2a] hover:border-green-500 flex items-center justify-center text-[8px] text-transparent hover:text-green-400 transition-all flex-shrink-0"
+                        >
+                          ✓
+                        </button>
+                        <span className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${dot}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-white leading-snug">{t.titulo}</p>
+                          <div className="flex items-center flex-wrap gap-2 mt-1">
+                            <span className="text-[10px] text-[#555]">
+                              {icon} {t.estado === "EN_PROGRESO" ? "En progreso" : "Pendiente"}
+                            </span>
+                            {t.fecha && (() => {
+                              const hoyTarea = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+                              const diff = Math.round((new Date(t.fecha.substring(0, 10)).getTime() - new Date(hoyTarea).getTime()) / 86400000);
+                              return (
+                                <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${
+                                  diff < 0  ? "bg-red-950/30 text-red-400" :
+                                  diff === 0 ? "bg-emerald-950/30 text-emerald-400" :
+                                  "bg-[#111] text-[#555]"
+                                }`}>
+                                  <Calendar strokeWidth={1.75} className="w-3 h-3" /> {diff < 0 ? `Venció hace ${Math.abs(diff)}d` : diff === 0 ? "Hoy" : new Date(t.fecha.substring(0, 10) + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", day: "2-digit", month: "short" })}
+                                </span>
+                              );
+                            })()}
+                            {(t as { asignadoA?: { name: string } | null }).asignadoA && (
+                              <span className="inline-flex items-center gap-1 text-[10px] text-[#444]">
+                                <User strokeWidth={1.75} className="w-3 h-3" /> {(t as { asignadoA?: { name: string } | null }).asignadoA!.name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <div className="pt-1 px-1">
+                  <Link
+                    href={`/proyectos-de-empresa/${proyecto.id}`}
+                    onClick={e => e.stopPropagation()}
+                    className="text-[11px] text-[#333] hover:text-[#B3985B] transition-colors flex items-center gap-1"
+                  >
+                    Ver el proyecto de empresa
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                       <path d="M9 18l6-6-6-6"/>
                     </svg>
