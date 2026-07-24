@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Calendar, User, ClipboardList } from "lucide-react";
 import NuevaTareaModal from "../../operaciones/components/NuevaTareaModal";
+import {
+  PLANTILLAS_DEFAULT,
+  agruparPlantilla,
+  type GrupoChecklist,
+  type PlantillaItem,
+} from "@/lib/plantillas-tareas-evento";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 export interface TareaProyecto {
@@ -22,113 +28,6 @@ export interface TareaProyecto {
 
 export interface Usuario { id: string; name: string; }
 
-interface GrupoChecklist { grupo: string; area: string; items: string[] }
-
-// ─── Plantillas por tipo de servicio ────────────────────────────────────────────
-// Cada ítem se corresponde 1:1 con una tarea del proyecto que se abre/edita con el
-// mismo editor de detalle. El emparejamiento checklist ↔ tarea se hace por título
-// normalizado.
-const CHECKLIST_PRODUCCION_TECNICA: GrupoChecklist[] = [
-  {
-    grupo: "Resumen",
-    area: "PRODUCCION",
-    items: [
-      "Llenar información general del evento",
-      "Llenar información del venue",
-      "Llenar logística de montaje",
-      "Llenar logística de desmontaje",
-      "Llenar notas del proyecto",
-    ],
-  },
-  {
-    grupo: "Operación",
-    area: "PRODUCCION",
-    items: [
-      "Llenar sección de traslado",
-      "Llenar sección de personal técnico",
-      "Hacer invitación a colaborar a técnicos",
-      "Asignar técnico al rol técnico definido",
-      "Confirmar técnicos",
-      "Hacer cronología del evento",
-      "Agregar documentos operativos al proyecto",
-    ],
-  },
-  {
-    grupo: "Producción",
-    area: "PRODUCCION",
-    items: [
-      "Conseguir proveedores externos faltantes",
-      "Agregar accesorios de cada equipo para el rider de carga",
-      "Agregar equipos adicionales al rider de carga",
-      "Agregar información de llegada de proveedores",
-      "Llenar evaluación post evento",
-      "Enviar evaluación del servicio a cliente",
-    ],
-  },
-  {
-    grupo: "Finanzas",
-    area: "ADMINISTRACION",
-    items: [
-      "Confirmar pagos a personal técnico",
-      "Registrar los gastos generados del proyecto",
-      "Generar cierre de proyecto (una vez teniendo todos los ingresos y gastos del proyecto registrados)",
-      "Generar CXP a inversionistas",
-      "Hacer cobro pendiente a cliente del servicio",
-      "Hacer pago a proveedores del proyecto",
-    ],
-  },
-];
-
-const CHECKLIST_RENTA: GrupoChecklist[] = [
-  {
-    grupo: "Resumen",
-    area: "PRODUCCION",
-    items: [
-      "Confirmar contacto del encargado del lugar",
-      "Llenar indicaciones para el cliente",
-      "Llenar lugar del evento",
-      "Llenar notas del proyecto",
-    ],
-  },
-  {
-    grupo: "Operación",
-    area: "PRODUCCION",
-    items: [
-      "Llenar logística de renta",
-      "Marcar estado de recolección de equipo",
-    ],
-  },
-  {
-    grupo: "Producción",
-    area: "PRODUCCION",
-    items: [
-      "Llenar accesorios en rider de carga (si aplica ir a llevar equipos)",
-      "Agregar equipos adicionales (si aplica)",
-      "Descargar e imprimir hoja de entrega",
-      "Firma de hoja de entrega del cliente",
-      "Llenar protocolo de salida de equipos",
-      "Llenar protocolo de entrada de equipos",
-      "Llenar evaluación post renta",
-      "Enviar evaluación del cliente",
-    ],
-  },
-  {
-    grupo: "Finanzas",
-    area: "ADMINISTRACION",
-    items: [
-      "Registrar gastos del proyecto",
-      "Generar cierre del proyecto",
-      "Generar cuenta por pagar a inversionista",
-      "Hacer cobro pendiente a cliente del servicio",
-      "Hacer pago a proveedores del proyecto",
-    ],
-  },
-];
-
-const PLANTILLAS: Record<string, GrupoChecklist[]> = {
-  PRODUCCION_TECNICA: CHECKLIST_PRODUCCION_TECNICA,
-  RENTA: CHECKLIST_RENTA,
-};
 
 const PRIO_COLOR: Record<string, string> = {
   URGENTE: "#f87171", ALTA: "#fb923c", MEDIA: "#B3985B", BAJA: "#555",
@@ -151,7 +50,25 @@ export default function ChecklistEventoTab({
   tipoServicio: string | null;
   usuarios: Usuario[];
 }) {
-  const plantilla = tipoServicio ? PLANTILLAS[tipoServicio] : undefined;
+  // Plantilla viva desde la BD (editable en /admin/plantillas-tareas). Arranca con
+  // los valores por defecto como fallback mientras carga o si el fetch falla.
+  const [plantilla, setPlantilla] = useState<GrupoChecklist[] | undefined>(
+    tipoServicio ? PLANTILLAS_DEFAULT[tipoServicio] : undefined
+  );
+
+  useEffect(() => {
+    if (!tipoServicio) { setPlantilla(undefined); return; }
+    let cancel = false;
+    fetch(`/api/plantillas-tareas-evento?tipoServicio=${encodeURIComponent(tipoServicio)}`, { cache: "no-store" })
+      .then(r => (r.ok ? r.json() : null))
+      .then((d: { items?: PlantillaItem[] } | null) => {
+        if (cancel || !d?.items) return;
+        const grupos = agruparPlantilla(d.items);
+        setPlantilla(grupos.length ? grupos : PLANTILLAS_DEFAULT[tipoServicio]);
+      })
+      .catch(() => {});
+    return () => { cancel = true; };
+  }, [tipoServicio]);
 
   const [tareas, setTareas]   = useState<TareaProyecto[]>([]);
   const [loading, setLoading] = useState(true);

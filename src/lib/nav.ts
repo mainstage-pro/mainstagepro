@@ -87,6 +87,7 @@ export const NAV: NavSection[] = [
     section: "Proyectos",
     items: [
       { key: "proyectos", label: "Todos los proyectos", href: "/proyectos", icon: FolderKanban },
+      { key: "plantillas-tareas", label: "Plantillas de tareas", href: "/admin/plantillas-tareas", adminOnly: true, icon: ClipboardList },
     ],
   },
 

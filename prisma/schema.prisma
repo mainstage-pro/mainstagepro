@@ -4025,3 +4025,21 @@ model SolicitudCotizacion {
 
   @@map("solicitudes_cotizacion")
 }
+
+// Plantilla editable de tareas sugeridas por defecto en proyectos de evento,
+// por tipo de servicio (PRODUCCION_TECNICA | RENTA | DIRECCION_TECNICA).
+// Una fila = un ítem del checklist guiado. Se siembra desde PLANTILLAS_DEFAULT.
+model PlantillaTareaEvento {
+  id           String   @id @default(cuid())
+  tipoServicio String   // PRODUCCION_TECNICA | RENTA | DIRECCION_TECNICA
+  grupo        String   // Resumen | Operación | Producción | Finanzas
+  area         String   // PRODUCCION | ADMINISTRACION
+  titulo       String
+  orden        Int      @default(0)
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tipoServicio, activo])
+  @@map("plantillas_tareas_evento")
+}
