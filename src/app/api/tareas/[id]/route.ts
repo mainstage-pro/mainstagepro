@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureTareaColumns } from "@/lib/ensure-tarea-columns";
 import { calcularProximaFecha, type RecurrenciaConfig } from "@/lib/recurrencia";
+import { avanzarSiTareasCompletas } from "@/lib/proceso/tareas-subetapa";
 
 // Explicit SELECT — avoids selecting proyectoEventoId which may not exist in DB yet
 const SELECT = {
@@ -236,12 +237,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
   }
 
+  // ── Avance de subetapa por tareas ────────────────────────────────────────
+  // Si se completó una tarea ligada a un trato, y con ella se completaron todas
+  // las tareas por defecto de su subetapa actual, el trato avanza solo a la
+  // siguiente subetapa (instanciando sus tareas por defecto).
+  let subetapaAvanzada: string | null = null;
+  if ("estado" in data && data.estado === "COMPLETADA" && !reagendar) {
+    const conTrato = await prisma.tarea.findUnique({ where: { id }, select: { tratoId: true } });
+    if (conTrato?.tratoId) {
+      try { subetapaAvanzada = await avanzarSiTareasCompletas(conTrato.tratoId); }
+      catch { /* el avance no debe romper la actualización de la tarea */ }
+    }
+  }
+
   // Si se reagendó una recurrente, informamos al cliente para el toast/undo.
   // `fechaAnterior` permite deshacer (regresar la tarea a su fecha previa).
   return NextResponse.json({
     tarea,
     reagendada: !!reagendar,
     fechaAnterior: reagendar?.fechaAnterior ?? null,
+    subetapaAvanzada,
   });
 }
 

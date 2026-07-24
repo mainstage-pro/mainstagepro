@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureTareaColumns } from "@/lib/ensure-tarea-columns";
+import { instanciarTareasSubetapa } from "@/lib/proceso/tareas-subetapa";
 
 const INCLUDE = {
   asignadoA:  { select: { id: true, name: true } },
@@ -20,6 +21,13 @@ export async function GET(
 
   await ensureTareaColumns();
   const { id: tratoId } = await params;
+
+  // Asegura que existan las tareas por defecto de la subetapa actual (idempotente),
+  // para tratos que ya estaban en esa subetapa antes de configurar las plantillas.
+  const trato = await prisma.trato.findUnique({ where: { id: tratoId }, select: { etapaInterna: true } });
+  if (trato?.etapaInterna) {
+    try { await instanciarTareasSubetapa(tratoId, trato.etapaInterna); } catch { /* no bloquear la lectura */ }
+  }
 
   const tareas = await prisma.tarea.findMany({
     where:   { tratoId, parentId: null, estado: { not: "CANCELADA" } },

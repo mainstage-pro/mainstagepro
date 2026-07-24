@@ -12,6 +12,7 @@ import {
   esEtapaInterna,
   type EtapaTrato,
 } from "@/lib/proceso/valores";
+import type { PlantillaSubetapaItem } from "@/lib/plantillas-tareas-subetapa";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 type Paso = {
@@ -577,6 +578,113 @@ function SubetapaCard({
 
       <div className="px-3 py-2 border-t border-[#262626]">
         <button onClick={() => onAgregarPaso(sub.id)} className="text-xs text-[#b3985b] hover:underline">+ Agregar paso</button>
+      </div>
+
+      <TareasDefectoSubetapa etapaInterna={sub.etapaInterna} />
+    </div>
+  );
+}
+
+// ─── Tareas por defecto de una subetapa ───────────────────────────────────────
+// Editor de la checklist base que se instancia al entrar un trato a la subetapa.
+// Al completarlas todas, el trato avanza solo a la siguiente subetapa.
+const AREAS_TAREA = ["VENTAS", "ADMINISTRACION", "PRODUCCION", "MARKETING", "GENERAL"];
+const PRIORIDADES_TAREA = ["URGENTE", "ALTA", "MEDIA", "BAJA"];
+
+function TareasDefectoSubetapa({ etapaInterna }: { etapaInterna: string }) {
+  const [items, setItems] = useState<PlantillaSubetapaItem[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [nuevo, setNuevo] = useState("");
+  const [guardando, setGuardando] = useState(false);
+
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    try {
+      const res = await fetch(`/api/plantillas-tareas-subetapa?etapaInterna=${encodeURIComponent(etapaInterna)}`, { cache: "no-store" });
+      if (res.ok) { const d = await res.json(); setItems(d.items ?? []); }
+    } finally { setCargando(false); }
+  }, [etapaInterna]);
+
+  useEffect(() => { cargar(); }, [cargar]);
+
+  async function patch(id: string, body: Record<string, unknown>) {
+    await fetch(`/api/plantillas-tareas-subetapa/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    cargar();
+  }
+  async function borrar(id: string) {
+    await fetch(`/api/plantillas-tareas-subetapa/${id}`, { method: "DELETE" });
+    cargar();
+  }
+  async function crear() {
+    if (!nuevo.trim()) return;
+    setGuardando(true);
+    try {
+      await fetch("/api/plantillas-tareas-subetapa", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ etapaInterna, titulo: nuevo.trim() }),
+      });
+      setNuevo(""); cargar();
+    } finally { setGuardando(false); }
+  }
+
+  const selCls = "bg-[#1a1a1a] border border-[#262626] rounded px-1 py-1 text-xs focus:border-[#b3985b] outline-none";
+
+  return (
+    <div className="px-3 py-3 border-t border-[#262626] bg-[#0d0d0d]">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+        <h4 className="text-xs font-semibold" style={{ color: GOLD }}>Tareas por defecto</h4>
+        <span className="text-[10px] text-[#666]">Se crean al entrar el trato; al completarlas todas, avanza la subetapa</span>
+      </div>
+
+      {cargando ? (
+        <p className="text-xs text-[#666] mb-2">Cargando…</p>
+      ) : items.length === 0 ? (
+        <p className="text-xs text-[#666] mb-2">Sin tareas por defecto en esta subetapa.</p>
+      ) : (
+        <ul className="space-y-1.5 mb-2">
+          {items.map((it, i) => (
+            <li key={it.id} className="flex flex-wrap items-center gap-1.5">
+              <input
+                defaultValue={it.titulo}
+                onBlur={(e) => e.target.value.trim() && e.target.value !== it.titulo && patch(it.id, { titulo: e.target.value.trim() })}
+                className="flex-1 min-w-[160px] bg-[#1a1a1a] border border-[#262626] rounded px-1.5 py-1 text-xs focus:border-[#b3985b] outline-none"
+              />
+              <select value={it.prioridad} onChange={(e) => patch(it.id, { prioridad: e.target.value })} className={selCls} title="Prioridad">
+                {PRIORIDADES_TAREA.map((p) => <option key={p} value={p}>{p.charAt(0) + p.slice(1).toLowerCase()}</option>)}
+              </select>
+              <select value={it.area} onChange={(e) => patch(it.id, { area: e.target.value })} className={selCls} title="Área">
+                {AREAS_TAREA.map((a) => <option key={a} value={a}>{a.charAt(0) + a.slice(1).toLowerCase()}</option>)}
+              </select>
+              <input
+                type="number"
+                defaultValue={it.offsetDias ?? ""}
+                placeholder="día"
+                title="Días para vencer desde que entra a la subetapa"
+                onBlur={(e) => {
+                  const v = e.target.value === "" ? null : Number(e.target.value);
+                  if (v !== it.offsetDias) patch(it.id, { offsetDias: v });
+                }}
+                className="w-14 bg-[#1a1a1a] border border-[#262626] rounded px-1.5 py-1 text-xs focus:border-[#b3985b] outline-none"
+              />
+              <button onClick={() => patch(it.id, { mover: "arriba" })} disabled={i === 0} className="text-[#666] hover:text-[#f0f0f0] disabled:opacity-30 px-1">↑</button>
+              <button onClick={() => patch(it.id, { mover: "abajo" })} disabled={i === items.length - 1} className="text-[#666] hover:text-[#f0f0f0] disabled:opacity-30 px-1">↓</button>
+              <button onClick={() => borrar(it.id)} className="text-[#666] hover:text-red-400 px-1">✕</button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="flex items-center gap-1.5">
+        <input
+          value={nuevo}
+          onChange={(e) => setNuevo(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && crear()}
+          placeholder="Nueva tarea por defecto"
+          className="flex-1 min-w-[160px] bg-[#1a1a1a] border border-[#262626] rounded px-2 py-1 text-xs focus:border-[#b3985b] outline-none"
+        />
+        <button disabled={!nuevo.trim() || guardando} onClick={crear} className="text-xs px-2 py-1 rounded bg-[#b3985b] text-black disabled:opacity-40">Agregar</button>
       </div>
     </div>
   );

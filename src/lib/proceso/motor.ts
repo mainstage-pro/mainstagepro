@@ -16,6 +16,7 @@ import {
   type MomentoContratacion,
   type DescubrimientoNivel,
 } from "./valores";
+import { instanciarTareasSubetapa } from "./tareas-subetapa";
 
 type TratoLike = {
   id: string;
@@ -238,6 +239,8 @@ async function moverASubetapa(tratoId: string, destino: string, extra: Record<st
     },
   });
   await cancelarPendientesProceso(tratoId);
+  // Instancia las tareas por defecto de la subetapa destino (idempotente).
+  await instanciarTareasSubetapa(tratoId, destino);
   return generarSiguientePaso(tratoId);
 }
 

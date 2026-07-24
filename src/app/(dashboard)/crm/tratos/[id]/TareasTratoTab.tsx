@@ -33,11 +33,12 @@ function fechaCorta(iso: string): string {
 }
 
 export default function TareasTratoTab({
-  tratoId, tratoNombre, usuarios,
+  tratoId, tratoNombre, usuarios, onSubetapaChange,
 }: {
   tratoId: string;
   tratoNombre: string;
   usuarios: Usuario[];
+  onSubetapaChange?: () => void;
 }) {
   const [tareas, setTareas]   = useState<TareaTrato[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,7 +66,12 @@ export default function TareasTratoTab({
       const d = await res.json().catch(() => ({}));
       setTareas(prev => prev.map(x => x.id === t.id ? { ...x, estado: t.estado } : x));
       if (d?.error) alert(d.error);
+      return;
     }
+    // Si completar esta tarea hizo avanzar la subetapa, recarga la lista (aparecen
+    // las tareas por defecto de la nueva subetapa) y avisa al detalle del trato.
+    const d = await res.json().catch(() => ({}));
+    if (d?.subetapaAvanzada) { load(); onSubetapaChange?.(); }
   }
 
   function upsertTarea(t: TareaTrato) {

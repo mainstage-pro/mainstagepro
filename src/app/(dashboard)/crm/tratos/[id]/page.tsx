@@ -14,7 +14,6 @@ import { useCelebration } from "@/components/CelebrationToast";
 import { Combobox } from "@/components/Combobox";
 import { BackButton } from "@/components/BackButton";
 import { EtapaInternaBar, EtapaInternaSelect } from "@/components/crm/EtapaInternaBar";
-import { PasoActualPanel } from "@/components/crm/PasoActualPanel";
 import TareasTratoTab from "./TareasTratoTab";
 import { SEGUIMIENTO_TIPOS, SEGUIMIENTO_TIPO_LABELS, getWaMensajePrimerContacto } from '@/lib/seguimientoTypes';
 import { SelectorEquiposInventario, type SeleccionEquipos } from '@/components/SelectorEquiposInventario';
@@ -1143,7 +1142,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
   // Estado para modal de seguimientos (elevado al padre para evitar problemas con ref)
   const [showSegModal, setShowSegModal] = useState(false);
-  const [pasoRefresh, setPasoRefresh] = useState(0);
 
   // Archivos del briefing
   const [archivos, setArchivos] = useState<TratoArchivo[]>([]);
@@ -1644,7 +1642,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         body: JSON.stringify({ action: "descubrimiento", modo: "LLAMADA" }),
       });
       await recargarTrato();
-      setPasoRefresh(n => n + 1);
     }
     setSaving(false);
   }
@@ -1765,7 +1762,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     });
     const d = await res.json().catch(() => null);
     if (d?.trato) setTrato(prev => prev ? { ...prev, etapa: d.trato.etapa, etapaInterna: d.trato.etapaInterna ?? null, etapaCambiadaEn: d.trato.etapaCambiadaEn ?? null } : prev);
-    setPasoRefresh(n => n + 1);
     setSaving(false);
   }
 
@@ -2702,23 +2698,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         <div className="flex-1 h-px bg-gradient-to-r from-blue-800/20 to-transparent" />
       </div>
 
-      {/* ── Paso actual del proceso (motor) ── */}
-      <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#141414]">
-          <div>
-            <h2 className="text-sm font-bold text-white tracking-tight">Paso actual</h2>
-            <p className="text-[10px] text-gray-600 mt-0.5">Lo genera el proceso estándar según la sub-etapa</p>
-          </div>
-        </div>
-        <div className="p-5">
-          <PasoActualPanel
-            key={`${trato.etapaInterna}-${pasoRefresh}`}
-            tratoId={trato.id}
-            onTransicion={() => { setPasoRefresh(n => n + 1); recargarTrato(); }}
-          />
-        </div>
-      </div>
-
       {/* ─────────────────────────────────────────────────────────────────
           SECCIÓN: SEGUIMIENTOS
       ───────────────────────────────────────────────────────────────── */}
@@ -2760,15 +2739,17 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </div>
             <div>
               <h2 className="text-sm font-bold text-white tracking-tight">Tareas del trato</h2>
-              <p className="text-[10px] text-gray-600 mt-0.5">Aparecen para su responsable en Gestión Operativa</p>
+              <p className="text-[10px] text-gray-600 mt-0.5">Checklist de la subetapa + tareas ad-hoc · al completarlas avanza la etapa</p>
             </div>
           </div>
         </div>
         <div className="p-5">
           <TareasTratoTab
+            key={trato.etapaInterna ?? "sin-subetapa"}
             tratoId={trato.id}
             tratoNombre={trato.nombreEvento || trato.cliente.nombre}
             usuarios={usuarios}
+            onSubetapaChange={recargarTrato}
           />
         </div>
       </div>

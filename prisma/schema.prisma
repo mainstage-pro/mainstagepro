@@ -4049,3 +4049,23 @@ model PlantillaTareaEvento {
   @@index([tipoServicio, activo])
   @@map("plantillas_tareas_evento")
 }
+
+// Tareas base por defecto de cada subetapa del proceso comercial. Al entrar un
+// trato a una subetapa se instancian como Tarea ligada al trato (tipoOrigen TRATO).
+// Se editan desde /crm/proceso. Fuente de verdad viva en BD; semilla en
+// src/lib/plantillas-tareas-subetapa.ts. Migración lazy (patrón Neon).
+model PlantillaTareaSubetapa {
+  id           String   @id @default(cuid())
+  etapaInterna String   // código de la subetapa (base o custom)
+  titulo       String
+  area         String   @default("VENTAS")   // VENTAS | ADMINISTRACION | PRODUCCION | MARKETING | GENERAL
+  prioridad    String   @default("MEDIA")     // URGENTE | ALTA | MEDIA | BAJA
+  offsetDias   Int?     // vencimiento relativo a la entrada a la subetapa (días)
+  orden        Int      @default(0)
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([etapaInterna, activo])
+  @@map("plantillas_tareas_subetapa")
+}
