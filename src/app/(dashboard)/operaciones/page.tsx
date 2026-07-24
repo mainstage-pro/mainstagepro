@@ -15,7 +15,9 @@ import { useCelebration } from "@/components/CelebrationToast";
 import type { TareaIntegrada } from "@/lib/tareas-integradas";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
-import { Users, Zap, Building2, Sun, Calendar, Inbox, ClipboardList, MapPin, User, Handshake } from "lucide-react";
+import { Users, Zap, Building2, Sun, Calendar, Inbox, ClipboardList, MapPin, User, Handshake,
+  Megaphone, Palette, Calculator, Target, Lightbulb, Music, Video, Wrench, Package, ShoppingCart,
+  Scale, FileText, Folder, type LucideIcon } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -2705,10 +2707,10 @@ export default function OperacionesPage() {
             isActive: vistaKey === "proximas" && !mobileProyectos,
           },
           {
-            key: "explorar", label: "Explorar",
-            icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+            key: "menu", label: "Menú",
+            icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>,
             onClick: () => setMobileProyectos(v => !v),
-            isActive: mobileProyectos || (typeof vistaKey !== "string"),
+            isActive: mobileProyectos || !["bandeja", "hoy", "proximas"].includes(vistaKey as string),
           },
         ] as const).map(tab => {
           const isActive = tab.isActive;
@@ -2734,7 +2736,7 @@ export default function OperacionesPage() {
               <div className="w-8 h-1 rounded-full bg-[#2a2a2a]" />
             </div>
             <div className="flex items-center justify-between px-4 pb-3">
-              <h2 className="text-white font-semibold text-base">Explorar</h2>
+              <h2 className="text-white font-semibold text-base">Menú</h2>
               <button
                 onClick={() => { setShowNuevoProyecto(true); setMobileProyectos(false); setTimeout(() => proyectoInputRef.current?.focus(), 80); }}
                 className="w-8 h-8 flex items-center justify-center rounded-full bg-[#B3985B]/10 text-[#B3985B] hover:bg-[#B3985B]/20 transition-colors"
@@ -2794,6 +2796,38 @@ export default function OperacionesPage() {
                 ));
               })() : (
                 <>
+                  {/* Vistas de gestión operativa */}
+                  <div className="flex items-center gap-2 px-4 py-2 mt-1">
+                    <span className="text-[12px] text-[#555] font-semibold tracking-wide uppercase">Vistas</span>
+                  </div>
+                  {sessionRole === "ADMIN" && (
+                    <button onClick={() => { setVista("equipo"); setMobileProyectos(false); }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${vistaKey === "equipo" ? "text-[#B3985B] bg-[#B3985B]/5" : "text-white hover:bg-[#111]"}`}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                      Equipo
+                    </button>
+                  )}
+                  <button onClick={() => { setVista("rendimiento"); setMobileProyectos(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${vistaKey === "rendimiento" ? "text-[#B3985B] bg-[#B3985B]/5" : "text-white hover:bg-[#111]"}`}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    Rendimiento
+                  </button>
+                  <button onClick={() => { setVista("tratos"); setMobileProyectos(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${vistaKey === "tratos" ? "text-[#B3985B] bg-[#B3985B]/5" : "text-white hover:bg-[#111]"}`}>
+                    <Handshake strokeWidth={1.6} className="w-[18px] h-[18px]" />
+                    Tratos
+                  </button>
+                  <button onClick={() => { setVista("proyectos-evento"); setMobileProyectos(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${vistaKey === "proyectos-evento" ? "text-[#B3985B] bg-[#B3985B]/5" : "text-white hover:bg-[#111]"}`}>
+                    <Calendar strokeWidth={1.6} className="w-[18px] h-[18px]" />
+                    Proyectos de evento
+                  </button>
+                  <button onClick={() => { setVista("proyectos-empresa"); setMobileProyectos(false); }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${vistaKey === "proyectos-empresa" ? "text-[#B3985B] bg-[#B3985B]/5" : "text-white hover:bg-[#111]"}`}>
+                    <Building2 strokeWidth={1.6} className="w-[18px] h-[18px]" />
+                    Proyectos de empresa
+                  </button>
+                  <div className="border-t border-[#141414] my-2 mx-4" />
                   {proyectosSinCarpeta.length > 0 && (
                     <div className="flex items-center gap-2 px-4 py-2 mt-2">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
@@ -3539,6 +3573,32 @@ function EmptyState({ icon, title, sub }: { icon: React.ReactNode; title: string
 
 // ── NavProyecto ─────────────────────────────────────────────────────────────
 
+// Elige un icono según lo que representa el nombre del área/proyecto. La primera
+// regla que coincide gana, así que el orden importa (lo específico va antes que lo genérico).
+const PROYECTO_ICON_RULES: { re: RegExp; Icon: LucideIcon }[] = [
+  { re: /ilumina|luz|luces/i,                                              Icon: Lightbulb },
+  { re: /audio|sonido|m[uú]sica/i,                                         Icon: Music },
+  { re: /v[ií]deo|pantalla|led|proyecci[oó]n/i,                            Icon: Video },
+  { re: /dise[ñn]|gr[aá]fic|identidad|marca|branding|creativ/i,           Icon: Palette },
+  { re: /marketing|contenido|redes|social|public|campa[ñn]|difus/i,       Icon: Megaphone },
+  { re: /venta|comercial|cuenta|prospec|cliente|cotiza|contrato/i,        Icon: Handshake },
+  { re: /rrhh|recursos humanos|talento|personal|n[oó]mina|reclut/i,       Icon: Users },
+  { re: /admin|finanz|contab|cobr|pago|factur|tesor|presupuest/i,         Icon: Calculator },
+  { re: /direcc|estrateg|gobierno|negocio|consejo|alianza/i,              Icon: Target },
+  { re: /producci|montaje|t[eé]cni|rigging|escenario|monta/i,            Icon: Wrench },
+  { re: /inventario|almac|stock|equipo|activo|bodega/i,                    Icon: Package },
+  { re: /compra|proveedor|orden|abastec/i,                                 Icon: ShoppingCart },
+  { re: /oficina|servicio|inmueble|instalac/i,                            Icon: Building2 },
+  { re: /legal|riesgo|cumplimiento|jur[ií]dic/i,                          Icon: Scale },
+  { re: /evento|show|concierto|festival|producci[oó]n de evento/i,        Icon: Calendar },
+  { re: /reporte|document|archivo|control|bit[aá]cora/i,                   Icon: FileText },
+];
+
+function iconoParaProyecto(nombre: string): LucideIcon {
+  for (const { re, Icon } of PROYECTO_ICON_RULES) if (re.test(nombre)) return Icon;
+  return Folder;
+}
+
 function NavProyecto({ proyecto, isActive, indent = 2, onSelect, onRename, onDelete, draggingTask = false, onDropTask }: {
   proyecto: ProyectoNav;
   isActive: boolean;
@@ -3561,9 +3621,11 @@ function NavProyecto({ proyecto, isActive, indent = 2, onSelect, onRename, onDel
     setEditing(false);
   }
 
+  const Icon = iconoParaProyecto(proyecto.nombre);
+
   if (editing) return (
-    <div className="flex items-center gap-1 px-2 py-0.5" style={{ paddingLeft: `${indent * 4}px` }}>
-      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: proyecto.color ?? "#555" }} />
+    <div className="flex items-center gap-1.5 px-2 py-0.5" style={{ paddingLeft: `${indent * 4}px` }}>
+      <Icon className="w-3.5 h-3.5 shrink-0" strokeWidth={1.75} style={{ color: proyecto.color ?? "#888" }} />
       <input autoFocus value={nombre} onChange={e => setNombre(e.target.value)}
         onBlur={save} onKeyDown={e => { if (e.key === "Enter") save(); if (e.key === "Escape") { setNombre(proyecto.nombre); setEditing(false); } }}
         className="flex-1 bg-[#1a1a1a] border border-[#B3985B]/40 rounded px-1.5 py-0.5 text-xs text-white focus:outline-none" />
@@ -3583,8 +3645,8 @@ function NavProyecto({ proyecto, isActive, indent = 2, onSelect, onRename, onDel
             ? "bg-[#B3985B]/15 text-[#B3985B] ring-1 ring-[#B3985B]/40 scale-[1.01]"
             : isActive ? "bg-[#1a1a1a] text-white" : "text-[#444] hover:text-[#bbb] hover:bg-[#0d0d0d]"
         }`} style={{ paddingLeft: `${indent * 4}px`, paddingRight: hov && !taskOver ? "56px" : "12px" }}>
-        <span className={`w-2 h-2 rounded-full shrink-0 ring-1 ring-white/10 ${isActive ? "ring-white/20" : ""}`}
-          style={{ backgroundColor: proyecto.color ?? "#555" }} />
+        <Icon className="w-4 h-4 shrink-0" strokeWidth={1.75}
+          style={{ color: proyecto.color ?? (isActive ? "#B3985B" : "#666") }} />
         <span className="truncate">{proyecto.nombre}</span>
         {taskOver && (
           <span className="ml-auto text-[10px] font-medium opacity-70 shrink-0">← soltar</span>
