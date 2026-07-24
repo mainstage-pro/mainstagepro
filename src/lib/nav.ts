@@ -5,7 +5,7 @@ import {
   Table2, FileBarChart, Users, GraduationCap, UserPlus, UserSearch,
   PenTool, Megaphone, BarChart3, SlidersHorizontal, BadgeDollarSign,
   Package, TrendingUp, Settings, Speaker, BookUser, ClipboardCheck,
-  ShieldCheck, ScrollText, Settings2,
+  ShieldCheck, ScrollText, Settings2, Building2,
 } from "lucide-react";
 
 // ── Tipos de navegación ──────────────────────────────────────────────────────
@@ -55,7 +55,6 @@ export const NAV: NavSection[] = [
         icon: ClipboardList,
         children: [
           { key: "operaciones", label: "Gestión Operativa", href: "/operaciones" },
-          { accessKey: "proyectos", label: "Proyectos de empresa", href: "/proyectos-de-empresa" },
           { accessKey: "operaciones", label: "Resumen de gestión", href: "/gestion-resumen" },
         ],
       },
@@ -86,7 +85,8 @@ export const NAV: NavSection[] = [
     key: "seccion-proyectos",
     section: "Proyectos",
     items: [
-      { key: "proyectos", label: "Todos los proyectos", href: "/proyectos", icon: FolderKanban },
+      { key: "proyectos", label: "Proyectos de eventos", href: "/proyectos", icon: FolderKanban },
+      { key: "proyectos-empresa", accessKey: "proyectos", label: "Proyectos de empresa", href: "/proyectos-de-empresa", icon: Building2 },
       { key: "plantillas-tareas", label: "Plantillas de tareas", href: "/admin/plantillas-tareas", adminOnly: true, icon: ClipboardList },
     ],
   },
