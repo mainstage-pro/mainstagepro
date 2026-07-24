@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ClipboardList, Repeat, Calendar, Building2,
-  ChevronLeft, X, FileText, Camera, Paperclip, Check, Handshake,
+  ChevronLeft, X, FileText, Camera, Paperclip, Check, Handshake, Link2,
 } from "lucide-react";
 import DatePicker from "@/components/ui/DatePicker";
 import RecurrenciaInput from "./RecurrenciaInput";
@@ -40,6 +40,10 @@ interface InternoOpt { id: string; nombre: string; area: string; estado: string;
 interface TratoOpt  { id: string; nombre: string; cliente: string | null; etapa: string }
 
 interface Usuario { id: string; name: string }
+interface ArchivoExistente { id: string; nombre: string; url: string; tipo: string | null; tamano: number | null }
+
+// Adjunto pendiente de subir: un archivo local o una URL manual. Se suben tras crear/guardar la tarea.
+type Adjunto = { kind: "file"; file: File } | { kind: "url"; url: string; nombre: string };
 
 interface Props {
   open: boolean;
@@ -90,6 +94,14 @@ export default function NuevaTareaModal({
   const [error, setError]         = useState<string | null>(null);
   const [saving, setSaving]       = useState(false);
 
+  // ── Adjuntos: archivos/URLs que se suben tras crear o guardar la tarea ──
+  const [adjuntos, setAdjuntos]   = useState<Adjunto[]>([]);
+  const [archivosExistentes, setArchivosExistentes] = useState<ArchivoExistente[]>([]);
+  const [addingUrl, setAddingUrl] = useState(false);
+  const [urlManual, setUrlManual] = useState("");
+  const [nombreManual, setNombreManual] = useState("");
+  const [subiendoAdjuntos, setSubiendoAdjuntos] = useState(false);
+
   const [eventosPorMes, setEventosPorMes] = useState<MesGrupo[]>([]);
   const [internos, setInternos]           = useState<InternoOpt[]>([]);
   const [tratos, setTratos]               = useState<TratoOpt[]>([]);
@@ -108,6 +120,7 @@ export default function NuevaTareaModal({
       setProyectoEventoId(proyectoEventoIdInicial ?? null); setProyectoInternoId(null); setFaseId(null);
       setTratoId(tratoIdInicial ?? null);
       setError(null); setSaving(false);
+      setAdjuntos([]); setArchivosExistentes([]); setAddingUrl(false); setUrlManual(""); setNombreManual("");
     }
   }, [open, tipoInicial, tituloInicial, defaultArea, defaultAsignadoId, proyectoEventoIdInicial, tratoIdInicial]);
 
@@ -131,6 +144,7 @@ export default function NuevaTareaModal({
         setComprobacion(t.tipoEvidencia ?? "");
         setTratoId(t.tratoId ?? null);
         setProyectoEventoId(t.proyectoEventoId ?? null);
+        setArchivosExistentes(t.archivos ?? []);
       })
       .catch(() => {})
       .finally(() => setLoadingEdit(false));
@@ -167,6 +181,26 @@ export default function NuevaTareaModal({
 
   const tipoDef = TIPOS.find(t => t.key === tipo);
 
+  function agregarUrl() {
+    const u = urlManual.trim();
+    if (!u) return;
+    setAdjuntos(prev => [...prev, { kind: "url", url: u, nombre: nombreManual.trim() || u.split("/").pop() || "archivo" }]);
+    setUrlManual(""); setNombreManual(""); setAddingUrl(false);
+  }
+
+  // Sube los adjuntos en espera a una tarea ya creada/guardada (endpoint requiere id).
+  async function subirAdjuntos(tareaId: string) {
+    if (adjuntos.length === 0) return;
+    setSubiendoAdjuntos(true);
+    for (const a of adjuntos) {
+      const form = new FormData();
+      if (a.kind === "file") form.append("file", a.file);
+      else { form.append("url", a.url); form.append("nombre", a.nombre); }
+      try { await fetch(`/api/tareas/${tareaId}/archivos`, { method: "POST", body: form }); } catch { /* no bloquea el guardado */ }
+    }
+    setSubiendoAdjuntos(false);
+  }
+
   async function submit() {
     if (!tipo) return;
     if (!titulo.trim()) { setError("El título es obligatorio"); return; }
@@ -197,6 +231,7 @@ export default function NuevaTareaModal({
         });
         const json = await res.json().catch(() => ({}));
         if (!res.ok) { setError(json.error ?? "No se pudo guardar la tarea"); setSaving(false); return; }
+        await subirAdjuntos(tareaIdEdicion!);
         onCreated(json.tarea);
         onClose();
       } catch {
@@ -232,6 +267,7 @@ export default function NuevaTareaModal({
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) { setError(json.error ?? "No se pudo crear la tarea"); setSaving(false); return; }
+      if (json.tarea?.id) await subirAdjuntos(json.tarea.id);
       onCreated(json.tarea);
       onClose();
     } catch {
@@ -460,6 +496,64 @@ export default function NuevaTareaModal({
               </p>
             </Campo>
 
+            {/* Archivos adjuntos */}
+            <Campo label="Archivos">
+              <div className="flex gap-3 mb-2">
+                <label className="cursor-pointer inline-flex items-center gap-1.5 text-[12px] text-[#888] hover:text-[#B3985B] transition-colors">
+                  <Paperclip size={13} /> Subir archivo
+                  <input type="file" multiple className="hidden"
+                    onChange={e => {
+                      const files = Array.from(e.target.files ?? []);
+                      setAdjuntos(prev => [...prev, ...files.map(f => ({ kind: "file" as const, file: f }))]);
+                      e.target.value = "";
+                    }} />
+                </label>
+                <button type="button" onClick={() => setAddingUrl(v => !v)}
+                  className="inline-flex items-center gap-1.5 text-[12px] text-[#888] hover:text-[#B3985B] transition-colors">
+                  <Link2 size={13} /> Enlace
+                </button>
+              </div>
+
+              {addingUrl && (
+                <div className="mb-2 space-y-1 p-3 bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg">
+                  <input value={urlManual} onChange={e => setUrlManual(e.target.value)} placeholder="https://…"
+                    className="w-full bg-transparent text-[12px] text-white placeholder-[#333] focus:outline-none" />
+                  <input value={nombreManual} onChange={e => setNombreManual(e.target.value)} placeholder="Nombre (opcional)"
+                    className="w-full bg-transparent text-[12px] text-white placeholder-[#333] focus:outline-none" />
+                  <div className="flex gap-3 pt-1">
+                    <button type="button" onClick={agregarUrl} className="text-[12px] text-[#B3985B] hover:underline">Agregar</button>
+                    <button type="button" onClick={() => setAddingUrl(false)} className="text-[12px] text-[#555] hover:text-white">Cancelar</button>
+                  </div>
+                </div>
+              )}
+
+              {(adjuntos.length > 0 || archivosExistentes.length > 0) ? (
+                <div className="space-y-1">
+                  {archivosExistentes.map(a => (
+                    <a key={a.id} href={a.url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-[#111] text-[12px] text-[#888] hover:text-white">
+                      <FileText size={12} className="shrink-0 text-[#555]" />
+                      <span className="flex-1 truncate">{a.nombre}</span>
+                    </a>
+                  ))}
+                  {adjuntos.map((a, i) => (
+                    <div key={i} className="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-[#111] text-[12px] text-[#999]">
+                      {a.kind === "file"
+                        ? <Paperclip size={12} className="shrink-0 text-[#555]" />
+                        : <Link2 size={12} className="shrink-0 text-[#555]" />}
+                      <span className="flex-1 truncate">{a.kind === "file" ? a.file.name : a.nombre}</span>
+                      <button type="button" onClick={() => setAdjuntos(prev => prev.filter((_, j) => j !== i))}
+                        className="text-[#333] hover:text-red-400 transition-colors">
+                        <X size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] text-[#444]">Sin archivos adjuntos</p>
+              )}
+            </Campo>
+
             {error && (
               <p className="text-[12px] text-red-400 flex items-center gap-1.5">
                 <X size={13} /> {error}
@@ -474,9 +568,9 @@ export default function NuevaTareaModal({
             <button onClick={onClose} className="text-[12px] text-[#555] hover:text-white px-3 py-1.5 rounded-lg transition-colors">
               Cancelar
             </button>
-            <button onClick={submit} disabled={saving || !titulo.trim()}
+            <button onClick={submit} disabled={saving || subiendoAdjuntos || !titulo.trim()}
               className="text-[12px] font-semibold px-4 py-1.5 rounded-lg bg-[#B3985B] hover:bg-[#c9aa6a] text-[#080808] transition-all disabled:opacity-30 disabled:cursor-not-allowed">
-              {modoEdicion ? (saving ? "Guardando…" : "Guardar cambios") : (saving ? "Creando…" : "Crear tarea")}
+              {subiendoAdjuntos ? "Subiendo archivos…" : modoEdicion ? (saving ? "Guardando…" : "Guardar cambios") : (saving ? "Creando…" : "Crear tarea")}
             </button>
           </div>
         )}
