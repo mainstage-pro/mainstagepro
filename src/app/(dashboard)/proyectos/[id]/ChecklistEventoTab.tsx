@@ -92,6 +92,8 @@ export default function ChecklistEventoTab({
 
   const [tareas, setTareas]   = useState<TareaProyecto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [quickTitulo, setQuickTitulo] = useState("");
+  const [addingQuick, setAddingQuick] = useState(false);
   // Modal: crear (título + área precargados) o editar (tarea existente). Mismo modal
   // "Tarea de proyecto de evento" que en Gestión Operativa.
   const [modal, setModal] = useState<
@@ -108,7 +110,7 @@ export default function ChecklistEventoTab({
     } finally { setLoading(false); }
   }, [proyectoId]);
 
-  useEffect(() => { if (plantilla) load(); else setLoading(false); }, [load, plantilla]);
+  useEffect(() => { load(); }, [load]);
 
   // Mapa título normalizado → tarea (primera coincidencia)
   const porTitulo = useMemo(() => {
@@ -116,6 +118,35 @@ export default function ChecklistEventoTab({
     for (const t of tareas) { const k = norm(t.titulo); if (!m.has(k)) m.set(k, t); }
     return m;
   }, [tareas]);
+
+  // Títulos que pertenecen al checklist de plantilla (para separar tareas manuales)
+  const titulosPlantilla = useMemo(() => {
+    const s = new Set<string>();
+    if (plantilla) for (const g of plantilla) for (const it of g.items) s.add(norm(it));
+    return s;
+  }, [plantilla]);
+
+  // Tareas manuales/extra: las que no corresponden a un ítem del checklist
+  const extras = useMemo(
+    () => tareas.filter(t => !titulosPlantilla.has(norm(t.titulo))),
+    [tareas, titulosPlantilla]
+  );
+
+  async function quickAdd() {
+    const t = quickTitulo.trim();
+    if (!t || addingQuick) return;
+    setAddingQuick(true);
+    try {
+      const res = await fetch(`/api/proyectos/${proyectoId}/tareas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ titulo: t }),
+      });
+      if (res.ok) { const d = await res.json(); upsertTarea(d.tarea as TareaProyecto); setQuickTitulo(""); }
+    } finally {
+      setAddingQuick(false);
+    }
+  }
 
   const stats = useMemo(() => {
     if (!plantilla) return { total: 0, creadas: 0, completadas: 0 };
@@ -160,19 +191,107 @@ export default function ChecklistEventoTab({
     });
   }
 
-  if (!plantilla) {
-    return (
-      <div className="ms-card rounded-2xl p-8 text-center text-gray-500">
-        <ClipboardList strokeWidth={1.5} className="w-9 h-9 mx-auto mb-2 text-gray-600" />
-        <p className="text-sm">El checklist de tareas está disponible por ahora para proyectos de <span className="text-[#B3985B]">Producción Técnica</span>.</p>
-      </div>
-    );
-  }
-
   const pct = stats.total > 0 ? Math.round((stats.completadas / stats.total) * 100) : 0;
 
   return (
     <div className="space-y-4">
+      {/* ── Recuadro rápido: agregar tarea manual a este proyecto ── */}
+      <div className="ms-card rounded-2xl p-2 flex items-center gap-2">
+        <span className="text-[#B3985B] text-lg leading-none pl-2 select-none">+</span>
+        <input
+          value={quickTitulo}
+          onChange={e => setQuickTitulo(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") quickAdd(); }}
+          placeholder="Agregar tarea a este proyecto…"
+          disabled={addingQuick}
+          className="flex-1 bg-transparent text-sm text-white placeholder:text-[#555] focus:outline-none py-2"
+        />
+        {quickTitulo.trim() && (
+          <button
+            onClick={quickAdd}
+            disabled={addingQuick}
+            className="text-xs font-semibold text-black bg-[#B3985B] hover:bg-[#c9a96a] px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
+          >
+            {addingQuick ? "…" : "Agregar"}
+          </button>
+        )}
+      </div>
+
+      {/* ── Tareas manuales / extra (no pertenecen al checklist guiado) ── */}
+      {extras.length > 0 && (
+        <div className="ms-card rounded-2xl overflow-hidden">
+          <div className="px-5 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-[#60a5fa] uppercase tracking-wider">Tareas manuales</h4>
+            <span className="text-[11px] text-gray-600">{extras.length}</span>
+          </div>
+          <div className="divide-y divide-[#141414]">
+            {extras.map(t => {
+              const done = t.estado === "COMPLETADA";
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => setModal({ mode: "editar", tareaId: t.id })}
+                  className="group flex items-start gap-3 px-5 py-3 cursor-pointer hover:bg-[#0f0f0f] transition-colors"
+                >
+                  <button
+                    onClick={(e) => toggle(e, t)}
+                    title={done ? "Marcar como pendiente" : "Marcar como completada"}
+                    className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                      done ? "border-green-500 bg-green-500/20 text-green-400 text-[10px]"
+                           : "border-[#333] hover:border-[#B3985B] text-transparent"
+                    }`}
+                  >
+                    {done ? "✓" : ""}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm leading-snug ${done ? "line-through text-gray-600" : "text-white"} transition-colors`}>
+                      {t.titulo}
+                    </p>
+                    <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
+                      <span
+                        className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md max-w-[180px] truncate"
+                        style={{ color: "#60a5fa", backgroundColor: "rgba(59,130,246,0.14)", border: "1px solid rgba(59,130,246,0.35)" }}
+                        title={proyectoNombre}
+                      >
+                        {proyectoNombre}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium"
+                        style={{ color: PRIO_COLOR[t.prioridad] ?? "#555", background: (PRIO_COLOR[t.prioridad] ?? "#555") + "18" }}>
+                        {t.prioridad.charAt(0) + t.prioridad.slice(1).toLowerCase()}
+                      </span>
+                      {t.asignadoA ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 px-2 py-0.5 rounded-full bg-[#1a1a1a] font-medium">
+                          <User strokeWidth={1.75} className="w-3 h-3" /> {t.asignadoA.name}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-yellow-500/70 px-2 py-0.5 rounded-full bg-yellow-950/20 font-medium">Sin asignar</span>
+                      )}
+                      {t.fecha && (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 px-2 py-0.5 rounded-full bg-[#111] font-medium">
+                          <Calendar strokeWidth={1.75} className="w-3 h-3" /> {fechaCorta(t.fecha)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="shrink-0 self-center text-[11px] text-[#555] opacity-0 group-hover:opacity-100 transition-opacity">Abrir →</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── Aviso cuando no hay checklist guiado para este tipo de servicio ── */}
+      {!plantilla && (
+        <div className="ms-card rounded-2xl p-8 text-center text-gray-500">
+          <ClipboardList strokeWidth={1.5} className="w-9 h-9 mx-auto mb-2 text-gray-600" />
+          <p className="text-sm">El checklist guiado está disponible por ahora para proyectos de <span className="text-[#B3985B]">Producción Técnica</span>. Puedes agregar tareas manuales con el recuadro de arriba.</p>
+        </div>
+      )}
+
+      {/* ── Checklist guiado (solo con plantilla) ── */}
+      {plantilla && (
+      <>
       {/* ── Encabezado + progreso ── */}
       <div className="ms-card rounded-2xl p-5">
         <div className="mb-3">
@@ -268,6 +387,8 @@ export default function ChecklistEventoTab({
             </div>
           );
         })
+      )}
+      </>
       )}
 
       {/* ── Mismo modal "Tarea de proyecto de evento" de Gestión Operativa ── */}
