@@ -91,6 +91,17 @@ const TIPO_ORIGEN_OPTS: { key: string; label: string; color: string }[] = [
   { key: "EVENTO",   label: "Evento",   color: "#60a5fa" },
 ];
 const PRIO_ORDER: Record<string, number> = { URGENTE: 0, ALTA: 1, MEDIA: 2, BAJA: 3 };
+
+// Nombre de la sección para agrupar una tarea por su origen real (trato/evento/proyecto),
+// no solo por proyecto-de-tareas. "Bandeja de entrada" queda solo para tareas sueltas.
+function grupoOrigen(t: TareaItem): string {
+  const tipo = t.tipoOrigen ?? "TAREA";
+  if (tipo === "TRATO"    && t.trato)           return t.trato.nombreEvento || t.trato.cliente?.nombre || "Tratos";
+  if (tipo === "EVENTO"   && t.proyectoEvento)  return t.proyectoEvento.nombre;
+  if (tipo === "PROYECTO" && t.proyectoInterno) return t.proyectoInterno.nombre;
+  if (t.proyectoTarea)                          return t.proyectoTarea.nombre;
+  return "Bandeja de entrada";
+}
 const PROJECT_COLORS = [
   "#B3985B","#e85d04","#e63946","#2ec4b6","#3d85c8","#9b5de5","#f15bb5","#00bbf9",
 ];
@@ -1099,7 +1110,7 @@ export default function OperacionesPage() {
       const grouped: Record<string, TareaItem[]> = {};
       for (const t of base) {
         let key = "";
-        if (vistaOpts.groupBy === "proyecto")  key = t.proyectoTarea?.nombre ?? "Bandeja de entrada";
+        if (vistaOpts.groupBy === "proyecto")  key = grupoOrigen(t);
         else if (vistaOpts.groupBy === "prioridad") key = t.prioridad;
         else if (vistaOpts.groupBy === "fecha") key = t.fecha ? new Date(t.fecha + "T00:00:00").toLocaleDateString("es-MX",{dateStyle:"medium"}) : "Sin fecha";
         if (!grouped[key]) grouped[key] = [];
@@ -1113,12 +1124,12 @@ export default function OperacionesPage() {
 
     // Natural grouping: bandeja stays flat, hoy groups by project
     if (vista === "bandeja") return null;
-    const proyNames = [...new Set(base.map(t => t.proyectoTarea?.nombre ?? "Bandeja de entrada"))];
+    const proyNames = [...new Set(base.map(grupoOrigen))];
     if (vista !== "hoy" && proyNames.length <= 1) return null;
 
     const grouped: Record<string, TareaItem[]> = {};
     for (const t of base) {
-      const key = t.proyectoTarea?.nombre ?? "Bandeja de entrada";
+      const key = grupoOrigen(t);
       if (!grouped[key]) grouped[key] = [];
       grouped[key].push(t);
     }
