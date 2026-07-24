@@ -218,19 +218,9 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
     guardarNurturing(u);
   }
 
-  // ── Preparación previa al descubrimiento: modalidad + cerrar el paso ──
+  // ── Elegir modalidad de la propuesta y pasar directo al descubrimiento ──
   function elegirModalidad(m: "INVENTARIO" | "CONTRA_RIDER") {
-    const u = { ...nurturing, modalidadPropuesta: m };
-    setNurturing(u);
-    guardarNurturing(u);
-  }
-
-  function completarPreparacion() {
-    const u: NurturingData = {
-      ...nurturing,
-      modalidadPropuesta: nurturing.modalidadPropuesta ?? "INVENTARIO",
-      preparacionHecha: true,
-    };
+    const u: NurturingData = { ...nurturing, modalidadPropuesta: m, preparacionHecha: true };
     setNurturing(u);
     guardarNurturing(u);
   }
@@ -508,12 +498,12 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
           <div className="space-y-5">
             {(!nurturing.preparacionHecha && !trato.descubrimientoCompleto) ? (
               <>
-                {/* ── Paso previo al descubrimiento: modalidad de la propuesta ── */}
+                {/* ── Paso previo al descubrimiento: modalidad de la propuesta (elegir avanza directo) ── */}
                 <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-2xl p-5 space-y-4">
                   <div>
                     <p className="text-white font-bold text-base">Antes de empezar: ¿cómo armaremos la propuesta?</p>
                     <p className="text-gray-500 text-xs mt-1 leading-relaxed">
-                      Define la ruta del descubrimiento. La opción recomendada usa el inventario Mainstage;
+                      Elige la ruta del descubrimiento para continuar. La opción recomendada usa el inventario Mainstage;
                       elige la otra solo si el cliente necesita equipos de marcas específicas o quiere compartir su propio rider.
                     </p>
                   </div>
@@ -521,35 +511,19 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
                     {([
                       { value: "INVENTARIO", icon: Package, label: "Inventario Mainstage", desc: "Armamos la propuesta con nuestro equipo. Recomendado.", recomendado: true },
                       { value: "CONTRA_RIDER", icon: FileText, label: "Rider específico / Contra-rider", desc: "El cliente necesita otras marcas o quiere subir su rider técnico para que propongamos un contra-rider.", recomendado: false },
-                    ] as const).map(m => {
-                      const activo = (nurturing.modalidadPropuesta ?? "INVENTARIO") === m.value;
-                      return (
-                        <button key={m.value} type="button" onClick={() => elegirModalidad(m.value)}
-                          className={`text-left p-4 rounded-xl border transition-all relative ${activo ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#222] bg-[#111] hover:border-[#444]"}`}>
-                          {m.recomendado && (
-                            <span className="absolute top-2 right-2 text-[9px] font-bold uppercase tracking-wider text-[#B3985B] bg-[#B3985B]/15 px-1.5 py-0.5 rounded">Recomendado</span>
-                          )}
-                          <div className="mb-2"><m.icon strokeWidth={1.75} className={`w-6 h-6 ${activo ? "text-[#B3985B]" : "text-gray-500"}`} /></div>
-                          <p className={`text-sm font-semibold mb-1 ${activo ? "text-[#B3985B]" : "text-white"}`}>{m.label}</p>
-                          <p className="text-[11px] text-gray-500 leading-relaxed">{m.desc}</p>
-                        </button>
-                      );
-                    })}
+                    ] as const).map(m => (
+                      <button key={m.value} type="button" disabled={saving} onClick={() => elegirModalidad(m.value)}
+                        className="text-left p-4 rounded-xl border transition-all relative border-[#222] bg-[#111] hover:border-[#B3985B] hover:bg-[#B3985B]/5 disabled:opacity-40">
+                        {m.recomendado && (
+                          <span className="absolute top-2 right-2 text-[9px] font-bold uppercase tracking-wider text-[#B3985B] bg-[#B3985B]/15 px-1.5 py-0.5 rounded">Recomendado</span>
+                        )}
+                        <div className="mb-2"><m.icon strokeWidth={1.75} className="w-6 h-6 text-gray-500" /></div>
+                        <p className="text-sm font-semibold mb-1 text-white">{m.label}</p>
+                        <p className="text-[11px] text-gray-500 leading-relaxed">{m.desc}</p>
+                      </button>
+                    ))}
                   </div>
                 </div>
-
-                {/* ── Seguimientos 1/2/3 propios de la etapa de Descubrimiento ── */}
-                <SeguimientosTracker
-                  seguimientos={segsDe("DESCUBRIMIENTO")}
-                  maxSlots={maxDe("DESCUBRIMIENTO")}
-                  esOutbound={esOutbound}
-                  saving={saving}
-                  onMarcar={(num) => marcarSeguimiento("DESCUBRIMIENTO", num)}
-                  onAgregarSlot={() => agregarSlotSeguimiento("DESCUBRIMIENTO")}
-                  onPasarDescubrimiento={completarPreparacion}
-                  onMarcarPerdida={marcarPerdida}
-                  labelContinuar="Continuar al descubrimiento →"
-                />
               </>
             ) : (
               <DiscoveryForm
