@@ -79,8 +79,55 @@ const CHECKLIST_PRODUCCION_TECNICA: GrupoChecklist[] = [
   },
 ];
 
+const CHECKLIST_RENTA: GrupoChecklist[] = [
+  {
+    grupo: "Resumen",
+    area: "PRODUCCION",
+    items: [
+      "Confirmar contacto del encargado del lugar",
+      "Llenar indicaciones para el cliente",
+      "Llenar lugar del evento",
+      "Llenar notas del proyecto",
+    ],
+  },
+  {
+    grupo: "Operación",
+    area: "PRODUCCION",
+    items: [
+      "Llenar logística de renta",
+      "Marcar estado de recolección de equipo",
+    ],
+  },
+  {
+    grupo: "Producción",
+    area: "PRODUCCION",
+    items: [
+      "Llenar accesorios en rider de carga (si aplica ir a llevar equipos)",
+      "Agregar equipos adicionales (si aplica)",
+      "Descargar e imprimir hoja de entrega",
+      "Firma de hoja de entrega del cliente",
+      "Llenar protocolo de salida de equipos",
+      "Llenar protocolo de entrada de equipos",
+      "Llenar evaluación post renta",
+      "Enviar evaluación del cliente",
+    ],
+  },
+  {
+    grupo: "Finanzas",
+    area: "ADMINISTRACION",
+    items: [
+      "Registrar gastos del proyecto",
+      "Generar cierre del proyecto",
+      "Generar cuenta por pagar a inversionista",
+      "Hacer cobro pendiente a cliente del servicio",
+      "Hacer pago a proveedores del proyecto",
+    ],
+  },
+];
+
 const PLANTILLAS: Record<string, GrupoChecklist[]> = {
   PRODUCCION_TECNICA: CHECKLIST_PRODUCCION_TECNICA,
+  RENTA: CHECKLIST_RENTA,
 };
 
 const PRIO_COLOR: Record<string, string> = {
@@ -272,7 +319,7 @@ export default function ChecklistEventoTab({
       {!plantilla && (
         <div className="ms-card rounded-2xl p-8 text-center text-gray-500">
           <ClipboardList strokeWidth={1.5} className="w-9 h-9 mx-auto mb-2 text-gray-600" />
-          <p className="text-sm">El checklist guiado está disponible por ahora para proyectos de <span className="text-[#B3985B]">Producción Técnica</span>. Puedes agregar tareas manuales con el recuadro de arriba.</p>
+          <p className="text-sm">El checklist guiado está disponible por ahora para proyectos de <span className="text-[#B3985B]">Producción Técnica</span> y <span className="text-[#B3985B]">Renta de Equipo</span>. Puedes agregar tareas manuales con el recuadro de arriba.</p>
         </div>
       )}
 
