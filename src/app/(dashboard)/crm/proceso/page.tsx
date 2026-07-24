@@ -9,7 +9,7 @@ import {
   CANAL_LABELS,
   CATEGORIAS_REGLA,
   CATEGORIA_REGLA_LABELS,
-  ETAPAS_INTERNAS,
+  esEtapaInterna,
   type EtapaTrato,
 } from "@/lib/proceso/valores";
 
@@ -135,6 +135,35 @@ export default function ProcesoPage() {
     setSubetapas((prev) => prev.map((s) => (s.id === sub.id ? { ...s, generacionAutomatica: valor } : s)));
     try { await api(`/api/proceso/subetapas/${sub.id}`, "PATCH", { generacionAutomatica: valor }); }
     catch { cargar(); }
+  }
+
+  async function guardarSubetapa(id: string, campo: "nombre" | "descripcion" | "activa", valor: unknown) {
+    setSubetapas((prev) => prev.map((s) => (s.id === id ? { ...s, [campo]: valor } : s)));
+    try { await api(`/api/proceso/subetapas/${id}`, "PATCH", { [campo]: valor }); }
+    catch { cargar(); }
+  }
+
+  async function moverSubetapa(etapa: string, index: number, dir: -1 | 1) {
+    const enEtapa = subetapas.filter((s) => s.etapa === etapa).sort((a, b) => a.orden - b.orden);
+    const destino = index + dir;
+    if (destino < 0 || destino >= enEtapa.length) return;
+    const a = enEtapa[index];
+    const b = enEtapa[destino];
+    await Promise.all([
+      api(`/api/proceso/subetapas/${a.id}`, "PATCH", { orden: b.orden }),
+      api(`/api/proceso/subetapas/${b.id}`, "PATCH", { orden: a.orden }),
+    ]);
+    cargar();
+  }
+
+  async function borrarSubetapa(sub: Subetapa) {
+    if (!confirm(`¿Borrar la subetapa "${sub.nombre}"? Esta acción no se puede deshacer.`)) return;
+    try {
+      await api(`/api/proceso/subetapas/${sub.id}`, "DELETE");
+      cargar();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "No se pudo borrar");
+    }
   }
 
   // ── Mutaciones de regla ──
@@ -284,19 +313,25 @@ export default function ProcesoPage() {
 
             {abiertaEtapa && (
               <div className="px-4 pb-4 space-y-4">
-                {subs.map((sub) => (
+                {subs.map((sub, i) => (
                   <SubetapaCard
                     key={sub.id}
                     sub={sub}
+                    index={i}
+                    total={subs.length}
                     conteo={conteo[sub.etapaInterna] ?? 0}
+                    todasSubetapas={subetapas}
                     onGuardarPaso={guardarPaso}
                     onAgregarPaso={agregarPaso}
                     onDesactivarPaso={desactivarPaso}
                     onMoverPaso={moverPaso}
                     onToggleGeneracion={toggleGeneracion}
+                    onGuardarSubetapa={guardarSubetapa}
+                    onMoverSubetapa={moverSubetapa}
+                    onBorrarSubetapa={borrarSubetapa}
                   />
                 ))}
-                <AgregarSubetapa etapa={etapa} onDone={cargar} usadas={subetapas.map((s) => s.etapaInterna)} />
+                <AgregarSubetapa etapa={etapa} onDone={cargar} />
               </div>
             )}
           </section>
@@ -343,7 +378,7 @@ function VistaSubetapa({ sub, conteo, color }: { sub: Subetapa; conteo: number; 
       <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-[#262626]">
         <span className="font-semibold">{sub.nombre}</span>
         <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#1a1a1a] text-[#888] border border-[#262626]">
-          {ETAPA_INTERNA_LABELS[sub.etapaInterna as keyof typeof ETAPA_INTERNA_LABELS] ?? sub.etapaInterna}
+          {esEtapaInterna(sub.etapaInterna) ? ETAPA_INTERNA_LABELS[sub.etapaInterna] : "Personalizada"}
         </span>
         <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "#1a1a1a", color: GOLD }}>
           {conteo} trato(s)
@@ -412,36 +447,69 @@ function VistaSubetapa({ sub, conteo, color }: { sub: Subetapa; conteo: number; 
 
 // ─── SubetapaCard ─────────────────────────────────────────────────────────────
 function SubetapaCard({
-  sub, conteo, onGuardarPaso, onAgregarPaso, onDesactivarPaso, onMoverPaso, onToggleGeneracion,
+  sub, index, total, conteo, todasSubetapas,
+  onGuardarPaso, onAgregarPaso, onDesactivarPaso, onMoverPaso, onToggleGeneracion,
+  onGuardarSubetapa, onMoverSubetapa, onBorrarSubetapa,
 }: {
   sub: Subetapa;
+  index: number;
+  total: number;
   conteo: number;
+  todasSubetapas: Subetapa[];
   onGuardarPaso: (id: string, campo: keyof Paso, valor: unknown) => void;
   onAgregarPaso: (subetapaId: string) => void;
   onDesactivarPaso: (id: string) => void;
   onMoverPaso: (sub: Subetapa, index: number, dir: -1 | 1) => void;
   onToggleGeneracion: (sub: Subetapa) => void;
+  onGuardarSubetapa: (id: string, campo: "nombre" | "descripcion" | "activa", valor: unknown) => void;
+  onMoverSubetapa: (etapa: string, index: number, dir: -1 | 1) => void;
+  onBorrarSubetapa: (sub: Subetapa) => void;
 }) {
   const pasos = sub.pasos.filter((p) => p.activo).sort((a, b) => a.orden - b.orden);
+  const esBase = esEtapaInterna(sub.etapaInterna);
+  // Opciones de "avanza a": todas las subetapas activas, desde la BD (incluye custom).
+  const opcionesAvance = todasSubetapas
+    .filter((s) => s.activa)
+    .sort((a, b) => (a.etapa === b.etapa ? a.orden - b.orden : ETAPAS.indexOf(a.etapa as EtapaTrato) - ETAPAS.indexOf(b.etapa as EtapaTrato)));
   return (
-    <div className="rounded-lg border border-[#262626] bg-[#0a0a0a]">
+    <div className={`rounded-lg border border-[#262626] bg-[#0a0a0a] ${sub.activa ? "" : "opacity-60"}`}>
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-b border-[#262626]">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-sm">{sub.nombre}</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#1a1a1a] text-[#888] border border-[#262626]">
-              {ETAPA_INTERNA_LABELS[sub.etapaInterna as keyof typeof ETAPA_INTERNA_LABELS] ?? sub.etapaInterna}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <input
+              defaultValue={sub.nombre}
+              onBlur={(e) => e.target.value.trim() && e.target.value !== sub.nombre && onGuardarSubetapa(sub.id, "nombre", e.target.value.trim())}
+              className="font-medium text-sm bg-[#1a1a1a] border border-[#262626] rounded px-1.5 py-0.5 focus:border-[#b3985b] outline-none min-w-[140px]"
+            />
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#1a1a1a] text-[#888] border border-[#262626]" title={esBase ? "Subetapa base del proceso" : "Subetapa personalizada"}>
+              {esBase ? (ETAPA_INTERNA_LABELS[sub.etapaInterna as keyof typeof ETAPA_INTERNA_LABELS] ?? sub.etapaInterna) : "Personalizada"}
             </span>
             <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ background: "#1a1a1a", color: GOLD }}>
               {conteo} trato(s)
             </span>
+            <button onClick={() => onMoverSubetapa(sub.etapa, index, -1)} disabled={index === 0} className="text-[#666] hover:text-[#f0f0f0] disabled:opacity-30 px-1" title="Subir">↑</button>
+            <button onClick={() => onMoverSubetapa(sub.etapa, index, 1)} disabled={index === total - 1} className="text-[#666] hover:text-[#f0f0f0] disabled:opacity-30 px-1" title="Bajar">↓</button>
           </div>
-          {sub.descripcion && <p className="text-xs text-[#666] mt-0.5">{sub.descripcion}</p>}
+          <input
+            defaultValue={sub.descripcion ?? ""}
+            placeholder="Descripción (opcional)"
+            onBlur={(e) => e.target.value !== (sub.descripcion ?? "") && onGuardarSubetapa(sub.id, "descripcion", e.target.value || null)}
+            className="mt-1 w-full text-xs text-[#aaa] bg-[#1a1a1a] border border-[#262626] rounded px-1.5 py-0.5 focus:border-[#b3985b] outline-none"
+          />
         </div>
-        <label className="flex items-center gap-2 text-xs text-[#888] cursor-pointer" title="Si está activo, el motor genera el siguiente paso solo. Si no, la UI ofrece los pasos como opciones para que el usuario elija cuál usar.">
-          <input type="checkbox" checked={sub.generacionAutomatica} onChange={() => onToggleGeneracion(sub)} />
-          Generación automática
-        </label>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-xs text-[#888] cursor-pointer" title="Si está activa, aparece en el proceso y los tratos pueden estar en ella.">
+            <input type="checkbox" checked={sub.activa} onChange={() => onGuardarSubetapa(sub.id, "activa", !sub.activa)} />
+            Activa
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-[#888] cursor-pointer" title="Si está activo, el motor genera el siguiente paso solo. Si no, la UI ofrece los pasos como opciones para que el usuario elija cuál usar.">
+            <input type="checkbox" checked={sub.generacionAutomatica} onChange={() => onToggleGeneracion(sub)} />
+            Automática
+          </label>
+          {!esBase && (
+            <button onClick={() => onBorrarSubetapa(sub)} className="text-[#666] hover:text-red-400 text-xs" title="Borrar subetapa personalizada">Borrar</button>
+          )}
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -491,7 +559,9 @@ function SubetapaCard({
                     className="bg-[#1a1a1a] border border-[#262626] rounded px-1 py-1 focus:border-[#b3985b] outline-none"
                   >
                     <option value="">—</option>
-                    {ETAPAS_INTERNAS.map((ei) => <option key={ei} value={ei}>{ETAPA_INTERNA_LABELS[ei]}</option>)}
+                    {opcionesAvance.map((s) => (
+                      <option key={s.etapaInterna} value={s.etapaInterna}>{s.nombre}</option>
+                    ))}
                   </select>
                 </td>
                 <td className="px-2 py-1 whitespace-nowrap">
@@ -539,35 +609,44 @@ function NumInput({ value, nullable, onSave }: { value: number | null; nullable?
 }
 
 // ─── Agregar subetapa ─────────────────────────────────────────────────────────
-function AgregarSubetapa({ etapa, onDone, usadas }: { etapa: string; onDone: () => void; usadas: string[] }) {
+function AgregarSubetapa({ etapa, onDone }: { etapa: string; onDone: () => void }) {
   const [abierto, setAbierto] = useState(false);
-  const [etapaInterna, setEtapaInterna] = useState("");
   const [nombre, setNombre] = useState("");
-  const disponibles = ETAPAS_INTERNAS.filter((ei) => !usadas.includes(ei));
+  const [guardando, setGuardando] = useState(false);
 
   if (!abierto) {
     return <button onClick={() => setAbierto(true)} className="text-xs text-[#b3985b] hover:underline">+ Agregar subetapa</button>;
   }
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[#262626] bg-[#0a0a0a] p-2">
-      <select value={etapaInterna} onChange={(e) => setEtapaInterna(e.target.value)} className="bg-[#1a1a1a] border border-[#262626] rounded px-2 py-1 text-xs">
-        <option value="">Etapa interna…</option>
-        {disponibles.map((ei) => <option key={ei} value={ei}>{ETAPA_INTERNA_LABELS[ei]}</option>)}
-      </select>
-      <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre" className="bg-[#1a1a1a] border border-[#262626] rounded px-2 py-1 text-xs" />
+      <input
+        value={nombre}
+        autoFocus
+        onChange={(e) => setNombre(e.target.value)}
+        placeholder="Nombre de la subetapa"
+        className="bg-[#1a1a1a] border border-[#262626] rounded px-2 py-1 text-xs min-w-[200px]"
+      />
       <button
-        disabled={!etapaInterna || !nombre}
+        disabled={!nombre.trim() || guardando}
         onClick={async () => {
-          await fetch("/api/proceso/subetapas", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ etapa, etapaInterna, nombre }),
-          });
-          setAbierto(false); setNombre(""); setEtapaInterna(""); onDone();
+          setGuardando(true);
+          try {
+            const res = await fetch("/api/proceso/subetapas", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ etapa, nombre: nombre.trim() }),
+            });
+            if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error ?? "Error");
+            setAbierto(false); setNombre(""); onDone();
+          } catch (e) {
+            alert(e instanceof Error ? e.message : "No se pudo crear");
+          } finally {
+            setGuardando(false);
+          }
         }}
         className="text-xs px-2 py-1 rounded bg-[#b3985b] text-black disabled:opacity-40"
       >Crear</button>
-      <button onClick={() => setAbierto(false)} className="text-xs text-[#666]">Cancelar</button>
+      <button onClick={() => { setAbierto(false); setNombre(""); }} className="text-xs text-[#666]">Cancelar</button>
     </div>
   );
 }

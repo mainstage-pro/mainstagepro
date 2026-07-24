@@ -1,6 +1,6 @@
 "use client";
 
-import { etapasInternasDe, progresoEtapaInterna } from "@/lib/etapasInternas";
+import { useSubetapas } from "@/lib/proceso/estructura-client";
 
 // Color de la barra por etapa del pipeline (alineado con los colores de la lista de tratos).
 const ETAPA_ACCENT: Record<string, { on: string; off: string; text: string }> = {
@@ -24,10 +24,10 @@ export function EtapaInternaBar({
   showLabel?: boolean;
   compact?: boolean;
 }) {
-  const pasos = etapasInternasDe(etapa);
+  const pasos = useSubetapas(etapa);
   if (pasos.length === 0) return null;
 
-  const { index } = progresoEtapaInterna(etapa, etapaInterna);
+  const index = etapaInterna ? pasos.findIndex((p) => p.key === etapaInterna) : -1;
   const accent = ETAPA_ACCENT[etapa] ?? ETAPA_ACCENT.PROSPECCION;
   const actual = index >= 0 ? pasos[index] : null;
 
@@ -66,7 +66,7 @@ export function EtapaInternaSelect({
   onChange: (key: string) => void;
   className?: string;
 }) {
-  const pasos = etapasInternasDe(etapa);
+  const pasos = useSubetapas(etapa);
   if (pasos.length === 0) return null;
 
   return (

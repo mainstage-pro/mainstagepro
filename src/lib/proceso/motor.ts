@@ -210,13 +210,29 @@ export async function usarPasoManual(tratoId: string, procesoPasoId: string) {
   return seguimiento;
 }
 
+// ── Resolver a qué etapa pertenece una subetapa ──────────────────────────────
+// La estructura es editable en BD: para subetapas custom la etapa vive en la fila
+// de ProcesoSubetapa. Se usa esa fuente; el mapa estático es el respaldo para las
+// subetapas base (por si la tabla aún no está sembrada).
+async function etapaDeSubetapa(destino: string): Promise<string> {
+  const sub = await prisma.procesoSubetapa.findUnique({
+    where: { etapaInterna: destino },
+    select: { etapa: true },
+  });
+  if (sub?.etapa) return sub.etapa;
+  const estatica = ETAPA_DE_INTERNA[destino as EtapaInterna];
+  if (estatica) return estatica;
+  throw new Error(`Subetapa "${destino}" sin etapa asociada`);
+}
+
 // ── Mover un trato a una subetapa destino (helper interno) ───────────────────
-async function moverASubetapa(tratoId: string, destino: EtapaInterna, extra: Record<string, unknown> = {}) {
+async function moverASubetapa(tratoId: string, destino: string, extra: Record<string, unknown> = {}) {
+  const etapa = await etapaDeSubetapa(destino);
   await prisma.trato.update({
     where: { id: tratoId },
     data: {
       etapaInterna: destino,
-      etapa: ETAPA_DE_INTERNA[destino],
+      etapa,
       etapaCambiadaEn: new Date(),
       ...extra,
     },
@@ -279,7 +295,7 @@ export async function descompletarUltimo(tratoId: string) {
   // Si el paso pertenecía a otra subetapa, la reactivación implica retroceder de etapa.
   if (ultimo.etapaInterna && ultimo.etapaInterna !== trato?.etapaInterna) {
     data.etapaInterna = ultimo.etapaInterna;
-    data.etapa = ultimo.etapaTrato ?? ETAPA_DE_INTERNA[ultimo.etapaInterna as EtapaInterna];
+    data.etapa = ultimo.etapaTrato ?? (await etapaDeSubetapa(ultimo.etapaInterna));
     data.etapaCambiadaEn = ultimo.creadoEn;
   }
   await prisma.trato.update({ where: { id: tratoId }, data });
@@ -295,8 +311,8 @@ export async function rutearPorCalificacion(tratoId: string, momento: MomentoCon
 }
 
 // ── cambiarSubetapaManual ────────────────────────────────────────────────────
-// Se dispara desde el selector de sub-etapa de la UI.
-export async function cambiarSubetapaManual(tratoId: string, etapaInternaDestino: EtapaInterna) {
+// Se dispara desde el selector de sub-etapa de la UI. Acepta subetapas custom.
+export async function cambiarSubetapaManual(tratoId: string, etapaInternaDestino: string) {
   return moverASubetapa(tratoId, etapaInternaDestino);
 }
 
@@ -318,7 +334,7 @@ export async function completarDescubrimiento(tratoId: string, modo: "FORMULARIO
 
 // ── entrarAEtapaInicial ──────────────────────────────────────────────────────
 // Punto de entrada de un trato nuevo: cae en la primera subetapa de su etapa.
-export async function entrarAEtapaInicial(tratoId: string, etapaInterna: EtapaInterna) {
+export async function entrarAEtapaInicial(tratoId: string, etapaInterna: string) {
   return moverASubetapa(tratoId, etapaInterna);
 }
 

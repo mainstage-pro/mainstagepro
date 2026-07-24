@@ -11,7 +11,7 @@ import {
   completarDescubrimiento,
   generarSiguientePaso,
 } from "@/lib/proceso/motor";
-import { esEtapaInterna, esMomento } from "@/lib/proceso/valores";
+import { esMomento } from "@/lib/proceso/valores";
 
 // Todas las transiciones de proceso de un trato pasan por el motor.
 // action: completar | descompletar | usar-paso | cambiar-subetapa | rutear | descubrimiento | generar
@@ -42,7 +42,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         break;
       }
       case "cambiar-subetapa": {
-        if (!esEtapaInterna(body.etapaInterna)) return NextResponse.json({ error: "etapaInterna inválida" }, { status: 400 });
+        if (typeof body.etapaInterna !== "string" || !body.etapaInterna) {
+          return NextResponse.json({ error: "etapaInterna requerida" }, { status: 400 });
+        }
+        // La estructura es editable en BD: la subetapa destino debe existir y estar activa.
+        const destino = await prisma.procesoSubetapa.findUnique({
+          where: { etapaInterna: body.etapaInterna },
+          select: { activa: true },
+        });
+        if (!destino || !destino.activa) {
+          return NextResponse.json({ error: "etapaInterna inválida" }, { status: 400 });
+        }
         await cambiarSubetapaManual(tratoId, body.etapaInterna);
         break;
       }
