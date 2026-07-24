@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Calendar, User, ClipboardList } from "lucide-react";
+import { Calendar, User, ClipboardList, Plus } from "lucide-react";
 import NuevaTareaModal from "../../operaciones/components/NuevaTareaModal";
 import {
   PLANTILLAS_DEFAULT,
@@ -56,19 +56,48 @@ export default function ChecklistEventoTab({
     tipoServicio ? PLANTILLAS_DEFAULT[tipoServicio] : undefined
   );
 
-  useEffect(() => {
+  const cargarPlantilla = useCallback(async () => {
     if (!tipoServicio) { setPlantilla(undefined); return; }
+    try {
+      const res = await fetch(`/api/plantillas-tareas-evento?tipoServicio=${encodeURIComponent(tipoServicio)}`, { cache: "no-store" });
+      if (!res.ok) return;
+      const d: { items?: PlantillaItem[] } = await res.json();
+      if (!d?.items) return;
+      const grupos = agruparPlantilla(d.items);
+      setPlantilla(grupos.length ? grupos : PLANTILLAS_DEFAULT[tipoServicio]);
+    } catch { /* mantiene fallback */ }
+  }, [tipoServicio]);
+
+  useEffect(() => { cargarPlantilla(); }, [cargarPlantilla]);
+
+  // Solo los administradores pueden editar la plantilla (agregar tareas por defecto).
+  const [esAdmin, setEsAdmin] = useState(false);
+  useEffect(() => {
     let cancel = false;
-    fetch(`/api/plantillas-tareas-evento?tipoServicio=${encodeURIComponent(tipoServicio)}`, { cache: "no-store" })
+    fetch("/api/auth/me", { cache: "no-store" })
       .then(r => (r.ok ? r.json() : null))
-      .then((d: { items?: PlantillaItem[] } | null) => {
-        if (cancel || !d?.items) return;
-        const grupos = agruparPlantilla(d.items);
-        setPlantilla(grupos.length ? grupos : PLANTILLAS_DEFAULT[tipoServicio]);
-      })
+      .then((d: { user?: { role?: string } } | null) => { if (!cancel) setEsAdmin(d?.user?.role === "ADMIN"); })
       .catch(() => {});
     return () => { cancel = true; };
-  }, [tipoServicio]);
+  }, []);
+
+  // Alta inline de una tarea nueva a la plantilla (grupo → texto en edición).
+  const [nuevoItem, setNuevoItem] = useState<Record<string, string>>({});
+  const [guardandoItem, setGuardandoItem] = useState(false);
+
+  async function agregarItemPlantilla(grupo: string, area: string) {
+    const titulo = (nuevoItem[grupo] ?? "").trim();
+    if (!titulo || guardandoItem || !tipoServicio) return;
+    setGuardandoItem(true);
+    try {
+      const res = await fetch(`/api/plantillas-tareas-evento`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipoServicio, grupo, area, titulo }),
+      });
+      if (res.ok) { setNuevoItem(p => ({ ...p, [grupo]: "" })); await cargarPlantilla(); }
+      else { const d = await res.json().catch(() => ({})); alert(d?.error ?? "No se pudo agregar la tarea"); }
+    } finally { setGuardandoItem(false); }
+  }
 
   const [tareas, setTareas]   = useState<TareaProyecto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -335,6 +364,31 @@ export default function ChecklistEventoTab({
                   );
                 })}
               </div>
+
+              {/* ── Agregar tarea a la plantilla (solo admin). Se guarda para todos los proyectos ── */}
+              {esAdmin && (
+                <div className="flex items-center gap-3 px-5 py-3 border-t border-[#141414] bg-[#0a0a0a]">
+                  <span className="w-5 h-5 rounded-full border-2 border-dashed border-[#2a2a2a] flex items-center justify-center shrink-0">
+                    <Plus strokeWidth={2.5} className="w-3 h-3 text-[#B3985B]" />
+                  </span>
+                  <input
+                    value={nuevoItem[grupo.grupo] ?? ""}
+                    onChange={e => setNuevoItem(p => ({ ...p, [grupo.grupo]: e.target.value }))}
+                    onKeyDown={e => { if (e.key === "Enter") agregarItemPlantilla(grupo.grupo, grupo.area); }}
+                    placeholder="Agregar tarea…"
+                    className="flex-1 bg-transparent text-sm text-gray-300 placeholder:text-[#555] outline-none"
+                  />
+                  {(nuevoItem[grupo.grupo] ?? "").trim() && (
+                    <button
+                      onClick={() => agregarItemPlantilla(grupo.grupo, grupo.area)}
+                      disabled={guardandoItem}
+                      className="shrink-0 text-[11px] font-medium text-[#B3985B] hover:text-[#c9ad6a] disabled:opacity-50"
+                    >
+                      Agregar →
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           );
         })
