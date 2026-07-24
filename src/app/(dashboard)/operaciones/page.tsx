@@ -156,6 +156,12 @@ export default function OperacionesPage() {
     setPtrTargetSec(null);
   }
 
+  // Marca si el arrastre en curso es de una subtarea. Los handlers de mover
+  // (moveToSection / moveToSubtask) lo consultan para refrescar el árbol al soltar,
+  // porque las subtareas viven en el estado local del TaskItem padre, no en proyectoDetalle.
+  const dragIsSubRef = useRef(false);
+  const markSubDrag = useCallback((active: boolean) => { dragIsSubRef.current = active; }, []);
+
   // Body cursor during drag
   useEffect(() => {
     if (ptrGhostPos) {
@@ -170,6 +176,7 @@ export default function OperacionesPage() {
   // FIX 4+6: resetDragState — single canonical cleanup for all drag state
   const resetDragState = useCallback(() => {
     ptrDragInfo.current = null;
+    dragIsSubRef.current = false;
     setDraggingId(null);
     setPtrTargetSec(null);
     setPtrGhostPos(null);
@@ -730,6 +737,9 @@ export default function OperacionesPage() {
       secciones: prev.secciones.map(s => ({ ...s, tareas: bumpParent(remove(s.tareas)) })),
     } : null);
     setDraggingId(null);
+    // Si lo arrastrado era una subtarea, su padre original la tiene en estado local:
+    // refrescamos para que desaparezca de ahí y aparezca bajo el nuevo padre.
+    if (dragIsSubRef.current) { dragIsSubRef.current = false; setSyncTrigger(n => n + 1); }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Reordenar tareas (above / below) sin hacer subtarea ─────────────────
@@ -775,9 +785,11 @@ export default function OperacionesPage() {
     });
     fetch(`/api/tareas/${taskId}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ seccionId }),
+      // parentId: null saca la tarea de su padre si era subtarea (inocuo para tareas top-level).
+      body: JSON.stringify({ seccionId, parentId: null }),
     });
     setDraggingId(null);
+    if (dragIsSubRef.current) { dragIsSubRef.current = false; setSyncTrigger(n => n + 1); }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // Keep ref in sync so the global mousemove/mouseup can call it without stale closure
   useEffect(() => { moveToSecRef.current = moveToSection; }, [moveToSection]);
@@ -1888,6 +1900,7 @@ export default function OperacionesPage() {
                   projects={proyectosNav}
                   users={usuarios}
                   showProject
+                  reloadKey={syncTrigger} markSubDrag={markSubDrag}
                 />
               ))}
             </div>
@@ -2010,6 +2023,7 @@ export default function OperacionesPage() {
                                 projects={proyectosNav}
                                 users={usuarios}
                                 showProject
+                                reloadKey={syncTrigger} markSubDrag={markSubDrag}
                               />
                             ))}
                           </div>
@@ -2092,6 +2106,7 @@ export default function OperacionesPage() {
                         onReorder={(draggedId, targetId, pos) => reorderTask(draggedId, targetId, pos)}
                         multiSelected={selectedIds.has(t.id)} onMultiSelect={toggleMultiSelect}
                         onExtractChild={handleExtractChild}
+                        reloadKey={syncTrigger} markSubDrag={markSubDrag}
                       />
                     ))}
                   </div>
@@ -2113,6 +2128,7 @@ export default function OperacionesPage() {
                      draggingId={draggingId}
                      onReorder={(draggedId, targetId, pos) => reorderTask(draggedId, targetId, pos)}
                     multiSelected={selectedIds.has(t.id)} onMultiSelect={toggleMultiSelect}
+                    reloadKey={syncTrigger} markSubDrag={markSubDrag}
                   />
                 ))
               )}
@@ -2241,6 +2257,7 @@ export default function OperacionesPage() {
                           onReorder={(draggedId, targetId, pos) => reorderTask(draggedId, targetId, pos)}
                           multiSelected={selectedIds.has(t.id)} onMultiSelect={toggleMultiSelect}
                           onExtractChild={handleExtractChild}
+                          reloadKey={syncTrigger} markSubDrag={markSubDrag}
                         />
                       ))}
                     </div>
@@ -2277,6 +2294,7 @@ export default function OperacionesPage() {
                       viewFilter={(t) => applyProyFilter(t, tipoMod)}
                       selectedIds={selectedIds} onMultiSelect={toggleMultiSelect}
                       onExtractChild={handleExtractChild}
+                      reloadKey={syncTrigger} markSubDrag={markSubDrag}
                       onToggleCollapse={async (id, colapsada) => {
                         const res = await fetch(`/api/operaciones/secciones/${id}`, {
                           method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -3142,6 +3160,7 @@ function SectionBlock({
   onPriorityChange, onAssign, onProjectChange, users, projects, viewFilter,
   selectedIds, onMultiSelect, onExtractChild, onMoveToNoSection,
   allSections, onMoveToSection,
+  reloadKey, markSubDrag,
   ptrTargetSec, onPtrDragStart, onDateChange,
   // Section-level DnD
   onSectionDragStart, onSectionDragEnd,
@@ -3182,6 +3201,8 @@ function SectionBlock({
   onMoveToNoSection?: (id: string) => void;
   allSections?:       SeccionDetalle[];
   onMoveToSection?:   (taskId: string, seccionId: string) => void;
+  reloadKey?:         number;
+  markSubDrag?:       (active: boolean) => void;
   ptrTargetSec?:      string | null;
   onPtrDragStart?:    (taskId: string, title: string) => void;
   onDateChange?:      (id: string, value: string) => void;
@@ -3447,12 +3468,14 @@ function SectionBlock({
               isBeingDragged={draggingId === t.id}
               onDragStart={onDragStart} onDragEnd={onDragEnd}
               onDrop={targetId => { if (draggingId && draggingId !== targetId) onDrop(targetId); }}
+              draggingId={draggingId}
               multiSelected={selectedIds?.has(t.id)} onMultiSelect={onMultiSelect}
               onExtractChild={onExtractChild}
               onMoveToNoSection={onMoveToNoSection}
               availableSections={allSections?.filter(s => s.id !== seccion.id)}
               onMoveToSection={onMoveToSection}
               onPtrDragStart={onPtrDragStart}
+              reloadKey={reloadKey} markSubDrag={markSubDrag}
             />
           ))}
           <button

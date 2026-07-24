@@ -107,6 +107,12 @@ interface Props {
   availableSections?: { id: string; nombre: string }[];
   onMoveToSection?:   (taskId: string, seccionId: string) => void;
   onPtrDragStart?:    (taskId: string, title: string) => void;
+  // Se incrementa (desde la página) para forzar la recarga de las subtareas
+  // expandidas tras un movimiento que cambia de padre/sección.
+  reloadKey?:         number;
+  // Marca en la página que el arrastre en curso es de una subtarea, para que
+  // los handlers de mover/sección refresquen el árbol al soltar.
+  markSubDrag?:       (active: boolean) => void;
 }
 
 function ActionBtn({ title, onClick, children, active }: {
@@ -140,6 +146,7 @@ export default function TaskItem({
   multiSelected = false, onMultiSelect,
   onExtract, onExtractChild, onMoveToNoSection,
   draggingId, availableSections, onMoveToSection, onPtrDragStart,
+  reloadKey, markSubDrag,
 }: Props) {
   const [hovered,       setHovered]       = useState(false);
   const [completing,    setCompleting]    = useState(false);
@@ -202,6 +209,32 @@ export default function TaskItem({
     }
     setExpanded(prev => !prev);
   }
+
+  // Reordenar subtareas hermanas localmente (no se persiste, igual que el reorder de tareas top-level).
+  const reorderSubLocal = useCallback((draggedId: string, targetId: string, position: "above" | "below") => {
+    if (draggedId === targetId) return;
+    setSubtareasExp(prev => {
+      const dragged = prev.find(t => t.id === draggedId);
+      if (!dragged) return prev; // no es hermana → ignorar
+      const without = prev.filter(t => t.id !== draggedId);
+      const idx = without.findIndex(t => t.id === targetId);
+      if (idx === -1) return prev;
+      const at = position === "above" ? idx : idx + 1;
+      return [...without.slice(0, at), dragged, ...without.slice(at)];
+    });
+  }, []);
+
+  // Recargar las subtareas expandidas cuando la página fuerza un refresh (reloadKey),
+  // p.ej. tras mover una subtarea a otro padre/sección.
+  const reloadInit = useRef(true);
+  useEffect(() => {
+    if (reloadInit.current) { reloadInit.current = false; return; }
+    if (!expanded) return;
+    fetch(`/api/tareas?parentId=${tarea.id}`, { cache: "no-store" })
+      .then(r => r.json())
+      .then(d => setSubtareasExp(d.tareas ?? []))
+      .catch(() => {});
+  }, [reloadKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleComplete(e: React.MouseEvent) {
     e.stopPropagation();
@@ -312,11 +345,14 @@ export default function TaskItem({
           onClick={e => e.stopPropagation()}
           onMouseDown={e => {
             if (e.button !== 0) return;
+            // Sin onPtrDragStart (p.ej. subtareas): no bloqueamos el mousedown para
+            // que el grip inicie el arrastre nativo del row (reordenar / re-anidar / extraer).
+            if (!onPtrDragStart) return;
             e.preventDefault();
             e.stopPropagation();
             justDraggedRef.current = true;
             setTimeout(() => { justDraggedRef.current = false; }, 600);
-            onPtrDragStart?.(tarea.id, tarea.titulo);
+            onPtrDragStart(tarea.id, tarea.titulo);
           }}
         >
           {[0,1,2].map(i => (
@@ -869,8 +905,18 @@ export default function TaskItem({
             onAssign={onAssign} onProjectChange={onProjectChange}
             users={users} projects={projects}
             draggable
-            onDragStart={id => setSubtaskDraggingId(id)}
-            onDragEnd={() => { setSubtaskDraggingId(null); setExtractDropOver(false); }}
+            draggingId={draggingId}
+            isBeingDragged={draggingId === sub.id}
+            onDragStart={id => { onDragStart?.(id); markSubDrag?.(true); setSubtaskDraggingId(id); }}
+            onDragEnd={() => { onDragEnd?.(); markSubDrag?.(false); setSubtaskDraggingId(null); setExtractDropOver(false); }}
+            onReorder={reorderSubLocal}
+            onDrop={targetId => onDrop?.(targetId)}
+            onExtractChild={onExtractChild}
+            onMoveToNoSection={onMoveToNoSection}
+            availableSections={availableSections}
+            onMoveToSection={onMoveToSection}
+            reloadKey={reloadKey}
+            markSubDrag={markSubDrag}
             onExtract={async () => {
               const res = await fetch(`/api/tareas/${sub.id}`, {
                 method: "PATCH", headers: { "Content-Type": "application/json" },
