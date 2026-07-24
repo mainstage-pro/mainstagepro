@@ -1,7 +1,8 @@
 "use client";
 import { useState, useRef, useMemo, useEffect } from "react";
-import { parsearRecurrencia, formatearRecurrencia, detectarFechaEnTitulo } from "@/lib/recurrencia";
+import { formatearRecurrencia, detectarFechaEnTitulo } from "@/lib/recurrencia";
 import DatePicker from "@/components/ui/DatePicker";
+import RecurrenciaPicker from "./RecurrenciaPicker";
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
 
@@ -64,12 +65,6 @@ const AREAS = [
   { key: "MARKETING",     label: "Marketing"    },
   { key: "RRHH",          label: "RR.HH."       },
 ] as const;
-
-const REC_PRESETS = [
-  { label: "Cada día",    pat: "cada día" },
-  { label: "Cada semana", pat: "cada semana" },
-  { label: "Cada mes",    pat: "cada mes" },
-];
 
 type Prioridad  = typeof PRIORIDADES[number]["key"];
 type Area       = typeof AREAS[number]["key"];
@@ -147,9 +142,7 @@ export default function QuickAdd({
   const [proyectoSel, setProyectoSel] = useState<string | null>(proyectoTareaId);
   const [asignadoSel, setAsignadoSel] = useState<string | null>(defaultAsignadoId);
   const [reqError, setReqError]       = useState<string | null>(null);
-  const [recTexto, setRecTexto]       = useState("");
   const [recurrencia, setRecurrencia] = useState<string | null>(null);
-  const [recError, setRecError]       = useState("");
   const [panel, setPanel]             = useState<ActivePanel>(null);
   const [detIgnorada, setDetIgnorada] = useState(false);
   // ── Paste-as-tasks: derived from textarea value (no interception needed)
@@ -209,7 +202,7 @@ export default function QuickAdd({
   function resetFields() {
     setTitulo(""); setDescripcion(""); setFecha(""); setFechaVen(""); setPrioridad("MEDIA"); setArea("GENERAL");
     setProyectoSel(proyectoTareaId); setAsignadoSel(defaultAsignadoId);
-    setRecTexto(""); setRecurrencia(null); setRecError(""); setReqError(null);
+    setRecurrencia(null); setReqError(null);
     setPanel(null); setDetIgnorada(false); setPastedLines(null);
   }
 
@@ -293,15 +286,6 @@ export default function QuickAdd({
   }
 
   function togglePanel(p: ActivePanel) { setPanel(prev => prev === p ? null : p); }
-
-  function applyRec(txt: string) {
-    if (!txt.trim()) { setRecurrencia(null); return; }
-    const cfg = parsearRecurrencia(txt.trim());
-    if (!cfg) { setRecError("No reconocido. Ej: 'cada lunes', 'cada martes y jueves'"); return; }
-    setRecurrencia(JSON.stringify(cfg));
-    setRecError("");
-    setPanel(null);
-  }
 
   // ── Closed state ─────────────────────────────────────────────────────────────
   if (!open) return (
@@ -470,7 +454,7 @@ export default function QuickAdd({
           <ToolbarBtn icon={<IconCalendar />}
             label={fecha ? formatDisplay(fecha) : "Fecha"} active={!!fecha} activeColor="#B3985B"
             required={requiredFields.includes("fecha") && !fecha && !recurrencia}
-            isOpen={panel === "fecha"} onClick={() => { if (recurrencia) { setRecurrencia(null); setRecTexto(""); } togglePanel("fecha"); }} />
+            isOpen={panel === "fecha"} onClick={() => { if (recurrencia) { setRecurrencia(null); } togglePanel("fecha"); }} />
 
           <ToolbarBtn icon={<IconRepeat />}
             label={recLabel ?? "Recurrente"} active={!!recurrencia} activeColor="#B3985B"
@@ -534,35 +518,12 @@ export default function QuickAdd({
 
           {/* Recurrente */}
           {panel === "recurrente" && (
-            <div className="p-2.5 space-y-2">
-              <div className="flex gap-1.5 flex-wrap">
-                {REC_PRESETS.map(p => {
-                  const cfg  = parsearRecurrencia(p.pat);
-                  const json = cfg ? JSON.stringify(cfg) : null;
-                  return (
-                    <button type="button" key={p.label} onClick={() => { if (json) { setRecurrencia(json); setRecTexto(""); setPanel(null); } }}
-                      className={`px-2 py-0.5 rounded text-[12px] border transition-all ${
-                        recurrencia === json ? "bg-[#B3985B]/15 border-[#B3985B]/30 text-[#B3985B]" : "border-[#1e1e1e] text-[#444] hover:text-[#888]"
-                      }`}>{p.label}</button>
-                  );
-                })}
-                {recurrencia && (
-                  <button type="button" onClick={() => { setRecurrencia(null); setRecTexto(""); }}
-                    className="px-2 py-0.5 rounded text-[12px] border border-[#1e1e1e] text-[#444] hover:text-red-400 transition-all">✕ Quitar</button>
-                )}
-              </div>
-              <div className="flex gap-1.5">
-                <input value={recTexto} onChange={e => { setRecTexto(e.target.value); setRecError(""); }}
-                  onKeyDown={e => { if (e.key === "Enter") applyRec(recTexto); if (e.key === "Escape") setPanel(null); }}
-                  placeholder="cada lunes · cada martes y jueves…"
-                  className="flex-1 bg-[#0f0f0f] border border-[#1e1e1e] rounded px-2 py-1 text-[12px] text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/40" />
-                <button type="button" onClick={() => applyRec(recTexto)}
-                  className="px-2 py-1 bg-[#161616] hover:bg-[#1e1e1e] text-[#666] hover:text-white text-[12px] rounded transition-all">OK</button>
-              </div>
-              {recError && <p className="text-[11px] text-red-400">{recError}</p>}
-              {recurrencia && !recError && (
-                <p className="text-[11px] text-[#B3985B] flex items-center gap-1"><IconRepeat />{recLabel}</p>
-              )}
+            <div className="p-2.5">
+              <RecurrenciaPicker
+                value={recurrencia}
+                onChange={(json) => { setRecurrencia(json); if (!json) setPanel(null); }}
+                onClose={() => setPanel(null)}
+              />
             </div>
           )}
 

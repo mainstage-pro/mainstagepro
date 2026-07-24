@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { formatearRecurrencia, parsearRecurrencia } from "@/lib/recurrencia";
 import DatePicker from "@/components/ui/DatePicker";
+import RecurrenciaPicker from "./RecurrenciaPicker";
 import QuickAdd from "./QuickAdd";
 import TaskItem, { type TareaItem } from "./TaskItem";
 import { Combobox } from "@/components/Combobox";
@@ -128,7 +128,6 @@ export default function TaskModal({
   const [iniciativaId, setIniciativaId] = useState("");
   const [fecha, setFecha]             = useState("");
   const [fechaVen, setFechaVen]       = useState("");
-  const [recTexto, setRecTexto]       = useState("");
   const [editingRec, setEditingRec]   = useState(false);
   const [comentario, setComentario]   = useState("");
   const [addingUrl, setAddingUrl]     = useState(false);
@@ -178,7 +177,6 @@ export default function TaskModal({
     setFechaVen(tarea.fechaVencimiento ? tarea.fechaVencimiento.substring(0, 10) : "");
     setShowFechaVenPicker(false);
     setEditingRec(false);
-    setRecTexto("");
     setDirty(false);
     setSubtareasLocal(tarea.subtareas ?? []);
     setComentariosLocal(tarea.comentarios ?? []);
@@ -226,21 +224,6 @@ export default function TaskModal({
   }
 
   function mark() { setDirty(true); }
-
-  const recDisplay = (() => {
-    if (!tarea?.recurrencia) return null;
-    try { return formatearRecurrencia(JSON.parse(tarea.recurrencia)); }
-    catch { return null; }
-  })();
-
-  function applyRecurrencia() {
-    if (!tarea) return;
-    if (!recTexto.trim()) { onSave(tarea.id, { recurrencia: null }); setEditingRec(false); return; }
-    const cfg = parsearRecurrencia(recTexto.trim());
-    if (!cfg) return;
-    onSave(tarea.id, { recurrencia: JSON.stringify(cfg) });
-    setEditingRec(false); setRecTexto("");
-  }
 
   async function enviarComentario() {
     if (!tarea || !comentario.trim()) return;
@@ -1074,7 +1057,7 @@ export default function TaskModal({
                   </button>
                 </div>
 
-                {!editingRec && !tarea.recurrencia && (
+                {!editingRec && !tarea.recurrencia ? (
                   <div className="space-y-2">
                     <DatePicker value={fecha} onChange={val => { setFecha(val); mark(); }} size="sm" />
                     {(fechaVen || showFechaVenPicker) ? (
@@ -1087,36 +1070,15 @@ export default function TaskModal({
                       </button>
                     )}
                   </div>
-                )}
-
-                {!editingRec && tarea.recurrencia && (
-                  <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[#0d0d0d] border border-[#1a1a1a]">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="2" strokeLinecap="round">
-                      <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
-                      <path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
-                    </svg>
-                    <span className="text-xs text-[#B3985B] flex-1">{recDisplay}</span>
-                    <button onClick={() => onSave(tarea.id, { recurrencia: null })}
-                      className="text-[#444] hover:text-red-400 transition-colors">✕</button>
-                  </div>
-                )}
-
-                {editingRec && (
-                  <div className="space-y-2">
-                    <input
-                      autoFocus
-                      value={recTexto}
-                      onChange={e => setRecTexto(e.target.value)}
-                      onKeyDown={e => { if (e.key === "Enter") applyRecurrencia(); if (e.key === "Escape") setEditingRec(false); }}
-                      placeholder="cada lunes · cada mes…"
-                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-2 text-xs text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]"
-                    />
-                    <div className="flex gap-3 text-xs">
-                      <button onClick={applyRecurrencia} className="text-[#B3985B] hover:underline font-medium">Aplicar</button>
-                      <button onClick={() => setEditingRec(false)} className="text-[#555] hover:text-white">Cancelar</button>
-                    </div>
-                    <p className="text-[10px] text-[#2a2a2a]">Ej: cada día · cada lunes · cada martes y jueves</p>
-                  </div>
+                ) : (
+                  <RecurrenciaPicker
+                    value={tarea.recurrencia}
+                    onChange={json => {
+                      onSave(tarea.id, { recurrencia: json });
+                      if (!json) setEditingRec(false);
+                    }}
+                    onClose={() => setEditingRec(false)}
+                  />
                 )}
               </div>
 

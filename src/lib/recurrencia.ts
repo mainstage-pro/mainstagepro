@@ -2,8 +2,18 @@ export interface RecurrenciaConfig {
   tipo: "diario" | "semanal" | "mensual" | "anual";
   cada: number;           // every N units
   diasSemana?: number[];  // 0=Dom 1=Lun 2=Mar 3=Mié 4=Jue 5=Vie 6=Sáb
-  diaMes?: number;        // for mensual (día fijo del mes)
+  diaMes?: number;        // for mensual (día fijo del mes) — legacy, un solo día
+  diasMes?: number[];     // for mensual (varios días fijos del mes, ej. 1 y 15)
   semanaMes?: number[];   // 1..5 (5 = última) — para "primer lunes del mes"
+  mesAnio?: number;       // 0..11 — para anual anclado a un mes (opcional)
+}
+
+/** Devuelve la lista efectiva de días del mes (une `diasMes` y el legacy `diaMes`). */
+export function diasMesEfectivos(cfg: RecurrenciaConfig): number[] {
+  const set = new Set<number>();
+  for (const d of cfg.diasMes ?? []) if (d >= 1 && d <= 31) set.add(d);
+  if (cfg.diaMes != null && cfg.diaMes >= 1 && cfg.diaMes <= 31) set.add(cfg.diaMes);
+  return [...set].sort((a, b) => a - b);
 }
 
 const DIAS: Record<string, number> = {
@@ -124,6 +134,41 @@ export function parsearRecurrencia(texto: string): RecurrenciaConfig | null {
   const nSem = t.match(/^cada (\d+) semanas?$/);
   if (nSem) return { tipo: "semanal", cada: parseInt(nSem[1]), diasSemana: [new Date().getDay()] };
 
+  // "los días 1 y 15 del mes" / "días 1, 15 y 30 de cada mes"
+  const diasMesLista = t.match(/^(?:los\s+)?d[ií]as\s+([\d,\sy]+?)\s+(?:del\s+mes|de\s+cada\s+mes)$/);
+  if (diasMesLista) {
+    const nums = diasMesLista[1]
+      .replace(/\s+y\s+/gi, ",")
+      .split(",")
+      .map(s => parseInt(s.trim(), 10))
+      .filter(n => n >= 1 && n <= 31);
+    if (nums.length) {
+      const uniq = [...new Set(nums)].sort((a, b) => a - b);
+      return { tipo: "mensual", cada: 1, diasMes: uniq };
+    }
+  }
+
+  // "día 10 del mes" / "el día 10 de cada mes" / "cada día 10 del mes"
+  const unDiaMes = t.match(/^(?:cada\s+)?(?:el\s+)?d[ií]a\s+(\d{1,2})\s+(?:del\s+mes|de\s+cada\s+mes)$/);
+  if (unDiaMes) {
+    const dia = parseInt(unDiaMes[1], 10);
+    if (dia >= 1 && dia <= 31) return { tipo: "mensual", cada: 1, diaMes: dia };
+  }
+
+  // "cada mes el día 10" / "cada mes, día 10"
+  const cadaMesDia = t.match(/^cada\s+mes,?\s+(?:el\s+)?d[ií]a\s+(\d{1,2})$/);
+  if (cadaMesDia) {
+    const dia = parseInt(cadaMesDia[1], 10);
+    if (dia >= 1 && dia <= 31) return { tipo: "mensual", cada: 1, diaMes: dia };
+  }
+
+  // "cada N meses el día 10"
+  const nMesesDia = t.match(/^cada\s+(\d+)\s+meses?,?\s+(?:el\s+)?d[ií]a\s+(\d{1,2})$/);
+  if (nMesesDia) {
+    const dia = parseInt(nMesesDia[2], 10);
+    if (dia >= 1 && dia <= 31) return { tipo: "mensual", cada: parseInt(nMesesDia[1], 10), diaMes: dia };
+  }
+
   // "cada mes" / "mensual"
   if (/^(cada mes|mensual|mensualmente)$/.test(t)) {
     return { tipo: "mensual", cada: 1, diaMes: new Date().getDate() };
@@ -185,14 +230,21 @@ export function formatearRecurrencia(cfg: RecurrenciaConfig): string {
   }
 
   if (cfg.tipo === "mensual") {
-    // "primer lunes del mes"
+    // "primer lunes del mes" — soporta varios ordinales y varios días
     if (cfg.semanaMes?.length && cfg.diasSemana?.length) {
-      const ord = ORDINAL_LABEL[cfg.semanaMes[0]] ?? "";
+      const ords = cfg.semanaMes.map(n => ORDINAL_LABEL[n] ?? "").filter(Boolean);
+      const ord = ords.length <= 1 ? ords.join("") : ords.slice(0, -1).join(", ") + " y " + ords[ords.length - 1];
       const dia = joinDias(cfg.diasSemana);
       const base = `El ${ord} ${dia} del mes`;
       return cfg.cada === 1 ? base : `${base} (cada ${cfg.cada} meses)`;
     }
-    const dia = cfg.diaMes ?? 1;
+    // "día 10" o "días 1, 15 y 30"
+    const dias = diasMesEfectivos(cfg);
+    if (dias.length > 1) {
+      const lista = dias.slice(0, -1).join(", ") + " y " + dias[dias.length - 1];
+      return cfg.cada === 1 ? `Cada mes, días ${lista}` : `Cada ${cfg.cada} meses, días ${lista}`;
+    }
+    const dia = dias[0] ?? 1;
     return cfg.cada === 1 ? `Cada mes, día ${dia}` : `Cada ${cfg.cada} meses, día ${dia}`;
   }
 
@@ -282,10 +334,27 @@ export function calcularProximaFecha(cfg: RecurrenciaConfig, desde: Date): Date 
       return new Date(y, m, 1);
     }
 
+    // Uno o varios días fijos del mes (ej. 1 y 15)
+    const dias = diasMesEfectivos(cfg);
+    if (dias.length > 1) {
+      // ¿Queda algún día del listado más adelante en el mes actual?
+      const maxEste = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      const siguienteEste = dias.find(x => Math.min(x, maxEste) > d.getDate());
+      if (siguienteEste !== undefined) {
+        return new Date(d.getFullYear(), d.getMonth(), Math.min(siguienteEste, maxEste));
+      }
+      // Si no, avanzar `cada` meses y tomar el primer día del listado
+      const mes = d.getMonth() + cfg.cada;
+      const anio = d.getFullYear() + Math.floor(mes / 12);
+      const mesReal = ((mes % 12) + 12) % 12;
+      const maxDia = new Date(anio, mesReal + 1, 0).getDate();
+      return new Date(anio, mesReal, Math.min(dias[0], maxDia));
+    }
+
     const mes = d.getMonth() + cfg.cada;
     const anio = d.getFullYear() + Math.floor(mes / 12);
     const mesReal = mes % 12;
-    const dia = cfg.diaMes ?? d.getDate();
+    const dia = dias[0] ?? d.getDate();
     const maxDia = new Date(anio, mesReal + 1, 0).getDate();
     return new Date(anio, mesReal, Math.min(dia, maxDia));
   }
@@ -486,9 +555,12 @@ export function recurrenciaOcurreEnFecha(cfg: RecurrenciaConfig, ref: Date = new
       }
       return false;
     }
-    const dia = cfg.diaMes ?? 1;
+    const dias = diasMesEfectivos(cfg);
     const maxDia = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    return d.getDate() === Math.min(dia, maxDia);
+    if (dias.length) {
+      return dias.some(dia => d.getDate() === Math.min(dia, maxDia));
+    }
+    return d.getDate() === Math.min(1, maxDia);
   }
 
   // anual: sin fecha ancla no se puede determinar de forma fiable
