@@ -73,7 +73,7 @@ export default function ProyectoInternoPage({ params }: { params: Promise<{ id: 
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs text-[#444]">
-        <Link href="/proyectos-internos" className="hover:text-[#B3985B] transition-colors">Proyectos internos</Link>
+        <Link href="/proyectos-de-empresa" className="hover:text-[#B3985B] transition-colors">Proyectos de empresa</Link>
         <span>/</span>
         <span className="text-white">{proyecto.nombre}</span>
       </div>

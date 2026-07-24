@@ -14,7 +14,7 @@ type PTArea = { id: string; nombre: string; subareas: PTSubArea[] };
 
 const TIPOS = [
   { key: "tarea",    label: "Tarea",              color: "#B3985B", desc: "Algo puntual que hacer", destino: "Módulo de Tareas" },
-  { key: "proyecto", label: "Proyecto",           color: "#3b82f6", desc: "Iniciativa con etapas",  destino: "Proyectos internos" },
+  { key: "proyecto", label: "Proyecto",           color: "#3b82f6", desc: "Iniciativa con etapas",  destino: "Proyectos de empresa" },
   { key: "plan",     label: "Compromiso de plan", color: "#a78bfa", desc: "Operación recurrente",   destino: "Plan de Trabajo" },
 ];
 

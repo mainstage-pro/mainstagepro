@@ -273,7 +273,7 @@ export default function CentroOperativoPage() {
           </SectionCard>
 
           {/* ── PROYECTOS — por área, expandible con tareas ──────────── */}
-          <SectionCard title="Proyectos activos" dot="#4ade80" count={proyectos.length} href="/proyectos-internos" empty={proyectos.length === 0} emptyText="Sin proyectos activos.">
+          <SectionCard title="Proyectos activos" dot="#4ade80" count={proyectos.length} href="/proyectos-de-empresa" empty={proyectos.length === 0} emptyText="Sin proyectos activos.">
             {groupByArea(proyectos, p => p.area || "GENERAL").map(([areaKey, group]) => (
               <AreaGroup key={areaKey} areaKey={areaKey}>
                 {group.map(p => {
@@ -286,7 +286,7 @@ export default function CentroOperativoPage() {
                         <button onClick={() => toggleProj(p.id)} className="shrink-0 w-[17px] h-[17px] flex items-center justify-center text-[#666] hover:text-white">
                           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className={`transition-transform ${open ? "rotate-90" : ""}`}><polyline points="9 18 15 12 9 6" /></svg>
                         </button>
-                        <Link href={`/proyectos-internos/${p.id}`} className="flex-1 text-sm text-white hover:text-[#c9a96a] transition-colors">{p.nombre}</Link>
+                        <Link href={`/proyectos-de-empresa/${p.id}`} className="flex-1 text-sm text-white hover:text-[#c9a96a] transition-colors">{p.nombre}</Link>
                         <span className="text-[11px] text-[#555]">{p.porcentajeAvance || 0}%</span>
                         <Avatar name={p.lider?.name} />
                       </div>

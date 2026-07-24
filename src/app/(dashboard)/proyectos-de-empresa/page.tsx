@@ -241,7 +241,7 @@ function KanbanBoard({ proyectos, onMove }: {
                     className={`rounded-lg border border-white/[0.08] bg-white/[0.025] p-3 cursor-grab active:cursor-grabbing transition-opacity ${
                       dragId === p.id ? "opacity-40" : ""
                     }`}>
-                    <Link href={`/proyectos-internos/${p.id}`} className="block" onClick={e => { if (dragId) e.preventDefault(); }}>
+                    <Link href={`/proyectos-de-empresa/${p.id}`} className="block" onClick={e => { if (dragId) e.preventDefault(); }}>
                       <p className="text-[13px] text-white leading-snug mb-2">{p.nombre}</p>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <span className={`text-[9.5px] px-1.5 py-0.5 rounded font-medium ${areaChipClass(p.area)}`}>
@@ -300,7 +300,7 @@ export default function ProyectosInternosPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-[#B3985B] text-xs uppercase tracking-widest font-semibold mb-1">Gestión Operativa</p>
-          <h1 className="ms-h1">Proyectos internos</h1>
+          <h1 className="ms-h1">Proyectos de empresa</h1>
           <p className="ms-subtitle mt-1">Mejoras, implementaciones y desarrollo de la empresa</p>
         </div>
         <button onClick={() => setShowModal(true)}
@@ -355,7 +355,7 @@ export default function ProyectosInternosPage() {
             const fasesCompletas= p.fases.filter(f => f.completada).length;
 
             return (
-              <Link key={p.id} href={`/proyectos-internos/${p.id}`}
+              <Link key={p.id} href={`/proyectos-de-empresa/${p.id}`}
                 className="flex items-center gap-3 px-1 py-2.5 rounded-xl hover:bg-[#0d0d0d] group transition-colors">
                 {/* Círculo / avance */}
                 <div className="shrink-0 relative w-5 h-5">

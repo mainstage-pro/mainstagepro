@@ -36,7 +36,7 @@ export interface TareaItem {
 const TIPO_ORIGEN: Record<string, { label: string; color: string; bg: string; border: string }> = {
   TAREA:    { label: "Tarea",    color: "#9ca3af", bg: "rgba(107,114,128,0.12)", border: "rgba(107,114,128,0.30)" },
   PLAN:     { label: "Plan",     color: "#B3985B", bg: "rgba(179,152,91,0.12)",  border: "rgba(179,152,91,0.35)" },
-  PROYECTO: { label: "Proyecto", color: "#818cf8", bg: "rgba(99,102,241,0.14)",  border: "rgba(99,102,241,0.35)" },
+  PROYECTO: { label: "Empresa",  color: "#818cf8", bg: "rgba(99,102,241,0.14)",  border: "rgba(99,102,241,0.35)" },
   EVENTO:   { label: "Evento",   color: "#60a5fa", bg: "rgba(59,130,246,0.14)",  border: "rgba(59,130,246,0.35)" },
 };
 

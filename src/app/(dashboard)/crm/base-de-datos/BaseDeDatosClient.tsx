@@ -249,6 +249,7 @@ function InlineMultiSelect({ options, values, onChange, placeholder = "—", max
   function toggle(v: string) {
     if (values.includes(v)) onChange(values.filter(x => x !== v));
     else if (values.length < maxSelect) onChange([...values, v]);
+    setOpen(false);
   }
 
   const displayLabel = values.length === 0

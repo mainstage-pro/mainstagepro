@@ -85,13 +85,6 @@ const PROJECT_COLORS = [
 ];
 
 // ── Hub de 4 sub-módulos dentro de un proyecto (los 4 sistemas del módulo unificado).
-// Se muestran como pestañas en la vista de proyecto y filtran por tipoOrigen.
-const AREA_SUBMODULOS: { key: string; label: string; short: string; color: string }[] = [
-  { key: "TAREA",    label: "Tareas",               short: "Tareas",  color: "#9ca3af" },
-  { key: "PLAN",     label: "Compromisos de plan",  short: "Plan",    color: "#34d399" },
-  { key: "EVENTO",   label: "Proyectos de evento",  short: "Eventos", color: "#60a5fa" },
-  { key: "PROYECTO", label: "Proyecto de empresa",  short: "Empresa", color: "#818cf8" },
-];
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -113,7 +106,6 @@ export default function OperacionesPage() {
   const [sessionRole, setSessionRole]           = useState<string>("");
   const [sessionArea, setSessionArea]           = useState<string>("");
   // Sub-módulo activo dentro del hub de un proyecto (TAREA|PLAN|EVENTO|PROYECTO)
-  const [proyectoSub, setProyectoSub]           = useState<string>("TAREA");
 
   const [capturaCounts, setCapturaCounts] = useState({ captura: 0, ideas: 0, iniciativas: 0 });
   const [vista, setVista]                             = useState<VistaKey>(() => {
@@ -280,7 +272,7 @@ export default function OperacionesPage() {
   const [showNuevaCarpeta, setShowNuevaCarpeta]     = useState(false);
   const [showNuevoProyecto, setShowNuevoProyecto]   = useState(false);
   const [showAccesoPanel, setShowAccesoPanel]       = useState(false);
-  const [showNuevaSeccion, setShowNuevaSeccion]     = useState(false);
+  const [showNuevaSeccion, setShowNuevaSeccion]     = useState<"TAREA" | "PLAN" | null>(null);
   const [nuevoCarpetaNombre, setNuevoCarpetaNombre] = useState("");
   const [nuevoProyectoNombre, setNuevoProyectoNombre] = useState("");
   const [nuevoProyectoColor, setNuevoProyectoColor]   = useState(PROJECT_COLORS[0]);
@@ -409,10 +401,10 @@ export default function OperacionesPage() {
 
   // ── Mutations ────────────────────────────────────────────────────────────
 
-  function applyProyFilter(tareas: TareaItem[]): TareaItem[] {
+  function applyProyFilter(tareas: TareaItem[], tipo: "TAREA" | "PLAN"): TareaItem[] {
     let r = tareas;
-    // Hub: filtra por el sub-módulo activo (TAREA|PLAN|EVENTO|PROYECTO).
-    r = r.filter(t => (t.tipoOrigen ?? "TAREA") === proyectoSub);
+    // Hub: filtra por la sección fija (Tareas | Plan de trabajo).
+    r = r.filter(t => (t.tipoOrigen ?? "TAREA") === tipo);
     if (!proyViewOpts.showCompleted) r = r.filter(t => t.estado !== "COMPLETADA");
     if (filterUserProy) r = r.filter(t => t.asignadoA?.id === filterUserProy);
     if (proyViewOpts.filterPrio.length > 0) r = r.filter(t => proyViewOpts.filterPrio.includes(t.prioridad));
@@ -510,9 +502,6 @@ export default function OperacionesPage() {
     }
   }, [vista, proyectoDetalle]);
 
-  // Al cambiar de proyecto, vuelve a la pestaña "Tareas" del hub.
-  const proyectoActivoId = typeof vista !== "string" && vista.tipo === "proyecto" ? vista.id : null;
-  useEffect(() => { setProyectoSub("TAREA"); }, [proyectoActivoId]);
 
   const completeTarea = useCallback(async (id: string) => {
     // Find titulo for undo toast
@@ -530,24 +519,37 @@ export default function OperacionesPage() {
       toast.error(d.error ?? "No se pudo completar la tarea");
       return;
     }
-    const { nextTarea } = await res.json();
+    const { tarea, reagendada, fechaAnterior } = await res.json();
+
+    // ── Recurrente reagendada: la MISMA tarea avanza de fecha (no se completa ni duplica) ──
+    if (reagendada && tarea) {
+      const reprogram = (arr: TareaItem[]) =>
+        arr.map(t => t.id === id ? { ...t, estado: "PENDIENTE", fecha: tarea.fecha } : t);
+      setTareas(reprogram);
+      setProyectoDetalle(prev => prev ? {
+        ...prev, tareas: reprogram(prev.tareas),
+        secciones: prev.secciones.map(s => ({ ...s, tareas: reprogram(s.tareas) })),
+      } : null);
+
+      celebrate("tarea");
+
+      const nuevaFechaLabel = tarea.fecha
+        ? new Date(tarea.fecha).toLocaleDateString("es-MX", { day: "numeric", month: "short" })
+        : undefined;
+      clearTimeout(undoTimer.current);
+      setUndoState({ id, titulo, expiresAt: Date.now() + 4000, reagendada: true, fechaAnterior, nuevaFechaLabel });
+      undoTimer.current = setTimeout(() => setUndoState(null), 4000);
+      return;
+    }
 
     // Mark completed in state (keep visible for undo window)
     const markCompleted = (arr: TareaItem[]) =>
       arr.map(t => t.id === id ? { ...t, estado: "COMPLETADA" } : t);
-    if (nextTarea) {
-      setTareas(prev => [nextTarea, ...markCompleted(prev)]);
-      setProyectoDetalle(prev => prev ? {
-        ...prev, tareas: [nextTarea, ...markCompleted(prev.tareas)],
-        secciones: prev.secciones.map(s => ({ ...s, tareas: markCompleted(s.tareas) })),
-      } : null);
-    } else {
-      setTareas(markCompleted);
-      setProyectoDetalle(prev => prev ? {
-        ...prev, tareas: markCompleted(prev.tareas),
-        secciones: prev.secciones.map(s => ({ ...s, tareas: markCompleted(s.tareas) })),
-      } : null);
-    }
+    setTareas(markCompleted);
+    setProyectoDetalle(prev => prev ? {
+      ...prev, tareas: markCompleted(prev.tareas),
+      secciones: prev.secciones.map(s => ({ ...s, tareas: markCompleted(s.tareas) })),
+    } : null);
 
     // Micro-celebración
     celebrate("tarea");
@@ -571,9 +573,14 @@ export default function OperacionesPage() {
   const handleUndo = useCallback(async () => {
     if (!undoState) return;
     clearTimeout(undoTimer.current);
+    // Reagendado: deshacer = regresar la tarea a su fecha previa (nunca se completó).
+    // Completado normal: deshacer = volver a PENDIENTE.
+    const body = undoState.reagendada
+      ? { fecha: undoState.fechaAnterior ?? null }
+      : { estado: "PENDIENTE" };
     const res = await fetch(`/api/tareas/${undoState.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ estado: "PENDIENTE" }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
@@ -581,7 +588,11 @@ export default function OperacionesPage() {
       return;
     }
     const restore = (arr: TareaItem[]) =>
-      arr.map(t => t.id === undoState.id ? { ...t, estado: "PENDIENTE" } : t);
+      arr.map(t => t.id === undoState.id
+        ? (undoState.reagendada
+            ? { ...t, fecha: undoState.fechaAnterior ?? null }
+            : { ...t, estado: "PENDIENTE" })
+        : t);
     setTareas(restore);
     setProyectoDetalle(prev => prev ? {
       ...prev, tareas: restore(prev.tareas),
@@ -592,7 +603,8 @@ export default function OperacionesPage() {
 
   const handleDismissUndo = useCallback(() => {
     clearTimeout(undoTimer.current);
-    if (!showCompletedRef.current && undoState) {
+    // Reagendada no se elimina de la lista: sigue viva con su nueva fecha.
+    if (!showCompletedRef.current && undoState && !undoState.reagendada) {
       const id = undoState.id;
       const remove = (arr: TareaItem[]) => arr.filter(t => t.id !== id);
       setTareas(remove);
@@ -907,7 +919,7 @@ export default function OperacionesPage() {
     await Promise.all(ids.map(id => fetch(`/api/tareas/${id}`, { method: "DELETE" })));
   }, [selectedIds, clearMultiSelect]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const addSeccion = useCallback(async () => {
+  const addSeccion = useCallback(async (tipoModulo: "TAREA" | "PLAN") => {
     if (!nuevaSeccionNombre.trim() || typeof vista === "string" || vista.tipo === "area") return;
     const res = await fetch("/api/operaciones/secciones", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -915,7 +927,7 @@ export default function OperacionesPage() {
         nombre: nuevaSeccionNombre.trim(),
         proyectoId: (vista as { tipo: "proyecto"; id: string }).id,
         orden: proyectoDetalle?.secciones.length ?? 0,
-        tipoModulo: proyectoSub === "PLAN" ? "PLAN" : "TAREA",
+        tipoModulo,
       }),
     });
     if (res.ok) {
@@ -923,9 +935,9 @@ export default function OperacionesPage() {
       setProyectoDetalle(prev => prev ? {
         ...prev, secciones: [...prev.secciones, { ...seccion, tareas: [] }],
       } : null);
-      setNuevaSeccionNombre(""); setShowNuevaSeccion(false);
+      setNuevaSeccionNombre(""); setShowNuevaSeccion(null);
     }
-  }, [nuevaSeccionNombre, vista, proyectoSub, proyectoDetalle]);
+  }, [nuevaSeccionNombre, vista, proyectoDetalle]);
 
   // ── Reorder sections via drag-and-drop ─────────────────────────────────
   async function reorderSecciones(draggedId: string, targetId: string, pos: "before" | "after") {
@@ -1009,14 +1021,9 @@ export default function OperacionesPage() {
     if (vistaOpts.filterPrio.length > 0) base = base.filter(t => vistaOpts.filterPrio.includes(t.prioridad));
     if (vistaOpts.filterTipo.length > 0) base = base.filter(t => vistaOpts.filterTipo.includes(t.tipoOrigen ?? "TAREA"));
     // Bandeja/próximas solo muestran tareas sueltas (tipoOrigen TAREA).
-    // "Hoy" además incluye los compromisos de plan (PLAN) que tocan hoy.
+    // "Hoy" muestra los 4 tipos (TAREA | PLAN | EVENTO | PROYECTO) que vencen hoy.
     if (vista === "bandeja" || vista === "proximas") {
       base = base.filter(t => (t.tipoOrigen ?? "TAREA") === "TAREA");
-    } else if (vista === "hoy") {
-      base = base.filter(t => {
-        const tipo = t.tipoOrigen ?? "TAREA";
-        return tipo === "TAREA" || tipo === "PLAN";
-      });
     }
 
     function applySort(arr: TareaItem[]): TareaItem[] {
@@ -1078,14 +1085,9 @@ export default function OperacionesPage() {
     let base = applyBusqueda(vistaOpts.showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA"));
     if (vistaOpts.filterPrio.length > 0) base = base.filter(t => vistaOpts.filterPrio.includes(t.prioridad));
     if (vistaOpts.filterTipo.length > 0) base = base.filter(t => vistaOpts.filterTipo.includes(t.tipoOrigen ?? "TAREA"));
-    // Bandeja/próximas: solo tareas sueltas. "Hoy" incluye compromisos de plan (PLAN).
+    // Bandeja/próximas: solo tareas sueltas. "Hoy" incluye los 4 tipos que vencen hoy.
     if (vista === "bandeja" || vista === "proximas") {
       base = base.filter(t => (t.tipoOrigen ?? "TAREA") === "TAREA");
-    } else if (vista === "hoy") {
-      base = base.filter(t => {
-        const tipo = t.tipoOrigen ?? "TAREA";
-        return tipo === "TAREA" || tipo === "PLAN";
-      });
     }
     if (vistaOpts.sortBy === "prioridad") return [...base].sort((a, b) => (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3));
     if (vistaOpts.sortBy === "fecha")     return [...base].sort((a, b) => { if (!a.fecha) return 1; if (!b.fecha) return -1; return a.fecha.localeCompare(b.fecha); });
@@ -1336,7 +1338,7 @@ export default function OperacionesPage() {
           <button
             onClick={() => abrirNuevaTarea(
               typeof vista !== "string" && vista.tipo === "proyecto"
-                ? { proyectoTareaId: vista.id, tipoInicial: proyectoSub as "TAREA" | "PLAN" | "EVENTO" | "PROYECTO" }
+                ? { proyectoTareaId: vista.id, tipoInicial: "TAREA" }
                 : undefined,
             )}
             className="w-full flex items-center gap-2 px-3 py-2 bg-[#B3985B]/10 hover:bg-[#B3985B]/16 border border-[#B3985B]/20 hover:border-[#B3985B]/35 text-[#B3985B] rounded-xl text-sm font-medium transition-all group"
@@ -2106,46 +2108,25 @@ export default function OperacionesPage() {
             <div className="max-w-2xl mx-auto px-2 py-4 pb-24">
               {proyectoDetalle && (
                 <>
-                  {/* ── Hub: pestañas de los 4 sub-módulos (filtran por tipoOrigen) ── */}
-                  {(() => {
-                    const todas = [
-                      ...proyectoDetalle.tareas,
-                      ...proyectoDetalle.secciones.flatMap(s => s.tareas),
-                    ];
-                    const counts: Record<string, number> = { TAREA: 0, PLAN: 0, EVENTO: 0, PROYECTO: 0 };
-                    for (const t of todas) {
-                      if (t.estado === "COMPLETADA" || t.estado === "CANCELADA") continue;
-                      const k = t.tipoOrigen ?? "TAREA";
-                      counts[k] = (counts[k] ?? 0) + 1;
-                    }
-                    return (
-                      <div className="flex items-center gap-1 mb-4 overflow-x-auto no-scrollbar border-b border-[#161616]">
-                        {AREA_SUBMODULOS.map(s => {
-                          const active = s.key === proyectoSub;
-                          return (
-                            <button
-                              key={s.key}
-                              onClick={() => setProyectoSub(s.key)}
-                              className={`shrink-0 flex items-center gap-1.5 px-3 py-2 text-[13px] font-medium border-b-2 -mb-px transition-colors ${active ? "" : "text-[#666] border-transparent hover:text-[#999]"}`}
-                              style={active ? { borderColor: s.color, color: "#fff" } : undefined}
-                            >
-                              <span className="hidden sm:inline">{s.label}</span>
-                              <span className="sm:hidden">{s.short}</span>
-                              {counts[s.key] > 0 && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-[#777]">{counts[s.key]}</span>
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    );
-                  })()}
+                  {/* ── 2 secciones fijas e inamovibles: 1. Tareas · 2. Plan de trabajo ── */}
+                  {([
+                    { tipoMod: "TAREA", num: 1, titulo: "Tareas",         accent: "#9ca3af" },
+                    { tipoMod: "PLAN",  num: 2, titulo: "Plan de trabajo", accent: "#34d399" },
+                  ] as const).map(({ tipoMod, num, titulo, accent }) => {
+                  const secciones = proyectoDetalle.secciones.filter(s => (s.tipoModulo ?? "TAREA") === tipoMod);
+                  return (
+                  <section key={tipoMod} className="mb-8">
+                  {/* ── Encabezado fijo de la sección ── */}
+                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-[#161616]">
+                    <span className="w-1.5 h-4 rounded-full shrink-0" style={{ backgroundColor: accent }} />
+                    <h2 className="text-[15px] font-semibold text-white">{num}. {titulo}</h2>
+                  </div>
 
-                  {/* ── Nueva tarea (abre el modal de 4 tipos con contexto de proyecto+pestaña) ── */}
+                  {/* ── Nueva tarea (contexto de proyecto + sección fija) ── */}
                   <button
                     onClick={() => abrirNuevaTarea({
                       proyectoTareaId: proyectoDetalle.id,
-                      tipoInicial: proyectoSub as "TAREA" | "PLAN" | "EVENTO" | "PROYECTO",
+                      tipoInicial: tipoMod,
                     })}
                     className="w-full flex items-center gap-2 px-3 py-2.5 mb-3 rounded-xl bg-[#0d0d0d] border border-[#1a1a1a] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/30 transition-all text-sm font-medium"
                   >
@@ -2155,22 +2136,22 @@ export default function OperacionesPage() {
                     Nuevo registro
                   </button>
 
-                  {/* ── Agregar sección (pestañas de Tareas y Plan) ── */}
-                  <div className={`mb-4 ${(proyectoSub === "TAREA" || proyectoSub === "PLAN") ? "" : "hidden"}`}>
-                    {showNuevaSeccion ? (
+                  {/* ── Agregar sección dentro de esta sección fija ── */}
+                  <div className="mb-4">
+                    {showNuevaSeccion === tipoMod ? (
                       <div className="px-3 py-3 border border-dashed border-[#2a2a2a] rounded-xl space-y-2 bg-[#0a0a0a]">
                         <input autoFocus value={nuevaSeccionNombre}
                           onChange={e => setNuevaSeccionNombre(e.target.value)}
-                          onKeyDown={e => { if (e.key === "Enter") addSeccion(); if (e.key === "Escape") setShowNuevaSeccion(false); }}
+                          onKeyDown={e => { if (e.key === "Enter") addSeccion(tipoMod); if (e.key === "Escape") setShowNuevaSeccion(null); }}
                           placeholder="Nombre de la sección…"
                           className="w-full bg-transparent text-sm text-white placeholder-[#333] focus:outline-none" />
                         <div className="flex gap-3">
-                          <button onClick={addSeccion} className="text-xs text-[#B3985B] hover:underline font-medium">Crear</button>
-                          <button onClick={() => setShowNuevaSeccion(false)} className="text-xs text-[#444] hover:text-white">Cancelar</button>
+                          <button onClick={() => addSeccion(tipoMod)} className="text-xs text-[#B3985B] hover:underline font-medium">Crear</button>
+                          <button onClick={() => setShowNuevaSeccion(null)} className="text-xs text-[#444] hover:text-white">Cancelar</button>
                         </div>
                       </div>
                     ) : (
-                      <button onClick={() => setShowNuevaSeccion(true)}
+                      <button onClick={() => setShowNuevaSeccion(tipoMod)}
                         className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[#222] text-[#444] hover:border-[#B3985B]/40 hover:text-[#B3985B]/70 transition-all text-xs font-medium">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
@@ -2181,7 +2162,7 @@ export default function OperacionesPage() {
                   </div>
 
                   {/* ── Drop zone: mover a sin sección (solo aparece al arrastrar desde una sección) ── */}
-                  {draggingId && proyectoDetalle.secciones.some(s => s.tareas.some(t => t.id === draggingId)) && (
+                  {draggingId && secciones.some(s => s.tareas.some(t => t.id === draggingId)) && (
                     <div
                       className={`flex items-center justify-center h-9 rounded-xl border-2 border-dashed mb-2 transition-all ${
                         noSecDropOver
@@ -2209,7 +2190,7 @@ export default function OperacionesPage() {
                   )}
 
                   {/* ── Tareas sin sección ── */}
-                  {groupProyTareas(applyProyFilter(proyectoDetalle.tareas)).map(group => (
+                  {groupProyTareas(applyProyFilter(proyectoDetalle.tareas, tipoMod)).map(group => (
                     <div key={group.label}>
                       {group.label && (
                         <div className="flex items-center gap-2 px-3 py-2 mt-3 mb-1">
@@ -2240,14 +2221,14 @@ export default function OperacionesPage() {
                     </div>
                   ))}
 
-                  {/* ── Secciones (por sub-módulo: Tareas y Plan tienen las suyas) ── */}
-                  {(proyectoSub === "TAREA" || proyectoSub === "PLAN") && proyectoDetalle.secciones.filter(s => (s.tipoModulo ?? "TAREA") === proyectoSub).map((seccion) => (
+                  {/* ── Secciones (sub-secciones libres de esta sección fija) ── */}
+                  {secciones.map((seccion) => (
                     <SectionBlock
                       key={seccion.id} seccion={seccion} proyectoId={proyectoDetalle.id}
                       selectedId={selectedId}
                       onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
                       onAddTarea={addTarea} draggingId={draggingId}
-                      onNuevoRegistro={(secId) => abrirNuevaTarea({ proyectoTareaId: proyectoDetalle.id, seccionId: secId, tipoInicial: proyectoSub as "TAREA" | "PLAN" | "EVENTO" | "PROYECTO" })}
+                      onNuevoRegistro={(secId) => abrirNuevaTarea({ proyectoTareaId: proyectoDetalle.id, seccionId: secId, tipoInicial: tipoMod })}
                       ptrTargetSec={ptrTargetSec}
                       onPtrDragStart={startPtrDrag}
                       onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
@@ -2268,7 +2249,7 @@ export default function OperacionesPage() {
                       onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
                       users={usuarios}
                       projects={proyectosNav}
-                      viewFilter={applyProyFilter}
+                      viewFilter={(t) => applyProyFilter(t, tipoMod)}
                       selectedIds={selectedIds} onMultiSelect={toggleMultiSelect}
                       onExtractChild={handleExtractChild}
                       onToggleCollapse={async (id, colapsada) => {
@@ -2314,10 +2295,13 @@ export default function OperacionesPage() {
                       isDraggingSection={draggingSeccionId === seccion.id}
                       isDropTarget={seccionDropTarget?.id === seccion.id}
                       dropPos={seccionDropTarget?.id === seccion.id ? seccionDropTarget.pos : undefined}
-                      allSections={proyectoDetalle.secciones}
+                      allSections={secciones}
                       onMoveToSection={moveToSection}
                     />
                   ))}
+                  </section>
+                  );
+                  })}
                 </>
               )}
             </div>

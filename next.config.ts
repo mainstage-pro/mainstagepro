@@ -13,6 +13,9 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // ── Proyectos internos → Proyectos de empresa (ruta renombrada) ──────────
+      { source: "/proyectos-internos",      destination: "/proyectos-de-empresa",      permanent: true },
+      { source: "/proyectos-internos/:id",  destination: "/proyectos-de-empresa/:id",  permanent: true },
       // ── Marketing (legacy routes) ────────────────────────────────────────────
       { source: "/marketing/calendario",         destination: "/marketing/contenido",               permanent: true },
       { source: "/marketing/kanban",             destination: "/marketing/contenido?vista=kanban",  permanent: true },

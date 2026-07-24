@@ -125,6 +125,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
+  // Reagendado de recurrentes: al completar, la MISMA tarea avanza a la próxima fecha
+  // (no se genera una tarea nueva). Se calcula aquí y se aplica al `data` antes del update.
+  let reagendar: { proximaFecha: Date; fechaAnterior: Date | null } | null = null;
+
   // ── Gate de evidencia (server-side): al completar, validar según tipoEvidencia ──
   if ("estado" in data && data.estado === "COMPLETADA") {
     const actual = await prisma.tarea.findUnique({
@@ -133,6 +137,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         requiereEvidencia: true,
         tipoEvidencia: true,
         evidenciaNota: true,
+        recurrencia: true,
+        fecha: true,
         archivos: { select: { tipo: true } },
       },
     });
@@ -172,6 +178,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     // estadoVerificacion según si requiere evidencia
     data.estadoVerificacion = actual.requiereEvidencia ? "PENDIENTE_VERIFICACION" : "NO_REQUIERE";
+
+    // Si es recurrente: en vez de completarla, la reagendamos a la próxima fecha.
+    if (actual.recurrencia) {
+      try {
+        const cfg = JSON.parse(actual.recurrencia) as RecurrenciaConfig;
+        const desde = actual.fecha ?? new Date();
+        reagendar = { proximaFecha: calcularProximaFecha(cfg, desde), fechaAnterior: actual.fecha };
+      } catch {
+        // recurrencia inválida → se completa como tarea normal
+      }
+    }
   }
 
   // Auto-manage fechaCompletada
@@ -179,6 +196,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data.fechaCompletada = data.estado === "COMPLETADA" ? new Date() : null;
     // Reabrir: al salir de COMPLETADA se vuelve a estado sin verificación pendiente
     if (data.estado !== "COMPLETADA") data.estadoVerificacion = "NO_REQUIERE";
+  }
+
+  // Reagendado de recurrente: la misma tarea sigue PENDIENTE pero con nueva fecha.
+  // Se limpia la evidencia para que la siguiente ocurrencia exija evidencia fresca.
+  if (reagendar) {
+    data.estado = "PENDIENTE";
+    data.fecha = reagendar.proximaFecha;
+    data.fechaCompletada = null;
+    data.estadoVerificacion = "NO_REQUIERE";
+    data.evidenciaNota = null;
+    data.evidenciaEnviadaAt = null;
+    data.evidenciaEnviadaCanal = null;
+    data.motivoRechazo = null;
   }
 
   // Capture previous assignee before updating (only when assignment is being changed)
@@ -206,56 +236,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
   }
 
-  // ── Recurrence: when completing a recurring task, spawn next occurrence ──
-  let nextTarea = null;
-  if (data.estado === "COMPLETADA" && tarea.recurrencia) {
-    try {
-      const cfg = JSON.parse(tarea.recurrencia) as RecurrenciaConfig;
-      const desde = tarea.fecha ?? new Date();
-      const proximaFecha = calcularProximaFecha(cfg, desde);
-
-      nextTarea = await prisma.tarea.create({
-        data: {
-          titulo:          tarea.titulo,
-          descripcion:     tarea.descripcion,
-          prioridad:       tarea.prioridad,
-          area:            tarea.area,
-          asignadoAId:     tarea.asignadoAId,
-          creadoPorId:     tarea.creadoPorId,
-          iniciativaId:    tarea.iniciativaId,
-          proyectoTareaId: tarea.proyectoTareaId,
-          seccionId:       tarea.seccionId,
-          carpetaId:       tarea.carpetaId,
-          fecha:           proximaFecha,
-          fechaVencimiento:tarea.fechaVencimiento,
-          recurrencia:     tarea.recurrencia,
-          notas:           tarea.notas,
-          etiquetas:       tarea.etiquetas,
-          orden:           tarea.orden,
-          // Copiar ficha del estándar, origen y config de evidencia a la nueva ocurrencia
-          tipoOrigen:        tarea.tipoOrigen,
-          ptTemplateId:      tarea.ptTemplateId,
-          requiereEvidencia: tarea.requiereEvidencia,
-          tipoEvidencia:     tarea.tipoEvidencia,
-          // Nace PENDIENTE: sin verificación hasta que se complete con evidencia
-          estadoVerificacion: "NO_REQUIERE",
-          porqueSeHace:      tarea.porqueSeHace,
-          estandarMinimo:    tarea.estandarMinimo,
-          siNoSeHace:        tarea.siNoSeHace,
-          cuando:            tarea.cuando,
-          moduloDestino:     tarea.moduloDestino,
-          moduloTexto:       tarea.moduloTexto,
-          moduloDisponible:  tarea.moduloDisponible,
-          esAccionCampo:     tarea.esAccionCampo,
-        },
-        select: SELECT,
-      });
-    } catch {
-      // Invalid recurrencia JSON — ignore
-    }
-  }
-
-  return NextResponse.json({ tarea, nextTarea });
+  // Si se reagendó una recurrente, informamos al cliente para el toast/undo.
+  // `fechaAnterior` permite deshacer (regresar la tarea a su fecha previa).
+  return NextResponse.json({
+    tarea,
+    reagendada: !!reagendar,
+    fechaAnterior: reagendar?.fechaAnterior ?? null,
+  });
 }
 
 export async function DELETE(

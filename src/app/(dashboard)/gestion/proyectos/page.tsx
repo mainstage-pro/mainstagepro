@@ -1,1 +1,1 @@
-export { default } from "../../proyectos-internos/page";
+export { default } from "../../proyectos-de-empresa/page";

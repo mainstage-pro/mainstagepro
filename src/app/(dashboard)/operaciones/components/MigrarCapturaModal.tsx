@@ -121,7 +121,7 @@ export default function MigrarCapturaModal({
       if (!res.ok) { setError("No se pudo crear el proyecto."); setSaving(false); return; }
       const { proyecto } = await res.json();
       await marcarClasificado("proyecto", pArea);
-      setSuccess({ label: "Ver en Proyectos", href: `/proyectos-internos/${proyecto.id}` });
+      setSuccess({ label: "Ver en Proyectos", href: `/proyectos-de-empresa/${proyecto.id}` });
       setSaving(false);
       return;
     }

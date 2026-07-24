@@ -5,6 +5,9 @@ export interface UndoState {
   id: string;
   titulo: string;
   expiresAt: number;   // Date.now() + 4000
+  reagendada?: boolean;          // recurrente reagendada (no completada)
+  fechaAnterior?: string | null; // fecha previa, para deshacer el reagendado
+  nuevaFechaLabel?: string;      // etiqueta de la próxima fecha para el toast
 }
 
 interface Props {
@@ -58,7 +61,11 @@ export default function UndoToast({ undo, onUndo, onDismiss }: Props) {
 
         {/* Text */}
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-white font-medium truncate">Tarea completada</p>
+          <p className="text-sm text-white font-medium truncate">
+            {undo.reagendada
+              ? (undo.nuevaFechaLabel ? `Reagendada para ${undo.nuevaFechaLabel}` : "Tarea reagendada")
+              : "Tarea completada"}
+          </p>
           <p className="text-xs text-[#555] truncate">{undo.titulo}</p>
         </div>
 
