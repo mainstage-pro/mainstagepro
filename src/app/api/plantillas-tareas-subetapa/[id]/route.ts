@@ -39,8 +39,9 @@ export async function PATCH(
     return NextResponse.json({ ok: true });
   }
 
-  const data: { titulo?: string; area?: string; prioridad?: string; offsetDias?: number | null } = {};
+  const data: { titulo?: string; descripcion?: string | null; area?: string; prioridad?: string; offsetDias?: number | null } = {};
   if (typeof body?.titulo === "string" && body.titulo.trim()) data.titulo = body.titulo.trim();
+  if ("descripcion" in body) data.descripcion = typeof body.descripcion === "string" && body.descripcion.trim() ? body.descripcion.trim() : null;
   if (typeof body?.area === "string" && body.area.trim()) data.area = body.area.trim();
   if (typeof body?.prioridad === "string" && body.prioridad.trim()) data.prioridad = body.prioridad.trim();
   if ("offsetDias" in body) data.offsetDias = typeof body.offsetDias === "number" ? body.offsetDias : null;

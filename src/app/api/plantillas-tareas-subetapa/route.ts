@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
     data: {
       etapaInterna,
       titulo,
+      descripcion: typeof body?.descripcion === "string" && body.descripcion.trim() ? body.descripcion.trim() : null,
       area: String(body?.area ?? "").trim() || "VENTAS",
       prioridad: String(body?.prioridad ?? "").trim() || "MEDIA",
       offsetDias: typeof body?.offsetDias === "number" ? body.offsetDias : null,

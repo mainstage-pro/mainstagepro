@@ -8,6 +8,7 @@ export interface PlantillaSubetapaItem {
   id: string;
   etapaInterna: string;
   titulo: string;
+  descripcion: string | null;
   area: string;
   prioridad: string;
   offsetDias: number | null;
@@ -18,7 +19,7 @@ export interface PlantillaSubetapaItem {
 // Semilla por subetapa base. Cada trato que entra a la subetapa recibe estas
 // tareas; el equipo las completa y, al terminarlas todas, el trato avanza solo
 // a la siguiente subetapa. Editable después desde /crm/proceso.
-export const PLANTILLAS_SUBETAPA_DEFAULT: Record<string, { titulo: string; area?: string; prioridad?: string; offsetDias?: number }[]> = {
+export const PLANTILLAS_SUBETAPA_DEFAULT: Record<string, { titulo: string; descripcion?: string; area?: string; prioridad?: string; offsetDias?: number }[]> = {
   PRIMER_CONTACTO: [
     { titulo: "Contactar al prospecto por primera vez", prioridad: "ALTA", offsetDias: 0 },
     { titulo: "Calificar interés, tipo de evento y momento de contratación", offsetDias: 1 },

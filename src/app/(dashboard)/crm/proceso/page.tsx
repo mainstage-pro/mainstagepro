@@ -643,34 +643,46 @@ function TareasDefectoSubetapa({ etapaInterna }: { etapaInterna: string }) {
       ) : items.length === 0 ? (
         <p className="text-xs text-[#666] mb-2">Sin tareas por defecto en esta subetapa.</p>
       ) : (
-        <ul className="space-y-1.5 mb-2">
+        <ul className="space-y-2.5 mb-2">
           {items.map((it, i) => (
-            <li key={it.id} className="flex flex-wrap items-center gap-1.5">
-              <input
-                defaultValue={it.titulo}
-                onBlur={(e) => e.target.value.trim() && e.target.value !== it.titulo && patch(it.id, { titulo: e.target.value.trim() })}
-                className="flex-1 min-w-[160px] bg-[#1a1a1a] border border-[#262626] rounded px-1.5 py-1 text-xs focus:border-[#b3985b] outline-none"
-              />
-              <select value={it.prioridad} onChange={(e) => patch(it.id, { prioridad: e.target.value })} className={selCls} title="Prioridad">
-                {PRIORIDADES_TAREA.map((p) => <option key={p} value={p}>{p.charAt(0) + p.slice(1).toLowerCase()}</option>)}
-              </select>
-              <select value={it.area} onChange={(e) => patch(it.id, { area: e.target.value })} className={selCls} title="Área">
-                {AREAS_TAREA.map((a) => <option key={a} value={a}>{a.charAt(0) + a.slice(1).toLowerCase()}</option>)}
-              </select>
-              <input
-                type="number"
-                defaultValue={it.offsetDias ?? ""}
-                placeholder="día"
-                title="Días para vencer desde que entra a la subetapa"
+            <li key={it.id} className="space-y-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <input
+                  defaultValue={it.titulo}
+                  onBlur={(e) => e.target.value.trim() && e.target.value !== it.titulo && patch(it.id, { titulo: e.target.value.trim() })}
+                  className="flex-1 min-w-[160px] bg-[#1a1a1a] border border-[#262626] rounded px-1.5 py-1 text-xs focus:border-[#b3985b] outline-none"
+                />
+                <select value={it.prioridad} onChange={(e) => patch(it.id, { prioridad: e.target.value })} className={selCls} title="Prioridad">
+                  {PRIORIDADES_TAREA.map((p) => <option key={p} value={p}>{p.charAt(0) + p.slice(1).toLowerCase()}</option>)}
+                </select>
+                <select value={it.area} onChange={(e) => patch(it.id, { area: e.target.value })} className={selCls} title="Área">
+                  {AREAS_TAREA.map((a) => <option key={a} value={a}>{a.charAt(0) + a.slice(1).toLowerCase()}</option>)}
+                </select>
+                <input
+                  type="number"
+                  defaultValue={it.offsetDias ?? ""}
+                  placeholder="día"
+                  title="Días para vencer desde que entra a la subetapa"
+                  onBlur={(e) => {
+                    const v = e.target.value === "" ? null : Number(e.target.value);
+                    if (v !== it.offsetDias) patch(it.id, { offsetDias: v });
+                  }}
+                  className="w-14 bg-[#1a1a1a] border border-[#262626] rounded px-1.5 py-1 text-xs focus:border-[#b3985b] outline-none"
+                />
+                <button onClick={() => patch(it.id, { mover: "arriba" })} disabled={i === 0} className="text-[#666] hover:text-[#f0f0f0] disabled:opacity-30 px-1">↑</button>
+                <button onClick={() => patch(it.id, { mover: "abajo" })} disabled={i === items.length - 1} className="text-[#666] hover:text-[#f0f0f0] disabled:opacity-30 px-1">↓</button>
+                <button onClick={() => borrar(it.id)} className="text-[#666] hover:text-red-400 px-1">✕</button>
+              </div>
+              <textarea
+                defaultValue={it.descripcion ?? ""}
                 onBlur={(e) => {
-                  const v = e.target.value === "" ? null : Number(e.target.value);
-                  if (v !== it.offsetDias) patch(it.id, { offsetDias: v });
+                  const v = e.target.value.trim();
+                  if (v !== (it.descripcion ?? "")) patch(it.id, { descripcion: v });
                 }}
-                className="w-14 bg-[#1a1a1a] border border-[#262626] rounded px-1.5 py-1 text-xs focus:border-[#b3985b] outline-none"
+                placeholder="Descripción / instrucciones (opcional)"
+                rows={2}
+                className="w-full bg-[#141414] border border-[#262626] rounded px-1.5 py-1 text-[11px] text-[#bbb] focus:border-[#b3985b] outline-none resize-y"
               />
-              <button onClick={() => patch(it.id, { mover: "arriba" })} disabled={i === 0} className="text-[#666] hover:text-[#f0f0f0] disabled:opacity-30 px-1">↑</button>
-              <button onClick={() => patch(it.id, { mover: "abajo" })} disabled={i === items.length - 1} className="text-[#666] hover:text-[#f0f0f0] disabled:opacity-30 px-1">↓</button>
-              <button onClick={() => borrar(it.id)} className="text-[#666] hover:text-red-400 px-1">✕</button>
             </li>
           ))}
         </ul>

@@ -48,6 +48,7 @@ export async function instanciarTareasSubetapa(tratoId: string, etapaInterna: st
   await prisma.tarea.createMany({
     data: plantillas.map((p, i) => ({
       titulo: p.titulo,
+      descripcion: p.descripcion ?? null,
       prioridad: p.prioridad,
       area: p.area,
       tratoId,

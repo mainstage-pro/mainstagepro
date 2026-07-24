@@ -4058,6 +4058,7 @@ model PlantillaTareaSubetapa {
   id           String   @id @default(cuid())
   etapaInterna String   // código de la subetapa (base o custom)
   titulo       String
+  descripcion  String?  // detalle / instrucciones de la tarea (se copia a la Tarea del trato)
   area         String   @default("VENTAS")   // VENTAS | ADMINISTRACION | PRODUCCION | MARKETING | GENERAL
   prioridad    String   @default("MEDIA")     // URGENTE | ALTA | MEDIA | BAJA
   offsetDias   Int?     // vencimiento relativo a la entrada a la subetapa (días)

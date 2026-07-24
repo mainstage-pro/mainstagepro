@@ -26,12 +26,16 @@ export async function ensurePlantillasTareaSubetapa() {
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS "plantillas_tareas_subetapa_etapa_activo_idx" ON "plantillas_tareas_subetapa" ("etapaInterna", "activo")`
   );
+  await prisma.$executeRawUnsafe(
+    `ALTER TABLE "plantillas_tareas_subetapa" ADD COLUMN IF NOT EXISTS "descripcion" TEXT`
+  );
 
   const count = await prisma.plantillaTareaSubetapa.count();
   if (count === 0) {
     const data: {
       etapaInterna: string;
       titulo: string;
+      descripcion: string | null;
       area: string;
       prioridad: string;
       offsetDias: number | null;
@@ -43,6 +47,7 @@ export async function ensurePlantillasTareaSubetapa() {
         data.push({
           etapaInterna,
           titulo: it.titulo,
+          descripcion: it.descripcion ?? null,
           area: it.area ?? "VENTAS",
           prioridad: it.prioridad ?? "MEDIA",
           offsetDias: it.offsetDias ?? null,
