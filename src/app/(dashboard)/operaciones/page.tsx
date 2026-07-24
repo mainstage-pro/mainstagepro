@@ -1474,6 +1474,7 @@ export default function OperacionesPage() {
             icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>}
             label="Próximas" isActive={vistaKey === "proximas"} onClick={() => setVista("proximas")}
           />
+          <div className="border-t border-[#181818] my-1.5 mx-2" />
           {sessionRole === "ADMIN" && (
             <SideItem
               icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
@@ -1486,6 +1487,7 @@ export default function OperacionesPage() {
             isActive={vistaKey === "rendimiento"}
             onClick={() => setVista("rendimiento")}
           />
+          <div className="border-t border-[#181818] my-1.5 mx-2" />
           <SideItem
             icon={<Handshake strokeWidth={1.5} className="w-3.5 h-3.5" />}
             label="Tratos"
@@ -1567,35 +1569,6 @@ export default function OperacionesPage() {
                 Nueva carpeta
               </button>
             )}
-            {/* ─── Sección NUEVO ─────────────────────────────────────── */}
-            <div className="mt-3 mb-1">
-              <div className="h-px bg-white/[0.04] mx-1 mb-2" />
-              <span className="px-3 text-[10px] font-semibold tracking-widest uppercase select-none" style={{ color: "#e8a020" }}>Nuevo</span>
-            </div>
-            <SideItem
-              icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>}
-              label="Captura rápida"
-              isActive={vistaKey === "captura"}
-              onClick={() => setVista("captura")}
-              count={capturaCounts.captura || undefined}
-              countColor="#e8a020"
-            />
-            <SideItem
-              icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="12" y1="2" x2="12" y2="6"/><path d="M12 6a6 6 0 0 1 0 12"/><path d="M12 18a6 6 0 0 1 0-12"/><line x1="12" y1="18" x2="12" y2="22"/></svg>}
-              label="Ideas"
-              isActive={vistaKey === "ideas"}
-              onClick={() => setVista("ideas")}
-              count={capturaCounts.ideas || undefined}
-              countColor="#a78bfa"
-            />
-            <SideItem
-              icon={<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>}
-              label="Iniciativas"
-              isActive={vistaKey === "iniciativas"}
-              onClick={() => setVista("iniciativas")}
-              count={capturaCounts.iniciativas || undefined}
-              countColor="#3b82f6"
-            />
           </div>
         </div>
 
