@@ -2834,26 +2834,32 @@ export default function OperacionesPage() {
                       <span className="text-[12px] text-[#555] font-semibold tracking-wide uppercase">Áreas</span>
                     </div>
                   )}
-                  {proyectosSinCarpeta.map(p => (
+                  {proyectosSinCarpeta.map(p => {
+                    const IconP = iconoParaProyecto(p.nombre);
+                    return (
                     <button key={p.id} onClick={() => { setVista({ tipo: "proyecto", id: p.id }); setMobileProyectos(false); }}
                       className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${vistaKey === p.id ? "text-[#B3985B] bg-[#B3985B]/5" : "text-white hover:bg-[#111]"}`}>
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: p.color ?? "#555" }} />
+                      <IconP className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} style={{ color: p.color ?? "#888" }} />
                       {p.nombre}
                     </button>
-                  ))}
+                    );
+                  })}
                   {carpetas.map(c => (
                     <div key={c.id}>
                       <div className="flex items-center gap-2 px-4 py-2">
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
                         <span className="text-[12px] text-[#555] font-semibold tracking-wide">{c.nombre}</span>
                       </div>
-                      {c.proyectos.map(p => (
+                      {c.proyectos.map(p => {
+                        const IconP = iconoParaProyecto(p.nombre);
+                        return (
                         <button key={p.id} onClick={() => { setVista({ tipo: "proyecto", id: p.id }); setMobileProyectos(false); }}
                           className={`w-full flex items-center gap-3 pl-8 pr-4 py-2.5 text-sm transition-colors ${vistaKey === p.id ? "text-[#B3985B] bg-[#B3985B]/5" : "text-white hover:bg-[#111]"}`}>
-                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color ?? "#555" }} />
+                          <IconP className="w-4 h-4 shrink-0" strokeWidth={1.75} style={{ color: p.color ?? "#888" }} />
                           {p.nombre}
                         </button>
-                      ))}
+                        );
+                      })}
                     </div>
                   ))}
                   {proyectosSinCarpeta.length === 0 && carpetas.length === 0 && (
