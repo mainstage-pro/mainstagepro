@@ -4,35 +4,30 @@ import { getSession } from "@/lib/auth";
 
 // GET /api/tareas/opciones
 // Alimenta el selector de "Nueva tarea" con las fuentes seleccionables:
-//   - eventos:   proyectos de evento vigentes, agrupados por mes (YYYY-MM)
+//   - eventos:   proyectos de evento (todos, sin cancelados), agrupados por mes; cada uno con flag `vigente`
 //   - proyectosInternos: proyectos de empresa activos, con sus fases
-//   - tratos:    tratos de venta del pipeline activo
-// Se usa para los tipos de tarea EVENTO, PROYECTO y TRATO.
-// Por defecto la lista viene recortada a lo vigente; con ?todos=1 se abre el histórico completo.
+//   - tratos:    tratos de venta (todos, sin perdidos), cada uno con flag `vigente`
+// La lista completa se envía para poder buscar en todo el histórico; el flag `vigente`
+// permite al cliente mostrar en reposo solo lo relevante (ventana activa / pipeline abierto).
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
-export async function GET(req: Request) {
+export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const todos = new URL(req.url).searchParams.get("todos") === "1";
-
-  // Ventana activa por defecto: últimos 7 días y próximos 90 (espejo de /api/tareas/por-proyecto).
+  // Ventana "vigente" para eventos: últimos 7 días y próximos 90 (espejo de /api/tareas/por-proyecto).
   const hoy = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }));
   const desde = new Date(hoy);
   desde.setUTCDate(hoy.getUTCDate() - 7);
   const hasta = new Date(hoy);
   hasta.setUTCDate(hoy.getUTCDate() + 90);
 
-  // ── Proyectos de evento (sin cancelados; ventana activa salvo ?todos=1) ──────
+  // ── Proyectos de evento (todos, sin cancelados) ─────────────────────────────
   const proyectos = await prisma.proyecto.findMany({
-    where: {
-      estado: { not: "CANCELADO" },
-      ...(todos ? {} : { fechaEvento: { gte: desde, lte: hasta } }),
-    },
+    where: { estado: { not: "CANCELADO" } },
     orderBy: { fechaEvento: "asc" },
     select: {
       id: true,
@@ -48,7 +43,7 @@ export async function GET(req: Request) {
   const gruposMap = new Map<string, {
     clave: string;
     etiqueta: string;
-    eventos: { id: string; nombre: string; numeroProyecto: string; estado: string; fechaEvento: string; cliente: string | null }[];
+    eventos: { id: string; nombre: string; numeroProyecto: string; estado: string; fechaEvento: string; cliente: string | null; vigente: boolean }[];
   }>();
   for (const p of proyectos) {
     const f = p.fechaEvento;
@@ -62,6 +57,7 @@ export async function GET(req: Request) {
       estado: p.estado,
       fechaEvento: f.toISOString(),
       cliente: p.cliente?.nombre ?? null,
+      vigente: f >= desde && f <= hasta,
     });
   }
   const eventosPorMes = Array.from(gruposMap.values());
@@ -83,17 +79,16 @@ export async function GET(req: Request) {
     },
   });
 
-  // ── Tratos de venta (pipeline activo por defecto; cerrados solo con ?todos=1) ─
+  // ── Tratos de venta (todos, sin perdidos) ──────────────────────────────────
   const tratos = await prisma.trato.findMany({
-    where: {
-      etapa: { notIn: todos ? ["VENTA_PERDIDA"] : ["VENTA_PERDIDA", "VENTA_CERRADA"] },
-    },
+    where: { etapa: { not: "VENTA_PERDIDA" } },
     orderBy: { updatedAt: "desc" },
-    take: todos ? 500 : 200,
+    take: 500,
     select: {
       id: true,
       nombreEvento: true,
       etapa: true,
+      fechaEventoEstimada: true,
       cliente: { select: { nombre: true } },
     },
   });
@@ -102,6 +97,9 @@ export async function GET(req: Request) {
     nombre: t.nombreEvento || t.cliente?.nombre || "Trato sin nombre",
     cliente: t.cliente?.nombre ?? null,
     etapa: t.etapa,
+    fechaEvento: t.fechaEventoEstimada ? t.fechaEventoEstimada.toISOString() : null,
+    // Pipeline abierto = sigue vigente; los cerrados quedan disponibles solo vía búsqueda.
+    vigente: t.etapa !== "VENTA_CERRADA",
   }));
 
   return NextResponse.json({ eventosPorMes, proyectosInternos: internos, tratos: tratosOpts });

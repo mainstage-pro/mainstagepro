@@ -12,6 +12,9 @@ interface Props {
   value: string;
   onChange: (value: string) => void;
   options: ComboboxOption[];
+  // Lista mostrada en reposo (sin búsqueda). Si se omite, se usa `options`.
+  // Permite mostrar un subconjunto acotado al abrir, pero buscar sobre `options` completo al escribir.
+  idleOptions?: ComboboxOption[];
   placeholder?: string;
   className?: string;
   disabled?: boolean;
@@ -21,6 +24,7 @@ export function Combobox({
   value,
   onChange,
   options,
+  idleOptions,
   placeholder = "Seleccionar...",
   className = "",
   disabled = false,
@@ -41,7 +45,7 @@ export function Combobox({
   const isFiltering = query !== selectedLabel;
   const filtered = isFiltering && query.trim()
     ? options.filter(o => o.label.toLowerCase().includes(query.toLowerCase()))
-    : options;
+    : (idleOptions ?? options);
 
   function updatePosition() {
     if (!inputRef.current) return;
