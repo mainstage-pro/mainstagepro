@@ -304,6 +304,7 @@ model Trato {
   seguimientos           Seguimiento[]
   apoyoDe                TratoApoyo[]
   solicitudOrigen        SolicitudCotizacion?
+  tareas                 Tarea[]      @relation("TareasDeTrato")
 
   @@map("tratos")
 }
@@ -2016,6 +2017,9 @@ model Tarea {
   // ── Proyecto Evento ──────────────────────────────────────────────────────────
   proyectoEventoId String?
   proyectoEvento   Proyecto?          @relation("TareasDeProyecto", fields: [proyectoEventoId], references: [id], onDelete: SetNull)
+  // ── Trato (venta) ────────────────────────────────────────────────────────────
+  tratoId          String?
+  trato            Trato?             @relation("TareasDeTrato", fields: [tratoId], references: [id], onDelete: SetNull)
   // ── Scheduling ──────────────────────────────────────────────────────────────
   fecha            DateTime?  // When to work on it (shows in Hoy)
   fechaVencimiento DateTime?
@@ -2038,7 +2042,7 @@ model Tarea {
   faseInternaId     String?
   faseInterna       FaseProyectoInterno? @relation("TareasDeFase", fields: [faseInternaId], references: [id], onDelete: SetNull)
   // ── Capa aditiva: hub de ejecución ────────────────────────────────────────
-  tipoOrigen         String   @default("TAREA")           // TAREA | PLAN | PROYECTO | EVENTO
+  tipoOrigen         String   @default("TAREA")           // TAREA | PLAN | PROYECTO | EVENTO | TRATO
   requiereEvidencia  Boolean  @default(false)
   tipoEvidencia      String?                              // FOTO | ARCHIVO | ENLACE_MODULO | NOTA
   evidenciaNota      String?  @db.Text
@@ -2072,6 +2076,7 @@ model Tarea {
   @@index([estadoVerificacion])
   @@index([asignadoAId, fecha])
   @@index([ptTemplateId])
+  @@index([tratoId])
   @@map("tareas")
 }
 

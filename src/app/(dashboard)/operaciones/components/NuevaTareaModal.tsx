@@ -2,19 +2,20 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ClipboardList, Repeat, Calendar, Building2,
-  ChevronLeft, X, FileText, Camera, Paperclip, Check,
+  ChevronLeft, X, FileText, Camera, Paperclip, Check, Handshake,
 } from "lucide-react";
 import DatePicker from "@/components/ui/DatePicker";
 import RecurrenciaInput from "./RecurrenciaInput";
 
-// ── Tipos de registro (los 4 sistemas del hub unificado) ────────────────────────
-type TipoKey = "TAREA" | "PLAN" | "EVENTO" | "PROYECTO";
+// ── Tipos de registro (los sistemas del hub unificado) ──────────────────────────
+type TipoKey = "TAREA" | "PLAN" | "EVENTO" | "PROYECTO" | "TRATO";
 
 const TIPOS: { key: TipoKey; titulo: string; desc: string; Icon: typeof ClipboardList; color: string }[] = [
   { key: "TAREA",    titulo: "Tarea",                          desc: "Una tarea puntual del día a día",        Icon: ClipboardList, color: "#9ca3af" },
   { key: "PLAN",     titulo: "Compromiso de plan de trabajo",  desc: "Una responsabilidad recurrente",          Icon: Repeat,        color: "#34d399" },
   { key: "EVENTO",   titulo: "Tarea de proyecto de evento",    desc: "Ligada a un evento específico",           Icon: Calendar,      color: "#60a5fa" },
   { key: "PROYECTO", titulo: "Tarea de proyecto de empresa",   desc: "Iniciativa interna de la empresa",        Icon: Building2,     color: "#818cf8" },
+  { key: "TRATO",    titulo: "Tarea de trato de ventas",       desc: "Ligada a un trato/prospecto",             Icon: Handshake,     color: "#B3985B" },
 ];
 
 // ── Métodos de comprobación (evidencia de cumplimiento) ─────────────────────────
@@ -36,6 +37,7 @@ interface EventoOpt { id: string; nombre: string; numeroProyecto: string; estado
 interface MesGrupo  { clave: string; etiqueta: string; eventos: EventoOpt[] }
 interface FaseOpt   { id: string; nombre: string; completada: boolean }
 interface InternoOpt { id: string; nombre: string; area: string; estado: string; lider: { id: string; name: string } | null; fases: FaseOpt[] }
+interface TratoOpt  { id: string; nombre: string; cliente: string | null; etapa: string }
 
 interface Usuario { id: string; name: string }
 
@@ -56,6 +58,9 @@ interface Props {
   // Fija el proyecto de evento y bloquea el selector (al crear desde el detalle de un proyecto).
   proyectoEventoIdInicial?: string | null;
   proyectoEventoNombre?: string | null;
+  // Fija el trato y bloquea el selector (al crear desde el detalle de un trato).
+  tratoIdInicial?: string | null;
+  tratoNombre?: string | null;
   // Modo edición: si se da, el modal carga esa tarea y guarda con PATCH en vez de crear.
   tareaIdEdicion?: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -65,7 +70,8 @@ interface Props {
 export default function NuevaTareaModal({
   open, onClose, usuarios, defaultAsignadoId = null, defaultArea = null,
   proyectoTareaId = null, seccionId = null, tipoInicial = null, tituloInicial = null,
-  proyectoEventoIdInicial = null, proyectoEventoNombre = null, tareaIdEdicion = null, onCreated,
+  proyectoEventoIdInicial = null, proyectoEventoNombre = null,
+  tratoIdInicial = null, tratoNombre = null, tareaIdEdicion = null, onCreated,
 }: Props) {
   const [tipo, setTipo]           = useState<TipoKey | null>(null);
   const [titulo, setTitulo]       = useState("");
@@ -79,12 +85,14 @@ export default function NuevaTareaModal({
   const [comprobacion, setComprobacion] = useState<string>("");
   const [proyectoEventoId, setProyectoEventoId] = useState<string | null>(null);
   const [proyectoInternoId, setProyectoInternoId] = useState<string | null>(null);
+  const [tratoId, setTratoId]     = useState<string | null>(null);
   const [faseId, setFaseId]       = useState<string | null>(null);
   const [error, setError]         = useState<string | null>(null);
   const [saving, setSaving]       = useState(false);
 
   const [eventosPorMes, setEventosPorMes] = useState<MesGrupo[]>([]);
   const [internos, setInternos]           = useState<InternoOpt[]>([]);
+  const [tratos, setTratos]               = useState<TratoOpt[]>([]);
   const [loadingOpts, setLoadingOpts]     = useState(false);
   const [loadingEdit, setLoadingEdit]     = useState(false);
 
@@ -98,9 +106,10 @@ export default function NuevaTareaModal({
       setArea(defaultArea || "GENERAL"); setAsignadoId(defaultAsignadoId);
       setFecha(""); setFechaVen(""); setRecurrencia(null); setComprobacion("");
       setProyectoEventoId(proyectoEventoIdInicial ?? null); setProyectoInternoId(null); setFaseId(null);
+      setTratoId(tratoIdInicial ?? null);
       setError(null); setSaving(false);
     }
-  }, [open, tipoInicial, tituloInicial, defaultArea, defaultAsignadoId, proyectoEventoIdInicial]);
+  }, [open, tipoInicial, tituloInicial, defaultArea, defaultAsignadoId, proyectoEventoIdInicial, tratoIdInicial]);
 
   // Modo edición: carga la tarea y precarga los campos (corre después del reset).
   useEffect(() => {
@@ -111,7 +120,7 @@ export default function NuevaTareaModal({
       .then(d => {
         const t = d.tarea;
         if (!t) return;
-        setTipo("EVENTO");
+        setTipo((t.tratoId ? "TRATO" : (t.tipoOrigen as TipoKey)) ?? "EVENTO");
         setTitulo(t.titulo ?? "");
         setDescripcion(t.descripcion ?? "");
         setPrioridad(t.prioridad ?? "MEDIA");
@@ -120,6 +129,8 @@ export default function NuevaTareaModal({
         setFecha(t.fecha ? String(t.fecha).substring(0, 10) : "");
         setFechaVen(t.fechaVencimiento ? String(t.fechaVencimiento).substring(0, 10) : "");
         setComprobacion(t.tipoEvidencia ?? "");
+        setTratoId(t.tratoId ?? null);
+        setProyectoEventoId(t.proyectoEventoId ?? null);
       })
       .catch(() => {})
       .finally(() => setLoadingEdit(false));
@@ -128,18 +139,22 @@ export default function NuevaTareaModal({
   // Carga las fuentes (eventos/proyectos internos) la primera vez que se necesitan
   useEffect(() => {
     if (!open) return;
-    if (!proyectoEventoIdInicial && (tipo === "EVENTO" || tipo === "PROYECTO") && eventosPorMes.length === 0 && internos.length === 0 && !loadingOpts) {
+    const necesitaOpts =
+      (!proyectoEventoIdInicial && (tipo === "EVENTO" || tipo === "PROYECTO")) ||
+      (!tratoIdInicial && tipo === "TRATO");
+    if (necesitaOpts && eventosPorMes.length === 0 && internos.length === 0 && tratos.length === 0 && !loadingOpts) {
       setLoadingOpts(true);
       fetch("/api/tareas/opciones")
         .then(r => r.json())
         .then(d => {
           setEventosPorMes(d.eventosPorMes ?? []);
           setInternos(d.proyectosInternos ?? []);
+          setTratos(d.tratos ?? []);
         })
         .catch(() => {})
         .finally(() => setLoadingOpts(false));
     }
-  }, [open, tipo, eventosPorMes.length, internos.length, loadingOpts, proyectoEventoIdInicial]);
+  }, [open, tipo, eventosPorMes.length, internos.length, tratos.length, loadingOpts, proyectoEventoIdInicial, tratoIdInicial]);
 
   const internoSel = useMemo(() => internos.find(p => p.id === proyectoInternoId) ?? null, [internos, proyectoInternoId]);
 
@@ -158,6 +173,7 @@ export default function NuevaTareaModal({
     if (tipo === "PLAN" && !recurrencia) { setError("Un compromiso de plan de trabajo debe ser recurrente."); return; }
     if (tipo === "EVENTO" && !proyectoEventoId) { setError("Selecciona el evento correspondiente."); return; }
     if (tipo === "PROYECTO" && !proyectoInternoId) { setError("Selecciona el proyecto de empresa."); return; }
+    if (tipo === "TRATO" && !tratoId) { setError("Selecciona el trato correspondiente."); return; }
 
     setSaving(true);
     setError(null);
@@ -205,6 +221,7 @@ export default function NuevaTareaModal({
       proyectoEventoId: tipo === "EVENTO" ? proyectoEventoId : null,
       proyectoInternoId: tipo === "PROYECTO" ? proyectoInternoId : null,
       faseInternaId: tipo === "PROYECTO" ? (faseId || null) : null,
+      tratoId: tipo === "TRATO" ? tratoId : null,
       tipoEvidencia: comprobacion || null,
       requiereEvidencia: !!comprobacion,
     };
@@ -348,6 +365,30 @@ export default function NuevaTareaModal({
                   </Campo>
                 )}
               </>
+            )}
+
+            {tipo === "TRATO" && (
+              <Campo label="Trato">
+                {tratoIdInicial ? (
+                  <div className="w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white/80 flex items-center gap-2">
+                    <Handshake size={14} className="text-[#B3985B] shrink-0" />
+                    <span className="truncate">{tratoNombre ?? "Este trato"}</span>
+                  </div>
+                ) : loadingOpts ? <Cargando /> : (
+                  <select value={tratoId ?? ""} onChange={e => setTratoId(e.target.value || null)}
+                    className="w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-[#B3985B]/40">
+                    <option value="">Selecciona un trato…</option>
+                    {tratos.map(t => (
+                      <option key={t.id} value={t.id}>
+                        {t.nombre}{t.cliente ? ` · ${t.cliente}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {!tratoIdInicial && !loadingOpts && tratos.length === 0 && (
+                  <p className="text-[11px] text-[#555] mt-1">No hay tratos activos.</p>
+                )}
+              </Campo>
             )}
 
             {/* Programación: recurrencia (PLAN) o fecha */}

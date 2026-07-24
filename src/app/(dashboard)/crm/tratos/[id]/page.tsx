@@ -15,6 +15,7 @@ import { Combobox } from "@/components/Combobox";
 import { BackButton } from "@/components/BackButton";
 import { EtapaInternaBar, EtapaInternaSelect } from "@/components/crm/EtapaInternaBar";
 import { PasoActualPanel } from "@/components/crm/PasoActualPanel";
+import TareasTratoTab from "./TareasTratoTab";
 import { SEGUIMIENTO_TIPOS, SEGUIMIENTO_TIPO_LABELS, getWaMensajePrimerContacto } from '@/lib/seguimientoTypes';
 import { SelectorEquiposInventario, type SeleccionEquipos } from '@/components/SelectorEquiposInventario';
 import DiscoveryForm from '@/components/crm/DiscoveryForm';
@@ -2746,6 +2747,28 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             telefono={trato.cliente.telefono ?? null}
             showModal={showSegModal}
             setShowModal={setShowSegModal}
+          />
+        </div>
+      </div>
+
+      {/* ── Tareas del trato (ad-hoc, ligadas a Gestión Operativa) ── */}
+      <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#141414]">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-[#B3985B]/10 border border-[#B3985B]/30 flex items-center justify-center shrink-0">
+              <Calendar strokeWidth={1.75} className="w-4 h-4 text-[#B3985B]" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white tracking-tight">Tareas del trato</h2>
+              <p className="text-[10px] text-gray-600 mt-0.5">Aparecen para su responsable en Gestión Operativa</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-5">
+          <TareasTratoTab
+            tratoId={trato.id}
+            tratoNombre={trato.nombreEvento || trato.cliente.nombre}
+            usuarios={usuarios}
           />
         </div>
       </div>

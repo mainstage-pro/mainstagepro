@@ -61,6 +61,8 @@ const SELECT = {
   iniciativa:    { select: { id: true, nombre: true, color: true } },
   proyectoTarea: { select: { id: true, nombre: true, color: true } },
   proyectoEvento:{ select: { id: true, nombre: true, fechaEvento: true } },
+  tratoId: true,
+  trato:         { select: { id: true, nombreEvento: true, cliente: { select: { nombre: true } } } },
   proyectoInterno:{ select: { id: true, nombre: true, area: true } },
   seccion:       { select: { id: true, nombre: true } },
   carpeta:       { select: { id: true, nombre: true } },
@@ -279,7 +281,7 @@ export async function POST(req: NextRequest) {
   const {
     titulo, descripcion, prioridad, area, asignadoAId, notas, etiquetas,
     iniciativaId, proyectoTareaId, seccionId, carpetaId,
-    proyectoInternoId, faseInternaId, proyectoEventoId,
+    proyectoInternoId, faseInternaId, proyectoEventoId, tratoId,
     parentId, fecha, fechaVencimiento, recurrencia, orden, juntaOrigenId,
     // Hub unificado: tipo de registro + comprobación
     tipoOrigen, tipoEvidencia, requiereEvidencia,
@@ -291,7 +293,7 @@ export async function POST(req: NextRequest) {
   // Deriva tipoOrigen automáticamente si no viene explícito, según el vínculo.
   const tipoResuelto: string =
     (typeof tipoOrigen === "string" && tipoOrigen) ||
-    (proyectoEventoId ? "EVENTO" : proyectoInternoId ? "PROYECTO" : "TAREA");
+    (tratoId ? "TRATO" : proyectoEventoId ? "EVENTO" : proyectoInternoId ? "PROYECTO" : "TAREA");
 
   // La comprobación (NOTA | FOTO | ARCHIVO | ENLACE_MODULO) implica requiereEvidencia.
   const evidenciaTipo = typeof tipoEvidencia === "string" && tipoEvidencia ? tipoEvidencia : null;
@@ -308,6 +310,7 @@ export async function POST(req: NextRequest) {
       iniciativaId:    iniciativaId     || null,
       proyectoTareaId: proyectoTareaId  || null,
       proyectoEventoId: proyectoEventoId || null,
+      tratoId:         tratoId          || null,
       proyectoInternoId: proyectoInternoId || null,
       faseInternaId:   faseInternaId    || null,
       seccionId:       seccionId        || null,

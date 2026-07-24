@@ -69,5 +69,24 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json({ eventosPorMes, proyectosInternos: internos });
+  // ── Tratos de venta activos (para tareas ligadas a un trato) ───────────────
+  const tratos = await prisma.trato.findMany({
+    where: { etapa: { notIn: ["VENTA_PERDIDA", "VENTA_CERRADA"] } },
+    orderBy: { updatedAt: "desc" },
+    take: 200,
+    select: {
+      id: true,
+      nombreEvento: true,
+      etapa: true,
+      cliente: { select: { nombre: true } },
+    },
+  });
+  const tratosOpts = tratos.map(t => ({
+    id: t.id,
+    nombre: t.nombreEvento || t.cliente?.nombre || "Trato sin nombre",
+    cliente: t.cliente?.nombre ?? null,
+    etapa: t.etapa,
+  }));
+
+  return NextResponse.json({ eventosPorMes, proyectosInternos: internos, tratos: tratosOpts });
 }
