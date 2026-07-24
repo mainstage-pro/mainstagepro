@@ -3,9 +3,25 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Calendar, User, ClipboardList } from "lucide-react";
 import NuevaTareaModal from "../../operaciones/components/NuevaTareaModal";
-import { type TareaProyecto, type Usuario } from "./ProyectoTareas";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
+export interface TareaProyecto {
+  id: string;
+  titulo: string;
+  descripcion: string | null;
+  prioridad: string;
+  area: string;
+  estado: string;
+  fecha: string | null;
+  fechaVencimiento: string | null;
+  notas: string | null;
+  asignadoA: { id: string; name: string } | null;
+  creadoPor: { id: string; name: string } | null;
+  _count: { subtareas: number; comentarios: number; archivos: number };
+}
+
+export interface Usuario { id: string; name: string; }
+
 interface GrupoChecklist { grupo: string; area: string; items: string[] }
 
 // ─── Plantillas por tipo de servicio ────────────────────────────────────────────
@@ -92,12 +108,10 @@ export default function ChecklistEventoTab({
 
   const [tareas, setTareas]   = useState<TareaProyecto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [quickTitulo, setQuickTitulo] = useState("");
-  const [addingQuick, setAddingQuick] = useState(false);
-  // Modal: crear (título + área precargados) o editar (tarea existente). Mismo modal
-  // "Tarea de proyecto de evento" que en Gestión Operativa.
+  // Modal: crear (título + área opcionalmente precargados) o editar (tarea existente).
+  // Mismo modal "Tarea de proyecto de evento" que en Gestión Operativa.
   const [modal, setModal] = useState<
-    | { mode: "crear"; item: string; area: string }
+    | { mode: "crear"; item: string | null; area: string | null }
     | { mode: "editar"; tareaId: string }
     | null
   >(null);
@@ -131,22 +145,6 @@ export default function ChecklistEventoTab({
     () => tareas.filter(t => !titulosPlantilla.has(norm(t.titulo))),
     [tareas, titulosPlantilla]
   );
-
-  async function quickAdd() {
-    const t = quickTitulo.trim();
-    if (!t || addingQuick) return;
-    setAddingQuick(true);
-    try {
-      const res = await fetch(`/api/proyectos/${proyectoId}/tareas`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ titulo: t }),
-      });
-      if (res.ok) { const d = await res.json(); upsertTarea(d.tarea as TareaProyecto); setQuickTitulo(""); }
-    } finally {
-      setAddingQuick(false);
-    }
-  }
 
   const stats = useMemo(() => {
     if (!plantilla) return { total: 0, creadas: 0, completadas: 0 };
@@ -195,27 +193,16 @@ export default function ChecklistEventoTab({
 
   return (
     <div className="space-y-4">
-      {/* ── Recuadro rápido: agregar tarea manual a este proyecto ── */}
-      <div className="ms-card rounded-2xl p-2 flex items-center gap-2">
-        <span className="text-[#B3985B] text-lg leading-none pl-2 select-none">+</span>
-        <input
-          value={quickTitulo}
-          onChange={e => setQuickTitulo(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter") quickAdd(); }}
-          placeholder="Agregar tarea a este proyecto…"
-          disabled={addingQuick}
-          className="flex-1 bg-transparent text-sm text-white placeholder:text-[#555] focus:outline-none py-2"
-        />
-        {quickTitulo.trim() && (
-          <button
-            onClick={quickAdd}
-            disabled={addingQuick}
-            className="text-xs font-semibold text-black bg-[#B3985B] hover:bg-[#c9a96a] px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
-          >
-            {addingQuick ? "…" : "Agregar"}
-          </button>
-        )}
-      </div>
+      {/* ── Nuevo registro (idéntico a Gestión Operativa) ── */}
+      <button
+        onClick={() => setModal({ mode: "crear", item: null, area: null })}
+        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#0d0d0d] border border-[#1a1a1a] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/30 transition-all text-sm font-medium"
+      >
+        <span className="w-5 h-5 rounded-full bg-[#B3985B]/15 flex items-center justify-center">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </span>
+        Nuevo registro
+      </button>
 
       {/* ── Tareas manuales / extra (no pertenecen al checklist guiado) ── */}
       {extras.length > 0 && (

@@ -15,7 +15,6 @@ import { CopyButton } from "@/components/CopyButton";
 import { SkeletonPage } from "@/components/Skeleton";
 import VersionHistorial from "@/components/VersionHistorial";
 import { Combobox } from "@/components/Combobox";
-import ProyectoTareas from "./ProyectoTareas";
 import ChecklistEventoTab from "./ChecklistEventoTab";
 import { BackButton } from "@/components/BackButton";
 import { Package, AlertTriangle, Smartphone, Truck, Home, Radio, MessageCircle, FileText, Bell, User, Factory, ClipboardList, FileImage } from "lucide-react";
@@ -1227,7 +1226,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [loadError, setLoadError] = useState(false);
   const [loadErrorMsg, setLoadErrorMsg] = useState("");
   const [saving, setSaving] = useState(false);
-  const [tareasOpen, setTareasOpen] = useState(false);
 
   const [openDocs, setOpenDocs] = useState<Set<string>>(new Set());
   const [gastosOp, setGastosOp] = useState<GastoOp[]>([]);
@@ -8262,33 +8260,6 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         <VersionHistorial entidad="proyecto" entidadId={proyecto.id} />
       </div>
     </div>
-
-    {/* ── FAB: Tareas ── */}
-    <button
-      onClick={() => setTareasOpen(true)}
-      className="fixed bottom-6 left-6 z-40 flex items-center gap-2 bg-[#B3985B] hover:bg-[#c9a96a] text-black font-bold text-sm px-4 py-3 rounded-full shadow-2xl transition-colors"
-    >
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-      Tareas
-    </button>
-
-    {/* ── Drawer lateral: Tareas ── */}
-    {tareasOpen && (
-      <>
-        <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={() => setTareasOpen(false)} />
-        <div className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-lg bg-[#0d0d0d] border-l border-[#1a1a1a] overflow-y-auto shadow-2xl flex flex-col">
-          <div className="flex items-center justify-between p-4 border-b border-[#1a1a1a] sticky top-0 bg-[#0d0d0d] z-10 shrink-0">
-            <h2 className="text-white font-semibold text-sm">Tareas del proyecto</h2>
-            <button onClick={() => setTareasOpen(false)} className="text-gray-500 hover:text-white transition-colors p-1">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-            </button>
-          </div>
-          <div className="p-4 flex-1 overflow-y-auto">
-            <ProyectoTareas proyectoId={proyecto.id} proyectoNombre={proyecto.nombre} />
-          </div>
-        </div>
-      </>
-    )}
 
     {/* ── Panel flotante de notificación de cambios ── */}
     {pendingNotif && (
