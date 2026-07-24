@@ -59,14 +59,6 @@ export const NAV: NavSection[] = [
         ],
       },
       {
-        key: "verificacion",
-        accessKey: "verificacion",
-        label: "Verificación Operativa",
-        href: "/verificacion",
-        icon: ClipboardCheck,
-        badge: "verificacion",
-      },
-      {
         key: "metas",
         label: "Metas",
         href: "/metas",
