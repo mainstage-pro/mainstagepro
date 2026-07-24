@@ -280,6 +280,8 @@ export default function OperacionesPage() {
   const undoTimer     = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const showCompletedRef = useRef(vistaOpts.showCompleted);
   useEffect(() => { showCompletedRef.current = vistaOpts.showCompleted; }, [vistaOpts.showCompleted]);
+  const vistaRef = useRef(vista);
+  useEffect(() => { vistaRef.current = vista; }, [vista]);
   useEffect(() => { try { localStorage.setItem("op_proy_view", JSON.stringify(proyViewOpts)); } catch {} }, [proyViewOpts]);
   useEffect(() => {
     if (!showViewPanel) return;
@@ -590,7 +592,14 @@ export default function OperacionesPage() {
         : undefined;
       clearTimeout(undoTimer.current);
       setUndoState({ id, titulo, expiresAt: Date.now() + 4000, reagendada: true, fechaAnterior, nuevaFechaLabel });
-      undoTimer.current = setTimeout(() => setUndoState(null), 4000);
+      undoTimer.current = setTimeout(() => {
+        // En "Hoy" la recurrente ya saltó a una fecha futura: debe salir de la lista
+        // (como Todoist). En otras vistas se queda re-ordenada por su nueva fecha.
+        if (vistaRef.current === "hoy") {
+          setTareas(prev => prev.filter(t => t.id !== id));
+        }
+        setUndoState(null);
+      }, 4000);
       return;
     }
 
@@ -1983,6 +1992,20 @@ export default function OperacionesPage() {
                 if (!res.ok) {
                   const d = await res.json().catch(() => ({}));
                   toast.error(d.error ?? "Error al guardar");
+                  // Rollback del optimista: la tarea no se completó (p.ej. requiere evidencia).
+                  setProyectosEvento(prev => prev.map(p => ({
+                    ...p,
+                    tareas: p.tareas.map(t => t.id === id ? { ...t, estado: "PENDIENTE" } : t),
+                  })));
+                  return;
+                }
+                const { reagendada, tarea } = await res.json();
+                // Recurrente: no se completa, salta a su próxima fecha y sigue pendiente.
+                if (reagendada && tarea) {
+                  setProyectosEvento(prev => prev.map(p => ({
+                    ...p,
+                    tareas: p.tareas.map(t => t.id === id ? { ...t, estado: "PENDIENTE", fecha: tarea.fecha } : t),
+                  })));
                 }
               }}
               onRefresh={() => {
@@ -2011,6 +2034,26 @@ export default function OperacionesPage() {
                 if (!res.ok) {
                   const d = await res.json().catch(() => ({}));
                   toast.error(d.error ?? "Error al guardar");
+                  // Rollback del optimista: la tarea no se completó (p.ej. requiere evidencia).
+                  setTratosOp(prev => prev.map(t => ({
+                    ...t,
+                    tareas: t.tareas.map(x => x.id === id ? { ...x, estado: "PENDIENTE" } : x),
+                  })));
+                  return;
+                }
+                const { reagendada, tarea, subetapaAvanzada } = await res.json();
+                // Recurrente: no se completa, salta a su próxima fecha y sigue pendiente.
+                if (reagendada && tarea) {
+                  setTratosOp(prev => prev.map(t => ({
+                    ...t,
+                    tareas: t.tareas.map(x => x.id === id ? { ...x, estado: "PENDIENTE", fecha: tarea.fecha } : x),
+                  })));
+                } else if (subetapaAvanzada) {
+                  // El trato avanzó de subetapa: recargar para reflejar las nuevas tareas.
+                  fetch("/api/tareas/por-trato")
+                    .then(r => r.json())
+                    .then(d => setTratosOp(d.tratos ?? []))
+                    .catch(() => {});
                 }
               }}
               onRefresh={() => {

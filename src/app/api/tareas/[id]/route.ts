@@ -186,7 +186,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       try {
         const cfg = JSON.parse(actual.recurrencia) as RecurrenciaConfig;
         const desde = actual.fecha ?? new Date();
-        reagendar = { proximaFecha: calcularProximaFecha(cfg, desde), fechaAnterior: actual.fecha };
+        // La próxima ocurrencia debe caer estrictamente en el futuro para que la
+        // tarea salga de "Hoy" (comportamiento estilo Todoist). Si estaba vencida y
+        // el patrón arroja una fecha pasada o de hoy, avanzamos hasta la primera
+        // ocurrencia futura (mismo límite CST que usa la vista "hoy").
+        const hoyCST = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }));
+        const mananaCST = new Date(hoyCST);
+        mananaCST.setUTCDate(mananaCST.getUTCDate() + 1);
+        let prox = calcularProximaFecha(cfg, desde);
+        for (let i = 0; i < 500 && prox < mananaCST; i++) {
+          const next = calcularProximaFecha(cfg, prox);
+          if (next <= prox) break; // sin avance: evita bucle infinito
+          prox = next;
+        }
+        reagendar = { proximaFecha: prox, fechaAnterior: actual.fecha };
       } catch {
         // recurrencia inválida → se completa como tarea normal
       }
