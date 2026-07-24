@@ -43,6 +43,7 @@ const SELECT = {
   moduloDisponible: true,
   esAccionCampo: true,
   ptTemplateId: true,
+  tratoId: true,
   iniciativaId: true,
   proyectoTareaId: true,
   seccionId: true,

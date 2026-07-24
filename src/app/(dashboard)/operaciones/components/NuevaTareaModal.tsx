@@ -142,7 +142,7 @@ export default function NuevaTareaModal({
         setFecha(t.fecha ? String(t.fecha).substring(0, 10) : "");
         setFechaVen(t.fechaVencimiento ? String(t.fechaVencimiento).substring(0, 10) : "");
         setComprobacion(t.tipoEvidencia ?? "");
-        setTratoId(t.tratoId ?? null);
+        setTratoId(t.tratoId ?? tratoIdInicial ?? null);
         setProyectoEventoId(t.proyectoEventoId ?? null);
         setArchivosExistentes(t.archivos ?? []);
       })
