@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ClipboardList, Repeat, Calendar, Building2,
   ChevronLeft, X, FileText, Camera, Paperclip, Check, Handshake, Link2,
 } from "lucide-react";
 import DatePicker from "@/components/ui/DatePicker";
 import RecurrenciaInput from "./RecurrenciaInput";
+import { Combobox } from "@/components/Combobox";
 
 // ── Tipos de registro (los sistemas del hub unificado) ──────────────────────────
 type TipoKey = "TAREA" | "PLAN" | "EVENTO" | "PROYECTO" | "TRATO";
@@ -107,6 +108,8 @@ export default function NuevaTareaModal({
   const [tratos, setTratos]               = useState<TratoOpt[]>([]);
   const [loadingOpts, setLoadingOpts]     = useState(false);
   const [loadingEdit, setLoadingEdit]     = useState(false);
+  // Por defecto solo se listan las fuentes vigentes; al activarlo se abre el histórico completo.
+  const [verTodos, setVerTodos]           = useState(false);
 
   const modoEdicion = !!tareaIdEdicion;
 
@@ -119,7 +122,7 @@ export default function NuevaTareaModal({
       setFecha(""); setFechaVen(""); setRecurrencia(null); setComprobacion("");
       setProyectoEventoId(proyectoEventoIdInicial ?? null); setProyectoInternoId(null); setFaseId(null);
       setTratoId(tratoIdInicial ?? null);
-      setError(null); setSaving(false);
+      setError(null); setSaving(false); setVerTodos(false);
       setAdjuntos([]); setArchivosExistentes([]); setAddingUrl(false); setUrlManual(""); setNombreManual("");
     }
   }, [open, tipoInicial, tituloInicial, defaultArea, defaultAsignadoId, proyectoEventoIdInicial, tratoIdInicial]);
@@ -150,27 +153,49 @@ export default function NuevaTareaModal({
       .finally(() => setLoadingEdit(false));
   }, [open, tareaIdEdicion]);
 
-  // Carga las fuentes (eventos/proyectos internos) la primera vez que se necesitan
+  // Carga las fuentes (eventos/proyectos/tratos) la primera vez que se necesitan
+  // y las recarga al alternar "ver todos". El ref evita refetches redundantes.
+  const opcionesKeyRef = useRef<string | null>(null);
   useEffect(() => {
     if (!open) return;
     const necesitaOpts =
       (!proyectoEventoIdInicial && (tipo === "EVENTO" || tipo === "PROYECTO")) ||
       (!tratoIdInicial && tipo === "TRATO");
-    if (necesitaOpts && eventosPorMes.length === 0 && internos.length === 0 && tratos.length === 0 && !loadingOpts) {
-      setLoadingOpts(true);
-      fetch("/api/tareas/opciones")
-        .then(r => r.json())
-        .then(d => {
-          setEventosPorMes(d.eventosPorMes ?? []);
-          setInternos(d.proyectosInternos ?? []);
-          setTratos(d.tratos ?? []);
-        })
-        .catch(() => {})
-        .finally(() => setLoadingOpts(false));
-    }
-  }, [open, tipo, eventosPorMes.length, internos.length, tratos.length, loadingOpts, proyectoEventoIdInicial, tratoIdInicial]);
+    if (!necesitaOpts) return;
+    const key = verTodos ? "todos" : "vigentes";
+    if (opcionesKeyRef.current === key) return;
+    opcionesKeyRef.current = key;
+    setLoadingOpts(true);
+    fetch(`/api/tareas/opciones${verTodos ? "?todos=1" : ""}`)
+      .then(r => r.json())
+      .then(d => {
+        setEventosPorMes(d.eventosPorMes ?? []);
+        setInternos(d.proyectosInternos ?? []);
+        setTratos(d.tratos ?? []);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingOpts(false));
+  }, [open, tipo, verTodos, proyectoEventoIdInicial, tratoIdInicial]);
 
   const internoSel = useMemo(() => internos.find(p => p.id === proyectoInternoId) ?? null, [internos, proyectoInternoId]);
+
+  // Opciones aplanadas para los Combobox con búsqueda.
+  const eventoOptions = useMemo(
+    () => eventosPorMes.flatMap(g => g.eventos.map(ev => ({
+      value: ev.id,
+      label: `${ev.nombre}${ev.cliente ? ` · ${ev.cliente}` : ""}`,
+    }))),
+    [eventosPorMes],
+  );
+  const internoOptions = useMemo(
+    () => internos.map(p => ({ value: p.id, label: p.nombre })),
+    [internos],
+  );
+  const tratoOptions = useMemo(
+    () => tratos.map(t => ({ value: t.id, label: `${t.nombre}${t.cliente ? ` · ${t.cliente}` : ""}` })),
+    [tratos],
+  );
+  const comboCls = "w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-[#B3985B]/40";
 
   // Al elegir un proyecto interno, hereda su área
   useEffect(() => {
@@ -346,29 +371,26 @@ export default function NuevaTareaModal({
 
             {/* Fuente específica del tipo */}
             {tipo === "EVENTO" && (
-              <Campo label="Evento">
+              <Campo
+                label="Evento"
+                action={!proyectoEventoIdInicial ? <VerTodosToggle on={verTodos} onToggle={() => setVerTodos(v => !v)} /> : undefined}
+              >
                 {proyectoEventoIdInicial ? (
                   <div className="w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white/80 flex items-center gap-2">
                     <Calendar size={14} className="text-[#60a5fa] shrink-0" />
                     <span className="truncate">{proyectoEventoNombre ?? "Este proyecto"}</span>
                   </div>
                 ) : loadingOpts ? <Cargando /> : (
-                  <select value={proyectoEventoId ?? ""} onChange={e => setProyectoEventoId(e.target.value || null)}
-                    className="w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-[#B3985B]/40">
-                    <option value="">Selecciona un evento…</option>
-                    {eventosPorMes.map(g => (
-                      <optgroup key={g.clave} label={g.etiqueta}>
-                        {g.eventos.map(ev => (
-                          <option key={ev.id} value={ev.id}>
-                            {ev.nombre}{ev.cliente ? ` · ${ev.cliente}` : ""}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
+                  <Combobox
+                    value={proyectoEventoId ?? ""}
+                    onChange={v => setProyectoEventoId(v || null)}
+                    options={eventoOptions}
+                    placeholder="Busca un evento…"
+                    className={comboCls}
+                  />
                 )}
                 {!proyectoEventoIdInicial && !loadingOpts && eventosPorMes.length === 0 && (
-                  <p className="text-[11px] text-[#555] mt-1">No hay eventos activos.</p>
+                  <p className="text-[11px] text-[#555] mt-1">No hay eventos vigentes. Usa “Ver todos” para el histórico.</p>
                 )}
               </Campo>
             )}
@@ -377,13 +399,13 @@ export default function NuevaTareaModal({
               <>
                 <Campo label="Proyecto de empresa">
                   {loadingOpts ? <Cargando /> : (
-                    <select value={proyectoInternoId ?? ""} onChange={e => setProyectoInternoId(e.target.value || null)}
-                      className="w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-[#B3985B]/40">
-                      <option value="">Selecciona un proyecto…</option>
-                      {internos.map(p => (
-                        <option key={p.id} value={p.id}>{p.nombre}</option>
-                      ))}
-                    </select>
+                    <Combobox
+                      value={proyectoInternoId ?? ""}
+                      onChange={v => setProyectoInternoId(v || null)}
+                      options={internoOptions}
+                      placeholder="Busca un proyecto…"
+                      className={comboCls}
+                    />
                   )}
                   {!loadingOpts && internos.length === 0 && (
                     <p className="text-[11px] text-[#555] mt-1">No hay proyectos de empresa activos.</p>
@@ -404,25 +426,26 @@ export default function NuevaTareaModal({
             )}
 
             {tipo === "TRATO" && (
-              <Campo label="Trato">
+              <Campo
+                label="Trato"
+                action={!tratoIdInicial ? <VerTodosToggle on={verTodos} onToggle={() => setVerTodos(v => !v)} /> : undefined}
+              >
                 {tratoIdInicial ? (
                   <div className="w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white/80 flex items-center gap-2">
                     <Handshake size={14} className="text-[#B3985B] shrink-0" />
                     <span className="truncate">{tratoNombre ?? "Este trato"}</span>
                   </div>
                 ) : loadingOpts ? <Cargando /> : (
-                  <select value={tratoId ?? ""} onChange={e => setTratoId(e.target.value || null)}
-                    className="w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-[#B3985B]/40">
-                    <option value="">Selecciona un trato…</option>
-                    {tratos.map(t => (
-                      <option key={t.id} value={t.id}>
-                        {t.nombre}{t.cliente ? ` · ${t.cliente}` : ""}
-                      </option>
-                    ))}
-                  </select>
+                  <Combobox
+                    value={tratoId ?? ""}
+                    onChange={v => setTratoId(v || null)}
+                    options={tratoOptions}
+                    placeholder="Busca un trato…"
+                    className={comboCls}
+                  />
                 )}
                 {!tratoIdInicial && !loadingOpts && tratos.length === 0 && (
-                  <p className="text-[11px] text-[#555] mt-1">No hay tratos activos.</p>
+                  <p className="text-[11px] text-[#555] mt-1">No hay tratos en el pipeline activo. Usa “Ver todos” para incluir cerrados.</p>
                 )}
               </Campo>
             )}
@@ -580,12 +603,28 @@ export default function NuevaTareaModal({
 }
 
 // ── Subcomponentes ──────────────────────────────────────────────────────────────
-function Campo({ label, children }: { label: string; children: React.ReactNode }) {
+function Campo({ label, action, children }: { label: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-[11px] font-medium text-[#666] uppercase tracking-wide mb-1.5">{label}</label>
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="block text-[11px] font-medium text-[#666] uppercase tracking-wide">{label}</label>
+        {action}
+      </div>
       {children}
     </div>
+  );
+}
+
+// Toggle "solo vigentes / ver todos" para los selectores de evento y trato.
+function VerTodosToggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className="text-[10px] font-medium text-[#555] hover:text-[#B3985B] transition-colors"
+    >
+      {on ? "Solo vigentes" : "Ver todos"}
+    </button>
   );
 }
 function Cargando() {

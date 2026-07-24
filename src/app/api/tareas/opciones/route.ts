@@ -4,21 +4,35 @@ import { getSession } from "@/lib/auth";
 
 // GET /api/tareas/opciones
 // Alimenta el selector de "Nueva tarea" con las fuentes seleccionables:
-//   - eventos:   proyectos de evento activos, agrupados por mes (YYYY-MM)
+//   - eventos:   proyectos de evento vigentes, agrupados por mes (YYYY-MM)
 //   - proyectosInternos: proyectos de empresa activos, con sus fases
-// Se usa para los tipos de tarea 3 (proyecto de evento) y 4 (proyecto de empresa).
+//   - tratos:    tratos de venta del pipeline activo
+// Se usa para los tipos de tarea EVENTO, PROYECTO y TRATO.
+// Por defecto la lista viene recortada a lo vigente; con ?todos=1 se abre el histórico completo.
 const MESES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
-export async function GET() {
+export async function GET(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  // ── Proyectos de evento (planeación, en curso y completados; sin cancelados) ──
+  const todos = new URL(req.url).searchParams.get("todos") === "1";
+
+  // Ventana activa por defecto: últimos 7 días y próximos 90 (espejo de /api/tareas/por-proyecto).
+  const hoy = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }));
+  const desde = new Date(hoy);
+  desde.setUTCDate(hoy.getUTCDate() - 7);
+  const hasta = new Date(hoy);
+  hasta.setUTCDate(hoy.getUTCDate() + 90);
+
+  // ── Proyectos de evento (sin cancelados; ventana activa salvo ?todos=1) ──────
   const proyectos = await prisma.proyecto.findMany({
-    where: { estado: { not: "CANCELADO" } },
+    where: {
+      estado: { not: "CANCELADO" },
+      ...(todos ? {} : { fechaEvento: { gte: desde, lte: hasta } }),
+    },
     orderBy: { fechaEvento: "asc" },
     select: {
       id: true,
@@ -69,11 +83,13 @@ export async function GET() {
     },
   });
 
-  // ── Tratos de venta activos (para tareas ligadas a un trato) ───────────────
+  // ── Tratos de venta (pipeline activo por defecto; cerrados solo con ?todos=1) ─
   const tratos = await prisma.trato.findMany({
-    where: { etapa: { notIn: ["VENTA_PERDIDA", "VENTA_CERRADA"] } },
+    where: {
+      etapa: { notIn: todos ? ["VENTA_PERDIDA"] : ["VENTA_PERDIDA", "VENTA_CERRADA"] },
+    },
     orderBy: { updatedAt: "desc" },
-    take: 200,
+    take: todos ? 500 : 200,
     select: {
       id: true,
       nombreEvento: true,
