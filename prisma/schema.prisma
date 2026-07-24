@@ -2115,6 +2115,7 @@ model TareaProyecto {
 model TareaSeccion {
   id         String        @id @default(cuid())
   nombre     String
+  descripcion String?      @db.Text   // objetivo/subtítulo editable de la sección
   orden      Int           @default(0)
   colapsada  Boolean       @default(false)
   tipoModulo String        @default("TAREA")   // TAREA | PLAN — sub-módulo del hub al que pertenece

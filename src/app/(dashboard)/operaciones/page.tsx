@@ -32,7 +32,7 @@ interface ProyectoDetalle {
   tareas: TareaItem[];
 }
 interface SeccionDetalle {
-  id: string; nombre: string; orden: number; colapsada: boolean;
+  id: string; nombre: string; descripcion?: string | null; orden: number; colapsada: boolean;
   tipoModulo?: string;
   tareas: TareaItem[];
 }
@@ -2287,6 +2287,16 @@ export default function OperacionesPage() {
                           ...prev, secciones: prev.secciones.map(s => s.id === id ? { ...s, nombre: nuevoNombre } : s),
                         } : null);
                       }}
+                      onEditDescripcion={async (id, nuevaDesc) => {
+                        const res = await fetch(`/api/operaciones/secciones/${id}`, {
+                          method: "PATCH", headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ descripcion: nuevaDesc || null }),
+                        });
+                        if (!res.ok) { toast.error("Error al guardar objetivo"); return; }
+                        setProyectoDetalle(prev => prev ? {
+                          ...prev, secciones: prev.secciones.map(s => s.id === id ? { ...s, descripcion: nuevaDesc || null } : s),
+                        } : null);
+                      }}
                       onSectionDragStart={() => setDraggingSeccionId(seccion.id)}
                       onSectionDragEnd={() => { setDraggingSeccionId(null); setSeccionDropTarget(null); }}
                       onSectionDragOver={(pos) => setSeccionDropTarget({ id: seccion.id, pos })}
@@ -3100,7 +3110,7 @@ function NavCarpeta({ carpeta, open, vistaKey, onToggle, onSelectProyecto, onRen
 function SectionBlock({
   seccion, proyectoId, selectedId,
   onComplete, onSelect, onDelete, onAddTarea, onNuevoRegistro,
-  onToggleCollapse, onDeleteSection, onRename,
+  onToggleCollapse, onDeleteSection, onRename, onEditDescripcion,
   draggingId, onDragStart, onDragEnd, onDrop, onDropSection,
   onPriorityChange, onAssign, onProjectChange, users, projects, viewFilter,
   selectedIds, onMultiSelect, onExtractChild, onMoveToNoSection,
@@ -3127,6 +3137,7 @@ function SectionBlock({
   onToggleCollapse: (id: string, colapsada: boolean) => void;
   onDeleteSection: (id: string) => void;
   onRename: (id: string, nombre: string) => Promise<void>;
+  onEditDescripcion?: (id: string, descripcion: string) => Promise<void>;
   draggingId: string | null;
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
@@ -3163,17 +3174,31 @@ function SectionBlock({
   const [editando,   setEditando]   = useState(false);
   const [editNombre, setEditNombre] = useState(seccion.nombre);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Inline objetivo/descripción state
+  const [editandoDesc, setEditandoDesc] = useState(false);
+  const [editDesc,     setEditDesc]     = useState(seccion.descripcion ?? "");
+  const descRef = useRef<HTMLTextAreaElement>(null);
 
   // Focus input when entering edit mode
   useEffect(() => {
     if (editando && inputRef.current) inputRef.current.focus();
   }, [editando]);
+  useEffect(() => {
+    if (editandoDesc && descRef.current) { descRef.current.focus(); descRef.current.select(); }
+  }, [editandoDesc]);
 
   async function guardarNombre() {
     const nuevo = editNombre.trim();
     if (!nuevo || nuevo === seccion.nombre) { setEditando(false); setEditNombre(seccion.nombre); return; }
     setEditando(false);
     await onRename(seccion.id, nuevo);
+  }
+
+  async function guardarDesc() {
+    const nuevo = editDesc.trim();
+    setEditandoDesc(false);
+    if (nuevo === (seccion.descripcion ?? "").trim()) { setEditDesc(seccion.descripcion ?? ""); return; }
+    await onEditDescripcion?.(seccion.id, nuevo);
   }
 
   // Is the dragged task FROM this section?
@@ -3315,6 +3340,15 @@ function SectionBlock({
         {hov && !headerOver && !editando && (
           <div className="ml-auto flex items-center gap-1">
             <button
+              onClick={e => { e.stopPropagation(); setEditDesc(seccion.descripcion ?? ""); setEditandoDesc(true); }}
+              className="text-[#333] hover:text-[#B3985B] p-0.5 transition-colors"
+              title={seccion.descripcion ? "Editar objetivo" : "Agregar objetivo"}
+            >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>
+              </svg>
+            </button>
+            <button
               onClick={e => { e.stopPropagation(); setEditando(true); setEditNombre(seccion.nombre); }}
               className="text-[#333] hover:text-[#B3985B] p-0.5 transition-colors"
               title="Renombrar sección"
@@ -3334,6 +3368,42 @@ function SectionBlock({
           </div>
         )}
       </div>
+
+      {/* Objetivo / descripción de la sección — editable inline */}
+      {editandoDesc ? (
+        <div className="pl-[30px] pr-2 -mt-0.5 mb-1.5">
+          <textarea
+            ref={descRef}
+            value={editDesc}
+            onChange={e => setEditDesc(e.target.value)}
+            onBlur={guardarDesc}
+            onKeyDown={e => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); guardarDesc(); }
+              if (e.key === "Escape") { setEditandoDesc(false); setEditDesc(seccion.descripcion ?? ""); }
+            }}
+            onClick={e => e.stopPropagation()}
+            rows={2}
+            placeholder="Objetivo de la sección…"
+            className="w-full text-[12.5px] leading-snug text-[#bbb] bg-[#141414] border border-[#B3985B]/40 rounded-md px-2 py-1.5 outline-none resize-none"
+          />
+          <div className="text-[10px] text-[#555] mt-0.5">⌘/Ctrl + Enter para guardar · Esc para cancelar</div>
+        </div>
+      ) : seccion.descripcion ? (
+        <p
+          onClick={e => { e.stopPropagation(); setEditDesc(seccion.descripcion ?? ""); setEditandoDesc(true); }}
+          className="pl-[30px] pr-2 -mt-0.5 mb-1.5 text-[12.5px] leading-snug text-[#8a8a8a] cursor-text hover:text-[#aaa] transition-colors"
+          title="Editar objetivo"
+        >
+          {seccion.descripcion}
+        </p>
+      ) : hov ? (
+        <button
+          onClick={e => { e.stopPropagation(); setEditDesc(""); setEditandoDesc(true); }}
+          className="pl-[30px] pr-2 -mt-0.5 mb-1.5 block text-[12px] text-[#4a4a4a] hover:text-[#B3985B] transition-colors"
+        >
+          + Agregar objetivo
+        </button>
+      ) : null}
 
       {!seccion.colapsada && (
         <>

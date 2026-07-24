@@ -10,7 +10,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body = await req.json();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data: Record<string, any> = {};
-  for (const key of ["nombre", "orden", "colapsada"]) {
+  for (const key of ["nombre", "descripcion", "orden", "colapsada"]) {
     if (key in body) data[key] = body[key];
   }
 
