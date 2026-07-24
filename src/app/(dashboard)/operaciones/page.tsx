@@ -273,6 +273,20 @@ export default function OperacionesPage() {
   const [showNuevoProyecto, setShowNuevoProyecto]   = useState(false);
   const [showAccesoPanel, setShowAccesoPanel]       = useState(false);
   const [showNuevaSeccion, setShowNuevaSeccion]     = useState<"TAREA" | "PLAN" | null>(null);
+  // Colapso persistente de las 2 secciones fijas (Tareas / Plan de trabajo) por proyecto.
+  const [fijasColapsadas, setFijasColapsadas]       = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try { return new Set(JSON.parse(localStorage.getItem("ops-fijas-colapsadas") || "[]")); }
+    catch { return new Set(); }
+  });
+  const toggleFijaColapsada = useCallback((key: string) => {
+    setFijasColapsadas(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      try { localStorage.setItem("ops-fijas-colapsadas", JSON.stringify([...next])); } catch { /* noop */ }
+      return next;
+    });
+  }, []);
   const [nuevoCarpetaNombre, setNuevoCarpetaNombre] = useState("");
   const [nuevoProyectoNombre, setNuevoProyectoNombre] = useState("");
   const [nuevoProyectoColor, setNuevoProyectoColor]   = useState(PROJECT_COLORS[0]);
@@ -1338,7 +1352,7 @@ export default function OperacionesPage() {
           <button
             onClick={() => abrirNuevaTarea(
               typeof vista !== "string" && vista.tipo === "proyecto"
-                ? { proyectoTareaId: vista.id, tipoInicial: "TAREA" }
+                ? { proyectoTareaId: vista.id }
                 : undefined,
             )}
             className="w-full flex items-center gap-2 px-3 py-2 bg-[#B3985B]/10 hover:bg-[#B3985B]/16 border border-[#B3985B]/20 hover:border-[#B3985B]/35 text-[#B3985B] rounded-xl text-sm font-medium transition-all group"
@@ -2114,30 +2128,41 @@ export default function OperacionesPage() {
                     { tipoMod: "PLAN",  num: 2, titulo: "Plan de trabajo", accent: "#34d399" },
                   ] as const).map(({ tipoMod, num, titulo, accent }) => {
                   const secciones = proyectoDetalle.secciones.filter(s => (s.tipoModulo ?? "TAREA") === tipoMod);
+                  const colKey = `${proyectoDetalle.id}:${tipoMod}`;
+                  const colapsada = fijasColapsadas.has(colKey);
                   return (
-                  <section key={tipoMod} className="mb-8">
-                  {/* ── Encabezado fijo de la sección ── */}
-                  <div className="flex items-center gap-2 mb-3 pb-2 border-b border-[#161616]">
+                  <section key={tipoMod} className="mb-8 group/fija">
+                  {/* ── Encabezado fijo de la sección (colapsable) ── */}
+                  <button
+                    onClick={() => toggleFijaColapsada(colKey)}
+                    className="w-full flex items-center gap-2 mb-3 pb-2 border-b border-[#161616] text-left group/hdr"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5"
+                      className="shrink-0 group-hover/hdr:stroke-[#B3985B] transition-transform"
+                      style={{ transform: colapsada ? "rotate(-90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
                     <span className="w-1.5 h-4 rounded-full shrink-0" style={{ backgroundColor: accent }} />
                     <h2 className="text-[15px] font-semibold text-white">{num}. {titulo}</h2>
-                  </div>
+                  </button>
 
+                  {!colapsada && (
+                  <>
                   {/* ── Nueva tarea (contexto de proyecto + sección fija) ── */}
                   <button
                     onClick={() => abrirNuevaTarea({
                       proyectoTareaId: proyectoDetalle.id,
-                      tipoInicial: tipoMod,
                     })}
                     className="w-full flex items-center gap-2 px-3 py-2.5 mb-3 rounded-xl bg-[#0d0d0d] border border-[#1a1a1a] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/30 transition-all text-sm font-medium"
                   >
                     <span className="w-5 h-5 rounded-full bg-[#B3985B]/15 flex items-center justify-center">
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                     </span>
-                    Nuevo registro
+                    Nueva tarea
                   </button>
 
-                  {/* ── Agregar sección dentro de esta sección fija ── */}
-                  <div className="mb-4">
+                  {/* ── Agregar sección dentro de esta sección fija (visible al pasar el cursor) ── */}
+                  <div className={`mb-4 transition-opacity ${showNuevaSeccion === tipoMod ? "opacity-100" : "opacity-0 group-hover/fija:opacity-100 focus-within:opacity-100"}`}>
                     {showNuevaSeccion === tipoMod ? (
                       <div className="px-3 py-3 border border-dashed border-[#2a2a2a] rounded-xl space-y-2 bg-[#0a0a0a]">
                         <input autoFocus value={nuevaSeccionNombre}
@@ -2228,7 +2253,7 @@ export default function OperacionesPage() {
                       selectedId={selectedId}
                       onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
                       onAddTarea={addTarea} draggingId={draggingId}
-                      onNuevoRegistro={(secId) => abrirNuevaTarea({ proyectoTareaId: proyectoDetalle.id, seccionId: secId, tipoInicial: tipoMod })}
+                      onNuevoRegistro={(secId) => abrirNuevaTarea({ proyectoTareaId: proyectoDetalle.id, seccionId: secId })}
                       ptrTargetSec={ptrTargetSec}
                       onPtrDragStart={startPtrDrag}
                       onDragStart={setDraggingId} onDragEnd={() => setDraggingId(null)}
@@ -2309,6 +2334,8 @@ export default function OperacionesPage() {
                       onMoveToSection={moveToSection}
                     />
                   ))}
+                  </>
+                  )}
                   </section>
                   );
                   })}
@@ -3435,7 +3462,7 @@ function SectionBlock({
             <span className="w-4 h-4 rounded-full bg-[#B3985B]/15 flex items-center justify-center shrink-0">
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </span>
-            Nuevo registro en {seccion.nombre}
+            Nueva tarea en {seccion.nombre}
           </button>
         </>
       )}
