@@ -1,11 +1,15 @@
 import { prisma } from '@/lib/prisma'
 
 /**
- * Rendimiento operativo — diagnóstico real de ejecución del equipo.
+ * Rendimiento operativo — diagnóstico de cumplimiento del equipo.
  *
  * Universo medible: tareas con RESPONSABLE asignado y FECHA COMPROMISO
  * (fechaVencimiento ?? fecha). Son las que "cuentan". Se excluyen subtareas,
  * canceladas y las generadas por plantilla de plan (ptTemplateId), ya dadas de baja.
+ *
+ * Se mide CUMPLIMIENTO (¿se hizo o no?), no puntualidad: una tarea completada
+ * cuenta completa aunque se haya entregado tarde. Solo se marca como "vencida"
+ * la que sigue SIN completar después de su fecha compromiso.
  *
  * Todas las fuentes (tareas normales, proyectos de evento, proyectos de empresa
  * y tratos) viven en el mismo modelo `Tarea` vía FKs, así que se miden juntas.
@@ -101,14 +105,9 @@ export interface RendUsuario {
   area: string | null
   total: number
   completadas: number
-  aTiempo: number
-  tarde: number
   vencidas: number
   pendientesVigentes: number
-  pctEjecucion: number
-  pctPuntualidad: number
   cumplimiento: number
-  atrasoPromedio: number
   porFuente: Record<FuenteKey, { total: number; completadas: number }>
   verificacion: Verificacion
   criticas: RendTareaDetalle[]
@@ -120,7 +119,6 @@ export interface RendFuente {
   label: string
   total: number
   completadas: number
-  aTiempo: number
   vencidas: number
   cumplimiento: number
 }
@@ -130,22 +128,15 @@ export interface RendSemana {
   label: string
   total: number
   completadas: number
-  aTiempo: number
-  pctEjecucion: number
   cumplimiento: number
 }
 
 export interface RendResumen {
   total: number
   completadas: number
-  aTiempo: number
-  tarde: number
   vencidas: number
   pendientesVigentes: number
-  pctEjecucion: number
-  pctPuntualidad: number
   cumplimiento: number
-  atrasoPromedio: number
   sinFecha: number
   sinResponsable: number
 }
@@ -256,13 +247,11 @@ export async function computeRendimiento(opts: {
     }),
   ])
 
-  // Diagnóstico por tarea (día MX de la fecha compromiso vs completada/hoy)
+  // Diagnóstico por tarea: completada / vencida (sin completar y pasada) / vigente
   type Diag = {
     row: TareaRow
     compromisoStr: string
     completada: boolean
-    aTiempo: boolean
-    tarde: boolean
     vencida: boolean
     pendienteVigente: boolean
     diasAtraso: number
@@ -274,18 +263,13 @@ export async function computeRendimiento(opts: {
     if (!compromiso) { if (row.estado !== 'COMPLETADA') sinFecha++; continue }
     const compromisoStr = fmtDia(compromiso)
     const completada = row.estado === 'COMPLETADA'
-    let aTiempo = false, tarde = false, vencida = false, pendienteVigente = false, diasAtraso = 0
-    if (completada) {
-      const compStr = row.fechaCompletada ? fmtDia(row.fechaCompletada) : compromisoStr
-      const d = diffDias(compStr, compromisoStr)
-      if (d <= 0) aTiempo = true
-      else { tarde = true; diasAtraso = d }
-    } else {
+    let vencida = false, pendienteVigente = false, diasAtraso = 0
+    if (!completada) {
       const d = diffDias(hoyStr, compromisoStr)
       if (d > 0) { vencida = true; diasAtraso = d }
       else pendienteVigente = true
     }
-    diags.push({ row, compromisoStr, completada, aTiempo, tarde, vencida, pendienteVigente, diasAtraso })
+    diags.push({ row, compromisoStr, completada, vencida, pendienteVigente, diasAtraso })
   }
 
   const enRango = (d: Diag) => d.compromisoStr >= desde && d.compromisoStr <= hasta
@@ -316,7 +300,7 @@ export async function computeRendimiento(opts: {
       }
     }
     const criticas = ds
-      .filter(d => d.vencida || d.tarde)
+      .filter(d => d.vencida)
       .sort((a, b) => b.diasAtraso - a.diasAtraso)
       .slice(0, 25)
       .map(toDetalle)
@@ -331,14 +315,9 @@ export async function computeRendimiento(opts: {
       area: info?.area ?? null,
       total: r.total,
       completadas: r.completadas,
-      aTiempo: r.aTiempo,
-      tarde: r.tarde,
       vencidas: r.vencidas,
       pendientesVigentes: r.pendientesVigentes,
-      pctEjecucion: r.pctEjecucion,
-      pctPuntualidad: r.pctPuntualidad,
       cumplimiento: r.cumplimiento,
-      atrasoPromedio: r.atrasoPromedio,
       porFuente,
       verificacion,
       criticas,
@@ -348,27 +327,25 @@ export async function computeRendimiento(opts: {
   usuarios.sort((a, b) => b.cumplimiento - a.cumplimiento || b.total - a.total)
 
   // ── Por fuente ──
-  const fuenteAgg = new Map<FuenteKey, { total: number; completadas: number; aTiempo: number; vencidas: number }>()
+  const fuenteAgg = new Map<FuenteKey, { total: number; completadas: number; vencidas: number }>()
   for (const d of periodo) {
     const { fuente } = fuenteDe(d.row)
-    if (!fuenteAgg.has(fuente)) fuenteAgg.set(fuente, { total: 0, completadas: 0, aTiempo: 0, vencidas: 0 })
+    if (!fuenteAgg.has(fuente)) fuenteAgg.set(fuente, { total: 0, completadas: 0, vencidas: 0 })
     const f = fuenteAgg.get(fuente)!
     f.total++
     if (d.completada) f.completadas++
-    if (d.aTiempo) f.aTiempo++
     if (d.vencida) f.vencidas++
   }
   const fuentes: RendFuente[] = (['EVENTO', 'EMPRESA', 'TRATO', 'NORMAL'] as FuenteKey[])
     .map(fuente => {
-      const f = fuenteAgg.get(fuente) ?? { total: 0, completadas: 0, aTiempo: 0, vencidas: 0 }
+      const f = fuenteAgg.get(fuente) ?? { total: 0, completadas: 0, vencidas: 0 }
       return {
         fuente,
         label: FUENTE_LABEL[fuente],
         total: f.total,
         completadas: f.completadas,
-        aTiempo: f.aTiempo,
         vencidas: f.vencidas,
-        cumplimiento: pct(f.aTiempo, f.total),
+        cumplimiento: pct(f.completadas, f.total),
       }
     })
     .filter(f => f.total > 0)
@@ -381,15 +358,12 @@ export async function computeRendimiento(opts: {
     const sem = diags.filter(d => d.compromisoStr >= lun && d.compromisoStr <= dom)
     const total = sem.length
     const completadas = sem.filter(d => d.completada).length
-    const aTiempo = sem.filter(d => d.aTiempo).length
     tendencia.push({
       semana: lun,
       label: fechaHumana(lun),
       total,
       completadas,
-      aTiempo,
-      pctEjecucion: pct(completadas, total),
-      cumplimiento: pct(aTiempo, total),
+      cumplimiento: pct(completadas, total),
     })
   }
 
@@ -432,27 +406,15 @@ function acumVerificacion(v: { requieren: number; verificadas: number; rechazada
   else if (row.estadoVerificacion === 'PENDIENTE_VERIFICACION') v.pendientes++
 }
 
-type DiagLite = {
-  completada: boolean; aTiempo: boolean; tarde: boolean
-  vencida: boolean; pendienteVigente: boolean; diasAtraso: number
-}
+type DiagLite = { completada: boolean; vencida: boolean; pendienteVigente: boolean }
 function agregarResumen(ds: DiagLite[], sinFecha: number, sinResponsable: number): RendResumen {
   const total = ds.length
   const completadas = ds.filter(d => d.completada).length
-  const aTiempo = ds.filter(d => d.aTiempo).length
-  const tarde = ds.filter(d => d.tarde).length
   const vencidas = ds.filter(d => d.vencida).length
   const pendientesVigentes = ds.filter(d => d.pendienteVigente).length
-  const atrasos = ds.filter(d => d.diasAtraso > 0).map(d => d.diasAtraso)
-  const atrasoPromedio = atrasos.length > 0
-    ? Math.round((atrasos.reduce((a, b) => a + b, 0) / atrasos.length) * 10) / 10
-    : 0
   return {
-    total, completadas, aTiempo, tarde, vencidas, pendientesVigentes,
-    pctEjecucion: pct(completadas, total),
-    pctPuntualidad: pct(aTiempo, completadas),
-    cumplimiento: pct(aTiempo, total),
-    atrasoPromedio,
+    total, completadas, vencidas, pendientesVigentes,
+    cumplimiento: pct(completadas, total),
     sinFecha,
     sinResponsable,
   }

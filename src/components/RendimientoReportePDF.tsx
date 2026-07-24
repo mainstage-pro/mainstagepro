@@ -21,10 +21,9 @@ type FuenteKey = 'EVENTO' | 'EMPRESA' | 'TRATO' | 'NORMAL'
 interface Verificacion { requieren: number; verificadas: number; rechazadas: number; pendientes: number }
 
 interface RendResumen {
-  total: number; completadas: number; aTiempo: number; tarde: number
+  total: number; completadas: number
   vencidas: number; pendientesVigentes: number
-  pctEjecucion: number; pctPuntualidad: number; cumplimiento: number
-  atrasoPromedio: number; sinFecha: number; sinResponsable: number
+  cumplimiento: number; sinFecha: number; sinResponsable: number
 }
 interface RendTareaDetalle {
   id: string; titulo: string; prioridad: string; fuente: FuenteKey
@@ -33,10 +32,9 @@ interface RendTareaDetalle {
 }
 interface RendUsuario {
   id: string; name: string; area: string | null
-  total: number; completadas: number; aTiempo: number; tarde: number
+  total: number; completadas: number
   vencidas: number; pendientesVigentes: number
-  pctEjecucion: number; pctPuntualidad: number; cumplimiento: number
-  atrasoPromedio: number
+  cumplimiento: number
   porFuente: Record<FuenteKey, { total: number; completadas: number }>
   verificacion: Verificacion
   criticas: RendTareaDetalle[]
@@ -44,11 +42,11 @@ interface RendUsuario {
 }
 interface RendFuente {
   fuente: FuenteKey; label: string; total: number; completadas: number
-  aTiempo: number; vencidas: number; cumplimiento: number
+  vencidas: number; cumplimiento: number
 }
 interface RendSemana {
   semana: string; label: string; total: number; completadas: number
-  aTiempo: number; pctEjecucion: number; cumplimiento: number
+  cumplimiento: number
 }
 
 export interface RendimientoReporteData {
@@ -212,9 +210,9 @@ function ReporteGeneral({ data }: { data: RendimientoReporteData }) {
         <PageHeader title="Reporte semanal de rendimiento" sub={data.periodoLabel} />
 
         <View style={s.kpiRow}>
-          <KpiCard label="Cumplimiento" value={`${r.cumplimiento}%`} color={perfColor(r.cumplimiento)} sub="A tiempo del total comprometido" />
-          <KpiCard label="Ejecución" value={`${r.pctEjecucion}%`} color={perfColor(r.pctEjecucion)} sub={`${r.completadas}/${r.total} completadas`} />
-          <KpiCard label="Puntualidad" value={`${r.pctPuntualidad}%`} color={perfColor(r.pctPuntualidad)} sub={`${r.tarde} tarde`} />
+          <KpiCard label="Cumplimiento" value={`${r.cumplimiento}%`} color={perfColor(r.cumplimiento)} sub={`${r.completadas}/${r.total} completadas`} />
+          <KpiCard label="Comprometidas" value={`${r.total}`} sub="Con responsable y fecha" />
+          <KpiCard label="Completadas" value={`${r.completadas}`} color={GREEN} sub="Realizadas en el período" />
           <KpiCard label="Vencidas" value={`${r.vencidas}`} color={r.vencidas > 0 ? RED : GREEN} sub="Sin completar y vencidas" />
           <KpiCard label="En curso" value={`${r.pendientesVigentes}`} color={AMBER} sub="Pendientes vigentes" />
         </View>
@@ -225,24 +223,22 @@ function ReporteGeneral({ data }: { data: RendimientoReporteData }) {
             <View style={s.tableWrap}>
               <View style={s.thead}>
                 <Text style={[s.theadCell, { flex: 1 }]}>Colaborador</Text>
-                <Text style={[s.theadCell, { width: 50 }]}>Área</Text>
-                <Text style={[s.theadCell, { width: 30, textAlign: 'right' }]}>Comp.</Text>
-                <Text style={[s.theadCell, { width: 34, textAlign: 'right' }]}>A tpo.</Text>
-                <Text style={[s.theadCell, { width: 28, textAlign: 'right' }]}>Tarde</Text>
-                <Text style={[s.theadCell, { width: 30, textAlign: 'right' }]}>Venc.</Text>
-                <Text style={[s.theadCell, { width: 34, textAlign: 'right' }]}>Cumpl.</Text>
-                <Text style={[s.theadCell, { width: 70 }]}>  Progreso</Text>
+                <Text style={[s.theadCell, { width: 60 }]}>Área</Text>
+                <Text style={[s.theadCell, { width: 45, textAlign: 'right' }]}>Comprom.</Text>
+                <Text style={[s.theadCell, { width: 45, textAlign: 'right' }]}>Complet.</Text>
+                <Text style={[s.theadCell, { width: 40, textAlign: 'right' }]}>Venc.</Text>
+                <Text style={[s.theadCell, { width: 40, textAlign: 'right' }]}>Cumpl.</Text>
+                <Text style={[s.theadCell, { width: 80 }]}>  Progreso</Text>
               </View>
               {data.usuarios.map((u, i) => (
                 <View key={u.id} style={i % 2 === 0 ? s.trow : s.trowAlt}>
                   <Text style={[s.tcellB, { flex: 1 }]}>{u.name}</Text>
-                  <Text style={[s.tcell, { width: 50 }]}>{AREA_LABEL[u.area ?? ''] ?? (u.area ?? '—')}</Text>
-                  <Text style={[s.tcell, { width: 30, textAlign: 'right' }]}>{u.completadas}/{u.total}</Text>
-                  <Text style={[s.tcellGreen, { width: 34, textAlign: 'right' }]}>{u.aTiempo}</Text>
-                  <Text style={[u.tarde > 0 ? s.tcellRed : s.tcell, { width: 28, textAlign: 'right' }]}>{u.tarde || '—'}</Text>
-                  <Text style={[u.vencidas > 0 ? s.tcellRed : s.tcell, { width: 30, textAlign: 'right' }]}>{u.vencidas || '—'}</Text>
-                  <Text style={[{ fontSize: 7.5, color: perfColor(u.cumplimiento), fontFamily: 'Helvetica-Bold', width: 34, textAlign: 'right' }]}>{u.cumplimiento}%</Text>
-                  <View style={{ width: 70, paddingLeft: 6 }}><ProgressBarSvg pct={u.cumplimiento} width={62} /></View>
+                  <Text style={[s.tcell, { width: 60 }]}>{AREA_LABEL[u.area ?? ''] ?? (u.area ?? '—')}</Text>
+                  <Text style={[s.tcell, { width: 45, textAlign: 'right' }]}>{u.total}</Text>
+                  <Text style={[s.tcellGreen, { width: 45, textAlign: 'right' }]}>{u.completadas}</Text>
+                  <Text style={[u.vencidas > 0 ? s.tcellRed : s.tcell, { width: 40, textAlign: 'right' }]}>{u.vencidas || '—'}</Text>
+                  <Text style={[{ fontSize: 7.5, color: perfColor(u.cumplimiento), fontFamily: 'Helvetica-Bold', width: 40, textAlign: 'right' }]}>{u.cumplimiento}%</Text>
+                  <View style={{ width: 80, paddingLeft: 6 }}><ProgressBarSvg pct={u.cumplimiento} width={72} /></View>
                 </View>
               ))}
               {data.usuarios.length === 0 && (
@@ -283,17 +279,16 @@ function ReporteGeneral({ data }: { data: RendimientoReporteData }) {
 
       {criticasEquipo.length > 0 && (
         <Page size="A4" orientation="landscape" style={s.page}>
-          <PageHeader title="Focos rojos — vencidas y entregadas tarde" sub={data.periodoLabel} />
+          <PageHeader title="Tareas vencidas sin completar" sub={data.periodoLabel} />
           <View style={s.section}>
-            <SectionTitle label="Tareas críticas del período" />
+            <SectionTitle label="Pendientes vencidas del período" />
             <View style={s.tableWrap}>
               <View style={s.thead}>
                 <Text style={[s.theadCell, { flex: 1 }]}>Tarea</Text>
                 <Text style={[s.theadCell, { width: 90 }]}>Responsable</Text>
                 <Text style={[s.theadCell, { width: 55 }]}>Fuente</Text>
                 <Text style={[s.theadCell, { width: 45 }]}>Compromiso</Text>
-                <Text style={[s.theadCell, { width: 50 }]}>Estado</Text>
-                <Text style={[s.theadCell, { width: 45, textAlign: 'right' }]}>Atraso</Text>
+                <Text style={[s.theadCell, { width: 45, textAlign: 'right' }]}>Vencida</Text>
               </View>
               {criticasEquipo.map((t, i) => (
                 <View key={t.id} style={i % 2 === 0 ? s.trow : s.trowAlt}>
@@ -304,13 +299,12 @@ function ReporteGeneral({ data }: { data: RendimientoReporteData }) {
                   <Text style={[s.tcell, { width: 90 }]}>{t.responsable}</Text>
                   <Text style={[{ fontSize: 7, color: PRIO_COLOR[t.prioridad] ?? LIGHT, width: 55 }]}>{FUENTE_LABEL[t.fuente]}</Text>
                   <Text style={[s.tcell, { width: 45 }]}>{fmtFecha(t.fechaCompromiso)}</Text>
-                  <Text style={[{ fontSize: 7, width: 50, color: t.estado === 'COMPLETADA' ? AMBER : RED }]}>{t.estado === 'COMPLETADA' ? 'Tarde' : 'Vencida'}</Text>
-                  <Text style={[s.tcellRed, { width: 45, textAlign: 'right' }]}>{t.diasAtraso}d</Text>
+                  <Text style={[s.tcellRed, { width: 45, textAlign: 'right' }]}>hace {t.diasAtraso}d</Text>
                 </View>
               ))}
             </View>
           </View>
-          <PageFooter left="Focos rojos" />
+          <PageFooter left="Vencidas" />
         </Page>
       )}
     </>
@@ -329,14 +323,10 @@ function ReporteUsuario({ data }: { data: RendimientoReporteData }) {
       <PageHeader title={`Rendimiento — ${u.name}`} sub={data.periodoLabel} />
 
       <View style={s.kpiRow}>
-        <KpiCard label="Cumplimiento" value={`${u.cumplimiento}%`} color={perfColor(u.cumplimiento)} sub={`${u.aTiempo}/${u.total} a tiempo`} />
-        <KpiCard label="Ejecución" value={`${u.pctEjecucion}%`} color={perfColor(u.pctEjecucion)} sub={`${u.completadas}/${u.total}`} />
-        <KpiCard label="Puntualidad" value={`${u.pctPuntualidad}%`} color={perfColor(u.pctPuntualidad)} sub={`${u.tarde} tarde`} />
-      </View>
-      <View style={[s.kpiRow, { marginTop: 0 }]}>
+        <KpiCard label="Cumplimiento" value={`${u.cumplimiento}%`} color={perfColor(u.cumplimiento)} sub={`${u.completadas}/${u.total} completadas`} />
+        <KpiCard label="Comprometidas" value={`${u.total}`} sub="Con responsable y fecha" />
         <KpiCard label="Vencidas" value={`${u.vencidas}`} color={u.vencidas > 0 ? RED : GREEN} sub="Sin completar" />
         <KpiCard label="En curso" value={`${u.pendientesVigentes}`} color={AMBER} sub="Pendientes vigentes" />
-        <KpiCard label="Atraso prom." value={`${u.atrasoPromedio}d`} sub="Días de atraso medio" />
       </View>
 
       <View style={s.cols2}>
@@ -365,17 +355,17 @@ function ReporteUsuario({ data }: { data: RendimientoReporteData }) {
         </View>
 
         <View style={s.col}>
-          <SectionTitle label="Vencidas y entregadas tarde" />
+          <SectionTitle label="Vencidas sin completar" />
           <View style={s.tableWrap}>
-            {u.criticas.length === 0 && <View style={s.trow}><Text style={[s.tcell, { flex: 1, color: GREEN }]}>Sin vencidas ni entregas tarde. ✓</Text></View>}
+            {u.criticas.length === 0 && <View style={s.trow}><Text style={[s.tcell, { flex: 1, color: GREEN }]}>Sin tareas vencidas. ✓</Text></View>}
             {u.criticas.map((t, i) => (
               <View key={t.id} style={i % 2 === 0 ? s.trow : s.trowAlt}>
                 <View style={{ flex: 1 }}>
                   <Text style={s.tcellB}>{t.titulo}</Text>
                   {t.contexto ? <Text style={[s.tcell, { fontSize: 6.5, color: LIGHT }]}>{FUENTE_LABEL[t.fuente]} · {t.contexto}</Text> : null}
                 </View>
-                <Text style={[{ fontSize: 7, width: 45, color: t.estado === 'COMPLETADA' ? AMBER : RED }]}>{t.estado === 'COMPLETADA' ? 'Tarde' : 'Vencida'}</Text>
-                <Text style={[s.tcellRed, { width: 32, textAlign: 'right' }]}>{t.diasAtraso}d</Text>
+                <Text style={[s.tcell, { width: 40, textAlign: 'right' }]}>{fmtFecha(t.fechaCompromiso)}</Text>
+                <Text style={[s.tcellRed, { width: 40, textAlign: 'right' }]}>hace {t.diasAtraso}d</Text>
               </View>
             ))}
           </View>

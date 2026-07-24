@@ -1,7 +1,7 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts'
 
 // ── Types (espejo de src/lib/rendimiento) ──────────────────────────────────────
@@ -14,19 +14,18 @@ type TareaDet = {
 }
 type Usuario = {
   id: string; name: string; area: string | null
-  total: number; completadas: number; aTiempo: number; tarde: number
+  total: number; completadas: number
   vencidas: number; pendientesVigentes: number
-  pctEjecucion: number; pctPuntualidad: number; cumplimiento: number; atrasoPromedio: number
+  cumplimiento: number
   porFuente: Record<FuenteKey, { total: number; completadas: number }>
   verificacion: Verif; criticas: TareaDet[]; pendientes: TareaDet[]
 }
-type Fuente = { fuente: FuenteKey; label: string; total: number; completadas: number; aTiempo: number; vencidas: number; cumplimiento: number }
-type Semana = { semana: string; label: string; total: number; completadas: number; aTiempo: number; pctEjecucion: number; cumplimiento: number }
+type Fuente = { fuente: FuenteKey; label: string; total: number; completadas: number; vencidas: number; cumplimiento: number }
+type Semana = { semana: string; label: string; total: number; completadas: number; cumplimiento: number }
 type Resumen = {
-  total: number; completadas: number; aTiempo: number; tarde: number
+  total: number; completadas: number
   vencidas: number; pendientesVigentes: number
-  pctEjecucion: number; pctPuntualidad: number; cumplimiento: number
-  atrasoPromedio: number; sinFecha: number; sinResponsable: number
+  cumplimiento: number; sinFecha: number; sinResponsable: number
 }
 type Data = {
   periodo: { desde: string; hasta: string; label: string }
@@ -150,21 +149,16 @@ export function VistaRendimiento() {
       </div>
 
       {/* ── KPI Cards ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="ms-stat-card">
           <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-2">Cumplimiento</p>
           <p className={`text-2xl font-bold tabular-nums ${perfClass(r.cumplimiento)}`}>{r.cumplimiento}%</p>
-          <p className="text-[10px] text-[#444] mt-1">{r.aTiempo}/{r.total} a tiempo</p>
-        </div>
-        <div className="ms-stat-card">
-          <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-2">Ejecución</p>
-          <p className={`text-2xl font-bold tabular-nums ${perfClass(r.pctEjecucion)}`}>{r.pctEjecucion}%</p>
           <p className="text-[10px] text-[#444] mt-1">{r.completadas}/{r.total} completadas</p>
         </div>
         <div className="ms-stat-card">
-          <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-2">Puntualidad</p>
-          <p className={`text-2xl font-bold tabular-nums ${perfClass(r.pctPuntualidad)}`}>{r.pctPuntualidad}%</p>
-          <p className="text-[10px] text-[#444] mt-1">{r.tarde} entregadas tarde</p>
+          <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-2">Comprometidas</p>
+          <p className="ms-h1 tabular-nums">{r.total}</p>
+          <p className="text-[10px] text-[#444] mt-1">con responsable y fecha</p>
         </div>
         <div className="ms-stat-card">
           <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-2">Vencidas</p>
@@ -180,29 +174,22 @@ export function VistaRendimiento() {
 
       {/* ── Trend ── */}
       <div className="ms-card rounded-2xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-[10px] uppercase tracking-[0.15em] text-[#444]">Tendencia · últimas 8 semanas</p>
-          <div className="flex items-center gap-4 text-[10px]">
-            <span className="flex items-center gap-1 text-[#666]"><span className="w-2 h-2 rounded-sm bg-[#B3985B] inline-block" />Cumplimiento %</span>
-            <span className="flex items-center gap-1 text-[#666]"><span className="w-2 h-0.5 bg-[#4b7bec] inline-block" />Ejecución %</span>
-          </div>
-        </div>
+        <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-4">Cumplimiento · últimas 8 semanas</p>
         {data.tendencia.every(sw => sw.total === 0) ? (
           <p className="text-[#333] text-sm text-center py-8">Sin datos en el rango</p>
         ) : (
           <ResponsiveContainer width="100%" height={150}>
-            <ComposedChart data={data.tendencia}>
+            <BarChart data={data.tendencia}>
               <XAxis dataKey="label" tick={{ fill: '#444', fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis hide domain={[0, 100]} />
               <Tooltip
                 contentStyle={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: 8, fontSize: 11 }}
                 labelStyle={{ color: '#888' }}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                formatter={((val: number, name: string) => [`${val}%`, name === 'cumplimiento' ? 'Cumplimiento' : 'Ejecución']) as any}
+                formatter={((val: number, _n: string, p: any) => [`${val}% · ${p?.payload?.completadas ?? 0}/${p?.payload?.total ?? 0}`, 'Cumplimiento']) as any}
               />
               <Bar dataKey="cumplimiento" fill="#B3985B" radius={[3, 3, 0, 0]} maxBarSize={34} />
-              <Line dataKey="pctEjecucion" stroke="#4b7bec" strokeWidth={2} dot={false} />
-            </ComposedChart>
+            </BarChart>
           </ResponsiveContainer>
         )}
       </div>
@@ -236,15 +223,10 @@ export function VistaRendimiento() {
                           {u.vencidas} vencida{u.vencidas !== 1 ? 's' : ''}
                         </span>
                       )}
-                      {u.tarde > 0 && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full border border-orange-900/40 text-orange-400 bg-orange-950/20 tabular-nums shrink-0 hidden sm:inline">
-                          {u.tarde} tarde
-                        </span>
-                      )}
                     </button>
 
                     {/* Stats */}
-                    <span className="text-[10px] text-[#444] tabular-nums shrink-0 hidden sm:block">{u.aTiempo}/{u.total} a tiempo</span>
+                    <span className="text-[10px] text-[#444] tabular-nums shrink-0 hidden sm:block">{u.completadas}/{u.total} hechas</span>
                     <span className={`text-sm font-semibold tabular-nums min-w-[40px] text-right shrink-0 ${perfClass(u.cumplimiento)}`}>{u.cumplimiento}%</span>
 
                     <button
@@ -268,14 +250,14 @@ export function VistaRendimiento() {
                     <div className="border-t border-[#1a1a1a] bg-[#080808]">
                       {u.criticas.length > 0 && (
                         <div className="divide-y divide-[#111]">
-                          <p className="px-4 pt-3 pb-1 text-[9px] uppercase tracking-wider text-red-400/60">Vencidas / entregadas tarde</p>
+                          <p className="px-4 pt-3 pb-1 text-[9px] uppercase tracking-wider text-red-400/60">Vencidas sin completar</p>
                           {u.criticas.map(t => (
                             <div key={t.id} className="flex items-center gap-3 px-4 py-2">
                               <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: PRIO_COLOR[t.prioridad] ?? '#555' }} />
                               <span className="text-xs text-[#888] flex-1 min-w-0 truncate">{t.titulo}</span>
                               {t.contexto && <span className="text-[9px] text-[#444] shrink-0 hidden sm:block truncate max-w-[120px]">{t.contexto}</span>}
-                              <span className={`text-[9px] px-1.5 py-0.5 rounded-full border shrink-0 ${t.estado === 'COMPLETADA' ? 'text-orange-400 border-orange-900/40 bg-orange-950/20' : 'text-red-400 border-red-900/40 bg-red-950/20'}`}>
-                                {t.estado === 'COMPLETADA' ? 'tarde' : 'vencida'} {t.diasAtraso}d
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full border shrink-0 text-red-400 border-red-900/40 bg-red-950/20">
+                                vencida hace {t.diasAtraso}d
                               </span>
                             </div>
                           ))}
