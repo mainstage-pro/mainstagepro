@@ -101,6 +101,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  await ensureTareaColumns();
 
   const { id } = await params;
   const body   = await req.json();
@@ -280,6 +281,7 @@ export async function DELETE(
 ) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  await ensureTareaColumns();
 
   const { id } = await params;
 

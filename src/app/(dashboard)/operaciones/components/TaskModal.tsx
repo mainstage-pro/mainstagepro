@@ -1075,6 +1075,7 @@ export default function TaskModal({
                     value={tarea.recurrencia}
                     onChange={json => {
                       onSave(tarea.id, { recurrencia: json });
+                      toast.success(json ? "Recurrencia guardada" : "Recurrencia eliminada");
                       if (!json) setEditingRec(false);
                     }}
                     onClose={() => setEditingRec(false)}

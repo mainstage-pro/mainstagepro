@@ -521,7 +521,7 @@ export default function QuickAdd({
             <div className="p-2.5">
               <RecurrenciaPicker
                 value={recurrencia}
-                onChange={(json) => { setRecurrencia(json); if (!json) setPanel(null); }}
+                onChange={(json) => { setRecurrencia(json); setPanel(null); }}
                 onClose={() => setPanel(null)}
               />
             </div>

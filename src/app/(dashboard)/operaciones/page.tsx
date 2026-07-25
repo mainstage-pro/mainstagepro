@@ -700,11 +700,26 @@ export default function OperacionesPage() {
   }, [undoState]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveTarea = useCallback((id: string, patch: Record<string, unknown>) => {
-    // Fire-and-forget — optimistic update happens first
+    // Optimistic update happens first; si el guardado falla lo avisamos.
     fetch(`/api/tareas/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
-    });
+    })
+      .then(async res => {
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          toast.error(d.error ?? "No se pudo guardar el cambio");
+        }
+      })
+      .catch(() => toast.error("Error de conexión al guardar"));
+
+    // Reflejar en el detalle abierto: el modal lee `recurrencia` directamente del
+    // objeto tarea, así que sin esto el picker no refleja lo aplicado.
+    if (selectedId === id && "recurrencia" in patch) {
+      setSelectedTask(prev =>
+        prev && prev.id === id ? { ...prev, recurrencia: (patch.recurrencia as string | null) } : prev
+      );
+    }
 
     // When a project is assigned to a bandeja task, remove it from the list immediately
     if ("proyectoTareaId" in patch && patch.proyectoTareaId && vista === "bandeja") {
