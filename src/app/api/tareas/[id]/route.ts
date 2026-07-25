@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureTareaColumns } from "@/lib/ensure-tarea-columns";
-import { calcularProximaFecha, type RecurrenciaConfig } from "@/lib/recurrencia";
+import { calcularProximaFecha, primeraOcurrencia, type RecurrenciaConfig } from "@/lib/recurrencia";
 import { avanzarSiTareasCompletas } from "@/lib/proceso/tareas-subetapa";
 
 // Explicit SELECT — avoids selecting proyectoEventoId which may not exist in DB yet
@@ -225,6 +225,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data.evidenciaEnviadaAt = null;
     data.evidenciaEnviadaCanal = null;
     data.motivoRechazo = null;
+  }
+
+  // Al asignar/cambiar la recurrencia (fuera del flujo de completar), anclar la
+  // `fecha` a la próxima ejecución real: primera ocurrencia >= hoy (incluye hoy
+  // si el patrón cae hoy). Así la tarea muestra su fecha concreta, se ordena por
+  // cercanía y aparece en "Próximas". Respeta una fecha explícita del cliente.
+  if (!reagendar && "recurrencia" in data && data.recurrencia && !("fecha" in body)) {
+    try {
+      const cfg = JSON.parse(data.recurrencia) as RecurrenciaConfig;
+      const hoyCST = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }));
+      data.fecha = primeraOcurrencia(cfg, hoyCST);
+    } catch {
+      // recurrencia inválida → no tocar la fecha
+    }
   }
 
   // Capture previous assignee before updating (only when assignment is being changed)

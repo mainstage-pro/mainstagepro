@@ -709,6 +709,23 @@ export default function OperacionesPage() {
         if (!res.ok) {
           const d = await res.json().catch(() => ({}));
           toast.error(d.error ?? "No se pudo guardar el cambio");
+          return;
+        }
+        // Al cambiar la recurrencia el server recalcula la próxima `fecha`.
+        // Reflejarla (el orden por cercanía y los colores dependen de `fecha`).
+        if ("recurrencia" in patch) {
+          const { tarea: saved } = await res.json().catch(() => ({ tarea: null }));
+          if (saved) {
+            const setFecha = (arr: TareaItem[]) =>
+              arr.map(t => t.id === id ? { ...t, fecha: saved.fecha, recurrencia: saved.recurrencia } : t);
+            setTareas(setFecha);
+            setProyectoDetalle(prev => prev ? {
+              ...prev, tareas: setFecha(prev.tareas),
+              secciones: prev.secciones.map(s => ({ ...s, tareas: setFecha(s.tareas) })),
+            } : null);
+            setSelectedTask(prev => prev && prev.id === id
+              ? { ...prev, fecha: saved.fecha, recurrencia: saved.recurrencia } : prev);
+          }
         }
       })
       .catch(() => toast.error("Error de conexión al guardar"));
@@ -1392,7 +1409,7 @@ export default function OperacionesPage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="flex h-full overflow-hidden bg-[#0a0a0a]">
+    <div className="flex h-full bg-[#0a0a0a]">
 
       {/* ── Drag ghost card (follows cursor) ─────────────────────────────── */}
       {/* FIX 5: Ghost card — single or multi-select stack */}
@@ -1436,7 +1453,7 @@ export default function OperacionesPage() {
       {/* ══════════════════════════════════════════════════════════════════════
           LEFT SIDEBAR — Todoist-style navigation
       ══════════════════════════════════════════════════════════════════════ */}
-      <aside className={`${sidebarOpen ? "w-56" : "w-0"} hidden lg:flex shrink-0 overflow-hidden transition-[width] duration-200 bg-[#060606] border-r border-[#0f0f0f] flex-col`}>
+      <aside className={`${sidebarOpen ? "w-56" : "w-0"} hidden lg:flex shrink-0 overflow-hidden transition-[width] duration-200 bg-[#060606] border-r border-[#0f0f0f] flex-col lg:sticky lg:top-0 lg:self-start lg:h-[100dvh]`}>
 
         {/* ── Nueva tarea (CTA) ──────────────────────────────────────────── */}
         <div className="p-3 shrink-0">

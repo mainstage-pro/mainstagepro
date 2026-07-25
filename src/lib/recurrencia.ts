@@ -567,6 +567,21 @@ export function recurrenciaOcurreEnFecha(cfg: RecurrenciaConfig, ref: Date = new
   return false;
 }
 
+/**
+ * Primera ocurrencia del patrón en o después de `desde` (por defecto hoy).
+ * A diferencia de `calcularProximaFecha` —que busca estrictamente la SIGUIENTE
+ * ocurrencia— esta incluye `desde` mismo si el patrón cae ese día. Sirve para
+ * anclar una tarea recién marcada como recurrente a su próxima ejecución real:
+ * si hoy es sábado y la recurrencia es "cada sábado", la primera fecha es hoy;
+ * si es "cada lunes", es el próximo lunes.
+ */
+export function primeraOcurrencia(cfg: RecurrenciaConfig, desde: Date = new Date()): Date {
+  const base = new Date(desde);
+  base.setHours(0, 0, 0, 0);
+  if (recurrenciaOcurreEnFecha(cfg, base)) return base;
+  return calcularProximaFecha(cfg, base);
+}
+
 /** Igual que `recurrenciaOcurreEnFecha` pero recibe el JSON crudo de recurrencia. */
 export function recurrenciaOcurreHoy(recurrenciaRaw: string | null | undefined, ref: Date = new Date()): boolean {
   if (!recurrenciaRaw) return false;

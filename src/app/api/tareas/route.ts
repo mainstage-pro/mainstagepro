@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureTareaColumns } from "@/lib/ensure-tarea-columns";
-import { recurrenciaOcurreHoy } from "@/lib/recurrencia";
+import { recurrenciaOcurreHoy, primeraOcurrencia, type RecurrenciaConfig } from "@/lib/recurrencia";
 
 const AREA_TO_MODULE_KEY: Record<string, string> = {
   VENTAS: "tareas-ventas",
@@ -299,6 +299,20 @@ export async function POST(req: NextRequest) {
   const evidenciaTipo = typeof tipoEvidencia === "string" && tipoEvidencia ? tipoEvidencia : null;
   const requiere = requiereEvidencia === true || !!evidenciaTipo;
 
+  // Recurrente sin fecha explícita: anclar a la primera ocurrencia >= hoy (incluye
+  // hoy si el patrón cae hoy) para que muestre su próxima fecha, se ordene por
+  // cercanía y aparezca en "Próximas".
+  let fechaInicial: Date | null = fecha ? new Date(fecha) : null;
+  if (!fechaInicial && recurrencia) {
+    try {
+      const cfg = JSON.parse(recurrencia) as RecurrenciaConfig;
+      const hoyCST = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }));
+      fechaInicial = primeraOcurrencia(cfg, hoyCST);
+    } catch {
+      // recurrencia inválida → sin fecha
+    }
+  }
+
   const tarea = await prisma.tarea.create({
     data: {
       titulo:          titulo.trim(),
@@ -316,7 +330,7 @@ export async function POST(req: NextRequest) {
       seccionId:       seccionId        || null,
       carpetaId:       carpetaId        || null,
       parentId:        parentId         || null,
-      fecha:           fecha            ? new Date(fecha) : null,
+      fecha:           fechaInicial,
       fechaVencimiento:fechaVencimiento ? new Date(fechaVencimiento) : null,
       recurrencia:     recurrencia      || null,
       notas:           notas            || null,
