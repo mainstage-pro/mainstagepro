@@ -711,9 +711,10 @@ export default function OperacionesPage() {
           toast.error(d.error ?? "No se pudo guardar el cambio");
           return;
         }
-        // Al cambiar la recurrencia el server recalcula la próxima `fecha`.
-        // Reflejarla (el orden por cercanía y los colores dependen de `fecha`).
-        if ("recurrencia" in patch) {
+        // Al cambiar la recurrencia —o al mover la fecha de una tarea recurrente—
+        // el server recalcula/ancla la `fecha` al patrón. Reflejar la fecha que
+        // devuelve (el orden por cercanía y los colores dependen de `fecha`).
+        if ("recurrencia" in patch || "fecha" in patch) {
           const { tarea: saved } = await res.json().catch(() => ({ tarea: null }));
           if (saved) {
             const setFecha = (arr: TareaItem[]) =>

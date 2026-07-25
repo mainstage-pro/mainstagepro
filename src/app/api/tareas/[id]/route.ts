@@ -241,6 +241,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
+  // Al mover manualmente la `fecha` de una tarea recurrente, la nueva fecha se
+  // ancla a la próxima ocurrencia REAL del patrón (>= la fecha elegida). Ej.: si
+  // la tarea es "cada lunes" y la mueves a un miércoles, se reagenda al próximo
+  // lunes. Así la fecha visible siempre respeta la recurrencia configurada.
+  if (!reagendar && "fecha" in body && data.fecha) {
+    let recRaw: string | null = "recurrencia" in data ? data.recurrencia : null;
+    if (recRaw === null && !("recurrencia" in data)) {
+      const actualRec = await prisma.tarea.findUnique({ where: { id }, select: { recurrencia: true } });
+      recRaw = actualRec?.recurrencia ?? null;
+    }
+    if (recRaw) {
+      try {
+        const cfg = JSON.parse(recRaw) as RecurrenciaConfig;
+        data.fecha = primeraOcurrencia(cfg, data.fecha as Date);
+      } catch {
+        // recurrencia inválida → respetar la fecha elegida tal cual
+      }
+    }
+  }
+
   // Capture previous assignee before updating (only when assignment is being changed)
   const prevAssignee = "asignadoAId" in data
     ? await prisma.tarea.findUnique({ where: { id }, select: { asignadoAId: true } })

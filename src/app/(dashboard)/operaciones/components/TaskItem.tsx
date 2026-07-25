@@ -73,10 +73,15 @@ function formatFecha(iso: string): { label: string; cls: string } {
   finSemana.setDate(hoy.getDate() + (diasHastaDomingo === 0 ? 0 : diasHastaDomingo));
   finSemana.setHours(23, 59, 59, 999);
 
+  // Fin de la próxima semana = el domingo siguiente
+  const finProxSemana = new Date(finSemana);
+  finProxSemana.setDate(finSemana.getDate() + 7);
+
   if (d < hoy)     return { label: d.toLocaleDateString("es-MX", { month: "short", day: "numeric" }), cls: "text-red-400 bg-red-950/30" };
   if (d < man)     return { label: "Hoy",    cls: "text-emerald-400 bg-emerald-950/30" };
   if (d < pasMan)  return { label: "Mañana", cls: "text-yellow-400 bg-yellow-950/20" };
   if (d <= finSemana) return { label: d.toLocaleDateString("es-MX", { weekday: "short" }), cls: "text-purple-400 bg-purple-950/20" };
+  if (d <= finProxSemana) return { label: "próx " + d.toLocaleDateString("es-MX", { weekday: "short" }), cls: "text-blue-400 bg-blue-950/20" };
   return { label: d.toLocaleDateString("es-MX", { month: "short", day: "numeric" }), cls: "text-[#555] bg-[#0f0f0f]" };
 }
 
