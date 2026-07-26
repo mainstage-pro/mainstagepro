@@ -185,6 +185,20 @@ export default function ProyectoInternoPage({ params }: { params: Promise<{ id: 
             </div>
           </div>
 
+          {/* Objetivo / Entregable / Descripción */}
+          <div className="space-y-3">
+            <Divider label="Objetivo" Icon={Target} />
+            <EditableCard label="Objetivo" Icon={Target} value={proyecto.objetivo}
+              placeholder="¿Qué resultado concreto busca este proyecto?"
+              onSave={v => patchProyecto({ objetivo: v || null })} />
+            <EditableCard label="Entregable" Icon={Package} value={proyecto.entregable}
+              placeholder="¿Cuál es el entregable claro y final?"
+              onSave={v => patchProyecto({ entregable: v || null })} />
+            <EditableCard label="Descripción / notas" Icon={FileText} value={proyecto.descripcion}
+              placeholder="Contexto, alcance, consideraciones…"
+              onSave={v => patchProyecto({ descripcion: v || null })} />
+          </div>
+
           {/* Secciones (fases) */}
           <div className="space-y-3">
             <Divider label="Plan de trabajo" Icon={Target} />
@@ -215,20 +229,6 @@ export default function ProyectoInternoPage({ params }: { params: Promise<{ id: 
           <div className="space-y-3">
             <Divider label="Seguimientos agendados" Icon={CalendarClock} />
             <SeguimientosBloque seguimientos={proyecto.seguimientos} onToggle={toggleTarea} onCrear={crearSeguimiento} usuarios={usuarios} liderId={proyecto.lider.id} />
-          </div>
-
-          {/* Objetivo / Entregable / Descripción */}
-          <div className="space-y-3">
-            <Divider label="Definición" Icon={FileText} />
-            <EditableCard label="Objetivo" Icon={Target} value={proyecto.objetivo}
-              placeholder="¿Qué resultado concreto busca este proyecto?"
-              onSave={v => patchProyecto({ objetivo: v || null })} />
-            <EditableCard label="Entregable" Icon={Package} value={proyecto.entregable}
-              placeholder="¿Cuál es el entregable claro y final?"
-              onSave={v => patchProyecto({ entregable: v || null })} />
-            <EditableCard label="Descripción / notas" Icon={FileText} value={proyecto.descripcion}
-              placeholder="Contexto, alcance, consideraciones…"
-              onSave={v => patchProyecto({ descripcion: v || null })} />
           </div>
         </div>
 
