@@ -90,6 +90,7 @@ export default function NuevaTareaModal({
   const [prioridad, setPrioridad] = useState<string>("MEDIA");
   const [area, setArea]           = useState<string>(defaultArea || "GENERAL");
   const [asignadoId, setAsignadoId] = useState<string | null>(defaultAsignadoId);
+  const [coResponsables, setCoResponsables] = useState<string[]>([]);
   const [fecha, setFecha]         = useState("");
   const [fechaVen, setFechaVen]   = useState("");
   const [recurrencia, setRecurrencia] = useState<string | null>(null);
@@ -123,6 +124,7 @@ export default function NuevaTareaModal({
       setTipo(tipoInicial ?? null);
       setTitulo(tituloInicial ?? ""); setDescripcion(""); setPrioridad("MEDIA");
       setArea(defaultArea || "GENERAL"); setAsignadoId(defaultAsignadoId);
+      setCoResponsables([]);
       setFecha(""); setFechaVen(""); setRecurrencia(null); setComprobacion("");
       setProyectoEventoId(proyectoEventoIdInicial ?? null);
       setProyectoInternoId(proyectoInternoIdInicial ?? null); setFaseId(faseInicialId ?? null);
@@ -147,6 +149,8 @@ export default function NuevaTareaModal({
         setPrioridad(t.prioridad ?? "MEDIA");
         setArea(t.area ?? "GENERAL");
         setAsignadoId(t.asignadoAId ?? t.asignadoA?.id ?? null);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setCoResponsables((t.colaboradores ?? []).map((c: any) => c.usuario.id));
         setFecha(t.fecha ? String(t.fecha).substring(0, 10) : "");
         setFechaVen(t.fechaVencimiento ? String(t.fechaVencimiento).substring(0, 10) : "");
         setComprobacion(t.tipoEvidencia ?? "");
@@ -267,6 +271,7 @@ export default function NuevaTareaModal({
             prioridad,
             area,
             asignadoAId: asignadoId || null,
+            colaboradorIds: coResponsables.filter(id => id !== asignadoId),
             fecha: fecha || null,
             fechaVencimiento: fechaVen || null,
             tipoEvidencia: comprobacion || null,
@@ -291,6 +296,7 @@ export default function NuevaTareaModal({
       prioridad,
       area,
       asignadoAId: asignadoId || null,
+      colaboradorIds: coResponsables.filter(id => id !== asignadoId),
       fecha: recurrencia ? null : (fecha || null),
       fechaVencimiento: fechaVen || null,
       recurrencia: recurrencia || null,
@@ -510,6 +516,33 @@ export default function NuevaTareaModal({
                   className="w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-[#B3985B]/40">
                   <option value="">Sin asignar</option>
                   {usuarios.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+              </Campo>
+            )}
+
+            {/* Co-responsables: apoyan; el responsable da el check y entrega la evidencia */}
+            {usuarios.length > 0 && (
+              <Campo label="Co-responsables (apoyo)">
+                {coResponsables.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-1.5">
+                    {coResponsables.map(cid => {
+                      const u = usuarios.find(x => x.id === cid);
+                      return (
+                        <span key={cid} className="inline-flex items-center gap-1 bg-[#141414] border border-[#242424] rounded-full pl-2.5 pr-1 py-0.5 text-[12px] text-[#ccc]">
+                          {u?.name ?? "—"}
+                          <button type="button" onClick={() => setCoResponsables(prev => prev.filter(x => x !== cid))}
+                            className="w-4 h-4 flex items-center justify-center rounded-full text-[#777] hover:text-white hover:bg-[#2a2a2a]">×</button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+                <select value="" onChange={e => { const v = e.target.value; if (v) setCoResponsables(prev => prev.includes(v) ? prev : [...prev, v]); }}
+                  className="w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-[#B3985B]/40">
+                  <option value="">+ Agregar co-responsable</option>
+                  {usuarios.filter(u => u.id !== asignadoId && !coResponsables.includes(u.id)).map(u => (
+                    <option key={u.id} value={u.id}>{u.name}</option>
+                  ))}
                 </select>
               </Campo>
             )}

@@ -52,6 +52,7 @@ export interface TareaDetalle {
   area: string; estado: string; notas: string | null; etiquetas: string | null;
   fecha: string | null; fechaVencimiento: string | null; recurrencia: string | null;
   asignadoA: { id: string; name: string } | null;
+  colaboradores?: { usuario: { id: string; name: string } }[] | null;
   proyectoTarea: { id: string; nombre: string; color: string | null } | null;
   seccion: { id: string; nombre: string } | null;
   carpeta: { id: string; nombre: string } | null;
@@ -124,6 +125,7 @@ export default function TaskModal({
   const [notas, setNotas]             = useState("");
   const [prioridad, setPrioridad]     = useState("MEDIA");
   const [asignadoAId, setAsignadoAId] = useState("");
+  const [coResponsables, setCoResponsables] = useState<string[]>([]);
   const [proyectoId, setProyectoId]   = useState("");
   const [iniciativaId, setIniciativaId] = useState("");
   const [fecha, setFecha]             = useState("");
@@ -171,6 +173,7 @@ export default function TaskModal({
     setNotas(tarea.notas ?? "");
     setPrioridad(tarea.prioridad);
     setAsignadoAId(tarea.asignadoA?.id ?? "");
+    setCoResponsables((tarea.colaboradores ?? []).map(c => c.usuario.id));
     setProyectoId(tarea.proyectoTarea?.id ?? "");
     setIniciativaId(tarea.iniciativa?.id ?? "");
     setFecha(tarea.fecha ? tarea.fecha.substring(0, 10) : "");
@@ -214,6 +217,7 @@ export default function TaskModal({
       notas:            notas            || null,
       prioridad,
       asignadoAId:      asignadoAId      || null,
+      colaboradorIds:   coResponsables.filter(id => id !== asignadoAId),
       proyectoTareaId:  proyectoId       || null,
       iniciativaId:     iniciativaId     || null,
       fecha:            fecha            || null,
@@ -895,6 +899,39 @@ export default function TaskModal({
                   value={asignadoAId}
                   onChange={v => { setAsignadoAId(v); mark(); }}
                   options={[{ value: "", label: "— Sin asignar —" }, ...usuarios.map(u => ({ value: u.id, label: u.name }))]}
+                  className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]"
+                />
+              </div>
+
+              {/* Co-responsables (apoyan; el responsable primario da el check) */}
+              <div>
+                <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-1.5">Co-responsables</p>
+                {coResponsables.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-1.5">
+                    {coResponsables.map(cid => {
+                      const u = usuarios.find(x => x.id === cid);
+                      return (
+                        <span key={cid} className="inline-flex items-center gap-1 bg-[#151515] border border-[#2a2a2a] rounded-full pl-2 pr-1 py-0.5 text-[11px] text-[#ccc]">
+                          {u?.name ?? "—"}
+                          <button
+                            type="button"
+                            onClick={() => { setCoResponsables(prev => prev.filter(x => x !== cid)); mark(); }}
+                            className="w-3.5 h-3.5 flex items-center justify-center rounded-full text-[#777] hover:text-white hover:bg-[#2a2a2a]"
+                          >×</button>
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+                <Combobox
+                  value=""
+                  onChange={v => { if (v) { setCoResponsables(prev => prev.includes(v) ? prev : [...prev, v]); mark(); } }}
+                  options={[
+                    { value: "", label: "+ Agregar co-responsable" },
+                    ...usuarios
+                      .filter(u => u.id !== asignadoAId && !coResponsables.includes(u.id))
+                      .map(u => ({ value: u.id, label: u.name })),
+                  ]}
                   className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]"
                 />
               </div>

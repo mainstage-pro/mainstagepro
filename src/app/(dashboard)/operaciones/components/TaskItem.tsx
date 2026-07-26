@@ -21,6 +21,7 @@ export interface TareaItem {
   proyectoInterno?: { id: string; nombre: string; area?: string | null } | null;
   seccion: { id: string; nombre: string } | null;
   asignadoA: { id: string; name: string } | null;
+  colaboradores?: { usuario: { id: string; name: string } }[] | null;
   juntaOrigenId?: string | null;
   juntaOrigen?: { id: string; area: string; fecha: string } | null;
   moduloDestino?: string | null;
@@ -536,6 +537,27 @@ export default function TaskItem({
                 </span>
                 <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-[12px] text-white whitespace-nowrap opacity-0 group-hover/av:opacity-100 transition-opacity duration-150 pointer-events-none z-50 shadow-xl">
                   {tarea.asignadoA.name}
+                </span>
+              </span>
+            )}
+
+            {/* Co-responsables: avatares apilados (apoyo; no dan el check) */}
+            {!isCompleted && (tarea.colaboradores?.length ?? 0) > 0 && (
+              <span className="group/co relative inline-flex items-center -ml-1 cursor-default">
+                <span className="flex items-center">
+                  {tarea.colaboradores!.slice(0, 3).map((c, i) => (
+                    <span key={c.usuario.id}
+                      className="w-[18px] h-[18px] rounded-full bg-[#2a2a2a] border border-[#0a0a0a] text-[10px] text-[#bbb] flex items-center justify-center font-bold shrink-0 select-none"
+                      style={{ marginLeft: i === 0 ? 0 : -6, zIndex: 3 - i }}>
+                      {c.usuario.name.charAt(0).toUpperCase()}
+                    </span>
+                  ))}
+                  {tarea.colaboradores!.length > 3 && (
+                    <span className="ml-0.5 text-[10px] text-[#666]">+{tarea.colaboradores!.length - 3}</span>
+                  )}
+                </span>
+                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg text-[12px] text-white whitespace-nowrap opacity-0 group-hover/co:opacity-100 transition-opacity duration-150 pointer-events-none z-50 shadow-xl">
+                  Co-responsables: {tarea.colaboradores!.map(c => c.usuario.name).join(", ")}
                 </span>
               </span>
             )}

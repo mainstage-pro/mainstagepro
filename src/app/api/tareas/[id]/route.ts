@@ -49,6 +49,7 @@ const SELECT = {
   seccionId: true,
   carpetaId: true,
   asignadoA:     { select: { id: true, name: true } },
+  colaboradores: { select: { usuario: { select: { id: true, name: true } } } },
   creadoPor:     { select: { id: true, name: true } },
   iniciativa:    { select: { id: true, nombre: true, color: true } },
   proyectoTarea: { select: { id: true, nombre: true, color: true } },
@@ -142,10 +143,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         evidenciaNota: true,
         recurrencia: true,
         fecha: true,
+        asignadoAId: true,
+        creadoPorId: true,
         archivos: { select: { tipo: true } },
       },
     });
     if (!actual) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+    // Solo el responsable primario da el check y entrega la evidencia. Los
+    // co-responsables ven/apoyan la tarea pero no la cierran. Admin y (si está
+    // sin asignar) el creador pueden hacerlo.
+    const puedeCerrar =
+      session.role === "ADMIN" ||
+      actual.asignadoAId === session.id ||
+      (actual.asignadoAId === null && actual.creadoPorId === session.id);
+    if (!puedeCerrar) {
+      return NextResponse.json(
+        { error: "Solo el responsable puede completar esta tarea.", code: "SOLO_RESPONSABLE" },
+        { status: 403 }
+      );
+    }
 
     if (actual.requiereEvidencia) {
       // Nota efectiva: la que llega en el body (si viene) o la persistida
@@ -251,7 +268,39 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     ? await prisma.tarea.findUnique({ where: { id }, select: { asignadoAId: true } })
     : null;
 
+  // ── Co-responsables: reemplaza el set completo si el cliente lo manda ──────
+  let coNuevos: string[] = [];
+  if ("colaboradorIds" in body) {
+    const asignadoFinal: string | null = "asignadoAId" in body
+      ? (body.asignadoAId || null)
+      : (prevAssignee?.asignadoAId
+          ?? (await prisma.tarea.findUnique({ where: { id }, select: { asignadoAId: true } }))?.asignadoAId
+          ?? null);
+    const limpios: string[] = Array.isArray(body.colaboradorIds)
+      ? [...new Set((body.colaboradorIds as unknown[]).filter((x): x is string => typeof x === "string" && !!x && x !== asignadoFinal))]
+      : [];
+    const previos = await prisma.tareaColaborador.findMany({ where: { tareaId: id }, select: { usuarioId: true } });
+    const previosSet = new Set(previos.map((p) => p.usuarioId));
+    coNuevos = limpios.filter((uid) => !previosSet.has(uid) && uid !== session.id);
+    data.colaboradores = {
+      deleteMany: {},
+      create: limpios.map((usuarioId) => ({ usuarioId })),
+    };
+  }
+
   const tarea = await prisma.tarea.update({ where: { id }, data, select: SELECT });
+
+  if (coNuevos.length > 0) {
+    await prisma.notificacion.createMany({
+      data: coNuevos.map((usuarioId) => ({
+        usuarioId,
+        tipo:    "TAREA",
+        titulo:  tarea.titulo,
+        mensaje: `${session.name} te sumó como co-responsable`,
+        url:     `/operaciones?open=${id}`,
+      })),
+    });
+  }
 
   // ── Notify assignee when task is assigned to someone else ────────────────
   if (

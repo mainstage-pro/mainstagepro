@@ -57,6 +57,7 @@ const SELECT = {
   evidenciaEnviadaAt: true,
   evidenciaEnviadaCanal: true,
   asignadoA:     { select: { id: true, name: true } },
+  colaboradores: { select: { usuario: { select: { id: true, name: true } } } },
   creadoPor:     { select: { id: true, name: true } },
   iniciativa:    { select: { id: true, nombre: true, color: true } },
   proyectoTarea: { select: { id: true, nombre: true, color: true } },
@@ -74,6 +75,13 @@ export async function GET(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   await ensureTareaColumns();
+
+  // "Mis tareas": responsable, sin-asignar creadas por mí, o co-responsable.
+  const misTareasOR = [
+    { asignadoAId: session.id },
+    { asignadoAId: null, creadoPorId: session.id },
+    { colaboradores: { some: { usuarioId: session.id } } },
+  ];
 
   // Proyectos accesibles para no-admin
   let proyectosPermitidos: string[] | null = null;
@@ -112,8 +120,7 @@ export async function GET(req: NextRequest) {
     // Acceso: no-admin sólo ve sus tareas personales + proyectos permitidos
     if (session.role !== "ADMIN") {
       const accessOr = [
-        { asignadoAId: session.id },
-        { asignadoAId: null, creadoPorId: session.id },
+        ...misTareasOR,
         ...(proyectosPermitidos && proyectosPermitidos.length > 0
           ? [{ proyectoTareaId: { in: proyectosPermitidos } }]
           : []),
@@ -172,7 +179,7 @@ export async function GET(req: NextRequest) {
     where.fecha    = { lt: mananaCST };
     where.estado   = { notIn: ["COMPLETADA", "CANCELADA"] };
     where.parentId = null;
-    where.OR       = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
+    where.OR       = misTareasOR;
     if (proyectosPermitidos !== null) {
       where.AND = [
         { OR: where.OR },
@@ -188,7 +195,7 @@ export async function GET(req: NextRequest) {
     en30.setUTCDate(manana.getUTCDate() + 30);
     where.fecha  = { gte: manana, lte: en30 };
     where.estado = { not: "COMPLETADA" };
-    where.OR     = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
+    where.OR     = misTareasOR;
     delete where.parentId;
     if (proyectosPermitidos !== null) {
       where.AND = [
@@ -201,7 +208,7 @@ export async function GET(req: NextRequest) {
     where.proyectoTareaId = null;
     where.iniciativaId    = null;
     where.parentId        = null;
-    where.OR = [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }];
+    where.OR = misTareasOR;
   } else if (vista === "equipo") {
     if (session.role !== "ADMIN") return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     // Todas las tareas top-level: de proyectos, áreas, iniciativas, asignadas o sin asignar.
@@ -247,7 +254,7 @@ export async function GET(req: NextRequest) {
       ptTemplateId: null,
       estado:       { notIn: ["COMPLETADA", "CANCELADA"] },
       parentId:     null,
-      OR:           [{ asignadoAId: session.id }, { asignadoAId: null, creadoPorId: session.id }],
+      OR:           misTareasOR,
     };
     if (proyectosPermitidos !== null) {
       recWhere.AND = [
@@ -279,7 +286,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const {
-    titulo, descripcion, prioridad, area, asignadoAId, notas, etiquetas,
+    titulo, descripcion, prioridad, area, asignadoAId, colaboradorIds, notas, etiquetas,
     iniciativaId, proyectoTareaId, seccionId, carpetaId,
     proyectoInternoId, faseInternaId, proyectoEventoId, tratoId, esSeguimiento,
     parentId, fecha, fechaVencimiento, recurrencia, orden, juntaOrigenId,
@@ -289,6 +296,11 @@ export async function POST(req: NextRequest) {
   } = body;
 
   if (!titulo?.trim()) return NextResponse.json({ error: "Título requerido" }, { status: 400 });
+
+  // Co-responsables: usuarios que ven/apoyan la tarea. Excluye al responsable primario.
+  const colaboradoresLimpios: string[] = Array.isArray(colaboradorIds)
+    ? [...new Set((colaboradorIds as unknown[]).filter((id): id is string => typeof id === "string" && !!id && id !== asignadoAId))]
+    : [];
 
   // Deriva tipoOrigen automáticamente si no viene explícito, según el vínculo.
   const tipoResuelto: string =
@@ -346,6 +358,9 @@ export async function POST(req: NextRequest) {
       estandarMinimo:    estandarMinimo || null,
       siNoSeHace:        siNoSeHace     || null,
       cuando:            cuando         || null,
+      colaboradores: colaboradoresLimpios.length > 0
+        ? { create: colaboradoresLimpios.map((usuarioId) => ({ usuarioId })) }
+        : undefined,
     },
     select: SELECT,
   });
@@ -360,6 +375,20 @@ export async function POST(req: NextRequest) {
         mensaje:   `${session.name} te asignó esta tarea`,
         url:       `/operaciones?open=${tarea.id}`,
       },
+    });
+  }
+
+  // ── Notify co-responsables (excluye a quien la crea) ───────────────────
+  const coDestinatarios = colaboradoresLimpios.filter((id) => id !== session.id);
+  if (coDestinatarios.length > 0) {
+    await prisma.notificacion.createMany({
+      data: coDestinatarios.map((usuarioId) => ({
+        usuarioId,
+        tipo:    "TAREA",
+        titulo:  tarea.titulo,
+        mensaje: `${session.name} te sumó como co-responsable`,
+        url:     `/operaciones?open=${tarea.id}`,
+      })),
     });
   }
 

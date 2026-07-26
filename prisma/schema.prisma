@@ -33,6 +33,7 @@ model User {
   tareasAsignadas       Tarea[]           @relation("TareasAsignadas")
   tareasCreadoPor       Tarea[]           @relation("TareasCreadoPor")
   tareasVerificadas     Tarea[]           @relation("TareasVerificadas")
+  tareasColaborando     TareaColaborador[]
   iniciativasCreadas    IniciativaExterna[] @relation("IniciativasCreadas")
   carpetasCreadas       TareaCarpeta[]    @relation("CarpetasCreadas")
   proyectosTareaCreados TareaProyecto[]   @relation("ProyectosTareaCreados")
@@ -2072,6 +2073,7 @@ model Tarea {
 
   comentarios      TareaComentario[]
   archivos         TareaArchivo[]
+  colaboradores    TareaColaborador[]
 
   @@index([tipoOrigen, estado])
   @@index([estadoVerificacion])
@@ -2079,6 +2081,18 @@ model Tarea {
   @@index([ptTemplateId])
   @@index([tratoId])
   @@map("tareas")
+}
+
+model TareaColaborador {
+  tareaId   String
+  usuarioId String
+  tarea     Tarea    @relation(fields: [tareaId], references: [id], onDelete: Cascade)
+  usuario   User     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([tareaId, usuarioId])
+  @@index([usuarioId])
+  @@map("tarea_colaboradores")
 }
 
 model TareaCarpeta {

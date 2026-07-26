@@ -40,6 +40,7 @@ export async function GET(req: NextRequest) {
       fechaVencimiento: true,
       proyectoTarea: { select: { id: true, nombre: true, color: true } },
       asignadoA:     { select: { id: true, name: true } },
+      colaboradores: { select: { usuario: { select: { id: true, name: true } } } },
       _count:        { select: { subtareas: true, comentarios: true } },
     },
     orderBy: [{ fecha: "asc" }, { orden: "asc" }, { createdAt: "asc" }],
