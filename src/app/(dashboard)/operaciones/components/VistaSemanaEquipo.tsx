@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import TaskPanel, { type TareaDetalle } from "./TaskPanel";
+
+interface Recurso { id: string; name?: string; nombre?: string; color?: string | null }
 
 // ── Vista semanal del equipo ──────────────────────────────────────────────────
 // Una sub-pestaña por miembro. Para cada persona: columnas lun–vie con sus
@@ -79,6 +82,27 @@ export function VistaSemanaEquipo() {
   const [miembroId, setMiembroId] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
 
+  // ── Panel de tarea (mismo que Operaciones) ──
+  const [selectedTask, setSelectedTask] = useState<TareaDetalle | null>(null);
+  const [usuarios, setUsuarios] = useState<Recurso[]>([]);
+  const [proyectos, setProyectos] = useState<Recurso[]>([]);
+  const [iniciativas, setIniciativas] = useState<Recurso[]>([]);
+  const [sessionId, setSessionId] = useState("");
+
+  useEffect(() => {
+    Promise.all([
+      fetch("/api/me").then(r => r.json()).catch(() => null),
+      fetch("/api/usuarios").then(r => r.json()).catch(() => null),
+      fetch("/api/operaciones/proyectos").then(r => r.json()).catch(() => null),
+      fetch("/api/iniciativas").then(r => r.json()).catch(() => null),
+    ]).then(([me, u, p, i]) => {
+      if (me?.id) setSessionId(me.id);
+      setUsuarios(u?.usuarios ?? []);
+      setProyectos(p?.proyectos ?? []);
+      setIniciativas(Array.isArray(i) ? i : (i?.iniciativas ?? []));
+    });
+  }, []);
+
   const cargar = (semana: string | null) => {
     setLoading(true);
     setError(false);
@@ -130,6 +154,68 @@ export function VistaSemanaEquipo() {
     }
   };
 
+  // ── Abrir/editar tarea en el panel ──
+  const abrirTarea = async (id: string) => {
+    try {
+      const res = await fetch(`/api/tareas/${id}`);
+      const d = await res.json();
+      setSelectedTask((d.tarea ?? d) as TareaDetalle);
+    } catch {
+      setAviso("No se pudo abrir la tarea.");
+      setTimeout(() => setAviso(null), 3000);
+    }
+  };
+
+  const guardarTarea = async (id: string, patch: Record<string, unknown>) => {
+    const res = await fetch(`/api/tareas/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    const d = await res.json();
+    if (d?.tarea || d?.id) setSelectedTask((d.tarea ?? d) as TareaDetalle);
+    cargar(inicio);
+  };
+
+  const completarTarea = async (id: string) => {
+    await fetch(`/api/tareas/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado: "COMPLETADA" }),
+    });
+    setSelectedTask(null);
+    cargar(inicio);
+  };
+
+  const eliminarTarea = async (id: string) => {
+    await fetch(`/api/tareas/${id}`, { method: "DELETE" });
+    setSelectedTask(null);
+    cargar(inicio);
+  };
+
+  const agregarSubtarea = async (parentId: string, sub: { titulo: string; fecha: string | null; prioridad: string }) => {
+    await fetch("/api/tareas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...sub, parentId, area: "GENERAL" }),
+    });
+    abrirTarea(parentId);
+  };
+
+  const completarSubtarea = async (id: string) => {
+    await fetch(`/api/tareas/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado: "COMPLETADA" }),
+    });
+    if (selectedTask) abrirTarea(selectedTask.id);
+  };
+
+  const eliminarSubtarea = async (id: string) => {
+    await fetch(`/api/tareas/${id}`, { method: "DELETE" });
+    if (selectedTask) abrirTarea(selectedTask.id);
+  };
+
   if (loading && !data) {
     return <div className="p-8 text-sm text-[#555]">Cargando semana…</div>;
   }
@@ -149,7 +235,7 @@ export function VistaSemanaEquipo() {
         <div>
           <h1 className="text-lg font-semibold text-white">Semana del equipo</h1>
           <p className="text-xs text-[#666] mt-0.5">
-            Tareas de lunes a viernes por persona, agrupadas por tipo. Arrastra una tarea a otro día para reasignarla.
+            Tareas de lunes a viernes por persona, agrupadas por tipo. Haz clic en una tarea para abrirla y editarla; arrástrala a otro día para reasignarla.
           </p>
         </div>
         <div className="flex items-center gap-1 ml-auto">
@@ -205,9 +291,32 @@ export function VistaSemanaEquipo() {
 
       {/* Rejilla semanal del miembro seleccionado */}
       {miembro ? (
-        <SemanaMiembro dias={data.dias} miembro={miembro} onMover={moverTarea} />
+        <SemanaMiembro dias={data.dias} miembro={miembro} onMover={moverTarea} onAbrir={abrirTarea} />
       ) : (
         <div className="p-8 text-sm text-[#555]">Sin miembros para mostrar.</div>
+      )}
+
+      {/* Panel de tarea (overlay), igual que en Operaciones */}
+      {selectedTask && (
+        <div className="fixed inset-0 z-50 flex">
+          <div className="flex-1 bg-black/40" onClick={() => setSelectedTask(null)} />
+          <div className="w-full max-w-[520px] h-full bg-[#0d0d0d] border-l border-[#1e1e1e] overflow-y-auto">
+            <TaskPanel
+              tarea={selectedTask}
+              usuarios={usuarios as { id: string; name: string }[]}
+              proyectos={proyectos as { id: string; nombre: string; color: string | null }[]}
+              iniciativas={iniciativas as { id: string; nombre: string; color: string | null }[]}
+              sessionId={sessionId}
+              onClose={() => setSelectedTask(null)}
+              onSave={guardarTarea}
+              onComplete={completarTarea}
+              onDelete={eliminarTarea}
+              onAddSubtarea={agregarSubtarea}
+              onCompleteSubtarea={completarSubtarea}
+              onDeleteSubtarea={eliminarSubtarea}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
@@ -217,10 +326,12 @@ function SemanaMiembro({
   dias,
   miembro,
   onMover,
+  onAbrir,
 }: {
   dias: string[];
   miembro: UsuarioSemana;
   onMover: (tareaId: string, dia: string) => void;
+  onAbrir: (tareaId: string) => void;
 }) {
   const [dragOver, setDragOver] = useState<string | null>(null);
   const dragId = useRef<string | null>(null);
@@ -311,6 +422,7 @@ function SemanaMiembro({
                               dias={dias}
                               onDragStart={() => { dragId.current = t.id; }}
                               onMover={onMover}
+                              onAbrir={onAbrir}
                             />
                           ))}
                         </ul>
@@ -332,11 +444,13 @@ function TareaCard({
   dias,
   onDragStart,
   onMover,
+  onAbrir,
 }: {
   t: TareaSemana;
   dias: string[];
   onDragStart: () => void;
   onMover: (tareaId: string, dia: string) => void;
+  onAbrir: (tareaId: string) => void;
 }) {
   const [menu, setMenu] = useState(false);
   const completada = t.estado === "COMPLETADA";
@@ -352,7 +466,11 @@ function TareaCard({
           style={{ background: completada ? "#34d399" : prioColor(t.prioridad) }}
           title={completada ? "Completada" : t.prioridad}
         />
-        <div className="min-w-0 flex-1">
+        <div
+          className="min-w-0 flex-1 cursor-pointer"
+          onClick={() => onAbrir(t.id)}
+          title="Abrir tarea"
+        >
           <span className={`text-[12px] leading-tight block ${completada ? "text-[#555] line-through" : "text-[#d4d4d4]"}`}>
             {t.titulo}
           </span>
@@ -365,7 +483,7 @@ function TareaCard({
           </div>
         </div>
         <button
-          onClick={() => setMenu(v => !v)}
+          onClick={e => { e.stopPropagation(); setMenu(v => !v); }}
           className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-[#666] hover:text-white text-xs px-1 shrink-0"
           aria-label="Mover a otro día"
           title="Mover a otro día"
