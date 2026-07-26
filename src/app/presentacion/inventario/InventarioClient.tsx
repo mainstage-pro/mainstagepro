@@ -211,11 +211,6 @@ function EquipoCard({ eq, delay = 0, onImageClick, imageMap }: { eq: EquipoData;
           <p className="text-white font-semibold text-sm leading-snug mb-1 line-clamp-2">{eqDisplayName(eq)}</p>
           {(eq.marca || eq.modelo) && <p className="text-white/40 text-xs leading-snug line-clamp-2">{eq.descripcion}</p>}
           {eq.notas && <p className="text-white/20 text-xs mt-2 leading-relaxed line-clamp-2">{eq.notas}</p>}
-          {eq.precioRenta > 0 && (
-            <p className="text-[#B3985B] text-xs font-semibold mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-              {fmtPrice(eq.precioRenta)} <span className="text-white/25 font-normal">{" / día"}</span>
-            </p>
-          )}
         </div>
       </div>
     </R>
@@ -781,10 +776,17 @@ function CotizadorTab({ categorias, quoteItems, onAddItem, onUpdateQty, onRemove
               </div>
 
               {quoteItems.length > 0 && subtotal > 0 && (
-                <div className="px-5 py-4 flex items-baseline justify-between" style={{ borderTop: `1px solid ${GOLD}15` }}>
-                  <span className="text-white/40 text-xs">{dias > 1 ? `Total (${dias} días)` : "Subtotal / día"}</span>
-                  <span className="text-white font-bold text-xl" style={{ letterSpacing: "-0.02em" }}>{fmtPrice(subtotal * dias)}</span>
-                </div>
+                <>
+                  <div className="px-5 py-4 flex items-baseline justify-between" style={{ borderTop: `1px solid ${GOLD}15` }}>
+                    <span className="text-white/40 text-xs">{dias > 1 ? `Total (${dias} días)` : "Subtotal / día"}</span>
+                    <span className="text-white font-bold text-xl" style={{ letterSpacing: "-0.02em" }}>{fmtPrice(subtotal * dias)}</span>
+                  </div>
+                  <div className="px-5 pb-4">
+                    <p className="text-[11px] leading-relaxed rounded-lg px-3 py-2.5" style={{ background: `${GOLD}0D`, border: `1px solid ${GOLD}20`, color: `${GOLD}` }}>
+                      {"Se pueden generar descuentos por volumen de renta de equipos. Contacta a tu vendedor para una cotización a la medida."}
+                    </p>
+                  </div>
+                </>
               )}
             </div>
 
