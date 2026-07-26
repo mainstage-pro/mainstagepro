@@ -1074,7 +1074,7 @@ export default function CobrosPagosPage({ view }: { view?: "cobros" | "programac
               href={`/api/finanzas/cobros-pagos/reporte/pdf?tipo=${tab === "pagar" ? "pagar" : "cobrar"}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#333] text-gray-400 text-sm font-medium hover:border-[#B3985B] hover:text-[#B3985B] transition-colors">
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-semibold hover:bg-[#c9a96a] transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
               Reporte PDF · {tab === "pagar" ? "Por Pagar" : "Por Cobrar"}
             </a>
