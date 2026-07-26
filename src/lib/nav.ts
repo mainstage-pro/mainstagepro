@@ -195,7 +195,6 @@ export const NAV: NavSection[] = [
           { key: "cotizaciones", accessKey: "crm-tratos", label: "Cotizaciones", href: "/cotizaciones" },
           { key: "cotizaciones-plantillas", accessKey: "crm-tratos", label: "Plantillas", href: "/cotizaciones/plantillas" },
           { key: "crm-base-de-datos", label: "Clientes", href: "/crm/base-de-datos" },
-          { key: "ventas-seguimientos", label: "Seguimientos", href: "/ventas/seguimientos" },
         ],
       },
       {
