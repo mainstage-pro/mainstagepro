@@ -95,12 +95,12 @@ export default function ProyectoInternoPage({ params }: { params: Promise<{ id: 
     load();
   }
 
-  async function crearSeguimiento(titulo: string, fecha: string, nota: string) {
+  async function crearSeguimiento(titulo: string, fecha: string, nota: string, responsableId: string) {
     if (!titulo.trim() || !proyecto) return;
     await fetch("/api/tareas", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        titulo: titulo.trim(), notas: nota || null, area: proyecto.area, asignadoAId: proyecto.lider.id,
+        titulo: titulo.trim(), notas: nota || null, area: proyecto.area, asignadoAId: responsableId || proyecto.lider.id,
         proyectoInternoId: proyecto.id, esSeguimiento: true, fecha: fecha || null,
       }),
     });
@@ -204,7 +204,7 @@ export default function ProyectoInternoPage({ params }: { params: Promise<{ id: 
           {/* Seguimientos / Agenda */}
           <div className="space-y-3">
             <Divider label="Seguimientos agendados" Icon={CalendarClock} />
-            <SeguimientosBloque seguimientos={proyecto.seguimientos} onToggle={toggleTarea} onCrear={crearSeguimiento} />
+            <SeguimientosBloque seguimientos={proyecto.seguimientos} onToggle={toggleTarea} onCrear={crearSeguimiento} usuarios={usuarios} liderId={proyecto.lider.id} />
           </div>
 
           {/* Objetivo / Entregable / Descripción */}
@@ -424,11 +424,11 @@ function SeccionCard({ fase, sinSeccion, onToggleTarea, onOpenTarea, onNuevaTare
         </div>
       )}
 
-      <InlineAdd onAdd={onAddInline} placeholder="Agregar tarea rápida…" />
       <button onClick={onNuevaTarea}
-        className="w-full flex items-center justify-center gap-1.5 px-4 py-2 text-[11px] text-[#666] hover:text-[#B3985B] border-t border-[#141414] transition-colors">
-        <Plus size={12} /> Nueva tarea con detalles
+        className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 text-[12px] font-medium text-[#B3985B] hover:bg-[#B3985B]/10 border-t border-[#141414] transition-colors">
+        <Plus size={13} /> Nueva tarea con detalles
       </button>
+      <InlineAdd onAdd={onAddInline} placeholder="Agregar tarea rápida…" />
     </div>
   );
 }
@@ -453,12 +453,14 @@ function NuevaSeccion({ onCrear }: { onCrear: (nombre: string) => void }) {
   );
 }
 
-function SeguimientosBloque({ seguimientos, onToggle, onCrear }: {
-  seguimientos: Seguimiento[]; onToggle: (s: Seguimiento) => void; onCrear: (titulo: string, fecha: string, nota: string) => void;
+function SeguimientosBloque({ seguimientos, onToggle, onCrear, usuarios, liderId }: {
+  seguimientos: Seguimiento[]; onToggle: (s: Seguimiento) => void; onCrear: (titulo: string, fecha: string, nota: string, responsableId: string) => void;
+  usuarios: Usuario[]; liderId: string;
 }) {
   const [titulo, setTitulo] = useState("");
   const [fecha, setFecha] = useState("");
   const [nota, setNota] = useState("");
+  const [responsable, setResponsable] = useState(liderId);
   const pendientes = useMemo(() => seguimientos.filter(s => s.estado !== "COMPLETADA"), [seguimientos]);
   const hechos = useMemo(() => seguimientos.filter(s => s.estado === "COMPLETADA"), [seguimientos]);
 
@@ -479,6 +481,7 @@ function SeguimientosBloque({ seguimientos, onToggle, onCrear }: {
                   <p className={`text-[13px] leading-snug ${done ? "line-through text-[#555]" : "text-white"}`}>{s.titulo}</p>
                   {s.notas && <p className="text-[11px] text-[#666] mt-0.5">{s.notas}</p>}
                 </div>
+                {s.asignadoA && <span className="inline-flex items-center gap-1 text-[10px] text-[#888] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] shrink-0"><User size={10} />{s.asignadoA.name.split(" ")[0]}</span>}
                 {s.fecha && <span className="inline-flex items-center gap-1 text-[10px] text-[#888] px-1.5 py-0.5 rounded-full bg-[#111] shrink-0"><CalendarClock size={10} />{fechaCorta(s.fecha)}</span>}
               </div>
             );
@@ -488,11 +491,14 @@ function SeguimientosBloque({ seguimientos, onToggle, onCrear }: {
       <div className="p-3 border-t border-[#141414] space-y-2">
         <input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Nuevo seguimiento (ej. Revisar avance con proveedor)…"
           className="w-full bg-transparent text-[13px] text-white placeholder-[#444] focus:outline-none" />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} className={selCls + " w-auto"} />
+          <select value={responsable} onChange={e => setResponsable(e.target.value)} className={selCls + " w-auto"} title="Responsable">
+            {usuarios.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+          </select>
           <input value={nota} onChange={e => setNota(e.target.value)} placeholder="Nota (opcional)"
-            className="flex-1 bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-2.5 py-1.5 text-[12.5px] text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/40" />
-          <button onClick={() => { if (titulo.trim()) { onCrear(titulo, fecha, nota); setTitulo(""); setFecha(""); setNota(""); } }}
+            className="flex-1 min-w-[120px] bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-2.5 py-1.5 text-[12.5px] text-white placeholder-[#444] focus:outline-none focus:border-[#B3985B]/40" />
+          <button onClick={() => { if (titulo.trim()) { onCrear(titulo, fecha, nota, responsable); setTitulo(""); setFecha(""); setNota(""); setResponsable(liderId); } }}
             disabled={!titulo.trim()}
             className="shrink-0 px-3 py-1.5 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-[12px] font-semibold rounded-lg transition-colors disabled:opacity-30">
             Agendar
