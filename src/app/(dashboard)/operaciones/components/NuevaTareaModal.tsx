@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import DatePicker from "@/components/ui/DatePicker";
 import RecurrenciaInput from "./RecurrenciaInput";
+import AccesoDirectoField from "./AccesoDirectoField";
 import { Combobox } from "@/components/Combobox";
 
 // ── Tipos de registro (los sistemas del hub unificado) ──────────────────────────
@@ -95,6 +96,9 @@ export default function NuevaTareaModal({
   const [fechaVen, setFechaVen]   = useState("");
   const [recurrencia, setRecurrencia] = useState<string | null>(null);
   const [comprobacion, setComprobacion] = useState<string>("");
+  // Acceso directo: módulo del sidebar (+ sección) o enlace externo.
+  const [moduloDestino, setModuloDestino] = useState("");
+  const [moduloTexto, setModuloTexto] = useState("");
   const [proyectoEventoId, setProyectoEventoId] = useState<string | null>(null);
   const [proyectoInternoId, setProyectoInternoId] = useState<string | null>(null);
   const [tratoId, setTratoId]     = useState<string | null>(null);
@@ -126,6 +130,7 @@ export default function NuevaTareaModal({
       setArea(defaultArea || "GENERAL"); setAsignadoId(defaultAsignadoId);
       setCoResponsables([]);
       setFecha(""); setFechaVen(""); setRecurrencia(null); setComprobacion("");
+      setModuloDestino(""); setModuloTexto("");
       setProyectoEventoId(proyectoEventoIdInicial ?? null);
       setProyectoInternoId(proyectoInternoIdInicial ?? null); setFaseId(faseInicialId ?? null);
       setTratoId(tratoIdInicial ?? null);
@@ -154,6 +159,8 @@ export default function NuevaTareaModal({
         setFecha(t.fecha ? String(t.fecha).substring(0, 10) : "");
         setFechaVen(t.fechaVencimiento ? String(t.fechaVencimiento).substring(0, 10) : "");
         setComprobacion(t.tipoEvidencia ?? "");
+        setModuloDestino(t.moduloDestino ?? "");
+        setModuloTexto(t.moduloTexto ?? "");
         setTratoId(t.tratoId ?? tratoIdInicial ?? null);
         setProyectoEventoId(t.proyectoEventoId ?? null);
         setProyectoInternoId(t.proyectoInternoId ?? proyectoInternoIdInicial ?? null);
@@ -276,6 +283,9 @@ export default function NuevaTareaModal({
             fechaVencimiento: fechaVen || null,
             tipoEvidencia: comprobacion || null,
             requiereEvidencia: !!comprobacion,
+            moduloDestino: moduloDestino || null,
+            moduloTexto: moduloTexto || null,
+            moduloDisponible: true,
           }),
         });
         const json = await res.json().catch(() => ({}));
@@ -309,6 +319,9 @@ export default function NuevaTareaModal({
       tratoId: tipo === "TRATO" ? tratoId : null,
       tipoEvidencia: comprobacion || null,
       requiereEvidencia: !!comprobacion,
+      moduloDestino: moduloDestino || null,
+      moduloTexto: moduloTexto || null,
+      moduloDisponible: true,
     };
     try {
       const res = await fetch("/api/tareas", {
@@ -571,6 +584,14 @@ export default function NuevaTareaModal({
                 Al completarla, la evidencia se envía por WhatsApp al grupo del área y luego se verifica.
               </p>
             </Campo>
+
+            {/* Acceso directo a un módulo (o enlace externo) */}
+            <AccesoDirectoField
+              destino={moduloDestino}
+              texto={moduloTexto}
+              onChange={(d, t) => { setModuloDestino(d); setModuloTexto(t); }}
+              onClear={() => { setModuloDestino(""); setModuloTexto(""); }}
+            />
 
             {/* Archivos adjuntos */}
             <Campo label="Archivos">

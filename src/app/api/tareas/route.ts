@@ -293,6 +293,8 @@ export async function POST(req: NextRequest) {
     // Hub unificado: tipo de registro + comprobación
     tipoOrigen, tipoEvidencia, requiereEvidencia,
     porqueSeHace, estandarMinimo, siNoSeHace, cuando,
+    // Acceso directo: módulo del sidebar (+ sección) o enlace externo
+    moduloDestino, moduloTexto, moduloDisponible,
   } = body;
 
   if (!titulo?.trim()) return NextResponse.json({ error: "Título requerido" }, { status: 400 });
@@ -358,6 +360,9 @@ export async function POST(req: NextRequest) {
       estandarMinimo:    estandarMinimo || null,
       siNoSeHace:        siNoSeHace     || null,
       cuando:            cuando         || null,
+      moduloDestino:     moduloDestino  || null,
+      moduloTexto:       moduloTexto    || null,
+      moduloDisponible:  moduloDestino ? (moduloDisponible !== false) : true,
       colaboradores: colaboradoresLimpios.length > 0
         ? { create: colaboradoresLimpios.map((usuarioId) => ({ usuarioId })) }
         : undefined,

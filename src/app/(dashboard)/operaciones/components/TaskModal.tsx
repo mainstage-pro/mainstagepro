@@ -7,7 +7,7 @@ import TaskItem, { type TareaItem } from "./TaskItem";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { Link2, Camera, Paperclip, FileText, ExternalLink, ChevronDown, ChevronRight, ShieldCheck, ClipboardCheck, AlertTriangle } from "lucide-react";
-import { GRUPOS_MODULOS, MODULOS_EJECUCION } from "@/lib/modulosEjecucion";
+import AccesoDirectoField from "./AccesoDirectoField";
 
 // ── Bloque 5: tag de origen (mismo esquema que TaskItem) ──
 const TIPO_ORIGEN: Record<string, { label: string; color: string; bg: string; border: string }> = {
@@ -152,7 +152,6 @@ export default function TaskModal({
   // ── Acceso directo: módulo interno o enlace externo (editable) ──
   const [moduloDestino, setModuloDestino] = useState("");
   const [moduloTexto, setModuloTexto] = useState("");
-  const [accesoModo, setAccesoModo] = useState<"interno" | "externo">("interno");
   // ── Envío de evidencia al grupo (WhatsApp) ──
   const [enviandoGrupo, setEnviandoGrupo] = useState(false);
   const [evidenciaEnviadaAt, setEvidenciaEnviadaAt] = useState<string | null>(null);
@@ -189,7 +188,6 @@ export default function TaskModal({
     setTipoEvidencia(tarea.tipoEvidencia ?? null);
     setModuloDestino(tarea.moduloDestino ?? "");
     setModuloTexto(tarea.moduloTexto ?? "");
-    setAccesoModo(/^https?:\/\//i.test(tarea.moduloDestino ?? "") ? "externo" : "interno");
     setEvidenciaEnviadaAt(tarea.evidenciaEnviadaAt ?? null);
     setFichaOpen(false);
 
@@ -988,79 +986,13 @@ export default function TaskModal({
                 )}
               </div>
 
-              {/* Acceso directo — módulo interno o enlace externo (editable) */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold">Acceso directo</p>
-                  {moduloDestino && (
-                    <button onClick={limpiarAcceso} className="text-[10px] text-[#444] hover:text-red-400 transition-colors">Quitar</button>
-                  )}
-                </div>
-
-                <div className="flex rounded-lg overflow-hidden border border-[#1a1a1a] mb-2">
-                  <button
-                    onClick={() => setAccesoModo("interno")}
-                    className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-medium transition-all ${
-                      accesoModo === "interno" ? "bg-[#1a1a1a] text-white" : "text-[#444] hover:text-[#777]"
-                    }`}
-                  >
-                    <ExternalLink strokeWidth={2} className="w-3 h-3" /> Módulo
-                  </button>
-                  <div className="w-px bg-[#1a1a1a]" />
-                  <button
-                    onClick={() => setAccesoModo("externo")}
-                    className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-[11px] font-medium transition-all ${
-                      accesoModo === "externo" ? "bg-[#1a1a1a] text-[#B3985B]" : "text-[#444] hover:text-[#777]"
-                    }`}
-                  >
-                    <Link2 strokeWidth={2} className="w-3 h-3" /> Enlace
-                  </button>
-                </div>
-
-                {accesoModo === "interno" ? (
-                  <select
-                    value={moduloEsExterno ? "" : moduloDestino}
-                    onChange={e => {
-                      const ruta = e.target.value;
-                      const nombre = ruta ? MODULOS_EJECUCION.find(m => m.ruta === ruta)?.nombre ?? "" : "";
-                      if (ruta) guardarAcceso(ruta, nombre); else limpiarAcceso();
-                    }}
-                    className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]"
-                  >
-                    <option value="">— Sin módulo —</option>
-                    {GRUPOS_MODULOS.map(grupo => (
-                      <optgroup key={grupo.grupo} label={grupo.grupo}>
-                        {grupo.modulos.map(m => (
-                          <option key={m.ruta} value={m.ruta}>{m.nombre}</option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="space-y-1.5">
-                    <input
-                      value={moduloEsExterno ? moduloDestino : ""}
-                      onChange={e => setModuloDestino(e.target.value)}
-                      onBlur={e => {
-                        const url = e.target.value.trim();
-                        if (url && url !== (tarea.moduloDestino ?? "")) guardarAcceso(url, moduloTexto);
-                        else if (!url && tarea.moduloDestino) limpiarAcceso();
-                      }}
-                      placeholder="https://drive.google.com/…"
-                      className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]"
-                    />
-                    <input
-                      value={moduloTexto}
-                      onChange={e => setModuloTexto(e.target.value)}
-                      onBlur={e => {
-                        if (moduloEsExterno && e.target.value !== (tarea.moduloTexto ?? "")) guardarAcceso(moduloDestino, e.target.value.trim());
-                      }}
-                      placeholder="Texto del botón (opcional)"
-                      className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]"
-                    />
-                  </div>
-                )}
-              </div>
+              {/* Acceso directo — módulo del sidebar (+ sección) o enlace externo */}
+              <AccesoDirectoField
+                destino={moduloDestino}
+                texto={moduloTexto}
+                onChange={(d, t) => guardarAcceso(d, t)}
+                onClear={limpiarAcceso}
+              />
 
               {/* Fecha / Recurrencia */}
               <div>
