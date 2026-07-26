@@ -9,6 +9,7 @@ import {
   Handshake,
   Package,
   Gift,
+  Speaker,
   type LucideIcon,
 } from "lucide-react";
 
@@ -63,6 +64,14 @@ export const PRESENTACIONES_COMERCIAL: PresentacionItem[] = [
     href: "/presentacion/paquetes",
     icon: Gift,
     audience: "Parejas · Familias · Empresas",
+  },
+  {
+    key: "cat-audio",
+    label: "Audio",
+    desc: "Sistemas de sonido, consolas y microfonía. El catálogo de audio con fotos reales del equipo y su valor en la producción.",
+    href: "/presentacion/categoria/audio",
+    icon: Speaker,
+    audience: "Clientes · Equipo",
   },
   {
     key: "galeria",
