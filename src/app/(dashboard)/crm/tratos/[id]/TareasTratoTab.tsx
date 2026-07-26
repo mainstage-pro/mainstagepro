@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Calendar, User, GitBranch } from "lucide-react";
+import { Calendar, User, Flag, MessageCircle, Ban } from "lucide-react";
 import NuevaTareaModal from "../../../operaciones/components/NuevaTareaModal";
 import { etapaInternaLabel } from "@/lib/proceso/valores";
 
-// Tareas ad-hoc de un trato de ventas. Mismo patrón que la sección de tareas de
-// un proyecto de evento (ChecklistEventoTab), aquí ligadas al trato en vez del
-// proyecto. Se ven y editan también desde Gestión Operativa (vista Tratos).
+// Tareas del proceso comercial de un trato. Al abrir el trato se instancian DE
+// GOLPE todas las tareas del proceso (una por paso), agrupadas por subetapa. Nacen
+// sin fecha ("estacionadas"): solo aparecen en Gestión Operativa cuando el vendedor
+// les pone fecha. Las tareas-hito (con la etiqueta `hito`) avanzan la etapa al
+// completarse. "No fue necesario" marca una tarea como hecha pero señalada.
 export interface TareaTrato {
   id: string;
   titulo: string;
@@ -24,18 +26,27 @@ export interface TareaTrato {
   _count: { subtareas: number; comentarios: number; archivos: number };
 }
 
-// Extrae el paso del proceso (subetapa) de las etiquetas JSON de la tarea, si lo
-// tiene. Las tareas por defecto de cada subetapa llevan la etiqueta "subetapa:X".
-function pasoProceso(etiquetas: string | null): string | null {
-  if (!etiquetas) return null;
+function parseTags(etiquetas: string | null): string[] {
+  if (!etiquetas) return [];
   try {
     const arr = JSON.parse(etiquetas) as unknown;
-    if (!Array.isArray(arr)) return null;
-    const tag = arr.find((e): e is string => typeof e === "string" && e.startsWith("subetapa:"));
-    if (!tag) return null;
-    const label = etapaInternaLabel(tag.slice("subetapa:".length));
-    return label === "—" ? null : label;
-  } catch { return null; }
+    return Array.isArray(arr) ? arr.filter((e): e is string => typeof e === "string") : [];
+  } catch { return []; }
+}
+
+// Extrae la subetapa (parte del proceso) de las etiquetas de la tarea.
+function subetapaDe(etiquetas: string | null): string | null {
+  const tag = parseTags(etiquetas).find((e) => e.startsWith("subetapa:"));
+  return tag ? tag.slice("subetapa:".length) : null;
+}
+
+function tieneTag(etiquetas: string | null, tag: string): boolean {
+  return parseTags(etiquetas).includes(tag);
+}
+
+function canalDe(etiquetas: string | null): string | null {
+  const tag = parseTags(etiquetas).find((e) => e.startsWith("canal:"));
+  return tag ? tag.slice("canal:".length) : null;
 }
 
 interface Usuario { id: string; name: string; }
@@ -44,15 +55,27 @@ const PRIO_COLOR: Record<string, string> = {
   URGENTE: "#f87171", ALTA: "#fb923c", MEDIA: "#B3985B", BAJA: "#555",
 };
 
+const ADHOC = "__adhoc__";
+
 function fechaCorta(iso: string): string {
   return new Date(iso.substring(0, 10) + "T00:00:00").toLocaleDateString("es-MX", { month: "short", day: "numeric" });
 }
 
+function waUrl(telefono: string | null, mensaje: string | null): string | null {
+  if (!telefono) return null;
+  const tel = telefono.replace(/^p:/i, "").replace(/\D/g, "");
+  if (!tel) return null;
+  const num = tel.length === 10 ? `52${tel}` : tel;
+  const texto = mensaje ? `?text=${encodeURIComponent(mensaje)}` : "";
+  return `https://wa.me/${num}${texto}`;
+}
+
 export default function TareasTratoTab({
-  tratoId, tratoNombre, usuarios, onSubetapaChange,
+  tratoId, tratoNombre, telefono, usuarios, onSubetapaChange,
 }: {
   tratoId: string;
   tratoNombre: string;
+  telefono?: string | null;
   usuarios: Usuario[];
   onSubetapaChange?: () => void;
 }) {
@@ -84,10 +107,20 @@ export default function TareasTratoTab({
       if (d?.error) alert(d.error);
       return;
     }
-    // Si completar esta tarea hizo avanzar la subetapa, recarga la lista (aparecen
-    // las tareas por defecto de la nueva subetapa) y avisa al detalle del trato.
+    // Al reabrir, el servidor quita la marca "no-necesario": recargamos para reflejarlo.
+    if (next === "PENDIENTE" && tieneTag(t.etiquetas, "no-necesario")) { load(); return; }
+    // Si completar esta tarea-hito hizo avanzar la etapa, recarga y avisa al detalle.
     const d = await res.json().catch(() => ({}));
     if (d?.subetapaAvanzada) { load(); onSubetapaChange?.(); }
+  }
+
+  async function marcarNoNecesario(e: React.MouseEvent, t: TareaTrato) {
+    e.stopPropagation();
+    const res = await fetch(`/api/tareas/${t.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ noNecesario: true }),
+    });
+    if (res.ok) { const d = await res.json().catch(() => ({})); if (d?.tarea) upsertTarea(d.tarea as TareaTrato); }
   }
 
   function upsertTarea(t: TareaTrato) {
@@ -98,8 +131,21 @@ export default function TareasTratoTab({
     });
   }
 
-  const activas    = tareas.filter(t => t.estado !== "COMPLETADA");
-  const completadas = tareas.filter(t => t.estado === "COMPLETADA");
+  // Agrupa por subetapa (parte del proceso); las ad-hoc van al final.
+  const grupos: { key: string; label: string; tareas: TareaTrato[] }[] = [];
+  const idx = new Map<string, number>();
+  for (const t of tareas) {
+    const sub = subetapaDe(t.etiquetas) ?? ADHOC;
+    let gi = idx.get(sub);
+    if (gi === undefined) {
+      gi = grupos.length;
+      idx.set(sub, gi);
+      grupos.push({ key: sub, label: sub === ADHOC ? "Otras tareas" : etapaInternaLabel(sub), tareas: [] });
+    }
+    grupos[gi].tareas.push(t);
+  }
+  // Ad-hoc siempre al final.
+  grupos.sort((a, b) => (a.key === ADHOC ? 1 : 0) - (b.key === ADHOC ? 1 : 0));
 
   return (
     <div className="space-y-4">
@@ -118,58 +164,99 @@ export default function TareasTratoTab({
       ) : tareas.length === 0 ? (
         <p className="text-center text-xs text-[#555] py-6">Sin tareas para este trato todavía.</p>
       ) : (
-        <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden divide-y divide-[#141414]">
-          {[...activas, ...completadas].map(t => {
-            const done = t.estado === "COMPLETADA";
-            const paso = pasoProceso(t.etiquetas);
-            return (
-              <div
-                key={t.id}
-                onClick={() => setModal({ mode: "editar", tareaId: t.id })}
-                className="group flex items-start gap-3 px-5 py-3 cursor-pointer hover:bg-[#0f0f0f] transition-colors"
-              >
-                <button
-                  onClick={(e) => toggle(e, t)}
-                  title={done ? "Marcar como pendiente" : "Marcar como completada"}
-                  className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                    done ? "border-green-500 bg-green-500/20 text-green-400 text-[10px]"
-                         : "border-[#333] hover:border-[#B3985B] text-transparent"
-                  }`}
-                >
-                  {done ? "✓" : ""}
-                </button>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-sm leading-snug ${done ? "line-through text-gray-600" : "text-white"} transition-colors`}>
-                    {t.titulo}
-                  </p>
-                  <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
-                    {paso && (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-blue-300/80 px-2 py-0.5 rounded-full bg-blue-950/30 border border-blue-800/30 font-medium">
-                        <GitBranch strokeWidth={1.75} className="w-3 h-3" /> {paso}
-                      </span>
-                    )}
-                    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium"
-                      style={{ color: PRIO_COLOR[t.prioridad] ?? "#555", background: (PRIO_COLOR[t.prioridad] ?? "#555") + "18" }}>
-                      {t.prioridad.charAt(0) + t.prioridad.slice(1).toLowerCase()}
-                    </span>
-                    {t.asignadoA ? (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 px-2 py-0.5 rounded-full bg-[#1a1a1a] font-medium">
-                        <User strokeWidth={1.75} className="w-3 h-3" /> {t.asignadoA.name}
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-yellow-500/70 px-2 py-0.5 rounded-full bg-yellow-950/20 font-medium">Sin asignar</span>
-                    )}
-                    {t.fecha && (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 px-2 py-0.5 rounded-full bg-[#111] font-medium">
-                        <Calendar strokeWidth={1.75} className="w-3 h-3" /> {fechaCorta(t.fecha)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <span className="shrink-0 self-center text-[11px] text-[#555] opacity-0 group-hover:opacity-100 transition-opacity">Abrir →</span>
+        <div className="space-y-5">
+          {grupos.map(grupo => (
+            <div key={grupo.key}>
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#B3985B]">{grupo.label}</span>
+                <span className="text-[10px] text-[#555]">{grupo.tareas.length}</span>
+                <div className="flex-1 h-px bg-[#1a1a1a]" />
               </div>
-            );
-          })}
+              <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden divide-y divide-[#141414]">
+                {grupo.tareas.map(t => {
+                  const done = t.estado === "COMPLETADA";
+                  const noNec = tieneTag(t.etiquetas, "no-necesario");
+                  const hito = tieneTag(t.etiquetas, "hito");
+                  const wa = canalDe(t.etiquetas) === "WHATSAPP" ? waUrl(telefono ?? null, t.notas) : null;
+                  return (
+                    <div
+                      key={t.id}
+                      onClick={() => setModal({ mode: "editar", tareaId: t.id })}
+                      className="group flex items-start gap-3 px-5 py-3 cursor-pointer hover:bg-[#0f0f0f] transition-colors"
+                    >
+                      <button
+                        onClick={(e) => toggle(e, t)}
+                        title={done ? "Marcar como pendiente" : "Marcar como completada"}
+                        className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                          noNec ? "border-[#555] bg-[#1a1a1a] text-[#888] text-[10px]"
+                               : done ? "border-green-500 bg-green-500/20 text-green-400 text-[10px]"
+                               : "border-[#333] hover:border-[#B3985B] text-transparent"
+                        }`}
+                      >
+                        {noNec ? "–" : done ? "✓" : ""}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm leading-snug ${done ? "line-through text-gray-600" : "text-white"} transition-colors`}>
+                          {t.titulo}
+                        </p>
+                        <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
+                          {hito && (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-emerald-300/80 px-2 py-0.5 rounded-full bg-emerald-950/30 border border-emerald-800/30 font-medium">
+                              <Flag strokeWidth={1.75} className="w-3 h-3" /> Avanza etapa
+                            </span>
+                          )}
+                          {noNec && (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 px-2 py-0.5 rounded-full bg-[#1a1a1a] border border-[#2a2a2a] font-medium">
+                              <Ban strokeWidth={1.75} className="w-3 h-3" /> No fue necesario
+                            </span>
+                          )}
+                          <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium"
+                            style={{ color: PRIO_COLOR[t.prioridad] ?? "#555", background: (PRIO_COLOR[t.prioridad] ?? "#555") + "18" }}>
+                            {t.prioridad.charAt(0) + t.prioridad.slice(1).toLowerCase()}
+                          </span>
+                          {t.asignadoA ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-gray-400 px-2 py-0.5 rounded-full bg-[#1a1a1a] font-medium">
+                              <User strokeWidth={1.75} className="w-3 h-3" /> {t.asignadoA.name}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-yellow-500/70 px-2 py-0.5 rounded-full bg-yellow-950/20 font-medium">Sin asignar</span>
+                          )}
+                          {t.fecha ? (
+                            <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 px-2 py-0.5 rounded-full bg-[#111] font-medium">
+                              <Calendar strokeWidth={1.75} className="w-3 h-3" /> {fechaCorta(t.fecha)}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-[#555] px-2 py-0.5 rounded-full bg-[#111] font-medium">Sin agendar</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="shrink-0 self-center flex items-center gap-2">
+                        {wa && (
+                          <a
+                            href={wa} target="_blank" rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            title="Abrir WhatsApp con el guion"
+                            className="w-7 h-7 rounded-full bg-green-600/15 text-green-400 hover:bg-green-600/25 flex items-center justify-center transition-colors"
+                          >
+                            <MessageCircle strokeWidth={1.75} className="w-4 h-4" />
+                          </a>
+                        )}
+                        {!done && (
+                          <button
+                            onClick={(e) => marcarNoNecesario(e, t)}
+                            title="No fue necesario (marcar como hecha, sin avanzar etapa)"
+                            className="text-[10px] text-[#555] hover:text-gray-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            No fue necesario
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

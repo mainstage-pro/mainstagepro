@@ -11,7 +11,8 @@
 //  · Dry-run por defecto: sin commit=true no escribe nada.
 // ─────────────────────────────────────────────────────────────────────────────
 import { prisma } from "@/lib/prisma";
-import { calcularDescubrimientoNivel, generarSiguientePaso } from "./motor";
+import { calcularDescubrimientoNivel } from "./motor";
+import { instanciarTareasProceso } from "./tareas-subetapa";
 import { seedProceso } from "./seed";
 import type { EtapaInterna, EtapaTrato } from "./valores";
 
@@ -229,10 +230,10 @@ export async function migrarTratos({ commit = false }: { commit?: boolean } = {}
     const activo = !CERRADAS_SET.has(p.nuevaEtapa);
     if (!activo) continue;
 
-    // Un solo paso de proceso pendiente: elimina los pendientes (ex-auto) y regenera.
+    // Limpia seguimientos de proceso legacy e instancia de golpe las tareas del proceso.
     await prisma.seguimiento.deleteMany({ where: { tratoId: p.id, tipo: "PROCESO", completado: false } });
-    const seg = await generarSiguientePaso(p.id);
-    if (seg) reporte.pasosGenerados += 1;
+    const creadas = await instanciarTareasProceso(p.id);
+    reporte.pasosGenerados += creadas;
   }
 
   // ── Recolectar métricas post-commit ──────────────────────────────────────────

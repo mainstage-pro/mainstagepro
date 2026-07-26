@@ -3,7 +3,17 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureTareaColumns } from "@/lib/ensure-tarea-columns";
 import { calcularProximaFecha, primeraOcurrencia, type RecurrenciaConfig } from "@/lib/recurrencia";
-import { avanzarSiTareasCompletas } from "@/lib/proceso/tareas-subetapa";
+import { avanzarPorHito } from "@/lib/proceso/tareas-subetapa";
+
+function parseEtiquetas(etiquetas: string | null): string[] {
+  if (!etiquetas) return [];
+  try {
+    const arr = JSON.parse(etiquetas) as unknown;
+    return Array.isArray(arr) ? arr.filter((e): e is string => typeof e === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 // Explicit SELECT — avoids selecting proyectoEventoId which may not exist in DB yet
 const SELECT = {
@@ -133,8 +143,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // (no se genera una tarea nueva). Se calcula aquí y se aplica al `data` antes del update.
   let reagendar: { proximaFecha: Date; fechaAnterior: Date | null } | null = null;
 
+  // ── "No fue necesario" ────────────────────────────────────────────────────
+  // Marca la tarea como hecha pero señalada como no-necesaria (etiqueta
+  // `no-necesario`). No exige evidencia y no dispara avance de subetapa: los hitos
+  // solo avanzan al completarse de verdad. Al reabrir una tarea se quita la marca.
+  const marcarNoNecesario = body.noNecesario === true;
+  const reabrir = "estado" in data && data.estado !== "COMPLETADA";
+  if (marcarNoNecesario) data.estado = "COMPLETADA";
+  if (marcarNoNecesario || reabrir) {
+    const etiqActual = "etiquetas" in data
+      ? data.etiquetas
+      : (await prisma.tarea.findUnique({ where: { id }, select: { etiquetas: true } }))?.etiquetas ?? null;
+    const tags = parseEtiquetas(etiqActual).filter((t) => t !== "no-necesario");
+    if (marcarNoNecesario) tags.push("no-necesario");
+    data.etiquetas = JSON.stringify(tags);
+  }
+
   // ── Gate de evidencia (server-side): al completar, validar según tipoEvidencia ──
-  if ("estado" in data && data.estado === "COMPLETADA") {
+  if ("estado" in data && data.estado === "COMPLETADA" && !marcarNoNecesario) {
     const actual = await prisma.tarea.findUnique({
       where: { id },
       select: {
@@ -320,17 +346,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     });
   }
 
-  // ── Avance de subetapa por tareas ────────────────────────────────────────
-  // Si se completó una tarea ligada a un trato, y con ella se completaron todas
-  // las tareas por defecto de su subetapa actual, el trato avanza solo a la
-  // siguiente subetapa (instanciando sus tareas por defecto).
+  // ── Avance de subetapa por hito ──────────────────────────────────────────
+  // Si se completó de verdad una tarea-hito (su paso tiene `avanzaSubetapaA`), el
+  // trato avanza a esa subetapa. "No fue necesario" no dispara avance.
   let subetapaAvanzada: string | null = null;
-  if ("estado" in data && data.estado === "COMPLETADA" && !reagendar) {
-    const conTrato = await prisma.tarea.findUnique({ where: { id }, select: { tratoId: true } });
-    if (conTrato?.tratoId) {
-      try { subetapaAvanzada = await avanzarSiTareasCompletas(conTrato.tratoId); }
-      catch { /* el avance no debe romper la actualización de la tarea */ }
-    }
+  if ("estado" in data && data.estado === "COMPLETADA" && !reagendar && !marcarNoNecesario) {
+    try { subetapaAvanzada = await avanzarPorHito(id); }
+    catch { /* el avance no debe romper la actualización de la tarea */ }
   }
 
   // Si se reagendó una recurrente, informamos al cliente para el toast/undo.

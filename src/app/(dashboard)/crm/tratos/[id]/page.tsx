@@ -2438,7 +2438,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             </div>
             <div>
               <h2 className="text-sm font-bold text-white tracking-tight">Tareas del trato</h2>
-              <p className="text-[10px] text-gray-600 mt-0.5">Checklist de la subetapa + tareas ad-hoc · al completarlas avanza la etapa</p>
+              <p className="text-[10px] text-gray-600 mt-0.5">Todas las tareas del proceso · ponles fecha para agendarlas en tu gestión operativa</p>
             </div>
           </div>
         </div>
@@ -2447,6 +2447,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             key={trato.etapaInterna ?? "sin-subetapa"}
             tratoId={trato.id}
             tratoNombre={trato.nombreEvento || trato.cliente.nombre}
+            telefono={trato.cliente.telefono}
             usuarios={usuarios}
             onSubetapaChange={recargarTrato}
           />

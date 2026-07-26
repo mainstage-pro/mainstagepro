@@ -1,66 +1,32 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Tareas por defecto por subetapa: instanciación y avance automático.
+// Tareas del proceso comercial: una tarea por cada paso del proceso.
 //
-// Reemplaza al "paso actual" del motor por una checklist de tareas por subetapa.
-// - Al entrar un trato a una subetapa, se instancian sus tareas por defecto
-//   (idempotente) ligadas al trato como Tarea (tipoOrigen TRATO).
-// - Al completar TODAS las tareas por defecto de la subetapa actual, el trato
-//   avanza solo a la siguiente subetapa.
+// Modelo nuevo (A1 + B2): al abrir un trato se instancian DE GOLPE todas las
+// tareas de todo el proceso — una Tarea por cada ProcesoPaso activo de cada
+// subetapa activa (menos las de venta perdida). Nacen SIN fecha ("estacionadas"):
+// solo viven dentro del trato y no inundan Gestión Operativa. El vendedor les pone
+// fecha y responsable cuando quiere agendarlas; solo entonces aparecen en la
+// gestión operativa.
+//
+// Cada tarea lleva el guion/WhatsApp del paso en `notas` y etiquetas que la ligan
+// a su paso (`paso:ID`), su subetapa (`subetapa:X`), su canal (`canal:X`) y, si el
+// paso es un hito de avance, la etiqueta `hito`. Al completar una tarea-hito el
+// trato avanza de subetapa (avanzarPorHito).
 // ─────────────────────────────────────────────────────────────────────────────
 import { prisma } from "@/lib/prisma";
-import { ensurePlantillasTareaSubetapa } from "@/lib/plantillas-tareas-subetapa-db";
 import { ETAPAS, ETAPA_DE_INTERNA, type EtapaInterna, type EtapaTrato } from "./valores";
 
-const DIA_MS = 24 * 60 * 60 * 1000;
-
-// Etiqueta que marca una tarea como tarea-por-defecto de una subetapa. Se guarda
-// dentro del JSON `etiquetas` de la Tarea; permite detectarlas e idempotencia.
+// Etiqueta que liga una tarea a su subetapa del proceso. Se guarda dentro del JSON
+// `etiquetas` de la Tarea; permite agruparlas en la UI.
 export function tagSubetapa(etapaInterna: string): string {
   return `subetapa:${etapaInterna}`;
 }
 
-// ── instanciarTareasSubetapa ─────────────────────────────────────────────────
-// Crea las tareas por defecto de una subetapa para un trato. Idempotente: si el
-// trato ya tiene alguna tarea de esa subetapa (completada o no), no hace nada.
-export async function instanciarTareasSubetapa(tratoId: string, etapaInterna: string): Promise<number> {
-  await ensurePlantillasTareaSubetapa();
-
-  const tag = tagSubetapa(etapaInterna);
-  const yaTiene = await prisma.tarea.findFirst({
-    where: { tratoId, etiquetas: { contains: `"${tag}"` } },
-    select: { id: true },
-  });
-  if (yaTiene) return 0;
-
-  const plantillas = await prisma.plantillaTareaSubetapa.findMany({
-    where: { etapaInterna, activo: true },
-    orderBy: { orden: "asc" },
-  });
-  if (plantillas.length === 0) return 0;
-
-  const trato = await prisma.trato.findUnique({
-    where: { id: tratoId },
-    select: { responsableId: true, etapaCambiadaEn: true },
-  });
-  const base = trato?.etapaCambiadaEn ?? new Date();
-  const etiquetas = JSON.stringify([tag, "default-proceso"]);
-
-  await prisma.tarea.createMany({
-    data: plantillas.map((p, i) => ({
-      titulo: p.titulo,
-      descripcion: p.descripcion ?? null,
-      prioridad: p.prioridad,
-      area: p.area,
-      tratoId,
-      tipoOrigen: "TRATO",
-      asignadoAId: trato?.responsableId ?? null,
-      etiquetas,
-      fechaVencimiento: p.offsetDias != null ? new Date(base.getTime() + p.offsetDias * DIA_MS) : null,
-      orden: i,
-    })),
-  });
-
-  return plantillas.length;
+// Resuelve el guion del paso sustituyendo [Nombre] por el nombre del cliente.
+// [fecha] y otros marcadores se dejan para que el vendedor los edite antes de enviar.
+function resolverGuion(guion: string | null, nombreCliente: string): string | null {
+  if (!guion) return null;
+  return nombreCliente ? guion.split("[Nombre]").join(nombreCliente) : guion;
 }
 
 // ── subetapasOrdenadas ───────────────────────────────────────────────────────
@@ -91,49 +57,151 @@ export async function siguienteSubetapa(etapaInterna: string): Promise<string | 
   return next.etapaInterna;
 }
 
-// ── tareasSubetapaCompletas ──────────────────────────────────────────────────
-// true si el trato tiene al menos una tarea por defecto de la subetapa y todas
-// (no canceladas) están completadas.
-async function tareasSubetapaCompletas(tratoId: string, etapaInterna: string): Promise<boolean> {
-  const tag = tagSubetapa(etapaInterna);
-  const tareas = await prisma.tarea.findMany({
-    where: { tratoId, etiquetas: { contains: `"${tag}"` }, estado: { not: "CANCELADA" } },
-    select: { estado: true },
-  });
-  if (tareas.length === 0) return false;
-  return tareas.every((t) => t.estado === "COMPLETADA");
-}
-
-// ── avanzarSiTareasCompletas ─────────────────────────────────────────────────
-// Se llama tras completar una tarea. Si todas las tareas por defecto de la
-// subetapa actual del trato están completas, avanza a la siguiente subetapa
-// (actualiza etapa/etapaInterna y cancela seguimientos de proceso pendientes) e
-// instancia las tareas por defecto de la nueva subetapa.
-export async function avanzarSiTareasCompletas(tratoId: string): Promise<string | null> {
+// ── instanciarTareasProceso ──────────────────────────────────────────────────
+// Crea DE GOLPE una Tarea por cada ProcesoPaso activo de cada subetapa activa (menos
+// las de venta perdida). Idempotente por paso: solo crea las que aún no existen.
+// Las tareas nacen sin fecha (estacionadas). Devuelve cuántas creó.
+export async function instanciarTareasProceso(tratoId: string): Promise<number> {
   const trato = await prisma.trato.findUnique({
     where: { id: tratoId },
+    select: { responsableId: true, cliente: { select: { nombre: true } } },
+  });
+  if (!trato) return 0;
+  const nombreCliente = trato.cliente?.nombre?.trim() || "";
+
+  // Limpieza: elimina tareas genéricas viejas (modelo anterior) que sigan pendientes
+  // y sin fecha; no toca las completadas ni las que el usuario ya agendó.
+  await prisma.tarea.deleteMany({
+    where: {
+      tratoId,
+      etiquetas: { contains: `"default-proceso"` },
+      estado: "PENDIENTE",
+      fecha: null,
+    },
+  });
+
+  const ordenSubs = await subetapasOrdenadas();
+  // Descarta subetapas de venta perdida.
+  const subsActivas = ordenSubs.filter((s) => {
+    const etapa = s.etapa || ETAPA_DE_INTERNA[s.etapaInterna as EtapaInterna];
+    return etapa !== "VENTA_PERDIDA";
+  });
+  if (subsActivas.length === 0) return 0;
+
+  const pasosPorSub = await prisma.procesoSubetapa.findMany({
+    where: { etapaInterna: { in: subsActivas.map((s) => s.etapaInterna) } },
+    select: {
+      etapaInterna: true,
+      pasos: {
+        where: { activo: true },
+        orderBy: { orden: "asc" },
+        select: { id: true, titulo: true, objetivo: true, guion: true, canal: true, herramienta: true, avanzaSubetapaA: true },
+      },
+    },
+  });
+  const pasosDe = new Map(pasosPorSub.map((s) => [s.etapaInterna, s.pasos]));
+
+  // Pasos que ya tienen tarea (idempotencia).
+  const existentes = await prisma.tarea.findMany({
+    where: { tratoId, etiquetas: { contains: `"paso:` } },
+    select: { etiquetas: true },
+  });
+  const pasoIdsConTarea = new Set<string>();
+  for (const t of existentes) {
+    const tag = parseTags(t.etiquetas).find((e) => e.startsWith("paso:"));
+    if (tag) pasoIdsConTarea.add(tag.slice("paso:".length));
+  }
+
+  type NuevaTarea = {
+    titulo: string; descripcion: string | null; notas: string | null; etiquetas: string;
+    prioridad: string; area: string; tratoId: string; tipoOrigen: string;
+    asignadoAId: string | null; fecha: null; fechaVencimiento: null; orden: number;
+  };
+  const nuevas: NuevaTarea[] = [];
+  let orden = 0;
+  for (const sub of subsActivas) {
+    const pasos = pasosDe.get(sub.etapaInterna) ?? [];
+    for (const paso of pasos) {
+      const idx = orden++;
+      if (pasoIdsConTarea.has(paso.id)) continue;
+      const descripcion = [paso.objetivo, paso.herramienta ? `Herramienta: ${paso.herramienta}` : null]
+        .filter(Boolean)
+        .join("\n") || null;
+      const etiquetas = JSON.stringify([
+        "proceso",
+        tagSubetapa(sub.etapaInterna),
+        `paso:${paso.id}`,
+        `canal:${paso.canal}`,
+        ...(paso.avanzaSubetapaA ? ["hito"] : []),
+      ]);
+      nuevas.push({
+        titulo: paso.titulo,
+        descripcion,
+        notas: resolverGuion(paso.guion, nombreCliente),
+        etiquetas,
+        prioridad: "MEDIA",
+        area: "VENTAS",
+        tratoId,
+        tipoOrigen: "TRATO",
+        asignadoAId: trato.responsableId ?? null,
+        fecha: null,
+        fechaVencimiento: null,
+        orden: idx,
+      });
+    }
+  }
+
+  if (nuevas.length === 0) return 0;
+  await prisma.tarea.createMany({ data: nuevas });
+  return nuevas.length;
+}
+
+// ── avanzarPorHito ───────────────────────────────────────────────────────────
+// Se llama tras completar una tarea. Si la tarea es un hito (su paso tiene
+// `avanzaSubetapaA`), mueve el trato a esa subetapa/etapa. No genera tareas nuevas
+// (ya están todas instanciadas). Devuelve la subetapa destino o null.
+export async function avanzarPorHito(tareaId: string): Promise<string | null> {
+  const tarea = await prisma.tarea.findUnique({
+    where: { id: tareaId },
+    select: { etiquetas: true, tratoId: true },
+  });
+  if (!tarea?.tratoId) return null;
+
+  const pasoTag = parseTags(tarea.etiquetas).find((e) => e.startsWith("paso:"));
+  if (!pasoTag) return null;
+  const pasoId = pasoTag.slice("paso:".length);
+
+  const paso = await prisma.procesoPaso.findUnique({
+    where: { id: pasoId },
+    select: { avanzaSubetapaA: true },
+  });
+  const destino = paso?.avanzaSubetapaA;
+  if (!destino) return null;
+
+  const trato = await prisma.trato.findUnique({
+    where: { id: tarea.tratoId },
     select: { etapaInterna: true },
   });
-  if (!trato?.etapaInterna) return null;
-
-  const actual = trato.etapaInterna;
-  if (!(await tareasSubetapaCompletas(tratoId, actual))) return null;
-
-  const destino = await siguienteSubetapa(actual);
-  if (!destino || destino === actual) return null;
+  if (!trato || trato.etapaInterna === destino) return null;
 
   const etapaDestino =
     (await prisma.procesoSubetapa.findUnique({ where: { etapaInterna: destino }, select: { etapa: true } }))?.etapa ??
     ETAPA_DE_INTERNA[destino as EtapaInterna];
-  if (!etapaDestino) return null;
+  if (!etapaDestino || etapaDestino === "VENTA_PERDIDA") return null;
 
   await prisma.trato.update({
-    where: { id: tratoId },
+    where: { id: tarea.tratoId },
     data: { etapaInterna: destino, etapa: etapaDestino, etapaCambiadaEn: new Date() },
   });
-  // Limpia seguimientos de proceso pendientes de la subetapa anterior.
-  await prisma.seguimiento.deleteMany({ where: { tratoId, tipo: "PROCESO", completado: false } });
-
-  await instanciarTareasSubetapa(tratoId, destino);
   return destino;
+}
+
+function parseTags(etiquetas: string | null): string[] {
+  if (!etiquetas) return [];
+  try {
+    const arr = JSON.parse(etiquetas) as unknown;
+    return Array.isArray(arr) ? arr.filter((e): e is string => typeof e === "string") : [];
+  } catch {
+    return [];
+  }
 }
