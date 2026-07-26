@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import { ClipboardList, MessageCircle } from "lucide-react";
+import { ClipboardList, MessageCircle, Image as ImageIcon, ExternalLink } from "lucide-react";
 import DiscoveryForm from "@/components/crm/DiscoveryForm";
 import { ToastProvider } from "@/components/Toast";
 
@@ -72,6 +72,25 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
             </svg>
             Notificar a mi asesor
           </a>
+        </div>
+        <div className="pt-1 space-y-2">
+          <p className="text-gray-500 text-xs">Mientras tanto, conoce nuestro trabajo</p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <a
+              href="/presentacion/galeria"
+              target="_blank" rel="noopener noreferrer"
+              className="flex-1 inline-flex items-center justify-center gap-2 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+            >
+              <ImageIcon strokeWidth={1.75} className="w-4 h-4" /> Galería de eventos
+            </a>
+            <a
+              href="/presentacion"
+              target="_blank" rel="noopener noreferrer"
+              className="flex-1 inline-flex items-center justify-center gap-2 bg-[#111] hover:bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+            >
+              <ExternalLink strokeWidth={1.75} className="w-4 h-4" /> Conócenos
+            </a>
+          </div>
         </div>
       </div>
     </div>

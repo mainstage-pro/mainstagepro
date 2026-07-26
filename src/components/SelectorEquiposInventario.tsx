@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Sparkles, Package, Plus, SlidersHorizontal, Handshake, Users, Settings } from "lucide-react";
+import { Sparkles, Package, Plus, SlidersHorizontal, Handshake, Users, Settings, Mic, Headphones, Volume2, Disc3, Lightbulb, Monitor, Construction, Layers, Guitar, Music, Tent, Zap, Sofa, Cable, Video, Wrench, ExternalLink, type LucideIcon } from "lucide-react";
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
 
@@ -82,6 +82,10 @@ export type SeleccionEquipos = {
   paquetes?: SeleccionProducto[];
   /** IDs de RolTecnico elegidos en las categorías de servicio (DJ / operación técnica) */
   roles?: string[];
+  /** Detalle libre por categoría (clave = id de categoría, incl. servicios).
+   *  Lo que el cliente/vendedor escribe sobre lo que necesita de cada categoría,
+   *  sin tener que conocer marcas ni modelos. */
+  detalles?: Record<string, string>;
   /** Si true, el cliente deja la cantidad/selección exacta de equipos a criterio del vendedor;
    *  las categorías elegidas quedan solo como referencia de interés. */
   aCriterioVendedor?: boolean;
@@ -103,13 +107,13 @@ const CATS_SERVICIO = new Set([
 ]);
 
 // Definición de cada categoría de servicio: cómo se etiqueta y qué disciplinas agrupa.
-const SERVICIOS_DEF: { id: string; nombre: string; emoji: string; disciplinas: string[] }[] = [
-  { id: CAT_SERVICIO_DJ, nombre: "Servicio de DJ", emoji: "💽", disciplinas: ["DJ"] },
-  { id: CAT_TEC_AUDIO, nombre: "Técnicos de audio", emoji: "🔊", disciplinas: ["AUDIO"] },
-  { id: CAT_TEC_ILUMINACION, nombre: "Técnicos de iluminación", emoji: "💡", disciplinas: ["ILUMINACION"] },
-  { id: CAT_TEC_VIDEO, nombre: "Técnicos de video", emoji: "🎥", disciplinas: ["VIDEO"] },
+const SERVICIOS_DEF: { id: string; nombre: string; icon: LucideIcon; disciplinas: string[] }[] = [
+  { id: CAT_SERVICIO_DJ, nombre: "Servicio de DJ", icon: Disc3, disciplinas: ["DJ"] },
+  { id: CAT_TEC_AUDIO, nombre: "Técnicos de audio", icon: Volume2, disciplinas: ["AUDIO"] },
+  { id: CAT_TEC_ILUMINACION, nombre: "Técnicos de iluminación", icon: Lightbulb, disciplinas: ["ILUMINACION"] },
+  { id: CAT_TEC_VIDEO, nombre: "Técnicos de video", icon: Video, disciplinas: ["VIDEO"] },
   // Cualquier disciplina distinta a las anteriores (RIGGING, STAGE, STAFF_GENERAL, etc.) cae en generales.
-  { id: CAT_TEC_GENERAL, nombre: "Técnicos generales", emoji: "🛠️", disciplinas: [] },
+  { id: CAT_TEC_GENERAL, nombre: "Técnicos generales", icon: Wrench, disciplinas: [] },
 ];
 const DISCIPLINAS_ESPECIFICAS = new Set(["DJ", "AUDIO", "ILUMINACION", "VIDEO"]);
 
@@ -126,26 +130,42 @@ interface Props {
   /** Notas técnicas / equipo faltante. Si se pasa onNotasChange, se muestra el campo tras las categorías. */
   notas?: string;
   onNotasChange?: (v: string) => void;
+  /** Modo cliente (formulario público): flujo simple de una sola pantalla.
+   *  Solo elige categorías de interés y describe con texto lo que necesita de cada una.
+   *  No ve la selección detallada de equipos/paquetes (esa etapa es del vendedor);
+   *  en su lugar puede abrir la presentación del inventario en una ventana aparte. */
+  clientMode?: boolean;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────────
 
-function catEmoji(nombre: string): string {
+// Icono lucide por categoría (mismo lenguaje visual que el resto de la plataforma).
+function catIcon(nombre: string): LucideIcon {
   const n = nombre.toLowerCase();
-  if (n.includes("microfon")) return "🎤";
-  if (n.includes("in ear")) return "🎧";
-  if (n.includes("consolas de audio") || n.includes("mixer")) return "🎚️";
-  if (n.includes("dj") || n.includes("cdj")) return "💽";
-  if (n.includes("audio")) return "🔊";
-  if (n.includes("iluminaci")) return "💡";
-  if (n.includes("video") || n.includes("pantalla") || n.includes("led")) return "📺";
-  if (n.includes("estruct")) return "🏗️";
-  if (n.includes("backline")) return "🎸";
-  if (n.includes("efecto")) return "✨";
-  if (n.includes("pista")) return "💃";
-  if (n.includes("energ") || n.includes("planta")) return "⚡";
-  if (n.includes("escenograf") || n.includes("mobiliario")) return "🛋️";
-  return "📦";
+  if (n.includes("microfon")) return Mic;
+  if (n.includes("in ear") || n.includes("in-ear") || n.includes("monitoreo")) return Headphones;
+  if (n.includes("consolas de audio") || n.includes("mixer")) return SlidersHorizontal;
+  if (n.includes("dj") || n.includes("cdj")) return Disc3;
+  if (n.includes("audio")) return Volume2;
+  if (n.includes("consolas de ilumin")) return SlidersHorizontal;
+  if (n.includes("ilumin")) return Lightbulb;
+  if (n.includes("video") || n.includes("pantalla") || n.includes("led")) return Monitor;
+  if (n.includes("rigging") || n.includes("estruct")) return Construction;
+  if (n.includes("entarim") || n.includes("tarima")) return Layers;
+  if (n.includes("backline")) return Guitar;
+  if (n.includes("efecto")) return Sparkles;
+  if (n.includes("pista")) return Music;
+  if (n.includes("toldo") || n.includes("lona") || n.includes("carpa")) return Tent;
+  if (n.includes("corriente") || n.includes("energ") || n.includes("planta") || n.includes("eléctric") || n.includes("electric")) return Zap;
+  if (n.includes("escenograf") || n.includes("mobiliario")) return Sofa;
+  if (n.includes("accesor")) return Cable;
+  return Package;
+}
+
+// Render inline del icono de una categoría a partir de su nombre.
+function CatIcon({ nombre, className }: { nombre: string; className?: string }) {
+  const Icon = catIcon(nombre);
+  return <Icon strokeWidth={1.75} className={className ?? "w-4 h-4"} />;
 }
 
 function nombreEquipo(eq: EquipoPublico): string {
@@ -174,7 +194,7 @@ function opcionesCantidad(cant: number): number[] {
 
 // ── Componente ─────────────────────────────────────────────────────────────────
 
-export function SelectorEquiposInventario({ value, onChange, readOnly = false, notas, onNotasChange }: Props) {
+export function SelectorEquiposInventario({ value, onChange, readOnly = false, notas, onNotasChange, clientMode = false }: Props) {
   const [categorias, setCategorias] = useState<CategoriaPublica[]>([]);
   const [productos, setProductos] = useState<ProductoPublico[]>([]);
   const [paquetes, setPaquetes] = useState<PaquetePublico[]>([]);
@@ -258,6 +278,14 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
     onChange({ ...value, aCriterioVendedor: v });
   }
 
+  function setDetalle(catId: string, texto: string) {
+    if (readOnly) return;
+    const detalles = { ...(value.detalles ?? {}) };
+    if (texto.trim()) detalles[catId] = texto;
+    else delete detalles[catId];
+    onChange({ ...value, detalles });
+  }
+
   // ── Mutadores de productos ──
   function toggleProducto(id: string) {
     if (readOnly) return;
@@ -329,7 +357,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
       SERVICIOS_DEF.map((def) => ({
         id: def.id,
         nombre: def.nombre,
-        emoji: def.emoji,
+        icon: def.icon,
         roles: rolesPorCat[def.id] ?? [],
       })),
     [rolesPorCat]
@@ -539,9 +567,12 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
           const rs = svc.roles.filter((r) => rolesSel.includes(r.id));
           return (
             <div key={svc.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-3">
-              <p className="text-white text-sm font-medium mb-1.5">
-                {svc.emoji} {svc.nombre}
+              <p className="flex items-center gap-1.5 text-white text-sm font-medium mb-1.5">
+                <svc.icon strokeWidth={1.75} className="w-4 h-4 text-[#B3985B]" /> {svc.nombre}
               </p>
+              {value.detalles?.[svc.id] && (
+                <p className="text-gray-400 text-xs mb-1.5 whitespace-pre-line">{value.detalles[svc.id]}</p>
+              )}
               {rs.length === 0 ? (
                 <p className="text-amber-500/70 text-xs">Interés marcado · roles por definir</p>
               ) : (
@@ -601,9 +632,12 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
           const eqs = cat.equipos.filter((e) => value.equipos.includes(e.id));
           return (
             <div key={cat.id} className="bg-[#111] border border-[#1e1e1e] rounded-xl p-3">
-              <p className="text-white text-sm font-medium mb-1.5">
-                {catEmoji(cat.nombre)} {cat.nombre}
+              <p className="flex items-center gap-1.5 text-white text-sm font-medium mb-1.5">
+                <CatIcon nombre={cat.nombre} className="w-4 h-4 text-[#B3985B]" /> {cat.nombre}
               </p>
+              {value.detalles?.[cat.id] && (
+                <p className="text-gray-400 text-xs mb-1.5 whitespace-pre-line">{value.detalles[cat.id]}</p>
+              )}
               {eqs.length === 0 ? (
                 <p className="text-amber-500/70 text-xs">Por definir</p>
               ) : (
@@ -683,7 +717,8 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
   // ── UI interactiva ──
   return (
     <div className="space-y-3">
-      {/* Indicador de pasos */}
+      {/* Indicador de pasos (solo vendedor: el paso 2 de equipos es una etapa opcional). */}
+      {!clientMode && (
       <div className="flex items-center gap-2 text-xs">
         <button
           type="button"
@@ -709,16 +744,18 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
           }`}
         >
           <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] ${paso === 2 ? "bg-black/20" : "bg-[#B3985B]/20 text-[#B3985B]"}`}>2</span>
-          Equipos y paquetes
+          Equipos (opcional)
         </button>
       </div>
+      )}
 
       {/* ── PASO 1: elegir categorías ── */}
-      {paso === 1 && (
+      {(clientMode || paso === 1) && (
         <div className="space-y-3">
           <p className="text-gray-500 text-xs">
-            ¿Qué tipo de equipo o servicio necesitas? Elige las categorías; en el
-            siguiente paso defines los equipos exactos y las piezas.
+            {clientMode
+              ? "¿Qué necesitas para tu evento? Elige las categorías que te interesan y, si quieres, cuéntanos los detalles de cada una. No te preocupes por marcas ni modelos: tu asesor arma la propuesta por ti."
+              : "¿Qué tipo de equipo o servicio necesitas? Elige las categorías y describe los detalles. El paso de equipos exactos es opcional; puedes dejarlo para más adelante."}
           </p>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {categoriasVisibles.map((cat) => {
@@ -736,9 +773,9 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                       : "border-[#1e1e1e] bg-[#111] hover:border-[#B3985B]/40"
                   }`}
                 >
-                  <span className="text-lg leading-none">{catEmoji(cat.nombre)}</span>
+                  <CatIcon nombre={cat.nombre} className={`w-5 h-5 mb-0.5 ${sel ? "text-[#B3985B]" : "text-gray-400"}`} />
                   <span className="text-white text-[11px] font-medium leading-tight line-clamp-2">{cat.nombre}</span>
-                  {marcas && (
+                  {marcas && !clientMode && (
                     <span className="text-gray-600 text-[9px] leading-tight line-clamp-1">{marcas}</span>
                   )}
                   {sel && (
@@ -769,9 +806,11 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                           : "border-[#1e1e1e] bg-[#111] hover:border-[#B3985B]/40"
                       }`}
                     >
-                      <span className="text-lg leading-none">{svc.emoji}</span>
+                      <svc.icon strokeWidth={1.75} className={`w-5 h-5 mb-0.5 ${sel ? "text-[#B3985B]" : "text-gray-400"}`} />
                       <span className="text-white text-[11px] font-medium leading-tight line-clamp-2">{svc.nombre}</span>
-                      <span className="text-gray-600 text-[9px] leading-tight line-clamp-1">{svc.roles.length > 0 ? `${svc.roles.length} rol${svc.roles.length !== 1 ? "es" : ""}` : "por asignar"}</span>
+                      {!clientMode && (
+                        <span className="text-gray-600 text-[9px] leading-tight line-clamp-1">{svc.roles.length > 0 ? `${svc.roles.length} rol${svc.roles.length !== 1 ? "es" : ""}` : "por asignar"}</span>
+                      )}
                       {sel && (
                         <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-md bg-[#B3985B] flex items-center justify-center">
                           <span className="text-black text-[8px] font-bold leading-none">✓</span>
@@ -784,8 +823,46 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
             </div>
           )}
 
-          {/* Notas técnicas / equipo faltante — capturar en cuanto se detecte */}
-          {onNotasChange && (
+          {/* Detalle libre por categoría elegida — descripción sin necesidad de saber de equipo */}
+          {(categoriasElegidas.length > 0 || serviciosElegidos.length > 0) && (
+            <div className="space-y-2 pt-2 border-t border-[#1a1a1a]">
+              <p className="text-[11px] text-[#B3985B] font-medium">Detalles de lo que necesitas (opcional)</p>
+              <p className="text-[10px] text-gray-600">
+                Cuéntanos en tus palabras qué buscas de cada categoría. No hace falta que sepas de equipos.
+              </p>
+              {categoriasElegidas.map((cat) => (
+                <div key={cat.id}>
+                  <label className="flex items-center gap-1.5 text-white text-xs font-medium mb-1">
+                    <CatIcon nombre={cat.nombre} className="w-3.5 h-3.5 text-[#B3985B]" /> {cat.nombre}
+                  </label>
+                  <textarea
+                    value={value.detalles?.[cat.id] ?? ""}
+                    onChange={(e) => setDetalle(cat.id, e.target.value)}
+                    rows={2}
+                    placeholder="Ej: música en vivo y ambiente, salón para ~200 personas…"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
+                  />
+                </div>
+              ))}
+              {serviciosElegidos.map((svc) => (
+                <div key={svc.id}>
+                  <label className="flex items-center gap-1.5 text-white text-xs font-medium mb-1">
+                    <svc.icon strokeWidth={1.75} className="w-3.5 h-3.5 text-[#B3985B]" /> {svc.nombre}
+                  </label>
+                  <textarea
+                    value={value.detalles?.[svc.id] ?? ""}
+                    onChange={(e) => setDetalle(svc.id, e.target.value)}
+                    rows={2}
+                    placeholder="Ej: DJ para fiesta, horario aproximado, estilo musical…"
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none"
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Notas técnicas / equipo faltante — solo vendedor (el cliente no necesita marcas/modelos) */}
+          {onNotasChange && !clientMode && (
             <div className="pt-1">
               <label className="text-[11px] text-[#B3985B] font-medium block mb-1">
                 Notas técnicas / equipo faltante
@@ -803,21 +880,33 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={() => setPaso(2)}
-            disabled={value.categorias.length === 0}
-            className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 disabled:cursor-not-allowed text-black text-sm font-semibold py-2.5 rounded-xl transition-colors"
-          >
-            {value.categorias.length === 0
-              ? "Elige al menos una categoría"
-              : `Continuar a equipos (${value.categorias.length}) →`}
-          </button>
+          {clientMode ? (
+            /* Cliente: no elige equipos; puede ver el inventario en una ventana aparte sin cerrar el formulario. */
+            <a
+              href="/presentacion/inventario"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 bg-[#1a1a1a] hover:bg-[#222] border border-[#B3985B]/40 text-[#B3985B] text-sm font-semibold py-2.5 rounded-xl transition-colors"
+            >
+              <ExternalLink strokeWidth={1.75} className="w-4 h-4" /> Ver inventario Mainstage
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setPaso(2)}
+              disabled={value.categorias.length === 0}
+              className="w-full bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 disabled:cursor-not-allowed text-black text-sm font-semibold py-2.5 rounded-xl transition-colors"
+            >
+              {value.categorias.length === 0
+                ? "Elige al menos una categoría"
+                : `Seleccionar equipos exactos (opcional) — ${value.categorias.length} categoría${value.categorias.length !== 1 ? "s" : ""} →`}
+            </button>
+          )}
         </div>
       )}
 
-      {/* ── PASO 2: equipos individuales + paquetes armados ── */}
-      {paso === 2 && (
+      {/* ── PASO 2: equipos individuales + paquetes armados (solo vendedor) ── */}
+      {!clientMode && paso === 2 && (
         <div className="space-y-3">
           {/* Sub-pestañas: equipos individuales · productos armados · paquetes */}
           <div className="flex items-center gap-1.5 p-1 bg-[#111] rounded-xl">
@@ -910,13 +999,13 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {categoriasElegidas.map((cat) => (
-                      <span key={cat.id} className="text-[11px] px-2 py-1 rounded-lg bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B]">
-                        {catEmoji(cat.nombre)} {cat.nombre}
+                      <span key={cat.id} className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B]">
+                        <CatIcon nombre={cat.nombre} className="w-3.5 h-3.5" /> {cat.nombre}
                       </span>
                     ))}
                     {serviciosElegidos.map((svc) => (
-                      <span key={svc.id} className="text-[11px] px-2 py-1 rounded-lg bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B]">
-                        {svc.emoji} {svc.nombre}
+                      <span key={svc.id} className="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-lg bg-[#B3985B]/10 border border-[#B3985B]/30 text-[#B3985B]">
+                        <svc.icon strokeWidth={1.75} className="w-3.5 h-3.5" /> {svc.nombre}
                       </span>
                     ))}
                   </div>
@@ -940,7 +1029,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                       className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-[#0d0d0d] hover:bg-[#141414] transition-colors"
                     >
                       <span className="text-[#B3985B] text-xs font-semibold flex items-center gap-1.5">
-                        {svc.emoji} {svc.nombre}
+                        <svc.icon strokeWidth={1.75} className="w-3.5 h-3.5" /> {svc.nombre}
                         {nSel > 0 && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#B3985B] text-black font-bold">{nSel}</span>
                         )}
@@ -990,7 +1079,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                     className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-[#0d0d0d] hover:bg-[#141414] transition-colors"
                   >
                     <span className="text-[#B3985B] text-xs font-semibold flex items-center gap-1.5">
-                      {catEmoji(cat.nombre)} {cat.nombre}
+                      <CatIcon nombre={cat.nombre} className="w-3.5 h-3.5" /> {cat.nombre}
                       {nSel > 0 && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#B3985B] text-black font-bold">{nSel}</span>
                       )}
@@ -1026,7 +1115,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img src={eq.imagenUrl} alt={eq.descripcion} className="w-full h-full object-cover" />
                                 ) : (
-                                  <span className="text-gray-700 text-base">{catEmoji(cat.nombre)}</span>
+                                  <CatIcon nombre={cat.nombre} className="w-4 h-4 text-gray-700" />
                                 )}
                               </span>
                               <span className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${sel ? "bg-[#B3985B] border-[#B3985B]" : "border-[#333]"}`}>
@@ -1161,7 +1250,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                 return (
                 <div key={grupo.nombre} className="space-y-1.5">
                   <p className="flex items-center gap-1.5 text-[#B3985B] text-xs font-semibold uppercase tracking-wider pt-1">
-                    {catEmoji(grupo.nombre)} {grupo.nombre}
+                    <CatIcon nombre={grupo.nombre} className="w-3.5 h-3.5" /> {grupo.nombre}
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#1a1a1a] text-gray-400 font-bold normal-case tracking-normal">
                       {totalCat}
                     </span>
@@ -1361,7 +1450,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
         </div>
       )}
 
-      {paso === 2 && subTab === "equipos" && (
+      {!clientMode && paso === 2 && subTab === "equipos" && (
         <p className="text-gray-700 text-[11px] pt-1 text-center">
           Si no encuentras lo que necesitas, agrégalo arriba o menciónalo en las notas.
         </p>

@@ -1008,8 +1008,11 @@ export default function DiscoveryForm({
                 {/* ── Selector de equipos del inventario (igual que producción) ── */}
                 <div>
                   <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1">Equipos e inventario de interés</label>
-                  <p className="text-[11px] text-gray-600 mb-3">Paso 1: elige las categorías que te interesan. Paso 2: dentro de cada una, selecciona los equipos y las piezas que necesitas (o deja la cantidad a criterio del vendedor). Lo seleccionado se sugiere automáticamente al armar la cotización.</p>
+                  <p className="text-[11px] text-gray-600 mb-3">{clientMode
+                    ? "Elige las categorías que te interesan y cuéntanos los detalles de cada una. No necesitas saber de equipos: tu asesor arma la propuesta."
+                    : "Elige las categorías y describe los detalles. Seleccionar los equipos y piezas exactas es opcional; lo seleccionado se sugiere al armar la cotización."}</p>
                   <SelectorEquiposInventario
+                    clientMode={clientMode}
                     readOnly={readOnly}
                     value={(() => {
                       try { return discForm.equiposInteres ? JSON.parse(discForm.equiposInteres as string) : { categorias: [], equipos: [], cantidades: {} }; }
@@ -1167,8 +1170,11 @@ export default function DiscoveryForm({
                 {/* ── Selector de equipos del inventario ─────────────────── */}
                 <div>
                   <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1">Equipos e inventario de interés</label>
-                  <p className="text-[11px] text-gray-600 mb-3">Paso 1: elige las categorías que te interesan. Paso 2: dentro de cada una, selecciona los equipos y las piezas que necesitas. Lo seleccionado aquí se sugiere automáticamente al armar la cotización.</p>
+                  <p className="text-[11px] text-gray-600 mb-3">{clientMode
+                    ? "Elige las categorías que te interesan y cuéntanos los detalles de cada una. No necesitas saber de equipos: tu asesor arma la propuesta."
+                    : "Elige las categorías y describe los detalles. Seleccionar los equipos y piezas exactas es opcional; lo seleccionado se sugiere al armar la cotización."}</p>
                   <SelectorEquiposInventario
+                    clientMode={clientMode}
                     readOnly={readOnly}
                     value={(() => {
                       try { return discForm.equiposInteres ? JSON.parse(discForm.equiposInteres as string) : { categorias: [], equipos: [], cantidades: {} }; }
