@@ -1,8 +1,8 @@
 import type React from "react";
 import {
   LayoutDashboard, CalendarDays, ClipboardList, Target, FolderKanban,
-  LineChart, CalendarClock, Presentation, Wallet, Landmark, Handshake,
-  Table2, FileBarChart, Users, GraduationCap, UserPlus, UserSearch,
+  LineChart, CalendarClock, Presentation, Wallet, Landmark,
+  FileBarChart, Users,
   PenTool, Megaphone, BarChart3, SlidersHorizontal, BadgeDollarSign,
   Package, TrendingUp, Settings, Speaker, BookUser, ClipboardCheck,
   ShieldCheck, ScrollText, Settings2, Building2, LayoutGrid,
@@ -129,53 +129,38 @@ export const NAV: NavSection[] = [
           { key: "finanzas-config", label: "Configuración", href: "/finanzas/configuracion", adminOnly: true },
         ],
       },
+      // ── Patrimonio (activos de la empresa + estructura societaria) ─────────
       {
         key: "activos",
-        label: "Activos",
+        label: "Patrimonio",
         href: "/activos",
         icon: Landmark,
         children: [
-          { key: "inventario-activos-admin", label: "Inventario de activos", href: "/admin/valuacion", adminOnly: true },
-          { key: "inv-analisis", label: "Análisis de uso de equipo", href: "/inventario/analisis" },
+          { key: "inventario-activos-admin", label: "Inventario de activos", href: "/activos/valuacion", adminOnly: true },
+          { key: "inv-analisis", label: "Análisis de uso de equipo", href: "/activos/analisis" },
+          { key: "socios-constitutivos", label: "Estructura societaria", href: "/activos/socios" },
         ],
       },
-      { key: "socios-constitutivos", label: "Socios Constitutivos", href: "/socios", icon: Handshake },
-      { key: "tabulador", label: "Tabulador Freelancers", href: "/catalogo/roles", icon: Table2 },
       { key: "admin-reportes", label: "Reportes de administración", href: "/admin/reportes", adminOnly: true, icon: FileBarChart },
-      // ── Recursos Humanos (dentro de Administración) ────────────────────────
+      // ── Recursos Humanos (ciclo de vida del talento, como pestañas) ────────
       {
         key: "rrhh",
-        label: "Personal",
+        label: "Recursos Humanos",
         href: "/personal",
         icon: Users,
         children: [
-          { key: "rrhh-personal", label: "Personal interno", href: "/rrhh/personal" },
-          { key: "rrhh-nomina", label: "Nómina", href: "/rrhh/nomina" },
-          { key: "rrhh-asistencia", label: "Asistencia", href: "/rrhh/asistencia" },
-          { key: "rrhh-evaluaciones", label: "Evaluaciones", href: "/rrhh/evaluaciones" },
-          { key: "rrhh-satisfaccion", label: "Satisfacción equipo", href: "/rrhh/satisfaccion" },
-        ],
-      },
-      {
-        key: "capacitacion-grp",
-        label: "Capacitación",
-        href: "/formacion",
-        icon: GraduationCap,
-        children: [
-          { key: "capacitacion", label: "Portal de capacitación", href: "/capacitacion" },
-          { key: "rrhh-capacitaciones", label: "Capacitaciones internas", href: "/rrhh/capacitaciones" },
-        ],
-      },
-      { key: "rrhh-onboarding", label: "Integración / Onboarding", href: "/rrhh/onboarding", icon: UserPlus },
-      {
-        key: "ats",
-        label: "Reclutamiento",
-        href: "/reclutamiento",
-        icon: UserSearch,
-        children: [
-          { key: "rrhh-candidatos", label: "Candidatos", href: "/rrhh/candidatos" },
-          { key: "rrhh-puestos", label: "Puestos ideales", href: "/rrhh/puestos" },
-          { key: "rrhh-config", label: "Configuración", href: "/rrhh/configuracion" },
+          { key: "rrhh-candidatos", label: "Candidatos", href: "/personal/candidatos" },
+          { key: "rrhh-puestos", label: "Puestos ideales", href: "/personal/puestos" },
+          { key: "rrhh-onboarding", label: "Integración / Onboarding", href: "/personal/onboarding" },
+          { key: "rrhh-personal", label: "Personal interno", href: "/personal/interno" },
+          { key: "rrhh-nomina", label: "Nómina", href: "/personal/nomina" },
+          { key: "rrhh-asistencia", label: "Asistencia", href: "/personal/asistencia" },
+          { key: "tabulador", label: "Tabulador freelancers", href: "/personal/tabulador" },
+          { key: "capacitacion", label: "Portal de capacitación", href: "/personal/capacitacion" },
+          { key: "rrhh-capacitaciones", label: "Capacitaciones internas", href: "/personal/capacitaciones" },
+          { key: "rrhh-evaluaciones", label: "Evaluaciones", href: "/personal/evaluaciones" },
+          { key: "rrhh-satisfaccion", label: "Satisfacción equipo", href: "/personal/satisfaccion" },
+          { key: "rrhh-config", label: "Configuración", href: "/personal/configuracion" },
         ],
       },
     ],
@@ -320,7 +305,7 @@ const MODULE_META: Record<string, { label?: string; desc?: string }> = {
   "rrhh-candidatos":     { desc: "Candidatos" },
   "rrhh-puestos":        { desc: "Puestos ideales" },
   "rrhh-config":         { label: "Configuración de reclutamiento", desc: "Configuración de reclutamiento" },
-  "socios-constitutivos":{ label: "Socios Constitutivos", desc: "Gestión de socios de activos" },
+  "socios-constitutivos":{ label: "Estructura societaria", desc: "Socios, participaciones, representante legal y aportaciones" },
   tabulador:             { desc: "Roles técnicos y tarifas de freelancers" },
   "mkt-contenido":       { desc: "Estrategia y calendario de contenido" },
   "mkt-publicidad":      { desc: "Campañas y pauta" },
@@ -449,3 +434,52 @@ export const AREA_MODULE_PRESETS: Record<string, string[]> = {
     "plan-trabajo", "operaciones", "calendario", "vision-semanal",
   ],
 };
+
+// ── Módulos para "Acceso directo" de tareas ──────────────────────────────────
+// Deriva del NAV la misma lista de módulos que ve el sidebar (mismo nombre e
+// icono) con sus secciones/pestañas internas, para enlazar una tarea a un
+// módulo y, si aplica, a una sección específica.
+export interface AccesoModuloSeccion { label: string; href: string }
+export interface AccesoModulo {
+  key: string;
+  label: string;
+  href: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  icon?: React.ComponentType<any>;
+  secciones: AccesoModuloSeccion[];
+}
+export interface AccesoModuloGrupo { seccion: string; modulos: AccesoModulo[] }
+
+export function getModulosAcceso(): AccesoModuloGrupo[] {
+  const grupos: AccesoModuloGrupo[] = [];
+  for (const nav of NAV) {
+    const modulos: AccesoModulo[] = [];
+    for (const item of nav.items) {
+      if (item.ownerOnly) continue; // "Inicio" es redundante como acceso directo
+      if (!item.href) continue;
+      modulos.push({
+        key: item.key ?? item.href,
+        label: item.label,
+        href: item.href,
+        icon: item.icon,
+        secciones: (item.children ?? []).map(c => ({ label: c.label, href: c.href })),
+      });
+    }
+    if (modulos.length > 0) grupos.push({ seccion: nav.section || "General", modulos });
+  }
+  return grupos;
+}
+
+export const MODULOS_ACCESO: AccesoModuloGrupo[] = getModulosAcceso();
+
+// Búsqueda plana href → módulo/sección, para reconstruir la selección guardada.
+export function buscarModuloAcceso(href: string): { modulo: AccesoModulo; seccion: AccesoModuloSeccion | null } | null {
+  for (const g of MODULOS_ACCESO) {
+    for (const m of g.modulos) {
+      if (m.href === href) return { modulo: m, seccion: null };
+      const s = m.secciones.find(x => x.href === href);
+      if (s) return { modulo: m, seccion: s };
+    }
+  }
+  return null;
+}
