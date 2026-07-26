@@ -226,71 +226,177 @@ function ModalNuevoProyecto({ onSave, onClose }: {
   );
 }
 
-const ESTADO_DOT: Record<string, string> = {
-  PLANIFICACION: "#a78bfa", ACTIVO: "#4ade80", EN_PAUSA: "#e8a020", COMPLETADO: "#555",
+const ESTADO_META: Record<string, { color: string; soft: string }> = {
+  PLANIFICACION: { color: "#a78bfa", soft: "rgba(167,139,250,0.12)" },
+  ACTIVO:        { color: "#4ade80", soft: "rgba(74,222,128,0.12)" },
+  EN_PAUSA:      { color: "#e8a020", soft: "rgba(232,160,32,0.12)" },
+  COMPLETADO:    { color: "#60a5fa", soft: "rgba(96,165,250,0.12)" },
 };
 
-function KanbanBoard({ proyectos, onMove }: {
+const PRIO_COLOR: Record<string, string> = {
+  URGENTE: "#ef4444", ALTA: "#f97316", MEDIA: "#B3985B", BAJA: "#333",
+};
+
+function iniciales(name: string) {
+  return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+}
+
+function fechaCorta(iso: string | null) {
+  if (!iso) return null;
+  return new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+}
+
+function ProyectoCard({ p, dragging, onDragStart, onDragEnd, onDelete }: {
+  p: Proyecto; dragging: boolean;
+  onDragStart: () => void; onDragEnd: () => void; onDelete: (p: Proyecto) => void;
+}) {
+  const prioColor = PRIO_COLOR[p.prioridad] ?? PRIO_COLOR.MEDIA;
+  const fin = fechaCorta(p.fechaFin);
+  return (
+    <div draggable onDragStart={onDragStart} onDragEnd={onDragEnd}
+      className={`group/card relative rounded-xl border border-white/[0.07] bg-[#0e0e0e] hover:border-white/[0.14] hover:bg-[#121212] cursor-grab active:cursor-grabbing transition-all overflow-hidden ${
+        dragging ? "opacity-40 rotate-1" : ""
+      }`}>
+      <span className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: prioColor }} />
+      <button
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(p); }}
+        className="absolute top-2 right-2 z-10 p-1 rounded-md text-[#444] opacity-0 group-hover/card:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
+        title="Eliminar proyecto">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+        </svg>
+      </button>
+      <Link href={`/proyectos-de-empresa/${p.id}`} className="block p-3.5 pl-4"
+        onClick={e => { if (dragging) e.preventDefault(); }}>
+        <p className="text-[13.5px] text-white font-medium leading-snug mb-2.5 pr-5">{p.nombre}</p>
+
+        <div className="flex items-center gap-1.5 flex-wrap mb-3">
+          <span className={`text-[9.5px] px-1.5 py-0.5 rounded font-medium ${areaChipClass(p.area)}`}>
+            {areaLabel(p.area)}
+          </span>
+          <span className="inline-flex items-center gap-1 text-[10px] text-[#777]">
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: prioColor }} />
+            {PRIO_META[p.prioridad]?.label ?? p.prioridad}
+          </span>
+        </div>
+
+        {p.tareasTotal > 0 ? (
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] text-[#555]">{p.tareasHechas}/{p.tareasTotal} tareas</span>
+              <span className="text-[10px] font-semibold text-[#B3985B]">{p.avance}%</span>
+            </div>
+            <div className="h-1.5 rounded-full bg-[#1a1a1a] overflow-hidden">
+              <div className="h-full rounded-full bg-gradient-to-r from-[#8a7440] to-[#c9a96a] transition-all"
+                style={{ width: `${p.avance}%` }} />
+            </div>
+          </div>
+        ) : (
+          <div className="mb-3">
+            <span className="text-[10px] text-[#3a3a3a]">Sin tareas todavía</span>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-white/[0.05]">
+          <span className="inline-flex items-center gap-1.5 min-w-0">
+            <span className="w-5 h-5 shrink-0 rounded-full bg-[#B3985B]/15 text-[#c9a96a] text-[9px] font-bold flex items-center justify-center">
+              {iniciales(p.lider.name)}
+            </span>
+            <span className="text-[11px] text-[#888] truncate">{p.lider.name}</span>
+          </span>
+          {fin && (
+            <span className="inline-flex items-center gap-1 shrink-0 text-[10.5px] text-[#666]">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              {fin}
+            </span>
+          )}
+        </div>
+      </Link>
+    </div>
+  );
+}
+
+function KanbanBoard({ proyectos, onMove, onDelete }: {
   proyectos: Proyecto[];
   onMove: (id: string, estado: string) => void;
+  onDelete: (p: Proyecto) => void;
 }) {
   const [dragId, setDragId]   = useState<string | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-4" style={{ scrollbarWidth: "thin" }}>
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
       {ESTADO_ORDER.map(estado => {
+        const meta = ESTADO_META[estado];
         const cards = proyectos.filter(p => p.estado === estado);
+        const isOver = overCol === estado;
         return (
-          <div key={estado} className="w-64 shrink-0"
+          <div key={estado}
+            className={`flex flex-col rounded-2xl border bg-white/[0.012] transition-colors ${
+              isOver ? "border-[#B3985B]/40 bg-[#B3985B]/[0.04]" : "border-white/[0.06]"
+            }`}
             onDragOver={e => { e.preventDefault(); setOverCol(estado); }}
             onDragLeave={() => setOverCol(c => c === estado ? null : c)}
             onDrop={() => {
               if (dragId) onMove(dragId, estado);
               setDragId(null); setOverCol(null);
             }}>
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[#1a1a1a] bg-white/[0.02] mb-2">
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: ESTADO_DOT[estado] }} />
-              <span className="text-xs font-semibold text-[#ccc]">{ESTADO_LABELS[estado]}</span>
-              <span className="ml-auto text-[10px] text-[#555]">{cards.length}</span>
+            {/* Header de columna */}
+            <div className="flex items-center gap-2 px-3.5 py-3 border-b border-white/[0.05]">
+              <span className="w-2 h-2 rounded-full" style={{ background: meta.color, boxShadow: `0 0 8px ${meta.color}` }} />
+              <span className="text-[12.5px] font-semibold text-[#ddd]">{ESTADO_LABELS[estado]}</span>
+              <span className="ml-auto text-[11px] font-medium px-2 py-0.5 rounded-full"
+                style={{ background: meta.soft, color: meta.color }}>
+                {cards.length}
+              </span>
             </div>
-            <div className={`space-y-2 min-h-[80px] rounded-lg p-1 transition-colors ${
-              overCol === estado ? "bg-[#B3985B]/5 ring-1 ring-[#B3985B]/20" : ""
-            }`}>
-              {cards.map(p => {
-                const fasesTotal = p.fases.length;
-                const fasesCompletas = p.fases.filter(f => f.completada).length;
-                return (
-                  <div key={p.id} draggable
-                    onDragStart={() => setDragId(p.id)}
-                    onDragEnd={() => { setDragId(null); setOverCol(null); }}
-                    className={`rounded-lg border border-white/[0.08] bg-white/[0.025] p-3 cursor-grab active:cursor-grabbing transition-opacity ${
-                      dragId === p.id ? "opacity-40" : ""
-                    }`}>
-                    <Link href={`/proyectos-de-empresa/${p.id}`} className="block" onClick={e => { if (dragId) e.preventDefault(); }}>
-                      <p className="text-[13px] text-white leading-snug mb-2">{p.nombre}</p>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className={`text-[9.5px] px-1.5 py-0.5 rounded font-medium ${areaChipClass(p.area)}`}>
-                          {areaLabel(p.area)}
-                        </span>
-                        {fasesTotal > 0 && <span className="text-[10px] text-[#555]">{fasesCompletas}/{fasesTotal} fases</span>}
-                      </div>
-                      {p.avance > 0 && (
-                        <div className="mt-2 h-1 rounded-full bg-[#1a1a1a] overflow-hidden">
-                          <div className="h-full rounded-full bg-[#B3985B]" style={{ width: `${p.avance}%` }} />
-                        </div>
-                      )}
-                    </Link>
-                  </div>
-                );
-              })}
+            {/* Cuerpo */}
+            <div className="flex-1 space-y-2.5 p-2.5 min-h-[140px]">
+              {cards.map(p => (
+                <ProyectoCard key={p.id} p={p} dragging={dragId === p.id}
+                  onDragStart={() => setDragId(p.id)}
+                  onDragEnd={() => { setDragId(null); setOverCol(null); }}
+                  onDelete={onDelete} />
+              ))}
               {cards.length === 0 && (
-                <p className="text-center text-[11px] text-[#2a2a2a] py-4">Vacío</p>
+                <div className="flex items-center justify-center h-24 rounded-xl border border-dashed border-white/[0.05]">
+                  <p className="text-[11px] text-[#2f2f2f]">Arrastra proyectos aquí</p>
+                </div>
               )}
             </div>
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function ConfirmarEliminar({ proyecto, onConfirm, onClose }: {
+  proyecto: Proyecto; onConfirm: () => void; onClose: () => void;
+}) {
+  const [borrando, setBorrando] = useState(false);
+  return (
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+        <div className="w-11 h-11 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </div>
+        <h2 className="text-white font-semibold text-sm mb-1">Eliminar proyecto</h2>
+        <p className="text-[12.5px] text-[#888] leading-relaxed mb-5">
+          ¿Seguro que quieres eliminar <span className="text-white font-medium">{proyecto.nombre}</span>? Se quitará del tablero.
+        </p>
+        <div className="flex gap-2 justify-end">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-[#555] hover:text-white transition-colors">Cancelar</button>
+          <button onClick={() => { setBorrando(true); onConfirm(); }} disabled={borrando}
+            className="px-4 py-2 bg-red-500/90 hover:bg-red-500 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50">
+            {borrando ? "Eliminando…" : "Eliminar"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -301,6 +407,7 @@ export default function ProyectosInternosPage() {
   const [estadoFiltro, setEstado] = useState("ACTIVO");
   const [showModal, setShowModal] = useState(false);
   const [vista, setVista]         = useState<"lista" | "kanban">("kanban");
+  const [aEliminar, setAEliminar] = useState<Proyecto | null>(null);
 
   useEffect(() => {
     fetch("/api/proyectos-internos").then(r => r.json()).then(d => {
@@ -318,10 +425,16 @@ export default function ProyectosInternosPage() {
     });
   }
 
+  async function eliminarProyecto(id: string) {
+    setProyectos(prev => prev.filter(p => p.id !== id));
+    setAEliminar(null);
+    await fetch(`/api/proyectos-internos/${id}`, { method: "DELETE" });
+  }
+
   const filtrados = proyectos.filter(p => p.estado === estadoFiltro);
 
   return (
-    <div className={`p-4 md:p-6 ${vista === "kanban" ? "max-w-6xl" : "max-w-3xl"} mx-auto space-y-5`}>
+    <div className={`p-4 md:p-6 ${vista === "kanban" ? "max-w-none" : "max-w-3xl"} mx-auto space-y-5`}>
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -364,7 +477,7 @@ export default function ProyectosInternosPage() {
 
       {/* Kanban */}
       {vista === "kanban" && !loading && (
-        <KanbanBoard proyectos={proyectos} onMove={moverProyecto} />
+        <KanbanBoard proyectos={proyectos} onMove={moverProyecto} onDelete={setAEliminar} />
       )}
 
       {/* Lista */}
@@ -382,7 +495,7 @@ export default function ProyectosInternosPage() {
 
             return (
               <Link key={p.id} href={`/proyectos-de-empresa/${p.id}`}
-                className="flex items-center gap-3 px-1 py-2.5 rounded-xl hover:bg-[#0d0d0d] group transition-colors">
+                className="flex items-center gap-3 px-2 py-2.5 rounded-xl hover:bg-[#0d0d0d] group transition-colors">
                 {/* Círculo / avance */}
                 <div className="shrink-0 relative w-5 h-5">
                   {p.avance > 0 ? (
@@ -412,8 +525,15 @@ export default function ProyectosInternosPage() {
                   )}
                 </div>
 
-                {/* Flecha */}
-                <span className="shrink-0 opacity-0 group-hover:opacity-100 text-[#555] text-xs transition-opacity">→</span>
+                {/* Eliminar */}
+                <button
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setAEliminar(p); }}
+                  className="shrink-0 p-1 rounded-md text-[#3a3a3a] opacity-0 group-hover:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                  title="Eliminar proyecto">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                  </svg>
+                </button>
               </Link>
             );
           })}
@@ -424,6 +544,14 @@ export default function ProyectosInternosPage() {
         <ModalNuevoProyecto
           onSave={p => { setProyectos(prev => [p, ...prev]); setShowModal(false); }}
           onClose={() => setShowModal(false)}
+        />
+      )}
+
+      {aEliminar && (
+        <ConfirmarEliminar
+          proyecto={aEliminar}
+          onConfirm={() => eliminarProyecto(aEliminar.id)}
+          onClose={() => setAEliminar(null)}
         />
       )}
     </div>

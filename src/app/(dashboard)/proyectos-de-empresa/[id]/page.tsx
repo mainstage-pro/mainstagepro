@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Calendar, User, Plus, Check, Trash2, Target, Package,
   FileText, Wallet, ChevronRight, CalendarClock,
@@ -52,12 +53,21 @@ const fechaLarga = (iso: string | null) =>
 
 export default function ProyectoInternoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const [proyecto, setProyecto] = useState<Proyecto | null>(null);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading]   = useState(true);
   const [editNombre, setEditNombre] = useState(false);
   const [nombre, setNombre]     = useState("");
   const [modalTask, setModalTask] = useState<{ mode: "crear"; faseId: string | null } | { mode: "editar"; tareaId: string } | null>(null);
+  const [confirmarEliminar, setConfirmarEliminar] = useState(false);
+  const [eliminando, setEliminando] = useState(false);
+
+  async function eliminarProyecto() {
+    setEliminando(true);
+    await fetch(`/api/proyectos-internos/${id}`, { method: "DELETE" });
+    router.push("/proyectos-de-empresa");
+  }
 
   const load = useCallback(async () => {
     const r = await fetch(`/api/proyectos-internos/${id}`, { cache: "no-store" });
@@ -276,6 +286,12 @@ export default function ProyectoInternoPage({ params }: { params: Promise<{ id: 
           <SideCard label="Presupuesto">
             <PresupuestoInput value={proyecto.presupuesto} onSave={v => patchProyecto({ presupuesto: v })} />
           </SideCard>
+
+          <button onClick={() => setConfirmarEliminar(true)}
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-red-500/15 text-red-400/70 hover:text-red-400 hover:border-red-500/40 hover:bg-red-500/[0.06] text-[12px] font-medium transition-all">
+            <Trash2 className="w-3.5 h-3.5" />
+            Eliminar proyecto
+          </button>
         </div>
       </div>
 
@@ -292,6 +308,27 @@ export default function ProyectoInternoPage({ params }: { params: Promise<{ id: 
           tareaIdEdicion={modalTask.mode === "editar" ? modalTask.tareaId : null}
           onCreated={() => load()}
         />
+      )}
+
+      {confirmarEliminar && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setConfirmarEliminar(false)}>
+          <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <div className="w-11 h-11 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
+              <Trash2 className="w-5 h-5 text-red-400" />
+            </div>
+            <h2 className="text-white font-semibold text-sm mb-1">Eliminar proyecto</h2>
+            <p className="text-[12.5px] text-[#888] leading-relaxed mb-5">
+              ¿Seguro que quieres eliminar <span className="text-white font-medium">{proyecto.nombre}</span>? Volverás al tablero.
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setConfirmarEliminar(false)} className="px-4 py-2 text-sm text-[#555] hover:text-white transition-colors">Cancelar</button>
+              <button onClick={eliminarProyecto} disabled={eliminando}
+                className="px-4 py-2 bg-red-500/90 hover:bg-red-500 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50">
+                {eliminando ? "Eliminando…" : "Eliminar"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
