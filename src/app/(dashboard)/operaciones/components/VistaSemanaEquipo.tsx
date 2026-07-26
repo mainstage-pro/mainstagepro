@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import TaskPanel, { type TareaDetalle } from "./TaskPanel";
+import TaskModal, { type TareaDetalle } from "./TaskModal";
 
 interface Recurso { id: string; name?: string; nombre?: string; color?: string | null }
 
@@ -84,6 +84,7 @@ export function VistaSemanaEquipo() {
 
   // ── Panel de tarea (mismo que Operaciones) ──
   const [selectedTask, setSelectedTask] = useState<TareaDetalle | null>(null);
+  const [loadingPanel, setLoadingPanel] = useState(false);
   const [usuarios, setUsuarios] = useState<Recurso[]>([]);
   const [proyectos, setProyectos] = useState<Recurso[]>([]);
   const [iniciativas, setIniciativas] = useState<Recurso[]>([]);
@@ -156,15 +157,21 @@ export function VistaSemanaEquipo() {
 
   // ── Abrir/editar tarea en el panel ──
   const abrirTarea = async (id: string) => {
+    setLoadingPanel(true);
     try {
       const res = await fetch(`/api/tareas/${id}`);
       const d = await res.json();
       setSelectedTask((d.tarea ?? d) as TareaDetalle);
     } catch {
+      setSelectedTask(null);
       setAviso("No se pudo abrir la tarea.");
       setTimeout(() => setAviso(null), 3000);
+    } finally {
+      setLoadingPanel(false);
     }
   };
+
+  const cerrarPanel = () => { setSelectedTask(null); setLoadingPanel(false); };
 
   const guardarTarea = async (id: string, patch: Record<string, unknown>) => {
     const res = await fetch(`/api/tareas/${id}`, {
@@ -172,8 +179,24 @@ export function VistaSemanaEquipo() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
-    const d = await res.json();
-    if (d?.tarea || d?.id) setSelectedTask((d.tarea ?? d) as TareaDetalle);
+    if (!res.ok) {
+      setAviso("No se pudo guardar el cambio.");
+      setTimeout(() => setAviso(null), 3000);
+      return;
+    }
+    const d = await res.json().catch(() => ({}));
+    const saved = d?.tarea;
+    // Fusionar el patch en la tarea abierta (el modal conserva su estado local;
+    // subtareas/comentarios/archivos no vienen en la respuesta del PATCH).
+    setSelectedTask(prev => {
+      if (!prev || prev.id !== id) return prev;
+      const merged = { ...prev, ...patch } as TareaDetalle;
+      if (saved) {
+        merged.fecha = saved.fecha ?? merged.fecha;
+        merged.recurrencia = saved.recurrencia ?? merged.recurrencia;
+      }
+      return merged;
+    });
     cargar(inicio);
   };
 
@@ -296,27 +319,23 @@ export function VistaSemanaEquipo() {
         <div className="p-8 text-sm text-[#555]">Sin miembros para mostrar.</div>
       )}
 
-      {/* Panel de tarea (overlay), igual que en Operaciones */}
-      {selectedTask && (
-        <div className="fixed inset-0 z-50 flex">
-          <div className="flex-1 bg-black/40" onClick={() => setSelectedTask(null)} />
-          <div className="w-full max-w-[520px] h-full bg-[#0d0d0d] border-l border-[#1e1e1e] overflow-y-auto">
-            <TaskPanel
-              tarea={selectedTask}
-              usuarios={usuarios as { id: string; name: string }[]}
-              proyectos={proyectos as { id: string; nombre: string; color: string | null }[]}
-              iniciativas={iniciativas as { id: string; nombre: string; color: string | null }[]}
-              sessionId={sessionId}
-              onClose={() => setSelectedTask(null)}
-              onSave={guardarTarea}
-              onComplete={completarTarea}
-              onDelete={eliminarTarea}
-              onAddSubtarea={agregarSubtarea}
-              onCompleteSubtarea={completarSubtarea}
-              onDeleteSubtarea={eliminarSubtarea}
-            />
-          </div>
-        </div>
+      {/* Panel de tarea, idéntico al de Operaciones (TaskModal) */}
+      {(selectedTask || loadingPanel) && (
+        <TaskModal
+          tarea={selectedTask}
+          loading={loadingPanel}
+          usuarios={usuarios as { id: string; name: string }[]}
+          proyectos={proyectos as { id: string; nombre: string; color: string | null }[]}
+          iniciativas={iniciativas as { id: string; nombre: string; color: string | null }[]}
+          sessionId={sessionId}
+          onClose={cerrarPanel}
+          onSave={guardarTarea}
+          onComplete={completarTarea}
+          onDelete={eliminarTarea}
+          onAddSubtarea={agregarSubtarea}
+          onCompleteSubtarea={completarSubtarea}
+          onDeleteSubtarea={eliminarSubtarea}
+        />
       )}
     </div>
   );
