@@ -676,6 +676,23 @@ model Proyecto {
   @@map("proyectos")
 }
 
+// Bandeja de entrada de proyectos: ideas capturadas antes de convertirse en un
+// proyecto de evento formal. Sin relaciones Prisma (ids planos) para mantenerlo
+// autocontenido. La tabla se crea de forma lazy en prod (ver ensureProyectoIdeasTable).
+model ProyectoIdea {
+  id            String   @id @default(cuid())
+  titulo        String
+  descripcion   String?  @db.Text
+  area          String   @default("GENERAL") // VENTAS | ADMINISTRACION | PRODUCCION | MARKETING | RRHH | DIRECCION | GENERAL
+  responsableId String?  // User.id del responsable (sin relación Prisma)
+  estado        String   @default("PENDIENTE") // PENDIENTE | CONVERTIDA | DESCARTADA
+  proyectoId    String?  // Proyecto.id creado al convertir la idea
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("proyecto_ideas")
+}
+
 model ProyectoPersonal {
   id              String   @id @default(cuid())
   proyectoId      String
