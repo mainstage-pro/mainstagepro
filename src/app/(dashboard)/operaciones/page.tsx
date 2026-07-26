@@ -1139,10 +1139,12 @@ export default function OperacionesPage() {
     let base = applyBusqueda(vistaOpts.showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA"));
     if (vistaOpts.filterPrio.length > 0) base = base.filter(t => vistaOpts.filterPrio.includes(t.prioridad));
     if (vistaOpts.filterTipo.length > 0) base = base.filter(t => vistaOpts.filterTipo.includes(t.tipoOrigen ?? "TAREA"));
-    // Bandeja/próximas solo muestran tareas sueltas (tipoOrigen TAREA).
+    // Bandeja/próximas muestran tareas SUELTAS: sin origen (trato/evento/proyecto).
+    // Incluye TAREA y compromisos de PLAN sin proyecto — mismo criterio que el grupo
+    // "Bandeja de entrada" de la vista Hoy, para que el ruteo sea consistente.
     // "Hoy" muestra los 4 tipos (TAREA | PLAN | EVENTO | PROYECTO) que vencen hoy.
     if (vista === "bandeja" || vista === "proximas") {
-      base = base.filter(t => (t.tipoOrigen ?? "TAREA") === "TAREA");
+      base = base.filter(t => grupoOrigen(t) === "Bandeja de entrada");
     }
 
     function applySort(arr: TareaItem[]): TareaItem[] {
@@ -1204,9 +1206,10 @@ export default function OperacionesPage() {
     let base = applyBusqueda(vistaOpts.showCompleted ? tareas : tareas.filter(t => t.estado !== "COMPLETADA"));
     if (vistaOpts.filterPrio.length > 0) base = base.filter(t => vistaOpts.filterPrio.includes(t.prioridad));
     if (vistaOpts.filterTipo.length > 0) base = base.filter(t => vistaOpts.filterTipo.includes(t.tipoOrigen ?? "TAREA"));
-    // Bandeja/próximas: solo tareas sueltas. "Hoy" incluye los 4 tipos que vencen hoy.
+    // Bandeja/próximas: tareas sueltas (sin origen), incluye PLAN sin proyecto.
+    // "Hoy" incluye los 4 tipos que vencen hoy.
     if (vista === "bandeja" || vista === "proximas") {
-      base = base.filter(t => (t.tipoOrigen ?? "TAREA") === "TAREA");
+      base = base.filter(t => grupoOrigen(t) === "Bandeja de entrada");
     }
     if (vistaOpts.sortBy === "prioridad") return [...base].sort((a, b) => (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3));
     if (vistaOpts.sortBy === "fecha")     return [...base].sort((a, b) => { if (!a.fecha) return 1; if (!b.fecha) return -1; return a.fecha.localeCompare(b.fecha); });
