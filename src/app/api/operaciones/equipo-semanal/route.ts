@@ -21,18 +21,22 @@ function rankUsuario(name: string): number {
   return idx === -1 ? ORDEN_NOMBRES.length + 1 : idx
 }
 
-// Día local (América/México) de una fecha, como YYYY-MM-DD.
-function diaCST(d: Date): string {
-  return d.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
+// Fecha-calendario (YYYY-MM-DD) de un DateTime. Las tareas se guardan a
+// medianoche UTC, así que el día-calendario es la parte UTC de la fecha
+// (mismo criterio que el resumen de gestión). Convertirla a otra zona horaria
+// la desfasaría un día.
+function fechaCal(d: Date): string {
+  return d.toISOString().slice(0, 10)
 }
 
-// El lunes de la semana que contiene la fecha `ymd` (YYYY-MM-DD), en CST.
-function lunesDeLaSemana(ymd: string): string {
-  const base = new Date(`${ymd}T12:00:00-06:00`)
-  const dow = base.getUTCDay() // 0=dom … 6=sáb (base a mediodía CST evita cruces de día)
-  const diffALunes = dow === 0 ? -6 : 1 - dow
-  base.setUTCDate(base.getUTCDate() + diffALunes)
-  return diaCST(base)
+// El lunes de la semana que contiene la fecha-calendario `cal` (YYYY-MM-DD),
+// en aritmética UTC pura sobre el día-calendario.
+function lunesDeLaSemana(cal: string): string {
+  const d = new Date(`${cal}T00:00:00Z`)
+  const dow = d.getUTCDay() // 0=dom … 6=sáb
+  const diff = dow === 0 ? -6 : 1 - dow
+  d.setUTCDate(d.getUTCDate() + diff)
+  return fechaCal(d)
 }
 
 export async function GET(req: NextRequest) {
@@ -42,16 +46,18 @@ export async function GET(req: NextRequest) {
   const isAdmin = session.role === 'ADMIN'
 
   // 1. Semana pedida (?inicio=YYYY-MM-DD, cualquier día de la semana). Default: hoy.
+  //    "Hoy" se toma como el día-calendario del usuario (zona México) para elegir
+  //    la semana correcta; a partir de ahí todo es aritmética UTC de calendario.
   const inicioParam = req.nextUrl.searchParams.get('inicio')
-  const hoyCST = diaCST(new Date())
-  const lunes = lunesDeLaSemana(inicioParam && /^\d{4}-\d{2}-\d{2}$/.test(inicioParam) ? inicioParam : hoyCST)
+  const hoyCal = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
+  const lunes = lunesDeLaSemana(inicioParam && /^\d{4}-\d{2}-\d{2}$/.test(inicioParam) ? inicioParam : hoyCal)
 
   // Los 5 días objetivo (lun–vie) como strings YYYY-MM-DD.
   const dias: string[] = []
   {
-    const d = new Date(`${lunes}T12:00:00-06:00`)
+    const d = new Date(`${lunes}T00:00:00Z`)
     for (let i = 0; i < 5; i++) {
-      dias.push(diaCST(d))
+      dias.push(fechaCal(d))
       d.setUTCDate(d.getUTCDate() + 1)
     }
   }
@@ -66,9 +72,9 @@ export async function GET(req: NextRequest) {
 
   // 3. Ventana de consulta amplia en UTC (lun−1 … sáb+1) para no perder tareas por
   //    el desfase de zona horaria; luego se filtra por el string de día CST.
-  const desde = new Date(`${dias[0]}T00:00:00-06:00`)
+  const desde = new Date(`${dias[0]}T00:00:00Z`)
   desde.setUTCDate(desde.getUTCDate() - 1)
-  const hasta = new Date(`${dias[4]}T00:00:00-06:00`)
+  const hasta = new Date(`${dias[4]}T00:00:00Z`)
   hasta.setUTCDate(hasta.getUTCDate() + 2)
 
   const tareas = await prisma.tarea.findMany({
@@ -114,7 +120,7 @@ export async function GET(req: NextRequest) {
 
   for (const t of tareas) {
     if (!t.asignadoAId || !t.fecha) continue
-    const dia = diaCST(t.fecha)
+    const dia = fechaCal(t.fecha)
     if (!setDias.has(dia)) continue
     const lista = porUsuario.get(t.asignadoAId)
     if (!lista) continue

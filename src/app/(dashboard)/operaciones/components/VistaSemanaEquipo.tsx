@@ -58,16 +58,17 @@ function fmtDiaCorto(ymd: string) {
   return `${parseInt(d, 10)} ${MESES[parseInt(m, 10) - 1]}`;
 }
 
-// Desplaza un YYYY-MM-DD por n días (ancla a mediodía CST para evitar cruces).
+// Desplaza un YYYY-MM-DD por n días (aritmética UTC de calendario).
 function shiftYMD(ymd: string, n: number) {
-  const d = new Date(`${ymd}T12:00:00-06:00`);
+  const d = new Date(`${ymd}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + n);
-  return d.toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
+  return d.toISOString().slice(0, 10);
 }
 
-// ISO de una fecha a mediodía CST de ese día (para que la tarea quede en ese día).
-function isoMediodia(ymd: string) {
-  return new Date(`${ymd}T12:00:00.000-06:00`).toISOString();
+// ISO de una fecha-calendario a medianoche UTC (convención de guardado de tareas,
+// para que la tarea quede exactamente en ese día).
+function isoDia(ymd: string) {
+  return new Date(`${ymd}T00:00:00.000Z`).toISOString();
 }
 
 export function VistaSemanaEquipo() {
@@ -116,7 +117,7 @@ export function VistaSemanaEquipo() {
       const r = await fetch(`/api/tareas/${tareaId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fecha: isoMediodia(nuevoDia) }),
+        body: JSON.stringify({ fecha: isoDia(nuevoDia) }),
       });
       if (!r.ok) throw new Error();
       const res = await r.json();
