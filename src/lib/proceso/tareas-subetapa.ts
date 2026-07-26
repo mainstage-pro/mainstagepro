@@ -64,7 +64,7 @@ export async function siguienteSubetapa(etapaInterna: string): Promise<string | 
 export async function instanciarTareasProceso(tratoId: string): Promise<number> {
   const trato = await prisma.trato.findUnique({
     where: { id: tratoId },
-    select: { responsableId: true, cliente: { select: { nombre: true } } },
+    select: { responsableId: true, etapaInterna: true, cliente: { select: { nombre: true } } },
   });
   if (!trato) return 0;
   const nombreCliente = trato.cliente?.nombre?.trim() || "";
@@ -151,9 +151,42 @@ export async function instanciarTareasProceso(tratoId: string): Promise<number> 
     }
   }
 
-  if (nuevas.length === 0) return 0;
-  await prisma.tarea.createMany({ data: nuevas });
+  if (nuevas.length > 0) {
+    await prisma.tarea.createMany({ data: nuevas });
+  }
+
+  // Refleja el avance del trato: las tareas del proceso de subetapas ya superadas
+  // que siguen "libres" (pendientes y sin fecha) se dan por resueltas.
+  await autocompletarSubetapasPasadas(tratoId, trato.etapaInterna, ordenSubs);
+
   return nuevas.length;
+}
+
+// ── autocompletarSubetapasPasadas ────────────────────────────────────────────
+// Marca como COMPLETADA las tareas del proceso (con fecha null y estado PENDIENTE)
+// cuya subetapa quede ANTES de la subetapa actual del trato en el orden global. Así
+// un trato con avance no arrastra tareas libres de pasos que ya dejó atrás. No toca
+// tareas ya agendadas (con fecha) ni las de la subetapa actual o posteriores.
+async function autocompletarSubetapasPasadas(
+  tratoId: string,
+  etapaInternaActual: string | null,
+  orden: { etapa: string; etapaInterna: string }[],
+): Promise<void> {
+  if (!etapaInternaActual) return;
+  const curIdx = orden.findIndex((s) => s.etapaInterna === etapaInternaActual);
+  if (curIdx <= 0) return;
+  const pasadas = orden.slice(0, curIdx).map((s) => s.etapaInterna);
+  if (pasadas.length === 0) return;
+
+  await prisma.tarea.updateMany({
+    where: {
+      tratoId,
+      estado: "PENDIENTE",
+      fecha: null,
+      OR: pasadas.map((code) => ({ etiquetas: { contains: `"subetapa:${code}"` } })),
+    },
+    data: { estado: "COMPLETADA", fechaCompletada: new Date(), estadoVerificacion: "NO_REQUIERE" },
+  });
 }
 
 // ── avanzarPorHito ───────────────────────────────────────────────────────────
