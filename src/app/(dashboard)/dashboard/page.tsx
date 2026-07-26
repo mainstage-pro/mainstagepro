@@ -296,7 +296,6 @@ export default async function DashboardPage() {
   const totalCxP        = cxpPendiente._sum.monto ?? 0;
   const cxpVencMonto    = cxpVencidaAgg._sum.monto ?? 0;
   const cxpProxMonto    = totalCxP - cxpVencMonto;
-  const disponibleNeto  = totalDisponible - totalCxP;
 
   const pubsMap: Record<string, number> = {};
   pubsPorEstado.forEach(p => { pubsMap[p.estado] = p._count._all; });
@@ -573,9 +572,6 @@ export default async function DashboardPage() {
           <KpiCard label="Flujo neto"        value={formatCurrency(flujoNeto)}
             subColor={flujoNeto >= 0 ? "text-green-400" : "text-red-400"}
             sub={flujoNeto >= 0 ? "positivo" : "negativo"} animate={{ amount: flujoNeto, prefix: "$", decimals: 0 }} href="/finanzas/reporte" />
-          <KpiCard label="Disponible neto"   value={formatCurrency(disponibleNeto)}
-            subColor={disponibleNeto >= 0 ? "text-white" : "text-red-400"}
-            sub="bancos − CxP" animate={{ amount: disponibleNeto, prefix: "$", decimals: 0 }} href="/finanzas/cuentas" />
         </div>
 
         <GraficaIngresos />
