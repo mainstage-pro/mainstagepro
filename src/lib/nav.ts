@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 // Dueño de la plataforma. Ciertos módulos (ej. "Inicio") se muestran solo a él.
-export const OWNER_EMAIL = "mauriciohernandezvm@gmail.com";
+export const OWNER_EMAIL = "mauricio@mainstagepro.mx";
 
 // ── Tipos de navegación ──────────────────────────────────────────────────────
 export interface NavChild {
