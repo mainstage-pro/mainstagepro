@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { OWNER_EMAIL } from "@/lib/nav";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,9 +40,11 @@ export default function LoginPage() {
     };
     const area = data.user?.area;
     const isAdmin = data.user?.role === "ADMIN";
-    const target = (!isAdmin && area && area !== "GENERAL" && areaRoutes[area])
-      ? areaRoutes[area]
-      : "/dashboard";
+    const target = data.user?.email === OWNER_EMAIL
+      ? "/inicio"
+      : (!isAdmin && area && area !== "GENERAL" && areaRoutes[area])
+        ? areaRoutes[area]
+        : "/dashboard";
     router.push(target);
     router.refresh();
   }

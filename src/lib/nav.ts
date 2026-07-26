@@ -5,8 +5,11 @@ import {
   Table2, FileBarChart, Users, GraduationCap, UserPlus, UserSearch,
   PenTool, Megaphone, BarChart3, SlidersHorizontal, BadgeDollarSign,
   Package, TrendingUp, Settings, Speaker, BookUser, ClipboardCheck,
-  ShieldCheck, ScrollText, Settings2, Building2,
+  ShieldCheck, ScrollText, Settings2, Building2, LayoutGrid,
 } from "lucide-react";
+
+// Dueño de la plataforma. Ciertos módulos (ej. "Inicio") se muestran solo a él.
+export const OWNER_EMAIL = "mauriciohernandezvm@gmail.com";
 
 // ── Tipos de navegación ──────────────────────────────────────────────────────
 export interface NavChild {
@@ -23,6 +26,7 @@ export interface NavItem {
   label: string;
   href?: string;
   adminOnly?: boolean;
+  ownerOnly?: boolean; // visible solo para OWNER_EMAIL
   children?: NavChild[];
   badge?: string; // key used to look up badge counts
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,6 +49,7 @@ export const NAV: NavSection[] = [
     key: "seccion-top",
     section: "",
     items: [
+      { key: "inicio", label: "Inicio", href: "/inicio", icon: LayoutGrid, adminOnly: true, ownerOnly: true },
       { label: "Mi Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { key: "calendario", label: "Calendario de eventos", href: "/calendario", icon: CalendarDays },
       {

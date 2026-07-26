@@ -8,7 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import BusquedaGlobal from "@/components/BusquedaGlobal";
 import NotificacionesBell from "@/components/NotificacionesBell";
-import { NAV } from "@/lib/nav";
+import { NAV, OWNER_EMAIL } from "@/lib/nav";
 
 interface User {
   id: string;
@@ -45,6 +45,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
   const pathname = usePathname();
   const router = useRouter();
   const isAdmin = user.role === "ADMIN";
+  const isOwner = user.email === OWNER_EMAIL;
   const storageKey = `sidebar-state-${user.id}`;
   const [badges, setBadges] = useState<Record<string, number>>({});
 
@@ -142,6 +143,7 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
         {NAV.map((section) => {
           const sectionLabel = resolveLabel(section.key, section.section, labels);
           const visibleItems = section.items.filter(item => {
+            if (item.ownerOnly && !isOwner) return false;
             if (item.adminOnly && !isAdmin) return false;
             if (canAccess(item.accessKey ?? item.key, isAdmin, userModuleKeys)) return true;
             if (item.children) {
