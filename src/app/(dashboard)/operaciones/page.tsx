@@ -2373,12 +2373,8 @@ export default function OperacionesPage() {
                     />
                   ))}
 
-                  {/* ── Agregar sección (al final; se despliega suave al pasar el cursor, sin dejar hueco) ── */}
-                  <div className={`overflow-hidden transition-all duration-200 ease-out ${
-                    showNuevaSeccion === tipoMod
-                      ? "max-h-40 opacity-100 mt-3"
-                      : "max-h-0 opacity-0 mt-0 group-hover/fija:max-h-12 group-hover/fija:opacity-100 group-hover/fija:mt-3 focus-within:max-h-40 focus-within:opacity-100 focus-within:mt-3"
-                  }`}>
+                  {/* ── Agregar sección (al final, siempre visible y estático — sin movimiento) ── */}
+                  <div className="mt-3">
                     {showNuevaSeccion === tipoMod ? (
                       <div className="px-3 py-3 border border-dashed border-[#2a2a2a] rounded-xl space-y-2 bg-[#0a0a0a]">
                         <input autoFocus value={nuevaSeccionNombre}
@@ -3938,13 +3934,6 @@ function SectionBlock({
         >
           {seccion.descripcion}
         </p>
-      ) : hov ? (
-        <button
-          onClick={e => { e.stopPropagation(); setEditDesc(""); setEditandoDesc(true); }}
-          className="pl-[30px] pr-2 -mt-0.5 mb-1.5 block text-[12px] text-[#4a4a4a] hover:text-[#B3985B] transition-colors"
-        >
-          + Agregar objetivo
-        </button>
       ) : null}
 
       {!seccion.colapsada && (
