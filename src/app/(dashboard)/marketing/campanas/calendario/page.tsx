@@ -278,7 +278,7 @@ export default function CampanasDashboard() {
           <p className="text-white/35 text-xs mt-1">Lanza, opera y mide tus campañas en un solo lugar.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link href="/marketing/publicidad?vista=plantillas" className="text-xs text-white/35 hover:text-white/70 transition-colors px-2 py-1">
+          <Link href="/marketing/publicidad/plantillas" className="text-xs text-white/35 hover:text-white/70 transition-colors px-2 py-1">
             Plantillas →
           </Link>
           <button onClick={openWizard}
@@ -342,7 +342,7 @@ export default function CampanasDashboard() {
           </button>
           {tipos.length === 0 && (
             <p className="text-white/25 text-xs">
-              Tip: crea <Link href="/marketing/publicidad?vista=plantillas" className="text-[#B3985B] hover:underline">plantillas</Link> para prellenar todo con un clic.
+              Tip: crea <Link href="/marketing/publicidad/plantillas" className="text-[#B3985B] hover:underline">plantillas</Link> para prellenar todo con un clic.
             </p>
           )}
         </div>

@@ -377,7 +377,7 @@ export default function TiposCampanaPage() {
           <p className="ms-subtitle mt-0.5">Plantillas de campañas Meta Ads para programar en el calendario.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Link href="/marketing/campanas/calendario"
+          <Link href="/marketing/publicidad/campanas"
             className="text-xs px-3 py-1.5 rounded-lg border border-[#333] text-gray-400 hover:text-white hover:border-[#555] transition-colors">
             Ver calendario →
           </Link>
