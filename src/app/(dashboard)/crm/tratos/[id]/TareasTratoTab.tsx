@@ -82,22 +82,23 @@ export default function TareasTratoTab({
   const [tareas, setTareas]   = useState<TareaTrato[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal]     = useState<{ mode: "crear" } | { mode: "editar"; tareaId: string } | null>(null);
-  // Secciones colapsadas ("guardadas"). Se persiste por trato en localStorage para
-  // que al reabrir el trato las secciones ocultas sigan ocultas.
-  const [colapsadas, setColapsadas] = useState<Set<string>>(new Set());
+  // Todas las secciones nacen ocultas (colapsadas). Se rastrea cuáles expande el
+  // usuario y se persiste por trato en localStorage; al reabrir siguen expandidas
+  // solo las que abrió, el resto ocultas.
+  const [expandidas, setExpandidas] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(`tareas-trato-colapsadas:${tratoId}`);
-      if (raw) setColapsadas(new Set(JSON.parse(raw) as string[]));
+      const raw = localStorage.getItem(`tareas-trato-expandidas:${tratoId}`);
+      if (raw) setExpandidas(new Set(JSON.parse(raw) as string[]));
     } catch { /* ignore */ }
   }, [tratoId]);
 
   function toggleColapso(key: string) {
-    setColapsadas(prev => {
+    setExpandidas(prev => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key); else next.add(key);
-      try { localStorage.setItem(`tareas-trato-colapsadas:${tratoId}`, JSON.stringify([...next])); } catch { /* ignore */ }
+      try { localStorage.setItem(`tareas-trato-expandidas:${tratoId}`, JSON.stringify([...next])); } catch { /* ignore */ }
       return next;
     });
   }
@@ -201,7 +202,7 @@ export default function TareasTratoTab({
       ) : (
         <div className="space-y-5">
           {grupos.map(grupo => {
-            const colapsada = colapsadas.has(grupo.key);
+            const colapsada = !expandidas.has(grupo.key);
             const hechas = grupo.tareas.filter(t => t.estado === "COMPLETADA").length;
             const pendientes = grupo.tareas.length - hechas;
             return (
