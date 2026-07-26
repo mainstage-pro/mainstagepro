@@ -8,6 +8,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const { id } = await params;
 
+  const tareaSelect = {
+    id: true, titulo: true, descripcion: true, estado: true, prioridad: true, area: true,
+    fecha: true, fechaVencimiento: true, fechaCompletada: true, notas: true, createdAt: true,
+    asignadoA: { select: { id: true, name: true } },
+    _count: { select: { subtareas: true, comentarios: true, archivos: true } },
+  } as const;
+
   const proyecto = await prisma.proyectoInterno.findUnique({
     where: { id },
     include: {
@@ -16,25 +23,15 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         orderBy: { orden: "asc" },
         include: {
           tareas: {
-            where: { parentId: null },
-            select: {
-              id: true, titulo: true, estado: true, prioridad: true,
-              fecha: true, fechaVencimiento: true, fechaCompletada: true,
-              createdAt: true,
-              asignadoA: { select: { id: true, name: true } },
-            },
+            where: { parentId: null, esSeguimiento: false },
+            select: tareaSelect,
             orderBy: { orden: "asc" },
           },
         },
       },
       tareas: {
-        where: { parentId: null, faseInternaId: null },
-        select: {
-          id: true, titulo: true, estado: true, prioridad: true,
-          fecha: true, fechaVencimiento: true, fechaCompletada: true,
-          createdAt: true,
-          asignadoA: { select: { id: true, name: true } },
-        },
+        where: { parentId: null, faseInternaId: null, esSeguimiento: false },
+        select: tareaSelect,
         orderBy: { orden: "asc" },
       },
     },
@@ -42,7 +39,24 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!proyecto) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-  return NextResponse.json({ proyecto });
+  // Seguimientos agendados (tareas con bandera esSeguimiento).
+  const seguimientos = await prisma.tarea.findMany({
+    where: { proyectoInternoId: id, esSeguimiento: true, parentId: null },
+    select: {
+      id: true, titulo: true, notas: true, estado: true,
+      fecha: true, fechaCompletada: true,
+      asignadoA: { select: { id: true, name: true } },
+    },
+    orderBy: { fecha: "asc" },
+  });
+
+  // Avance real: tareas completadas / total (excluye seguimientos y subtareas).
+  const todas = [...proyecto.fases.flatMap(f => f.tareas), ...proyecto.tareas];
+  const tareasTotal = todas.length;
+  const tareasHechas = todas.filter(t => t.estado === "COMPLETADA").length;
+  const avance = tareasTotal > 0 ? Math.round((tareasHechas / tareasTotal) * 100) : proyecto.porcentajeAvance;
+
+  return NextResponse.json({ proyecto: { ...proyecto, seguimientos, tareasTotal, tareasHechas, avance } });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -54,11 +68,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const data: Record<string, any> = {};
-  for (const f of ["nombre", "descripcion", "area", "liderId", "estado", "prioridad", "porcentajeAvance"]) {
+  for (const f of ["nombre", "descripcion", "area", "liderId", "estado", "prioridad", "porcentajeAvance", "objetivo", "entregable"]) {
     if (f in body) data[f] = body[f];
   }
   if ("fechaInicio" in body) data.fechaInicio = body.fechaInicio ? new Date(body.fechaInicio) : null;
   if ("fechaFin"    in body) data.fechaFin    = body.fechaFin    ? new Date(body.fechaFin)    : null;
+  if ("presupuesto" in body) data.presupuesto = body.presupuesto != null && body.presupuesto !== "" ? Number(body.presupuesto) : null;
 
   const proyecto = await prisma.proyectoInterno.update({
     where: { id },

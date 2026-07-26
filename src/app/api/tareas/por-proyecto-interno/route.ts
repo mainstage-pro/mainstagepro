@@ -11,7 +11,7 @@ export async function GET() {
   const proyectos = await prisma.proyectoInterno.findMany({
     where: {
       estado: { notIn: ["CANCELADO", "COMPLETADO"] },
-      tareas: { some: { estado: { not: "CANCELADA" } } },
+      tareas: { some: { estado: { not: "CANCELADA" }, esSeguimiento: false } },
     },
     select: {
       id: true,
@@ -22,7 +22,7 @@ export async function GET() {
       fechaFin: true,
       lider: { select: { id: true, name: true } },
       tareas: {
-        where:   { parentId: null, estado: { not: "CANCELADA" } },
+        where:   { parentId: null, estado: { not: "CANCELADA" }, esSeguimiento: false },
         include: {
           asignadoA: { select: { id: true, name: true } },
           creadoPor: { select: { id: true, name: true } },

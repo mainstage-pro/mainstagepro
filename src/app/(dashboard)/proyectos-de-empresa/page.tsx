@@ -65,10 +65,10 @@ const ESTADO_ORDER = ["PLANIFICACION","ACTIVO","EN_PAUSA","COMPLETADO"];
 type Proyecto = {
   id: string; nombre: string; descripcion: string | null; area: string;
   estado: string; prioridad: string; porcentajeAvance: number;
+  avance: number; tareasTotal: number; tareasHechas: number;
   fechaInicio: string | null; fechaFin: string | null;
   lider: { id: string; name: string };
   fases: { id: string; nombre: string; completada: boolean; _count: { tareas: number } }[];
-  _count: { tareas: number };
 };
 
 function ModalNuevoProyecto({ onSave, onClose }: {
@@ -82,6 +82,9 @@ function ModalNuevoProyecto({ onSave, onClose }: {
   const [prioridad, setPrio]      = useState("MEDIA");
   const [fechaInicio, setInicio]  = useState("");
   const [fechaFin, setFin]        = useState("");
+  const [presupuesto, setPresu]   = useState("");
+  const [objetivo, setObjetivo]   = useState("");
+  const [entregable, setEntreg]   = useState("");
   const [etapas, setEtapas]       = useState<string[]>([]);
   const [subtareas, setSubtareas] = useState<string[]>([]);
   const [saving, setSaving]       = useState(false);
@@ -102,6 +105,9 @@ function ModalNuevoProyecto({ onSave, onClose }: {
           nombre: nombre.trim(), descripcion: descripcion || null, area,
           liderId, prioridad,
           fechaInicio: fechaInicio || null, fechaFin: fechaFin || null,
+          presupuesto: presupuesto.trim() ? Number(presupuesto) : null,
+          objetivo: objetivo.trim() || null,
+          entregable: entregable.trim() || null,
         }),
       });
       if (!res.ok) { setSaving(false); return; }
@@ -182,6 +188,26 @@ function ModalNuevoProyecto({ onSave, onClose }: {
           </div>
         </div>
 
+        <div>
+          <label className={labelCls}>Presupuesto planeado</label>
+          <input type="number" min="0" step="0.01" value={presupuesto} onChange={e => setPresu(e.target.value)}
+            placeholder="0.00" className={inputCls} />
+        </div>
+
+        <div>
+          <label className={labelCls}>Objetivo</label>
+          <textarea value={objetivo} onChange={e => setObjetivo(e.target.value)} rows={2}
+            placeholder="¿Qué meta concreta persigue este proyecto?"
+            className={`${inputCls} resize-none`} />
+        </div>
+
+        <div>
+          <label className={labelCls}>Entregable</label>
+          <textarea value={entregable} onChange={e => setEntreg(e.target.value)} rows={2}
+            placeholder="¿Cuál es el entregable claro al terminar?"
+            className={`${inputCls} resize-none`} />
+        </div>
+
         <DynamicList label="Etapas de planeación" placeholder="Nombre de la etapa" items={etapas} setItems={setEtapas} addLabel="+ Etapa" />
         <DynamicList label="Subtareas del proyecto" placeholder="Subtarea a cumplir" items={subtareas} setItems={setSubtareas} addLabel="+ Subtarea" />
 
@@ -249,9 +275,9 @@ function KanbanBoard({ proyectos, onMove }: {
                         </span>
                         {fasesTotal > 0 && <span className="text-[10px] text-[#555]">{fasesCompletas}/{fasesTotal} fases</span>}
                       </div>
-                      {p.porcentajeAvance > 0 && (
+                      {p.avance > 0 && (
                         <div className="mt-2 h-1 rounded-full bg-[#1a1a1a] overflow-hidden">
-                          <div className="h-full rounded-full bg-[#B3985B]" style={{ width: `${p.porcentajeAvance}%` }} />
+                          <div className="h-full rounded-full bg-[#B3985B]" style={{ width: `${p.avance}%` }} />
                         </div>
                       )}
                     </Link>
@@ -359,12 +385,12 @@ export default function ProyectosInternosPage() {
                 className="flex items-center gap-3 px-1 py-2.5 rounded-xl hover:bg-[#0d0d0d] group transition-colors">
                 {/* Círculo / avance */}
                 <div className="shrink-0 relative w-5 h-5">
-                  {p.porcentajeAvance > 0 ? (
+                  {p.avance > 0 ? (
                     <svg viewBox="0 0 20 20" className="w-5 h-5 -rotate-90">
                       <circle cx="10" cy="10" r="8" fill="none" stroke="#1a1a1a" strokeWidth="2" />
                       <circle cx="10" cy="10" r="8" fill="none" stroke="#B3985B" strokeWidth="2"
                         strokeDasharray={`${2 * Math.PI * 8}`}
-                        strokeDashoffset={`${2 * Math.PI * 8 * (1 - p.porcentajeAvance / 100)}`}
+                        strokeDashoffset={`${2 * Math.PI * 8 * (1 - p.avance / 100)}`}
                         strokeLinecap="round" />
                     </svg>
                   ) : (
@@ -381,8 +407,8 @@ export default function ProyectosInternosPage() {
                   {fasesTotal > 0 && (
                     <span className="text-[11px] text-[#444]">{fasesCompletas}/{fasesTotal} fases</span>
                   )}
-                  {p.porcentajeAvance > 0 && (
-                    <span className="text-[11px] text-[#555]">{p.porcentajeAvance}%</span>
+                  {p.avance > 0 && (
+                    <span className="text-[11px] text-[#555]">{p.avance}%</span>
                   )}
                 </div>
 

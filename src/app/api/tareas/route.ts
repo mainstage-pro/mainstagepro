@@ -281,7 +281,7 @@ export async function POST(req: NextRequest) {
   const {
     titulo, descripcion, prioridad, area, asignadoAId, notas, etiquetas,
     iniciativaId, proyectoTareaId, seccionId, carpetaId,
-    proyectoInternoId, faseInternaId, proyectoEventoId, tratoId,
+    proyectoInternoId, faseInternaId, proyectoEventoId, tratoId, esSeguimiento,
     parentId, fecha, fechaVencimiento, recurrencia, orden, juntaOrigenId,
     // Hub unificado: tipo de registro + comprobación
     tipoOrigen, tipoEvidencia, requiereEvidencia,
@@ -327,6 +327,7 @@ export async function POST(req: NextRequest) {
       tratoId:         tratoId          || null,
       proyectoInternoId: proyectoInternoId || null,
       faseInternaId:   faseInternaId    || null,
+      esSeguimiento:   esSeguimiento === true,
       seccionId:       seccionId        || null,
       carpetaId:       carpetaId        || null,
       parentId:        parentId         || null,

@@ -2041,6 +2041,7 @@ model Tarea {
   proyectoInterno   ProyectoInterno? @relation("TareasDeProyectoInterno", fields: [proyectoInternoId], references: [id], onDelete: SetNull)
   faseInternaId     String?
   faseInterna       FaseProyectoInterno? @relation("TareasDeFase", fields: [faseInternaId], references: [id], onDelete: SetNull)
+  esSeguimiento     Boolean  @default(false)   // seguimiento agendado de un proyecto interno
   // ── Capa aditiva: hub de ejecución ────────────────────────────────────────
   tipoOrigen         String   @default("TAREA")           // TAREA | PLAN | PROYECTO | EVENTO | TRATO
   requiereEvidencia  Boolean  @default(false)
@@ -3136,6 +3137,9 @@ model ProyectoInterno {
   fechaInicio     DateTime?
   fechaFin        DateTime?
   porcentajeAvance Int     @default(0)
+  presupuesto     Float?
+  objetivo        String?  @db.Text
+  entregable      String?  @db.Text
   backlogItemId   String?
   backlogItem     BacklogItem? @relation(fields: [backlogItemId], references: [id], onDelete: SetNull)
   createdAt       DateTime @default(now())

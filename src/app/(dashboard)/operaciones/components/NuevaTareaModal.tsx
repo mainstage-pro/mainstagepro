@@ -66,6 +66,10 @@ interface Props {
   // Fija el trato y bloquea el selector (al crear desde el detalle de un trato).
   tratoIdInicial?: string | null;
   tratoNombre?: string | null;
+  // Fija el proyecto de empresa y bloquea el selector (al crear desde su detalle).
+  proyectoInternoIdInicial?: string | null;
+  proyectoInternoNombre?: string | null;
+  faseInicialId?: string | null;
   // Modo edición: si se da, el modal carga esa tarea y guarda con PATCH en vez de crear.
   tareaIdEdicion?: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -76,7 +80,9 @@ export default function NuevaTareaModal({
   open, onClose, usuarios, defaultAsignadoId = null, defaultArea = null,
   proyectoTareaId = null, seccionId = null, tipoInicial = null, tituloInicial = null,
   proyectoEventoIdInicial = null, proyectoEventoNombre = null,
-  tratoIdInicial = null, tratoNombre = null, tareaIdEdicion = null, onCreated,
+  tratoIdInicial = null, tratoNombre = null,
+  proyectoInternoIdInicial = null, proyectoInternoNombre = null, faseInicialId = null,
+  tareaIdEdicion = null, onCreated,
 }: Props) {
   const [tipo, setTipo]           = useState<TipoKey | null>(null);
   const [titulo, setTitulo]       = useState("");
@@ -118,12 +124,13 @@ export default function NuevaTareaModal({
       setTitulo(tituloInicial ?? ""); setDescripcion(""); setPrioridad("MEDIA");
       setArea(defaultArea || "GENERAL"); setAsignadoId(defaultAsignadoId);
       setFecha(""); setFechaVen(""); setRecurrencia(null); setComprobacion("");
-      setProyectoEventoId(proyectoEventoIdInicial ?? null); setProyectoInternoId(null); setFaseId(null);
+      setProyectoEventoId(proyectoEventoIdInicial ?? null);
+      setProyectoInternoId(proyectoInternoIdInicial ?? null); setFaseId(faseInicialId ?? null);
       setTratoId(tratoIdInicial ?? null);
       setError(null); setSaving(false);
       setAdjuntos([]); setArchivosExistentes([]); setAddingUrl(false); setUrlManual(""); setNombreManual("");
     }
-  }, [open, tipoInicial, tituloInicial, defaultArea, defaultAsignadoId, proyectoEventoIdInicial, tratoIdInicial]);
+  }, [open, tipoInicial, tituloInicial, defaultArea, defaultAsignadoId, proyectoEventoIdInicial, tratoIdInicial, proyectoInternoIdInicial, faseInicialId]);
 
   // Modo edición: carga la tarea y precarga los campos (corre después del reset).
   useEffect(() => {
@@ -145,6 +152,8 @@ export default function NuevaTareaModal({
         setComprobacion(t.tipoEvidencia ?? "");
         setTratoId(t.tratoId ?? tratoIdInicial ?? null);
         setProyectoEventoId(t.proyectoEventoId ?? null);
+        setProyectoInternoId(t.proyectoInternoId ?? proyectoInternoIdInicial ?? null);
+        setFaseId(t.faseInternaId ?? null);
         setArchivosExistentes(t.archivos ?? []);
       })
       .catch(() => {})
@@ -156,7 +165,8 @@ export default function NuevaTareaModal({
   useEffect(() => {
     if (!open) return;
     const necesitaOpts =
-      (!proyectoEventoIdInicial && (tipo === "EVENTO" || tipo === "PROYECTO")) ||
+      (!proyectoEventoIdInicial && tipo === "EVENTO") ||
+      (!proyectoInternoIdInicial && tipo === "PROYECTO") ||
       (!tratoIdInicial && tipo === "TRATO");
     if (!necesitaOpts || opcionesCargadasRef.current) return;
     opcionesCargadasRef.current = true;
@@ -170,7 +180,7 @@ export default function NuevaTareaModal({
       })
       .catch(() => {})
       .finally(() => setLoadingOpts(false));
-  }, [open, tipo, proyectoEventoIdInicial, tratoIdInicial]);
+  }, [open, tipo, proyectoEventoIdInicial, tratoIdInicial, proyectoInternoIdInicial]);
 
   const internoSel = useMemo(() => internos.find(p => p.id === proyectoInternoId) ?? null, [internos, proyectoInternoId]);
 
@@ -405,7 +415,12 @@ export default function NuevaTareaModal({
             {tipo === "PROYECTO" && (
               <>
                 <Campo label="Proyecto de empresa">
-                  {loadingOpts ? <Cargando /> : (
+                  {proyectoInternoIdInicial ? (
+                    <div className="w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white/80 flex items-center gap-2">
+                      <Building2 size={14} className="text-[#818cf8] shrink-0" />
+                      <span className="truncate">{proyectoInternoNombre ?? "Este proyecto"}</span>
+                    </div>
+                  ) : loadingOpts ? <Cargando /> : (
                     <Combobox
                       value={proyectoInternoId ?? ""}
                       onChange={v => setProyectoInternoId(v || null)}
@@ -414,7 +429,7 @@ export default function NuevaTareaModal({
                       className={comboCls}
                     />
                   )}
-                  {!loadingOpts && internos.length === 0 && (
+                  {!proyectoInternoIdInicial && !loadingOpts && internos.length === 0 && (
                     <p className="text-[11px] text-[#555] mt-1">No hay proyectos de empresa activos.</p>
                   )}
                 </Campo>
