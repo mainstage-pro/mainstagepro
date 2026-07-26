@@ -2222,31 +2222,6 @@ export default function OperacionesPage() {
                     Nueva tarea
                   </button>
 
-                  {/* ── Agregar sección dentro de esta sección fija (visible al pasar el cursor) ── */}
-                  <div className={`mb-4 transition-opacity ${showNuevaSeccion === tipoMod ? "opacity-100" : "opacity-0 group-hover/fija:opacity-100 focus-within:opacity-100"}`}>
-                    {showNuevaSeccion === tipoMod ? (
-                      <div className="px-3 py-3 border border-dashed border-[#2a2a2a] rounded-xl space-y-2 bg-[#0a0a0a]">
-                        <input autoFocus value={nuevaSeccionNombre}
-                          onChange={e => setNuevaSeccionNombre(e.target.value)}
-                          onKeyDown={e => { if (e.key === "Enter") addSeccion(tipoMod); if (e.key === "Escape") setShowNuevaSeccion(null); }}
-                          placeholder="Nombre de la sección…"
-                          className="w-full bg-transparent text-sm text-white placeholder-[#333] focus:outline-none" />
-                        <div className="flex gap-3">
-                          <button onClick={() => addSeccion(tipoMod)} className="text-xs text-[#B3985B] hover:underline font-medium">Crear</button>
-                          <button onClick={() => setShowNuevaSeccion(null)} className="text-xs text-[#444] hover:text-white">Cancelar</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button onClick={() => setShowNuevaSeccion(tipoMod)}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[#222] text-[#444] hover:border-[#B3985B]/40 hover:text-[#B3985B]/70 transition-all text-xs font-medium">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                        </svg>
-                        Agregar sección
-                      </button>
-                    )}
-                  </div>
-
                   {/* ── Drop zone: mover a sin sección (solo aparece al arrastrar desde una sección) ── */}
                   {draggingId && secciones.some(s => s.tareas.some(t => t.id === draggingId)) && (
                     <div
@@ -2397,6 +2372,35 @@ export default function OperacionesPage() {
                       onMoveToSection={moveToSection}
                     />
                   ))}
+
+                  {/* ── Agregar sección (al final; se despliega suave al pasar el cursor, sin dejar hueco) ── */}
+                  <div className={`overflow-hidden transition-all duration-200 ease-out ${
+                    showNuevaSeccion === tipoMod
+                      ? "max-h-40 opacity-100 mt-3"
+                      : "max-h-0 opacity-0 mt-0 group-hover/fija:max-h-12 group-hover/fija:opacity-100 group-hover/fija:mt-3 focus-within:max-h-40 focus-within:opacity-100 focus-within:mt-3"
+                  }`}>
+                    {showNuevaSeccion === tipoMod ? (
+                      <div className="px-3 py-3 border border-dashed border-[#2a2a2a] rounded-xl space-y-2 bg-[#0a0a0a]">
+                        <input autoFocus value={nuevaSeccionNombre}
+                          onChange={e => setNuevaSeccionNombre(e.target.value)}
+                          onKeyDown={e => { if (e.key === "Enter") addSeccion(tipoMod); if (e.key === "Escape") setShowNuevaSeccion(null); }}
+                          placeholder="Nombre de la sección…"
+                          className="w-full bg-transparent text-sm text-white placeholder-[#333] focus:outline-none" />
+                        <div className="flex gap-3">
+                          <button onClick={() => addSeccion(tipoMod)} className="text-xs text-[#B3985B] hover:underline font-medium">Crear</button>
+                          <button onClick={() => setShowNuevaSeccion(null)} className="text-xs text-[#444] hover:text-white">Cancelar</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button onClick={() => setShowNuevaSeccion(tipoMod)}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-dashed border-[#1c1c1c] text-[#3a3a3a] hover:border-[#B3985B]/40 hover:text-[#B3985B]/70 transition-colors text-xs font-medium">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Agregar sección
+                      </button>
+                    )}
+                  </div>
                   </>
                   )}
                   </section>
@@ -3815,35 +3819,35 @@ function SectionBlock({
           <polyline points="6 9 12 15 18 9"/>
         </svg>
 
-        {/* Drag handle — visible on hover, replaces the old arrow buttons */}
-        {hov && !editando && (
-          <div
-            draggable
-            onDragStart={e => {
-              e.stopPropagation();
-              e.dataTransfer.setData("dragsectionid", seccion.id);
-              e.dataTransfer.effectAllowed = "move";
-              onSectionDragStart?.();
-            }}
-            onDragEnd={e => {
-              e.stopPropagation();
-              onSectionDragEnd?.();
-            }}
-            onClick={e => e.stopPropagation()}
-            title="Arrastrar para reordenar"
-            className="cursor-grab active:cursor-grabbing text-[#3a3a3a] hover:text-[#777] transition-colors p-0.5 shrink-0 select-none"
-          >
-            {/* 6-dot grip icon */}
-            <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor">
-              <circle cx="2.5" cy="2"  r="1.2"/>
-              <circle cx="7.5" cy="2"  r="1.2"/>
-              <circle cx="2.5" cy="6"  r="1.2"/>
-              <circle cx="7.5" cy="6"  r="1.2"/>
-              <circle cx="2.5" cy="10" r="1.2"/>
-              <circle cx="7.5" cy="10" r="1.2"/>
-            </svg>
-          </div>
-        )}
+        {/* Drag handle — siempre ocupa espacio (sin reflujo); solo cambia opacidad al pasar el cursor */}
+        <div
+          draggable={!editando}
+          onDragStart={e => {
+            e.stopPropagation();
+            e.dataTransfer.setData("dragsectionid", seccion.id);
+            e.dataTransfer.effectAllowed = "move";
+            onSectionDragStart?.();
+          }}
+          onDragEnd={e => {
+            e.stopPropagation();
+            onSectionDragEnd?.();
+          }}
+          onClick={e => e.stopPropagation()}
+          title="Arrastrar para reordenar"
+          className={`cursor-grab active:cursor-grabbing text-[#3a3a3a] hover:text-[#777] transition-opacity p-0.5 shrink-0 select-none ${
+            hov && !editando ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+        >
+          {/* 6-dot grip icon */}
+          <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor">
+            <circle cx="2.5" cy="2"  r="1.2"/>
+            <circle cx="7.5" cy="2"  r="1.2"/>
+            <circle cx="2.5" cy="6"  r="1.2"/>
+            <circle cx="7.5" cy="6"  r="1.2"/>
+            <circle cx="2.5" cy="10" r="1.2"/>
+            <circle cx="7.5" cy="10" r="1.2"/>
+          </svg>
+        </div>
 
         {/* Section name: editable input OR static text */}
         {editando ? (
