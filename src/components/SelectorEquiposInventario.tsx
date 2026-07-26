@@ -773,7 +773,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                       : "border-[#1e1e1e] bg-[#111] hover:border-[#B3985B]/40"
                   }`}
                 >
-                  <CatIcon nombre={cat.nombre} className={`w-5 h-5 mb-0.5 ${sel ? "text-[#B3985B]" : "text-gray-400"}`} />
+                  <CatIcon nombre={cat.nombre} className="w-5 h-5 mb-0.5 text-[#B3985B]" />
                   <span className="text-white text-[11px] font-medium leading-tight line-clamp-2">{cat.nombre}</span>
                   {marcas && !clientMode && (
                     <span className="text-gray-600 text-[9px] leading-tight line-clamp-1">{marcas}</span>
@@ -806,7 +806,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                           : "border-[#1e1e1e] bg-[#111] hover:border-[#B3985B]/40"
                       }`}
                     >
-                      <svc.icon strokeWidth={1.75} className={`w-5 h-5 mb-0.5 ${sel ? "text-[#B3985B]" : "text-gray-400"}`} />
+                      <svc.icon strokeWidth={1.75} className="w-5 h-5 mb-0.5 text-[#B3985B]" />
                       <span className="text-white text-[11px] font-medium leading-tight line-clamp-2">{svc.nombre}</span>
                       {!clientMode && (
                         <span className="text-gray-600 text-[9px] leading-tight line-clamp-1">{svc.roles.length > 0 ? `${svc.roles.length} rol${svc.roles.length !== 1 ? "es" : ""}` : "por asignar"}</span>
