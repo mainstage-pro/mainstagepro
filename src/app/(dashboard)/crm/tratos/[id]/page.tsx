@@ -2514,7 +2514,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
         <div className="p-5">
           <TareasTratoTab
-            key={trato.etapaInterna ?? "sin-subetapa"}
+            key={`${trato.etapaInterna ?? "sin-subetapa"}:${trato.responsableId ?? "sin-resp"}`}
             tratoId={trato.id}
             tratoNombre={trato.nombreEvento || trato.cliente.nombre}
             telefono={trato.cliente.telefono}

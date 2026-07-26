@@ -210,11 +210,35 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
   }
 
+  // ── Cascada del responsable a las tareas del trato ──────────────────────────
+  // Si cambia el responsable del trato, las tareas pendientes/en progreso que
+  // estaban asignadas al responsable anterior (o sin asignar) siguen al nuevo. No
+  // se tocan las completadas ni las que estén delegadas a otra persona a propósito.
+  let responsableCambio: { prev: string | null; next: string | null } | null = null;
+  if ("responsableId" in body) {
+    const actualResp = await prisma.trato.findUnique({ where: { id }, select: { responsableId: true } });
+    const nextResp = (body.responsableId as string | null) || null;
+    if (actualResp && actualResp.responsableId !== nextResp) {
+      responsableCambio = { prev: actualResp.responsableId, next: nextResp };
+    }
+  }
+
   const trato = await prisma.trato.update({
     where: { id },
     data,
     include: { cliente: { select: { nombre: true } } },
   });
+
+  if (responsableCambio) {
+    await prisma.tarea.updateMany({
+      where: {
+        tratoId: id,
+        estado: { notIn: ["COMPLETADA", "CANCELADA"] },
+        OR: [{ asignadoAId: responsableCambio.prev }, { asignadoAId: null }],
+      },
+      data: { asignadoAId: responsableCambio.next },
+    });
+  }
 
   // ── Sincronizar próxima acción cuando el trato cambia de etapa ──────────────
   if (etapaCambio) {

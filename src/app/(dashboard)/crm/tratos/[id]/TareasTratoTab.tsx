@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Calendar, User, Flag, MessageCircle, Ban } from "lucide-react";
+import { Calendar, User, Flag, MessageCircle, Ban, ChevronDown } from "lucide-react";
 import NuevaTareaModal from "../../../operaciones/components/NuevaTareaModal";
 import { etapaInternaLabel } from "@/lib/proceso/valores";
 
@@ -82,6 +82,25 @@ export default function TareasTratoTab({
   const [tareas, setTareas]   = useState<TareaTrato[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal]     = useState<{ mode: "crear" } | { mode: "editar"; tareaId: string } | null>(null);
+  // Secciones colapsadas ("guardadas"). Se persiste por trato en localStorage para
+  // que al reabrir el trato las secciones ocultas sigan ocultas.
+  const [colapsadas, setColapsadas] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(`tareas-trato-colapsadas:${tratoId}`);
+      if (raw) setColapsadas(new Set(JSON.parse(raw) as string[]));
+    } catch { /* ignore */ }
+  }, [tratoId]);
+
+  function toggleColapso(key: string) {
+    setColapsadas(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      try { localStorage.setItem(`tareas-trato-colapsadas:${tratoId}`, JSON.stringify([...next])); } catch { /* ignore */ }
+      return next;
+    });
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -121,6 +140,22 @@ export default function TareasTratoTab({
       body: JSON.stringify({ noNecesario: true }),
     });
     if (res.ok) { const d = await res.json().catch(() => ({})); if (d?.tarea) upsertTarea(d.tarea as TareaTrato); }
+  }
+
+  // Marca TODAS las tareas pendientes de una sección como "no fue necesario".
+  // Luego se puede deseleccionar alguna individualmente (reabriéndola con su check).
+  async function marcarSeccionNoNecesario(e: React.MouseEvent, grupoTareas: TareaTrato[], label: string) {
+    e.stopPropagation();
+    const pendientes = grupoTareas.filter(t => t.estado !== "COMPLETADA");
+    if (pendientes.length === 0) return;
+    if (!confirm(`¿Marcar ${pendientes.length} tarea(s) de "${label}" como "No fue necesario"?`)) return;
+    const results = await Promise.all(pendientes.map(t =>
+      fetch(`/api/tareas/${t.id}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ noNecesario: true }),
+      }).then(r => (r.ok ? r.json() : null)).catch(() => null)
+    ));
+    for (const d of results) if (d?.tarea) upsertTarea(d.tarea as TareaTrato);
   }
 
   function upsertTarea(t: TareaTrato) {
@@ -165,13 +200,37 @@ export default function TareasTratoTab({
         <p className="text-center text-xs text-[#555] py-6">Sin tareas para este trato todavía.</p>
       ) : (
         <div className="space-y-5">
-          {grupos.map(grupo => (
+          {grupos.map(grupo => {
+            const colapsada = colapsadas.has(grupo.key);
+            const hechas = grupo.tareas.filter(t => t.estado === "COMPLETADA").length;
+            const pendientes = grupo.tareas.length - hechas;
+            return (
             <div key={grupo.key}>
-              <div className="flex items-center gap-2 mb-2 px-1">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-[#B3985B]">{grupo.label}</span>
-                <span className="text-[10px] text-[#555]">{grupo.tareas.length}</span>
+              <div className="group/sec flex items-center gap-2 mb-2 px-1">
+                <button
+                  onClick={() => toggleColapso(grupo.key)}
+                  title={colapsada ? "Mostrar sección" : "Ocultar sección"}
+                  className="flex items-center gap-2 min-w-0 group/btn"
+                >
+                  <ChevronDown
+                    strokeWidth={2}
+                    className={`w-3.5 h-3.5 text-[#555] group-hover/btn:text-[#B3985B] transition-transform ${colapsada ? "-rotate-90" : ""}`}
+                  />
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-[#B3985B] truncate">{grupo.label}</span>
+                  <span className="text-[10px] text-[#555] shrink-0">{hechas}/{grupo.tareas.length}</span>
+                </button>
                 <div className="flex-1 h-px bg-[#1a1a1a]" />
+                {pendientes > 0 && (
+                  <button
+                    onClick={(e) => marcarSeccionNoNecesario(e, grupo.tareas, grupo.label)}
+                    title="Marcar toda la sección como no necesaria (luego puedes deseleccionar alguna)"
+                    className="text-[10px] text-[#555] hover:text-gray-300 shrink-0 opacity-0 group-hover/sec:opacity-100 transition-opacity whitespace-nowrap"
+                  >
+                    No fue necesario
+                  </button>
+                )}
               </div>
+              {!colapsada && (
               <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden divide-y divide-[#141414]">
                 {grupo.tareas.map(t => {
                   const done = t.estado === "COMPLETADA";
@@ -255,8 +314,10 @@ export default function TareasTratoTab({
                   );
                 })}
               </div>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
