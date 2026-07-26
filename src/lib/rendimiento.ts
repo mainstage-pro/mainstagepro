@@ -11,8 +11,9 @@ import { prisma } from '@/lib/prisma'
  * cuenta completa aunque se haya entregado tarde. Solo se marca como "vencida"
  * la que sigue SIN completar después de su fecha compromiso.
  *
- * Todas las fuentes (tareas normales, proyectos de evento, proyectos de empresa
- * y tratos) viven en el mismo modelo `Tarea` vía FKs, así que se miden juntas.
+ * Todas las fuentes (tareas normales, plan de trabajo, proyectos de evento,
+ * proyectos de empresa y tratos) viven en el mismo modelo `Tarea`, así que se
+ * miden juntas. El plan de trabajo se identifica por `tipoOrigen === 'PLAN'`.
  */
 
 // ── Zona horaria: México (UTC-6 todo el año, sin horario de verano desde 2023) ──
@@ -76,14 +77,17 @@ export function labelPeriodo(desde: string, hasta: string): string {
 }
 
 // ── Tipos de salida ──────────────────────────────────────────────────────────
-export type FuenteKey = 'EVENTO' | 'EMPRESA' | 'TRATO' | 'NORMAL'
+export type FuenteKey = 'NORMAL' | 'PLAN' | 'EVENTO' | 'EMPRESA' | 'TRATO'
 
 export const FUENTE_LABEL: Record<FuenteKey, string> = {
+  NORMAL: 'Tareas',
+  PLAN: 'Plan de trabajo',
   EVENTO: 'Proyectos de evento',
   EMPRESA: 'Proyectos de empresa',
   TRATO: 'Tratos',
-  NORMAL: 'Tareas',
 }
+
+export const FUENTE_ORDEN: FuenteKey[] = ['NORMAL', 'PLAN', 'EVENTO', 'EMPRESA', 'TRATO']
 
 export interface RendTareaDetalle {
   id: string
@@ -158,6 +162,7 @@ type TareaRow = {
   titulo: string
   prioridad: string
   estado: string
+  tipoOrigen: string
   asignadoAId: string | null
   fecha: Date | null
   fechaVencimiento: Date | null
@@ -172,9 +177,11 @@ type TareaRow = {
   trato: { nombreEvento: string | null } | null
   proyectoInterno: { nombre: string } | null
   proyectoTarea: { nombre: string } | null
+  ptTemplate: { area: { nombre: string } | null } | null
 }
 
 function fuenteDe(t: TareaRow): { fuente: FuenteKey; contexto: string | null } {
+  if (t.tipoOrigen === 'PLAN') return { fuente: 'PLAN', contexto: t.ptTemplate?.area?.nombre ?? 'Plan de trabajo' }
   if (t.proyectoEventoId) return { fuente: 'EVENTO', contexto: t.proyectoEvento?.nombre ?? null }
   if (t.tratoId) return { fuente: 'TRATO', contexto: t.trato?.nombreEvento ?? 'Trato' }
   if (t.proyectoInternoId) return { fuente: 'EMPRESA', contexto: t.proyectoInterno?.nombre ?? null }
@@ -183,10 +190,11 @@ function fuenteDe(t: TareaRow): { fuente: FuenteKey; contexto: string | null } {
 
 function nuevoPorFuente(): Record<FuenteKey, { total: number; completadas: number }> {
   return {
+    NORMAL: { total: 0, completadas: 0 },
+    PLAN: { total: 0, completadas: 0 },
     EVENTO: { total: 0, completadas: 0 },
     EMPRESA: { total: 0, completadas: 0 },
     TRATO: { total: 0, completadas: 0 },
-    NORMAL: { total: 0, completadas: 0 },
   }
 }
 
@@ -204,16 +212,17 @@ export async function computeRendimiento(opts: {
   const windowStr = desde < trendInicio ? desde : trendInicio
   const windowStart = parseDiaInicio(windowStr)
 
+  // Universo: tareas raíz (no subtareas) con responsable, no canceladas.
+  // Incluye el plan de trabajo (tipoOrigen='PLAN', que trae ptTemplateId).
   const base = {
     asignadoAId: { not: null as string | null },
     estado: { not: 'CANCELADA' },
     parentId: null as string | null,
-    ptTemplateId: null as string | null,
     ...(soloUsuarioId ? { asignadoAId: soloUsuarioId } : {}),
   }
 
   const select = {
-    id: true, titulo: true, prioridad: true, estado: true, asignadoAId: true,
+    id: true, titulo: true, prioridad: true, estado: true, tipoOrigen: true, asignadoAId: true,
     fecha: true, fechaVencimiento: true, fechaCompletada: true,
     proyectoEventoId: true, tratoId: true, proyectoInternoId: true,
     requiereEvidencia: true, estadoVerificacion: true,
@@ -222,6 +231,7 @@ export async function computeRendimiento(opts: {
     trato: { select: { nombreEvento: true } },
     proyectoInterno: { select: { nombre: true } },
     proyectoTarea: { select: { nombre: true } },
+    ptTemplate: { select: { area: { select: { nombre: true } } } },
   }
 
   const [rows, sinResponsable] = await Promise.all([
@@ -243,7 +253,7 @@ export async function computeRendimiento(opts: {
       select,
     }) as unknown as Promise<TareaRow[]>,
     prisma.tarea.count({
-      where: { estado: { not: 'CANCELADA' }, parentId: null, ptTemplateId: null, asignadoAId: null },
+      where: { estado: { not: 'CANCELADA' }, parentId: null, asignadoAId: null },
     }),
   ])
 
@@ -336,7 +346,7 @@ export async function computeRendimiento(opts: {
     if (d.completada) f.completadas++
     if (d.vencida) f.vencidas++
   }
-  const fuentes: RendFuente[] = (['EVENTO', 'EMPRESA', 'TRATO', 'NORMAL'] as FuenteKey[])
+  const fuentes: RendFuente[] = FUENTE_ORDEN
     .map(fuente => {
       const f = fuenteAgg.get(fuente) ?? { total: 0, completadas: 0, vencidas: 0 }
       return {

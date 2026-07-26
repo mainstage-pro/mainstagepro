@@ -3,9 +3,10 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts'
+import { bandaDe, BANDA_LABEL, BANDA_HEX, BANDA_TEXT_CLASS, BANDA_ESCALA } from '@/lib/rendimiento-escala'
 
 // ── Types (espejo de src/lib/rendimiento) ──────────────────────────────────────
-type FuenteKey = 'EVENTO' | 'EMPRESA' | 'TRATO' | 'NORMAL'
+type FuenteKey = 'NORMAL' | 'PLAN' | 'EVENTO' | 'EMPRESA' | 'TRATO'
 type Verif = { requieren: number; verificadas: number; rechazadas: number; pendientes: number }
 type TareaDet = {
   id: string; titulo: string; prioridad: string; fuente: FuenteKey
@@ -43,15 +44,13 @@ const PRESETS: { key: Preset; label: string }[] = [
 ]
 const PRIO_COLOR: Record<string, string> = { URGENTE: '#f87171', ALTA: '#fb923c', MEDIA: '#B3985B', BAJA: '#4b5563' }
 const FUENTE_LABEL: Record<FuenteKey, string> = {
-  EVENTO: 'Proyectos de evento', EMPRESA: 'Proyectos de empresa', TRATO: 'Tratos', NORMAL: 'Tareas',
+  NORMAL: 'Tareas', PLAN: 'Plan de trabajo', EVENTO: 'Proyectos de evento', EMPRESA: 'Proyectos de empresa', TRATO: 'Tratos',
 }
+const FUENTE_ORDEN: FuenteKey[] = ['NORMAL', 'PLAN', 'EVENTO', 'EMPRESA', 'TRATO']
 
-function perfClass(p: number): string {
-  return p >= 80 ? 'text-green-400' : p >= 50 ? 'text-[#B3985B]' : 'text-red-400'
-}
-function perfBar(p: number): string {
-  return p >= 80 ? '#4ade80' : p >= 50 ? '#B3985B' : '#f87171'
-}
+function perfClass(p: number): string { return BANDA_TEXT_CLASS[bandaDe(p)] }
+function perfBar(p: number): string { return BANDA_HEX[bandaDe(p)] }
+function bandaLabel(p: number): string { return BANDA_LABEL[bandaDe(p)] }
 function fmtFecha(f: string | null): string {
   if (!f) return ''
   return new Date(f + 'T12:00:00').toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
@@ -63,6 +62,7 @@ export function VistaRendimiento() {
   const [loading, setLoading] = useState(true)
   const [preset, setPreset] = useState<Preset>('semana')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [expandedSys, setExpandedSys] = useState<Set<FuenteKey>>(new Set())
   const [pdfGeneral, setPdfGeneral] = useState(false)
   const [pdfUser, setPdfUser] = useState<string | null>(null)
 
@@ -99,6 +99,25 @@ export function VistaRendimiento() {
       if (next.has(id)) next.delete(id); else next.add(id)
       return next
     })
+  }
+
+  function toggleSys(f: FuenteKey) {
+    setExpandedSys(prev => {
+      const next = new Set(prev)
+      if (next.has(f)) next.delete(f); else next.add(f)
+      return next
+    })
+  }
+
+  // Desglose por persona dentro de un sistema (usa porFuente de cada usuario)
+  function usuariosDeFuente(f: FuenteKey) {
+    return (data?.usuarios ?? [])
+      .map(u => {
+        const pf = u.porFuente[f] ?? { total: 0, completadas: 0 }
+        return { id: u.id, name: u.name, total: pf.total, completadas: pf.completadas, cumplimiento: pf.total > 0 ? Math.round((pf.completadas / pf.total) * 100) : 0 }
+      })
+      .filter(x => x.total > 0)
+      .sort((a, b) => b.cumplimiento - a.cumplimiento || b.total - a.total)
   }
 
   if (loading && !data) {
@@ -152,7 +171,10 @@ export function VistaRendimiento() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="ms-stat-card">
           <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-2">Cumplimiento</p>
-          <p className={`text-2xl font-bold tabular-nums ${perfClass(r.cumplimiento)}`}>{r.cumplimiento}%</p>
+          <div className="flex items-baseline gap-2">
+            <p className={`text-2xl font-bold tabular-nums ${perfClass(r.cumplimiento)}`}>{r.cumplimiento}%</p>
+            <span className={`text-[10px] font-semibold ${perfClass(r.cumplimiento)}`}>{bandaLabel(r.cumplimiento)}</span>
+          </div>
           <p className="text-[10px] text-[#444] mt-1">{r.completadas}/{r.total} completadas</p>
         </div>
         <div className="ms-stat-card">
@@ -170,6 +192,20 @@ export function VistaRendimiento() {
           <p className="text-2xl font-bold tabular-nums text-[#B3985B]">{r.pendientesVigentes}</p>
           <p className="text-[10px] text-[#444] mt-1">pendientes vigentes</p>
         </div>
+      </div>
+
+      {/* ── Escala de bandas ── */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[10px] text-[#555]">
+        <span className="uppercase tracking-[0.15em] text-[#444]">Escala</span>
+        {BANDA_ESCALA.map(b => (
+          <span key={b.key} className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: BANDA_HEX[b.key] }} />
+            <span className={BANDA_TEXT_CLASS[b.key]}>{b.label}</span>
+            <span className="text-[#444] tabular-nums">
+              {b.key === 'excelente' ? '100%' : b.key === 'critico' ? '<75%' : `${b.desde}–${b.key === 'bueno' ? 99 : 89}%`}
+            </span>
+          </span>
+        ))}
       </div>
 
       {/* ── Trend ── */}
@@ -285,33 +321,63 @@ export function VistaRendimiento() {
         )}
       </div>
 
-      {/* ── Por fuente + Verificación ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-5">
-          <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-4">Por fuente de tarea</p>
-          {data.fuentes.length === 0 ? (
-            <p className="text-[#333] text-sm">Sin tareas medibles</p>
-          ) : (
-            <div className="space-y-3">
-              {data.fuentes.map(f => (
-                <div key={f.fuente}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-[#666]">{FUENTE_LABEL[f.fuente]}</span>
-                    <div className="flex items-center gap-2">
-                      {f.vencidas > 0 && <span className="text-[10px] text-red-400 tabular-nums">{f.vencidas} venc.</span>}
-                      <span className="text-[10px] text-[#444] tabular-nums">{f.completadas}/{f.total}</span>
-                      <span className={`text-[10px] font-semibold tabular-nums min-w-[32px] text-right ${perfClass(f.cumplimiento)}`}>{f.cumplimiento}%</span>
-                    </div>
-                  </div>
-                  <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden">
-                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${f.cumplimiento}%`, backgroundColor: perfBar(f.cumplimiento) }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+      {/* ── Cumplimiento por sistema ── */}
+      <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-[10px] uppercase tracking-[0.15em] text-[#444]">Cumplimiento por sistema</p>
+          {data.fuentes.length > 0 && <p className="text-[10px] text-[#444]">Clic para ver por persona</p>}
         </div>
+        <p className="text-[11px] text-[#555] mb-4">Cada sistema se mide por separado con sus propias tareas comprometidas.</p>
+        {data.fuentes.length === 0 ? (
+          <p className="text-[#333] text-sm">Sin tareas medibles</p>
+        ) : (
+          <div className="space-y-2">
+            {data.fuentes.map(f => {
+              const isOpen = expandedSys.has(f.fuente)
+              const personas = usuariosDeFuente(f.fuente)
+              return (
+                <div key={f.fuente} className="rounded-xl border border-[#1e1e1e] overflow-hidden">
+                  <button
+                    onClick={() => personas.length && toggleSys(f.fuente)}
+                    className={`w-full text-left px-4 py-3 ${isOpen ? 'bg-[#161616]' : 'bg-[#0d0d0d]'} ${personas.length ? 'cursor-pointer' : 'cursor-default'}`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm text-[#ccc] truncate">{FUENTE_LABEL[f.fuente]}</span>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full border border-[#222] ${perfClass(f.cumplimiento)}`}>{bandaLabel(f.cumplimiento)}</span>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        {f.vencidas > 0 && <span className="text-[10px] text-red-400 tabular-nums">{f.vencidas} venc.</span>}
+                        <span className="text-[10px] text-[#444] tabular-nums hidden sm:block">{f.completadas}/{f.total}</span>
+                        <span className={`text-sm font-semibold tabular-nums min-w-[42px] text-right ${perfClass(f.cumplimiento)}`}>{f.cumplimiento}%</span>
+                        {personas.length > 0 && <span className="text-[#333] text-[10px] transition-transform" style={{ transform: isOpen ? 'rotate(180deg)' : 'none' }}>▼</span>}
+                      </div>
+                    </div>
+                    <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden mt-2">
+                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${f.cumplimiento}%`, backgroundColor: perfBar(f.cumplimiento) }} />
+                    </div>
+                  </button>
+                  {isOpen && personas.length > 0 && (
+                    <div className="border-t border-[#1a1a1a] bg-[#080808] divide-y divide-[#111]">
+                      <p className="px-4 pt-3 pb-1 text-[9px] uppercase tracking-wider text-[#555]">Por persona en este sistema</p>
+                      {personas.map(p => (
+                        <div key={p.id} className="flex items-center gap-3 px-4 py-2">
+                          <span className="text-xs text-[#888] flex-1 min-w-0 truncate">{p.name.split(' ')[0]}</span>
+                          <span className="text-[10px] text-[#444] tabular-nums">{p.completadas}/{p.total}</span>
+                          <span className={`text-xs font-semibold tabular-nums min-w-[38px] text-right ${perfClass(p.cumplimiento)}`}>{p.cumplimiento}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
+      {/* ── Verificación ── */}
+      <div className="grid grid-cols-1 gap-4">
         <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-5">
           <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-4">Verificación de evidencia</p>
           {v.requieren === 0 ? (

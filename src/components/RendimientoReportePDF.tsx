@@ -2,6 +2,7 @@ import React from 'react'
 import {
   Document, Page, Text, View, StyleSheet, Svg, Rect, Line,
 } from '@react-pdf/renderer'
+import { bandaDe, BANDA_HEX } from '@/lib/rendimiento-escala'
 
 // ─── Paleta (misma que TareasReportePDF) ──────────────────────────────────────
 const GOLD = '#B3985B'
@@ -16,7 +17,7 @@ const RED = '#dc2626'
 const AMBER = '#d97706'
 
 // ─── Tipos (autónomos, espejo de src/lib/rendimiento) ─────────────────────────
-type FuenteKey = 'EVENTO' | 'EMPRESA' | 'TRATO' | 'NORMAL'
+type FuenteKey = 'NORMAL' | 'PLAN' | 'EVENTO' | 'EMPRESA' | 'TRATO'
 
 interface Verificacion { requieren: number; verificadas: number; rechazadas: number; pendientes: number }
 
@@ -67,9 +68,9 @@ const AREA_LABEL: Record<string, string> = {
 }
 const PRIO_COLOR: Record<string, string> = { URGENTE: RED, ALTA: AMBER, MEDIA: GOLD, BAJA: LIGHT }
 const FUENTE_LABEL: Record<FuenteKey, string> = {
-  EVENTO: 'Evento', EMPRESA: 'Empresa', TRATO: 'Trato', NORMAL: 'Tarea',
+  NORMAL: 'Tarea', PLAN: 'Plan', EVENTO: 'Evento', EMPRESA: 'Empresa', TRATO: 'Trato',
 }
-function perfColor(pct: number): string { return pct >= 80 ? GREEN : pct >= 50 ? AMBER : RED }
+function perfColor(pct: number): string { return BANDA_HEX[bandaDe(pct)] }
 function fmtFecha(s: string | null): string {
   if (!s) return '—'
   const d = new Date(s + 'T12:00:00')
@@ -335,7 +336,7 @@ function ReporteUsuario({ data }: { data: RendimientoReporteData }) {
           <View style={s.tableWrap}>
             {fuentes.map((f, i) => (
               <View key={f.k} style={i % 2 === 0 ? s.trow : s.trowAlt}>
-                <Text style={[s.tcellB, { flex: 1 }]}>{({ EVENTO: 'Proyectos de evento', EMPRESA: 'Proyectos de empresa', TRATO: 'Tratos', NORMAL: 'Tareas' } as Record<FuenteKey, string>)[f.k]}</Text>
+                <Text style={[s.tcellB, { flex: 1 }]}>{({ NORMAL: 'Tareas', PLAN: 'Plan de trabajo', EVENTO: 'Proyectos de evento', EMPRESA: 'Proyectos de empresa', TRATO: 'Tratos' } as Record<FuenteKey, string>)[f.k]}</Text>
                 <Text style={[s.tcell, { width: 50, textAlign: 'right' }]}>{f.completadas}/{f.total}</Text>
               </View>
             ))}
