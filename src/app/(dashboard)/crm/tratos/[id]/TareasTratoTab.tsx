@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Calendar, User } from "lucide-react";
+import { Calendar, User, GitBranch } from "lucide-react";
 import NuevaTareaModal from "../../../operaciones/components/NuevaTareaModal";
+import { etapaInternaLabel } from "@/lib/proceso/valores";
 
 // Tareas ad-hoc de un trato de ventas. Mismo patrón que la sección de tareas de
 // un proyecto de evento (ChecklistEventoTab), aquí ligadas al trato en vez del
@@ -17,9 +18,24 @@ export interface TareaTrato {
   fecha: string | null;
   fechaVencimiento: string | null;
   notas: string | null;
+  etiquetas: string | null;
   asignadoA: { id: string; name: string } | null;
   creadoPor: { id: string; name: string } | null;
   _count: { subtareas: number; comentarios: number; archivos: number };
+}
+
+// Extrae el paso del proceso (subetapa) de las etiquetas JSON de la tarea, si lo
+// tiene. Las tareas por defecto de cada subetapa llevan la etiqueta "subetapa:X".
+function pasoProceso(etiquetas: string | null): string | null {
+  if (!etiquetas) return null;
+  try {
+    const arr = JSON.parse(etiquetas) as unknown;
+    if (!Array.isArray(arr)) return null;
+    const tag = arr.find((e): e is string => typeof e === "string" && e.startsWith("subetapa:"));
+    if (!tag) return null;
+    const label = etapaInternaLabel(tag.slice("subetapa:".length));
+    return label === "—" ? null : label;
+  } catch { return null; }
 }
 
 interface Usuario { id: string; name: string; }
@@ -105,6 +121,7 @@ export default function TareasTratoTab({
         <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden divide-y divide-[#141414]">
           {[...activas, ...completadas].map(t => {
             const done = t.estado === "COMPLETADA";
+            const paso = pasoProceso(t.etiquetas);
             return (
               <div
                 key={t.id}
@@ -126,6 +143,11 @@ export default function TareasTratoTab({
                     {t.titulo}
                   </p>
                   <div className="flex items-center flex-wrap gap-1.5 mt-1.5">
+                    {paso && (
+                      <span className="inline-flex items-center gap-1 text-[10px] text-blue-300/80 px-2 py-0.5 rounded-full bg-blue-950/30 border border-blue-800/30 font-medium">
+                        <GitBranch strokeWidth={1.75} className="w-3 h-3" /> {paso}
+                      </span>
+                    )}
                     <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-medium"
                       style={{ color: PRIO_COLOR[t.prioridad] ?? "#555", background: (PRIO_COLOR[t.prioridad] ?? "#555") + "18" }}>
                       {t.prioridad.charAt(0) + t.prioridad.slice(1).toLowerCase()}

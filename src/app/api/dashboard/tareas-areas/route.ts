@@ -31,9 +31,21 @@ export async function GET() {
     ],
   });
 
+  // Las tareas de trato / proyecto de evento / proyecto de empresa solo entran a la
+  // gestión operativa cuando tienen fecha Y responsable. Las autogeneradas por el
+  // proceso comercial o por plantillas no cuentan hasta que alguien las agenda.
+  const soloAgendadas = {
+    NOT: {
+      AND: [
+        { OR: [{ tratoId: { not: null } }, { proyectoEventoId: { not: null } }, { proyectoInternoId: { not: null } }] },
+        { OR: [{ fecha: null }, { asignadoAId: null }] },
+      ],
+    },
+  };
+
   const areas = await Promise.all(AREAS.map(async (area) => {
-    const base = { ...areaMatch(area), parentId: null, estado: { notIn: ["COMPLETADA", "CANCELADA"] } };
-    const w = (extra: object) => ({ AND: [areaMatch(area), { parentId: null, estado: { notIn: ["COMPLETADA", "CANCELADA"] }, ...extra }] });
+    const base = { ...areaMatch(area), ...soloAgendadas, parentId: null, estado: { notIn: ["COMPLETADA", "CANCELADA"] } };
+    const w = (extra: object) => ({ AND: [areaMatch(area), soloAgendadas, { parentId: null, estado: { notIn: ["COMPLETADA", "CANCELADA"] }, ...extra }] });
 
     const [
       vencidas, hoy, proximas, sinFecha,
@@ -49,7 +61,7 @@ export async function GET() {
       prisma.tarea.count({ where: w({ OR: [{ fecha: { gte: manana, lt: en14dias } }, { fecha: null, fechaVencimiento: { gte: manana, lt: en14dias } }] }) }),
       prisma.tarea.count({ where: w({ fecha: null, fechaVencimiento: null }) }),
       prisma.tarea.count({ where: base }),
-      prisma.tarea.count({ where: { AND: [areaMatch(area), { parentId: null, estado: "COMPLETADA", updatedAt: { gte: inicioMes } }] } }),
+      prisma.tarea.count({ where: { AND: [areaMatch(area), soloAgendadas, { parentId: null, estado: "COMPLETADA", updatedAt: { gte: inicioMes } }] } }),
     ]);
 
     const total    = totalActivas + completadasMes;
@@ -67,12 +79,12 @@ export async function GET() {
   const [asignadasGrp, completadasGrp, activeUsers] = await Promise.all([
     prisma.tarea.groupBy({
       by: ["asignadoAId"],
-      where: { asignadoAId: { not: null }, parentId: null, estado: { notIn: ["CANCELADA"] }, createdAt: { gte: inicioMes } },
+      where: { ...soloAgendadas, asignadoAId: { not: null }, parentId: null, estado: { notIn: ["CANCELADA"] }, createdAt: { gte: inicioMes } },
       _count: { id: true },
     }),
     prisma.tarea.groupBy({
       by: ["asignadoAId"],
-      where: { asignadoAId: { not: null }, parentId: null, estado: "COMPLETADA", updatedAt: { gte: inicioMes } },
+      where: { ...soloAgendadas, asignadoAId: { not: null }, parentId: null, estado: "COMPLETADA", updatedAt: { gte: inicioMes } },
       _count: { id: true },
     }),
     prisma.user.findMany({ where: { active: true }, select: { id: true, name: true }, orderBy: { name: "asc" } }),

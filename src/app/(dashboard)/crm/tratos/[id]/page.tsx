@@ -20,9 +20,6 @@ import { SelectorEquiposInventario, type SeleccionEquipos } from '@/components/S
 import DiscoveryForm from '@/components/crm/DiscoveryForm';
 import DocumentosClienteModal from '@/components/crm/DocumentosClienteModal';
 import {
-  CONTACTOS_INBOUND,
-  CONTACTOS_OUTBOUND,
-  PlanContactosSteps,
   MaterialCompartir,
   NotasSeguimiento,
   type NotaSeg,
@@ -2046,7 +2043,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       ══════════════════════════════════════════════════════════════════════ */}
       {ETAPAS_FRONTALES.includes(trato.etapa) && (() => {
         const esOutbound = trato.tipoLead === "OUTBOUND";
-        const contactos = esOutbound ? CONTACTOS_OUTBOUND : CONTACTOS_INBOUND;
         const etapaKey = nurturing.etapa as keyof typeof NURTURING_PLAYBOOK;
         const nombre = trato.cliente.nombre.split(" ")[0];
         const ctx = { evento: trato.nombreEvento, fecha: trato.fechaEventoEstimada };
@@ -2089,27 +2085,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
             <div className="p-5 space-y-5">
 
-              {/* ── Plan de contactos (pasos) ── */}
-              <PlanContactosSteps
-                contactos={contactos}
-                esOutbound={esOutbound}
-                pasosMarcados={nurturing.pasosMarcados ?? []}
-                onToggle={(num) => {
-                  const actuales = nurturing.pasosMarcados ?? [];
-                  const nuevos = actuales.includes(num)
-                    ? actuales.filter(n => n !== num)
-                    : [...actuales, num];
-                  const u = { ...nurturing, pasosMarcados: nuevos };
-                  setNurturing(u);
-                  guardarNurturing(u);
-                }}
-                onMarcarTodos={() => {
-                  const todos = contactos.map(c => c.num);
-                  const u = { ...nurturing, pasosMarcados: todos };
-                  setNurturing(u);
-                  guardarNurturing(u);
-                }}
-              />
+              {/* El checklist "Plan de contactos" se retiró: los pasos del proceso
+                  se gestionan como Tareas del trato (Agenda & Seguimiento). */}
 
               {/* ── Guión WA ── */}
               {esOutbound && tplsEvento.length > 0 && (() => {
