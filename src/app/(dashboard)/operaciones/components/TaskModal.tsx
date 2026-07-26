@@ -1120,43 +1120,6 @@ export default function TaskModal({
                 )}
               </div>
 
-              {/* Estado */}
-              <div>
-                <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-1.5">Estado</p>
-                <div className="flex flex-wrap gap-1">
-                  {(["PENDIENTE","EN_PROGRESO","COMPLETADA","CANCELADA"] as const).map(est => {
-                    const colors: Record<string, string> = {
-                      PENDIENTE: "#6b7280", EN_PROGRESO: "#3b82f6",
-                      COMPLETADA: "#22c55e", CANCELADA: "#ef4444",
-                    };
-                    const labels: Record<string, string> = {
-                      PENDIENTE: "Pendiente", EN_PROGRESO: "En progreso",
-                      COMPLETADA: "Completada", CANCELADA: "Cancelada",
-                    };
-                    const isActive = tarea.estado === est;
-                    const blocked = est === "COMPLETADA" && bloqueaCompletar;
-                    return (
-                      <button
-                        key={est}
-                        onClick={() => {
-                          if (est === "COMPLETADA") { handleComplete(); return; }
-                          onSave(tarea.id, { estado: est });
-                        }}
-                        title={blocked ? evidenciaFalta : undefined}
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-medium border transition-all ${
-                          isActive ? "border-transparent"
-                            : blocked ? "border-[#1a1a1a] text-[#333] opacity-60 cursor-not-allowed"
-                            : "border-[#1a1a1a] text-[#444] hover:text-[#666]"
-                        }`}
-                        style={isActive ? { background: colors[est] + "22", borderColor: colors[est] + "55", color: colors[est] } : {}}
-                      >
-                        {labels[est]}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
             </div>
           </div>
         )}
