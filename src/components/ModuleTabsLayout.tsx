@@ -37,7 +37,7 @@ function tabClass(active: boolean) {
   }`;
 }
 
-function applyOrder(tabs: ModuleNavTab[], ids?: string[]) {
+export function applyOrder(tabs: ModuleNavTab[], ids?: string[]) {
   if (!ids || ids.length === 0) return tabs;
   const idx = new Map(ids.map((h, i) => [h, i]));
   return [...tabs].sort((a, b) => {
