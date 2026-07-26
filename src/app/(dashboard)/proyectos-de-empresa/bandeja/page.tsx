@@ -4,21 +4,11 @@ import { Plus, Pencil, Trash2, Rocket, Inbox } from "lucide-react";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
+import { areaLabel, areaChipClass } from "@/lib/gestion";
 import IdeaModal, { type Idea } from "./IdeaModal";
 import ConvertirModal from "./ConvertirModal";
 
 interface Usuario { id: string; name: string }
-
-const AREA_LABELS: Record<string, string> = {
-  GENERAL: "General", VENTAS: "Ventas", PRODUCCION: "Producción",
-  MARKETING: "Marketing", ADMINISTRACION: "Administración", RRHH: "RRHH", DIRECCION: "Dirección",
-};
-const AREA_COLORS: Record<string, string> = {
-  GENERAL: "text-gray-400 border-gray-500/20", VENTAS: "text-[#B3985B] border-[#B3985B]/25",
-  PRODUCCION: "text-cyan-400/80 border-cyan-500/20", MARKETING: "text-rose-400/80 border-rose-500/20",
-  ADMINISTRACION: "text-indigo-400/80 border-indigo-500/20", RRHH: "text-emerald-400/80 border-emerald-500/20",
-  DIRECCION: "text-amber-400/80 border-amber-500/20",
-};
 
 export default function BandejaPage() {
   const [ideas, setIdeas] = useState<Idea[]>([]);
@@ -32,7 +22,7 @@ export default function BandejaPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/proyectos/ideas").then(r => r.json()),
+      fetch("/api/proyectos-internos/ideas").then(r => r.json()),
       fetch("/api/usuarios").then(r => r.json()),
     ]).then(([di, du]) => {
       setIdeas(di.ideas ?? []);
@@ -56,7 +46,7 @@ export default function BandejaPage() {
   async function eliminar(idea: Idea) {
     const ok = await confirm({ message: `¿Eliminar la idea "${idea.titulo}"?`, danger: true, confirmText: "Eliminar" });
     if (!ok) return;
-    const res = await fetch(`/api/proyectos/ideas/${idea.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/proyectos-internos/ideas/${idea.id}`, { method: "DELETE" });
     if (res.ok) { setIdeas(prev => prev.filter(x => x.id !== idea.id)); toast.success("Idea eliminada"); }
     else toast.error("No se pudo eliminar");
   }
@@ -97,8 +87,8 @@ export default function BandejaPage() {
                       <p className="text-white text-sm font-medium leading-snug">{idea.titulo}</p>
                       {idea.descripcion && <p className="text-gray-500 text-[12px] mt-1 leading-snug whitespace-pre-wrap">{idea.descripcion}</p>}
                       <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${AREA_COLORS[idea.area] ?? AREA_COLORS.GENERAL}`}>
-                          {AREA_LABELS[idea.area] ?? idea.area}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${areaChipClass(idea.area)}`}>
+                          {areaLabel(idea.area)}
                         </span>
                         {nombreDe(idea.responsableId) && (
                           <span className="text-[11px] text-gray-500">· {nombreDe(idea.responsableId)}</span>
@@ -136,7 +126,7 @@ export default function BandejaPage() {
                 {convertidas.map(idea => (
                   <div key={idea.id} className="rounded-xl border border-[#141414] bg-[#080808] p-3 flex items-center gap-3">
                     <Rocket size={13} className="text-[#B3985B]/60 shrink-0" />
-                    <a href={idea.proyectoId ? `/proyectos/${idea.proyectoId}` : undefined}
+                    <a href={idea.proyectoId ? `/proyectos-de-empresa/${idea.proyectoId}` : undefined}
                       className="flex-1 min-w-0 text-[13px] text-gray-400 hover:text-white truncate">{idea.titulo}</a>
                     <button onClick={() => eliminar(idea)}
                       className="p-1.5 rounded-lg text-[#333] hover:text-red-500/70 transition-colors" title="Eliminar de la bandeja">

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
+import { AREAS, areaLabel } from "@/lib/gestion";
 
 export interface Idea {
   id: string;
@@ -13,12 +14,6 @@ export interface Idea {
   createdAt: string;
 }
 interface Usuario { id: string; name: string }
-
-const AREAS = ["GENERAL", "VENTAS", "PRODUCCION", "MARKETING", "ADMINISTRACION", "RRHH", "DIRECCION"] as const;
-const AREA_LABELS: Record<string, string> = {
-  GENERAL: "General", VENTAS: "Ventas", PRODUCCION: "Producción",
-  MARKETING: "Marketing", ADMINISTRACION: "Administración", RRHH: "RRHH", DIRECCION: "Dirección",
-};
 
 const inputCls = "w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-[#B3985B]/40";
 
@@ -33,7 +28,7 @@ export default function IdeaModal({
 }) {
   const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
-  const [area, setArea] = useState("GENERAL");
+  const [area, setArea] = useState<string>(AREAS[0]);
   const [responsableId, setResponsableId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -42,7 +37,7 @@ export default function IdeaModal({
     if (open) {
       setTitulo(idea?.titulo ?? "");
       setDescripcion(idea?.descripcion ?? "");
-      setArea(idea?.area ?? "GENERAL");
+      setArea(idea?.area ?? AREAS[0]);
       setResponsableId(idea?.responsableId ?? null);
       setError(null); setSaving(false);
     }
@@ -54,7 +49,7 @@ export default function IdeaModal({
     if (!titulo.trim()) { setError("El título es obligatorio"); return; }
     setSaving(true); setError(null);
     const payload = { titulo: titulo.trim(), descripcion: descripcion.trim() || null, area, responsableId };
-    const url = idea ? `/api/proyectos/ideas/${idea.id}` : "/api/proyectos/ideas";
+    const url = idea ? `/api/proyectos-internos/ideas/${idea.id}` : "/api/proyectos-internos/ideas";
     const method = idea ? "PATCH" : "POST";
     try {
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -96,7 +91,7 @@ export default function IdeaModal({
             <div>
               <label className="block text-[11px] font-medium text-[#666] uppercase tracking-wide mb-1.5">Área</label>
               <select value={area} onChange={e => setArea(e.target.value)} className={inputCls}>
-                {AREAS.map(a => <option key={a} value={a}>{AREA_LABELS[a]}</option>)}
+                {AREAS.map(a => <option key={a} value={a}>{areaLabel(a)}</option>)}
               </select>
             </div>
             <div>
