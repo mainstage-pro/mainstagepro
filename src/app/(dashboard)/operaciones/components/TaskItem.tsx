@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { formatearRecurrencia } from "@/lib/recurrencia";
 import DatePicker from "@/components/ui/DatePicker";
+import RecurrenciaPicker from "./RecurrenciaPicker";
 import { BadgeDias } from "@/components/ui/BadgeDias";
 import { ClipboardList, ExternalLink, AlertTriangle, Camera, Paperclip } from "lucide-react";
 
@@ -91,6 +92,7 @@ interface Props {
   onSelect:          (id: string) => void;
   onDelete:          (id: string) => void;
   onDateChange?:     (id: string, value: string) => void;
+  onRecurrenceChange?: (id: string, json: string | null) => void;
   onPriorityChange?: (id: string, prioridad: string) => void;
   onAssign?:         (id: string, userId: string | null) => void;
   onProjectChange?:  (id: string, proyectoId: string | null) => void;
@@ -145,7 +147,7 @@ function ActionBtn({ title, onClick, children, active }: {
 type DropZone = "above" | "subtask" | "below" | null;
 
 export default function TaskItem({
-  tarea, onComplete, onSelect, onDelete, onDateChange,
+  tarea, onComplete, onSelect, onDelete, onDateChange, onRecurrenceChange,
   onPriorityChange, onAssign, onProjectChange, users = [], projects = [],
   isSelected, showProject = false, depth = 0,
   draggable: isDraggable = false,
@@ -629,8 +631,8 @@ export default function TaskItem({
         <span className="relative">
           <ActionBtn
             title={localFecha ? `Fecha: ${formatFecha(localFecha).label}` : "Sin fecha"}
-            active={!!localFecha}
-            onClick={e => { e.stopPropagation(); if (onDateChange) setEditingDate("fecha"); }}>
+            active={!!localFecha || !!tarea.recurrencia}
+            onClick={e => { e.stopPropagation(); if (onDateChange || onRecurrenceChange) setEditingDate("fecha"); }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <rect x="3" y="4" width="18" height="18" rx="2"/>
               <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
@@ -845,13 +847,21 @@ export default function TaskItem({
       </div>
 
       {/* ── ÚNICO DatePicker de fecha — al nivel del row, fuera de mobile/desktop sections ── */}
-      {editingDate === "fecha" && onDateChange && (
+      {editingDate === "fecha" && (onDateChange || onRecurrenceChange) && (
         <DatePicker
           value={localFecha}
-          onChange={val => { setLocalFecha(val); onDateChange(tarea.id, val); }}
+          onChange={val => { setLocalFecha(val); onDateChange?.(tarea.id, val); }}
           onClose={() => setEditingDate(null)}
           autoOpen hideTrigger showClear
           className="absolute right-0 top-full mt-1 z-50"
+          recurrenceActive={!!tarea.recurrencia}
+          recurrence={onRecurrenceChange ? (
+            <RecurrenciaPicker
+              value={tarea.recurrencia}
+              onChange={json => { onRecurrenceChange(tarea.id, json); setEditingDate(null); }}
+              onClose={() => setEditingDate(null)}
+            />
+          ) : undefined}
         />
       )}
     </div>
@@ -911,7 +921,7 @@ export default function TaskItem({
           <TaskItem key={sub.id} tarea={sub} depth={(depth ?? 0) + 1} isSelected={false}
             onComplete={onComplete} onSelect={onSelect}
             onDelete={id => { onDelete(id); setSubtareasExp(prev => prev.filter(s => s.id !== id)); setSubtaskCount(c => Math.max(0, c - 1)); }}
-            onDateChange={onDateChange} onPriorityChange={onPriorityChange}
+            onDateChange={onDateChange} onRecurrenceChange={onRecurrenceChange} onPriorityChange={onPriorityChange}
             onAssign={onAssign} onProjectChange={onProjectChange}
             users={users} projects={projects}
             draggable

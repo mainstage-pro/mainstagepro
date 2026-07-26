@@ -55,6 +55,8 @@ export interface DatePickerProps {
   autoOpen?: boolean;        // open calendar immediately on mount
   hideTrigger?: boolean;     // hide the trigger button (chip mode)
   onClose?: () => void;      // called when calendar closes
+  recurrence?: React.ReactNode;   // contenido de la pestaña "Recurrente" (ej. <RecurrenciaPicker/>)
+  recurrenceActive?: boolean;     // hay recurrencia configurada → abrir en esa pestaña
 }
 
 const CAL_W = 288; // fixed calendar width in px
@@ -64,11 +66,13 @@ export default function DatePicker({
   value, onChange, placeholder = "dd/mm/aaaa",
   className = "", showClear = true, size = "md",
   autoOpen = false, hideTrigger = false, onClose,
+  recurrence, recurrenceActive = false,
 }: DatePickerProps) {
   const today  = todayISO();
   const parsed = parseISO(value);
 
   const [open, setOpen]           = useState(false);
+  const [tab, setTab]             = useState<"fija" | "recurrente">(recurrenceActive ? "recurrente" : "fija");
   const [viewYear, setViewYear]   = useState(() => parsed?.y ?? new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => parsed?.m ?? new Date().getMonth());
   const [style, setStyle]         = useState<React.CSSProperties>({});
@@ -134,8 +138,35 @@ export default function DatePicker({
 
   const popup = open && typeof document !== "undefined" ? createPortal(
     <div ref={calRef} style={style} onClick={e => e.stopPropagation()}
-      className="bg-[#0c0c0c] border border-[#1e1e1e] rounded-xl shadow-2xl shadow-black/80 overflow-hidden">
+      className="bg-[#0c0c0c] border border-[#1e1e1e] rounded-xl shadow-2xl shadow-black/80 overflow-hidden max-h-[80vh] overflow-y-auto">
 
+      {/* Selector Fija / Recurrente (solo si se pasa contenido de recurrencia) */}
+      {recurrence && (
+        <div className="flex rounded-lg overflow-hidden border border-[#1a1a1a] m-3 mb-0">
+          <button onClick={() => setTab("fija")}
+            className={`flex-1 flex items-center justify-center gap-1 py-1.5 text-[11px] font-medium transition-all ${
+              tab === "fija" ? "bg-[#1a1a1a] text-white" : "text-[#555] hover:text-[#999]"}`}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            Fija
+          </button>
+          <div className="w-px bg-[#1a1a1a]" />
+          <button onClick={() => setTab("recurrente")}
+            className={`flex-1 flex items-center justify-center gap-1 py-1.5 text-[11px] font-medium transition-all ${
+              tab === "recurrente" ? "bg-[#1a1a1a] text-[#B3985B]" : "text-[#555] hover:text-[#999]"}`}>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+            </svg>
+            Recurrente
+          </button>
+        </div>
+      )}
+
+      {recurrence && tab === "recurrente" ? (
+        <div className="p-3">{recurrence}</div>
+      ) : (
+      <>
       {/* Quick chips */}
       <div className="flex gap-1.5 px-3 pt-3 pb-2 border-b border-[#141414]">
         {chips.map(c => (
@@ -203,6 +234,8 @@ export default function DatePicker({
             Quitar fecha
           </button>
         </div>
+      )}
+      </>
       )}
     </div>,
     document.body

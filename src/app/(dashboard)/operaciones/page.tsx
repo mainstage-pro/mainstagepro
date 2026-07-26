@@ -1923,6 +1923,7 @@ export default function OperacionesPage() {
                   onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                   onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
                   onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
+                  onRecurrenceChange={(id, json) => saveTarea(id, { recurrencia: json })}
                   projects={proyectosNav}
                   users={usuarios}
                   showProject
@@ -2141,6 +2142,7 @@ export default function OperacionesPage() {
                         onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                         onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
                         onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
+                  onRecurrenceChange={(id, json) => saveTarea(id, { recurrencia: json })}
                         projects={proyectosNav}
                         users={usuarios}
                         showProject draggable
@@ -2164,6 +2166,7 @@ export default function OperacionesPage() {
                     onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                     onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
                     onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
+                  onRecurrenceChange={(id, json) => saveTarea(id, { recurrencia: json })}
                     projects={proyectosNav}
                     users={usuarios}
                     showProject draggable
@@ -2267,6 +2270,7 @@ export default function OperacionesPage() {
                           onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                           onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
                           onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
+                  onRecurrenceChange={(id, json) => saveTarea(id, { recurrencia: json })}
                           projects={proyectosNav}
                           users={usuarios}
                           draggable
@@ -2309,6 +2313,7 @@ export default function OperacionesPage() {
                       onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                       onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
                       onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
+                  onRecurrenceChange={(id, json) => saveTarea(id, { recurrencia: json })}
                       users={usuarios}
                       projects={proyectosNav}
                       viewFilter={(t) => applyProyFilter(t, tipoMod)}
@@ -3651,7 +3656,7 @@ function SectionBlock({
   selectedIds, onMultiSelect, onExtractChild, onMoveToNoSection,
   allSections, onMoveToSection,
   reloadKey, markSubDrag,
-  ptrTargetSec, onPtrDragStart, onDateChange,
+  ptrTargetSec, onPtrDragStart, onDateChange, onRecurrenceChange,
   // Section-level DnD
   onSectionDragStart, onSectionDragEnd,
   onSectionDragOver, onSectionDragLeave, onSectionDrop,
@@ -3682,6 +3687,7 @@ function SectionBlock({
   onPriorityChange?:  (id: string, prioridad: string) => void;
   onAssign?:          (id: string, userId: string | null) => void;
   onProjectChange?:   (id: string, proyectoId: string | null) => void;
+  onRecurrenceChange?: (id: string, json: string | null) => void;
   users?:             { id: string; name: string }[];
   projects?:          { id: string; nombre: string; color: string | null }[];
   viewFilter?:        (tareas: TareaItem[]) => TareaItem[];
@@ -3942,6 +3948,7 @@ function SectionBlock({
             <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
               onComplete={onComplete} onSelect={onSelect} onDelete={onDelete}
               onDateChange={onDateChange}
+              onRecurrenceChange={onRecurrenceChange}
               onPriorityChange={onPriorityChange}
               onAssign={onAssign}
               onProjectChange={onProjectChange}

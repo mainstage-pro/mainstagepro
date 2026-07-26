@@ -18,8 +18,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
             where: { parentId: null },
             orderBy: { orden: "asc" },
             include: {
-              asignadoA: { select: { id: true, name: true } },
-              _count: { select: { subtareas: true, comentarios: true } },
+              asignadoA:     { select: { id: true, name: true } },
+              proyectoTarea: { select: { id: true, nombre: true, color: true } },
+              _count: { select: { subtareas: true, comentarios: true, archivos: true } },
             },
           },
         },
@@ -28,8 +29,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         where: { seccionId: null, parentId: null },
         orderBy: { orden: "asc" },
         include: {
-          asignadoA: { select: { id: true, name: true } },
-          _count: { select: { subtareas: true, comentarios: true } },
+          asignadoA:     { select: { id: true, name: true } },
+          proyectoTarea: { select: { id: true, nombre: true, color: true } },
+          _count: { select: { subtareas: true, comentarios: true, archivos: true } },
         },
       },
     },
