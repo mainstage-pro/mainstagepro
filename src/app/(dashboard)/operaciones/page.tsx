@@ -10,7 +10,6 @@ import ProyectoAccesoPanel from "./components/ProyectoAccesoPanel";
 import { VistaCapturaRapida } from "./components/VistaCapturaRapida";
 import { VistaIdeas }        from "./components/VistaIdeas";
 import { VistaIniciativas }  from "./components/VistaIniciativas";
-import { VistaRendimiento } from "./components/VistaRendimiento";
 import { useCelebration } from "@/components/CelebrationToast";
 import type { TareaIntegrada } from "@/lib/tareas-integradas";
 import { Combobox } from "@/components/Combobox";
@@ -41,8 +40,8 @@ interface SeccionDetalle {
 interface Iniciativa { id: string; nombre: string; color: string | null }
 interface Usuario   { id: string; name: string }
 
-type VistaKey = "bandeja" | "hoy" | "proximas" | "integrada" | "proyectos-evento" | "proyectos-empresa" | "tratos" | "equipo"
-  | "captura" | "ideas" | "iniciativas" | "rendimiento"
+type VistaKey = "bandeja" | "hoy" | "proximas" | "integrada" | "proyectos-evento" | "proyectos-empresa" | "tratos"
+  | "captura" | "ideas" | "iniciativas"
   | { tipo: "proyecto"; id: string } | { tipo: "area"; nombre: string };
 
 interface ProyectoEventoConTareas {
@@ -1232,11 +1231,9 @@ export default function OperacionesPage() {
     vista === "proyectos-evento" ? "Proyectos / Eventos" :
     vista === "proyectos-empresa" ? "Proyectos de empresa" :
     vista === "tratos"           ? "Tratos / Ventas" :
-    vista === "equipo"           ? "Vista equipo" :
     vista === "captura"          ? "Captura rápida" :
     vista === "ideas"            ? "Ideas" :
     vista === "iniciativas"      ? "Iniciativas" :
-    vista === "rendimiento"      ? "Rendimiento" :
     typeof vista === "object" && vista.tipo === "area" ? `Área · ${AREA_LABELS[vista.nombre] ?? vista.nombre}` :
     proyectoDetalle?.nombre ?? "Área";
 
@@ -1288,51 +1285,6 @@ export default function OperacionesPage() {
       return;
     }
     setCarpetas(prev => prev.filter(c => c.id !== id));
-  }
-
-  // Equipo view: tareas agrupadas por usuario asignado, con métricas por persona
-  const equipoGroups = useMemo(() => {
-    if (vista !== "equipo") return [];
-    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-    const map = new Map<string, { id: string; nombre: string; tareas: typeof tareas }>();
-    for (const t of tareas) {
-      const uid  = t.asignadoA?.id  ?? "__sin_asignar";
-      const name = t.asignadoA?.name ?? "Sin asignar";
-      if (!map.has(uid)) map.set(uid, { id: uid, nombre: name, tareas: [] });
-      map.get(uid)!.tareas.push(t);
-    }
-    const esVencida = (t: typeof tareas[number]) =>
-      t.estado !== "COMPLETADA" && !!t.fecha && new Date(t.fecha + "T00:00:00") < hoy;
-    return Array.from(map.values()).map(g => {
-      const tareas = [...g.tareas].sort((a, b) => {
-        const ac = a.estado === "COMPLETADA" ? 1 : 0;
-        const bc = b.estado === "COMPLETADA" ? 1 : 0;
-        if (ac !== bc) return ac - bc;                                   // pendientes primero
-        const av = esVencida(a) ? 0 : 1, bv = esVencida(b) ? 0 : 1;
-        if (av !== bv) return av - bv;                                   // vencidas primero
-        const ap = PRIO_ORDER[a.prioridad] ?? 9, bp = PRIO_ORDER[b.prioridad] ?? 9;
-        if (ap !== bp) return ap - bp;                                   // por prioridad
-        const af = a.fecha ?? "9999", bf = b.fecha ?? "9999";
-        return af.localeCompare(bf);                                    // por fecha
-      });
-      const completadas = tareas.filter(t => t.estado === "COMPLETADA").length;
-      const vencidas    = tareas.filter(esVencida).length;
-      const pendientes  = tareas.length - completadas;
-      return { ...g, tareas, total: tareas.length, completadas, pendientes, vencidas };
-    }).sort((a, b) =>
-      b.vencidas - a.vencidas ||
-      b.pendientes - a.pendientes ||
-      a.nombre.localeCompare(b.nombre, "es"),
-    );
-  }, [vista, tareas]);
-
-  const [equipoColapsados, setEquipoColapsados] = useState<Set<string>>(new Set());
-  function toggleEquipoUser(id: string) {
-    setEquipoColapsados(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
   }
 
   // Today count for badge
@@ -1507,19 +1459,6 @@ export default function OperacionesPage() {
           <SideItem
             icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>}
             label="Próximas" isActive={vistaKey === "proximas"} onClick={() => setVista("proximas")}
-          />
-          <div className="border-t border-[#181818] my-1.5 mx-2" />
-          {sessionRole === "ADMIN" && (
-            <SideItem
-              icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>}
-              label="Equipo" isActive={vistaKey === "equipo"} onClick={() => setVista("equipo")}
-            />
-          )}
-          <SideItem
-            icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>}
-            label="Rendimiento"
-            isActive={vistaKey === "rendimiento"}
-            onClick={() => setVista("rendimiento")}
           />
           <div className="border-t border-[#181818] my-1.5 mx-2" />
           <SideItem
@@ -2011,9 +1950,6 @@ export default function OperacionesPage() {
           ) : vista === "iniciativas" ? (
             <VistaIniciativas />
 
-          ) : vista === "rendimiento" ? (
-            <VistaRendimiento />
-
           ) : vista === "proyectos-evento" ? (
             <ProyectosEventoView
               proyectos={proyectosEvento}
@@ -2143,86 +2079,6 @@ export default function OperacionesPage() {
                   .then(d => { setProyectosEmpresa(d.proyectos ?? []); setLoadingMain(false); });
               }}
             />
-
-          ) : vista === "equipo" ? (
-            <div className="max-w-3xl mx-auto px-3 py-4 pb-24">
-              {equipoGroups.length === 0 ? (
-                <EmptyState icon={<Users strokeWidth={1.5} className="w-9 h-9" />} title="Sin tareas de equipo" sub="No hay tareas personales asignadas a ningún usuario" />
-              ) : (
-                <>
-                  {/* Resumen general del equipo */}
-                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-3 pb-3 mb-3 border-b border-[#161616]">
-                    <span className="text-[11px] uppercase tracking-widest text-[#555] font-semibold">Equipo · {equipoGroups.length} {equipoGroups.length === 1 ? "persona" : "personas"}</span>
-                    <span className="text-[11px] text-[#777]"><b className="text-[#ccc]">{equipoGroups.reduce((s, g) => s + g.pendientes, 0)}</b> pendientes</span>
-                    {equipoGroups.reduce((s, g) => s + g.vencidas, 0) > 0 && (
-                      <span className="text-[11px] text-red-400/80"><b>{equipoGroups.reduce((s, g) => s + g.vencidas, 0)}</b> vencidas</span>
-                    )}
-                    <span className="text-[11px] text-[#777]"><b className="text-emerald-400/80">{equipoGroups.reduce((s, g) => s + g.completadas, 0)}</b> completadas</span>
-                  </div>
-
-                  {equipoGroups.map(group => {
-                    const colapsado = equipoColapsados.has(group.id);
-                    const pct = group.total ? Math.round((group.completadas / group.total) * 100) : 0;
-                    return (
-                      <div key={group.id} className="mb-3 rounded-xl border border-[#161616] bg-[#0a0a0a] overflow-hidden">
-                        {/* Header por persona */}
-                        <button
-                          onClick={() => toggleEquipoUser(group.id)}
-                          className="w-full flex items-center gap-3 px-3.5 py-3 hover:bg-[#0d0d0d] transition-colors text-left"
-                        >
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#555" strokeWidth="2.5"
-                            className={`shrink-0 transition-transform ${colapsado ? "" : "rotate-90"}`}><path d="M9 18l6-6-6-6"/></svg>
-                          <div className="w-8 h-8 rounded-full bg-[#B3985B]/15 border border-[#B3985B]/25 flex items-center justify-center shrink-0">
-                            <span className="text-[11px] font-bold text-[#B3985B]">
-                              {group.nombre.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
-                            </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm text-[#e5e5e5] font-semibold truncate">{group.nombre}</span>
-                              <span className="text-[11px] text-[#555]">{group.total} {group.total === 1 ? "tarea" : "tareas"}</span>
-                            </div>
-                            {/* Barra de avance */}
-                            <div className="flex items-center gap-2 mt-1.5">
-                              <div className="flex-1 h-1 rounded-full bg-[#1a1a1a] overflow-hidden max-w-[220px]">
-                                <div className="h-full rounded-full bg-emerald-500/70 transition-all" style={{ width: `${pct}%` }} />
-                              </div>
-                              <span className="text-[10px] text-[#555] tabular-nums">{pct}%</span>
-                            </div>
-                          </div>
-                          {/* Chips de estado */}
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {group.vencidas > 0 && (
-                              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">{group.vencidas} vencidas</span>
-                            )}
-                            <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-[#141414] text-[#999] border border-[#222]">{group.pendientes} pend.</span>
-                          </div>
-                        </button>
-
-                        {/* Tareas de la persona */}
-                        {!colapsado && (
-                          <div className="border-t border-[#141414] px-1.5 pb-1.5">
-                            {group.tareas.map(t => (
-                              <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
-                                onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
-                                onDateChange={(id, val) => saveTarea(id, { fecha: val || null })}
-                                onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
-                                onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
-                                onProjectChange={(id, proyectoId) => saveTarea(id, { proyectoTareaId: proyectoId })}
-                                projects={proyectosNav}
-                                users={usuarios}
-                                showProject
-                                reloadKey={syncTrigger} markSubDrag={markSubDrag}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </>
-              )}
-            </div>
 
           ) : vista === "integrada" ? (
             <div className="max-w-2xl mx-auto px-4 py-5 space-y-2">
@@ -2832,18 +2688,6 @@ export default function OperacionesPage() {
                   <div className="flex items-center gap-2 px-4 py-2 mt-1">
                     <span className="text-[12px] text-[#555] font-semibold tracking-wide uppercase">Vistas</span>
                   </div>
-                  {sessionRole === "ADMIN" && (
-                    <button onClick={() => { setVista("equipo"); setMobileProyectos(false); }}
-                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${vistaKey === "equipo" ? "text-[#B3985B] bg-[#B3985B]/5" : "text-white hover:bg-[#111]"}`}>
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                      Equipo
-                    </button>
-                  )}
-                  <button onClick={() => { setVista("rendimiento"); setMobileProyectos(false); }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${vistaKey === "rendimiento" ? "text-[#B3985B] bg-[#B3985B]/5" : "text-white hover:bg-[#111]"}`}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                    Rendimiento
-                  </button>
                   <button onClick={() => { setVista("tratos"); setMobileProyectos(false); }}
                     className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${vistaKey === "tratos" ? "text-[#B3985B] bg-[#B3985B]/5" : "text-white hover:bg-[#111]"}`}>
                     <Handshake strokeWidth={1.6} className="w-[18px] h-[18px]" />
