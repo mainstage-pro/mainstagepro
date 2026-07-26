@@ -69,8 +69,9 @@ function SortableTab({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: tab.href });
   const handleClick = useSingleDoubleClick(onNavigate, onStartEdit);
+  // Movimiento solo horizontal: anula el eje vertical del transform.
   const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Transform.toString(transform ? { ...transform, y: 0 } : null),
     transition,
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 50 : undefined,

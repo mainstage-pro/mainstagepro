@@ -113,8 +113,9 @@ function AdminNavItem({
     () => (isGroup ? onToggle() : onNavigate()),
     () => (canEdit ? onStartEdit() : isGroup ? onToggle() : onNavigate()),
   );
+  // Movimiento solo vertical: anula el eje horizontal del transform.
   const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
+    transform: CSS.Transform.toString(transform ? { ...transform, x: 0 } : null),
     transition,
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 50 : undefined,
