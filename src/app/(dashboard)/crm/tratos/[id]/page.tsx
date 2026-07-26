@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, use, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Calendar, CalendarDays, Target, PenLine, Megaphone, DollarSign, MapPin, Trash2, Search, CheckCircle2, Sprout, Zap, Ticket, Settings, Clapperboard } from "lucide-react";
+import { Calendar, CalendarDays, Target, PenLine, Megaphone, DollarSign, MapPin, Trash2, Search, CheckCircle2, Sprout, Zap, Ticket, Settings, Clapperboard, Camera } from "lucide-react";
 import { FORM_KEY_LABELS } from "@/lib/form-labels";
 import TimePicker from "@/components/ui/TimePicker";
 import VenuePicker from "@/components/ui/VenuePicker";
@@ -2208,6 +2208,76 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           <DiscoveryForm id={id} trato={trato} setTrato={setTrato} />
         </div>
       )}
+
+            {/* ═══ SCOUTING · VISITA EN SITIO ═════════════════════════════════════ */}
+      {trato.etapa !== "VENTA_PERDIDA" && trato.etapa !== "VENTA_CERRADA" && (() => {
+        const fotosScouting = archivos.filter(a => a.tipo === "SCOUTING");
+        return (
+          <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl p-6 space-y-5 my-8 ms-card-deep">
+            <div className="flex items-center gap-3 pb-4 border-b border-[#222]">
+              <div className="w-10 h-10 rounded-full bg-yellow-900/20 border border-yellow-800/30 flex items-center justify-center text-yellow-400 shrink-0">
+                <MapPin strokeWidth={1.75} className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-white font-bold text-lg">Scouting · Visita en sitio</p>
+                <p className="text-gray-500 text-sm">Anota libremente todo lo que observaste en la visita y sube fotos del lugar.</p>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs text-gray-400 mb-1.5">Notas de la visita</label>
+              <textarea
+                value={scoutingForm.notasScouting}
+                onChange={e => setScoutingForm(prev => ({ ...prev, notasScouting: e.target.value }))}
+                placeholder="Dimensiones, accesos, tomas de corriente, restricciones de ruido/horario, contacto del venue, estado general, ideas de montaje, pendientes… lo que sea relevante."
+                rows={10}
+                className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2.5 text-white text-sm leading-relaxed focus:outline-none focus:border-[#B3985B] resize-y"
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs text-gray-400">Fotos del lugar {fotosScouting.length > 0 && <span className="text-gray-600">({fotosScouting.length})</span>}</label>
+                <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#B3985B]/10 hover:bg-[#B3985B]/20 border border-[#B3985B]/40 text-[#B3985B] font-semibold text-xs cursor-pointer transition-colors">
+                  <Camera strokeWidth={1.75} className="w-4 h-4" />
+                  {uploadingTipo === "SCOUTING" ? "Subiendo…" : "Agregar fotos"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    disabled={uploadingTipo === "SCOUTING"}
+                    onChange={e => subirArchivo(e, "SCOUTING")}
+                  />
+                </label>
+              </div>
+              {fotosScouting.length === 0 ? (
+                <div className="border border-dashed border-[#2a2a2a] rounded-lg py-8 text-center text-gray-600 text-xs">
+                  Aún no hay fotos. Sube las que tomaste en la visita.
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {fotosScouting.map(foto => (
+                    <div key={foto.id} className="relative group aspect-square rounded-lg overflow-hidden border border-[#222] bg-[#111]">
+                      <a href={foto.url} target="_blank" rel="noopener noreferrer">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={foto.url} alt={foto.nombre} className="w-full h-full object-cover" />
+                      </a>
+                      <button
+                        onClick={() => eliminarArchivo(foto.id)}
+                        className="absolute top-1.5 right-1.5 w-7 h-7 rounded-md bg-black/70 hover:bg-red-900/80 border border-white/10 flex items-center justify-center text-gray-300 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Eliminar foto"
+                      >
+                        <Trash2 strokeWidth={1.75} className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
             {/* ── Modal: Editar Cliente ── */}
       {modalEditarCliente && (
