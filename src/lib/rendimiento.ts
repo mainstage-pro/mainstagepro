@@ -11,9 +11,9 @@ import { prisma } from '@/lib/prisma'
  * cuenta completa aunque se haya entregado tarde. Solo se marca como "vencida"
  * la que sigue SIN completar después de su fecha compromiso.
  *
- * Todas las fuentes (tareas normales, plan de trabajo, proyectos de evento,
- * proyectos de empresa y tratos) viven en el mismo modelo `Tarea`, así que se
- * miden juntas. El plan de trabajo se identifica por `tipoOrigen === 'PLAN'`.
+ * Alcance: SOLO Plan de trabajo (tipoOrigen === 'PLAN') y Tareas normales
+ * (sin proyecto de evento/empresa ni trato). Las tareas de proyectos y tratos
+ * quedan fuera de este rendimiento.
  */
 
 // ── Zona horaria: México (UTC-6 todo el año, sin horario de verano desde 2023) ──
@@ -87,7 +87,8 @@ export const FUENTE_LABEL: Record<FuenteKey, string> = {
   TRATO: 'Tratos',
 }
 
-export const FUENTE_ORDEN: FuenteKey[] = ['NORMAL', 'PLAN', 'EVENTO', 'EMPRESA', 'TRATO']
+// El rendimiento cubre solo Plan de trabajo y Tareas normales, en ese orden.
+export const FUENTE_ORDEN: FuenteKey[] = ['PLAN', 'NORMAL']
 
 export interface RendTareaDetalle {
   id: string
@@ -238,14 +239,25 @@ export async function computeRendimiento(opts: {
     prisma.tarea.findMany({
       where: {
         ...base,
-        OR: [
-          { estado: { in: ['PENDIENTE', 'EN_PROGRESO'] } },
+        AND: [
           {
-            estado: 'COMPLETADA',
             OR: [
-              { fechaCompletada: { gte: windowStart } },
-              { fecha: { gte: windowStart } },
-              { fechaVencimiento: { gte: windowStart } },
+              { estado: { in: ['PENDIENTE', 'EN_PROGRESO'] } },
+              {
+                estado: 'COMPLETADA',
+                OR: [
+                  { fechaCompletada: { gte: windowStart } },
+                  { fecha: { gte: windowStart } },
+                  { fechaVencimiento: { gte: windowStart } },
+                ],
+              },
+            ],
+          },
+          // Solo Plan de trabajo (tipoOrigen PLAN) y Tareas normales (sin proyecto/trato).
+          {
+            OR: [
+              { tipoOrigen: 'PLAN' },
+              { proyectoEventoId: null, tratoId: null, proyectoInternoId: null },
             ],
           },
         ],

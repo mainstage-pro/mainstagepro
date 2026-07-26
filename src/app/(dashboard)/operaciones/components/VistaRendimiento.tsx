@@ -167,7 +167,60 @@ export function VistaRendimiento() {
         ))}
       </div>
 
-      {/* ── KPI Cards ── */}
+      {/* ── Cumplimiento por sistema ── */}
+      <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-5">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-[10px] uppercase tracking-[0.15em] text-[#444]">Cumplimiento por sistema</p>
+          {data.fuentes.length > 0 && <p className="text-[10px] text-[#444]">Clic para ver por persona</p>}
+        </div>
+        <p className="text-[11px] text-[#555] mb-4">Cada sistema se mide por separado con sus propias tareas comprometidas.</p>
+        {data.fuentes.length === 0 ? (
+          <p className="text-[#333] text-sm">Sin tareas medibles</p>
+        ) : (
+          <div className="space-y-2">
+            {data.fuentes.map(f => {
+              const isOpen = expandedSys.has(f.fuente)
+              const personas = usuariosDeFuente(f.fuente)
+              return (
+                <div key={f.fuente} className="rounded-xl border border-[#1e1e1e] overflow-hidden">
+                  <button onClick={() => personas.length && toggleSys(f.fuente)}
+                    className={`w-full text-left px-4 py-3 ${isOpen ? 'bg-[#161616]' : 'bg-[#0d0d0d]'} ${personas.length ? 'cursor-pointer' : 'cursor-default'}`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm text-[#ccc] truncate">{FUENTE_LABEL[f.fuente]}</span>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full border border-[#222] ${perfClass(f.cumplimiento)}`}>{bandaLabel(f.cumplimiento)}</span>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        {f.vencidas > 0 && <span className="text-[10px] text-red-400 tabular-nums">{f.vencidas} venc.</span>}
+                        <span className="text-[10px] text-[#444] tabular-nums hidden sm:block">{f.completadas}/{f.total}</span>
+                        <span className={`text-sm font-semibold tabular-nums min-w-[42px] text-right ${perfClass(f.cumplimiento)}`}>{f.cumplimiento}%</span>
+                        {personas.length > 0 && <span className="text-[#333] text-[10px] transition-transform" style={{ transform: isOpen ? 'rotate(180deg)' : 'none' }}>▼</span>}
+                      </div>
+                    </div>
+                    <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden mt-2">
+                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${f.cumplimiento}%`, backgroundColor: perfBar(f.cumplimiento) }} />
+                    </div>
+                  </button>
+                  {isOpen && personas.length > 0 && (
+                    <div className="border-t border-[#1a1a1a] bg-[#080808] divide-y divide-[#111]">
+                      <p className="px-4 pt-3 pb-1 text-[9px] uppercase tracking-wider text-[#555]">Por persona en este sistema</p>
+                      {personas.map(p => (
+                        <div key={p.id} className="flex items-center gap-3 px-4 py-2">
+                          <span className="text-xs text-[#888] flex-1 min-w-0 truncate">{p.name.split(' ')[0]}</span>
+                          <span className="text-[10px] text-[#444] tabular-nums">{p.completadas}/{p.total}</span>
+                          <span className={`text-xs font-semibold tabular-nums min-w-[38px] text-right ${perfClass(p.cumplimiento)}`}>{p.cumplimiento}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Resumen general (KPI Cards) ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="ms-stat-card">
           <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-2">Cumplimiento</p>
@@ -312,61 +365,6 @@ export function VistaRendimiento() {
                           ))}
                         </div>
                       )}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* ── Cumplimiento por sistema ── */}
-      <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl p-5">
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-[10px] uppercase tracking-[0.15em] text-[#444]">Cumplimiento por sistema</p>
-          {data.fuentes.length > 0 && <p className="text-[10px] text-[#444]">Clic para ver por persona</p>}
-        </div>
-        <p className="text-[11px] text-[#555] mb-4">Cada sistema se mide por separado con sus propias tareas comprometidas.</p>
-        {data.fuentes.length === 0 ? (
-          <p className="text-[#333] text-sm">Sin tareas medibles</p>
-        ) : (
-          <div className="space-y-2">
-            {data.fuentes.map(f => {
-              const isOpen = expandedSys.has(f.fuente)
-              const personas = usuariosDeFuente(f.fuente)
-              return (
-                <div key={f.fuente} className="rounded-xl border border-[#1e1e1e] overflow-hidden">
-                  <button
-                    onClick={() => personas.length && toggleSys(f.fuente)}
-                    className={`w-full text-left px-4 py-3 ${isOpen ? 'bg-[#161616]' : 'bg-[#0d0d0d]'} ${personas.length ? 'cursor-pointer' : 'cursor-default'}`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-sm text-[#ccc] truncate">{FUENTE_LABEL[f.fuente]}</span>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full border border-[#222] ${perfClass(f.cumplimiento)}`}>{bandaLabel(f.cumplimiento)}</span>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        {f.vencidas > 0 && <span className="text-[10px] text-red-400 tabular-nums">{f.vencidas} venc.</span>}
-                        <span className="text-[10px] text-[#444] tabular-nums hidden sm:block">{f.completadas}/{f.total}</span>
-                        <span className={`text-sm font-semibold tabular-nums min-w-[42px] text-right ${perfClass(f.cumplimiento)}`}>{f.cumplimiento}%</span>
-                        {personas.length > 0 && <span className="text-[#333] text-[10px] transition-transform" style={{ transform: isOpen ? 'rotate(180deg)' : 'none' }}>▼</span>}
-                      </div>
-                    </div>
-                    <div className="h-1 bg-[#1a1a1a] rounded-full overflow-hidden mt-2">
-                      <div className="h-full rounded-full transition-all duration-500" style={{ width: `${f.cumplimiento}%`, backgroundColor: perfBar(f.cumplimiento) }} />
-                    </div>
-                  </button>
-                  {isOpen && personas.length > 0 && (
-                    <div className="border-t border-[#1a1a1a] bg-[#080808] divide-y divide-[#111]">
-                      <p className="px-4 pt-3 pb-1 text-[9px] uppercase tracking-wider text-[#555]">Por persona en este sistema</p>
-                      {personas.map(p => (
-                        <div key={p.id} className="flex items-center gap-3 px-4 py-2">
-                          <span className="text-xs text-[#888] flex-1 min-w-0 truncate">{p.name.split(' ')[0]}</span>
-                          <span className="text-[10px] text-[#444] tabular-nums">{p.completadas}/{p.total}</span>
-                          <span className={`text-xs font-semibold tabular-nums min-w-[38px] text-right ${perfClass(p.cumplimiento)}`}>{p.cumplimiento}%</span>
-                        </div>
-                      ))}
                     </div>
                   )}
                 </div>
