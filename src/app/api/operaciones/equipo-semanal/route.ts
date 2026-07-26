@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
+import { recurrenciaOcurreEnFecha, type RecurrenciaConfig } from '@/lib/recurrencia'
 
 // ── Vista semanal del equipo ──────────────────────────────────────────────────
 // Devuelve, por cada miembro del equipo, sus tareas de la semana (lun–vie),
@@ -77,12 +78,18 @@ export async function GET(req: NextRequest) {
   const hasta = new Date(`${dias[4]}T00:00:00Z`)
   hasta.setUTCDate(hasta.getUTCDate() + 2)
 
+  // Traemos tanto las tareas con fecha concreta dentro de la ventana como TODAS
+  // las recurrentes (sin importar su fecha ancla): las recurrentes se proyectan
+  // sobre cada día de la semana en que cae su patrón, no solo su próxima fecha.
   const tareas = await prisma.tarea.findMany({
     where: {
       asignadoAId: { in: userIds },
       estado: { not: 'CANCELADA' },
       parentId: null,
-      fecha: { gte: desde, lt: hasta },
+      OR: [
+        { fecha: { gte: desde, lt: hasta } },
+        { recurrencia: { not: null } },
+      ],
     },
     select: {
       id: true,
@@ -92,6 +99,7 @@ export async function GET(req: NextRequest) {
       tipoOrigen: true,
       fecha: true,
       fechaVencimiento: true,
+      recurrencia: true,
       asignadoAId: true,
       proyectoTarea: { select: { nombre: true } },
       proyectoEvento: { select: { nombre: true } },
@@ -113,15 +121,30 @@ export async function GET(req: NextRequest) {
     dia: string
     contexto: string | null
     vencida: boolean
+    recurrente: boolean
+  }
+
+  // Parsea el JSON de recurrencia a config; null si no es una recurrencia válida.
+  function parseCfg(raw: string | null): RecurrenciaConfig | null {
+    if (!raw) return null
+    try {
+      const cfg = JSON.parse(raw) as RecurrenciaConfig
+      return cfg && cfg.tipo ? cfg : null
+    } catch { return null }
+  }
+
+  // Fecha-calendario local (mismo día que el string YMD) para evaluar el patrón,
+  // ya que `recurrenciaOcurreEnFecha` usa getDay()/getDate() en hora local.
+  function fechaLocalDeDia(dia: string): Date {
+    const [y, m, d] = dia.split('-').map(Number)
+    return new Date(y, m - 1, d)
   }
 
   const porUsuario = new Map<string, TareaSemana[]>()
   for (const u of users) porUsuario.set(u.id, [])
 
   for (const t of tareas) {
-    if (!t.asignadoAId || !t.fecha) continue
-    const dia = fechaCal(t.fecha)
-    if (!setDias.has(dia)) continue
+    if (!t.asignadoAId) continue
     const lista = porUsuario.get(t.asignadoAId)
     if (!lista) continue
 
@@ -134,19 +157,35 @@ export async function GET(req: NextRequest) {
       t.faseInterna?.nombre ??
       t.proyectoTarea?.nombre ??
       null
-    const venceRef = t.fechaVencimiento ?? t.fecha
-    const vencida = t.estado !== 'COMPLETADA' && !!venceRef && venceRef < now
 
-    lista.push({
+    const base = {
       id: t.id,
       titulo: t.titulo,
       prioridad: t.prioridad,
       estado: t.estado,
       tipo,
-      dia,
       contexto,
-      vencida,
-    })
+    }
+
+    const cfg = parseCfg(t.recurrencia)
+
+    if (cfg) {
+      // Recurrente → una tarjeta por cada día de la semana en que cae el patrón.
+      if (t.estado === 'COMPLETADA') continue
+      for (const dia of dias) {
+        if (recurrenciaOcurreEnFecha(cfg, fechaLocalDeDia(dia))) {
+          lista.push({ ...base, dia, vencida: false, recurrente: true })
+        }
+      }
+    } else {
+      // Fecha concreta → un solo día, si cae dentro de la semana.
+      if (!t.fecha) continue
+      const dia = fechaCal(t.fecha)
+      if (!setDias.has(dia)) continue
+      const venceRef = t.fechaVencimiento ?? t.fecha
+      const vencida = t.estado !== 'COMPLETADA' && !!venceRef && venceRef < now
+      lista.push({ ...base, dia, vencida, recurrente: false })
+    }
   }
 
   const usuarios = users

@@ -33,6 +33,7 @@ interface TareaSemana {
   dia: string;
   contexto: string | null;
   vencida: boolean;
+  recurrente?: boolean;
 }
 interface UsuarioSemana {
   id: string;
@@ -473,11 +474,14 @@ function TareaCard({
 }) {
   const [menu, setMenu] = useState(false);
   const completada = t.estado === "COMPLETADA";
+  const recurrente = !!t.recurrente;
   return (
     <li
-      draggable
-      onDragStart={onDragStart}
-      className="group relative rounded-lg border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04] px-2 py-1.5 cursor-grab active:cursor-grabbing"
+      draggable={!recurrente}
+      onDragStart={recurrente ? undefined : onDragStart}
+      className={`group relative rounded-lg border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04] px-2 py-1.5 ${
+        recurrente ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"
+      }`}
     >
       <div className="flex items-start gap-1.5">
         <span
@@ -494,6 +498,14 @@ function TareaCard({
             {t.titulo}
           </span>
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+            {recurrente && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] text-[#B3985B]/70" title="Tarea recurrente">
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                  <path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                </svg>
+              </span>
+            )}
             {t.contexto && (
               <span className="text-[10px] text-[#555] truncate max-w-[140px]">{t.contexto}</span>
             )}
@@ -501,15 +513,17 @@ function TareaCard({
             {t.estado === "EN_PROGRESO" && <span className="text-[10px] text-blue-400">En progreso</span>}
           </div>
         </div>
-        <button
-          onClick={e => { e.stopPropagation(); setMenu(v => !v); }}
-          className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-[#666] hover:text-white text-xs px-1 shrink-0"
-          aria-label="Mover a otro día"
-          title="Mover a otro día"
-        >⠿</button>
+        {!recurrente && (
+          <button
+            onClick={e => { e.stopPropagation(); setMenu(v => !v); }}
+            className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-[#666] hover:text-white text-xs px-1 shrink-0"
+            aria-label="Mover a otro día"
+            title="Mover a otro día"
+          >⠿</button>
+        )}
       </div>
 
-      {menu && (
+      {menu && !recurrente && (
         <div className="absolute right-1 top-6 z-10 rounded-md border border-white/10 bg-[#161616] shadow-lg p-1 min-w-[120px]">
           <p className="text-[10px] text-[#666] px-2 py-1">Mover a</p>
           {dias.map((d, i) => (
