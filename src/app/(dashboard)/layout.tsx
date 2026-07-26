@@ -7,6 +7,7 @@ import GlobalNewTaskPanel from "@/components/GlobalNewTaskPanel";
 import QuickAccessPanel from "@/components/QuickAccessPanel";
 import PwaRefreshButton from "@/components/PwaRefreshButton";
 import { Providers } from "@/components/Providers";
+import { NavConfigProvider } from "@/components/nav/NavConfigProvider";
 
 export default async function DashboardLayout({
   children,
@@ -18,18 +19,31 @@ export default async function DashboardLayout({
 
   // Fetch config and user module access — non-admins always have restricted access
   let labels: Record<string, string> = {};
+  let navOrder: Record<string, string[]> = {};
+  let tabsOrder: Record<string, string[]> = {};
   let userModuleKeys: string[] | null = null;
 
   const AREA_MODULES = AREA_MODULE_PRESETS;
 
+  const parseJson = <T,>(raw: string | undefined, fallback: T): T => {
+    try {
+      return raw ? (JSON.parse(raw) as T) : fallback;
+    } catch {
+      return fallback;
+    }
+  };
+
   try {
     const [configRows, accesos] = await Promise.all([
-      prisma.appConfig.findMany({ where: { key: "nav.labels" } }),
+      prisma.appConfig.findMany({ where: { key: { in: ["nav.labels", "nav.order", "nav.tabsOrder"] } } }),
       session.role !== "ADMIN"
         ? prisma.moduloAcceso.findMany({ where: { userId: session.id }, select: { moduloKey: true } })
         : Promise.resolve(null),
     ]);
-    labels = configRows[0]?.value ? JSON.parse(configRows[0].value) : {};
+    const byKey = Object.fromEntries(configRows.map((r) => [r.key, r.value]));
+    labels = parseJson(byKey["nav.labels"], {} as Record<string, string>);
+    navOrder = parseJson(byKey["nav.order"], {} as Record<string, string[]>);
+    tabsOrder = parseJson(byKey["nav.tabsOrder"], {} as Record<string, string[]>);
     if (accesos !== null) {
       const keys = accesos.map(a => a.moduloKey);
       if (keys.length > 0) {
@@ -46,19 +60,20 @@ export default async function DashboardLayout({
 
   return (
     <Providers access={{ role: session.role, area: (session as { area?: string }).area ?? null, moduleKeys: userModuleKeys }}>
-      <div className="flex h-screen bg-[#0a0a0a] overflow-hidden w-screen max-w-[100vw]">
-        <Sidebar
-          user={session}
-          labels={labels}
-          userModuleKeys={userModuleKeys}
-        />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden pt-14 md:pt-0 min-w-0">
-          {children}
-        </main>
-        <GlobalNewTaskPanel />
-        <QuickAccessPanel />
-        <PwaRefreshButton />
-      </div>
+      <NavConfigProvider initialLabels={labels} initialOrder={navOrder} initialTabsOrder={tabsOrder}>
+        <div className="flex h-screen bg-[#0a0a0a] overflow-hidden w-screen max-w-[100vw]">
+          <Sidebar
+            user={session}
+            userModuleKeys={userModuleKeys}
+          />
+          <main className="flex-1 overflow-y-auto overflow-x-hidden pt-14 md:pt-0 min-w-0">
+            {children}
+          </main>
+          <GlobalNewTaskPanel />
+          <QuickAccessPanel />
+          <PwaRefreshButton />
+        </div>
+      </NavConfigProvider>
     </Providers>
   );
 }

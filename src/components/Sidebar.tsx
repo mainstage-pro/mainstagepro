@@ -8,7 +8,24 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import BusquedaGlobal from "@/components/BusquedaGlobal";
 import NotificacionesBell from "@/components/NotificacionesBell";
-import { NAV, OWNER_EMAIL } from "@/lib/nav";
+import { NAV, OWNER_EMAIL, type NavItem } from "@/lib/nav";
+import { useNavConfig } from "@/components/nav/NavConfigProvider";
+import { EditInput, useSingleDoubleClick } from "@/components/nav/editable";
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface User {
   id: string;
@@ -20,7 +37,6 @@ interface User {
 
 interface SidebarProps {
   user: User;
-  labels: Record<string, string>;
   userModuleKeys: string[] | null; // null = admin (all access)
 }
 
@@ -36,12 +52,137 @@ function canAccess(key: string | undefined, isAdmin: boolean, userModuleKeys: st
   return userModuleKeys.includes(key);
 }
 
-function getInitialOpen(): Set<string> {
-  // Todos los módulos son link único con pestañas (sin carpetas colapsables).
-  return new Set<string>();
+// Identificador estable de un item para orden y drag-and-drop.
+function itemId(item: NavItem): string {
+  return item.key ?? item.href ?? item.label;
 }
 
-export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) {
+// Aplica el orden guardado; los items ausentes conservan su posición original.
+function applyOrder(items: NavItem[], ids?: string[]): NavItem[] {
+  if (!ids || ids.length === 0) return items;
+  const idx = new Map(ids.map((id, i) => [id, i]));
+  return [...items].sort((a, b) => {
+    const ai = idx.has(itemId(a)) ? (idx.get(itemId(a)) as number) : Infinity;
+    const bi = idx.has(itemId(b)) ? (idx.get(itemId(b)) as number) : Infinity;
+    return ai - bi;
+  });
+}
+
+const FolderIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-60">
+    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+// Fila editable + arrastrable para admins. Un clic navega/expande; doble clic
+// renombra. El drag se activa tras mover 6px, para no romper el clic.
+function AdminNavItem({
+  item,
+  label,
+  active,
+  badgeCount,
+  editing,
+  isOpen,
+  childrenNode,
+  onToggle,
+  onNavigate,
+  onStartEdit,
+  onCommit,
+  onCancel,
+}: {
+  item: NavItem;
+  label: string;
+  active: boolean;
+  badgeCount: number;
+  editing: boolean;
+  isOpen: boolean;
+  childrenNode: React.ReactNode;
+  onToggle: () => void;
+  onNavigate: () => void;
+  onStartEdit: () => void;
+  onCommit: (v: string) => void;
+  onCancel: () => void;
+}) {
+  const isGroup = !!(item.children && !item.href);
+  const canEdit = !!item.key;
+  const Icon = item.icon;
+
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: itemId(item) });
+  const handleClick = useSingleDoubleClick(
+    () => (isGroup ? onToggle() : onNavigate()),
+    () => (canEdit ? onStartEdit() : isGroup ? onToggle() : onNavigate()),
+  );
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  const dragProps = editing
+    ? {}
+    : { ...attributes, ...listeners, onClick: handleClick, role: "button", tabIndex: 0 };
+
+  if (isGroup) {
+    return (
+      <div ref={setNodeRef} style={style}>
+        <div
+          {...dragProps}
+          className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer select-none touch-none ${
+            active ? "text-white font-semibold" : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
+          }`}
+        >
+          <FolderIcon />
+          {editing ? (
+            <EditInput initial={label} onCommit={onCommit} onCancel={onCancel} />
+          ) : (
+            <>
+              <span className="flex-1 text-left">{label}</span>
+              <svg
+                className={`w-3 h-3 transition-transform shrink-0 opacity-40 ${isOpen ? "rotate-90" : ""}`}
+                fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </>
+          )}
+        </div>
+        {isOpen && !editing && childrenNode}
+      </div>
+    );
+  }
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <div
+        {...dragProps}
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer select-none touch-none ${
+          active ? "bg-[#1a1a1a] text-white font-semibold" : "text-[#8b8f97] hover:text-white hover:bg-[#161616]"
+        }`}
+      >
+        {Icon
+          ? <Icon strokeWidth={1.75} className={`w-[18px] h-[18px] shrink-0 ${active ? "text-[#B3985B]" : "opacity-70"}`} />
+          : <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${active ? "bg-[#B3985B]" : "bg-[#333]"}`} />
+        }
+        {editing ? (
+          <EditInput initial={label} onCommit={onCommit} onCancel={onCancel} />
+        ) : (
+          <>
+            <span className="flex-1">{label}</span>
+            {badgeCount > 0 && (
+              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">
+                {badgeCount > 99 ? "99+" : badgeCount}
+              </span>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const isAdmin = user.role === "ADMIN";
@@ -49,7 +190,13 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
   const storageKey = `sidebar-state-${user.id}`;
   const [badges, setBadges] = useState<Record<string, number>>({});
 
-  const [openGroups, setOpenGroups] = useState<Set<string>>(() => getInitialOpen());
+  const { labels, order, saveLabel, saveOrder } = useNavConfig();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  );
+
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set<string>());
   const [stateLoaded, setStateLoaded] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -137,6 +284,92 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
     return false;
   }
 
+  function onSectionDragEnd(sectionKey: string, items: NavItem[], e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const ids = items.map(itemId);
+    const next = arrayMove(
+      ids,
+      ids.indexOf(active.id as string),
+      ids.indexOf(over.id as string),
+    );
+    saveOrder(sectionKey, next);
+  }
+
+  // Renderiza las sub-secciones de un item de tipo grupo (children && !href).
+  function groupChildrenNode(item: NavItem) {
+    return (
+      <div className="ml-3 mt-0.5 space-y-0.5 border-l border-[#1f1f1f] pl-3">
+        {(item.children ?? [])
+          .filter(c => (!c.adminOnly || isAdmin) && (canAccess(c.accessKey ?? c.key, isAdmin, userModuleKeys) || canAccess(item.key, isAdmin, userModuleKeys)))
+          .map((child) => (
+            <Link
+              key={child.href}
+              href={child.href}
+              className={`block px-2 py-1.5 rounded text-sm transition-colors ${
+                isActive(child.href) ? "text-white font-semibold" : "text-[#5a6370] hover:text-white"
+              }`}
+            >
+              {resolveLabel(child.key, child.label, labels)}
+            </Link>
+          ))}
+      </div>
+    );
+  }
+
+  function renderStaticItem(item: NavItem) {
+    const itemLabel = resolveLabel(item.key, item.label, labels);
+    if (item.children && !item.href) {
+      const groupKey = item.key ?? item.label;
+      const isOpen = openGroups.has(groupKey);
+      const isGroupActive = item.children.some((c) => isActive(c.href));
+      return (
+        <div key={groupKey}>
+          <button
+            onClick={() => toggleGroup(groupKey)}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+              isGroupActive ? "text-white font-semibold" : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
+            }`}
+          >
+            <FolderIcon />
+            <span className="flex-1 text-left">{itemLabel}</span>
+            <svg
+              className={`w-3 h-3 transition-transform shrink-0 opacity-40 ${isOpen ? "rotate-90" : ""}`}
+              fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+          {isOpen && groupChildrenNode(item)}
+        </div>
+      );
+    }
+    const href = item.href === "/dashboard" ? dashboardHref : item.href!;
+    const badgeCount = item.badge ? (badges[item.badge] ?? 0) : 0;
+    const Icon = item.icon;
+    const active = isItemActive(item);
+    return (
+      <Link
+        key={item.href}
+        href={href}
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+          active ? "bg-[#1a1a1a] text-white font-semibold" : "text-[#8b8f97] hover:text-white hover:bg-[#161616]"
+        }`}
+      >
+        {Icon
+          ? <Icon strokeWidth={1.75} className={`w-[18px] h-[18px] shrink-0 ${active ? "text-[#B3985B]" : "opacity-70"}`} />
+          : <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${active ? "bg-[#B3985B]" : "bg-[#333]"}`} />
+        }
+        <span className="flex-1">{itemLabel}</span>
+        {badgeCount > 0 && (
+          <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">
+            {badgeCount > 99 ? "99+" : badgeCount}
+          </span>
+        )}
+      </Link>
+    );
+  }
+
   const navContent = (
     <>
       <nav className="flex-1 px-3 py-2 overflow-y-auto">
@@ -153,6 +386,8 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
           });
           if (visibleItems.length === 0) return null;
 
+          const orderedItems = applyOrder(visibleItems, order[section.key]);
+
           return (
             <div key={section.key} className={section.section ? "mb-1" : "mb-2 pb-3 border-b border-[#1a1a1a]"}>
               {section.section && (
@@ -160,85 +395,48 @@ export default function Sidebar({ user, labels, userModuleKeys }: SidebarProps) 
                   {sectionLabel}
                 </p>
               )}
-              <div className="space-y-0.5">
-                {visibleItems.map((item) => {
-                  const itemLabel = resolveLabel(item.key, item.label, labels);
-                  if (item.children && !item.href) {
-                    const groupKey = item.key ?? item.label;
-                    const isOpen = openGroups.has(groupKey);
-                    const isGroupActive = item.children.some((c) => isActive(c.href));
-                    return (
-                      <div key={groupKey}>
-                        <button
-                          onClick={() => toggleGroup(groupKey)}
-                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
-                            isGroupActive
-                              ? "text-white font-semibold"
-                              : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
-                          }`}
-                        >
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-60">
-                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                          </svg>
-                          <span className="flex-1 text-left">{itemLabel}</span>
-                          <svg
-                            className={`w-3 h-3 transition-transform shrink-0 opacity-40 ${isOpen ? "rotate-90" : ""}`}
-                            fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                          </svg>
-                        </button>
-                        {isOpen && (
-                          <div className="ml-3 mt-0.5 space-y-0.5 border-l border-[#1f1f1f] pl-3">
-                            {item.children.filter(c => (!c.adminOnly || isAdmin) && (canAccess(c.accessKey ?? c.key, isAdmin, userModuleKeys) || canAccess(item.key, isAdmin, userModuleKeys))).map((child) => {
-                              const childLabel = resolveLabel(child.key, child.label, labels);
-                              return (
-                                <Link
-                                  key={child.href}
-                                  href={child.href}
-                                  className={`block px-2 py-1.5 rounded text-sm transition-colors ${
-                                    isActive(child.href)
-                                      ? "text-white font-semibold"
-                                      : "text-[#5a6370] hover:text-white"
-                                  }`}
-                                >
-                                  {childLabel}
-                                </Link>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  }
-                  const href = item.href === "/dashboard" ? dashboardHref : item.href!;
-                  const badgeCount = item.badge ? (badges[item.badge] ?? 0) : 0;
-                  const Icon = item.icon;
-                  const active = isItemActive(item);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={href}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
-                        active
-                          ? "bg-[#1a1a1a] text-white font-semibold"
-                          : "text-[#8b8f97] hover:text-white hover:bg-[#161616]"
-                      }`}
-                    >
-                      {Icon
-                        ? <Icon strokeWidth={1.75} className={`w-[18px] h-[18px] shrink-0 ${active ? "text-[#B3985B]" : "opacity-70"}`} />
-                        : <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${active ? "bg-[#B3985B]" : "bg-[#333]"}`} />
-                      }
-                      <span className="flex-1">{itemLabel}</span>
-                      {badgeCount > 0 && (
-                        <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center leading-none">
-                          {badgeCount > 99 ? "99+" : badgeCount}
-                        </span>
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
+              {isAdmin ? (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={(e) => onSectionDragEnd(section.key, orderedItems, e)}
+                >
+                  <SortableContext items={orderedItems.map(itemId)} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-0.5">
+                      {orderedItems.map((item) => {
+                        const isGroup = !!(item.children && !item.href);
+                        const groupKey = item.key ?? item.label;
+                        const href = item.href === "/dashboard" ? dashboardHref : (item.href ?? "");
+                        const id = itemId(item);
+                        return (
+                          <AdminNavItem
+                            key={id}
+                            item={item}
+                            label={resolveLabel(item.key, item.label, labels)}
+                            active={isItemActive(item)}
+                            badgeCount={item.badge ? (badges[item.badge] ?? 0) : 0}
+                            editing={editingId === id}
+                            isOpen={openGroups.has(groupKey)}
+                            childrenNode={isGroup ? groupChildrenNode(item) : null}
+                            onToggle={() => toggleGroup(groupKey)}
+                            onNavigate={() => href && router.push(href)}
+                            onStartEdit={() => setEditingId(id)}
+                            onCommit={(v) => {
+                              if (item.key) saveLabel(item.key, v);
+                              setEditingId(null);
+                            }}
+                            onCancel={() => setEditingId(null)}
+                          />
+                        );
+                      })}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              ) : (
+                <div className="space-y-0.5">
+                  {orderedItems.map((item) => renderStaticItem(item))}
+                </div>
+              )}
             </div>
           );
         })}
