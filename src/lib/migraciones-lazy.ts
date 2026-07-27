@@ -48,6 +48,20 @@ export async function ensureOperacionTecnicaColumns() {
       );
     } catch { /* ya existe */ }
   }
+  // proyecto_personal.movimientoId: liga la fila con el MovimientoFinanciero (GASTO)
+  // que se genera al marcar PAGADO. Declarada en schema.prisma → Prisma la pide en
+  // cualquier findMany de proyecto_personal sin select, por eso el DDL aditivo se aplica
+  // en prod ANTES del deploy; esto es red de seguridad idempotente para dev/local.
+  if (!await columnExists('proyecto_personal', 'movimientoId')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE proyecto_personal ADD COLUMN IF NOT EXISTS "movimientoId" TEXT`
+      );
+      await prisma.$executeRawUnsafe(
+        `CREATE UNIQUE INDEX IF NOT EXISTS "proyecto_personal_movimientoId_key" ON proyecto_personal ("movimientoId")`
+      );
+    } catch { /* ya existe */ }
+  }
   _ready = true;
 }
 

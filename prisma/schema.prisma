@@ -711,6 +711,8 @@ model ProyectoPersonal {
   confirmToken    String?  @unique // Token para link de confirmación por WhatsApp
   tarifaAcordada  Float?
   estadoPago      String   @default("PENDIENTE") // PENDIENTE | PAGADO
+  movimientoId    String?  @unique // Movimiento financiero (GASTO) generado al marcar PAGADO
+  movimiento      MovimientoFinanciero? @relation(fields: [movimientoId], references: [id])
   notas           String?
   rolEnEvento     String?  // Rol específico en este evento (ej: Operador de audio, Iluminación)
   esAdicional     Boolean  @default(false) // Técnico agregado fuera de lo cotizado (marcador interno; NO afecta PDFs)
@@ -1257,10 +1259,11 @@ model MovimientoFinanciero {
   creadoPor           String?
   createdAt           DateTime @default(now())
 
-  cuentaPagar  CuentaPagar?
-  pagoNomina   PagoNomina?
-  abono        Abono?
-  abonoPago    AbonoPago?
+  cuentaPagar       CuentaPagar?
+  pagoNomina        PagoNomina?
+  abono             Abono?
+  abonoPago         AbonoPago?
+  proyectoPersonal  ProyectoPersonal?
 
   @@map("movimientos_financieros")
 }
