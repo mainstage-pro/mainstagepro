@@ -6,7 +6,7 @@ import { WA_URL, useDescubrimiento } from "@/components/presentacion/descubrimie
 import { R, GOLD, StatCount } from "@/components/presentacion/anim";
 import {
   type PresentacionCategoria,
-  getPresentacionCategoria,
+  PRESENTACION_CATEGORIAS,
 } from "@/lib/presentacion-categorias";
 
 type EquipoItem = {
@@ -220,8 +220,8 @@ export default function CategoriaClient({ cfg }: { cfg: PresentacionCategoria })
   const principales = data?.grupos.filter((g) => g.rol === "principal" && g.equipos.length > 0) ?? [];
   const relacionados = data?.grupos.filter((g) => g.rol === "relacionado" && g.equipos.length > 0) ?? [];
   const relacionadas = useMemo(
-    () => cfg.relacionadas.map((s) => getPresentacionCategoria(s)).filter(Boolean) as PresentacionCategoria[],
-    [cfg.relacionadas]
+    () => PRESENTACION_CATEGORIAS.filter((c) => c.slug !== cfg.slug),
+    [cfg.slug]
   );
 
   return (
@@ -229,18 +229,29 @@ export default function CategoriaClient({ cfg }: { cfg: PresentacionCategoria })
       <PresentacionNav />
 
       {/* HERO */}
-      <section className="relative min-h-[92vh] flex items-end overflow-hidden">
+      <section className="relative min-h-[92vh] flex items-center justify-center overflow-hidden text-center">
         {heroFotos.length > 0 ? (
           <HeroSlides fotos={heroFotos} />
         ) : (
           <div className="absolute inset-0" style={{ background: "radial-gradient(120% 90% at 50% 0%, rgba(179,152,91,0.12) 0%, rgba(6,6,6,1) 60%)" }} />
         )}
-        <div className="relative max-w-6xl mx-auto px-5 sm:px-8 pb-20 sm:pb-28 w-full">
+        <div className="relative max-w-4xl mx-auto px-5 sm:px-8 py-28 w-full flex flex-col items-center">
+          {/* Placa central con el nombre específico de la categoría */}
+          <div
+            className="inline-flex items-center gap-2.5 rounded-full px-5 py-2 mb-8"
+            style={{ background: "rgba(179,152,91,0.12)", border: `1px solid ${GOLD}55`, backdropFilter: "blur(6px)" }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-icon.png" alt="" className="h-4 w-4 object-contain opacity-90" draggable={false} />
+            <span className="text-[13px] sm:text-sm font-bold tracking-[0.28em] uppercase" style={{ color: GOLD }}>
+              {cfg.nombre}
+            </span>
+          </div>
           <Eyebrow>{cfg.eyebrow}</Eyebrow>
           <h1 className="mt-4 font-bold text-white leading-[1.02]" style={{ fontSize: "clamp(2.6rem, 7vw, 5.6rem)", letterSpacing: "-0.03em" }}>
             {cfg.heroTitulo}
           </h1>
-          <p className="mt-6 text-white/65 max-w-2xl" style={{ fontSize: "clamp(1.05rem, 2.2vw, 1.4rem)", lineHeight: 1.5 }}>
+          <p className="mt-6 text-white/65 max-w-2xl mx-auto" style={{ fontSize: "clamp(1.05rem, 2.2vw, 1.4rem)", lineHeight: 1.5 }}>
             {cfg.heroSub}
           </p>
         </div>

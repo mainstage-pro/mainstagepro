@@ -42,6 +42,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
     where: {
       activo: true,
       estado: "ACTIVO",
+      tipo: "PROPIO",
       categoria: { nombre: { in: nombres } },
     },
     select: {

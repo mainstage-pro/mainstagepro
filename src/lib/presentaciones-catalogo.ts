@@ -10,8 +10,14 @@ import {
   Package,
   Gift,
   Speaker,
+  Lightbulb,
+  Monitor,
+  Disc3,
+  Layers,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
+import { PRESENTACION_CATEGORIAS } from "@/lib/presentacion-categorias";
 
 export type PresentacionItem = {
   key: string;
@@ -66,14 +72,6 @@ export const PRESENTACIONES_COMERCIAL: PresentacionItem[] = [
     audience: "Parejas · Familias · Empresas",
   },
   {
-    key: "cat-audio",
-    label: "Audio",
-    desc: "Sistemas de sonido, consolas y microfonía. El catálogo de audio con fotos reales del equipo y su valor en la producción.",
-    href: "/presentacion/categoria/audio",
-    icon: Speaker,
-    audience: "Clientes · Equipo",
-  },
-  {
     key: "galeria",
     label: "Galería de eventos",
     desc: "Nuestro trabajo en imágenes: musicales, sociales y empresariales.",
@@ -119,3 +117,25 @@ export const PRESENTACIONES_INTERNO: PresentacionItem[] = [
     audience: "Candidatos",
   },
 ];
+
+// Iconos por macro-categoría de equipo (slug de presentacion-categorias).
+const CATEGORIA_ICONS: Record<string, LucideIcon> = {
+  audio: Speaker,
+  iluminacion: Lightbulb,
+  video: Monitor,
+  dj: Disc3,
+  escenarios: Layers,
+  energia: Zap,
+};
+
+// Presentaciones por categoría de equipo (audio, iluminación, video, dj,
+// escenarios, energía). Derivadas de PRESENTACION_CATEGORIAS para no duplicar
+// la taxonomía. Se muestran en su propia pestaña "Equipos".
+export const PRESENTACIONES_CATEGORIAS: PresentacionItem[] = PRESENTACION_CATEGORIAS.map((c) => ({
+  key: `cat-${c.slug}`,
+  label: c.nombre,
+  desc: c.heroSub,
+  href: `/presentacion/categoria/${c.slug}`,
+  icon: CATEGORIA_ICONS[c.slug] ?? Package,
+  audience: "Clientes · Equipo",
+}));
