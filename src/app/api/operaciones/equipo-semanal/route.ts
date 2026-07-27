@@ -109,7 +109,6 @@ export async function GET(req: NextRequest) {
     },
   })
 
-  const now = new Date()
   const TIPOS = new Set(['TAREA', 'PLAN', 'EVENTO', 'PROYECTO', 'TRATO'])
 
   type TareaSemana = {
@@ -182,8 +181,11 @@ export async function GET(req: NextRequest) {
       if (!t.fecha) continue
       const dia = fechaCal(t.fecha)
       if (!setDias.has(dia)) continue
+      // Vencida = su día-calendario de vencimiento es ANTERIOR al día de hoy
+      // (zona México). Comparar contra `new Date()` con hora marcaría como
+      // vencida cualquier tarea que vence HOY, ya que se guardan a medianoche UTC.
       const venceRef = t.fechaVencimiento ?? t.fecha
-      const vencida = t.estado !== 'COMPLETADA' && !!venceRef && venceRef < now
+      const vencida = t.estado !== 'COMPLETADA' && !!venceRef && fechaCal(venceRef) < hoyCal
       lista.push({ ...base, dia, vencida, recurrente: false })
     }
   }
