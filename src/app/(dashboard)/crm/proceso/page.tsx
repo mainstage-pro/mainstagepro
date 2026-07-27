@@ -65,7 +65,6 @@ const GOLD = "#C9A84C";
 
 // Color de acento por etapa (consistente con EtapaInternaBar).
 const ETAPA_COLOR: Record<EtapaTrato, string> = {
-  CONTACTO_INICIAL: "#8b8bd6",
   PROSPECCION: "#a78bfa",
   DESCUBRIMIENTO: "#60a5fa",
   OPORTUNIDAD: "#eab308",

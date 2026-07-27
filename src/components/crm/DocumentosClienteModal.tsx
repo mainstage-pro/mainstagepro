@@ -35,9 +35,12 @@ export default function DocumentosClienteModal({ trato }: { trato: TratoLite }) 
   const [anticipoCxcId, setAnticipoCxcId] = useState<string | null>(null);
   const [cargandoAnticipo, setCargandoAnticipo] = useState(false);
 
-  // La tarjeta aparece cuando la venta está cerrada o hay una cotización aprobada.
+  // La tarjeta aparece cuando la venta está cerrada, hay una cotización aprobada,
+  // o ya existe un proyecto vinculado (el evento está en producción aunque la
+  // etapa/cotización no se hayan marcado como cerradas).
   const hayAprobada = trato.cotizaciones.some(c => ESTADOS_APROBADOS.includes(c.estado));
-  const visible = trato.etapa === "VENTA_CERRADA" || hayAprobada;
+  const hayProyecto = trato.cotizaciones.some(c => c.proyecto);
+  const visible = trato.etapa === "VENTA_CERRADA" || hayAprobada || hayProyecto;
 
   // Cotización por defecto: aprobada → con proyecto → primera.
   const cotDefault = useMemo(() => {
