@@ -51,6 +51,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
       modelo: true,
       subcategoria: true,
       cantidadTotal: true,
+      imagenUrl: true,
       imagenesUrls: true,
       categoria: { select: { nombre: true, orden: true } },
     },
@@ -65,12 +66,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
     subcategoria: e.subcategoria,
     cantidad: e.cantidadTotal,
     categoria: e.categoria.nombre,
+    cover: e.imagenUrl || null,
     fotos: fotosExternas(e.imagenesUrls),
   }));
 
   // Armar los grupos definidos en la config, en orden.
   const grupos = cfg.grupos.map((g) => ({
     label: g.label,
+    rol: g.rol,
     descripcion: g.descripcion ?? null,
     equipos: items.filter((it) => g.categorias.includes(it.categoria)),
   }));

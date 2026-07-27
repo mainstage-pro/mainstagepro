@@ -4,13 +4,17 @@
 // producción de un evento, qué servicios ofrecemos y cómo se ordena el catálogo.
 //
 // El endpoint /api/presentacion/categoria/[slug] usa `grupos[].categorias` para
-// leer los equipos reales del inventario y sus fotos adicionales (uso EXTERNO).
+// leer los equipos reales del inventario, su portada (imagenUrl) y sus fotos
+// adicionales (uso EXTERNO).
 
 export type CategoriaGrupo = {
   // Título de la sección/grupo dentro de la presentación (ej. "Consolas de audio").
   label: string;
   // Nombres EXACTOS de CategoriaEquipo del inventario que caen en este grupo.
   categorias: string[];
+  // "principal" = catálogo central de la categoría; "relacionado" = equipo
+  // complementario que se muestra acotado bajo "Equipos relacionados".
+  rol: "principal" | "relacionado";
   // Descripción corta del grupo (opcional).
   descripcion?: string;
 };
@@ -45,11 +49,10 @@ export const PRESENTACION_CATEGORIAS: PresentacionCategoria[] = [
     heroTitulo: "El sonido que sostiene el momento",
     heroSub:
       "Line arrays, consolas digitales, microfonía inalámbrica y monitoreo in-ear de alta gama. El corazón acústico de cada evento que producimos.",
-    importanciaTitulo: "Nadie recuerda un evento que no se escuchó bien",
+    importanciaTitulo: "Sonido que se siente, no que solo se escucha",
     importanciaParrafos: [
-      "El audio es lo primero que el público percibe y lo último que perdona. Una voz que se entiende, una banda que se siente en el pecho y un discurso limpio hasta la última fila son la diferencia entre un evento memorable y uno que se olvida.",
-      "En Mainstage Pro tratamos el sonido como ingeniería, no como accesorio. Cada sistema se diseña para el recinto, la audiencia y el tipo de programa: cobertura pareja, presión controlada y cero puntos muertos.",
-      "Detrás de cada sistema hay equipo de gama profesional, redundancia en los puntos críticos y un ingeniero que lo opera en vivo. Así garantizamos que lo que se planeó en papel suene exactamente igual el día del evento.",
+      "El audio es lo primero que conecta al público con el momento. Una voz clara, una banda que se siente en el pecho y un discurso nítido hasta la última fila: eso es lo que hace que un evento se recuerde.",
+      "En Mainstage Pro tratamos el sonido como ingeniería. Diseñamos cada sistema para tu recinto y tu evento, con equipo de gama profesional y un ingeniero que lo opera en vivo.",
     ],
     puntos: [
       { titulo: "Inteligibilidad total", texto: "Cobertura pareja para que cada palabra y cada nota llegue clara a toda la audiencia." },
@@ -63,10 +66,10 @@ export const PRESENTACION_CATEGORIAS: PresentacionCategoria[] = [
       { titulo: "Dirección técnica", texto: "Coordinación integral del audio dentro de una producción completa, alineado con iluminación, video y escenario." },
     ],
     grupos: [
-      { label: "Sistemas de sonido", categorias: ["Equipo de Audio"], descripcion: "Line arrays, subwoofers y sistemas de refuerzo para cualquier escala de evento." },
-      { label: "Consolas de audio", categorias: ["Consolas de Audio"], descripcion: "Mezcladoras digitales para control preciso de cada canal en vivo." },
-      { label: "Microfonía e inalámbricos", categorias: ["Sistemas de Microfonía"], descripcion: "Micrófonos de mano, diadema y solapa con sistemas inalámbricos confiables." },
-      { label: "Monitoreo in-ear", categorias: ["Monitoreo In-Ear"], descripcion: "Sistemas personales para que músicos y presentadores se escuchen a la perfección." },
+      { label: "Sistemas de sonido", rol: "principal", categorias: ["Equipo de Audio"], descripcion: "Line arrays, subwoofers y sistemas de refuerzo para cualquier escala de evento." },
+      { label: "Consolas de audio", rol: "relacionado", categorias: ["Consolas de Audio"], descripcion: "Mezcladoras digitales para control preciso de cada canal." },
+      { label: "Microfonía e inalámbricos", rol: "relacionado", categorias: ["Sistemas de Microfonía"], descripcion: "Micrófonos de mano, diadema y solapa con sistemas inalámbricos." },
+      { label: "Monitoreo in-ear", rol: "relacionado", categorias: ["Monitoreo In-Ear"], descripcion: "Sistemas personales para que músicos y presentadores se escuchen perfecto." },
     ],
     relacionadas: ["iluminacion", "dj", "video"],
     cierre: "Diseñemos el sistema de audio perfecto para tu evento.",
@@ -78,11 +81,10 @@ export const PRESENTACION_CATEGORIAS: PresentacionCategoria[] = [
     heroTitulo: "La luz que convierte un espacio en un escenario",
     heroSub:
       "Luminarias robóticas, efectos, consolas y estructuras. Diseño de iluminación que da atmósfera, dirige la mirada y eleva cada momento.",
-    importanciaTitulo: "La luz es lo que la gente ve antes de entender qué está pasando",
+    importanciaTitulo: "La luz que le da vida a cada momento",
     importanciaParrafos: [
-      "La iluminación define la emoción de un evento antes de que suene la primera nota. Marca el ritmo, resalta a los protagonistas y transforma un salón vacío en una experiencia envolvente.",
-      "Trabajamos la luz como diseño, no como relleno: cada luminaria tiene una intención y un lugar. Color, movimiento y contraste al servicio del programa, la marca y la arquitectura del recinto.",
-      "Desde luminarias robóticas hasta rigging y estructura, montamos sistemas seguros y programados con precisión para que cada escena ocurra en el momento exacto.",
+      "La iluminación define la emoción de un evento: marca el ritmo, resalta a los protagonistas y transforma un salón vacío en una experiencia envolvente.",
+      "En Mainstage Pro trabajamos la luz como diseño. Color, movimiento y contraste al servicio del programa y la marca, montados sobre estructura segura y programados con precisión.",
     ],
     puntos: [
       { titulo: "Atmósfera a medida", texto: "Color y textura de luz diseñados para el tono de tu evento." },
@@ -96,9 +98,9 @@ export const PRESENTACION_CATEGORIAS: PresentacionCategoria[] = [
       { titulo: "Dirección técnica", texto: "Operación en vivo y coordinación de la iluminación dentro de una producción integral." },
     ],
     grupos: [
-      { label: "Luminarias y efectos", categorias: ["Equipo de Iluminación"], descripcion: "Cabezas robóticas, PARs, wash y efectos para diseñar cualquier escena." },
-      { label: "Consolas de iluminación", categorias: ["Consolas de Iluminación"], descripcion: "Control profesional para programar y operar el show de luces en vivo." },
-      { label: "Rigging y estructuras", categorias: ["Rigging y Estructuras", "Entarimado"], descripcion: "Truss, soportes y tarimas para montar el diseño con seguridad." },
+      { label: "Luminarias y efectos", rol: "principal", categorias: ["Equipo de Iluminación"], descripcion: "Cabezas robóticas, PARs, wash y efectos para diseñar cualquier escena." },
+      { label: "Consolas de iluminación", rol: "relacionado", categorias: ["Consolas de Iluminación"], descripcion: "Control profesional para programar y operar el show de luces." },
+      { label: "Rigging y estructuras", rol: "relacionado", categorias: ["Rigging y Estructuras", "Entarimado"], descripcion: "Truss, soportes y tarimas para montar el diseño con seguridad." },
     ],
     relacionadas: ["audio", "video", "dj"],
     cierre: "Diseñemos la iluminación que tu evento merece.",
@@ -110,11 +112,10 @@ export const PRESENTACION_CATEGORIAS: PresentacionCategoria[] = [
     heroTitulo: "La cabina donde nace la fiesta",
     heroSub:
       "Controladoras, mezcladoras y booths de DJ profesionales. El equipo que mantiene la pista encendida de principio a fin.",
-    importanciaTitulo: "Un buen DJ necesita un equipo a su altura",
+    importanciaTitulo: "El equipo que mantiene la pista encendida",
     importanciaParrafos: [
-      "La cabina de DJ es el motor de la pista. Un setup confiable, con equipo estándar de la industria, le da al DJ la libertad de leer al público y llevar la energía justo a donde debe estar.",
-      "Ofrecemos controladoras y mezcladoras profesionales que cualquier DJ conoce y domina, montadas en booths que se ven tan bien como suenan.",
-      "Integramos la cabina con el sistema de audio y la iluminación para que la pista se sienta como una sola experiencia, no como piezas sueltas.",
+      "La cabina es el motor de la fiesta. Un setup confiable, con equipo estándar de la industria, le da al DJ la libertad de leer al público y llevar la energía justo a donde debe estar.",
+      "En Mainstage Pro montamos controladoras y mezcladoras profesionales en booths que se ven tan bien como suenan, integrados al audio y la iluminación como una sola experiencia.",
     ],
     puntos: [
       { titulo: "Equipo estándar", texto: "Controladoras y mezcladoras que todo DJ profesional conoce y prefiere." },
@@ -128,8 +129,8 @@ export const PRESENTACION_CATEGORIAS: PresentacionCategoria[] = [
       { titulo: "Dirección técnica", texto: "Coordinación de la cabina dentro de una producción completa." },
     ],
     grupos: [
-      { label: "Equipo para DJ", categorias: ["Consolas/Equipo para DJ"], descripcion: "Controladoras y mezcladoras profesionales estándar de la industria." },
-      { label: "Cabinas DJ", categorias: ["DJ Booths"], descripcion: "Booths con presencia visual para montar la cabina con estilo." },
+      { label: "Equipo para DJ", rol: "principal", categorias: ["Consolas/Equipo para DJ"], descripcion: "Controladoras y mezcladoras profesionales estándar de la industria." },
+      { label: "Cabinas DJ", rol: "relacionado", categorias: ["DJ Booths"], descripcion: "Booths con presencia visual para montar la cabina con estilo." },
     ],
     relacionadas: ["audio", "iluminacion", "video"],
     cierre: "Armemos la cabina perfecta para tu fiesta.",
@@ -141,11 +142,10 @@ export const PRESENTACION_CATEGORIAS: PresentacionCategoria[] = [
     heroTitulo: "La imagen que amplifica cada momento",
     heroSub:
       "Pantallas LED y sistemas de video para que todos vean, sin importar dónde estén parados. Contenido, en vivo y marca, en grande.",
-    importanciaTitulo: "Si el fondo está a oscuras, la mitad del público se lo pierde",
+    importanciaTitulo: "La imagen que acerca el escenario a todos",
     importanciaParrafos: [
-      "El video acerca el escenario a cada persona del recinto. Refuerzo en vivo, contenido de marca y ambientación visual que multiplican el impacto de lo que sucede en escena.",
-      "Manejamos pantallas y sistemas de video pensados para verse nítidos en cualquier condición de luz, con la resolución y el brillo adecuados para el espacio.",
-      "Integramos el video con audio e iluminación para que la imagen no sea un añadido, sino parte de una misma puesta en escena.",
+      "El video acerca el escenario a cada persona del recinto: refuerzo en vivo, contenido de marca y ambientación visual que multiplican el impacto de lo que sucede en escena.",
+      "En Mainstage Pro manejamos pantallas y sistemas de video nítidos en cualquier condición de luz, integrados con audio e iluminación como una sola puesta en escena.",
     ],
     puntos: [
       { titulo: "Todos ven", texto: "Refuerzo visual para que ninguna butaca se pierda lo que pasa en el escenario." },
@@ -159,7 +159,7 @@ export const PRESENTACION_CATEGORIAS: PresentacionCategoria[] = [
       { titulo: "Dirección técnica", texto: "Coordinación del contenido y el video dentro de una producción integral." },
     ],
     grupos: [
-      { label: "Pantallas y video", categorias: ["Pantalla / Video"], descripcion: "Pantallas LED y sistemas de video para refuerzo visual y contenido." },
+      { label: "Pantallas y video", rol: "principal", categorias: ["Pantalla / Video"], descripcion: "Pantallas LED y sistemas de video para refuerzo visual y contenido." },
     ],
     relacionadas: ["audio", "iluminacion", "dj"],
     cierre: "Llevemos tu contenido a la pantalla que se merece.",
