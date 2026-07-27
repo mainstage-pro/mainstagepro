@@ -122,6 +122,26 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       const prevGranTotal = prev?.granTotal ?? 0;
       const newGranTotal  = granTotal ?? 0;
 
+      // Sanear rolTecnicoId huérfanos: si un rol fue borrado (hard delete),
+      // las líneas que aún lo referencian romperían el FK al recrearse.
+      const rolTecnicoIdsRef = [
+        ...new Set(
+          (lineas as Record<string, unknown>[])
+            .map((l) => (l.rolTecnicoId as string) || null)
+            .filter((v): v is string => Boolean(v)),
+        ),
+      ];
+      const rolesValidos = rolTecnicoIdsRef.length
+        ? new Set(
+            (
+              await prisma.rolTecnico.findMany({
+                where: { id: { in: rolTecnicoIdsRef } },
+                select: { id: true },
+              })
+            ).map((r) => r.id),
+          )
+        : new Set<string>();
+
       // Borrar lineas y actualizar cotización en una sola transacción
       const cotizacion = await prisma.$transaction(async (tx) => {
         await tx.cotizacionLinea.deleteMany({ where: { cotizacionId: id } });
@@ -199,7 +219,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
                 esExterno: Boolean(l.esExterno ?? false),
                 esIncluido: Boolean(l.esIncluido ?? false),
                 equipoId: (l.equipoId as string) || null,
-                rolTecnicoId: (l.rolTecnicoId as string) || null,
+                rolTecnicoId: rolesValidos.has(l.rolTecnicoId as string) ? (l.rolTecnicoId as string) : null,
                 proveedorId: (l.proveedorId as string) || null,
                 notas: (l.notas as string) || null,
                 // Déficit de stock propio

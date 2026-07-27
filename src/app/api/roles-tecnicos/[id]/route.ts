@@ -48,6 +48,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { id } = await params;
-  await prisma.rolTecnico.delete({ where: { id } });
+  // Limpiar referencias antes de borrar para no dejar líneas/personal huérfanos
+  // (rompía el FK cotizacion_lineas_rolTecnicoId_fkey al reguardar la cotización).
+  await prisma.$transaction([
+    prisma.cotizacionLinea.updateMany({ where: { rolTecnicoId: id }, data: { rolTecnicoId: null } }),
+    prisma.proyectoPersonal.updateMany({ where: { rolTecnicoId: id }, data: { rolTecnicoId: null } }),
+    prisma.rolTecnico.delete({ where: { id } }),
+  ]);
   return NextResponse.json({ ok: true });
 }
