@@ -28,9 +28,8 @@ export type PresentacionItem = {
   audience: string;
 };
 
-// Presentaciones que se comparten con clientes. Fuente única para el índice
-// interno (/presentaciones) y el índice público compartible (/presentacion).
-export const PRESENTACIONES_COMERCIAL: PresentacionItem[] = [
+// Presentaciones generales: servicios y catálogo de inventario.
+export const PRESENTACIONES_GENERAL: PresentacionItem[] = [
   {
     key: "servicios",
     label: "Servicios",
@@ -39,6 +38,26 @@ export const PRESENTACIONES_COMERCIAL: PresentacionItem[] = [
     icon: SlidersHorizontal,
     audience: "Clientes potenciales",
   },
+  {
+    key: "paquetes",
+    label: "Paquetes",
+    desc: "Paquetes armados para bodas, XV años, conciertos y corporativos. Todo lo que incluye, listo para cotizar.",
+    href: "/presentacion/paquetes",
+    icon: Gift,
+    audience: "Parejas · Familias · Empresas",
+  },
+  {
+    key: "inventario",
+    label: "Inventario de equipo",
+    desc: "Catálogo completo del inventario audiovisual, lista de precios y cotizador.",
+    href: "/presentacion/inventario",
+    icon: Package,
+    audience: "Clientes · Equipo",
+  },
+];
+
+// Presentaciones por tipo de evento.
+export const PRESENTACIONES_EVENTOS: PresentacionItem[] = [
   {
     key: "musical",
     label: "Eventos musicales",
@@ -63,14 +82,10 @@ export const PRESENTACIONES_COMERCIAL: PresentacionItem[] = [
     icon: Building2,
     audience: "Empresas · Agencias",
   },
-  {
-    key: "paquetes",
-    label: "Paquetes",
-    desc: "Paquetes armados para bodas, XV años, conciertos y corporativos. Todo lo que incluye, listo para cotizar.",
-    href: "/presentacion/paquetes",
-    icon: Gift,
-    audience: "Parejas · Familias · Empresas",
-  },
+];
+
+// Galería de eventos.
+export const PRESENTACIONES_GALERIA: PresentacionItem[] = [
   {
     key: "galeria",
     label: "Galería de eventos",
@@ -79,14 +94,14 @@ export const PRESENTACIONES_COMERCIAL: PresentacionItem[] = [
     icon: Camera,
     audience: "Clientes · Redes",
   },
-  {
-    key: "inventario",
-    label: "Inventario de equipo",
-    desc: "Catálogo completo del inventario audiovisual, lista de precios y cotizador.",
-    href: "/presentacion/inventario",
-    icon: Package,
-    audience: "Clientes · Equipo",
-  },
+];
+
+// Unión de todas las presentaciones comerciales. Fuente única para el índice
+// público compartible (/presentacion). Nada interno se lista aquí.
+export const PRESENTACIONES_COMERCIAL: PresentacionItem[] = [
+  ...PRESENTACIONES_GENERAL,
+  ...PRESENTACIONES_EVENTOS,
+  ...PRESENTACIONES_GALERIA,
 ];
 
 // Presentaciones para uso interno (equipo, agencias, candidatos). Nunca se
@@ -130,7 +145,7 @@ const CATEGORIA_ICONS: Record<string, LucideIcon> = {
 
 // Presentaciones por categoría de equipo (audio, iluminación, video, dj,
 // escenarios, energía). Derivadas de PRESENTACION_CATEGORIAS para no duplicar
-// la taxonomía. Se muestran en su propia pestaña "Equipos".
+// la taxonomía. Se muestran en su propia pestaña "Categoría de equipos".
 export const PRESENTACIONES_CATEGORIAS: PresentacionItem[] = PRESENTACION_CATEGORIAS.map((c) => ({
   key: `cat-${c.slug}`,
   label: c.nombre,

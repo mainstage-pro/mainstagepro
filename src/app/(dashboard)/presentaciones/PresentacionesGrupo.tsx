@@ -38,7 +38,7 @@ export default function PresentacionesGrupo({
 
   return (
     <div className="p-6 sm:p-8 max-w-5xl mx-auto">
-      {grupo.grupo === "Comercial" && (
+      {grupo.grupo === "General" && (
         <div className="mb-4 bg-[#8b5cf6]/5 border border-[#8b5cf6]/20 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex-1 min-w-0">
             <h3 className="text-white font-semibold text-sm">Índice público para clientes</h3>
@@ -76,7 +76,7 @@ export default function PresentacionesGrupo({
           </div>
         </div>
       )}
-      {grupo.grupo === "Comercial" && (
+      {grupo.grupo === "Galería" && (
         <div className="mb-4 bg-[#B3985B]/5 border border-[#B3985B]/20 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex-1 min-w-0">
             <h3 className="text-white font-semibold text-sm">Galerías por tipo de evento</h3>

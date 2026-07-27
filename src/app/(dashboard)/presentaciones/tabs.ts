@@ -1,7 +1,9 @@
 import type { ModuleNavTab } from "@/components/ModuleTabsLayout";
 
 export const presentacionesTabs: ModuleNavTab[] = [
-  { href: "/presentaciones/comercial", label: "Comercial" },
-  { href: "/presentaciones/equipos", label: "Equipos" },
+  { href: "/presentaciones/general", label: "General" },
+  { href: "/presentaciones/tipo-eventos", label: "Tipo de eventos" },
+  { href: "/presentaciones/categoria-equipos", label: "Categoría de equipos" },
+  { href: "/presentaciones/galeria", label: "Galería" },
   { href: "/presentaciones/interno", label: "Interno" },
 ];
