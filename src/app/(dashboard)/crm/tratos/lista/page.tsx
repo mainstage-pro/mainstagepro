@@ -222,12 +222,11 @@ function groupTratosByMes(tratos: Trato[], ordenTrato: OrdenTrato = 'fechaEvento
 }
 
 
-const ETAPAS = ["CONTACTO_INICIAL", "PROSPECCION", "DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA"];
+const ETAPAS = ["PROSPECCION", "DESCUBRIMIENTO", "OPORTUNIDAD", "VENTA_CERRADA", "VENTA_PERDIDA"];
 const TIPOS_EVENTO = ["MUSICAL", "SOCIAL", "EMPRESARIAL", "OTRO"];
 
 const ALL_ETAPAS = [
   { key: 'TODOS',            label: 'Todos',          color: '#6B7280' },
-  { key: 'CONTACTO_INICIAL', label: 'Contacto inicial', color: '#F59E0B' },
   { key: 'PROSPECCION',      label: 'Prospección',    color: '#A855F7' },
   { key: 'DESCUBRIMIENTO',   label: 'Descubrimiento', color: '#3B82F6' },
   { key: 'OPORTUNIDAD',      label: 'Oportunidad',    color: '#8B5CF6' },
@@ -1702,17 +1701,6 @@ export default function TratosPage() {
                 activeBorder: 'border-gray-600/40',
                 activeDot: 'bg-gray-400',
                 inactiveDot: 'bg-gray-700',
-              },
-              {
-                filter: 'CONTACTO_INICIAL',
-                label: 'Contacto inicial',
-                count: all.filter(t => t.etapa === 'CONTACTO_INICIAL').length,
-                valor: all.filter(t => t.etapa === 'CONTACTO_INICIAL').reduce((s, t) => s + getTratoValor(t), 0),
-                color: '#F59E0B',
-                activeGrad: 'from-amber-900/50 to-amber-950/30',
-                activeBorder: 'border-amber-500/40',
-                activeDot: 'bg-amber-400',
-                inactiveDot: 'bg-amber-900/60',
               },
               {
                 filter: 'PROSPECCION',

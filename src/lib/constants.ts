@@ -25,7 +25,7 @@ export const ETAPA_LABELS: Record<string, string> = {
 
 // Momento de contratación del lead → mapea a etapa por defecto del pipeline
 export const MOMENTO_LABELS: Record<string, string> = {
-  EXPLORANDO: "Explorando",
+  EXPLORANDO: "Prospección",
   COTIZANDO: "Cotizando",
   LISTO_PARA_DECIDIR: "Listo para decidir",
   URGENTE: "Urgente",
@@ -39,7 +39,7 @@ export const MOMENTO_COLORS: Record<string, string> = {
 };
 
 export const MOMENTO_OPTIONS: { value: string; label: string; hint: string; etapa: string }[] = [
-  { value: "EXPLORANDO", label: "Explorando", hint: "Apenas investigando opciones", etapa: "PROSPECCION" },
+  { value: "EXPLORANDO", label: "Prospección", hint: "Apenas investigando opciones", etapa: "PROSPECCION" },
   { value: "COTIZANDO", label: "Cotizando", hint: "Pidiendo precios / comparando", etapa: "DESCUBRIMIENTO" },
   { value: "LISTO_PARA_DECIDIR", label: "Listo para decidir", hint: "Con presupuesto y fecha", etapa: "OPORTUNIDAD" },
   { value: "URGENTE", label: "Urgente", hint: "Necesita cerrar ya", etapa: "OPORTUNIDAD" },

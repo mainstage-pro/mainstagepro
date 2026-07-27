@@ -14,7 +14,6 @@ import { z } from "zod";
 
 // ── Etapa del pipeline ───────────────────────────────────────────────────────
 export const ETAPAS = [
-  "CONTACTO_INICIAL",
   "PROSPECCION",
   "DESCUBRIMIENTO",
   "OPORTUNIDAD",
@@ -24,7 +23,6 @@ export const ETAPAS = [
 export type EtapaTrato = (typeof ETAPAS)[number];
 
 export const ETAPA_LABELS: Record<EtapaTrato, string> = {
-  CONTACTO_INICIAL: "Contacto inicial",
   PROSPECCION: "Prospección",
   DESCUBRIMIENTO: "Descubrimiento",
   OPORTUNIDAD: "Oportunidad",
@@ -60,7 +58,7 @@ export const ETAPA_INTERNA_LABELS: Record<EtapaInterna, string> = {
 
 // A qué etapa pertenece cada subetapa. Estructura fija del proceso.
 export const ETAPA_DE_INTERNA: Record<EtapaInterna, EtapaTrato> = {
-  PRIMER_CONTACTO: "CONTACTO_INICIAL",
+  PRIMER_CONTACTO: "PROSPECCION",
   NURTURING: "PROSPECCION",
   FORMULARIO_ENVIADO: "DESCUBRIMIENTO",
   PROPUESTA_EN_ELABORACION: "OPORTUNIDAD",
@@ -73,8 +71,7 @@ export const ETAPA_DE_INTERNA: Record<EtapaInterna, EtapaTrato> = {
 
 // Subetapas de cada etapa, en orden de avance.
 export const SUBETAPAS_DE_ETAPA: Record<EtapaTrato, EtapaInterna[]> = {
-  CONTACTO_INICIAL: ["PRIMER_CONTACTO"],
-  PROSPECCION: ["NURTURING"],
+  PROSPECCION: ["PRIMER_CONTACTO", "NURTURING"],
   DESCUBRIMIENTO: ["FORMULARIO_ENVIADO"],
   OPORTUNIDAD: ["PROPUESTA_EN_ELABORACION", "COTIZACION_ENVIADA", "CAMBIOS_Y_NEGOCIACION"],
   VENTA_CERRADA: ["CONFIRMADA", "FORMALIZADA"],
@@ -91,7 +88,7 @@ export const MOMENTOS = ["EXPLORANDO", "COTIZANDO", "LISTO_PARA_DECIDIR", "URGEN
 export type MomentoContratacion = (typeof MOMENTOS)[number];
 
 export const MOMENTO_LABELS: Record<MomentoContratacion, string> = {
-  EXPLORANDO: "Explorando",
+  EXPLORANDO: "Prospección",
   COTIZANDO: "Cotizando",
   LISTO_PARA_DECIDIR: "Listo para decidir",
   URGENTE: "Urgente",

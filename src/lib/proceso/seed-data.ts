@@ -32,9 +32,9 @@ export type ReglaSeed = {
 };
 
 export const SUBETAPAS_SEED: SubetapaSeed[] = [
-  // ─── ETAPA CONTACTO_INICIAL ────────────────────────────────────────
+  // ─── ETAPA PROSPECCION · Primer contacto ───────────────────────────
   {
-    etapa: "CONTACTO_INICIAL",
+    etapa: "PROSPECCION",
     etapaInterna: "PRIMER_CONTACTO",
     nombre: "Primer contacto",
     descripcion: "Nos presentamos, abrimos conversacion y calificamos en que punto esta el prospecto",

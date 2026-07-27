@@ -14,7 +14,6 @@ import {
   PlanContactosSteps,
   MaterialCompartir,
   NotasSeguimiento,
-  SeguimientosTracker,
   type NotaSeg,
   type SegItem,
 } from "@/components/crm/PlanContactos";
@@ -190,56 +189,11 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
     await guardarNurturing(u);
   }
 
-  // ── Seguimientos por etapa (marcar 1/2/3 como completados) ──
-  const segsDe = (e: string): SegItem[] => nurturing.seguimientosPorEtapa?.[e] ?? [];
-  const maxDe = (e: string): number => nurturing.maxSeguimientosPorEtapa?.[e] ?? 3;
-
-  async function marcarSeguimiento(etapaKey: string, num: number) {
-    setSaving(true);
-    const item: SegItem = { num, fecha: new Date().toISOString(), nota: "" };
-    const prev = nurturing.seguimientosPorEtapa?.[etapaKey] ?? [];
-    const nuevos = [...prev.filter(s => s.num !== num), item].sort((a, b) => a.num - b.num);
-    const u: NurturingData = {
-      ...nurturing,
-      seguimientosPorEtapa: { ...(nurturing.seguimientosPorEtapa ?? {}), [etapaKey]: nuevos },
-    };
-    setNurturing(u);
-    await guardarNurturing(u);
-    setSaving(false);
-  }
-
-  function agregarSlotSeguimiento(etapaKey: string) {
-    const cur = maxDe(etapaKey);
-    const u: NurturingData = {
-      ...nurturing,
-      maxSeguimientosPorEtapa: { ...(nurturing.maxSeguimientosPorEtapa ?? {}), [etapaKey]: cur + 1 },
-    };
-    setNurturing(u);
-    guardarNurturing(u);
-  }
-
   // ── Elegir modalidad de la propuesta y pasar directo al descubrimiento ──
   function elegirModalidad(m: "INVENTARIO" | "CONTRA_RIDER") {
     const u: NurturingData = { ...nurturing, modalidadPropuesta: m, preparacionHecha: true };
     setNurturing(u);
     guardarNurturing(u);
-  }
-
-  async function marcarPerdida(motivo: string) {
-    setSaving(true);
-    const res = await fetch(`/api/tratos/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ etapa: "VENTA_PERDIDA", motivoPerdida: motivo }),
-    });
-    if (res.ok) {
-      toast.success("Trato marcado como perdido");
-      router.push(`/crm/tratos/${id}`);
-    } else {
-      const d = await res.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al marcar como perdida");
-    }
-    setSaving(false);
   }
 
   // Avanzar a descubrimiento
@@ -354,18 +308,6 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
         ═══════════════════════════════════════════════════════════ */}
         {esProspeccion && (
           <>
-            {/* ── Seguimientos 1/2/3 de la etapa de Prospección ── */}
-            <SeguimientosTracker
-              seguimientos={segsDe("LEAD")}
-              maxSlots={maxDe("LEAD")}
-              esOutbound={esOutbound}
-              saving={saving}
-              onMarcar={(num) => marcarSeguimiento("LEAD", num)}
-              onAgregarSlot={() => agregarSlotSeguimiento("LEAD")}
-              onPasarDescubrimiento={() => iniciarDescubrimiento()}
-              onMarcarPerdida={marcarPerdida}
-            />
-
             {/* ── Plan de contactos (pasos) ── */}
             <PlanContactosSteps
               contactos={contactos}
@@ -759,7 +701,6 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
 
 // ─── Modal: editar los datos iniciales del trato (no re-crea, hace PATCH) ──────
 const ETAPAS_EDITABLES = [
-  { value: "CONTACTO_INICIAL", label: "🔭 Contacto inicial" },
   { value: "PROSPECCION", label: "🌱 Prospección" },
   { value: "DESCUBRIMIENTO", label: "🔍 Descubrimiento" },
   { value: "OPORTUNIDAD", label: "📋 Oportunidad" },

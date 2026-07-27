@@ -122,6 +122,27 @@ export async function ensureProcesoVentaColumns() {
 }
 
 /**
+ * Migración lazy: se retiró la etapa CONTACTO_INICIAL del pipeline. El "Primer contacto"
+ * pasa a ser la primera sub-etapa de PROSPECCION. Reasigna la subetapa en la BD y migra
+ * los tratos legacy que quedaron en CONTACTO_INICIAL. Solo DML, sin cambio de esquema.
+ * Idempotente (tras la primera corrida actualiza 0 filas).
+ */
+let _contactoInicialRetiradoReady = false;
+
+export async function ensureContactoInicialRetirado() {
+  if (_contactoInicialRetiradoReady) return;
+  try {
+    await prisma.$executeRawUnsafe(
+      `UPDATE proceso_subetapas SET etapa = 'PROSPECCION' WHERE "etapaInterna" = 'PRIMER_CONTACTO' AND etapa <> 'PROSPECCION'`
+    );
+    await prisma.$executeRawUnsafe(
+      `UPDATE tratos SET etapa = 'PROSPECCION' WHERE etapa = 'CONTACTO_INICIAL'`
+    );
+  } catch { /* best-effort */ }
+  _contactoInicialRetiradoReady = true;
+}
+
+/**
  * Migraciones lazy para servicios de varios días (patrón Neon: ADD COLUMN IF NOT EXISTS).
  * - tratos.fechasEvento / proyectos.fechasEvento: JSON con las fechas explícitas del evento
  *   cuando dura más de un día. El día 1 sigue en fechaEventoEstimada / fechaEvento.

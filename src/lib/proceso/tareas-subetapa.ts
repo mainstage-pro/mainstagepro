@@ -175,7 +175,12 @@ async function autocompletarSubetapasPasadas(
   if (!etapaInternaActual) return;
   const curIdx = orden.findIndex((s) => s.etapaInterna === etapaInternaActual);
   if (curIdx <= 0) return;
-  const pasadas = orden.slice(0, curIdx).map((s) => s.etapaInterna);
+  // El primer contacto (presentarnos / abrir conversación / calificar) siempre debe
+  // hacerse aunque el trato se genere directo en una etapa posterior: no lo auto-completamos.
+  const pasadas = orden
+    .slice(0, curIdx)
+    .map((s) => s.etapaInterna)
+    .filter((e) => e !== "PRIMER_CONTACTO");
   if (pasadas.length === 0) return;
 
   await prisma.tarea.updateMany({

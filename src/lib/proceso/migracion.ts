@@ -120,7 +120,7 @@ function planificar(t: {
         momentoContratacion = "EXPLORANDO";
       } else {
         nuevaInterna = "PRIMER_CONTACTO";
-        nuevaEtapa = "CONTACTO_INICIAL";
+        nuevaEtapa = "PROSPECCION";
       }
       caso = "D";
     }
