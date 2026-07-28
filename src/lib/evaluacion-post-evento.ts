@@ -11,18 +11,53 @@ export type ItemResp = { valor: RespValor | null; comentario: string };
 // Evidencia (fotos / videos) que sube el coordinador para el reporte al cliente.
 export type FotoReporte = { url: string; nombre: string; tipo: "imagen" | "video" };
 
+// Gasto / imprevisto reportado por el coordinador. El comprobante es obligatorio.
+export type GastoReporte = { concepto: string; monto: number; comprobante: FotoReporte[] };
+
+// Slot de evidencia obligatoria: bloquea el envío del reporte hasta subir la foto.
+// Es el mecanismo anti-mentira: no se puede afirmar sin respaldarlo con imagen.
+export type EvidenciaSlot = {
+  id: string;
+  label: string;
+  desc?: string;
+  obligatoria: boolean;
+  min?: number; // mínimo de fotos (default 1)
+};
+
 export type EvalPostEventoData = {
   llenadoPorId: string | null;
   llenadoPorNombre: string | null;
   respondidoEn: string | null; // primera vez que se guardó
   actualizadoEn: string | null; // última edición
   items: Record<string, ItemResp>;
-  calificaciones: Record<string, number | null>; // dimensión -> 1..5
-  calificacionFinal: number | null; // calificación global del coordinador 1..5
-  propuestasMejora: string[];
+  // Evidencia por slot obligatorio (montaje, operación, regreso, etc.).
+  evidencias: Record<string, FotoReporte[]>;
+  // Gastos e imprevistos, cada uno con su comprobante.
+  gastos: GastoReporte[];
+  // Bloques de texto obligatorios del coordinador.
+  logros: string; // ¿Qué hiciste bien o resolviste?
+  autocritica: string; // ¿Qué pudiste haber hecho mejor tú?
+  propuestasMejora: string[]; // acciones concretas para el próximo evento
   comentariosFinales: string;
   fotos: FotoReporte[]; // evidencia fotográfica / video para el reporte al cliente
+  completado: boolean; // el coordinador marcó el reporte como terminado
+  completadoEn: string | null;
+  // Legacy: el coordinador ya NO se autocalifica (lo hace dirección). Se conservan
+  // opcionales para no romper la lectura de reportes viejos.
+  calificaciones?: Record<string, number | null>;
+  calificacionFinal?: number | null;
 };
+
+// Longitud mínima para considerar "respondido" un bloque de texto obligatorio.
+export const MIN_TEXTO_REPORTE = 15;
+
+// Ejemplos guía (placeholder) para los bloques obligatorios.
+export const EJEMPLO_LOGROS =
+  "Ej.: «Cuando falló un cañón en pleno evento lo sustituí en 5 min con el de respaldo sin que el cliente lo notara.»";
+export const EJEMPLO_AUTOCRITICA =
+  "Ej.: «Debí revisar el cableado la noche anterior; por hacerlo en sitio, el montaje empezó 30 min tarde.»";
+export const EJEMPLO_MEJORA =
+  "Ej.: «Pedir el brief 48 h antes para no improvisar la distribución de audio en el lugar.»";
 
 export type EvalItem = {
   id: string;
@@ -93,6 +128,14 @@ const CALIF_EVENTO: CalifDimension[] = [
   { id: "comunicacionCliente", label: "Comunicación con el cliente", desc: "Claridad y trato con el cliente antes, durante y después." },
 ];
 
+// Evidencia obligatoria del reporte de PRODUCCIÓN. Cada slot pide foto de cámara.
+const EVIDENCIAS_EVENTO: EvidenciaSlot[] = [
+  { id: "montaje", label: "Montaje terminado", desc: "Foto del escenario / montaje completo, listo antes del evento.", obligatoria: true },
+  { id: "operacion", label: "Equipo en operación", desc: "Foto durante el evento con el equipo funcionando.", obligatoria: true },
+  { id: "regreso", label: "Equipo de regreso en bodega", desc: "Foto del equipo ya descargado y acomodado en bodega.", obligatoria: true },
+  { id: "fallas", label: "Fallas o incidencias (si hubo)", desc: "Foto de cualquier falla, daño o incidencia. Opcional si no hubo.", obligatoria: false },
+];
+
 // ─── Variante RENTA (renta de equipo) ────────────────────────────────────────
 
 const SECCIONES_RENTA: EvalSeccion[] = [
@@ -127,6 +170,14 @@ const CALIF_RENTA: CalifDimension[] = [
   { id: "cumplimientoCliente", label: "Cumplimiento del cliente", desc: "Apego a fechas, cuidado, comunicación y condiciones de la renta." },
 ];
 
+// Evidencia obligatoria del reporte de RENTA.
+const EVIDENCIAS_RENTA: EvidenciaSlot[] = [
+  { id: "entrega", label: "Equipo entregado / cargado", desc: "Foto del equipo completo al momento de entregarlo o cargarlo.", obligatoria: true },
+  { id: "responsiva", label: "Responsiva / contrato firmado", desc: "Foto del documento firmado por el cliente.", obligatoria: true },
+  { id: "devolucion", label: "Equipo de regreso", desc: "Foto del equipo al recibirlo de vuelta.", obligatoria: true },
+  { id: "danos", label: "Daños detectados (si hubo)", desc: "Foto de golpes, roturas o faltantes. Opcional si no hubo.", obligatoria: false },
+];
+
 // ─── Config por variante ─────────────────────────────────────────────────────
 
 export type EvalConfig = {
@@ -134,6 +185,7 @@ export type EvalConfig = {
   etiqueta: string; // título / breadcrumb
   resumenSubtitulo: string; // subtítulo del card dentro del proyecto
   secciones: EvalSeccion[];
+  evidencias: EvidenciaSlot[]; // slots de evidencia (obligatorios y opcionales)
   califTitulo: string;
   califDescripcion: string;
   califDimensiones: CalifDimension[];
@@ -158,9 +210,10 @@ export function getEvalConfig(tipoServicio: string | null): EvalConfig {
   if (tipoServicio === "RENTA") {
     return {
       variante: "renta",
-      etiqueta: "Evaluación Post Renta",
-      resumenSubtitulo: "Cierre de la renta: entrega, devolución y estado del equipo",
+      etiqueta: "Reporte Post Renta",
+      resumenSubtitulo: "Reporte del coordinador: entrega, devolución y estado del equipo con evidencia",
       secciones: SECCIONES_RENTA,
+      evidencias: EVIDENCIAS_RENTA,
       califTitulo: "Calificación de la renta",
       califDescripcion: "Califica cada dimensión de 1 a 5 estrellas. El promedio define el resultado de la renta.",
       califDimensiones: CALIF_RENTA,
@@ -171,9 +224,10 @@ export function getEvalConfig(tipoServicio: string | null): EvalConfig {
   }
   return {
     variante: "evento",
-    etiqueta: "Evaluación Post Evento",
-    resumenSubtitulo: "Cierre operativo del coordinador para presentar en junta",
+    etiqueta: "Reporte Post Evento",
+    resumenSubtitulo: "Reporte del coordinador con evidencia obligatoria para la junta",
     secciones: SECCIONES_EVENTO,
+    evidencias: EVIDENCIAS_EVENTO,
     califTitulo: "Calificación de la operación",
     califDescripcion: "Califica cada dimensión de 1 a 5 estrellas. El promedio define el resultado de operación y coordinación.",
     califDimensiones: CALIF_EVENTO,
@@ -196,12 +250,55 @@ export function emptyEvalData(): EvalPostEventoData {
     respondidoEn: null,
     actualizadoEn: null,
     items: {},
-    calificaciones: {},
-    calificacionFinal: null,
+    evidencias: {},
+    gastos: [],
+    logros: "",
+    autocritica: "",
     propuestasMejora: [],
     comentariosFinales: "",
     fotos: [],
+    completado: false,
+    completadoEn: null,
   };
+}
+
+// ─── Validación del reporte del coordinador ──────────────────────────────────
+// Verifica los requisitos obligatorios antes de permitir "Completar reporte".
+// Se corre en el cliente (para bloquear el botón) y en el servidor (fuente de verdad).
+export function reporteCompleto(
+  data: EvalPostEventoData,
+  config: EvalConfig,
+): { ok: boolean; faltantes: string[] } {
+  const faltantes: string[] = [];
+
+  // 1. Todas las respuestas Sí/No del checklist deben estar contestadas.
+  const items = itemsDeSecciones(config.secciones);
+  const sinResponder = items.filter((it) => {
+    const v = data.items?.[it.id]?.valor;
+    return v !== "si" && v !== "no" && v !== "na";
+  });
+  if (sinResponder.length) faltantes.push(`Faltan ${sinResponder.length} respuesta(s) del checklist.`);
+
+  // 2. Cada slot de evidencia obligatoria debe tener al menos `min` fotos.
+  for (const slot of config.evidencias) {
+    if (!slot.obligatoria) continue;
+    const n = (data.evidencias?.[slot.id] ?? []).length;
+    if (n < (slot.min ?? 1)) faltantes.push(`Falta evidencia: ${slot.label}.`);
+  }
+
+  // 3. Cada gasto reportado debe tener concepto y comprobante.
+  (data.gastos ?? []).forEach((g, i) => {
+    if (!g.concepto?.trim()) faltantes.push(`Gasto #${i + 1}: falta el concepto.`);
+    if ((g.comprobante ?? []).length === 0) faltantes.push(`Gasto #${i + 1}: falta el comprobante.`);
+  });
+
+  // 4. Bloques de texto obligatorios (logros, autocrítica, propuesta de mejora).
+  if ((data.logros ?? "").trim().length < MIN_TEXTO_REPORTE) faltantes.push("Falta responder «¿Qué hiciste bien o resolviste?».");
+  if ((data.autocritica ?? "").trim().length < MIN_TEXTO_REPORTE) faltantes.push("Falta la autocrítica.");
+  const propuestas = (data.propuestasMejora ?? []).map((p) => p.trim()).filter(Boolean);
+  if (!propuestas.length || propuestas[0].length < MIN_TEXTO_REPORTE) faltantes.push("Falta al menos una propuesta de mejora.");
+
+  return { ok: faltantes.length === 0, faltantes };
 }
 
 // Un ítem "requiere respuesta" salvo los opcionales marcados como "No fue necesario".

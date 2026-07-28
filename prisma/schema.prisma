@@ -626,8 +626,10 @@ model Proyecto {
   marketingData          String?
   // Documentos técnicos por tipo de evento (JSON estructurado)
   docsTecnicos           String?
-  // Evaluación post evento (cierre operativo del coordinador, JSON)
+  // Reporte post evento del coordinador (hechos + evidencia obligatoria, JSON)
   evaluacionPostEvento   Json?
+  // Evaluación de dirección del evento (calificación 1-5 por dimensión, JSON)
+  evaluacionDireccion    Json?
   // Chofer asignado al proyecto
   choferNombre           String?   // Nombre del chofer (del personal del proyecto o externo)
   choferExterno          Boolean   @default(false)  // true = chofer externo (genera CxP)

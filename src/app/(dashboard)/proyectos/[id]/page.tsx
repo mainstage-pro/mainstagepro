@@ -20,7 +20,8 @@ import { BackButton } from "@/components/BackButton";
 import { Package, AlertTriangle, Smartphone, Truck, Home, Radio, MessageCircle, FileText, Bell, User, Factory, ClipboardList, FileImage } from "lucide-react";
 import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem } from "@/components/proyectos/ViabilidadWidget";
 import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
-import { contarRespondidos, contarIncidencias, promedioCalificaciones, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
+import { contarRespondidos, contarIncidencias, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
+import { getDireccionConfig, promedioDireccion, type EvaluacionDireccionData } from "@/lib/evaluacion-direccion";
 import { diasEvento, parseHorariosEvento, horarioDeDia } from "@/lib/fechas-evento";
 import { construirCronologia } from "@/lib/cronologia-evento";
 import { checksAvanceProduccion } from "@/lib/proyecto-avance";
@@ -89,6 +90,7 @@ interface Proyecto {
   logisticaRenta: string | null;
   docsTecnicos: string | null;
   evaluacionPostEvento: EvalPostEventoData | null;
+  evaluacionDireccion: EvaluacionDireccionData | null;
   proveedoresRenta: string | null;
   equiposRiderExtra: string | null;
   zona: string;
@@ -1284,6 +1286,15 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const [evalClienteLoaded, setEvalClienteLoaded] = useState(false);
   const [loadingEvalCliente, setLoadingEvalCliente] = useState(false);
   const [generandoLink, setGenerandoLink] = useState(false);
+  // Usuario actual (para gate de la evaluación de dirección)
+  const [yo, setYo] = useState<{ role: string | null; area: string | null } | null>(null);
+  useEffect(() => {
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (d?.user) setYo({ role: d.user.role ?? null, area: d.user.area ?? null }); })
+      .catch(() => {});
+  }, []);
+  const esDireccion = yo?.role === "ADMIN" || yo?.area === "DIRECCION";
   // Reporte post-evento
 
   // Cierre financiero
@@ -6577,7 +6588,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 return (
                   <div className="space-y-4">
 
-                  {/* ── Evaluación Post Evento / Post Renta (cierre operativo del coordinador) ── */}
+                  {/* ── Reporte Post Evento / Post Renta (coordinador: hechos + evidencia) ── */}
                   {aplicaEvaluacion(proyecto.tipoServicio) && (() => {
                     const config = getEvalConfig(proyecto.tipoServicio);
                     const evalPost = proyecto.evaluacionPostEvento;
@@ -6585,10 +6596,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     const { respondidos, total } = contarRespondidos(items, config.secciones);
                     const incidencias = evalPost ? contarIncidencias(items, config.secciones) : 0;
                     const iniciada = !!evalPost?.respondidoEn;
-                    const promOperacion = promedioCalificaciones(evalPost?.calificaciones ?? {}, config.califDimensiones);
-                    const nivelOperacion = nivelResultado(promOperacion);
-                    const califFinal = evalPost?.calificacionFinal ?? null;
-                    const nivelFinal = nivelResultado(califFinal);
+                    const enviado = !!evalPost?.completado;
                     return (
                       <div className="ms-card p-5 space-y-4">
                         <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -6601,34 +6609,23 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                             className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-white text-xs px-4 py-2 rounded-lg transition-colors"
                           >
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                            {iniciada ? "Editar" : "Realizar evaluación"}
+                            {enviado ? "Ver / corregir" : iniciada ? "Continuar reporte" : "Elaborar reporte"}
                           </Link>
                         </div>
                         {iniciada ? (
                           <div className="space-y-3">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                              <div className="rounded-lg px-3 py-2 border" style={{ backgroundColor: `${nivelOperacion.color}14`, borderColor: `${nivelOperacion.color}40` }}>
-                                <p className="text-[9px] uppercase tracking-wider" style={{ color: `${nivelOperacion.color}cc` }}>{config.variante === "renta" ? "Renta" : "Operación"}</p>
-                                <p className="text-sm font-bold" style={{ color: nivelOperacion.color }}>{promOperacion ? `${promOperacion.toFixed(1)}/5` : "—"} <span className="text-[10px] font-medium">{nivelOperacion.label}</span></p>
-                              </div>
-                              <div className="rounded-lg px-3 py-2 border" style={{ backgroundColor: `${nivelFinal.color}14`, borderColor: `${nivelFinal.color}40` }}>
-                                <p className="text-[9px] uppercase tracking-wider" style={{ color: `${nivelFinal.color}cc` }}>Final</p>
-                                <p className="text-sm font-bold" style={{ color: nivelFinal.color }}>{califFinal ? `${califFinal}/5` : "—"} <span className="text-[10px] font-medium">{nivelFinal.label}</span></p>
-                              </div>
-                              <div className="rounded-lg px-3 py-2 border" style={incidencias > 0 ? { backgroundColor: "#F8717114", borderColor: "#F8717140" } : { backgroundColor: "#34D39914", borderColor: "#34D39940" }}>
-                                <p className="text-[9px] uppercase tracking-wider" style={{ color: incidencias > 0 ? "#F87171cc" : "#34D399cc" }}>Puntos a revisar</p>
-                                <p className="text-sm font-bold" style={{ color: incidencias > 0 ? "#F87171" : "#34D399" }}>{incidencias > 0 ? incidencias : "0"} <span className="text-[10px] font-medium">{incidencias > 0 ? "en junta" : "ok"}</span></p>
-                              </div>
-                            </div>
                             <div className="flex items-center gap-3 flex-wrap">
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${enviado ? "bg-green-900/50 text-green-300" : "bg-yellow-900/40 text-yellow-300"}`}>{enviado ? "Enviado" : "Borrador"}</span>
                               <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-[#1a1a1a] text-gray-300 border border-[#333]">{respondidos}/{total} respondidos</span>
-                              {evalPost?.llenadoPorNombre && (
-                                <span className="text-xs text-gray-500">Por {evalPost.llenadoPorNombre}</span>
-                              )}
-                              {evalPost?.respondidoEn && (
-                                <span className="text-xs text-gray-500">· {fmtDateTime(evalPost.respondidoEn)}</span>
-                              )}
+                              {incidencias > 0 && <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-red-900/40 text-red-300">{incidencias} incidencia(s)</span>}
+                              {evalPost?.llenadoPorNombre && <span className="text-xs text-gray-500">Por {evalPost.llenadoPorNombre}</span>}
                             </div>
+                            {evalPost?.autocritica && (
+                              <div className="bg-[#0d0d0d] rounded-lg px-3 py-2">
+                                <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Autocrítica del coordinador</p>
+                                <p className="text-gray-300 text-sm whitespace-pre-wrap line-clamp-3">{evalPost.autocritica}</p>
+                              </div>
+                            )}
                             {evalPost?.propuestasMejora && evalPost.propuestasMejora.filter(Boolean).length > 0 && (
                               <div className="bg-[#0d0d0d] rounded-lg px-3 py-2">
                                 <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Propuestas de mejora</p>
@@ -6637,15 +6634,55 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                 </ul>
                               </div>
                             )}
-                            {evalPost?.comentariosFinales && (
+                          </div>
+                        ) : (
+                          <p className="text-gray-600 text-sm">Aún no se ha elaborado. El coordinador debe registrar el reporte del evento con evidencia.</p>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* ── Evaluación de Dirección (solo dirección / admin) ── */}
+                  {aplicaEvaluacion(proyecto.tipoServicio) && esDireccion && (() => {
+                    const dir = proyecto.evaluacionDireccion;
+                    const dirConfig = getDireccionConfig(proyecto.tipoServicio);
+                    const prom = dir ? promedioDireccion(dir, dirConfig) : null;
+                    const nivel = nivelResultado(prom);
+                    const finalizada = !!dir?.finalizada;
+                    return (
+                      <div className="ms-card p-5 space-y-4">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <div>
+                            <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">{dirConfig.etiqueta}</p>
+                            <p className="text-gray-500 text-xs mt-0.5">{dirConfig.subtitulo}</p>
+                          </div>
+                          <Link
+                            href={`/proyectos/${proyecto.id}/evaluacion-direccion`}
+                            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-white text-xs px-4 py-2 rounded-lg transition-colors"
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118L2.036 10.8c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                            {dir ? "Ver / editar" : "Evaluar evento"}
+                          </Link>
+                        </div>
+                        {dir ? (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${finalizada ? "bg-green-900/50 text-green-300" : "bg-yellow-900/40 text-yellow-300"}`}>{finalizada ? "Finalizada" : "En progreso"}</span>
+                              <div className="rounded-lg px-3 py-1 border" style={{ backgroundColor: `${nivel.color}14`, borderColor: `${nivel.color}40` }}>
+                                <span className="text-sm font-bold" style={{ color: nivel.color }}>{prom ? `${prom.toFixed(1)}/5` : "—"}</span>
+                                <span className="text-[10px] ml-1 font-medium" style={{ color: nivel.color }}>{nivel.label}</span>
+                              </div>
+                              {dir.evaluadorNombre && <span className="text-xs text-gray-500">Por {dir.evaluadorNombre}</span>}
+                            </div>
+                            {dir.comentario && (
                               <div className="bg-[#0d0d0d] rounded-lg px-3 py-2">
-                                <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Comentarios finales del coordinador</p>
-                                <p className="text-gray-300 text-sm whitespace-pre-wrap line-clamp-3">{evalPost.comentariosFinales}</p>
+                                <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Conclusión de dirección</p>
+                                <p className="text-gray-300 text-sm whitespace-pre-wrap line-clamp-3">{dir.comentario}</p>
                               </div>
                             )}
                           </div>
                         ) : (
-                          <p className="text-gray-600 text-sm">Aún no se ha realizado. Registra el cierre operativo del evento.</p>
+                          <p className="text-gray-600 text-sm">Califica el desempeño del evento con base en el reporte y la evidencia del coordinador.</p>
                         )}
                       </div>
                     );

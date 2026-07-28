@@ -1,7 +1,8 @@
 /**
  * ReporteEvaluacion.tsx — Reporte interno de la Evaluación Post Evento / Post Renta
  * Cierre operativo del coordinador para presentar en junta: respuestas por sección,
- * incidencias detectadas, calificaciones, propuestas de mejora y comentarios.
+ * incidencias detectadas, logros, autocrítica, gastos, propuestas de mejora y comentarios.
+ * El coordinador YA NO se autocalifica (lo hace dirección); este PDF es el reporte de hechos.
  * Diseño Mainstage: fondo blanco, hero negro, acento dorado, logo y footer.
  */
 import React from "react";
@@ -11,8 +12,6 @@ import {
   getEvalConfig,
   contarRespondidos,
   contarIncidencias,
-  promedioCalificaciones,
-  nivelResultado,
   type EvalPostEventoData,
   type EvalItem,
 } from "@/lib/evaluacion-post-evento";
@@ -46,21 +45,21 @@ const s = StyleSheet.create({
   badgeBad: { color: C.rojo, backgroundColor: C.rojoFondo },
   badgeMuted: { color: C.grisMedio, backgroundColor: C.grisFondo },
   incidenciaTag: { fontSize: 6, fontFamily: "Helvetica-Bold", color: C.rojo, marginTop: 2 },
-  // Calificaciones
-  califRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 5 },
-  califLabel: { fontSize: 8.5, fontFamily: "Helvetica-Bold", color: C.negro },
-  califDesc: { fontSize: 7, color: C.grisMedio, marginTop: 1 },
-  starRow: { flexDirection: "row" },
-  star: { width: 9, height: 9, borderRadius: 2, marginLeft: 3, borderWidth: 0.5, borderStyle: "solid" },
-  starOn: { backgroundColor: C.dorado, borderColor: C.dorado },
-  starOff: { backgroundColor: C.blanco, borderColor: C.grisLinea },
-  resultBox: {
-    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    marginTop: 8, padding: 10, borderRadius: 4, backgroundColor: C.negro,
+  // Gastos
+  gastoRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingVertical: 5, paddingHorizontal: 8,
+    borderBottomWidth: 0.3, borderBottomColor: "#f0f0f0", borderBottomStyle: "solid",
   },
-  resultLabel: { fontSize: 7, color: "#aaa", textTransform: "uppercase", letterSpacing: 0.8 },
-  resultVal: { fontSize: 14, fontFamily: "Helvetica-Bold", color: C.blanco, marginTop: 2 },
-  resultNivel: { fontSize: 9, fontFamily: "Helvetica-Bold" },
+  gastoConcepto: { fontSize: 8.5, color: C.negro, flex: 1, paddingRight: 10 },
+  gastoComprobante: { fontSize: 6, color: C.grisClaro, marginTop: 1 },
+  gastoMonto: { fontSize: 9, fontFamily: "Helvetica-Bold", color: C.negro, flexShrink: 0 },
+  gastoTotalRow: {
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    marginTop: 6, padding: 8, borderRadius: 4, backgroundColor: C.negro,
+  },
+  gastoTotalLabel: { fontSize: 7, color: "#aaa", textTransform: "uppercase", letterSpacing: 0.8 },
+  gastoTotalVal: { fontSize: 12, fontFamily: "Helvetica-Bold", color: C.blanco },
   // Propuestas de mejora
   mejoraRow: { flexDirection: "row", alignItems: "flex-start", marginBottom: 4 },
   mejoraNum: { fontSize: 8.5, fontFamily: "Helvetica-Bold", color: C.dorado, width: 14 },
@@ -68,16 +67,8 @@ const s = StyleSheet.create({
   emptyTxt: { fontSize: 8, color: C.grisClaro, fontStyle: "italic", paddingHorizontal: 8, paddingVertical: 4 },
 });
 
-function StarBar({ valor }: { valor: number | null }) {
-  const n = Math.round(valor ?? 0);
-  return (
-    <View style={s.starRow}>
-      {[1, 2, 3, 4, 5].map((i) => (
-        <View key={i} style={[s.star, i <= n ? s.starOn : s.starOff]} />
-      ))}
-    </View>
-  );
-}
+const fmtMXN = (n: number) =>
+  `$${(n || 0).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 function estadoItem(it: EvalItem, valor: "si" | "no" | "na" | null) {
   if (valor == null) return { label: "Sin responder", tone: "muted" as const, incidencia: false };
@@ -109,15 +100,14 @@ export function ReporteEvaluacion({ data }: { data: ReporteEvaluacionData }) {
 
   const { respondidos, total } = contarRespondidos(ev.items, config.secciones);
   const incidencias = contarIncidencias(ev.items, config.secciones);
-  const promDim = promedioCalificaciones(ev.calificaciones, config.califDimensiones);
-  const nivelDim = nivelResultado(promDim);
-  const nivelFinal = nivelResultado(ev.calificacionFinal);
 
   const llenadoFecha = ev.actualizadoEn
     ? new Date(ev.actualizadoEn).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })
     : null;
 
   const propuestas = (ev.propuestasMejora ?? []).map((p) => p.trim()).filter(Boolean);
+  const gastos = (ev.gastos ?? []).filter((g) => (g.concepto ?? "").trim() || g.monto);
+  const totalGastos = gastos.reduce((acc, g) => acc + (g.monto || 0), 0);
 
   return (
     <Document title={`${config.etiqueta} ${data.numeroProyecto}`} author="Mainstage Pro">
@@ -167,6 +157,7 @@ export function ReporteEvaluacion({ data }: { data: ReporteEvaluacionData }) {
               "Coordinador no registrado"
             )}
             {llenadoFecha ? `  ·  Actualizado: ${llenadoFecha}` : ""}
+            {ev.completado ? "  ·  Reporte enviado" : "  ·  Borrador"}
           </Text>
 
           {/* KPIs */}
@@ -182,12 +173,9 @@ export function ReporteEvaluacion({ data }: { data: ReporteEvaluacionData }) {
               <Text style={s.kpiSub}>{incidencias > 0 ? "requieren atención" : "sin incidencias"}</Text>
             </View>
             <View style={s.kpiCard}>
-              <Text style={s.kpiLabel}>{config.resultadoLabel}</Text>
-              <Text style={[s.kpiVal, { color: nivelDim.color }]}>
-                {promDim != null ? promDim.toFixed(1) : "—"}
-                {promDim != null && <Text style={{ fontSize: 9, color: C.grisMedio }}> /5</Text>}
-              </Text>
-              <Text style={[s.kpiSub, { color: nivelDim.color }]}>{nivelDim.label}</Text>
+              <Text style={s.kpiLabel}>Gastos e imprevistos</Text>
+              <Text style={s.kpiVal}>{fmtMXN(totalGastos)}</Text>
+              <Text style={s.kpiSub}>{gastos.length} concepto{gastos.length === 1 ? "" : "s"}</Text>
             </View>
           </View>
 
@@ -216,30 +204,56 @@ export function ReporteEvaluacion({ data }: { data: ReporteEvaluacionData }) {
             </View>
           ))}
 
-          {/* CALIFICACIONES */}
+          {/* ¿QUÉ HICISTE BIEN O RESOLVISTE? */}
           <View style={base.section} wrap={false}>
-            <Text style={base.secTitle}>{config.califTitulo}</Text>
-            <View style={base.table}>
-              {config.califDimensiones.map((d) => (
-                <View key={d.id} style={[s.califRow, { paddingHorizontal: 8 }]}>
-                  <View style={{ flex: 1, paddingRight: 10 }}>
-                    <Text style={s.califLabel}>{d.label}</Text>
-                    <Text style={s.califDesc}>{d.desc}</Text>
-                  </View>
-                  <StarBar valor={ev.calificaciones?.[d.id] ?? null} />
-                </View>
-              ))}
-            </View>
-
-            <View style={s.resultBox}>
-              <View>
-                <Text style={s.resultLabel}>{config.califFinalPregunta}</Text>
-                <Text style={[s.resultNivel, { color: nivelFinal.color, marginTop: 3 }]}>
-                  {ev.calificacionFinal != null ? `${ev.calificacionFinal}/5 · ${nivelFinal.label}` : "Sin calificar"}
-                </Text>
+            <Text style={base.secTitle}>¿Qué hiciste bien o resolviste?</Text>
+            {ev.logros?.trim() ? (
+              <View style={base.textBox}>
+                <Text style={base.textBoxContent}>{ev.logros.trim()}</Text>
               </View>
-              <StarBar valor={ev.calificacionFinal} />
-            </View>
+            ) : (
+              <Text style={s.emptyTxt}>Sin registrar.</Text>
+            )}
+          </View>
+
+          {/* AUTOCRÍTICA */}
+          <View style={base.section} wrap={false}>
+            <Text style={base.secTitle}>Autocrítica</Text>
+            {ev.autocritica?.trim() ? (
+              <View style={base.textBox}>
+                <Text style={base.textBoxContent}>{ev.autocritica.trim()}</Text>
+              </View>
+            ) : (
+              <Text style={s.emptyTxt}>Sin registrar.</Text>
+            )}
+          </View>
+
+          {/* GASTOS E IMPREVISTOS */}
+          <View style={base.section} wrap={false}>
+            <Text style={base.secTitle}>Gastos e imprevistos</Text>
+            {gastos.length > 0 ? (
+              <>
+                <View style={base.table}>
+                  {gastos.map((g, i) => (
+                    <View key={i} style={s.gastoRow}>
+                      <View style={{ flex: 1, paddingRight: 10 }}>
+                        <Text style={s.gastoConcepto}>{g.concepto?.trim() || "Sin concepto"}</Text>
+                        <Text style={s.gastoComprobante}>
+                          {(g.comprobante?.length ?? 0) > 0 ? `${g.comprobante.length} comprobante(s) adjunto(s)` : "Sin comprobante"}
+                        </Text>
+                      </View>
+                      <Text style={s.gastoMonto}>{fmtMXN(g.monto)}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={s.gastoTotalRow}>
+                  <Text style={s.gastoTotalLabel}>Total de gastos</Text>
+                  <Text style={s.gastoTotalVal}>{fmtMXN(totalGastos)}</Text>
+                </View>
+              </>
+            ) : (
+              <Text style={s.emptyTxt}>Sin gastos ni imprevistos registrados.</Text>
+            )}
           </View>
 
           {/* PROPUESTAS DE MEJORA */}

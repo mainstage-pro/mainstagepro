@@ -48,6 +48,15 @@ export async function ensureOperacionTecnicaColumns() {
       );
     } catch { /* ya existe */ }
   }
+  // proyectos.evaluacionDireccion: calificación 1-5 por dimensión que hace dirección
+  // sobre el evento, apoyándose en el reporte y evidencia del coordinador.
+  if (!await columnExists('proyectos', 'evaluacionDireccion')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE proyectos ADD COLUMN IF NOT EXISTS "evaluacionDireccion" JSONB`
+      );
+    } catch { /* ya existe */ }
+  }
   // proyecto_personal.movimientoId: liga la fila con el MovimientoFinanciero (GASTO)
   // que se genera al marcar PAGADO. Declarada en schema.prisma → Prisma la pide en
   // cualquier findMany de proyecto_personal sin select, por eso el DDL aditivo se aplica
