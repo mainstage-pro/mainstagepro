@@ -102,7 +102,7 @@ export const NAV: NavSection[] = [
         children: [
           { key: "juntas", label: "Juntas", href: "/juntas" },
           { key: "vision-semanal", label: "Visión semanal", href: "/vision-semanal" },
-          { key: "formularios", label: "Formularios", href: "/formularios", adminOnly: true },
+          { key: "reporte-area-mensual", label: "Reporte mensual de área", href: "/reportes-area" },
         ],
       },
       { key: "presentaciones", label: "Presentaciones", href: "/presentaciones", icon: Presentation },
@@ -395,7 +395,7 @@ export const ALL_MODULE_KEYS: string[] = MODULOS_POR_SECCION.flatMap(s => s.item
 // derivan del NAV) para que el acceso otorgado sea funcional.
 export const AREA_MODULE_PRESETS: Record<string, string[]> = {
   ADMINISTRACION: [
-    "plan-trabajo", "operaciones", "calendario", "vision-semanal",
+    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
     "finanzas-cobros", "finanzas-pagos-personal", "finanzas-movimientos", "finanzas-caja-chica", "inv-analisis",
     "rrhh-personal", "rrhh-nomina", "rrhh-asistencia", "rrhh-evaluaciones", "rrhh-satisfaccion", "rrhh-capacitaciones", "rrhh-onboarding",
     "rrhh-candidatos", "rrhh-puestos", "rrhh-config",
@@ -404,34 +404,34 @@ export const AREA_MODULE_PRESETS: Record<string, string[]> = {
     "tareas-administracion",
   ],
   MARKETING: [
-    "plan-trabajo", "operaciones", "calendario", "vision-semanal",
+    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
     "mkt-contenido", "mkt-publicidad", "mkt-config",
     "tareas-marketing",
   ],
   VENTAS: [
-    "plan-trabajo", "operaciones", "calendario", "vision-semanal",
+    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
     "ventas-seguimientos", "crm-tratos", "crm-base-de-datos", "comercial-productos", "ventas-reporte",
     "tareas-ventas",
   ],
   PRODUCCION: [
-    "plan-trabajo", "operaciones", "calendario", "vision-semanal",
+    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
     "proyectos", "produccion-tablero", "inventario", "inv-maestro", "catalogo", "bd-proveedores", "bd-tecnicos",
     "tareas-produccion",
   ],
   RRHH: [
-    "plan-trabajo", "operaciones", "calendario", "vision-semanal",
+    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
     "rrhh-personal", "rrhh-nomina", "rrhh-asistencia", "rrhh-evaluaciones", "rrhh-satisfaccion", "rrhh-capacitaciones", "rrhh-onboarding",
     "rrhh-candidatos", "rrhh-puestos", "rrhh-config",
     "tareas-rrhh",
   ],
   DIRECCION: [
-    "plan-trabajo", "operaciones", "calendario", "vision-semanal",
+    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
     "juntas", "presentaciones", "capacitacion",
     "verificacion",
     "tareas-direccion",
   ],
   GENERAL: [
-    "plan-trabajo", "operaciones", "calendario", "vision-semanal",
+    "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
   ],
 };
 

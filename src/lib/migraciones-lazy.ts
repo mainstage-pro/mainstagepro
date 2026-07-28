@@ -452,6 +452,42 @@ export async function ensureEvaluacionAreaTabla() {
 }
 
 /**
+ * Crea la tabla del reporte mensual de área si aún no existe (patrón Neon).
+ * Tabla nueva y aislada: ninguna lectura existente depende de ella, así que
+ * CREATE TABLE IF NOT EXISTS es seguro. La consulta el endpoint del reporte
+ * mensual de área, que llama a esta función antes de leer/escribir. Idempotente.
+ */
+let _reporteMensualAreaReady = false;
+
+export async function ensureReporteMensualAreaTabla() {
+  if (_reporteMensualAreaReady) return;
+  try {
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS reportes_mensuales_area (
+        id TEXT PRIMARY KEY,
+        area TEXT NOT NULL,
+        mes TEXT NOT NULL,
+        "autorId" TEXT,
+        "autorNombre" TEXT,
+        resultados TEXT NOT NULL DEFAULT '',
+        kpis TEXT NOT NULL DEFAULT '[]',
+        analisis TEXT NOT NULL DEFAULT '',
+        bloqueos TEXT NOT NULL DEFAULT '',
+        compromisos TEXT NOT NULL DEFAULT '',
+        enviado BOOLEAN NOT NULL DEFAULT false,
+        "enviadoEn" TIMESTAMP(3),
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await prisma.$executeRawUnsafe(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "reportes_mensuales_area_area_mes_key" ON reportes_mensuales_area (area, mes)`
+    );
+  } catch { /* ya existe */ }
+  _reporteMensualAreaReady = true;
+}
+
+/**
  * Crea las tablas del proceso comercial estándar si aún no existen (patrón Neon).
  * proceso_subetapas / proceso_pasos / proceso_reglas. Idempotente.
  */

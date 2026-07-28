@@ -67,7 +67,6 @@ model User {
   ideasCreadas           Idea[]                 @relation("IdeaUsuario")
   iniciativasCaptura     Iniciativa[]           @relation("IniciativaUsuario")
   reportesArea           ReporteAreaSemanal[]   @relation("ReportesAreaAutor")
-  incidenciasSemanales   IncidenciaSemanal[]    @relation("IncidenciasSemanalesUser")
   presentacionesVenta    PresentacionVenta[]    @relation("PresentacionesVentaCreadas")
   prospecciones          Prospeccion[]          @relation("ProspeccionResponsable")
   tratosApoyo            TratoApoyo[]           @relation("TratoApoyoUsers")
@@ -3801,6 +3800,31 @@ model EvaluacionAreaDireccion {
   @@map("evaluaciones_area_direccion")
 }
 
+// ─── REPORTE MENSUAL DE ÁREA (estándar) ──────────────────────────────────────
+
+// Cierre mensual que el responsable de cada área entrega con una MISMA estructura
+// para todas las áreas (materia prima de la evaluación de dirección). Standalone
+// a propósito: autorId es un id de User sin relación inversa (evita tocar User).
+model ReporteMensualArea {
+  id          String    @id @default(cuid())
+  area        String    // VENTAS | PRODUCCION | MARKETING | ADMINISTRACION | RRHH
+  mes         String    // "2026-07"
+  autorId     String?
+  autorNombre String?
+  resultados  String    @default("")  // Qué se logró este mes
+  kpis        String    @default("[]") // JSON: [{ nombre, valor, meta, unidad }]
+  analisis    String    @default("")  // Qué pasó y por qué
+  bloqueos    String    @default("")  // Riesgos y bloqueos
+  compromisos String    @default("")  // Compromisos del próximo mes
+  enviado     Boolean   @default(false)
+  enviadoEn   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([area, mes])
+  @@map("reportes_mensuales_area")
+}
+
 // ─── VISIÓN SEMANAL ──────────────────────────────────────────────────────────
 
 // Documento de preparación para la junta de inicio de semana. Uno por área.
@@ -3825,39 +3849,6 @@ model VisionSemanal {
 
   @@unique([area, semana])
   @@map("vision_semanal")
-}
-
-// ─── INCIDENCIAS SEMANALES ───────────────────────────────────────────────────
-
-model IncidenciaSemanal {
-  id          String   @id @default(cuid())
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  userId      String
-  user        User     @relation("IncidenciasSemanalesUser", fields: [userId], references: [id])
-  semana      Int      // Número de semana ISO (1–53)
-  anio        Int
-  incidencias Json     // { area, texto, urgencia, orden }[]
-  estado      String   @default("guardado")
-
-  @@map("incidencias_semanales")
-}
-
-// ─── REPORTE SEMANAL CONSOLIDADO (generado por cron) ─────────────────────────
-
-model ReporteSemanal {
-  id          String   @id @default(cuid())
-  semana      DateTime // Lunes de la semana (date only, UTC midnight)
-  fechaInicio DateTime
-  fechaFin    DateTime
-  datos       String   // JSON con todas las métricas
-  score       Int      @default(0) // 0-100
-  notas       String?  // Anotaciones del CEO
-  generadoEn  DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@unique([semana])
-  @@map("reportes_semanales")
 }
 
 // ─── OBJETIVOS / OKRs ────────────────────────────────────────────────────────

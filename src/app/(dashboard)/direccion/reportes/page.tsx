@@ -1,7 +1,7 @@
 import Link from "next/link";
 import {
   FileBarChart, LineChart, TrendingUp, BarChart3, ClipboardCheck,
-  Wallet, ClipboardList, CalendarClock, FolderKanban, Star,
+  Wallet, CalendarClock, FolderKanban, Star, FileText,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -27,8 +27,16 @@ const GOLD = "#B3985B";
 
 const GRUPOS: Grupo[] = [
   {
-    titulo: "Reportes mensuales por área",
-    desc: "La operación de cada área, en números. Materia prima para la evaluación de dirección.",
+    titulo: "Cierre mensual por área",
+    desc: "El ciclo mensual de dirección: cada área entrega su reporte (materia prima) y dirección lo evalúa (juicio).",
+    reportes: [
+      { label: "Reporte mensual de área", desc: "Cierre estándar de cada área: resultados, KPIs vs meta, análisis, bloqueos y compromisos.", href: "/reportes-area", icon: FileText, area: "Áreas" },
+      { label: "Evaluación de áreas", desc: "Dirección califica 1-5 la operación de cada responsable, con base en su reporte.", href: "/direccion/evaluacion-areas", icon: Star, area: "Áreas" },
+    ],
+  },
+  {
+    titulo: "Reportes de detalle por módulo",
+    desc: "Reportes profundos de cada área para ir al fondo de los números.",
     reportes: [
       { label: "Dirección · Estado de resultados", desc: "P&L mensual: ingresos, márgenes, nómina y utilidad neta.", href: "/direccion/estado-resultados", icon: LineChart, area: "Dirección" },
       { label: "Ventas · Reporte", desc: "Tratos, cotizaciones, cierres y desempeño por vendedor.", href: "/ventas/reporte", icon: TrendingUp, area: "Ventas" },
@@ -38,10 +46,9 @@ const GRUPOS: Grupo[] = [
     ],
   },
   {
-    titulo: "Evaluación de dirección",
-    desc: "El juicio de dirección sobre lo que reportan las áreas y la entrega de cada servicio.",
+    titulo: "Evaluación de servicios",
+    desc: "El juicio de dirección sobre la entrega de cada evento producido.",
     reportes: [
-      { label: "Evaluación de áreas (mensual)", desc: "Dirección califica 1-5 la operación de cada responsable de área.", href: "/direccion/evaluacion-areas", icon: Star, area: "Áreas" },
       { label: "Evaluación de proyectos", desc: "Reporte del coordinador + evaluación de dirección por evento.", href: "/proyectos", icon: FolderKanban, area: "Proyectos" },
     ],
   },
@@ -50,7 +57,6 @@ const GRUPOS: Grupo[] = [
     desc: "El pulso de corto plazo del equipo, para la junta de inicio de semana.",
     reportes: [
       { label: "Visión semanal", desc: "Dónde está cada área, qué viene y qué necesita de apoyo.", href: "/vision-semanal", icon: CalendarClock, area: "Semanal" },
-      { label: "Formularios semanales", desc: "Reportes e incidencias semanales del equipo.", href: "/formularios", icon: ClipboardList, area: "Semanal" },
     ],
   },
 ];
