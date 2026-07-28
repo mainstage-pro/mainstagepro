@@ -205,9 +205,15 @@ export async function GET(req: NextRequest) {
       delete where.OR;
     }
   } else if (vista === "bandeja") {
-    where.proyectoTareaId = null;
-    where.iniciativaId    = null;
-    where.parentId        = null;
+    // Bandeja de entrada = tareas SUELTAS sin origen alguno. Se excluyen las
+    // derivadas de tratos / proyectos-evento / proyectos-internos: esas no entran
+    // a gestión operativa hasta que se les asigna una fecha (se ven en Hoy/Próximas).
+    where.proyectoTareaId   = null;
+    where.iniciativaId      = null;
+    where.tratoId           = null;
+    where.proyectoEventoId  = null;
+    where.proyectoInternoId = null;
+    where.parentId          = null;
     where.OR = misTareasOR;
   } else if (vista === "equipo") {
     if (session.role !== "ADMIN") return NextResponse.json({ error: "No autorizado" }, { status: 403 });

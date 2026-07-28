@@ -115,11 +115,12 @@ const BANDEJA_AREAS: { key: string; label: string }[] = [
 // Nombre de la sección para agrupar una tarea por su origen real (trato/evento/proyecto),
 // no solo por proyecto-de-tareas. "Bandeja de entrada" queda solo para tareas sueltas.
 function grupoOrigen(t: TareaItem): string {
-  const tipo = t.tipoOrigen ?? "TAREA";
-  if (tipo === "TRATO"    && t.trato)           return t.trato.nombreEvento || t.trato.cliente?.nombre || "Tratos";
-  if (tipo === "EVENTO"   && t.proyectoEvento)  return t.proyectoEvento.nombre;
-  if (tipo === "PROYECTO" && t.proyectoInterno) return t.proyectoInterno.nombre;
-  if (t.proyectoTarea)                          return t.proyectoTarea.nombre;
+  // Clasifica por el vínculo real (FK) para no depender de tipoOrigen, que a veces
+  // no viene seteado. Así una tarea de trato/evento nunca cae en "Bandeja de entrada".
+  if (t.trato)           return t.trato.nombreEvento || t.trato.cliente?.nombre || "Tratos";
+  if (t.proyectoEvento)  return t.proyectoEvento.nombre;
+  if (t.proyectoInterno) return t.proyectoInterno.nombre;
+  if (t.proyectoTarea)   return t.proyectoTarea.nombre;
   return "Bandeja de entrada";
 }
 const PROJECT_COLORS = [
@@ -1178,7 +1179,7 @@ export default function OperacionesPage() {
       return sortCronoPrio(arr);
     }
 
-    if (vistaOpts.groupBy !== "none") {
+    if (vistaOpts.groupBy !== "none" && vista !== "bandeja") {
       const grouped: Record<string, TareaItem[]> = {};
       for (const t of base) {
         let key = "";
