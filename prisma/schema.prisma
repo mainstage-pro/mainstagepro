@@ -1771,10 +1771,28 @@ model Asistencia {
   horaEntrada    String?
   horaSalida     String?
   notas          String?
+  justificada    Boolean         @default(false) @map("justificada")
+  documentoUrl   String?         @map("documento_url")
   createdAt      DateTime        @default(now())
 
   @@unique([personalId, fecha])
   @@map("asistencias")
+}
+
+// Configuración única (singleton) de las reglas de asistencia y penalización.
+model ConfigAsistencia {
+  id               String   @id @default("singleton")
+  horaEntrada      String   @default("09:00") @map("hora_entrada")
+  toleranciaMin    Int      @default(10)  @map("tolerancia_min")       // minutos de gracia antes de retardo
+  retardoMaxMin    Int      @default(30)  @map("retardo_max_min")      // pasado esto ya se considera falta
+  retardosPorFalta Int      @default(3)   @map("retardos_por_falta")   // N retardos acumulados = 1 falta
+  descuentaRetardo Boolean  @default(true) @map("descuenta_retardo")   // los retardos acumulados generan falta descontable
+  descuentaFalta   Boolean  @default(true) @map("descuenta_falta")     // la falta injustificada descuenta el día no laborado
+  requiereDocFalta Boolean  @default(true) @map("requiere_doc_falta")  // sin documento, la falta es injustificada
+  faltasCausalBaja Int      @default(3)   @map("faltas_causal_baja")   // faltas injustificadas en 30 días (art. 47 LFT, informativo)
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("config_asistencia")
 }
 
 model TipoIncidencia {
@@ -1802,6 +1820,11 @@ model Incidencia {
   descripcion    String?
   montoCalculado Float?
   periodoNomina  String?         // "2026-04"
+  estado         String          @default("PROPUESTA") @map("estado") // PROPUESTA | APROBADA | RECHAZADA
+  origen         String          @default("MANUAL") @map("origen")     // MANUAL | AUTO
+  evidenciaUrl   String?         @map("evidencia_url")
+  aprobadaPor    String?         @map("aprobada_por")
+  aprobadaEn     DateTime?       @map("aprobada_en")
   aplicada       Boolean         @default(false)
   notificada     Boolean         @default(false)
   createdAt      DateTime        @default(now())
