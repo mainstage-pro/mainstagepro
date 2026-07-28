@@ -1643,6 +1643,7 @@ model PersonalInterno {
   pagos         PagoNomina[]
   asistencias   Asistencia[]
   incidencias   Incidencia[]
+  actas         ActaAdministrativa[]
   evaluaciones  EvaluacionEmpleado[]
   encuestasSatisfaccion EncuestaSatisfaccionEquipo[]
   capacitaciones CapacitacionParticipante[]
@@ -1803,8 +1804,11 @@ model ConfigAsistencia {
 
 model TipoIncidencia {
   id          String  @id @default(cuid())
+  codigo      String? @unique // código estable del catálogo semilla (FL-ORDEN, FG-GASTO, FMG-CONFID…)
   nombre      String
-  categoria   String  // ASISTENCIA | CONDUCTA | DESEMPEÑO | RECONOCIMIENTO
+  categoria   String  // ASISTENCIA | CONDUCTA | OPERACION | DESEMPEÑO | RECONOCIMIENTO
+  gravedad    String  @default("LEVE") // LEVE | GRAVE | MUY_GRAVE (N/A para RECONOCIMIENTO)
+  deteccion   String  @default("MANUAL") // MANUAL | AUTO (AUTO = derivada de asistencia/plan de trabajo)
   calculoTipo String  @default("SIN_DESCUENTO") // FIJO | PORCENTAJE_DIA | PORCENTAJE_HORA | SIN_DESCUENTO
   valor       Float   @default(0)
   esDescuento Boolean @default(true)
@@ -1812,8 +1816,44 @@ model TipoIncidencia {
   activo      Boolean @default(true)
 
   incidencias Incidencia[]
+  actas       ActaAdministrativa[]
 
   @@map("tipos_incidencia")
+}
+
+// Acta administrativa: formaliza una falta contra una persona con hechos, evidencia,
+// descargo del colaborador, nivel de escalón (reincidencia) y consecuencia aplicada.
+// Cuenta para el escalón 1ra→2da→3ra del Reglamento Interno y, si la consecuencia
+// es económica, se liga a una Incidencia (el descuento) para que impacte nómina.
+model ActaAdministrativa {
+  id             String          @id @default(cuid())
+  folio          String          @unique // ACTA-2026-0001
+  personalId     String          @map("personal_id")
+  personal       PersonalInterno @relation(fields: [personalId], references: [id], onDelete: Cascade)
+  tipoId         String?         @map("tipo_id")
+  tipo           TipoIncidencia? @relation(fields: [tipoId], references: [id], onDelete: SetNull)
+  puestoId       String?         @map("puesto_id")
+  gravedad       String          @default("LEVE") // snapshot de la gravedad al levantar el acta
+  fecha          DateTime
+  hechos         String          @db.Text // descripción objetiva de lo ocurrido
+  evidenciaUrl   String?         @map("evidencia_url")
+  nivelEscalon   Int             @default(1) @map("nivel_escalon") // 1ra, 2da, 3ra reincidencia
+  consecuencia   String          @db.Text // acción tomada (sugerida por la matriz, editable)
+  montoDescuento Float?          @map("monto_descuento")
+  incidenciaId   String?         @unique @map("incidencia_id") // Incidencia ligada si hay descuento
+  descargo       String?         @db.Text // versión / descargo del colaborador
+  levantadaPor   String?         @map("levantada_por")
+  estado         String          @default("ABIERTA") // ABIERTA | NOTIFICADA | ACEPTADA | ANULADA
+  token          String          @unique // acuse/firma del colaborador por enlace
+  aceptada       Boolean         @default(false)
+  aceptadaNombre String?         @map("aceptada_nombre")
+  aceptadaEn     DateTime?       @map("aceptada_en")
+  aceptadaIp     String?         @map("aceptada_ip")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  @@index([personalId])
+  @@map("actas_administrativas")
 }
 
 model Incidencia {

@@ -9,6 +9,7 @@ export const personalTabs: ModuleNavTab[] = [
   { href: "/personal/interno", label: "Personal interno", accessKey: "rrhh-personal" },
   { href: "/personal/nomina", label: "Nómina", accessKey: "rrhh-nomina" },
   { href: "/personal/asistencia", label: "Asistencia", accessKey: "rrhh-asistencia" },
+  { href: "/personal/actas", label: "Faltas y actas", accessKey: "rrhh-evaluaciones" },
   { href: "/personal/tabulador", label: "Tabulador freelancers", accessKey: "tabulador" },
   { href: "/personal/capacitacion", label: "Portal de capacitación", accessKey: "capacitacion" },
   { href: "/personal/capacitaciones", label: "Capacitaciones internas", accessKey: "rrhh-capacitaciones" },

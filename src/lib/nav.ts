@@ -101,7 +101,6 @@ export const NAV: NavSection[] = [
         icon: CalendarClock,
         children: [
           { key: "juntas", label: "Juntas", href: "/juntas" },
-          { key: "vision-semanal", label: "Visión semanal", href: "/vision-semanal" },
           { key: "reporte-area-mensual", label: "Reporte mensual de área", href: "/reportes-area" },
         ],
       },
@@ -156,6 +155,7 @@ export const NAV: NavSection[] = [
           { key: "rrhh-personal", label: "Personal interno", href: "/personal/interno" },
           { key: "rrhh-nomina", label: "Nómina", href: "/personal/nomina" },
           { key: "rrhh-asistencia", label: "Asistencia", href: "/personal/asistencia" },
+          { key: "rrhh-actas", accessKey: "rrhh-evaluaciones", label: "Faltas y actas", href: "/personal/actas" },
           { key: "tabulador", label: "Tabulador freelancers", href: "/personal/tabulador" },
           { key: "capacitacion", label: "Portal de capacitación", href: "/personal/capacitacion" },
           { key: "rrhh-capacitaciones", label: "Capacitaciones internas", href: "/personal/capacitaciones" },
