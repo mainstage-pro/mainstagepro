@@ -5,6 +5,7 @@ import RecurrenciaPicker from "./RecurrenciaPicker";
 import QuickAdd from "./QuickAdd";
 import TaskItem, { type TareaItem } from "./TaskItem";
 import { Combobox } from "@/components/Combobox";
+import { AREAS, AREA_LABELS } from "@/lib/gestion";
 import { useToast } from "@/components/Toast";
 import { Link2, Camera, Paperclip, FileText, ExternalLink, ChevronDown, ChevronRight, ShieldCheck, ClipboardCheck, AlertTriangle } from "lucide-react";
 import AccesoDirectoField from "./AccesoDirectoField";
@@ -124,6 +125,7 @@ export default function TaskModal({
   const [descripcion, setDescripcion] = useState("");
   const [notas, setNotas]             = useState("");
   const [prioridad, setPrioridad]     = useState("MEDIA");
+  const [area, setArea]               = useState("GENERAL");
   const [asignadoAId, setAsignadoAId] = useState("");
   const [coResponsables, setCoResponsables] = useState<string[]>([]);
   const [proyectoId, setProyectoId]   = useState("");
@@ -171,6 +173,7 @@ export default function TaskModal({
     setDescripcion(tarea.descripcion ?? "");
     setNotas(tarea.notas ?? "");
     setPrioridad(tarea.prioridad);
+    setArea(tarea.area ?? "GENERAL");
     setAsignadoAId(tarea.asignadoA?.id ?? "");
     setCoResponsables((tarea.colaboradores ?? []).map(c => c.usuario.id));
     setProyectoId(tarea.proyectoTarea?.id ?? "");
@@ -214,6 +217,7 @@ export default function TaskModal({
       descripcion:      descripcion      || null,
       notas:            notas            || null,
       prioridad,
+      area,
       asignadoAId:      asignadoAId      || null,
       colaboradorIds:   coResponsables.filter(id => id !== asignadoAId),
       proyectoTareaId:  proyectoId       || null,
@@ -941,6 +945,17 @@ export default function TaskModal({
                   value={proyectoId}
                   onChange={v => { setProyectoId(v); mark(); }}
                   options={[{ value: "", label: "— Bandeja de entrada —" }, ...proyectos.map(p => ({ value: p.id, label: p.nombre }))]}
+                  className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]"
+                />
+              </div>
+
+              {/* Área */}
+              <div>
+                <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-1.5">Área</p>
+                <Combobox
+                  value={area}
+                  onChange={v => { setArea(v || "GENERAL"); mark(); }}
+                  options={[{ value: "GENERAL", label: "— Sin área (Otras) —" }, ...AREAS.map(a => ({ value: a, label: AREA_LABELS[a] }))]}
                   className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]"
                 />
               </div>

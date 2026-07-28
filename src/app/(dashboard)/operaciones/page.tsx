@@ -290,6 +290,7 @@ export default function OperacionesPage() {
   const [selectedIds, setSelectedIds]           = useState<Set<string>>(new Set());
   const [confirmBulk, setConfirmBulk]           = useState(false);
   const [noSecDropOver, setNoSecDropOver]        = useState(false);
+  const [areaDropOver, setAreaDropOver]          = useState<string | null>(null);
   const [proyViewOpts, setProyViewOpts]         = useState<ProyViewOpts>(() => {
     if (typeof window === "undefined") return PROY_VIEW_DEFAULT;
     try { const r = localStorage.getItem("op_proy_view"); if (r) return { ...PROY_VIEW_DEFAULT, ...JSON.parse(r) }; } catch {}
@@ -2153,11 +2154,35 @@ export default function OperacionesPage() {
                   sub={vista === "bandeja" ? "Escribe una tarea arriba y presiona Enter" : ""}
                 />
               ) : hoyGrouped ? (
-                hoyGrouped.map(group => group.tareas.length === 0 ? null : (
+                hoyGrouped.map(group => group.tareas.length === 0 ? null : (() => {
+                  // En la bandeja, el encabezado de cada sección es zona de drop: soltar
+                  // una tarea encima la reasigna a esa área (o a "Otras" = GENERAL).
+                  const areaKey = vista === "bandeja"
+                    ? (BANDEJA_AREAS.find(a => a.label === group.label)?.key ?? "GENERAL")
+                    : null;
+                  const isDropTarget = !!areaKey && !!draggingId;
+                  return (
                   <div key={group.label} className="mb-6">
-                    <div className="flex items-center gap-2 px-3 py-2">
+                    <div
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
+                        isDropTarget
+                          ? areaDropOver === areaKey
+                            ? "border border-dashed border-[#B3985B]/60 bg-[#B3985B]/[0.06]"
+                            : "border border-dashed border-[#1e1e1e]"
+                          : ""
+                      }`}
+                      onDragOver={areaKey ? (e => { if (draggingId) { e.preventDefault(); setAreaDropOver(areaKey); } }) : undefined}
+                      onDragLeave={areaKey ? (() => setAreaDropOver(null)) : undefined}
+                      onDrop={areaKey ? (e => {
+                        e.preventDefault(); e.stopPropagation(); setAreaDropOver(null);
+                        if (draggingId) saveTarea(draggingId, { area: areaKey });
+                      }) : undefined}
+                    >
                       <span className="text-xs text-[#555] font-semibold uppercase tracking-widest">{group.label}</span>
                       <span className="text-[11px] text-[#2a2a2a] font-medium">{group.tareas.length}</span>
+                      {isDropTarget && areaDropOver === areaKey && (
+                        <span className="text-[10px] text-[#B3985B] font-medium normal-case tracking-normal">→ mover aquí</span>
+                      )}
                     </div>
                     {group.tareas.map(t => (
                       <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
@@ -2181,7 +2206,8 @@ export default function OperacionesPage() {
                       />
                     ))}
                   </div>
-                ))
+                  );
+                })())
               ) : (
                 tareasOrdenadas.map(t => (
                   <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
