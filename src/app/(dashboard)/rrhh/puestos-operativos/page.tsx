@@ -18,15 +18,24 @@ interface Puesto {
 interface PuestoIdealLite { id: string; titulo: string; area: string }
 interface PersonaLite { id: string; nombre: string; puesto: string; activo: boolean }
 
-const AREAS = ["DIRECCION","ADMINISTRACION","MARKETING","VENTAS","PRODUCCION","RRHH","GENERAL"];
+const AREAS = ["DIRECCION","ADMINISTRACION","MARKETING","VENTAS","PRODUCCION"];
+const AREA_LABELS: Record<string,string> = {
+  DIRECCION: "Dirección",
+  ADMINISTRACION: "Administración",
+  MARKETING: "Marketing",
+  VENTAS: "Comercial",
+  PRODUCCION: "Producción",
+};
+// RRHH y GENERAL (legado) se pliegan a Administración
+function normArea(a: string): string {
+  return a === "RRHH" || a === "GENERAL" ? "ADMINISTRACION" : a;
+}
 const AREA_COLORS: Record<string,string> = {
   DIRECCION: "bg-amber-900/30 text-amber-300",
   ADMINISTRACION: "bg-purple-900/30 text-purple-300",
   MARKETING: "bg-yellow-900/30 text-yellow-300",
   VENTAS: "bg-green-900/30 text-green-300",
   PRODUCCION: "bg-blue-900/30 text-blue-300",
-  RRHH: "bg-pink-900/30 text-pink-300",
-  GENERAL: "bg-gray-800 text-gray-400",
 };
 
 function parseArr(s?: string | null): string[] {
@@ -42,7 +51,7 @@ function toArr(s: string) {
 }
 
 const EMPTY_FORM = {
-  nombre:"", area:"GENERAL", color:"",
+  nombre:"", area:"ADMINISTRACION", color:"",
   objetivoArea:"", misionPuesto:"",
   responsabilidades:"", coordinaCon:"", supervisaA:"",
   reportaAId:"", puestoIdealId:"",
@@ -89,7 +98,7 @@ export default function PuestosOperativosPage() {
   function openEdit(p: Puesto) {
     setEditing(p);
     setForm({
-      nombre: p.nombre, area: p.area, color: p.color ?? "",
+      nombre: p.nombre, area: normArea(p.area), color: p.color ?? "",
       objetivoArea: p.objetivoArea ?? "", misionPuesto: p.misionPuesto ?? "",
       responsabilidades: parseArr(p.responsabilidades).join("\n"),
       coordinaCon: parseArr(p.coordinaCon).join("\n"),
@@ -152,7 +161,7 @@ export default function PuestosOperativosPage() {
   const inputCls = "w-full bg-[#0d0d0d] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B] placeholder-gray-600";
   const labelCls = "block text-xs text-gray-500 mb-1";
   const areaTabs = ["TODOS", ...AREAS];
-  const visible = puestos.filter(p => (filterArea === "TODOS" || p.area === filterArea) && p.activo);
+  const visible = puestos.filter(p => (filterArea === "TODOS" || normArea(p.area) === filterArea) && p.activo);
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
@@ -170,7 +179,7 @@ export default function PuestosOperativosPage() {
             className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors border ${
               filterArea === a ? "bg-[#B3985B] text-black border-[#B3985B]" : "border-[#222] text-gray-500 hover:text-white"
             }`}>
-            {a === "TODOS" ? "Todos" : a}
+            {a === "TODOS" ? "Todos" : AREA_LABELS[a] ?? a}
           </button>
         ))}
       </div>
@@ -199,8 +208,8 @@ export default function PuestosOperativosPage() {
                     {p.color && <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: p.color }} />}
                     {p.nombre}
                   </p>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full mt-1 inline-block ${AREA_COLORS[p.area] ?? "bg-gray-800 text-gray-400"}`}>
-                    {p.area}
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full mt-1 inline-block ${AREA_COLORS[normArea(p.area)] ?? "bg-gray-800 text-gray-400"}`}>
+                    {AREA_LABELS[normArea(p.area)] ?? p.area}
                   </span>
                 </div>
                 <button onClick={e => { e.stopPropagation(); openEdit(p); }}
@@ -288,7 +297,7 @@ export default function PuestosOperativosPage() {
                   <div>
                     <label className={labelCls}>Área *</label>
                     <Combobox value={form.area} onChange={v => setForm(p => ({ ...p, area: v }))}
-                      options={AREAS.map(a => ({ value: a, label: a }))} className={inputCls} />
+                      options={AREAS.map(a => ({ value: a, label: AREA_LABELS[a] ?? a }))} className={inputCls} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 mt-3">
