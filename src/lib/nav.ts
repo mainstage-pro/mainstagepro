@@ -92,6 +92,7 @@ export const NAV: NavSection[] = [
     key: "seccion-direccion",
     section: "Dirección",
     items: [
+      { key: "centro-reportes", label: "Centro de Reportes", href: "/direccion/reportes", adminOnly: true, icon: FileBarChart },
       { key: "dir-estado-resultados", label: "Estado de Resultados", href: "/direccion/estado-resultados", adminOnly: true, icon: LineChart },
       {
         key: "coordinacion",

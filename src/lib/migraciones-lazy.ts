@@ -416,6 +416,42 @@ export async function ensureSeguimientoColumns() {
 }
 
 /**
+ * Crea la tabla de evaluación de dirección por área si aún no existe (patrón Neon).
+ * Tabla nueva y aislada: ninguna lectura existente depende de ella, así que
+ * CREATE TABLE IF NOT EXISTS es seguro. La consulta el endpoint de evaluación de
+ * área, que llama a esta función antes de leer/escribir. Idempotente.
+ */
+let _evalAreaReady = false;
+
+export async function ensureEvaluacionAreaTabla() {
+  if (_evalAreaReady) return;
+  try {
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS evaluaciones_area_direccion (
+        id TEXT PRIMARY KEY,
+        area TEXT NOT NULL,
+        mes TEXT NOT NULL,
+        "evaluadorId" TEXT,
+        "evaluadorNombre" TEXT,
+        "responsableId" TEXT,
+        "responsableNombre" TEXT,
+        calificaciones TEXT NOT NULL DEFAULT '{}',
+        notas TEXT NOT NULL DEFAULT '{}',
+        comentario TEXT NOT NULL DEFAULT '',
+        finalizada BOOLEAN NOT NULL DEFAULT false,
+        "finalizadaEn" TIMESTAMP(3),
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await prisma.$executeRawUnsafe(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "evaluaciones_area_direccion_area_mes_key" ON evaluaciones_area_direccion (area, mes)`
+    );
+  } catch { /* ya existe */ }
+  _evalAreaReady = true;
+}
+
+/**
  * Crea las tablas del proceso comercial estándar si aún no existen (patrón Neon).
  * proceso_subetapas / proceso_pasos / proceso_reglas. Idempotente.
  */

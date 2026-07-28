@@ -3714,6 +3714,32 @@ model ReporteAreaSemanal {
   @@map("reportes_area_semanal")
 }
 
+// ─── EVALUACIÓN DE DIRECCIÓN POR ÁREA ────────────────────────────────────────
+
+// Evaluación mensual que DIRECCIÓN hace sobre la operación de cada área, apoyada
+// en su reporte de resultados. Es el juicio (1-5 por dimensión); el reporte del
+// área es la materia prima. Standalone a propósito: evaluadorId/responsableId son
+// ids de User sin relación inversa (evita tocar el modelo User).
+model EvaluacionAreaDireccion {
+  id                String    @id @default(cuid())
+  area              String    // VENTAS | PRODUCCION | MARKETING | ADMINISTRACION | RRHH
+  mes               String    // "2026-07"
+  evaluadorId       String?
+  evaluadorNombre   String?
+  responsableId     String?   // responsable de área evaluado (opcional)
+  responsableNombre String?
+  calificaciones    String    @default("{}") // JSON: { dimension: 1..5 }
+  notas             String    @default("{}") // JSON: { dimension: nota }
+  comentario        String    @default("")   // conclusión global de dirección
+  finalizada        Boolean   @default(false)
+  finalizadaEn      DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([area, mes])
+  @@map("evaluaciones_area_direccion")
+}
+
 // ─── VISIÓN SEMANAL ──────────────────────────────────────────────────────────
 
 // Documento de preparación para la junta de inicio de semana. Uno por área.
