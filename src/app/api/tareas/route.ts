@@ -111,6 +111,7 @@ export async function GET(req: NextRequest) {
       estado:   { not: "CANCELADA" },
       parentId: null,
       ptTemplateId: null,
+      enBandeja: false,
       OR: [
         { titulo:      { contains: term, mode: "insensitive" } },
         { descripcion: { contains: term, mode: "insensitive" } },
@@ -146,6 +147,10 @@ export async function GET(req: NextRequest) {
   // Solo sobreviven los compromisos hechos a mano (ptTemplateId=null), incluidos
   // los recurrentes de las áreas.
   where.ptTemplateId = null;
+
+  // Tareas movidas a la bandeja de entrada (Gestión Operativa) se ocultan de
+  // todas las vistas de Operaciones. Solo aparecen en /api/operaciones/bandeja.
+  where.enBandeja = false;
 
   // Módulo unificado: se gestionan los 4 sistemas (TAREA | PLAN | PROYECTO | EVENTO).
   // Filtro opcional por tipoOrigen vía ?tipoOrigen=PLAN,EVENTO
@@ -252,6 +257,7 @@ export async function GET(req: NextRequest) {
       recurrencia:  { not: null },
       fecha:        null,
       ptTemplateId: null,
+      enBandeja:    false,
       estado:       { notIn: ["COMPLETADA", "CANCELADA"] },
       parentId:     null,
       OR:           misTareasOR,

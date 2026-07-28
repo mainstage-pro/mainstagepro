@@ -13,11 +13,15 @@ export async function ensureTareaColumns(): Promise<void> {
     await prisma.$executeRawUnsafe(`ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "evidenciaEnviadaPorId" TEXT`);
     await prisma.$executeRawUnsafe(`ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "evidenciaEnviadaCanal" TEXT`);
     await prisma.$executeRawUnsafe(`ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "tratoId" TEXT`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "enBandeja" BOOLEAN NOT NULL DEFAULT false`);
     await prisma.$executeRawUnsafe(
       `CREATE INDEX IF NOT EXISTS "tareas_proyectoEventoId_idx" ON "tareas"("proyectoEventoId")`,
     );
     await prisma.$executeRawUnsafe(
       `CREATE INDEX IF NOT EXISTS "tareas_tratoId_idx" ON "tareas"("tratoId")`,
+    );
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "tareas_enBandeja_idx" ON "tareas"("enBandeja")`,
     );
     ensured = true;
   } catch {

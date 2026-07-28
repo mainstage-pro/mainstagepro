@@ -2087,6 +2087,9 @@ model Tarea {
   evidenciaEnviadaAt    DateTime?
   evidenciaEnviadaPorId String?
   evidenciaEnviadaCanal String?                              // WHATSAPP | ...
+  // ── Bandeja de entrada: la tarea se movió al inbox de Gestión Operativa
+  // (se oculta de Operaciones y se agrupa por `area` en la bandeja). ──
+  enBandeja        Boolean    @default(false)
 
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt

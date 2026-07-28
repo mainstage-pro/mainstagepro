@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         orderBy: { orden: "asc" },
         include: {
           tareas: {
-            where: { parentId: null },
+            where: { parentId: null, enBandeja: false },
             orderBy: { orden: "asc" },
             include: {
               asignadoA:     { select: { id: true, name: true } },
@@ -26,7 +26,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         },
       },
       tareas: {
-        where: { seccionId: null, parentId: null },
+        where: { seccionId: null, parentId: null, enBandeja: false },
         orderBy: { orden: "asc" },
         include: {
           asignadoA:     { select: { id: true, name: true } },

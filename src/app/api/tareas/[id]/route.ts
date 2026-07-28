@@ -118,7 +118,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const body   = await req.json();
 
   const allowed = [
-    "titulo", "descripcion", "prioridad", "area", "estado",
+    "titulo", "descripcion", "prioridad", "area", "estado", "enBandeja",
     "asignadoAId", "iniciativaId", "proyectoTareaId", "seccionId", "carpetaId", "parentId",
     "fecha", "fechaVencimiento", "recurrencia", "notas", "etiquetas", "orden",
     // Campos de ficha (editables para tareas creadas a mano) + evidencia

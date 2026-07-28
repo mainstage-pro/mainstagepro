@@ -2,11 +2,17 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle } from "lucide-react";
-import { AREAS, AREA_LABELS, PRIORIDADES, PRIO_META } from "@/lib/gestion";
+import { AREAS, AREA_LABELS, AREA_DOT, PRIORIDADES, PRIO_META } from "@/lib/gestion";
 
 type CapturaItem = {
   id: string; contenido: string; area: string | null;
   tipo: string | null; clasificado: boolean; creadoEn: string;
+};
+type TareaBandeja = {
+  id: string; titulo: string; area: string; prioridad: string; estado: string;
+  fecha: string | null;
+  asignadoA: { id: string; name: string } | null;
+  proyectoTarea: { id: string; nombre: string; color: string | null } | null;
 };
 type Usuario = { id: string; name: string; area: string | null };
 type PTSubArea = { id: string; nombre: string };
@@ -60,6 +66,7 @@ function AreaChips({ value, onChange }: { value: string | null; onChange: (a: st
 
 export default function BandejaPage() {
   const [items, setItems]       = useState<CapturaItem[]>([]);
+  const [tareas, setTareas]     = useState<TareaBandeja[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [ptAreas, setPtAreas]   = useState<PTArea[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -91,11 +98,25 @@ export default function BandejaPage() {
     setLoading(false);
   }, []);
 
+  const refreshTareas = useCallback(async () => {
+    const res = await fetch("/api/operaciones/bandeja");
+    if (res.ok) setTareas((await res.json()).tareas ?? []);
+  }, []);
+
   useEffect(() => {
     refresh();
+    refreshTareas();
     fetch("/api/usuarios").then(r => r.json()).then(d => setUsuarios(d.usuarios ?? [])).catch(() => {});
     fetch("/api/plan-trabajo/sistema-operativo").then(r => r.json()).then(d => setPtAreas(d.areas ?? [])).catch(() => {});
-  }, [refresh]);
+  }, [refresh, refreshTareas]);
+
+  async function devolverAOperaciones(id: string) {
+    setTareas(prev => prev.filter(t => t.id !== id));
+    await fetch(`/api/tareas/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enBandeja: false }),
+    });
+  }
 
   async function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault();
@@ -489,6 +510,62 @@ export default function BandejaPage() {
           );
         })}
       </div>
+
+      {/* ── Secciones por área: tareas movidas a la bandeja ──────────────────── */}
+      <BandejaSecciones tareas={tareas} onDevolver={devolverAOperaciones} />
+    </div>
+  );
+}
+
+// ── Secciones por área (Dirección · Administración · Marketing · Comercial · Producción) ──
+function BandejaSecciones({ tareas, onDevolver }: {
+  tareas: TareaBandeja[]; onDevolver: (id: string) => void;
+}) {
+  // Áreas conocidas (en orden) + un cubo "Otras" para las que no calzan, sin perder tareas.
+  const conocidas = new Set<string>(AREAS);
+  const otras = tareas.filter(t => !conocidas.has(t.area));
+  const grupos: { key: string; label: string; dot: string; tareas: TareaBandeja[] }[] = [
+    ...AREAS.map(a => ({ key: a, label: AREA_LABELS[a], dot: AREA_DOT[a], tareas: tareas.filter(t => t.area === a) })),
+    ...(otras.length > 0 ? [{ key: "OTRAS", label: "Otras", dot: AREA_DOT.GENERAL, tareas: otras }] : []),
+  ];
+
+  return (
+    <div className="space-y-3 pt-2">
+      <div className="flex items-center gap-2">
+        <h2 className="text-[13px] font-semibold text-[#ccc]">Por área</h2>
+        <span className="text-[11px] text-[#555]">{tareas.length} tarea{tareas.length === 1 ? "" : "s"} en espera</span>
+      </div>
+      {grupos.map((g, i) => (
+        <div key={g.key} className="rounded-lg border border-white/[0.06] bg-[#111]">
+          <div className="flex items-center gap-2 px-3.5 py-2.5 border-b border-white/[0.05]">
+            <span className="w-2 h-2 rounded-full" style={{ background: g.dot }} />
+            <span className="text-[12px] font-medium text-[#ddd]">{i + 1}. {g.label}</span>
+            <span className="text-[10.5px] text-[#555]">{g.tareas.length}</span>
+          </div>
+          {g.tareas.length === 0 ? (
+            <p className="px-3.5 py-3 text-[11px] text-[#3a3a3a]">Sin tareas</p>
+          ) : (
+            <div className="divide-y divide-white/[0.04]">
+              {g.tareas.map(t => (
+                <div key={t.id} className="flex items-center gap-3 px-3.5 py-2.5">
+                  <span className={`shrink-0 rounded-full ${PRIO_META[t.prioridad]?.dot ?? "bg-[#333]"} ${PRIO_META[t.prioridad]?.dotSize ?? "w-1.5 h-1.5"}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12.5px] text-[#ddd] leading-snug truncate">{t.titulo}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {t.proyectoTarea && <span className="text-[10px] text-[#666]">{t.proyectoTarea.nombre}</span>}
+                      {t.asignadoA && <span className="text-[10px] text-[#555]">· {t.asignadoA.name}</span>}
+                    </div>
+                  </div>
+                  <button onClick={() => onDevolver(t.id)}
+                    className="shrink-0 px-2 py-1 rounded-md text-[10.5px] text-[#888] border border-[#2a2a2a] hover:text-white hover:border-[#3a3a3a] transition-all">
+                    Devolver a Operaciones
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
