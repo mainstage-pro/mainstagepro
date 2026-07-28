@@ -1,14 +1,17 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
+import { useTiposEventoMaterial } from "@/lib/tipos-evento-cliente";
 
 const GOLD = "#B3985B";
 const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20obtener%20m%C3%A1s%20informaci%C3%B3n%20sobre%20los%20servicios%20de%20Mainstage%20Pro.";
 
+// El slug enlaza con el tipo de evento (fuente maestra); la imagen se toma de su
+// mejor destacada, con esta ruta como fallback si aún no cargó.
 const HERO_SLIDES = [
-  { src: "/images/presentacion/musicales/Musicales-016.jpg",        label: "Musicales" },
-  { src: "/images/presentacion/sociales/s-hacienda-iluminada.jpg",  label: "Sociales" },
-  { src: "/images/presentacion/empresariales/e-sala-pantallas.jpg", label: "Empresariales" },
+  { slug: "musical",     src: "/images/presentacion/musicales/Musicales-016.jpg",        label: "Musicales" },
+  { slug: "social",      src: "/images/presentacion/sociales/s-hacienda-iluminada.jpg",  label: "Sociales" },
+  { slug: "empresarial", src: "/images/presentacion/empresariales/e-sala-pantallas.jpg", label: "Empresariales" },
 ];
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
@@ -76,6 +79,8 @@ function StatCount({ target, suffix = "", label }: { target: number; suffix?: st
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function ServiciosClient() {
   const [heroIdx, setHeroIdx] = useState(0);
+  const { coverPorSlug } = useTiposEventoMaterial();
+  const slides = HERO_SLIDES.map((s) => ({ ...s, src: coverPorSlug(s.slug, s.src) }));
 
   useEffect(() => {
     const t = setInterval(() => setHeroIdx(i => (i + 1) % HERO_SLIDES.length), 5000);
@@ -98,7 +103,7 @@ export default function ServiciosClient() {
 
       {/* ── Hero con slideshow ── */}
       <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden">
-        {HERO_SLIDES.map((slide, i) => (
+        {slides.map((slide, i) => (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             key={slide.src}

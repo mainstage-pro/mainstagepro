@@ -7,6 +7,7 @@ import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import { R, StatCount, GOLD } from "@/components/presentacion/anim";
 import { WA_URL, useDescubrimiento } from "@/components/presentacion/descubrimiento";
 import { usePresentacionEdit, EditableImage, EditableFigure } from "@/components/presentacion/editable";
+import { useTiposEventoMaterial } from "@/lib/tipos-evento-cliente";
 
 // Icono representativo de cada servicio (equipo · operación · coordinación).
 const SERVICE_ICONS: Record<string, LucideIcon> = {
@@ -15,16 +16,17 @@ const SERVICE_ICONS: Record<string, LucideIcon> = {
   DIRECCION_TECNICA: Compass,
 };
 
+// slug enlaza con el tipo de evento (fuente maestra); la ruta local es fallback.
 const HERO_SLIDES = [
-  { src: "/images/presentacion/musicales/Musicales-016.jpg", label: "Musicales" },
-  { src: "/images/presentacion/sociales/s-hacienda-iluminada.jpg", label: "Sociales" },
-  { src: "/images/presentacion/empresariales/e-sala-pantallas.jpg", label: "Empresariales" },
+  { slug: "musical",     src: "/images/presentacion/musicales/Musicales-016.jpg", label: "Musicales" },
+  { slug: "social",      src: "/images/presentacion/sociales/s-hacienda-iluminada.jpg", label: "Sociales" },
+  { slug: "empresarial", src: "/images/presentacion/empresariales/e-sala-pantallas.jpg", label: "Empresariales" },
 ];
 
 const EVENTOS = [
-  { title: "Eventos musicales", sub: "Conciertos · Festivales · DJ Sets · Showcases", img: "/images/presentacion/musicales/Musicales-016.jpg", href: "/presentacion/evento/musical", para: "Promotores · Artistas" },
-  { title: "Eventos sociales", sub: "Bodas · XV Años · Fiestas privadas", img: "/images/presentacion/sociales/s-hacienda-iluminada.jpg", href: "/presentacion/evento/social", para: "Parejas · Familias" },
-  { title: "Eventos empresariales", sub: "Conferencias · Lanzamientos · Corporativos", img: "/images/presentacion/empresariales/e-sala-pantallas.jpg", href: "/presentacion/evento/empresarial", para: "Empresas · Agencias" },
+  { slug: "musical",     title: "Eventos musicales", sub: "Conciertos · Festivales · DJ Sets · Showcases", img: "/images/presentacion/musicales/Musicales-016.jpg", href: "/presentacion/evento/musical", para: "Promotores · Artistas" },
+  { slug: "social",      title: "Eventos sociales", sub: "Bodas · XV Años · Fiestas privadas", img: "/images/presentacion/sociales/s-hacienda-iluminada.jpg", href: "/presentacion/evento/social", para: "Parejas · Familias" },
+  { slug: "empresarial", title: "Eventos empresariales", sub: "Conferencias · Lanzamientos · Corporativos", img: "/images/presentacion/empresariales/e-sala-pantallas.jpg", href: "/presentacion/evento/empresarial", para: "Empresas · Agencias" },
 ];
 
 const TIPO_LABEL: Record<string, string> = { MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial" };
@@ -47,6 +49,7 @@ export default function PresentacionHomeClient() {
   const proyectos = useProyectos();
   const { iniciar, loading } = useDescubrimiento();
   const edit = usePresentacionEdit();
+  const { coverPorSlug } = useTiposEventoMaterial();
 
   useEffect(() => {
     const t = setInterval(() => setHeroIdx((i) => (i + 1) % HERO_SLIDES.length), 5000);
@@ -72,7 +75,7 @@ export default function PresentacionHomeClient() {
             key={slide.src}
             edit={edit}
             okey={`home.hero.${i}`}
-            fallback={slide.src}
+            fallback={coverPorSlug(slide.slug, slide.src)}
             alt={slide.label}
             showEditButton={i === heroIdx}
             wrapClassName="absolute inset-0"
@@ -245,7 +248,7 @@ export default function PresentacionHomeClient() {
                   <EditableImage
                     edit={edit}
                     okey={`home.evento.${i}.img`}
-                    fallback={ev.img}
+                    fallback={coverPorSlug(ev.slug, ev.img)}
                     alt={ev.title}
                     wrapClassName="relative w-full h-full"
                     imgClassName="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
