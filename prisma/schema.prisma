@@ -43,6 +43,8 @@ model User {
   versiones             VersionHistorial[] @relation("versiones")
   clientesVendedor      Cliente[]          @relation("ClientesVendedor")
   notificaciones        Notificacion[]
+  progresoCapacitaciones ProgresoCapacitacion[]
+  intentosEvaluacion     IntentoEvaluacion[]
 
   juntasFacilitadas     Junta[]              @relation("JuntaFacilitador")
   juntasParticipadas    JuntaParticipante[]
@@ -3972,11 +3974,78 @@ model SesionCapacitacion {
   impartidor      String   @default("Mauricio Hernández")
   estado          String   @default("pendiente")
   notas           String?
+  categoriaId     String?
+  categoria       CategoriaCapacitacion? @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   versiones       VersionPresentacion[]
+  progreso        ProgresoCapacitacion[]
+  evaluacion      EvaluacionCapacitacion?
 
   @@map("sesiones_capacitacion")
+}
+
+// ── PORTAL DE APRENDIZAJE (consumo por el equipo) ────────────────────────────
+
+// Grandes áreas del portal: General, Administración, Marketing, Ventas,
+// Producción y las de equipo (Audio EV, RCF, Pioneer, Entarimado, LED…).
+model CategoriaCapacitacion {
+  id        String   @id @default(cuid())
+  nombre    String
+  slug      String   @unique
+  color     String   @default("#c9a96a")
+  icono     String   @default("GraduationCap")
+  orden     Int      @default(0)
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sesiones  SesionCapacitacion[]
+
+  @@map("categorias_capacitacion")
+}
+
+// Progreso por usuario+sesión. Cronometra tiempo activo (con pausa por inactividad).
+model ProgresoCapacitacion {
+  id           String    @id @default(cuid())
+  usuarioId    String
+  usuario      User      @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  sesionId     String
+  sesion       SesionCapacitacion @relation(fields: [sesionId], references: [id], onDelete: Cascade)
+  estado       String    @default("en-progreso") // en-progreso | completado
+  segundos     Int       @default(0)
+  iniciadoEn   DateTime  @default(now())
+  completadoEn DateTime?
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([usuarioId, sesionId])
+  @@map("progreso_capacitacion")
+}
+
+// Examen de opción múltiple autogenerado del contenido de la capacitación.
+model EvaluacionCapacitacion {
+  id         String    @id @default(cuid())
+  sesionId   String    @unique
+  sesion     SesionCapacitacion @relation(fields: [sesionId], references: [id], onDelete: Cascade)
+  preguntas  Json      // [{ pregunta, opciones: string[], correcta: number }]
+  minAprobar Int       @default(80)
+  generadaEn DateTime  @default(now())
+  intentos   IntentoEvaluacion[]
+
+  @@map("evaluaciones_capacitacion")
+}
+
+model IntentoEvaluacion {
+  id           String   @id @default(cuid())
+  evaluacionId String
+  evaluacion   EvaluacionCapacitacion @relation(fields: [evaluacionId], references: [id], onDelete: Cascade)
+  usuarioId    String
+  usuario      User     @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  respuestas   Json     // number[]  (índice elegido por pregunta)
+  calificacion Int
+  aprobado     Boolean
+  creadoEn     DateTime @default(now())
+
+  @@map("intentos_evaluacion")
 }
 
 model VersionPresentacion {

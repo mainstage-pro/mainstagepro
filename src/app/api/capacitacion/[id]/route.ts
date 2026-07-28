@@ -12,6 +12,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const sesion = await prisma.sesionCapacitacion.findUnique({
     where: { id },
     include: {
+      categoria: { select: { nombre: true, slug: true, color: true } },
+      evaluacion: { select: { id: true } },
       versiones: {
         orderBy: { version: "desc" },
         select: {

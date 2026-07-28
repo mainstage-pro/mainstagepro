@@ -5,7 +5,7 @@ import {
   FileBarChart, Users,
   PenTool, Megaphone, BarChart3, SlidersHorizontal, BadgeDollarSign,
   Package, TrendingUp, Settings, Speaker, BookUser, ClipboardCheck,
-  ShieldCheck, ScrollText, Settings2, Building2, LayoutGrid,
+  ShieldCheck, ScrollText, Settings2, Building2, LayoutGrid, GraduationCap,
 } from "lucide-react";
 
 // Dueño de la plataforma. Ciertos módulos (ej. "Inicio") se muestran solo a él.
@@ -52,6 +52,7 @@ export const NAV: NavSection[] = [
       { key: "inicio", label: "Inicio", href: "/inicio", icon: LayoutGrid, adminOnly: true, ownerOnly: true },
       { label: "Mi Dashboard", href: "/dashboard", icon: LayoutDashboard },
       { key: "calendario", label: "Calendario de eventos", href: "/calendario", icon: CalendarDays },
+      { key: "portal-capacitacion", label: "Capacitación", href: "/capacitacion", icon: GraduationCap },
       {
         key: "gestion-operativa",
         accessKey: "operaciones",
@@ -156,8 +157,8 @@ export const NAV: NavSection[] = [
           { key: "rrhh-nomina", label: "Nómina", href: "/personal/nomina" },
           { key: "rrhh-asistencia", label: "Asistencia", href: "/personal/asistencia" },
           { key: "rrhh-actas", accessKey: "rrhh-evaluaciones", label: "Faltas y actas", href: "/personal/actas" },
+          { key: "rrhh-cumplimiento", accessKey: "rrhh-evaluaciones", label: "Tablero de cumplimiento", href: "/personal/cumplimiento" },
           { key: "tabulador", label: "Tabulador freelancers", href: "/personal/tabulador" },
-          { key: "capacitacion", label: "Portal de capacitación", href: "/personal/capacitacion" },
           { key: "rrhh-capacitaciones", label: "Capacitaciones internas", href: "/personal/capacitaciones" },
           { key: "rrhh-evaluaciones", label: "Evaluaciones", href: "/personal/evaluaciones" },
           { key: "rrhh-satisfaccion", label: "Satisfacción equipo", href: "/personal/satisfaccion" },
