@@ -24,7 +24,7 @@ export async function GET() {
     },
     include: {
       secciones: { orderBy: { orden: "asc" }, select: { id: true, nombre: true, orden: true, colapsada: true } },
-      _count: { select: { tareas: { where: { estado: { not: "COMPLETADA" }, parentId: null, enBandeja: false } } } },
+      _count: { select: { tareas: { where: { estado: { not: "COMPLETADA" }, parentId: null } } } },
     },
     orderBy: [{ carpetaId: "asc" }, { orden: "asc" }],
   });
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     },
     include: {
       secciones: true,
-      _count: { select: { tareas: { where: { estado: { not: "COMPLETADA" }, parentId: null, enBandeja: false } } } },
+      _count: { select: { tareas: { where: { estado: { not: "COMPLETADA" }, parentId: null } } } },
     },
   });
 

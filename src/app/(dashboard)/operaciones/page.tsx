@@ -103,6 +103,14 @@ const TIPO_ORIGEN_OPTS: { key: string; label: string; color: string }[] = [
   { key: "EVENTO",   label: "Evento",   color: "#60a5fa" },
 ];
 const PRIO_ORDER: Record<string, number> = { URGENTE: 0, ALTA: 1, MEDIA: 2, BAJA: 3 };
+// Secciones fijas de la Bandeja de entrada (Gestión Operativa), agrupadas por área.
+const BANDEJA_AREAS: { key: string; label: string }[] = [
+  { key: "DIRECCION",      label: "Dirección" },
+  { key: "ADMINISTRACION", label: "Administración" },
+  { key: "MARKETING",      label: "Marketing" },
+  { key: "VENTAS",         label: "Comercial" },
+  { key: "PRODUCCION",     label: "Producción" },
+];
 
 // Nombre de la sección para agrupar una tarea por su origen real (trato/evento/proyecto),
 // no solo por proyecto-de-tareas. "Bandeja de entrada" queda solo para tareas sueltas.
@@ -1186,8 +1194,20 @@ export default function OperacionesPage() {
       return keys.map(label => ({ label, tareas: applySort(grouped[label]) }));
     }
 
-    // Natural grouping: bandeja stays flat, hoy groups by project
-    if (vista === "bandeja") return null;
+    // Bandeja de entrada: agrupada en secciones fijas por área (Dirección,
+    // Administración, Marketing, Comercial, Producción) + "Otras" para el resto.
+    if (vista === "bandeja") {
+      const grouped: Record<string, TareaItem[]> = {};
+      for (const t of base) {
+        const key = BANDEJA_AREAS.some(a => a.key === t.area) ? t.area : "OTRAS";
+        (grouped[key] ||= []).push(t);
+      }
+      const secciones = BANDEJA_AREAS
+        .filter(a => grouped[a.key]?.length)
+        .map(a => ({ label: a.label, tareas: applySort(grouped[a.key]) }));
+      if (grouped["OTRAS"]?.length) secciones.push({ label: "Otras", tareas: applySort(grouped["OTRAS"]) });
+      return secciones.length > 0 ? secciones : null;
+    }
     const proyNames = [...new Set(base.map(grupoOrigen))];
     if (vista !== "hoy" && proyNames.length <= 1) return null;
 
