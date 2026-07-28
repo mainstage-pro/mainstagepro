@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { colorBloque, iconoArea } from "@/lib/capacitacion-ui";
-import { ArrowLeft, Plus, X, Play, RotateCcw, CheckCircle2, Pencil, Clock } from "lucide-react";
+import { ArrowLeft, Plus, X, Play, RotateCcw, CheckCircle2, Pencil, Clock, Trash2 } from "lucide-react";
 
 interface Sesion {
   id: string;
@@ -125,7 +125,7 @@ export default function AreaPage({ params }: { params: Promise<{ slug: string }>
                     <div className="flex-1 h-px" style={{ background: `${c}30` }} />
                   </div>
                   <div className="space-y-2">
-                    {g.sesiones.map((s) => <SesionRow key={s.id} s={s} puedeEditar={puedeEditar} onTomar={() => router.push(`/capacitacion/${s.id}/tomar`)} />)}
+                    {g.sesiones.map((s) => <SesionRow key={s.id} s={s} puedeEditar={puedeEditar} onTomar={() => router.push(`/capacitacion/${s.id}/tomar`)} onEliminada={cargar} />)}
                   </div>
                 </div>
               );
@@ -141,9 +141,20 @@ export default function AreaPage({ params }: { params: Promise<{ slug: string }>
   );
 }
 
-function SesionRow({ s, puedeEditar, onTomar }: { s: Sesion; puedeEditar: boolean; onTomar: () => void }) {
+function SesionRow({ s, puedeEditar, onTomar, onEliminada }: { s: Sesion; puedeEditar: boolean; onTomar: () => void; onEliminada: () => void }) {
   const est = ESTADO[s.estadoUsuario];
   const c = colorBloque(s.bloqueLetra);
+  const [eliminando, setEliminando] = useState(false);
+
+  async function eliminar() {
+    if (eliminando) return;
+    if (!confirm(`¿Eliminar "${s.titulo}"? Se borrarán su contenido, evaluación y el progreso de todos. No se puede deshacer.`)) return;
+    setEliminando(true);
+    const r = await fetch(`/api/capacitacion/${s.id}`, { method: "DELETE" });
+    if (r.ok) onEliminada();
+    else { setEliminando(false); alert("No se pudo eliminar."); }
+  }
+
   return (
     <div className="flex items-center gap-4 px-4 py-3 rounded-xl border transition-colors hover:border-[#333]" style={{ background: "#111", borderColor: "#1e1e1e" }}>
       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: c }} />
@@ -175,6 +186,9 @@ function SesionRow({ s, puedeEditar, onTomar }: { s: Sesion; puedeEditar: boolea
 
         {puedeEditar && (
           <Link href={`/capacitacion/${s.id}`} className="text-[#6b7280] hover:text-white p-1" title="Editar contenido"><Pencil size={14} /></Link>
+        )}
+        {puedeEditar && (
+          <button onClick={eliminar} disabled={eliminando} className="text-[#6b7280] hover:text-[#EF4444] p-1 disabled:opacity-40" title="Eliminar capacitación"><Trash2 size={14} /></button>
         )}
       </div>
     </div>

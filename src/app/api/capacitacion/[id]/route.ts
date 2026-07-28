@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { puedeEditarCapacitacion } from "@/lib/capacitacion";
 
 // GET /api/capacitacion/[id] — Single session with full version history
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -71,4 +72,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   });
 
   return NextResponse.json(updated);
+}
+
+// DELETE /api/capacitacion/[id] — Elimina la capacitación y todo lo dependiente.
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  if (!puedeEditarCapacitacion(session)) return NextResponse.json({ error: "Sin permiso" }, { status: 403 });
+
+  const { id } = await params;
+  const sesion = await prisma.sesionCapacitacion.findUnique({ where: { id }, select: { id: true } });
+  if (!sesion) return NextResponse.json({ error: "Sesión no encontrada" }, { status: 404 });
+
+  // Borrado explícito de dependientes (por si las FK en prod no tienen cascade).
+  await prisma.$transaction([
+    prisma.intentoEvaluacion.deleteMany({ where: { evaluacion: { sesionId: id } } }),
+    prisma.evaluacionCapacitacion.deleteMany({ where: { sesionId: id } }),
+    prisma.progresoCapacitacion.deleteMany({ where: { sesionId: id } }),
+    prisma.versionPresentacion.deleteMany({ where: { sesionId: id } }),
+    prisma.sesionCapacitacion.delete({ where: { id } }),
+  ]);
+
+  return NextResponse.json({ ok: true });
 }
