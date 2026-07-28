@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
-import { LayoutList, LayoutGrid, FileText, UserCheck, UserX } from "lucide-react";
+import { LayoutList, LayoutGrid, FileText, UserCheck, UserX, Link2 } from "lucide-react";
 
 interface Ocupante { id: string; nombre: string; userId?: string | null }
 interface Estandar { subarea: string; responsabilidad: string; estandar: string }
@@ -79,6 +79,7 @@ export default function PuestosOperativosPage() {
   const [filterArea, setFilterArea] = useState("TODOS");
   const [vista, setVista] = useState<"lista" | "grid">("lista");
   const [genPdf, setGenPdf] = useState<string | null>(null);
+  const [genLink, setGenLink] = useState<string | null>(null);
 
   async function load() {
     const [rp, rper] = await Promise.all([
@@ -178,6 +179,23 @@ export default function PuestosOperativosPage() {
     finally { setGenPdf(null); }
   }
 
+  // Genera el acuerdo y copia el enlace público de firma de enterado.
+  async function copiarEnlaceAcuerdo(personalId: string) {
+    setGenLink(personalId);
+    try {
+      const r = await fetch("/api/rrhh/documentos-laborales", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ personalId, tipo: "ACUERDO" }),
+      });
+      const d = await r.json();
+      if (!r.ok || !d.doc?.token) { toast.error(d.error ?? "No se pudo generar el enlace"); return; }
+      const url = `${window.location.origin}/acuerdo/${d.doc.token}`;
+      await navigator.clipboard.writeText(url);
+      toast.success("Enlace de firma copiado");
+    } catch { toast.error("No se pudo copiar el enlace"); }
+    finally { setGenLink(null); }
+  }
+
   const f = (k: keyof FormState) => ({
     value: form[k],
     onChange: (e: React.ChangeEvent<HTMLInputElement|HTMLTextAreaElement|HTMLSelectElement>) =>
@@ -247,10 +265,16 @@ export default function PuestosOperativosPage() {
               {p.ocupantes!.map(o => (
                 <div key={o.id} className="flex items-center justify-between gap-2 bg-[#0d0d0d] rounded-lg px-2.5 py-1.5">
                   <span className="text-xs text-gray-200">{o.nombre}</span>
-                  <button onClick={() => generarAcuerdo(o.id)} disabled={genPdf === o.id}
-                    className="flex items-center gap-1 text-[11px] text-[#B3985B] hover:text-[#c9a96a] border border-[#B3985B]/30 hover:border-[#B3985B] px-2 py-0.5 rounded transition-colors disabled:opacity-50">
-                    <FileText className="w-3 h-3" /> {genPdf === o.id ? "Generando…" : "Acuerdo PDF"}
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button onClick={() => copiarEnlaceAcuerdo(o.id)} disabled={genLink === o.id}
+                      className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-[#B3985B] border border-[#222] hover:border-[#B3985B]/50 px-2 py-0.5 rounded transition-colors disabled:opacity-50">
+                      <Link2 className="w-3 h-3" /> {genLink === o.id ? "Generando…" : "Enlace de firma"}
+                    </button>
+                    <button onClick={() => generarAcuerdo(o.id)} disabled={genPdf === o.id}
+                      className="flex items-center gap-1 text-[11px] text-[#B3985B] hover:text-[#c9a96a] border border-[#B3985B]/30 hover:border-[#B3985B] px-2 py-0.5 rounded transition-colors disabled:opacity-50">
+                      <FileText className="w-3 h-3" /> {genPdf === o.id ? "Generando…" : "Acuerdo PDF"}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

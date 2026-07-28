@@ -1,27 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { buildSnapshot } from "@/lib/documentos-laborales";
+import { buildSnapshot, ensureDocLaboralSchema } from "@/lib/documentos-laborales";
 import { createExpiringToken } from "@/lib/tokens";
-
-export async function ensureDocLaboralSchema() {
-  await prisma.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS documentos_laborales (
-      id TEXT PRIMARY KEY,
-      personal_id TEXT NOT NULL,
-      puesto_id TEXT,
-      tipo TEXT NOT NULL,
-      datos TEXT NOT NULL,
-      token TEXT NOT NULL UNIQUE,
-      aceptado BOOLEAN NOT NULL DEFAULT false,
-      aceptado_nombre TEXT,
-      aceptado_en TIMESTAMP,
-      aceptado_ip TEXT,
-      created_at TIMESTAMP NOT NULL DEFAULT now(),
-      updated_at TIMESTAMP NOT NULL DEFAULT now()
-    )
-  `);
-}
 
 export async function GET(req: NextRequest) {
   const session = await getSession();

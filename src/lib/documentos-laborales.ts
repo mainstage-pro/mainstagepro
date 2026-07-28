@@ -2,7 +2,29 @@
 // Se congela al generar el documento para que el PDF y el acuse reflejen
 // exactamente lo que se ofreció, aunque el puesto o la persona cambien después.
 
+import { prisma } from "@/lib/prisma";
+
 export interface Estandar { subarea: string; responsabilidad: string; estandar: string }
+
+// Tabla auto-migrada: se crea la primera vez que se usa (Neon, sin migración formal).
+export async function ensureDocLaboralSchema() {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS documentos_laborales (
+      id TEXT PRIMARY KEY,
+      personal_id TEXT NOT NULL,
+      puesto_id TEXT,
+      tipo TEXT NOT NULL,
+      datos TEXT NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      aceptado BOOLEAN NOT NULL DEFAULT false,
+      aceptado_nombre TEXT,
+      aceptado_en TIMESTAMP,
+      aceptado_ip TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT now(),
+      updated_at TIMESTAMP NOT NULL DEFAULT now()
+    )
+  `);
+}
 
 export interface DocLaboralSnapshot {
   tipo: "OFERTA" | "ACUERDO";
