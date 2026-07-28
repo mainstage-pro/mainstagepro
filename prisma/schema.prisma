@@ -1665,6 +1665,65 @@ model DocumentoLaboral {
   @@map("documentos_laborales")
 }
 
+// ─── POLÍTICAS Y NORMATIVA INTERNA ───────────────────────────────────────────
+
+// Documento normativo editable y versionado dentro de la plataforma (reglamento,
+// código de conducta, política de X). El contenido vive en markdown; cada
+// publicación congela una versión y puede requerir acuse de recibo del equipo.
+model Politica {
+  id           String   @id @default(cuid())
+  titulo       String
+  categoria    String   @default("GENERAL") // GENERAL | CONDUCTA | OPERACION | SEGURIDAD | RRHH | GOBIERNO
+  resumen      String?  @db.Text
+  contenido    String   @db.Text // markdown de la versión de trabajo (borrador o publicada)
+  version      Int      @default(1)
+  estado       String   @default("BORRADOR") // BORRADOR | PUBLICADA | ARCHIVADA
+  requiereAcuse Boolean @default(true) @map("requiere_acuse")
+  orden        Int      @default(0)
+  publicadaEn  DateTime? @map("publicada_en")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt      @map("updated_at")
+
+  versiones PoliticaVersion[]
+  acuses    PoliticaAcuse[]
+
+  @@map("politicas")
+}
+
+// Snapshot inmutable del contenido al momento de publicar una versión.
+model PoliticaVersion {
+  id          String   @id @default(cuid())
+  politicaId  String   @map("politica_id")
+  politica    Politica @relation(fields: [politicaId], references: [id], onDelete: Cascade)
+  version     Int
+  titulo      String
+  contenido   String   @db.Text
+  nota        String?  // qué cambió en esta versión
+  autorNombre String?  @map("autor_nombre")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([politicaId, version])
+  @@map("politica_versiones")
+}
+
+// Acuse de recibo de una persona sobre una versión específica de una política.
+model PoliticaAcuse {
+  id             String   @id @default(cuid())
+  politicaId     String   @map("politica_id")
+  politica       Politica @relation(fields: [politicaId], references: [id], onDelete: Cascade)
+  version        Int
+  personalId     String?  @map("personal_id")
+  personalNombre String?  @map("personal_nombre")
+  token          String   @unique
+  aceptado       Boolean  @default(false)
+  aceptadoNombre String?  @map("aceptado_nombre")
+  aceptadoEn     DateTime? @map("aceptado_en")
+  aceptadoIp     String?  @map("aceptado_ip")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("politica_acuses")
+}
+
 model DocumentoPersonal {
   id               String          @id @default(cuid())
   personalId       String
