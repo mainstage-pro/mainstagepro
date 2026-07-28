@@ -14,6 +14,7 @@ interface UploadedImage {
   orden: number;
   uploading: boolean;
   error?: string;
+  destacada?: boolean; // viene del tipo de evento (estrella) → hero de la galería
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -243,6 +244,7 @@ function NuevaPresentacionForm() {
           nombre: f.caption || `Foto ${i + 1}`,
           orden: i,
           uploading: false,
+          destacada: true,
         }))));
       } catch {
         /* best-effort: si algo falla, el formulario queda vacío */
@@ -309,7 +311,7 @@ function NuevaPresentacionForm() {
         ...(tratoId ? { tratoId } : {}),
         imagenes: imagenes
           .filter((i) => !i.uploading && !i.error && i.url)
-          .map((i, idx) => ({ url: i.url, nombre: i.nombre, orden: idx })),
+          .map((i, idx) => ({ url: i.url, nombre: i.nombre, orden: idx, destacada: !!i.destacada })),
       };
 
       const res = await fetch("/api/presentaciones-venta", {

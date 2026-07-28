@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   const { titulo, descripcion, imagenes, tratoId } = body as {
     titulo: string;
     descripcion: string;
-    imagenes: { url: string; nombre: string; orden: number }[];
+    imagenes: { url: string; nombre: string; orden: number; destacada?: boolean }[];
     tratoId?: string;
   };
 
@@ -49,7 +49,13 @@ export async function POST(req: NextRequest) {
 
   await ensurePresentacionTratoCol();
 
-  const fotosDisponibles = imagenes?.length || 0;
+  // Las fotos destacadas (estrella del tipo de evento) van primero: son el hero
+  // de la galería. El resto conserva su orden.
+  const imagenesOrdenadas = [...(imagenes || [])].sort(
+    (a, b) => Number(!!b.destacada) - Number(!!a.destacada) || a.orden - b.orden
+  );
+  const fotosDisponibles = imagenesOrdenadas.length;
+  const hayDestacadas = imagenesOrdenadas.some((i) => i.destacada);
   const galeriaSections =
     fotosDisponibles <= 3
       ? "Una sola sección de galería hero con las fotos disponibles"
@@ -73,7 +79,8 @@ Genera una presentación de ventas completa en HTML usando las clases CSS de Mai
 ${descripcion}
 
 ## FOTOS DISPONIBLES (${fotosDisponibles} imágenes):
-${(imagenes || []).map((img, i) => `Imagen ${i + 1}: ${img.nombre} → ${img.url}`).join("\n")}
+${imagenesOrdenadas.map((img, i) => `Imagen ${i + 1}${img.destacada ? " ★ DESTACADA" : ""}: ${img.nombre} → ${img.url}`).join("\n")}
+${hayDestacadas ? "\nIMPORTANTE: Las imágenes marcadas con ★ DESTACADA son las mejores del tipo de evento. Úsalas SIEMPRE primero y en la galería principal/hero (slide 5); las demás van después." : ""}
 
 ## INSTRUCCIONES DE DISEÑO:
 Genera exactamente 9 slides usando las clases CSS de Mainstage Pro. TODAS las secciones son obligatorias.
@@ -168,10 +175,10 @@ ${htmlContent}
       tratoId: tratoId ?? null,
       creadaPorId: session.id,
       imagenes: {
-        create: (imagenes || []).map((img) => ({
+        create: imagenesOrdenadas.map((img, idx) => ({
           blobUrl: img.url,
           nombre: img.nombre,
-          orden: img.orden,
+          orden: idx,
         })),
       },
     },
