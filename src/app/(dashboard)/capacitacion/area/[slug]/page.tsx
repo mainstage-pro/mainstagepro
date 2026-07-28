@@ -37,20 +37,29 @@ export default function AreaPage({ params }: { params: Promise<{ slug: string }>
   const [areaInfo, setAreaInfo] = useState<{ id: string; nombre: string; color: string; icono: string } | null>(null);
   const [puedeEditar, setPuedeEditar] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [creando, setCreando] = useState(false);
 
   async function cargar() {
-    const [rs, rc] = await Promise.all([
-      fetch(`/api/capacitacion?categoria=${slug}`),
-      fetch(`/api/capacitacion/categorias`),
-    ]);
-    const ds = await rs.json();
-    const dc = await rc.json();
-    setSesiones(ds.sesiones ?? []);
-    setPuedeEditar(!!ds.puedeEditar);
-    const a = (dc.categorias ?? []).find((x: { slug: string }) => x.slug === slug);
-    if (a) setAreaInfo({ id: a.id, nombre: a.nombre, color: a.color, icono: a.icono });
-    setLoading(false);
+    setLoading(true);
+    setError(false);
+    try {
+      const [rs, rc] = await Promise.all([
+        fetch(`/api/capacitacion?categoria=${slug}`, { cache: "no-store" }),
+        fetch(`/api/capacitacion/categorias`, { cache: "no-store" }),
+      ]);
+      if (!rs.ok || !rc.ok) throw new Error();
+      const ds = await rs.json();
+      const dc = await rc.json();
+      setSesiones(ds.sesiones ?? []);
+      setPuedeEditar(!!ds.puedeEditar);
+      const a = (dc.categorias ?? []).find((x: { slug: string }) => x.slug === slug);
+      if (a) setAreaInfo({ id: a.id, nombre: a.nombre, color: a.color, icono: a.icono });
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { cargar(); }, [slug]);
@@ -94,6 +103,11 @@ export default function AreaPage({ params }: { params: Promise<{ slug: string }>
 
         {loading ? (
           <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-24 rounded-xl animate-pulse" style={{ background: "#111" }} />)}</div>
+        ) : error ? (
+          <div className="rounded-xl border p-10 text-center" style={{ background: "#111", borderColor: "#262626" }}>
+            <p className="text-sm mb-4" style={{ color: "#9ca3af" }}>No se pudo cargar esta área.</p>
+            <button onClick={cargar} className="text-sm font-semibold px-4 py-2 rounded-lg" style={{ background: "#c9a96a", color: "#000" }}>Reintentar</button>
+          </div>
         ) : sesiones.length === 0 ? (
           <div className="rounded-xl border p-10 text-center" style={{ background: "#111", borderColor: "#262626" }}>
             <p className="text-sm" style={{ color: "#6b7280" }}>Aún no hay capacitaciones en esta área.</p>

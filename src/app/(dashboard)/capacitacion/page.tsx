@@ -20,14 +20,23 @@ export default function PortalCapacitacionPage() {
   const [areas, setAreas] = useState<Area[]>([]);
   const [puedeEditar, setPuedeEditar] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [creando, setCreando] = useState(false);
 
   async function cargar() {
-    const r = await fetch("/api/capacitacion/categorias");
-    const data = await r.json();
-    setAreas(data.categorias ?? []);
-    setPuedeEditar(!!data.puedeEditar);
-    setLoading(false);
+    setLoading(true);
+    setError(false);
+    try {
+      const r = await fetch("/api/capacitacion/categorias", { cache: "no-store" });
+      if (!r.ok) throw new Error(String(r.status));
+      const data = await r.json();
+      setAreas(data.categorias ?? []);
+      setPuedeEditar(!!data.puedeEditar);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { cargar(); }, []);
@@ -90,6 +99,13 @@ export default function PortalCapacitacionPage() {
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="h-40 rounded-xl animate-pulse" style={{ background: "#111" }} />
             ))}
+          </div>
+        ) : error ? (
+          <div className="rounded-xl border p-10 text-center" style={{ background: "#111", borderColor: "#262626" }}>
+            <p className="text-sm mb-4" style={{ color: "#9ca3af" }}>No se pudieron cargar las áreas.</p>
+            <button onClick={cargar} className="text-sm font-semibold px-4 py-2 rounded-lg" style={{ background: "#c9a96a", color: "#000" }}>
+              Reintentar
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

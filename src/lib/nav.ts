@@ -2,7 +2,7 @@ import type React from "react";
 import {
   LayoutDashboard, CalendarDays, ClipboardList, Target, FolderKanban,
   LineChart, CalendarClock, Presentation, Wallet, Landmark,
-  FileBarChart, Users,
+  FileBarChart,
   PenTool, Megaphone, BarChart3, SlidersHorizontal, BadgeDollarSign,
   Package, TrendingUp, Settings, Speaker, BookUser, ClipboardCheck,
   ShieldCheck, ScrollText, Settings2, Building2, LayoutGrid, GraduationCap,
@@ -143,28 +143,6 @@ export const NAV: NavSection[] = [
         ],
       },
       { key: "admin-reportes", label: "Reportes de administración", href: "/admin/reportes", adminOnly: true, icon: FileBarChart },
-      // ── Recursos Humanos (ciclo de vida del talento, como pestañas) ────────
-      {
-        key: "rrhh",
-        label: "Recursos Humanos",
-        href: "/personal",
-        icon: Users,
-        children: [
-          { key: "rrhh-candidatos", label: "Candidatos", href: "/personal/candidatos" },
-          { key: "rrhh-puestos", label: "Puestos ideales", href: "/personal/puestos" },
-          { key: "rrhh-onboarding", label: "Integración / Onboarding", href: "/personal/onboarding" },
-          { key: "rrhh-personal", label: "Personal interno", href: "/personal/interno" },
-          { key: "rrhh-nomina", label: "Nómina", href: "/personal/nomina" },
-          { key: "rrhh-asistencia", label: "Asistencia", href: "/personal/asistencia" },
-          { key: "rrhh-actas", accessKey: "rrhh-evaluaciones", label: "Faltas y actas", href: "/personal/actas" },
-          { key: "rrhh-cumplimiento", accessKey: "rrhh-evaluaciones", label: "Tablero de cumplimiento", href: "/personal/cumplimiento" },
-          { key: "tabulador", label: "Tabulador freelancers", href: "/personal/tabulador" },
-          { key: "rrhh-capacitaciones", label: "Capacitaciones internas", href: "/personal/capacitaciones" },
-          { key: "rrhh-evaluaciones", label: "Evaluaciones", href: "/personal/evaluaciones" },
-          { key: "rrhh-satisfaccion", label: "Satisfacción equipo", href: "/personal/satisfaccion" },
-          { key: "rrhh-config", label: "Configuración", href: "/personal/configuracion" },
-        ],
-      },
     ],
   },
 
