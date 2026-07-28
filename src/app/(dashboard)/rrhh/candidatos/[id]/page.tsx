@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useState, useRef, use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { BackButton } from "@/components/BackButton";
-import { MessageCircle, FileText, ClipboardList, Link2 } from "lucide-react";
+import { MessageCircle, FileText, ClipboardList, Link2, Trash2 } from "lucide-react";
 
 interface Puesto {
   id: string; titulo: string; area: string; descripcion?: string | null;
@@ -63,6 +64,7 @@ function fmtDate(s?: string | null) {
 
 export default function CandidatoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const toast = useToast();
   const confirm = useConfirm();
   const [candidato, setCandidato] = useState<Candidato | null>(null);
@@ -199,6 +201,20 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
     await load(); setSaving(false);
   }
 
+  async function eliminarCandidato() {
+    if (!await confirm({ message: `¿Eliminar a ${candidato?.nombre}? Se borrarán sus postulaciones. Esta acción no se puede deshacer.`, confirmText: "Eliminar", danger: true })) return;
+    setSaving(true);
+    const res = await fetch(`/api/rrhh/candidatos/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      setSaving(false);
+      return;
+    }
+    toast.success("Candidato eliminado");
+    router.push("/personal/candidatos");
+  }
+
   async function generarLinkPropuesta() {
     const post = candidato?.postulaciones[0];
     if (!post) return;
@@ -273,7 +289,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
       <div className="flex items-start gap-4 flex-wrap">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
-            <Link href="/rrhh/candidatos" className="text-gray-600 hover:text-white text-sm transition-colors">← Candidatos</Link>
+            <Link href="/personal/candidatos" className="text-gray-600 hover:text-white text-sm transition-colors">← Candidatos</Link>
             <span className="text-[#333]">|</span>
             <h1 className="ms-h1">{candidato.nombre}</h1>
             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${ETAPA_COLORS[etapa]}`}>
@@ -312,6 +328,10 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
               ✓ Contratar
             </button>
           )}
+          <button onClick={eliminarCandidato} disabled={saving}
+            className="inline-flex items-center gap-1.5 border border-red-900/50 text-red-400 hover:bg-red-900/20 disabled:opacity-50 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">
+            <Trash2 strokeWidth={1.75} className="w-3.5 h-3.5" />Eliminar
+          </button>
         </div>
       </div>
 
