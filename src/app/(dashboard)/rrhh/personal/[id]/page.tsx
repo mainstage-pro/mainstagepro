@@ -9,6 +9,7 @@ import { Combobox } from "@/components/Combobox";
 import { BackButton } from "@/components/BackButton";
 
 interface Documento { id: string; tipo: string; nombre: string; url: string; fechaVencimiento: string | null; createdAt: string }
+interface DocLaboral { id: string; tipo: string; token: string; aceptado: boolean; aceptadoNombre: string | null; aceptadoEn: string | null; createdAt: string }
 interface PagoNomina { id: string; periodo: string; tipoPeriodo: string; monto: number; concepto: string | null; estado: string; fechaPago: string | null; metodoPago: string; notas: string | null; cuentaOrigen: { nombre: string } | null }
 interface CuentaBancaria { id: string; nombre: string; banco: string | null }
 interface PersonalData {
@@ -55,7 +56,9 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
   const [addingPago, setAddingPago] = useState(false);
   const [pagandoId, setPagandoId] = useState<string | null>(null);
   const [fechaPagoReal, setFechaPagoReal] = useState(new Date().toISOString().split("T")[0]);
-  const [showAcuerdo, setShowAcuerdo] = useState(false);
+  const [docsLaborales, setDocsLaborales] = useState<DocLaboral[]>([]);
+  const [generando, setGenerando] = useState<string | null>(null);
+  const [copiado, setCopiado] = useState<string | null>(null);
 
   async function load() {
     const r = await fetch(`/api/rrhh/personal/${id}`, { cache: "no-store" });
@@ -64,10 +67,46 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
     setLoading(false);
   }
 
+  async function loadDocsLaborales() {
+    const r = await fetch(`/api/rrhh/documentos-laborales?personalId=${id}`, { cache: "no-store" });
+    const d = await r.json();
+    setDocsLaborales(d.docs ?? []);
+  }
+
   useEffect(() => {
     load();
+    loadDocsLaborales();
     fetch("/api/cuentas").then(r => r.json()).then(d => setCuentas(d.cuentas ?? []));
   }, [id]);
+
+  async function generarDoc(tipo: "OFERTA" | "ACUERDO") {
+    setGenerando(tipo);
+    const res = await fetch("/api/rrhh/documentos-laborales", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ personalId: id, tipo }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al generar documento");
+    } else {
+      toast.success(tipo === "OFERTA" ? "Oferta generada" : "Acuerdo generado");
+      await loadDocsLaborales();
+    }
+    setGenerando(null);
+  }
+
+  async function eliminarDocLaboral(docId: string) {
+    if (!await confirm({ message: "¿Eliminar este documento generado?", danger: true, confirmText: "Eliminar" })) return;
+    await fetch(`/api/rrhh/documentos-laborales/${docId}`, { method: "DELETE" });
+    await loadDocsLaborales();
+  }
+
+  function copiarEnlaceAcuse(token: string) {
+    const url = `${window.location.origin}/acuse/${token}`;
+    navigator.clipboard.writeText(url);
+    setCopiado(token);
+    setTimeout(() => setCopiado(null), 2000);
+  }
 
   // Auto-save editForm whenever it changes (only while editando)
   useEffect(() => {
@@ -183,12 +222,10 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
             className="text-xs px-3 py-1.5 bg-[#1a1a1a] border border-[#333] rounded-lg text-gray-400 hover:text-white transition-colors">
             Editar
           </button>
-          {persona.tipo === "INTERNO" && (
-            <button onClick={() => setShowAcuerdo(true)}
-              className="text-xs px-3 py-1.5 border border-[#333] rounded-lg text-gray-400 hover:text-white transition-colors">
-              Acuerdo laboral
-            </button>
-          )}
+          <button onClick={() => setTab("documentos")}
+            className="text-xs px-3 py-1.5 border border-[#333] rounded-lg text-gray-400 hover:text-white transition-colors">
+            Documentos
+          </button>
           <button onClick={eliminarEmpleado}
             className="text-xs px-3 py-1.5 border border-[#333] rounded-lg text-gray-600 hover:text-red-400 hover:border-red-900 transition-colors">
             Eliminar
@@ -506,79 +543,81 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
 
       {/* TAB DOCUMENTOS */}
       {tab === "documentos" && (
-        <div className="ms-card p-5">
-          {persona.documentos.length === 0 ? (
-            <p className="text-gray-600 text-sm text-center py-8">Sin documentos registrados</p>
-          ) : (
-            <div className="space-y-2">
-              {persona.documentos.map(doc => (
-                <div key={doc.id} className="flex items-center justify-between py-2 border-b border-[#1a1a1a] last:border-0">
-                  <div>
-                    <p className="text-white text-sm">{doc.nombre}</p>
-                    <p className="text-gray-500 text-xs">{doc.tipo}{doc.fechaVencimiento ? ` · Vence: ${fmtDate(doc.fechaVencimiento)}` : ""}</p>
-                  </div>
-                  <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-xs text-[#B3985B] hover:text-white transition-colors">Ver →</a>
-                </div>
-              ))}
+        <div className="space-y-4">
+          {/* Documentos generados: oferta / acuerdo con acuse */}
+          <div className="ms-card p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-white font-semibold text-sm">Documentos laborales</p>
+                <p className="text-gray-500 text-xs mt-0.5">Genera la oferta o el acuerdo desde el puesto principal y compártelo para acuse de recibo.</p>
+              </div>
             </div>
-          )}
-          <p className="text-gray-700 text-xs mt-4">Los documentos se agregan manualmente via URL. Próximamente: carga directa de archivos.</p>
+            {!persona.puesto && (
+              <p className="text-yellow-500/80 text-xs mb-3">Asigna un puesto principal a esta persona para llenar el documento con sus responsabilidades y estándares.</p>
+            )}
+            <div className="flex gap-2 mb-4">
+              <button onClick={() => generarDoc("OFERTA")} disabled={generando !== null}
+                className="text-xs px-3 py-2 bg-[#1a1a1a] border border-[#333] rounded-lg text-gray-300 hover:text-white hover:border-[#B3985B] disabled:opacity-50 transition-colors">
+                {generando === "OFERTA" ? "Generando..." : "+ Generar oferta de trabajo"}
+              </button>
+              <button onClick={() => generarDoc("ACUERDO")} disabled={generando !== null}
+                className="text-xs px-3 py-2 bg-[#1a1a1a] border border-[#333] rounded-lg text-gray-300 hover:text-white hover:border-[#B3985B] disabled:opacity-50 transition-colors">
+                {generando === "ACUERDO" ? "Generando..." : "+ Generar acuerdo laboral"}
+              </button>
+            </div>
+            {docsLaborales.length === 0 ? (
+              <p className="text-gray-600 text-sm text-center py-6">Aún no has generado documentos</p>
+            ) : (
+              <div className="space-y-2">
+                {docsLaborales.map(doc => (
+                  <div key={doc.id} className="flex items-center justify-between gap-3 py-3 border-b border-[#1a1a1a] last:border-0">
+                    <div className="min-w-0">
+                      <p className="text-white text-sm">{doc.tipo === "OFERTA" ? "Oferta de trabajo" : "Acuerdo laboral"}</p>
+                      <p className="text-gray-500 text-xs">
+                        {fmtDate(doc.createdAt)}
+                        {doc.aceptado
+                          ? <span className="text-green-400"> · Aceptado por {doc.aceptadoNombre}{doc.aceptadoEn ? ` (${fmtDate(doc.aceptadoEn)})` : ""}</span>
+                          : <span className="text-yellow-500/80"> · Pendiente de acuse</span>}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <a href={`/api/rrhh/documentos-laborales/${doc.id}/pdf`} target="_blank" rel="noopener noreferrer"
+                        className="text-xs text-[#B3985B] hover:text-white transition-colors">PDF</a>
+                      <button onClick={() => copiarEnlaceAcuse(doc.token)}
+                        className="text-xs text-gray-400 hover:text-white transition-colors">
+                        {copiado === doc.token ? "¡Copiado!" : "Copiar enlace"}
+                      </button>
+                      <button onClick={() => eliminarDocLaboral(doc.id)}
+                        className="text-xs text-gray-600 hover:text-red-400 transition-colors">✕</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Documentos cargados manualmente */}
+          <div className="ms-card p-5">
+            <p className="text-white font-semibold text-sm mb-3">Otros documentos</p>
+            {persona.documentos.length === 0 ? (
+              <p className="text-gray-600 text-sm text-center py-6">Sin documentos registrados</p>
+            ) : (
+              <div className="space-y-2">
+                {persona.documentos.map(doc => (
+                  <div key={doc.id} className="flex items-center justify-between py-2 border-b border-[#1a1a1a] last:border-0">
+                    <div>
+                      <p className="text-white text-sm">{doc.nombre}</p>
+                      <p className="text-gray-500 text-xs">{doc.tipo}{doc.fechaVencimiento ? ` · Vence: ${fmtDate(doc.fechaVencimiento)}` : ""}</p>
+                    </div>
+                    <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-xs text-[#B3985B] hover:text-white transition-colors">Ver →</a>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* ── Modal Acuerdo Laboral ── */}
-      {showAcuerdo && (() => {
-        const hoy = new Date().toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
-        const periodoLabel: Record<string, string> = { MENSUAL: "mensual", QUINCENAL: "quincenal", SEMANAL: "semanal", POR_EVENTO: "por evento" };
-        const acuerdoText = [
-          "ACUERDO LABORAL",
-          "",
-          `Querétaro, Qro., a ${hoy}`,
-          "",
-          `Por medio del presente documento, Mainstage Producciones S.A. de C.V. (en adelante "La Empresa") acuerda las siguientes condiciones de trabajo con:`,
-          "",
-          `Nombre: ${persona.nombre}`,
-          `Puesto: ${persona.puesto}`,
-          `Departamento: ${persona.departamento}`,
-          persona.fechaIngreso ? `Fecha de ingreso: ${fmtDate(persona.fechaIngreso)}` : null,
-          "",
-          "CONDICIONES:",
-          "",
-          persona.salario ? `• Remuneración: ${fmt(persona.salario)} ${periodoLabel[persona.periodoPago] ?? persona.periodoPago}` : null,
-          persona.banco ? `• Banco: ${persona.banco}` : null,
-          persona.clabe ? `• CLABE: ${persona.clabe}` : null,
-          persona.numeroCuenta ? `• Cuenta: ${persona.numeroCuenta}` : null,
-          "",
-          "Ambas partes acuerdan que las presentes condiciones son válidas y serán respetadas de conformidad con lo establecido en la Ley Federal del Trabajo.",
-          "",
-          "",
-          "_______________________________          _______________________________",
-          "La Empresa                               El/La Colaborador(a)",
-          "Mainstage Producciones                   " + persona.nombre,
-        ].filter(s => s !== null).join("\n");
-
-        return (
-          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-            <div className="bg-[#0f0f0f] border border-[#222] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-              <div className="px-5 py-4 border-b border-[#1e1e1e] flex items-center justify-between">
-                <h2 className="text-white font-semibold text-sm">Acuerdo laboral · {persona.nombre}</h2>
-                <button onClick={() => setShowAcuerdo(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
-              </div>
-              <div className="p-5 space-y-4">
-                <pre className="text-xs text-gray-300 ms-stat-card whitespace-pre-wrap leading-relaxed font-sans select-all">
-                  {acuerdoText}
-                </pre>
-                <button
-                  onClick={() => navigator.clipboard.writeText(acuerdoText)}
-                  className="w-full bg-[#1a1a1a] hover:bg-[#222] border border-[#333] text-gray-300 hover:text-white text-xs font-semibold py-2.5 rounded-xl transition-colors"
-                >
-                  Copiar texto
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
     </div>
   );
 }

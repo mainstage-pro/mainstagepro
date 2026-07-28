@@ -1632,6 +1632,7 @@ model PersonalInterno {
   updatedAt      DateTime  @updatedAt
 
   documentos    DocumentoPersonal[]
+  docsLaborales DocumentoLaboral[]  @relation("PersonalDocsLaborales")
   pagos         PagoNomina[]
   asistencias   Asistencia[]
   incidencias   Incidencia[]
@@ -1640,6 +1641,26 @@ model PersonalInterno {
   capacitaciones CapacitacionParticipante[]
 
   @@map("personal_interno")
+}
+
+// Documento generado (oferta de trabajo / acuerdo laboral) con snapshot inmutable
+// de los datos al momento de generarlo y acuse de recibo por token público.
+model DocumentoLaboral {
+  id             String   @id @default(cuid())
+  personalId     String   @map("personal_id")
+  personal       PersonalInterno @relation("PersonalDocsLaborales", fields: [personalId], references: [id], onDelete: Cascade)
+  puestoId       String?  @map("puesto_id")
+  tipo           String   // OFERTA | ACUERDO
+  datos          String   @db.Text // JSON: snapshot de props del PDF al generar
+  token          String   @unique
+  aceptado       Boolean  @default(false)
+  aceptadoNombre String?  @map("aceptado_nombre")
+  aceptadoEn     DateTime? @map("aceptado_en")
+  aceptadoIp     String?  @map("aceptado_ip")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt      @map("updated_at")
+
+  @@map("documentos_laborales")
 }
 
 model DocumentoPersonal {
