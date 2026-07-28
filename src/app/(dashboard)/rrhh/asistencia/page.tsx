@@ -143,6 +143,16 @@ function TabHoy({ personal }: { personal: Personal[] }) {
     setSaving(null);
   }
 
+  async function borrar(personalId: string) {
+    setSaving(personalId);
+    const res = await fetch(`/api/rrhh/asistencia?personalId=${personalId}&fecha=${fecha}`, { method: "DELETE" });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "No se pudo quitar el registro"); setSaving(null); return; }
+    setRetardoMin(prev => { const n = { ...prev }; delete n[personalId]; return n; });
+    setNotas(prev => { const n = { ...prev }; delete n[personalId]; return n; });
+    await cargar(fecha);
+    setSaving(null);
+  }
+
   async function subirDoc(personalId: string, file: File) {
     setSubiendo(personalId);
     const form = new FormData();
@@ -265,10 +275,12 @@ function TabHoy({ personal }: { personal: Personal[] }) {
                   </div>
 
                   {/* Botones de estado */}
-                  <div className="flex gap-1 flex-wrap ml-auto">
+                  <div className="flex gap-1 flex-wrap ml-auto items-center">
                     {ESTADOS.map(e => (
-                      <button key={e.value} onClick={() => guardar(p.id, { estado: e.value })} disabled={isSaving}
-                        title={e.label}
+                      <button key={e.value}
+                        onClick={() => asist?.estado === e.value ? borrar(p.id) : guardar(p.id, { estado: e.value })}
+                        disabled={isSaving}
+                        title={asist?.estado === e.value ? `${e.label} — clic para quitar` : e.label}
                         className={`px-2 h-8 rounded-lg text-[11px] font-bold border transition-all disabled:opacity-40 ${
                           asist?.estado === e.value
                             ? e.btn + " ring-1 ring-white/20"
@@ -277,6 +289,12 @@ function TabHoy({ personal }: { personal: Personal[] }) {
                         {isSaving ? "…" : e.code}
                       </button>
                     ))}
+                    {asist && (
+                      <button onClick={() => borrar(p.id)} disabled={isSaving} title="Quitar registro"
+                        className="px-2 h-8 rounded-lg text-[11px] font-bold border bg-[#1a1a1a] border-[#333] text-gray-600 hover:text-red-400 hover:border-red-800 transition-all disabled:opacity-40">
+                        ✕
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -399,6 +417,15 @@ function TabHistorial({ personal }: { personal: Personal[] }) {
     setSaving(null);
   }
 
+  async function borrar(fecha: string) {
+    if (!selId) return;
+    setSaving(fecha);
+    const res = await fetch(`/api/rrhh/asistencia?personalId=${selId}&fecha=${fecha}`, { method: "DELETE" });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "No se pudo quitar"); setSaving(null); return; }
+    recargar();
+    setSaving(null);
+  }
+
   return (
     <div className="flex gap-4 flex-col md:flex-row">
       {/* Sidebar: lista empleados */}
@@ -460,7 +487,7 @@ function TabHistorial({ personal }: { personal: Personal[] }) {
                     {!esFinDeSemana && (
                       <Combobox
                         value={asist?.estado ?? ""}
-                        onChange={v => v && marcar(fecha, v as EstadoAsist)}
+                        onChange={v => v ? marcar(fecha, v as EstadoAsist) : (asist && borrar(fecha))}
                         disabled={saving === fecha}
                         options={[{ value: "", label: "—" }, ...ESTADOS.map(e => ({ value: e.value, label: e.label }))]}
                         className={`w-full text-[9px] rounded px-0.5 py-0.5 border-0 focus:outline-none cursor-pointer appearance-none text-center ${

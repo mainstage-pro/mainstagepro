@@ -41,3 +41,16 @@ export async function POST(req: NextRequest) {
   });
   return NextResponse.json({ asistencia });
 }
+
+export async function DELETE(req: NextRequest) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const { searchParams } = new URL(req.url);
+  const personalId = searchParams.get("personalId");
+  const fecha = searchParams.get("fecha");
+  if (!personalId || !fecha) return NextResponse.json({ error: "Datos requeridos" }, { status: 400 });
+  await prisma.asistencia.deleteMany({
+    where: { personalId, fecha: new Date(fecha + "T12:00:00") },
+  });
+  return NextResponse.json({ ok: true });
+}
