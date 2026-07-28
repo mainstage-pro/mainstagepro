@@ -39,6 +39,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (b.estandares !== undefined) data.estandares = arr(b.estandares);
     if (b.puestoIdealId !== undefined) data.puestoIdealId = b.puestoIdealId || null;
     if (b.color !== undefined) data.color = b.color || null;
+    if (b.posX !== undefined) data.posX = b.posX === null ? null : Number(b.posX);
+    if (b.posY !== undefined) data.posY = b.posY === null ? null : Number(b.posY);
     if (b.activo !== undefined) data.activo = b.activo;
     data.updatedAt = new Date();
 

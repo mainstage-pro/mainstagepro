@@ -30,6 +30,9 @@ export async function ensurePuestoSchema() {
   await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS personal_interno_user_id_key ON personal_interno(user_id)`);
   // Funciones del perfil de reclutamiento
   await prisma.$executeRawUnsafe(`ALTER TABLE puestos_ideales ADD COLUMN IF NOT EXISTS funciones TEXT`);
+  // Posiciones en el lienzo del organigrama
+  await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS pos_x DOUBLE PRECISION`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS pos_y DOUBLE PRECISION`);
 }
 
 const arr = (v: unknown) => (Array.isArray(v) && v.length ? JSON.stringify(v) : null);

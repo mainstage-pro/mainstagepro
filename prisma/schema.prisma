@@ -1585,6 +1585,8 @@ model Puesto {
   puestoIdeal   PuestoIdeal? @relation("PuestoIdealOperativo", fields: [puestoIdealId], references: [id], onDelete: SetNull)
   // Presentación / organigrama
   color     String?
+  posX      Float?   @map("pos_x") // posición X en el lienzo del organigrama
+  posY      Float?   @map("pos_y") // posición Y en el lienzo del organigrama
   activo    Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt      @map("updated_at")
