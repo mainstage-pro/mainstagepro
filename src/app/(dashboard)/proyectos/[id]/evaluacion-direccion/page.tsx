@@ -146,7 +146,6 @@ export default function EvaluacionDireccionPage() {
     return new Date(y, m - 1, d).toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   };
   const estadoTxt = estado === "saving" ? "Guardando…" : estado === "saved" ? "Guardado" : "";
-  const propuestas = (reporte.propuestasMejora ?? []).map(p => p.trim()).filter(Boolean);
   const evidObligatorias = reporteConfig.evidencias;
 
   const REPET: { v: NonNullable<EvaluacionDireccionData["repetiriamos"]>; label: string; tono: string }[] = [
@@ -200,23 +199,23 @@ export default function EvaluacionDireccionPage() {
           </div>
         </div>
 
-        {/* Bloques de texto del coordinador */}
-        {reporte.logros?.trim() && (
+        {/* Notas del evento (reporte del coordinador) */}
+        {reporte.resumenEvento?.trim() && (
           <div className="bg-[#0d0d0d] rounded-lg px-3 py-2">
-            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Qué hizo bien / resolvió</p>
-            <p className="text-gray-300 text-sm whitespace-pre-wrap">{reporte.logros}</p>
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Resumen del evento</p>
+            <p className="text-gray-300 text-sm whitespace-pre-wrap">{reporte.resumenEvento}</p>
           </div>
         )}
-        {reporte.autocritica?.trim() && (
+        {reporte.faltantes?.trim() && (
           <div className="bg-[#0d0d0d] rounded-lg px-3 py-2">
-            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Autocrítica</p>
-            <p className="text-gray-300 text-sm whitespace-pre-wrap">{reporte.autocritica}</p>
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Qué faltó</p>
+            <p className="text-gray-300 text-sm whitespace-pre-wrap">{reporte.faltantes}</p>
           </div>
         )}
-        {propuestas.length > 0 && (
+        {reporte.propuestaMejora?.trim() && (
           <div className="bg-[#0d0d0d] rounded-lg px-3 py-2">
-            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Propuestas de mejora</p>
-            <ul className="text-gray-300 text-sm list-disc list-inside space-y-0.5">{propuestas.map((p, i) => <li key={i}>{p}</li>)}</ul>
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Propuesta de mejora</p>
+            <p className="text-gray-300 text-sm whitespace-pre-wrap">{reporte.propuestaMejora}</p>
           </div>
         )}
         {(reporte.gastos ?? []).length > 0 && (
@@ -271,28 +270,38 @@ export default function EvaluacionDireccionPage() {
       )}
 
       <fieldset disabled={bloqueado} className="space-y-6 disabled:opacity-70">
-        {/* Calificación por dimensión */}
+        {/* Calificación por dimensión (agrupada en bloques) */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-white">Calificación por dimensión</h2>
+            <h2 className="text-lg font-bold text-white">Calificación</h2>
             <span className="text-[11px] text-[#777]">{calificadas}/{total} calificadas</span>
           </div>
-          <div className="space-y-3">
-            {config.dimensiones.map(dim => (
-              <div key={dim.id} className="ms-card-deep p-4 border-l-2" style={{ borderLeftColor: "#34D39955" }}>
-                <div className="flex items-center justify-between gap-4 flex-wrap">
-                  <div className="flex-1 min-w-[180px]">
-                    <p className="text-white text-sm font-medium">{dim.label}</p>
-                    <p className="text-[#666] text-xs mt-0.5">{dim.desc}</p>
-                  </div>
-                  <Estrellas valor={data.calificaciones?.[dim.id] ?? null} onChange={n => setCalif(dim.id, n)} />
+          <div className="space-y-6">
+            {config.bloques.map(bloque => (
+              <div key={bloque.id}>
+                <div className="flex items-center gap-3 mb-3">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-[#B3985B]">{bloque.titulo}</h3>
+                  <div className="flex-1 h-px bg-[#B3985B]/20" />
                 </div>
-                <input
-                  value={data.notas?.[dim.id] ?? ""}
-                  onChange={e => setNota(dim.id, e.target.value)}
-                  placeholder="Nota (opcional)"
-                  className="w-full mt-3 bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/50"
-                />
+                <div className="space-y-3">
+                  {bloque.dimensiones.map(dim => (
+                    <div key={dim.id} className="ms-card-deep p-4 border-l-2" style={{ borderLeftColor: "#34D39955" }}>
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                        <div className="flex-1 min-w-[180px]">
+                          <p className="text-white text-sm font-medium">{dim.label}</p>
+                          <p className="text-[#666] text-xs mt-0.5">{dim.desc}</p>
+                        </div>
+                        <Estrellas valor={data.calificaciones?.[dim.id] ?? null} onChange={n => setCalif(dim.id, n)} />
+                      </div>
+                      <input
+                        value={data.notas?.[dim.id] ?? ""}
+                        onChange={e => setNota(dim.id, e.target.value)}
+                        placeholder="Nota (opcional)"
+                        className="w-full mt-3 bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/50"
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>

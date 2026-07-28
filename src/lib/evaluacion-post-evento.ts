@@ -1,6 +1,7 @@
-// Configuración de la "Evaluación Post Evento / Post Renta" (cierre del coordinador).
-// Dos variantes con la misma estructura y estética; contenido distinto según el
-// tipo de servicio del proyecto. Compartida entre el formulario y el resumen.
+// Configuración del "Reporte Post Evento / Post Renta" (bitácora del coordinador).
+// Es un REPORTE de hechos frente al servicio (no una autoevaluación): checklist de
+// hitos, evidencia obligatoria, gastos y notas del evento. Dirección es quien califica.
+// Dos variantes con la misma estructura y estética; contenido según el tipo de servicio.
 
 export type Variante = "evento" | "renta";
 
@@ -34,16 +35,19 @@ export type EvalPostEventoData = {
   evidencias: Record<string, FotoReporte[]>;
   // Gastos e imprevistos, cada uno con su comprobante.
   gastos: GastoReporte[];
-  // Bloques de texto obligatorios del coordinador.
-  logros: string; // ¿Qué hiciste bien o resolviste?
-  autocritica: string; // ¿Qué pudiste haber hecho mejor tú?
-  propuestasMejora: string[]; // acciones concretas para el próximo evento
-  comentariosFinales: string;
+  // Notas del evento (tono reporte, no autoevaluación).
+  resumenEvento: string; // ¿Cómo salió el evento? ¿Qué se resolvió? (obligatorio)
+  faltantes: string; // ¿Qué faltó? herramientas, equipo o recursos (opcional)
+  propuestaMejora: string; // una mejora concreta para el próximo evento (opcional)
   fotos: FotoReporte[]; // evidencia fotográfica / video para el reporte al cliente
   completado: boolean; // el coordinador marcó el reporte como terminado
   completadoEn: string | null;
-  // Legacy: el coordinador ya NO se autocalifica (lo hace dirección). Se conservan
-  // opcionales para no romper la lectura de reportes viejos.
+  // Legacy: campos de versiones anteriores. Se conservan opcionales para no romper
+  // la lectura de reportes viejos (el coordinador ya NO se autocalifica ni autocritica).
+  logros?: string;
+  autocritica?: string;
+  propuestasMejora?: string[];
+  comentariosFinales?: string;
   calificaciones?: Record<string, number | null>;
   calificacionFinal?: number | null;
 };
@@ -51,11 +55,11 @@ export type EvalPostEventoData = {
 // Longitud mínima para considerar "respondido" un bloque de texto obligatorio.
 export const MIN_TEXTO_REPORTE = 15;
 
-// Ejemplos guía (placeholder) para los bloques obligatorios.
-export const EJEMPLO_LOGROS =
-  "Ej.: «Cuando falló un cañón en pleno evento lo sustituí en 5 min con el de respaldo sin que el cliente lo notara.»";
-export const EJEMPLO_AUTOCRITICA =
-  "Ej.: «Debí revisar el cableado la noche anterior; por hacerlo en sitio, el montaje empezó 30 min tarde.»";
+// Ejemplos guía (placeholder) para los campos de texto del reporte.
+export const EJEMPLO_RESUMEN =
+  "Ej.: «El evento salió bien. Se cayó un cañón a mitad de show y lo sustituí en 5 min con el de respaldo; el cliente no lo notó. Todo terminó a tiempo.»";
+export const EJEMPLO_FALTANTES =
+  "Ej.: «Faltó una extensión de 20 m y un adaptador XLR; tuve que improvisar con lo que había en sitio.»";
 export const EJEMPLO_MEJORA =
   "Ej.: «Pedir el brief 48 h antes para no improvisar la distribución de audio en el lugar.»";
 
@@ -79,53 +83,26 @@ export type EvalSeccion = {
 
 export type CalifDimension = { id: string; label: string; desc: string };
 
-export const SECCION_CALIF_COLOR = "#34D399";
+export const SECCION_NOTAS_COLOR = "#34D399";
 export const SECCION_MEJORA_COLOR = "#B3985B";
 
 // ─── Variante EVENTO (producción / dirección técnica) ────────────────────────
 
 const SECCIONES_EVENTO: EvalSeccion[] = [
   {
-    id: "operativo",
-    titulo: "Cumplimiento operativo",
-    descripcion: "Apego al protocolo del equipo técnico durante la jornada.",
+    id: "hitos",
+    titulo: "Hitos del servicio",
+    descripcion: "Marca lo que ocurrió en el evento. Son hechos, no calificación.",
     color: "#5B9BD5",
     items: [
-      { id: "llamado", label: "¿Se llegó al llamado en tiempo y forma?", desc: "El equipo se presentó puntual y listo para trabajar.", tipo: "si-no" },
-      { id: "reporteMovimientos", label: "¿Se reportaron los movimientos clave?", desc: "Llegada, montaje, inicio/fin del evento y regreso a bodega.", tipo: "si-no" },
-      { id: "evidenciaFoto", label: "¿Se cumplió con la evidencia fotográfica?", desc: "Montaje, operación y fallas; o se marcó que no hubo fallas.", tipo: "si-no" },
-    ],
-  },
-  {
-    id: "montaje",
-    titulo: "Montaje y ejecución",
-    descripcion: "Desarrollo del montaje y del evento en sitio.",
-    color: "#E0A458",
-    items: [
-      { id: "montajeEnTiempo", label: "¿El montaje se realizó dentro del tiempo previsto?", desc: "Inicio y término del montaje según lo planeado.", tipo: "si-no" },
-      { id: "pruebas", label: "¿Se realizaron pruebas antes del evento?", desc: "Hubo tiempo para probar audio, iluminación y/o video.", tipo: "si-no" },
-      { id: "eventoInicio", label: "¿El evento inició en tiempo y forma?", desc: "Arranque puntual y sin contratiempos técnicos.", tipo: "si-no" },
+      { id: "llegadaMontaje", label: "¿Llegada al llamado y montaje en tiempo?", desc: "El equipo se presentó puntual y el montaje arrancó según lo planeado.", tipo: "si-no" },
+      { id: "pruebas", label: "¿Se hicieron pruebas antes del evento?", desc: "Hubo tiempo para probar audio, iluminación y/o video.", tipo: "si-no" },
+      { id: "eventoInicio", label: "¿El evento inició en tiempo?", desc: "Arranque puntual, sin contratiempos técnicos.", tipo: "si-no" },
       { id: "incidenciaCliente", label: "¿Hubo incidencia con el cliente?", desc: "Algún problema o roce con el cliente durante el servicio.", tipo: "si-no", incidenciaSiSi: true },
-      { id: "incidenciaEquipo", label: "¿Hubo incidencia con algún equipo?", desc: "Fallas de equipo o mala operación durante el evento.", tipo: "si-no", incidenciaSiSi: true },
+      { id: "incidenciaEquipo", label: "¿Hubo incidencia o falla de equipo?", desc: "Fallas de equipo o mala operación durante el evento.", tipo: "si-no", incidenciaSiSi: true },
+      { id: "regresoBodega", label: "¿El equipo regresó completo y en buen estado a bodega?", desc: "Todo el equipo volvió, descargado y acomodado.", tipo: "si-no" },
     ],
   },
-  {
-    id: "documentos",
-    titulo: "Documentos operativos",
-    descripcion: "Documentación técnica generada para el evento.",
-    color: "#A78BFA",
-    items: [
-      { id: "riderCarga", label: "¿Se generó el rider de carga?", desc: "Listado del equipo cargado para el evento.", tipo: "si-no" },
-      { id: "fichaOperativa", label: "¿Se generó la ficha técnica / operativa?", desc: "Documento operativo con la información técnica del evento.", tipo: "si-no" },
-      { id: "docsComplementarios", label: "¿Se generaron los planos necesarios (render, lighting/stage plot)?", desc: "Opcional. Marca «No fue necesario» si el evento no los requería.", tipo: "si-no-na" },
-    ],
-  },
-];
-
-const CALIF_EVENTO: CalifDimension[] = [
-  { id: "operacionTecnica", label: "Operación técnica", desc: "Calidad del montaje, operación y cumplimiento de tiempos en sitio." },
-  { id: "coordinacion", label: "Coordinación del equipo", desc: "Organización, liderazgo y manejo de imprevistos durante la jornada." },
-  { id: "comunicacionCliente", label: "Comunicación con el cliente", desc: "Claridad y trato con el cliente antes, durante y después." },
 ];
 
 // Evidencia obligatoria del reporte de PRODUCCIÓN. Cada slot pide foto de cámara.
@@ -140,34 +117,19 @@ const EVIDENCIAS_EVENTO: EvidenciaSlot[] = [
 
 const SECCIONES_RENTA: EvalSeccion[] = [
   {
-    id: "entregaDevolucion",
-    titulo: "Entrega y devolución",
-    descripcion: "Cumplimiento en la salida y el regreso del equipo.",
+    id: "hitos",
+    titulo: "Hitos de la renta",
+    descripcion: "Marca lo que ocurrió en la entrega, uso y devolución del equipo.",
     color: "#5B9BD5",
     items: [
       { id: "entregaCompletaTiempo", label: "¿La entrega se realizó completa y en tiempo?", desc: "Todo el equipo del contrato, funcionando, en la fecha acordada.", tipo: "si-no" },
       { id: "responsivaFirmada", label: "¿Se firmó contrato / responsiva de renta?", desc: "Documento que respalda la renta y las responsabilidades del cliente.", tipo: "si-no" },
       { id: "devolucionCompletaTiempo", label: "¿La devolución se realizó completa y en tiempo?", desc: "Regresó todo (equipos, cables y accesorios) en la fecha pactada.", tipo: "si-no" },
-      { id: "revisionRetorno", label: "¿Se revisó el equipo al retorno y regresó en buen estado?", desc: "Checklist de retorno; equipo limpio y presentable.", tipo: "si-no" },
-    ],
-  },
-  {
-    id: "estado",
-    titulo: "Estado y decisión",
-    descripcion: "Condición del equipo al retorno y decisión sobre el cliente.",
-    color: "#A78BFA",
-    items: [
       { id: "danos", label: "¿Hubo daños en los equipos al regresar?", desc: "Golpes, roturas o desgaste anormal detectado en la revisión.", tipo: "si-no", incidenciaSiSi: true },
       { id: "fallasCliente", label: "¿El cliente reportó fallas de algún equipo?", desc: "Fallas o mal funcionamiento reportadas durante la renta.", tipo: "si-no", incidenciaSiSi: true },
       { id: "cargoAdicional", label: "¿Aplica algún cargo adicional (daños / faltantes / retraso)?", desc: "Cobro extra por daños, piezas faltantes o devolución tardía.", tipo: "si-no", incidenciaSiSi: true },
-      { id: "volveriaRentar", label: "¿Volveríamos a rentarle equipo a este cliente?", desc: "Recomendación de seguir rentando según su comportamiento.", tipo: "si-no" },
     ],
   },
-];
-
-const CALIF_RENTA: CalifDimension[] = [
-  { id: "estadoRetorno", label: "Estado del equipo al retorno", desc: "Condición física y funcional del equipo devuelto." },
-  { id: "cumplimientoCliente", label: "Cumplimiento del cliente", desc: "Apego a fechas, cuidado, comunicación y condiciones de la renta." },
 ];
 
 // Evidencia obligatoria del reporte de RENTA.
@@ -186,12 +148,8 @@ export type EvalConfig = {
   resumenSubtitulo: string; // subtítulo del card dentro del proyecto
   secciones: EvalSeccion[];
   evidencias: EvidenciaSlot[]; // slots de evidencia (obligatorios y opcionales)
-  califTitulo: string;
-  califDescripcion: string;
-  califDimensiones: CalifDimension[];
-  resultadoLabel: string; // etiqueta del tablero de resultado
-  califFinalSeccionDesc: string;
-  califFinalPregunta: string;
+  resumenLabel: string; // pregunta del bloque "resumen del evento"
+  resumenDesc: string;
 };
 
 export function varianteDe(tipoServicio: string | null): Variante {
@@ -214,12 +172,8 @@ export function getEvalConfig(tipoServicio: string | null): EvalConfig {
       resumenSubtitulo: "Reporte del coordinador: entrega, devolución y estado del equipo con evidencia",
       secciones: SECCIONES_RENTA,
       evidencias: EVIDENCIAS_RENTA,
-      califTitulo: "Calificación de la renta",
-      califDescripcion: "Califica cada dimensión de 1 a 5 estrellas. El promedio define el resultado de la renta.",
-      califDimensiones: CALIF_RENTA,
-      resultadoLabel: "Resultado de la renta",
-      califFinalSeccionDesc: "Tu valoración global de la renta, considerando estado del equipo, cliente y logística.",
-      califFinalPregunta: "¿Cómo calificarías la renta en general?",
+      resumenLabel: "¿Cómo salió la renta?",
+      resumenDesc: "Resume qué pasó con la renta: entrega, uso y devolución. Si hubo algún problema, cuenta cómo se resolvió.",
     };
   }
   return {
@@ -228,12 +182,8 @@ export function getEvalConfig(tipoServicio: string | null): EvalConfig {
     resumenSubtitulo: "Reporte del coordinador con evidencia obligatoria para la junta",
     secciones: SECCIONES_EVENTO,
     evidencias: EVIDENCIAS_EVENTO,
-    califTitulo: "Calificación de la operación",
-    califDescripcion: "Califica cada dimensión de 1 a 5 estrellas. El promedio define el resultado de operación y coordinación.",
-    califDimensiones: CALIF_EVENTO,
-    resultadoLabel: "Operación y coordinación",
-    califFinalSeccionDesc: "Tu valoración global del evento, considerando operación, coordinación y resultado.",
-    califFinalPregunta: "¿Cómo calificarías el evento en general?",
+    resumenLabel: "¿Cómo salió el evento?",
+    resumenDesc: "Resume cómo salió el evento y qué se resolvió. Si hubo algún imprevisto, cuenta qué pasó y cómo lo solucionaste.",
   };
 }
 
@@ -252,10 +202,9 @@ export function emptyEvalData(): EvalPostEventoData {
     items: {},
     evidencias: {},
     gastos: [],
-    logros: "",
-    autocritica: "",
-    propuestasMejora: [],
-    comentariosFinales: "",
+    resumenEvento: "",
+    faltantes: "",
+    propuestaMejora: "",
     fotos: [],
     completado: false,
     completadoEn: null,
@@ -292,11 +241,8 @@ export function reporteCompleto(
     if ((g.comprobante ?? []).length === 0) faltantes.push(`Gasto #${i + 1}: falta el comprobante.`);
   });
 
-  // 4. Bloques de texto obligatorios (logros, autocrítica, propuesta de mejora).
-  if ((data.logros ?? "").trim().length < MIN_TEXTO_REPORTE) faltantes.push("Falta responder «¿Qué hiciste bien o resolviste?».");
-  if ((data.autocritica ?? "").trim().length < MIN_TEXTO_REPORTE) faltantes.push("Falta la autocrítica.");
-  const propuestas = (data.propuestasMejora ?? []).map((p) => p.trim()).filter(Boolean);
-  if (!propuestas.length || propuestas[0].length < MIN_TEXTO_REPORTE) faltantes.push("Falta al menos una propuesta de mejora.");
+  // 4. Único bloque de texto obligatorio: el resumen del evento (los demás son opcionales).
+  if ((data.resumenEvento ?? "").trim().length < MIN_TEXTO_REPORTE) faltantes.push(`Falta el resumen: «${config.resumenLabel}».`);
 
   return { ok: faltantes.length === 0, faltantes };
 }
@@ -324,7 +270,7 @@ export function contarIncidencias(items: Record<string, ItemResp>, secciones: Ev
   return n;
 }
 
-// Promedio (1..5) de las dimensiones calificadas.
+// Promedio (1..5) de las dimensiones calificadas. Lo usa la evaluación de dirección.
 export function promedioCalificaciones(calif: Record<string, number | null>, dimensiones: CalifDimension[]) {
   const vals = dimensiones
     .map((d) => calif?.[d.id])

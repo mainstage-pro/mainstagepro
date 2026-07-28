@@ -105,7 +105,6 @@ export function ReporteEvaluacion({ data }: { data: ReporteEvaluacionData }) {
     ? new Date(ev.actualizadoEn).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })
     : null;
 
-  const propuestas = (ev.propuestasMejora ?? []).map((p) => p.trim()).filter(Boolean);
   const gastos = (ev.gastos ?? []).filter((g) => (g.concepto ?? "").trim() || g.monto);
   const totalGastos = gastos.reduce((acc, g) => acc + (g.monto || 0), 0);
 
@@ -204,29 +203,27 @@ export function ReporteEvaluacion({ data }: { data: ReporteEvaluacionData }) {
             </View>
           ))}
 
-          {/* ¿QUÉ HICISTE BIEN O RESOLVISTE? */}
+          {/* RESUMEN DEL EVENTO */}
           <View style={base.section} wrap={false}>
-            <Text style={base.secTitle}>¿Qué hiciste bien o resolviste?</Text>
-            {ev.logros?.trim() ? (
+            <Text style={base.secTitle}>Resumen del evento</Text>
+            {ev.resumenEvento?.trim() ? (
               <View style={base.textBox}>
-                <Text style={base.textBoxContent}>{ev.logros.trim()}</Text>
+                <Text style={base.textBoxContent}>{ev.resumenEvento.trim()}</Text>
               </View>
             ) : (
               <Text style={s.emptyTxt}>Sin registrar.</Text>
             )}
           </View>
 
-          {/* AUTOCRÍTICA */}
-          <View style={base.section} wrap={false}>
-            <Text style={base.secTitle}>Autocrítica</Text>
-            {ev.autocritica?.trim() ? (
+          {/* ¿QUÉ FALTÓ? */}
+          {ev.faltantes?.trim() ? (
+            <View style={base.section} wrap={false}>
+              <Text style={base.secTitle}>¿Qué faltó?</Text>
               <View style={base.textBox}>
-                <Text style={base.textBoxContent}>{ev.autocritica.trim()}</Text>
+                <Text style={base.textBoxContent}>{ev.faltantes.trim()}</Text>
               </View>
-            ) : (
-              <Text style={s.emptyTxt}>Sin registrar.</Text>
-            )}
-          </View>
+            </View>
+          ) : null}
 
           {/* GASTOS E IMPREVISTOS */}
           <View style={base.section} wrap={false}>
@@ -256,34 +253,15 @@ export function ReporteEvaluacion({ data }: { data: ReporteEvaluacionData }) {
             )}
           </View>
 
-          {/* PROPUESTAS DE MEJORA */}
-          <View style={base.section} wrap={false}>
-            <Text style={base.secTitle}>Propuestas de mejora</Text>
-            {propuestas.length > 0 ? (
+          {/* PROPUESTA DE MEJORA */}
+          {ev.propuestaMejora?.trim() ? (
+            <View style={base.section} wrap={false}>
+              <Text style={base.secTitle}>Propuesta de mejora</Text>
               <View style={base.textBox}>
-                {propuestas.map((p, i) => (
-                  <View key={i} style={s.mejoraRow}>
-                    <Text style={s.mejoraNum}>{i + 1}.</Text>
-                    <Text style={s.mejoraTxt}>{p}</Text>
-                  </View>
-                ))}
+                <Text style={base.textBoxContent}>{ev.propuestaMejora.trim()}</Text>
               </View>
-            ) : (
-              <Text style={s.emptyTxt}>Sin propuestas de mejora registradas.</Text>
-            )}
-          </View>
-
-          {/* COMENTARIOS FINALES */}
-          <View style={base.section} wrap={false}>
-            <Text style={base.secTitle}>Comentarios finales</Text>
-            {ev.comentariosFinales?.trim() ? (
-              <View style={base.textBox}>
-                <Text style={base.textBoxContent}>{ev.comentariosFinales.trim()}</Text>
-              </View>
-            ) : (
-              <Text style={s.emptyTxt}>Sin comentarios finales.</Text>
-            )}
-          </View>
+            </View>
+          ) : null}
 
         </View>
 

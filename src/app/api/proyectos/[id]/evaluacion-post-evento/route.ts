@@ -87,11 +87,9 @@ export async function PUT(
     evidencias:
       body.evidencias && typeof body.evidencias === "object" ? body.evidencias : prev.evidencias ?? {},
     gastos: Array.isArray(body.gastos) ? (body.gastos as GastoReporte[]) : prev.gastos ?? [],
-    logros: typeof body.logros === "string" ? body.logros : prev.logros ?? "",
-    autocritica: typeof body.autocritica === "string" ? body.autocritica : prev.autocritica ?? "",
-    propuestasMejora: Array.isArray(body.propuestasMejora) ? body.propuestasMejora : prev.propuestasMejora ?? [],
-    comentariosFinales:
-      typeof body.comentariosFinales === "string" ? body.comentariosFinales : prev.comentariosFinales ?? "",
+    resumenEvento: typeof body.resumenEvento === "string" ? body.resumenEvento : prev.resumenEvento ?? "",
+    faltantes: typeof body.faltantes === "string" ? body.faltantes : prev.faltantes ?? "",
+    propuestaMejora: typeof body.propuestaMejora === "string" ? body.propuestaMejora : prev.propuestaMejora ?? "",
     fotos: Array.isArray(body.fotos) ? (body.fotos as FotoReporte[]) : prev.fotos ?? [],
     completado: yaCompletado,
     completadoEn: prev.completadoEn ?? null,

@@ -6620,18 +6620,16 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                               {incidencias > 0 && <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-red-900/40 text-red-300">{incidencias} incidencia(s)</span>}
                               {evalPost?.llenadoPorNombre && <span className="text-xs text-gray-500">Por {evalPost.llenadoPorNombre}</span>}
                             </div>
-                            {evalPost?.autocritica && (
+                            {evalPost?.resumenEvento && (
                               <div className="bg-[#0d0d0d] rounded-lg px-3 py-2">
-                                <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Autocrítica del coordinador</p>
-                                <p className="text-gray-300 text-sm whitespace-pre-wrap line-clamp-3">{evalPost.autocritica}</p>
+                                <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Resumen del evento</p>
+                                <p className="text-gray-300 text-sm whitespace-pre-wrap line-clamp-3">{evalPost.resumenEvento}</p>
                               </div>
                             )}
-                            {evalPost?.propuestasMejora && evalPost.propuestasMejora.filter(Boolean).length > 0 && (
+                            {evalPost?.faltantes && (
                               <div className="bg-[#0d0d0d] rounded-lg px-3 py-2">
-                                <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Propuestas de mejora</p>
-                                <ul className="text-gray-300 text-sm list-disc list-inside space-y-0.5">
-                                  {evalPost.propuestasMejora.filter(Boolean).slice(0, 4).map((p, i) => <li key={i}>{p}</li>)}
-                                </ul>
+                                <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Qué faltó</p>
+                                <p className="text-gray-300 text-sm whitespace-pre-wrap line-clamp-2">{evalPost.faltantes}</p>
                               </div>
                             )}
                           </div>

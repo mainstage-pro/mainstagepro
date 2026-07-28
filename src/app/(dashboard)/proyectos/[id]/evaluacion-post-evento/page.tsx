@@ -6,14 +6,14 @@ import Link from "next/link";
 import { upload } from "@vercel/blob/client";
 import {
   getEvalConfig,
-  SECCION_CALIF_COLOR,
+  SECCION_NOTAS_COLOR,
   SECCION_MEJORA_COLOR,
   emptyEvalData,
   contarRespondidos,
   contarIncidencias,
   reporteCompleto,
-  EJEMPLO_LOGROS,
-  EJEMPLO_AUTOCRITICA,
+  EJEMPLO_RESUMEN,
+  EJEMPLO_FALTANTES,
   EJEMPLO_MEJORA,
   MIN_TEXTO_REPORTE,
   type EvalPostEventoData,
@@ -160,10 +160,9 @@ export default function ReportePostEventoPage() {
         items: next.items,
         evidencias: next.evidencias,
         gastos: next.gastos,
-        logros: next.logros,
-        autocritica: next.autocritica,
-        propuestasMejora: next.propuestasMejora,
-        comentariosFinales: next.comentariosFinales,
+        resumenEvento: next.resumenEvento,
+        faltantes: next.faltantes,
+        propuestaMejora: next.propuestaMejora,
         fotos: next.fotos,
         ...(marcarCompletado !== undefined ? { completado: marcarCompletado } : {}),
       }),
@@ -207,12 +206,6 @@ export default function ReportePostEventoPage() {
       return { ...prev, items: { ...prev.items, [itemId]: { ...actual, comentario } } };
     });
   };
-
-  const setPropuesta = (i: number, val: string) =>
-    actualizar(prev => ({ ...prev, propuestasMejora: prev.propuestasMejora.map((p, idx) => (idx === i ? val : p)) }));
-  const addPropuesta = () => actualizar(prev => ({ ...prev, propuestasMejora: [...prev.propuestasMejora, ""] }));
-  const removePropuesta = (i: number) =>
-    actualizar(prev => ({ ...prev, propuestasMejora: prev.propuestasMejora.filter((_, idx) => idx !== i) }));
 
   const setLlenadoPor = (tecnicoId: string) => {
     const m = equipo.find(e => e.id === tecnicoId);
@@ -554,87 +547,55 @@ export default function ReportePostEventoPage() {
         </div>
       </div>
 
-      {/* ¿Qué hiciste bien o resolviste? */}
+      {/* Notas del evento (tono reporte) */}
       <div>
         <SeccionHeader
-          titulo="¿Qué hiciste bien o resolviste?"
-          descripcion="Cuenta los aciertos y cómo resolviste los imprevistos del evento. Obligatorio."
-          color={SECCION_CALIF_COLOR}
+          titulo="Notas del evento"
+          descripcion="Cuenta lo esencial en pocas líneas. Es una bitácora del servicio, no una evaluación."
+          color={SECCION_NOTAS_COLOR}
           numero={config.secciones.length + 3}
         />
-        <textarea
-          value={data.logros}
-          onChange={e => actualizar(prev => ({ ...prev, logros: e.target.value }))}
-          placeholder={EJEMPLO_LOGROS}
-          rows={4}
-          className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl px-4 py-3 text-sm text-white placeholder-[#3a3a3a] focus:outline-none focus:border-[#B3985B]/50 resize-none"
-        />
-        <p className="text-[10px] mt-1 text-[#555]">{(data.logros ?? "").trim().length < MIN_TEXTO_REPORTE ? `Mínimo ${MIN_TEXTO_REPORTE} caracteres.` : "✓"}</p>
-      </div>
+        <div className="space-y-5">
+          {/* Resumen (obligatorio) */}
+          <div>
+            <label className="block text-sm text-white font-medium mb-1">{config.resumenLabel} <span className="text-[#B3985B]">*</span></label>
+            <p className="text-[#666] text-xs mb-2">{config.resumenDesc}</p>
+            <textarea
+              value={data.resumenEvento}
+              onChange={e => actualizar(prev => ({ ...prev, resumenEvento: e.target.value }))}
+              placeholder={EJEMPLO_RESUMEN}
+              rows={4}
+              className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl px-4 py-3 text-sm text-white placeholder-[#3a3a3a] focus:outline-none focus:border-[#B3985B]/50 resize-none"
+            />
+            <p className="text-[10px] mt-1 text-[#555]">{(data.resumenEvento ?? "").trim().length < MIN_TEXTO_REPORTE ? `Mínimo ${MIN_TEXTO_REPORTE} caracteres.` : "✓"}</p>
+          </div>
 
-      {/* Autocrítica */}
-      <div>
-        <SeccionHeader
-          titulo="Autocrítica"
-          descripcion="¿Qué pudiste haber hecho mejor TÚ como coordinador? Sé honesto. Obligatorio."
-          color={SECCION_MEJORA_COLOR}
-          numero={config.secciones.length + 4}
-        />
-        <textarea
-          value={data.autocritica}
-          onChange={e => actualizar(prev => ({ ...prev, autocritica: e.target.value }))}
-          placeholder={EJEMPLO_AUTOCRITICA}
-          rows={4}
-          className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl px-4 py-3 text-sm text-white placeholder-[#3a3a3a] focus:outline-none focus:border-[#B3985B]/50 resize-none"
-        />
-        <p className="text-[10px] mt-1 text-[#555]">{(data.autocritica ?? "").trim().length < MIN_TEXTO_REPORTE ? `Mínimo ${MIN_TEXTO_REPORTE} caracteres.` : "✓"}</p>
-      </div>
+          {/* ¿Qué faltó? (opcional) */}
+          <div>
+            <label className="block text-sm text-white font-medium mb-1">¿Qué faltó? <span className="text-[#555] text-xs font-normal">(opcional)</span></label>
+            <p className="text-[#666] text-xs mb-2">Herramientas, equipo o recursos que hicieron falta en el servicio.</p>
+            <textarea
+              value={data.faltantes}
+              onChange={e => actualizar(prev => ({ ...prev, faltantes: e.target.value }))}
+              placeholder={EJEMPLO_FALTANTES}
+              rows={3}
+              className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl px-4 py-3 text-sm text-white placeholder-[#3a3a3a] focus:outline-none focus:border-[#B3985B]/50 resize-none"
+            />
+          </div>
 
-      {/* Propuestas de mejora */}
-      <div>
-        <SeccionHeader
-          titulo="Propuestas de mejora"
-          descripcion="Acciones concretas para el próximo evento. Al menos una es obligatoria."
-          color={SECCION_MEJORA_COLOR}
-          numero={config.secciones.length + 5}
-        />
-        <div className="space-y-2">
-          {data.propuestasMejora.length === 0 && (
-            <button type="button" onClick={addPropuesta} className="text-xs text-[#B3985B] hover:text-white border border-dashed border-[#333] hover:border-[#B3985B]/50 rounded-lg px-3 py-2 transition-colors">+ Agregar la primera propuesta</button>
-          )}
-          {data.propuestasMejora.map((p, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <span className="text-[#B3985B] text-sm shrink-0 w-5 text-center">{i + 1}.</span>
-              <input
-                value={p}
-                onChange={e => setPropuesta(i, e.target.value)}
-                placeholder={EJEMPLO_MEJORA}
-                className="flex-1 bg-[#111] border border-[#222] rounded-lg px-3 py-2 text-sm text-white placeholder-[#3a3a3a] focus:outline-none focus:border-[#B3985B]/50"
-              />
-              <button type="button" onClick={() => removePropuesta(i)} className="text-[#444] hover:text-red-400 text-xs shrink-0 px-2">Eliminar</button>
-            </div>
-          ))}
-          {data.propuestasMejora.length > 0 && (
-            <button type="button" onClick={addPropuesta} className="mt-1 text-xs text-[#B3985B] hover:text-white border border-dashed border-[#333] hover:border-[#B3985B]/50 rounded-lg px-3 py-2 transition-colors">+ Agregar propuesta</button>
-          )}
+          {/* Propuesta de mejora (opcional) */}
+          <div>
+            <label className="block text-sm text-white font-medium mb-1">Propuesta de mejora <span className="text-[#555] text-xs font-normal">(opcional)</span></label>
+            <p className="text-[#666] text-xs mb-2">Una acción concreta para que el próximo evento salga mejor.</p>
+            <textarea
+              value={data.propuestaMejora}
+              onChange={e => actualizar(prev => ({ ...prev, propuestaMejora: e.target.value }))}
+              placeholder={EJEMPLO_MEJORA}
+              rows={3}
+              className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl px-4 py-3 text-sm text-white placeholder-[#3a3a3a] focus:outline-none focus:border-[#B3985B]/50 resize-none"
+            />
+          </div>
         </div>
-      </div>
-
-      {/* Comentarios finales */}
-      <div>
-        <SeccionHeader
-          titulo="Comentarios finales"
-          descripcion={config.variante === "renta" ? "Conclusión de la renta: qué salió bien, qué mejorar y acuerdos." : "Conclusión general del evento (opcional)."}
-          color={SECCION_MEJORA_COLOR}
-          numero={config.secciones.length + 6}
-        />
-        <textarea
-          value={data.comentariosFinales}
-          onChange={e => actualizar(prev => ({ ...prev, comentariosFinales: e.target.value }))}
-          placeholder="Comentarios finales (opcional)…"
-          rows={4}
-          className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl px-4 py-3 text-sm text-white placeholder-[#333] focus:outline-none focus:border-[#B3985B]/50 resize-none"
-        />
       </div>
 
       {/* Galería para el cliente */}
@@ -643,7 +604,7 @@ export default function ReportePostEventoPage() {
           titulo="Fotos para el reporte del cliente"
           descripcion="Fotos y videos del evento para el reporte de servicio que se entrega al cliente."
           color={SECCION_MEJORA_COLOR}
-          numero={config.secciones.length + 7}
+          numero={config.secciones.length + 4}
         />
         <div className="ms-card-deep p-4 space-y-4">
           {(data.fotos ?? []).length === 0 ? (
