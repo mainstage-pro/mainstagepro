@@ -145,13 +145,19 @@ function periodoWindow(frecuencia: string, fecha: Date): { inicio: Date; fin: Da
 function normalizeArea(nombre: string | null | undefined): string {
   if (!nombre) return "GENERAL";
   const n = nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
-  if (n.includes("VENTA")) return "VENTAS";
+  if (n.includes("VENTA") || n.includes("COMERCIAL")) return "VENTAS";
   if (n.includes("MARKETING")) return "MARKETING";
   if (n.includes("PRODUCC")) return "PRODUCCION";
   if (n.includes("ADMINISTRA")) return "ADMINISTRACION";
   if (n.includes("DIRECC")) return "DIRECCION";
   if (n.includes("RRHH") || n.includes("RECURSOS")) return "RRHH";
   return "GENERAL";
+}
+
+// Prefiere el código estable de PTArea; cae al matching por nombre para datos legados.
+function areaCodeDe(area: { codigo?: string | null; nombre?: string | null } | null | undefined, fallback: string | null | undefined): string {
+  if (area?.codigo) return area.codigo;
+  return normalizeArea(area?.nombre ?? fallback);
 }
 
 function impactoAPrioridad(impacto: string | null | undefined): string {
@@ -180,7 +186,7 @@ type TemplateConArea = {
   esAccionCampo: boolean; moduloDestino: string | null; moduloTexto: string | null;
   moduloDisponible: boolean; cuando: string | null; porqueSeHace: string | null;
   estandarMinimo: string | null; siNoSeHace: string | null;
-  area: { nombre: string } | null;
+  area: { nombre: string; codigo: string | null } | null;
 };
 
 // Resolver a qué usuarios se asigna (fan-out para area/todos)
@@ -208,7 +214,7 @@ export async function generarTareasDelDia(fecha: Date = new Date()): Promise<{
 
   const templates = (await prisma.pTTareaTemplate.findMany({
     where: { activa: true },
-    include: { area: { select: { nombre: true } } },
+    include: { area: { select: { nombre: true, codigo: true } } },
   })) as unknown as TemplateConArea[];
 
   const tz = "America/Mexico_City";
@@ -219,7 +225,7 @@ export async function generarTareasDelDia(fecha: Date = new Date()): Promise<{
     try {
       if (!debeGenerarse(template, fecha)) continue;
 
-      const areaCode = normalizeArea(template.area?.nombre ?? template.areaAsignada);
+      const areaCode = areaCodeDe(template.area, template.areaAsignada);
       const asignados = await resolverAsignados(template, areaCode);
       const { inicio, fin } = periodoWindow(template.frecuencia, fecha);
       const fechaVencimiento = calcularVencimiento(template, fecha);

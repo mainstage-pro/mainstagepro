@@ -59,6 +59,8 @@ type PuestoLike = {
   nombre: string; area: string; objetivoArea?: string | null; misionPuesto?: string | null;
   responsabilidades?: string | null; estandares?: string | null;
   coordinaCon?: string | null; supervisaA?: string | null;
+  funciones?: string | null; prestaciones?: string | null;
+  tipoContrato?: string | null; modalidad?: string | null; horario?: string | null;
   reportaA?: { nombre: string } | null;
   puestoIdeal?: PuestoIdealLike | null;
 } | null;
@@ -91,13 +93,14 @@ export function buildSnapshot(
     estandares: estArr(puesto?.estandares),
     coordinaCon: arr(puesto?.coordinaCon),
     supervisaA: arr(puesto?.supervisaA),
-    funciones: arr(ideal?.funciones),
-    beneficios: arr(ideal?.prestaciones),
+    // Condiciones laborales: se leen del puesto operativo; el puesto ideal es respaldo legado.
+    funciones: arr(puesto?.funciones ?? ideal?.funciones),
+    beneficios: arr(puesto?.prestaciones ?? ideal?.prestaciones),
     salario: persona.salario ?? null,
     periodoPago: persona.periodoPago ?? "MENSUAL",
-    tipoContrato: ideal?.tipoContrato ?? null,
-    modalidad: ideal?.modalidad ?? null,
-    horario: ideal?.horario ?? null,
+    tipoContrato: puesto?.tipoContrato ?? ideal?.tipoContrato ?? null,
+    modalidad: puesto?.modalidad ?? ideal?.modalidad ?? null,
+    horario: puesto?.horario ?? ideal?.horario ?? null,
     fechaIngreso: fecha,
     reportaA: puesto?.reportaA?.nombre ?? null,
     responsableNombre,

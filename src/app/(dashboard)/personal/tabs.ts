@@ -4,7 +4,6 @@ export const personalTabs: ModuleNavTab[] = [
   { href: "/personal/candidatos", label: "Candidatos", accessKey: "rrhh-candidatos" },
   { href: "/personal/puestos-operativos", label: "Puestos", accessKey: "rrhh-puestos" },
   { href: "/personal/organigrama", label: "Organigrama", accessKey: "rrhh-puestos" },
-  { href: "/personal/puestos", label: "Puestos ideales", accessKey: "rrhh-puestos" },
   { href: "/personal/politicas", label: "Políticas", accessKey: "rrhh-puestos" },
   { href: "/personal/onboarding", label: "Integración / Onboarding", accessKey: "rrhh-onboarding" },
   { href: "/personal/interno", label: "Personal interno", accessKey: "rrhh-personal" },

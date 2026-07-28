@@ -1579,6 +1579,12 @@ model Puesto {
   supervisaA   String?  @db.Text @map("supervisa_a")  // JSON string[]
   // Estándares de desempeño (§6) — JSON: [{ subarea, responsabilidad, estandar }]
   estandares String? @db.Text
+  // Condiciones laborales (§ migradas de PuestoIdeal — fuente para el acuerdo laboral)
+  funciones    String? @db.Text                 // JSON string[] — funciones/actividades del puesto
+  prestaciones String? @db.Text                 // JSON string[] — prestaciones/beneficios
+  tipoContrato String? @map("tipo_contrato")    // Ej: "Indeterminado", "Determinado"
+  modalidad    String?                          // Ej: "Presencial", "Híbrido", "Remoto"
+  horario      String?                          // Ej: "L-V 9:00-18:00"
   // Vínculo opcional con el perfil de reclutamiento
   puestoIdealId String?      @map("puesto_ideal_id")
   puestoIdeal   PuestoIdeal? @relation("PuestoIdealOperativo", fields: [puestoIdealId], references: [id], onDelete: SetNull)
@@ -3482,6 +3488,8 @@ model ProveedorEvento {
 model PTArea {
   id        String   @id @default(cuid())
   nombre    String   @unique
+  codigo      String?  @unique // Código estable: DIRECCION|ADMINISTRACION|MARKETING|VENTAS|PRODUCCION|GENERAL (el nombre es la etiqueta editable)
+  transversal Boolean  @default(false) // Área que aplica a todo el equipo (ej. Operaciones Generales), no cuenta como área operativa canónica
   color     String
   icono     String?
   objetivo  String?  @db.Text

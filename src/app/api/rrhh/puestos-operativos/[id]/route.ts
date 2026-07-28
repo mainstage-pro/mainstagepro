@@ -37,6 +37,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (b.coordinaCon !== undefined) data.coordinaCon = arr(b.coordinaCon);
     if (b.supervisaA !== undefined) data.supervisaA = arr(b.supervisaA);
     if (b.estandares !== undefined) data.estandares = arr(b.estandares);
+    if (b.funciones !== undefined) data.funciones = arr(b.funciones);
+    if (b.prestaciones !== undefined) data.prestaciones = arr(b.prestaciones);
+    if (b.tipoContrato !== undefined) data.tipoContrato = b.tipoContrato || null;
+    if (b.modalidad !== undefined) data.modalidad = b.modalidad || null;
+    if (b.horario !== undefined) data.horario = b.horario || null;
     if (b.puestoIdealId !== undefined) data.puestoIdealId = b.puestoIdealId || null;
     if (b.color !== undefined) data.color = b.color || null;
     if (b.posX !== undefined) data.posX = b.posX === null ? null : Number(b.posX);

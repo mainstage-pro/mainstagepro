@@ -33,6 +33,12 @@ export async function ensurePuestoSchema() {
   // Posiciones en el lienzo del organigrama
   await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS pos_x DOUBLE PRECISION`);
   await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS pos_y DOUBLE PRECISION`);
+  // Condiciones laborales migradas de puestos_ideales (fuente del acuerdo laboral)
+  await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS funciones TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS prestaciones TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS tipo_contrato TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS modalidad TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS horario TEXT`);
 }
 
 const arr = (v: unknown) => (Array.isArray(v) && v.length ? JSON.stringify(v) : null);
@@ -70,6 +76,11 @@ export async function POST(req: NextRequest) {
         coordinaCon: arr(b.coordinaCon),
         supervisaA: arr(b.supervisaA),
         estandares: arr(b.estandares),
+        funciones: arr(b.funciones),
+        prestaciones: arr(b.prestaciones),
+        tipoContrato: b.tipoContrato || null,
+        modalidad: b.modalidad || null,
+        horario: b.horario || null,
         puestoIdealId: b.puestoIdealId || null,
         color: b.color || null,
       },

@@ -57,24 +57,33 @@ type PuestoNodeData = {
   onEdit: (id: string) => void;
 };
 
+const GRIS_VACANTE = "#4b5563";
+
 function PuestoNode({ id, data, selected }: NodeProps<Node<PuestoNodeData>>) {
   const { nombre, area, color, ocupantes, onEdit } = data;
   const vacante = ocupantes.length === 0;
+  // Con responsable → color del área. Sin responsable → gris + tag "Falta el rol".
+  const display = vacante ? GRIS_VACANTE : color;
   return (
     <div
       onDoubleClick={() => onEdit(id)}
-      style={{ borderColor: color, boxShadow: selected ? `0 0 0 2px ${color}` : undefined }}
+      style={{ borderColor: display, boxShadow: selected ? `0 0 0 2px ${display}` : undefined, opacity: vacante ? 0.85 : 1 }}
       className="w-[220px] rounded-xl bg-[#111] border-2 overflow-hidden text-left transition-shadow"
     >
-      <Handle type="target" position={Position.Top} style={{ background: color, width: 8, height: 8 }} />
-      <div style={{ background: color }} className="px-3 py-1.5">
+      <Handle type="target" position={Position.Top} style={{ background: display, width: 8, height: 8 }} />
+      <div style={{ background: display }} className="px-3 py-1.5 flex items-center justify-between gap-2">
         <p className="text-[10px] font-bold tracking-widest text-black/80 uppercase truncate">{area}</p>
+        {vacante && (
+          <span className="text-[9px] font-bold tracking-wide text-black/70 bg-white/25 px-1.5 py-0.5 rounded-full shrink-0 uppercase">
+            Falta el rol
+          </span>
+        )}
       </div>
       <div className="px-3 py-2.5">
         <p className="text-sm font-semibold text-white leading-tight">{nombre}</p>
         <div className="mt-2 space-y-0.5">
           {vacante ? (
-            <p className="text-[11px] text-amber-500/80 italic">Vacante</p>
+            <p className="text-[11px] text-gray-500 italic">Sin responsable asignado</p>
           ) : (
             <>
               {ocupantes.slice(0, 3).map((o) => (
@@ -90,7 +99,7 @@ function PuestoNode({ id, data, selected }: NodeProps<Node<PuestoNodeData>>) {
           )}
         </div>
       </div>
-      <Handle type="source" position={Position.Bottom} style={{ background: color, width: 8, height: 8 }} />
+      <Handle type="source" position={Position.Bottom} style={{ background: display, width: 8, height: 8 }} />
     </div>
   );
 }
@@ -273,7 +282,7 @@ function Lienzo() {
           <Background color="#1a1a1a" gap={22} />
           <MiniMap
             pannable zoomable
-            nodeColor={(n) => (n.data as PuestoNodeData).color}
+            nodeColor={(n) => { const d = n.data as PuestoNodeData; return d.ocupantes.length === 0 ? GRIS_VACANTE : d.color; }}
             maskColor="rgba(0,0,0,0.7)"
             style={{ background: "#0a0a0a", border: "1px solid #222" }}
           />
