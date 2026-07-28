@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { ORDER_FOTOS_TIPO_EVENTO } from "@/lib/tipos-evento";
 
 /**
  * GET /api/tipos-evento/[id]/publico
@@ -18,8 +19,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       id: true,
       slug: true,
       nombre: true,
+      subtitulo: true,
+      descripcion: true,
       fotos: {
-        orderBy: [{ orden: "asc" }, { createdAt: "asc" }],
+        orderBy: ORDER_FOTOS_TIPO_EVENTO,
         select: { id: true, url: true, caption: true, destacada: true, orden: true },
       },
     },

@@ -214,6 +214,43 @@ function NuevaPresentacionForm() {
       .catch(() => {});
   }, [searchParams]);
 
+  // Al crear desde un trato: precargar las fotos destacadas (estrella) del tipo de
+  // evento del trato como galería inicial. El vendedor puede quitarlas o sumar más.
+  useEffect(() => {
+    if (searchParams.get("edit")) return; // en edición manda lo guardado
+    const tratoId = searchParams.get("tratoId");
+    if (!tratoId) return;
+
+    let cancelado = false;
+    (async () => {
+      try {
+        const rt = await fetch(`/api/tratos/${tratoId}`);
+        if (!rt.ok) return;
+        const { trato } = await rt.json();
+        const slug = (trato?.tipoEvento || "").toLowerCase();
+        if (!slug || slug === "otro") return;
+
+        const rp = await fetch(`/api/tipos-evento/${slug}/publico`);
+        if (!rp.ok) return;
+        const { tipo } = await rp.json();
+        const destacadas: { id: string; url: string; caption: string | null; destacada: boolean }[] =
+          (tipo?.fotos ?? []).filter((f: { destacada: boolean }) => f.destacada).slice(0, 12);
+        if (cancelado || destacadas.length === 0) return;
+
+        setImagenes((prev) => (prev.length > 0 ? prev : destacadas.map((f, i) => ({
+          id: `tipo-${f.id}`,
+          url: f.url,
+          nombre: f.caption || `Foto ${i + 1}`,
+          orden: i,
+          uploading: false,
+        }))));
+      } catch {
+        /* best-effort: si algo falla, el formulario queda vacío */
+      }
+    })();
+    return () => { cancelado = true; };
+  }, [searchParams]);
+
   async function handleFiles(files: File[]) {
     const available = 12 - imagenes.filter((i) => !i.error).length;
     const toUpload = files.slice(0, available);

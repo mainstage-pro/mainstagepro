@@ -1,13 +1,32 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Music, Wine, Building2, type LucideIcon } from "lucide-react";
+import { Music, Wine, Building2, Sparkles, type LucideIcon } from "lucide-react";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 
 const GOLD = "#B3985B";
 const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20obtener%20informaci%C3%B3n%20sobre%20producci%C3%B3n%20para%20mi%20evento.";
 
-// ─── Data ──────────────────────────────────────────────────────────────────────
-const CATEGORIAS = [
+// ─── Tipos ─────────────────────────────────────────────────────────────────────
+type Foto = { src: string; caption: string };
+type Categoria = {
+  id: string;
+  label: string;
+  sub: string;
+  cover: string;
+  icon: LucideIcon;
+  fotos: Foto[];
+};
+
+// Ícono por slug del tipo de evento (la BD manda el resto del contenido).
+function iconoPorSlug(slug: string): LucideIcon {
+  if (slug.includes("music")) return Music;
+  if (slug.includes("social")) return Wine;
+  if (slug.includes("empres")) return Building2;
+  return Sparkles;
+}
+
+// ─── Fallback (solo si la BD aún no tiene tipos con fotos) ──────────────────────
+const FALLBACK: Categoria[] = [
   {
     id: "musicales",
     label: "Eventos Musicales",
@@ -55,9 +74,9 @@ const CATEGORIAS = [
       { src: "/images/presentacion/empresariales/e-proyeccion-mural.jpg", caption: "Proyección artística · Evento exclusivo" },
     ],
   },
-] as const;
+];
 
-type CatId = typeof CATEGORIAS[number]["id"];
+type CatId = string;
 
 
 function useReveal(threshold = 0.1) {
@@ -190,7 +209,7 @@ function CatCard({
   active,
   onClick,
 }: {
-  cat: typeof CATEGORIAS[number];
+  cat: Categoria;
   active: boolean;
   onClick: () => void;
 }) {
@@ -318,9 +337,31 @@ function ThumbnailGrid({
 export default function GaleriaClient() {
   const [active, setActive]   = useState<CatId | null>(null);
   const [lightbox, setLightbox] = useState<{ catId: CatId; idx: number } | null>(null);
+  const [categorias, setCategorias] = useState<Categoria[]>(FALLBACK);
   const galleryRef    = useRef<HTMLDivElement>(null);
 
-  const activeCat = CATEGORIAS.find(c => c.id === active) ?? null;
+  // Fuente maestra: los tipos de evento configurados en Comercial. Solo caemos al
+  // FALLBACK si la BD todavía no tiene ningún tipo con fotos.
+  useEffect(() => {
+    fetch("/api/tipos-evento/publico")
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        const cats: Categoria[] = (d?.tipos ?? [])
+          .filter((t: { fotos?: unknown[] }) => (t.fotos?.length ?? 0) > 0)
+          .map((t: { slug: string; nombre: string; subtitulo: string | null; fotos: { url: string; caption: string | null }[] }): Categoria => ({
+            id: t.slug,
+            label: t.nombre,
+            sub: t.subtitulo || "",
+            cover: t.fotos[0].url,
+            icon: iconoPorSlug(t.slug),
+            fotos: t.fotos.map(f => ({ src: f.url, caption: f.caption || "" })),
+          }));
+        if (cats.length) setCategorias(cats);
+      })
+      .catch(() => {});
+  }, []);
+
+  const activeCat = categorias.find(c => c.id === active) ?? null;
 
   function selectCat(id: CatId) {
     if (active === id) {
@@ -375,7 +416,7 @@ export default function GaleriaClient() {
       <section className="relative flex flex-col items-center justify-center overflow-hidden" style={{ height: "55vh", minHeight: "320px" }}>
         <div className="absolute inset-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/presentacion/musicales/Musicales-076.jpg"
+          <img src={categorias[0]?.cover ?? "/images/presentacion/musicales/Musicales-076.jpg"}
                alt="Galería Mainstage Pro" draggable={false}
                className="w-full h-full object-cover"
                style={{ animation: "kenBurns 18s ease forwards" }} />
@@ -413,7 +454,7 @@ export default function GaleriaClient() {
             </p>
           </R>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {CATEGORIAS.map((cat, i) => (
+            {categorias.map((cat, i) => (
               <R key={cat.id} delay={i * 80}>
                 <CatCard
                   cat={cat}
