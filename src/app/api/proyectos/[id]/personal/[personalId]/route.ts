@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureOperacionTecnicaColumns } from "@/lib/migraciones-lazy";
+import { marcarFilaNominaPagada, revertirFilaNominaPagada } from "@/lib/nomina-pagos";
 
 function proximoMiercolesTraEvento(fecha: Date): Date {
   const d = new Date(fecha);
@@ -55,77 +56,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const pasaAPendiente = nuevoEstado === "PENDIENTE" && previo?.estadoPago === "PAGADO";
 
   const personal = await prisma.$transaction(async (tx) => {
-    // Valores efectivos (lo que llega en el body o lo previo)
-    const tecEff = ("tecnicoId" in data ? (data.tecnicoId as string | null) : previo?.tecnicoId) ?? null;
-    const tarifaEff = ("tarifaAcordada" in data ? (data.tarifaAcordada as number | null) : previo?.tarifaAcordada) ?? null;
+    // Aplicar primero los cambios de campos (tarifa, estado, rol, etc.) para
+    // que el helper vea los valores efectivos al construir el movimiento.
+    await tx.proyectoPersonal.update({ where: { id: personalId }, data });
 
-    // PENDIENTE → PAGADO: crear el movimiento financiero (GASTO) y ligarlo
-    if (pasaAPagado && tecEff && tarifaEff && tarifaEff > 0 && !previo?.movimientoId) {
-      const proyecto = await tx.proyecto.findUnique({
-        where: { id: previo!.proyectoId },
-        select: { nombre: true },
-      });
-      const tec = await tx.tecnico.findUnique({
-        where: { id: tecEff },
-        select: { nombre: true, rol: { select: { nombre: true } } },
-      });
-      const rolNombre = (data.rolEnEvento as string | undefined) ?? tec?.rol?.nombre ?? "Técnico";
-
-      // Reusar un movimiento de nómina huérfano (creado por el flujo agregado
-      // /api/pagos-personal, que no liga filas) para no duplicar el gasto al re-marcar.
-      const huerfano = await tx.movimientoFinanciero.findFirst({
-        where: {
-          proyectoId: previo!.proyectoId,
-          tipo: "GASTO",
-          concepto: { startsWith: `Nómina — ${tec?.nombre ?? ""}` },
-          proyectoPersonal: null,
-        },
-        orderBy: { createdAt: "desc" },
-      });
-
-      const movId = huerfano
-        ? huerfano.id
-        : (await tx.movimientoFinanciero.create({
-            data: {
-              tipo: "GASTO",
-              fecha: new Date(),
-              concepto: `Nómina — ${tec?.nombre ?? "Técnico"} · ${rolNombre} | ${proyecto?.nombre ?? "Proyecto"}`,
-              monto: tarifaEff,
-              metodoPago: "TRANSFERENCIA",
-              proyectoId: previo!.proyectoId,
-              creadoPor: session.id,
-            },
-          })).id;
-      data.movimientoId = movId;
-
-      // Liquidar una CxP pendiente del técnico en este proyecto (si existe y no está ligada)
-      const cxp = await tx.cuentaPagar.findFirst({
-        where: {
-          tecnicoId: tecEff, proyectoId: previo!.proyectoId,
-          tipoAcreedor: "TECNICO", estado: "PENDIENTE", movimientoId: null,
-        },
-      });
-      if (cxp) {
-        await tx.cuentaPagar.update({
-          where: { id: cxp.id },
-          data: { estado: "LIQUIDADO", movimientoId: movId, fechaPagoReal: new Date(), montoPagado: cxp.monto },
-        });
-      }
+    // Transición de estado de pago → crear o revertir el movimiento ligado.
+    if (pasaAPagado) {
+      await marcarFilaNominaPagada(tx, personalId, { fecha: new Date(), creadoPor: session.id });
+    } else if (pasaAPendiente && previo?.movimientoId) {
+      await revertirFilaNominaPagada(tx, personalId, previo.movimientoId);
     }
 
-    // PAGADO → PENDIENTE: revertir — desligar CxP y borrar el movimiento
-    if (pasaAPendiente && previo?.movimientoId) {
-      await tx.cuentaPagar.updateMany({
-        where: { movimientoId: previo.movimientoId },
-        data: { estado: "PENDIENTE", movimientoId: null, fechaPagoReal: null, montoPagado: 0 },
-      });
-      data.movimientoId = null;
-      await tx.movimientoFinanciero.delete({ where: { id: previo.movimientoId } }).catch(() => {});
-    }
-
-    return tx.proyectoPersonal.update({
+    return tx.proyectoPersonal.findUniqueOrThrow({
       where: { id: personalId },
-      data,
       include: {
         tecnico: { include: { rol: { select: { nombre: true } } } },
         rolTecnico: { select: { nombre: true } },

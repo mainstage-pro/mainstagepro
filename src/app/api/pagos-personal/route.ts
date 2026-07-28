@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { marcarFilaNominaPagada } from "@/lib/nomina-pagos";
 
 // Calculates the Wednesday of the cycle that contains a given event date
 function cicloDesde(cicloDate: Date): { desde: Date; hasta: Date } {
@@ -172,103 +173,85 @@ export async function POST(req: NextRequest) {
     select: { nombre: true },
   });
 
-  // CxPs pendientes del técnico en estos proyectos
-  const cxps = await prisma.cuentaPagar.findMany({
-    where: {
-      tecnicoId,
-      proyectoId: { in: proyectoIds },
-      tipoAcreedor: "TECNICO",
-      estado: "PENDIENTE",
-    },
-  });
-
-  // Prefer client-provided totalOwed (matches tarifaAcordada shown in UI)
-  // over CxP total, which may differ if CxPs were created with different amounts
-  const cxpTotal = cxps.reduce((s, c) => s + c.monto, 0);
-  const totalOwed = totalOwedFromClient ?? cxpTotal;
   const fechaPago = fecha ? new Date(fecha + "T12:00:00Z") : new Date();
 
+  // Filas de nómina pendientes del técnico en estos proyectos (lo que se paga).
+  const filasPendientes = await prisma.proyectoPersonal.findMany({
+    where: { tecnicoId, proyectoId: { in: proyectoIds }, estadoPago: "PENDIENTE" },
+    select: { id: true, tarifaAcordada: true },
+  });
+
+  // Total adeudado: preferir el que envía la UI (coincide con las tarifas
+  // mostradas); si no, sumar las tarifas de las filas pendientes.
+  const filasTotal = filasPendientes.reduce((s, f) => s + (f.tarifaAcordada ?? 0), 0);
+  const totalOwed = totalOwedFromClient ?? filasTotal;
+
+  // ── Determinar método/cuenta/referencia "primario" y total pagado ──────────
+  const validEntradas = (entradas ?? []).filter((e) => e.monto > 0);
+  let metodoPrimario = metodoPago;
+  let cuentaPrimaria: string | null = cuentaOrigenId || null;
+  let refPrimaria: string | null = referencia || null;
+  let notasPago: string | null = notas || null;
+  let totalPagado = totalOwed;
+
   if (entradas && entradas.length > 0) {
-    // ── Multi-entry path ────────────────────────────────────────────────────
-    const validEntradas = entradas.filter((e) => e.monto > 0);
     if (!validEntradas.length) {
       return NextResponse.json({ error: "Al menos una entrada con monto > 0 es requerida" }, { status: 400 });
     }
-
-    const totalPagado = validEntradas.reduce((s, e) => s + e.monto, 0);
-    const fullyPaid = totalOwed > 0 ? totalPagado >= totalOwed - 0.01 : true;
-    const movIds: string[] = [];
-
-    await prisma.$transaction(async (tx) => {
-      // Create one movimiento per entrada
-      for (const entrada of validEntradas) {
-        const mov = await tx.movimientoFinanciero.create({
-          data: {
-            tipo: "GASTO",
-            fecha: fechaPago,
-            concepto: `Nómina — ${tecnico?.nombre ?? tecnicoId}`,
-            monto: entrada.monto,
-            metodoPago: entrada.metodoPago || "TRANSFERENCIA",
-            cuentaOrigenId: entrada.cuentaOrigenId || null,
-            referencia: entrada.referencia || null,
-            notas: notas || null,
-            proyectoId: cxps[0]?.proyectoId ?? proyectoIds[0],
-            creadoPor: session.id,
-          },
-        });
-        movIds.push(mov.id);
-      }
-
-      if (fullyPaid) {
-        await tx.proyectoPersonal.updateMany({
-          where: { tecnicoId, proyectoId: { in: proyectoIds }, estadoPago: "PENDIENTE" },
-          data: { estadoPago: "PAGADO" },
-        });
-
-        // Link each CxP to a distinct movimiento (unique constraint on movimientoId)
-        // Extra CxPs beyond the movimiento count get marked LIQUIDADO without a link
-        for (let i = 0; i < cxps.length; i++) {
-          const movId = movIds[i] ?? null;
-          await tx.cuentaPagar.update({
-            where: { id: cxps[i].id },
-            data: { estado: "LIQUIDADO", ...(movId ? { movimientoId: movId } : {}) },
-          });
-        }
-      }
-    });
-
-    return NextResponse.json({ ok: true, movimientosCreados: movIds.length, totalPagado, fullyPaid });
-  } else {
-    // ── Legacy single-entry path (one movimiento per CxP, original behavior) ─
-    await prisma.$transaction(async (tx) => {
-      await tx.proyectoPersonal.updateMany({
-        where: { tecnicoId, proyectoId: { in: proyectoIds }, estadoPago: "PENDIENTE" },
-        data: { estadoPago: "PAGADO" },
-      });
-
-      for (const cxp of cxps) {
-        const mov = await tx.movimientoFinanciero.create({
-          data: {
-            tipo: "GASTO",
-            fecha: fechaPago,
-            concepto: `Nómina — ${tecnico?.nombre ?? tecnicoId}`,
-            monto: cxp.monto,
-            metodoPago,
-            cuentaOrigenId: cuentaOrigenId || null,
-            referencia: referencia || null,
-            notas: notas || null,
-            proyectoId: cxp.proyectoId,
-            creadoPor: session.id,
-          },
-        });
-
-        await tx.cuentaPagar.update({
-          where: { id: cxp.id },
-          data: { estado: "LIQUIDADO", movimientoId: mov.id },
-        });
-      }
-    });
-
-    return NextResponse.json({ ok: true, movimientosCreados: cxps.length, fullyPaid: true });
+    totalPagado = validEntradas.reduce((s, e) => s + e.monto, 0);
+    // Método dominante = el de mayor monto
+    const dominante = [...validEntradas].sort((a, b) => b.monto - a.monto)[0];
+    metodoPrimario = dominante.metodoPago || "TRANSFERENCIA";
+    cuentaPrimaria = dominante.cuentaOrigenId || null;
+    refPrimaria = dominante.referencia || null;
+    // Si el pago se dividió en varios métodos, dejarlo anotado en el movimiento
+    if (validEntradas.length > 1) {
+      const detalle = validEntradas.map((e) => `$${e.monto.toLocaleString()} ${e.metodoPago}`).join(", ");
+      notasPago = [notas, `Pago dividido: ${detalle}`].filter(Boolean).join(" · ");
+    }
   }
+
+  const fullyPaid = totalOwed > 0 ? totalPagado >= totalOwed - 0.01 : true;
+
+  if (fullyPaid) {
+    // ── Pago completo: un movimiento GASTO por fila, ligado y reconocible ─────
+    const movIds: string[] = [];
+    await prisma.$transaction(async (tx) => {
+      for (const fila of filasPendientes) {
+        const movId = await marcarFilaNominaPagada(tx, fila.id, {
+          fecha: fechaPago,
+          metodoPago: metodoPrimario,
+          cuentaOrigenId: cuentaPrimaria,
+          referencia: refPrimaria,
+          notas: notasPago,
+          creadoPor: session.id,
+        });
+        if (movId) movIds.push(movId);
+      }
+    });
+    return NextResponse.json({ ok: true, movimientosCreados: movIds.length, totalPagado, fullyPaid: true });
+  }
+
+  // ── Pago parcial: registrar el desembolso sin marcar filas ni liquidar CxP ─
+  const movIds: string[] = [];
+  await prisma.$transaction(async (tx) => {
+    for (const entrada of validEntradas) {
+      const mov = await tx.movimientoFinanciero.create({
+        data: {
+          tipo: "GASTO",
+          fecha: fechaPago,
+          concepto: `Nómina parcial — ${tecnico?.nombre ?? tecnicoId}`,
+          monto: entrada.monto,
+          metodoPago: entrada.metodoPago || "TRANSFERENCIA",
+          cuentaOrigenId: entrada.cuentaOrigenId || null,
+          referencia: entrada.referencia || null,
+          notas: notas || null,
+          proyectoId: proyectoIds[0],
+          creadoPor: session.id,
+        },
+      });
+      movIds.push(mov.id);
+    }
+  });
+  return NextResponse.json({ ok: true, movimientosCreados: movIds.length, totalPagado, fullyPaid: false });
 }
