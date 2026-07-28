@@ -9,6 +9,7 @@ import { Modal } from "@/components/Modal";
 import { AlertTriangle, Ban } from "lucide-react";
 
 interface Personal { id: string; nombre: string; puesto: string; departamento: string; }
+interface Criterio { subarea: string; responsabilidad: string; estandar: string; puntaje: number }
 interface Evaluacion {
   id: string; personalId: string; periodo: string; evaluador: string | null; fecha: string;
   puntajeTotal: number | null; estado: string;
@@ -52,6 +53,7 @@ const EMPTY_FORM = () => ({
   puntualidad:0, ordenLimpieza:0, actitud:0, comunicacion:0,
   resolucionProb:0, propuestasMejora:0, calidadTrabajo:0, trabajoEquipo:0,
   aspectosPositivos:"", areasMejora:"", incidentesNota:"", observaciones:"", estado:"COMPLETADA",
+  criterios: [] as Criterio[],
 });
 
 export default function EvaluacionesPage() {
@@ -64,6 +66,8 @@ export default function EvaluacionesPage() {
   const [form, setForm] = useState(EMPTY_FORM());
   const [saving, setSaving] = useState(false);
   const [filtroPersonal, setFiltroPersonal] = useState("");
+  const [cargandoEst, setCargandoEst] = useState(false);
+  const [puestoNombre, setPuestoNombre] = useState<string | null>(null);
 
   async function load() {
     const [pRes, eRes] = await Promise.all([
@@ -79,6 +83,25 @@ export default function EvaluacionesPage() {
 
   function setMetrica(key: MetricaKey, val: number) {
     setForm(p => ({ ...p, [key]: val }));
+  }
+
+  function setCriterio(idx: number, puntaje: number) {
+    setForm(p => ({ ...p, criterios: p.criterios.map((c, i) => i === idx ? { ...c, puntaje } : c) }));
+  }
+
+  async function selectPersona(id: string) {
+    setForm(p => ({ ...p, personalId: id, criterios: [] }));
+    setPuestoNombre(null);
+    if (!id) return;
+    setCargandoEst(true);
+    try {
+      const r = await fetch(`/api/rrhh/evaluaciones/estandares?personalId=${id}`);
+      const d = await r.json();
+      setPuestoNombre(d.puestoNombre ?? null);
+      setForm(p => ({ ...p, criterios: (d.estandares ?? []).map((e: Omit<Criterio,"puntaje">) => ({ ...e, puntaje: 0 })) }));
+    } finally {
+      setCargandoEst(false);
+    }
   }
 
   async function save() {
@@ -139,7 +162,7 @@ export default function EvaluacionesPage() {
             <div><label className="text-xs text-gray-500 mb-1 block">Empleado</label>
               <Combobox
                 value={form.personalId}
-                onChange={v => setForm(p => ({ ...p, personalId: v }))}
+                onChange={v => selectPersona(v)}
                 options={[{ value: "", label: "Seleccionar..." }, ...personal.map(p => ({ value: p.id, label: p.nombre }))]}
                 className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
               /></div>
@@ -153,9 +176,53 @@ export default function EvaluacionesPage() {
                 className="ms-input" /></div>
           </div>
 
+          {/* Estándares del puesto */}
+          {form.personalId && (
+            <div className="mt-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs text-[#B3985B] uppercase tracking-wider">
+                  Estándares del puesto{puestoNombre ? ` · ${puestoNombre}` : ""}
+                </p>
+                {cargandoEst && <span className="text-[10px] text-gray-600">Cargando…</span>}
+              </div>
+              {!cargandoEst && form.criterios.length === 0 ? (
+                <p className="text-xs text-gray-600 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2">
+                  Este puesto no tiene estándares definidos. Puedes capturarlos en Puestos para evaluarlos aquí.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {form.criterios.map((c, i) => (
+                    <div key={i} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2.5">
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="min-w-0">
+                          {c.subarea && <span className="text-[10px] text-gray-500 uppercase tracking-wider">{c.subarea}</span>}
+                          <p className="text-gray-200 text-sm">{c.responsabilidad || c.estandar || "—"}</p>
+                          {c.responsabilidad && c.estandar && <p className="text-gray-600 text-xs mt-0.5">{c.estandar}</p>}
+                        </div>
+                        <span className={`text-xs shrink-0 ${c.puntaje>0?scoreColor(c.puntaje):"text-gray-700"}`}>
+                          {c.puntaje>0?scoreLabel(c.puntaje):"Sin calificar"}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        {[1,2,3,4,5].map(n => (
+                          <button key={n} onClick={() => setCriterio(i, c.puntaje===n?0:n)}
+                            className={`flex-1 h-8 rounded text-sm font-bold transition-all ${c.puntaje===n
+                              ? (n>=4?"bg-green-600 text-white":n>=3?"bg-yellow-600 text-black":n>=2?"bg-orange-600 text-white":"bg-red-600 text-white")
+                              : "bg-[#1a1a1a] text-gray-600 hover:bg-[#222] hover:text-white"}`}>
+                            {n}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Métricas */}
           <div className="mt-5">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Calificación (1=Deficiente · 5=Excelente)</p>
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Competencias generales (1=Deficiente · 5=Excelente)</p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {METRICAS.map(m => (
                 <div key={m.key}>

@@ -272,7 +272,7 @@ export async function computeCumplimientoLista(mes: string): Promise<Cumplimient
   for (const e of evaluaciones) {
     if (evalPorPersona.has(e.personalId)) continue; // ya ordenado desc → primero es el más reciente
     if (e.puntajeTotal == null || e.puntajeTotal <= 0) continue;
-    evalPorPersona.set(e.personalId, { score: clamp(Math.round(e.puntajeTotal)), periodo: e.periodo, fecha: e.fecha.toISOString() });
+    evalPorPersona.set(e.personalId, { score: clamp(Math.round(e.puntajeTotal * 20)), periodo: e.periodo, fecha: e.fecha.toISOString() });
   }
 
   // Actas sin acuse (vigentes) — cuenta global, no solo del mes.
@@ -341,7 +341,7 @@ export async function computeCumplimientoPersona(personalId: string, mes: string
 
   const evalUlt: DimEvaluacion | null = (() => {
     const e = evaluacionesRows.find(x => x.estado === "COMPLETADA" && x.puntajeTotal != null && x.puntajeTotal > 0);
-    return e ? { score: clamp(Math.round(e.puntajeTotal!)), periodo: e.periodo, fecha: e.fecha.toISOString() } : null;
+    return e ? { score: clamp(Math.round(e.puntajeTotal! * 20)), periodo: e.periodo, fecha: e.fecha.toISOString() } : null;
   })();
 
   const cumpl = componer(

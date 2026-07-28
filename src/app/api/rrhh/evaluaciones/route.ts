@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-
-const METRICAS = ["puntualidad","ordenLimpieza","actitud","comunicacion","resolucionProb","propuestasMejora","calidadTrabajo","trabajoEquipo"] as const;
+import { METRICAS, normalizarCriterios, calcularPuntaje } from "@/lib/evaluaciones";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -24,8 +23,8 @@ export async function POST(req: NextRequest) {
   if (!personalId || !periodo) return NextResponse.json({ error: "Datos requeridos" }, { status: 400 });
   const metricas: Record<string, number> = {};
   for (const m of METRICAS) metricas[m] = body[m] ?? 0;
-  const completadas = METRICAS.filter(m => metricas[m] > 0).length;
-  const puntajeTotal = completadas > 0 ? METRICAS.reduce((s, m) => s + metricas[m], 0) / METRICAS.length : null;
+  const criterios = normalizarCriterios(body.criterios);
+  const puntajeTotal = calcularPuntaje(metricas, criterios);
   const evaluacion = await prisma.evaluacionEmpleado.create({
     data: {
       personalId, periodo, evaluador: evaluador ?? session.name,
@@ -34,6 +33,7 @@ export async function POST(req: NextRequest) {
       areasMejora: body.areasMejora || null,
       incidentesNota: body.incidentesNota || null,
       observaciones: body.observaciones || null,
+      criterios: criterios.length > 0 ? JSON.stringify(criterios) : null,
       puntajeTotal,
       estado: body.estado ?? "BORRADOR",
     },

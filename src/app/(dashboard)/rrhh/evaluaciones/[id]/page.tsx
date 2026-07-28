@@ -13,8 +13,10 @@ interface Evaluacion {
   puntualidad: number; ordenLimpieza: number; actitud: number; comunicacion: number;
   resolucionProb: number; propuestasMejora: number; calidadTrabajo: number; trabajoEquipo: number;
   aspectosPositivos: string | null; areasMejora: string | null; incidentesNota: string | null; observaciones: string | null;
+  criterios: string | null;
   personal: { id: string; nombre: string; puesto: string; departamento: string; };
 }
+interface Criterio { subarea: string; responsabilidad: string; estandar: string; puntaje: number }
 
 const METRICAS = [
   { key: "puntualidad",      label: "Puntualidad" },
@@ -88,6 +90,8 @@ export default function EvaluacionDetailPage() {
   if (!evaluacion) return <div className="p-6 text-gray-600 text-sm">Evaluación no encontrada.</div>;
 
   const e = evaluacion;
+  let criterios: Criterio[] = [];
+  try { const v = JSON.parse(e.criterios ?? "[]"); if (Array.isArray(v)) criterios = v; } catch { criterios = []; }
   const [_fy, _fm, _fd] = e.fecha.substring(0, 10).split("-").map(Number);
   const fecha = new Date(_fy, _fm - 1, _fd).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 
@@ -119,9 +123,23 @@ export default function EvaluacionDetailPage() {
         </div>
       </div>
 
+      {/* Estándares del puesto evaluados */}
+      {criterios.length > 0 && (
+        <div className="ms-card p-5 space-y-4">
+          <p className="text-xs text-[#B3985B] uppercase tracking-wider">Estándares del puesto</p>
+          {criterios.map((c, i) => (
+            <div key={i} className="border-b border-[#1a1a1a] last:border-0 pb-3 last:pb-0">
+              {c.subarea && <span className="text-[10px] text-gray-600 uppercase tracking-wider">{c.subarea}</span>}
+              <ScoreRow label={c.responsabilidad || c.estandar || "—"} value={c.puntaje} />
+              {c.responsabilidad && c.estandar && <p className="text-gray-600 text-xs mt-1 ml-0">{c.estandar}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Métricas */}
       <div className="ms-card p-5 space-y-4">
-        <p className="text-xs text-gray-500 uppercase tracking-wider">Calificaciones</p>
+        <p className="text-xs text-gray-500 uppercase tracking-wider">Competencias generales</p>
         {METRICAS.map(m => (
           <ScoreRow key={m.key} label={m.label} value={e[m.key as MetricaKey]} />
         ))}

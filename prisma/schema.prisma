@@ -1902,6 +1902,9 @@ model EvaluacionEmpleado {
   incidentesNota    String?
   observaciones     String?
 
+  // Snapshot de los estándares del puesto evaluados: [{ subarea, responsabilidad, estandar, puntaje }]
+  criterios         String? @db.Text
+
   puntajeTotal Float?
   estado       String   @default("BORRADOR") // BORRADOR | COMPLETADA
   createdAt    DateTime @default(now())
