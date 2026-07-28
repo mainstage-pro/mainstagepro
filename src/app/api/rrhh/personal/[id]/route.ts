@@ -29,7 +29,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params;
   const body = await req.json();
 
-  const allowed = ["nombre", "puesto", "departamento", "tipo", "telefono", "correo", "salario", "periodoPago", "fechaIngreso", "activo", "cuentaBancaria", "datosFiscales", "notas", "banco", "clabe", "numeroCuenta", "numeroTarjeta", "ineUrl", "domicilio", "emergenciaNombre", "emergenciaTel", "padecimientos"];
+  const allowed = ["nombre", "puesto", "departamento", "tipo", "telefono", "correo", "salario", "periodoPago", "fechaIngreso", "activo", "cuentaBancaria", "datosFiscales", "notas", "banco", "clabe", "numeroCuenta", "numeroTarjeta", "ineUrl", "domicilio", "emergenciaNombre", "emergenciaTel", "padecimientos", "userId", "puestoId"];
   const data: Record<string, unknown> = {};
   for (const k of allowed) {
     if (k in body) {

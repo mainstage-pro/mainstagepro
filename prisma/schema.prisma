@@ -76,6 +76,7 @@ model User {
   visionesSemanales              VisionSemanal[]        @relation("VisionSemanalAutor")
   visionesResponsable            VisionSemanal[]        @relation("VisionSemanalResponsable")
 
+  personalInterno PersonalInterno? @relation("PersonalUsuario")
 
   @@map("users")
 }
@@ -1561,10 +1562,42 @@ model MantenimientoEquipo {
 
 // ─── RECURSOS HUMANOS ────────────────────────────────────────────────────────
 
+// Puesto operativo: la columna ESTABLE del sistema (objetivo, responsabilidades
+// permanentes, estructura de reporte y estándares). Espeja el Acuerdo de Alineación.
+// El plan de trabajo (variable) cuelga de estas responsabilidades, no al revés.
+model Puesto {
+  id                String  @id @default(cuid())
+  nombre            String
+  area              String  @default("GENERAL") // DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION | RRHH | GENERAL
+  objetivoArea      String? @db.Text @map("objetivo_area")   // §4.1 objetivo del área
+  misionPuesto      String? @db.Text @map("mision_puesto")   // propósito del rol
+  responsabilidades String? @db.Text                          // JSON string[] — responsabilidades permanentes (§4.2)
+  // Estructura de reporte (§4.3)
+  reportaAId   String?  @map("reporta_a_id")
+  reportaA     Puesto?  @relation("PuestoJerarquia", fields: [reportaAId], references: [id], onDelete: SetNull)
+  subordinados Puesto[] @relation("PuestoJerarquia")
+  coordinaCon  String?  @db.Text @map("coordina_con") // JSON string[]
+  supervisaA   String?  @db.Text @map("supervisa_a")  // JSON string[]
+  // Estándares de desempeño (§6) — JSON: [{ subarea, responsabilidad, estandar }]
+  estandares String? @db.Text
+  // Vínculo opcional con el perfil de reclutamiento
+  puestoIdealId String?      @map("puesto_ideal_id")
+  puestoIdeal   PuestoIdeal? @relation("PuestoIdealOperativo", fields: [puestoIdealId], references: [id], onDelete: SetNull)
+  // Presentación / organigrama
+  color     String?
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
+  ocupantes PersonalInterno[] @relation("PuestoTitular")
+
+  @@map("puestos")
+}
+
 model PersonalInterno {
   id             String    @id @default(cuid())
   nombre         String
-  puesto         String    // Ej: "Bodega", "Coordinación Logística"
+  puesto         String    // Ej: "Bodega", "Coordinación Logística" (texto libre legado; ver puestoRef)
   departamento   String    @default("GENERAL") // BODEGA | COORDINACION | PRODUCCION | ADMINISTRACION | VENTAS | GENERAL
   tipo           String    @default("EMPLEADO") // EMPLEADO | FREELANCE_RECURRENTE
   telefono       String?
@@ -1589,6 +1622,12 @@ model PersonalInterno {
   emergenciaTel    String? @map("emergencia_tel")
   // Salud
   padecimientos  String?
+  // Puente de identidad: la MISMA persona que hace login y se mide en rendimiento
+  userId         String?   @unique @map("user_id")
+  usuario        User?     @relation("PersonalUsuario", fields: [userId], references: [id], onDelete: SetNull)
+  // Puesto principal (para medición). El organigrama permite ocupar varios nodos.
+  puestoId       String?   @map("puesto_id")
+  puestoRef      Puesto?   @relation("PuestoTitular", fields: [puestoId], references: [id], onDelete: SetNull)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -2237,6 +2276,9 @@ model PuestoIdeal {
   nivelEstudios     String? @map("nivel_estudios") // BACHILLERATO | LICENCIATURA | POSGRADO | INDIFERENTE
   carrerasSugeridas String? @map("carreras_sugeridas")
 
+  // Funciones / responsabilidades principales del rol (JSON array de strings)
+  funciones           String? @db.Text
+
   // Competencias (JSON arrays de strings)
   habilidadesTecnicas String? @map("habilidades_tecnicas")
   habilidadesBlandas  String? @map("habilidades_blandas")
@@ -2260,7 +2302,8 @@ model PuestoIdeal {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt      @map("updated_at")
 
-  postulaciones Postulacion[]
+  postulaciones     Postulacion[]
+  puestosOperativos Puesto[]      @relation("PuestoIdealOperativo")
 
   @@map("puestos_ideales")
 }

@@ -11,6 +11,7 @@ interface Puesto {
   conocimientos?: string | null; aptitudes?: string | null;
   valores?: string | null; areasDesarrollo?: string | null;
   criteriosEvaluacion?: string | null;
+  funciones?: string | null;
   salarioMin?: number | null; salarioMax?: number | null;
   tipoContrato?: string | null; modalidad?: string | null;
   horario?: string | null; prestaciones?: string | null;
@@ -42,6 +43,7 @@ function parseArr(s?: string | null): string[] {
 const EMPTY_FORM = {
   titulo:"", area:"PRODUCCION", descripcion:"", objetivoRol:"",
   edadMin:"", edadMax:"", ciudades:"", nivelEstudios:"INDIFERENTE", carrerasSugeridas:"",
+  funciones:"",
   habilidadesTecnicas:"", habilidadesBlandas:"", conocimientos:"",
   aptitudes:"", valores:"", areasDesarrollo:"",
   salarioMin:"", salarioMax:"", tipoContrato:"NOMINA", modalidad:"PRESENCIAL", horario:"", prestaciones:"",
@@ -81,6 +83,7 @@ export default function PuestosPage() {
       ciudades: parseArr(p.ciudades).join(", "),
       nivelEstudios: p.nivelEstudios ?? "INDIFERENTE",
       carrerasSugeridas: p.carrerasSugeridas ?? "",
+      funciones: parseArr(p.funciones).join("\n"),
       habilidadesTecnicas: parseArr(p.habilidadesTecnicas).join("\n"),
       habilidadesBlandas: parseArr(p.habilidadesBlandas).join("\n"),
       conocimientos: parseArr(p.conocimientos).join("\n"),
@@ -114,6 +117,7 @@ export default function PuestosPage() {
         ciudades: form.ciudades ? form.ciudades.split(",").map(x=>x.trim()).filter(Boolean) : null,
         nivelEstudios: form.nivelEstudios || null,
         carrerasSugeridas: form.carrerasSugeridas || null,
+        funciones: toArr(form.funciones),
         habilidadesTecnicas: toArr(form.habilidadesTecnicas),
         habilidadesBlandas: toArr(form.habilidadesBlandas),
         conocimientos: toArr(form.conocimientos),
@@ -331,6 +335,13 @@ export default function PuestosPage() {
                   <label className={labelCls}>Carreras sugeridas</label>
                   <input {...f("carrerasSugeridas")} className={inputCls} placeholder="Ej: Producción de Medios, Administración, Ingeniería en Audio" />
                 </div>
+              </div>
+
+              {/* Funciones del puesto */}
+              <div>
+                <p className="text-xs text-[#B3985B] uppercase tracking-wider mb-3">Funciones del puesto (una por línea)</p>
+                <textarea {...f("funciones")} rows={5} className={`${inputCls} resize-none font-mono text-xs`}
+                  placeholder={"Qué hace la persona en este rol día a día\nEj:\nMontar y desmontar equipo en cada evento\nCoordinar al equipo de freelancers"} />
               </div>
 
               {/* Competencias */}

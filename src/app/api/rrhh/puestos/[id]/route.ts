@@ -19,7 +19,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const body = await req.json();
 
     // Serialize JSON fields
-    const jsonFields = ["ciudades","habilidadesTecnicas","habilidadesBlandas","conocimientos","aptitudes","valores","areasDesarrollo","criteriosEvaluacion","prestaciones"] as const;
+    const jsonFields = ["ciudades","habilidadesTecnicas","habilidadesBlandas","conocimientos","aptitudes","valores","areasDesarrollo","criteriosEvaluacion","prestaciones","funciones"] as const;
     const data: Record<string, unknown> = { ...body };
     for (const f of jsonFields) {
       if (Array.isArray(data[f])) data[f] = JSON.stringify(data[f]);

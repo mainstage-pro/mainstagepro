@@ -28,11 +28,13 @@ async function ensureTable() {
       modalidad TEXT,
       horario TEXT,
       prestaciones TEXT,
+      funciones TEXT,
       activo BOOLEAN NOT NULL DEFAULT true,
       created_at TIMESTAMP NOT NULL DEFAULT now(),
       updated_at TIMESTAMP NOT NULL DEFAULT now()
     )
   `);
+  await prisma.$executeRawUnsafe(`ALTER TABLE puestos_ideales ADD COLUMN IF NOT EXISTS funciones TEXT`);
 }
 
 export async function GET() {
@@ -52,7 +54,7 @@ export async function POST(req: NextRequest) {
     const { titulo, area, descripcion, objetivoRol,
       edadMin, edadMax, ciudades, nivelEstudios, carrerasSugeridas,
       habilidadesTecnicas, habilidadesBlandas, conocimientos, aptitudes, valores, areasDesarrollo,
-      criteriosEvaluacion,
+      criteriosEvaluacion, funciones,
       salarioMin, salarioMax, tipoContrato, modalidad, horario, prestaciones,
     } = body;
 
@@ -76,6 +78,7 @@ export async function POST(req: NextRequest) {
         valores: valores ? JSON.stringify(valores) : null,
         areasDesarrollo: areasDesarrollo ? JSON.stringify(areasDesarrollo) : null,
         criteriosEvaluacion: criteriosEvaluacion ? JSON.stringify(criteriosEvaluacion) : null,
+        funciones: funciones ? JSON.stringify(funciones) : null,
         salarioMin: salarioMin || null,
         salarioMax: salarioMax || null,
         tipoContrato: tipoContrato || null,
