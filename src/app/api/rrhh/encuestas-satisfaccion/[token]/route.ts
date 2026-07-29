@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-const CAMPOS_NUM = [
-  "claridadInstrucciones", "pagosPuntuales", "tratoJusto",
-  "organizacion", "comunicacion", "herramientas", "crecimiento",
-  "ambiente", "probabilidadRecomendar",
-];
+import { calcularPromedio, faltantesRequeridas, valorAnimo, type Respuestas } from "@/lib/satisfaccion-form";
 
 // GET /api/rrhh/encuestas-satisfaccion/[token] — público, sin auth
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
@@ -33,29 +28,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
   if (encuesta.respondida) return NextResponse.json({ error: "Ya fue respondida" }, { status: 409 });
 
   const body = await req.json();
-  const data: Record<string, number | string | null | boolean | Date> = {};
+  const respuestas: Respuestas = body.respuestas ?? {};
 
-  for (const campo of CAMPOS_NUM) {
-    if (campo in body && body[campo] != null) {
-      data[campo] = Number(body[campo]);
-    }
+  const faltan = faltantesRequeridas(respuestas);
+  if (faltan.length > 0) {
+    return NextResponse.json({ error: "Faltan preguntas obligatorias por responder" }, { status: 400 });
   }
-  if ("loMejor" in body) data.loMejor = body.loMejor || null;
-  if ("loMejorable" in body) data.loMejorable = body.loMejorable || null;
-  if ("comentarios" in body) data.comentarios = body.comentarios || null;
 
-  // Calcular promedio (excluyendo NPS)
-  const criterios = CAMPOS_NUM.filter(c => c !== "probabilidadRecomendar");
-  const vals = criterios.map(c => data[c] as number | undefined).filter((v): v is number => v != null && v > 0);
-  const promedio = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  const promedio = calcularPromedio(respuestas);
+  const animo = valorAnimo(respuestas);
 
   const updated = await prisma.encuestaSatisfaccionEquipo.update({
     where: { token },
     data: {
-      ...data,
+      respuestas: respuestas as object,
       respondida: true,
       respondidaEn: new Date(),
       promedioCalculado: promedio,
+      probabilidadRecomendar: animo != null ? Math.round(animo) : null,
     },
   });
 

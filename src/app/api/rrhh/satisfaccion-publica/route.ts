@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-const CAMPOS_NUM = [
-  "claridadInstrucciones", "pagosPuntuales", "tratoJusto",
-  "organizacion", "comunicacion", "herramientas", "crecimiento",
-  "ambiente", "probabilidadRecomendar",
-];
+import { calcularPromedio, faltantesRequeridas, valorAnimo, type Respuestas } from "@/lib/satisfaccion-form";
 
 function periodoActual() {
   const d = new Date();
@@ -28,9 +23,15 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const personalId: string | undefined = body.personalId;
   const periodo: string = body.periodo || periodoActual();
+  const respuestas: Respuestas = body.respuestas ?? {};
 
   if (!personalId) {
     return NextResponse.json({ error: "Selecciona tu nombre para continuar" }, { status: 400 });
+  }
+
+  const faltan = faltantesRequeridas(respuestas);
+  if (faltan.length > 0) {
+    return NextResponse.json({ error: "Faltan preguntas obligatorias por responder" }, { status: 400 });
   }
 
   const persona = await prisma.personalInterno.findFirst({
@@ -47,27 +48,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Ya registraste tu encuesta de este período. ¡Gracias!" }, { status: 409 });
   }
 
-  const data: Record<string, number | string | null> = {};
-  for (const campo of CAMPOS_NUM) {
-    if (campo in body && body[campo] != null) data[campo] = Number(body[campo]);
-  }
-  if ("loMejor" in body) data.loMejor = body.loMejor || null;
-  if ("loMejorable" in body) data.loMejorable = body.loMejorable || null;
-  if ("comentarios" in body) data.comentarios = body.comentarios || null;
-
-  const criterios = CAMPOS_NUM.filter(c => c !== "probabilidadRecomendar");
-  const vals = criterios.map(c => data[c] as number | undefined).filter((v): v is number => v != null && v > 0);
-  const promedio = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  const promedio = calcularPromedio(respuestas);
+  const animo = valorAnimo(respuestas);
 
   await prisma.encuestaSatisfaccionEquipo.upsert({
     where: { personalId_periodo: { personalId, periodo } },
     create: {
-      personalId, periodo, ...data,
-      enviada: true, respondida: true, respondidaEn: new Date(), promedioCalculado: promedio,
+      personalId, periodo,
+      respuestas: respuestas as object,
+      enviada: true, respondida: true, respondidaEn: new Date(),
+      promedioCalculado: promedio,
+      probabilidadRecomendar: animo != null ? Math.round(animo) : null,
     },
     update: {
-      ...data,
-      respondida: true, respondidaEn: new Date(), promedioCalculado: promedio,
+      respuestas: respuestas as object,
+      respondida: true, respondidaEn: new Date(),
+      promedioCalculado: promedio,
+      probabilidadRecomendar: animo != null ? Math.round(animo) : null,
     },
   });
 

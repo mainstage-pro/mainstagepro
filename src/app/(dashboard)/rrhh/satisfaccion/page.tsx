@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
+import { SECCIONES, type Respuestas } from "@/lib/satisfaccion-form";
 
 type PersonalOption = { id: string; nombre: string; puesto: string; departamento: string; tipo: string; activo?: boolean };
 
@@ -13,11 +14,46 @@ type Encuesta = {
   respondidaEn?: string | null;
   promedioCalculado?: number | null;
   probabilidadRecomendar?: number | null;
+  respuestas?: Respuestas | null;
   loMejor?: string | null;
   loMejorable?: string | null;
   comentarios?: string | null;
   personal: { id: string; nombre: string; puesto: string; departamento: string; tipo: string };
 };
+
+function RespuestasDetalle({ respuestas }: { respuestas: Respuestas }) {
+  return (
+    <div className="space-y-3">
+      {SECCIONES.map(sec => {
+        const contestadas = sec.preguntas.filter(p => {
+          const v = respuestas[p.id];
+          return v != null && (Array.isArray(v) ? v.length > 0 : String(v).trim() !== "");
+        });
+        if (contestadas.length === 0) return null;
+        return (
+          <div key={sec.id}>
+            <p className="text-[10px] text-[#B3985B] font-bold uppercase tracking-wider mb-1.5">{sec.titulo}</p>
+            <div className="space-y-2">
+              {contestadas.map(p => {
+                const v = respuestas[p.id]!;
+                return (
+                  <div key={p.id}>
+                    <p className="text-[#555] text-xs">{p.label}</p>
+                    <p className="text-gray-300 text-sm">
+                      {p.tipo === "scale5" ? `${v}/5`
+                        : Array.isArray(v) ? v.join(", ")
+                        : String(v)}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 const DEPT_LABEL: Record<string, string> = {
   BODEGA: "Bodega", COORDINACION: "Coordinación", PRODUCCION: "Producción",
@@ -88,9 +124,9 @@ export default function SatisfaccionPage() {
   const promedioPeriodo = respondidasPeriodo.length > 0
     ? respondidasPeriodo.reduce((s, e) => s + (e.promedioCalculado ?? 0), 0) / respondidasPeriodo.length
     : null;
-  const npsPeriodo = (() => {
-    const nps = delPeriodo.filter(e => e.respondida && e.probabilidadRecomendar != null);
-    return nps.length > 0 ? nps.reduce((s, e) => s + (e.probabilidadRecomendar ?? 0), 0) / nps.length : null;
+  const animoPeriodo = (() => {
+    const a = delPeriodo.filter(e => e.respondida && e.probabilidadRecomendar != null);
+    return a.length > 0 ? a.reduce((s, e) => s + (e.probabilidadRecomendar ?? 0), 0) / a.length : null;
   })();
 
   // Expediente por miembro: agrupa respuestas por persona (todos los períodos)
@@ -181,10 +217,10 @@ export default function SatisfaccionPage() {
             <p className="text-[#555] text-[11px] mt-0.5 uppercase tracking-wider">Respondidas</p>
           </div>
           <div className="ms-stat-card text-center">
-            <p className={`text-2xl font-bold ${npsPeriodo != null && npsPeriodo >= 8 ? "text-green-400" : npsPeriodo != null && npsPeriodo >= 6 ? "text-yellow-400" : "text-[#555]"}`}>
-              {npsPeriodo?.toFixed(1) ?? "—"}
+            <p className={`text-2xl font-bold ${animoPeriodo != null && animoPeriodo >= 8 ? "text-green-400" : animoPeriodo != null && animoPeriodo >= 6 ? "text-yellow-400" : "text-[#555]"}`}>
+              {animoPeriodo?.toFixed(1) ?? "—"}
             </p>
-            <p className="text-[#555] text-[11px] mt-0.5 uppercase tracking-wider">NPS promedio</p>
+            <p className="text-[#555] text-[11px] mt-0.5 uppercase tracking-wider">Ánimo promedio</p>
           </div>
         </div>
       )}
@@ -226,33 +262,36 @@ export default function SatisfaccionPage() {
                       <p className="text-[#555] text-xs">Este miembro aún no ha respondido ninguna encuesta.</p>
                     ) : (
                       respuestas.map(e => (
-                        <div key={e.id} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-3 space-y-2">
+                        <div key={e.id} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-3 space-y-3">
                           <div className="flex items-center justify-between gap-3">
                             <span className="text-[#888] text-xs font-semibold">{e.periodo}</span>
                             <div className="flex items-center gap-2">
                               {e.promedioCalculado != null && <ScoreBadge score={e.promedioCalculado} />}
-                              {e.probabilidadRecomendar != null && (
-                                <span className="text-[10px] text-[#555]">NPS {e.probabilidadRecomendar}</span>
-                              )}
                             </div>
                           </div>
-                          {e.loMejor && (
-                            <div>
-                              <p className="text-[10px] text-[#555] font-bold uppercase tracking-wider mb-0.5">Lo que más valora</p>
-                              <p className="text-gray-300 text-sm">{e.loMejor}</p>
-                            </div>
-                          )}
-                          {e.loMejorable && (
-                            <div>
-                              <p className="text-[10px] text-[#555] font-bold uppercase tracking-wider mb-0.5">Lo que cambiaría</p>
-                              <p className="text-gray-300 text-sm">{e.loMejorable}</p>
-                            </div>
-                          )}
-                          {e.comentarios && (
-                            <div>
-                              <p className="text-[10px] text-[#555] font-bold uppercase tracking-wider mb-0.5">Comentarios</p>
-                              <p className="text-gray-300 text-sm">{e.comentarios}</p>
-                            </div>
+                          {e.respuestas && Object.keys(e.respuestas).length > 0 ? (
+                            <RespuestasDetalle respuestas={e.respuestas} />
+                          ) : (
+                            <>
+                              {e.loMejor && (
+                                <div>
+                                  <p className="text-[10px] text-[#555] font-bold uppercase tracking-wider mb-0.5">Lo que más valora</p>
+                                  <p className="text-gray-300 text-sm">{e.loMejor}</p>
+                                </div>
+                              )}
+                              {e.loMejorable && (
+                                <div>
+                                  <p className="text-[10px] text-[#555] font-bold uppercase tracking-wider mb-0.5">Lo que cambiaría</p>
+                                  <p className="text-gray-300 text-sm">{e.loMejorable}</p>
+                                </div>
+                              )}
+                              {e.comentarios && (
+                                <div>
+                                  <p className="text-[10px] text-[#555] font-bold uppercase tracking-wider mb-0.5">Comentarios</p>
+                                  <p className="text-gray-300 text-sm">{e.comentarios}</p>
+                                </div>
+                              )}
+                            </>
                           )}
                           <div className="flex items-center justify-between">
                             {e.respondidaEn && (
