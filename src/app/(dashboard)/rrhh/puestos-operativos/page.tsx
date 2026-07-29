@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
-import { LayoutList, LayoutGrid, FileText, UserCheck, UserX, Link2 } from "lucide-react";
+import { LayoutList, LayoutGrid, FileText, UserCheck, UserX, Link2, Sparkles } from "lucide-react";
 import { AREA_CODES } from "@/lib/areas";
 import { useAreas } from "@/components/AreasProvider";
 
@@ -22,6 +22,12 @@ interface Puesto {
   ocupantes?: Ocupante[];
 }
 interface PersonaLite { id: string; nombre: string; puesto: string; activo: boolean }
+interface GenSubArea { id: string; nombre: string; area: string; count: number; principal: boolean }
+interface GenInfo {
+  diagnostico: { ocupantes: number; ocupantesSinUser: number; totalTareas: number; tareasSinSubarea: number };
+  subAreas: GenSubArea[];
+  mensaje?: string;
+}
 
 // Áreas canónicas (código estable) en el orden estándar de la empresa.
 // Etiquetas y colores vienen del maestro (useAreas) con fallback a src/lib/areas.ts.
@@ -70,6 +76,8 @@ export default function PuestosOperativosPage() {
   const [vista, setVista] = useState<"lista" | "grid">("lista");
   const [genPdf, setGenPdf] = useState<string | null>(null);
   const [genLink, setGenLink] = useState<string | null>(null);
+  const [generando, setGenerando] = useState(false);
+  const [genInfo, setGenInfo] = useState<GenInfo | null>(null);
   // Subáreas del maestro por código de área, para el selector del formulario.
   const [subareasPorArea, setSubareasPorArea] = useState<Record<string, { id: string; nombre: string }[]>>({});
 
@@ -101,10 +109,12 @@ export default function PuestosOperativosPage() {
     setEstandares([]);
     setOcupantesIds([]);
     setSaveError("");
+    setGenInfo(null);
     setShowForm(true);
   }
   function openEdit(p: Puesto) {
     setEditing(p);
+    setGenInfo(null);
     setForm({
       nombre: p.nombre, area: normArea(p.area), subAreaId: p.subAreaId ?? "", color: p.color ?? "",
       objetivoArea: p.objetivoArea ?? "", misionPuesto: p.misionPuesto ?? "",
@@ -120,6 +130,34 @@ export default function PuestosOperativosPage() {
     setOcupantesIds((p.ocupantes ?? []).map(o => o.id));
     setSaveError("");
     setShowForm(true);
+  }
+
+  // Genera un borrador de misión/responsabilidades/estándares desde el plan de trabajo
+  // del titular. Rellena el formulario (editable) para que el usuario lo apruebe y guarde.
+  async function generarDesdePlan() {
+    if (!editing?.id) return;
+    setGenerando(true);
+    setGenInfo(null);
+    try {
+      const res = await fetch(`/api/rrhh/puestos-operativos/${editing.id}/generar-desde-plan`, { method: "POST" });
+      const d = await res.json();
+      if (!res.ok) { toast.error(d.error ?? "Error al generar"); return; }
+      setGenInfo({ diagnostico: d.diagnostico, subAreas: d.subAreas ?? [], mensaje: d.mensaje });
+      const hayContenido = (d.responsabilidades?.length ?? 0) > 0 || (d.estandares?.length ?? 0) > 0 || d.misionPuesto;
+      if (!hayContenido) { if (!d.mensaje) toast.error("No se obtuvo contenido"); return; }
+      setForm(p => ({
+        ...p,
+        misionPuesto: d.misionPuesto || p.misionPuesto,
+        responsabilidades: (d.responsabilidades ?? []).join("\n") || p.responsabilidades,
+        subAreaId: p.subAreaId || d.subAreaPrincipalId || "",
+      }));
+      setEstandares(d.estandares ?? []);
+      toast.success("Borrador generado. Revisa y guarda.");
+    } catch {
+      toast.error("Error de conexión al generar");
+    } finally {
+      setGenerando(false);
+    }
   }
 
   async function save() {
@@ -439,6 +477,49 @@ export default function PuestosOperativosPage() {
             </div>
 
             <div className="p-6 space-y-6">
+              {/* Generar desde el plan de trabajo */}
+              {editing?.id && (
+                <div className="bg-[#0d0d0d] border border-[#1f1a12] rounded-lg p-4">
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="min-w-0">
+                      <p className="text-sm text-white font-medium flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-[#B3985B]" /> Generar desde el plan de trabajo
+                      </p>
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        Resume las tareas del plan asignadas al titular y propone misión, responsabilidades y estándares. Tú revisas y guardas.
+                      </p>
+                    </div>
+                    <button onClick={generarDesdePlan} disabled={generando}
+                      className="shrink-0 text-sm bg-[#B3985B]/15 hover:bg-[#B3985B]/25 text-[#B3985B] border border-[#B3985B]/30 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors">
+                      {generando ? "Analizando plan…" : "Generar borrador"}
+                    </button>
+                  </div>
+                  {genInfo && (
+                    <div className="mt-3 pt-3 border-t border-[#1a1a1a]">
+                      {genInfo.mensaje && <p className="text-xs text-orange-400/90 mb-2">{genInfo.mensaje}</p>}
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-gray-500">
+                        <span>{genInfo.diagnostico.totalTareas} tarea(s) del plan</span>
+                        <span>{genInfo.diagnostico.ocupantes} titular(es)</span>
+                        {genInfo.diagnostico.ocupantesSinUser > 0 && <span className="text-orange-400/80">{genInfo.diagnostico.ocupantesSinUser} sin usuario ligado</span>}
+                        {genInfo.diagnostico.tareasSinSubarea > 0 && <span className="text-gray-600">{genInfo.diagnostico.tareasSinSubarea} sin subárea</span>}
+                      </div>
+                      {genInfo.subAreas.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {genInfo.subAreas.map(s => (
+                            <span key={s.id}
+                              className={`text-[11px] px-2 py-0.5 rounded-full border ${s.principal
+                                ? "text-[#B3985B] border-[#B3985B]/40 bg-[#B3985B]/10"
+                                : "text-gray-500 border-[#222] bg-[#141414]"}`}>
+                              {s.nombre} · {s.count}{s.principal ? " · principal" : ""}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Identificación */}
               <div>
                 <p className="text-xs text-[#B3985B] uppercase tracking-wider mb-3">Identificación</p>
