@@ -10,7 +10,7 @@ interface Area {
   color: string; objetivo: string | null; orden: number; subareas: SubArea[];
 }
 
-export default function OrganizacionTab() {
+export default function AreasEditor() {
   const toast = useToast();
   const [areas, setAreas] = useState<Area[]>([]);
   const [loading, setLoading] = useState(true);

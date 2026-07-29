@@ -113,6 +113,7 @@ export const NAV: NavSection[] = [
         href: "/organizacion",
         icon: Network,
         children: [
+          { key: "org-areas", accessKey: "organizacion", label: "Áreas y subáreas", href: "/organizacion/areas" },
           { key: "org-organigrama", accessKey: "organizacion", label: "Organigrama", href: "/organizacion/organigrama" },
           { key: "org-puestos", accessKey: "organizacion", label: "Puestos", href: "/organizacion/puestos" },
           { key: "org-politicas", accessKey: "organizacion", label: "Políticas", href: "/organizacion/politicas" },

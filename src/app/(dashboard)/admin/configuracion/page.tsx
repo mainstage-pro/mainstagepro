@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { ShieldCheck } from "lucide-react";
-import OrganizacionTab from "./OrganizacionTab";
 
 // ─── Módulos / Etiquetas ──────────────────────────────────────────────────────
 
@@ -70,7 +69,7 @@ interface ConfigEntry {
   defaultValue?: string | null; orden: number;
 }
 
-type Tab = "etiquetas" | "organizacion" | "configuracion";
+type Tab = "etiquetas" | "configuracion";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -289,7 +288,6 @@ export default function ConfiguracionPage() {
       <div className="ms-tabs w-fit flex-wrap">
         {([
           ["etiquetas", "Etiquetas"],
-          ["organizacion", "Áreas y organización"],
           ["configuracion", "Configuración general"],
         ] as [Tab, string][]).map(([t, l]) => (
           <button key={t} onClick={() => setTab(t)}
@@ -340,9 +338,6 @@ export default function ConfiguracionPage() {
           </div>
         </div>
       )}
-
-      {/* ── Tab: Áreas y organización ────────────────────────────────────── */}
-      {tab === "organizacion" && <OrganizacionTab />}
 
       {/* ── Tab: Configuración general ───────────────────────────────────── */}
       {tab === "configuracion" && (
