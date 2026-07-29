@@ -317,14 +317,13 @@ export default function EvaluacionesPage() {
           </div>
 
           {/* Objetivos del período (IA) */}
-          {form.personalId && (
-            <div className="mt-5">
+          <div className="mt-5">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs text-[#B3985B] uppercase tracking-wider flex items-center gap-1.5">
                   <Target strokeWidth={1.75} className="w-3.5 h-3.5" /> Objetivos del período
                 </p>
                 <div className="flex items-center gap-3">
-                  <button type="button" onClick={sugerir} disabled={sugiriendo}
+                  <button type="button" onClick={sugerir} disabled={sugiriendo||!form.personalId}
                     className="text-[11px] text-[#B3985B] hover:text-[#c9a96a] disabled:opacity-50 flex items-center gap-1 transition-colors">
                     <Sparkles strokeWidth={2} className="w-3.5 h-3.5" /> {sugiriendo ? "Sugiriendo…" : "Sugerir con IA"}
                   </button>
@@ -381,18 +380,20 @@ export default function EvaluacionesPage() {
                 </div>
               )}
             </div>
-          )}
 
           {/* Estándares del puesto */}
-          {form.personalId && (
-            <div className="mt-5">
+          <div className="mt-5">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs text-[#B3985B] uppercase tracking-wider">
                   Estándares del puesto{puestoNombre ? ` · ${puestoNombre}` : ""}
                 </p>
                 {cargandoEst && <span className="text-[10px] text-gray-600">Cargando…</span>}
               </div>
-              {!cargandoEst && form.criterios.length === 0 ? (
+              {!form.personalId ? (
+                <p className="text-xs text-gray-600 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2">
+                  Selecciona un empleado para cargar los estándares de su puesto.
+                </p>
+              ) : !cargandoEst && form.criterios.length === 0 ? (
                 <p className="text-xs text-gray-600 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2">
                   Este puesto no tiene estándares definidos. Puedes capturarlos en Puestos para evaluarlos aquí.
                 </p>
@@ -444,7 +445,6 @@ export default function EvaluacionesPage() {
                 </div>
               )}
             </div>
-          )}
 
           {/* Métricas */}
           <div className="mt-5">
@@ -505,8 +505,7 @@ export default function EvaluacionesPage() {
           </div>
 
           {/* Acuerdos y seguimiento */}
-          {form.personalId && (
-            <div className="mt-5">
+          <div className="mt-5">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs text-[#B3985B] uppercase tracking-wider">Acuerdos y seguimiento</p>
                 <button type="button" onClick={addAcuerdo}
@@ -554,7 +553,6 @@ export default function EvaluacionesPage() {
                 </div>
               )}
             </div>
-          )}
 
           {/* Resumen de puntaje ponderado */}
           {(puntajes.general != null || puntajes.puesto != null) && (
