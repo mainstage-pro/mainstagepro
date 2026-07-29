@@ -8,7 +8,8 @@ import { useNavConfig } from "@/components/nav/NavConfigProvider";
 import { EditInput, useSingleDoubleClick } from "@/components/nav/editable";
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -98,7 +99,7 @@ function SortableTab({
       role="button"
       tabIndex={0}
       onClick={handleClick}
-      className={`${tabClass(active)} cursor-pointer select-none touch-none`}
+      className={`${tabClass(active)} cursor-pointer select-none`}
     >
       {label}
     </div>
@@ -117,8 +118,11 @@ export default function ModuleTabsLayout({
   const pathname = usePathname();
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
+  // Mouse: arrastra tras 6px. Touch: mantener presionado 220ms para arrastrar,
+  // así un deslizamiento rápido hace scroll normal en vez de reordenar.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
   );
 
   const visible = tabs.filter((t) => canAccess(t.accessKey, t.adminOnly));

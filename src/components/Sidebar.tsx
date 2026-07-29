@@ -14,7 +14,8 @@ import { useNavConfig } from "@/components/nav/NavConfigProvider";
 import { EditInput, useSingleDoubleClick } from "@/components/nav/editable";
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -131,7 +132,7 @@ function AdminNavItem({
       <div ref={setNodeRef} style={style}>
         <div
           {...dragProps}
-          className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer select-none touch-none ${
+          className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer select-none ${
             active ? "text-white font-semibold" : "text-[#6b7280] hover:text-white hover:bg-[#1a1a1a]"
           }`}
         >
@@ -159,7 +160,7 @@ function AdminNavItem({
     <div ref={setNodeRef} style={style}>
       <div
         {...dragProps}
-        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer select-none touch-none ${
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer select-none ${
           active ? "bg-[#1a1a1a] text-white font-semibold" : "text-[#8b8f97] hover:text-white hover:bg-[#161616]"
         }`}
       >
@@ -194,8 +195,11 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
 
   const { labels, order, saveLabel, saveOrder } = useNavConfig();
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Mouse: arrastra tras 6px. Touch: mantener presionado 220ms para arrastrar,
+  // así un deslizamiento rápido hace scroll normal en vez de reordenar.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
   );
 
   const [openGroups, setOpenGroups] = useState<Set<string>>(() => new Set<string>());
