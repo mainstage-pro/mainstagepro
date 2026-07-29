@@ -172,7 +172,6 @@ export const NAV: NavSection[] = [
           { key: "rrhh-actas", accessKey: "rrhh-evaluaciones", label: "Faltas y actas", href: "/personal/actas" },
           { key: "rrhh-cumplimiento", accessKey: "rrhh-evaluaciones", label: "Tablero de cumplimiento", href: "/personal/cumplimiento" },
           { key: "tabulador", label: "Tabulador freelancers", href: "/personal/tabulador" },
-          { key: "rrhh-capacitaciones", label: "Capacitaciones internas", href: "/personal/capacitaciones" },
           { key: "rrhh-evaluaciones", label: "Evaluaciones", href: "/personal/evaluaciones" },
           { key: "rrhh-satisfaccion", label: "Satisfacción equipo", href: "/personal/satisfaccion" },
           { key: "rrhh-config", label: "Configuración", href: "/personal/configuracion" },
