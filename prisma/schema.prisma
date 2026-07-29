@@ -2360,6 +2360,8 @@ model TareaSeccion {
   tipoModulo String        @default("TAREA")   // TAREA | PLAN — sub-módulo del hub al que pertenece
   proyectoId String
   proyecto   TareaProyecto @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  subAreaId  String?       // vínculo al maestro de subáreas (Áreas y organización); el maestro gobierna el nombre visible
+  subArea    PTSubArea?    @relation("SeccionSubArea", fields: [subAreaId], references: [id], onDelete: SetNull)
   tareas     Tarea[]
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
@@ -3558,6 +3560,7 @@ model PTSubArea {
   entregables String[] // Lista de nombres de entregables
 
   templates   PTTareaTemplate[]
+  secciones   TareaSeccion[]    @relation("SeccionSubArea")
 
   @@index([areaId])
   @@map("pt_subareas")

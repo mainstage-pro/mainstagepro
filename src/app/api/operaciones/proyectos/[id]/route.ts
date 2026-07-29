@@ -14,6 +14,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       secciones: {
         orderBy: { orden: "asc" },
         include: {
+          subArea: { select: { id: true, nombre: true } },
           tareas: {
             where: { parentId: null },
             orderBy: { orden: "asc" },

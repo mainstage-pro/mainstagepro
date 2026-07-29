@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
-import { Plus, Trash2, Save, Layers, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Trash2, Save, Layers, ChevronDown, ChevronRight, Wand2 } from "lucide-react";
 
 interface SubArea { id: string; nombre: string; descripcion: string | null; orden: number; }
 interface Area {
@@ -92,6 +92,19 @@ export default function OrganizacionTab() {
     finally { setBusy(null); }
   }
 
+  async function derivarSecciones() {
+    if (!confirm("Derivar subáreas desde las secciones del plan operativo. Crea o vincula subáreas por área; no borra nada. ¿Continuar?")) return;
+    setBusy("derivar");
+    try {
+      const r = await fetch("/api/admin/organizacion/derivar-secciones", { method: "POST" });
+      const d = await r.json();
+      if (!r.ok) { toast.error(d.error ?? "No se pudo derivar"); return; }
+      toast.success(`${d.vinculadas} secciones vinculadas · ${d.creadas} subáreas nuevas`);
+      await load();
+    } catch { toast.error("Error de conexión"); }
+    finally { setBusy(null); }
+  }
+
   async function addSub(areaId: string) {
     const ns = newSub[areaId];
     if (!ns?.nombre.trim()) return;
@@ -153,12 +166,22 @@ export default function OrganizacionTab() {
           se usan en todo el sistema (organigrama, puestos, plan de trabajo). El <span className="text-[#B3985B]">código</span> es
           estable e interno; el nombre es la etiqueta visible.
         </p>
-        <button
-          onClick={() => setNewArea({ nombre: "", color: "#1a1a2e", objetivo: "" })}
-          className="shrink-0 flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-gray-300 text-sm px-3 py-1.5 rounded-lg transition-colors"
-        >
-          <Plus className="w-3.5 h-3.5" /> Nueva área
-        </button>
+        <div className="shrink-0 flex items-center gap-2">
+          <button
+            onClick={derivarSecciones}
+            disabled={busy === "derivar"}
+            title="Deriva las subáreas desde las secciones del plan de trabajo operativo (crea o vincula; no borra)"
+            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] disabled:opacity-40 text-gray-300 text-sm px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <Wand2 className="w-3.5 h-3.5" /> {busy === "derivar" ? "Derivando…" : "Derivar desde plan"}
+          </button>
+          <button
+            onClick={() => setNewArea({ nombre: "", color: "#1a1a2e", objetivo: "" })}
+            className="flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-gray-300 text-sm px-3 py-1.5 rounded-lg transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" /> Nueva área
+          </button>
+        </div>
       </div>
 
       {/* Formulario de nueva área */}

@@ -35,6 +35,7 @@ interface ProyectoDetalle {
 interface SeccionDetalle {
   id: string; nombre: string; descripcion?: string | null; orden: number; colapsada: boolean;
   tipoModulo?: string;
+  subArea?: { id: string; nombre: string } | null;
   tareas: TareaItem[];
 }
 interface Iniciativa { id: string; nombre: string; color: string | null }
@@ -3768,6 +3769,10 @@ function SectionBlock({
   const [editando,   setEditando]   = useState(false);
   const [editNombre, setEditNombre] = useState(seccion.nombre);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Gobernanza: si la sección está vinculada a una subárea del maestro, el maestro
+  // manda el nombre visible; el nombre local queda como fallback.
+  const gobernada = !!seccion.subArea;
+  const nombreVisible = seccion.subArea?.nombre ?? seccion.nombre;
   // Inline objetivo/descripción state
   const [editandoDesc, setEditandoDesc] = useState(false);
   const [editDesc,     setEditDesc]     = useState(seccion.descripcion ?? "");
@@ -3847,7 +3852,7 @@ function SectionBlock({
       >
         <div className="flex items-center justify-center gap-2.5 h-14 rounded-xl bg-[#B3985B] text-black text-sm font-bold select-none shadow-lg shadow-[#B3985B]/20">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
-          Soltar en &ldquo;{seccion.nombre}&rdquo;
+          Soltar en &ldquo;{nombreVisible}&rdquo;
         </div>
       </div>
 
@@ -3916,10 +3921,18 @@ function SectionBlock({
             className="text-sm font-semibold text-white bg-[#1a1a1a] border border-[#B3985B]/50 rounded px-2 py-0.5 outline-none w-40 max-w-full"
           />
         ) : (
-          <span className={`text-[15px] font-semibold transition-colors ${
+          <span className={`text-[15px] font-semibold transition-colors inline-flex items-center gap-1.5 ${
             headerOver ? "text-[#B3985B]" : "text-[#d0d0d0] group-hover:text-white"
           }`}>
-            {seccion.nombre}
+            {nombreVisible}
+            {gobernada && (
+              <span
+                title="Nombre gobernado por Áreas y organización (maestro de subáreas)"
+                className="text-[9px] uppercase tracking-wider text-[#B3985B]/70 bg-[#B3985B]/10 border border-[#B3985B]/20 rounded px-1 py-px font-medium"
+              >
+                maestro
+              </span>
+            )}
           </span>
         )}
 
@@ -3942,16 +3955,18 @@ function SectionBlock({
                 <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>
               </svg>
             </button>
-            <button
-              onClick={e => { e.stopPropagation(); setEditando(true); setEditNombre(seccion.nombre); }}
-              className="text-[#333] hover:text-[#B3985B] p-0.5 transition-colors"
-              title="Renombrar sección"
-            >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-            </button>
+            {!gobernada && (
+              <button
+                onClick={e => { e.stopPropagation(); setEditando(true); setEditNombre(seccion.nombre); }}
+                className="text-[#333] hover:text-[#B3985B] p-0.5 transition-colors"
+                title="Renombrar sección"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+            )}
             <button onClick={e => { e.stopPropagation(); onDeleteSection(seccion.id); }}
               className="text-[#333] hover:text-red-400 p-0.5 transition-colors" title="Eliminar sección">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -4025,7 +4040,7 @@ function SectionBlock({
             <span className="w-4 h-4 rounded-full bg-[#B3985B]/15 flex items-center justify-center shrink-0">
               <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#B3985B" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </span>
-            Nueva tarea en {seccion.nombre}
+            Nueva tarea en {nombreVisible}
           </button>
         </>
       )}
