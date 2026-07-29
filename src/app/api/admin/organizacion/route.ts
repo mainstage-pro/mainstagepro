@@ -15,7 +15,10 @@ export async function GET() {
     include: {
       subareas: {
         orderBy: { orden: "asc" },
-        select: { id: true, nombre: true, descripcion: true, orden: true },
+        select: {
+          id: true, nombre: true, descripcion: true, orden: true,
+          _count: { select: { templates: true, secciones: true, puestos: true } },
+        },
       },
     },
   });

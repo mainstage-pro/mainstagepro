@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
-import { Plus, Trash2, Save, Layers, ChevronDown, ChevronRight, Wand2 } from "lucide-react";
+import { Plus, Trash2, Save, Layers, ChevronDown, ChevronRight, Wand2, GitMerge } from "lucide-react";
 
-interface SubArea { id: string; nombre: string; descripcion: string | null; orden: number; }
+interface SubAreaCount { templates: number; secciones: number; puestos: number; }
+interface SubArea { id: string; nombre: string; descripcion: string | null; orden: number; _count?: SubAreaCount; }
 interface Area {
   id: string; nombre: string; codigo: string | null; transversal: boolean;
   color: string; objetivo: string | null; orden: number; subareas: SubArea[];
@@ -24,6 +25,9 @@ export default function AreasEditor() {
   const [busy, setBusy] = useState<string | null>(null);
   // Nueva área
   const [newArea, setNewArea] = useState<{ nombre: string; color: string; objetivo: string } | null>(null);
+  // Modo fusión: destino elegido por subárea de origen
+  const [mergeMode, setMergeMode] = useState(false);
+  const [mergeTarget, setMergeTarget] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -156,6 +160,61 @@ export default function AreasEditor() {
     finally { setBusy(null); }
   }
 
+  // ── Fusión de subáreas ─────────────────────────────────────────────────────
+  // Tokens significativos de un nombre (sin acentos, sin palabras vacías ni "subárea N").
+  function tokens(nombre: string): Set<string> {
+    const stop = new Set(["de", "del", "la", "el", "los", "las", "y", "e", "a", "en", "subarea", "fijo", "semanal", "quincenal", "mensual"]);
+    return new Set(
+      nombre.toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9\s]/g, " ")
+        .split(/\s+/)
+        .filter(w => w.length > 2 && !stop.has(w) && !/^\d+$/.test(w))
+    );
+  }
+  function similitud(a: string, b: string): number {
+    const ta = tokens(a), tb = tokens(b);
+    if (ta.size === 0 || tb.size === 0) return 0;
+    let inter = 0;
+    for (const t of ta) if (tb.has(t)) inter++;
+    return inter / new Set([...ta, ...tb]).size;
+  }
+  const linked = (s: SubArea) => (s._count?.secciones ?? 0) > 0;
+  // Sugerencia de destino: el hermano más parecido; se prefiere uno "canónico"
+  // (ligado a una sección del plan). Solo se sugiere para subáreas sin sección.
+  function sugerirDestino(area: Area, s: SubArea): string {
+    if (linked(s)) return "";
+    let best = "", bestScore = 0.15; // umbral mínimo de parecido
+    for (const o of area.subareas) {
+      if (o.id === s.id) continue;
+      let score = similitud(s.nombre, o.nombre);
+      if (linked(o)) score += 0.25; // desempate a favor del canónico
+      if (score > bestScore) { bestScore = score; best = o.id; }
+    }
+    return best;
+  }
+
+  async function aplicarFusion(area: Area, from: SubArea) {
+    const toId = mergeTarget[from.id];
+    if (!toId) return;
+    const to = area.subareas.find(x => x.id === toId);
+    const n = from._count?.templates ?? 0;
+    if (!confirm(`Fusionar "${from.nombre}" dentro de "${to?.nombre}".\n\nSe moverán ${n} tarea(s), sus secciones y puestos al destino, y se eliminará "${from.nombre}". ¿Continuar?`)) return;
+    setBusy(`merge-${from.id}`);
+    try {
+      const r = await fetch("/api/admin/organizacion/subareas/merge", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fromId: from.id, toId }),
+      });
+      const d = await r.json();
+      if (!r.ok) { toast.error(d.error ?? "No se pudo fusionar"); return; }
+      toast.success(`Fusionada · ${d.templates} tareas · ${d.secciones} secciones · ${d.puestos} puestos movidos`);
+      setMergeTarget(m => { const nn = { ...m }; delete nn[from.id]; return nn; });
+      await load();
+    } catch { toast.error("Error de conexión"); }
+    finally { setBusy(null); }
+  }
+
   if (loading) return <p className="text-gray-600 text-sm">Cargando áreas…</p>;
 
   return (
@@ -167,6 +226,32 @@ export default function AreasEditor() {
           estable e interno; el nombre es la etiqueta visible.
         </p>
         <div className="shrink-0 flex items-center gap-2">
+          <button
+            onClick={() => {
+              const next = !mergeMode;
+              setMergeMode(next);
+              if (next) {
+                // Precargar sugerencias de destino y abrir todas las áreas.
+                const sug: Record<string, string> = {};
+                for (const a of areas) for (const s of a.subareas) {
+                  const d = sugerirDestino(a, s);
+                  if (d) sug[s.id] = d;
+                }
+                setMergeTarget(sug);
+                setExpanded(Object.fromEntries(areas.map(a => [a.id, true])));
+              } else {
+                setMergeTarget({});
+              }
+            }}
+            title="Fusionar subáreas duplicadas: mueve tareas, secciones y puestos al destino y elimina el origen"
+            className={`flex items-center gap-1.5 border text-sm px-3 py-1.5 rounded-lg transition-colors ${
+              mergeMode
+                ? "bg-[#B3985B] border-[#B3985B] text-black font-semibold"
+                : "bg-[#1a1a1a] hover:bg-[#222] border-[#2a2a2a] text-gray-300"
+            }`}
+          >
+            <GitMerge className="w-3.5 h-3.5" /> {mergeMode ? "Salir de fusión" : "Fusionar duplicados"}
+          </button>
           <button
             onClick={derivarSecciones}
             disabled={busy === "derivar"}
@@ -183,6 +268,13 @@ export default function AreasEditor() {
           </button>
         </div>
       </div>
+
+      {mergeMode && (
+        <div className="ms-card p-3 border-[#B3985B]/40 text-xs text-gray-400">
+          <span className="text-[#B3985B] font-semibold">Modo fusión.</span> Cada subárea muestra su destino sugerido (★ = canónica, ligada al plan).
+          Al aplicar, sus tareas, secciones y puestos se mueven al destino y la subárea de origen se elimina. Revisa cada caso antes de aplicar.
+        </div>
+      )}
 
       {/* Formulario de nueva área */}
       {newArea && (
@@ -275,29 +367,74 @@ export default function AreasEditor() {
                 {a.subareas.length === 0 && (
                   <p className="text-gray-700 text-xs italic">Sin subáreas aún.</p>
                 )}
-                {a.subareas.map(s => (
-                  <div key={s.id} className="flex items-start gap-2 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-2">
-                    <div className="flex-1 space-y-1">
-                      <input value={subVal(s, "nombre")}
-                        onChange={e => setSubD(s.id, "nombre", e.target.value)}
-                        className="w-full bg-transparent border-0 text-white text-sm font-medium px-1 focus:outline-none" />
-                      <textarea value={subVal(s, "descripcion") ?? ""}
-                        onChange={e => setSubD(s.id, "descripcion", e.target.value)}
-                        placeholder="Objetivo / propósito de la subárea…" rows={1}
-                        className="w-full bg-transparent border-0 text-gray-400 text-xs px-1 focus:outline-none resize-y" />
-                    </div>
-                    {subDirty(s) && (
-                      <button onClick={() => saveSub(s)} disabled={busy === s.id}
-                        className="flex items-center gap-1 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold px-2 py-1 rounded transition-colors shrink-0">
-                        <Save className="w-3 h-3" />
+                {a.subareas.map(s => {
+                  const c = s._count;
+                  const badges = c && (
+                    <span className="flex items-center gap-1 shrink-0 text-[10px]">
+                      {linked(s)
+                        ? <span className="text-green-400 bg-green-900/20 border border-green-800/40 px-1.5 py-0.5 rounded" title="Ligada a una sección del plan operativo">canónica</span>
+                        : <span className="text-gray-600 bg-[#0d0d0d] border border-[#1a1a1a] px-1.5 py-0.5 rounded" title="Sin sección del plan">huérfana</span>}
+                      <span className="text-gray-500" title="tareas · secciones · puestos">
+                        {c.templates}t · {c.secciones}s · {c.puestos}p
+                      </span>
+                    </span>
+                  );
+
+                  if (mergeMode) {
+                    const target = mergeTarget[s.id] ?? "";
+                    return (
+                      <div key={s.id} className="flex items-center gap-2 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-2 flex-wrap">
+                        <span className="flex-1 min-w-[160px] text-white text-sm font-medium truncate" title={s.nombre}>{s.nombre}</span>
+                        {badges}
+                        <span className="text-gray-600 text-xs">→</span>
+                        <select
+                          value={target}
+                          onChange={e => setMergeTarget(m => ({ ...m, [s.id]: e.target.value }))}
+                          className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B] max-w-[220px]"
+                        >
+                          <option value="">Fusionar en…</option>
+                          {a.subareas.filter(o => o.id !== s.id).map(o => (
+                            <option key={o.id} value={o.id}>{linked(o) ? "★ " : ""}{o.nombre}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => aplicarFusion(a, s)}
+                          disabled={!target || busy === `merge-${s.id}`}
+                          className="flex items-center gap-1 bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-30 text-black text-xs font-semibold px-2.5 py-1 rounded transition-colors shrink-0"
+                        >
+                          <GitMerge className="w-3 h-3" /> {busy === `merge-${s.id}` ? "Fusionando…" : "Aplicar"}
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={s.id} className="flex items-start gap-2 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg p-2">
+                      <div className="flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <input value={subVal(s, "nombre")}
+                            onChange={e => setSubD(s.id, "nombre", e.target.value)}
+                            className="flex-1 bg-transparent border-0 text-white text-sm font-medium px-1 focus:outline-none" />
+                          {badges}
+                        </div>
+                        <textarea value={subVal(s, "descripcion") ?? ""}
+                          onChange={e => setSubD(s.id, "descripcion", e.target.value)}
+                          placeholder="Objetivo / propósito de la subárea…" rows={1}
+                          className="w-full bg-transparent border-0 text-gray-400 text-xs px-1 focus:outline-none resize-y" />
+                      </div>
+                      {subDirty(s) && (
+                        <button onClick={() => saveSub(s)} disabled={busy === s.id}
+                          className="flex items-center gap-1 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold px-2 py-1 rounded transition-colors shrink-0">
+                          <Save className="w-3 h-3" />
+                        </button>
+                      )}
+                      <button onClick={() => delSub(s)} disabled={busy === s.id}
+                        className="text-gray-700 hover:text-red-400 transition-colors shrink-0 pt-0.5" title="Eliminar subárea">
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    )}
-                    <button onClick={() => delSub(s)} disabled={busy === s.id}
-                      className="text-gray-700 hover:text-red-400 transition-colors shrink-0 pt-0.5" title="Eliminar subárea">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
                 {/* Añadir subárea */}
                 <div className="flex items-center gap-2 pt-1">
                   <input
