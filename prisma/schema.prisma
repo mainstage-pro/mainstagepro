@@ -1917,7 +1917,12 @@ model EvaluacionEmpleado {
   // Snapshot de los estándares del puesto evaluados: [{ subarea, responsabilidad, estandar, puntaje }]
   criterios         String? @db.Text
 
-  puntajeTotal Float?
+  // Acuerdos / compromisos con seguimiento mes a mes: [{ texto, estado, nota }]
+  acuerdos          String? @db.Text
+
+  puntajeGeneral Float? // promedio de competencias generales (0-5)
+  puntajePuesto  Float? // promedio de estándares del puesto (0-5)
+  puntajeTotal   Float? // ponderado: 40% general + 60% puesto (o el único disponible)
   estado       String   @default("BORRADOR") // BORRADOR | COMPLETADA
   createdAt    DateTime @default(now())
 

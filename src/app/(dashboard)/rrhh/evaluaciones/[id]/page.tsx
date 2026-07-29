@@ -9,14 +9,22 @@ import { BackButton } from "@/components/BackButton";
 
 interface Evaluacion {
   id: string; personalId: string; periodo: string; evaluador: string | null; fecha: string;
-  puntajeTotal: number | null; estado: string;
+  puntajeTotal: number | null; puntajeGeneral: number | null; puntajePuesto: number | null; estado: string;
   puntualidad: number; ordenLimpieza: number; actitud: number; comunicacion: number;
   resolucionProb: number; propuestasMejora: number; calidadTrabajo: number; trabajoEquipo: number;
   aspectosPositivos: string | null; areasMejora: string | null; incidentesNota: string | null; observaciones: string | null;
-  criterios: string | null;
+  criterios: string | null; acuerdos: string | null;
   personal: { id: string; nombre: string; puesto: string; departamento: string; };
 }
 interface Criterio { subarea: string; responsabilidad: string; estandar: string; puntaje: number }
+interface Acuerdo { texto: string; estado: string; nota: string }
+
+const ESTADO_ACUERDO: Record<string, { label: string; cls: string }> = {
+  PENDIENTE:   { label: "Pendiente",   cls: "text-gray-400 bg-gray-800/50" },
+  CUMPLIDO:    { label: "Cumplido",    cls: "text-green-400 bg-green-900/20" },
+  PARCIAL:     { label: "Parcial",     cls: "text-yellow-400 bg-yellow-900/20" },
+  NO_CUMPLIDO: { label: "No cumplido", cls: "text-red-400 bg-red-900/20" },
+};
 
 const METRICAS = [
   { key: "puntualidad",      label: "Puntualidad" },
@@ -92,6 +100,8 @@ export default function EvaluacionDetailPage() {
   const e = evaluacion;
   let criterios: Criterio[] = [];
   try { const v = JSON.parse(e.criterios ?? "[]"); if (Array.isArray(v)) criterios = v; } catch { criterios = []; }
+  let acuerdos: Acuerdo[] = [];
+  try { const v = JSON.parse(e.acuerdos ?? "[]"); if (Array.isArray(v)) acuerdos = v; } catch { acuerdos = []; }
   const [_fy, _fm, _fd] = e.fecha.substring(0, 10).split("-").map(Number);
   const fecha = new Date(_fy, _fm - 1, _fd).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 
@@ -144,12 +154,43 @@ export default function EvaluacionDetailPage() {
           <ScoreRow key={m.key} label={m.label} value={e[m.key as MetricaKey]} />
         ))}
         {e.puntajeTotal != null && (
-          <div className="pt-3 border-t border-[#1a1a1a] flex items-center justify-between">
-            <span className="text-gray-400 text-sm font-semibold">Puntaje total</span>
-            <span className={`text-2xl font-bold ${scoreColor(e.puntajeTotal)}`}>{e.puntajeTotal.toFixed(2)} / 5.00</span>
+          <div className="pt-3 border-t border-[#1a1a1a] space-y-2">
+            {(e.puntajeGeneral != null || e.puntajePuesto != null) && (
+              <div className="flex gap-6 text-xs">
+                {e.puntajeGeneral != null && (
+                  <span className="text-gray-500">General (40%): <span className={scoreColor(e.puntajeGeneral)}>{e.puntajeGeneral.toFixed(1)}</span></span>
+                )}
+                {e.puntajePuesto != null && (
+                  <span className="text-gray-500">Puesto (60%): <span className={scoreColor(e.puntajePuesto)}>{e.puntajePuesto.toFixed(1)}</span></span>
+                )}
+              </div>
+            )}
+            <div className="flex items-center justify-between">
+              <span className="text-gray-400 text-sm font-semibold">Puntaje total</span>
+              <span className={`text-2xl font-bold ${scoreColor(e.puntajeTotal)}`}>{e.puntajeTotal.toFixed(2)} / 5.00</span>
+            </div>
           </div>
         )}
       </div>
+
+      {/* Acuerdos y seguimiento */}
+      {acuerdos.length > 0 && (
+        <div className="ms-card p-5 space-y-3">
+          <p className="text-xs text-[#B3985B] uppercase tracking-wider">Acuerdos y seguimiento</p>
+          {acuerdos.map((a, i) => {
+            const est = ESTADO_ACUERDO[a.estado] ?? ESTADO_ACUERDO.PENDIENTE;
+            return (
+              <div key={i} className="border-b border-[#1a1a1a] last:border-0 pb-3 last:pb-0">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-gray-200 text-sm flex-1">{a.texto}</p>
+                  <span className={`text-[10px] px-2 py-0.5 rounded shrink-0 ${est.cls}`}>{est.label}</span>
+                </div>
+                {a.nota && <p className="text-gray-600 text-xs mt-1">{a.nota}</p>}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Texto */}
       {(e.aspectosPositivos || e.areasMejora || e.incidentesNota || e.observaciones) && (

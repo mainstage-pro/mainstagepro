@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { METRICAS, normalizarCriterios, calcularPuntaje, safeParseCriterios } from "@/lib/evaluaciones";
+import { METRICAS, normalizarCriterios, normalizarAcuerdos, calcularPuntajes, safeParseCriterios } from "@/lib/evaluaciones";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -28,6 +28,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const criterios = criteriosCambia ? normalizarCriterios(body.criterios) : null;
   if (criteriosCambia) data.criterios = criterios!.length > 0 ? JSON.stringify(criterios) : null;
 
+  if ("acuerdos" in body) {
+    const acuerdos = normalizarAcuerdos(body.acuerdos);
+    data.acuerdos = acuerdos.length > 0 ? JSON.stringify(acuerdos) : null;
+  }
+
   if (METRICAS.some(m => m in body) || criteriosCambia) {
     const current = await prisma.evaluacionEmpleado.findUnique({ where: { id } });
     if (current) {
@@ -35,7 +40,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       const metricas: Record<string, number> = {};
       for (const m of METRICAS) metricas[m] = Number(merged[m]) || 0;
       const crit = criteriosCambia ? criterios! : safeParseCriterios(current.criterios);
-      data.puntajeTotal = calcularPuntaje(metricas, crit);
+      const { general, puesto, total } = calcularPuntajes(metricas, crit);
+      data.puntajeGeneral = general;
+      data.puntajePuesto = puesto;
+      data.puntajeTotal = total;
     }
   }
   const evaluacion = await prisma.evaluacionEmpleado.update({ where: { id }, data });

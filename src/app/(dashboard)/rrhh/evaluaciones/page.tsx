@@ -6,10 +6,19 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { Modal } from "@/components/Modal";
-import { AlertTriangle, Ban } from "lucide-react";
+import { AlertTriangle, Ban, Plus, X } from "lucide-react";
+import { calcularPuntajes, PESO_GENERAL, PESO_PUESTO } from "@/lib/evaluaciones";
 
 interface Personal { id: string; nombre: string; puesto: string; departamento: string; }
 interface Criterio { subarea: string; responsabilidad: string; estandar: string; puntaje: number }
+interface AcuerdoForm { texto: string; estado: string; nota: string; seguimiento: boolean }
+
+const ESTADOS_ACUERDO = [
+  { key: "PENDIENTE",   label: "Pendiente",   cls: "bg-gray-700 text-white" },
+  { key: "CUMPLIDO",    label: "Cumplido",    cls: "bg-green-600 text-white" },
+  { key: "PARCIAL",     label: "Parcial",     cls: "bg-yellow-600 text-black" },
+  { key: "NO_CUMPLIDO", label: "No cumplido", cls: "bg-red-600 text-white" },
+] as const;
 interface Evaluacion {
   id: string; personalId: string; periodo: string; evaluador: string | null; fecha: string;
   puntajeTotal: number | null; estado: string;
@@ -54,6 +63,7 @@ const EMPTY_FORM = () => ({
   resolucionProb:0, propuestasMejora:0, calidadTrabajo:0, trabajoEquipo:0,
   aspectosPositivos:"", areasMejora:"", incidentesNota:"", observaciones:"", estado:"COMPLETADA",
   criterios: [] as Criterio[],
+  acuerdos: [] as AcuerdoForm[],
 });
 
 export default function EvaluacionesPage() {
@@ -68,6 +78,7 @@ export default function EvaluacionesPage() {
   const [filtroPersonal, setFiltroPersonal] = useState("");
   const [cargandoEst, setCargandoEst] = useState(false);
   const [puestoNombre, setPuestoNombre] = useState<string | null>(null);
+  const [periodoPrevio, setPeriodoPrevio] = useState<string | null>(null);
 
   async function load() {
     const [pRes, eRes] = await Promise.all([
@@ -89,20 +100,41 @@ export default function EvaluacionesPage() {
     setForm(p => ({ ...p, criterios: p.criterios.map((c, i) => i === idx ? { ...c, puntaje } : c) }));
   }
 
+  function setAcuerdo(idx: number, patch: Partial<AcuerdoForm>) {
+    setForm(p => ({ ...p, acuerdos: p.acuerdos.map((a, i) => i === idx ? { ...a, ...patch } : a) }));
+  }
+  function addAcuerdo() {
+    setForm(p => ({ ...p, acuerdos: [...p.acuerdos, { texto: "", estado: "PENDIENTE", nota: "", seguimiento: false }] }));
+  }
+  function removeAcuerdo(idx: number) {
+    setForm(p => ({ ...p, acuerdos: p.acuerdos.filter((_, i) => i !== idx) }));
+  }
+
   async function selectPersona(id: string) {
-    setForm(p => ({ ...p, personalId: id, criterios: [] }));
+    setForm(p => ({ ...p, personalId: id, criterios: [], acuerdos: [] }));
     setPuestoNombre(null);
+    setPeriodoPrevio(null);
     if (!id) return;
     setCargandoEst(true);
     try {
       const r = await fetch(`/api/rrhh/evaluaciones/estandares?personalId=${id}`);
       const d = await r.json();
       setPuestoNombre(d.puestoNombre ?? null);
-      setForm(p => ({ ...p, criterios: (d.estandares ?? []).map((e: Omit<Criterio,"puntaje">) => ({ ...e, puntaje: 0 })) }));
+      setPeriodoPrevio(d.periodoPrevio ?? null);
+      setForm(p => ({
+        ...p,
+        criterios: (d.estandares ?? []).map((e: Omit<Criterio,"puntaje">) => ({ ...e, puntaje: 0 })),
+        acuerdos: (d.acuerdosPrevios ?? []).map((a: { texto: string }) => ({ texto: a.texto, estado: "PENDIENTE", nota: "", seguimiento: true })),
+      }));
     } finally {
       setCargandoEst(false);
     }
   }
+
+  const puntajes = calcularPuntajes(
+    Object.fromEntries(METRICAS.map(m => [m.key, form[m.key]])),
+    form.criterios,
+  );
 
   async function save() {
     if (!form.personalId || !form.periodo) return;
@@ -274,6 +306,78 @@ export default function EvaluacionesPage() {
                 className="ms-input resize-none" />
             </div>
           </div>
+
+          {/* Acuerdos y seguimiento */}
+          {form.personalId && (
+            <div className="mt-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs text-[#B3985B] uppercase tracking-wider">Acuerdos y seguimiento</p>
+                <button type="button" onClick={addAcuerdo}
+                  className="text-[11px] text-gray-400 hover:text-white flex items-center gap-1 transition-colors">
+                  <Plus strokeWidth={2} className="w-3.5 h-3.5" /> Agregar acuerdo
+                </button>
+              </div>
+              {form.acuerdos.length === 0 ? (
+                <p className="text-xs text-gray-600 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2">
+                  Sin acuerdos. Agrega compromisos para el siguiente periodo; se arrastrarán al próximo mes hasta cumplirse.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {form.acuerdos.map((a, i) => (
+                    <div key={i} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2.5">
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          {a.seguimiento && (
+                            <span className="text-[9px] text-[#B3985B] uppercase tracking-wider">
+                              Seguimiento{periodoPrevio ? ` · ${periodoPrevio}` : ""}
+                            </span>
+                          )}
+                          <input value={a.texto} onChange={e=>setAcuerdo(i,{texto:e.target.value})}
+                            placeholder="Compromiso o acuerdo..."
+                            className="w-full bg-transparent text-gray-200 text-sm focus:outline-none placeholder:text-gray-700" />
+                        </div>
+                        <button type="button" onClick={()=>removeAcuerdo(i)}
+                          className="text-gray-700 hover:text-red-400 shrink-0 mt-0.5 transition-colors">
+                          <X strokeWidth={2} className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {ESTADOS_ACUERDO.map(s => (
+                          <button key={s.key} type="button" onClick={()=>setAcuerdo(i,{estado:s.key})}
+                            className={`text-[10px] px-2 py-1 rounded transition-all ${a.estado===s.key ? s.cls : "bg-[#1a1a1a] text-gray-600 hover:text-white"}`}>
+                            {s.label}
+                          </button>
+                        ))}
+                        <input value={a.nota} onChange={e=>setAcuerdo(i,{nota:e.target.value})}
+                          placeholder="Nota (opcional)…"
+                          className="flex-1 min-w-[120px] bg-transparent text-gray-400 text-xs focus:outline-none placeholder:text-gray-700 border-b border-[#1a1a1a] focus:border-[#2a2a2a]" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Resumen de puntaje ponderado */}
+          {(puntajes.general != null || puntajes.puesto != null) && (
+            <div className="mt-5 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex gap-5 text-sm">
+                <div>
+                  <p className="text-[10px] text-gray-600 uppercase tracking-wider">General ({Math.round(PESO_GENERAL*100)}%)</p>
+                  <p className={puntajes.general!=null?scoreColor(puntajes.general):"text-gray-700"}>{puntajes.general!=null?puntajes.general.toFixed(1):"—"}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-gray-600 uppercase tracking-wider">Puesto ({Math.round(PESO_PUESTO*100)}%)</p>
+                  <p className={puntajes.puesto!=null?scoreColor(puntajes.puesto):"text-gray-700"}>{puntajes.puesto!=null?puntajes.puesto.toFixed(1):"—"}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-gray-600 uppercase tracking-wider">Total ponderado</p>
+                <p className={`text-2xl font-bold ${puntajes.total!=null?scoreColor(puntajes.total):"text-gray-700"}`}>{puntajes.total!=null?puntajes.total.toFixed(2):"—"}<span className="text-xs text-gray-600 font-normal"> /5</span></p>
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-3 mt-4">
             <button onClick={save} disabled={saving||!form.personalId||!form.periodo}
