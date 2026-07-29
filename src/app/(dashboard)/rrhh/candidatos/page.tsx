@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import { SkeletonCards } from "@/components/Skeleton";
 import { Combobox } from "@/components/Combobox";
 import { Modal } from "@/components/Modal";
+import { AREA_ORDEN, areaLabel } from "@/lib/areas";
 
 interface Postulacion {
   id: string; etapa: string; puestoManual?: string | null; areaManual?: string | null;
@@ -51,17 +52,22 @@ export default function CandidatosPage() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"kanban"|"lista">("kanban");
   const [showNew, setShowNew] = useState(false);
-  const [puestos, setPuestos] = useState<{id:string;titulo:string;area:string}[]>([]);
+  // Puestos operativos reales (módulo "Puestos"), fuente del selector de postulación.
+  const [puestos, setPuestos] = useState<{
+    id: string; nombre: string; area: string; activo?: boolean;
+    ocupantes?: { id: string; nombre: string }[];
+    puestoIdeal?: { id: string; titulo: string } | null;
+  }[]>([]);
   const [form, setForm] = useState({
     nombre:"", correo:"", telefono:"", ciudad:"",
-    puestoId:"", puestoManual:"", areaManual:"",
+    puestoOpId:"", puestoManual:"", areaManual:"",
   });
   const [saving, setSaving] = useState(false);
 
   async function load() {
     const [rc, rp] = await Promise.all([
       fetch("/api/rrhh/candidatos"),
-      fetch("/api/rrhh/puestos"),
+      fetch("/api/rrhh/puestos-operativos"),
     ]);
     const dc = await rc.json();
     const dp = await rp.json();
@@ -73,9 +79,18 @@ export default function CandidatosPage() {
 
   async function crear() {
     setSaving(true);
+    // Traduce el puesto operativo elegido: guarda su nombre/área para mostrar y,
+    // si está ligado a un perfil de reclutamiento, conserva el vínculo (puestoId).
+    const sel = puestos.find(p => p.id === form.puestoOpId);
+    const payload = {
+      nombre: form.nombre, correo: form.correo, telefono: form.telefono, ciudad: form.ciudad,
+      puestoId: sel?.puestoIdeal?.id || "",
+      puestoManual: sel ? sel.nombre : form.puestoManual,
+      areaManual: sel ? sel.area : form.areaManual,
+    };
     const r = await fetch("/api/rrhh/candidatos", {
       method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     });
     const d = await r.json();
     setSaving(false);
@@ -105,6 +120,25 @@ export default function CandidatosPage() {
   function getEtapa(c: Candidato) {
     return c.postulaciones[0]?.etapa ?? "NUEVO";
   }
+
+  // Opciones del selector: puestos sin titular primero, luego por orden de área y nombre.
+  const puestoOptions = useMemo(() => {
+    const ordArea = (a: string) => { const i = AREA_ORDEN.indexOf(a); return i === -1 ? 99 : i; };
+    return [...puestos]
+      .filter(p => p.activo !== false)
+      .sort((a, b) => {
+        const av = (a.ocupantes?.length ?? 0) === 0 ? 0 : 1;
+        const bv = (b.ocupantes?.length ?? 0) === 0 ? 0 : 1;
+        if (av !== bv) return av - bv;
+        const ao = ordArea(a.area), bo = ordArea(b.area);
+        if (ao !== bo) return ao - bo;
+        return a.nombre.localeCompare(b.nombre);
+      })
+      .map(p => {
+        const estado = (p.ocupantes?.length ?? 0) === 0 ? "sin titular" : (p.ocupantes?.[0]?.nombre ?? "ocupado");
+        return { value: p.id, label: `${p.nombre} · ${areaLabel(p.area)} · ${estado}` };
+      });
+  }, [puestos]);
 
   return (
     <div className="ms-page space-y-6">
@@ -255,13 +289,15 @@ export default function CandidatosPage() {
           <div>
             <label className="block text-xs text-gray-500 mb-1">Puesto al que aplica</label>
             <Combobox
-              value={form.puestoId}
-              onChange={v => setForm(p => ({ ...p, puestoId: v }))}
-              options={[{ value: "", label: "— Seleccionar puesto ideal —" }, ...puestos.map(p => ({ value: p.id, label: `${p.titulo} · ${p.area}` }))]}
+              value={form.puestoOpId}
+              onChange={v => setForm(p => ({ ...p, puestoOpId: v }))}
+              options={[{ value: "", label: "— Seleccionar puesto —" }, ...puestoOptions]}
+              placeholder="Buscar puesto…"
               className={inputCls}
             />
+            <p className="text-[10px] text-gray-600 mt-1">Las vacantes sin titular aparecen primero. También puedes postular a un puesto ya ocupado.</p>
           </div>
-          {!form.puestoId && (
+          {!form.puestoOpId && (
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-gray-500 mb-1">Puesto (manual)</label>
