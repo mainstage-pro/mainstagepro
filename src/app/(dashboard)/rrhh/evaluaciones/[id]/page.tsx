@@ -358,8 +358,12 @@ export default function EvaluacionDetailPage() {
         </div>
       )}
 
-      {/* Eliminar */}
-      <div className="flex justify-end">
+      {/* Acciones */}
+      <div className="flex items-center justify-between">
+        <a href={`/api/rrhh/evaluaciones/${id}/pdf`} target="_blank" rel="noreferrer"
+          className="text-xs text-[#B3985B] hover:text-[#c9a96a] border border-[#B3985B]/30 hover:border-[#B3985B]/60 rounded-lg px-3 py-2 transition-colors">
+          Descargar PDF
+        </a>
         <button onClick={deleteEval} className="text-xs text-gray-600 hover:text-red-400 transition-colors">Eliminar evaluación</button>
       </div>
     </div>
