@@ -17,12 +17,31 @@ export async function GET() {
         orderBy: { orden: "asc" },
         select: {
           id: true, nombre: true, descripcion: true, orden: true,
-          _count: { select: { templates: true, secciones: true, puestos: true } },
+          _count: { select: { secciones: true, puestos: true } },
+          // Tareas reales que cuelgan de las secciones de la subárea (Gestión
+          // Operativa). Es el número que debe cuadrar con el plan de trabajo.
+          secciones: { select: { _count: { select: { tareas: true } } } },
         },
       },
     },
   });
-  return NextResponse.json({ areas });
+
+  const shaped = areas.map((a) => ({
+    ...a,
+    subareas: a.subareas.map((s) => ({
+      id: s.id,
+      nombre: s.nombre,
+      descripcion: s.descripcion,
+      orden: s.orden,
+      _count: {
+        secciones: s._count.secciones,
+        puestos: s._count.puestos,
+        tareas: s.secciones.reduce((acc, sec) => acc + sec._count.tareas, 0),
+      },
+    })),
+  }));
+
+  return NextResponse.json({ areas: shaped });
 }
 
 // POST: crea un área nueva (código opcional; el nombre es la etiqueta).

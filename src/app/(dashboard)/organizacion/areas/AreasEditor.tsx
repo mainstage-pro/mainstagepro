@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { Plus, Trash2, Save, Layers, ChevronDown, ChevronRight, Wand2, GitMerge } from "lucide-react";
 
-interface SubAreaCount { templates: number; secciones: number; puestos: number; }
+interface SubAreaCount { tareas: number; secciones: number; puestos: number; }
 interface SubArea { id: string; nombre: string; descripcion: string | null; orden: number; _count?: SubAreaCount; }
 interface Area {
   id: string; nombre: string; codigo: string | null; transversal: boolean;
@@ -198,7 +198,7 @@ export default function AreasEditor() {
     const toId = mergeTarget[from.id];
     if (!toId) return;
     const to = area.subareas.find(x => x.id === toId);
-    const n = from._count?.templates ?? 0;
+    const n = from._count?.tareas ?? 0;
     if (!confirm(`Fusionar "${from.nombre}" dentro de "${to?.nombre}".\n\nSe moverán ${n} tarea(s), sus secciones y puestos al destino, y se eliminará "${from.nombre}". ¿Continuar?`)) return;
     setBusy(`merge-${from.id}`);
     try {
@@ -375,7 +375,7 @@ export default function AreasEditor() {
                         ? <span className="text-green-400 bg-green-900/20 border border-green-800/40 px-1.5 py-0.5 rounded" title="Ligada a una sección del plan operativo">canónica</span>
                         : <span className="text-gray-600 bg-[#0d0d0d] border border-[#1a1a1a] px-1.5 py-0.5 rounded" title="Sin sección del plan">huérfana</span>}
                       <span className="text-gray-500" title="tareas · secciones · puestos">
-                        {c.templates}t · {c.secciones}s · {c.puestos}p
+                        {c.tareas}t · {c.secciones}s · {c.puestos}p
                       </span>
                     </span>
                   );
