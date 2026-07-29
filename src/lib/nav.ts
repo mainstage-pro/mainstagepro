@@ -6,6 +6,7 @@ import {
   PenTool, Megaphone, BarChart3, SlidersHorizontal, BadgeDollarSign,
   Package, TrendingUp, Settings, Speaker, BookUser, ClipboardCheck,
   ShieldCheck, ScrollText, Settings2, Building2, LayoutGrid, GraduationCap,
+  Network,
 } from "lucide-react";
 
 // Dueño de la plataforma. Ciertos módulos (ej. "Inicio") se muestran solo a él.
@@ -106,6 +107,17 @@ export const NAV: NavSection[] = [
         ],
       },
       { key: "presentaciones", label: "Presentaciones", href: "/presentaciones", icon: Presentation },
+      {
+        key: "organizacion",
+        label: "Organización",
+        href: "/organizacion",
+        icon: Network,
+        children: [
+          { key: "org-organigrama", accessKey: "organizacion", label: "Organigrama", href: "/organizacion/organigrama" },
+          { key: "org-puestos", accessKey: "organizacion", label: "Puestos", href: "/organizacion/puestos" },
+          { key: "org-politicas", accessKey: "organizacion", label: "Políticas", href: "/organizacion/politicas" },
+        ],
+      },
     ],
   },
 
@@ -288,6 +300,7 @@ const MODULE_META: Record<string, { label?: string; desc?: string }> = {
   proyectos:             { label: "Proyectos", desc: "Proyectos de evento e internos" },
   juntas:                { desc: "Minutas y acuerdos de juntas" },
   presentaciones:        { desc: "Presentaciones de ventas y dirección" },
+  organizacion:          { desc: "Organigrama, puestos y políticas de la empresa" },
   capacitacion:          { desc: "Portal de capacitación" },
   "admin-usuarios":      { desc: "Gestión de usuarios y sus permisos" },
   "admin-actividad":     { desc: "Registro de actividad de usuarios" },
@@ -427,7 +440,7 @@ export const AREA_MODULE_PRESETS: Record<string, string[]> = {
   ],
   DIRECCION: [
     "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
-    "juntas", "presentaciones", "capacitacion",
+    "juntas", "presentaciones", "capacitacion", "organizacion",
     "verificacion",
     "tareas-direccion",
   ],

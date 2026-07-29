@@ -334,7 +334,7 @@ function EditModal({ puesto, puestos, onClose, onSaved }: { puesto: Puesto; pues
         <div className="p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-white font-semibold">Editar puesto</h3>
-            <a href={`/rrhh/puestos-operativos`} className="text-xs text-[#B3985B] hover:underline">Ficha completa →</a>
+            <a href={`/organizacion/puestos`} className="text-xs text-[#B3985B] hover:underline">Ficha completa →</a>
           </div>
           <div>
             <label className={labelCls}>Nombre</label>

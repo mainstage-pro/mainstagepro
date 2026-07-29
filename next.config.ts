@@ -36,6 +36,13 @@ const nextConfig: NextConfig = {
       { source: "/backlog",                      destination: "/operaciones",                       permanent: true },
       // ── RRHH (legacy routes) ─────────────────────────────────────────────────
       { source: "/rrhh/incidencias",             destination: "/rrhh/asistencia",                   permanent: true },
+      // ── Organización (movido de RRHH/Personal a Dirección) ───────────────────
+      { source: "/personal/organigrama",         destination: "/organizacion/organigrama",          permanent: true },
+      { source: "/personal/puestos-operativos",  destination: "/organizacion/puestos",              permanent: true },
+      { source: "/personal/politicas",           destination: "/organizacion/politicas",            permanent: true },
+      { source: "/rrhh/organigrama",             destination: "/organizacion/organigrama",          permanent: true },
+      { source: "/rrhh/puestos-operativos",      destination: "/organizacion/puestos",              permanent: true },
+      { source: "/rrhh/politicas",               destination: "/organizacion/politicas",            permanent: true },
       // ── Comercial (legacy routes) ────────────────────────────────────────────
       { source: "/comercial/solicitudes",        destination: "/crm/tratos",                        permanent: true },
       { source: "/ventas",                        destination: "/crm/tratos",                        permanent: true },
