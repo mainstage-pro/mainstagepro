@@ -11,7 +11,10 @@ export function middleware(req: NextRequest) {
 
   // Security headers
   res.headers.set("X-Content-Type-Options", "nosniff");
-  res.headers.set("X-Frame-Options", "DENY");
+  // El reproductor de capacitación embebe el HTML de la presentación en un
+  // iframe del mismo origen; esa ruta necesita SAMEORIGIN. El resto: DENY.
+  const esHtmlCapacitacion = /^\/api\/capacitacion\/[^/]+\/versiones\/[^/]+\/html$/.test(req.nextUrl.pathname);
+  res.headers.set("X-Frame-Options", esHtmlCapacitacion ? "SAMEORIGIN" : "DENY");
   res.headers.set("X-XSS-Protection", "1; mode=block");
   res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   res.headers.set("Permissions-Policy", "camera=(self), microphone=(), geolocation=()");
