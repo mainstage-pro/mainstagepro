@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { METRICAS, normalizarCriterios, normalizarAcuerdos, calcularPuntajes } from "@/lib/evaluaciones";
+import { METRICAS, normalizarCriterios, normalizarAcuerdos, normalizarObjetivos, normalizarCompetenciaNotas, calcularPuntajes, CALIFICACIONES_FINALES } from "@/lib/evaluaciones";
+import { createExpiringToken } from "@/lib/tokens";
 
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -25,6 +26,9 @@ export async function POST(req: NextRequest) {
   for (const m of METRICAS) metricas[m] = body[m] ?? 0;
   const criterios = normalizarCriterios(body.criterios);
   const acuerdos = normalizarAcuerdos(body.acuerdos);
+  const objetivos = normalizarObjetivos(body.objetivos);
+  const competenciaNotas = normalizarCompetenciaNotas(body.competenciaNotas);
+  const calificacionFinal = (CALIFICACIONES_FINALES as readonly string[]).includes(body.calificacionFinal) ? body.calificacionFinal : null;
   const { general, puesto, total } = calcularPuntajes(metricas, criterios);
   const evaluacion = await prisma.evaluacionEmpleado.create({
     data: {
@@ -36,6 +40,10 @@ export async function POST(req: NextRequest) {
       observaciones: body.observaciones || null,
       criterios: criterios.length > 0 ? JSON.stringify(criterios) : null,
       acuerdos: acuerdos.length > 0 ? JSON.stringify(acuerdos) : null,
+      objetivos: objetivos.length > 0 ? JSON.stringify(objetivos) : null,
+      competenciaNotas: Object.keys(competenciaNotas).length > 0 ? JSON.stringify(competenciaNotas) : null,
+      calificacionFinal,
+      autoToken: createExpiringToken(120),
       puntajeGeneral: general,
       puntajePuesto: puesto,
       puntajeTotal: total,

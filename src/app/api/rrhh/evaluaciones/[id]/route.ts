@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { METRICAS, normalizarCriterios, normalizarAcuerdos, calcularPuntajes, safeParseCriterios } from "@/lib/evaluaciones";
+import { METRICAS, normalizarCriterios, normalizarAcuerdos, normalizarObjetivos, normalizarCompetenciaNotas, calcularPuntajes, safeParseCriterios, CALIFICACIONES_FINALES } from "@/lib/evaluaciones";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -24,6 +24,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const data: Record<string, unknown> = {};
   for (const k of allowed) if (k in body) data[k] = body[k] === "" ? null : body[k];
 
+  if ("calificacionFinal" in body) {
+    data.calificacionFinal = (CALIFICACIONES_FINALES as readonly string[]).includes(body.calificacionFinal) ? body.calificacionFinal : null;
+  }
+
   const criteriosCambia = "criterios" in body;
   const criterios = criteriosCambia ? normalizarCriterios(body.criterios) : null;
   if (criteriosCambia) data.criterios = criterios!.length > 0 ? JSON.stringify(criterios) : null;
@@ -31,6 +35,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ("acuerdos" in body) {
     const acuerdos = normalizarAcuerdos(body.acuerdos);
     data.acuerdos = acuerdos.length > 0 ? JSON.stringify(acuerdos) : null;
+  }
+
+  if ("objetivos" in body) {
+    const objetivos = normalizarObjetivos(body.objetivos);
+    data.objetivos = objetivos.length > 0 ? JSON.stringify(objetivos) : null;
+  }
+
+  if ("competenciaNotas" in body) {
+    const notas = normalizarCompetenciaNotas(body.competenciaNotas);
+    data.competenciaNotas = Object.keys(notas).length > 0 ? JSON.stringify(notas) : null;
   }
 
   if (METRICAS.some(m => m in body) || criteriosCambia) {

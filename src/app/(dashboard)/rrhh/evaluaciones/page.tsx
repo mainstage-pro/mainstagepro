@@ -6,12 +6,27 @@ import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Combobox } from "@/components/Combobox";
 import { Modal } from "@/components/Modal";
-import { AlertTriangle, Ban, Plus, X } from "lucide-react";
+import { AlertTriangle, Ban, Plus, X, Sparkles, Paperclip, Copy, Target } from "lucide-react";
 import { calcularPuntajes, PESO_GENERAL, PESO_PUESTO } from "@/lib/evaluaciones";
 
 interface Personal { id: string; nombre: string; puesto: string; departamento: string; }
-interface Criterio { subarea: string; responsabilidad: string; estandar: string; puntaje: number }
+interface Criterio { subarea: string; responsabilidad: string; estandar: string; puntaje: number; nota: string; evidencias: string[] }
+interface ObjetivoForm { texto: string; resultado: string; comentario: string; evidencias: string[] }
 interface AcuerdoForm { texto: string; estado: string; nota: string; seguimiento: boolean }
+
+const RESULTADOS_OBJETIVO = [
+  { key: "PENDIENTE",   label: "Pendiente",   cls: "bg-gray-700 text-white" },
+  { key: "CUMPLIDO",    label: "Cumplido",    cls: "bg-green-600 text-white" },
+  { key: "PARCIAL",     label: "Parcial",     cls: "bg-yellow-600 text-black" },
+  { key: "NO_CUMPLIDO", label: "No cumplido", cls: "bg-red-600 text-white" },
+] as const;
+
+const CALIFICACIONES_FINALES = [
+  { key: "EXCEDE",        label: "Excede expectativas", cls: "bg-green-600 text-white" },
+  { key: "CUMPLE",        label: "Cumple",              cls: "bg-yellow-600 text-black" },
+  { key: "EN_DESARROLLO", label: "En desarrollo",       cls: "bg-orange-600 text-white" },
+  { key: "NO_CUMPLE",     label: "No cumple",           cls: "bg-red-600 text-white" },
+] as const;
 
 const ESTADOS_ACUERDO = [
   { key: "PENDIENTE",   label: "Pendiente",   cls: "bg-gray-700 text-white" },
@@ -64,6 +79,9 @@ const EMPTY_FORM = () => ({
   aspectosPositivos:"", areasMejora:"", incidentesNota:"", observaciones:"", estado:"COMPLETADA",
   criterios: [] as Criterio[],
   acuerdos: [] as AcuerdoForm[],
+  objetivos: [] as ObjetivoForm[],
+  competenciaNotas: {} as Record<string, string>,
+  calificacionFinal: "",
 });
 
 export default function EvaluacionesPage() {
@@ -79,6 +97,8 @@ export default function EvaluacionesPage() {
   const [cargandoEst, setCargandoEst] = useState(false);
   const [puestoNombre, setPuestoNombre] = useState<string | null>(null);
   const [periodoPrevio, setPeriodoPrevio] = useState<string | null>(null);
+  const [sugiriendo, setSugiriendo] = useState(false);
+  const [autoLink, setAutoLink] = useState<string | null>(null);
 
   async function load() {
     const [pRes, eRes] = await Promise.all([
@@ -96,8 +116,64 @@ export default function EvaluacionesPage() {
     setForm(p => ({ ...p, [key]: val }));
   }
 
-  function setCriterio(idx: number, puntaje: number) {
-    setForm(p => ({ ...p, criterios: p.criterios.map((c, i) => i === idx ? { ...c, puntaje } : c) }));
+  function setCriterio(idx: number, patch: Partial<Criterio>) {
+    setForm(p => ({ ...p, criterios: p.criterios.map((c, i) => i === idx ? { ...c, ...patch } : c) }));
+  }
+
+  function setCompNota(key: string, val: string) {
+    setForm(p => ({ ...p, competenciaNotas: { ...p.competenciaNotas, [key]: val } }));
+  }
+
+  function setObjetivo(idx: number, patch: Partial<ObjetivoForm>) {
+    setForm(p => ({ ...p, objetivos: p.objetivos.map((o, i) => i === idx ? { ...o, ...patch } : o) }));
+  }
+  function addObjetivo() {
+    setForm(p => ({ ...p, objetivos: [...p.objetivos, { texto: "", resultado: "PENDIENTE", comentario: "", evidencias: [] }] }));
+  }
+  function removeObjetivo(idx: number) {
+    setForm(p => ({ ...p, objetivos: p.objetivos.filter((_, i) => i !== idx) }));
+  }
+
+  async function sugerir() {
+    if (!form.personalId) return;
+    setSugiriendo(true);
+    try {
+      const r = await fetch("/api/rrhh/evaluaciones/sugerir-objetivos", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ personalId: form.personalId, periodo: form.periodo }),
+      });
+      const d = await r.json();
+      if (!r.ok) { toast.error(d.error ?? "No se pudo sugerir"); return; }
+      if (!d.ok || !(d.objetivos?.length)) { toast.error(d.mensaje ?? "Sin objetivos para sugerir"); return; }
+      setForm(p => ({
+        ...p,
+        objetivos: [
+          ...p.objetivos,
+          ...d.objetivos.map((o: { texto: string }) => ({ texto: o.texto, resultado: "PENDIENTE", comentario: "", evidencias: [] })),
+        ],
+      }));
+      toast.success(`${d.objetivos.length} objetivos sugeridos`);
+    } finally {
+      setSugiriendo(false);
+    }
+  }
+
+  async function subirEvidencia(file: File): Promise<string | null> {
+    const fd = new FormData();
+    fd.append("file", file);
+    const r = await fetch("/api/upload", { method: "POST", body: fd });
+    if (!r.ok) { toast.error("No se pudo subir el archivo"); return null; }
+    const d = await r.json();
+    return d.url ?? null;
+  }
+
+  async function addEvidenciaObjetivo(idx: number, file: File) {
+    const url = await subirEvidencia(file);
+    if (url) setObjetivo(idx, { evidencias: [...form.objetivos[idx].evidencias, url] });
+  }
+  async function addEvidenciaCriterio(idx: number, file: File) {
+    const url = await subirEvidencia(file);
+    if (url) setCriterio(idx, { evidencias: [...form.criterios[idx].evidencias, url] });
   }
 
   function setAcuerdo(idx: number, patch: Partial<AcuerdoForm>) {
@@ -123,7 +199,7 @@ export default function EvaluacionesPage() {
       setPeriodoPrevio(d.periodoPrevio ?? null);
       setForm(p => ({
         ...p,
-        criterios: (d.estandares ?? []).map((e: Omit<Criterio,"puntaje">) => ({ ...e, puntaje: 0 })),
+        criterios: (d.estandares ?? []).map((e: { subarea: string; responsabilidad: string; estandar: string }) => ({ ...e, puntaje: 0, nota: "", evidencias: [] })),
         acuerdos: (d.acuerdosPrevios ?? []).map((a: { texto: string }) => ({ texto: a.texto, estado: "PENDIENTE", nota: "", seguimiento: true })),
       }));
     } finally {
@@ -136,17 +212,29 @@ export default function EvaluacionesPage() {
     form.criterios,
   );
 
-  async function save() {
+  async function save(estado: "BORRADOR" | "COMPLETADA") {
     if (!form.personalId || !form.periodo) return;
     setSaving(true);
     const r = await fetch("/api/rrhh/evaluaciones", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, estado }),
     });
     if (!r.ok) { const d = await r.json().catch(() => ({})); toast.error(d.error ?? "Error al guardar"); setSaving(false); return; }
+    const d = await r.json().catch(() => ({}));
     await load();
+    setSaving(false);
+    const tok = d.evaluacion?.autoToken;
+    if (tok) {
+      setAutoLink(`${window.location.origin}/autoevaluacion/${tok}`);
+    } else {
+      setShowForm(false);
+      setForm(EMPTY_FORM());
+    }
+  }
+
+  function cerrarForm() {
     setShowForm(false);
     setForm(EMPTY_FORM());
-    setSaving(false);
+    setAutoLink(null);
   }
 
   async function deleteEval(id: string) {
@@ -189,7 +277,27 @@ export default function EvaluacionesPage() {
       </div>
 
       {/* Formulario */}
-      <Modal open={showForm} onClose={() => { setShowForm(false); setForm(EMPTY_FORM()); }} title="Nueva evaluación">
+      <Modal open={showForm} onClose={cerrarForm} title="Nueva evaluación">
+        {autoLink ? (
+          <div className="space-y-4 py-2">
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-green-900/30 flex items-center justify-center mx-auto">
+                <Sparkles className="w-6 h-6 text-green-400" />
+              </div>
+              <p className="text-white font-semibold">Evaluación guardada</p>
+              <p className="text-gray-500 text-sm">Comparte este enlace con el colaborador para que haga su <span className="text-[#B3985B]">autoevaluación</span> y luego firme de enterado.</p>
+            </div>
+            <div className="flex gap-2">
+              <input readOnly value={autoLink} className="flex-1 bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-gray-300 text-xs focus:outline-none" />
+              <button onClick={() => { navigator.clipboard.writeText(autoLink); toast.success("Enlace copiado"); }}
+                className="bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold text-sm px-4 py-2 rounded-lg transition-colors flex items-center gap-1.5">
+                <Copy className="w-4 h-4" /> Copiar
+              </button>
+            </div>
+            <button onClick={cerrarForm} className="w-full text-gray-500 hover:text-white text-sm py-2 transition-colors">Cerrar</button>
+          </div>
+        ) : (
+        <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div><label className="text-xs text-gray-500 mb-1 block">Empleado</label>
               <Combobox
@@ -207,6 +315,73 @@ export default function EvaluacionesPage() {
                 placeholder="Nombre del evaluador..."
                 className="ms-input" /></div>
           </div>
+
+          {/* Objetivos del período (IA) */}
+          {form.personalId && (
+            <div className="mt-5">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs text-[#B3985B] uppercase tracking-wider flex items-center gap-1.5">
+                  <Target strokeWidth={1.75} className="w-3.5 h-3.5" /> Objetivos del período
+                </p>
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={sugerir} disabled={sugiriendo}
+                    className="text-[11px] text-[#B3985B] hover:text-[#c9a96a] disabled:opacity-50 flex items-center gap-1 transition-colors">
+                    <Sparkles strokeWidth={2} className="w-3.5 h-3.5" /> {sugiriendo ? "Sugiriendo…" : "Sugerir con IA"}
+                  </button>
+                  <button type="button" onClick={addObjetivo}
+                    className="text-[11px] text-gray-400 hover:text-white flex items-center gap-1 transition-colors">
+                    <Plus strokeWidth={2} className="w-3.5 h-3.5" /> Agregar
+                  </button>
+                </div>
+              </div>
+              {form.objetivos.length === 0 ? (
+                <p className="text-xs text-gray-600 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2">
+                  Define objetivos medibles del período. Usa <span className="text-[#B3985B]">Sugerir con IA</span> para generarlos desde el plan de trabajo y las responsabilidades del puesto.
+                </p>
+              ) : (
+                <div className="space-y-2.5">
+                  {form.objetivos.map((o, i) => (
+                    <div key={i} className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2.5">
+                      <div className="flex items-start gap-2">
+                        <textarea value={o.texto} onChange={e=>setObjetivo(i,{texto:e.target.value})} rows={2}
+                          placeholder="Objetivo SMART del período…"
+                          className="flex-1 bg-transparent text-gray-200 text-sm focus:outline-none placeholder:text-gray-700 resize-none" />
+                        <button type="button" onClick={()=>removeObjetivo(i)}
+                          className="text-gray-700 hover:text-red-400 shrink-0 mt-0.5 transition-colors">
+                          <X strokeWidth={2} className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        {RESULTADOS_OBJETIVO.map(s => (
+                          <button key={s.key} type="button" onClick={()=>setObjetivo(i,{resultado:s.key})}
+                            className={`text-[10px] px-2 py-1 rounded transition-all ${o.resultado===s.key ? s.cls : "bg-[#1a1a1a] text-gray-600 hover:text-white"}`}>
+                            {s.label}
+                          </button>
+                        ))}
+                        <label className="text-[10px] text-gray-500 hover:text-white flex items-center gap-1 cursor-pointer transition-colors ml-auto">
+                          <Paperclip strokeWidth={2} className="w-3 h-3" /> Evidencia
+                          <input type="file" className="hidden" onChange={e=>{ const f=e.target.files?.[0]; if(f) addEvidenciaObjetivo(i,f); e.target.value=""; }} />
+                        </label>
+                      </div>
+                      <input value={o.comentario} onChange={e=>setObjetivo(i,{comentario:e.target.value})}
+                        placeholder="Comentario del resultado (opcional)…"
+                        className="w-full mt-2 bg-transparent text-gray-400 text-xs focus:outline-none placeholder:text-gray-700 border-b border-[#1a1a1a] focus:border-[#2a2a2a] pb-1" />
+                      {o.evidencias.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {o.evidencias.map((url, k) => (
+                            <a key={k} href={url} target="_blank" rel="noreferrer"
+                              className="text-[10px] text-[#B3985B] bg-[#B3985B]/10 px-2 py-0.5 rounded flex items-center gap-1">
+                              <Paperclip className="w-3 h-3" /> Prueba {k+1}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Estándares del puesto */}
           {form.personalId && (
@@ -237,7 +412,7 @@ export default function EvaluacionesPage() {
                       </div>
                       <div className="flex gap-2">
                         {[1,2,3,4,5].map(n => (
-                          <button key={n} onClick={() => setCriterio(i, c.puntaje===n?0:n)}
+                          <button key={n} onClick={() => setCriterio(i, { puntaje: c.puntaje===n?0:n })}
                             className={`flex-1 h-8 rounded text-sm font-bold transition-all ${c.puntaje===n
                               ? (n>=4?"bg-green-600 text-white":n>=3?"bg-yellow-600 text-black":n>=2?"bg-orange-600 text-white":"bg-red-600 text-white")
                               : "bg-[#1a1a1a] text-gray-600 hover:bg-[#222] hover:text-white"}`}>
@@ -245,6 +420,25 @@ export default function EvaluacionesPage() {
                           </button>
                         ))}
                       </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <input value={c.nota} onChange={e=>setCriterio(i,{nota:e.target.value})}
+                          placeholder="Justificación de la calificación (opcional)…"
+                          className="flex-1 bg-transparent text-gray-400 text-xs focus:outline-none placeholder:text-gray-700 border-b border-[#1a1a1a] focus:border-[#2a2a2a] pb-1" />
+                        <label className="text-[10px] text-gray-500 hover:text-white flex items-center gap-1 cursor-pointer transition-colors shrink-0">
+                          <Paperclip strokeWidth={2} className="w-3 h-3" /> Evidencia
+                          <input type="file" className="hidden" onChange={e=>{ const f=e.target.files?.[0]; if(f) addEvidenciaCriterio(i,f); e.target.value=""; }} />
+                        </label>
+                      </div>
+                      {c.evidencias.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {c.evidencias.map((url, k) => (
+                            <a key={k} href={url} target="_blank" rel="noreferrer"
+                              className="text-[10px] text-[#B3985B] bg-[#B3985B]/10 px-2 py-0.5 rounded flex items-center gap-1">
+                              <Paperclip className="w-3 h-3" /> Prueba {k+1}
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -274,6 +468,9 @@ export default function EvaluacionesPage() {
                       </button>
                     ))}
                   </div>
+                  <input value={form.competenciaNotas[m.key] ?? ""} onChange={e=>setCompNota(m.key, e.target.value)}
+                    placeholder="Comentario (opcional)…"
+                    className="w-full mt-1.5 bg-transparent text-gray-400 text-xs focus:outline-none placeholder:text-gray-700 border-b border-[#1a1a1a] focus:border-[#2a2a2a] pb-1" />
                 </div>
               ))}
             </div>
@@ -379,12 +576,32 @@ export default function EvaluacionesPage() {
             </div>
           )}
 
-          <div className="flex gap-3 mt-4">
-            <button onClick={save} disabled={saving||!form.personalId||!form.periodo}
-              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
-              {saving?"Guardando...":"Guardar evaluación"}
-            </button>
+          {/* Calificación final */}
+          <div className="mt-5">
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Calificación final</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {CALIFICACIONES_FINALES.map(c => (
+                <button key={c.key} type="button" onClick={()=>setForm(p=>({...p, calificacionFinal: p.calificacionFinal===c.key ? "" : c.key}))}
+                  className={`text-xs px-3 py-2 rounded-lg font-semibold transition-all ${form.calificacionFinal===c.key ? c.cls : "bg-[#1a1a1a] text-gray-500 hover:text-white"}`}>
+                  {c.label}
+                </button>
+              ))}
+            </div>
           </div>
+
+          <div className="flex flex-wrap gap-3 mt-4 items-center">
+            <button onClick={()=>save("COMPLETADA")} disabled={saving||!form.personalId||!form.periodo}
+              className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-5 py-2 rounded-lg transition-colors">
+              {saving?"Guardando...":"Guardar y cerrar"}
+            </button>
+            <button onClick={()=>save("BORRADOR")} disabled={saving||!form.personalId||!form.periodo}
+              className="text-gray-400 hover:text-white disabled:opacity-50 text-sm px-4 py-2 rounded-lg border border-[#2a2a2a] transition-colors">
+              Guardar borrador
+            </button>
+            <span className="text-[11px] text-gray-600">Usa borrador si el colaborador se autoevalúa primero.</span>
+          </div>
+        </>
+        )}
       </Modal>
 
       {/* Lista */}

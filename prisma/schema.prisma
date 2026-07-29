@@ -1952,6 +1952,24 @@ model EvaluacionEmpleado {
   // Acuerdos / compromisos con seguimiento mes a mes: [{ texto, estado, nota }]
   acuerdos          String? @db.Text
 
+  // Objetivos SMART del período: [{ texto, resultado, comentario, evidencias: string[] }]
+  objetivos         String? @db.Text
+  // Comentarios por competencia general: { puntualidad, ordenLimpieza, ... }
+  competenciaNotas  String? @db.Text
+  // Calificación final nombrada: EXCEDE | CUMPLE | EN_DESARROLLO | NO_CUMPLE
+  calificacionFinal String?
+
+  // Autoevaluación (180°) que el colaborador llena por enlace público con token
+  autoToken     String?   @unique
+  autoEstado    String    @default("PENDIENTE") // PENDIENTE | ENVIADA
+  autoData      String?   @db.Text // snapshot de su autocalificación + comentarios
+  autoEnviadaEn DateTime?
+
+  // Acuse de firma del colaborador sobre la evaluación cerrada
+  firmada       Boolean   @default(false)
+  firmadaEn     DateTime?
+  firmadaNombre String?
+
   puntajeGeneral Float? // promedio de competencias generales (0-5)
   puntajePuesto  Float? // promedio de estándares del puesto (0-5)
   puntajeTotal   Float? // ponderado: 40% general + 60% puesto (o el único disponible)
