@@ -14,6 +14,7 @@ import TareasHoyWidget from "@/components/TareasHoyWidget";
 import PlanTrabajoWidget from "@/components/PlanTrabajoWidget";
 import { NuevoTratoDropdown } from "@/components/NuevoTratoDropdown";
 import { AlertTriangle, Zap } from "lucide-react";
+import { AREA_DASHBOARD } from "@/lib/areas";
 
 
 export const dynamic = "force-dynamic";
@@ -23,15 +24,7 @@ export default async function DashboardPage() {
 
   // Redirect non-admin users to their area-specific dashboard
   if (session && session.role !== "ADMIN" && session.area && session.area !== "GENERAL") {
-    const areaRoutes: Record<string, string> = {
-      DIRECCION:     "/dashboard/direccion",
-      ADMINISTRACION:"/dashboard/administracion",
-      MARKETING:     "/dashboard/marketing",
-      VENTAS:        "/dashboard/ventas",
-      PRODUCCION:    "/dashboard/produccion",
-      RRHH:          "/dashboard/rrhh",
-    };
-    const target = areaRoutes[session.area];
+    const target = AREA_DASHBOARD[session.area];
     if (target) {
       redirect(target);
     }

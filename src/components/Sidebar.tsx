@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import BusquedaGlobal from "@/components/BusquedaGlobal";
 import NotificacionesBell from "@/components/NotificacionesBell";
 import { NAV, OWNER_EMAIL, type NavItem } from "@/lib/nav";
+import { AREA_DASHBOARD } from "@/lib/areas";
 import { useNavConfig } from "@/components/nav/NavConfigProvider";
 import { EditInput, useSingleDoubleClick } from "@/components/nav/editable";
 import {
@@ -259,14 +260,6 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
     router.refresh();
   }
 
-  const AREA_DASHBOARD: Record<string, string> = {
-    DIRECCION:      "/dashboard/direccion",
-    ADMINISTRACION: "/dashboard/administracion",
-    MARKETING:      "/dashboard/marketing",
-    VENTAS:         "/dashboard/ventas",
-    PRODUCCION:     "/dashboard/produccion",
-    RRHH:           "/dashboard/rrhh",
-  };
   const dashboardHref = (!isAdmin && user.area && AREA_DASHBOARD[user.area])
     ? AREA_DASHBOARD[user.area]
     : "/dashboard";

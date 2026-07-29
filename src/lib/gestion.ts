@@ -1,18 +1,14 @@
 // Áreas de negocio para los sistemas operativos (Tareas, Plan de Trabajo, Proyectos).
 // La clave "VENTAS" se conserva en la BD por compatibilidad, pero se muestra como "Comercial".
+//
+// Fuente canónica: src/lib/areas.ts. Este módulo re-exporta desde ahí para evitar
+// drift; solo mantiene las clases de chip (tailwind) que son propias de este contexto.
 
-export const AREAS = ["DIRECCION", "ADMINISTRACION", "MARKETING", "VENTAS", "PRODUCCION"] as const;
+import { AREA_CODES, AREA_LABELS, AREA_HEX, areaLabel } from "@/lib/areas";
+
+export { AREA_LABELS, areaLabel };
+export const AREAS = AREA_CODES;
 export type AreaKey = (typeof AREAS)[number];
-
-export const AREA_LABELS: Record<string, string> = {
-  DIRECCION: "Dirección",
-  ADMINISTRACION: "Administración",
-  MARKETING: "Marketing",
-  VENTAS: "Comercial",
-  PRODUCCION: "Producción",
-  RRHH: "RRHH",
-  GENERAL: "General",
-};
 
 export const AREA_COLORS: Record<string, string> = {
   DIRECCION:      "bg-purple-900/30 text-purple-400",
@@ -24,23 +20,8 @@ export const AREA_COLORS: Record<string, string> = {
   GENERAL:        "bg-[#222] text-[#888]",
 };
 
-// Color sólido (hex) por área, para dots y acentos.
-export const AREA_DOT: Record<string, string> = {
-  DIRECCION: "#a78bfa",
-  ADMINISTRACION: "#60a5fa",
-  MARKETING: "#f472b6",
-  VENTAS: "#4ade80",
-  PRODUCCION: "#facc15",
-  RRHH: "#fb923c",
-  GENERAL: "#888888",
-};
-
-export function areaLabel(area?: string | null): string {
-  if (!area) return "Sin área";
-  // Cualquier variante de "ventas" se muestra como Comercial.
-  if (area.toUpperCase() === "VENTAS") return "Comercial";
-  return AREA_LABELS[area] ?? area;
-}
+// Color sólido (hex) por área, para dots y acentos. Alias del canónico AREA_HEX.
+export const AREA_DOT: Record<string, string> = AREA_HEX;
 
 export function areaChipClass(area?: string | null): string {
   if (!area) return AREA_COLORS.GENERAL;

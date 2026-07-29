@@ -12,7 +12,7 @@ export { nivelResultado, type CalifDimension };
 
 // Áreas con responsable que Dirección evalúa (Dirección = el CEO, no se autoevalúa aquí).
 export const AREAS_EVALUABLES = [
-  { id: "VENTAS", label: "Ventas" },
+  { id: "VENTAS", label: "Comercial" },
   { id: "PRODUCCION", label: "Producción" },
   { id: "MARKETING", label: "Marketing" },
   { id: "ADMINISTRACION", label: "Administración" },

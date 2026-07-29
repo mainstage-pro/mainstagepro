@@ -1,24 +1,23 @@
 /**
  * AREA_COLORS — Colores oficiales del sistema por área
  * Plan de Trabajo · Mainstage Pro
- * Exportar desde aquí para consistencia en todos los módulos.
+ * Fuente canónica: src/lib/areas.ts (AREA_HEX). Aquí se agregan alias por nombre
+ * de display para compatibilidad con consumidores que pasan la etiqueta.
  */
 
+import { AREA_HEX } from "@/lib/areas";
+
 export const AREA_COLORS: Record<string, string> = {
-  // Display names
-  'Dirección':             '#6366F1',
-  'Administración':        '#10B981',
-  'Marketing':             '#F59E0B',
-  'Ventas':                '#c9a96a',
-  'Producción':            '#3B82F6',
-  'Operaciones Generales': '#8B5CF6',
-  // DB uppercase keys (schema: DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION | GENERAL)
-  'DIRECCION':     '#6366F1',
-  'ADMINISTRACION':'#10B981',
-  'MARKETING':     '#F59E0B',
-  'VENTAS':        '#c9a96a',
-  'PRODUCCION':    '#3B82F6',
-  'GENERAL':       '#8B5CF6',
+  // Códigos canónicos (fuente única).
+  ...AREA_HEX,
+  // Alias por nombre de display.
+  'Dirección':             AREA_HEX.DIRECCION,
+  'Administración':        AREA_HEX.ADMINISTRACION,
+  'Marketing':             AREA_HEX.MARKETING,
+  'Comercial':             AREA_HEX.VENTAS,
+  'Ventas':                AREA_HEX.VENTAS,
+  'Producción':            AREA_HEX.PRODUCCION,
+  'Operaciones Generales': AREA_HEX.GENERAL,
 }
 
 /** Primer nombre del usuario → color de área */

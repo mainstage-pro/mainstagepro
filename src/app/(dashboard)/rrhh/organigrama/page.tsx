@@ -18,6 +18,8 @@ import {
   type NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { AREA_CODES } from "@/lib/areas";
+import { useAreas } from "@/components/AreasProvider";
 
 interface Ocupante { id: string; nombre: string }
 interface Puesto {
@@ -28,25 +30,12 @@ interface Puesto {
   ocupantes?: Ocupante[];
 }
 
-const AREAS = ["DIRECCION", "ADMINISTRACION", "MARKETING", "VENTAS", "PRODUCCION"];
-const AREA_LABELS: Record<string, string> = {
-  DIRECCION: "Dirección",
-  ADMINISTRACION: "Administración",
-  MARKETING: "Marketing",
-  VENTAS: "Comercial",
-  PRODUCCION: "Producción",
-};
+// Etiquetas y colores vienen del maestro (useAreas) con fallback a src/lib/areas.ts.
+const AREAS = [...AREA_CODES];
 // RRHH y GENERAL (legado) se pliegan a Administración
 function normArea(a: string): string {
   return a === "RRHH" || a === "GENERAL" ? "ADMINISTRACION" : a;
 }
-const AREA_HEX: Record<string, string> = {
-  DIRECCION: "#B3985B",
-  ADMINISTRACION: "#a855f7",
-  MARKETING: "#eab308",
-  VENTAS: "#22c55e",
-  PRODUCCION: "#3b82f6",
-};
 
 // ── Nodo personalizado ────────────────────────────────────────────────────────
 type PuestoNodeData = {
@@ -157,6 +146,7 @@ function Lienzo() {
   const [editing, setEditing] = useState<Puesto | null>(null);
   const [showNew, setShowNew] = useState(false);
   const puestosRef = useRef<Puesto[]>([]);
+  const { label: areaLabel, color: areaColor } = useAreas();
 
   const openEdit = useCallback((id: string) => {
     const p = puestosRef.current.find((x) => x.id === id);
@@ -168,13 +158,13 @@ function Lienzo() {
     const byId = new Map(puestos.map((p) => [p.id, p]));
     const layout = computeLayout(puestos);
     const ns: Node<PuestoNodeData>[] = puestos.map((p) => {
-      const color = p.color || AREA_HEX[normArea(p.area)] || "#6b7280";
+      const color = p.color || areaColor(normArea(p.area));
       const usePos = p.posX != null && p.posY != null ? { x: p.posX, y: p.posY } : layout[p.id];
       return {
         id: p.id,
         type: "puesto",
         position: usePos,
-        data: { nombre: p.nombre, area: AREA_LABELS[normArea(p.area)] ?? p.area, color, ocupantes: p.ocupantes || [], onEdit: openEdit },
+        data: { nombre: p.nombre, area: areaLabel(normArea(p.area)), color, ocupantes: p.ocupantes || [], onEdit: openEdit },
       };
     });
     const es: Edge[] = puestos
@@ -189,7 +179,7 @@ function Lienzo() {
       }));
     setNodes(ns);
     setEdges(es);
-  }, [openEdit, setNodes, setEdges]);
+  }, [openEdit, setNodes, setEdges, areaLabel, areaColor]);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/rrhh/puestos-operativos", { cache: "no-store" });
@@ -314,6 +304,7 @@ const inputCls = "w-full bg-[#0d0d0d] border border-[#222] text-white text-sm ro
 const labelCls = "block text-xs text-gray-500 mb-1";
 
 function EditModal({ puesto, puestos, onClose, onSaved }: { puesto: Puesto; puestos: Puesto[]; onClose: () => void; onSaved: () => void }) {
+  const { label: areaLabel } = useAreas();
   const [nombre, setNombre] = useState(puesto.nombre);
   const [area, setArea] = useState(puesto.area);
   const [reportaAId, setReportaAId] = useState(puesto.reportaAId || "");
@@ -353,7 +344,7 @@ function EditModal({ puesto, puestos, onClose, onSaved }: { puesto: Puesto; pues
             <div>
               <label className={labelCls}>Área</label>
               <select value={area} onChange={(e) => setArea(e.target.value)} className={inputCls}>
-                {AREAS.map((a) => <option key={a} value={a}>{AREA_LABELS[a] ?? a}</option>)}
+                {AREAS.map((a) => <option key={a} value={a}>{areaLabel(a)}</option>)}
               </select>
             </div>
             <div>
@@ -378,6 +369,7 @@ function EditModal({ puesto, puestos, onClose, onSaved }: { puesto: Puesto; pues
 }
 
 function NewModal({ puestos, onClose, onSaved }: { puestos: Puesto[]; onClose: () => void; onSaved: () => void }) {
+  const { label: areaLabel } = useAreas();
   const [nombre, setNombre] = useState("");
   const [area, setArea] = useState("ADMINISTRACION");
   const [reportaAId, setReportaAId] = useState("");
@@ -407,7 +399,7 @@ function NewModal({ puestos, onClose, onSaved }: { puestos: Puesto[]; onClose: (
             <div>
               <label className={labelCls}>Área</label>
               <select value={area} onChange={(e) => setArea(e.target.value)} className={inputCls}>
-                {AREAS.map((a) => <option key={a} value={a}>{AREA_LABELS[a] ?? a}</option>)}
+                {AREAS.map((a) => <option key={a} value={a}>{areaLabel(a)}</option>)}
               </select>
             </div>
             <div>

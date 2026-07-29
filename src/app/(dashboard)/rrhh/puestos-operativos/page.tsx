@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { LayoutList, LayoutGrid, FileText, UserCheck, UserX, Link2 } from "lucide-react";
+import { AREA_CODES } from "@/lib/areas";
+import { useAreas } from "@/components/AreasProvider";
 
 interface Ocupante { id: string; nombre: string; userId?: string | null }
 interface Estandar { subarea: string; responsabilidad: string; estandar: string }
@@ -21,22 +23,8 @@ interface Puesto {
 interface PersonaLite { id: string; nombre: string; puesto: string; activo: boolean }
 
 // Áreas canónicas (código estable) en el orden estándar de la empresa.
-const AREAS = ["DIRECCION","ADMINISTRACION","MARKETING","VENTAS","PRODUCCION"];
-const AREA_LABELS: Record<string,string> = {
-  DIRECCION: "Dirección",
-  ADMINISTRACION: "Administración",
-  MARKETING: "Marketing",
-  VENTAS: "Comercial",
-  PRODUCCION: "Producción",
-};
-// Color por área (unificado con organigrama / maestro de áreas)
-const AREA_HEX: Record<string,string> = {
-  DIRECCION: "#B3985B",
-  ADMINISTRACION: "#a855f7",
-  MARKETING: "#eab308",
-  VENTAS: "#22c55e",
-  PRODUCCION: "#3b82f6",
-};
+// Etiquetas y colores vienen del maestro (useAreas) con fallback a src/lib/areas.ts.
+const AREAS = [...AREA_CODES];
 // RRHH y GENERAL (legado) se pliegan a Administración
 function normArea(a: string): string {
   return a === "RRHH" || a === "GENERAL" ? "ADMINISTRACION" : a;
@@ -65,6 +53,7 @@ type FormState = typeof EMPTY_FORM;
 
 export default function PuestosOperativosPage() {
   const toast = useToast();
+  const { label: areaLabel, color: areaColor } = useAreas();
   const [puestos, setPuestos] = useState<Puesto[]>([]);
   const [personal, setPersonal] = useState<PersonaLite[]>([]);
   const [loading, setLoading] = useState(true);
@@ -296,7 +285,7 @@ export default function PuestosOperativosPage() {
       <div className="border-b border-[#161616] last:border-0">
         <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[#0f0f0f] transition-colors"
           onClick={() => setSelected(isOpen ? null : p)}>
-          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color || AREA_HEX[normArea(p.area)] || "#6b7280" }} />
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: p.color || areaColor(normArea(p.area)) }} />
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-medium truncate">{p.nombre}</p>
             {p.reportaA && <p className="text-[11px] text-gray-600 truncate">Reporta a: {p.reportaA.nombre}</p>}
@@ -356,7 +345,7 @@ export default function PuestosOperativosPage() {
             className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors border ${
               filterArea === a ? "bg-[#B3985B] text-black border-[#B3985B]" : "border-[#222] text-gray-500 hover:text-white"
             }`}>
-            {a === "TODOS" ? "Todos" : AREA_LABELS[a] ?? a}
+            {a === "TODOS" ? "Todos" : areaLabel(a)}
           </button>
         ))}
       </div>
@@ -375,8 +364,8 @@ export default function PuestosOperativosPage() {
           {grupos.map(g => (
             <div key={g.code}>
               <div className="flex items-center gap-2 mb-2">
-                <span className="w-2.5 h-2.5 rounded-full" style={{ background: AREA_HEX[g.code] }} />
-                <h2 className="text-sm font-semibold text-white uppercase tracking-wider">{AREA_LABELS[g.code]}</h2>
+                <span className="w-2.5 h-2.5 rounded-full" style={{ background: areaColor(g.code) }} />
+                <h2 className="text-sm font-semibold text-white uppercase tracking-wider">{areaLabel(g.code)}</h2>
                 <span className="text-xs text-gray-600">
                   {g.items.filter(p => (p.ocupantes?.length ?? 0) > 0).length}/{g.items.length} con titular
                 </span>
@@ -396,7 +385,7 @@ export default function PuestosOperativosPage() {
                         onClick={() => setSelected(p === selected ? null : p)}>
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <p className="text-white font-semibold flex items-center gap-2 min-w-0">
-                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: p.color || AREA_HEX[normArea(p.area)] || "#6b7280" }} />
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: p.color || areaColor(normArea(p.area)) }} />
                             <span className="truncate">{p.nombre}</span>
                           </p>
                         </div>
@@ -442,7 +431,7 @@ export default function PuestosOperativosPage() {
                   <div>
                     <label className={labelCls}>Área *</label>
                     <Combobox value={form.area} onChange={v => setForm(p => ({ ...p, area: v }))}
-                      options={AREAS.map(a => ({ value: a, label: AREA_LABELS[a] ?? a }))} className={inputCls} />
+                      options={AREAS.map(a => ({ value: a, label: areaLabel(a) }))} className={inputCls} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 mt-3">
