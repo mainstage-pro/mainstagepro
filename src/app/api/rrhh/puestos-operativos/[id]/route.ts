@@ -14,7 +14,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       reportaA: { select: { id: true, nombre: true } },
       subArea: { select: { id: true, nombre: true } },
       subordinados: { select: { id: true, nombre: true } },
-      puestoIdeal: { select: { id: true, titulo: true } },
       ocupantes: { select: { id: true, nombre: true, userId: true }, where: { activo: true } },
     },
   });
@@ -44,7 +43,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (b.tipoContrato !== undefined) data.tipoContrato = b.tipoContrato || null;
     if (b.modalidad !== undefined) data.modalidad = b.modalidad || null;
     if (b.horario !== undefined) data.horario = b.horario || null;
-    if (b.puestoIdealId !== undefined) data.puestoIdealId = b.puestoIdealId || null;
     if (b.color !== undefined) data.color = b.color || null;
     if (b.posX !== undefined) data.posX = b.posX === null ? null : Number(b.posX);
     if (b.posY !== undefined) data.posY = b.posY === null ? null : Number(b.posY);

@@ -43,6 +43,10 @@ const nextConfig: NextConfig = {
       { source: "/rrhh/organigrama",             destination: "/organizacion/organigrama",          permanent: true },
       { source: "/rrhh/puestos-operativos",      destination: "/organizacion/puestos",              permanent: true },
       { source: "/rrhh/politicas",               destination: "/organizacion/politicas",            permanent: true },
+      // ── Puestos ideales (fusionado en Organización → Puestos) ────────────────
+      { source: "/rrhh/puestos",                 destination: "/organizacion/puestos",              permanent: true },
+      { source: "/personal/puestos",             destination: "/organizacion/puestos",              permanent: true },
+      { source: "/reclutamiento/puestos",        destination: "/organizacion/puestos",              permanent: true },
       // ── Comercial (legacy routes) ────────────────────────────────────────────
       { source: "/comercial/solicitudes",        destination: "/crm/tratos",                        permanent: true },
       { source: "/ventas",                        destination: "/crm/tratos",                        permanent: true },

@@ -17,7 +17,7 @@ export async function GET() {
           select: {
             id: true, puestoManual: true, areaManual: true,
             candidato: { select: { nombre: true, telefono: true } },
-            puesto: { select: { titulo: true } },
+            puesto: { select: { nombre: true } },
           },
         },
       },

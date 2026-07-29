@@ -84,11 +84,6 @@ type PuestoLike = {
   funciones?: string | null; prestaciones?: string | null;
   tipoContrato?: string | null; modalidad?: string | null; horario?: string | null;
   reportaA?: { nombre: string } | null;
-  puestoIdeal?: PuestoIdealLike | null;
-} | null;
-type PuestoIdealLike = {
-  funciones?: string | null; prestaciones?: string | null;
-  tipoContrato?: string | null; modalidad?: string | null; horario?: string | null;
 } | null;
 
 export function buildSnapshot(
@@ -97,7 +92,6 @@ export function buildSnapshot(
   puesto: PuestoLike,
   responsableNombre: string,
 ): DocLaboralSnapshot {
-  const ideal = puesto?.puestoIdeal ?? null;
   const fecha = persona.fechaIngreso
     ? (typeof persona.fechaIngreso === "string" ? persona.fechaIngreso : persona.fechaIngreso.toISOString()).slice(0, 10)
     : null;
@@ -115,14 +109,14 @@ export function buildSnapshot(
     estandares: estArr(puesto?.estandares),
     coordinaCon: arr(puesto?.coordinaCon),
     supervisaA: arr(puesto?.supervisaA),
-    // Condiciones laborales: se leen del puesto operativo; el puesto ideal es respaldo legado.
-    funciones: arr(puesto?.funciones ?? ideal?.funciones),
-    beneficios: arr(puesto?.prestaciones ?? ideal?.prestaciones),
+    // Condiciones laborales: se leen del puesto operativo.
+    funciones: arr(puesto?.funciones),
+    beneficios: arr(puesto?.prestaciones),
     salario: persona.salario ?? null,
     periodoPago: persona.periodoPago ?? "MENSUAL",
-    tipoContrato: puesto?.tipoContrato ?? ideal?.tipoContrato ?? null,
-    modalidad: puesto?.modalidad ?? ideal?.modalidad ?? null,
-    horario: puesto?.horario ?? ideal?.horario ?? null,
+    tipoContrato: puesto?.tipoContrato ?? null,
+    modalidad: puesto?.modalidad ?? null,
+    horario: puesto?.horario ?? null,
     fechaIngreso: fecha,
     reportaA: puesto?.reportaA?.nombre ?? null,
     responsableNombre,

@@ -17,7 +17,6 @@ export async function ensurePuestoSchema() {
       coordina_con TEXT,
       supervisa_a TEXT,
       estandares TEXT,
-      puesto_ideal_id TEXT,
       color TEXT,
       activo BOOLEAN NOT NULL DEFAULT true,
       created_at TIMESTAMP NOT NULL DEFAULT now(),
@@ -28,8 +27,6 @@ export async function ensurePuestoSchema() {
   await prisma.$executeRawUnsafe(`ALTER TABLE personal_interno ADD COLUMN IF NOT EXISTS user_id TEXT`);
   await prisma.$executeRawUnsafe(`ALTER TABLE personal_interno ADD COLUMN IF NOT EXISTS puesto_id TEXT`);
   await prisma.$executeRawUnsafe(`CREATE UNIQUE INDEX IF NOT EXISTS personal_interno_user_id_key ON personal_interno(user_id)`);
-  // Funciones del perfil de reclutamiento
-  await prisma.$executeRawUnsafe(`ALTER TABLE puestos_ideales ADD COLUMN IF NOT EXISTS funciones TEXT`);
   // Posiciones en el lienzo del organigrama
   await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS pos_x DOUBLE PRECISION`);
   await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS pos_y DOUBLE PRECISION`);
@@ -54,7 +51,6 @@ export async function GET() {
     include: {
       reportaA: { select: { id: true, nombre: true } },
       subArea: { select: { id: true, nombre: true } },
-      puestoIdeal: { select: { id: true, titulo: true } },
       ocupantes: { select: { id: true, nombre: true, userId: true }, where: { activo: true } },
     },
   });
@@ -85,7 +81,6 @@ export async function POST(req: NextRequest) {
         tipoContrato: b.tipoContrato || null,
         modalidad: b.modalidad || null,
         horario: b.horario || null,
-        puestoIdealId: b.puestoIdealId || null,
         color: b.color || null,
       },
     });

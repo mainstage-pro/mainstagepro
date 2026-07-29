@@ -18,7 +18,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
   if (!postulacion) return NextResponse.json({ error: "Postulación no encontrada" }, { status: 404 });
 
-  const puesto = postulacion.puesto?.titulo ?? postulacion.puestoManual ?? "Colaborador";
+  const puesto = postulacion.puesto?.nombre ?? postulacion.puestoManual ?? "Colaborador";
   const departamento = postulacion.puesto?.area ?? postulacion.areaManual ?? "GENERAL";
 
   // Create PersonalInterno

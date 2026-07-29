@@ -8,7 +8,7 @@ export default function RrhhConfiguracionPage() {
       groups={[
         {
           items: [
-            { label: "Puestos ideales", description: "Perfiles de rol con habilidades, aptitudes y condiciones laborales", href: "/rrhh/puestos" },
+            { label: "Puestos", description: "Perfiles de puesto y condiciones laborales (Dirección → Organización)", href: "/organizacion/puestos" },
           ],
         },
       ]}

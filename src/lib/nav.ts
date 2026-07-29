@@ -164,7 +164,6 @@ export const NAV: NavSection[] = [
         icon: Users,
         children: [
           { key: "rrhh-candidatos", label: "Candidatos", href: "/personal/candidatos" },
-          { key: "rrhh-puestos", label: "Puestos ideales", href: "/personal/puestos" },
           { key: "rrhh-onboarding", label: "Integración / Onboarding", href: "/personal/onboarding" },
           { key: "rrhh-personal", label: "Personal interno", href: "/personal/interno" },
           { key: "rrhh-nomina", label: "Nómina", href: "/personal/nomina" },
@@ -317,7 +316,6 @@ const MODULE_META: Record<string, { label?: string; desc?: string }> = {
   "rrhh-capacitaciones": { desc: "Capacitaciones internas" },
   "rrhh-onboarding":     { desc: "Integración / Onboarding" },
   "rrhh-candidatos":     { desc: "Candidatos" },
-  "rrhh-puestos":        { desc: "Puestos ideales" },
   "rrhh-config":         { label: "Configuración de reclutamiento", desc: "Configuración de reclutamiento" },
   "socios-constitutivos":{ label: "Estructura societaria", desc: "Socios, participaciones, representante legal y aportaciones" },
   tabulador:             { desc: "Roles técnicos y tarifas de freelancers" },
@@ -412,7 +410,7 @@ export const AREA_MODULE_PRESETS: Record<string, string[]> = {
     "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
     "finanzas-cobros", "finanzas-pagos-personal", "finanzas-movimientos", "finanzas-caja-chica", "inv-analisis",
     "rrhh-personal", "rrhh-nomina", "rrhh-asistencia", "rrhh-evaluaciones", "rrhh-satisfaccion", "rrhh-capacitaciones", "rrhh-onboarding",
-    "rrhh-candidatos", "rrhh-puestos", "rrhh-config",
+    "rrhh-candidatos", "rrhh-config",
     "socios-constitutivos", "tabulador",
     "verificacion",
     "tareas-administracion",
@@ -435,7 +433,7 @@ export const AREA_MODULE_PRESETS: Record<string, string[]> = {
   RRHH: [
     "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
     "rrhh-personal", "rrhh-nomina", "rrhh-asistencia", "rrhh-evaluaciones", "rrhh-satisfaccion", "rrhh-capacitaciones", "rrhh-onboarding",
-    "rrhh-candidatos", "rrhh-puestos", "rrhh-config",
+    "rrhh-candidatos", "rrhh-config",
     "tareas-rrhh",
   ],
   DIRECCION: [

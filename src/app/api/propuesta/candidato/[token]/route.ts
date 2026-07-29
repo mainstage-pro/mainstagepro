@@ -9,7 +9,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
     where: { propuestaToken: token },
     include: {
       candidato: { select: { id: true, nombre: true, correo: true } },
-      puesto: { select: { titulo: true, area: true, descripcion: true, modalidad: true, tipoContrato: true, horario: true } },
+      puesto: { select: { nombre: true, area: true, misionPuesto: true, modalidad: true, tipoContrato: true, horario: true } },
     },
   });
 
@@ -20,9 +20,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
 
   return NextResponse.json({
     candidatoNombre: post.candidato.nombre,
-    puestoTitulo: post.puesto?.titulo ?? post.puestoManual ?? "Colaborador",
+    puestoTitulo: post.puesto?.nombre ?? post.puestoManual ?? "Colaborador",
     puestoArea: post.puesto?.area ?? post.areaManual ?? "",
-    puestoDescripcion: post.puesto?.descripcion ?? null,
+    puestoDescripcion: post.puesto?.misionPuesto ?? null,
     modalidad: post.puesto?.modalidad ?? null,
     tipoContrato: post.puesto?.tipoContrato ?? null,
     horario: post.puesto?.horario ?? null,

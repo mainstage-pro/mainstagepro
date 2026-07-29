@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       where: { id: b.personalId },
       include: {
         puestoRef: {
-          include: { reportaA: { select: { nombre: true } }, puestoIdeal: true },
+          include: { reportaA: { select: { nombre: true } } },
         },
       },
     });

@@ -13,7 +13,7 @@ interface Postulacion {
   salarioPropuesto?: number | null; fechaIngresoEstimada?: string | null;
   propuestaFechaEnvio?: string | null; propuestaAceptada?: boolean | null;
   contratoGenerado: boolean;
-  puesto?: { titulo: string; area: string } | null;
+  puesto?: { nombre: string; area: string } | null;
 }
 interface Candidato {
   id: string; nombre: string; correo?: string | null; telefono?: string | null;
@@ -56,7 +56,6 @@ export default function CandidatosPage() {
   const [puestos, setPuestos] = useState<{
     id: string; nombre: string; area: string; activo?: boolean;
     ocupantes?: { id: string; nombre: string }[];
-    puestoIdeal?: { id: string; titulo: string } | null;
   }[]>([]);
   const [form, setForm] = useState({
     nombre:"", correo:"", telefono:"", ciudad:"",
@@ -79,12 +78,11 @@ export default function CandidatosPage() {
 
   async function crear() {
     setSaving(true);
-    // Traduce el puesto operativo elegido: guarda su nombre/área para mostrar y,
-    // si está ligado a un perfil de reclutamiento, conserva el vínculo (puestoId).
+    // Vincula la postulación al puesto operativo elegido y conserva su nombre/área para mostrar.
     const sel = puestos.find(p => p.id === form.puestoOpId);
     const payload = {
       nombre: form.nombre, correo: form.correo, telefono: form.telefono, ciudad: form.ciudad,
-      puestoId: sel?.puestoIdeal?.id || "",
+      puestoId: sel?.id || "",
       puestoManual: sel ? sel.nombre : form.puestoManual,
       areaManual: sel ? sel.area : form.areaManual,
     };
@@ -114,7 +112,7 @@ export default function CandidatosPage() {
   const kanbanEtapas = ETAPAS.filter(e => e !== "RECHAZADO");
 
   function getPuestoLabel(post: Postulacion) {
-    return post.puesto?.titulo ?? post.puestoManual ?? "Sin puesto definido";
+    return post.puesto?.nombre ?? post.puestoManual ?? "Sin puesto definido";
   }
 
   function getEtapa(c: Candidato) {

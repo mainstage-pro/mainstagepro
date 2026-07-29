@@ -19,7 +19,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
           select: {
             id: true, puestoManual: true, areaManual: true,
             candidato: { select: { nombre: true, correo: true, telefono: true } },
-            puesto: { select: { titulo: true, descripcion: true } },
+            puesto: { select: { nombre: true, misionPuesto: true } },
           },
         },
       },

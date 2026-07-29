@@ -36,7 +36,7 @@ async function ensureTables() {
     CREATE TABLE IF NOT EXISTS postulaciones (
       id TEXT PRIMARY KEY,
       candidato_id TEXT NOT NULL REFERENCES candidatos(id) ON DELETE CASCADE,
-      puesto_id TEXT REFERENCES puestos_ideales(id),
+      puesto_id TEXT REFERENCES puestos(id),
       puesto_manual TEXT,
       area_manual TEXT,
       etapa TEXT NOT NULL DEFAULT 'NUEVO',
@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
 
   const candidatos = await prisma.candidato.findMany({
     where,
-    include: { postulaciones: { include: { puesto: { select: { titulo: true, area: true } } }, orderBy: { createdAt: "desc" } } },
+    include: { postulaciones: { include: { puesto: { select: { nombre: true, area: true } } }, orderBy: { createdAt: "desc" } } },
     orderBy: { createdAt: "desc" },
   });
   return NextResponse.json({ candidatos });
@@ -101,7 +101,7 @@ export async function POST(req: NextRequest) {
         },
       },
     },
-    include: { postulaciones: { include: { puesto: { select: { titulo: true, area: true } } } } },
+    include: { postulaciones: { include: { puesto: { select: { nombre: true, area: true } } } } },
   });
 
   return NextResponse.json({ candidato }, { status: 201 });

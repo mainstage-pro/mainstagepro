@@ -1585,15 +1585,12 @@ model Puesto {
   subArea   PTSubArea?  @relation("PuestoSubArea", fields: [subAreaId], references: [id], onDelete: SetNull)
   // Estándares de desempeño (§6) — JSON: [{ subarea, responsabilidad, estandar }]
   estandares String? @db.Text
-  // Condiciones laborales (§ migradas de PuestoIdeal — fuente para el acuerdo laboral)
+  // Condiciones laborales — fuente para el acuerdo laboral
   funciones    String? @db.Text                 // JSON string[] — funciones/actividades del puesto
   prestaciones String? @db.Text                 // JSON string[] — prestaciones/beneficios
   tipoContrato String? @map("tipo_contrato")    // Ej: "Indeterminado", "Determinado"
   modalidad    String?                          // Ej: "Presencial", "Híbrido", "Remoto"
   horario      String?                          // Ej: "L-V 9:00-18:00"
-  // Vínculo opcional con el perfil de reclutamiento
-  puestoIdealId String?      @map("puesto_ideal_id")
-  puestoIdeal   PuestoIdeal? @relation("PuestoIdealOperativo", fields: [puestoIdealId], references: [id], onDelete: SetNull)
   // Presentación / organigrama
   color     String?
   posX      Float?   @map("pos_x") // posición X en el lienzo del organigrama
@@ -1602,7 +1599,8 @@ model Puesto {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt      @map("updated_at")
 
-  ocupantes PersonalInterno[] @relation("PuestoTitular")
+  ocupantes     PersonalInterno[] @relation("PuestoTitular")
+  postulaciones Postulacion[]
 
   @@map("puestos")
 }
@@ -1635,6 +1633,20 @@ model PersonalInterno {
   emergenciaTel    String? @map("emergencia_tel")
   // Salud
   padecimientos  String?
+  // Identidad fiscal y legal (México)
+  rfc             String?
+  curp            String?
+  nss             String?   // Número de Seguridad Social (IMSS)
+  fechaNacimiento DateTime? @map("fecha_nacimiento")
+  estadoCivil     String?   @map("estado_civil")
+  fotoUrl         String?   @map("foto_url")
+  // Baja
+  fechaBaja      DateTime? @map("fecha_baja")
+  motivoBaja     String?   @map("motivo_baja") // RENUNCIA | DESPIDO | TERMINO_CONTRATO | ABANDONO | OTRO
+  // Jerarquía interna: jefe directo (además del organigrama de puestos)
+  jefeId         String?   @map("jefe_id")
+  jefe           PersonalInterno?  @relation("PersonalJerarquia", fields: [jefeId], references: [id], onDelete: SetNull)
+  subordinados   PersonalInterno[] @relation("PersonalJerarquia")
   // Puente de identidad: la MISMA persona que hace login y se mide en rendimiento
   userId         String?   @unique @map("user_id")
   usuario        User?     @relation("PersonalUsuario", fields: [userId], references: [id], onDelete: SetNull)
@@ -1651,10 +1663,30 @@ model PersonalInterno {
   incidencias   Incidencia[]
   actas         ActaAdministrativa[]
   evaluaciones  EvaluacionEmpleado[]
+  vacaciones    SolicitudVacaciones[]
   encuestasSatisfaccion EncuestaSatisfaccionEquipo[]
   capacitaciones CapacitacionParticipante[]
 
   @@map("personal_interno")
+}
+
+// Solicitud de vacaciones. El saldo (derecho LFT por antigüedad − días tomados)
+// se calcula en tiempo real desde fechaIngreso; aquí solo se registran los períodos.
+model SolicitudVacaciones {
+  id          String   @id @default(cuid())
+  personalId  String   @map("personal_id")
+  personal    PersonalInterno @relation(fields: [personalId], references: [id], onDelete: Cascade)
+  fechaInicio DateTime @map("fecha_inicio")
+  fechaFin    DateTime @map("fecha_fin")
+  dias        Float    // días hábiles solicitados
+  estado      String   @default("PENDIENTE") // PENDIENTE | APROBADA | RECHAZADA | CANCELADA
+  motivo      String?
+  aprobadaPor String?  @map("aprobada_por")
+  aprobadaEn  DateTime? @map("aprobada_en")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([personalId])
+  @@map("solicitudes_vacaciones")
 }
 
 // Documento generado (oferta de trabajo / acuerdo laboral) con snapshot inmutable
@@ -2060,6 +2092,10 @@ model EncuestaSatisfaccionEquipo {
   loMejorable     String?  // ¿Qué cambiarías?
   comentarios     String?
 
+  // Respuestas del cuestionario extendido (ver src/lib/satisfaccion-form.ts).
+  // Mapa { preguntaId: number | string | string[] }. Reemplaza los campos fijos de arriba.
+  respuestas      Json?
+
   promedioCalculado Float?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -2436,52 +2472,6 @@ model TareaArchivo {
 
 // ─── TALENTO / ATS ───────────────────────────────────────────────────────────
 
-model PuestoIdeal {
-  id          String  @id @default(cuid())
-  titulo      String
-  area        String  // PRODUCCION | ADMINISTRACION | COMERCIAL | OPERACIONES | RRHH | TECNOLOGIA
-  descripcion String?
-  objetivoRol String? @map("objetivo_rol")
-
-  // Perfil demográfico
-  edadMin           Int?    @map("edad_min")
-  edadMax           Int?    @map("edad_max")
-  ciudades          String? // JSON array
-  nivelEstudios     String? @map("nivel_estudios") // BACHILLERATO | LICENCIATURA | POSGRADO | INDIFERENTE
-  carrerasSugeridas String? @map("carreras_sugeridas")
-
-  // Funciones / responsabilidades principales del rol (JSON array de strings)
-  funciones           String? @db.Text
-
-  // Competencias (JSON arrays de strings)
-  habilidadesTecnicas String? @map("habilidades_tecnicas")
-  habilidadesBlandas  String? @map("habilidades_blandas")
-  conocimientos       String?
-  aptitudes           String?
-  valores             String?
-  areasDesarrollo     String? @map("areas_desarrollo")
-
-  // Criterios de evaluación JSON: [{criterio, peso, descripcion}]
-  criteriosEvaluacion String? @map("criterios_evaluacion")
-
-  // Condiciones
-  salarioMin   Float?  @map("salario_min")
-  salarioMax   Float?  @map("salario_max")
-  tipoContrato String? @map("tipo_contrato") // NOMINA | HONORARIOS | FREELANCE
-  modalidad    String? // PRESENCIAL | REMOTO | HIBRIDO
-  horario      String?
-  prestaciones String? // JSON array
-
-  activo    Boolean  @default(true)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
-
-  postulaciones     Postulacion[]
-  puestosOperativos Puesto[]      @relation("PuestoIdealOperativo")
-
-  @@map("puestos_ideales")
-}
-
 model Candidato {
   id       String  @id @default(cuid())
   nombre   String
@@ -2522,9 +2512,9 @@ model Postulacion {
   candidatoId String  @map("candidato_id")
   candidato   Candidato   @relation(fields: [candidatoId], references: [id], onDelete: Cascade)
   puestoId    String? @map("puesto_id")
-  puesto      PuestoIdeal? @relation(fields: [puestoId], references: [id])
+  puesto      Puesto? @relation(fields: [puestoId], references: [id])
 
-  // Puesto manual si no hay PuestoIdeal vinculado
+  // Puesto manual si no hay puesto operativo vinculado
   puestoManual String? @map("puesto_manual")
   areaManual   String? @map("area_manual")
 

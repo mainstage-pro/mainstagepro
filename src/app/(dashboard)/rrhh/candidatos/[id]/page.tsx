@@ -8,12 +8,10 @@ import { BackButton } from "@/components/BackButton";
 import { MessageCircle, FileText, ClipboardList, Link2, Trash2 } from "lucide-react";
 
 interface Puesto {
-  id: string; titulo: string; area: string; descripcion?: string | null;
-  objetivoRol?: string | null; salarioMin?: number | null; salarioMax?: number | null;
+  id: string; nombre: string; area: string;
+  objetivoArea?: string | null; misionPuesto?: string | null;
   tipoContrato?: string | null; modalidad?: string | null; horario?: string | null;
-  prestaciones?: string | null;
-  habilidadesTecnicas?: string | null; habilidadesBlandas?: string | null;
-  conocimientos?: string | null; aptitudes?: string | null; valores?: string | null;
+  prestaciones?: string | null; funciones?: string | null;
 }
 interface Postulacion {
   id: string; etapa: string; puestoManual?: string | null; areaManual?: string | null;
@@ -263,7 +261,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
     const tel = candidato.telefono?.replace(/\D/g,"") ?? "";
     const num = tel.startsWith("52") ? tel : `52${tel}`;
     const post = candidato.postulaciones[0];
-    const puesto = post?.puesto?.titulo ?? post?.puestoManual ?? "el puesto";
+    const puesto = post?.puesto?.nombre ?? post?.puestoManual ?? "el puesto";
     const msg = `Hola ${candidato.nombre.split(" ")[0]}, te contactamos de Mainstage Producciones 👋\n\nQueremos compartirte una propuesta formal de colaboración para el puesto de *${puesto}*.\n\nPor favor confírmanos tu disponibilidad para revisarla. ¡Creemos que puedes ser una excelente adición a nuestro equipo! 🎯`;
     return `https://wa.me/${num}?text=${encodeURIComponent(msg)}`;
   }
@@ -297,7 +295,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
             </span>
           </div>
           <p className="text-gray-500 text-sm mt-1">
-            {[post?.puesto?.titulo ?? post?.puestoManual, candidato.ciudad].filter(Boolean).join(" · ")}
+            {[post?.puesto?.nombre ?? post?.puestoManual, candidato.ciudad].filter(Boolean).join(" · ")}
           </p>
         </div>
 
@@ -633,30 +631,21 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
             {post?.puesto && (
               <div className="ms-stat-card space-y-2">
                 <p className="text-xs text-gray-500 uppercase tracking-wider">Puesto vinculado</p>
-                <p className="text-white font-medium">{post.puesto.titulo}</p>
+                <p className="text-white font-medium">{post.puesto.nombre}</p>
                 <p className="text-gray-500 text-xs">{post.puesto.area}</p>
-                {post.puesto.salarioMin && post.puesto.salarioMax && (
-                  <p className="text-[#B3985B] text-xs">{fmt(post.puesto.salarioMin)} – {fmt(post.puesto.salarioMax)}</p>
-                )}
-                {post.puesto.modalidad && <p className="text-gray-600 text-xs">{post.puesto.modalidad} · {post.puesto.tipoContrato}</p>}
+                {post.puesto.modalidad && <p className="text-gray-600 text-xs">{post.puesto.modalidad}{post.puesto.tipoContrato ? ` · ${post.puesto.tipoContrato}` : ""}</p>}
                 {post.puesto.horario && <p className="text-gray-600 text-xs">{post.puesto.horario}</p>}
               </div>
             )}
 
-            {/* Comparativa salario */}
-            {candidato.salarioEsperado && post?.puesto?.salarioMax && (
-              <div className={`bg-[#111] border rounded-xl p-4 ${
-                candidato.salarioEsperado <= post.puesto.salarioMax ? "border-green-800/30" : "border-yellow-800/30"
-              }`}>
-                <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Comparativa salarial</p>
+            {/* Salario esperado del candidato */}
+            {candidato.salarioEsperado && (
+              <div className="bg-[#111] border border-[#1f1f1f] rounded-xl p-4">
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Salario</p>
                 <div className="space-y-1 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-400">Candidato espera</span>
                     <span className="text-white">{fmt(candidato.salarioEsperado)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Rango del puesto</span>
-                    <span className="text-[#B3985B]">{fmt(post.puesto.salarioMin ?? 0)} – {fmt(post.puesto.salarioMax)}</span>
                   </div>
                   {propEdit.salarioPropuesto && (
                     <div className="flex justify-between border-t border-[#1a1a1a] pt-1">
@@ -761,7 +750,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="text-white font-semibold">Checklist de integración</p>
-                  <p className="text-gray-500 text-xs mt-0.5">{candidato.nombre} · {post?.puesto?.titulo ?? post?.puestoManual}</p>
+                  <p className="text-gray-500 text-xs mt-0.5">{candidato.nombre} · {post?.puesto?.nombre ?? post?.puestoManual}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[#B3985B] font-bold text-lg">{done}/{items.length}</p>
