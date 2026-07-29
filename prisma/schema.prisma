@@ -49,7 +49,6 @@ model User {
   juntasFacilitadas     Junta[]              @relation("JuntaFacilitador")
   juntasParticipadas    JuntaParticipante[]
   temasAdicionales      TemaAdicional[]      @relation("TemaAutor")
-  planTrabajoActividades PlanTrabajoActividad[] @relation("PlanTrabajoResponsable")
   proyectosInternosLider ProyectoInterno[]      @relation("ProyectoInternoLider")
   backlogItems           BacklogItem[]          @relation("BacklogCreadoPor")
   equipoNotasCreadas     EquipoNota[]           @relation("EquipoNotasCreadas")
@@ -2321,9 +2320,9 @@ model Tarea {
   juntaOrigenId    String?
   juntaOrigen      Junta?             @relation("JuntaOrigen", fields: [juntaOrigenId], references: [id], onDelete: SetNull)
   // ── Plan de trabajo ───────────────────────────────────────────────────────
+  // origenPlan: marca de tarea de plan (aún usada por rendimiento/evaluaciones).
+  // El modelo v1 PlanTrabajoActividad quedó retirado; su tabla se conserva como archivo.
   origenPlan        Boolean  @default(false)
-  planActividadId   String?
-  planActividad     PlanTrabajoActividad? @relation("TareasDePlan", fields: [planActividadId], references: [id], onDelete: SetNull)
   // ── Proyecto interno ─────────────────────────────────────────────────────
   proyectoInternoId String?
   proyectoInterno   ProyectoInterno? @relation("TareasDeProyectoInterno", fields: [proyectoInternoId], references: [id], onDelete: SetNull)
@@ -3359,33 +3358,10 @@ model TemaAdicional {
 }
 
 // ─── PLAN DE TRABAJO ─────────────────────────────────────────────────────────
-
-model PlanTrabajoActividad {
-  id              String   @id @default(cuid())
-  area            String   // DIRECCION | ADMINISTRACION | MARKETING | VENTAS | PRODUCCION
-  responsableId   String
-  responsable     User     @relation("PlanTrabajoResponsable", fields: [responsableId], references: [id])
-  titulo          String
-  descripcion     String?  @db.Text
-  frecuencia      String   // DIARIO | LUNES_JUEVES | SEMANAL | POR_EVENTO | MENSUAL | TRIMESTRAL | SEMESTRAL | SEGUN_NECESIDAD
-  diasSemana      String?  // JSON: ["lunes","jueves"]
-  horaEspecifica  String?  // "10:30"
-  entregable      String
-  kpiVinculado    String?
-  origenSO        Boolean  @default(true)
-  seccionSO       String?
-  activa          Boolean  @default(true)
-  generarTareas   Boolean  @default(true)
-  ultimaTareaGeneradaAt DateTime?
-  orden           Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  tareas          Tarea[]  @relation("TareasDePlan")
-
-  @@index([area, responsableId])
-  @@map("plan_trabajo_actividades")
-}
+// Modelo v1 (PlanTrabajoActividad / tabla plan_trabajo_actividades) retirado.
+// Estaba inerte: 0 tareas generadas jamás. El plan de trabajo vivo es el v2
+// (PTArea → PTSubArea → PTTareaTemplate → PTTareaInstancia). La tabla v1 se
+// conserva en prod como archivo (respaldo en scripts/_backup-plan-trabajo-v1-*.json).
 
 // ─── PROYECTOS INTERNOS ───────────────────────────────────────────────────────
 
