@@ -18,9 +18,17 @@ export async function GET() {
         select: {
           id: true, nombre: true, descripcion: true, orden: true,
           _count: { select: { secciones: true, puestos: true } },
-          // Tareas reales que cuelgan de las secciones de la subárea (Gestión
-          // Operativa). Es el número que debe cuadrar con el plan de trabajo.
-          secciones: { select: { _count: { select: { tareas: true } } } },
+          // Tareas reales que cuelgan de las secciones de la subárea. Mismo
+          // criterio que Gestión Operativa (sin subtareas, canceladas ni
+          // seguimientos) para que el número cuadre 1:1 con el plan de trabajo.
+          secciones: {
+            select: {
+              tareas: {
+                where: { parentId: null, estado: { not: "CANCELADA" }, esSeguimiento: false },
+                select: { id: true },
+              },
+            },
+          },
         },
       },
     },
@@ -36,7 +44,7 @@ export async function GET() {
       _count: {
         secciones: s._count.secciones,
         puestos: s._count.puestos,
-        tareas: s.secciones.reduce((acc, sec) => acc + sec._count.tareas, 0),
+        tareas: s.secciones.reduce((acc, sec) => acc + sec.tareas.length, 0),
       },
     })),
   }));
