@@ -274,6 +274,20 @@ export default function PostEventoPage() {
         )}
       </div>
 
+      {/* Conducta del equipo → acta de evento */}
+      <div className="ms-card-deep p-4 flex items-center justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <p className="text-white text-sm font-semibold">¿Alguien del equipo ameritó un acta?</p>
+          <p className="text-[#555] text-xs mt-0.5">Conducta o negligencia de un técnico/staff en este evento. El acta queda en su expediente con su nivel y acuse.</p>
+        </div>
+        <Link
+          href={`/rrhh/actas?nueva=evento&proyectoId=${id}&proyecto=${encodeURIComponent(proyecto.nombre)}`}
+          className="shrink-0 px-4 py-2 rounded-xl text-sm font-semibold border border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B]/10 transition-all"
+        >
+          Levantar acta de evento →
+        </Link>
+      </div>
+
       {/* Notas generales */}
       <div>
         <label className="block text-[11px] font-bold text-[#3a3a3a] uppercase tracking-widest mb-3">

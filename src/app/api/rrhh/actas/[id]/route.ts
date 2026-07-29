@@ -12,6 +12,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     where: { id },
     include: {
       personal: { select: { id: true, nombre: true, puesto: true } },
+      proyecto: { select: { id: true, nombre: true, numeroProyecto: true } },
       tipo: { select: { id: true, nombre: true, codigo: true, categoria: true } },
     },
   });
@@ -47,6 +48,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data,
     include: {
       personal: { select: { id: true, nombre: true, puesto: true } },
+      proyecto: { select: { id: true, nombre: true, numeroProyecto: true } },
       tipo: { select: { id: true, nombre: true, codigo: true, categoria: true } },
     },
   });

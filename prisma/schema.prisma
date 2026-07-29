@@ -676,6 +676,7 @@ model Proyecto {
   cierreFinanciero  CierreFinanciero?
   tareas            Tarea[]            @relation("TareasDeProyecto")
   proveedoresEvento ProveedorEvento[]
+  actasEvento       ActaAdministrativa[] @relation("ActaEventoProyecto")
 
   @@map("proyectos")
 }
@@ -1831,14 +1832,21 @@ model TipoIncidencia {
 // Cuenta para el escalón 1ra→2da→3ra del Reglamento Interno y, si la consecuencia
 // es económica, se liga a una Incidencia (el descuento) para que impacte nómina.
 model ActaAdministrativa {
-  id             String          @id @default(cuid())
-  folio          String          @unique // ACTA-2026-0001
-  personalId     String          @map("personal_id")
-  personal       PersonalInterno @relation(fields: [personalId], references: [id], onDelete: Cascade)
-  tipoId         String?         @map("tipo_id")
-  tipo           TipoIncidencia? @relation(fields: [tipoId], references: [id], onDelete: SetNull)
-  puestoId       String?         @map("puesto_id")
-  gravedad       String          @default("LEVE") // snapshot de la gravedad al levantar el acta
+  id             String           @id @default(cuid())
+  folio          String           @unique // ACTA-2026-0001
+  // Rama del acta: INTERNA (empleado, temas laborales) | EVENTO (técnico/staff de un evento).
+  ambito         String           @default("INTERNA")
+  personalId     String?          @map("personal_id")
+  personal       PersonalInterno? @relation(fields: [personalId], references: [id], onDelete: Cascade)
+  // Snapshot del nombre: permite levantar acta de evento a freelance sin ficha interna.
+  personaNombre  String?          @map("persona_nombre")
+  // Proyecto de evento del que deriva un acta de EVENTO (nulo en actas internas).
+  proyectoId     String?          @map("proyecto_id")
+  proyecto       Proyecto?        @relation("ActaEventoProyecto", fields: [proyectoId], references: [id], onDelete: SetNull)
+  tipoId         String?          @map("tipo_id")
+  tipo           TipoIncidencia?  @relation(fields: [tipoId], references: [id], onDelete: SetNull)
+  puestoId       String?          @map("puesto_id")
+  gravedad       String           @default("LEVE") // snapshot de la gravedad al levantar el acta
   fecha          DateTime
   hechos         String          @db.Text // descripción objetiva de lo ocurrido
   evidenciaUrl   String?         @map("evidencia_url")
@@ -1858,6 +1866,7 @@ model ActaAdministrativa {
   updatedAt      DateTime        @updatedAt @map("updated_at")
 
   @@index([personalId])
+  @@index([proyectoId])
   @@map("actas_administrativas")
 }
 

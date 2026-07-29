@@ -18,15 +18,20 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const personalId = searchParams.get("personalId");
   const estado = searchParams.get("estado");
+  const ambito = searchParams.get("ambito");
+  const proyectoId = searchParams.get("proyectoId");
   const where: Record<string, unknown> = {};
   if (personalId) where.personalId = personalId;
   if (estado) where.estado = estado;
+  if (ambito) where.ambito = ambito;
+  if (proyectoId) where.proyectoId = proyectoId;
 
   const actas = await prisma.actaAdministrativa.findMany({
     where,
     orderBy: { fecha: "desc" },
     include: {
       personal: { select: { id: true, nombre: true, puesto: true } },
+      proyecto: { select: { id: true, nombre: true, numeroProyecto: true } },
       tipo: { select: { id: true, nombre: true, codigo: true, categoria: true } },
     },
   });
@@ -39,20 +44,38 @@ export async function POST(req: NextRequest) {
   await ensureActasFaltas();
 
   const body = await req.json();
-  const { personalId, tipoId, fecha, hechos, evidenciaUrl, montoDescuento, consecuencia: consOverride, levantadaPor } = body;
-  if (!personalId || !fecha || !hechos) {
-    return NextResponse.json({ error: "Persona, fecha y hechos son requeridos" }, { status: 400 });
+  const { personalId, tipoId, fecha, hechos, evidenciaUrl, montoDescuento, consecuencia: consOverride, levantadaPor, proyectoId } = body;
+  // Rama del acta: INTERNA (empleado) | EVENTO (técnico/staff de un proyecto de evento).
+  const ambito: string = body.ambito === "EVENTO" ? "EVENTO" : "INTERNA";
+  // El acta de evento puede apuntar a un freelance sin ficha interna: se captura por nombre.
+  const personaNombreInput: string = (body.personaNombre ?? "").trim();
+
+  if (!fecha || !hechos) {
+    return NextResponse.json({ error: "Fecha y hechos son requeridos" }, { status: 400 });
+  }
+  // La interna exige colaborador; la de evento acepta ficha interna O nombre libre.
+  if (ambito === "INTERNA" && !personalId) {
+    return NextResponse.json({ error: "Selecciona al colaborador" }, { status: 400 });
+  }
+  if (ambito === "EVENTO" && !personalId && !personaNombreInput) {
+    return NextResponse.json({ error: "Indica quién (colaborador o nombre del técnico)" }, { status: 400 });
   }
 
   const [personal, tipo] = await Promise.all([
-    prisma.personalInterno.findUnique({ where: { id: personalId }, select: { id: true, puestoId: true } }),
+    personalId
+      ? prisma.personalInterno.findUnique({ where: { id: personalId }, select: { id: true, puestoId: true, nombre: true } })
+      : Promise.resolve(null),
     tipoId ? prisma.tipoIncidencia.findUnique({ where: { id: tipoId } }) : Promise.resolve(null),
   ]);
-  if (!personal) return NextResponse.json({ error: "Persona no encontrada" }, { status: 404 });
+  if (personalId && !personal) return NextResponse.json({ error: "Persona no encontrada" }, { status: 404 });
+
+  // Snapshot del nombre: de la ficha interna si existe, si no el nombre capturado.
+  const personaNombre = personal?.nombre ?? (personaNombreInput || null);
 
   const fechaDate = new Date(String(fecha) + "T12:00:00");
   const gravedad: Gravedad = (tipo?.gravedad as Gravedad) ?? (body.gravedad as Gravedad) ?? "LEVE";
-  const nivelEscalon = await calcularNivelEscalon(personalId, fechaDate);
+  // El escalón de reincidencia solo aplica a personas con ficha interna.
+  const nivelEscalon = personalId ? await calcularNivelEscalon(personalId, fechaDate) : 1;
   const consecuencia: string = (consOverride && String(consOverride).trim())
     || sugerirConsecuencia(gravedad, nivelEscalon);
   const folio = await siguienteFolio(fechaDate);
@@ -60,8 +83,9 @@ export async function POST(req: NextRequest) {
   const monto = typeof montoDescuento === "number" && montoDescuento > 0 ? montoDescuento : null;
 
   // Si hay descuento, se genera una Incidencia PROPUESTA ligada para que impacte nómina.
+  // Solo aplica a personal interno (nómina); las actas de evento a freelance no descuentan.
   let incidenciaId: string | null = null;
-  if (monto && tipoId) {
+  if (monto && tipoId && personalId) {
     const mes = `${fechaDate.getFullYear()}-${String(fechaDate.getMonth() + 1).padStart(2, "0")}`;
     const inc = await prisma.incidencia.create({
       data: {
@@ -83,9 +107,12 @@ export async function POST(req: NextRequest) {
   const acta = await prisma.actaAdministrativa.create({
     data: {
       folio,
-      personalId,
+      ambito,
+      personalId: personalId ?? null,
+      personaNombre,
+      proyectoId: ambito === "EVENTO" ? (proyectoId ?? null) : null,
       tipoId: tipoId ?? null,
-      puestoId: personal.puestoId ?? null,
+      puestoId: personal?.puestoId ?? null,
       gravedad,
       fecha: fechaDate,
       hechos,
@@ -99,6 +126,7 @@ export async function POST(req: NextRequest) {
     },
     include: {
       personal: { select: { id: true, nombre: true, puesto: true } },
+      proyecto: { select: { id: true, nombre: true, numeroProyecto: true } },
       tipo: { select: { id: true, nombre: true, codigo: true, categoria: true } },
     },
   });

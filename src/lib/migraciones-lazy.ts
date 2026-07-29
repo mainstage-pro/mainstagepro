@@ -562,7 +562,10 @@ export async function ensureActasFaltas() {
       CREATE TABLE IF NOT EXISTS actas_administrativas (
         id TEXT PRIMARY KEY,
         folio TEXT NOT NULL UNIQUE,
-        personal_id TEXT NOT NULL REFERENCES personal_interno(id) ON DELETE CASCADE,
+        ambito TEXT NOT NULL DEFAULT 'INTERNA',
+        personal_id TEXT REFERENCES personal_interno(id) ON DELETE CASCADE,
+        persona_nombre TEXT,
+        proyecto_id TEXT REFERENCES proyectos(id) ON DELETE SET NULL,
         tipo_id TEXT REFERENCES tipos_incidencia(id) ON DELETE SET NULL,
         puesto_id TEXT,
         gravedad TEXT NOT NULL DEFAULT 'LEVE',
@@ -585,8 +588,22 @@ export async function ensureActasFaltas() {
         updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    // Ramas de acta (INTERNA/EVENTO) — aditivo idempotente para tablas ya creadas.
+    // Estas columnas se leen desde rutas existentes (findMany sin select), por eso el
+    // DDL también se aplica a prod con scripts/ddl-actas-ambito.ts ANTES del deploy.
+    if (!await columnExists('actas_administrativas', 'ambito'))
+      await prisma.$executeRawUnsafe(`ALTER TABLE actas_administrativas ADD COLUMN IF NOT EXISTS ambito TEXT NOT NULL DEFAULT 'INTERNA'`);
+    if (!await columnExists('actas_administrativas', 'persona_nombre'))
+      await prisma.$executeRawUnsafe(`ALTER TABLE actas_administrativas ADD COLUMN IF NOT EXISTS persona_nombre TEXT`);
+    if (!await columnExists('actas_administrativas', 'proyecto_id'))
+      await prisma.$executeRawUnsafe(`ALTER TABLE actas_administrativas ADD COLUMN IF NOT EXISTS proyecto_id TEXT`);
+    // Relajar NOT NULL heredado: un acta de evento puede no tener ficha interna.
+    await prisma.$executeRawUnsafe(`ALTER TABLE actas_administrativas ALTER COLUMN personal_id DROP NOT NULL`);
     await prisma.$executeRawUnsafe(
       `CREATE INDEX IF NOT EXISTS "actas_administrativas_personal_id_idx" ON actas_administrativas (personal_id)`
+    );
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "actas_administrativas_proyecto_id_idx" ON actas_administrativas (proyecto_id)`
     );
   } catch { /* ya existe */ }
   _actasFaltasReady = true;

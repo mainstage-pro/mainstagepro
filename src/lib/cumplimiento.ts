@@ -245,7 +245,8 @@ export async function computeCumplimientoLista(mes: string): Promise<Cumplimient
       select: { personalId: true, estado: true, justificada: true, documentoUrl: true },
     }),
     prisma.actaAdministrativa.findMany({
-      where: { fecha: { gte: new Date(desde + "T00:00:00"), lte: new Date(hasta + "T23:59:59") } },
+      // Solo actas internas: las de evento (freelance) no cuentan para el cumplimiento del personal.
+      where: { ambito: "INTERNA", fecha: { gte: new Date(desde + "T00:00:00"), lte: new Date(hasta + "T23:59:59") } },
       select: { personalId: true, gravedad: true, nivelEscalon: true, estado: true, aceptada: true,
         tipo: { select: { categoria: true } } },
     }),
@@ -264,6 +265,7 @@ export async function computeCumplimientoLista(mes: string): Promise<Cumplimient
   }
   const actasPorPersona = new Map<string, ActaLite[]>();
   for (const a of actas) {
+    if (!a.personalId) continue; // acta de evento sin ficha interna
     const arr = actasPorPersona.get(a.personalId) ?? [];
     arr.push({ gravedad: a.gravedad, categoria: a.tipo?.categoria ?? null, nivelEscalon: a.nivelEscalon, estado: a.estado, aceptada: a.aceptada });
     actasPorPersona.set(a.personalId, arr);
@@ -278,10 +280,12 @@ export async function computeCumplimientoLista(mes: string): Promise<Cumplimient
   // Actas sin acuse (vigentes) — cuenta global, no solo del mes.
   const sinAcuseRows = await prisma.actaAdministrativa.groupBy({
     by: ["personalId"],
-    where: { estado: { notIn: ["ANULADA", "ACEPTADA"] }, aceptada: false },
+    where: { ambito: "INTERNA", estado: { notIn: ["ANULADA", "ACEPTADA"] }, aceptada: false },
     _count: { _all: true },
   });
-  const sinAcusePorPersona = new Map(sinAcuseRows.map(r => [r.personalId, r._count._all]));
+  const sinAcusePorPersona = new Map(
+    sinAcuseRows.flatMap(r => (r.personalId ? [[r.personalId, r._count._all] as const] : [])),
+  );
 
   return personal.map(p => componer(
     {

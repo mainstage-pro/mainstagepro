@@ -5,10 +5,13 @@ import { useParams } from "next/navigation";
 
 interface ActaPublica {
   folio: string;
+  ambito?: string;
   colaborador: string;
   puesto: string | null;
+  evento?: string | null;
   gravedad: string;
   gravedadLabel: string;
+  nivelActaLabel?: string;
   nivelLabel: string;
   fecha: string;
   hechos: string;
@@ -97,11 +100,12 @@ export default function AcusePage() {
           <div>
             <p className="text-white text-lg font-semibold">{acta.colaborador}</p>
             {acta.puesto && <p className="text-gray-500 text-sm">{acta.puesto}</p>}
+            {acta.evento && <p className="text-[#B3985B] text-xs mt-1">Evento: {acta.evento}</p>}
           </div>
 
           <div className="flex flex-wrap gap-3 text-sm">
-            <span className={`font-medium ${gravedadColor}`}>{acta.gravedadLabel}</span>
-            <span className="text-gray-500">{acta.nivelLabel}</span>
+            <span className={`font-medium ${gravedadColor}`}>{acta.nivelActaLabel ?? acta.gravedadLabel}</span>
+            {acta.ambito !== "EVENTO" && <span className="text-gray-500">{acta.nivelLabel}</span>}
             <span className="text-gray-500">{fmtFecha(acta.fecha)}</span>
           </div>
 

@@ -96,6 +96,26 @@ export function etiquetaGravedad(g: string): string {
   return g === "MUY_GRAVE" ? "Muy grave" : g === "GRAVE" ? "Grave" : "Leve";
 }
 
+// ─── Niveles del acta (1/2/3) ─────────────────────────────────────────────────
+// Los 3 niveles de gravedad de un acta, en lenguaje operativo:
+//   Nivel 1 (LEVE)      — falta simple.
+//   Nivel 2 (GRAVE)     — alto impacto en la operación.
+//   Nivel 3 (MUY_GRAVE) — puede causar suspensión o baja definitiva del equipo.
+export const NIVEL_ACTA: Record<Gravedad, { num: number; titulo: string; desc: string }> = {
+  LEVE:      { num: 1, titulo: "Nivel 1 · Falta simple", desc: "Falta menor: registro y revisión con la persona." },
+  GRAVE:     { num: 2, titulo: "Nivel 2 · Alto impacto", desc: "Afecta la operación: amonestación escrita y posible penalización." },
+  MUY_GRAVE: { num: 3, titulo: "Nivel 3 · Suspensión o baja", desc: "Pelea, faltas de respeto, negligencia fuerte: puede suspender la colaboración o dar de baja del equipo." },
+};
+
+export function nivelActa(g: string): { num: number; titulo: string; desc: string } {
+  return NIVEL_ACTA[(g as Gravedad)] ?? NIVEL_ACTA.LEVE;
+}
+
+// Etiqueta corta del ámbito del acta.
+export function etiquetaAmbito(a: string): string {
+  return a === "EVENTO" ? "De evento" : "Interna";
+}
+
 export function etiquetaNivel(n: number): string {
   return n <= 1 ? "1ra incidencia" : n === 2 ? "2da incidencia" : `${n}ª incidencia`;
 }

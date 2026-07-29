@@ -9,24 +9,30 @@ import {
   sugerirConsecuencia,
   etiquetaGravedad,
   etiquetaNivel,
+  nivelActa,
   type Gravedad,
 } from "@/lib/faltas-constantes";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface Personal { id: string; nombre: string; puesto: string; departamento: string; activo: boolean; }
+interface Proyecto { id: string; nombre: string; numeroProyecto: string; }
 interface TipoFalta {
   id: string; codigo: string | null; nombre: string; categoria: string;
   gravedad: string; deteccion: string; descripcion: string | null; esDescuento: boolean;
 }
 interface Acta {
-  id: string; folio: string; personalId: string; tipoId: string | null; gravedad: string;
+  id: string; folio: string; ambito: string; personalId: string | null; personaNombre: string | null;
+  proyectoId: string | null; tipoId: string | null; gravedad: string;
   fecha: string; hechos: string; evidenciaUrl: string | null; nivelEscalon: number;
   consecuencia: string; montoDescuento: number | null; incidenciaId: string | null;
   descargo: string | null; levantadaPor: string | null; estado: string; token: string;
   aceptada: boolean; aceptadaNombre: string | null; aceptadaEn: string | null;
-  personal: { id: string; nombre: string; puesto: string };
+  personal: { id: string; nombre: string; puesto: string } | null;
+  proyecto: { id: string; nombre: string; numeroProyecto: string } | null;
   tipo: { id: string; nombre: string; codigo: string | null; categoria: string } | null;
 }
+type Ambito = "INTERNA" | "EVENTO";
+const OTRO = "__OTRO__";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const GRAVEDAD_STYLE: Record<string, string> = {
@@ -49,33 +55,52 @@ function fmtFecha(s: string) {
   return new Date(s.length <= 10 ? s + "T12:00:00" : s).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 }
 function mxn(n: number) { return n.toLocaleString("es-MX", { style: "currency", currency: "MXN" }); }
+function nombreDe(a: Acta) { return a.personal?.nombre ?? a.personaNombre ?? "—"; }
 
 // ══════════════════════════════════════════════════════════════════════════════
 export default function ActasPage() {
   const toast = useToast();
   const confirm = useConfirm();
   const [personal, setPersonal] = useState<Personal[]>([]);
+  const [proyectos, setProyectos] = useState<Proyecto[]>([]);
   const [tipos, setTipos] = useState<TipoFalta[]>([]);
   const [actas, setActas] = useState<Acta[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<Ambito>("INTERNA");
   const [filtroPersona, setFiltroPersona] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [prefill, setPrefill] = useState<{ proyectoId?: string; proyectoNombre?: string } | null>(null);
   const [detalle, setDetalle] = useState<Acta | null>(null);
 
   const cargarActas = useCallback(async () => {
     setLoading(true);
-    const q = filtroPersona ? `?personalId=${filtroPersona}` : "";
-    const r = await fetch(`/api/rrhh/actas${q}`, { cache: "no-store" });
+    const params = new URLSearchParams({ ambito: tab });
+    if (filtroPersona) params.set("personalId", filtroPersona);
+    const r = await fetch(`/api/rrhh/actas?${params.toString()}`, { cache: "no-store" });
     const d = await r.json();
     setActas(d.actas ?? []);
     setLoading(false);
-  }, [filtroPersona]);
+  }, [filtroPersona, tab]);
 
   useEffect(() => {
     fetch("/api/rrhh/personal").then(r => r.json()).then(d => setPersonal(d.personal ?? []));
     fetch("/api/rrhh/faltas-catalogo").then(r => r.json()).then(d => setTipos(d.tipos ?? []));
+    fetch("/api/proyectos").then(r => r.json()).then(d =>
+      setProyectos((d.proyectos ?? []).map((p: Proyecto) => ({ id: p.id, nombre: p.nombre, numeroProyecto: p.numeroProyecto }))));
   }, []);
   useEffect(() => { cargarActas(); }, [cargarActas]);
+
+  // Prefill al llegar desde la evaluación de un evento: ?nueva=evento&proyectoId=…&proyecto=…
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("nueva") === "evento") {
+      setTab("EVENTO");
+      setPrefill({ proyectoId: q.get("proyectoId") ?? undefined, proyectoNombre: q.get("proyecto") ?? undefined });
+      setModalOpen(true);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+  }, []);
 
   async function anular(a: Acta) {
     const ok = await confirm({
@@ -108,6 +133,7 @@ export default function ActasPage() {
   const abiertas = actas.filter(a => a.estado !== "ANULADA");
   const pendientesAcuse = abiertas.filter(a => !a.aceptada).length;
   const conDescuento = abiertas.reduce((s, a) => s + (a.montoDescuento ?? 0), 0);
+  const esEvento = tab === "EVENTO";
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5">
@@ -115,9 +141,24 @@ export default function ActasPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="ms-h1">Faltas y actas administrativas</h1>
-          <p className="text-gray-500 text-sm">Registro formal de faltas con escalón de reincidencia y acuse del colaborador</p>
+          <p className="text-gray-500 text-sm">Registro formal de faltas con nivel, escalón de reincidencia y acuse</p>
         </div>
-        <button onClick={() => setModalOpen(true)} className="ms-btn-primary">Levantar acta</button>
+        <button onClick={() => { setPrefill(null); setModalOpen(true); }} className="ms-btn-primary">
+          {esEvento ? "Levantar acta de evento" : "Levantar acta interna"}
+        </button>
+      </div>
+
+      {/* Ramas */}
+      <div className="flex gap-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-1 w-fit">
+        {([
+          ["INTERNA", "Actas internas", "Del colaborador como empleado"],
+          ["EVENTO", "Actas de evento", "Técnicos y staff en un proyecto de evento"],
+        ] as const).map(([val, label, desc]) => (
+          <button key={val} onClick={() => setTab(val)} title={desc}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === val ? "bg-[#1e1e1e] text-white" : "text-gray-500 hover:text-gray-300"}`}>
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* Stats */}
@@ -130,62 +171,78 @@ export default function ActasPage() {
           <p className="text-[10px] text-gray-600 uppercase tracking-wider">Sin acuse</p>
           <p className="text-lg font-bold text-yellow-400">{pendientesAcuse}</p>
         </div>
-        <div className="ms-stat-card flex-1 min-w-[130px]">
-          <p className="text-[10px] text-gray-600 uppercase tracking-wider">Descuento ligado</p>
-          <p className="text-lg font-bold text-[#B3985B]">{conDescuento > 0 ? mxn(conDescuento) : "—"}</p>
-        </div>
+        {!esEvento && (
+          <div className="ms-stat-card flex-1 min-w-[130px]">
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider">Descuento ligado</p>
+            <p className="text-lg font-bold text-[#B3985B]">{conDescuento > 0 ? mxn(conDescuento) : "—"}</p>
+          </div>
+        )}
       </div>
 
-      {/* Filtro */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-xs text-gray-600">Colaborador:</span>
-        <div className="min-w-[220px]">
-          <Combobox
-            value={filtroPersona}
-            onChange={setFiltroPersona}
-            placeholder="Todos"
-            options={[{ value: "", label: "Todos" }, ...personal.map(p => ({ value: p.id, label: p.nombre }))]}
-          />
+      {/* Filtro (solo internas: por colaborador con ficha) */}
+      {!esEvento && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs text-gray-600">Colaborador:</span>
+          <div className="min-w-[220px]">
+            <Combobox
+              value={filtroPersona}
+              onChange={setFiltroPersona}
+              placeholder="Todos"
+              options={[{ value: "", label: "Todos" }, ...personal.map(p => ({ value: p.id, label: p.nombre }))]}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Lista */}
       {loading ? (
         <div className="py-8 text-center text-gray-600 text-sm">Cargando...</div>
       ) : actas.length === 0 ? (
         <div className="ms-card p-8 text-center text-gray-500 text-sm">
-          No hay actas registradas. Pulsa «Levantar acta» para documentar una falta.
+          {esEvento
+            ? "No hay actas de evento. Levanta una desde aquí o desde la evaluación de un proyecto de evento."
+            : "No hay actas internas. Pulsa «Levantar acta interna» para documentar una falta."}
         </div>
       ) : (
         <div className="space-y-2">
-          {actas.map(a => (
-            <button key={a.id} onClick={() => setDetalle(a)}
-              className={`w-full text-left bg-[#111] border rounded-xl p-4 transition-colors hover:border-[#333] ${a.estado === "ANULADA" ? "border-[#1a1a1a] opacity-60" : "border-[#222]"}`}>
-              <div className="flex items-center gap-3 flex-wrap">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-white text-sm font-medium truncate">{a.personal.nombre}</span>
-                    <span className="text-[10px] text-gray-600">{a.folio}</span>
+          {actas.map(a => {
+            const nv = nivelActa(a.gravedad);
+            return (
+              <button key={a.id} onClick={() => setDetalle(a)}
+                className={`w-full text-left bg-[#111] border rounded-xl p-4 transition-colors hover:border-[#333] ${a.estado === "ANULADA" ? "border-[#1a1a1a] opacity-60" : "border-[#222]"}`}>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-white text-sm font-medium truncate">{nombreDe(a)}</span>
+                      <span className="text-[10px] text-gray-600">{a.folio}</span>
+                      {a.proyecto && <span className="text-[10px] text-[#B3985B]">· {a.proyecto.numeroProyecto}</span>}
+                    </div>
+                    <p className="text-gray-600 text-[11px] truncate">{a.tipo?.nombre ?? "Falta sin catalogar"} · {fmtFecha(a.fecha)}</p>
                   </div>
-                  <p className="text-gray-600 text-[11px] truncate">{a.tipo?.nombre ?? "Falta sin catalogar"} · {fmtFecha(a.fecha)}</p>
+                  <span className={`text-[10px] px-2 py-1 rounded-lg border ${GRAVEDAD_STYLE[a.gravedad] ?? ""}`}>Nivel {nv.num}</span>
+                  {!esEvento && (
+                    <span className="text-[10px] px-2 py-1 rounded-lg border border-[#333] bg-[#1a1a1a] text-gray-400">{etiquetaNivel(a.nivelEscalon)}</span>
+                  )}
+                  <span className={`text-[10px] px-2 py-1 rounded-lg border ${ESTADO_STYLE[a.estado] ?? ""}`}>{a.estado}</span>
+                  {a.montoDescuento ? <span className="text-xs font-semibold text-[#B3985B]">{mxn(a.montoDescuento)}</span> : null}
+                  {a.estado !== "ANULADA" && (a.aceptada
+                    ? <span className="text-[10px] text-green-400">Acuse firmado</span>
+                    : <span className="text-[10px] text-yellow-500">Sin acuse</span>)}
                 </div>
-                <span className={`text-[10px] px-2 py-1 rounded-lg border ${GRAVEDAD_STYLE[a.gravedad] ?? ""}`}>{etiquetaGravedad(a.gravedad)}</span>
-                <span className="text-[10px] px-2 py-1 rounded-lg border border-[#333] bg-[#1a1a1a] text-gray-400">{etiquetaNivel(a.nivelEscalon)}</span>
-                <span className={`text-[10px] px-2 py-1 rounded-lg border ${ESTADO_STYLE[a.estado] ?? ""}`}>{a.estado}</span>
-                {a.montoDescuento ? <span className="text-xs font-semibold text-[#B3985B]">{mxn(a.montoDescuento)}</span> : null}
-                {a.estado !== "ANULADA" && (a.aceptada
-                  ? <span className="text-[10px] text-green-400">Acuse firmado</span>
-                  : <span className="text-[10px] text-yellow-500">Sin acuse</span>)}
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       )}
 
       {modalOpen && (
         <NuevaActaModal
+          ambito={tab}
           personal={personal.filter(p => p.activo)}
+          proyectos={proyectos}
           tipos={tipos}
+          initialProyectoId={prefill?.proyectoId}
+          initialProyectoNombre={prefill?.proyectoNombre}
           onClose={() => setModalOpen(false)}
           onCreated={() => { setModalOpen(false); cargarActas(); }}
         />
@@ -205,13 +262,18 @@ export default function ActasPage() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Modal: nueva acta
+// Modal: nueva acta (interna o de evento)
 // ══════════════════════════════════════════════════════════════════════════════
-function NuevaActaModal({ personal, tipos, onClose, onCreated }: {
-  personal: Personal[]; tipos: TipoFalta[]; onClose: () => void; onCreated: () => void;
+function NuevaActaModal({ ambito, personal, proyectos, tipos, initialProyectoId, initialProyectoNombre, onClose, onCreated }: {
+  ambito: Ambito; personal: Personal[]; proyectos: Proyecto[]; tipos: TipoFalta[];
+  initialProyectoId?: string; initialProyectoNombre?: string;
+  onClose: () => void; onCreated: () => void;
 }) {
   const toast = useToast();
-  const [personalId, setPersonalId] = useState("");
+  const esEvento = ambito === "EVENTO";
+  const [personalId, setPersonalId] = useState(esEvento ? OTRO : "");
+  const [personaNombre, setPersonaNombre] = useState("");
+  const [proyectoId, setProyectoId] = useState(initialProyectoId ?? "");
   const [tipoId, setTipoId] = useState("");
   const [fecha, setFecha] = useState(toDateStr(new Date()));
   const [hechos, setHechos] = useState("");
@@ -223,8 +285,9 @@ function NuevaActaModal({ personal, tipos, onClose, onCreated }: {
   const tipoSel = tipos.find(t => t.id === tipoId) ?? null;
   const gravedad: Gravedad = (tipoSel?.gravedad as Gravedad) ?? "LEVE";
   const esReconocimiento = tipoSel?.categoria === "RECONOCIMIENTO";
+  const externo = personalId === OTRO; // freelance sin ficha interna → sin descuento a nómina
+  const nv = nivelActa(gravedad);
 
-  // Sugerencia de consecuencia (nivel 1 como referencia; el servidor recalcula el escalón real).
   const sugerida = useMemo(() => esReconocimiento ? "" : sugerirConsecuencia(gravedad, 1), [gravedad, esReconocimiento]);
   useEffect(() => { if (!consEditada) setConsecuencia(sugerida); }, [sugerida, consEditada]);
 
@@ -233,18 +296,26 @@ function NuevaActaModal({ personal, tipos, onClose, onCreated }: {
   }, [tipos]);
 
   async function guardar() {
-    if (!personalId) { toast.error("Selecciona al colaborador"); return; }
+    if (!esEvento && !personalId) { toast.error("Selecciona al colaborador"); return; }
+    if (esEvento && !externo && !personalId) { toast.error("Selecciona a la persona"); return; }
+    if (esEvento && externo && !personaNombre.trim()) { toast.error("Escribe el nombre del técnico"); return; }
     if (!hechos.trim()) { toast.error("Describe los hechos"); return; }
     setGuardando(true);
     const monto = parseFloat(montoDescuento);
+    const body = {
+      ambito,
+      personalId: externo ? null : (personalId || null),
+      personaNombre: externo ? personaNombre.trim() : undefined,
+      proyectoId: esEvento ? (proyectoId || null) : undefined,
+      tipoId: tipoId || null,
+      fecha, hechos: hechos.trim(),
+      montoDescuento: !externo && !isNaN(monto) && monto > 0 ? monto : undefined,
+      consecuencia: consEditada ? consecuencia.trim() : undefined,
+      gravedad,
+    };
     const r = await fetch("/api/rrhh/actas", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        personalId, tipoId: tipoId || null, fecha, hechos: hechos.trim(),
-        montoDescuento: !isNaN(monto) && monto > 0 ? monto : undefined,
-        consecuencia: consEditada ? consecuencia.trim() : undefined,
-        gravedad,
-      }),
+      body: JSON.stringify(body),
     });
     if (!r.ok) { const d = await r.json().catch(() => ({})); toast.error(d.error ?? "No se pudo crear el acta"); setGuardando(false); return; }
     toast.success("Acta levantada");
@@ -252,12 +323,32 @@ function NuevaActaModal({ personal, tipos, onClose, onCreated }: {
   }
 
   return (
-    <Modal open onClose={onClose} title="Levantar acta administrativa">
+    <Modal open onClose={onClose} title={esEvento ? "Levantar acta de evento" : "Levantar acta administrativa"}>
       <div className="space-y-4">
+        {esEvento && (
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Proyecto de evento</label>
+            {initialProyectoNombre && initialProyectoId ? (
+              <div className="text-sm px-3 py-2 rounded-lg border border-[#333] bg-[#1a1a1a] text-gray-200">{initialProyectoNombre}</div>
+            ) : (
+              <Combobox value={proyectoId} onChange={setProyectoId} placeholder="Selecciona el evento…"
+                options={proyectos.map(p => ({ value: p.id, label: `${p.numeroProyecto} · ${p.nombre}` }))} />
+            )}
+          </div>
+        )}
+
         <div>
-          <label className="block text-xs text-gray-400 mb-1">Colaborador</label>
+          <label className="block text-xs text-gray-400 mb-1">{esEvento ? "Persona / técnico" : "Colaborador"}</label>
           <Combobox value={personalId} onChange={setPersonalId} placeholder="Selecciona…"
-            options={personal.map(p => ({ value: p.id, label: `${p.nombre} — ${p.puesto}` }))} />
+            options={[
+              ...personal.map(p => ({ value: p.id, label: `${p.nombre} — ${p.puesto}` })),
+              ...(esEvento ? [{ value: OTRO, label: "— Otro (capturar nombre) —" }] : []),
+            ]} />
+          {externo && (
+            <input value={personaNombre} onChange={e => setPersonaNombre(e.target.value)}
+              placeholder="Nombre completo del técnico / freelance"
+              className="mt-2 w-full bg-[#0d0d0d] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]" />
+          )}
         </div>
 
         <div>
@@ -274,12 +365,13 @@ function NuevaActaModal({ personal, tipos, onClose, onCreated }: {
               className="w-full bg-[#0d0d0d] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]" />
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Gravedad</label>
+            <label className="block text-xs text-gray-400 mb-1">Nivel del acta</label>
             <div className={`text-sm px-3 py-2 rounded-lg border ${esReconocimiento ? "border-green-700 bg-green-900/20 text-green-300" : GRAVEDAD_STYLE[gravedad]}`}>
-              {esReconocimiento ? "Reconocimiento" : etiquetaGravedad(gravedad)}
+              {esReconocimiento ? "Reconocimiento" : nv.titulo}
             </div>
           </div>
         </div>
+        {!esReconocimiento && <p className="text-[10px] text-gray-600 -mt-2">{nv.desc}</p>}
 
         <div>
           <label className="block text-xs text-gray-400 mb-1">Hechos / descripción</label>
@@ -293,22 +385,27 @@ function NuevaActaModal({ personal, tipos, onClose, onCreated }: {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs text-gray-400">Consecuencia</label>
-                <span className="text-[10px] text-gray-600">Sugerida por gravedad · el escalón real se calcula al guardar</span>
+                <span className="text-[10px] text-gray-600">Sugerida por nivel · el escalón real se calcula al guardar</span>
               </div>
               <textarea value={consecuencia}
                 onChange={e => { setConsecuencia(e.target.value); setConsEditada(true); }} rows={2}
                 className="w-full bg-[#0d0d0d] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B] resize-y" />
             </div>
 
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Descuento a nómina (opcional)</label>
-              <input type="number" min="0" step="0.01" value={montoDescuento} onChange={e => setMonto(e.target.value)}
-                placeholder="0.00"
-                className="w-40 bg-[#0d0d0d] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]" />
-              <p className="text-[10px] text-gray-600 mt-1">
-                Si capturas un monto y hay una falta seleccionada, se genera una propuesta de descuento que debe aprobarse en Asistencia → Penalizaciones antes de aplicarse.
-              </p>
-            </div>
+            {!externo && (
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Descuento a nómina (opcional)</label>
+                <input type="number" min="0" step="0.01" value={montoDescuento} onChange={e => setMonto(e.target.value)}
+                  placeholder="0.00"
+                  className="w-40 bg-[#0d0d0d] border border-[#222] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B]" />
+                <p className="text-[10px] text-gray-600 mt-1">
+                  Si capturas un monto y hay una falta seleccionada, se genera una propuesta de descuento que debe aprobarse en Asistencia → Penalizaciones antes de aplicarse.
+                </p>
+              </div>
+            )}
+            {externo && (
+              <p className="text-[10px] text-gray-600">Técnico externo: el acta queda para su expediente y no recontratación; no genera descuento a nómina.</p>
+            )}
           </>
         )}
 
@@ -336,6 +433,7 @@ function DetalleActaModal({ acta, onClose, onAnular, onEliminar, onSaved }: {
   const [guardando, setGuardando] = useState(false);
   const url = typeof window !== "undefined" ? `${window.location.origin}/acta/${acta.token}` : "";
   const editable = acta.estado !== "ANULADA" && !acta.aceptada;
+  const nv = nivelActa(acta.gravedad);
 
   async function guardar() {
     setGuardando(true);
@@ -358,12 +456,18 @@ function DetalleActaModal({ acta, onClose, onAnular, onEliminar, onSaved }: {
     <Modal open onClose={onClose} title={acta.folio}>
       <div className="space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-white text-sm font-medium">{acta.personal.nombre}</span>
-          <span className="text-[11px] text-gray-600">{acta.personal.puesto}</span>
-          <span className={`text-[10px] px-2 py-1 rounded-lg border ${GRAVEDAD_STYLE[acta.gravedad] ?? ""}`}>{etiquetaGravedad(acta.gravedad)}</span>
-          <span className="text-[10px] px-2 py-1 rounded-lg border border-[#333] bg-[#1a1a1a] text-gray-400">{etiquetaNivel(acta.nivelEscalon)}</span>
+          <span className="text-white text-sm font-medium">{nombreDe(acta)}</span>
+          {acta.personal?.puesto && <span className="text-[11px] text-gray-600">{acta.personal.puesto}</span>}
+          <span className={`text-[10px] px-2 py-1 rounded-lg border ${GRAVEDAD_STYLE[acta.gravedad] ?? ""}`}>{nv.titulo}</span>
+          {acta.ambito !== "EVENTO" && (
+            <span className="text-[10px] px-2 py-1 rounded-lg border border-[#333] bg-[#1a1a1a] text-gray-400">{etiquetaNivel(acta.nivelEscalon)}</span>
+          )}
           <span className={`text-[10px] px-2 py-1 rounded-lg border ${ESTADO_STYLE[acta.estado] ?? ""}`}>{acta.estado}</span>
         </div>
+
+        {acta.proyecto && (
+          <p className="text-[11px] text-[#B3985B]">Evento: {acta.proyecto.numeroProyecto} · {acta.proyecto.nombre}</p>
+        )}
 
         <p className="text-[11px] text-gray-600">
           {acta.tipo?.nombre ?? "Falta sin catalogar"} · {fmtFecha(acta.fecha)}
@@ -399,7 +503,7 @@ function DetalleActaModal({ acta, onClose, onAnular, onEliminar, onSaved }: {
 
         {/* Acuse */}
         <div className="ms-stat-card space-y-2">
-          <p className="text-[10px] text-gray-600 uppercase tracking-wider">Acuse del colaborador</p>
+          <p className="text-[10px] text-gray-600 uppercase tracking-wider">Acuse de la persona</p>
           {acta.aceptada ? (
             <p className="text-sm text-green-400">
               Firmada por {acta.aceptadaNombre}{acta.aceptadaEn ? ` · ${fmtFecha(acta.aceptadaEn)}` : ""}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { isTokenExpired } from "@/lib/tokens";
-import { etiquetaGravedad, etiquetaNivel } from "@/lib/faltas";
+import { etiquetaGravedad, etiquetaNivel, nivelActa } from "@/lib/faltas";
 
 // Acuse público del acta administrativa por enlace con token. Sin autenticación:
 // el colaborador confirma que la recibió y quedó enterado.
@@ -9,7 +9,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
   const { token } = await params;
   const acta = await prisma.actaAdministrativa.findUnique({
     where: { token },
-    include: { personal: { select: { nombre: true, puesto: true } } },
+    include: {
+      personal: { select: { nombre: true, puesto: true } },
+      proyecto: { select: { nombre: true, numeroProyecto: true } },
+    },
   });
   if (!acta) return NextResponse.json({ error: "Acta no encontrada" }, { status: 404 });
   if (acta.estado === "ANULADA") return NextResponse.json({ error: "Esta acta fue anulada" }, { status: 410 });
@@ -18,10 +21,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ tok
   return NextResponse.json({
     acta: {
       folio: acta.folio,
-      colaborador: acta.personal.nombre,
-      puesto: acta.personal.puesto,
+      ambito: acta.ambito,
+      colaborador: acta.personal?.nombre ?? acta.personaNombre ?? "",
+      puesto: acta.personal?.puesto ?? (acta.ambito === "EVENTO" ? "Técnico de evento" : ""),
+      evento: acta.proyecto ? `${acta.proyecto.numeroProyecto} · ${acta.proyecto.nombre}` : null,
       gravedad: acta.gravedad,
       gravedadLabel: etiquetaGravedad(acta.gravedad),
+      nivelActaLabel: nivelActa(acta.gravedad).titulo,
       nivelLabel: etiquetaNivel(acta.nivelEscalon),
       fecha: acta.fecha,
       hechos: acta.hechos,
