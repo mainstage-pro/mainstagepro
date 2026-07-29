@@ -19,6 +19,7 @@ interface Acta { id: string; folio: string; fecha: string; gravedad: string; hec
 interface Incidencia { id: string; fecha: string; descripcion: string | null; montoCalculado: number | null; estado: string; tipo: { nombre: string; gravedad: string; categoria: string } | null }
 interface Vacacion { id: string; fechaInicio: string; fechaFin: string; dias: number; estado: string; motivo: string | null; aprobadaPor: string | null }
 interface PersonaLite { id: string; nombre: string; puesto: string }
+interface UsuarioLite { id: string; name: string; email: string; ligadoA: string | null }
 interface PersonalData {
   id: string; nombre: string; puesto: string; departamento: string; tipo: string;
   telefono: string | null; correo: string | null; salario: number | null; periodoPago: string;
@@ -32,6 +33,7 @@ interface PersonalData {
   fechaNacimiento: string | null; estadoCivil: string | null; fotoUrl: string | null;
   fechaBaja: string | null; motivoBaja: string | null;
   jefeId: string | null; jefe: PersonaLite | null;
+  userId: string | null;
   documentos: Documento[]; pagos: PagoNomina[];
   asistencias: Asistencia[]; evaluaciones: Evaluacion[]; actas: Acta[]; incidencias: Incidencia[]; vacaciones: Vacacion[];
 }
@@ -89,6 +91,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
   const [persona, setPersona] = useState<PersonalData | null>(null);
   const [saldo, setSaldo] = useState<Saldo | null>(null);
   const [posiblesJefes, setPosiblesJefes] = useState<PersonaLite[]>([]);
+  const [usuarios, setUsuarios] = useState<UsuarioLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [cuentas, setCuentas] = useState<CuentaBancaria[]>([]);
   const [tab, setTab] = useState<Tab>("perfil");
@@ -118,6 +121,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
     setPersona(d.persona);
     setSaldo(d.saldoVacaciones ?? null);
     setPosiblesJefes(d.posiblesJefes ?? []);
+    setUsuarios(d.usuarios ?? []);
     setLoading(false);
   }
 
@@ -956,6 +960,22 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Jefe directo</label>
                 <Combobox value={editForm.jefeId ?? ""} onChange={v => set("jefeId", v)} options={[{ value: "", label: "Sin asignar" }, ...posiblesJefes.map(j => ({ value: j.id, label: j.nombre }))]} className={field} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-xs text-gray-500 mb-1 block">Usuario (login)</label>
+                <Combobox
+                  value={editForm.userId ?? ""}
+                  onChange={v => set("userId", v)}
+                  options={[
+                    { value: "", label: "Sin ligar" },
+                    ...usuarios.map(u => ({
+                      value: u.id,
+                      label: `${u.name} · ${u.email}${u.ligadoA ? `  (ligado a ${u.ligadoA})` : ""}`,
+                    })),
+                  ]}
+                  className={field}
+                />
+                <p className="text-[10px] text-gray-600 mt-1">Liga el expediente a la cuenta de acceso. Necesario para leer sus tareas del plan de trabajo y generar el puesto.</p>
               </div>
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Fecha de ingreso</label>

@@ -50,7 +50,28 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     orderBy: { nombre: "asc" },
   });
 
-  return NextResponse.json({ persona, saldoVacaciones, posiblesJefes });
+  // Usuarios (login) disponibles para ligar al expediente. Marca cuáles ya están
+  // ligados a otro personal para que el selector lo muestre.
+  const [usuarios, ligados] = await Promise.all([
+    prisma.user.findMany({
+      where: { active: true },
+      select: { id: true, name: true, email: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.personalInterno.findMany({
+      where: { userId: { not: null }, id: { not: id } },
+      select: { userId: true, nombre: true },
+    }),
+  ]);
+  const ligadoPorUser = new Map(ligados.map((l) => [l.userId as string, l.nombre]));
+  const usuariosDisponibles = usuarios.map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    ligadoA: ligadoPorUser.get(u.id) ?? null,
+  }));
+
+  return NextResponse.json({ persona, saldoVacaciones, posiblesJefes, usuarios: usuariosDisponibles });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
