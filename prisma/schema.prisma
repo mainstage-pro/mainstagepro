@@ -1579,6 +1579,9 @@ model Puesto {
   subordinados Puesto[] @relation("PuestoJerarquia")
   coordinaCon  String?  @db.Text @map("coordina_con") // JSON string[]
   supervisaA   String?  @db.Text @map("supervisa_a")  // JSON string[]
+  // Subárea del maestro (Áreas y organización). Ubica el puesto dentro de su área.
+  subAreaId String?     @map("sub_area_id")
+  subArea   PTSubArea?  @relation("PuestoSubArea", fields: [subAreaId], references: [id], onDelete: SetNull)
   // Estándares de desempeño (§6) — JSON: [{ subarea, responsabilidad, estandar }]
   estandares String? @db.Text
   // Condiciones laborales (§ migradas de PuestoIdeal — fuente para el acuerdo laboral)
@@ -3561,6 +3564,7 @@ model PTSubArea {
 
   templates   PTTareaTemplate[]
   secciones   TareaSeccion[]    @relation("SeccionSubArea")
+  puestos     Puesto[]          @relation("PuestoSubArea")
 
   @@index([areaId])
   @@map("pt_subareas")

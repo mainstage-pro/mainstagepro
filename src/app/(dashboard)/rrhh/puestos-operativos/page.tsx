@@ -10,6 +10,7 @@ interface Ocupante { id: string; nombre: string; userId?: string | null }
 interface Estandar { subarea: string; responsabilidad: string; estandar: string }
 interface Puesto {
   id: string; nombre: string; area: string;
+  subAreaId?: string | null; subArea?: { id: string; nombre: string } | null;
   objetivoArea?: string | null; misionPuesto?: string | null;
   responsabilidades?: string | null;
   reportaAId?: string | null; reportaA?: { id: string; nombre: string } | null;
@@ -43,7 +44,7 @@ function toArr(s: string) {
 }
 
 const EMPTY_FORM = {
-  nombre:"", area:"ADMINISTRACION", color:"",
+  nombre:"", area:"ADMINISTRACION", subAreaId:"", color:"",
   objetivoArea:"", misionPuesto:"",
   responsabilidades:"", coordinaCon:"", supervisaA:"",
   reportaAId:"",
@@ -69,6 +70,8 @@ export default function PuestosOperativosPage() {
   const [vista, setVista] = useState<"lista" | "grid">("lista");
   const [genPdf, setGenPdf] = useState<string | null>(null);
   const [genLink, setGenLink] = useState<string | null>(null);
+  // Subáreas del maestro por código de área, para el selector del formulario.
+  const [subareasPorArea, setSubareasPorArea] = useState<Record<string, { id: string; nombre: string }[]>>({});
 
   async function load() {
     const [rp, rper] = await Promise.all([
@@ -81,6 +84,16 @@ export default function PuestosOperativosPage() {
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    fetch("/api/areas", { cache: "no-store" })
+      .then(r => r.json())
+      .then((d: { areas?: { codigo: string | null; subareas?: { id: string; nombre: string }[] }[] }) => {
+        const map: Record<string, { id: string; nombre: string }[]> = {};
+        for (const a of d.areas ?? []) if (a.codigo) map[a.codigo.toUpperCase()] = a.subareas ?? [];
+        setSubareasPorArea(map);
+      })
+      .catch(() => {});
+  }, []);
 
   function openNew() {
     setEditing(null);
@@ -93,7 +106,7 @@ export default function PuestosOperativosPage() {
   function openEdit(p: Puesto) {
     setEditing(p);
     setForm({
-      nombre: p.nombre, area: normArea(p.area), color: p.color ?? "",
+      nombre: p.nombre, area: normArea(p.area), subAreaId: p.subAreaId ?? "", color: p.color ?? "",
       objetivoArea: p.objetivoArea ?? "", misionPuesto: p.misionPuesto ?? "",
       responsabilidades: parseArr(p.responsabilidades).join("\n"),
       coordinaCon: parseArr(p.coordinaCon).join("\n"),
@@ -114,7 +127,7 @@ export default function PuestosOperativosPage() {
     setSaveError("");
     try {
       const body = {
-        nombre: form.nombre, area: form.area, color: form.color || null,
+        nombre: form.nombre, area: form.area, subAreaId: form.subAreaId || null, color: form.color || null,
         objetivoArea: form.objetivoArea || null,
         misionPuesto: form.misionPuesto || null,
         responsabilidades: toArr(form.responsabilidades),
@@ -210,6 +223,12 @@ export default function PuestosOperativosPage() {
     const est = parseEst(p.estandares);
     return (
       <div className="mt-4 space-y-3 border-t border-[#1a1a1a] pt-4" onClick={e => e.stopPropagation()}>
+        {p.subArea && (
+          <div>
+            <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Subárea</p>
+            <p className="text-xs text-[#B3985B]">{p.subArea.nombre}</p>
+          </div>
+        )}
         {p.misionPuesto && (
           <div>
             <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">Misión del puesto</p>
@@ -430,8 +449,19 @@ export default function PuestosOperativosPage() {
                   </div>
                   <div>
                     <label className={labelCls}>Área *</label>
-                    <Combobox value={form.area} onChange={v => setForm(p => ({ ...p, area: v }))}
+                    <Combobox value={form.area} onChange={v => setForm(p => ({ ...p, area: v, subAreaId: "" }))}
                       options={AREAS.map(a => ({ value: a, label: areaLabel(a) }))} className={inputCls} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-3">
+                  <div>
+                    <label className={labelCls}>Subárea</label>
+                    <Combobox value={form.subAreaId} onChange={v => setForm(p => ({ ...p, subAreaId: v }))}
+                      options={[{ value: "", label: "— Sin subárea —" }, ...(subareasPorArea[form.area] ?? []).map(s => ({ value: s.id, label: s.nombre }))]}
+                      className={inputCls} />
+                    {(subareasPorArea[form.area] ?? []).length === 0 && (
+                      <p className="text-[11px] text-gray-600 mt-1">Esta área no tiene subáreas en el maestro. Créalas en Organización → Áreas.</p>
+                    )}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4 mt-3">

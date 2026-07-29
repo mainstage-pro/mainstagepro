@@ -12,6 +12,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     where: { id },
     include: {
       reportaA: { select: { id: true, nombre: true } },
+      subArea: { select: { id: true, nombre: true } },
       subordinados: { select: { id: true, nombre: true } },
       puestoIdeal: { select: { id: true, titulo: true } },
       ocupantes: { select: { id: true, nombre: true, userId: true }, where: { activo: true } },
@@ -30,6 +31,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const data: Record<string, unknown> = {};
     if (b.nombre !== undefined) data.nombre = b.nombre;
     if (b.area !== undefined) data.area = b.area || "GENERAL";
+    if (b.subAreaId !== undefined) data.subAreaId = b.subAreaId || null;
     if (b.objetivoArea !== undefined) data.objetivoArea = b.objetivoArea || null;
     if (b.misionPuesto !== undefined) data.misionPuesto = b.misionPuesto || null;
     if (b.responsabilidades !== undefined) data.responsabilidades = arr(b.responsabilidades);

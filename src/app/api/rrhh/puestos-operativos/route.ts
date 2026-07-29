@@ -39,6 +39,8 @@ export async function ensurePuestoSchema() {
   await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS tipo_contrato TEXT`);
   await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS modalidad TEXT`);
   await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS horario TEXT`);
+  // Vínculo a la subárea del maestro (Áreas y organización)
+  await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS sub_area_id TEXT`);
 }
 
 const arr = (v: unknown) => (Array.isArray(v) && v.length ? JSON.stringify(v) : null);
@@ -51,6 +53,7 @@ export async function GET() {
     orderBy: [{ area: "asc" }, { nombre: "asc" }],
     include: {
       reportaA: { select: { id: true, nombre: true } },
+      subArea: { select: { id: true, nombre: true } },
       puestoIdeal: { select: { id: true, titulo: true } },
       ocupantes: { select: { id: true, nombre: true, userId: true }, where: { activo: true } },
     },
@@ -69,6 +72,7 @@ export async function POST(req: NextRequest) {
       data: {
         nombre: b.nombre,
         area: b.area || "GENERAL",
+        subAreaId: b.subAreaId || null,
         objetivoArea: b.objetivoArea || null,
         misionPuesto: b.misionPuesto || null,
         responsabilidades: arr(b.responsabilidades),

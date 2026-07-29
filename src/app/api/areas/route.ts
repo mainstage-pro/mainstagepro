@@ -11,7 +11,10 @@ export async function GET() {
   try {
     const areas = await prisma.pTArea.findMany({
       orderBy: { orden: "asc" },
-      select: { id: true, codigo: true, nombre: true, color: true, orden: true, transversal: true },
+      select: {
+        id: true, codigo: true, nombre: true, color: true, orden: true, transversal: true,
+        subareas: { orderBy: { orden: "asc" }, select: { id: true, nombre: true } },
+      },
     });
     return NextResponse.json({ areas });
   } catch {
