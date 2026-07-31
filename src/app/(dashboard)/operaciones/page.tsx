@@ -775,6 +775,14 @@ export default function OperacionesPage() {
       if (patch.prioridad    != null) next.prioridad = patch.prioridad as string;
       if (patch.area         != null) next.area      = patch.area      as string;
       if (patch.estado       != null) next.estado    = patch.estado    as string;
+      if ("tipoOrigen"       in patch) {
+        next.tipoOrigen = patch.tipoOrigen as string;
+        // Al convertir a Tarea/Plan el server desliga la entidad de origen;
+        // reflejarlo aquí para que la tarea se reagrupe en Bandeja al instante.
+        if (patch.tipoOrigen === "TAREA" || patch.tipoOrigen === "PLAN") {
+          next.trato = null; next.proyectoEvento = null; next.proyectoInterno = null;
+        }
+      }
       if ("fecha"            in patch) next.fecha            = patch.fecha            as string | null;
       if ("asignadoAId"      in patch) {
         const uid = patch.asignadoAId as string | null;

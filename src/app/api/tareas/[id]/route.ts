@@ -139,6 +139,36 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
+  // ── Reclasificar el sistema operativo de la tarea (tipoOrigen) ────────────────
+  // Permite convertir cualquier tarea entre sistemas (ej. una tarea normal en una
+  // tarea de plan de trabajo). Operaciones agrupa por el vínculo real (FK), así que
+  // al pasar a TAREA/PLAN desligamos la entidad de origen para que la clasificación
+  // sea coherente y la tarea aterrice en Bandeja / Plan.
+  if ("tipoOrigen" in body) {
+    const TIPOS_VALIDOS = ["TAREA", "PLAN", "PROYECTO", "EVENTO", "TRATO"];
+    const nuevoTipo = typeof body.tipoOrigen === "string" ? body.tipoOrigen : null;
+    if (!nuevoTipo || !TIPOS_VALIDOS.includes(nuevoTipo)) {
+      return NextResponse.json({ error: "Tipo de tarea inválido." }, { status: 400 });
+    }
+    // Las tareas generadas por una plantilla de plan de trabajo las administra el
+    // motor del plan; no se reclasifican a mano.
+    const meta = await prisma.tarea.findUnique({ where: { id }, select: { ptTemplateId: true } });
+    if (meta?.ptTemplateId) {
+      return NextResponse.json(
+        { error: "Esta tarea la administra el plan de trabajo y no puede cambiar de tipo.", code: "TIPO_BLOQUEADO" },
+        { status: 422 },
+      );
+    }
+    data.tipoOrigen = nuevoTipo;
+    data.origenPlan = nuevoTipo === "PLAN";
+    if (nuevoTipo === "TAREA" || nuevoTipo === "PLAN") {
+      data.tratoId = null;
+      data.proyectoEventoId = null;
+      data.proyectoInternoId = null;
+      data.faseInternaId = null;
+    }
+  }
+
   // Reagendado de recurrentes: al completar, la MISMA tarea avanza a la próxima fecha
   // (no se genera una tarea nueva). Se calcula aquí y se aplica al `data` antes del update.
   let reagendar: { proximaFecha: Date; fechaAnterior: Date | null } | null = null;

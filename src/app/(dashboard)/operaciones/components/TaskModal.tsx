@@ -16,6 +16,7 @@ const TIPO_ORIGEN: Record<string, { label: string; color: string; bg: string; bo
   PLAN:     { label: "Plan",     color: "#B3985B", bg: "rgba(179,152,91,0.12)",  border: "rgba(179,152,91,0.35)" },
   PROYECTO: { label: "Proyecto", color: "#818cf8", bg: "rgba(99,102,241,0.14)",  border: "rgba(99,102,241,0.35)" },
   EVENTO:   { label: "Evento",   color: "#60a5fa", bg: "rgba(59,130,246,0.14)",  border: "rgba(59,130,246,0.35)" },
+  TRATO:    { label: "Trato",    color: "#2dd4bf", bg: "rgba(45,212,191,0.12)",  border: "rgba(45,212,191,0.35)" },
 };
 
 interface Usuario { id: string; name: string }
@@ -146,6 +147,7 @@ export default function TaskModal({
   const [saving, setSaving]           = useState(false);
   // ── Bloque 3: evidencia + ficha ──
   const [evidenciaNota, setEvidenciaNota] = useState("");
+  const [tipoOrigen, setTipoOrigen]   = useState("TAREA");
   const [fichaOpen, setFichaOpen]     = useState(false);
   const [savingNota, setSavingNota]   = useState(false);
   // ── Configuración de evidencia (editable en los 4 sistemas) ──
@@ -187,6 +189,7 @@ export default function TaskModal({
     setComentariosLocal(tarea.comentarios ?? []);
     setArchivosLocal(tarea.archivos ?? []);
     setEvidenciaNota(tarea.evidenciaNota ?? "");
+    setTipoOrigen(tarea.tipoOrigen ?? "TAREA");
     setRequiereEvidencia(!!tarea.requiereEvidencia);
     setTipoEvidencia(tarea.tipoEvidencia ?? null);
     setModuloDestino(tarea.moduloDestino ?? "");
@@ -316,6 +319,13 @@ export default function TaskModal({
     setTipoEvidencia(next);
     onSave(tarea.id, { tipoEvidencia: next });
   }
+  // ── Convertir el sistema operativo de la tarea (ej. Tarea → Plan de trabajo) ──
+  function cambiarTipoOrigen(next: string) {
+    if (!tarea || next === tipoOrigen) return;
+    setTipoOrigen(next);
+    onSave(tarea.id, { tipoOrigen: next });
+    toast.success(`Convertida a ${TIPO_ORIGEN[next]?.label ?? next}`);
+  }
   // ── Acceso directo: persistir destino + texto ──
   function guardarAcceso(destino: string, texto: string) {
     if (!tarea) return;
@@ -397,7 +407,7 @@ export default function TaskModal({
 
   // ── Bloque 3: ficha del estándar — sólo si hay al menos un dato ──
   const tieneFicha = !!(tarea?.porqueSeHace || tarea?.estandarMinimo || tarea?.siNoSeHace || tarea?.cuando);
-  const fichaReadonly = tarea?.tipoOrigen === "PLAN";
+  const fichaReadonly = tipoOrigen === "PLAN";
 
   // ── Bloque 3: acceso directo a módulo / enlace externo ──
   const moduloUrl = moduloDestino || null;
@@ -493,17 +503,39 @@ export default function TaskModal({
             {/* ── LEFT COLUMN ─────────────────────────────────────────────── */}
             <div className="md:overflow-y-auto p-5 space-y-4 border-b md:border-b-0 md:border-r border-[#141414]">
 
-              {/* ── Bloque 5: tag de tipoOrigen ── */}
-              {tarea.tipoOrigen && TIPO_ORIGEN[tarea.tipoOrigen] && (
-                <span className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-md select-none"
-                  style={{
-                    color: TIPO_ORIGEN[tarea.tipoOrigen].color,
-                    backgroundColor: TIPO_ORIGEN[tarea.tipoOrigen].bg,
-                    border: `1px solid ${TIPO_ORIGEN[tarea.tipoOrigen].border}`,
-                  }}>
-                  {TIPO_ORIGEN[tarea.tipoOrigen].label}
-                </span>
-              )}
+              {/* ── Tipo de tarea (convertible entre sistemas) ── */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                {/* Si está ligada a una entidad (Evento/Proyecto/Trato), se muestra
+                    su tipo actual; convertirla a Tarea/Plan la desliga de la entidad. */}
+                {(tipoOrigen === "EVENTO" || tipoOrigen === "PROYECTO" || tipoOrigen === "TRATO") && TIPO_ORIGEN[tipoOrigen] && (
+                  <span className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-md select-none"
+                    style={{
+                      color: TIPO_ORIGEN[tipoOrigen].color,
+                      backgroundColor: TIPO_ORIGEN[tipoOrigen].bg,
+                      border: `1px solid ${TIPO_ORIGEN[tipoOrigen].border}`,
+                    }}>
+                    {TIPO_ORIGEN[tipoOrigen].label}
+                  </span>
+                )}
+                {(["TAREA", "PLAN"] as const).map(t => {
+                  const activo = tipoOrigen === t;
+                  const cfg = TIPO_ORIGEN[t];
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => cambiarTipoOrigen(t)}
+                      className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-md transition-all"
+                      style={activo
+                        ? { color: cfg.color, backgroundColor: cfg.bg, border: `1px solid ${cfg.border}` }
+                        : { color: "#555", backgroundColor: "transparent", border: "1px solid #1f1f1f" }}
+                      title={t === "PLAN" ? "Tarea de plan de trabajo" : "Tarea normal"}
+                    >
+                      {cfg.label}
+                    </button>
+                  );
+                })}
+              </div>
 
               {/* Title */}
               <textarea
