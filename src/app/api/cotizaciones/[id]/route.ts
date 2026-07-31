@@ -318,6 +318,23 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     // El PATCH parcial (fechaEvento, lugarEvento, estado, etc.) nunca toca granTotal.
 
     const cotizacion = await prisma.cotizacion.update({ where: { id }, data });
+
+    // Propagar cambios de fecha/lugar al proyecto ligado (1:1 vía cotizacionId).
+    // El proyecto es la fuente para producción/logística, así que un cambio de
+    // fecha en la cotización debe reflejarse ahí, no quedarse solo en la venta.
+    const proyectoData: Record<string, unknown> = {};
+    if ("fechaEvento" in data) proyectoData.fechaEvento = data.fechaEvento;
+    if ("lugarEvento" in data) proyectoData.lugarEvento = data.lugarEvento;
+    if (Object.keys(proyectoData).length > 0) {
+      // fechaEvento es obligatoria en Proyecto; no propagues null (evita romper la fila).
+      if ("fechaEvento" in proyectoData && !proyectoData.fechaEvento) {
+        delete proyectoData.fechaEvento;
+      }
+      if (Object.keys(proyectoData).length > 0) {
+        await prisma.proyecto.updateMany({ where: { cotizacionId: id }, data: proyectoData });
+      }
+    }
+
     if (body.estado) {
       await logActividad(session.id, "ESTADO", "cotizacion", id, `Estado cambiado a ${body.estado}`);
 
