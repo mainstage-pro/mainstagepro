@@ -313,7 +313,6 @@ const MODULE_META: Record<string, { label?: string; desc?: string }> = {
   "rrhh-asistencia":     { desc: "Asistencia" },
   "rrhh-evaluaciones":   { desc: "Evaluaciones de desempeño" },
   "rrhh-satisfaccion":   { desc: "Satisfacción del equipo" },
-  "rrhh-capacitaciones": { desc: "Capacitaciones internas" },
   "rrhh-onboarding":     { desc: "Integración / Onboarding" },
   "rrhh-candidatos":     { desc: "Candidatos" },
   "rrhh-config":         { label: "Configuración de reclutamiento", desc: "Configuración de reclutamiento" },
@@ -409,7 +408,7 @@ export const AREA_MODULE_PRESETS: Record<string, string[]> = {
   ADMINISTRACION: [
     "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
     "finanzas-cobros", "finanzas-pagos-personal", "finanzas-movimientos", "finanzas-caja-chica", "inv-analisis",
-    "rrhh-personal", "rrhh-nomina", "rrhh-asistencia", "rrhh-evaluaciones", "rrhh-satisfaccion", "rrhh-capacitaciones", "rrhh-onboarding",
+    "rrhh-personal", "rrhh-nomina", "rrhh-asistencia", "rrhh-evaluaciones", "rrhh-satisfaccion", "rrhh-onboarding",
     "rrhh-candidatos", "rrhh-config",
     "socios-constitutivos", "tabulador",
     "verificacion",
@@ -432,7 +431,7 @@ export const AREA_MODULE_PRESETS: Record<string, string[]> = {
   ],
   RRHH: [
     "plan-trabajo", "operaciones", "calendario", "vision-semanal", "reporte-area-mensual",
-    "rrhh-personal", "rrhh-nomina", "rrhh-asistencia", "rrhh-evaluaciones", "rrhh-satisfaccion", "rrhh-capacitaciones", "rrhh-onboarding",
+    "rrhh-personal", "rrhh-nomina", "rrhh-asistencia", "rrhh-evaluaciones", "rrhh-satisfaccion", "rrhh-onboarding",
     "rrhh-candidatos", "rrhh-config",
     "tareas-rrhh",
   ],
