@@ -1,3 +1,6 @@
+import { notFound } from "next/navigation";
+import { getSession } from "@/lib/auth";
+import { OWNER_EMAIL } from "@/lib/nav";
 import { STORY_ORDER } from "@/lib/diseno/brief-tecnico/data";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +13,12 @@ const LABELS: Record<string, string> = {
   numeros: "05 · Los números del evento",
 };
 
-export default function BriefTecnicoPreview() {
+export default async function BriefTecnicoPreview() {
+  // Módulo en fase privada: solo el dueño lo ve. Se "libera" quitando este guard
+  // y el flag ownerOnly del nav.
+  const session = await getSession();
+  if (!session || session.email !== OWNER_EMAIL) notFound();
+
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", padding: "40px 32px" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>

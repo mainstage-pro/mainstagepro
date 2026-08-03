@@ -1,48 +1,57 @@
-import fs from "fs";
-import path from "path";
 import sharp from "sharp";
 import { CANVAS } from "./tokens";
 
-// Fuentes Inter (woff) empaquetadas en el repo para next/og (Satori soporta woff).
-let fontCache: { name: string; data: Buffer; weight: 400 | 700 | 900; style: "normal" }[] | null = null;
+// En Vercel el directorio /public NO está en el filesystem de la función
+// serverless: se sirve por CDN. Por eso leemos los assets por HTTP desde el
+// propio origin del request (fetch), no con fs. Todo se cachea a nivel módulo.
 
-export function interFonts() {
+export const FONT_NAME = "Inter";
+
+let fontCache: { name: string; data: ArrayBuffer; weight: 400 | 700 | 900; style: "normal" }[] | null = null;
+
+// Fuentes Inter (woff) servidas desde /public/diseno/fonts.
+export async function interFonts(origin: string) {
   if (fontCache) return fontCache;
-  const dir = path.join(process.cwd(), "src/lib/diseno/fonts");
-  const read = (f: string) => fs.readFileSync(path.join(dir, f));
+  const load = async (f: string) => {
+    const res = await fetch(`${origin}/diseno/fonts/${f}`);
+    if (!res.ok) throw new Error(`font ${f}: ${res.status}`);
+    return res.arrayBuffer();
+  };
   fontCache = [
-    { name: FONT_NAME, data: read("inter-400.woff"), weight: 400, style: "normal" },
-    { name: FONT_NAME, data: read("inter-700.woff"), weight: 700, style: "normal" },
-    { name: FONT_NAME, data: read("inter-900.woff"), weight: 900, style: "normal" },
+    { name: FONT_NAME, data: await load("inter-400.woff"), weight: 400, style: "normal" },
+    { name: FONT_NAME, data: await load("inter-700.woff"), weight: 700, style: "normal" },
+    { name: FONT_NAME, data: await load("inter-900.woff"), weight: 900, style: "normal" },
   ];
   return fontCache;
 }
 
-export const FONT_NAME = "Inter";
-
-// Lee una imagen de /public, la redimensiona al ancho del lienzo y la devuelve
-// como data URL (Satori la incrusta). El downscale evita reventar el decodificador
-// con fotos pesadas — clave cuando la foto venga de Vercel Blob a tamaño original.
 const imgCache = new Map<string, string>();
 
-export async function localImage(rel: string, maxWidth = CANVAS.W): Promise<string> {
+async function fetchBuffer(url: string): Promise<Buffer> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`asset ${url}: ${res.status}`);
+  return Buffer.from(await res.arrayBuffer());
+}
+
+// Foto de fondo desde /public: descarga, redimensiona al ancho del lienzo y
+// devuelve data URL. El downscale evita reventar el decodificador de Satori con
+// fotos pesadas (varias de /public pesan >8MB).
+export async function localImage(origin: string, rel: string, maxWidth = CANVAS.W): Promise<string> {
   const key = `${rel}@${maxWidth}`;
   const cached = imgCache.get(key);
   if (cached) return cached;
-  const p = path.join(process.cwd(), "public", rel.replace(/^\//, ""));
-  const buf = await fs.promises.readFile(p);
+  const buf = await fetchBuffer(`${origin}/${rel.replace(/^\//, "")}`);
   const url = await encodeImage(buf, maxWidth);
   imgCache.set(key, url);
   return url;
 }
 
-// Lee un PNG de /public preservando transparencia (logos, iconos).
-export async function localPng(rel: string): Promise<string> {
+// PNG desde /public preservando transparencia (logos, iconos).
+export async function localPng(origin: string, rel: string): Promise<string> {
   const key = `png:${rel}`;
   const cached = imgCache.get(key);
   if (cached) return cached;
-  const p = path.join(process.cwd(), "public", rel.replace(/^\//, ""));
-  const buf = await fs.promises.readFile(p);
+  const buf = await fetchBuffer(`${origin}/${rel.replace(/^\//, "")}`);
   const url = `data:image/png;base64,${buf.toString("base64")}`;
   imgCache.set(key, url);
   return url;

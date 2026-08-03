@@ -8,20 +8,24 @@ import { CANVAS } from "@/lib/diseno/tokens";
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const story = searchParams.get("story") ?? "portada";
-  const proyectoId = searchParams.get("proyectoId");
+  const url = new URL(req.url);
+  const origin = url.origin;
+  const story = url.searchParams.get("story") ?? "portada";
+  const proyectoId = url.searchParams.get("proyectoId");
 
   const data = proyectoId ? (await buildBriefTecnicoData(proyectoId)) ?? SUPRATERRA : SUPRATERRA;
 
-  const bg = await localImage(STORY_BG[story] ?? STORY_BG.portada);
-  const logo = await localPng("logo-white.png");
+  const [bg, logo, fonts] = await Promise.all([
+    localImage(origin, STORY_BG[story] ?? STORY_BG.portada),
+    localPng(origin, "logo-white.png"),
+    interFonts(origin),
+  ]);
 
   const element = renderStory(story, data, { bg, logo });
 
   return new ImageResponse(element, {
     width: CANVAS.W,
     height: CANVAS.H,
-    fonts: interFonts().map((f) => ({ name: f.name, data: f.data, weight: f.weight, style: f.style })),
+    fonts: fonts.map((f) => ({ name: f.name, data: f.data, weight: f.weight, style: f.style })),
   });
 }

@@ -6,7 +6,7 @@ import {
   PenTool, Megaphone, BarChart3, SlidersHorizontal, BadgeDollarSign,
   Package, TrendingUp, Settings, Speaker, BookUser, ClipboardCheck,
   ShieldCheck, ScrollText, Settings2, Building2, LayoutGrid, GraduationCap,
-  Network,
+  Network, Palette,
 } from "lucide-react";
 
 // Dueño de la plataforma. Ciertos módulos (ej. "Inicio") se muestran solo a él.
@@ -185,6 +185,7 @@ export const NAV: NavSection[] = [
     section: "Marketing",
     items: [
       { key: "mkt-contenido",   label: "Contenido",        href: "/marketing/contenido", icon: PenTool },
+      { key: "mkt-diseno",      label: "Diseño",           href: "/marketing/diseno/brief-tecnico", ownerOnly: true, icon: Palette },
       { key: "mkt-publicidad",  label: "Publicidad",        href: "/marketing/publicidad", icon: Megaphone },
       { key: "mkt-resultados",  label: "Reporte de marketing", href: "/marketing/resultados", adminOnly: true, icon: BarChart3 },
       { key: "mkt-config",      label: "Configuración",        href: "/marketing/configuracion", icon: SlidersHorizontal },
