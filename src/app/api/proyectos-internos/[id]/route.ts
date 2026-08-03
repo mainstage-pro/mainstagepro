@@ -74,6 +74,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if ("fechaInicio" in body) data.fechaInicio = body.fechaInicio ? new Date(body.fechaInicio) : null;
   if ("fechaFin"    in body) data.fechaFin    = body.fechaFin    ? new Date(body.fechaFin)    : null;
   if ("presupuesto" in body) data.presupuesto = body.presupuesto != null && body.presupuesto !== "" ? Number(body.presupuesto) : null;
+  // Sólo un admin cambia la privacidad de un proyecto.
+  if ("esPrivado" in body && session.role === "ADMIN") data.esPrivado = body.esPrivado === true;
 
   const proyecto = await prisma.proyectoInterno.update({
     where: { id },

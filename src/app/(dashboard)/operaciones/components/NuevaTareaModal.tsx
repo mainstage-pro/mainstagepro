@@ -53,6 +53,8 @@ interface Props {
   usuarios: Usuario[];
   defaultAsignadoId?: string | null;
   defaultArea?: string | null;
+  // Pre-carga la fecha (YYYY-MM-DD) — p.ej. al crear desde un día de la vista semanal.
+  fechaInicial?: string | null;
   // Proyecto de operaciones al que se adjunta la tarea (cuando se crea dentro de un proyecto).
   proyectoTareaId?: string | null;
   // Sección del proyecto (cuando se crea dentro de una sección específica).
@@ -78,7 +80,7 @@ interface Props {
 }
 
 export default function NuevaTareaModal({
-  open, onClose, usuarios, defaultAsignadoId = null, defaultArea = null,
+  open, onClose, usuarios, defaultAsignadoId = null, defaultArea = null, fechaInicial = null,
   proyectoTareaId = null, seccionId = null, tipoInicial = null, tituloInicial = null,
   proyectoEventoIdInicial = null, proyectoEventoNombre = null,
   tratoIdInicial = null, tratoNombre = null,
@@ -129,7 +131,7 @@ export default function NuevaTareaModal({
       setTitulo(tituloInicial ?? ""); setDescripcion(""); setPrioridad("MEDIA");
       setArea(defaultArea || "GENERAL"); setAsignadoId(defaultAsignadoId);
       setCoResponsables([]);
-      setFecha(""); setFechaVen(""); setRecurrencia(null); setComprobacion("");
+      setFecha(fechaInicial ?? ""); setFechaVen(""); setRecurrencia(null); setComprobacion("");
       setModuloDestino(""); setModuloTexto("");
       setProyectoEventoId(proyectoEventoIdInicial ?? null);
       setProyectoInternoId(proyectoInternoIdInicial ?? null); setFaseId(faseInicialId ?? null);
@@ -137,7 +139,7 @@ export default function NuevaTareaModal({
       setError(null); setSaving(false);
       setAdjuntos([]); setArchivosExistentes([]); setAddingUrl(false); setUrlManual(""); setNombreManual("");
     }
-  }, [open, tipoInicial, tituloInicial, defaultArea, defaultAsignadoId, proyectoEventoIdInicial, tratoIdInicial, proyectoInternoIdInicial, faseInicialId]);
+  }, [open, tipoInicial, tituloInicial, defaultArea, defaultAsignadoId, fechaInicial, proyectoEventoIdInicial, tratoIdInicial, proyectoInternoIdInicial, faseInicialId]);
 
   // Modo edición: carga la tarea y precarga los campos (corre después del reset).
   useEffect(() => {

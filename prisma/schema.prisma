@@ -54,6 +54,7 @@ model User {
   equipoNotasCreadas     EquipoNota[]           @relation("EquipoNotasCreadas")
   unidadObservaciones    UnidadObservacion[]    @relation("UnidadObservaciones")
   proyectoAccesos        ProyectoAcceso[]
+  proyectoInternoAccesos ProyectoInternoAcceso[]
   reportesFormulario     ReporteFormulario[]    @relation("ReportesFormularioUser")
 
   // Plan de Trabajo
@@ -2339,6 +2340,10 @@ model Tarea {
   verificadaPor      User?    @relation("TareasVerificadas", fields: [verificadaPorId], references: [id], onDelete: SetNull)
   verificadaAt       DateTime?
   motivoRechazo      String?  @db.Text
+  // ── No realizada: la tarea no se hizo, con motivo justificado ──
+  noRealizada           Boolean @default(false)
+  motivoNoRealizada     String?                              // NO_NECESARIA | NO_SUPE | NO_CLARA | OTRO
+  justificacionNoRealizada String? @db.Text
   porqueSeHace       String?  @db.Text
   estandarMinimo     String?  @db.Text
   siNoSeHace         String?  @db.Text
@@ -3380,6 +3385,7 @@ model ProyectoInterno {
   presupuesto     Float?
   objetivo        String?  @db.Text
   entregable      String?  @db.Text
+  esPrivado       Boolean  @default(false)   // si true, solo lo ven admin + usuarios en accesos
   backlogItemId   String?
   backlogItem     BacklogItem? @relation(fields: [backlogItemId], references: [id], onDelete: SetNull)
   createdAt       DateTime @default(now())
@@ -3387,9 +3393,22 @@ model ProyectoInterno {
 
   fases           FaseProyectoInterno[]
   tareas          Tarea[]  @relation("TareasDeProyectoInterno")
+  accesos         ProyectoInternoAcceso[]
 
   @@index([area, estado])
   @@map("proyectos_internos")
+}
+
+model ProyectoInternoAcceso {
+  id          String          @id @default(cuid())
+  proyecto    ProyectoInterno @relation(fields: [proyectoId], references: [id], onDelete: Cascade)
+  proyectoId  String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  creadoEn    DateTime        @default(now())
+
+  @@unique([proyectoId, userId])
+  @@map("proyecto_interno_acceso")
 }
 
 model FaseProyectoInterno {

@@ -17,6 +17,9 @@ interface TareaVerif {
   requiereEvidencia: boolean | null;
   tipoEvidencia: string | null;
   evidenciaNota: string | null;
+  noRealizada: boolean | null;
+  motivoNoRealizada: string | null;
+  justificacionNoRealizada: string | null;
   estandarMinimo: string | null;
   porqueSeHace: string | null;
   moduloDestino: string | null;
@@ -33,6 +36,13 @@ const AREA_LABEL: Record<string, string> = {
 const areaLabel = (a: string | null) => (a ? (AREA_LABEL[a] ?? a) : "Sin área");
 
 const ORIGEN_LABEL: Record<string, string> = { PLAN: "Plan", TAREA: "Tarea", JUNTA: "Junta" };
+
+const MOTIVO_NO_REALIZADA_LABEL: Record<string, string> = {
+  NO_NECESARIA: "No fue necesaria",
+  NO_SUPE: "No supe cómo hacerla",
+  NO_CLARA: "No fue clara",
+  OTRO: "Otro motivo",
+};
 
 function fmtFecha(iso: string | null): string {
   if (!iso) return "—";
@@ -300,7 +310,23 @@ function VerifRow({
             </div>
           )}
 
+          {/* No realizada: motivo + justificación (en vez de evidencia) */}
+          {t.noRealizada && (
+            <div className="mt-2.5 px-3 py-2.5 rounded-lg bg-amber-500/[0.06] border border-amber-500/25">
+              <p className="text-[9px] text-amber-400/90 uppercase tracking-widest font-semibold mb-1 flex items-center gap-1.5">
+                <XCircle strokeWidth={2} className="w-3 h-3" /> Tarea no realizada
+              </p>
+              <p className="text-[12px] text-amber-200/90 font-medium mb-1">
+                {t.motivoNoRealizada ? (MOTIVO_NO_REALIZADA_LABEL[t.motivoNoRealizada] ?? t.motivoNoRealizada) : "Sin motivo"}
+              </p>
+              {t.justificacionNoRealizada && (
+                <p className="text-[12px] text-[#ccc] leading-relaxed whitespace-pre-wrap">{t.justificacionNoRealizada}</p>
+              )}
+            </div>
+          )}
+
           {/* Evidencia */}
+          {!t.noRealizada && (
           <div className="mt-2.5">
             <p className="text-[9px] text-[#555] uppercase tracking-widest font-semibold mb-1.5 flex items-center gap-1">
               {t.tipoEvidencia === "FOTO" ? <Camera strokeWidth={1.75} className="w-3 h-3" />
@@ -349,6 +375,7 @@ function VerifRow({
               <p className="text-[12px] text-[#555] italic">Sin evidencia adjunta.</p>
             )}
           </div>
+          )}
         </div>
 
         {/* Acciones */}

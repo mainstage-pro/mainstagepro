@@ -67,12 +67,14 @@ type Proyecto = {
   estado: string; prioridad: string; porcentajeAvance: number;
   avance: number; tareasTotal: number; tareasHechas: number;
   fechaInicio: string | null; fechaFin: string | null;
+  esPrivado: boolean;
+  accesos?: { userId: string }[];
   lider: { id: string; name: string };
   fases: { id: string; nombre: string; completada: boolean; _count: { tareas: number } }[];
 };
 
-function ModalNuevoProyecto({ onSave, onClose }: {
-  onSave: (p: Proyecto) => void; onClose: () => void;
+function ModalNuevoProyecto({ isAdmin, onSave, onClose }: {
+  isAdmin: boolean; onSave: (p: Proyecto) => void; onClose: () => void;
 }) {
   const [usuarios, setUsuarios]   = useState<Usuario[]>([]);
   const [nombre, setNombre]       = useState("");
@@ -87,6 +89,8 @@ function ModalNuevoProyecto({ onSave, onClose }: {
   const [entregable, setEntreg]   = useState("");
   const [etapas, setEtapas]       = useState<string[]>([]);
   const [subtareas, setSubtareas] = useState<string[]>([]);
+  const [esPrivado, setPrivado]   = useState(false);
+  const [accesoIds, setAccesoIds] = useState<string[]>([]);
   const [saving, setSaving]       = useState(false);
 
   useEffect(() => {
@@ -108,6 +112,8 @@ function ModalNuevoProyecto({ onSave, onClose }: {
           presupuesto: presupuesto.trim() ? Number(presupuesto) : null,
           objetivo: objetivo.trim() || null,
           entregable: entregable.trim() || null,
+          esPrivado: isAdmin && esPrivado,
+          accesoUserIds: isAdmin && esPrivado ? accesoIds : [],
         }),
       });
       if (!res.ok) { setSaving(false); return; }
@@ -211,6 +217,39 @@ function ModalNuevoProyecto({ onSave, onClose }: {
         <DynamicList label="Etapas de planeación" placeholder="Nombre de la etapa" items={etapas} setItems={setEtapas} addLabel="+ Etapa" />
         <DynamicList label="Subtareas del proyecto" placeholder="Subtarea a cumplir" items={subtareas} setItems={setSubtareas} addLabel="+ Subtarea" />
 
+        {isAdmin && (
+          <div className="rounded-lg border border-[#1a1a1a] bg-[#0a0a0a] p-3 space-y-2.5">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" checked={esPrivado} onChange={e => setPrivado(e.target.checked)}
+                className="accent-[#B3985B]" />
+              <span className="text-[12.5px] text-white font-medium">Proyecto privado</span>
+              <span className="text-[10.5px] text-[#555]">— sólo tú y quien elijas lo ven</span>
+            </label>
+            {esPrivado && (
+              <div className="pt-1">
+                <label className={labelCls}>Con acceso</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {usuarios.map(u => {
+                    const on = accesoIds.includes(u.id);
+                    return (
+                      <button key={u.id} type="button"
+                        onClick={() => setAccesoIds(on ? accesoIds.filter(x => x !== u.id) : [...accesoIds, u.id])}
+                        className="px-2.5 py-1 rounded-md text-[11px] transition-all border"
+                        style={{
+                          background: on ? "rgba(179,152,91,0.14)" : "#111",
+                          borderColor: on ? "rgba(179,152,91,0.5)" : "#222",
+                          color: on ? "#c9a96a" : "#777",
+                        }}>
+                        {u.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center justify-between pt-1">
           <p className="text-[10.5px] text-[#444]">{puedeCrear ? "Listo para crear." : "Nombre, área y responsable requeridos."}</p>
           <div className="flex gap-2">
@@ -246,9 +285,9 @@ function fechaCorta(iso: string | null) {
   return new Date(iso).toLocaleDateString("es-MX", { day: "numeric", month: "short" });
 }
 
-function ProyectoCard({ p, dragging, onDragStart, onDragEnd, onDelete }: {
-  p: Proyecto; dragging: boolean;
-  onDragStart: () => void; onDragEnd: () => void; onDelete: (p: Proyecto) => void;
+function ProyectoCard({ p, dragging, isAdmin, onDragStart, onDragEnd, onDelete, onPrivacy }: {
+  p: Proyecto; dragging: boolean; isAdmin: boolean;
+  onDragStart: () => void; onDragEnd: () => void; onDelete: (p: Proyecto) => void; onPrivacy: (p: Proyecto) => void;
 }) {
   const prioColor = PRIO_COLOR[p.prioridad] ?? PRIO_COLOR.MEDIA;
   const fin = fechaCorta(p.fechaFin);
@@ -258,14 +297,32 @@ function ProyectoCard({ p, dragging, onDragStart, onDragEnd, onDelete }: {
         dragging ? "opacity-40 rotate-1" : ""
       }`}>
       <span className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: prioColor }} />
-      <button
-        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(p); }}
-        className="absolute top-2 right-2 z-10 p-1 rounded-md text-[#444] opacity-0 group-hover/card:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
-        title="Eliminar proyecto">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-        </svg>
-      </button>
+      <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+        {isAdmin && (
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onPrivacy(p); }}
+            className={`p-1 rounded-md transition-all ${p.esPrivado ? "text-[#c9a96a]" : "text-[#444] opacity-0 group-hover/card:opacity-100 hover:text-[#c9a96a]"} hover:bg-[#B3985B]/10`}
+            title={p.esPrivado ? "Proyecto privado — gestionar acceso" : "Hacer privado / gestionar acceso"}>
+            {p.esPrivado ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+              </svg>
+            )}
+          </button>
+        )}
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(p); }}
+          className="p-1 rounded-md text-[#444] opacity-0 group-hover/card:opacity-100 hover:text-red-400 hover:bg-red-500/10 transition-all"
+          title="Eliminar proyecto">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+          </svg>
+        </button>
+      </div>
       <Link href={`/proyectos-de-empresa/${p.id}`} className="block p-3.5 pl-4"
         onClick={e => { if (dragging) e.preventDefault(); }}>
         <p className="text-[13.5px] text-white font-medium leading-snug mb-2.5 pr-5">{p.nombre}</p>
@@ -318,10 +375,12 @@ function ProyectoCard({ p, dragging, onDragStart, onDragEnd, onDelete }: {
   );
 }
 
-function KanbanBoard({ proyectos, onMove, onDelete }: {
+function KanbanBoard({ proyectos, isAdmin, onMove, onDelete, onPrivacy }: {
   proyectos: Proyecto[];
+  isAdmin: boolean;
   onMove: (id: string, estado: string) => void;
   onDelete: (p: Proyecto) => void;
+  onPrivacy: (p: Proyecto) => void;
 }) {
   const [dragId, setDragId]   = useState<string | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
@@ -355,10 +414,10 @@ function KanbanBoard({ proyectos, onMove, onDelete }: {
             {/* Cuerpo */}
             <div className="flex-1 space-y-2.5 p-2.5 min-h-[140px]">
               {cards.map(p => (
-                <ProyectoCard key={p.id} p={p} dragging={dragId === p.id}
+                <ProyectoCard key={p.id} p={p} dragging={dragId === p.id} isAdmin={isAdmin}
                   onDragStart={() => setDragId(p.id)}
                   onDragEnd={() => { setDragId(null); setOverCol(null); }}
-                  onDelete={onDelete} />
+                  onDelete={onDelete} onPrivacy={onPrivacy} />
               ))}
               {cards.length === 0 && (
                 <div className="flex items-center justify-center h-24 rounded-xl border border-dashed border-white/[0.05]">
@@ -401,6 +460,95 @@ function ConfirmarEliminar({ proyecto, onConfirm, onClose }: {
   );
 }
 
+function PrivacidadPanel({ proyecto, onClose, onUpdated }: {
+  proyecto: Proyecto; onClose: () => void; onUpdated: (p: Partial<Proyecto> & { id: string }) => void;
+}) {
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [privado, setPrivado]   = useState(proyecto.esPrivado);
+  const [accesos, setAccesos]   = useState<string[]>((proyecto.accesos ?? []).map(a => a.userId));
+  const [saving, setSaving]     = useState(false);
+
+  useEffect(() => {
+    fetch("/api/usuarios").then(r => r.json()).then(d => setUsuarios(d.usuarios ?? [])).catch(() => {});
+  }, []);
+
+  async function togglePrivado(v: boolean) {
+    setPrivado(v);
+    await fetch(`/api/proyectos-internos/${proyecto.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ esPrivado: v }),
+    });
+    onUpdated({ id: proyecto.id, esPrivado: v });
+  }
+
+  async function toggleUsuario(userId: string) {
+    const on = accesos.includes(userId);
+    setSaving(true);
+    if (on) {
+      setAccesos(accesos.filter(x => x !== userId));
+      await fetch("/api/admin/proyectos-internos/accesos", {
+        method: "DELETE", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proyectoId: proyecto.id, userId }),
+      });
+    } else {
+      setAccesos([...accesos, userId]);
+      await fetch("/api/admin/proyectos-internos/accesos", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proyectoId: proyecto.id, userId }),
+      });
+    }
+    const next = on ? accesos.filter(x => x !== userId) : [...accesos, userId];
+    onUpdated({ id: proyecto.id, accesos: next.map(id => ({ userId: id })) });
+    setSaving(false);
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-[#111] border border-[#1a1a1a] rounded-2xl w-full max-w-md p-6 space-y-4 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div>
+          <h2 className="text-white font-semibold text-sm">Privacidad · {proyecto.nombre}</h2>
+          <p className="text-[11.5px] text-[#666] mt-0.5">Controla quién ve este proyecto y sus tareas en gestión operativa.</p>
+        </div>
+
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" checked={privado} onChange={e => togglePrivado(e.target.checked)} className="accent-[#B3985B]" />
+          <span className="text-[12.5px] text-white font-medium">Proyecto privado</span>
+        </label>
+
+        {privado && (
+          <div>
+            <label className={labelCls}>Con acceso {saving && <span className="text-[#555] normal-case">· guardando…</span>}</label>
+            <div className="flex flex-wrap gap-1.5">
+              {usuarios.map(u => {
+                const on = accesos.includes(u.id);
+                const esLider = u.id === proyecto.lider.id;
+                return (
+                  <button key={u.id} type="button" disabled={esLider}
+                    onClick={() => toggleUsuario(u.id)}
+                    title={esLider ? "El líder siempre tiene acceso" : undefined}
+                    className="px-2.5 py-1 rounded-md text-[11px] transition-all border disabled:opacity-50"
+                    style={{
+                      background: on || esLider ? "rgba(179,152,91,0.14)" : "#111",
+                      borderColor: on || esLider ? "rgba(179,152,91,0.5)" : "#222",
+                      color: on || esLider ? "#c9a96a" : "#777",
+                    }}>
+                    {u.name}{esLider ? " (líder)" : ""}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[10.5px] text-[#444] mt-2">El administrador siempre ve todos los proyectos.</p>
+          </div>
+        )}
+
+        <div className="flex justify-end pt-1">
+          <button onClick={onClose} className="px-4 py-2 bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold rounded-lg transition-colors">Listo</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProyectosInternosPage() {
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
   const [loading, setLoading]     = useState(true);
@@ -408,8 +556,11 @@ export default function ProyectosInternosPage() {
   const [showModal, setShowModal] = useState(false);
   const [vista, setVista]         = useState<"lista" | "kanban">("kanban");
   const [aEliminar, setAEliminar] = useState<Proyecto | null>(null);
+  const [isAdmin, setIsAdmin]     = useState(false);
+  const [privacidadDe, setPrivacidadDe] = useState<Proyecto | null>(null);
 
   useEffect(() => {
+    fetch("/api/auth/me").then(r => r.json()).then(d => setIsAdmin(d.user?.role === "ADMIN")).catch(() => {});
     fetch("/api/proyectos-internos").then(r => r.json()).then(d => {
       setProyectos(d.proyectos ?? []);
       setLoading(false);
@@ -477,7 +628,7 @@ export default function ProyectosInternosPage() {
 
       {/* Kanban */}
       {vista === "kanban" && !loading && (
-        <KanbanBoard proyectos={proyectos} onMove={moverProyecto} onDelete={setAEliminar} />
+        <KanbanBoard proyectos={proyectos} isAdmin={isAdmin} onMove={moverProyecto} onDelete={setAEliminar} onPrivacy={setPrivacidadDe} />
       )}
 
       {/* Lista */}
@@ -514,6 +665,11 @@ export default function ProyectosInternosPage() {
                 {/* Info */}
                 <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
                   <span className="text-sm text-white">{p.nombre}</span>
+                  {p.esPrivado && (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#c9a96a" strokeWidth="2" strokeLinecap="round" className="shrink-0">
+                      <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                  )}
                   <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${areaChipClass(p.area)}`}>
                     {areaLabel(p.area)}
                   </span>
@@ -542,8 +698,17 @@ export default function ProyectosInternosPage() {
 
       {showModal && (
         <ModalNuevoProyecto
+          isAdmin={isAdmin}
           onSave={p => { setProyectos(prev => [p, ...prev]); setShowModal(false); }}
           onClose={() => setShowModal(false)}
+        />
+      )}
+
+      {privacidadDe && (
+        <PrivacidadPanel
+          proyecto={privacidadDe}
+          onUpdated={u => setProyectos(prev => prev.map(p => p.id === u.id ? { ...p, ...u } : p))}
+          onClose={() => setPrivacidadDe(null)}
         />
       )}
 

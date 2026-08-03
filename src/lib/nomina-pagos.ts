@@ -13,6 +13,30 @@ import type { Prisma } from "@prisma/client";
 // liquidación de la CxP del técnico. Así el administrador nunca tiene que
 // crear ni corregir movimientos a mano.
 
+/**
+ * Devuelve el id de la categoría de gasto "Personal freelance", creándola si no
+ * existe. Los pagos a técnicos freelance generados desde un proyecto se
+ * categorizan aquí para que el ledger los distinga de la nómina fija.
+ */
+export async function getCategoriaPersonalFreelance(
+  tx: Prisma.TransactionClient,
+): Promise<string> {
+  const existente = await tx.categoriaFinanciera.findFirst({
+    where: { tipo: "GASTO", nombre: { equals: "Personal freelance", mode: "insensitive" } },
+    select: { id: true },
+  });
+  if (existente) return existente.id;
+  const creada = await tx.categoriaFinanciera.create({
+    data: {
+      nombre: "Personal freelance",
+      tipo: "GASTO",
+      descripcion: "Pagos a técnicos freelance generados desde proyectos",
+    },
+    select: { id: true },
+  });
+  return creada.id;
+}
+
 export interface OpcionesPagoNomina {
   fecha: Date;
   metodoPago?: string;
@@ -93,22 +117,35 @@ export async function marcarFilaNominaPagada(
     orderBy: { createdAt: "desc" },
   });
 
-  const movId = huerfano
-    ? huerfano.id
-    : (await tx.movimientoFinanciero.create({
-        data: {
-          tipo: "GASTO",
-          fecha: opts.fecha,
-          concepto,
-          monto: fila.tarifaAcordada,
-          metodoPago: opts.metodoPago || "TRANSFERENCIA",
-          cuentaOrigenId: opts.cuentaOrigenId || null,
-          referencia: opts.referencia || null,
-          notas: opts.notas || null,
-          proyectoId: fila.proyectoId,
-          creadoPor: opts.creadoPor || null,
-        },
-      })).id;
+  const categoriaFreelanceId = await getCategoriaPersonalFreelance(tx);
+
+  let movId: string;
+  if (huerfano) {
+    movId = huerfano.id;
+    // Asegurar la categoría en el movimiento reutilizado si venía sin ella.
+    if (!huerfano.categoriaId) {
+      await tx.movimientoFinanciero.update({
+        where: { id: movId },
+        data: { categoriaId: categoriaFreelanceId },
+      });
+    }
+  } else {
+    movId = (await tx.movimientoFinanciero.create({
+      data: {
+        tipo: "GASTO",
+        fecha: opts.fecha,
+        concepto,
+        monto: fila.tarifaAcordada,
+        metodoPago: opts.metodoPago || "TRANSFERENCIA",
+        cuentaOrigenId: opts.cuentaOrigenId || null,
+        referencia: opts.referencia || null,
+        notas: opts.notas || null,
+        proyectoId: fila.proyectoId,
+        categoriaId: categoriaFreelanceId,
+        creadoPor: opts.creadoPor || null,
+      },
+    })).id;
+  }
 
   await tx.proyectoPersonal.update({
     where: { id: filaId },

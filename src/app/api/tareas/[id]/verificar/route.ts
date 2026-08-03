@@ -53,6 +53,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         estadoVerificacion: "RECHAZADA",
         motivoRechazo: motivo,
         fechaCompletada: null,
+        // Reabrir limpia la marca de "no realizada" para que la tarea vuelva viva.
+        noRealizada: false,
+        motivoNoRealizada: null,
+        justificacionNoRealizada: null,
         verificadaPorId: session.id,
         verificadaAt: new Date(),
       },

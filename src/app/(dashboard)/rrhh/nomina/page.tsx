@@ -39,6 +39,21 @@ const TIPO_LABELS: Record<string, string> = {
   SEMANAL: "Semanal", QUINCENAL: "Quincenal", MENSUAL: "Mensual",
 };
 
+// Fecha del siguiente pago de nómina según el tipo de período, a partir de la
+// fecha del pago recién confirmado.
+function proximoPago(tipoPeriodo: string, desdeISO: string): Date {
+  const [y, m, d] = desdeISO.substring(0, 10).split("-").map(Number);
+  const base = new Date(y, m - 1, d);
+  if (tipoPeriodo === "SEMANAL") base.setDate(base.getDate() + 7);
+  else if (tipoPeriodo === "QUINCENAL") base.setDate(base.getDate() + 15);
+  else base.setMonth(base.getMonth() + 1); // MENSUAL
+  return base;
+}
+
+function fmtFechaCorta(dt: Date) {
+  return dt.toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+}
+
 const DEPTO_COLORS: Record<string, string> = {
   BODEGA: "bg-yellow-900/40 text-yellow-300",
   COORDINACION: "bg-blue-900/40 text-blue-300",
@@ -59,6 +74,9 @@ export default function NominaPage() {
   // Confirmar pago
   const [confirmando, setConfirmando] = useState<string | null>(null);
   const [pagoData, setPagoData] = useState<Record<string, { cuentaId: string; metodo: string; fecha: string }>>({});
+  // Pagos recién confirmados en esta sesión: el botón queda deshabilitado y se
+  // muestra la fecha del próximo pago hasta que se recargue la vista.
+  const [pagados, setPagados] = useState<Record<string, string>>({});
 
   async function load() {
     const r = await fetch("/api/rrhh/nomina", { cache: "no-store" });
@@ -96,10 +114,13 @@ export default function NominaPage() {
     setConfirmando(null);
     if (!r.ok) { const d = await r.json().catch(() => ({})); toast.error(d.error ?? "Error al confirmar pago"); return; }
     toast.success("Pago confirmado");
-    await load();
+    // Mantener la fila visible con el botón bloqueado hasta el próximo pago de
+    // nómina, en lugar de recargar y ocultarla de inmediato.
+    const prox = proximoPago(pago.tipoPeriodo, data.fecha);
+    setPagados(prev => ({ ...prev, [pago.id]: fmtFechaCorta(prox) }));
   }
 
-  const totalPendiente = pendientes.reduce((s, p) => s + p.monto, 0);
+  const totalPendiente = pendientes.filter(p => !pagados[p.id]).reduce((s, p) => s + p.monto, 0);
   const totalPagado = historial.reduce((s, p) => s + p.monto, 0);
   const mesActual = getMes();
   const nominaMes = historial.filter(p => p.periodo.startsWith(mesActual));
@@ -176,6 +197,7 @@ export default function NominaPage() {
                 {items.map(pago => {
                   const data = getPagoData(pago.id);
                   const isConfirmando = confirmando === pago.id;
+                  const proxPago = pagados[pago.id];
                   return (
                     <div key={pago.id} className="px-5 py-4">
                       {/* Fila principal */}
@@ -212,15 +234,17 @@ export default function NominaPage() {
                             className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]"
                           />
                         )}
-                        <input type="date" value={data.fecha} onChange={e => setPago(pago.id, "fecha", e.target.value)}
-                          className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B]" />
-                        <button onClick={() => confirmarPago(pago)} disabled={isConfirmando}
+                        <input type="date" value={data.fecha} onChange={e => setPago(pago.id, "fecha", e.target.value)} disabled={!!proxPago}
+                          className="bg-[#1a1a1a] border border-[#2a2a2a] text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:border-[#B3985B] disabled:opacity-40" />
+                        <button onClick={() => confirmarPago(pago)} disabled={isConfirmando || !!proxPago}
                           className={`ml-auto font-semibold text-xs px-4 py-2 rounded-lg transition-all ${
-                            isConfirmando
+                            proxPago
+                              ? "bg-[#1a1a1a] border border-green-900/40 text-green-500 cursor-not-allowed"
+                              : isConfirmando
                               ? "bg-gray-700 text-gray-400 cursor-wait"
                               : "bg-green-800 hover:bg-green-700 text-white"
                           }`}>
-                          {isConfirmando ? "Procesando..." : "✓ Confirmar pago"}
+                          {proxPago ? `✓ Pagado · próximo ${proxPago}` : isConfirmando ? "Procesando..." : "✓ Confirmar pago"}
                         </button>
                       </div>
                     </div>

@@ -663,6 +663,38 @@ export default function OperacionesPage() {
     }, 4000);
   }, [tareas, proyectoDetalle]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Marcar "no realizada": la tarea no se hizo, con motivo justificado. Pasa a
+  // verificación (estadoVerificacion PENDIENTE_VERIFICACION) y sale de la lista activa.
+  const noRealizarTarea = useCallback(async (id: string, motivo: string, justificacion: string) => {
+    const res = await fetch(`/api/tareas/${id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ noRealizada: true, motivoNoRealizada: motivo, justificacionNoRealizada: justificacion }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "No se pudo marcar como no realizada");
+      return;
+    }
+    const markDone = (arr: TareaItem[]) =>
+      arr.map(t => t.id === id ? { ...t, estado: "COMPLETADA", estadoVerificacion: "PENDIENTE_VERIFICACION" } : t);
+    setTareas(markDone);
+    setProyectoDetalle(prev => prev ? {
+      ...prev, tareas: markDone(prev.tareas),
+      secciones: prev.secciones.map(s => ({ ...s, tareas: markDone(s.tareas) })),
+    } : null);
+    toast.success("Marcada como no realizada");
+    if (!showCompletedRef.current) {
+      setTimeout(() => {
+        const remove = (arr: TareaItem[]) => arr.filter(t => t.id !== id);
+        setTareas(remove);
+        setProyectoDetalle(prev => prev ? {
+          ...prev, tareas: remove(prev.tareas),
+          secciones: prev.secciones.map(s => ({ ...s, tareas: remove(s.tareas) })),
+        } : null);
+      }, 700);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleUndo = useCallback(async () => {
     if (!undoState) return;
     clearTimeout(undoTimer.current);
@@ -1952,7 +1984,7 @@ export default function OperacionesPage() {
               </p>
               {searchResults.map(t => (
                 <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
-                  onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
+                  onComplete={completeTarea} onNoRealizada={noRealizarTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
                   onDateChange={(id, val) => saveTarea(id, { fecha: val || null })}
                   onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                   onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
@@ -2195,7 +2227,7 @@ export default function OperacionesPage() {
                     </div>
                     {group.tareas.map(t => (
                       <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
-                        onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
+                        onComplete={completeTarea} onNoRealizada={noRealizarTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
                         onDateChange={(id, val) => saveTarea(id, { fecha: val || null })}
                         onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                         onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
@@ -2220,7 +2252,7 @@ export default function OperacionesPage() {
               ) : (
                 tareasOrdenadas.map(t => (
                   <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
-                    onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
+                    onComplete={completeTarea} onNoRealizada={noRealizarTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
                     onDateChange={(id, val) => saveTarea(id, { fecha: val || null })}
                     onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                     onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
@@ -2324,7 +2356,7 @@ export default function OperacionesPage() {
                       )}
                       {group.items.map(t => (
                         <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
-                          onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
+                          onComplete={completeTarea} onNoRealizada={noRealizarTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
                           onDateChange={(id, val) => saveTarea(id, { fecha: val || null })}
                           onPriorityChange={(id, p) => saveTarea(id, { prioridad: p })}
                           onAssign={(id, userId) => saveTarea(id, { asignadoAId: userId })}
@@ -2351,7 +2383,7 @@ export default function OperacionesPage() {
                     <SectionBlock
                       key={seccion.id} seccion={seccion} proyectoId={proyectoDetalle.id}
                       selectedId={selectedId}
-                      onComplete={completeTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
+                      onComplete={completeTarea} onNoRealizada={noRealizarTarea} onSelect={setSelectedId} onDelete={setConfirmDeleteId}
                       onAddTarea={addTarea} draggingId={draggingId}
                       onNuevoRegistro={(secId) => abrirNuevaTarea({ proyectoTareaId: proyectoDetalle.id, seccionId: secId })}
                       ptrTargetSec={ptrTargetSec}
@@ -3708,7 +3740,7 @@ function NavCarpeta({ carpeta, open, vistaKey, onToggle, onSelectProyecto, onRen
 
 function SectionBlock({
   seccion, proyectoId, selectedId,
-  onComplete, onSelect, onDelete, onAddTarea, onNuevoRegistro,
+  onComplete, onNoRealizada, onSelect, onDelete, onAddTarea, onNuevoRegistro,
   onToggleCollapse, onDeleteSection, onRename, onEditDescripcion,
   draggingId, onDragStart, onDragEnd, onDrop, onDropSection,
   onPriorityChange, onAssign, onProjectChange, users, projects, viewFilter,
@@ -3725,6 +3757,7 @@ function SectionBlock({
   proyectoId: string;
   selectedId: string | null;
   onComplete: (id: string) => void;
+  onNoRealizada?: (id: string, motivo: string, justificacion: string) => void;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onAddTarea: (data: {
@@ -4019,7 +4052,7 @@ function SectionBlock({
         <>
           {(viewFilter ? viewFilter(seccion.tareas) : seccion.tareas).map(t => (
             <TaskItem key={t.id} tarea={t} isSelected={selectedId === t.id}
-              onComplete={onComplete} onSelect={onSelect} onDelete={onDelete}
+              onComplete={onComplete} onNoRealizada={onNoRealizada} onSelect={onSelect} onDelete={onDelete}
               onDateChange={onDateChange}
               onRecurrenceChange={onRecurrenceChange}
               onPriorityChange={onPriorityChange}

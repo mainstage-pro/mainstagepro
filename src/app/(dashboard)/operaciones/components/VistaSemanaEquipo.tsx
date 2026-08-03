@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import TaskModal, { type TareaDetalle } from "./TaskModal";
+import NuevaTareaModal from "./NuevaTareaModal";
 
 interface Recurso { id: string; name?: string; nombre?: string; color?: string | null }
 
@@ -34,6 +35,7 @@ interface TareaSemana {
   contexto: string | null;
   vencida: boolean;
   recurrente?: boolean;
+  orden?: number;
 }
 interface UsuarioSemana {
   id: string;
@@ -82,6 +84,8 @@ export function VistaSemanaEquipo() {
   const [inicio, setInicio] = useState<string | null>(null); // lunes de la semana
   const [miembroId, setMiembroId] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
+  // Día (YYYY-MM-DD) para el que se está creando una tarea nueva desde la vista.
+  const [agregarDia, setAgregarDia] = useState<string | null>(null);
 
   // ── Panel de tarea (mismo que Operaciones) ──
   const [selectedTask, setSelectedTask] = useState<TareaDetalle | null>(null);
@@ -152,6 +156,32 @@ export function VistaSemanaEquipo() {
     } catch {
       setData(prev);
       setAviso("No se pudo mover la tarea. Intenta de nuevo.");
+      setTimeout(() => setAviso(null), 3000);
+    }
+  };
+
+  // Reordenar un grupo de tareas dentro de un día (optimista + PATCH orden).
+  // orderedIds va en el nuevo orden deseado; asigna orden = índice a cada una.
+  const reordenarGrupo = async (orderedIds: string[]) => {
+    if (!data || !miembroId) return;
+    const prev = data;
+    const ordenMap = new Map(orderedIds.map((id, i) => [id, i]));
+    const usuarios = data.usuarios.map(u => (u.id !== miembroId ? u : {
+      ...u,
+      tareas: u.tareas.map(t => (ordenMap.has(t.id) ? { ...t, orden: ordenMap.get(t.id)! } : t)),
+    }));
+    setData({ ...data, usuarios });
+    try {
+      await Promise.all(orderedIds.map((id, i) =>
+        fetch(`/api/tareas/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orden: i }),
+        }).then(r => { if (!r.ok) throw new Error(); })
+      ));
+    } catch {
+      setData(prev);
+      setAviso("No se pudo reordenar. Intenta de nuevo.");
       setTimeout(() => setAviso(null), 3000);
     }
   };
@@ -315,9 +345,28 @@ export function VistaSemanaEquipo() {
 
       {/* Rejilla semanal del miembro seleccionado */}
       {miembro ? (
-        <SemanaMiembro dias={data.dias} miembro={miembro} onMover={moverTarea} onAbrir={abrirTarea} />
+        <SemanaMiembro
+          dias={data.dias}
+          miembro={miembro}
+          onMover={moverTarea}
+          onAbrir={abrirTarea}
+          onReordenar={reordenarGrupo}
+          onAgregar={setAgregarDia}
+        />
       ) : (
         <div className="p-8 text-sm text-[#555]">Sin miembros para mostrar.</div>
+      )}
+
+      {/* Crear tarea nueva para un día concreto del miembro seleccionado */}
+      {agregarDia && miembro && (
+        <NuevaTareaModal
+          open
+          onClose={() => setAgregarDia(null)}
+          usuarios={usuarios as { id: string; name: string }[]}
+          defaultAsignadoId={miembro.id}
+          fechaInicial={agregarDia}
+          onCreated={() => { setAgregarDia(null); cargar(inicio); }}
+        />
       )}
 
       {/* Panel de tarea, idéntico al de Operaciones (TaskModal) */}
@@ -347,20 +396,25 @@ function SemanaMiembro({
   miembro,
   onMover,
   onAbrir,
+  onReordenar,
+  onAgregar,
 }: {
   dias: string[];
   miembro: UsuarioSemana;
   onMover: (tareaId: string, dia: string) => void;
   onAbrir: (tareaId: string) => void;
+  onReordenar: (orderedIds: string[]) => void;
+  onAgregar: (dia: string) => void;
 }) {
   const [dragOver, setDragOver] = useState<string | null>(null);
   const dragId = useRef<string | null>(null);
 
-  // Agrupar tareas por día.
+  // Agrupar tareas por día, ordenadas por `orden` dentro de cada día.
   const porDia = useMemo(() => {
     const m = new Map<string, TareaSemana[]>();
     dias.forEach(d => m.set(d, []));
     for (const t of miembro.tareas) m.get(t.dia)?.push(t);
+    for (const arr of m.values()) arr.sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
     return m;
   }, [dias, miembro.tareas]);
 
@@ -427,6 +481,13 @@ function SemanaMiembro({
                 ) : (
                   TIPOS.filter(tp => tareas.some(t => t.tipo === tp.key)).map(tp => {
                     const items = tareas.filter(t => t.tipo === tp.key);
+                    const mover = (from: number, to: number) => {
+                      if (to < 0 || to >= items.length) return;
+                      const ids = items.map(x => x.id);
+                      const [m] = ids.splice(from, 1);
+                      ids.splice(to, 0, m);
+                      onReordenar(ids);
+                    };
                     return (
                       <div key={tp.key}>
                         <div className="flex items-center gap-1.5 px-1 mb-1">
@@ -435,7 +496,7 @@ function SemanaMiembro({
                           <span className="text-[10px] text-[#555] ml-auto tabular-nums">{items.length}</span>
                         </div>
                         <ul className="space-y-1">
-                          {items.map(t => (
+                          {items.map((t, idx) => (
                             <TareaCard
                               key={t.id}
                               t={t}
@@ -443,6 +504,10 @@ function SemanaMiembro({
                               onDragStart={() => { dragId.current = t.id; }}
                               onMover={onMover}
                               onAbrir={onAbrir}
+                              puedeSubir={idx > 0}
+                              puedeBajar={idx < items.length - 1}
+                              onSubir={() => mover(idx, idx - 1)}
+                              onBajar={() => mover(idx, idx + 1)}
                             />
                           ))}
                         </ul>
@@ -450,6 +515,16 @@ function SemanaMiembro({
                     );
                   })
                 )}
+              </div>
+
+              {/* Agregar tarea a este día */}
+              <div className="px-2 pb-2 pt-1">
+                <button
+                  onClick={() => onAgregar(dia)}
+                  className="w-full text-[11px] text-[#777] hover:text-white border border-dashed border-white/[0.08] hover:border-white/20 rounded-md py-1.5 transition-colors"
+                >
+                  + Agregar tarea
+                </button>
               </div>
             </div>
           );
@@ -465,12 +540,20 @@ function TareaCard({
   onDragStart,
   onMover,
   onAbrir,
+  puedeSubir,
+  puedeBajar,
+  onSubir,
+  onBajar,
 }: {
   t: TareaSemana;
   dias: string[];
   onDragStart: () => void;
   onMover: (tareaId: string, dia: string) => void;
   onAbrir: (tareaId: string) => void;
+  puedeSubir: boolean;
+  puedeBajar: boolean;
+  onSubir: () => void;
+  onBajar: () => void;
 }) {
   const [menu, setMenu] = useState(false);
   const completada = t.estado === "COMPLETADA";
@@ -513,14 +596,32 @@ function TareaCard({
             {t.estado === "EN_PROGRESO" && <span className="text-[10px] text-blue-400">En progreso</span>}
           </div>
         </div>
-        {!recurrente && (
-          <button
-            onClick={e => { e.stopPropagation(); setMenu(v => !v); }}
-            className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-[#666] hover:text-white text-xs px-1 shrink-0"
-            aria-label="Mover a otro día"
-            title="Mover a otro día"
-          >⠿</button>
-        )}
+        <div className="flex items-center gap-0.5 shrink-0">
+          <div className="flex flex-col opacity-0 group-hover:opacity-100 focus-within:opacity-100">
+            <button
+              onClick={e => { e.stopPropagation(); onSubir(); }}
+              disabled={!puedeSubir}
+              className="text-[#666] hover:text-white disabled:opacity-20 disabled:hover:text-[#666] leading-none text-[9px]"
+              aria-label="Subir"
+              title="Subir"
+            >▲</button>
+            <button
+              onClick={e => { e.stopPropagation(); onBajar(); }}
+              disabled={!puedeBajar}
+              className="text-[#666] hover:text-white disabled:opacity-20 disabled:hover:text-[#666] leading-none text-[9px]"
+              aria-label="Bajar"
+              title="Bajar"
+            >▼</button>
+          </div>
+          {!recurrente && (
+            <button
+              onClick={e => { e.stopPropagation(); setMenu(v => !v); }}
+              className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-[#666] hover:text-white text-xs px-1"
+              aria-label="Mover a otro día"
+              title="Mover a otro día"
+            >⠿</button>
+          )}
+        </div>
       </div>
 
       {menu && !recurrente && (

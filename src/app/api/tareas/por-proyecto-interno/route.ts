@@ -10,8 +10,13 @@ export async function GET() {
 
   const proyectos = await prisma.proyectoInterno.findMany({
     where: {
-      estado: { notIn: ["CANCELADO", "COMPLETADO"] },
+      // EN_PAUSA (en hold) congela el proyecto: sus tareas se ocultan de la
+      // gestión operativa hasta que se reactive en Proyectos de empresa.
+      estado: { notIn: ["CANCELADO", "COMPLETADO", "EN_PAUSA"] },
       tareas: { some: { estado: { not: "CANCELADA" }, esSeguimiento: false } },
+      ...(session.role === "ADMIN"
+        ? {}
+        : { OR: [{ esPrivado: false }, { accesos: { some: { userId: session.id } } }] }),
     },
     select: {
       id: true,

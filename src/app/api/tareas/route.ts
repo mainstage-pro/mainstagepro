@@ -93,6 +93,25 @@ export async function GET(req: NextRequest) {
     proyectosPermitidos = accesos.map((a: { proyectoId: string }) => a.proyectoId);
   }
 
+  // Visibilidad de tareas de proyectos internos (de empresa):
+  //  · EN_PAUSA (en hold) congela el proyecto → sus tareas se ocultan.
+  //  · Proyecto privado → sólo admin o usuarios con acceso lo ven.
+  // Las tareas sin proyecto interno (proyectoInternoId=null) no se ven afectadas.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const proyectoInternoCond: Record<string, any> = {
+    OR: [
+      { proyectoInternoId: null },
+      {
+        proyectoInterno: {
+          estado: { not: "EN_PAUSA" },
+          ...(session.role === "ADMIN"
+            ? {}
+            : { OR: [{ esPrivado: false }, { accesos: { some: { userId: session.id } } }] }),
+        },
+      },
+    ],
+  };
+
   const { searchParams } = new URL(req.url);
   const vista             = searchParams.get("vista");
   const proyectoId        = searchParams.get("proyectoId");
@@ -128,6 +147,7 @@ export async function GET(req: NextRequest) {
       searchWhere.AND = [{ OR: searchWhere.OR }, { OR: accessOr }];
       delete searchWhere.OR;
     }
+    searchWhere.AND = [...(searchWhere.AND ?? []), proyectoInternoCond];
     const tareas = await prisma.tarea.findMany({
       where: searchWhere,
       select: SELECT,
@@ -241,6 +261,8 @@ export async function GET(req: NextRequest) {
     where.createdAt = { lte: new Date(Date.now() - 15 * 86400000) };
   }
 
+  where.AND = [...(where.AND ?? []), proyectoInternoCond];
+
   const tareas = await prisma.tarea.findMany({
     where,
     select: SELECT,
@@ -269,6 +291,7 @@ export async function GET(req: NextRequest) {
       ];
       delete recWhere.OR;
     }
+    recWhere.AND = [...(recWhere.AND ?? []), proyectoInternoCond];
     const recurrentes = await prisma.tarea.findMany({
       where: recWhere,
       select: SELECT,

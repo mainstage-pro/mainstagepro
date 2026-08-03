@@ -20,6 +20,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const fechaPago = body.fechaPago ? new Date(body.fechaPago) : new Date();
 
+    // Categoría: Sueldos y salarios (get-or-create para no depender de un id fijo).
+    const catSueldos =
+      (await prisma.categoriaFinanciera.findFirst({
+        where: { tipo: "GASTO", nombre: { equals: "Sueldos y salarios", mode: "insensitive" } },
+        select: { id: true },
+      })) ??
+      (await prisma.categoriaFinanciera.create({
+        data: { nombre: "Sueldos y salarios", tipo: "GASTO" },
+        select: { id: true },
+      }));
+
     const movimiento = await prisma.movimientoFinanciero.create({
       data: {
         fecha: fechaPago,
@@ -29,8 +40,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         metodoPago: body.metodoPago ?? pago.metodoPago,
         cuentaOrigenId: body.cuentaOrigenId ?? pago.cuentaOrigenId ?? null,
         creadoPor: session.name,
-        // Categoría: Sueldos y salarios
-        categoriaId: "cmr9nhpiz0000opai3qpnztdb",
+        categoriaId: catSueldos.id,
       },
     });
 

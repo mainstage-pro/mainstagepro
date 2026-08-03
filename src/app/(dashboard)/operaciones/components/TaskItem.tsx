@@ -87,9 +87,17 @@ function formatFecha(iso: string): { label: string; cls: string } {
   return { label: d.toLocaleDateString("es-MX", { month: "short", day: "numeric" }), cls: "text-[#555] bg-[#0f0f0f]" };
 }
 
+const MOTIVOS_NO_REALIZADA = [
+  { key: "NO_NECESARIA", label: "No fue necesaria" },
+  { key: "NO_SUPE",      label: "No supe cómo hacerla" },
+  { key: "NO_CLARA",     label: "No fue clara" },
+  { key: "OTRO",         label: "Otro motivo" },
+];
+
 interface Props {
   tarea: TareaItem;
   onComplete:        (id: string) => void;
+  onNoRealizada?:    (id: string, motivo: string, justificacion: string) => void;
   onSelect:          (id: string) => void;
   onDelete:          (id: string) => void;
   onDateChange?:     (id: string, value: string) => void;
@@ -148,7 +156,7 @@ function ActionBtn({ title, onClick, children, active }: {
 type DropZone = "above" | "subtask" | "below" | null;
 
 export default function TaskItem({
-  tarea, onComplete, onSelect, onDelete, onDateChange, onRecurrenceChange,
+  tarea, onComplete, onNoRealizada, onSelect, onDelete, onDateChange, onRecurrenceChange,
   onPriorityChange, onAssign, onProjectChange, users = [], projects = [],
   isSelected, showProject = false, depth = 0,
   draggable: isDraggable = false,
@@ -175,6 +183,9 @@ export default function TaskItem({
   const [showAssign,    setShowAssign]    = useState(false);
   const [showProyecto,  setShowProyecto]  = useState(false);
   const [showSecciones, setShowSecciones] = useState(false);
+  const [showNoReal,   setShowNoReal]   = useState(false);
+  const [motivoNR,     setMotivoNR]     = useState("");
+  const [justifNR,     setJustifNR]     = useState("");
   const [subtaskDraggingId, setSubtaskDraggingId] = useState<string | null>(null);
   const [extractDropOver,   setExtractDropOver]   = useState(false);
   const [aboveLine,         setAboveLine]         = useState(false); // reorder strip above row
@@ -185,6 +196,7 @@ export default function TaskItem({
   const assignRef       = useRef<HTMLDivElement>(null);
   const mobileAssignRef = useRef<HTMLDivElement>(null);
   const proyectoRef     = useRef<HTMLDivElement>(null);
+  const noRealRef       = useRef<HTMLDivElement>(null);
 
   const isCompleted = tarea.estado === "COMPLETADA";
   const actionsVisible = hovered || isSelected || showMore || showAssign || showProyecto || !!editingDate;
@@ -196,7 +208,7 @@ export default function TaskItem({
   }, []);
 
   useEffect(() => {
-    if (!showMore && !showAssign && !showProyecto) return;
+    if (!showMore && !showAssign && !showProyecto && !showNoReal) return;
     function handle(e: MouseEvent) {
       if (moreRef.current && !moreRef.current.contains(e.target as Node)) setShowMore(false);
       if (
@@ -204,10 +216,11 @@ export default function TaskItem({
         (!mobileAssignRef.current || !mobileAssignRef.current.contains(e.target as Node))
       ) setShowAssign(false);
       if (proyectoRef.current && !proyectoRef.current.contains(e.target as Node)) setShowProyecto(false);
+      if (noRealRef.current && !noRealRef.current.contains(e.target as Node)) setShowNoReal(false);
     }
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
-  }, [showMore, showAssign, showProyecto]);
+  }, [showMore, showAssign, showProyecto, showNoReal]);
 
   async function toggleSubtareas(e: React.MouseEvent) {
     e.stopPropagation();
@@ -414,6 +427,58 @@ export default function TaskItem({
             <div className={`rounded-full ${prio.dot} ${prio.dotSize} transition-all duration-150`} />
           )}
         </button>
+      )}
+
+      {/* ── "No realizada": marca la tarea como no hecha con motivo justificado ── */}
+      {onNoRealizada && !isCompleted && !multiSelected && (
+        <div className="relative shrink-0 mt-[2px]" ref={noRealRef} onClick={e => e.stopPropagation()}>
+          <button type="button"
+            onClick={e => { e.stopPropagation(); setShowNoReal(v => !v); }}
+            title="Marcar como no realizada"
+            aria-label="Marcar como no realizada"
+            className={`w-5 h-5 rounded-full border-2 border-dashed flex items-center justify-center transition-all ${
+              showNoReal
+                ? "border-amber-500/70 text-amber-400 bg-amber-500/10"
+                : `border-[#2a2a2a] text-[#3a3a3a] hover:border-amber-500/50 hover:text-amber-400 ${actionsVisible ? "opacity-100" : "opacity-0"}`
+            }`}>
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+          {showNoReal && (
+            <div className="absolute left-0 top-7 z-50 w-64 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl p-3">
+              <p className="text-[11px] font-semibold text-[#ccc] mb-2">¿Por qué no se realizó?</p>
+              <div className="space-y-1 mb-2">
+                {MOTIVOS_NO_REALIZADA.map(m => (
+                  <button key={m.key} type="button" onClick={() => setMotivoNR(m.key)}
+                    className={`w-full text-left text-[12px] px-2 py-1.5 rounded-lg border transition-colors ${
+                      motivoNR === m.key
+                        ? "border-amber-500/60 bg-amber-500/10 text-amber-300"
+                        : "border-[#2a2a2a] text-[#aaa] hover:bg-[#1a1a1a]"
+                    }`}>
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+              <textarea value={justifNR} onChange={e => setJustifNR(e.target.value)}
+                placeholder="Justificación (obligatoria)…" rows={2}
+                className="w-full text-[12px] bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2 py-1.5 text-[#ddd] placeholder-[#444] resize-none focus:outline-none focus:border-amber-500/50" />
+              <div className="flex items-center gap-2 mt-2">
+                <button type="button"
+                  onClick={() => { setShowNoReal(false); setMotivoNR(""); setJustifNR(""); }}
+                  className="flex-1 text-[12px] py-1.5 rounded-lg text-[#888] hover:text-white hover:bg-[#1a1a1a] transition-colors">
+                  Cancelar
+                </button>
+                <button type="button"
+                  disabled={!motivoNR || justifNR.trim().length < 5}
+                  onClick={() => { onNoRealizada(tarea.id, motivoNR, justifNR.trim()); setShowNoReal(false); setMotivoNR(""); setJustifNR(""); }}
+                  className="flex-1 text-[12px] py-1.5 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                  Confirmar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       <div className="flex-1 min-w-0">
@@ -941,7 +1006,7 @@ export default function TaskItem({
         {loadingExp && <p className="text-[11px] text-[#333] px-4 py-1">Cargando…</p>}
         {subtareasExp.map(sub => (
           <TaskItem key={sub.id} tarea={sub} depth={(depth ?? 0) + 1} isSelected={false}
-            onComplete={onComplete} onSelect={onSelect}
+            onComplete={onComplete} onNoRealizada={onNoRealizada} onSelect={onSelect}
             onDelete={id => { onDelete(id); setSubtareasExp(prev => prev.filter(s => s.id !== id)); setSubtaskCount(c => Math.max(0, c - 1)); }}
             onDateChange={onDateChange} onRecurrenceChange={onRecurrenceChange} onPriorityChange={onPriorityChange}
             onAssign={onAssign} onProjectChange={onProjectChange}

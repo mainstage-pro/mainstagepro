@@ -44,6 +44,9 @@ const SELECT = {
   motivoRechazo: true,
   evidenciaEnviadaAt: true,
   evidenciaEnviadaCanal: true,
+  noRealizada: true,
+  motivoNoRealizada: true,
+  justificacionNoRealizada: true,
   porqueSeHace: true,
   estandarMinimo: true,
   siNoSeHace: true,
@@ -189,8 +192,36 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data.etiquetas = JSON.stringify(tags);
   }
 
+  // ── "No realizada" ─────────────────────────────────────────────────────────
+  // La tarea no se hizo, con un motivo justificado (no fue necesaria · no supe
+  // cómo · no fue clara · otro). Se cierra (sale de la lista activa) pero con la
+  // bandera `noRealizada` + motivo, y pasa a verificación para que un revisor la
+  // valide. Al reabrir la tarea se limpia la marca.
+  const marcarNoRealizada = body.noRealizada === true;
+  if (marcarNoRealizada) {
+    const MOTIVOS = ["NO_NECESARIA", "NO_SUPE", "NO_CLARA", "OTRO"];
+    const motivo = typeof body.motivoNoRealizada === "string" ? body.motivoNoRealizada : null;
+    const justif = typeof body.justificacionNoRealizada === "string" ? body.justificacionNoRealizada.trim() : "";
+    if (!motivo || !MOTIVOS.includes(motivo)) {
+      return NextResponse.json({ error: "Selecciona un motivo válido.", code: "MOTIVO_INVALIDO" }, { status: 422 });
+    }
+    if (justif.length < 5) {
+      return NextResponse.json({ error: "Escribe una justificación (mínimo 5 caracteres).", code: "JUSTIFICACION_REQUERIDA" }, { status: 422 });
+    }
+    data.estado = "COMPLETADA";
+    data.noRealizada = true;
+    data.motivoNoRealizada = motivo;
+    data.justificacionNoRealizada = justif;
+    data.estadoVerificacion = "PENDIENTE_VERIFICACION";
+  } else if (reabrir) {
+    // Reabrir limpia cualquier marca previa de "no realizada".
+    data.noRealizada = false;
+    data.motivoNoRealizada = null;
+    data.justificacionNoRealizada = null;
+  }
+
   // ── Gate de evidencia (server-side): al completar, validar según tipoEvidencia ──
-  if ("estado" in data && data.estado === "COMPLETADA" && !marcarNoNecesario) {
+  if ("estado" in data && data.estado === "COMPLETADA" && !marcarNoNecesario && !marcarNoRealizada) {
     const actual = await prisma.tarea.findUnique({
       where: { id },
       select: {

@@ -86,9 +86,27 @@ export async function GET(req: NextRequest) {
       asignadoAId: { in: userIds },
       estado: { not: 'CANCELADA' },
       parentId: null,
-      OR: [
-        { fecha: { gte: desde, lt: hasta } },
-        { recurrencia: { not: null } },
+      AND: [
+        {
+          OR: [
+            { fecha: { gte: desde, lt: hasta } },
+            { recurrencia: { not: null } },
+          ],
+        },
+        // Proyectos internos EN_PAUSA (en hold) o privados sin acceso → ocultos.
+        {
+          OR: [
+            { proyectoInternoId: null },
+            {
+              proyectoInterno: {
+                estado: { not: 'EN_PAUSA' },
+                ...(isAdmin
+                  ? {}
+                  : { OR: [{ esPrivado: false }, { accesos: { some: { userId: session.id } } }] }),
+              },
+            },
+          ],
+        },
       ],
     },
     select: {
@@ -100,6 +118,7 @@ export async function GET(req: NextRequest) {
       fecha: true,
       fechaVencimiento: true,
       recurrencia: true,
+      orden: true,
       asignadoAId: true,
       proyectoTarea: { select: { nombre: true } },
       proyectoEvento: { select: { nombre: true } },
@@ -121,6 +140,7 @@ export async function GET(req: NextRequest) {
     contexto: string | null
     vencida: boolean
     recurrente: boolean
+    orden: number
   }
 
   // Parsea el JSON de recurrencia a config; null si no es una recurrencia válida.
@@ -164,6 +184,7 @@ export async function GET(req: NextRequest) {
       estado: t.estado,
       tipo,
       contexto,
+      orden: t.orden ?? 0,
     }
 
     const cfg = parseCfg(t.recurrencia)
@@ -193,6 +214,8 @@ export async function GET(req: NextRequest) {
   const usuarios = users
     .map(u => {
       const tareasU = porUsuario.get(u.id)!
+      // Orden manual dentro de cada día (menor `orden` primero); desempata por título.
+      tareasU.sort((a, b) => (a.orden - b.orden) || a.titulo.localeCompare(b.titulo))
       const pendientes = tareasU.filter(t => t.estado !== 'COMPLETADA').length
       return { id: u.id, name: u.name, area: u.area, total: pendientes, tareas: tareasU }
     })
