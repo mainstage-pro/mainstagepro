@@ -22,3 +22,11 @@ export async function buildBriefTecnicoData(proyectoId: string): Promise<BriefTe
   cache.set(proyectoId, { data, ts: Date.now() });
   return data;
 }
+
+// Solo la estructura determinista (sin IA): sirve para que la página de preview
+// sepa la lista de slides (incluidos los dinámicos de equipo) sin gastar en IA.
+export async function buildBriefStructure(proyectoId: string): Promise<BriefTecnicoData | null> {
+  const facts = await fetchProyectoFacts(proyectoId);
+  if (!facts) return null;
+  return buildDraft(facts);
+}

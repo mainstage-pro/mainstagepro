@@ -2,19 +2,12 @@ import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { OWNER_EMAIL } from "@/lib/nav";
 import { prisma } from "@/lib/prisma";
-import { STORY_ORDER } from "@/lib/diseno/brief-tecnico/data";
+import { SUPRATERRA, briefSlides } from "@/lib/diseno/brief-tecnico/data";
+import { buildBriefStructure } from "@/lib/diseno/brief-tecnico/build";
 
 export const dynamic = "force-dynamic";
 
 const GOLD = "#B3985B";
-
-const LABELS: Record<string, string> = {
-  portada: "01 · Portada",
-  brief: "02 · Brief técnico",
-  audio: "03 · Audio y microfonía",
-  video: "04 · Video y pantalla",
-  numeros: "05 · Los números del evento",
-};
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const fechaCorta = (d: Date) => `${d.getUTCDate()} ${MESES[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
@@ -50,6 +43,15 @@ export default async function BriefTecnicoPreview({
   const tituloEvento = seleccionado
     ? `${seleccionado.nombre}`
     : "Muestra (Expo Supraterra)";
+
+  // La lista de slides es DINÁMICA: los slides de equipo dependen de las
+  // categorías reales del evento. Se arma la estructura (sin IA) para saber
+  // cuántos slides pintar y con qué etiqueta.
+  const data = seleccionado ? (await buildBriefStructure(seleccionado.id)) ?? SUPRATERRA : SUPRATERRA;
+  const slides = briefSlides(data).map((s, i) => ({
+    ...s,
+    numero: `${String(i + 1).padStart(2, "0")} · ${s.label}`,
+  }));
 
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", padding: "40px 32px" }}>
@@ -113,20 +115,20 @@ export default async function BriefTecnicoPreview({
         </form>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 28 }}>
-          {STORY_ORDER.map((story) => {
-            const src = `/api/diseno/render?template=brief-tecnico&slide=${story}${qs}`;
+          {slides.map((story) => {
+            const src = `/api/diseno/render?template=brief-tecnico&slide=${story.id}${qs}`;
             return (
-              <div key={story} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div key={story.id} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <img
                   src={src}
-                  alt={LABELS[story]}
+                  alt={story.numero}
                   style={{ width: "100%", borderRadius: 14, border: "1px solid rgba(179,152,91,0.25)", display: "block" }}
                 />
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ color: "#cfc7b6", fontSize: 14, fontWeight: 600 }}>{LABELS[story]}</span>
+                  <span style={{ color: "#cfc7b6", fontSize: 14, fontWeight: 600 }}>{story.numero}</span>
                   <a
                     href={src}
-                    download={`brief-${seleccionado?.numeroProyecto ?? "muestra"}-${story}.png`}
+                    download={`brief-${seleccionado?.numeroProyecto ?? "muestra"}-${story.id}.png`}
                     style={{
                       color: "#0a0a0a",
                       background: GOLD,

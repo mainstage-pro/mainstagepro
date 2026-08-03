@@ -1,4 +1,4 @@
-import type { BriefTecnicoData, EquipoItem, StatItem } from "./data";
+import type { BriefTecnicoData, EquipmentSlide, EquipoItem, StatItem } from "./data";
 
 // ── Hechos crudos de un proyecto (agnósticos de Prisma) ──────────────────────
 export type EquipoFact = {
@@ -52,8 +52,75 @@ const CATEGORIA_CORTA: Record<string, string> = {
   "Corriente Eléctrica": "Energía",
 };
 
-const AUDIO_FAMILY = new Set(["Equipo de Audio", "Sistemas de Microfonía", "Consolas de Audio", "Monitoreo In-Ear"]);
 const VIDEO_FAMILY = new Set(["Pantalla / Video"]);
+
+// ── Familias de equipo → slide(s) ────────────────────────────────────────────
+// Cada familia agrupa categorías afines en un mismo slide (p. ej. audio +
+// microfonía + consola). Solo se generan slides de las familias realmente
+// presentes en el evento; si una familia trae muchos items, se parte en varios
+// slides. El orden aquí es el orden de aparición.
+type Familia = {
+  key: string;
+  cats: string[];
+  tituloGold: string;
+  tituloWhite: string;
+  label: string;
+  bg: string;
+};
+
+const FAMILIAS: Familia[] = [
+  {
+    key: "audio",
+    cats: ["Equipo de Audio", "Sistemas de Microfonía", "Consolas de Audio", "Monitoreo In-Ear"],
+    tituloGold: "AUDIO Y",
+    tituloWhite: "MICROFONÍA",
+    label: "Audio y microfonía",
+    bg: "images/presentacion/equip-speaker.jpg",
+  },
+  {
+    key: "video",
+    cats: ["Pantalla / Video"],
+    tituloGold: "VIDEO Y",
+    tituloWhite: "PANTALLA",
+    label: "Video y pantalla",
+    bg: "images/presentacion/empresariales/e-proyeccion-mural.jpg",
+  },
+  {
+    key: "iluminacion",
+    cats: ["Equipo de Iluminación", "Consolas de Iluminación"],
+    tituloGold: "DISEÑO DE",
+    tituloWhite: "ILUMINACIÓN",
+    label: "Iluminación",
+    bg: "images/presentacion/equip-light.jpg",
+  },
+  {
+    key: "rigging",
+    cats: ["Rigging y Estructuras", "Entarimado"],
+    tituloGold: "RIGGING Y",
+    tituloWhite: "ESCENARIO",
+    label: "Rigging y escenario",
+    bg: "images/presentacion/empresariales/e-carpa-led.jpg",
+  },
+  {
+    key: "energia",
+    cats: ["Corriente Eléctrica"],
+    tituloGold: "ENERGÍA Y",
+    tituloWhite: "DISTRIBUCIÓN",
+    label: "Energía y distribución",
+    bg: "images/presentacion/empresariales/e-edificio-azul.jpg",
+  },
+];
+
+const OTROS_FAMILIA: Omit<Familia, "cats"> = {
+  key: "otros",
+  tituloGold: "EQUIPO",
+  tituloWhite: "COMPLEMENTARIO",
+  label: "Equipo complementario",
+  bg: "images/presentacion/empresariales/e-auditorio.jpg",
+};
+
+// Máximo de items por slide antes de partir la familia en otro slide.
+const MAX_ITEMS_POR_SLIDE = 5;
 
 // ── Helpers de formato ───────────────────────────────────────────────────────
 function titleCase(s?: string | null): string {
@@ -148,6 +215,69 @@ function buildStats(facts: ProyectoFacts): StatItem[] {
   return stats.slice(0, 4);
 }
 
+// Footer (nota al pie) de la primera parte de cada familia. Solo con producción
+// técnica (donde hay operador de Mainstage en sitio).
+function famFooter(key: string, tipoServicio: string | null | undefined, dias: number): string[] {
+  if (tipoServicio !== "PRODUCCION_TECNICA") return [];
+  const d = `${dias} ${dias > 1 ? "días" : "día"}`;
+  switch (key) {
+    case "audio":
+      return [`Sistema operado por técnico de audio de Mainstage los ${d}`];
+    case "video":
+      return [`Operador de video presente los ${d}`];
+    case "iluminacion":
+      return [`Diseño y operación de iluminación en sitio los ${d}`];
+    case "rigging":
+      return ["Montaje y rigging certificado por Mainstage"];
+    default:
+      return [];
+  }
+}
+
+// ── Slides de equipo DINÁMICOS ───────────────────────────────────────────────
+// Toma las categorías realmente usadas en el evento, las agrupa por familia y
+// arma un slide por familia presente (partiendo en varios si trae muchos items).
+export function buildEquipos(facts: ProyectoFacts): EquipmentSlide[] {
+  const dias = facts.fechasEvento?.length || 1;
+  const slides: EquipmentSlide[] = [];
+  const cubiertas = new Set<string>();
+  let idx = 0;
+
+  const pushFamilia = (
+    fam: { key: string; tituloGold: string; tituloWhite: string; label: string; bg: string },
+    items: EquipoItem[],
+  ) => {
+    for (let i = 0; i < items.length; i += MAX_ITEMS_POR_SLIDE) {
+      const chunk = items.slice(i, i + MAX_ITEMS_POR_SLIDE);
+      const esPrimero = i === 0;
+      const varios = items.length > MAX_ITEMS_POR_SLIDE;
+      const parte = Math.floor(i / MAX_ITEMS_POR_SLIDE) + 1;
+      slides.push({
+        id: `equipo-${idx++}`,
+        tituloGold: fam.tituloGold,
+        tituloWhite: fam.tituloWhite,
+        label: varios ? `${fam.label} (${parte})` : fam.label,
+        items: chunk,
+        footer: esPrimero ? famFooter(fam.key, facts.tipoServicio, dias) : [],
+        bg: fam.bg,
+      });
+    }
+  };
+
+  for (const fam of FAMILIAS) {
+    const items = facts.equipos.filter((e) => fam.cats.includes(e.categoria));
+    if (!items.length) continue;
+    fam.cats.forEach((c) => cubiertas.add(c));
+    pushFamilia(fam, items.map(toItem));
+  }
+
+  // Cualquier categoría que no encaje en una familia conocida → "complementario".
+  const otros = facts.equipos.filter((e) => !cubiertas.has(e.categoria));
+  if (otros.length) pushFamilia(OTROS_FAMILIA, otros.map(toItem));
+
+  return slides;
+}
+
 // ── Draft determinista (verdad de los hechos, sin IA) ────────────────────────
 export function buildDraft(facts: ProyectoFacts): BriefTecnicoData {
   const titulo = splitTitulo(facts.nombre);
@@ -156,10 +286,10 @@ export function buildDraft(facts: ProyectoFacts): BriefTecnicoData {
   const servicio = facts.tipoServicio ? TIPO_SERVICIO_LABEL[facts.tipoServicio] ?? "Producción técnica" : "Producción técnica";
   const dias = facts.fechasEvento?.length || 1;
 
-  const audioItems = facts.equipos.filter((e) => AUDIO_FAMILY.has(e.categoria)).map(toItem);
-  const videoItems = facts.equipos.filter((e) => VIDEO_FAMILY.has(e.categoria)).map(toItem);
+  const equipos = buildEquipos(facts);
+  const hayVideo = facts.equipos.some((e) => VIDEO_FAMILY.has(e.categoria));
 
-  const descripcion = `${servicio} para ${tipo.toLowerCase()} en ${venue || "el venue"}, con operación durante ${dias} ${dias > 1 ? "jornadas" : "jornada"}. Audio profesional${videoItems.length ? ", pantalla LED" : ""} y equipo técnico en sitio.`;
+  const descripcion = `${servicio} para ${tipo.toLowerCase()} en ${venue || "el venue"}, con operación durante ${dias} ${dias > 1 ? "jornadas" : "jornada"}. Audio profesional${hayVideo ? ", pantalla LED" : ""} y equipo técnico en sitio.`;
 
   return {
     portada: {
@@ -176,18 +306,7 @@ export function buildDraft(facts: ProyectoFacts): BriefTecnicoData {
       cliente: facts.clienteEmpresa || facts.clienteNombre,
       servicio,
     },
-    audio: {
-      tituloGold: "AUDIO Y",
-      tituloWhite: "MICROFONÍA",
-      items: audioItems,
-      footer: [`Sistema operado por técnico de Mainstage los ${dias} ${dias > 1 ? "días" : "día"}`],
-    },
-    video: {
-      tituloGold: "VIDEO Y",
-      tituloWhite: "PANTALLA",
-      items: videoItems,
-      footer: facts.tipoServicio === "PRODUCCION_TECNICA" ? [`Operador de video presente los ${dias} ${dias > 1 ? "días" : "día"}`] : [],
-    },
+    equipos,
     numeros: {
       intro: `Esto es lo que requiere una producción técnica integral para ${tipo.toLowerCase()}.`,
       stats: buildStats(facts),

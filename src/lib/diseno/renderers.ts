@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 import { renderStory } from "./brief-tecnico/templates";
-import { STORY_BG, SUPRATERRA, type BriefTecnicoData } from "./brief-tecnico/data";
+import { briefBg, briefSlides, SUPRATERRA, type BriefTecnicoData } from "./brief-tecnico/data";
 import { buildBriefTecnicoData } from "./brief-tecnico/build";
 
 // ── Renderers (server-only) ──────────────────────────────────────────────────
@@ -12,18 +12,21 @@ export type RenderParams = { proyectoId?: string | null };
 export type TemplateRenderer = {
   // Arma los datos de la pieza (deterministas + IA). Sin proyecto usa la muestra.
   buildData: (params: RenderParams) => Promise<unknown>;
+  // Lista ORDENADA de slides (dinámica: depende de los datos ya construidos).
+  slides: (data: unknown) => { id: string; label: string }[];
   // Foto de fondo (ruta en /public) para un slide dado.
-  bgFor: (slide: string) => string;
-  // Elemento Satori para un slide dado.
-  render: (slide: string, data: unknown, assets: { bg: string; logo: string }) => ReactElement;
+  bgFor: (slide: string, data: unknown) => string;
+  // Elemento Satori para un slide dado (index = número de esquina, 1-based).
+  render: (slide: string, data: unknown, assets: { bg: string; logo: string }, index: number) => ReactElement;
 };
 
 export const RENDERERS: Record<string, TemplateRenderer> = {
   "brief-tecnico": {
     buildData: async ({ proyectoId }) =>
       proyectoId ? (await buildBriefTecnicoData(proyectoId)) ?? SUPRATERRA : SUPRATERRA,
-    bgFor: (slide) => STORY_BG[slide] ?? STORY_BG.portada,
-    render: (slide, data, assets) => renderStory(slide, data as BriefTecnicoData, assets),
+    slides: (data) => briefSlides(data as BriefTecnicoData),
+    bgFor: (slide, data) => briefBg(data as BriefTecnicoData, slide),
+    render: (slide, data, assets, index) => renderStory(slide, data as BriefTecnicoData, assets, index),
   },
 };
 

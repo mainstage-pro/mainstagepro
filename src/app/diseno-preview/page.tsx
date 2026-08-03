@@ -1,16 +1,14 @@
-import { STORY_ORDER } from "@/lib/diseno/brief-tecnico/data";
+import { SUPRATERRA, briefSlides } from "@/lib/diseno/brief-tecnico/data";
 
 export const dynamic = "force-dynamic";
 
 // Vista previa PÚBLICA del PoC (no toca BD ni sesión). Solo para validar el
-// diseño mientras el módulo no está cableado a producción.
-const LABELS: Record<string, string> = {
-  portada: "01 · Portada",
-  brief: "02 · Brief técnico",
-  audio: "03 · Audio y microfonía",
-  video: "04 · Video y pantalla",
-  numeros: "05 · Los números del evento",
-};
+// diseño mientras el módulo no está cableado a producción. Usa la muestra para
+// las etiquetas de slides.
+const SLIDES = briefSlides(SUPRATERRA).map((s, i) => ({
+  ...s,
+  numero: `${String(i + 1).padStart(2, "0")} · ${s.label}`,
+}));
 
 export default async function DisenoPreview({ searchParams }: { searchParams: Promise<{ proyectoId?: string }> }) {
   const { proyectoId } = await searchParams;
@@ -26,20 +24,20 @@ export default async function DisenoPreview({ searchParams }: { searchParams: Pr
         </p>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 28 }}>
-          {STORY_ORDER.map((story) => {
-            const src = `/api/diseno/brief-tecnico?story=${story}${qs}`;
+          {SLIDES.map((story) => {
+            const src = `/api/diseno/brief-tecnico?story=${story.id}${qs}`;
             return (
-              <div key={story} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div key={story.id} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <img
                   src={src}
-                  alt={LABELS[story]}
+                  alt={story.numero}
                   style={{ width: "100%", borderRadius: 14, border: "1px solid rgba(179,152,91,0.25)", display: "block" }}
                 />
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ color: "#cfc7b6", fontSize: 14, fontWeight: 600 }}>{LABELS[story]}</span>
+                  <span style={{ color: "#cfc7b6", fontSize: 14, fontWeight: 600 }}>{story.numero}</span>
                   <a
                     href={src}
-                    download={`brief-tecnico-${story}.png`}
+                    download={`brief-tecnico-${story.id}.png`}
                     style={{
                       color: "#0a0a0a",
                       background: "#B3985B",

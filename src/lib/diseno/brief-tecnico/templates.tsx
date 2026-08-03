@@ -344,20 +344,17 @@ function splitBold(text: string, bolds: string[]): { t: string; bold?: boolean }
   return text.split(" ").map((w) => ({ t: w, bold: boldSet.has(w.toLowerCase().replace(/[.,]/g, "")) }));
 }
 
-export function renderStory(id: string, d: BriefTecnicoData, assets: { bg: string; logo: string }): React.ReactElement {
-  const opts = (index: number, scrim: string): FrameOpts => ({ bg: assets.bg, scrim, index });
-  switch (id) {
-    case "portada":
-      return <Portada d={d} opts={opts(1, SCRIM.soft)} logo={assets.logo} />;
-    case "brief":
-      return <Brief d={d} opts={opts(2, SCRIM.medium)} />;
-    case "audio":
-      return <EquipmentStory block={d.audio} opts={opts(3, SCRIM.strong)} />;
-    case "video":
-      return <EquipmentStory block={d.video} opts={opts(4, SCRIM.strong)} />;
-    case "numeros":
-      return <Numeros d={d} opts={opts(5, SCRIM.strong)} />;
-    default:
-      return <Portada d={d} opts={opts(1, SCRIM.soft)} logo={assets.logo} />;
-  }
+export function renderStory(
+  id: string,
+  d: BriefTecnicoData,
+  assets: { bg: string; logo: string },
+  index: number,
+): React.ReactElement {
+  const opts = (scrim: string): FrameOpts => ({ bg: assets.bg, scrim, index });
+  if (id === "portada") return <Portada d={d} opts={opts(SCRIM.soft)} logo={assets.logo} />;
+  if (id === "brief") return <Brief d={d} opts={opts(SCRIM.medium)} />;
+  if (id === "numeros") return <Numeros d={d} opts={opts(SCRIM.strong)} />;
+  const eq = d.equipos.find((e) => e.id === id);
+  if (eq) return <EquipmentStory block={eq} opts={opts(SCRIM.strong)} />;
+  return <Portada d={d} opts={opts(SCRIM.soft)} logo={assets.logo} />;
 }

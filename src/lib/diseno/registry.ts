@@ -32,8 +32,7 @@ export type DesignTemplateMeta = {
 const BRIEF_LABELS: Record<string, string> = {
   portada: "Portada",
   brief: "Brief técnico",
-  audio: "Audio y microfonía",
-  video: "Video y pantalla",
+  equipos: "Equipo por categoría (dinámico)",
   numeros: "Los números del evento",
 };
 
