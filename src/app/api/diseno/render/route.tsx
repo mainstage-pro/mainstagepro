@@ -8,5 +8,6 @@ export async function GET(req: Request) {
   const slide = url.searchParams.get("slide") ?? url.searchParams.get("story");
   return renderDesign(url.origin, url.searchParams.get("template"), slide, {
     proyectoId: url.searchParams.get("proyectoId"),
+    disenoId: url.searchParams.get("disenoId"),
   });
 }

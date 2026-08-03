@@ -40,7 +40,9 @@ export async function localImage(origin: string, rel: string, maxWidth = CANVAS.
   const key = `${rel}@${maxWidth}`;
   const cached = imgCache.get(key);
   if (cached) return cached;
-  const buf = await fetchBuffer(`${origin}/${rel.replace(/^\//, "")}`);
+  // Acepta rutas de /public (relativas) o URLs absolutas (fotos en Vercel Blob).
+  const src = /^https?:\/\//.test(rel) ? rel : `${origin}/${rel.replace(/^\//, "")}`;
+  const buf = await fetchBuffer(src);
   const url = await encodeImage(buf, maxWidth);
   imgCache.set(key, url);
   return url;

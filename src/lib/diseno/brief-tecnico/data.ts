@@ -127,6 +127,49 @@ export function briefIndex(d: BriefTecnicoData, slide: string): number {
   return i >= 0 ? i + 1 : 1;
 }
 
+// Campos editables por el usuario, agrupados por slide (para el editor). La ruta
+// (path) apunta al campo dentro de BriefTecnicoData; el render aplica overrides.
+import type { EditableField } from "../overrides";
+
+export function briefEditableFields(d: BriefTecnicoData): EditableField[] {
+  const f: EditableField[] = [];
+  const add = (path: string, label: string, slideId: string, slideLabel: string, kind: EditableField["kind"] = "text") =>
+    f.push({ path, label, slideId, slideLabel, kind });
+
+  add("portada.kicker", "Kicker", "portada", "Portada");
+  add("portada.tituloGold", "Título (dorado)", "portada", "Portada");
+  add("portada.tituloWhite", "Título (blanco)", "portada", "Portada");
+  add("portada.lugar", "Lugar", "portada", "Portada");
+  add("portada.fechas", "Fechas", "portada", "Portada");
+
+  add("brief.descripcion", "Descripción", "brief", "Brief técnico", "textarea");
+  add("brief.venue", "Venue", "brief", "Brief técnico");
+  add("brief.tipo", "Tipo", "brief", "Brief técnico");
+  add("brief.cliente", "Cliente", "brief", "Brief técnico");
+  add("brief.servicio", "Servicio", "brief", "Brief técnico");
+
+  d.equipos.forEach((eq, i) => {
+    add(`equipos.${i}.tituloGold`, "Título (dorado)", eq.id, eq.label);
+    add(`equipos.${i}.tituloWhite`, "Título (blanco)", eq.id, eq.label);
+    eq.items.forEach((_, j) => {
+      add(`equipos.${i}.items.${j}.nombre`, `Item ${j + 1} · nombre`, eq.id, eq.label);
+      add(`equipos.${i}.items.${j}.sub`, `Item ${j + 1} · detalle`, eq.id, eq.label);
+      add(`equipos.${i}.items.${j}.cant`, `Item ${j + 1} · cantidad`, eq.id, eq.label);
+    });
+    add(`equipos.${i}.footer`, "Nota al pie (una por línea)", eq.id, eq.label, "lines");
+  });
+
+  add("numeros.intro", "Intro", "numeros", "Los números del evento", "textarea");
+  d.numeros.stats.forEach((_, i) => {
+    add(`numeros.stats.${i}.n`, `Dato ${i + 1} · número`, "numeros", "Los números del evento");
+    add(`numeros.stats.${i}.label`, `Dato ${i + 1} · etiqueta`, "numeros", "Los números del evento");
+  });
+  add("numeros.cierreNormal", "Cierre (línea 1)", "numeros", "Los números del evento");
+  add("numeros.cierreBold", "Cierre (línea 2, negrita)", "numeros", "Los números del evento");
+
+  return f;
+}
+
 // Lista conceptual estática (solo para la tarjeta del hub; los slides de equipo
 // reales dependen del evento).
 export const STORY_ORDER = ["portada", "brief", "equipos", "numeros"] as const;

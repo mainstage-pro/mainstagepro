@@ -53,6 +53,15 @@ export default async function BriefTecnicoPreview({
     numero: `${String(i + 1).padStart(2, "0")} · ${s.label}`,
   }));
 
+  // Diseños guardados de este evento (o de la muestra si no hay evento).
+  const guardados = await prisma.disenoGuardado.findMany({
+    where: { template: "brief-tecnico", proyectoId: seleccionado ? seleccionado.id : null },
+    orderBy: { updatedAt: "desc" },
+    take: 50,
+  });
+  const editorHref = `/marketing/diseno/brief-tecnico/editor${seleccionado ? `?proyectoId=${encodeURIComponent(seleccionado.id)}` : ""}`;
+  const fmtFecha = (d: Date) => `${d.getUTCDate()} ${MESES[d.getUTCMonth()]}`;
+
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", padding: "40px 32px" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
@@ -112,7 +121,57 @@ export default async function BriefTecnicoPreview({
               Limpiar
             </a>
           )}
+          <a
+            href={editorHref}
+            style={{
+              color: GOLD,
+              background: "transparent",
+              border: `1px solid ${GOLD}`,
+              fontSize: 14,
+              fontWeight: 700,
+              padding: "9px 18px",
+              borderRadius: 10,
+              textDecoration: "none",
+              marginLeft: "auto",
+            }}
+          >
+            + Editar y guardar diseño
+          </a>
         </form>
+
+        {/* Diseños guardados de este evento */}
+        {guardados.length > 0 && (
+          <div style={{ marginBottom: 36 }}>
+            <div style={{ color: GOLD, fontSize: 12, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginBottom: 14 }}>
+              Diseños guardados
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+              {guardados.map((g) => (
+                <a
+                  key={g.id}
+                  href={`/marketing/diseno/brief-tecnico/editor?disenoId=${g.id}`}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                    background: "#141210",
+                    border: "1px solid rgba(179,152,91,0.28)",
+                    borderRadius: 12,
+                    padding: "12px 16px",
+                    textDecoration: "none",
+                    minWidth: 200,
+                  }}
+                >
+                  <span style={{ color: "#fff", fontSize: 14, fontWeight: 700 }}>{g.titulo}</span>
+                  <span style={{ color: "#8a8578", fontSize: 12 }}>
+                    {g.estado === "BORRADOR" ? "Borrador" : "Guardado"}
+                    {g.publicacionId ? " · calendarizado" : ""} · {fmtFecha(g.updatedAt)}
+                  </span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 28 }}>
           {slides.map((story) => {

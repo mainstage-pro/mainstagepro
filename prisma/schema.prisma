@@ -2079,6 +2079,27 @@ model Publicacion {
   @@map("publicaciones")
 }
 
+// ─── DISEÑOS GUARDADOS (módulo de diseño) ────────────────────────────────────
+// Instancia de un diseño (plantilla del registro) aplicado a un proyecto, con
+// ediciones manuales del usuario (texto y fotos) guardadas como overrides.
+// Genérico: sirve para brief-técnico y toda plantilla futura. Los overrides son
+// { texto: { "ruta.al.campo": valor }, fotos: { "slideId": url } }.
+model DisenoGuardado {
+  id            String   @id @default(cuid())
+  template      String   // id de la plantilla en el registro (ej. "brief-tecnico")
+  proyectoId    String?  // evento fuente (null = muestra)
+  titulo        String   // etiqueta legible (normalmente el nombre del evento)
+  overrides     Json     @default("{}")
+  estado        String   @default("BORRADOR") // BORRADOR | GUARDADO
+  publicacionId String?  // si ya se calendarizó, la Publicacion creada
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([template])
+  @@index([proyectoId])
+  @@map("disenos_guardados")
+}
+
 // ─── ENCUESTA SATISFACCIÓN EQUIPO ────────────────────────────────────────────
 // Los empleados/freelancers responden cómo perciben trabajar en Mainstage
 
