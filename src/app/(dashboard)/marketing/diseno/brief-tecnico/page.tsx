@@ -22,7 +22,10 @@ export default async function BriefTecnicoPreview() {
   return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", padding: "40px 32px" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <h1 style={{ color: "#fff", fontSize: 28, fontWeight: 800, letterSpacing: -0.5 }}>
+        <a href="/marketing/diseno" style={{ color: "#8a8578", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+          ← Diseño
+        </a>
+        <h1 style={{ color: "#fff", fontSize: 28, fontWeight: 800, letterSpacing: -0.5, marginTop: 10 }}>
           Brief Técnico — <span style={{ color: "#B3985B" }}>Expo Supraterra</span>
         </h1>
         <p style={{ color: "#8a8578", fontSize: 15, marginTop: 8, marginBottom: 36 }}>

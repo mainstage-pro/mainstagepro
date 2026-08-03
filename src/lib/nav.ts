@@ -185,7 +185,7 @@ export const NAV: NavSection[] = [
     section: "Marketing",
     items: [
       { key: "mkt-contenido",   label: "Contenido",        href: "/marketing/contenido", icon: PenTool },
-      { key: "mkt-diseno",      label: "Diseño",           href: "/marketing/diseno/brief-tecnico", ownerOnly: true, icon: Palette },
+      { key: "mkt-diseno",      label: "Diseño",           href: "/marketing/diseno", ownerOnly: true, icon: Palette },
       { key: "mkt-publicidad",  label: "Publicidad",        href: "/marketing/publicidad", icon: Megaphone },
       { key: "mkt-resultados",  label: "Reporte de marketing", href: "/marketing/resultados", adminOnly: true, icon: BarChart3 },
       { key: "mkt-config",      label: "Configuración",        href: "/marketing/configuracion", icon: SlidersHorizontal },
