@@ -1,35 +1,48 @@
-import { prisma } from "@/lib/prisma";
+import { neon } from "@neondatabase/serverless";
 
 // Migración lazy idempotente para columnas del hub de tareas que pueden no
-// existir todavía en la BD de producción (Neon). Patrón establecido en el repo
-// (ver ensureVendedorId en api/tratos). Se ejecuta una vez por instancia.
+// existir todavía en la BD de producción (Neon). Se ejecuta una vez por instancia.
+//
+// IMPORTANTE: el DDL se aplica con el driver HTTP de Neon (`neon()`), NO con el
+// pooler de Prisma (`prisma.$executeRawUnsafe`). El pooler de transacciones de
+// Neon no aplica DDL de forma fiable ni desde local ni desde el runtime de
+// Vercel; agregar una columna al schema y confiar en el pooler dejó columnas sin
+// crear y tumbó rutas de lectura en prod. El endpoint HTTP de Neon sí funciona.
 let ensured = false;
+
+const DDL = [
+  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "proyectoEventoId" TEXT`,
+  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "evidenciaEnviadaAt" TIMESTAMP(3)`,
+  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "evidenciaEnviadaPorId" TEXT`,
+  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "evidenciaEnviadaCanal" TEXT`,
+  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "tratoId" TEXT`,
+  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "enBandeja" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "noRealizada" BOOLEAN NOT NULL DEFAULT false`,
+  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "motivoNoRealizada" TEXT`,
+  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "justificacionNoRealizada" TEXT`,
+  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "evidenciasHistorial" TEXT`,
+  `CREATE INDEX IF NOT EXISTS "tareas_proyectoEventoId_idx" ON "tareas"("proyectoEventoId")`,
+  `CREATE INDEX IF NOT EXISTS "tareas_tratoId_idx" ON "tareas"("tratoId")`,
+  `CREATE INDEX IF NOT EXISTS "tareas_enBandeja_idx" ON "tareas"("enBandeja")`,
+];
 
 export async function ensureTareaColumns(): Promise<void> {
   if (ensured) return;
+  const raw = process.env.DATABASE_URL;
+  if (!raw) return;
+  // El driver HTTP de Neon no acepta los parámetros del pooler.
+  const url = raw
+    .replace(/[?&](pgbouncer|connection_limit)=[^&]*/g, "")
+    .replace(/\?&/, "?")
+    .replace(/\?$/, "");
   try {
-    await prisma.$executeRawUnsafe(`ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "proyectoEventoId" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "evidenciaEnviadaAt" TIMESTAMP(3)`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "evidenciaEnviadaPorId" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "evidenciaEnviadaCanal" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "tratoId" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "enBandeja" BOOLEAN NOT NULL DEFAULT false`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "noRealizada" BOOLEAN NOT NULL DEFAULT false`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "motivoNoRealizada" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "justificacionNoRealizada" TEXT`);
-    await prisma.$executeRawUnsafe(`ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "evidenciasHistorial" TEXT`);
-    await prisma.$executeRawUnsafe(
-      `CREATE INDEX IF NOT EXISTS "tareas_proyectoEventoId_idx" ON "tareas"("proyectoEventoId")`,
-    );
-    await prisma.$executeRawUnsafe(
-      `CREATE INDEX IF NOT EXISTS "tareas_tratoId_idx" ON "tareas"("tratoId")`,
-    );
-    await prisma.$executeRawUnsafe(
-      `CREATE INDEX IF NOT EXISTS "tareas_enBandeja_idx" ON "tareas"("enBandeja")`,
-    );
+    const sql = neon(url);
+    for (const stmt of DDL) {
+      await sql.query(stmt);
+    }
     ensured = true;
   } catch {
-    // Silencioso: si falla (permisos, etc.) las rutas siguen operando sobre
+    // Silencioso: si falla (permisos, red, etc.) las rutas siguen operando sobre
     // las columnas ya existentes. No debe tumbar el request.
   }
 }
