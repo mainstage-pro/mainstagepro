@@ -47,6 +47,7 @@ const SELECT = {
   noRealizada: true,
   motivoNoRealizada: true,
   justificacionNoRealizada: true,
+  evidenciasHistorial: true,
   porqueSeHace: true,
   estandarMinimo: true,
   siNoSeHace: true,
@@ -174,7 +175,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   // Reagendado de recurrentes: al completar, la MISMA tarea avanza a la próxima fecha
   // (no se genera una tarea nueva). Se calcula aquí y se aplica al `data` antes del update.
-  let reagendar: { proximaFecha: Date; fechaAnterior: Date | null } | null = null;
+  let reagendar: {
+    proximaFecha: Date;
+    fechaAnterior: Date | null;
+    // Snapshot de la evidencia de la ocurrencia que se acaba de completar; se
+    // archiva en `evidenciasHistorial` y se limpia la tarea para la siguiente.
+    historialJSON?: string;
+    archivosAEliminar?: string[];
+  } | null = null;
 
   // ── "No fue necesario" ────────────────────────────────────────────────────
   // Marca la tarea como hecha pero señalada como no-necesaria (etiqueta
@@ -228,11 +236,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         requiereEvidencia: true,
         tipoEvidencia: true,
         evidenciaNota: true,
+        evidenciasHistorial: true,
         recurrencia: true,
         fecha: true,
         asignadoAId: true,
         creadoPorId: true,
-        archivos: { select: { tipo: true } },
+        archivos: { select: { id: true, nombre: true, url: true, tipo: true } },
       },
     });
     if (!actual) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
@@ -304,7 +313,38 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           if (next <= prox) break; // sin avance: evita bucle infinito
           prox = next;
         }
-        reagendar = { proximaFecha: prox, fechaAnterior: actual.fecha };
+        // Snapshot de la evidencia de esta ocurrencia antes de limpiarla, para
+        // que quede en el historial y la próxima semana arranque en blanco.
+        const notaSnapshot = ("evidenciaNota" in data ? data.evidenciaNota : actual.evidenciaNota) as string | null;
+        const archivosSnapshot = actual.archivos.map((a) => ({ nombre: a.nombre, url: a.url, tipo: a.tipo }));
+        const tieneEvidencia = (!!notaSnapshot && notaSnapshot.trim().length > 0) || archivosSnapshot.length > 0;
+        let historialJSON: string | undefined;
+        let archivosAEliminar: string[] | undefined;
+        if (tieneEvidencia) {
+          const entrada = {
+            fechaOcurrencia: actual.fecha ? actual.fecha.toISOString() : null,
+            completadaAt: new Date().toISOString(),
+            completadaPorId: session.id,
+            completadaPor: session.name ?? null,
+            tipoEvidencia: actual.tipoEvidencia ?? null,
+            evidenciaNota: notaSnapshot ?? null,
+            archivos: archivosSnapshot,
+            estadoVerificacion: data.estadoVerificacion ?? "NO_REQUIERE",
+          };
+          let prev: unknown[] = [];
+          try {
+            const parsed = actual.evidenciasHistorial ? JSON.parse(actual.evidenciasHistorial) : [];
+            if (Array.isArray(parsed)) prev = parsed;
+          } catch { /* historial corrupto → se reinicia */ }
+          historialJSON = JSON.stringify([entrada, ...prev].slice(0, 60));
+          // Los archivos son la evidencia (FOTO/ARCHIVO): se desligan para que la
+          // siguiente ocurrencia no herede fotos viejas. Quedan preservados en el
+          // snapshot del historial por su URL.
+          if (actual.tipoEvidencia === "FOTO" || actual.tipoEvidencia === "ARCHIVO") {
+            archivosAEliminar = actual.archivos.map((a) => a.id);
+          }
+        }
+        reagendar = { proximaFecha: prox, fechaAnterior: actual.fecha, historialJSON, archivosAEliminar };
       } catch {
         // recurrencia inválida → se completa como tarea normal
       }
@@ -329,6 +369,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data.evidenciaEnviadaAt = null;
     data.evidenciaEnviadaCanal = null;
     data.motivoRechazo = null;
+    if (reagendar.historialJSON) data.evidenciasHistorial = reagendar.historialJSON;
+    if (reagendar.archivosAEliminar?.length) {
+      await prisma.tareaArchivo.deleteMany({ where: { id: { in: reagendar.archivosAEliminar } } });
+    }
   }
 
   // Al asignar/cambiar la recurrencia (fuera del flujo de completar), anclar la

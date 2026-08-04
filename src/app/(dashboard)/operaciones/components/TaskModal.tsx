@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import DatePicker from "@/components/ui/DatePicker";
 import RecurrenciaPicker from "./RecurrenciaPicker";
 import QuickAdd from "./QuickAdd";
@@ -48,6 +48,16 @@ interface Archivo {
   id: string; nombre: string; url: string; tipo: string | null; tamano: number | null;
   createdAt: string; subidoPor: { id: string; name: string } | null;
 }
+interface HistorialEvidenciaEntry {
+  fechaOcurrencia: string | null;
+  completadaAt: string;
+  completadaPorId: string | null;
+  completadaPor: string | null;
+  tipoEvidencia: string | null;
+  evidenciaNota: string | null;
+  archivos: { nombre: string; url: string; tipo: string | null }[];
+  estadoVerificacion: string;
+}
 
 export interface TareaDetalle {
   id: string; titulo: string; descripcion: string | null; prioridad: string;
@@ -71,6 +81,7 @@ export interface TareaDetalle {
   motivoRechazo?: string | null;
   evidenciaEnviadaAt?: string | null;
   evidenciaEnviadaCanal?: string | null;
+  evidenciasHistorial?: string | null;
   porqueSeHace?: string | null;
   estandarMinimo?: string | null;
   siNoSeHace?: string | null;
@@ -362,6 +373,15 @@ export default function TaskModal({
   }
 
   const isCompleted = tarea?.estado === "COMPLETADA";
+
+  // ── Historial de evidencias de ocurrencias pasadas (tareas recurrentes) ──
+  const historialEvidencias = useMemo<HistorialEvidenciaEntry[]>(() => {
+    if (!tarea?.evidenciasHistorial) return [];
+    try {
+      const arr = JSON.parse(tarea.evidenciasHistorial);
+      return Array.isArray(arr) ? arr : [];
+    } catch { return []; }
+  }, [tarea?.evidenciasHistorial]);
 
   // ── Bloque 3: evidencia — ¿está cumplido el requisito para completar? ──
   const tieneImagen = archivosLocal.some(a => (a.tipo ?? "").toLowerCase().startsWith("image/"));
@@ -751,6 +771,44 @@ export default function TaskModal({
                         ✓ Enviado {new Date(evidenciaEnviadaAt).toLocaleDateString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                       </p>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Historial de evidencias (ocurrencias pasadas de tareas recurrentes) ── */}
+              {historialEvidencias.length > 0 && (
+                <div className="border-t border-[#141414] pt-3">
+                  <p className="text-[11px] text-[#444] uppercase tracking-widest font-semibold mb-2">
+                    Historial de evidencias
+                  </p>
+                  <div className="space-y-2">
+                    {historialEvidencias.map((h, i) => (
+                      <div key={i} className="rounded-lg border border-[#1a1a1a] bg-[#0d0d0d] p-2.5">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-[11px] font-medium text-[#bbb]">
+                            {h.fechaOcurrencia
+                              ? new Date(h.fechaOcurrencia).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" })
+                              : new Date(h.completadaAt).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
+                          </span>
+                          <span className="text-[10px] text-[#555]">
+                            {h.completadaPor ?? "—"} · {new Date(h.completadaAt).toLocaleDateString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                        {h.evidenciaNota && (
+                          <p className="text-[12px] text-[#ccc] whitespace-pre-wrap">{h.evidenciaNota}</p>
+                        )}
+                        {h.archivos?.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-1.5">
+                            {h.archivos.map((a, j) => (
+                              <a key={j} href={a.url} target="_blank" rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] text-[#8ab4f8] hover:underline">
+                                <Paperclip size={11} /> {a.nombre}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

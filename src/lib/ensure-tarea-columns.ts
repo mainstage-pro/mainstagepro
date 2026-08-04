@@ -17,6 +17,7 @@ export async function ensureTareaColumns(): Promise<void> {
     await prisma.$executeRawUnsafe(`ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "noRealizada" BOOLEAN NOT NULL DEFAULT false`);
     await prisma.$executeRawUnsafe(`ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "motivoNoRealizada" TEXT`);
     await prisma.$executeRawUnsafe(`ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "justificacionNoRealizada" TEXT`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "evidenciasHistorial" TEXT`);
     await prisma.$executeRawUnsafe(
       `CREATE INDEX IF NOT EXISTS "tareas_proyectoEventoId_idx" ON "tareas"("proyectoEventoId")`,
     );

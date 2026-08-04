@@ -2365,6 +2365,10 @@ model Tarea {
   noRealizada           Boolean @default(false)
   motivoNoRealizada     String?                              // NO_NECESARIA | NO_SUPE | NO_CLARA | OTRO
   justificacionNoRealizada String? @db.Text
+  // ── Historial de evidencias de ocurrencias pasadas (tareas recurrentes) ──
+  // JSON: EvidenciaHistorialEntry[] — snapshot de la evidencia al completar cada
+  // ocurrencia, para que la siguiente recurrencia arranque con evidencia fresca.
+  evidenciasHistorial   String? @db.Text
   porqueSeHace       String?  @db.Text
   estandarMinimo     String?  @db.Text
   siNoSeHace         String?  @db.Text

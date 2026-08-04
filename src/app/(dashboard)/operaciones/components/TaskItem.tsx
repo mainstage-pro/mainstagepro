@@ -431,7 +431,10 @@ export default function TaskItem({
 
       {/* ── "No realizada": marca la tarea como no hecha con motivo justificado ── */}
       {onNoRealizada && !isCompleted && !multiSelected && (
-        <div className="relative shrink-0 mt-[2px]" ref={noRealRef} onClick={e => e.stopPropagation()}>
+        <div className="relative shrink-0 mt-[2px]" ref={noRealRef}
+          onClick={e => e.stopPropagation()}
+          onMouseDown={e => e.stopPropagation()}
+          onKeyDown={e => e.stopPropagation()}>
           <button type="button"
             onClick={e => { e.stopPropagation(); setShowNoReal(v => !v); }}
             title="Marcar como no realizada"
@@ -461,6 +464,7 @@ export default function TaskItem({
                 ))}
               </div>
               <textarea value={justifNR} onChange={e => setJustifNR(e.target.value)}
+                autoFocus
                 placeholder="Justificación (obligatoria)…" rows={2}
                 className="w-full text-[12px] bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2 py-1.5 text-[#ddd] placeholder-[#444] resize-none focus:outline-none focus:border-amber-500/50" />
               <div className="flex items-center gap-2 mt-2">
