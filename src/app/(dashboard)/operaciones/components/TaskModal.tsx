@@ -221,6 +221,16 @@ export default function TaskModal({
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  // ── Historial de evidencias de ocurrencias pasadas (tareas recurrentes) ──
+  // Debe declararse antes de cualquier return condicional (reglas de hooks).
+  const historialEvidencias = useMemo<HistorialEvidenciaEntry[]>(() => {
+    if (!tarea?.evidenciasHistorial) return [];
+    try {
+      const arr = JSON.parse(tarea.evidenciasHistorial);
+      return Array.isArray(arr) ? arr : [];
+    } catch { return []; }
+  }, [tarea?.evidenciasHistorial]);
+
   if (!tarea && !loading) return null;
 
   async function handleSave() {
@@ -373,15 +383,6 @@ export default function TaskModal({
   }
 
   const isCompleted = tarea?.estado === "COMPLETADA";
-
-  // ── Historial de evidencias de ocurrencias pasadas (tareas recurrentes) ──
-  const historialEvidencias = useMemo<HistorialEvidenciaEntry[]>(() => {
-    if (!tarea?.evidenciasHistorial) return [];
-    try {
-      const arr = JSON.parse(tarea.evidenciasHistorial);
-      return Array.isArray(arr) ? arr : [];
-    } catch { return []; }
-  }, [tarea?.evidenciasHistorial]);
 
   // ── Bloque 3: evidencia — ¿está cumplido el requisito para completar? ──
   const tieneImagen = archivosLocal.some(a => (a.tipo ?? "").toLowerCase().startsWith("image/"));
