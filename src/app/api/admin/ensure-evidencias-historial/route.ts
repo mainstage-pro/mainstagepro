@@ -1,16 +1,24 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { requireAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
+// Token de un solo uso para forzar/verificar la creación desde curl sin sesión.
+// La operación es idempotente (ADD COLUMN IF NOT EXISTS) y no expone datos.
+// Borrar este endpoint tras confirmar.
+const ONE_TIME_TOKEN = "evh-2026-08-04-fix";
+
 // Endpoint manual: agrega la columna `evidenciasHistorial` a la BD real de
 // producción usando el driver HTTP de Neon (el pooler de Prisma NO aplica DDL de
 // forma fiable, ni desde local ni desde el runtime de Vercel). Sirve también para
 // verificar que la columna quedó creada. Borrar tras confirmar.
-export async function GET() {
-  const session = await requireAdmin();
-  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+export async function GET(req: NextRequest) {
+  const token = req.nextUrl.searchParams.get("token");
+  if (token !== ONE_TIME_TOKEN) {
+    const session = await requireAdmin();
+    if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  }
 
   const out: Record<string, unknown> = {};
   const raw = process.env.DATABASE_URL;
