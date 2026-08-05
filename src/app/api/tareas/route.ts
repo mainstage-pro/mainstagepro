@@ -315,6 +315,7 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json();
   const {
+    id: idCliente,
     titulo, descripcion, prioridad, area, asignadoAId, colaboradorIds, notas, etiquetas,
     iniciativaId, proyectoTareaId, seccionId, carpetaId,
     proyectoInternoId, faseInternaId, proyectoEventoId, tratoId, esSeguimiento,
@@ -327,6 +328,14 @@ export async function POST(req: NextRequest) {
   } = body;
 
   if (!titulo?.trim()) return NextResponse.json({ error: "Título requerido" }, { status: 400 });
+
+  // Idempotencia offline: si el cliente generó el id (tarea creada sin conexión)
+  // y ya existe, devolvemos la existente en vez de duplicar al reenviar la cola.
+  const idProvisto = typeof idCliente === "string" && idCliente ? idCliente : null;
+  if (idProvisto) {
+    const existente = await prisma.tarea.findUnique({ where: { id: idProvisto }, select: SELECT });
+    if (existente) return NextResponse.json({ tarea: existente }, { status: 200 });
+  }
 
   // Co-responsables: usuarios que ven/apoyan la tarea. Excluye al responsable primario.
   const colaboradoresLimpios: string[] = Array.isArray(colaboradorIds)
@@ -358,6 +367,7 @@ export async function POST(req: NextRequest) {
 
   const tarea = await prisma.tarea.create({
     data: {
+      ...(idProvisto ? { id: idProvisto } : {}),
       titulo:          titulo.trim(),
       descripcion:     descripcion      || null,
       prioridad:       prioridad        || "MEDIA",

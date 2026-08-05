@@ -5,6 +5,7 @@ import Link from "next/link";
 import TaskItem, { type TareaItem } from "./components/TaskItem";
 import TaskModal, { type TareaDetalle } from "./components/TaskModal";
 import NuevaTareaModal from "./components/NuevaTareaModal";
+import { getPendingTareas } from "@/lib/offline-queue";
 import UndoToast, { type UndoState } from "./components/UndoToast";
 import ProyectoAccesoPanel from "./components/ProyectoAccesoPanel";
 import { VistaCapturaRapida } from "./components/VistaCapturaRapida";
@@ -451,7 +452,13 @@ export default function OperacionesPage() {
     }
     fetch(`/api/tareas?vista=${vista}`)
       .then(r => r.json())
-      .then(d => { setTareas(d.tareas ?? []); })
+      .then(async d => {
+        const base = (d.tareas ?? []) as TareaItem[];
+        // Sin conexión: fusiona las tareas creadas offline aún sin sincronizar.
+        const pend = (await getPendingTareas()) as TareaItem[];
+        const extra = pend.filter(p => !base.some(t => t.id === p.id));
+        setTareas(extra.length ? [...base, ...extra] : base);
+      })
       .catch(() => {})
       .finally(() => setLoadingMain(false));
   }, [vista, syncTrigger]); // eslint-disable-line react-hooks/exhaustive-deps

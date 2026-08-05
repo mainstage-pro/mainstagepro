@@ -9,6 +9,7 @@ import RecurrenciaInput from "./RecurrenciaInput";
 import AccesoDirectoField from "./AccesoDirectoField";
 import { Combobox } from "@/components/Combobox";
 import { AREAS, AREA_LABELS } from "@/lib/gestion";
+import { enqueueRequest } from "@/lib/offline-queue";
 
 // ── Tipos de registro (los sistemas del hub unificado) ──────────────────────────
 type TipoKey = "TAREA" | "PLAN" | "EVENTO" | "PROYECTO" | "TRATO";
@@ -341,6 +342,58 @@ export default function NuevaTareaModal({
       moduloTexto: moduloTexto || null,
       moduloDisponible: true,
     };
+    // ── Sin conexión: encolar y mostrar la tarea al instante ──────────────────
+    // Se sincroniza sola al volver la red (ver service worker + OfflineProvider).
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      if (adjuntos.length > 0) {
+        setError("Los adjuntos requieren conexión. Quítalos para guardar sin internet; podrás añadirlos al reconectar.");
+        setSaving(false);
+        return;
+      }
+      const nuevoId = "off-" + (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      const asignado = asignadoId ? (usuarios.find(u => u.id === asignadoId) ?? { id: asignadoId, name: "—" }) : null;
+      const proyOp   = proyectoSel ? (proyectos.find(p => p.id === proyectoSel) ?? null) : null;
+      const optimista = {
+        id: nuevoId,
+        titulo: titulo.trim(),
+        descripcion: descripcion.trim() || null,
+        prioridad,
+        area,
+        estado: "PENDIENTE",
+        fecha: recurrencia ? null : (fecha || null),
+        recurrencia: recurrencia || null,
+        proyectoTarea: proyOp ? { id: proyOp.id, nombre: proyOp.nombre, color: null } : null,
+        seccion: null,
+        asignadoA: asignado ? { id: asignado.id, name: asignado.name } : null,
+        colaboradores: [],
+        tipoOrigen: tipo,
+        requiereEvidencia: !!comprobacion,
+        tipoEvidencia: comprobacion || null,
+        moduloDestino: moduloDestino || null,
+        moduloTexto: moduloTexto || null,
+        moduloDisponible: true,
+        estadoVerificacion: "NO_REQUIERE",
+        _count: { subtareas: 0, comentarios: 0, archivos: 0 },
+        createdAt: new Date().toISOString(),
+      };
+      try {
+        await enqueueRequest({
+          url: "/api/tareas",
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...payload, id: nuevoId }),
+          kind: "tarea",
+          optimistic: optimista,
+        });
+        onCreated(optimista);
+        onClose();
+      } catch {
+        setError("No se pudo guardar la tarea sin conexión.");
+        setSaving(false);
+      }
+      return;
+    }
+
     try {
       const res = await fetch("/api/tareas", {
         method: "POST", headers: { "Content-Type": "application/json" },

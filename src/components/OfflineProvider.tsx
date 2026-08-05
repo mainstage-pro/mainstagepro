@@ -40,8 +40,12 @@ export function useOnlineStatus() {
       refreshQueue();
     };
 
+    // Una tarea recién encolada offline: refrescar el conteo del banner.
+    const onQueueChanged = () => refreshQueue();
+
     window.addEventListener("online",  goOnline);
     window.addEventListener("offline", goOffline);
+    window.addEventListener("msp-queue-changed", onQueueChanged);
 
     // Escuchar mensajes del Service Worker
     let swHandler: ((event: MessageEvent) => void) | null = null;
@@ -67,6 +71,7 @@ export function useOnlineStatus() {
     return () => {
       window.removeEventListener("online",  goOnline);
       window.removeEventListener("offline", goOffline);
+      window.removeEventListener("msp-queue-changed", onQueueChanged);
       if (swHandler && "serviceWorker" in navigator) {
         navigator.serviceWorker.removeEventListener("message", swHandler);
       }
