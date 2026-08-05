@@ -164,12 +164,14 @@ function MantenimientoContent() {
   const [showUmbral, setShowUmbral] = useState(false);
   const [pdfFecha, setPdfFecha] = useState("");
 
-  // Cargar umbrales guardados
+  // Cargar umbrales guardados y pre-seleccionar el día en curso para el PDF
   useEffect(() => {
     const a = Number(localStorage.getItem("mant_umbral_amarillo"));
     const r = Number(localStorage.getItem("mant_umbral_rojo"));
     if (a > 0) setUmbralAmarillo(a);
     if (r > 0) setUmbralRojo(r);
+    // Mismo criterio de "hoy" que usa el formulario al registrar (fecha por defecto)
+    setPdfFecha(new Date().toISOString().slice(0, 10));
   }, []);
 
   function updateUmbral(kind: "amarillo" | "rojo", value: number) {

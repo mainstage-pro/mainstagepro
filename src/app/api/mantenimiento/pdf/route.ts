@@ -14,11 +14,14 @@ export async function GET(req: NextRequest) {
   let where: Record<string, unknown> = {};
   let diaLabel: string | null = null;
   if (fechaParam && /^\d{4}-\d{2}-\d{2}$/.test(fechaParam)) {
-    const [y, m, d] = fechaParam.split("-").map(Number);
-    const desde = new Date(y, m - 1, d, 0, 0, 0, 0);
-    const hasta = new Date(y, m - 1, d, 23, 59, 59, 999);
+    // `fecha` se guarda como new Date("YYYY-MM-DD") = medianoche UTC, así que
+    // acotamos el día en UTC para que el filtro sea correcto sin importar la
+    // zona horaria del servidor (Vercel=UTC, dev local≠UTC).
+    const desde = new Date(`${fechaParam}T00:00:00.000Z`);
+    const hasta = new Date(`${fechaParam}T23:59:59.999Z`);
     where = { fecha: { gte: desde, lte: hasta } };
-    diaLabel = desde.toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
+    const [y, m, d] = fechaParam.split("-").map(Number);
+    diaLabel = new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
   }
 
   const registros = await prisma.mantenimientoEquipo.findMany({
