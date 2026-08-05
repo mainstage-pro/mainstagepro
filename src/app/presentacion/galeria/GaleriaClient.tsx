@@ -25,6 +25,16 @@ function iconoPorSlug(slug: string): LucideIcon {
   return Sparkles;
 }
 
+// Normaliza slugs/ids a una familia estable ("musical" | "social" | "empresarial")
+// para que la vista individual case sin importar variantes (musical/musicales).
+function familiaTipo(s: string): string {
+  const x = s.toLowerCase();
+  if (x.includes("music")) return "musical";
+  if (x.includes("social")) return "social";
+  if (x.includes("empres")) return "empresarial";
+  return x;
+}
+
 // ─── Fallback (solo si la BD aún no tiene tipos con fotos) ──────────────────────
 const FALLBACK: Categoria[] = [
   {
@@ -334,10 +344,16 @@ function ThumbnailGrid({
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-export default function GaleriaClient() {
+// `soloSlug` limita la vista a un solo tipo de evento (musical/social/empresarial),
+// reutilizando la misma estructura que la galería combinada. Como ambas leen de la
+// misma fuente (`/api/tipos-evento/publico`), editar las fotos en el admin se refleja
+// automáticamente en la combinada y en las 3 individuales.
+export default function GaleriaClient({ soloSlug }: { soloSlug?: string } = {}) {
   const [active, setActive]   = useState<CatId | null>(null);
   const [lightbox, setLightbox] = useState<{ catId: CatId; idx: number } | null>(null);
-  const [categorias, setCategorias] = useState<Categoria[]>(FALLBACK);
+  const [categorias, setCategorias] = useState<Categoria[]>(
+    soloSlug ? FALLBACK.filter(c => familiaTipo(c.id) === familiaTipo(soloSlug)) : FALLBACK,
+  );
   const [heroSlides, setHeroSlides] = useState<Foto[]>([]);
   const [heroIdx, setHeroIdx] = useState(0);
   const galleryRef    = useRef<HTMLDivElement>(null);
@@ -345,7 +361,7 @@ export default function GaleriaClient() {
   // Fuente maestra: los tipos de evento configurados en Comercial. Solo caemos al
   // FALLBACK si la BD todavía no tiene ningún tipo con fotos. El orden de las fotos
   // dentro de cada categoría lo manda `orden` (arrastrar en el admin); la primera
-  // es la portada.
+  // es la portada. En vista individual (`soloSlug`) filtramos a ese único tipo.
   useEffect(() => {
     fetch("/api/tipos-evento/publico")
       .then(r => (r.ok ? r.json() : null))
@@ -363,13 +379,16 @@ export default function GaleriaClient() {
               fotos: fotos.map(f => ({ src: f.url, caption: f.caption || "" })),
             };
           });
-        if (cats.length) setCategorias(cats);
+        const visibles = soloSlug ? cats.filter(c => familiaTipo(c.id) === familiaTipo(soloSlug)) : cats;
+        if (visibles.length) setCategorias(visibles);
       })
       .catch(() => {});
-  }, []);
+  }, [soloSlug]);
 
-  // Slides del inicio (carrusel del hero). Si no hay, se usa la portada del primer tipo.
+  // Slides del inicio (carrusel del hero) SOLO en la galería combinada. En la vista
+  // individual el hero rota las fotos del propio tipo.
   useEffect(() => {
+    if (soloSlug) return;
     fetch("/api/galeria-inicio/publico")
       .then(r => (r.ok ? r.json() : null))
       .then(d => {
@@ -377,7 +396,16 @@ export default function GaleriaClient() {
         if (s.length) setHeroSlides(s);
       })
       .catch(() => {});
-  }, []);
+  }, [soloSlug]);
+
+  // Vista individual: auto-selecciona el único tipo y usa sus fotos como hero.
+  useEffect(() => {
+    if (!soloSlug) return;
+    const cat = categorias[0];
+    if (!cat) return;
+    setActive(cat.id);
+    setHeroSlides(cat.fotos.slice(0, 6));
+  }, [soloSlug, categorias]);
 
   useEffect(() => {
     if (heroSlides.length < 2) return;
@@ -386,6 +414,7 @@ export default function GaleriaClient() {
   }, [heroSlides.length]);
 
   const activeCat = categorias.find(c => c.id === active) ?? null;
+  const soloCat = soloSlug ? categorias[0] ?? null : null;
 
   function selectCat(id: CatId) {
     if (active === id) {
@@ -463,7 +492,7 @@ export default function GaleriaClient() {
         <div className="relative z-10 text-center px-6 max-w-3xl mx-auto">
           <p className="text-[#B3985B] text-xs font-medium tracking-[0.4em] uppercase mb-6"
              style={{ animation: "fadeUp 0.8s ease forwards 0.2s", opacity: 0 }}>
-            GALERÍA DE EVENTOS
+            {soloCat ? soloCat.label.toUpperCase() : "GALERÍA DE EVENTOS"}
           </p>
           <h1 className="font-bold text-white leading-tight"
               style={{
@@ -477,37 +506,41 @@ export default function GaleriaClient() {
           </h1>
           <p className="text-white/40 mt-5 text-sm"
              style={{ animation: "fadeUp 0.95s ease forwards 0.65s", opacity: 0 }}>
-            Selecciona el tipo de evento que quieres explorar.
+            {soloCat
+              ? (soloCat.sub || "Explora nuestras producciones de este tipo de evento.")
+              : "Selecciona el tipo de evento que quieres explorar."}
           </p>
         </div>
       </section>
 
-      {/* ── Category selector ── */}
-      <section className="py-16 px-6">
-        <div className="max-w-6xl mx-auto">
-          <R>
-            <p className="text-white/20 text-xs uppercase tracking-widest mb-8 text-center">
-              — Elige una categoría —
-            </p>
-          </R>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {categorias.map((cat, i) => (
-              <R key={cat.id} delay={i * 80}>
-                <CatCard
-                  cat={cat}
-                  active={active === cat.id}
-                  onClick={() => selectCat(cat.id)}
-                />
-              </R>
-            ))}
+      {/* ── Category selector (solo galería combinada) ── */}
+      {!soloSlug && (
+        <section className="py-16 px-6">
+          <div className="max-w-6xl mx-auto">
+            <R>
+              <p className="text-white/20 text-xs uppercase tracking-widest mb-8 text-center">
+                — Elige una categoría —
+              </p>
+            </R>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {categorias.map((cat, i) => (
+                <R key={cat.id} delay={i * 80}>
+                  <CatCard
+                    cat={cat}
+                    active={active === cat.id}
+                    onClick={() => selectCat(cat.id)}
+                  />
+                </R>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ── Gallery grid ── */}
       <div ref={galleryRef} style={{ scrollMarginTop: "80px" }}>
         {activeCat && (
-          <section className="pb-24 px-6">
+          <section className={`pb-24 px-6 ${soloSlug ? "pt-12" : ""}`}>
             <div className="max-w-6xl mx-auto">
               {/* Section header */}
               <div className="flex items-center justify-between mb-8">
@@ -518,13 +551,15 @@ export default function GaleriaClient() {
                   </h2>
                   <p className="text-white/30 text-xs mt-1">{activeCat.fotos.length} fotos · click para abrir</p>
                 </div>
-                <button
-                  onClick={() => setActive(null)}
-                  className="text-white/25 text-xs hover:text-white/60 transition-colors flex items-center gap-1.5"
-                >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  Cerrar
-                </button>
+                {!soloSlug && (
+                  <button
+                    onClick={() => setActive(null)}
+                    className="text-white/25 text-xs hover:text-white/60 transition-colors flex items-center gap-1.5"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    Cerrar
+                  </button>
+                )}
               </div>
 
               {/* Thumbnails */}
