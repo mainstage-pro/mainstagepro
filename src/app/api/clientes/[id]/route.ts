@@ -13,13 +13,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     where: { id },
     include: {
       vendedor: { select: { id: true, name: true } },
-      compania: { select: { id: true, nombre: true } },
+      compania: { select: { id: true, nombre: true, tipo: true } },
       tratos: {
-        select: { id: true, etapa: true, tipoEvento: true, fechaEventoEstimada: true, presupuestoEstimado: true, createdAt: true, updatedAt: true },
+        select: { id: true, etapa: true, tipoEvento: true, nombreEvento: true, lugarEstimado: true, fechaEventoEstimada: true, presupuestoEstimado: true, createdAt: true, updatedAt: true },
         orderBy: { createdAt: "desc" },
       },
       cotizaciones: {
-        select: { id: true, numeroCotizacion: true, estado: true, granTotal: true, createdAt: true },
+        select: { id: true, numeroCotizacion: true, nombreEvento: true, estado: true, granTotal: true, createdAt: true },
         orderBy: { createdAt: "desc" },
       },
       proyectos: {
@@ -31,7 +31,70 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!cliente) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-  return NextResponse.json({ cliente });
+  // ── Cuentas por cobrar (lo que el cliente nos debe) ──────────────────────────
+  // Cubre las cuentas ligadas directamente al contacto y las ligadas a su empresa.
+  const empresaId = cliente.empresaId;
+  const cuentasCobrar = await prisma.cuentaCobrar.findMany({
+    where: {
+      OR: [
+        { clienteId: id },
+        ...(empresaId ? [{ empresaId }] : []),
+      ],
+    },
+    select: {
+      id: true,
+      concepto: true,
+      monto: true,
+      montoCobrado: true,
+      estado: true,
+      fechaCompromiso: true,
+      fechaCobroReal: true,
+      cotizacion: { select: { numeroCotizacion: true } },
+      proyecto: { select: { numeroProyecto: true, nombre: true } },
+    },
+    orderBy: { fechaCompromiso: "asc" },
+  });
+
+  // ── Cuentas por pagar (lo que le debemos al cliente-proveedor) ───────────────
+  // Solo aplica si el cliente está ligado a una empresa que también es proveedor.
+  // Se resuelve por la empresa directamente o por proveedores que comparten empresa.
+  let cuentasPagar: Array<{
+    id: string;
+    concepto: string;
+    monto: number;
+    montoPagado: number;
+    estado: string;
+    fechaCompromiso: Date;
+    fechaPagoReal: Date | null;
+    tipoAcreedor: string;
+    proveedor: { nombre: string } | null;
+    proyecto: { numeroProyecto: string; nombre: string } | null;
+  }> = [];
+  if (empresaId) {
+    cuentasPagar = await prisma.cuentaPagar.findMany({
+      where: {
+        OR: [
+          { empresaId },
+          { proveedor: { empresaId } },
+        ],
+      },
+      select: {
+        id: true,
+        concepto: true,
+        monto: true,
+        montoPagado: true,
+        estado: true,
+        fechaCompromiso: true,
+        fechaPagoReal: true,
+        tipoAcreedor: true,
+        proveedor: { select: { nombre: true } },
+        proyecto: { select: { numeroProyecto: true, nombre: true } },
+      },
+      orderBy: { fechaCompromiso: "asc" },
+    });
+  }
+
+  return NextResponse.json({ cliente: { ...cliente, cuentasCobrar, cuentasPagar } });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

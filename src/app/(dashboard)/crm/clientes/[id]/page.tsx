@@ -34,12 +34,36 @@ interface PrecioMap {
 
 interface Vendedor { id: string; name: string }
 
+interface CuentaCobrarItem {
+  id: string;
+  concepto: string;
+  monto: number;
+  montoCobrado: number;
+  estado: string;
+  fechaCompromiso: string;
+  fechaCobroReal: string | null;
+  cotizacion: { numeroCotizacion: string } | null;
+  proyecto: { numeroProyecto: string; nombre: string } | null;
+}
+interface CuentaPagarItem {
+  id: string;
+  concepto: string;
+  monto: number;
+  montoPagado: number;
+  estado: string;
+  fechaCompromiso: string;
+  fechaPagoReal: string | null;
+  tipoAcreedor: string;
+  proveedor: { nombre: string } | null;
+  proyecto: { numeroProyecto: string; nombre: string } | null;
+}
+
 interface Cliente {
   id: string;
   nombre: string;
   empresa: string | null;
   empresaId: string | null;
-  compania: { id: string; nombre: string } | null;
+  compania: { id: string; nombre: string; tipo?: string } | null;
   tipoCliente: string;
   clasificacion: string;
   servicioUsual: string | null;
@@ -49,11 +73,11 @@ interface Cliente {
   vendedorId: string | null;
   vendedor: Vendedor | null;
   createdAt: string;
-  tratos: Array<{ id: string; etapa: string; tipoEvento: string; fechaEventoEstimada: string | null; presupuestoEstimado: number | null; createdAt: string; updatedAt?: string }>;
-  cotizaciones: Array<{ id: string; numeroCotizacion: string; estado: string; granTotal: number; createdAt: string }>;
+  tratos: Array<{ id: string; etapa: string; tipoEvento: string; nombreEvento: string | null; lugarEstimado: string | null; fechaEventoEstimada: string | null; presupuestoEstimado: number | null; createdAt: string; updatedAt?: string }>;
+  cotizaciones: Array<{ id: string; numeroCotizacion: string; nombreEvento: string | null; estado: string; granTotal: number; createdAt: string }>;
   proyectos: Array<{ id: string; numeroProyecto: string; nombre: string; estado: string; fechaEvento: string }>;
-  cuentasCobrar?: Array<{ id: string; monto: number; montoCobrado: number; estado: string }>;
-  cuentasPagar?: Array<{ id: string; monto: number; montoPagado: number; estado: string }>;
+  cuentasCobrar?: CuentaCobrarItem[];
+  cuentasPagar?: CuentaPagarItem[];
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -79,6 +103,12 @@ const ESTADO_PROY_COLORS: Record<string, string> = {
 };
 const TIPO_EVENTO_LABELS: Record<string, string> = {
   MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial", OTRO: "Otro",
+};
+const ESTADO_CUENTA_COLORS: Record<string, string> = {
+  PENDIENTE: "bg-yellow-900/40 text-yellow-300",
+  PARCIAL: "bg-purple-900/40 text-purple-300",
+  LIQUIDADO: "bg-green-900/40 text-green-300",
+  VENCIDO: "bg-red-900/40 text-red-300",
 };
 const CLASIFICACION_COLORS: Record<string, string> = {
   PROSPECTO: "bg-purple-900/50 text-purple-300 border-purple-800/40",
@@ -554,6 +584,215 @@ function PanelPrecios({
   );
 }
 
+// ─── PanelCuentas ──────────────────────────────────────────────────────────────
+
+function saldoCobrar(c: CuentaCobrarItem) { return Math.max(0, c.monto - c.montoCobrado); }
+function saldoPagar(c: CuentaPagarItem) { return Math.max(0, c.monto - c.montoPagado); }
+
+function PanelCuentas({
+  clienteId,
+  clienteNombre,
+  cuentasCobrar,
+  cuentasPagar,
+}: {
+  clienteId: string;
+  clienteNombre: string;
+  cuentasCobrar: CuentaCobrarItem[];
+  cuentasPagar: CuentaPagarItem[];
+}) {
+  const [descargando, setDescargando] = useState(false);
+  const toast = useToast();
+
+  const totalCobrar = cuentasCobrar.reduce((s, c) => s + saldoCobrar(c), 0);
+  const totalPagar = cuentasPagar.reduce((s, c) => s + saldoPagar(c), 0);
+  const esProveedor = cuentasPagar.length > 0;
+  const neto = totalCobrar - totalPagar;
+
+  async function descargar() {
+    setDescargando(true);
+    try {
+      const res = await fetch(`/api/clientes/${clienteId}/estado-cuenta/pdf`);
+      if (!res.ok) {
+        toast.error("No se pudo generar el estado de cuenta");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const fecha = new Date().toISOString().slice(0, 10);
+      const slug = clienteNombre.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+      a.download = `EstadoCuenta-${slug || clienteId.slice(0, 8)}-${fecha}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("No se pudo generar el estado de cuenta");
+    } finally {
+      setDescargando(false);
+    }
+  }
+
+  const hayMovimientos = cuentasCobrar.length > 0 || cuentasPagar.length > 0;
+
+  return (
+    <div className="ms-card p-5">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+        <div>
+          <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">
+            Cuentas
+          </h2>
+          <p className="text-[10px] text-gray-700 mt-0.5">
+            {esProveedor
+              ? "Relación de saldos: lo que nos deben y lo que les debemos"
+              : "Saldos pendientes de cobro de este cliente"}
+          </p>
+        </div>
+        <button
+          onClick={descargar}
+          disabled={descargando || !hayMovimientos}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {descargando ? (
+            <div className="w-3.5 h-3.5 border-2 border-black/40 border-t-black rounded-full animate-spin" />
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+          )}
+          {descargando ? "Generando…" : "Descargar estado de cuenta"}
+        </button>
+      </div>
+
+      {!hayMovimientos ? (
+        <div className="py-8 text-center text-[#555] text-sm">
+          Este cliente no tiene cuentas por cobrar ni por pagar registradas.
+        </div>
+      ) : (
+        <>
+          {/* Resumen de saldos */}
+          <div className={`grid gap-3 mb-4 ${esProveedor ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1"}`}>
+            <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
+              <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">Nos deben</p>
+              <p className={`text-xl font-bold ${totalCobrar > 0 ? "text-[#B3985B]" : "text-green-400"}`}>
+                {fmt(totalCobrar)}
+              </p>
+              <p className="text-[10px] text-gray-600 mt-1">
+                {cuentasCobrar.length} concepto{cuentasCobrar.length !== 1 ? "s" : ""} · por cobrar
+              </p>
+            </div>
+            {esProveedor && (
+              <>
+                <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl p-4">
+                  <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">Les debemos</p>
+                  <p className={`text-xl font-bold ${totalPagar > 0 ? "text-red-400" : "text-green-400"}`}>
+                    {fmt(totalPagar)}
+                  </p>
+                  <p className="text-[10px] text-gray-600 mt-1">
+                    {cuentasPagar.length} concepto{cuentasPagar.length !== 1 ? "s" : ""} · por pagar
+                  </p>
+                </div>
+                <div className="bg-[#0d0d0d] border border-[#B3985B]/20 rounded-xl p-4">
+                  <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1.5">
+                    Balance neto {neto >= 0 ? "a favor" : "en contra"}
+                  </p>
+                  <p className={`text-xl font-bold ${neto >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    {neto >= 0 ? "+" : "−"}{fmt(Math.abs(neto))}
+                  </p>
+                  <p className="text-[10px] text-gray-600 mt-1">
+                    {neto >= 0 ? "Nos deben más de lo que debemos" : "Debemos más de lo que nos deben"}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Listas */}
+          <div className={`grid gap-4 ${esProveedor ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
+            {/* Por cobrar */}
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#B3985B]" />
+                <p className="text-xs font-medium text-gray-400">Por cobrar</p>
+              </div>
+              {cuentasCobrar.length === 0 ? (
+                <p className="text-[#555] text-xs py-3">Sin cuentas por cobrar.</p>
+              ) : (
+                <div className="space-y-2">
+                  {cuentasCobrar.map((c) => {
+                    const saldo = saldoCobrar(c);
+                    const ref = c.cotizacion?.numeroCotizacion ?? (c.proyecto ? `#${c.proyecto.numeroProyecto}` : null);
+                    return (
+                      <div key={c.id} className="p-3 rounded-lg bg-[#1a1a1a]">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-white text-sm truncate">{c.concepto}</p>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              {ref && <span className="text-[10px] font-mono text-gray-500">{ref}</span>}
+                              <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${ESTADO_CUENTA_COLORS[c.estado] || "bg-gray-700 text-gray-300"}`}>
+                                {c.estado}
+                              </span>
+                              <span className="text-[10px] text-gray-600">{fmtDate(c.fechaCompromiso)}</span>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-[#B3985B] text-sm font-semibold">{fmt(saldo)}</p>
+                            {c.montoCobrado > 0 && saldo > 0 && (
+                              <p className="text-[10px] text-gray-600">de {fmt(c.monto)}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Por pagar */}
+            {esProveedor && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                  <p className="text-xs font-medium text-gray-400">Por pagar</p>
+                </div>
+                <div className="space-y-2">
+                  {cuentasPagar.map((c) => {
+                    const saldo = saldoPagar(c);
+                    const ref = c.proyecto ? `#${c.proyecto.numeroProyecto}` : null;
+                    return (
+                      <div key={c.id} className="p-3 rounded-lg bg-[#1a1a1a]">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-white text-sm truncate">{c.concepto}</p>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              {ref && <span className="text-[10px] font-mono text-gray-500">{ref}</span>}
+                              <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${ESTADO_CUENTA_COLORS[c.estado] || "bg-gray-700 text-gray-300"}`}>
+                                {c.estado}
+                              </span>
+                              <span className="text-[10px] text-gray-600">{fmtDate(c.fechaCompromiso)}</span>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-red-400 text-sm font-semibold">{fmt(saldo)}</p>
+                            {c.montoPagado > 0 && saldo > 0 && (
+                              <p className="text-[10px] text-gray-600">de {fmt(c.monto)}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ClienteDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -988,24 +1227,36 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
               <Link
                 key={t.id}
                 href={`/crm/tratos/${t.id}`}
-                className="flex items-center justify-between p-3 rounded-lg bg-[#1a1a1a] hover:bg-[#222] transition-colors"
+                className="flex items-start justify-between gap-3 p-3 rounded-lg bg-[#1a1a1a] hover:bg-[#222] transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-gray-300 text-sm">
-                    {TIPO_EVENTO_LABELS[t.tipoEvento] || t.tipoEvento}
-                  </span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${ETAPA_COLORS[t.etapa]}`}>
-                    {t.etapa.replace("_", " ")}
-                  </span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-white text-sm font-medium truncate">
+                      {t.nombreEvento?.trim() || TIPO_EVENTO_LABELS[t.tipoEvento] || t.tipoEvento}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] ${ETAPA_COLORS[t.etapa]}`}>
+                      {t.etapa.replace("_", " ")}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 flex-wrap">
+                    {t.nombreEvento?.trim() && (
+                      <span className="text-gray-400">{TIPO_EVENTO_LABELS[t.tipoEvento] || t.tipoEvento}</span>
+                    )}
+                    <span className="inline-flex items-center gap-1">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                      {fmtDate(t.fechaEventoEstimada || t.createdAt)}
+                    </span>
+                    {t.lugarEstimado?.trim() && (
+                      <span className="inline-flex items-center gap-1 truncate max-w-[220px]">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                        <span className="truncate">{t.lugarEstimado}</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="text-right">
-                  {t.presupuestoEstimado && (
-                    <p className="text-white text-sm font-medium">{fmt(t.presupuestoEstimado)}</p>
-                  )}
-                  <p className="text-gray-500 text-xs">
-                    {fmtDate(t.fechaEventoEstimada || t.createdAt)}
-                  </p>
-                </div>
+                {t.presupuestoEstimado ? (
+                  <p className="text-white text-sm font-medium shrink-0 whitespace-nowrap">{fmt(t.presupuestoEstimado)}</p>
+                ) : null}
               </Link>
             ))}
           </div>
@@ -1025,17 +1276,22 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
                 href={`/cotizaciones/${c.id}`}
                 className="flex items-center justify-between p-3 rounded-lg bg-[#1a1a1a] hover:bg-[#222] transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-white text-sm font-mono">{c.numeroCotizacion}</span>
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-xs ${
-                      ESTADO_COT_COLORS[c.estado] || "bg-gray-700 text-gray-300"
-                    }`}
-                  >
-                    {c.estado}
-                  </span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-3">
+                    <span className="text-white text-sm font-mono">{c.numeroCotizacion}</span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs ${
+                        ESTADO_COT_COLORS[c.estado] || "bg-gray-700 text-gray-300"
+                      }`}
+                    >
+                      {c.estado}
+                    </span>
+                  </div>
+                  {c.nombreEvento?.trim() && (
+                    <p className="text-gray-500 text-xs mt-1 truncate">{c.nombreEvento}</p>
+                  )}
                 </div>
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <p className="text-white text-sm font-medium">{fmt(c.granTotal)}</p>
                   <p className="text-gray-500 text-xs">{fmtDate(c.createdAt)}</p>
                 </div>
@@ -1044,6 +1300,14 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
       )}
+
+      {/* ── Cuentas por cobrar / pagar ──────────────────────────────────────── */}
+      <PanelCuentas
+        clienteId={id}
+        clienteNombre={cliente.nombre}
+        cuentasCobrar={cliente.cuentasCobrar ?? []}
+        cuentasPagar={cliente.cuentasPagar ?? []}
+      />
 
       {/* ── Proyectos ───────────────────────────────────────────────────────── */}
       {cliente.proyectos.length > 0 && (
