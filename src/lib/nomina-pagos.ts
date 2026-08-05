@@ -37,6 +37,29 @@ export async function getCategoriaPersonalFreelance(
   return creada.id;
 }
 
+/**
+ * Devuelve el id de la categoría de gasto "Sueldos y salarios", creándola si no
+ * existe. Los pagos de nómina al personal interno se categorizan aquí obligatoriamente.
+ */
+export async function getCategoriaSueldosYSalarios(
+  tx: any,
+): Promise<string> {
+  const existente = await tx.categoriaFinanciera.findFirst({
+    where: { tipo: "GASTO", nombre: { equals: "Sueldos y salarios", mode: "insensitive" } },
+    select: { id: true },
+  });
+  if (existente) return existente.id;
+  const creada = await tx.categoriaFinanciera.create({
+    data: {
+      nombre: "Sueldos y salarios",
+      tipo: "GASTO",
+      descripcion: "Pagos de nómina y salarios a personal interno",
+    },
+    select: { id: true },
+  });
+  return creada.id;
+}
+
 export interface OpcionesPagoNomina {
   fecha: Date;
   metodoPago?: string;

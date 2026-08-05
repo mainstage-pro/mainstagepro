@@ -31,7 +31,7 @@ export async function DELETE(
     const restantes = await tx.abonoPago.findMany({ where: { cuentaPagarId: id } });
     const nuevoMontoPagado = Math.round(restantes.reduce((s, a) => s + a.monto, 0) * 100) / 100;
 
-    const cxp = await tx.cuentaPagar.findUnique({ where: { id } });
+    const cxp = await tx.cuentaPagar.findUnique({ where: { id }, include: { pagoNomina: true } });
     const liquidado = cxp ? nuevoMontoPagado >= cxp.monto : false;
     const nuevoEstado = nuevoMontoPagado <= 0 ? "PENDIENTE" : liquidado ? "LIQUIDADO" : "PARCIAL";
 
@@ -43,6 +43,13 @@ export async function DELETE(
         fechaPagoReal: liquidado ? new Date() : null,
       },
     });
+
+    if (!liquidado && cxp?.pagoNomina) {
+      await tx.pagoNomina.update({
+        where: { id: cxp.pagoNomina.id },
+        data: { estado: "PENDIENTE", fechaPago: null, movimientoId: null },
+      });
+    }
   });
 
   const updated = await prisma.cuentaPagar.findUnique({

@@ -8,7 +8,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
 
-  const cxp = await prisma.cuentaPagar.findUnique({ where: { id } });
+  const cxp = await prisma.cuentaPagar.findUnique({ where: { id }, include: { pagoNomina: true } });
   if (!cxp) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
   if (cxp.estado === "PENDIENTE") return NextResponse.json({ error: "Ya está pendiente" }, { status: 400 });
 
@@ -24,6 +24,13 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
       ? [prisma.proyectoPersonal.updateMany({
           where: { tecnicoId: cxp.tecnicoId, proyectoId: cxp.proyectoId, estadoPago: "PAGADO" },
           data: { estadoPago: "PENDIENTE" },
+        })]
+      : []),
+    // Si tiene pago de nómina enlazado, revertirlo a PENDIENTE
+    ...(cxp.pagoNomina
+      ? [prisma.pagoNomina.update({
+          where: { id: cxp.pagoNomina.id },
+          data: { estado: "PENDIENTE", fechaPago: null, movimientoId: null },
         })]
       : []),
   ]);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getCategoriaSueldosYSalarios } from "@/lib/nomina-pagos";
 
 // PATCH — marcar como pagado (crea MovimientoFinanciero y lo vincula)
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; pagoId: string }> }) {
@@ -20,16 +21,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const fechaPago = body.fechaPago ? new Date(body.fechaPago) : new Date();
 
-    // Categoría: Sueldos y salarios (get-or-create para no depender de un id fijo).
-    const catSueldos =
-      (await prisma.categoriaFinanciera.findFirst({
-        where: { tipo: "GASTO", nombre: { equals: "Sueldos y salarios", mode: "insensitive" } },
-        select: { id: true },
-      })) ??
-      (await prisma.categoriaFinanciera.create({
-        data: { nombre: "Sueldos y salarios", tipo: "GASTO" },
-        select: { id: true },
-      }));
+    // Categoría: Sueldos y salarios
+    const categoriaId = await getCategoriaSueldosYSalarios(prisma);
 
     const movimiento = await prisma.movimientoFinanciero.create({
       data: {
@@ -40,7 +33,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         metodoPago: body.metodoPago ?? pago.metodoPago,
         cuentaOrigenId: body.cuentaOrigenId ?? pago.cuentaOrigenId ?? null,
         creadoPor: session.name,
-        categoriaId: catSueldos.id,
+        categoriaId,
       },
     });
 
@@ -55,14 +48,27 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       include: { cuentaOrigen: { select: { nombre: true } } },
     });
 
-    // Sincronizar CuentaPagar si existe
+    // Sincronizar CuentaPagar (con estado LIQUIDADO y AbonoPago)
     if (pago.cuentaPagarId) {
       await prisma.cuentaPagar.update({
         where: { id: pago.cuentaPagarId },
         data: {
-          estado: "PAGADO",
+          estado: "LIQUIDADO",
           montoPagado: pago.monto,
           fechaPagoReal: fechaPago,
+          movimientoId: movimiento.id,
+        },
+      });
+      await prisma.abonoPago.create({
+        data: {
+          cuentaPagarId: pago.cuentaPagarId,
+          monto: pago.monto,
+          fecha: fechaPago,
+          metodoPago: body.metodoPago ?? pago.metodoPago ?? "TRANSFERENCIA",
+          cuentaOrigenId: body.cuentaOrigenId ?? pago.cuentaOrigenId ?? null,
+          movimientoId: movimiento.id,
+          notas: "Pago confirmado desde Nómina (RRHH)",
+          creadoPor: session.id,
         },
       });
     }
@@ -91,6 +97,13 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const { pagoId } = await params;
-  await prisma.pagoNomina.delete({ where: { id: pagoId } });
+  const pago = await prisma.pagoNomina.findUnique({ where: { id: pagoId }, select: { cuentaPagarId: true, movimientoId: true } });
+  if (pago?.cuentaPagarId) {
+    await prisma.cuentaPagar.delete({ where: { id: pago.cuentaPagarId } }).catch(() => null);
+  }
+  if (pago?.movimientoId) {
+    await prisma.movimientoFinanciero.delete({ where: { id: pago.movimientoId } }).catch(() => null);
+  }
+  await prisma.pagoNomina.delete({ where: { id: pagoId } }).catch(() => null);
   return NextResponse.json({ ok: true });
 }

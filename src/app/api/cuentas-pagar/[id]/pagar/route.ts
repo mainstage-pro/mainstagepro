@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureCuentaPagarCategoria } from "@/lib/mantenimiento-costo";
+import { getCategoriaSueldosYSalarios } from "@/lib/nomina-pagos";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -13,7 +14,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   await ensureCuentaPagarCategoria();
   const cxp = await prisma.cuentaPagar.findUnique({
     where: { id },
-    include: { abonos: true },
+    include: { abonos: true, pagoNomina: true },
   });
   if (!cxp) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
   if (cxp.estado === "LIQUIDADO") return NextResponse.json({ error: "Ya está liquidada" }, { status: 400 });
@@ -25,6 +26,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const liquidado = nuevoMontoPagado >= cxp.monto;
 
   await prisma.$transaction(async (tx) => {
+    const esNomina = cxp.esNomina || cxp.tipoAcreedor === "PERSONAL_INTERNO" || !!cxp.pagoNomina;
+    const finalCategoriaId = esNomina ? await getCategoriaSueldosYSalarios(tx) : (categoriaId || cxp.categoriaId || null);
+
     const movimiento = await tx.movimientoFinanciero.create({
       data: {
         tipo: "GASTO",
@@ -34,7 +38,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         proyectoId: cxp.proyectoId,
         cuentaOrigenId: cuentaId || null,
         metodoPago: metodoPago || "TRANSFERENCIA",
-        categoriaId: categoriaId || cxp.categoriaId || null,
+        categoriaId: finalCategoriaId,
         notas: notas || null,
         creadoPor: session.id,
       },
@@ -58,10 +62,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       data: {
         montoPagado: nuevoMontoPagado,
         estado: liquidado ? "LIQUIDADO" : "PARCIAL",
-        fechaPagoReal: fecha ? new Date(fecha) : new Date(), // siempre registrar fecha del \u00faltimo abono
+        fechaPagoReal: fecha ? new Date(fecha) : new Date(), // siempre registrar fecha del último abono
         cuentaOrigenId: cuentaId || undefined,
       },
     });
+
+    if (liquidado && cxp.pagoNomina) {
+      await tx.pagoNomina.update({
+        where: { id: cxp.pagoNomina.id },
+        data: {
+          estado: "PAGADO",
+          fechaPago: fecha ? new Date(fecha) : new Date(),
+          metodoPago: metodoPago || "TRANSFERENCIA",
+          cuentaOrigenId: cuentaId || null,
+          movimientoId: movimiento.id,
+        },
+      });
+    }
   });
 
   const updated = await prisma.cuentaPagar.findUnique({
