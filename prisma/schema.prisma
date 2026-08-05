@@ -4180,6 +4180,18 @@ model FotoTipoEvento {
   @@map("fotos_tipo_evento")
 }
 
+// Slides del hero de la galería pública (/presentacion/galeria). Independientes
+// de los tipos de evento: rotan como carrusel al inicio.
+model FotoGaleriaInicio {
+  id        String   @id @default(cuid())
+  url       String
+  caption   String?
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@map("fotos_galeria_inicio")
+}
+
 // ── Prospección ──────────────────────────────────────────────────────────────
 
 model Prospeccion {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, type DragEvent } from "react";
 import Link from "next/link";
 import { upload } from "@vercel/blob/client";
 import { SkeletonPage } from "@/components/Skeleton";
@@ -23,6 +23,13 @@ interface Tipo {
   orden: number;
   activo: boolean;
   fotos: Foto[];
+}
+
+interface Slide {
+  id: string;
+  url: string;
+  caption: string | null;
+  orden: number;
 }
 
 export default function TiposEventoConfigPage() {
@@ -71,6 +78,11 @@ export default function TiposEventoConfigPage() {
         </p>
       </div>
 
+      {/* Slides del inicio de la galería */}
+      <HeroSlidesManager />
+
+      <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider mb-3 mt-8">Tipos de evento</h2>
+
       {/* Crear nuevo */}
       <div className="ms-card p-4 mb-6 flex items-end gap-3">
         <div className="flex-1">
@@ -116,6 +128,37 @@ function TipoCard({ tipo, onChange }: { tipo: Tipo; onChange: () => void }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [fotos, setFotos] = useState<Foto[]>(tipo.fotos);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFotos(tipo.fotos);
+  }, [tipo.fotos]);
+
+  async function persistOrdenFotos(nuevas: Foto[]) {
+    await Promise.all(
+      nuevas.map((f, i) =>
+        f.orden === i
+          ? null
+          : fetch(`/api/tipos-evento/fotos/${f.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ orden: i }),
+            })
+      )
+    );
+  }
+
+  function moverFoto(from: number, to: number) {
+    if (from === to) return;
+    const arr = [...fotos];
+    const [moved] = arr.splice(from, 1);
+    arr.splice(to, 0, moved);
+    const normalizadas = arr.map((f, i) => ({ ...f, orden: i }));
+    setFotos(normalizadas);
+    persistOrdenFotos(normalizadas);
+  }
 
   async function guardar() {
     setSaving(true);
@@ -169,7 +212,7 @@ function TipoCard({ tipo, onChange }: { tipo: Tipo; onChange: () => void }) {
     }
   }
 
-  const destacadas = tipo.fotos.filter((f) => f.destacada).length;
+  const destacadas = fotos.filter((f) => f.destacada).length;
 
   return (
     <div className="ms-card p-5">
@@ -232,21 +275,35 @@ function TipoCard({ tipo, onChange }: { tipo: Tipo; onChange: () => void }) {
 
       {/* Fotos */}
       <div className="border-t border-[#1a1a1a] pt-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Fotos preseleccionadas</h3>
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Fotos de la galería</h3>
           <label className="text-xs px-3 py-1.5 rounded-lg border border-[#333] text-gray-300 hover:border-[#B3985B] cursor-pointer transition-colors">
             {uploading ? "Subiendo…" : "+ Subir fotos"}
             <input type="file" accept="image/*" multiple className="hidden" disabled={uploading}
               onChange={(e) => subirFotos(e.target.files)} />
           </label>
         </div>
+        <p className="text-gray-500 text-[11px] mb-3">
+          Arrastra para reordenar. La primera es la portada de la categoría. La estrella ★ marca las que alimentan el hero de las presentaciones.
+        </p>
 
-        {tipo.fotos.length === 0 ? (
+        {fotos.length === 0 ? (
           <p className="text-xs text-gray-600 py-3">Sin fotos todavía.</p>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {tipo.fotos.map((foto) => (
-              <FotoTile key={foto.id} foto={foto} onChange={onChange} />
+            {fotos.map((foto, i) => (
+              <FotoTile
+                key={foto.id}
+                foto={foto}
+                index={i}
+                esPortada={i === 0}
+                onChange={onChange}
+                onHacerPortada={() => moverFoto(i, 0)}
+                onDragStart={() => setDragIdx(i)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => { if (dragIdx !== null) moverFoto(dragIdx, i); setDragIdx(null); }}
+                dragging={dragIdx === i}
+              />
             ))}
           </div>
         )}
@@ -267,7 +324,27 @@ function TipoCard({ tipo, onChange }: { tipo: Tipo; onChange: () => void }) {
   );
 }
 
-function FotoTile({ foto, onChange }: { foto: Foto; onChange: () => void }) {
+function FotoTile({
+  foto,
+  index,
+  esPortada,
+  onChange,
+  onHacerPortada,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  dragging,
+}: {
+  foto: Foto;
+  index: number;
+  esPortada: boolean;
+  onChange: () => void;
+  onHacerPortada: () => void;
+  onDragStart: () => void;
+  onDragOver: (e: DragEvent) => void;
+  onDrop: () => void;
+  dragging: boolean;
+}) {
   const [caption, setCaption] = useState(foto.caption ?? "");
 
   async function toggleDestacada() {
@@ -295,12 +372,30 @@ function FotoTile({ foto, onChange }: { foto: Foto; onChange: () => void }) {
   }
 
   return (
-    <div className="relative rounded-lg overflow-hidden border border-[#333] bg-[#1a1a1a]">
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      className="relative rounded-lg overflow-hidden border bg-[#1a1a1a] cursor-grab active:cursor-grabbing"
+      style={{ borderColor: esPortada ? "#B3985B" : "#333", opacity: dragging ? 0.4 : 1 }}
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={foto.url} alt={foto.caption ?? ""} className="w-full aspect-[4/3] object-cover" />
+      <img src={foto.url} alt={foto.caption ?? ""} className="w-full aspect-[4/3] object-cover pointer-events-none" />
+      <div className="absolute top-1.5 left-1.5 flex items-center gap-1">
+        <span className="text-[9px] font-mono bg-black/60 text-white/80 rounded px-1.5 py-0.5">{index + 1}</span>
+        {esPortada ? (
+          <span className="text-[9px] font-semibold uppercase tracking-wider rounded px-1.5 py-0.5" style={{ background: "#B3985B", color: "#000" }}>Portada</span>
+        ) : (
+          <button onClick={onHacerPortada} title="Hacer portada de la categoría"
+            className="text-[9px] uppercase tracking-wider rounded px-1.5 py-0.5 bg-black/60 text-white/80 hover:text-white">
+            Hacer portada
+          </button>
+        )}
+      </div>
       <div className="absolute top-1.5 right-1.5 flex gap-1">
         <button onClick={toggleDestacada}
-          title={foto.destacada ? "Quitar de destacadas" : "Marcar como destacada"}
+          title={foto.destacada ? "Quitar del hero de presentaciones" : "Marcar para el hero de presentaciones"}
           className="w-6 h-6 rounded-full flex items-center justify-center text-xs"
           style={{ background: foto.destacada ? "#B3985B" : "rgba(0,0,0,0.6)", color: foto.destacada ? "#000" : "#fff" }}>
           ★
@@ -317,6 +412,142 @@ function FotoTile({ foto, onChange }: { foto: Foto; onChange: () => void }) {
         placeholder="Descripción…"
         className="w-full bg-[#111] border-t border-[#333] px-2 py-1.5 text-[11px] text-white focus:outline-none focus:border-[#B3985B]"
       />
+    </div>
+  );
+}
+
+// ── Slides del inicio (hero del carrusel de la galería pública) ────────────────
+function HeroSlidesManager() {
+  const [slides, setSlides] = useState<Slide[] | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+
+  const load = useCallback(async () => {
+    const r = await fetch("/api/galeria-inicio");
+    const d = await r.json();
+    setSlides(d.slides ?? []);
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
+
+  async function subir(files: FileList | null) {
+    if (!files || files.length === 0 || !slides) return;
+    setUploading(true);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const blob = await upload(files[i].name, files[i], {
+          access: "public",
+          handleUploadUrl: "/api/tipos-evento/imagenes",
+        });
+        await fetch("/api/galeria-inicio", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: blob.url, orden: slides.length + i }),
+        });
+      }
+      load();
+    } catch (err) {
+      alert("Error al subir: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function persistOrden(nuevos: Slide[]) {
+    await Promise.all(
+      nuevos.map((s, i) =>
+        s.orden === i
+          ? null
+          : fetch(`/api/galeria-inicio/${s.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ orden: i }),
+            })
+      )
+    );
+  }
+
+  function onDrop(target: number) {
+    if (dragIdx === null || dragIdx === target || !slides) { setDragIdx(null); return; }
+    const arr = [...slides];
+    const [moved] = arr.splice(dragIdx, 1);
+    arr.splice(target, 0, moved);
+    const normalizados = arr.map((s, i) => ({ ...s, orden: i }));
+    setSlides(normalizados);
+    setDragIdx(null);
+    persistOrden(normalizados);
+  }
+
+  async function eliminar(id: string) {
+    if (!confirm("¿Eliminar esta slide del inicio?")) return;
+    await fetch(`/api/galeria-inicio/${id}`, { method: "DELETE" });
+    load();
+  }
+
+  async function guardarCaption(id: string, caption: string, prev: string) {
+    if (caption === prev) return;
+    await fetch(`/api/galeria-inicio/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ caption: caption || null }),
+    });
+  }
+
+  return (
+    <div className="ms-card p-5 mb-4">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Slides del inicio</h2>
+        <label className="text-xs px-3 py-1.5 rounded-lg border border-[#333] text-gray-300 hover:border-[#B3985B] cursor-pointer transition-colors">
+          {uploading ? "Subiendo…" : "+ Subir fotos"}
+          <input type="file" accept="image/*" multiple className="hidden" disabled={uploading}
+            onChange={(e) => subir(e.target.files)} />
+        </label>
+      </div>
+      <p className="text-gray-500 text-xs mb-4">
+        Fotos que rotan como carrusel al inicio de la galería pública. Arrastra para reordenar; la primera es la que se ve primero.
+      </p>
+
+      {slides === null ? (
+        <p className="text-xs text-gray-600 py-3">Cargando…</p>
+      ) : slides.length === 0 ? (
+        <p className="text-xs text-gray-600 py-3">Sin slides. Si no hay ninguna, el inicio usa la portada del primer tipo de evento.</p>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {slides.map((s, i) => (
+            <div
+              key={s.id}
+              draggable
+              onDragStart={() => setDragIdx(i)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => onDrop(i)}
+              className="relative rounded-lg overflow-hidden border border-[#333] bg-[#1a1a1a] cursor-grab active:cursor-grabbing"
+              style={{ opacity: dragIdx === i ? 0.4 : 1 }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={s.url} alt={s.caption ?? ""} className="w-full aspect-[16/9] object-cover pointer-events-none" />
+              <div className="absolute top-1.5 left-1.5 flex items-center gap-1">
+                <span className="text-[9px] font-mono bg-black/60 text-white/80 rounded px-1.5 py-0.5">{i + 1}</span>
+                {i === 0 && (
+                  <span className="text-[9px] font-semibold uppercase tracking-wider rounded px-1.5 py-0.5" style={{ background: "#B3985B", color: "#000" }}>Primera</span>
+                )}
+              </div>
+              <button onClick={() => eliminar(s.id)} title="Eliminar"
+                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full flex items-center justify-center text-xs bg-black/60 text-white hover:bg-red-600/80">
+                ×
+              </button>
+              <input
+                defaultValue={s.caption ?? ""}
+                onBlur={(e) => guardarCaption(s.id, e.target.value, s.caption ?? "")}
+                placeholder="Texto opcional…"
+                className="w-full bg-[#111] border-t border-[#333] px-2 py-1.5 text-[11px] text-white focus:outline-none focus:border-[#B3985B]"
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

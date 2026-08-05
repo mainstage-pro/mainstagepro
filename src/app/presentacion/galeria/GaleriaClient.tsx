@@ -338,28 +338,52 @@ export default function GaleriaClient() {
   const [active, setActive]   = useState<CatId | null>(null);
   const [lightbox, setLightbox] = useState<{ catId: CatId; idx: number } | null>(null);
   const [categorias, setCategorias] = useState<Categoria[]>(FALLBACK);
+  const [heroSlides, setHeroSlides] = useState<Foto[]>([]);
+  const [heroIdx, setHeroIdx] = useState(0);
   const galleryRef    = useRef<HTMLDivElement>(null);
 
   // Fuente maestra: los tipos de evento configurados en Comercial. Solo caemos al
-  // FALLBACK si la BD todavía no tiene ningún tipo con fotos.
+  // FALLBACK si la BD todavía no tiene ningún tipo con fotos. El orden de las fotos
+  // dentro de cada categoría lo manda `orden` (arrastrar en el admin); la primera
+  // es la portada.
   useEffect(() => {
     fetch("/api/tipos-evento/publico")
       .then(r => (r.ok ? r.json() : null))
       .then(d => {
         const cats: Categoria[] = (d?.tipos ?? [])
           .filter((t: { fotos?: unknown[] }) => (t.fotos?.length ?? 0) > 0)
-          .map((t: { slug: string; nombre: string; subtitulo: string | null; fotos: { url: string; caption: string | null }[] }): Categoria => ({
-            id: t.slug,
-            label: t.nombre,
-            sub: t.subtitulo || "",
-            cover: t.fotos[0].url,
-            icon: iconoPorSlug(t.slug),
-            fotos: t.fotos.map(f => ({ src: f.url, caption: f.caption || "" })),
-          }));
+          .map((t: { slug: string; nombre: string; subtitulo: string | null; fotos: { url: string; caption: string | null; orden: number }[] }): Categoria => {
+            const fotos = [...t.fotos].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+            return {
+              id: t.slug,
+              label: t.nombre,
+              sub: t.subtitulo || "",
+              cover: fotos[0].url,
+              icon: iconoPorSlug(t.slug),
+              fotos: fotos.map(f => ({ src: f.url, caption: f.caption || "" })),
+            };
+          });
         if (cats.length) setCategorias(cats);
       })
       .catch(() => {});
   }, []);
+
+  // Slides del inicio (carrusel del hero). Si no hay, se usa la portada del primer tipo.
+  useEffect(() => {
+    fetch("/api/galeria-inicio/publico")
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        const s: Foto[] = (d?.slides ?? []).map((x: { url: string; caption: string | null }) => ({ src: x.url, caption: x.caption || "" }));
+        if (s.length) setHeroSlides(s);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (heroSlides.length < 2) return;
+    const t = setInterval(() => setHeroIdx(i => (i + 1) % heroSlides.length), 5000);
+    return () => clearInterval(t);
+  }, [heroSlides.length]);
 
   const activeCat = categorias.find(c => c.id === active) ?? null;
 
@@ -415,11 +439,24 @@ export default function GaleriaClient() {
       {/* ── Hero ── */}
       <section className="relative flex flex-col items-center justify-center overflow-hidden" style={{ height: "55vh", minHeight: "320px" }}>
         <div className="absolute inset-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={categorias[0]?.cover ?? "/images/presentacion/musicales/Musicales-076.jpg"}
-               alt="Galería Mainstage Pro" draggable={false}
-               className="w-full h-full object-cover"
-               style={{ animation: "kenBurns 18s ease forwards" }} />
+          {heroSlides.length > 0 ? (
+            heroSlides.map((s, i) => (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img key={s.src} src={s.src} alt="" draggable={false}
+                   className="absolute inset-0 w-full h-full object-cover"
+                   style={{
+                     opacity: i === heroIdx ? 1 : 0,
+                     transition: "opacity 1.2s ease",
+                     animation: i === heroIdx ? "kenBurns 6s ease forwards" : undefined,
+                   }} />
+            ))
+          ) : (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={categorias[0]?.cover ?? "/images/presentacion/musicales/Musicales-076.jpg"}
+                 alt="Galería Mainstage Pro" draggable={false}
+                 className="w-full h-full object-cover"
+                 style={{ animation: "kenBurns 18s ease forwards" }} />
+          )}
           <div className="absolute inset-0"
                style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.35) 0%, rgba(8,8,8,0.6) 50%, #080808 100%)" }} />
         </div>
