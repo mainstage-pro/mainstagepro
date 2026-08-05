@@ -1280,9 +1280,13 @@ export default function OperacionesPage() {
     return sortCronoPrio(base);
   }, [tareas, vistaOpts, busqueda, vista]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const proyectosSinCarpeta = useMemo(() =>
-    proyectosNav.filter(p => !carpetas.some(c => c.proyectos.some(cp => cp.id === p.id))),
-  [proyectosNav, carpetas]);
+  const proyectosSinCarpeta = useMemo(() => {
+    const sueltos = proyectosNav.filter(p => !carpetas.some(c => c.proyectos.some(cp => cp.id === p.id)));
+    // Ordenar por el número al inicio del nombre ("1. Dirección", "4. Comercial"…);
+    // los que no tengan prefijo numérico quedan al final en su orden original.
+    const num = (n: string) => { const m = n.trim().match(/^(\d+)/); return m ? parseInt(m[1], 10) : Infinity; };
+    return [...sueltos].sort((a, b) => num(a.nombre) - num(b.nombre));
+  }, [proyectosNav, carpetas]);
 
   const AREA_LABELS: Record<string, string> = {
     VENTAS: "Comercial", PRODUCCION: "Producción", MARKETING: "Marketing",
