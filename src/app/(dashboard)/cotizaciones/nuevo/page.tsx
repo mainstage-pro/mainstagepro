@@ -1806,6 +1806,19 @@ function CotizadorForm() {
                           fetch(`/api/tratos?clienteId=${c.id}`).then(r => r.json()).then(d => {
                             setManualTratos((d.tratos ?? []).filter((t: {etapa:string}) => !['VENTA_CERRADA','VENTA_PERDIDA'].includes(t.etapa)));
                           });
+                          // Cargar precios especiales del cliente
+                          fetch(`/api/clientes/${c.id}/precios-equipos`).then(r => r.json()).then(pd => {
+                            if (pd?.precios) {
+                              const mapa: Record<string, number> = {};
+                              const mapaOrig: Record<string, number | null> = {};
+                              for (const [eqId, v] of Object.entries(pd.precios as Record<string, { precio: number; precioOriginal: number | null }>)) {
+                                mapa[eqId] = v.precio;
+                                mapaOrig[eqId] = v.precioOriginal ?? null;
+                              }
+                              setPreciosCliente(mapa);
+                              setPreciosClienteOriginal(mapaOrig);
+                            }
+                          });
                         }}
                         className="w-full text-left px-4 py-2.5 hover:bg-[#1a1a1a] transition-colors"
                       >
