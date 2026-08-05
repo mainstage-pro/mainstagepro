@@ -4,6 +4,7 @@ import { upload } from "@vercel/blob/client";
 import type { Proyecto } from "@/lib/proyectos";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import { usePresentacionEdit, EditableImage } from "@/components/presentacion/editable";
+import { useTiposEventoMaterial } from "@/lib/tipos-evento-cliente";
 
 const GOLD = "#B3985B";
 
@@ -40,6 +41,26 @@ const SERVICIOS = [
     incluye: ["Coordinación del rider", "Cues por escena", "Enlace directo con el artista", "Guion técnico del evento"],
   },
 ] as const;
+
+// Recordatorio breve de los servicios, con el lenguaje adaptado a cada audiencia.
+// El detalle técnico completo vive en la home y en /presentacion/servicio/*.
+const SERVICIOS_RESUMEN: Record<EventoTipo, { n: string; title: string; linea: string }[]> = {
+  musical: [
+    { n: "01", title: "Renta de equipo",     linea: "El equipo correcto para tu show, listo y respaldado." },
+    { n: "02", title: "Producción técnica",  linea: "Operadores que montan, prueban y operan tu show." },
+    { n: "03", title: "Dirección técnica",   linea: "Una sola cabeza que coordina audio, luz y video." },
+  ],
+  social: [
+    { n: "01", title: "Renta de equipo",     linea: "El equipo justo para tu celebración, listo y respaldado." },
+    { n: "02", title: "Producción técnica",  linea: "Un equipo que monta, prueba y cuida cada momento." },
+    { n: "03", title: "Dirección técnica",   linea: "Un solo responsable de que todo salga perfecto." },
+  ],
+  empresarial: [
+    { n: "01", title: "Renta de equipo",     linea: "El equipo indicado para tu evento, listo y respaldado." },
+    { n: "02", title: "Producción técnica",  linea: "Técnicos que montan, prueban y operan todo el evento." },
+    { n: "03", title: "Dirección técnica",   linea: "Un solo responsable de que todo funcione y llegue a tiempo." },
+  ],
+};
 
 const CONFIG = {
   musical: {
@@ -698,6 +719,7 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
   const c = CONFIG[tipo];
   const isAdmin  = useAdmin();
   const edit = usePresentacionEdit();
+  const { coverPorSlug } = useTiposEventoMaterial();
   const { fotos, tipoId, setTipoId, recargar } = useGaleria(tipo, c.gallery);
   const proyectos = useProyectos(tipo);
 
@@ -747,7 +769,7 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
           <EditableImage
             edit={edit}
             okey={`evento.${tipo}.hero`}
-            fallback={c.hero}
+            fallback={coverPorSlug(tipo, c.hero)}
             alt={c.label}
             wrapClassName="relative w-full h-full"
             imgClassName="w-full h-full object-cover"
@@ -809,48 +831,41 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
         </div>
       </section>
 
-      {/* ── Los 3 servicios ── */}
-      <section id="servicios" className="py-32 px-6 bg-[#060606]">
+      {/* ── Recordatorio de servicios (compacto) ── */}
+      <section id="servicios" className="py-20 px-6 bg-[#060606]">
         <div className="max-w-5xl mx-auto">
           <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Nuestros servicios</p>
-            <h2 className="font-bold text-white leading-[1.05] mb-4" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
-              Tres niveles de servicio para tu evento.
+            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-4">Cómo trabajamos contigo</p>
+            <h2 className="font-bold text-white leading-[1.05] mb-3" style={{ fontSize: "clamp(1.5rem, 3.2vw, 2.4rem)", letterSpacing: "-0.02em" }}>
+              Tres formas de sumarnos a tu evento.
             </h2>
-            <p className="text-white/40 text-sm sm:text-base leading-relaxed max-w-2xl mb-16">
-              Desde la renta del equipo indicado hasta la dirección integral de la producción. Elige el alcance que tu evento necesita — y combínalos cuando haga falta.
+            <p className="text-white/40 text-sm leading-relaxed max-w-2xl mb-10">
+              Desde solo el equipo hasta la coordinación completa. Elige el alcance que necesitas — o combínalos.
             </p>
           </R>
 
-          <div className="space-y-5">
-            {SERVICIOS.map((s, i) => (
-              <R key={s.key} delay={i * 80}>
-                <div className="grid md:grid-cols-[1fr_auto] gap-8 p-8 sm:p-10 rounded-3xl"
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {SERVICIOS_RESUMEN[tipo].map((s, i) => (
+              <R key={s.n} delay={i * 80}>
+                <div className="rounded-2xl p-6 h-full flex flex-col"
                      style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <div>
-                    <div className="flex items-center gap-4 mb-3">
-                      <span className="font-mono" style={{ fontSize: "0.7rem", color: GOLD, letterSpacing: "0.12em" }}>{s.n}</span>
-                      <h3 className="font-bold text-white" style={{ fontSize: "clamp(1.3rem, 2.5vw, 1.75rem)", letterSpacing: "-0.02em" }}>{s.title}</h3>
-                    </div>
-                    <p className="text-white/70 text-sm sm:text-base mb-4">{s.tagline}</p>
-                    <p className="text-white/40 text-sm leading-relaxed max-w-2xl mb-6">{s.detail}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {s.incluye.map((it, j) => (
-                        <span key={j} className="text-xs text-white/55 px-3 py-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}>{it}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex md:flex-col md:items-end md:justify-center">
-                    <button onClick={() => abrirDescubrimiento(s.key)}
-                            className="whitespace-nowrap text-xs font-semibold tracking-wide px-6 py-3 rounded-full transition-all hover:scale-105"
-                            style={{ background: "rgba(179,152,91,0.12)", border: `1px solid ${GOLD}55`, color: GOLD }}>
-                      Cotizar este servicio →
-                    </button>
-                  </div>
+                  <span className="font-mono mb-4" style={{ fontSize: "0.7rem", color: GOLD, letterSpacing: "0.12em" }}>{s.n}</span>
+                  <h3 className="font-bold text-white text-lg mb-2 leading-tight">{s.title}</h3>
+                  <p className="text-white/50 text-sm leading-relaxed">{s.linea}</p>
                 </div>
               </R>
             ))}
           </div>
+
+          <R delay={240}>
+            <div className="mt-8">
+              <button onClick={() => abrirDescubrimiento(null)}
+                      className="text-sm font-semibold tracking-wide px-7 py-3.5 rounded-full transition-all hover:scale-105"
+                      style={{ background: "rgba(179,152,91,0.12)", border: `1px solid ${GOLD}55`, color: GOLD }}>
+                Cotizar mi evento →
+              </button>
+            </div>
+          </R>
         </div>
       </section>
 

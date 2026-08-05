@@ -1,20 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Boxes, SlidersHorizontal, Compass, type LucideIcon } from "lucide-react";
 import type { Proyecto } from "@/lib/proyectos";
 import { SERVICIOS_DETALLE } from "@/lib/presentacion-servicios";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import { R, StatCount, GOLD } from "@/components/presentacion/anim";
 import { WA_URL, useDescubrimiento } from "@/components/presentacion/descubrimiento";
-import { usePresentacionEdit, EditableImage, EditableFigure } from "@/components/presentacion/editable";
+import { usePresentacionEdit, EditableImage } from "@/components/presentacion/editable";
 import { useTiposEventoMaterial } from "@/lib/tipos-evento-cliente";
-
-// Icono representativo de cada servicio (equipo · operación · coordinación).
-const SERVICE_ICONS: Record<string, LucideIcon> = {
-  RENTA: Boxes,
-  PRODUCCION_TECNICA: SlidersHorizontal,
-  DIRECCION_TECNICA: Compass,
-};
 
 // slug enlaza con el tipo de evento (fuente maestra); la ruta local es fallback.
 const HERO_SLIDES = [
@@ -204,27 +196,33 @@ export default function PresentacionHomeClient() {
               <R key={s.slug} delay={i * 120}>
                 <a
                   href={`/presentacion/servicio/${s.slug}`}
-                  className="group relative rounded-2xl p-8 h-full flex flex-col transition-all duration-300 block"
+                  className="group relative rounded-2xl overflow-hidden h-full flex flex-col transition-all duration-300 block"
                   style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = `${GOLD}40`; e.currentTarget.style.background = "rgba(179,152,91,0.04)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; e.currentTarget.style.background = "rgba(255,255,255,0.025)"; }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = `${GOLD}40`; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; }}
                 >
-                  <div className="flex items-center justify-between mb-6">
-                    <EditableFigure
+                  {/* Imagen grande de portada del servicio */}
+                  <div className="relative w-full overflow-hidden" style={{ aspectRatio: "4 / 3" }}>
+                    <EditableImage
                       edit={edit}
                       okey={`home.servicio.${s.tipoServicio}.img`}
+                      fallback={s.hero}
                       alt={s.title}
-                      imgClassName="w-11 h-11 rounded-xl object-cover"
-                      placeholder={(() => { const Icon = SERVICE_ICONS[s.tipoServicio]; return Icon ? <Icon size={30} strokeWidth={1.4} style={{ color: GOLD }} /> : <span />; })()}
+                      wrapClassName="absolute inset-0"
+                      imgClassName="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />
-                    <span className="text-[#B3985B]/40 text-xs font-mono tracking-widest">{s.n}</span>
+                    <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(6,6,6,0.92) 0%, rgba(6,6,6,0.35) 45%, transparent 100%)" }} />
+                    <span className="absolute top-4 left-5 text-white/70 text-xs font-mono tracking-widest">{s.n}</span>
+                    <h3 className="absolute bottom-4 left-5 right-5 font-bold text-white text-2xl leading-tight">{s.title}</h3>
                   </div>
-                  <h3 className="font-bold text-white text-2xl mb-3 leading-tight">{s.title}</h3>
-                  <p className="text-white/55 text-sm leading-relaxed flex-1">{s.tagline}</p>
-                  <p className="text-[#B3985B]/60 text-xs mt-6 leading-relaxed border-t border-white/[0.05] pt-5">{s.detailChips}</p>
-                  <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-white/70 group-hover:text-white transition-transform duration-300 group-hover:translate-x-1">
-                    Ver servicio <span aria-hidden>→</span>
-                  </span>
+                  {/* Contenido */}
+                  <div className="p-7 flex flex-col flex-1">
+                    <p className="text-white/55 text-sm leading-relaxed flex-1">{s.tagline}</p>
+                    <p className="text-[#B3985B]/60 text-xs mt-5 leading-relaxed border-t border-white/[0.05] pt-5">{s.detailChips}</p>
+                    <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-white/70 group-hover:text-white transition-transform duration-300 group-hover:translate-x-1">
+                      Ver servicio <span aria-hidden>→</span>
+                    </span>
+                  </div>
                 </a>
               </R>
             ))}
