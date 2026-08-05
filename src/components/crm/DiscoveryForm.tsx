@@ -12,7 +12,7 @@ import { parseFechasEvento } from "@/lib/fechas-evento";
 const PASOS_DISCOVERY: Array<{ id: number; label: string; icon: LucideIcon }> = [
   { id: 1, label: "Info Básica", icon: ClipboardList },
   { id: 2, label: "Producción", icon: Settings },
-  { id: 3, label: "Operativo", icon: Truck },
+  { id: 3, label: "Info extra", icon: Truck },
   { id: 4, label: "Comercial", icon: Handshake },
 ];
 
@@ -949,6 +949,25 @@ export default function DiscoveryForm({
               </div>
 
             </div>
+
+            {/* Ruta: descubrimiento completo vs. ir directo a cotización (solo vendedor) */}
+            {!clientMode && (
+              <div className="border border-[#2a2a2a] bg-[#111] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm text-white font-medium">¿Es algo simple?</p>
+                  <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed">
+                    Si el evento es muy básico, salta directo a la cotización. Si no, sigue con <span className="text-gray-400">Siguiente</span> para el descubrimiento completo.
+                  </p>
+                </div>
+                <Link
+                  href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
+                  onClick={() => { if (!trato.descubrimientoCompleto) guardarDescubrimiento(true); }}
+                  className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors shrink-0 whitespace-nowrap text-center"
+                >
+                  Ir directo a cotización →
+                </Link>
+              </div>
+            )}
 
             </div>)} {/* /paso1 */}
 

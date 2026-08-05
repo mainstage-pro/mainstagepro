@@ -29,7 +29,7 @@ export function Combobox({
   className = "",
   disabled = false,
 }: Props) {
-  const selectedLabel = value ? (options.find(o => o.value === value)?.label ?? "") : "";
+  const selectedLabel = options.find(o => o.value === value)?.label ?? "";
   const [query, setQuery] = useState(selectedLabel);
   const [open, setOpen] = useState(false);
   const [dropStyle, setDropStyle] = useState<React.CSSProperties>({});

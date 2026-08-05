@@ -503,14 +503,6 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
 
             {!trato.descubrimientoCompleto || isEditingDiscovery ? (
               <div className="mt-4">
-                {!trato.descubrimientoCompleto && (
-                  <div className="p-3 bg-red-900/20 border border-red-800/40 rounded-lg mb-4">
-                    <p className="text-red-400 text-xs font-semibold mb-1 inline-flex items-center gap-1.5"><AlertTriangle strokeWidth={1.75} className="w-3.5 h-3.5" /> Acción requerida</p>
-                    <p className="text-red-300/80 text-[11px] leading-relaxed">
-                      Antes de poder generar una cotización para esta oportunidad, debes completar el formulario de descubrimiento con los detalles técnicos del evento.
-                    </p>
-                  </div>
-                )}
                 {isEditingDiscovery && (
                   <div className="flex justify-between items-center mb-4">
                     <p className="text-[#B3985B] text-sm font-semibold">Editando descubrimiento</p>

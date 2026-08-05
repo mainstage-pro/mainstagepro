@@ -79,14 +79,14 @@ export default function NuevoContactoPage() {
 
 
   const [clienteId, setClienteId] = useState("");
-  const [etapa, setEtapa] = useState<string>("PROSPECCION");
-  const [momento, setMomento] = useState<string>("");
+  const [etapa, setEtapa] = useState<string>("DESCUBRIMIENTO");
+  const [momento, setMomento] = useState<string>("COTIZANDO");
   const [cotejoEstado, setCotejoEstado] = useState<CotejoEstado>(null);
   const [cotejoCliente, setCotejoCliente] = useState<CotejoCliente | null>(null);
   const [linkHuerfano, setLinkHuerfano] = useState("");
   const [generandoLink, setGenerandoLink] = useState(false);
   const [linkCopiado, setLinkCopiado] = useState(false);
-  const [origenLead, setOrigenLead] = useState("META_ADS");
+  const [origenLead, setOrigenLead] = useState("RECOMPRA");
   const [tipoLead, setTipoLead] = useState("INBOUND");
   const [origenVenta, setOrigenVenta] = useState("CLIENTE_PROPIO");
   const [vendedorId, setVendedorId] = useState("");
@@ -193,7 +193,7 @@ export default function NuevoContactoPage() {
       });
       if (!res.ok) {
         const d = await res.json();
-        setError(d.error || "Error al crear el contacto");
+        setError(d.error || "Error al crear el trato");
         setLoading(false);
         return;
       }
@@ -216,8 +216,8 @@ export default function NuevoContactoPage() {
       {/* Header */}
       <div className="mb-6">
         <button onClick={() => router.back()} className="text-gray-600 hover:text-white text-sm mb-2 transition-colors">← Atrás</button>
-        <h1 className="ms-h1">Nuevo contacto</h1>
-        <p className="text-gray-600 text-xs mt-1">Registra un nuevo contacto en el funnel de ventas</p>
+        <h1 className="ms-h1">Nuevo trato</h1>
+        <p className="text-gray-600 text-xs mt-1">Registra un nuevo trato en el funnel de ventas</p>
       </div>
 
       {error && (
@@ -565,7 +565,7 @@ export default function NuevoContactoPage() {
               color: "black",
             }}
           >
-            {loading ? "Creando..." : `Crear contacto en ${etapaSeleccionada?.label ?? "..."} →`}
+            {loading ? "Creando..." : `Crear trato en ${etapaSeleccionada?.label ?? "..."} →`}
           </button>
         </div>
       </div>
