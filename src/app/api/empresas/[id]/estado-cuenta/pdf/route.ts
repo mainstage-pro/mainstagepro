@@ -17,13 +17,13 @@ export async function GET(
 
   const { id } = await params;
 
-  const cliente = await prisma.cliente.findUnique({
+  const empresa = await prisma.empresa.findUnique({
     where: { id },
-    select: { id: true, nombre: true, empresa: true, empresaId: true },
+    select: { id: true, nombre: true },
   });
-  if (!cliente) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  if (!empresa) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
 
-  const scope = await getCuentasScope({ clienteId: id, empresaId: cliente.empresaId });
+  const scope = await getCuentasScope({ empresaId: id });
   const { porCobrar, porPagar } = toEstadoCuentaLineas(scope);
 
   const logoPath = path.join(process.cwd(), "public", "logo-white.png");
@@ -31,14 +31,10 @@ export async function GET(
     ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}`
     : null;
 
-  // Se cobra a la empresa: si el contacto pertenece a una, el estado se emite a la empresa.
-  const titular = cliente.empresa ?? cliente.nombre;
-  const subtitulo = cliente.empresa ? cliente.nombre : null;
-
   const data = {
     logoSrc,
-    cliente: titular,
-    empresa: subtitulo,
+    cliente: empresa.nombre,
+    empresa: null,
     generadoEn: new Date().toISOString(),
     porCobrar,
     porPagar,
@@ -55,7 +51,7 @@ export async function GET(
     pdfStream.on("end", () => resolve(Buffer.concat(chunks)));
   });
 
-  const slug = titular.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+  const slug = empresa.nombre.replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
   const fecha = new Date().toISOString().slice(0, 10);
   const filename = `EstadoCuenta-${slug || id.slice(0, 8)}-${fecha}.pdf`;
 

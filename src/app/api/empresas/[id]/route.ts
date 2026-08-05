@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getCuentasScope } from "@/lib/estado-cuenta";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -27,21 +28,16 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
         },
         orderBy: { nombre: "asc" },
       },
-      cuentasCobrar: {
-        select: { id: true, concepto: true, monto: true, estado: true, createdAt: true },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-      },
-      cuentasPagar: {
-        select: { id: true, concepto: true, monto: true, estado: true, createdAt: true },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-      },
     },
   });
 
   if (!empresa) return NextResponse.json({ error: "No encontrada" }, { status: 404 });
-  return NextResponse.json({ empresa });
+
+  // Cuentas consolidadas: se cobra/paga a la empresa, así que se agregan también
+  // las cuentas ligadas a cada contacto cliente de la empresa.
+  const { cuentasCobrar, cuentasPagar } = await getCuentasScope({ empresaId: id });
+
+  return NextResponse.json({ empresa: { ...empresa, cuentasCobrar, cuentasPagar } });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

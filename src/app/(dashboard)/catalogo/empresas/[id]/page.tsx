@@ -17,7 +17,19 @@ interface ContactoProveedor {
   id: string; nombre: string; telefono: string | null; correo: string | null; giro: string | null;
   proyectoEquipos: ProyectoEquipo[];
 }
-interface Cuenta { id: string; concepto: string; monto: number; estado: string; createdAt: string; }
+interface CuentaCobrar {
+  id: string; concepto: string; monto: number; montoCobrado: number; estado: string;
+  fechaCompromiso: string;
+  cotizacion: { numeroCotizacion: string } | null;
+  proyecto: { numeroProyecto: string; nombre: string } | null;
+  contacto: { id: string; nombre: string } | null;
+}
+interface CuentaPagar {
+  id: string; concepto: string; monto: number; montoPagado: number; estado: string;
+  fechaCompromiso: string;
+  proveedor: { nombre: string } | null;
+  proyecto: { numeroProyecto: string; nombre: string } | null;
+}
 interface EmpresaDetalle {
   id: string; nombre: string; giro: string | null; telefono: string | null; correo: string | null;
   sitioWeb: string | null; notas: string | null; rfc: string | null; datosFiscales: string | null;
@@ -25,8 +37,8 @@ interface EmpresaDetalle {
   tipo: string; activo: boolean;
   contactosCliente: ContactoCliente[];
   contactosProveedor: ContactoProveedor[];
-  cuentasCobrar: Cuenta[];
-  cuentasPagar: Cuenta[];
+  cuentasCobrar: CuentaCobrar[];
+  cuentasPagar: CuentaPagar[];
 }
 
 const TIPO_COLORS: Record<string, string> = {
@@ -78,6 +90,29 @@ export default function EmpresaDetallePage() {
   const [loading, setLoading] = useState(true);
   const initialTab = (searchParams.get("tab") as Tab) ?? "clientes";
   const [tab, setTab] = useState<Tab>(initialTab);
+  const [descargando, setDescargando] = useState(false);
+
+  const descargarEstadoCuenta = useCallback(async () => {
+    setDescargando(true);
+    try {
+      const res = await fetch(`/api/empresas/${id}/estado-cuenta/pdf`);
+      if (!res.ok) { alert("No se pudo generar el estado de cuenta"); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const fecha = new Date().toISOString().slice(0, 10);
+      a.download = `EstadoCuenta-${fecha}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("No se pudo generar el estado de cuenta");
+    } finally {
+      setDescargando(false);
+    }
+  }, [id]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -96,8 +131,9 @@ export default function EmpresaDetallePage() {
 
   const totalCobrar = empresa.cuentasCobrar.reduce((s, c) => s + c.monto, 0);
   const totalPagar = empresa.cuentasPagar.reduce((s, c) => s + c.monto, 0);
-  const pendienteCobrar = empresa.cuentasCobrar.filter(c => c.estado === "PENDIENTE" || c.estado === "PARCIAL" || c.estado === "VENCIDO").reduce((s, c) => s + c.monto, 0);
-  const pendientePagar = empresa.cuentasPagar.filter(c => c.estado === "PENDIENTE" || c.estado === "PARCIAL" || c.estado === "VENCIDO").reduce((s, c) => s + c.monto, 0);
+  const pendienteCobrar = empresa.cuentasCobrar.reduce((s, c) => s + Math.max(0, c.monto - c.montoCobrado), 0);
+  const pendientePagar = empresa.cuentasPagar.reduce((s, c) => s + Math.max(0, c.monto - c.montoPagado), 0);
+  const neto = pendienteCobrar - pendientePagar;
 
   const activeTabs: Tab[] = TABS.filter(t =>
     t === "historial" ||
@@ -163,17 +199,41 @@ export default function EmpresaDetallePage() {
 
         {/* Métricas financieras rápidas */}
         {(empresa.cuentasCobrar.length > 0 || empresa.cuentasPagar.length > 0) && (
-          <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-green-950/20 border border-green-900/20 rounded-xl px-3 py-2">
-              <p className="text-[10px] text-green-700 uppercase tracking-wider">Por cobrar</p>
-              <p className="text-sm font-semibold text-green-400 mt-0.5">{fmt(pendienteCobrar)}</p>
-              <p className="text-[10px] text-[#555]">Total: {fmt(totalCobrar)}</p>
+          <div className="mt-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-green-950/20 border border-green-900/20 rounded-xl px-3 py-2">
+                <p className="text-[10px] text-green-700 uppercase tracking-wider">Nos deben</p>
+                <p className="text-sm font-semibold text-green-400 mt-0.5">{fmt(pendienteCobrar)}</p>
+                <p className="text-[10px] text-[#555]">Total: {fmt(totalCobrar)}</p>
+              </div>
+              {empresa.cuentasPagar.length > 0 && (
+                <div className="bg-red-950/20 border border-red-900/20 rounded-xl px-3 py-2">
+                  <p className="text-[10px] text-red-700 uppercase tracking-wider">Les debemos</p>
+                  <p className="text-sm font-semibold text-red-400 mt-0.5">{fmt(pendientePagar)}</p>
+                  <p className="text-[10px] text-[#555]">Total: {fmt(totalPagar)}</p>
+                </div>
+              )}
+              {empresa.cuentasPagar.length > 0 && (
+                <div className="bg-[#0d0d0d] border border-[#B3985B]/20 rounded-xl px-3 py-2">
+                  <p className="text-[10px] text-[#555] uppercase tracking-wider">Balance neto {neto >= 0 ? "a favor" : "en contra"}</p>
+                  <p className={`text-sm font-semibold mt-0.5 ${neto >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    {neto >= 0 ? "+" : "−"}{fmt(Math.abs(neto))}
+                  </p>
+                </div>
+              )}
             </div>
-            <div className="bg-red-950/20 border border-red-900/20 rounded-xl px-3 py-2">
-              <p className="text-[10px] text-red-700 uppercase tracking-wider">Por pagar</p>
-              <p className="text-sm font-semibold text-red-400 mt-0.5">{fmt(pendientePagar)}</p>
-              <p className="text-[10px] text-[#555]">Total: {fmt(totalPagar)}</p>
-            </div>
+            <button
+              onClick={descargarEstadoCuenta}
+              disabled={descargando}
+              className="mt-3 flex items-center gap-2 px-4 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] transition-colors disabled:opacity-40"
+            >
+              {descargando ? (
+                <div className="w-3.5 h-3.5 border-2 border-black/40 border-t-black rounded-full animate-spin" />
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+              )}
+              {descargando ? "Generando…" : "Descargar estado de cuenta"}
+            </button>
           </div>
         )}
       </div>
@@ -295,20 +355,31 @@ export default function EmpresaDetallePage() {
             <div>
               <h3 className="text-sm font-medium text-white mb-3">Cuentas por cobrar</h3>
               <div className="space-y-2">
-                {empresa.cuentasCobrar.map(c => (
-                  <div key={c.id} className="flex items-center justify-between ms-card px-4 py-2.5 text-sm">
-                    <div>
-                      <p className="text-gray-300 text-xs">{c.concepto}</p>
-                      <p className="text-[10px] text-[#555]">{fmtDate(c.createdAt)}</p>
+                {empresa.cuentasCobrar.map(c => {
+                  const saldo = Math.max(0, c.monto - c.montoCobrado);
+                  const referencia = c.cotizacion?.numeroCotizacion ?? c.proyecto?.numeroProyecto ?? null;
+                  return (
+                    <div key={c.id} className="flex items-center justify-between ms-card px-4 py-2.5 text-sm gap-3">
+                      <div className="min-w-0">
+                        <p className="text-gray-300 text-xs truncate">{c.concepto}</p>
+                        <p className="text-[10px] text-[#555] flex items-center gap-1.5 flex-wrap mt-0.5">
+                          {c.fechaCompromiso && <span>Vence {fmtDate(c.fechaCompromiso)}</span>}
+                          {referencia && <span className="text-[#B3985B]/70">· {referencia}</span>}
+                          {c.contacto && <span>· vía {c.contacto.nombre}</span>}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-xs font-medium ${c.estado === "LIQUIDADO" ? "text-green-400" : c.estado === "VENCIDO" ? "text-red-400" : "text-yellow-400"}`}>
+                          {c.estado}
+                        </span>
+                        <div className="text-right">
+                          <span className="text-white font-semibold">{fmt(saldo)}</span>
+                          {saldo !== c.monto && <p className="text-[10px] text-[#555]">de {fmt(c.monto)}</p>}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-medium ${c.estado === "LIQUIDADO" ? "text-green-400" : c.estado === "VENCIDO" ? "text-red-400" : "text-yellow-400"}`}>
-                        {c.estado}
-                      </span>
-                      <span className="text-white font-semibold">{fmt(c.monto)}</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -316,20 +387,31 @@ export default function EmpresaDetallePage() {
             <div>
               <h3 className="text-sm font-medium text-white mb-3">Cuentas por pagar</h3>
               <div className="space-y-2">
-                {empresa.cuentasPagar.map(c => (
-                  <div key={c.id} className="flex items-center justify-between ms-card px-4 py-2.5 text-sm">
-                    <div>
-                      <p className="text-gray-300 text-xs">{c.concepto}</p>
-                      <p className="text-[10px] text-[#555]">{fmtDate(c.createdAt)}</p>
+                {empresa.cuentasPagar.map(c => {
+                  const saldo = Math.max(0, c.monto - c.montoPagado);
+                  const referencia = c.proyecto?.numeroProyecto ?? null;
+                  return (
+                    <div key={c.id} className="flex items-center justify-between ms-card px-4 py-2.5 text-sm gap-3">
+                      <div className="min-w-0">
+                        <p className="text-gray-300 text-xs truncate">{c.concepto}</p>
+                        <p className="text-[10px] text-[#555] flex items-center gap-1.5 flex-wrap mt-0.5">
+                          {c.fechaCompromiso && <span>Vence {fmtDate(c.fechaCompromiso)}</span>}
+                          {referencia && <span className="text-[#B3985B]/70">· {referencia}</span>}
+                          {c.proveedor && <span>· {c.proveedor.nombre}</span>}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-xs font-medium ${c.estado === "LIQUIDADO" ? "text-green-400" : c.estado === "VENCIDO" ? "text-red-400" : "text-yellow-400"}`}>
+                          {c.estado}
+                        </span>
+                        <div className="text-right">
+                          <span className="text-white font-semibold">{fmt(saldo)}</span>
+                          {saldo !== c.monto && <p className="text-[10px] text-[#555]">de {fmt(c.monto)}</p>}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-medium ${c.estado === "LIQUIDADO" ? "text-green-400" : c.estado === "VENCIDO" ? "text-red-400" : "text-yellow-400"}`}>
-                        {c.estado}
-                      </span>
-                      <span className="text-white font-semibold">{fmt(c.monto)}</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

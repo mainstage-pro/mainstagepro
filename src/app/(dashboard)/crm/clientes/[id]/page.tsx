@@ -44,6 +44,7 @@ interface CuentaCobrarItem {
   fechaCobroReal: string | null;
   cotizacion: { numeroCotizacion: string } | null;
   proyecto: { numeroProyecto: string; nombre: string } | null;
+  contacto: { id: string; nombre: string } | null;
 }
 interface CuentaPagarItem {
   id: string;
@@ -592,11 +593,13 @@ function saldoPagar(c: CuentaPagarItem) { return Math.max(0, c.monto - c.montoPa
 function PanelCuentas({
   clienteId,
   clienteNombre,
+  empresaNombre,
   cuentasCobrar,
   cuentasPagar,
 }: {
   clienteId: string;
   clienteNombre: string;
+  empresaNombre: string | null;
   cuentasCobrar: CuentaCobrarItem[];
   cuentasPagar: CuentaPagarItem[];
 }) {
@@ -642,12 +645,16 @@ function PanelCuentas({
       <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
         <div>
           <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">
-            Cuentas
+            Cuentas{empresaNombre ? ` · ${empresaNombre}` : ""}
           </h2>
           <p className="text-[10px] text-gray-700 mt-0.5">
-            {esProveedor
-              ? "Relación de saldos: lo que nos deben y lo que les debemos"
-              : "Saldos pendientes de cobro de este cliente"}
+            {empresaNombre
+              ? (esProveedor
+                  ? "Saldos consolidados de la empresa (todos sus contactos): lo que nos deben y lo que les debemos"
+                  : "Saldos consolidados de la empresa, sumando todos sus contactos")
+              : (esProveedor
+                  ? "Relación de saldos: lo que nos deben y lo que les debemos"
+                  : "Saldos pendientes de cobro de este cliente")}
           </p>
         </div>
         <button
@@ -733,6 +740,9 @@ function PanelCuentas({
                                 {c.estado}
                               </span>
                               <span className="text-[10px] text-gray-600">{fmtDate(c.fechaCompromiso)}</span>
+                              {c.contacto && c.contacto.id !== clienteId && (
+                                <span className="text-[10px] text-gray-600">· vía {c.contacto.nombre}</span>
+                              )}
                             </div>
                           </div>
                           <div className="text-right shrink-0">
@@ -1305,6 +1315,7 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
       <PanelCuentas
         clienteId={id}
         clienteNombre={cliente.nombre}
+        empresaNombre={cliente.compania?.nombre ?? cliente.empresa ?? null}
         cuentasCobrar={cliente.cuentasCobrar ?? []}
         cuentasPagar={cliente.cuentasPagar ?? []}
       />

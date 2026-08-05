@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
+import { getCuentasScope } from "@/lib/estado-cuenta";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -31,68 +32,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   if (!cliente) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
-  // ── Cuentas por cobrar (lo que el cliente nos debe) ──────────────────────────
-  // Cubre las cuentas ligadas directamente al contacto y las ligadas a su empresa.
-  const empresaId = cliente.empresaId;
-  const cuentasCobrar = await prisma.cuentaCobrar.findMany({
-    where: {
-      OR: [
-        { clienteId: id },
-        ...(empresaId ? [{ empresaId }] : []),
-      ],
-    },
-    select: {
-      id: true,
-      concepto: true,
-      monto: true,
-      montoCobrado: true,
-      estado: true,
-      fechaCompromiso: true,
-      fechaCobroReal: true,
-      cotizacion: { select: { numeroCotizacion: true } },
-      proyecto: { select: { numeroProyecto: true, nombre: true } },
-    },
-    orderBy: { fechaCompromiso: "asc" },
+  // ── Cuentas por cobrar / pagar con alcance de EMPRESA ────────────────────────
+  // Se cobra a la empresa, no al contacto: si el cliente pertenece a una empresa,
+  // se agregan las cuentas de todos sus contactos y las ligadas a la empresa.
+  const { cuentasCobrar, cuentasPagar } = await getCuentasScope({
+    clienteId: id,
+    empresaId: cliente.empresaId,
   });
-
-  // ── Cuentas por pagar (lo que le debemos al cliente-proveedor) ───────────────
-  // Solo aplica si el cliente está ligado a una empresa que también es proveedor.
-  // Se resuelve por la empresa directamente o por proveedores que comparten empresa.
-  let cuentasPagar: Array<{
-    id: string;
-    concepto: string;
-    monto: number;
-    montoPagado: number;
-    estado: string;
-    fechaCompromiso: Date;
-    fechaPagoReal: Date | null;
-    tipoAcreedor: string;
-    proveedor: { nombre: string } | null;
-    proyecto: { numeroProyecto: string; nombre: string } | null;
-  }> = [];
-  if (empresaId) {
-    cuentasPagar = await prisma.cuentaPagar.findMany({
-      where: {
-        OR: [
-          { empresaId },
-          { proveedor: { empresaId } },
-        ],
-      },
-      select: {
-        id: true,
-        concepto: true,
-        monto: true,
-        montoPagado: true,
-        estado: true,
-        fechaCompromiso: true,
-        fechaPagoReal: true,
-        tipoAcreedor: true,
-        proveedor: { select: { nombre: true } },
-        proyecto: { select: { numeroProyecto: true, nombre: true } },
-      },
-      orderBy: { fechaCompromiso: "asc" },
-    });
-  }
 
   return NextResponse.json({ cliente: { ...cliente, cuentasCobrar, cuentasPagar } });
 }
