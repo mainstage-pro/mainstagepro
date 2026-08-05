@@ -24,7 +24,8 @@ function formatFecha(iso: string | null): { label: string; color: string } | nul
   if (!iso) return null
   const today = new Date()
   today.setHours(0,0,0,0)
-  const d = new Date(iso + 'T00:00:00')
+  const d = new Date(iso.substring(0, 10) + 'T00:00:00')
+  if (isNaN(d.getTime())) return null
   const diff = Math.round((d.getTime() - today.getTime()) / 86400000)
   if (diff < 0)  return { label: 'Vencida', color: '#ef4444' }
   if (diff === 0) return { label: 'Hoy',    color: '#22c55e' }
@@ -265,13 +266,6 @@ export default function QuickAccessPanel() {
 
                                   {/* Meta row */}
                                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                    {/* Project badge */}
-                                    {t.proyectoTarea && (
-                                      <span className="text-[9px] text-gray-700 truncate max-w-[100px]">
-                                        {t.proyectoTarea.nombre}
-                                      </span>
-                                    )}
-
                                     {/* Subtareas count */}
                                     {t._count.subtareas > 0 && (
                                       <span className="text-[9px] text-gray-700">
@@ -297,7 +291,7 @@ export default function QuickAccessPanel() {
                                       {isEditingDate && (
                                         <div className="absolute left-0 top-full mt-1 z-50">
                                           <DatePicker
-                                            value={t.fecha ?? ''}
+                                            value={t.fecha?.substring(0, 10) ?? ''}
                                             onChange={val => handleDateChange(t.id, val)}
                                             size="sm"
                                             autoOpen
