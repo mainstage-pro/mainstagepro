@@ -16,7 +16,7 @@ type TareaDet = {
 type Usuario = {
   id: string; name: string; area: string | null
   total: number; completadas: number
-  vencidas: number; pendientesVigentes: number
+  vencidas: number; pendientesVigentes: number; dispensadas?: number
   cumplimiento: number
   porFuente: Record<FuenteKey, { total: number; completadas: number }>
   verificacion: Verif; criticas: TareaDet[]; pendientes: TareaDet[]
@@ -25,7 +25,7 @@ type Fuente = { fuente: FuenteKey; label: string; total: number; completadas: nu
 type Semana = { semana: string; label: string; total: number; completadas: number; cumplimiento: number }
 type Resumen = {
   total: number; completadas: number
-  vencidas: number; pendientesVigentes: number
+  vencidas: number; pendientesVigentes: number; dispensadas?: number
   cumplimiento: number; sinFecha: number; sinResponsable: number
 }
 type Data = {
@@ -245,6 +245,13 @@ export function VistaRendimiento() {
           <p className="text-2xl font-bold tabular-nums text-[#B3985B]">{r.pendientesVigentes}</p>
           <p className="text-[10px] text-[#444] mt-1">pendientes vigentes</p>
         </div>
+        {!!r.dispensadas && r.dispensadas > 0 && (
+          <div className="ms-stat-card">
+            <p className="text-[10px] uppercase tracking-[0.15em] text-[#444] mb-2">Dispensadas</p>
+            <p className="text-2xl font-bold tabular-nums text-[#6b7280]">{r.dispensadas}</p>
+            <p className="text-[10px] text-[#444] mt-1">no realizadas justificadas · fuera del cálculo</p>
+          </div>
+        )}
       </div>
 
       {/* ── Escala de bandas ── */}

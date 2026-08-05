@@ -120,6 +120,7 @@ export interface RendUsuario {
   completadas: number
   vencidas: number
   pendientesVigentes: number
+  dispensadas: number
   cumplimiento: number
   porFuente: Record<FuenteKey, { total: number; completadas: number }>
   verificacion: Verificacion
@@ -149,6 +150,7 @@ export interface RendResumen {
   completadas: number
   vencidas: number
   pendientesVigentes: number
+  dispensadas: number
   cumplimiento: number
   sinFecha: number
   sinResponsable: number
@@ -181,6 +183,7 @@ type TareaRow = {
   proyectoInternoId: string | null
   requiereEvidencia: boolean
   estadoVerificacion: string
+  noRealizada: boolean
   asignadoA: { id: string; name: string; area: string | null } | null
   proyectoEvento: { nombre: string } | null
   trato: { nombreEvento: string | null } | null
@@ -234,7 +237,7 @@ export async function computeRendimiento(opts: {
     id: true, titulo: true, prioridad: true, estado: true, tipoOrigen: true, asignadoAId: true,
     fecha: true, fechaVencimiento: true, fechaCompletada: true,
     proyectoEventoId: true, tratoId: true, proyectoInternoId: true,
-    requiereEvidencia: true, estadoVerificacion: true,
+    requiereEvidencia: true, estadoVerificacion: true, noRealizada: true,
     asignadoA: { select: { id: true, name: true, area: true } },
     proyectoEvento: { select: { nombre: true } },
     trato: { select: { nombreEvento: true } },
@@ -288,10 +291,21 @@ export async function computeRendimiento(opts: {
   }
   const diags: Diag[] = []
   let sinFecha = 0
+  // "No realizada" aceptada/justificada: se excluye del cálculo (ni cuenta como
+  // cumplida ni resta). Se cuenta aparte como "dispensada" para dar visibilidad.
+  let dispensadasTotal = 0
+  const dispensadasPorUser = new Map<string, number>()
   for (const row of rows) {
     const compromiso = masTardia(row.fecha, row.fechaVencimiento)
     if (!compromiso) { if (row.estado !== 'COMPLETADA') sinFecha++; continue }
     const compromisoStr = fmtDia(compromiso)
+    if (row.noRealizada) {
+      if (compromisoStr >= desde && compromisoStr <= hasta) {
+        dispensadasTotal++
+        if (row.asignadoAId) dispensadasPorUser.set(row.asignadoAId, (dispensadasPorUser.get(row.asignadoAId) ?? 0) + 1)
+      }
+      continue
+    }
     const completada = row.estado === 'COMPLETADA'
     let vencida = false, pendienteVigente = false, diasAtraso = 0
     if (!completada) {
@@ -307,6 +321,7 @@ export async function computeRendimiento(opts: {
 
   // ── Resumen general ──
   const resumen = agregarResumen(periodo, sinFecha, sinResponsable)
+  resumen.dispensadas = dispensadasTotal
 
   // ── Por usuario ──
   const porUser = new Map<string, Diag[]>()
@@ -347,6 +362,7 @@ export async function computeRendimiento(opts: {
       completadas: r.completadas,
       vencidas: r.vencidas,
       pendientesVigentes: r.pendientesVigentes,
+      dispensadas: dispensadasPorUser.get(uid) ?? 0,
       cumplimiento: r.cumplimiento,
       porFuente,
       verificacion,
@@ -444,6 +460,7 @@ function agregarResumen(ds: DiagLite[], sinFecha: number, sinResponsable: number
   const pendientesVigentes = ds.filter(d => d.pendienteVigente).length
   return {
     total, completadas, vencidas, pendientesVigentes,
+    dispensadas: 0,
     cumplimiento: pct(completadas, total),
     sinFecha,
     sinResponsable,

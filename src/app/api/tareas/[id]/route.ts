@@ -228,6 +228,54 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data.justificacionNoRealizada = null;
   }
 
+  // ── Recurrente + "no realizada" ────────────────────────────────────────────
+  // Una tarea recurrente marcada como no realizada NO debe atorarse: deja
+  // constancia de esta ocurrencia en el historial y avanza al próximo día del
+  // patrón para que siga recurriendo. La constancia queda fuera del rendimiento
+  // (las "no realizadas" se dispensan del cálculo).
+  if (marcarNoRealizada) {
+    const actual = await prisma.tarea.findUnique({
+      where: { id },
+      select: { recurrencia: true, fecha: true, tipoEvidencia: true, evidenciasHistorial: true },
+    });
+    if (actual?.recurrencia) {
+      try {
+        const cfg = JSON.parse(actual.recurrencia) as RecurrenciaConfig;
+        const desde = actual.fecha ?? new Date();
+        const hoyCST = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }));
+        const mananaCST = new Date(hoyCST);
+        mananaCST.setUTCDate(mananaCST.getUTCDate() + 1);
+        let prox = calcularProximaFecha(cfg, desde);
+        for (let i = 0; i < 500 && prox < mananaCST; i++) {
+          const next = calcularProximaFecha(cfg, prox);
+          if (next <= prox) break;
+          prox = next;
+        }
+        const entrada = {
+          fechaOcurrencia: actual.fecha ? actual.fecha.toISOString() : null,
+          completadaAt: new Date().toISOString(),
+          completadaPorId: session.id,
+          completadaPor: session.name ?? null,
+          tipoEvidencia: actual.tipoEvidencia ?? null,
+          noRealizada: true,
+          motivoNoRealizada: data.motivoNoRealizada ?? null,
+          justificacionNoRealizada: data.justificacionNoRealizada ?? null,
+          estadoVerificacion: data.estadoVerificacion ?? "PENDIENTE_VERIFICACION",
+        };
+        let prev: unknown[] = [];
+        try {
+          const parsed = actual.evidenciasHistorial ? JSON.parse(actual.evidenciasHistorial) : [];
+          if (Array.isArray(parsed)) prev = parsed;
+        } catch { /* historial corrupto → se reinicia */ }
+        reagendar = {
+          proximaFecha: prox,
+          fechaAnterior: actual.fecha,
+          historialJSON: JSON.stringify([entrada, ...prev].slice(0, 60)),
+        };
+      } catch { /* recurrencia inválida → se marca no realizada como tarea normal */ }
+    }
+  }
+
   // ── Gate de evidencia (server-side): al completar, validar según tipoEvidencia ──
   if ("estado" in data && data.estado === "COMPLETADA" && !marcarNoNecesario && !marcarNoRealizada) {
     const actual = await prisma.tarea.findUnique({
@@ -369,6 +417,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     data.evidenciaEnviadaAt = null;
     data.evidenciaEnviadaCanal = null;
     data.motivoRechazo = null;
+    // La marca de "no realizada" pertenece a la ocurrencia ya cerrada (queda en el
+    // historial); la fila reagendada arranca limpia para la próxima ocurrencia.
+    data.noRealizada = false;
+    data.motivoNoRealizada = null;
+    data.justificacionNoRealizada = null;
     if (reagendar.historialJSON) data.evidenciasHistorial = reagendar.historialJSON;
     if (reagendar.archivosAEliminar?.length) {
       await prisma.tareaArchivo.deleteMany({ where: { id: { in: reagendar.archivosAEliminar } } });
@@ -455,7 +508,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // Si se completó de verdad una tarea-hito (su paso tiene `avanzaSubetapaA`), el
   // trato avanza a esa subetapa. "No fue necesario" no dispara avance.
   let subetapaAvanzada: string | null = null;
-  if ("estado" in data && data.estado === "COMPLETADA" && !reagendar && !marcarNoNecesario) {
+  if ("estado" in data && data.estado === "COMPLETADA" && !reagendar && !marcarNoNecesario && !marcarNoRealizada) {
     try { subetapaAvanzada = await avanzarPorHito(id); }
     catch { /* el avance no debe romper la actualización de la tarea */ }
   }
