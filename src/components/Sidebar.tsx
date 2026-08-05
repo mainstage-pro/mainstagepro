@@ -268,6 +268,9 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
     ? AREA_DASHBOARD[user.area]
     : "/dashboard";
 
+  // El logo/marca lleva a la home de accesos directos (solo el dueño la tiene).
+  const homeHref = isOwner ? "/inicio" : dashboardHref;
+
   function isActive(href: string) {
     const path = href.split("?")[0];
     if (path === "/dashboard") return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
@@ -470,7 +473,7 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
       {/* DESKTOP */}
       <aside className="hidden md:flex w-64 bg-[#0d0d0d] border-r border-[#1a1a1a] flex-col h-full shrink-0">
         <div className="px-4 py-4 border-b border-[#1a1a1a]">
-          <Link href={dashboardHref} className="flex items-center gap-2 hover:opacity-80 transition-opacity mb-3">
+          <Link href={homeHref} className="flex items-center gap-2 hover:opacity-80 transition-opacity mb-3">
             <Image src="/logo-icon.png" alt="Mainstage Pro" width={28} height={28} className="shrink-0" />
             <div>
               <p className="text-white text-sm font-semibold leading-tight">Mainstage Pro</p>
@@ -519,7 +522,7 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
         </button>
         <NotificacionesBell />
         {/* RIGHT: logo + new task */}
-        <Link href={dashboardHref} className="flex-1 flex min-w-0 justify-end">
+        <Link href={homeHref} className="flex-1 flex min-w-0 justify-end">
           <Image src="/logo-white.png" alt="Mainstage Pro" width={88} height={22} className="object-contain hover:opacity-80 transition-opacity shrink-0" />
         </Link>
         <button
@@ -549,7 +552,7 @@ export default function Sidebar({ user, userModuleKeys }: SidebarProps) {
         }`}
       >
         <div className="px-4 py-4 border-b border-[#1a1a1a] flex items-center justify-between">
-          <Link href={dashboardHref} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <Link href={homeHref} onClick={() => setMobileOpen(false)} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Image src="/logo-icon.png" alt="Mainstage Pro" width={28} height={28} className="shrink-0" />
             <div>
               <p className="text-white text-sm font-semibold leading-tight">Mainstage Pro</p>
