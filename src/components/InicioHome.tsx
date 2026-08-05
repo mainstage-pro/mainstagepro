@@ -106,20 +106,20 @@ export default function InicioHome({ userName }: { userName: string }) {
   const firstName = userName?.split(" ")[0] ?? "";
 
   return (
-    <div className="min-h-full bg-[#0a0a0a] text-white">
-      <div className="max-w-6xl mx-auto px-5 md:px-8 py-8 md:py-12">
+    <div className="min-h-full bg-[#0a0a0a] text-white flex items-center justify-center">
+      <div className="w-full max-w-6xl mx-auto px-5 md:px-8 py-8 md:py-12">
         {/* ── Encabezado ── */}
-        <header className="mb-9">
+        <header className="mb-9 text-center">
           <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-[0.18em] mb-1.5">Mainstage Pro</p>
           <h1 className="text-2xl md:text-3xl font-semibold tracking-tight">
             {greeting}{firstName ? `, ${firstName}` : ""}
           </h1>
-          <p className="text-white/40 text-sm mt-1">Todas tus áreas y módulos en un solo lugar.</p>
+          <p className="text-white/40 text-sm mt-1">Tus accesos frecuentes en un solo lugar.</p>
         </header>
 
         {/* ── Accesos frecuentes (editables) ── */}
-        <section className="mb-11">
-          <div className="flex items-center justify-between mb-3">
+        <section>
+          <div className="flex items-center justify-center gap-3 mb-4">
             <div className="flex items-center gap-2">
               <Star strokeWidth={1.75} className="w-4 h-4 text-[#B3985B]" />
               <h2 className="text-sm font-semibold tracking-wide">Accesos frecuentes</h2>
@@ -151,9 +151,9 @@ export default function InicioHome({ userName }: { userName: string }) {
               Sin accesos. Usa <span className="text-[#B3985B]">Editar → Agregar</span> para elegir tus módulos frecuentes.
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+            <div className="flex flex-wrap justify-center gap-3">
               {favMods.map((m, idx) => (
-                <div key={m.id} className="relative group">
+                <div key={m.id} className="relative group w-[150px] sm:w-[160px]">
                   <Link
                     href={m.href}
                     className={`flex flex-col items-center justify-center gap-2.5 p-5 rounded-2xl bg-gradient-to-b from-[#151515] to-[#0e0e0e] border border-[#1f1f1f] transition-all hover:-translate-y-0.5 hover:border-[#B3985B]/45 ${
@@ -201,41 +201,6 @@ export default function InicioHome({ userName }: { userName: string }) {
             </div>
           )}
         </section>
-
-        {/* ── Áreas con todos sus módulos ── */}
-        <div className="space-y-9">
-          {AREAS.map((area) => (
-            <section key={area.key}>
-              <div className="flex items-center gap-2.5 mb-3.5">
-                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: area.accent }} />
-                <h2 className="text-sm font-semibold uppercase tracking-[0.12em] text-white/70">{area.label}</h2>
-                <span className="text-white/25 text-xs">{area.mods.length}</span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                {area.mods.map((m) => (
-                  <Link
-                    key={m.id}
-                    href={m.href}
-                    className="group flex flex-col items-center justify-center gap-2 p-4 rounded-xl bg-[#0f0f0f] border border-[#1a1a1a] transition-all hover:-translate-y-0.5 hover:bg-[#131313]"
-                    style={{ transitionProperty: "transform, background-color, border-color" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = `${area.accent}66`)}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = "")}
-                  >
-                    <span
-                      className="w-10 h-10 rounded-lg flex items-center justify-center transition-colors"
-                      style={{ backgroundColor: `${area.accent}14`, color: area.accent }}
-                    >
-                      <m.Icon strokeWidth={1.75} className="w-[19px] h-[19px]" />
-                    </span>
-                    <span className="text-xs text-gray-300 text-center leading-tight group-hover:text-white transition-colors">
-                      {m.label}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
       </div>
 
       {/* ── Selector de accesos frecuentes ── */}
