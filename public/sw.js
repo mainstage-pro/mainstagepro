@@ -6,7 +6,13 @@
 //   cliente, ver src/lib/offline-queue.ts). Al recibir SYNC_NOW reenvía la cola
 //   en orden y avisa a las pestañas con SYNC_DONE { remaining }.
 
-const CACHE_VERSION = "v1";
+// La versión sale del build-id que el cliente pasa al registrar (/sw.js?v=<id>).
+// Cambia en cada deploy, así que los nombres de caché cambian y el paso "activate"
+// borra los del deploy anterior (evita servir HTML/RSC/chunks incompatibles).
+let CACHE_VERSION = "v1";
+try {
+  CACHE_VERSION = new URL(self.location.href).searchParams.get("v") || CACHE_VERSION;
+} catch { /* noop */ }
 const STATIC_CACHE  = `msp-static-${CACHE_VERSION}`;
 const PAGES_CACHE   = `msp-pages-${CACHE_VERSION}`;
 const API_CACHE     = `msp-api-${CACHE_VERSION}`;

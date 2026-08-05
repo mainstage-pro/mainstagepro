@@ -1,7 +1,15 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
+// Identificador único por deploy. Se usa para versionar el service worker y sus
+// cachés: al cambiar en cada build, fuerza al navegador a instalar el SW nuevo
+// y purgar el bundle viejo (evita ChunkLoadError / "Algo salió mal" tras deploy).
+const BUILD_ID = process.env.VERCEL_GIT_COMMIT_SHA || String(Date.now());
+
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_BUILD_ID: BUILD_ID,
+  },
   outputFileTracingExcludes: {
     "*": ["./public/images/**", "./public/uploads/**"],
   },

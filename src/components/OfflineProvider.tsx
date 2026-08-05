@@ -109,24 +109,51 @@ export default function OfflineProvider() {
 
   // Registrar el SW
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js", { scope: "/" }).then((reg) => {
-        // Escuchar actualizaciones del SW
-        reg.addEventListener("updatefound", () => {
-          const newWorker = reg.installing;
-          if (newWorker) {
-            newWorker.addEventListener("statechange", () => {
-              if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-                // Nuevo SW disponible — activar inmediatamente
-                newWorker.postMessage({ type: "SKIP_WAITING" });
-              }
-            });
+    if (!("serviceWorker" in navigator)) return;
+
+    // El scriptURL lleva el build-id: cambia en cada deploy, así que el navegador
+    // detecta un SW nuevo (si el archivo fuera idéntico, nunca actualizaría).
+    const buildId = process.env.NEXT_PUBLIC_BUILD_ID || "dev";
+    const swUrl = `/sw.js?v=${encodeURIComponent(buildId)}`;
+
+    // Si al montar ya había un controlador, cualquier cambio de controlador
+    // posterior significa que se activó un deploy nuevo → recargar una sola vez
+    // para tomar el HTML y los chunks nuevos (y no pedir chunks que ya no existen).
+    // En la primera visita no hay controlador, así que evitamos recargar de más.
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloading = false;
+    const onControllerChange = () => {
+      if (reloading || !hadController) return;
+      reloading = true;
+      window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+
+    let updateTimer: ReturnType<typeof setInterval> | undefined;
+
+    navigator.serviceWorker.register(swUrl, { scope: "/" }).then((reg) => {
+      // Buscar actualizaciones al cargar y cada minuto mientras la pestaña vive.
+      reg.update().catch(() => {});
+      updateTimer = setInterval(() => reg.update().catch(() => {}), 60_000);
+
+      reg.addEventListener("updatefound", () => {
+        const newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener("statechange", () => {
+          if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+            // Nuevo SW listo y ya había uno controlando → activar de inmediato.
+            newWorker.postMessage({ type: "SKIP_WAITING" });
           }
         });
-      }).catch((err) => {
-        console.warn("[SW] No se pudo registrar:", err);
       });
-    }
+    }).catch((err) => {
+      console.warn("[SW] No se pudo registrar:", err);
+    });
+
+    return () => {
+      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+      if (updateTimer) clearInterval(updateTimer);
+    };
   }, []);
 
   // No mostrar nada si estamos online y no hay cola ni sync
