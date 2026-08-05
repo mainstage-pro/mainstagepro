@@ -772,7 +772,7 @@ function CompactTratoRow({
 
         {/* ── COL 1 · Cliente + Empresa  ─── flex-[3] ──── */}
         <div
-          className="flex-[3] min-w-0 py-3 pr-4 cursor-pointer"
+          className="flex-[3] min-w-[110px] py-3 pr-4 cursor-pointer"
           onClick={() => router.push(`/crm/tratos/${t.id}`)}
         >
           <div className="flex items-center gap-1.5 min-w-0">
@@ -801,7 +801,7 @@ function CompactTratoRow({
 
         {/* ── COL 2 · Proyecto / Evento ─── flex-[2] ──── */}
         <div
-          className="hidden lg:block flex-[2] min-w-0 pr-4 cursor-pointer"
+          className="hidden 2xl:block flex-[2] min-w-0 pr-4 cursor-pointer"
           onClick={() => router.push(`/crm/tratos/${t.id}`)}
         >
           {nombreProyecto ? (
@@ -812,7 +812,7 @@ function CompactTratoRow({
         </div>
 
         {/* ── COL 3 · Fecha del evento ─── 130px ───── */}
-        <div className="hidden md:block w-[130px] shrink-0 pr-4">
+        <div className="hidden lg:block w-[130px] shrink-0 pr-4">
           {fechaCompletaEvento ? (
             <span className="text-[12px] text-[#777] font-medium capitalize leading-tight block truncate">
               {fechaCompletaEvento}
@@ -823,7 +823,7 @@ function CompactTratoRow({
         </div>
 
         {/* ── COL 3b · Tipo de servicio ─── 85px ────── */}
-        <div className="hidden md:block w-[85px] shrink-0 pr-3" onClick={e => e.stopPropagation()}>
+        <div className="hidden xl:block w-[85px] shrink-0 pr-3" onClick={e => e.stopPropagation()}>
           <select
             value={t.tipoServicio ?? ''}
             onChange={e => onCambiarServicio(e.target.value || null)}
@@ -839,7 +839,7 @@ function CompactTratoRow({
         </div>
 
         {/* ── COL 4 · Tipo evento ─────── 90px ────── */}
-        <div className="hidden sm:flex w-[90px] shrink-0 pr-3">
+        <div className="hidden lg:flex w-[90px] shrink-0 pr-3">
           <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${tipoStyle.bg} ${tipoStyle.text}`}>
             {TIPO_LABEL_SHORT[t.tipoEvento] ?? t.tipoEvento}
           </span>
@@ -848,7 +848,7 @@ function CompactTratoRow({
         {/* ── COL 5 · Responsable ─────── 110px ────── */}
         <div
           ref={respRef}
-          className="hidden lg:flex w-[110px] shrink-0 pr-3 items-center relative"
+          className="hidden xl:flex w-[110px] shrink-0 pr-3 items-center relative"
           onClick={e => e.stopPropagation()}
         >
           <button
@@ -897,7 +897,7 @@ function CompactTratoRow({
         </div>
 
         {/* ── COL 6 · Seguimiento ─────── 130px ────── */}
-        <div className="hidden lg:flex flex-col justify-center w-[130px] shrink-0 pr-3">
+        <div className="hidden xl:flex flex-col justify-center w-[130px] shrink-0 pr-3">
           {seg.variant === 'none' ? (
             <button
               onClick={e => { e.stopPropagation(); onQuickNote(); }}
@@ -920,7 +920,7 @@ function CompactTratoRow({
         </div>
 
         {/* ── COL 7 · Etapa + sub-etapa ── 130px ────── */}
-        <div className="hidden sm:flex flex-col justify-center gap-0.5 w-[130px] shrink-0 pr-3">
+        <div className="hidden md:flex flex-col justify-center gap-0.5 w-[130px] shrink-0 pr-3">
           <div className="flex items-center gap-1.5">
             <span className={`w-2 h-2 rounded-full shrink-0 ${etapaStyle.dot}`} />
             <select
@@ -1645,7 +1645,7 @@ export default function TratosPage() {
             const valorPipeline = activos.reduce((s, t) => s + getTratoValor(t), 0);
             const valorCerrado = cerradas.reduce((s, t) => s + getTratoValor(t), 0);
             return (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 mb-2 p-3 bg-[#080808] border border-[#141414] rounded-xl">
+              <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2 mb-2 p-3 bg-[#080808] border border-[#141414] rounded-xl">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[9px] uppercase tracking-wider text-[#444] font-semibold">Activos</span>
                   <span className="text-xl font-bold text-white tabular-nums">{activos.length}</span>
@@ -1975,14 +1975,14 @@ export default function TratosPage() {
               const colHeader = (
                 <div className="hidden md:flex items-center border-b border-[#0f0f0f] bg-[#0a0a0a] px-0 py-2 mb-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#333]">
                   <div className="w-10 shrink-0" />
-                  <div className="flex-[3] min-w-0 pr-4">Cliente</div>
-                  <div className="hidden lg:block flex-[2] min-w-0 pr-4">Proyecto / Evento</div>
-                  <div className="w-[130px] shrink-0 pr-4">Fecha evento</div>
-                  <div className="hidden md:block w-[85px] shrink-0 pr-3">Servicio</div>
-                  <div className="hidden sm:block w-[90px] shrink-0 pr-3">Tipo</div>
-                  <div className="hidden lg:block w-[110px] shrink-0 pr-3">Responsable</div>
-                  <div className="hidden lg:block w-[110px] shrink-0 pr-3">Seguimiento</div>
-                  <div className="hidden sm:block w-[130px] shrink-0 pr-3">Etapa</div>
+                  <div className="flex-[3] min-w-[110px] pr-4">Cliente</div>
+                  <div className="hidden 2xl:block flex-[2] min-w-0 pr-4">Proyecto / Evento</div>
+                  <div className="hidden lg:block w-[130px] shrink-0 pr-4">Fecha evento</div>
+                  <div className="hidden xl:block w-[85px] shrink-0 pr-3">Servicio</div>
+                  <div className="hidden lg:block w-[90px] shrink-0 pr-3">Tipo</div>
+                  <div className="hidden xl:block w-[110px] shrink-0 pr-3">Responsable</div>
+                  <div className="hidden xl:block w-[110px] shrink-0 pr-3">Seguimiento</div>
+                  <div className="hidden md:block w-[130px] shrink-0 pr-3">Etapa</div>
                   <div className="w-[72px] shrink-0" />
                 </div>
               );

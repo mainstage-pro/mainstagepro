@@ -1627,12 +1627,12 @@ function CotizadorForm() {
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto">
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="ms-h1">{editId ? "Editar Cotización" : "Nueva Cotización"}</h1>
           {clienteNombre && <p className="text-[#B3985B] text-sm mt-0.5">{clienteNombre}</p>}
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2">
           {plantillas.length > 0 && (
             <button
               onClick={() => setShowPlantillas(true)}
@@ -1903,12 +1903,12 @@ function CotizadorForm() {
         </details>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="col-span-2 space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-2 space-y-5">
 
           {/* ── Datos del evento ── */}
           <Seccion titulo="Datos del evento">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="col-span-2">
                 <Input label="Nombre del evento" value={evento.nombreEvento} onChange={e => setEvento(p => ({ ...p, nombreEvento: e.target.value }))} placeholder="Boda García, Concierto XYZ..." />
               </div>
@@ -2384,8 +2384,8 @@ function CotizadorForm() {
                           return null;
                         })()}
                         <div key={l.id} className="border-t border-[#111]">
-                          <div className="flex items-center gap-2 px-3 py-2">
-                            <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 px-3 py-2">
+                            <div className="flex-1 min-w-0 basis-full sm:basis-auto">
                               <div className="flex items-center gap-1.5">
                                 <p className="text-white text-sm truncate">{[l.marca, l.modelo].filter(Boolean).join(" ") || l.descripcion}</p>
                                 {esPrecioEspecialActivo && (
@@ -2469,7 +2469,7 @@ function CotizadorForm() {
             <div className="mb-4 bg-[#0a0a0a] border border-[#B3985B]/40 rounded-xl p-4">
               <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider mb-1">Registrar equipo en inventario</p>
               <p className="text-[#555] text-[10px] mb-3">Se guardará en el Inventario Maestro automáticamente</p>
-              <div className="grid grid-cols-2 gap-2 mb-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
                 <input
                   value={nuevoEqPropioForm.marca}
                   onChange={e => {
@@ -2599,7 +2599,7 @@ function CotizadorForm() {
             {showNuevoEqModal && (
               <div className="mb-4 bg-[#0a0a0a] border border-[#B3985B]/40 rounded-xl p-4">
                 <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider mb-3">Registrar nuevo equipo de proveedor</p>
-                <div className="grid grid-cols-2 gap-2 mb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
                   <div className="col-span-2">
                     <input value={nuevoEqForm.descripcion} onChange={e => setNuevoEqForm(p => ({ ...p, descripcion: e.target.value }))}
                       placeholder="Descripción del equipo *"

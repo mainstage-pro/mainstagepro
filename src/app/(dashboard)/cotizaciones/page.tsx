@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ESTADO_COTIZACION_LABELS, ESTADO_COTIZACION_COLORS, TIPO_EVENTO_LABELS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/cotizador";
 import { useToast } from "@/components/Toast";
@@ -31,6 +32,7 @@ export default function CotizacionesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const toast = useToast();
   const confirm = useConfirm();
+  const router = useRouter();
 
   useEffect(() => {
     fetch("/api/cotizaciones", { cache: "no-store" })
@@ -73,19 +75,25 @@ export default function CotizacionesPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[600px]">
+          <table className="w-full">
             <thead className="ms-thead">
               <tr>
-                {["Número", "Cliente", "Evento", "Total", "Estado", "Fecha", ""].map((h) => (
-                  <th key={h} className="ms-th">
-                    {h}
-                  </th>
-                ))}
+                <th className="ms-th">Número</th>
+                <th className="ms-th">Cliente</th>
+                <th className="ms-th hidden md:table-cell">Evento</th>
+                <th className="ms-th">Total</th>
+                <th className="ms-th">Estado</th>
+                <th className="ms-th hidden sm:table-cell">Fecha</th>
+                <th className="ms-th"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1a1a1a]">
               {cotizaciones.map((cot) => (
-                <tr key={cot.id} className="hover:bg-[#1a1a1a] transition-colors">
+                <tr
+                  key={cot.id}
+                  onClick={() => router.push(`/cotizaciones/${cot.id}`)}
+                  className="hover:bg-[#1a1a1a] transition-colors cursor-pointer"
+                >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
                       <span className="text-[#B3985B] text-xs font-mono">{cot.numeroCotizacion}</span>
@@ -97,14 +105,14 @@ export default function CotizacionesPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <Link href={`/crm/clientes/${cot.cliente.id}`} className="text-white text-sm hover:text-[#B3985B] transition-colors">
+                    <Link href={`/crm/clientes/${cot.cliente.id}`} onClick={e => e.stopPropagation()} className="text-white text-sm hover:text-[#B3985B] transition-colors">
                       {cot.cliente.nombre}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-sm text-[#9ca3af]">
+                  <td className="px-4 py-3 text-sm text-[#9ca3af] hidden md:table-cell">
                     {cot.nombreEvento || (cot.tipoEvento ? TIPO_EVENTO_LABELS[cot.tipoEvento] : "—")}
                   </td>
-                  <td className="px-4 py-3 text-sm text-white font-medium">
+                  <td className="px-4 py-3 text-sm text-white font-medium whitespace-nowrap">
                     {formatCurrency(cot.granTotal)}
                   </td>
                   <td className="px-4 py-3">
@@ -133,16 +141,16 @@ export default function CotizacionesPage() {
                       })()}
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-xs text-[#6b7280]">
+                  <td className="px-4 py-3 text-xs text-[#6b7280] hidden sm:table-cell whitespace-nowrap">
                     {new Date(cot.createdAt).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-3">
-                      <Link href={`/cotizaciones/${cot.id}`} className="text-[#B3985B] text-xs hover:underline">
+                      <Link href={`/cotizaciones/${cot.id}`} onClick={e => e.stopPropagation()} className="text-[#B3985B] text-xs hover:underline">
                         Ver →
                       </Link>
                       <button
-                        onClick={() => eliminar(cot.id, cot.numeroCotizacion)}
+                        onClick={e => { e.stopPropagation(); eliminar(cot.id, cot.numeroCotizacion); }}
                         disabled={deletingId === cot.id}
                         className="text-[#444] hover:text-red-400 text-xs transition-colors disabled:opacity-50"
                         title="Eliminar cotización"
