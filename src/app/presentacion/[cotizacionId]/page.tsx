@@ -27,11 +27,6 @@ export async function generateMetadata({
       numeroCotizacion: true,
       tipoServicio: true,
       cliente: { select: { nombre: true } },
-      lineas: {
-        where: { NOT: { equipo: null } },
-        take: 1,
-        select: { equipo: { select: { imagenUrl: true } } },
-      },
     },
   });
 
@@ -47,13 +42,11 @@ export async function generateMetadata({
   const serviceType = cotizacion.tipoServicio === "RENTA" ? "Renta de Equipo" : "Producción Técnica";
   const title = `Propuesta: ${name}`;
   const description = `Propuesta personalizada de ${serviceType} para ${cotizacion.cliente.nombre}. Consulta el equipamiento y diseño propuesto por Mainstage Pro.`;
-  const image = cotizacion.lineas[0]?.equipo?.imagenUrl || null;
 
   return getPresentationMetadata({
     title,
     description,
     path: `/presentacion/${cotizacionId}${token ? `?token=${token}` : ""}`,
-    image,
   });
 }
 
