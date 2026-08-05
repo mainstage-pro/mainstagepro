@@ -202,11 +202,14 @@ export async function GET(req: NextRequest) {
       if (!t.fecha) continue
       const dia = fechaCal(t.fecha)
       if (!setDias.has(dia)) continue
-      // Vencida = su día-calendario de vencimiento es ANTERIOR al día de hoy
+      // Vencida = su día-calendario de compromiso es ANTERIOR al día de hoy
       // (zona México). Comparar contra `new Date()` con hora marcaría como
       // vencida cualquier tarea que vence HOY, ya que se guardan a medianoche UTC.
-      const venceRef = t.fechaVencimiento ?? t.fecha
-      const vencida = t.estado !== 'COMPLETADA' && !!venceRef && fechaCal(venceRef) < hoyCal
+      // Compromiso = la MÁS TARDÍA entre fecha de trabajo y vencimiento: si la
+      // tarea se movió a un día futuro (cambia `fecha`), deja de estar vencida
+      // aunque conserve un `fechaVencimiento` viejo en el pasado.
+      const venceRef = t.fechaVencimiento && t.fechaVencimiento > t.fecha ? t.fechaVencimiento : t.fecha
+      const vencida = t.estado !== 'COMPLETADA' && fechaCal(venceRef) < hoyCal
       lista.push({ ...base, dia, vencida, recurrente: false })
     }
   }

@@ -120,8 +120,14 @@ export async function GET() {
       continue // completadas no aparecen en la lista de pendientes
     }
 
-    // Vencida: tiene fecha de vencimiento (o fecha de trabajo) pasada y no está completa
-    const venceRef = t.fechaVencimiento ?? t.fecha
+    // Vencida: su fecha compromiso ya pasó y no está completa. El compromiso es
+    // la MÁS TARDÍA entre fecha de trabajo y vencimiento: si la tarea se movió a
+    // un día futuro (cambia `fecha`), deja de estar vencida aunque conserve un
+    // `fechaVencimiento` viejo en el pasado.
+    const venceRef =
+      t.fecha && t.fechaVencimiento
+        ? (t.fecha > t.fechaVencimiento ? t.fecha : t.fechaVencimiento)
+        : (t.fecha ?? t.fechaVencimiento)
     const vencida = !!venceRef && venceRef < now
     if (vencida) agg.vencidas++
 

@@ -36,6 +36,14 @@ function diffDias(aStr: string, bStr: string): number {
   const b = new Date(`${bStr}T00:00:00Z`).getTime()
   return Math.round((a - b) / 86_400_000)
 }
+// La MÁS TARDÍA entre dos fechas (ignora nulls). Se usa como fecha compromiso:
+// si la tarea se movió a un día futuro (cambia `fecha`), deja de contar como
+// vencida aunque conserve un `fechaVencimiento` viejo en el pasado.
+function masTardia(a: Date | null, b: Date | null): Date | null {
+  if (!a) return b
+  if (!b) return a
+  return a.getTime() >= b.getTime() ? a : b
+}
 function lunesDe(s: string): string {
   const dow = new Date(`${s}T00:00:00Z`).getUTCDay() // 0=Dom..6=Sab
   return addDias(s, -((dow + 6) % 7))
@@ -281,7 +289,7 @@ export async function computeRendimiento(opts: {
   const diags: Diag[] = []
   let sinFecha = 0
   for (const row of rows) {
-    const compromiso = row.fechaVencimiento ?? row.fecha
+    const compromiso = masTardia(row.fecha, row.fechaVencimiento)
     if (!compromiso) { if (row.estado !== 'COMPLETADA') sinFecha++; continue }
     const compromisoStr = fmtDia(compromiso)
     const completada = row.estado === 'COMPLETADA'

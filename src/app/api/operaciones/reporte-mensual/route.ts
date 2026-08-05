@@ -42,7 +42,10 @@ export async function GET(req: NextRequest) {
   });
 
   // ─── Tareas ATRASADAS (vencidas antes del mes y sin completar) ───────────────
-  const tareasAtrasadas = await prisma.tarea.findMany({
+  // Si la tarea se movió a un día futuro (cambia `fecha`), su compromiso real es
+  // esa fecha nueva, así que ya no cuenta como atrasada aunque conserve un
+  // `fechaVencimiento` viejo anterior al mes.
+  const tareasAtrasadas = (await prisma.tarea.findMany({
     where: {
       parentId: null,
       estado: { in: ["PENDIENTE", "EN_PROGRESO"] },
@@ -54,7 +57,7 @@ export async function GET(req: NextRequest) {
     },
     orderBy: { fechaVencimiento: "asc" },
     take: 50,
-  });
+  })).filter((t) => !t.fecha || t.fecha < inicioMes);
 
   // ─── Stats por usuario ────────────────────────────────────────────────────────
   const usuariosStats = users.map((u) => {
