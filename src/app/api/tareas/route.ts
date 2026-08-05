@@ -203,7 +203,14 @@ export async function GET(req: NextRequest) {
     if (proyectosPermitidos !== null) {
       where.AND = [
         { OR: where.OR },
-        { OR: [{ proyectoTareaId: null }, { proyectoTareaId: { in: proyectosPermitidos } }] }
+        { OR: [
+          { proyectoTareaId: null },
+          { proyectoTareaId: { in: proyectosPermitidos } },
+          // Una asignación directa (responsable o co-responsable) siempre gana:
+          // la tarea se ve aunque su proyecto no esté entre los permitidos.
+          { asignadoAId: session.id },
+          { colaboradores: { some: { usuarioId: session.id } } },
+        ] }
       ];
       delete where.OR;
     }
@@ -220,7 +227,14 @@ export async function GET(req: NextRequest) {
     if (proyectosPermitidos !== null) {
       where.AND = [
         { OR: where.OR },
-        { OR: [{ proyectoTareaId: null }, { proyectoTareaId: { in: proyectosPermitidos } }] }
+        { OR: [
+          { proyectoTareaId: null },
+          { proyectoTareaId: { in: proyectosPermitidos } },
+          // Una asignación directa (responsable o co-responsable) siempre gana:
+          // la tarea se ve aunque su proyecto no esté entre los permitidos.
+          { asignadoAId: session.id },
+          { colaboradores: { some: { usuarioId: session.id } } },
+        ] }
       ];
       delete where.OR;
     }
