@@ -129,10 +129,14 @@ export default function EmpresaDetallePage() {
   if (loading) return <div className="p-8 text-center ms-subtitle">Cargando...</div>;
   if (!empresa) return <div className="p-8 text-center ms-subtitle">Empresa no encontrada</div>;
 
-  const totalCobrar = empresa.cuentasCobrar.reduce((s, c) => s + c.monto, 0);
-  const totalPagar = empresa.cuentasPagar.reduce((s, c) => s + c.monto, 0);
-  const pendienteCobrar = empresa.cuentasCobrar.reduce((s, c) => s + Math.max(0, c.monto - c.montoCobrado), 0);
-  const pendientePagar = empresa.cuentasPagar.reduce((s, c) => s + Math.max(0, c.monto - c.montoPagado), 0);
+  const esCuentaActiva = (estado: string) => estado !== "LIQUIDADO" && estado !== "CANCELADO" && estado !== "ANULADO";
+  const cuentasCobrarPendientes = empresa.cuentasCobrar.filter((c) => esCuentaActiva(c.estado) && (c.monto - c.montoCobrado) > 0);
+  const cuentasPagarPendientes = empresa.cuentasPagar.filter((c) => esCuentaActiva(c.estado) && (c.monto - c.montoPagado) > 0);
+
+  const totalCobrar = cuentasCobrarPendientes.reduce((s, c) => s + c.monto, 0);
+  const totalPagar = cuentasPagarPendientes.reduce((s, c) => s + c.monto, 0);
+  const pendienteCobrar = cuentasCobrarPendientes.reduce((s, c) => s + Math.max(0, c.monto - c.montoCobrado), 0);
+  const pendientePagar = cuentasPagarPendientes.reduce((s, c) => s + Math.max(0, c.monto - c.montoPagado), 0);
   const neto = pendienteCobrar - pendientePagar;
 
   const activeTabs: Tab[] = TABS.filter(t =>

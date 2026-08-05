@@ -587,8 +587,19 @@ function PanelPrecios({
 
 // ─── PanelCuentas ──────────────────────────────────────────────────────────────
 
-function saldoCobrar(c: CuentaCobrarItem) { return Math.max(0, c.monto - c.montoCobrado); }
-function saldoPagar(c: CuentaPagarItem) { return Math.max(0, c.monto - c.montoPagado); }
+function esCuentaPendiente(estado: string) {
+  return estado !== "LIQUIDADO" && estado !== "CANCELADO" && estado !== "ANULADO";
+}
+
+function saldoCobrar(c: CuentaCobrarItem) {
+  if (!esCuentaPendiente(c.estado)) return 0;
+  return Math.max(0, c.monto - c.montoCobrado);
+}
+
+function saldoPagar(c: CuentaPagarItem) {
+  if (!esCuentaPendiente(c.estado)) return 0;
+  return Math.max(0, c.monto - c.montoPagado);
+}
 
 function PanelCuentas({
   clienteId,
@@ -606,8 +617,13 @@ function PanelCuentas({
   const [descargando, setDescargando] = useState(false);
   const toast = useToast();
 
-  const totalCobrar = cuentasCobrar.reduce((s, c) => s + saldoCobrar(c), 0);
-  const totalPagar = cuentasPagar.reduce((s, c) => s + saldoPagar(c), 0);
+  const cuentasCobrarPendientes = cuentasCobrar.filter((c) => esCuentaPendiente(c.estado) && saldoCobrar(c) > 0);
+  const cuentasPagarPendientes = cuentasPagar.filter((c) => esCuentaPendiente(c.estado) && saldoPagar(c) > 0);
+  const cuentasCobrarLiquidadas = cuentasCobrar.filter((c) => !cuentasCobrarPendientes.includes(c));
+  const cuentasPagarLiquidadas = cuentasPagar.filter((c) => !cuentasPagarPendientes.includes(c));
+
+  const totalCobrar = cuentasCobrarPendientes.reduce((s, c) => s + saldoCobrar(c), 0);
+  const totalPagar = cuentasPagarPendientes.reduce((s, c) => s + saldoPagar(c), 0);
   const esProveedor = cuentasPagar.length > 0;
   const neto = totalCobrar - totalPagar;
 
@@ -685,7 +701,7 @@ function PanelCuentas({
                 {fmt(totalCobrar)}
               </p>
               <p className="text-[10px] text-gray-600 mt-1">
-                {cuentasCobrar.length} concepto{cuentasCobrar.length !== 1 ? "s" : ""} · por cobrar
+                {cuentasCobrarPendientes.length} concepto{cuentasCobrarPendientes.length !== 1 ? "s" : ""} · por cobrar
               </p>
             </div>
             {esProveedor && (
@@ -696,7 +712,7 @@ function PanelCuentas({
                     {fmt(totalPagar)}
                   </p>
                   <p className="text-[10px] text-gray-600 mt-1">
-                    {cuentasPagar.length} concepto{cuentasPagar.length !== 1 ? "s" : ""} · por pagar
+                    {cuentasPagarPendientes.length} concepto{cuentasPagarPendientes.length !== 1 ? "s" : ""} · por pagar
                   </p>
                 </div>
                 <div className="bg-[#0d0d0d] border border-[#B3985B]/20 rounded-xl p-4">
@@ -714,7 +730,7 @@ function PanelCuentas({
             )}
           </div>
 
-          {/* Listas */}
+          {/* Listas de cuentas pendientes */}
           <div className={`grid gap-4 ${esProveedor ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
             {/* Por cobrar */}
             <div>
@@ -722,11 +738,11 @@ function PanelCuentas({
                 <span className="w-1.5 h-1.5 rounded-full bg-[#B3985B]" />
                 <p className="text-xs font-medium text-gray-400">Por cobrar</p>
               </div>
-              {cuentasCobrar.length === 0 ? (
-                <p className="text-[#555] text-xs py-3">Sin cuentas por cobrar.</p>
+              {cuentasCobrarPendientes.length === 0 ? (
+                <p className="text-[#555] text-xs py-3">Sin cuentas pendientes por cobrar.</p>
               ) : (
                 <div className="space-y-2">
-                  {cuentasCobrar.map((c) => {
+                  {cuentasCobrarPendientes.map((c) => {
                     const saldo = saldoCobrar(c);
                     const ref = c.cotizacion?.numeroCotizacion ?? (c.proyecto ? `#${c.proyecto.numeroProyecto}` : null);
                     return (
@@ -766,37 +782,109 @@ function PanelCuentas({
                   <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
                   <p className="text-xs font-medium text-gray-400">Por pagar</p>
                 </div>
-                <div className="space-y-2">
-                  {cuentasPagar.map((c) => {
-                    const saldo = saldoPagar(c);
-                    const ref = c.proyecto ? `#${c.proyecto.numeroProyecto}` : null;
-                    return (
-                      <div key={c.id} className="p-3 rounded-lg bg-[#1a1a1a]">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-white text-sm truncate">{c.concepto}</p>
-                            <div className="flex items-center gap-2 mt-1 flex-wrap">
-                              {ref && <span className="text-[10px] font-mono text-gray-500">{ref}</span>}
-                              <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${ESTADO_CUENTA_COLORS[c.estado] || "bg-gray-700 text-gray-300"}`}>
-                                {c.estado}
-                              </span>
-                              <span className="text-[10px] text-gray-600">{fmtDate(c.fechaCompromiso)}</span>
+                {cuentasPagarPendientes.length === 0 ? (
+                  <p className="text-[#555] text-xs py-3">Sin cuentas pendientes por pagar.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {cuentasPagarPendientes.map((c) => {
+                      const saldo = saldoPagar(c);
+                      const ref = c.proyecto ? `#${c.proyecto.numeroProyecto}` : null;
+                      return (
+                        <div key={c.id} className="p-3 rounded-lg bg-[#1a1a1a]">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-white text-sm truncate">{c.concepto}</p>
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                {ref && <span className="text-[10px] font-mono text-gray-500">{ref}</span>}
+                                <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${ESTADO_CUENTA_COLORS[c.estado] || "bg-gray-700 text-gray-300"}`}>
+                                  {c.estado}
+                                </span>
+                                <span className="text-[10px] text-gray-600">{fmtDate(c.fechaCompromiso)}</span>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <p className="text-red-400 text-sm font-semibold">{fmt(saldo)}</p>
+                              {c.montoPagado > 0 && saldo > 0 && (
+                                <p className="text-[10px] text-gray-600">de {fmt(c.monto)}</p>
+                              )}
                             </div>
                           </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-red-400 text-sm font-semibold">{fmt(saldo)}</p>
-                            {c.montoPagado > 0 && saldo > 0 && (
-                              <p className="text-[10px] text-gray-600">de {fmt(c.monto)}</p>
-                            )}
-                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>
+
+          {/* Historial de cuentas liquidadas o canceladas */}
+          {(cuentasCobrarLiquidadas.length > 0 || cuentasPagarLiquidadas.length > 0) && (
+            <div className="mt-6 pt-4 border-t border-[#1e1e1e]">
+              <details className="group">
+                <summary className="text-xs text-gray-400 hover:text-gray-300 cursor-pointer list-none flex items-center gap-2 font-medium">
+                  <span className="group-open:rotate-90 transition-transform">▶</span>
+                  <span>Historial: cuentas liquidadas o canceladas ({cuentasCobrarLiquidadas.length + cuentasPagarLiquidadas.length})</span>
+                </summary>
+                <div className={`mt-3 grid gap-4 ${esProveedor ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1"}`}>
+                  {cuentasCobrarLiquidadas.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-[11px] text-gray-500 font-semibold mb-1">Cobros liquidados</p>
+                      {cuentasCobrarLiquidadas.map((c) => {
+                        const ref = c.cotizacion?.numeroCotizacion ?? (c.proyecto ? `#${c.proyecto.numeroProyecto}` : null);
+                        return (
+                          <div key={c.id} className="p-3 rounded-lg bg-[#141414] opacity-75">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-gray-300 text-xs truncate">{c.concepto}</p>
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                  {ref && <span className="text-[10px] font-mono text-gray-600">{ref}</span>}
+                                  <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${ESTADO_CUENTA_COLORS[c.estado] || "bg-gray-800 text-gray-400"}`}>
+                                    {c.estado}
+                                  </span>
+                                  <span className="text-[10px] text-gray-600">{fmtDate(c.fechaCompromiso)}</span>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-green-500 text-xs font-semibold">{fmt(c.montoCobrado || c.monto)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {cuentasPagarLiquidadas.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-[11px] text-gray-500 font-semibold mb-1">Pagos liquidados</p>
+                      {cuentasPagarLiquidadas.map((c) => {
+                        const ref = c.proyecto ? `#${c.proyecto.numeroProyecto}` : null;
+                        return (
+                          <div key={c.id} className="p-3 rounded-lg bg-[#141414] opacity-75">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <p className="text-gray-300 text-xs truncate">{c.concepto}</p>
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                  {ref && <span className="text-[10px] font-mono text-gray-600">{ref}</span>}
+                                  <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${ESTADO_CUENTA_COLORS[c.estado] || "bg-gray-800 text-gray-400"}`}>
+                                    {c.estado}
+                                  </span>
+                                  <span className="text-[10px] text-gray-600">{fmtDate(c.fechaCompromiso)}</span>
+                                </div>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-green-500 text-xs font-semibold">{fmt(c.montoPagado || c.monto)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </details>
+            </div>
+          )}
         </>
       )}
     </div>
