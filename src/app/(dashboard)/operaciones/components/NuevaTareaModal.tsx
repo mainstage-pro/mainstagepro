@@ -8,6 +8,7 @@ import DatePicker from "@/components/ui/DatePicker";
 import RecurrenciaInput from "./RecurrenciaInput";
 import AccesoDirectoField from "./AccesoDirectoField";
 import { Combobox } from "@/components/Combobox";
+import { AREAS, AREA_LABELS } from "@/lib/gestion";
 
 // ── Tipos de registro (los sistemas del hub unificado) ──────────────────────────
 type TipoKey = "TAREA" | "PLAN" | "EVENTO" | "PROYECTO" | "TRATO";
@@ -42,6 +43,8 @@ interface InternoOpt { id: string; nombre: string; area: string; estado: string;
 interface TratoOpt  { id: string; nombre: string; cliente: string | null; etapa: string; fechaEvento: string | null; vigente: boolean }
 
 interface Usuario { id: string; name: string }
+interface SeccionOpt { id: string; nombre: string; tipoModulo?: string | null }
+interface ProyectoOpt { id: string; nombre: string; secciones?: SeccionOpt[] }
 interface ArchivoExistente { id: string; nombre: string; url: string; tipo: string | null; tamano: number | null }
 
 // Adjunto pendiente de subir: un archivo local o una URL manual. Se suben tras crear/guardar la tarea.
@@ -59,6 +62,8 @@ interface Props {
   proyectoTareaId?: string | null;
   // Sección del proyecto (cuando se crea dentro de una sección específica).
   seccionId?: string | null;
+  // Lista de proyectos de operaciones para elegir el destino al crear (tareas normales y de plan).
+  proyectos?: ProyectoOpt[];
   // Fija el tipo al abrir (p.ej. desde una pestaña del hub). Si se da, se salta el selector.
   tipoInicial?: TipoKey | null;
   // Pre-carga el título (p.ej. al convertir una idea en tarea).
@@ -81,7 +86,7 @@ interface Props {
 
 export default function NuevaTareaModal({
   open, onClose, usuarios, defaultAsignadoId = null, defaultArea = null, fechaInicial = null,
-  proyectoTareaId = null, seccionId = null, tipoInicial = null, tituloInicial = null,
+  proyectoTareaId = null, seccionId = null, proyectos = [], tipoInicial = null, tituloInicial = null,
   proyectoEventoIdInicial = null, proyectoEventoNombre = null,
   tratoIdInicial = null, tratoNombre = null,
   proyectoInternoIdInicial = null, proyectoInternoNombre = null, faseInicialId = null,
@@ -92,6 +97,9 @@ export default function NuevaTareaModal({
   const [descripcion, setDescripcion] = useState("");
   const [prioridad, setPrioridad] = useState<string>("MEDIA");
   const [area, setArea]           = useState<string>(defaultArea || "GENERAL");
+  // Destino de operaciones: proyecto (+ sección) donde cae la tarea. Se pre-cargan desde los props de contexto.
+  const [proyectoSel, setProyectoSel] = useState<string | null>(proyectoTareaId);
+  const [seccionSel, setSeccionSel]   = useState<string | null>(seccionId);
   const [asignadoId, setAsignadoId] = useState<string | null>(defaultAsignadoId);
   const [coResponsables, setCoResponsables] = useState<string[]>([]);
   const [fecha, setFecha]         = useState("");
@@ -130,6 +138,7 @@ export default function NuevaTareaModal({
       setTipo(tipoInicial ?? null);
       setTitulo(tituloInicial ?? ""); setDescripcion(""); setPrioridad("MEDIA");
       setArea(defaultArea || "GENERAL"); setAsignadoId(defaultAsignadoId);
+      setProyectoSel(proyectoTareaId ?? null); setSeccionSel(seccionId ?? null);
       setCoResponsables([]);
       setFecha(fechaInicial ?? ""); setFechaVen(""); setRecurrencia(null); setComprobacion("");
       setModuloDestino(""); setModuloTexto("");
@@ -139,7 +148,7 @@ export default function NuevaTareaModal({
       setError(null); setSaving(false);
       setAdjuntos([]); setArchivosExistentes([]); setAddingUrl(false); setUrlManual(""); setNombreManual("");
     }
-  }, [open, tipoInicial, tituloInicial, defaultArea, defaultAsignadoId, fechaInicial, proyectoEventoIdInicial, tratoIdInicial, proyectoInternoIdInicial, faseInicialId]);
+  }, [open, tipoInicial, tituloInicial, defaultArea, defaultAsignadoId, fechaInicial, proyectoTareaId, seccionId, proyectoEventoIdInicial, tratoIdInicial, proyectoInternoIdInicial, faseInicialId]);
 
   // Modo edición: carga la tarea y precarga los campos (corre después del reset).
   useEffect(() => {
@@ -196,6 +205,13 @@ export default function NuevaTareaModal({
   }, [open, tipo, proyectoEventoIdInicial, tratoIdInicial, proyectoInternoIdInicial]);
 
   const internoSel = useMemo(() => internos.find(p => p.id === proyectoInternoId) ?? null, [internos, proyectoInternoId]);
+
+  // Secciones del proyecto destino, filtradas por el tipo de registro (TAREA vs PLAN).
+  const seccionesDestino = useMemo(() => {
+    const p = proyectos.find(x => x.id === proyectoSel);
+    if (!p?.secciones) return [] as SeccionOpt[];
+    return p.secciones.filter(s => (s.tipoModulo ?? "TAREA") === tipo);
+  }, [proyectos, proyectoSel, tipo]);
 
   // Opciones para los Combobox: `options` permite buscar en todo el histórico,
   // `idleOptions` muestra en reposo solo lo vigente para no saturar el dropdown.
@@ -313,8 +329,8 @@ export default function NuevaTareaModal({
       fechaVencimiento: fechaVen || null,
       recurrencia: recurrencia || null,
       tipoOrigen: tipo,
-      proyectoTareaId: proyectoTareaId || null,
-      seccionId: seccionId || null,
+      proyectoTareaId: proyectoSel || null,
+      seccionId: seccionSel || null,
       proyectoEventoId: tipo === "EVENTO" ? proyectoEventoId : null,
       proyectoInternoId: tipo === "PROYECTO" ? proyectoInternoId : null,
       faseInternaId: tipo === "PROYECTO" ? (faseId || null) : null,
@@ -505,6 +521,38 @@ export default function NuevaTareaModal({
                   <DatePicker value={fechaVen} onChange={setFechaVen} placeholder="dd/mm/aaaa" size="sm" />
                 </Campo>
               </div>
+            )}
+
+            {/* Destino: área y proyecto/sección (tareas normales y de plan de trabajo) */}
+            {(tipo === "TAREA" || tipo === "PLAN") && (
+              <>
+                <Campo label="Área">
+                  <Combobox
+                    value={area}
+                    onChange={v => setArea(v || "GENERAL")}
+                    options={[{ value: "GENERAL", label: "— Sin área (Otras) —" }, ...AREAS.map(a => ({ value: a, label: AREA_LABELS[a] }))]}
+                    className={comboCls}
+                  />
+                </Campo>
+                {!modoEdicion && proyectos.length > 0 && (
+                  <Campo label="Proyecto (opcional)">
+                    <Combobox
+                      value={proyectoSel ?? ""}
+                      onChange={v => { setProyectoSel(v || null); setSeccionSel(null); }}
+                      options={[{ value: "", label: "— Bandeja de entrada —" }, ...proyectos.map(p => ({ value: p.id, label: p.nombre }))]}
+                      placeholder="Elige un proyecto…"
+                      className={comboCls}
+                    />
+                    {seccionesDestino.length > 0 && (
+                      <select value={seccionSel ?? ""} onChange={e => setSeccionSel(e.target.value || null)}
+                        className="mt-2 w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-[#B3985B]/40">
+                        <option value="">— Sin sección —</option>
+                        {seccionesDestino.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                      </select>
+                    )}
+                  </Campo>
+                )}
+              </>
             )}
 
             {/* Prioridad */}

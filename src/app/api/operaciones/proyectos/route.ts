@@ -23,7 +23,7 @@ export async function GET() {
       ...(proyectosPermitidos !== null ? { id: { in: proyectosPermitidos } } : {}),
     },
     include: {
-      secciones: { orderBy: { orden: "asc" }, select: { id: true, nombre: true, orden: true, colapsada: true } },
+      secciones: { orderBy: { orden: "asc" }, select: { id: true, nombre: true, orden: true, colapsada: true, tipoModulo: true } },
       _count: { select: { tareas: { where: { estado: { not: "COMPLETADA" }, parentId: null } } } },
     },
     orderBy: [{ carpetaId: "asc" }, { orden: "asc" }],

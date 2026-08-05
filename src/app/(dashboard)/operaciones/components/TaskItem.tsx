@@ -945,7 +945,7 @@ export default function TaskItem({
           onClose={() => setEditingDate(null)}
           autoOpen hideTrigger showClear
           className="absolute right-0 top-full mt-1 z-50"
-          recurrenceActive={!!tarea.recurrencia}
+          recurrenceActive={false}
           recurrence={onRecurrenceChange ? (
             <RecurrenciaPicker
               value={tarea.recurrencia}

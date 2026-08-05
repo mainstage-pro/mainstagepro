@@ -26,6 +26,7 @@ interface Carpeta {
 }
 interface ProyectoNav {
   id: string; nombre: string; color: string | null; icono: string | null; orden: number;
+  secciones?: { id: string; nombre: string; orden: number; colapsada: boolean; tipoModulo?: string }[];
 }
 interface ProyectoDetalle {
   id: string; nombre: string; color: string | null; descripcion: string | null;
@@ -2664,6 +2665,7 @@ export default function OperacionesPage() {
         usuarios={usuarios}
         proyectoTareaId={nuevaTareaCtx.proyectoTareaId ?? null}
         seccionId={nuevaTareaCtx.seccionId ?? null}
+        proyectos={proyectosNav}
         tipoInicial={nuevaTareaCtx.tipoInicial ?? null}
         tituloInicial={nuevaTareaCtx.tituloInicial ?? null}
         defaultArea={nuevaTareaCtx.defaultArea ?? null}
