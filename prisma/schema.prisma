@@ -443,6 +443,7 @@ model Cotizacion {
   creadaPorId      String?
   creadaPor        User?    @relation(fields: [creadaPorId], references: [id])
   estado           String   @default("BORRADOR") // BORRADOR | ENVIADA | EN_REVISION | AJUSTE_SOLICITADO | REENVIADA | APROBADA | RECHAZADA | VENCIDA
+  eventoConfirmado Boolean  @default(false) // desbloqueo manual del calendario: el evento se confirmó aunque la cotización aún no se cierre/apruebe
   nombreEvento     String?
   tipoEvento       String?
   tipoServicio     String?

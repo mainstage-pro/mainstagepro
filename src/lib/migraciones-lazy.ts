@@ -361,6 +361,28 @@ export async function ensureMarketingColumns() {
 }
 
 /**
+ * Migración lazy del desbloqueo manual de calendario (patrón Neon).
+ * - cotizaciones.eventoConfirmado: marca que el evento se confirmó aunque la
+ *   cotización aún no se cierre/apruebe, para que aparezca en calendario y agendas.
+ *   Declarada en schema.prisma → Prisma la pide en cualquier findMany de cotizaciones
+ *   sin select, por eso el DDL aditivo se aplica a prod ANTES del deploy
+ *   (scripts/ddl-cotizacion-evento-confirmado.ts); esto es respaldo idempotente.
+ */
+let _eventoConfirmadoReady = false;
+
+export async function ensureCotizacionEventoConfirmadoColumn() {
+  if (_eventoConfirmadoReady) return;
+  if (!await columnExists('cotizaciones', 'eventoConfirmado')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS "eventoConfirmado" BOOLEAN NOT NULL DEFAULT false`
+      );
+    } catch { /* ya existe */ }
+  }
+  _eventoConfirmadoReady = true;
+}
+
+/**
  * Migraciones lazy del pipeline de seguimientos (patrón Neon: ADD COLUMN IF NOT EXISTS).
  * - seguimientos.etapa: etapa del pipeline en que se agendó el seguimiento.
  * - presentaciones_venta.tratoId: liga la presentación con su trato (sin FK a propósito).

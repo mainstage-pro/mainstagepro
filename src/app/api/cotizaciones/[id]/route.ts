@@ -7,6 +7,7 @@ import { generarTokenPresentacion } from "@/lib/presentacion-token";
 import { syncFechaProximaAccion } from "@/app/api/seguimientos/route";
 import { defaultEtapaInterna } from "@/lib/etapasInternas";
 import { sincronizarProyectoDesdeCotizacion } from "@/lib/sync-cotizacion-proyecto";
+import { ensureCotizacionEventoConfirmadoColumn } from "@/lib/migraciones-lazy";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -59,6 +60,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const { id } = await params;
   const body = await request.json();
+
+  await ensureCotizacionEventoConfirmadoColumn();
 
   // Si viene "lineas" en el body, es una re-edición completa desde BORRADOR
   if (body.lineas !== undefined) {
@@ -302,12 +305,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   // Actualización parcial normal (estado, observaciones, etc.)
   try {
-    const allowed = ["estado", "observaciones", "terminosComerciales", "fechaEnvio", "fechaVencimiento", "notasSecciones", "planPagos", "mainstageTradeData", "tradeToken", "descuentoFamilyFriendsPct", "nombreCotizacion", "descripcionCotizacion", "gastosProduccionActivo", "gastosProduccionEsMonto", "gastosProduccionPct", "gastosProduccionMonto", "fechaEvento", "lugarEvento"];
+    const allowed = ["estado", "observaciones", "terminosComerciales", "fechaEnvio", "fechaVencimiento", "notasSecciones", "planPagos", "mainstageTradeData", "tradeToken", "descuentoFamilyFriendsPct", "nombreCotizacion", "descripcionCotizacion", "gastosProduccionActivo", "gastosProduccionEsMonto", "gastosProduccionPct", "gastosProduccionMonto", "fechaEvento", "lugarEvento", "eventoConfirmado"];
     const data: Record<string, unknown> = {};
     for (const key of allowed) {
       if (key in body) {
         if ((key === "fechaEnvio" || key === "fechaVencimiento" || key === "fechaEvento") && body[key]) {
           data[key] = new Date(body[key]);
+        } else if (key === "eventoConfirmado") {
+          data[key] = Boolean(body[key]);
         } else {
           data[key] = body[key];
         }
@@ -333,6 +338,10 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       if (Object.keys(proyectoData).length > 0) {
         await prisma.proyecto.updateMany({ where: { cotizacionId: id }, data: proyectoData });
       }
+    }
+
+    if ("eventoConfirmado" in body) {
+      await logActividad(session.id, "EDITAR", "cotizacion", id, data.eventoConfirmado ? "Evento marcado como confirmado (visible en calendario)" : "Confirmación de evento retirada");
     }
 
     if (body.estado) {

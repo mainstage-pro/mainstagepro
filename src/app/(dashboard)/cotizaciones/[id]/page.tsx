@@ -48,6 +48,7 @@ interface Cotizacion {
   opcionLetra: string;
   grupoId: string | null;
   estado: string;
+  eventoConfirmado: boolean;
   nombreEvento: string | null;
   tipoEvento: string | null;
   tipoServicio: string | null;
@@ -457,6 +458,33 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
       }
     } catch {
       toast.error("Error de conexión al cambiar el estado");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function toggleEventoConfirmado() {
+    if (!cot) return;
+    const nuevo = !cot.eventoConfirmado;
+    setSaving(true);
+    // Optimista: refleja de inmediato el cambio en la UI.
+    setCot(prev => prev ? { ...prev, eventoConfirmado: nuevo } : prev);
+    try {
+      const res = await fetch(`/api/cotizaciones/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eventoConfirmado: nuevo }),
+      });
+      if (!res.ok) {
+        setCot(prev => prev ? { ...prev, eventoConfirmado: !nuevo } : prev);
+        const d = await res.json().catch(() => ({}));
+        toast.error(d.error ?? "Error al actualizar la confirmación");
+      } else {
+        toast.success(nuevo ? "Evento confirmado — visible en calendario" : "Confirmación retirada");
+      }
+    } catch {
+      setCot(prev => prev ? { ...prev, eventoConfirmado: !nuevo } : prev);
+      toast.error("Error de conexión");
     } finally {
       setSaving(false);
     }
@@ -1157,6 +1185,41 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
               </button>
             );
           })}
+        </div>
+
+        {/* Confirmar evento — desbloqueo manual del calendario, fuera del flujo de estados.
+            Permite marcar un evento como confirmado aunque la cotización no se haya cerrado. */}
+        <div className={`mt-4 flex items-center gap-3 rounded-xl border p-3 transition-colors ${
+          cot.eventoConfirmado
+            ? "border-emerald-700/40 bg-emerald-900/15"
+            : "border-[#2a2a2a] bg-[#0d0d0d]"
+        }`}>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+            cot.eventoConfirmado ? "bg-emerald-900/30 text-emerald-400" : "bg-[#1a1a1a] text-gray-500"
+          }`}>
+            {cot.eventoConfirmado ? "✓" : "◷"}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-sm font-semibold">
+              {cot.eventoConfirmado ? "Evento confirmado" : "Evento sin confirmar"}
+            </p>
+            <p className="text-[#666] text-xs">
+              {cot.eventoConfirmado
+                ? "Aparece en el calendario aunque la cotización no se haya cerrado."
+                : "Confírmalo para que aparezca en el calendario sin cerrar la venta."}
+            </p>
+          </div>
+          <button
+            onClick={toggleEventoConfirmado}
+            disabled={saving}
+            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-40 border ${
+              cot.eventoConfirmado
+                ? "bg-[#1a1a1a] border-[#333] text-gray-400 hover:text-white"
+                : "bg-emerald-700/20 border-emerald-700/40 text-emerald-400 hover:bg-emerald-700/30"
+            }`}
+          >
+            {cot.eventoConfirmado ? "Quitar confirmación" : "✓ Confirmar evento"}
+          </button>
         </div>
 
         {/* Progreso de completitud */}

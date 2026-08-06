@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
+import { ensureCotizacionEventoConfirmadoColumn } from '@/lib/migraciones-lazy'
 
 export async function GET(_req: NextRequest) {
   const session = await getSession()
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  await ensureCotizacionEventoConfirmadoColumn()
 
   const ahora = new Date()
   const inicioDeHoy = new Date(
@@ -47,24 +49,25 @@ export async function GET(_req: NextRequest) {
       orderBy: { fechaEvento: 'desc' },
       take: 10,
     }),
-    // Tratos VENTA_CERRADA sin proyecto, con cotización APROBADA próxima
+    // Tratos ganados/confirmados sin proyecto (mismo criterio que el calendario):
+    // VENTA_CERRADA, confirmadaEn, cotización APROBADA, o cotización con eventoConfirmado.
     prisma.trato.findMany({
       where: {
-        etapa: 'VENTA_CERRADA',
         proyectos: { none: {} },
-        cotizaciones: {
-          some: {
-            estado: 'APROBADA',
-            fechaEvento: { gte: inicioDeHoy, lte: en30dias, not: null },
-          },
-        },
+        OR: [
+          { etapa: 'VENTA_CERRADA' },
+          { confirmadaEn: { not: null } },
+          { cotizaciones: { some: { estado: 'APROBADA' } } },
+          { cotizaciones: { some: { eventoConfirmado: true } } },
+        ],
       },
       select: {
         id: true,
         nombreEvento: true,
+        fechaEventoEstimada: true,
         cliente: { select: { nombre: true, empresa: true } },
         cotizaciones: {
-          where: { estado: 'APROBADA', fechaEvento: { gte: inicioDeHoy, not: null } },
+          where: { OR: [{ estado: 'APROBADA' }, { eventoConfirmado: true }] },
           select: { fechaEvento: true },
           orderBy: { fechaEvento: 'asc' },
           take: 1,
@@ -73,19 +76,23 @@ export async function GET(_req: NextRequest) {
     }),
   ])
 
-  // Merge tratos into proximos shape
-  const tratosProximos = tratosVC.flatMap(t =>
-    t.cotizaciones.filter(c => c.fechaEvento).map(c => ({
+  // Merge tratos into proximos shape. La fecha sale de la cotización aprobada/confirmada
+  // y, si no hay, de fechaEventoEstimada; se filtra a la ventana de próximos 30 días.
+  const tratosProximos = tratosVC.flatMap(t => {
+    const fechaEvento = t.cotizaciones.find(c => c.fechaEvento)?.fechaEvento ?? t.fechaEventoEstimada ?? null
+    if (!fechaEvento) return []
+    if (fechaEvento < inicioDeHoy || fechaEvento > en30dias) return []
+    return [{
       id: t.id,
       nombre: t.nombreEvento ?? 'Evento',
       estado: 'VENTA_CERRADA',
       numeroProyecto: null,
-      fechaEvento: c.fechaEvento!,
+      fechaEvento,
       lugarEvento: null,
       cliente: t.cliente,
       sinProyecto: true,
-    }))
-  )
+    }]
+  })
 
   const proximosMerged = [
     ...proximos.map(p => ({ ...p, sinProyecto: false })),

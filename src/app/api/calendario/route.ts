@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { ensureProcesoVentaColumns, ensureMultidiaColumns } from "@/lib/migraciones-lazy";
+import { ensureProcesoVentaColumns, ensureMultidiaColumns, ensureCotizacionEventoConfirmadoColumn } from "@/lib/migraciones-lazy";
 import { diasEvento } from "@/lib/fechas-evento";
 
 type Nivel = 'tentativo' | 'confirmado' | 'operativo';
@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
   // Lee tratos con `include`; garantizar columnas nuevas antes de consultar.
   await ensureProcesoVentaColumns();
   await ensureMultidiaColumns();
+  await ensureCotizacionEventoConfirmadoColumn();
 
   const sp = req.nextUrl.searchParams;
   const mes = sp.get("mes"); // "2026-04"
@@ -51,11 +52,12 @@ export async function GET(req: NextRequest) {
   const inicio = new Date(year, month, 1);
   const fin    = new Date(year, month + 1, 0, 23, 59, 59);
 
-  // El calendario solo muestra eventos GANADOS (la venta se cerró). Un evento
-  // se considera ganado si (a) ya tiene proyecto —el proyecto solo nace de una
-  // venta cerrada— o (b) el trato está en VENTA_CERRADA, tiene confirmadaEn, o
-  // tiene una cotización APROBADA. Los tratos en pipeline temprano (prospección,
-  // descubrimiento, oportunidad) sin ninguna de esas señales NO aparecen.
+  // El calendario solo muestra eventos GANADOS o CONFIRMADOS. Un evento aparece si
+  // (a) ya tiene proyecto —el proyecto solo nace de una venta cerrada— o (b) el trato
+  // está en VENTA_CERRADA, tiene confirmadaEn, tiene una cotización APROBADA, o tiene
+  // una cotización con eventoConfirmado (desbloqueo manual: el evento se confirmó
+  // aunque la cotización aún no se cierre). Los tratos en pipeline temprano sin
+  // ninguna de esas señales NO aparecen.
 
   // ── 1. Proyectos (venta ya convertida en proyecto) ─────────────────────────
   const proyectos = await prisma.proyecto.findMany({
@@ -80,9 +82,10 @@ export async function GET(req: NextRequest) {
     })),
   );
 
-  // ── 2. Tratos ganados sin proyecto aún ─────────────────────────────────────
-  // Ganado = VENTA_CERRADA, confirmadaEn, o cotización APROBADA. La fecha del
-  // evento sale de la cotización aprobada y, si no hay, de fechaEventoEstimada.
+  // ── 2. Tratos ganados/confirmados sin proyecto aún ─────────────────────────
+  // Ganado = VENTA_CERRADA, confirmadaEn, cotización APROBADA, o cotización con
+  // eventoConfirmado. La fecha del evento sale de esa cotización y, si no hay, de
+  // fechaEventoEstimada.
   const tratosGanados = await prisma.trato.findMany({
     where: {
       proyectos: { none: {} },
@@ -90,12 +93,13 @@ export async function GET(req: NextRequest) {
         { etapa: "VENTA_CERRADA" },
         { confirmadaEn: { not: null } },
         { cotizaciones: { some: { estado: "APROBADA" } } },
+        { cotizaciones: { some: { eventoConfirmado: true } } },
       ],
     },
     include: {
       cliente: { select: { nombre: true } },
       cotizaciones: {
-        where: { estado: "APROBADA" },
+        where: { OR: [{ estado: "APROBADA" }, { eventoConfirmado: true }] },
         orderBy: { fechaEvento: "asc" },
         take: 1,
       },
@@ -104,7 +108,7 @@ export async function GET(req: NextRequest) {
 
   const eventosTratoGanado = tratosGanados.flatMap(t => {
     const cot = t.cotizaciones.find(c => c.fechaEvento) ?? null;
-    // Fecha principal: cotización aprobada > fecha estimada del trato.
+    // Fecha principal: cotización aprobada/confirmada > fecha estimada del trato.
     const fechaPrincipal = cot?.fechaEvento ?? t.fechaEventoEstimada ?? null;
     if (!fechaPrincipal) return [];
     const titulo =

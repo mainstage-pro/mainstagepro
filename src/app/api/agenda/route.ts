@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { ensureProcesoVentaColumns } from "@/lib/migraciones-lazy";
+import { ensureProcesoVentaColumns, ensureCotizacionEventoConfirmadoColumn } from "@/lib/migraciones-lazy";
 
 export async function GET() {
   const session = await getSession();
@@ -10,6 +10,7 @@ export async function GET() {
   // Este endpoint lee tratos con `include` (todos los escalares), así que debe
   // garantizar las columnas nuevas del proceso de venta antes de consultar.
   await ensureProcesoVentaColumns();
+  await ensureCotizacionEventoConfirmadoColumn();
 
   const ahora       = new Date();
   const inicioDeHoy = new Date(ahora.toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }));
@@ -38,19 +39,18 @@ export async function GET() {
 
     prisma.trato.findMany({
       where: {
-        etapa: "VENTA_CERRADA",
         proyectos: { none: {} },
-        cotizaciones: {
-          some: {
-            estado: "APROBADA",
-            fechaEvento: { not: null },
-          },
-        },
+        OR: [
+          { etapa: "VENTA_CERRADA" },
+          { confirmadaEn: { not: null } },
+          { cotizaciones: { some: { estado: "APROBADA" } } },
+          { cotizaciones: { some: { eventoConfirmado: true } } },
+        ],
       },
       include: {
         cliente: { select: { nombre: true } },
         cotizaciones: {
-          where: { estado: "APROBADA", fechaEvento: { not: null } },
+          where: { OR: [{ estado: "APROBADA" }, { eventoConfirmado: true }], fechaEvento: { not: null } },
           orderBy: { fechaEvento: "asc" },
           take: 1,
         },
@@ -110,14 +110,15 @@ export async function GET() {
     })),
     ...tratosVentaCerradaAgenda.flatMap(trato => {
       const cot = trato.cotizaciones[0];
-      if (!cot?.fechaEvento) return [];
+      const fechaEvento = cot?.fechaEvento ?? trato.fechaEventoEstimada ?? null;
+      if (!fechaEvento) return [];
       return [{
         id: trato.id,
-        nombre: trato.nombreEvento || (cot as { nombreEvento?: string | null }).nombreEvento || "Evento",
+        nombre: trato.nombreEvento || (cot as { nombreEvento?: string | null } | undefined)?.nombreEvento || "Evento",
         numeroProyecto: null as null,
         estado: "VENTA_CERRADA",
         tipoEvento: trato.tipoEvento,
-        fechaEvento: cot.fechaEvento,
+        fechaEvento,
         cliente: trato.cliente!,
         personal: [] as { confirmado: boolean }[],
         checklist: [] as { completado: boolean }[],
