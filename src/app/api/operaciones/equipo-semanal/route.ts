@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getSession } from '@/lib/auth'
-import { recurrenciaOcurreEnFecha, type RecurrenciaConfig } from '@/lib/recurrencia'
+import { type RecurrenciaConfig } from '@/lib/recurrencia'
 
 // ── Vista semanal del equipo ──────────────────────────────────────────────────
 // Devuelve, por cada miembro del equipo, sus tareas de la semana (lun–vie),
@@ -167,13 +167,6 @@ export async function GET(req: NextRequest) {
     } catch { return null }
   }
 
-  // Fecha-calendario local (mismo día que el string YMD) para evaluar el patrón,
-  // ya que `recurrenciaOcurreEnFecha` usa getDay()/getDate() en hora local.
-  function fechaLocalDeDia(dia: string): Date {
-    const [y, m, d] = dia.split('-').map(Number)
-    return new Date(y, m - 1, d)
-  }
-
   const porUsuario = new Map<string, TareaSemana[]>()
   for (const u of users) porUsuario.set(u.id, [])
 
@@ -205,44 +198,45 @@ export async function GET(req: NextRequest) {
     const cfg = parseCfg(t.recurrencia)
 
     if (cfg) {
-      // Recurrente → una tarjeta por cada día de la semana en que cae el patrón.
-      // Al completar una ocurrencia, el server reagenda la fila a la próxima
-      // fecha (vuelve a PENDIENTE) y archiva la ocurrencia cerrada —con su
-      // evidencia y estado de verificación— en `evidenciasHistorial`. Por eso
-      // la fila viva nunca queda COMPLETADA. Para reflejar en la semana lo que
-      // realmente se hizo, cruzamos cada día contra ese historial:
-      //   · día con ocurrencia archivada → tarjeta COMPLETADA (con su badge).
-      //   · día del patrón sin cerrar y ya pasado → pendiente + vencida.
-      //   · día del patrón sin cerrar (hoy/futuro) → pendiente.
-      const completadasPorDia = new Map<string, HistEntry>()
+      // Una tarea recurrente es UNA sola fila: su ocurrencia VIVA está en
+      // `fecha` (la próxima pendiente) y las ocurrencias YA CERRADAS quedan
+      // archivadas en `evidenciasHistorial`. NO proyectamos el patrón sobre
+      // toda la semana: eso inventaba tarjetas en días que la tarea no tiene
+      // realmente agendados (falsos "sin cerrar") y desincronizaba las acciones
+      // —marcar esa tarjeta actuaba sobre otra ocurrencia—. Mostramos solo lo
+      // real:
+      //   · cada ocurrencia cerrada del historial → en su fechaOcurrencia
+      //     (COMPLETADA / no realizada, con su estado de verificación).
+      //   · la ocurrencia viva → en su `fecha` (pendiente; vencida si ya pasó).
+      const diasCubiertos = new Set<string>()
       try {
         const parsed = t.evidenciasHistorial ? JSON.parse(t.evidenciasHistorial) : []
         if (Array.isArray(parsed)) {
           for (const raw of parsed as HistEntry[]) {
             const foc = typeof raw?.fechaOcurrencia === 'string' ? raw.fechaOcurrencia.slice(0, 10) : null
-            // La entrada más reciente va primero; conservamos esa por día.
-            if (foc && setDias.has(foc) && !completadasPorDia.has(foc)) completadasPorDia.set(foc, raw)
+            // Entradas ordenadas de más reciente a más antigua: la primera por día gana.
+            if (!foc || !setDias.has(foc) || diasCubiertos.has(foc)) continue
+            diasCubiertos.add(foc)
+            lista.push({
+              ...base,
+              estado: 'COMPLETADA',
+              dia: foc,
+              vencida: false,
+              recurrente: true,
+              estadoVerificacion: raw.estadoVerificacion ?? null,
+              noRealizada: raw.noRealizada ?? false,
+            })
           }
         }
       } catch { /* historial corrupto → se ignora */ }
 
-      for (const dia of dias) {
-        const hist = completadasPorDia.get(dia)
-        if (hist) {
+      if (t.fecha) {
+        const diaLive = fechaCal(t.fecha)
+        if (setDias.has(diaLive) && !diasCubiertos.has(diaLive)) {
           lista.push({
             ...base,
-            estado: 'COMPLETADA',
-            dia,
-            vencida: false,
-            recurrente: true,
-            estadoVerificacion: hist.estadoVerificacion ?? null,
-            noRealizada: hist.noRealizada ?? false,
-          })
-        } else if (recurrenciaOcurreEnFecha(cfg, fechaLocalDeDia(dia))) {
-          lista.push({
-            ...base,
-            dia,
-            vencida: dia < hoyCal,
+            dia: diaLive,
+            vencida: t.estado !== 'COMPLETADA' && diaLive < hoyCal,
             recurrente: true,
             estadoVerificacion: null,
             noRealizada: false,
