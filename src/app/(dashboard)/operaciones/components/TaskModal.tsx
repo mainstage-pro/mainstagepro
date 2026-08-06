@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import DatePicker from "@/components/ui/DatePicker";
 import RecurrenciaPicker from "./RecurrenciaPicker";
 import QuickAdd from "./QuickAdd";
@@ -55,8 +55,13 @@ interface HistorialEvidenciaEntry {
   completadaPor: string | null;
   tipoEvidencia: string | null;
   evidenciaNota: string | null;
-  archivos: { nombre: string; url: string; tipo: string | null }[];
+  archivos?: { nombre: string; url: string; tipo: string | null }[];
   estadoVerificacion: string;
+  motivoRechazo?: string | null;
+  noRealizada?: boolean;
+  motivoNoRealizada?: string | null;
+  justificacionNoRealizada?: string | null;
+  corregidaAt?: string | null;
 }
 
 export interface TareaDetalle {
@@ -223,13 +228,38 @@ export default function TaskModal({
 
   // ── Historial de evidencias de ocurrencias pasadas (tareas recurrentes) ──
   // Debe declararse antes de cualquier return condicional (reglas de hooks).
-  const historialEvidencias = useMemo<HistorialEvidenciaEntry[]>(() => {
-    if (!tarea?.evidenciasHistorial) return [];
+  // Es estado (no memo) para poder reflejar la corrección de una evidencia
+  // rechazada sin recargar el modal.
+  const [historialEvidencias, setHistorialEvidencias] = useState<HistorialEvidenciaEntry[]>([]);
+  useEffect(() => {
+    if (!tarea?.evidenciasHistorial) { setHistorialEvidencias([]); return; }
     try {
       const arr = JSON.parse(tarea.evidenciasHistorial);
-      return Array.isArray(arr) ? arr : [];
-    } catch { return []; }
+      setHistorialEvidencias(Array.isArray(arr) ? arr : []);
+    } catch { setHistorialEvidencias([]); }
   }, [tarea?.evidenciasHistorial]);
+
+  // Corrección de una ocurrencia rechazada: nota editable inline.
+  const [corrigiendoAt, setCorrigiendoAt] = useState<string | null>(null);
+  const [notaCorreccion, setNotaCorreccion] = useState("");
+  const [guardandoCorreccion, setGuardandoCorreccion] = useState(false);
+
+  async function corregirOcurrencia(ocurrenciaAt: string) {
+    if (!tarea) return;
+    setGuardandoCorreccion(true);
+    try {
+      const res = await fetch(`/api/tareas/${tarea.id}/evidencia-historial`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ocurrenciaAt, evidenciaNota: notaCorreccion }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok) { toast.error(d.error ?? "No se pudo guardar la corrección"); return; }
+      setHistorialEvidencias(prev => prev.map(h => h.completadaAt === ocurrenciaAt ? (d.entry as HistorialEvidenciaEntry) : h));
+      setCorrigiendoAt(null); setNotaCorreccion("");
+      toast.success("Evidencia corregida y reenviada a verificación");
+    } finally { setGuardandoCorreccion(false); }
+  }
 
   if (!tarea && !loading) return null;
 
@@ -783,24 +813,43 @@ export default function TaskModal({
                     Historial de evidencias
                   </p>
                   <div className="space-y-2">
-                    {historialEvidencias.map((h, i) => (
-                      <div key={i} className="rounded-lg border border-[#1a1a1a] bg-[#0d0d0d] p-2.5">
+                    {historialEvidencias.map((h, i) => {
+                      const rechazada = h.estadoVerificacion === "RECHAZADA";
+                      const verificada = h.estadoVerificacion === "VERIFICADA";
+                      const pendiente = h.estadoVerificacion === "PENDIENTE_VERIFICACION";
+                      const puedeCorregir = tarea.asignadoA?.id === sessionId;
+                      const editando = corrigiendoAt === h.completadaAt;
+                      return (
+                      <div key={i} className={`rounded-lg border p-2.5 ${rechazada ? "border-red-500/25 bg-red-950/15" : "border-[#1a1a1a] bg-[#0d0d0d]"}`}>
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <span className="text-[11px] font-medium text-[#bbb]">
+                            {/* Fecha de la ocurrencia: es un valor "solo día" anclado a
+                                medianoche; se muestra en UTC para no correrse un día por
+                                zona horaria. */}
                             {h.fechaOcurrencia
-                              ? new Date(h.fechaOcurrencia).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" })
+                              ? new Date(h.fechaOcurrencia).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })
                               : new Date(h.completadaAt).toLocaleDateString("es-MX", { day: "numeric", month: "short" })}
                           </span>
-                          <span className="text-[10px] text-[#555]">
-                            {h.completadaPor ?? "—"} · {new Date(h.completadaAt).toLocaleDateString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            {rechazada && <span className="text-[9px] uppercase tracking-wider text-red-400 border border-red-500/30 rounded px-1.5 py-0.5">Rechazada</span>}
+                            {verificada && <span className="text-[9px] uppercase tracking-wider text-green-500 border border-green-500/30 rounded px-1.5 py-0.5">Verificada</span>}
+                            {pendiente && <span className="text-[9px] uppercase tracking-wider text-[#B3985B] border border-[#B3985B]/30 rounded px-1.5 py-0.5">Pendiente</span>}
+                            <span className="text-[10px] text-[#555]">
+                              {h.completadaPor ?? "—"} · {new Date(h.completadaAt).toLocaleDateString("es-MX", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                          </div>
                         </div>
-                        {h.evidenciaNota && (
-                          <p className="text-[12px] text-[#ccc] whitespace-pre-wrap">{h.evidenciaNota}</p>
+
+                        {h.noRealizada ? (
+                          <p className="text-[12px] text-amber-200/90">
+                            No realizada{h.justificacionNoRealizada ? ` — ${h.justificacionNoRealizada}` : ""}
+                          </p>
+                        ) : (
+                          h.evidenciaNota && <p className="text-[12px] text-[#ccc] whitespace-pre-wrap">{h.evidenciaNota}</p>
                         )}
-                        {h.archivos?.length > 0 && (
+                        {(h.archivos?.length ?? 0) > 0 && (
                           <div className="flex flex-wrap gap-1.5 mt-1.5">
-                            {h.archivos.map((a, j) => (
+                            {h.archivos!.map((a, j) => (
                               <a key={j} href={a.url} target="_blank" rel="noopener noreferrer"
                                 className="inline-flex items-center gap-1 text-[11px] text-[#8ab4f8] hover:underline">
                                 <Paperclip size={11} /> {a.nombre}
@@ -808,8 +857,50 @@ export default function TaskModal({
                             ))}
                           </div>
                         )}
+
+                        {/* Motivo del rechazo */}
+                        {rechazada && h.motivoRechazo && (
+                          <p className="text-[11px] text-red-300/90 mt-1.5 flex items-start gap-1.5">
+                            <AlertTriangle strokeWidth={2} className="w-3 h-3 mt-0.5 shrink-0" />
+                            <span>{h.motivoRechazo}</span>
+                          </p>
+                        )}
+
+                        {/* Corregir evidencia rechazada (responsable o admin) */}
+                        {rechazada && puedeCorregir && !editando && (
+                          <button
+                            onClick={() => { setCorrigiendoAt(h.completadaAt); setNotaCorreccion(h.evidenciaNota ?? ""); }}
+                            className="mt-2 text-[11px] text-[#B3985B] hover:underline"
+                          >
+                            Corregir evidencia
+                          </button>
+                        )}
+                        {rechazada && editando && (
+                          <div className="mt-2">
+                            <textarea
+                              autoFocus
+                              value={notaCorreccion}
+                              onChange={e => setNotaCorreccion(e.target.value)}
+                              placeholder="Corrige la nota de evidencia (mín. 10 caracteres)…"
+                              className="w-full bg-[#080808] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-white resize-none focus:outline-none focus:border-[#B3985B]/40 placeholder:text-[#444]"
+                              rows={3}
+                            />
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <button
+                                onClick={() => corregirOcurrencia(h.completadaAt)}
+                                disabled={guardandoCorreccion || notaCorreccion.trim().length < 10}
+                                className="px-3 py-1.5 rounded-lg bg-[#B3985B]/15 border border-[#B3985B]/40 text-[#B3985B] text-xs font-medium hover:bg-[#B3985B]/25 transition-all disabled:opacity-40"
+                              >
+                                {guardandoCorreccion ? "Guardando…" : "Guardar y reenviar"}
+                              </button>
+                              <button onClick={() => { setCorrigiendoAt(null); setNotaCorreccion(""); }}
+                                className="text-xs text-gray-500 hover:text-gray-300">Cancelar</button>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
