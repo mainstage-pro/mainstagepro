@@ -123,6 +123,7 @@ export async function GET(req: NextRequest) {
       evidenciasHistorial: true,
       orden: true,
       asignadoAId: true,
+      createdAt: true,
       proyectoTarea: { select: { nombre: true } },
       proyectoEvento: { select: { nombre: true } },
       proyectoInterno: { select: { nombre: true } },
@@ -230,6 +231,9 @@ export async function GET(req: NextRequest) {
       } catch { /* historial corrupto → se ignora */ }
 
       const liveDia = t.fecha ? fechaCal(t.fecha) : null
+      // Día-calendario en que se creó la tarea: no inventamos ocurrencias
+      // "completadas" en días anteriores a su existencia.
+      const creadoDia = t.createdAt ? fechaCal(t.createdAt) : null
 
       for (const dia of dias) {
         const hist = histPorDia.get(dia)
@@ -260,6 +264,8 @@ export async function GET(req: NextRequest) {
         }
         // Fuera de la fecha viva, sólo días en que realmente cae el patrón.
         if (!recurrenciaOcurreEnFecha(cfg, fechaLocalDeDia(dia))) continue
+        // Ocurrencia anterior a la creación de la tarea → nunca existió, se omite.
+        if (creadoDia && dia < creadoDia) continue
         if (liveDia && dia < liveDia) {
           lista.push({
             ...base,
