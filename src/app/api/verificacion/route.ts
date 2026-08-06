@@ -25,8 +25,10 @@ export async function GET(req: NextRequest) {
   if (area) where.area = area;
   if (responsableId) where.asignadoAId = responsableId;
 
-  // Rango de fechaCompletada
-  const fechaFilter: Prisma.DateTimeFilter = {};
+  // Rango de fechaCompletada. Se calcula como Date para reutilizarlo tanto en la
+  // query de tareas vivas como al filtrar las ocurrencias del historial.
+  let rangeGte: Date | null = null;
+  let rangeLte: Date | null = null;
   if (semana) {
     // Lunes 00:00 → domingo 23:59 (semana actual, hora local del servidor)
     const now = new Date();
@@ -34,13 +36,18 @@ export async function GET(req: NextRequest) {
     const diffToMon = (day === 0 ? -6 : 1) - day;
     const lunes = new Date(now); lunes.setDate(now.getDate() + diffToMon); lunes.setHours(0, 0, 0, 0);
     const domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6); domingo.setHours(23, 59, 59, 999);
-    fechaFilter.gte = lunes;
-    fechaFilter.lte = domingo;
+    rangeGte = lunes;
+    rangeLte = domingo;
   } else {
-    if (desde) fechaFilter.gte = new Date(desde + "T00:00:00");
-    if (hasta) fechaFilter.lte = new Date(hasta + "T23:59:59");
+    if (desde) rangeGte = new Date(desde + "T00:00:00");
+    if (hasta) rangeLte = new Date(hasta + "T23:59:59");
   }
-  if (fechaFilter.gte || fechaFilter.lte) where.fechaCompletada = fechaFilter;
+  if (rangeGte || rangeLte) {
+    const fechaFilter: Prisma.DateTimeFilter = {};
+    if (rangeGte) fechaFilter.gte = rangeGte;
+    if (rangeLte) fechaFilter.lte = rangeLte;
+    where.fechaCompletada = fechaFilter;
+  }
 
   const selectVerif = {
     id: true,
@@ -71,11 +78,71 @@ export async function GET(req: NextRequest) {
     },
   } satisfies Prisma.TareaSelect;
 
-  const tareas = await prisma.tarea.findMany({
+  const tareasVivas = await prisma.tarea.findMany({
     where,
     orderBy: { fechaCompletada: "asc" },
     select: selectVerif,
   });
+
+  // ── Ocurrencias recurrentes pendientes de verificar (desde el historial) ─────
+  // Al completar una tarea recurrente, el server la reagenda a la próxima fecha y
+  // archiva la evidencia de la ocurrencia en `evidenciasHistorial`, dejando la
+  // fila viva en NO_REQUIERE. Por eso esas ocurrencias no salen en la query de
+  // arriba. Aquí las recuperamos: cada entrada del historial con
+  // `estadoVerificacion === "PENDIENTE_VERIFICACION"` es un ítem a verificar.
+  const histWhere: Prisma.TareaWhereInput = {
+    evidenciasHistorial: { contains: "PENDIENTE_VERIFICACION" },
+  };
+  if (area) histWhere.area = area;
+  if (responsableId) histWhere.asignadoAId = responsableId;
+
+  const conHistorial = await prisma.tarea.findMany({
+    where: histWhere,
+    select: { ...selectVerif, evidenciasHistorial: true },
+  });
+
+  type VerifItem = (typeof tareasVivas)[number] & { ocurrenciaAt?: string | null };
+  const ocurrencias: VerifItem[] = [];
+  for (const t of conHistorial) {
+    let hist: unknown[] = [];
+    try {
+      const parsed = t.evidenciasHistorial ? JSON.parse(t.evidenciasHistorial) : [];
+      if (Array.isArray(parsed)) hist = parsed;
+    } catch { continue; }
+    for (const raw of hist) {
+      const h = raw as Record<string, unknown>;
+      if (h.estadoVerificacion !== "PENDIENTE_VERIFICACION") continue;
+      const compAt = typeof h.completadaAt === "string" ? h.completadaAt : null;
+      if (!compAt) continue;
+      const fecha = new Date(compAt);
+      if (rangeGte && fecha < rangeGte) continue;
+      if (rangeLte && fecha > rangeLte) continue;
+      const archivosRaw = Array.isArray(h.archivos) ? (h.archivos as Record<string, unknown>[]) : [];
+      const { evidenciasHistorial: _omit, ...base } = t;
+      ocurrencias.push({
+        ...base,
+        ocurrenciaAt: compAt,
+        estado: "COMPLETADA",
+        fechaCompletada: fecha,
+        tipoEvidencia: (h.tipoEvidencia as string | null) ?? t.tipoEvidencia,
+        evidenciaNota: (h.evidenciaNota as string | null) ?? null,
+        noRealizada: (h.noRealizada as boolean | undefined) ?? false,
+        motivoNoRealizada: (h.motivoNoRealizada as string | null) ?? null,
+        justificacionNoRealizada: (h.justificacionNoRealizada as string | null) ?? null,
+        archivos: archivosRaw.map((a, i) => ({
+          id: `${t.id}::${compAt}::${i}`,
+          nombre: (a.nombre as string) ?? "archivo",
+          url: (a.url as string) ?? "",
+          tipo: (a.tipo as string | null) ?? null,
+          tamano: null,
+        })),
+      });
+    }
+  }
+
+  const tareas = [...tareasVivas, ...ocurrencias].sort(
+    (a, b) => (a.fechaCompletada?.getTime() ?? 0) - (b.fechaCompletada?.getTime() ?? 0)
+  );
 
   // ── Atrasadas: pendientes/en progreso con fechaVencimiento vencida ──────────
   // Se muestran en el mismo módulo para que quien verifica vea también lo que

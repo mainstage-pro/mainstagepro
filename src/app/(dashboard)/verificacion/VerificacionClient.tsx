@@ -10,6 +10,9 @@ import {
 interface Archivo { id: string; nombre: string; url: string; tipo: string | null; tamano: number | null }
 interface TareaVerif {
   id: string;
+  // Presente cuando el ítem es una ocurrencia recurrente archivada en el historial
+  // (timestamp de completado). Null/undefined para tareas vivas.
+  ocurrenciaAt?: string | null;
   titulo: string;
   tipoOrigen: string | null;
   area: string | null;
@@ -94,29 +97,35 @@ export default function VerificacionClient() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  async function verificar(id: string) {
-    setBusyId(id);
+  // Clave única del ítem: las ocurrencias comparten `id` con su tarea recurrente,
+  // así que se distinguen por `ocurrenciaAt`.
+  const claveItem = (t: TareaVerif) => (t.ocurrenciaAt ? `${t.id}::${t.ocurrenciaAt}` : t.id);
+
+  async function verificar(t: TareaVerif) {
+    const busy = claveItem(t);
+    setBusyId(busy);
     try {
-      const res = await fetch(`/api/tareas/${id}/verificar`, {
+      const res = await fetch(`/api/tareas/${t.id}/verificar`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accion: "VERIFICAR" }),
+        body: JSON.stringify({ accion: "VERIFICAR", ocurrenciaAt: t.ocurrenciaAt ?? undefined }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al verificar"); return; }
-      setTareas(prev => prev.filter(t => t.id !== id));
+      setTareas(prev => prev.filter(x => claveItem(x) !== busy));
       toast.success("Tarea verificada");
     } finally { setBusyId(null); }
   }
 
-  async function rechazar(id: string) {
+  async function rechazar(t: TareaVerif) {
     if (motivo.trim().length === 0) { toast.error("Escribe el motivo de rechazo"); return; }
-    setBusyId(id);
+    const busy = claveItem(t);
+    setBusyId(busy);
     try {
-      const res = await fetch(`/api/tareas/${id}/verificar`, {
+      const res = await fetch(`/api/tareas/${t.id}/verificar`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accion: "RECHAZAR", motivoRechazo: motivo.trim() }),
+        body: JSON.stringify({ accion: "RECHAZAR", motivoRechazo: motivo.trim(), ocurrenciaAt: t.ocurrenciaAt ?? undefined }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al rechazar"); return; }
-      setTareas(prev => prev.filter(t => t.id !== id));
+      setTareas(prev => prev.filter(x => claveItem(x) !== busy));
       setRechazandoId(null); setMotivo("");
       toast.success("Tarea rechazada y devuelta al responsable");
     } finally { setBusyId(null); }
@@ -227,22 +236,25 @@ export default function VerificacionClient() {
                 <span className="text-[10px] bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 px-2 py-0.5 rounded-full">{grupos[gk].length}</span>
               </div>
               <div className="space-y-2.5">
-                {grupos[gk].map(t => (
+                {grupos[gk].map(t => {
+                  const clave = claveItem(t);
+                  return (
                   <VerifRow
-                    key={t.id}
+                    key={clave}
                     t={t}
-                    busy={busyId === t.id}
-                    rechazando={rechazandoId === t.id}
-                    motivo={rechazandoId === t.id ? motivo : ""}
+                    busy={busyId === clave}
+                    rechazando={rechazandoId === clave}
+                    motivo={rechazandoId === clave ? motivo : ""}
                     onMotivo={setMotivo}
-                    onVerificar={() => verificar(t.id)}
-                    onAbrirRechazo={() => { setRechazandoId(t.id); setMotivo(""); }}
+                    onVerificar={() => verificar(t)}
+                    onAbrirRechazo={() => { setRechazandoId(clave); setMotivo(""); }}
                     onCancelarRechazo={() => { setRechazandoId(null); setMotivo(""); }}
-                    onConfirmarRechazo={() => rechazar(t.id)}
+                    onConfirmarRechazo={() => rechazar(t)}
                     onEliminar={() => eliminar(t.id)}
                     onLightbox={setLightbox}
                   />
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -390,10 +402,12 @@ function VerifRow({
               <XCircle strokeWidth={2} className="w-3.5 h-3.5" /> Rechazar
             </button>
           )}
-          <button onClick={onEliminar} disabled={busy} title="Eliminar tarea (pruebas)"
-            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e1e1e] text-gray-500 text-xs font-medium hover:text-red-400 hover:border-red-500/25 transition-all disabled:opacity-40">
-            <Trash2 strokeWidth={2} className="w-3.5 h-3.5" /> Eliminar
-          </button>
+          {!t.ocurrenciaAt && (
+            <button onClick={onEliminar} disabled={busy} title="Eliminar tarea (pruebas)"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e1e1e] text-gray-500 text-xs font-medium hover:text-red-400 hover:border-red-500/25 transition-all disabled:opacity-40">
+              <Trash2 strokeWidth={2} className="w-3.5 h-3.5" /> Eliminar
+            </button>
+          )}
         </div>
       </div>
 
