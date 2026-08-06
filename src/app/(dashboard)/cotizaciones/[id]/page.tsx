@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, type Dispatch, type SetStateAction } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatCurrency, formatPct } from "@/lib/cotizador";
@@ -160,6 +160,95 @@ function buildNotasValue(tipo: string, currentNotas: string | null, userNote: st
   return trimmed || null;
 }
 
+type NoteEditState = {
+  lineaId: string;
+  tipo: string;
+  currentNotas: string | null;
+  value: string;
+  saving: boolean;
+  error: string | null;
+};
+
+// Componente a nivel de módulo (identidad estable). Definirlo dentro del
+// componente de página lo re-crea en cada render → el <textarea autoFocus> se
+// remonta en cada tecla y el cursor vuelve a la posición 0 (texto invertido).
+function NoteField({
+  linea, noteEdit, setNoteEdit, saveNota,
+}: {
+  linea: Linea;
+  noteEdit: NoteEditState | null;
+  setNoteEdit: Dispatch<SetStateAction<NoteEditState | null>>;
+  saveNota: () => void;
+}) {
+  const userNote = extractUserNote(linea.tipo, linea.notas);
+  const isEditing = noteEdit?.lineaId === linea.id;
+
+  if (isEditing && noteEdit) {
+    return (
+      <div className="mt-1.5">
+        <textarea
+          autoFocus
+          value={noteEdit.value}
+          onChange={e => setNoteEdit(prev => prev ? { ...prev, value: e.target.value } : null)}
+          rows={2}
+          placeholder="Uso, instrucciones o contexto para este concepto..."
+          className="w-full bg-[#0a0a0a] border border-[#B3985B]/40 rounded-lg px-2.5 py-1.5 text-white text-xs resize-none focus:outline-none focus:border-[#B3985B] placeholder-gray-700"
+          style={{ minHeight: '2.5rem' }}
+        />
+        <div className="flex items-center gap-2 mt-1">
+          <button
+            onClick={saveNota}
+            disabled={noteEdit.saving}
+            className="flex items-center gap-1 text-[10px] text-emerald-400 hover:text-emerald-300 disabled:opacity-50 transition-colors"
+          >
+            {noteEdit.saving ? (
+              <span className="w-2.5 h-2.5 border border-emerald-400/50 border-t-emerald-400 rounded-full animate-spin" />
+            ) : '✓'}
+            Guardar
+          </button>
+          <button
+            onClick={() => setNoteEdit(null)}
+            disabled={noteEdit.saving}
+            className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors"
+          >
+            ✗ Cancelar
+          </button>
+          {noteEdit.error && (
+            <span className="text-[10px] text-red-400">{noteEdit.error}</span>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (userNote) {
+    return (
+      <div className="flex items-start gap-1.5 mt-1">
+        <p className="text-[11px] text-gray-500 leading-snug flex-1">{userNote}</p>
+        <button
+          onClick={() => setNoteEdit({ lineaId: linea.id, tipo: linea.tipo, currentNotas: linea.notas, value: userNote, saving: false, error: null })}
+          className="shrink-0 text-gray-700 hover:text-gray-400 transition-colors p-0.5 mt-0.5"
+          title="Editar nota"
+        >
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setNoteEdit({ lineaId: linea.id, tipo: linea.tipo, currentNotas: linea.notas, value: '', saving: false, error: null })}
+      className="mt-0.5 text-[10px] text-gray-700 hover:text-gray-500 transition-colors block"
+    >
+      + Agregar nota
+    </button>
+  );
+}
+
 export default function CotizacionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
@@ -199,14 +288,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [savingFecha, setSavingFecha] = useState(false);
   // Estado local del input de fecha — se resetea con key={cot.id}
   const [fechaInputVal, setFechaInputVal] = useState<string>("");
-  const [noteEdit, setNoteEdit] = useState<{
-    lineaId: string;
-    tipo: string;
-    currentNotas: string | null;
-    value: string;
-    saving: boolean;
-    error: string | null;
-  } | null>(null);
+  const [noteEdit, setNoteEdit] = useState<NoteEditState | null>(null);
 
   async function guardarComoPlantilla() {
     if (!cot) return;
@@ -686,77 +768,6 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
     window.open(`https://wa.me/${CARLOS_LUNA_TEL}?text=${encodeURIComponent(msg)}`, "_blank");
     setShowRenderModal(false);
   };
-
-  // ── Inline note component ──────────────────────────────────────────────────
-  function NoteField({ linea }: { linea: Linea }) {
-    const userNote = extractUserNote(linea.tipo, linea.notas);
-    const isEditing = noteEdit?.lineaId === linea.id;
-
-    if (isEditing) {
-      return (
-        <div className="mt-1.5">
-          <textarea
-            autoFocus
-            value={noteEdit.value}
-            onChange={e => setNoteEdit(prev => prev ? { ...prev, value: e.target.value } : null)}
-            rows={2}
-            placeholder="Uso, instrucciones o contexto para este concepto..."
-            className="w-full bg-[#0a0a0a] border border-[#B3985B]/40 rounded-lg px-2.5 py-1.5 text-white text-xs resize-none focus:outline-none focus:border-[#B3985B] placeholder-gray-700"
-            style={{ minHeight: '2.5rem' }}
-          />
-          <div className="flex items-center gap-2 mt-1">
-            <button
-              onClick={saveNota}
-              disabled={noteEdit.saving}
-              className="flex items-center gap-1 text-[10px] text-emerald-400 hover:text-emerald-300 disabled:opacity-50 transition-colors"
-            >
-              {noteEdit.saving ? (
-                <span className="w-2.5 h-2.5 border border-emerald-400/50 border-t-emerald-400 rounded-full animate-spin" />
-              ) : '✓'}
-              Guardar
-            </button>
-            <button
-              onClick={() => setNoteEdit(null)}
-              disabled={noteEdit.saving}
-              className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors"
-            >
-              ✗ Cancelar
-            </button>
-            {noteEdit.error && (
-              <span className="text-[10px] text-red-400">{noteEdit.error}</span>
-            )}
-          </div>
-        </div>
-      );
-    }
-
-    if (userNote) {
-      return (
-        <div className="flex items-start gap-1.5 mt-1">
-          <p className="text-[11px] text-gray-500 leading-snug flex-1">{userNote}</p>
-          <button
-            onClick={() => setNoteEdit({ lineaId: linea.id, tipo: linea.tipo, currentNotas: linea.notas, value: userNote, saving: false, error: null })}
-            className="shrink-0 text-gray-700 hover:text-gray-400 transition-colors p-0.5 mt-0.5"
-            title="Editar nota"
-          >
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-          </button>
-        </div>
-      );
-    }
-
-    return (
-      <button
-        onClick={() => setNoteEdit({ lineaId: linea.id, tipo: linea.tipo, currentNotas: linea.notas, value: '', saving: false, error: null })}
-        className="mt-0.5 text-[10px] text-gray-700 hover:text-gray-500 transition-colors block"
-      >
-        + Agregar nota
-      </button>
-    );
-  }
 
   return (
     <>
@@ -1263,7 +1274,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                           <div>
                             <span className={l.esIncluido ? "text-gray-500 italic" : "text-white"}>{[l.marca, l.modelo].filter(Boolean).join(' ') || l.descripcion}</span>
                             {([l.marca, l.modelo].filter(Boolean).join(' ') !== l.descripcion) && <span className="text-gray-500 text-xs ml-2">{l.descripcion}</span>}
-                            <NoteField linea={l} />
+                            <NoteField linea={l} noteEdit={noteEdit} setNoteEdit={setNoteEdit} saveNota={saveNota} />
                           </div>
                         </div>
                         <div className="flex items-center gap-4 text-gray-400 text-xs">
@@ -1347,7 +1358,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                   <div>
                     <span className="text-white">{l.descripcion}</span>
                     <span className="text-gray-500 text-xs ml-2">×{l.cantidad} · {l.dias}d · {formatCurrency(l.precioUnitario)}</span>
-                    <NoteField linea={l} />
+                    <NoteField linea={l} noteEdit={noteEdit} setNoteEdit={setNoteEdit} saveNota={saveNota} />
                   </div>
                   <span className="text-white font-medium shrink-0 w-24 text-right">{formatCurrency(l.subtotal)}</span>
                 </div>
@@ -1370,7 +1381,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                   <div>
                     <span className="text-white">{[l.marca, l.modelo].filter(Boolean).join(' ') || l.descripcion}</span>
                     {([l.marca, l.modelo].filter(Boolean).join(' ') !== l.descripcion) && <span className="text-gray-500 text-xs ml-2">{l.descripcion}</span>}
-                    <NoteField linea={l} />
+                    <NoteField linea={l} noteEdit={noteEdit} setNoteEdit={setNoteEdit} saveNota={saveNota} />
                   </div>
                   <div className="flex items-center gap-4 text-gray-400 text-xs shrink-0">
                     <span>{l.cantidad} × {l.dias}d</span>
@@ -1397,7 +1408,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                     <span className="text-gray-300">{l.descripcion}
                       <span className="text-gray-500 text-xs ml-2">×{l.cantidad} · {l.dias}d</span>
                     </span>
-                    <NoteField linea={l} />
+                    <NoteField linea={l} noteEdit={noteEdit} setNoteEdit={setNoteEdit} saveNota={saveNota} />
                   </div>
                   <span className="text-white font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
                 </div>
@@ -1457,7 +1468,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                               <span className="text-gray-500 text-xs ml-2">
                                 {l.nivel && `${l.nivel} · `}{l.jornada && `${l.jornada} · `}×{l.cantidad}
                               </span>
-                              <NoteField linea={l} />
+                              <NoteField linea={l} noteEdit={noteEdit} setNoteEdit={setNoteEdit} saveNota={saveNota} />
                             </div>
                             <span className="text-white font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
                           </div>
@@ -1473,7 +1484,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                         <span className="text-gray-500 text-xs ml-2">
                           {l.nivel && `${l.nivel} · `}{l.jornada && `${l.jornada} · `}×{l.cantidad}
                         </span>
-                        <NoteField linea={l} />
+                        <NoteField linea={l} noteEdit={noteEdit} setNoteEdit={setNoteEdit} saveNota={saveNota} />
                       </div>
                       <span className="text-white font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
                     </div>
@@ -1500,7 +1511,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
                     <span className="text-gray-300">{TIPO_LINEA_LABELS[l.tipo] || l.tipo} — {l.descripcion}
                       <span className="text-gray-500 text-xs ml-2">×{l.cantidad} · {l.dias}d</span>
                     </span>
-                    <NoteField linea={l} />
+                    <NoteField linea={l} noteEdit={noteEdit} setNoteEdit={setNoteEdit} saveNota={saveNota} />
                   </div>
                   <span className="text-white font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
                 </div>
