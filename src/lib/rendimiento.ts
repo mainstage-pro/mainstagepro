@@ -1,19 +1,25 @@
 import { prisma } from '@/lib/prisma'
+import { proyectarOcurrencias, diaCalUTC } from '@/lib/ocurrencias'
 
 /**
  * Rendimiento operativo — diagnóstico de cumplimiento del equipo.
  *
  * Universo medible: tareas con RESPONSABLE asignado y FECHA COMPROMISO
- * (fechaVencimiento ?? fecha). Son las que "cuentan". Se excluyen subtareas,
- * canceladas y las generadas por plantilla de plan (ptTemplateId), ya dadas de baja.
+ * (la MÁS TARDÍA entre fecha y fechaVencimiento). Se excluyen subtareas y canceladas.
  *
- * Se mide CUMPLIMIENTO (¿se hizo o no?), no puntualidad: una tarea completada
- * cuenta completa aunque se haya entregado tarde. Solo se marca como "vencida"
- * la que sigue SIN completar después de su fecha compromiso.
+ * Cumplimiento "A LA FECHA": se mide sobre lo que YA debía estar hecho, es decir
+ * completadas / (completadas + vencidas). Las pendientes vigentes (aún no vencen)
+ * NO penalizan hasta que pasa su fecha compromiso — así no castiga el trabajo futuro
+ * de la semana. Una tarea completada cuenta completa aunque se entregue tarde
+ * (mide cumplimiento, no puntualidad).
  *
- * Alcance: SOLO Plan de trabajo (tipoOrigen === 'PLAN') y Tareas normales
- * (sin proyecto de evento/empresa ni trato). Las tareas de proyectos y tratos
- * quedan fuera de este rendimiento.
+ * Recurrentes: una tarea recurrente es UNA fila que se reagenda al completarse; sus
+ * ocurrencias cerradas viven en `evidenciasHistorial`. Se PROYECTAN por día con el
+ * mismo helper que la Semana del equipo (src/lib/ocurrencias) para que ambas vistas
+ * coincidan y el trabajo recurrente hecho cuente de verdad como cumplido.
+ *
+ * Alcance: todas las fuentes (Plan de trabajo, Tareas, Proyectos de evento/empresa,
+ * Tratos), unificadas en el modelo Tarea.
  */
 
 // ── Zona horaria: México (UTC-6 todo el año, sin horario de verano desde 2023) ──
@@ -95,8 +101,8 @@ export const FUENTE_LABEL: Record<FuenteKey, string> = {
   TRATO: 'Tratos',
 }
 
-// El rendimiento cubre solo Plan de trabajo y Tareas normales, en ese orden.
-export const FUENTE_ORDEN: FuenteKey[] = ['PLAN', 'NORMAL']
+// Orden de despliegue de las fuentes en el desglose.
+export const FUENTE_ORDEN: FuenteKey[] = ['PLAN', 'NORMAL', 'EVENTO', 'EMPRESA', 'TRATO']
 
 export interface RendTareaDetalle {
   id: string
@@ -178,6 +184,9 @@ type TareaRow = {
   fecha: Date | null
   fechaVencimiento: Date | null
   fechaCompletada: Date | null
+  recurrencia: string | null
+  createdAt: Date | null
+  evidenciasHistorial: string | null
   proyectoEventoId: string | null
   tratoId: string | null
   proyectoInternoId: string | null
@@ -236,6 +245,7 @@ export async function computeRendimiento(opts: {
   const select = {
     id: true, titulo: true, prioridad: true, estado: true, tipoOrigen: true, asignadoAId: true,
     fecha: true, fechaVencimiento: true, fechaCompletada: true,
+    recurrencia: true, createdAt: true, evidenciasHistorial: true,
     proyectoEventoId: true, tratoId: true, proyectoInternoId: true,
     requiereEvidencia: true, estadoVerificacion: true, noRealizada: true,
     asignadoA: { select: { id: true, name: true, area: true } },
@@ -250,25 +260,16 @@ export async function computeRendimiento(opts: {
     prisma.tarea.findMany({
       where: {
         ...base,
-        AND: [
+        OR: [
+          // Pendientes/en progreso (incluye las recurrentes, que se reagendan a
+          // PENDIENTE; sus ocurrencias cerradas se leen de evidenciasHistorial).
+          { estado: { in: ['PENDIENTE', 'EN_PROGRESO'] } },
           {
+            estado: 'COMPLETADA',
             OR: [
-              { estado: { in: ['PENDIENTE', 'EN_PROGRESO'] } },
-              {
-                estado: 'COMPLETADA',
-                OR: [
-                  { fechaCompletada: { gte: windowStart } },
-                  { fecha: { gte: windowStart } },
-                  { fechaVencimiento: { gte: windowStart } },
-                ],
-              },
-            ],
-          },
-          // Solo Plan de trabajo (tipoOrigen PLAN) y Tareas normales (sin proyecto/trato).
-          {
-            OR: [
-              { tipoOrigen: 'PLAN' },
-              { proyectoEventoId: null, tratoId: null, proyectoInternoId: null },
+              { fechaCompletada: { gte: windowStart } },
+              { fecha: { gte: windowStart } },
+              { fechaVencimiento: { gte: windowStart } },
             ],
           },
         ],
@@ -280,7 +281,13 @@ export async function computeRendimiento(opts: {
     }),
   ])
 
-  // Diagnóstico por tarea: completada / vencida (sin completar y pasada) / vigente
+  // Rango de días (YYYY-MM-DD) sobre el que se proyectan las ocurrencias recurrentes:
+  // toda la ventana de tendencia (8 semanas) hasta el fin del periodo.
+  const allDays: string[] = []
+  for (let d = windowStr; d <= hasta; d = addDias(d, 1)) allDays.push(d)
+
+  // Diagnóstico por ocurrencia: completada / vencida (sin completar y pasada) / vigente.
+  // Una tarea normal = 1 diag; una recurrente = 1 diag por ocurrencia proyectada.
   type Diag = {
     row: TareaRow
     compromisoStr: string
@@ -295,17 +302,34 @@ export async function computeRendimiento(opts: {
   // cumplida ni resta). Se cuenta aparte como "dispensada" para dar visibilidad.
   let dispensadasTotal = 0
   const dispensadasPorUser = new Map<string, number>()
+  const marcarDispensada = (row: TareaRow, diaStr: string) => {
+    if (diaStr >= desde && diaStr <= hasta) {
+      dispensadasTotal++
+      if (row.asignadoAId) dispensadasPorUser.set(row.asignadoAId, (dispensadasPorUser.get(row.asignadoAId) ?? 0) + 1)
+    }
+  }
   for (const row of rows) {
-    const compromiso = masTardia(row.fecha, row.fechaVencimiento)
-    if (!compromiso) { if (row.estado !== 'COMPLETADA') sinFecha++; continue }
-    const compromisoStr = fmtDia(compromiso)
-    if (row.noRealizada) {
-      if (compromisoStr >= desde && compromisoStr <= hasta) {
-        dispensadasTotal++
-        if (row.asignadoAId) dispensadasPorUser.set(row.asignadoAId, (dispensadasPorUser.get(row.asignadoAId) ?? 0) + 1)
+    // Recurrente: se proyectan sus ocurrencias por día (mismo helper que la Semana
+    // del equipo), leyendo evidenciasHistorial para las ya cerradas.
+    if (row.recurrencia) {
+      for (const o of proyectarOcurrencias(row, allDays, hoyStr)) {
+        if (o.noRealizada) { marcarDispensada(row, o.dia); continue }
+        diags.push({
+          row,
+          compromisoStr: o.dia,
+          completada: o.completada,
+          vencida: o.vencida,
+          pendienteVigente: o.pendienteVigente,
+          diasAtraso: o.vencida ? diffDias(hoyStr, o.dia) : 0,
+        })
       }
       continue
     }
+    // No recurrente: una sola ocurrencia con compromiso = la fecha más tardía.
+    const compromiso = masTardia(row.fecha, row.fechaVencimiento)
+    if (!compromiso) { if (row.estado !== 'COMPLETADA') sinFecha++; continue }
+    const compromisoStr = diaCalUTC(compromiso)
+    if (row.noRealizada) { marcarDispensada(row, compromisoStr); continue }
     const completada = row.estado === 'COMPLETADA'
     let vencida = false, pendienteVigente = false, diasAtraso = 0
     if (!completada) {
@@ -344,16 +368,14 @@ export async function computeRendimiento(opts: {
         acumVerificacion(verificacion, d.row)
       }
     }
-    const criticas = ds
-      .filter(d => d.vencida)
-      .sort((a, b) => b.diasAtraso - a.diasAtraso)
-      .slice(0, 25)
-      .map(toDetalle)
-    const pendientes = ds
-      .filter(d => d.pendienteVigente)
-      .sort((a, b) => a.compromisoStr.localeCompare(b.compromisoStr))
-      .slice(0, 25)
-      .map(toDetalle)
+    // Dedup por tarea: una recurrente diaria genera muchas ocurrencias con el mismo
+    // id; en la lista mostramos una sola (la más atrasada / la más próxima).
+    const criticas = dedupPorId(
+      ds.filter(d => d.vencida).sort((a, b) => b.diasAtraso - a.diasAtraso),
+    ).slice(0, 25).map(toDetalle)
+    const pendientes = dedupPorId(
+      ds.filter(d => d.pendienteVigente).sort((a, b) => a.compromisoStr.localeCompare(b.compromisoStr)),
+    ).slice(0, 25).map(toDetalle)
     usuarios.push({
       id: uid,
       name: info?.name ?? 'Sin nombre',
@@ -391,7 +413,7 @@ export async function computeRendimiento(opts: {
         total: f.total,
         completadas: f.completadas,
         vencidas: f.vencidas,
-        cumplimiento: pct(f.completadas, f.total),
+        cumplimiento: pct(f.completadas, f.completadas + f.vencidas),
       }
     })
     .filter(f => f.total > 0)
@@ -404,12 +426,13 @@ export async function computeRendimiento(opts: {
     const sem = diags.filter(d => d.compromisoStr >= lun && d.compromisoStr <= dom)
     const total = sem.length
     const completadas = sem.filter(d => d.completada).length
+    const vencidas = sem.filter(d => d.vencida).length
     tendencia.push({
       semana: lun,
       label: fechaHumana(lun),
       total,
       completadas,
-      cumplimiento: pct(completadas, total),
+      cumplimiento: pct(completadas, completadas + vencidas),
     })
   }
 
@@ -428,6 +451,16 @@ export async function computeRendimiento(opts: {
   }
 
   // ── helpers internos ──
+  function dedupPorId(ds: Diag[]): Diag[] {
+    const vistos = new Set<string>()
+    const out: Diag[] = []
+    for (const d of ds) {
+      if (vistos.has(d.row.id)) continue
+      vistos.add(d.row.id)
+      out.push(d)
+    }
+    return out
+  }
   function toDetalle(d: Diag): RendTareaDetalle {
     const { fuente, contexto } = fuenteDe(d.row)
     return {
@@ -461,7 +494,9 @@ function agregarResumen(ds: DiagLite[], sinFecha: number, sinResponsable: number
   return {
     total, completadas, vencidas, pendientesVigentes,
     dispensadas: 0,
-    cumplimiento: pct(completadas, total),
+    // Cumplimiento "a la fecha": de lo que YA vencía (hecho + vencido), cuánto se hizo.
+    // Las pendientes vigentes (aún no vencen) no entran al denominador.
+    cumplimiento: pct(completadas, completadas + vencidas),
     sinFecha,
     sinResponsable,
   }
