@@ -54,6 +54,8 @@ export async function GET(_req: NextRequest) {
     prisma.trato.findMany({
       where: {
         proyectos: { none: {} },
+        // Un trato con venta perdida nunca va a la agenda, ni siquiera con el flag manual.
+        etapa: { not: 'VENTA_PERDIDA' },
         OR: [
           { etapa: 'VENTA_CERRADA' },
           { confirmadaEn: { not: null } },

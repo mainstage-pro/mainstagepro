@@ -89,6 +89,8 @@ export async function GET(req: NextRequest) {
   const tratosGanados = await prisma.trato.findMany({
     where: {
       proyectos: { none: {} },
+      // Un trato con venta perdida nunca va al calendario, ni siquiera con el flag manual.
+      etapa: { not: "VENTA_PERDIDA" },
       OR: [
         { etapa: "VENTA_CERRADA" },
         { confirmadaEn: { not: null } },
