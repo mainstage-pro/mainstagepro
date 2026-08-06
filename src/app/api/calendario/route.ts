@@ -57,9 +57,13 @@ export async function GET(req: NextRequest) {
   const inicio = new Date(year, month, 1);
   const fin    = new Date(year, month + 1, 0, 23, 59, 59);
 
-  // ── 1. Proyectos existentes ───────────────────────────────────────────────
+  // ── 1. Proyectos existentes con cotización APROBADA ───────────────────────
   const proyectos = await prisma.proyecto.findMany({
-    where: { fechaEvento: { gte: inicio, lte: fin }, estado: { not: "CANCELADO" } },
+    where: {
+      fechaEvento: { gte: inicio, lte: fin },
+      estado: { not: "CANCELADO" },
+      cotizacion: { estado: "APROBADA" },
+    },
     include: { cliente: { select: { nombre: true } } },
     orderBy: { fechaEvento: "asc" },
   });
@@ -104,9 +108,6 @@ export async function GET(req: NextRequest) {
     },
   });
 
-  // IDs de tratos ya cubiertos por cotización APROBADA (para no duplicar en fuente 3)
-  const idsConCotAprobada = new Set(tratosConCot.map(t => t.id));
-
   const eventosTratoCot = tratosConCot.flatMap(t => {
     const nivel = nivelTrato(
       (t as unknown as { confirmadaEn?: Date | null }).confirmadaEn ?? null,
@@ -131,89 +132,12 @@ export async function GET(req: NextRequest) {
     }));
   });
 
-  // ── 3. Tratos seguros (VENTA_CERRADA o con confirmadaEn) sin cotización APROBADA ──
-  const tratosConfirmados = await prisma.trato.findMany({
-    where: {
-      proyectos: { none: {} },
-      OR: [
-        { confirmadaEn: { not: null } },
-        { etapa: 'VENTA_CERRADA' },
-      ],
-      fechaEventoEstimada: { gte: inicio, lte: fin, not: null },
-      // Excluir los que ya tienen cotización APROBADA (cubiertos por fuente 2)
-      id: { notIn: [...idsConCotAprobada] },
-    },
-    include: {
-      cliente: { select: { nombre: true } },
-    },
-    orderBy: { fechaEventoEstimada: 'asc' },
-  });
-
-  const eventosTratosConfirmados = tratosConfirmados
-    .filter(t => t.fechaEventoEstimada)
-    .flatMap(t => {
-      const titulo = t.nombreEvento || "Evento confirmado";
-      return celdasDelMes(t.fechaEventoEstimada, (t as unknown as { fechasEvento?: string | null }).fechasEvento, year, month).map(({ dia, idx, total }) => ({
-        id: `tratoconf-${t.id}-d${idx}`,
-        dia,
-        titulo: total > 1 ? `${titulo} · Día ${idx + 1}/${total}` : titulo,
-        subtitulo: t.cliente?.nombre || "",
-        estado: "VENTA_CERRADA" as const,
-        nivel: 'confirmado' as Nivel,
-        url: `/crm/tratos/${t.id}`,
-        tipoEvento: t.tipoEvento,
-        tipoServicio: null,
-        lugarEvento: t.lugarEstimado,
-        horaInicioEvento: null,
-      }));
-    });
-
-  // IDs ya cubiertos (cotización aprobada o confirmado)
-  const idsCubiertos = new Set([
-    ...idsConCotAprobada,
-    ...tratosConfirmados.map(t => t.id),
-  ]);
-
-  // ── 4. Tratos activos (PROSPECCION / DESCUBRIMIENTO / OPORTUNIDAD) con fecha estimada ──
-  // Se muestran como eventos tentativos para que el equipo vea la carga potencial
-  const tratosActivos = await prisma.trato.findMany({
-    where: {
-      proyectos: { none: {} },
-      etapa: { in: ['PROSPECCION', 'DESCUBRIMIENTO', 'OPORTUNIDAD'] },
-      fechaEventoEstimada: { gte: inicio, lte: fin, not: null },
-      id: { notIn: [...idsCubiertos] },
-    },
-    include: {
-      cliente: { select: { nombre: true } },
-    },
-    orderBy: { fechaEventoEstimada: 'asc' },
-  });
-
-  const eventosTratosActivos = tratosActivos
-    .filter(t => t.fechaEventoEstimada)
-    .flatMap(t => {
-      const titulo = t.nombreEvento || 'Evento tentativo';
-      return celdasDelMes(t.fechaEventoEstimada, (t as unknown as { fechasEvento?: string | null }).fechasEvento, year, month).map(({ dia, idx, total }) => ({
-        id: `tratoact-${t.id}-d${idx}`,
-        dia,
-        titulo: total > 1 ? `${titulo} · Día ${idx + 1}/${total}` : titulo,
-        subtitulo: t.cliente?.nombre || '',
-        estado: t.etapa as string,
-        nivel: 'tentativo' as Nivel,
-        url: `/crm/tratos/${t.id}`,
-        tipoEvento: t.tipoEvento,
-        tipoServicio: null,
-        lugarEvento: t.lugarEstimado,
-        horaInicioEvento: null,
-      }));
-    });
-
   // ── Merge y ordenar por día ───────────────────────────────────────────────
+  // Solo se muestran eventos con cotización APROBADA: proyectos (fuente 1) y
+  // tratos con cotización aprobada aún sin proyecto (fuente 2).
   const eventos = [
     ...eventosProyecto,
     ...eventosTratoCot,
-    ...eventosTratosConfirmados,
-    ...eventosTratosActivos,
   ].sort((a, b) => a.dia - b.dia);
 
   return NextResponse.json({ eventos });
