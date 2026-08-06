@@ -239,24 +239,44 @@ export default function TaskModal({
     } catch { setHistorialEvidencias([]); }
   }, [tarea?.evidenciasHistorial]);
 
-  // Corrección de una ocurrencia rechazada: nota editable inline.
+  // Corrección de una ocurrencia rechazada: nota y/o archivos editables inline.
   const [corrigiendoAt, setCorrigiendoAt] = useState<string | null>(null);
   const [notaCorreccion, setNotaCorreccion] = useState("");
+  const [archivosCorreccionKeep, setArchivosCorreccionKeep] = useState<{ nombre: string; url: string; tipo: string | null }[]>([]);
+  const [archivosCorreccionNuevos, setArchivosCorreccionNuevos] = useState<File[]>([]);
   const [guardandoCorreccion, setGuardandoCorreccion] = useState(false);
+
+  function iniciarCorreccion(h: HistorialEvidenciaEntry) {
+    setCorrigiendoAt(h.completadaAt);
+    setNotaCorreccion(h.evidenciaNota ?? "");
+    setArchivosCorreccionKeep(h.archivos ?? []);
+    setArchivosCorreccionNuevos([]);
+  }
+
+  function cancelarCorreccion() {
+    setCorrigiendoAt(null);
+    setNotaCorreccion("");
+    setArchivosCorreccionKeep([]);
+    setArchivosCorreccionNuevos([]);
+  }
 
   async function corregirOcurrencia(ocurrenciaAt: string) {
     if (!tarea) return;
     setGuardandoCorreccion(true);
     try {
+      const form = new FormData();
+      form.append("ocurrenciaAt", ocurrenciaAt);
+      form.append("evidenciaNota", notaCorreccion);
+      form.append("archivosKeep", JSON.stringify(archivosCorreccionKeep));
+      archivosCorreccionNuevos.forEach(f => form.append("file", f));
       const res = await fetch(`/api/tareas/${tarea.id}/evidencia-historial`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ocurrenciaAt, evidenciaNota: notaCorreccion }),
+        body: form,
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) { toast.error(d.error ?? "No se pudo guardar la corrección"); return; }
       setHistorialEvidencias(prev => prev.map(h => h.completadaAt === ocurrenciaAt ? (d.entry as HistorialEvidenciaEntry) : h));
-      setCorrigiendoAt(null); setNotaCorreccion("");
+      cancelarCorreccion();
       toast.success("Evidencia corregida y reenviada a verificación");
     } finally { setGuardandoCorreccion(false); }
   }
@@ -869,35 +889,84 @@ export default function TaskModal({
                         {/* Corregir evidencia rechazada (responsable o admin) */}
                         {rechazada && puedeCorregir && !editando && (
                           <button
-                            onClick={() => { setCorrigiendoAt(h.completadaAt); setNotaCorreccion(h.evidenciaNota ?? ""); }}
+                            onClick={() => iniciarCorreccion(h)}
                             className="mt-2 text-[11px] text-[#B3985B] hover:underline"
                           >
                             Corregir evidencia
                           </button>
                         )}
-                        {rechazada && editando && (
-                          <div className="mt-2">
-                            <textarea
-                              autoFocus
-                              value={notaCorreccion}
-                              onChange={e => setNotaCorreccion(e.target.value)}
-                              placeholder="Corrige la nota de evidencia (mín. 10 caracteres)…"
-                              className="w-full bg-[#080808] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-white resize-none focus:outline-none focus:border-[#B3985B]/40 placeholder:text-[#444]"
-                              rows={3}
-                            />
-                            <div className="flex items-center gap-2 mt-1.5">
+                        {rechazada && editando && (() => {
+                          const esArchivo = h.tipoEvidencia === "FOTO" || h.tipoEvidencia === "ARCHIVO";
+                          const esTexto = h.tipoEvidencia === "NOTA" || h.tipoEvidencia === "ENLACE_MODULO";
+                          const mostrarArchivos = esArchivo || !h.tipoEvidencia;
+                          const mostrarNota = esTexto || !h.tipoEvidencia;
+                          const totalArchivos = archivosCorreccionKeep.length + archivosCorreccionNuevos.length;
+                          const notaOk = notaCorreccion.trim().length >= 10;
+                          const puedeGuardar = esArchivo
+                            ? totalArchivos > 0
+                            : esTexto
+                              ? notaOk
+                              : notaOk || totalArchivos > 0;
+                          return (
+                          <div className="mt-2 space-y-2">
+                            {mostrarArchivos && (
+                              <div className="space-y-2">
+                                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#111] border border-[#222] text-xs text-[#ccc] hover:border-[#B3985B]/40 transition-all">
+                                  {h.tipoEvidencia === "FOTO"
+                                    ? <><Camera strokeWidth={1.75} className="w-3.5 h-3.5" /> Subir foto</>
+                                    : <><Paperclip strokeWidth={1.75} className="w-3.5 h-3.5" /> Adjuntar archivo</>}
+                                  <input type="file" multiple className="hidden"
+                                    accept={h.tipoEvidencia === "FOTO" ? "image/*" : undefined}
+                                    capture={h.tipoEvidencia === "FOTO" ? "environment" : undefined}
+                                    onChange={e => { const fs = Array.from(e.target.files ?? []); if (fs.length) setArchivosCorreccionNuevos(prev => [...prev, ...fs]); e.target.value = ""; }} />
+                                </label>
+                                {(archivosCorreccionKeep.length > 0 || archivosCorreccionNuevos.length > 0) && (
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {archivosCorreccionKeep.map((a, k) => (
+                                      <div key={`k${k}`} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#111] border border-[#222] text-[11px] text-[#999] max-w-[180px]">
+                                        <a href={a.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 min-w-0 hover:text-white">
+                                          {(a.tipo ?? "").toLowerCase().startsWith("image/") ? <Camera strokeWidth={1.75} className="w-3 h-3 shrink-0" /> : <FileText strokeWidth={1.75} className="w-3 h-3 shrink-0" />}
+                                          <span className="truncate">{a.nombre}</span>
+                                        </a>
+                                        <button type="button" onClick={() => setArchivosCorreccionKeep(prev => prev.filter((_, x) => x !== k))}
+                                          title="Quitar" className="shrink-0 text-red-500 hover:text-red-400 text-[11px] leading-none">✕</button>
+                                      </div>
+                                    ))}
+                                    {archivosCorreccionNuevos.map((f, k) => (
+                                      <div key={`n${k}`} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#0f1a0f] border border-[#25502f] text-[11px] text-[#8fca9a] max-w-[180px]">
+                                        <span className="truncate">{f.name}</span>
+                                        <button type="button" onClick={() => setArchivosCorreccionNuevos(prev => prev.filter((_, x) => x !== k))}
+                                          title="Quitar" className="shrink-0 text-red-500 hover:text-red-400 text-[11px] leading-none">✕</button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                            {mostrarNota && (
+                              <textarea
+                                autoFocus
+                                value={notaCorreccion}
+                                onChange={e => setNotaCorreccion(e.target.value)}
+                                placeholder="Corrige la nota de evidencia (mín. 10 caracteres)…"
+                                className="w-full bg-[#080808] border border-[#1a1a1a] rounded-lg px-3 py-2 text-sm text-white resize-none focus:outline-none focus:border-[#B3985B]/40 placeholder:text-[#444]"
+                                rows={3}
+                              />
+                            )}
+                            <div className="flex items-center gap-2">
                               <button
                                 onClick={() => corregirOcurrencia(h.completadaAt)}
-                                disabled={guardandoCorreccion || notaCorreccion.trim().length < 10}
+                                disabled={guardandoCorreccion || !puedeGuardar}
                                 className="px-3 py-1.5 rounded-lg bg-[#B3985B]/15 border border-[#B3985B]/40 text-[#B3985B] text-xs font-medium hover:bg-[#B3985B]/25 transition-all disabled:opacity-40"
                               >
                                 {guardandoCorreccion ? "Guardando…" : "Guardar y reenviar"}
                               </button>
-                              <button onClick={() => { setCorrigiendoAt(null); setNotaCorreccion(""); }}
+                              <button onClick={cancelarCorreccion}
                                 className="text-xs text-gray-500 hover:text-gray-300">Cancelar</button>
                             </div>
                           </div>
-                        )}
+                          );
+                        })()}
                       </div>
                       );
                     })}
