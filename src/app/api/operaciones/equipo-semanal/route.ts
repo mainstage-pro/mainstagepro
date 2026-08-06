@@ -118,6 +118,9 @@ export async function GET(req: NextRequest) {
       fecha: true,
       fechaVencimiento: true,
       recurrencia: true,
+      estadoVerificacion: true,
+      noRealizada: true,
+      evidenciasHistorial: true,
       orden: true,
       asignadoAId: true,
       proyectoTarea: { select: { nombre: true } },
@@ -141,6 +144,18 @@ export async function GET(req: NextRequest) {
     vencida: boolean
     recurrente: boolean
     orden: number
+    // Estado de verificación de la ocurrencia mostrada en ese día
+    // (NO_REQUIERE | PENDIENTE_VERIFICACION | VERIFICADA | RECHAZADA).
+    estadoVerificacion: string | null
+    // La ocurrencia se cerró como "no realizada" (marcada con justificación).
+    noRealizada: boolean
+  }
+
+  // Una entrada del historial de ocurrencias recurrentes cerradas.
+  type HistEntry = {
+    fechaOcurrencia?: string | null
+    estadoVerificacion?: string | null
+    noRealizada?: boolean
   }
 
   // Parsea el JSON de recurrencia a config; null si no es una recurrencia válida.
@@ -191,10 +206,47 @@ export async function GET(req: NextRequest) {
 
     if (cfg) {
       // Recurrente → una tarjeta por cada día de la semana en que cae el patrón.
-      if (t.estado === 'COMPLETADA') continue
+      // Al completar una ocurrencia, el server reagenda la fila a la próxima
+      // fecha (vuelve a PENDIENTE) y archiva la ocurrencia cerrada —con su
+      // evidencia y estado de verificación— en `evidenciasHistorial`. Por eso
+      // la fila viva nunca queda COMPLETADA. Para reflejar en la semana lo que
+      // realmente se hizo, cruzamos cada día contra ese historial:
+      //   · día con ocurrencia archivada → tarjeta COMPLETADA (con su badge).
+      //   · día del patrón sin cerrar y ya pasado → pendiente + vencida.
+      //   · día del patrón sin cerrar (hoy/futuro) → pendiente.
+      const completadasPorDia = new Map<string, HistEntry>()
+      try {
+        const parsed = t.evidenciasHistorial ? JSON.parse(t.evidenciasHistorial) : []
+        if (Array.isArray(parsed)) {
+          for (const raw of parsed as HistEntry[]) {
+            const foc = typeof raw?.fechaOcurrencia === 'string' ? raw.fechaOcurrencia.slice(0, 10) : null
+            // La entrada más reciente va primero; conservamos esa por día.
+            if (foc && setDias.has(foc) && !completadasPorDia.has(foc)) completadasPorDia.set(foc, raw)
+          }
+        }
+      } catch { /* historial corrupto → se ignora */ }
+
       for (const dia of dias) {
-        if (recurrenciaOcurreEnFecha(cfg, fechaLocalDeDia(dia))) {
-          lista.push({ ...base, dia, vencida: false, recurrente: true })
+        const hist = completadasPorDia.get(dia)
+        if (hist) {
+          lista.push({
+            ...base,
+            estado: 'COMPLETADA',
+            dia,
+            vencida: false,
+            recurrente: true,
+            estadoVerificacion: hist.estadoVerificacion ?? null,
+            noRealizada: hist.noRealizada ?? false,
+          })
+        } else if (recurrenciaOcurreEnFecha(cfg, fechaLocalDeDia(dia))) {
+          lista.push({
+            ...base,
+            dia,
+            vencida: dia < hoyCal,
+            recurrente: true,
+            estadoVerificacion: null,
+            noRealizada: false,
+          })
         }
       }
     } else {
@@ -210,7 +262,14 @@ export async function GET(req: NextRequest) {
       // aunque conserve un `fechaVencimiento` viejo en el pasado.
       const venceRef = t.fechaVencimiento && t.fechaVencimiento > t.fecha ? t.fechaVencimiento : t.fecha
       const vencida = t.estado !== 'COMPLETADA' && fechaCal(venceRef) < hoyCal
-      lista.push({ ...base, dia, vencida, recurrente: false })
+      lista.push({
+        ...base,
+        dia,
+        vencida,
+        recurrente: false,
+        estadoVerificacion: t.estadoVerificacion ?? null,
+        noRealizada: t.noRealizada ?? false,
+      })
     }
   }
 

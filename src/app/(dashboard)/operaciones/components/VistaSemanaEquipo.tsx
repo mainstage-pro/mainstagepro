@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import TaskModal, { type TareaDetalle } from "./TaskModal";
 import NuevaTareaModal from "./NuevaTareaModal";
 
@@ -36,6 +36,8 @@ interface TareaSemana {
   vencida: boolean;
   recurrente?: boolean;
   orden?: number;
+  estadoVerificacion?: string | null;
+  noRealizada?: boolean;
 }
 interface UsuarioSemana {
   id: string;
@@ -241,6 +243,33 @@ export function VistaSemanaEquipo() {
     cargar(inicio);
   };
 
+  // Completar/reabrir una tarea directamente desde su tarjeta (optimista + PATCH).
+  const alternarCompletada = async (id: string, completar: boolean) => {
+    if (!data) return;
+    const prev = data;
+    const nuevoEstado = completar ? "COMPLETADA" : "PENDIENTE";
+    const usuarios = data.usuarios.map(u => ({
+      ...u,
+      tareas: u.tareas.map(t => (t.id === id ? { ...t, estado: nuevoEstado } : t)),
+    }));
+    setData({ ...data, usuarios });
+    try {
+      const r = await fetch(`/api/tareas/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado: nuevoEstado }),
+      });
+      if (!r.ok) throw new Error();
+      const res = await r.json().catch(() => ({}));
+      // Recurrente completada: el server la reagenda a otra fecha; recargamos.
+      if (res?.reagendada) cargar(inicio);
+    } catch {
+      setData(prev);
+      setAviso("No se pudo actualizar la tarea. Intenta de nuevo.");
+      setTimeout(() => setAviso(null), 3000);
+    }
+  };
+
   const eliminarTarea = async (id: string) => {
     await fetch(`/api/tareas/${id}`, { method: "DELETE" });
     setSelectedTask(null);
@@ -289,7 +318,7 @@ export function VistaSemanaEquipo() {
         <div>
           <h1 className="text-lg font-semibold text-white">Semana del equipo</h1>
           <p className="text-xs text-[#666] mt-0.5">
-            Tareas de lunes a viernes por persona, agrupadas por tipo. Haz clic en una tarea para abrirla y editarla; arrástrala a otro día para reasignarla.
+            Tareas de lunes a viernes por persona, agrupadas por tipo. Haz clic para abrir y editar, arrástrala para reordenarla o moverla de día, y marca el círculo para completarla.
           </p>
         </div>
         <div className="flex items-center gap-1 ml-auto">
@@ -352,6 +381,7 @@ export function VistaSemanaEquipo() {
           onAbrir={abrirTarea}
           onReordenar={reordenarGrupo}
           onAgregar={setAgregarDia}
+          onCompletar={alternarCompletada}
         />
       ) : (
         <div className="p-8 text-sm text-[#555]">Sin miembros para mostrar.</div>
@@ -398,6 +428,7 @@ function SemanaMiembro({
   onAbrir,
   onReordenar,
   onAgregar,
+  onCompletar,
 }: {
   dias: string[];
   miembro: UsuarioSemana;
@@ -405,9 +436,13 @@ function SemanaMiembro({
   onAbrir: (tareaId: string) => void;
   onReordenar: (orderedIds: string[]) => void;
   onAgregar: (dia: string) => void;
+  onCompletar: (tareaId: string, completar: boolean) => void;
 }) {
   const [dragOver, setDragOver] = useState<string | null>(null);
-  const dragId = useRef<string | null>(null);
+  // Ranura de inserción resaltada al arrastrar dentro de un grupo: "dia|tipo|index".
+  const [dropSlot, setDropSlot] = useState<string | null>(null);
+  // Origen de la tarjeta que se está arrastrando.
+  const dragInfo = useRef<{ id: string; dia: string; tipo: string } | null>(null);
 
   // Agrupar tareas por día, ordenadas por `orden` dentro de cada día.
   const porDia = useMemo(() => {
@@ -422,14 +457,13 @@ function SemanaMiembro({
   const cargaPorDia = dias.map(d => (porDia.get(d) ?? []).filter(t => t.estado !== "COMPLETADA").length);
   const maxCarga = Math.max(1, ...cargaPorDia);
 
+  // Soltar sobre el área del día (no sobre una tarjeta) = mover de día.
   const handleDrop = (dia: string) => {
-    const id = dragId.current;
-    dragId.current = null;
+    const info = dragInfo.current;
+    dragInfo.current = null;
     setDragOver(null);
-    if (id) {
-      const actual = miembro.tareas.find(t => t.id === id);
-      if (actual && actual.dia !== dia) onMover(id, dia);
-    }
+    setDropSlot(null);
+    if (info && info.dia !== dia) onMover(info.id, dia);
   };
 
   return (
@@ -481,12 +515,27 @@ function SemanaMiembro({
                 ) : (
                   TIPOS.filter(tp => tareas.some(t => t.tipo === tp.key)).map(tp => {
                     const items = tareas.filter(t => t.tipo === tp.key);
-                    const mover = (from: number, to: number) => {
-                      if (to < 0 || to >= items.length) return;
-                      const ids = items.map(x => x.id);
-                      const [m] = ids.splice(from, 1);
-                      ids.splice(to, 0, m);
-                      onReordenar(ids);
+                    // Soltar en la ranura `index` de este grupo: reordena si viene del
+                    // mismo grupo; si viene de otro día, mueve a este día.
+                    const soltarEnRanura = (index: number) => {
+                      const info = dragInfo.current;
+                      dragInfo.current = null;
+                      setDropSlot(null);
+                      setDragOver(null);
+                      if (!info) return;
+                      if (info.dia === dia && info.tipo === tp.key) {
+                        const ids = items.map(x => x.id);
+                        const from = ids.indexOf(info.id);
+                        if (from === -1) return;
+                        ids.splice(from, 1);
+                        let insert = index;
+                        if (from < index) insert -= 1;
+                        if (insert === from) return;
+                        ids.splice(insert, 0, info.id);
+                        onReordenar(ids);
+                      } else if (info.dia !== dia) {
+                        onMover(info.id, dia);
+                      }
                     };
                     return (
                       <div key={tp.key}>
@@ -497,19 +546,27 @@ function SemanaMiembro({
                         </div>
                         <ul className="space-y-1">
                           {items.map((t, idx) => (
-                            <TareaCard
-                              key={t.id}
-                              t={t}
-                              dias={dias}
-                              onDragStart={() => { dragId.current = t.id; }}
-                              onMover={onMover}
-                              onAbrir={onAbrir}
-                              puedeSubir={idx > 0}
-                              puedeBajar={idx < items.length - 1}
-                              onSubir={() => mover(idx, idx - 1)}
-                              onBajar={() => mover(idx, idx + 1)}
-                            />
+                            <Fragment key={t.id}>
+                              {dropSlot === `${dia}|${tp.key}|${idx}` && (
+                                <li className="h-0.5 rounded-full bg-[#B3985B] my-0.5" />
+                              )}
+                              <TareaCard
+                                t={t}
+                                dias={dias}
+                                onDragStart={() => { dragInfo.current = { id: t.id, dia, tipo: tp.key }; }}
+                                onDragEnd={() => { dragInfo.current = null; setDropSlot(null); }}
+                                onDragOverCard={index => setDropSlot(`${dia}|${tp.key}|${index}`)}
+                                onDropCard={soltarEnRanura}
+                                idx={idx}
+                                onMover={onMover}
+                                onAbrir={onAbrir}
+                                onCompletar={onCompletar}
+                              />
+                            </Fragment>
                           ))}
+                          {dropSlot === `${dia}|${tp.key}|${items.length}` && (
+                            <li className="h-0.5 rounded-full bg-[#B3985B] my-0.5" />
+                          )}
                         </ul>
                       </div>
                     );
@@ -537,41 +594,63 @@ function SemanaMiembro({
 function TareaCard({
   t,
   dias,
+  idx,
   onDragStart,
+  onDragEnd,
+  onDragOverCard,
+  onDropCard,
   onMover,
   onAbrir,
-  puedeSubir,
-  puedeBajar,
-  onSubir,
-  onBajar,
+  onCompletar,
 }: {
   t: TareaSemana;
   dias: string[];
+  idx: number;
   onDragStart: () => void;
+  onDragEnd: () => void;
+  onDragOverCard: (index: number) => void;
+  onDropCard: (index: number) => void;
   onMover: (tareaId: string, dia: string) => void;
   onAbrir: (tareaId: string) => void;
-  puedeSubir: boolean;
-  puedeBajar: boolean;
-  onSubir: () => void;
-  onBajar: () => void;
+  onCompletar: (tareaId: string, completar: boolean) => void;
 }) {
   const [menu, setMenu] = useState(false);
   const completada = t.estado === "COMPLETADA";
   const recurrente = !!t.recurrente;
+  const verif = t.estadoVerificacion;
+  // Índice de inserción (antes/después) según la mitad del cursor sobre la tarjeta.
+  const insertIndex = (e: React.DragEvent) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    return e.clientY > r.top + r.height / 2 ? idx + 1 : idx;
+  };
   return (
     <li
-      draggable={!recurrente}
-      onDragStart={recurrente ? undefined : onDragStart}
-      className={`group relative rounded-lg border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04] px-2 py-1.5 ${
-        recurrente ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"
-      }`}
+      draggable
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={e => { e.preventDefault(); onDragOverCard(insertIndex(e)); }}
+      onDrop={e => { e.preventDefault(); e.stopPropagation(); onDropCard(insertIndex(e)); }}
+      className="group relative rounded-lg border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04] px-2 py-1.5 cursor-grab active:cursor-grabbing"
     >
       <div className="flex items-start gap-1.5">
-        <span
-          className="mt-1 w-1.5 h-1.5 rounded-full shrink-0"
-          style={{ background: completada ? "#34d399" : prioColor(t.prioridad) }}
-          title={completada ? "Completada" : t.prioridad}
-        />
+        <button
+          onClick={e => { e.stopPropagation(); onCompletar(t.id, !completada); }}
+          className={`group/chk mt-0.5 shrink-0 w-3.5 h-3.5 rounded-full border grid place-items-center transition-colors ${
+            completada ? "bg-[#34d399] border-[#34d399]" : "hover:bg-white/10"
+          }`}
+          style={completada ? undefined : { borderColor: prioColor(t.prioridad), color: prioColor(t.prioridad) }}
+          title={completada ? "Marcar como pendiente" : "Marcar como completada"}
+          aria-label={completada ? "Marcar como pendiente" : "Marcar como completada"}
+        >
+          <svg
+            width="8" height="8" viewBox="0 0 24 24" fill="none"
+            stroke={completada ? "#0a0a0a" : "currentColor"} strokeWidth="4"
+            strokeLinecap="round" strokeLinejoin="round"
+            className={completada ? "" : "opacity-0 group-hover/chk:opacity-100"}
+          >
+            <path d="M20 6L9 17l-5-5" />
+          </svg>
+        </button>
         <div
           className="min-w-0 flex-1 cursor-pointer"
           onClick={() => onAbrir(t.id)}
@@ -592,41 +671,46 @@ function TareaCard({
             {t.contexto && (
               <span className="text-[10px] text-[#555] truncate max-w-[140px]">{t.contexto}</span>
             )}
-            {t.vencida && <span className="text-[10px] text-red-400 font-medium">⚠ vencida</span>}
+            {/* Estado de la ocurrencia mostrada: claridad done / no-done / verificación */}
+            {completada && t.noRealizada && (
+              <span className="text-[10px] text-orange-400 font-medium">✕ no realizada</span>
+            )}
+            {completada && !t.noRealizada && verif === "VERIFICADA" && (
+              <span className="text-[10px] text-[#34d399] font-medium">✓ verificada</span>
+            )}
+            {completada && !t.noRealizada && verif === "PENDIENTE_VERIFICACION" && (
+              <span className="text-[10px] text-amber-400 font-medium">● por verificar</span>
+            )}
+            {completada && !t.noRealizada && verif === "RECHAZADA" && (
+              <span className="text-[10px] text-red-400 font-medium">✕ rechazada</span>
+            )}
+            {completada && !t.noRealizada && (verif === "NO_REQUIERE" || !verif) && (
+              <span className="text-[10px] text-[#34d399]/70 font-medium">✓ hecha</span>
+            )}
+            {!completada && t.vencida && (
+              <span className="text-[10px] text-red-400 font-medium">
+                {recurrente ? "⚠ sin cerrar" : "⚠ vencida"}
+              </span>
+            )}
             {t.estado === "EN_PROGRESO" && <span className="text-[10px] text-blue-400">En progreso</span>}
           </div>
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
-          <div className="flex flex-col opacity-0 group-hover:opacity-100 focus-within:opacity-100">
-            <button
-              onClick={e => { e.stopPropagation(); onSubir(); }}
-              disabled={!puedeSubir}
-              className="text-[#666] hover:text-white disabled:opacity-20 disabled:hover:text-[#666] leading-none text-[9px]"
-              aria-label="Subir"
-              title="Subir"
-            >▲</button>
-            <button
-              onClick={e => { e.stopPropagation(); onBajar(); }}
-              disabled={!puedeBajar}
-              className="text-[#666] hover:text-white disabled:opacity-20 disabled:hover:text-[#666] leading-none text-[9px]"
-              aria-label="Bajar"
-              title="Bajar"
-            >▼</button>
-          </div>
-          {!recurrente && (
-            <button
-              onClick={e => { e.stopPropagation(); setMenu(v => !v); }}
-              className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-[#666] hover:text-white text-xs px-1"
-              aria-label="Mover a otro día"
-              title="Mover a otro día"
-            >⠿</button>
-          )}
+          <button
+            onClick={e => { e.stopPropagation(); setMenu(v => !v); }}
+            className="opacity-0 group-hover:opacity-100 focus:opacity-100 text-[#666] hover:text-white text-xs px-1"
+            aria-label="Mover a otro día"
+            title="Mover a otro día"
+          >⠿</button>
         </div>
       </div>
 
-      {menu && !recurrente && (
+      {menu && (
         <div className="absolute right-1 top-6 z-10 rounded-md border border-white/10 bg-[#161616] shadow-lg p-1 min-w-[120px]">
-          <p className="text-[10px] text-[#666] px-2 py-1">Mover a</p>
+          <p className="text-[10px] text-[#666] px-2 py-1">
+            Mover a
+            {recurrente && <span className="block text-[9px] text-[#B3985B]/70 normal-case">Solo esta vez · la recurrencia no cambia</span>}
+          </p>
           {dias.map((d, i) => (
             <button
               key={d}
