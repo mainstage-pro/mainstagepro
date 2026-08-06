@@ -12,12 +12,6 @@ function nivelProyecto(estado: string): Nivel {
   return 'tentativo';
 }
 
-function nivelTrato(confirmadaEn: Date | null, etapa: string): Nivel {
-  if (confirmadaEn || etapa === 'VENTA_CERRADA') return 'confirmado';
-  if (['PROSPECCION', 'DESCUBRIMIENTO', 'OPORTUNIDAD'].includes(etapa)) return 'tentativo';
-  return 'tentativo';
-}
-
 // Expande un evento (posiblemente de varios días) en las celdas que caen dentro del
 // mes consultado. Devuelve el número de día del mes, el índice (0-based) y el total.
 function celdasDelMes(
@@ -57,13 +51,15 @@ export async function GET(req: NextRequest) {
   const inicio = new Date(year, month, 1);
   const fin    = new Date(year, month + 1, 0, 23, 59, 59);
 
-  // ── 1. Proyectos existentes con cotización APROBADA ───────────────────────
+  // El calendario solo muestra eventos GANADOS (la venta se cerró). Un evento
+  // se considera ganado si (a) ya tiene proyecto —el proyecto solo nace de una
+  // venta cerrada— o (b) el trato está en VENTA_CERRADA, tiene confirmadaEn, o
+  // tiene una cotización APROBADA. Los tratos en pipeline temprano (prospección,
+  // descubrimiento, oportunidad) sin ninguna de esas señales NO aparecen.
+
+  // ── 1. Proyectos (venta ya convertida en proyecto) ─────────────────────────
   const proyectos = await prisma.proyecto.findMany({
-    where: {
-      fechaEvento: { gte: inicio, lte: fin },
-      estado: { not: "CANCELADO" },
-      cotizacion: { estado: "APROBADA" },
-    },
+    where: { fechaEvento: { gte: inicio, lte: fin }, estado: { not: "CANCELADO" } },
     include: { cliente: { select: { nombre: true } } },
     orderBy: { fechaEvento: "asc" },
   });
@@ -84,46 +80,45 @@ export async function GET(req: NextRequest) {
     })),
   );
 
-  // ── 2. Tratos con cotización APROBADA sin proyecto creado aún ──────────────
-  const tratosConCot = await prisma.trato.findMany({
+  // ── 2. Tratos ganados sin proyecto aún ─────────────────────────────────────
+  // Ganado = VENTA_CERRADA, confirmadaEn, o cotización APROBADA. La fecha del
+  // evento sale de la cotización aprobada y, si no hay, de fechaEventoEstimada.
+  const tratosGanados = await prisma.trato.findMany({
     where: {
       proyectos: { none: {} },
-      cotizaciones: {
-        some: {
-          estado: "APROBADA",
-          fechaEvento: { gte: inicio, lte: fin, not: null },
-        },
-      },
+      OR: [
+        { etapa: "VENTA_CERRADA" },
+        { confirmadaEn: { not: null } },
+        { cotizaciones: { some: { estado: "APROBADA" } } },
+      ],
     },
     include: {
       cliente: { select: { nombre: true } },
       cotizaciones: {
-        where: {
-          estado: "APROBADA",
-          fechaEvento: { gte: inicio, lte: fin, not: null },
-        },
+        where: { estado: "APROBADA" },
         orderBy: { fechaEvento: "asc" },
         take: 1,
       },
     },
   });
 
-  const eventosTratoCot = tratosConCot.flatMap(t => {
-    const nivel = nivelTrato(
-      (t as unknown as { confirmadaEn?: Date | null }).confirmadaEn ?? null,
-      (t as unknown as { etapa?: string }).etapa ?? 'PROSPECCION',
-    );
-    const cot = t.cotizaciones.find(c => c.fechaEvento);
-    if (!cot) return [];
-    const titulo = t.nombreEvento || (cot as unknown as Record<string, unknown>).nombreEvento as string || "Evento";
-    // La lista canónica de días sale del descubrimiento (trato.fechasEvento); día 1 = fecha de la cotización.
-    return celdasDelMes(cot.fechaEvento, (t as unknown as { fechasEvento?: string | null }).fechasEvento, year, month).map(({ dia, idx, total }) => ({
+  const eventosTratoGanado = tratosGanados.flatMap(t => {
+    const cot = t.cotizaciones.find(c => c.fechaEvento) ?? null;
+    // Fecha principal: cotización aprobada > fecha estimada del trato.
+    const fechaPrincipal = cot?.fechaEvento ?? t.fechaEventoEstimada ?? null;
+    if (!fechaPrincipal) return [];
+    const titulo =
+      t.nombreEvento ||
+      ((cot as unknown as Record<string, unknown> | null)?.nombreEvento as string) ||
+      "Evento";
+    // La lista canónica de días sale del descubrimiento (trato.fechasEvento); día 1 = fecha principal.
+    return celdasDelMes(fechaPrincipal, (t as unknown as { fechasEvento?: string | null }).fechasEvento, year, month).map(({ dia, idx, total }) => ({
       id: `tratocot-${t.id}-d${idx}`,
       dia,
       titulo: total > 1 ? `${titulo} · Día ${idx + 1}/${total}` : titulo,
       subtitulo: t.cliente?.nombre || "",
       estado: "VENTA_CERRADA" as const,
-      nivel,
+      nivel: "confirmado" as Nivel,
       url: `/crm/tratos/${t.id}`,
       tipoEvento: t.tipoEvento,
       tipoServicio: null,
@@ -133,11 +128,9 @@ export async function GET(req: NextRequest) {
   });
 
   // ── Merge y ordenar por día ───────────────────────────────────────────────
-  // Solo se muestran eventos con cotización APROBADA: proyectos (fuente 1) y
-  // tratos con cotización aprobada aún sin proyecto (fuente 2).
   const eventos = [
     ...eventosProyecto,
-    ...eventosTratoCot,
+    ...eventosTratoGanado,
   ].sort((a, b) => a.dia - b.dia);
 
   return NextResponse.json({ eventos });
