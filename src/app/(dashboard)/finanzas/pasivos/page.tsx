@@ -40,8 +40,11 @@ interface PasivoDeuda {
 const fmt = (n: number) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
 
-const fmtDate = (s: string) =>
-  new Date(s + "T12:00:00").toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+const fmtDate = (s: string) => {
+  if (!s) return "";
+  const d = new Date(s);
+  return d.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+};
 
 const CAT_LABELS: Record<string, string> = {
   PROVEEDOR: "Proveedor", BANCARIO: "Bancario", FISCAL: "Fiscal", SOCIO: "Socio", OTRO: "Otro",
