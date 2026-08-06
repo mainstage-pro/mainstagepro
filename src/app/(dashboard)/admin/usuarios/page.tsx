@@ -396,7 +396,7 @@ export default function UsuariosPage() {
             const isApplying = applying === u.id;
 
             return (
-              <div key={u.id} className={`bg-[#111] border rounded-xl overflow-hidden transition-colors ${u.active ? "border-[#222]" : "border-[#1a1a1a] opacity-50"}`}>
+              <div key={u.id} className={`bg-[#111] border rounded-xl transition-colors ${u.active ? "border-[#222]" : "border-[#1a1a1a] opacity-50"}`}>
                 {/* Row principal */}
                 <div className="flex items-center gap-3 px-4 py-3">
                   <div className="w-8 h-8 rounded-full bg-[#1e1e1e] border border-[#262626] flex items-center justify-center shrink-0">
@@ -443,7 +443,7 @@ export default function UsuariosPage() {
 
                 {/* Panel de permisos */}
                 {isExpanded && !isAdminUser && (
-                  <div className="border-t border-[#1a1a1a] bg-[#0d0d0d]">
+                  <div className="border-t border-[#1a1a1a] bg-[#0d0d0d] rounded-b-xl">
                     {/* Barra de acciones */}
                     <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a] flex-wrap gap-3">
                       <div className="flex items-center gap-2 flex-wrap">
