@@ -103,6 +103,31 @@ export default function NuevoContactoPage() {
     fetch("/api/usuarios-activos").then(r => r.json()).then(d => setUsuarios(d.usuarios || []));
   }, []);
 
+  // La carga inicial limita a 200 clientes (orden alfabético), así que quien
+  // quede fuera del corte no aparece. Al escribir, consultamos al servidor y
+  // fusionamos los resultados en la lista (sin reemplazarla) para no perder al
+  // cliente ya seleccionado ni la preselección por query param.
+  useEffect(() => {
+    if (modoCliente !== "existente") return;
+    const q = clienteQuery.trim();
+    if (q.length < 2) return;
+    const ctrl = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/clientes?q=${encodeURIComponent(q)}&limit=50`, { signal: ctrl.signal });
+        if (!res.ok) return;
+        const d = await res.json();
+        const nuevos: Cliente[] = d.clientes || [];
+        setClientes(prev => {
+          const ids = new Set(prev.map(c => c.id));
+          const faltantes = nuevos.filter(c => !ids.has(c.id));
+          return faltantes.length ? [...prev, ...faltantes] : prev;
+        });
+      } catch { /* abortado o error de red: ignorar */ }
+    }, 250);
+    return () => { clearTimeout(t); ctrl.abort(); };
+  }, [clienteQuery, modoCliente]);
+
   // Pre-seleccionar cliente si viene del query param ?clienteId=
   useEffect(() => {
     const paramId = searchParams.get("clienteId");
