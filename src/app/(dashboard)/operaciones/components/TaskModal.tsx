@@ -107,6 +107,8 @@ interface Props {
   onClose: () => void;
   onSave: (id: string, patch: Record<string, unknown>) => void;
   onComplete: (id: string) => void;
+  // Opcional: marcar la tarea como "no realizada" con motivo + justificación.
+  onNoRealizada?: (id: string, motivo: string, justificacion: string) => void;
   onDelete: (id: string) => void;
   onAddSubtarea: (parentId: string, data: { titulo: string; fecha: string | null; prioridad: string }) => void;
   onCompleteSubtarea: (id: string) => void;
@@ -118,6 +120,14 @@ const PRIOS: { key: string; label: string; color: string }[] = [
   { key: "ALTA",    label: "Alta",    color: "#fb923c" },
   { key: "MEDIA",   label: "Media",   color: "#eab308" },
   { key: "BAJA",    label: "Baja",    color: "#6b7280" },
+];
+
+// Mismos motivos que el picker de "no realizada" de TaskItem.
+const MOTIVOS_NO_REALIZADA = [
+  { key: "NO_NECESARIA", label: "No fue necesaria" },
+  { key: "NO_SUPE",      label: "No supe cómo hacerla" },
+  { key: "NO_CLARA",     label: "No fue clara" },
+  { key: "OTRO",         label: "Otro motivo" },
 ];
 
 function FlagIcon({ color, filled }: { color: string; filled: boolean }) {
@@ -133,9 +143,23 @@ function FlagIcon({ color, filled }: { color: string; filled: boolean }) {
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function TaskModal({
   tarea, loading, usuarios, proyectos, iniciativas, sessionId,
-  onClose, onSave, onComplete, onDelete, onAddSubtarea, onCompleteSubtarea, onDeleteSubtarea,
+  onClose, onSave, onComplete, onNoRealizada, onDelete, onAddSubtarea, onCompleteSubtarea, onDeleteSubtarea,
 }: Props) {
   const toast = useToast();
+
+  // ── "No realizada": popover con motivo + justificación (mismo criterio que TaskItem) ──
+  const [showNoReal, setShowNoReal] = useState(false);
+  const [motivoNR, setMotivoNR]     = useState("");
+  const [justifNR, setJustifNR]     = useState("");
+  const noRealRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!showNoReal) return;
+    const onDoc = (e: MouseEvent) => {
+      if (noRealRef.current && !noRealRef.current.contains(e.target as Node)) setShowNoReal(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [showNoReal]);
 
   // ── Existing state ──
   const [titulo, setTitulo]           = useState("");
@@ -514,6 +538,60 @@ export default function TaskModal({
               </svg>
             )}
           </button>
+
+          {/* ── "No realizada": marca la tarea como no hecha con motivo justificado ── */}
+          {onNoRealizada && tarea && !isCompleted && (
+            <div className="relative shrink-0" ref={noRealRef}>
+              <button
+                type="button"
+                onClick={() => setShowNoReal(v => !v)}
+                title="Marcar como no realizada"
+                aria-label="Marcar como no realizada"
+                className={`w-5 h-5 rounded-full border-2 border-dashed flex items-center justify-center transition-all ${
+                  showNoReal
+                    ? "border-amber-500/70 text-amber-400 bg-amber-500/10"
+                    : "border-[#333] text-[#3a3a3a] hover:border-amber-500/50 hover:text-amber-400"
+                }`}
+              >
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+              {showNoReal && (
+                <div className="absolute left-0 top-7 z-50 w-64 bg-[#141414] border border-[#2a2a2a] rounded-xl shadow-2xl p-3">
+                  <p className="text-[11px] font-semibold text-[#ccc] mb-2">¿Por qué no se realizó?</p>
+                  <div className="space-y-1 mb-2">
+                    {MOTIVOS_NO_REALIZADA.map(m => (
+                      <button key={m.key} type="button" onClick={() => setMotivoNR(m.key)}
+                        className={`w-full text-left text-[12px] px-2 py-1.5 rounded-lg border transition-colors ${
+                          motivoNR === m.key
+                            ? "border-amber-500/60 bg-amber-500/10 text-amber-300"
+                            : "border-[#2a2a2a] text-[#aaa] hover:bg-[#1a1a1a]"
+                        }`}>
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                  <textarea value={justifNR} onChange={e => setJustifNR(e.target.value)}
+                    placeholder="Justificación (obligatoria)…" rows={2}
+                    className="w-full text-[12px] bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2 py-1.5 text-[#ddd] placeholder-[#444] resize-none focus:outline-none focus:border-amber-500/50" />
+                  <div className="flex items-center gap-2 mt-2">
+                    <button type="button"
+                      onClick={() => { setShowNoReal(false); setMotivoNR(""); setJustifNR(""); }}
+                      className="flex-1 text-[12px] py-1.5 rounded-lg text-[#888] hover:text-white hover:bg-[#1a1a1a] transition-colors">
+                      Cancelar
+                    </button>
+                    <button type="button"
+                      disabled={!motivoNR || justifNR.trim().length < 5}
+                      onClick={() => { onNoRealizada(tarea.id, motivoNR, justifNR.trim()); setShowNoReal(false); setMotivoNR(""); setJustifNR(""); }}
+                      className="flex-1 text-[12px] py-1.5 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                      Confirmar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex-1 flex items-center gap-1 min-w-0 overflow-hidden">
             {tarea && (

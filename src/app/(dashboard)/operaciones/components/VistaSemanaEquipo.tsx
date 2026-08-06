@@ -243,6 +243,23 @@ export function VistaSemanaEquipo() {
     cargar(inicio);
   };
 
+  // Marcar la tarea abierta como "no realizada" con motivo + justificación.
+  const noRealizarTarea = async (id: string, motivo: string, justificacion: string) => {
+    const r = await fetch(`/api/tareas/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ noRealizada: true, motivoNoRealizada: motivo, justificacionNoRealizada: justificacion }),
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      setAviso(d.error ?? "No se pudo marcar como no realizada.");
+      setTimeout(() => setAviso(null), 3000);
+      return;
+    }
+    setSelectedTask(null);
+    cargar(inicio);
+  };
+
   // Completar/reabrir una tarea directamente desde su tarjeta (optimista + PATCH).
   const alternarCompletada = async (id: string, completar: boolean) => {
     if (!data) return;
@@ -411,6 +428,7 @@ export function VistaSemanaEquipo() {
           onClose={cerrarPanel}
           onSave={guardarTarea}
           onComplete={completarTarea}
+          onNoRealizada={noRealizarTarea}
           onDelete={eliminarTarea}
           onAddSubtarea={agregarSubtarea}
           onCompleteSubtarea={completarSubtarea}
