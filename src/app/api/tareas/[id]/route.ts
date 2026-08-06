@@ -361,36 +361,36 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           if (next <= prox) break; // sin avance: evita bucle infinito
           prox = next;
         }
-        // Snapshot de la evidencia de esta ocurrencia antes de limpiarla, para
-        // que quede en el historial y la próxima semana arranque en blanco.
+        // Snapshot de esta ocurrencia antes de limpiarla, para que quede en el
+        // historial y la próxima semana arranque en blanco. Se registra SIEMPRE
+        // (con o sin evidencia): así queda constancia de que la ocurrencia se
+        // cerró ese día, y vistas como la Semana del equipo pueden mostrarla como
+        // completada en lugar de "sin cerrar". Las que no requieren evidencia
+        // quedan como NO_REQUIERE y no entran a la cola de verificación.
         const notaSnapshot = ("evidenciaNota" in data ? data.evidenciaNota : actual.evidenciaNota) as string | null;
         const archivosSnapshot = actual.archivos.map((a) => ({ nombre: a.nombre, url: a.url, tipo: a.tipo }));
-        const tieneEvidencia = (!!notaSnapshot && notaSnapshot.trim().length > 0) || archivosSnapshot.length > 0;
-        let historialJSON: string | undefined;
+        const entrada = {
+          fechaOcurrencia: actual.fecha ? actual.fecha.toISOString() : null,
+          completadaAt: new Date().toISOString(),
+          completadaPorId: session.id,
+          completadaPor: session.name ?? null,
+          tipoEvidencia: actual.tipoEvidencia ?? null,
+          evidenciaNota: notaSnapshot ?? null,
+          archivos: archivosSnapshot,
+          estadoVerificacion: data.estadoVerificacion ?? "NO_REQUIERE",
+        };
+        let prev: unknown[] = [];
+        try {
+          const parsed = actual.evidenciasHistorial ? JSON.parse(actual.evidenciasHistorial) : [];
+          if (Array.isArray(parsed)) prev = parsed;
+        } catch { /* historial corrupto → se reinicia */ }
+        const historialJSON = JSON.stringify([entrada, ...prev].slice(0, 60));
+        // Los archivos de evidencia (FOTO/ARCHIVO) se desligan para que la
+        // siguiente ocurrencia no herede fotos viejas. Quedan preservados en el
+        // snapshot del historial por su URL.
         let archivosAEliminar: string[] | undefined;
-        if (tieneEvidencia) {
-          const entrada = {
-            fechaOcurrencia: actual.fecha ? actual.fecha.toISOString() : null,
-            completadaAt: new Date().toISOString(),
-            completadaPorId: session.id,
-            completadaPor: session.name ?? null,
-            tipoEvidencia: actual.tipoEvidencia ?? null,
-            evidenciaNota: notaSnapshot ?? null,
-            archivos: archivosSnapshot,
-            estadoVerificacion: data.estadoVerificacion ?? "NO_REQUIERE",
-          };
-          let prev: unknown[] = [];
-          try {
-            const parsed = actual.evidenciasHistorial ? JSON.parse(actual.evidenciasHistorial) : [];
-            if (Array.isArray(parsed)) prev = parsed;
-          } catch { /* historial corrupto → se reinicia */ }
-          historialJSON = JSON.stringify([entrada, ...prev].slice(0, 60));
-          // Los archivos son la evidencia (FOTO/ARCHIVO): se desligan para que la
-          // siguiente ocurrencia no herede fotos viejas. Quedan preservados en el
-          // snapshot del historial por su URL.
-          if (actual.tipoEvidencia === "FOTO" || actual.tipoEvidencia === "ARCHIVO") {
-            archivosAEliminar = actual.archivos.map((a) => a.id);
-          }
+        if ((actual.tipoEvidencia === "FOTO" || actual.tipoEvidencia === "ARCHIVO") && archivosSnapshot.length > 0) {
+          archivosAEliminar = actual.archivos.map((a) => a.id);
         }
         reagendar = { proximaFecha: prox, fechaAnterior: actual.fecha, historialJSON, archivosAEliminar };
       } catch {
