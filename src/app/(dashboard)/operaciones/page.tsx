@@ -1365,11 +1365,12 @@ export default function OperacionesPage() {
     setCarpetas(prev => prev.filter(c => c.id !== id));
   }
 
-  // Today count for badge
+  // Today count for badge — cuenta los mismos tipos que muestra la lista de "Hoy"
+  // (TAREA · PLAN · EVENTO · PROYECTO · TRATO), no solo TAREA, para que el badge
+  // no quede por debajo del conteo visible.
   const hoyCount = useMemo(() => {
-    const hoy = new Date(); hoy.setHours(23,59,59,999);
     if (typeof vista === "string" && vista === "hoy") {
-      return tareas.filter(t => t.estado !== "COMPLETADA" && (t.tipoOrigen ?? "TAREA") === "TAREA").length;
+      return tareas.filter(t => t.estado !== "COMPLETADA").length;
     }
     return 0; // don't calculate cross-view for perf
   }, [tareas, vista]);

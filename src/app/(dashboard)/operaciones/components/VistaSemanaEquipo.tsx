@@ -288,6 +288,7 @@ export function VistaSemanaEquipo() {
   };
 
   const eliminarTarea = async (id: string) => {
+    if (!confirm("¿Eliminar esta tarea? Esta acción no se puede deshacer.")) return;
     await fetch(`/api/tareas/${id}`, { method: "DELETE" });
     setSelectedTask(null);
     cargar(inicio);
