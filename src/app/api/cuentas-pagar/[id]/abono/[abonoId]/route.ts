@@ -31,7 +31,7 @@ export async function DELETE(
     const restantes = await tx.abonoPago.findMany({ where: { cuentaPagarId: id } });
     const nuevoMontoPagado = Math.round(restantes.reduce((s, a) => s + a.monto, 0) * 100) / 100;
 
-    const cxp = await tx.cuentaPagar.findUnique({ where: { id }, include: { pagoNomina: true } });
+    const cxp = await tx.cuentaPagar.findUnique({ where: { id }, include: { pagoNomina: true, cuotaDeuda: true } });
     const liquidado = cxp ? nuevoMontoPagado >= cxp.monto : false;
     const nuevoEstado = nuevoMontoPagado <= 0 ? "PENDIENTE" : liquidado ? "LIQUIDADO" : "PARCIAL";
 
@@ -49,6 +49,21 @@ export async function DELETE(
         where: { id: cxp.pagoNomina.id },
         data: { estado: "PENDIENTE", fechaPago: null, movimientoId: null },
       });
+    }
+
+    if (cxp?.cuotaDeuda) {
+      await tx.pasivoDeuda.update({
+        where: { id: cxp.cuotaDeuda.pasivoDeudaId },
+        data: {
+          montoPagado: { decrement: abono.monto },
+        },
+      });
+      if (!liquidado && cxp.cuotaDeuda.estado === "PAGADO") {
+        await tx.cuotaDeuda.update({
+          where: { id: cxp.cuotaDeuda.id },
+          data: { estado: "PENDIENTE" },
+        });
+      }
     }
   });
 
