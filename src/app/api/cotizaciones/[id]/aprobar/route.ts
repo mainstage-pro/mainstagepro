@@ -21,6 +21,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     if (cot.trato && cot.trato.etapa !== "VENTA_CERRADA") {
       await prisma.trato.update({ where: { id: cot.trato.id }, data: { etapa: "VENTA_CERRADA", etapaCambiadaEn: new Date() } });
     }
+    // Aprobada ⇒ evento confirmado en calendario.
+    await prisma.cotizacion.update({ where: { id: cot.id }, data: { eventoConfirmado: true } });
     return NextResponse.json({ proyectoId: cot.proyecto.id, numeroProyecto: cot.proyecto.numeroProyecto, yaExistia: true });
   }
 
@@ -32,8 +34,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     proyecto = await prisma.$transaction(async (tx) => {
       const proy = await crearProyectoDesdeCotizacion(tx, cot.id, { id: session.id, name: session.name });
 
-      // Actualizar cotización → APROBADA
-      await tx.cotizacion.update({ where: { id: cot.id }, data: { estado: "APROBADA" } });
+      // Actualizar cotización → APROBADA (aprobada ⇒ evento confirmado en calendario)
+      await tx.cotizacion.update({ where: { id: cot.id }, data: { estado: "APROBADA", eventoConfirmado: true } });
 
       // Actualizar trato → VENTA_CERRADA + confirmación operativa (solo si hay trato vinculado)
       if (cot.tratoId) {

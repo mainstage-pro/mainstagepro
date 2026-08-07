@@ -349,6 +349,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
       // CASCADE: When cotizacion is approved
       if (body.estado === "APROBADA") {
+        // Aprobada ⇒ evento confirmado automáticamente en el calendario.
+        await prisma.cotizacion.update({ where: { id }, data: { eventoConfirmado: true } });
         const cotData = await prisma.cotizacion.findUnique({
           where: { id },
           select: { tratoId: true, grupoId: true },
@@ -430,6 +432,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
       // CASCADE: When cotizacion is rejected
       if (body.estado === "RECHAZADA") {
+        // Rechazada ⇒ se des-confirma el evento (sale del calendario).
+        await prisma.cotizacion.update({ where: { id }, data: { eventoConfirmado: false } });
         const cotData = await prisma.cotizacion.findUnique({
           where: { id },
           select: { tratoId: true },
@@ -443,6 +447,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
             },
           });
           if (activasCount === 0) {
+            // Venta perdida ⇒ ninguna cotización del trato debe seguir confirmada.
+            await prisma.cotizacion.updateMany({ where: { tratoId: cotData.tratoId }, data: { eventoConfirmado: false } });
             await prisma.trato.update({
               where: { id: cotData.tratoId },
               data: { etapa: "VENTA_PERDIDA", etapaInterna: defaultEtapaInterna("VENTA_PERDIDA"), confirmadaEn: null },

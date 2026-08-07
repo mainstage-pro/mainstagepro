@@ -34,12 +34,17 @@ interface ReporteData {
   porMes: { mes: string; count: number }[];
 }
 
-type Nivel = 'tentativo' | 'confirmado' | 'operativo';
+// Color 100% derivado de la cotización (no del estado del proyecto).
+type Nivel = 'por_confirmar' | 'confirmado';
 
 const NIVEL_COLOR: Record<Nivel, { bar: string; dot: string; text: string; bg: string }> = {
-  tentativo:  { bar: 'border-l-amber-600',   dot: 'bg-amber-500',   text: 'text-amber-300',   bg: 'bg-amber-900/30'  },
-  confirmado: { bar: 'border-l-emerald-500', dot: 'bg-emerald-500', text: 'text-emerald-300', bg: 'bg-emerald-900/30' },
-  operativo:  { bar: 'border-l-blue-500',    dot: 'bg-blue-500',    text: 'text-blue-300',    bg: 'bg-blue-900/30'   },
+  por_confirmar: { bar: 'border-l-amber-600',   dot: 'bg-amber-500',   text: 'text-amber-300',   bg: 'bg-amber-900/30'  },
+  confirmado:    { bar: 'border-l-emerald-500', dot: 'bg-emerald-500', text: 'text-emerald-300', bg: 'bg-emerald-900/30' },
+};
+
+const NIVEL_LABEL: Record<Nivel, string> = {
+  por_confirmar: 'Por confirmar',
+  confirmado:    'Confirmado',
 };
 
 interface Evento {
@@ -49,36 +54,13 @@ interface Evento {
   subtitulo: string;
   estado: string;
   nivel: Nivel;
+  sinProyecto: boolean;
   url: string;
   tipoEvento: string | null;
   tipoServicio: string | null;
   lugarEvento: string | null;
   horaInicioEvento: string | null;
 }
-
-const ESTADO_COLORS: Record<string, { bar: string; dot: string; text: string }> = {
-  PLANEACION:    { bar: "border-l-blue-500",   dot: "bg-blue-500",   text: "text-blue-300"  },
-  CONFIRMADO:    { bar: "border-l-green-500",  dot: "bg-green-500",  text: "text-green-300" },
-  EN_CURSO:      { bar: "border-l-yellow-400", dot: "bg-yellow-400", text: "text-yellow-300"},
-  COMPLETADO:    { bar: "border-l-gray-600",   dot: "bg-gray-600",   text: "text-gray-400"  },
-  VENTA_CERRADA: { bar: "border-l-amber-400",  dot: "bg-amber-400",  text: "text-amber-300" },
-  // Etapas de trato
-  PROSPECCION:    { bar: "border-l-amber-600",  dot: "bg-amber-500",  text: "text-amber-300" },
-  DESCUBRIMIENTO: { bar: "border-l-amber-600",  dot: "bg-amber-500",  text: "text-amber-300" },
-  OPORTUNIDAD:    { bar: "border-l-amber-600",  dot: "bg-amber-500",  text: "text-amber-300" },
-};
-
-const ESTADO_LABELS: Record<string, string> = {
-  PLANEACION:    "Planeación",
-  CONFIRMADO:    "Confirmado",
-  EN_CURSO:      "En curso",
-  COMPLETADO:    "Completado",
-  VENTA_CERRADA: "Venta cerrada",
-  // Etapas de trato
-  PROSPECCION:    "Prospección",
-  DESCUBRIMIENTO: "Descubrimiento",
-  OPORTUNIDAD:    "Oportunidad",
-};
 
 const DIAS_SEMANA = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
@@ -203,11 +185,10 @@ export default function CalendarioPage() {
         </div>
       </div>
 
-      {/* Leyenda de niveles */}
+      {/* Leyenda de niveles — color derivado solo de la cotización */}
       <div className="flex items-center gap-4 mb-1">
-        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-amber-500"/><span className="text-xs text-gray-400">Tentativo</span></div>
-        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"/><span className="text-xs text-gray-400">Confirmado</span></div>
-        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-blue-500"/><span className="text-xs text-gray-400">Operativo</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-amber-500"/><span className="text-xs text-gray-400">Por confirmar · cotización sin aprobar</span></div>
+        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"/><span className="text-xs text-gray-400">Confirmado · cotización aprobada</span></div>
       </div>
 
       <div className="flex gap-4">
@@ -252,7 +233,7 @@ export default function CalendarioPage() {
                           ) : (
                             <div className="space-y-0.5">
                               {evs.slice(0, 3).map(e => {
-                                const nc = NIVEL_COLOR[e.nivel ?? 'tentativo'] ?? NIVEL_COLOR.tentativo;
+                                const nc = NIVEL_COLOR[e.nivel ?? 'por_confirmar'] ?? NIVEL_COLOR.por_confirmar;
                                 return (
                                   <div
                                     key={e.id}
@@ -293,7 +274,7 @@ export default function CalendarioPage() {
               ) : (
                 <div className="divide-y divide-[#1a1a1a] max-h-[60vh] overflow-y-auto">
                   {(eventosPanel ?? []).map(e => {
-                    const nc = NIVEL_COLOR[e.nivel ?? 'tentativo'] ?? NIVEL_COLOR.tentativo;
+                    const nc = NIVEL_COLOR[e.nivel ?? 'por_confirmar'] ?? NIVEL_COLOR.por_confirmar;
                     return (
                       <Link key={e.id} href={e.url}
                         className="flex items-start gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors">
@@ -304,8 +285,8 @@ export default function CalendarioPage() {
                           {e.lugarEvento && <p className="text-gray-600 text-[10px] truncate mt-0.5">{e.lugarEvento}</p>}
                           {e.horaInicioEvento && <p className="text-[#B3985B] text-[10px] mt-0.5">{e.horaInicioEvento}</p>}
                           <div className="flex items-center gap-1.5 mt-1">
-                            <span className={`text-[10px] ${nc.text}`}>{ESTADO_LABELS[e.estado] ?? e.estado}</span>
-                            {e.estado === "VENTA_CERRADA" && (
+                            <span className={`text-[10px] ${nc.text}`}>{NIVEL_LABEL[e.nivel ?? 'por_confirmar']}</span>
+                            {e.sinProyecto && (
                               <span className="text-[10px] bg-amber-900/30 text-amber-400 px-1.5 py-0.5 rounded font-medium">Sin proyecto</span>
                             )}
                           </div>
@@ -332,7 +313,7 @@ export default function CalendarioPage() {
                 const proximos = sorted.filter(e => !esPasado(e.dia));
                 const pasados  = sorted.filter(e =>  esPasado(e.dia));
                   const renderItem = (e: Evento, dimmed: boolean) => {
-                  const nc = NIVEL_COLOR[e.nivel ?? 'tentativo'] ?? NIVEL_COLOR.tentativo;
+                  const nc = NIVEL_COLOR[e.nivel ?? 'por_confirmar'] ?? NIVEL_COLOR.por_confirmar;
                   return (
                     <Link key={e.id} href={e.url}
                       className={`flex items-start gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors ${dimmed ? "opacity-50" : ""}`}>
@@ -348,7 +329,7 @@ export default function CalendarioPage() {
                           <p className="text-xs font-medium truncate text-white">{e.titulo}</p>
                         </div>
                         <p className="text-gray-500 text-[11px] truncate">{e.subtitulo}</p>
-                        {e.estado === "VENTA_CERRADA" && (
+                        {e.sinProyecto && (
                           <p className="text-amber-400/70 text-[10px] mt-0.5">Sin proyecto · Pendiente</p>
                         )}
                       </div>
@@ -389,7 +370,7 @@ export default function CalendarioPage() {
                 const proximos = sorted.filter(e => !esPasado(e.dia));
                 const pasados  = sorted.filter(e =>  esPasado(e.dia));
                 const renderItem = (e: Evento, dimmed: boolean) => {
-                  const nc = NIVEL_COLOR[e.nivel ?? 'tentativo'] ?? NIVEL_COLOR.tentativo;
+                  const nc = NIVEL_COLOR[e.nivel ?? 'por_confirmar'] ?? NIVEL_COLOR.por_confirmar;
                   return (
                     <Link key={e.id} href={e.url}
                       className={`flex items-center gap-3 px-4 py-3 hover:bg-[#1a1a1a] transition-colors ${dimmed ? "opacity-50" : ""}`}>
@@ -401,7 +382,7 @@ export default function CalendarioPage() {
                       <div className="min-w-0 flex-1">
                         <p className="text-white text-sm truncate">{e.titulo}</p>
                         <p className="text-gray-500 text-xs truncate">{e.subtitulo}</p>
-                        {e.estado === "VENTA_CERRADA" && (
+                        {e.sinProyecto && (
                           <p className="text-amber-400/70 text-[10px]">Sin proyecto · Pendiente</p>
                         )}
                       </div>

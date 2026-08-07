@@ -273,6 +273,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         notas: `Cancelado automáticamente — trato marcado como Venta Perdida`,
       },
     });
+
+    // Des-confirmar el evento: venta perdida sale del calendario.
+    if (cotizacionIds.length > 0) {
+      await prisma.cotizacion.updateMany({ where: { id: { in: cotizacionIds } }, data: { eventoConfirmado: false } });
+    }
   }
 
   // ── Si se confirma el evento, crear Proyecto en PLANEACION si no existe ─────

@@ -4,13 +4,10 @@ import { getSession } from "@/lib/auth";
 import { ensureProcesoVentaColumns, ensureMultidiaColumns, ensureCotizacionEventoConfirmadoColumn } from "@/lib/migraciones-lazy";
 import { diasEvento } from "@/lib/fechas-evento";
 
-type Nivel = 'tentativo' | 'confirmado' | 'operativo';
-
-function nivelProyecto(estado: string): Nivel {
-  if (['PRODUCCION', 'EN_CURSO', 'EN_PRODUCCION'].includes(estado)) return 'operativo';
-  if (estado === 'CONFIRMADO') return 'confirmado';
-  return 'tentativo';
-}
+// El color del calendario deriva ÚNICAMENTE de la cotización, no del estado del proyecto:
+//   'confirmado'    → cotización APROBADA (auto-confirmada) o ya hay proyecto (verde)
+//   'por_confirmar' → evento apartado manualmente (eventoConfirmado) con cotización sin aprobar (ámbar)
+type Nivel = 'por_confirmar' | 'confirmado';
 
 // Expande un evento (posiblemente de varios días) en las celdas que caen dentro del
 // mes consultado. Devuelve el número de día del mes, el índice (0-based) y el total.
@@ -52,12 +49,12 @@ export async function GET(req: NextRequest) {
   const inicio = new Date(year, month, 1);
   const fin    = new Date(year, month + 1, 0, 23, 59, 59);
 
-  // El calendario solo muestra eventos GANADOS o CONFIRMADOS. Un evento aparece si
-  // (a) ya tiene proyecto —el proyecto solo nace de una venta cerrada— o (b) el trato
-  // está en VENTA_CERRADA, tiene confirmadaEn, tiene una cotización APROBADA, o tiene
-  // una cotización con eventoConfirmado (desbloqueo manual: el evento se confirmó
-  // aunque la cotización aún no se cierre). Los tratos en pipeline temprano sin
-  // ninguna de esas señales NO aparecen.
+  // El calendario solo muestra eventos confirmados vía COTIZACIÓN. Un evento aparece si
+  // (a) ya tiene proyecto —el proyecto solo nace de una cotización aprobada— o (b) el
+  // trato tiene una cotización APROBADA (verde) o una cotización con eventoConfirmado
+  // (desbloqueo manual: el evento se apartó aunque la cotización aún no se apruebe; ámbar).
+  // Ni el estado/etapa del proyecto ni el del trato pintan el calendario: el color y la
+  // visibilidad salen exclusivamente de la cotización.
 
   // ── 1. Proyectos (venta ya convertida en proyecto) ─────────────────────────
   const proyectos = await prisma.proyecto.findMany({
@@ -73,7 +70,8 @@ export async function GET(req: NextRequest) {
       titulo: total > 1 ? `${p.nombre} · Día ${idx + 1}/${total}` : p.nombre,
       subtitulo: p.cliente.nombre,
       estado: p.estado,
-      nivel: nivelProyecto(p.estado),
+      nivel: 'confirmado' as Nivel,
+      sinProyecto: false,
       url: `/proyectos/${p.id}`,
       tipoEvento: p.tipoEvento,
       tipoServicio: p.tipoServicio,
@@ -82,49 +80,41 @@ export async function GET(req: NextRequest) {
     })),
   );
 
-  // ── 2. Tratos ganados/confirmados sin proyecto aún ─────────────────────────
-  // Ganado = VENTA_CERRADA, confirmadaEn, cotización APROBADA, o cotización con
-  // eventoConfirmado. La fecha del evento sale de esa cotización y, si no hay, de
-  // fechaEventoEstimada.
+  // ── 2. Tratos con cotización confirmada, sin proyecto aún ──────────────────
+  // Aparecen solo si tienen una cotización APROBADA (verde) o una con eventoConfirmado
+  // (apartado manual, ámbar). La fecha del evento sale de esa cotización y, si no hay,
+  // de fechaEventoEstimada. VENTA_PERDIDA nunca aparece.
   const tratosGanados = await prisma.trato.findMany({
     where: {
       proyectos: { none: {} },
-      // Un trato con venta perdida nunca va al calendario, ni siquiera con el flag manual.
       etapa: { not: "VENTA_PERDIDA" },
-      OR: [
-        { etapa: "VENTA_CERRADA" },
-        { confirmadaEn: { not: null } },
-        { cotizaciones: { some: { estado: "APROBADA" } } },
-        { cotizaciones: { some: { eventoConfirmado: true } } },
-      ],
+      cotizaciones: { some: { OR: [{ estado: "APROBADA" }, { eventoConfirmado: true }] } },
     },
     include: {
       cliente: { select: { nombre: true } },
       cotizaciones: {
         where: { OR: [{ estado: "APROBADA" }, { eventoConfirmado: true }] },
         orderBy: { fechaEvento: "asc" },
-        take: 1,
       },
     },
   });
 
   const eventosTratoGanado = tratosGanados.flatMap(t => {
+    // El color sale de la cotización: aprobada = verde, solo apartada = ámbar.
+    const aprobada = t.cotizaciones.some(c => c.estado === "APROBADA");
     const cot = t.cotizaciones.find(c => c.fechaEvento) ?? null;
-    // Fecha principal: cotización aprobada/confirmada > fecha estimada del trato.
     const fechaPrincipal = cot?.fechaEvento ?? t.fechaEventoEstimada ?? null;
     if (!fechaPrincipal) return [];
-    const titulo =
-      t.nombreEvento ||
-      ((cot as unknown as Record<string, unknown> | null)?.nombreEvento as string) ||
-      "Evento";
+    const titulo = t.nombreEvento || cot?.nombreEvento || "Evento";
     // La lista canónica de días sale del descubrimiento (trato.fechasEvento); día 1 = fecha principal.
     return celdasDelMes(fechaPrincipal, (t as unknown as { fechasEvento?: string | null }).fechasEvento, year, month).map(({ dia, idx, total }) => ({
       id: `tratocot-${t.id}-d${idx}`,
       dia,
       titulo: total > 1 ? `${titulo} · Día ${idx + 1}/${total}` : titulo,
       subtitulo: t.cliente?.nombre || "",
-      estado: "VENTA_CERRADA" as const,
-      nivel: "confirmado" as Nivel,
+      estado: aprobada ? "APROBADA" : "POR_CONFIRMAR",
+      nivel: (aprobada ? "confirmado" : "por_confirmar") as Nivel,
+      sinProyecto: true,
       url: `/crm/tratos/${t.id}`,
       tipoEvento: t.tipoEvento,
       tipoServicio: null,
