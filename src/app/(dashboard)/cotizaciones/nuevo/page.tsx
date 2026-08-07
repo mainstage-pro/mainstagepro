@@ -90,6 +90,7 @@ interface LineaExterno {
   subtotal: number;        // precioUnitario × cantidad × días
   costoTotal: number;      // costoProveedor × cantidad × días (para viabilidad)
   proveedorId: string | null; // proveedor por defecto del equipo → se transfiere al proyecto
+  categoria: string;       // categoría del equipo (para integrarlo a su sección en el PDF)
 }
 
 interface LineaOp {
@@ -582,12 +583,13 @@ function CotizadorForm() {
         setPaquetesAgregados(paqueteLineas.map((l) => {
           try { return (JSON.parse(l.notasInternas ?? "{}").paqueteId as string) ?? ""; } catch { return ""; }
         }).filter(Boolean));
-        setLineasExterno(lineas.filter((l: {tipo:string}) => l.tipo === "EQUIPO_EXTERNO").map((l: {equipoId:string;descripcion:string;marca:string|null;cantidad:number;dias:number;precioUnitario:number;costoUnitario:number;subtotal:number;proveedorId:string|null}) => ({
+        setLineasExterno(lineas.filter((l: {tipo:string}) => l.tipo === "EQUIPO_EXTERNO").map((l: {equipoId:string;descripcion:string;marca:string|null;cantidad:number;dias:number;precioUnitario:number;costoUnitario:number;subtotal:number;proveedorId:string|null;notas:string|null}) => ({
           id: uid(), equipoId: l.equipoId ?? "", descripcion: l.descripcion,
           marca: l.marca ?? "", cantidad: l.cantidad, dias: l.dias,
           precioUnitario: l.precioUnitario, costoProveedor: l.costoUnitario ?? 0,
           subtotal: l.subtotal, costoTotal: (l.costoUnitario ?? 0) * l.cantidad * l.dias,
           proveedorId: l.proveedorId ?? null,
+          categoria: l.notas?.startsWith("cat:") ? l.notas.split("|")[0].slice(4) : "",
         })));
         setLineasOp(lineas.filter((l: {tipo:string;notas?:string|null}) => l.tipo === "OPERACION_TECNICA" && l.notas !== "from:jornada" && l.notas !== "zona:bonus").map((l: {id:string;rolTecnicoId:string|null;descripcion:string;nivel:string|null;jornada:string|null;cantidad:number;dias:number;precioUnitario:number;subtotal:number}) => ({
           id: uid(), rolTecnicoId: l.rolTecnicoId ?? "",
@@ -1020,6 +1022,7 @@ function CotizadorForm() {
       subtotal: eq.precioRenta * cant * dias,
       costoTotal: (mejorProveedor ? mejorProveedor.precio : costo) * cant * dias,
       proveedorId: mejorProveedor ? mejorProveedor.proveedor.id : (eq.proveedorDefaultId ?? null),
+      categoria: eq.categoria?.nombre ?? "",
     }]);
     setSelExt(""); setSelExtCant("1"); setSelExtDias(evento.diasEquipo);
   }
@@ -1060,6 +1063,7 @@ function CotizadorForm() {
         subtotal: newEq.precioRenta * 1 * (parseInt(evento.diasEquipo) || 1),
         costoTotal: (newEq.costoProveedor ?? 0) * 1 * (parseInt(evento.diasEquipo) || 1),
         proveedorId: newEq.proveedorDefaultId ?? null,
+        categoria: newEq.categoria?.nombre ?? "",
       }]);
       setNuevoEqForm({ descripcion: "", marca: "", categoriaId: "", precioRenta: "", costoProveedor: "", cantidadTotal: "1", proveedorId: "" });
       setShowNuevoEqModal(false);
@@ -1115,6 +1119,7 @@ function CotizadorForm() {
           subtotal: newEq.precioRenta * 1 * dias,
           costoTotal: (newEq.costoProveedor ?? 0) * 1 * dias,
           proveedorId: newEq.proveedorDefaultId ?? null,
+          categoria: newEq.categoria?.nombre ?? "",
         }]);
       } else {
         setLineasEquipo(prev => [...prev, {
@@ -1366,6 +1371,7 @@ function CotizadorForm() {
             costoUnitario: l.costoProveedor,
             subtotal: l.subtotal, esExterno: true, esIncluido: false, equipoId: l.equipoId,
             proveedorId: l.proveedorId ?? null,
+            notas: l.categoria ? `cat:${l.categoria}` : null,
           })),
           ...lineasOp.map(l => ({
             tipo: "OPERACION_TECNICA", descripcion: l.descripcion,
@@ -1530,6 +1536,7 @@ function CotizadorForm() {
         subtotal: l.subtotal,
         esExterno: true, esIncluido: false, equipoId: l.equipoId,
         proveedorId: l.proveedorId ?? null,
+        notas: l.categoria ? `cat:${l.categoria}` : null,
       })),
       ...lineasOp.map(l => ({
         tipo: "OPERACION_TECNICA", descripcion: l.descripcion,
@@ -1739,6 +1746,7 @@ function CotizadorForm() {
                         precioUnitario: l.precioUnitario, costoProveedor: l.costoUnitario ?? 0,
                         subtotal: l.subtotal, costoTotal: (l.costoUnitario ?? 0) * l.cantidad * l.dias,
                         proveedorId: l.proveedorId ?? null,
+                        categoria: l.notas?.startsWith("cat:") ? l.notas.split("|")[0].slice(4) : "",
                       })));
 
                       const ops = lineas.filter(l => l.tipo === "OPERACION_TECNICA");
@@ -2747,7 +2755,10 @@ function CotizadorForm() {
                 {lineasExterno.map(l => (
                   <div key={l.id} className="flex items-center gap-2 px-3 py-2 border-b border-[#111] last:border-0">
                     <div className="flex-1 min-w-0">
-                      <p className="text-white text-sm truncate">{l.marca || l.descripcion}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-white text-sm truncate">{l.marca || l.descripcion}</p>
+                        {l.categoria && <span className="shrink-0 text-[10px] px-1.5 py-0.5 bg-[#1e1e1e] text-[#6b7280] rounded" title="En el PDF aparece dentro de esta categoría">{l.categoria}</span>}
+                      </div>
                       {l.marca && <p className="text-gray-500 text-xs">{l.descripcion}</p>}
                       <p className="text-[#555] text-[10px]">Costo proveedor: {formatCurrency(l.costoProveedor)}/u · Total costo: {formatCurrency(l.costoTotal)}</p>
                     </div>
