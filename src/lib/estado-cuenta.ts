@@ -46,6 +46,7 @@ export interface CuentasScope {
  */
 export async function getCuentasScope(opts: {
   clienteId?: string;
+  proveedorId?: string;
   empresaId?: string | null;
 }): Promise<CuentasScope> {
   const empresaId = opts.empresaId ?? null;
@@ -94,6 +95,23 @@ export async function getCuentasScope(opts: {
   if (empresaId) {
     pagarRaw = await prisma.cuentaPagar.findMany({
       where: { OR: [{ empresaId }, { proveedor: { empresaId } }] },
+      select: {
+        id: true,
+        concepto: true,
+        monto: true,
+        montoPagado: true,
+        estado: true,
+        fechaCompromiso: true,
+        fechaPagoReal: true,
+        tipoAcreedor: true,
+        proveedor: { select: { nombre: true } },
+        proyecto: { select: { numeroProyecto: true, nombre: true } },
+      },
+      orderBy: { fechaCompromiso: "asc" },
+    });
+  } else if (opts.proveedorId) {
+    pagarRaw = await prisma.cuentaPagar.findMany({
+      where: { proveedorId: opts.proveedorId },
       select: {
         id: true,
         concepto: true,

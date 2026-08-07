@@ -1,6 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { getCuentasScope } from "@/lib/estado-cuenta";
+
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+
+  const { id } = await params;
+
+  const proveedor = await prisma.proveedor.findUnique({
+    where: { id },
+    include: {
+      compania: { select: { id: true, nombre: true } },
+      equiposPortal: {
+        orderBy: { categoria: "asc" },
+      },
+      proyectoEquipos: {
+        select: {
+          proyecto: {
+            select: { id: true, numeroProyecto: true, nombre: true, estado: true, fechaEvento: true }
+          }
+        },
+        orderBy: { proyecto: { fechaEvento: "desc" } }
+      }
+    },
+  });
+
+  if (!proveedor) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+  const { cuentasCobrar, cuentasPagar } = await getCuentasScope({
+    proveedorId: id,
+    empresaId: proveedor.empresaId,
+  });
+
+  return NextResponse.json({ proveedor: { ...proveedor, cuentasCobrar, cuentasPagar } });
+}
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();

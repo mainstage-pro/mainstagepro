@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import Link from "next/link";
 import { CopyButton } from "@/components/CopyButton";
 import { useConfirm } from "@/components/Confirm";
 import { EmpresaCombobox } from "@/components/EmpresaCombobox";
@@ -673,14 +674,14 @@ export default function ProveedoresPage() {
               {activos.map(p => (
                 <tr key={p.id} className="group hover:bg-[#1a1a1a] transition-colors">
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
+                    <Link href={`/catalogo/proveedores/${p.id}`} className="flex items-center gap-3 hover:opacity-85 transition-opacity">
                       <div className="w-7 h-7 rounded-full bg-[#1e1e1e] border border-[#262626] flex items-center justify-center shrink-0">
                         <span className="text-[#B3985B] text-[10px] font-bold">
                           {p.nombre.split(" ").slice(0,2).map(n=>n[0]).join("").toUpperCase()}
                         </span>
                       </div>
-                      <p className="text-white text-sm font-medium">{p.nombre}</p>
-                    </div>
+                      <p className="text-white text-sm font-medium hover:text-[#B3985B] transition-colors">{p.nombre}</p>
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">{p.empresa ?? "—"}</td>
                   {/* Giro cell with popover */}
@@ -808,7 +809,11 @@ export default function ProveedoresPage() {
               ))}
               {showInactivos && inactivos.map(p => (
                 <tr key={p.id} className="opacity-40 hover:opacity-60 transition-opacity">
-                  <td className="px-4 py-3 text-gray-400 text-sm">{p.nombre}</td>
+                  <td className="px-4 py-3 text-gray-400 text-sm">
+                    <Link href={`/catalogo/proveedores/${p.id}`} className="hover:text-[#B3985B] hover:underline transition-colors">
+                      {p.nombre}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3 text-xs text-[#555]">{p.empresa ?? "—"}</td>
                   <td className="px-4 py-3 text-xs text-[#555]">{p.giro ?? "—"}</td>
                   <td className="px-4 py-3 text-xs text-[#555]">—</td>
@@ -851,12 +856,14 @@ function ProveedorCard({
     <div className={`group bg-[#111] border rounded-xl p-4 transition-colors flex flex-col gap-3 ${equiposPanelOpen ? "border-[#B3985B]/40" : "border-[#1e1e1e] hover:border-[#2a2a2a]"}`}>
       {/* Header */}
       <div className="flex items-start gap-3">
-        <div className="w-9 h-9 rounded-full bg-[#1e1e1e] border border-[#262626] flex items-center justify-center shrink-0">
+        <Link href={`/catalogo/proveedores/${p.id}`} className="w-9 h-9 rounded-full bg-[#1e1e1e] border border-[#262626] flex items-center justify-center shrink-0 hover:opacity-85 transition-opacity">
           <span className="text-[#B3985B] text-xs font-bold">{initials}</span>
-        </div>
+        </Link>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="text-white text-sm font-medium leading-tight">{p.nombre}</p>
+            <Link href={`/catalogo/proveedores/${p.id}`} className="text-white text-sm font-medium leading-tight hover:text-[#B3985B] transition-colors">
+              {p.nombre}
+            </Link>
           </div>
           {p.empresa && p.empresa !== p.nombre && (
             <p className="text-gray-400 text-xs">{p.empresa}</p>
