@@ -8,7 +8,6 @@ import DatePicker from "@/components/ui/DatePicker";
 import RecurrenciaInput from "./RecurrenciaInput";
 import AccesoDirectoField from "./AccesoDirectoField";
 import { Combobox } from "@/components/Combobox";
-import { AREAS, AREA_LABELS } from "@/lib/gestion";
 import { enqueueRequest } from "@/lib/offline-queue";
 
 // ── Tipos de registro (los sistemas del hub unificado) ──────────────────────────
@@ -165,6 +164,7 @@ export default function NuevaTareaModal({
         setDescripcion(t.descripcion ?? "");
         setPrioridad(t.prioridad ?? "MEDIA");
         setArea(t.area ?? "GENERAL");
+        setProyectoSel(t.proyectoTareaId ?? t.proyectoTarea?.id ?? null);
         setAsignadoId(t.asignadoAId ?? t.asignadoA?.id ?? null);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setCoResponsables((t.colaboradores ?? []).map((c: any) => c.usuario.id));
@@ -296,6 +296,8 @@ export default function NuevaTareaModal({
             descripcion: descripcion.trim() || null,
             prioridad,
             area,
+            proyectoTareaId: proyectoSel || null,
+            seccionId: seccionSel || null,
             asignadoAId: asignadoId || null,
             colaboradorIds: coResponsables.filter(id => id !== asignadoId),
             fecha: fecha || null,
@@ -576,36 +578,24 @@ export default function NuevaTareaModal({
               </div>
             )}
 
-            {/* Destino: área y proyecto/sección (tareas normales y de plan de trabajo) */}
-            {(tipo === "TAREA" || tipo === "PLAN") && (
-              <>
-                <Campo label="Área">
-                  <Combobox
-                    value={area}
-                    onChange={v => setArea(v || "GENERAL")}
-                    options={[{ value: "GENERAL", label: "— Sin área (Otras) —" }, ...AREAS.map(a => ({ value: a, label: AREA_LABELS[a] }))]}
-                    className={comboCls}
-                  />
-                </Campo>
-                {!modoEdicion && proyectos.length > 0 && (
-                  <Campo label="Proyecto (opcional)">
-                    <Combobox
-                      value={proyectoSel ?? ""}
-                      onChange={v => { setProyectoSel(v || null); setSeccionSel(null); }}
-                      options={[{ value: "", label: "— Bandeja de entrada —" }, ...proyectos.map(p => ({ value: p.id, label: p.nombre }))]}
-                      placeholder="Elige un proyecto…"
-                      className={comboCls}
-                    />
-                    {seccionesDestino.length > 0 && (
-                      <select value={seccionSel ?? ""} onChange={e => setSeccionSel(e.target.value || null)}
-                        className="mt-2 w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-[#B3985B]/40">
-                        <option value="">— Sin sección —</option>
-                        {seccionesDestino.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
-                      </select>
-                    )}
-                  </Campo>
+            {/* Destino: área (proyecto de gestión operativa) + sección */}
+            {(tipo === "TAREA" || tipo === "PLAN") && proyectos.length > 0 && (
+              <Campo label="Área">
+                <Combobox
+                  value={proyectoSel ?? ""}
+                  onChange={v => { setProyectoSel(v || null); setSeccionSel(null); }}
+                  options={[{ value: "", label: "— Sin área (Bandeja de entrada) —" }, ...proyectos.map(p => ({ value: p.id, label: p.nombre }))]}
+                  placeholder="Elige un área…"
+                  className={comboCls}
+                />
+                {seccionesDestino.length > 0 && (
+                  <select value={seccionSel ?? ""} onChange={e => setSeccionSel(e.target.value || null)}
+                    className="mt-2 w-full bg-[#0f0f0f] border border-[#1e1e1e] rounded-lg px-3 py-2 text-[13px] text-white focus:outline-none focus:border-[#B3985B]/40">
+                    <option value="">— Sin sección —</option>
+                    {seccionesDestino.map(s => <option key={s.id} value={s.id}>{s.nombre}</option>)}
+                  </select>
                 )}
-              </>
+              </Campo>
             )}
 
             {/* Prioridad */}
