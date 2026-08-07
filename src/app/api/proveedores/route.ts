@@ -9,6 +9,10 @@ export async function GET() {
   const proveedores = await prisma.proveedor.findMany({
     include: {
       compania: { select: { id: true, nombre: true } },
+      cuentasPagar: {
+        where: { estado: { in: ["PENDIENTE", "PARCIAL", "VENCIDO"] } },
+        select: { monto: true, montoPagado: true },
+      },
     },
     orderBy: [{ prioridad: 'desc' as const }, { nombre: 'asc' as const }],
   });

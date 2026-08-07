@@ -76,6 +76,7 @@ type Proveedor = {
   activo: boolean;
   prioridad: number;
   portalToken: string | null;
+  cuentasPagar?: { monto: number; montoPagado: number }[];
 };
 
 type EquipoPortal = {
@@ -665,7 +666,7 @@ export default function ProveedoresPage() {
           <table className="w-full min-w-[700px]">
             <thead className="ms-thead">
               <tr>
-                {["Proveedor", "Empresa", "Giro", "Prioridad", "Teléfono", "Correo", ""].map(h => (
+                {["Proveedor", "Empresa", "Giro", "Prioridad", "Por pagar", "Teléfono", "Correo", ""].map(h => (
                   <th key={h} className="ms-th">{h}</th>
                 ))}
               </tr>
@@ -783,6 +784,12 @@ export default function ProveedoresPage() {
                       )}
                     </div>
                   </td>
+                  <td className="px-4 py-3 text-xs font-semibold">
+                    {(() => {
+                      const saldo = (p.cuentasPagar ?? []).reduce((s, c) => s + Math.max(0, c.monto - c.montoPagado), 0);
+                      return saldo > 0 ? <span className="text-red-400">{fmt(saldo)}</span> : <span className="text-gray-600">$0</span>;
+                    })()}
+                  </td>
                   <td className="px-4 py-3 text-xs text-[#6b7280]">
                     {p.telefono ? (
                       <div className="flex items-center gap-2">
@@ -801,7 +808,8 @@ export default function ProveedoresPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-2 items-center">
-                      <button onClick={() => startEdit(p)} className="text-[#B3985B] text-xs hover:underline">Editar</button>
+                      <Link href={`/catalogo/proveedores/${p.id}`} className="text-[#B3985B] text-xs font-semibold hover:underline">Ver detalle</Link>
+                      <button onClick={() => startEdit(p)} className="text-gray-400 text-xs hover:underline">Editar</button>
                       <button onClick={() => toggleActivo(p)} className="text-gray-600 text-xs hover:text-white transition-colors">Desactivar</button>
                     </div>
                   </td>
@@ -878,6 +886,24 @@ function ProveedorCard({
           )}
         </div>
       </div>
+
+      {/* Financial balance badge */}
+      {(() => {
+        const saldo = (p.cuentasPagar ?? []).reduce((s, c) => s + Math.max(0, c.monto - c.montoPagado), 0);
+        return (
+          <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg p-2.5 flex items-center justify-between gap-2">
+            <div>
+              <p className="text-[9px] text-gray-500 uppercase tracking-wider font-medium">Por Pagar</p>
+              <p className={`text-xs font-bold ${saldo > 0 ? "text-red-400" : "text-green-400"}`}>
+                {saldo > 0 ? fmt(saldo) : "$0"}
+              </p>
+            </div>
+            <Link href={`/catalogo/proveedores/${p.id}`} className="text-[10px] text-[#B3985B] hover:underline font-semibold">
+              Ver detalle ➔
+            </Link>
+          </div>
+        );
+      })()}
 
       {/* Info */}
       <div className="space-y-1.5 text-xs">
@@ -959,19 +985,23 @@ function ProveedorCard({
       )}
 
       {/* Actions */}
-      <div className={`flex gap-2 ${onGenerarToken ? "" : "pt-1 border-t border-[#1a1a1a]"} mt-auto`}>
+      <div className={`flex gap-2 ${onGenerarToken ? "" : "pt-1 border-t border-[#1a1a1a]"} mt-auto flex-wrap`}>
+        <Link href={`/catalogo/proveedores/${p.id}`}
+          className="flex-1 min-w-[90px] text-xs text-black bg-[#B3985B] hover:bg-[#c9a96a] font-semibold py-1.5 rounded-lg transition-colors text-center">
+          Ver detalle
+        </Link>
         {onVerEquipos && (
           <button onClick={onVerEquipos}
-            className={`flex-1 text-xs py-1.5 rounded-lg border transition-colors text-center ${equiposPanelOpen ? "text-[#B3985B] border-[#B3985B]/50 bg-[#B3985B]/10" : "text-gray-400 hover:text-white border-[#222] hover:border-[#333]"}`}>
-            {equiposPanelOpen ? "Ocultar equipos" : "Ver equipos"}
+            className={`flex-1 min-w-[90px] text-xs py-1.5 rounded-lg border transition-colors text-center ${equiposPanelOpen ? "text-[#B3985B] border-[#B3985B]/50 bg-[#B3985B]/10" : "text-gray-400 hover:text-white border-[#222] hover:border-[#333]"}`}>
+            {equiposPanelOpen ? "Ocultar equipos" : "Equipos"}
           </button>
         )}
         <button onClick={() => onEdit(p)}
-          className="flex-1 text-xs text-[#B3985B] hover:text-white py-1.5 rounded-lg border border-[#B3985B]/30 hover:border-[#B3985B] transition-colors text-center">
+          className="text-xs text-gray-400 hover:text-white px-2.5 py-1.5 rounded-lg border border-[#222] hover:border-[#333] transition-colors text-center">
           Editar
         </button>
         <button onClick={() => onToggle(p)}
-          className="flex-1 text-xs text-gray-500 hover:text-white py-1.5 rounded-lg border border-[#222] hover:border-[#333] transition-colors text-center">
+          className="text-xs text-gray-500 hover:text-white px-2.5 py-1.5 rounded-lg border border-[#222] hover:border-[#333] transition-colors text-center">
           {p.activo ? "Desactivar" : "Activar"}
         </button>
       </div>
