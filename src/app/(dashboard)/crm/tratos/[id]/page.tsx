@@ -1088,6 +1088,24 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     fetch("/api/usuarios-activos").then(r => r.json()).then(d => setUsuarios(d.usuarios ?? []));
   }, []);
 
+  // Al abrir el modal de edición: sincroniza el formulario con el trato actual
+  // y carga la lista de clientes para el selector (si aún no está cargada).
+  useEffect(() => {
+    if (!editando) return;
+    if (trato) setForm(trato);
+    if (clientesOpciones.length === 0) {
+      fetch("/api/clientes")
+        .then(r => r.json())
+        .then(d => setClientesOpciones(
+          (d.clientes ?? []).map((c: { id: string; nombre: string; empresa: string | null }) => ({
+            value: c.id,
+            label: c.empresa ? `${c.nombre} — ${c.empresa}` : c.nombre,
+          }))
+        ))
+        .catch(() => {});
+    }
+  }, [editando]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     Promise.all([
       fetch(`/api/tratos/${id}`).then((r) => r.json()),
@@ -2833,164 +2851,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       </div> {/* end 2-column grid */}
-
-      {/* ── Modal: Razón de pérdida ── */}
-      {modalPerdida && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70" onClick={() => setModalPerdida(false)} />
-          <div className="relative bg-[#111] border border-[#333] rounded-2xl w-full max-w-md shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
-              <h3 className="text-white font-semibold">Marcar como perdido</h3>
-              <button onClick={() => setModalPerdida(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Razón principal</label>
-                <Combobox
-                  value={razonPerdida}
-                  onChange={v => setRazonPerdida(v)}
-                  options={[{ value: "", label: "— Seleccionar —" }, { value: "Precio", label: "Precio fuera de presupuesto" }, { value: "Fechas", label: "Fechas no coinciden" }, { value: "Eligió a otro proveedor", label: "Eligió a otro proveedor" }, { value: "No respondió", label: "No respondió / se enfrió" }, { value: "Evento cancelado", label: "Evento cancelado" }, { value: "Fuera de cobertura", label: "Fuera de cobertura geográfica" }, { value: "Otro", label: "Otro" }]}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 block mb-1">Notas adicionales (opcional)</label>
-                <textarea value={notasPerdida} onChange={e => setNotasPerdida(e.target.value)}
-                  rows={2} placeholder="Contexto o detalles que ayuden a entender la pérdida..."
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
-              </div>
-              <div className="flex justify-end gap-2 pt-1">
-                <button onClick={() => setModalPerdida(false)} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 hover:text-white text-sm transition-colors">Cancelar</button>
-                <button onClick={confirmarPerdida} disabled={saving}
-                  className="px-4 py-2 rounded-lg bg-red-900/60 border border-red-700/40 text-red-300 hover:bg-red-900 text-sm font-medium transition-colors disabled:opacity-50">
-                  {saving ? "Guardando..." : "Confirmar pérdida"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Modal: Editar trato ── */}
-      {editando && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70" onClick={() => setEditando(false)} />
-          <div className="relative bg-[#111] border border-[#333] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
-              <h3 className="text-white font-semibold">Editar trato</h3>
-              <button onClick={() => setEditando(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Cliente</label>
-                <Combobox
-                  value={trato.cliente.id}
-                  onChange={async (nuevoId) => {
-                    if (!nuevoId || nuevoId === trato.cliente.id) return;
-                    setSavingCliente(true);
-                    const res = await fetch(`/api/tratos/${id}`, {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ clienteId: nuevoId }),
-                    });
-                    if (res.ok) {
-                      const r2 = await fetch(`/api/tratos/${id}`);
-                      const d2 = await r2.json();
-                      if (d2.trato) setTrato(d2.trato);
-                      toast.success("Cliente actualizado");
-                    } else {
-                      const d = await res.json().catch(() => ({}));
-                      toast.error(d.error ?? "Error al cambiar cliente");
-                    }
-                    setSavingCliente(false);
-                  }}
-                  options={clientesOpciones}
-                  placeholder={clientesOpciones.length === 0 ? "Cargando clientes..." : "Buscar cliente..."}
-                  disabled={savingCliente}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Nombre del evento / proyecto</label>
-                <input value={form.nombreEvento || ""} onChange={e => setForm(p => ({ ...p, nombreEvento: e.target.value }))}
-                  placeholder="Ej: Boda García-López, Concierto Verano..."
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Tipo de evento</label>
-                  <Combobox
-                    value={form.tipoEvento || ""}
-                    onChange={v => setForm(p => ({ ...p, tipoEvento: v }))}
-                    options={[{ value: "MUSICAL", label: "Musical" }, { value: "SOCIAL", label: "Social" }, { value: "EMPRESARIAL", label: "Empresarial" }, { value: "OTRO", label: "Otro" }]}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Tipo de servicio</label>
-                  <Combobox
-                    value={form.tipoServicio || ""}
-                    onChange={v => setForm(p => ({ ...p, tipoServicio: v }))}
-                    options={[{ value: "", label: "— Sin especificar —" }, { value: "RENTA", label: "Renta de Equipo" }, { value: "PRODUCCION_TECNICA", label: "Producción Técnica" }, { value: "DIRECCION_TECNICA", label: "Dirección Técnica" }]}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Lugar estimado</label>
-                  <VenuePicker value={form.lugarEstimado || ""} onChange={(v) => setForm(p => ({ ...p, lugarEstimado: v }))} />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Fecha estimada</label>
-                  <input type="date" value={form.fechaEventoEstimada ? (form.fechaEventoEstimada as string).split("T")[0] : ""}
-                    onChange={e => setForm(p => ({ ...p, fechaEventoEstimada: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Presupuesto estimado ($)</label>
-                  <input type="number" value={form.presupuestoEstimado || ""} onChange={e => setForm(p => ({ ...p, presupuestoEstimado: parseFloat(e.target.value) }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Clasificación</label>
-                  <Combobox
-                    value={form.clasificacion || "PROSPECTO"}
-                    onChange={v => setForm(p => ({ ...p, clasificacion: v }))}
-                    options={[{ value: "PROSPECTO", label: "Prospecto" }, { value: "BASIC", label: "Basic" }, { value: "REGULAR", label: "Regular" }, { value: "PRIORITY", label: "Priority" }]}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Notas</label>
-                <textarea value={form.notas || ""} onChange={e => setForm(p => ({ ...p, notas: e.target.value }))}
-                  rows={3} className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Próxima acción</label>
-                  <input value={form.proximaAccion || ""} onChange={e => setForm(p => ({ ...p, proximaAccion: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Fecha próxima acción</label>
-                  <input type="date" value={form.fechaProximaAccion ? (form.fechaProximaAccion as string).split("T")[0] : ""}
-                    onChange={e => setForm(p => ({ ...p, fechaProximaAccion: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <button onClick={() => setEditando(false)} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
-                  Cancelar
-                </button>
-                <button onClick={guardar} disabled={saving}
-                  className="px-5 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm hover:bg-[#c9a96a] disabled:opacity-50">
-                  {saving ? "Guardando..." : "Guardar cambios"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ── Botón: Nuevo trato con este cliente ── */}
       <div className="flex items-center justify-center pt-4 pb-2">
