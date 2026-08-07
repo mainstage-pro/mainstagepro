@@ -106,6 +106,13 @@ const TIPO_ORIGEN_OPTS: { key: string; label: string; color: string }[] = [
   { key: "EVENTO",   label: "Evento",   color: "#60a5fa" },
 ];
 const PRIO_ORDER: Record<string, number> = { URGENTE: 0, ALTA: 1, MEDIA: 2, BAJA: 3 };
+// Orden por el número al inicio del nombre ("1. Dirección", "10. Comercial"…);
+// los que no tengan prefijo numérico quedan al final, en orden alfabético.
+const prefijoNum = (n: string) => { const m = n.trim().match(/^(\d+)/); return m ? parseInt(m[1], 10) : Infinity; };
+const cmpGrupoNum = (a: string, b: string) => {
+  const na = prefijoNum(a), nb = prefijoNum(b);
+  return na !== nb ? na - nb : a.localeCompare(b, "es");
+};
 // Secciones fijas de la Bandeja de entrada (Gestión Operativa), agrupadas por área.
 const BANDEJA_AREAS: { key: string; label: string }[] = [
   { key: "DIRECCION",      label: "Dirección" },
@@ -1241,7 +1248,9 @@ export default function OperacionesPage() {
       }
       const keys = vistaOpts.groupBy === "prioridad"
         ? ["URGENTE","ALTA","MEDIA","BAJA"].filter(k => grouped[k])
-        : Object.keys(grouped).sort();
+        : vistaOpts.groupBy === "proyecto"
+          ? Object.keys(grouped).sort(cmpGrupoNum)
+          : Object.keys(grouped).sort();
       return keys.map(label => ({ label, tareas: applySort(grouped[label]) }));
     }
 
@@ -1268,7 +1277,7 @@ export default function OperacionesPage() {
       if (!grouped[key]) grouped[key] = [];
       grouped[key].push(t);
     }
-    const keys = Object.keys(grouped).sort((a, b) => a === "Bandeja de entrada" ? 1 : b === "Bandeja de entrada" ? -1 : a.localeCompare(b));
+    const keys = Object.keys(grouped).sort((a, b) => a === "Bandeja de entrada" ? 1 : b === "Bandeja de entrada" ? -1 : cmpGrupoNum(a, b));
     return keys.map(key => ({ label: key, tareas: applySort(grouped[key]) }));
   }, [tareas, vistaOpts, vista, busqueda]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1292,8 +1301,7 @@ export default function OperacionesPage() {
     const sueltos = proyectosNav.filter(p => !carpetas.some(c => c.proyectos.some(cp => cp.id === p.id)));
     // Ordenar por el número al inicio del nombre ("1. Dirección", "4. Comercial"…);
     // los que no tengan prefijo numérico quedan al final en su orden original.
-    const num = (n: string) => { const m = n.trim().match(/^(\d+)/); return m ? parseInt(m[1], 10) : Infinity; };
-    return [...sueltos].sort((a, b) => num(a.nombre) - num(b.nombre));
+    return [...sueltos].sort((a, b) => prefijoNum(a.nombre) - prefijoNum(b.nombre));
   }, [proyectosNav, carpetas]);
 
   const AREA_LABELS: Record<string, string> = {
