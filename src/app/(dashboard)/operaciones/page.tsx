@@ -1254,20 +1254,10 @@ export default function OperacionesPage() {
       return keys.map(label => ({ label, tareas: applySort(grouped[label]) }));
     }
 
-    // Bandeja de entrada: agrupada en secciones fijas por área (Dirección,
-    // Administración, Marketing, Comercial, Producción) + "Otras" para el resto.
-    if (vista === "bandeja") {
-      const grouped: Record<string, TareaItem[]> = {};
-      for (const t of base) {
-        const key = BANDEJA_AREAS.some(a => a.key === t.area) ? t.area : "OTRAS";
-        (grouped[key] ||= []).push(t);
-      }
-      const secciones = BANDEJA_AREAS
-        .filter(a => grouped[a.key]?.length)
-        .map(a => ({ label: a.label, tareas: applySort(grouped[a.key]) }));
-      if (grouped["OTRAS"]?.length) secciones.push({ label: "Otras", tareas: applySort(grouped["OTRAS"]) });
-      return secciones.length > 0 ? secciones : null;
-    }
+    // Bandeja de entrada: lista plana de tareas sueltas, sin agrupar por área.
+    // Las tareas quedan libres hasta que se les asigna fecha y proyecto/área al
+    // abrirlas, momento en que salen de la bandeja a su destino correspondiente.
+    if (vista === "bandeja") return null;
     const proyNames = [...new Set(base.map(grupoOrigen))];
     if (vista !== "hoy" && proyNames.length <= 1) return null;
 
