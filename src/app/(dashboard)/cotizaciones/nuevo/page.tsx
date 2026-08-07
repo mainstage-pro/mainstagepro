@@ -576,7 +576,7 @@ function CotizadorForm() {
           return {
             id: uid(), productoId, nombre: l.descripcion,
             cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario, subtotal: l.subtotal,
-            componentes, categoria: l.notas?.startsWith("cat:") ? l.notas.slice(4) : "Paquetes",
+            componentes, categoria: l.notas?.startsWith("cat:") ? l.notas.slice(4) : "",
           };
         }));
         setPaquetesAgregados(paqueteLineas.map((l) => {
@@ -826,7 +826,7 @@ function CotizadorForm() {
         id: uid(), productoId: prod.id, nombre: prod.nombre,
         cantidad: cant, dias, precioUnitario: prod.precioFinal,
         subtotal: prod.precioFinal * cant * dias,
-        componentes, categoria: prod.categoria ?? "Paquetes",
+        componentes, categoria: prod.categoria ?? "",
       }];
     });
   }
@@ -889,7 +889,7 @@ function CotizadorForm() {
           id: uid(), productoId: prod.id, nombre: prod.nombre,
           cantidad: cant, dias: diasEq, precioUnitario: prod.precioFinal,
           subtotal: prod.precioFinal * cant * diasEq,
-          componentes, categoria: prod.categoria ?? "Paquetes",
+          componentes, categoria: prod.categoria ?? "",
         });
       } else if (it.equipo) {
         const eq = it.equipo;

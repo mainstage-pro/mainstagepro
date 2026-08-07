@@ -47,8 +47,6 @@ const TIPOS_EVENTO: { key: string; label: string; icon: LucideIcon }[] = [
   { key: "EMPRESARIAL", label: "Empresarial", icon: Briefcase },
 ];
 
-const CATEGORIAS_PRODUCTO = ["AUDIO", "ILUMINACION", "VIDEO", "DJ", "ESTRUCTURA", "OTRO"];
-
 function fmx(n: number) {
   return `$${(n || 0).toLocaleString("es-MX", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
@@ -103,7 +101,7 @@ type FormState = {
 const FORM_EMPTY: FormState = {
   nombre: "",
   descripcion: "",
-  categoria: "AUDIO",
+  categoria: "",
   tiposEvento: [],
   imagenUrl: "",
   equipoDominanteId: "",
@@ -196,12 +194,13 @@ function ProductoEditor({
             onChange={(e) => setForm({ ...form, categoria: e.target.value })}
             className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
           >
-            {(categorias.length > 0 ? categorias : CATEGORIAS_PRODUCTO).map((c) => (
+            <option value="">— Selecciona categoría —</option>
+            {categorias.map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>
             ))}
-            {form.categoria && !categorias.includes(form.categoria) && !CATEGORIAS_PRODUCTO.includes(form.categoria) && (
+            {form.categoria && !categorias.includes(form.categoria) && (
               <option value={form.categoria}>{form.categoria}</option>
             )}
           </select>
@@ -434,7 +433,7 @@ export function ProductosSection() {
 
   function abrirNuevo(prefillEquipoId?: string) {
     setEditId(null);
-    const base = { ...FORM_EMPTY, categoria: categoriasInv[0] ?? FORM_EMPTY.categoria };
+    const base = { ...FORM_EMPTY, categoria: categoriasInv[0] ?? "" };
     setForm(
       prefillEquipoId
         ? { ...base, items: [{ equipoId: prefillEquipoId, cantidad: 1 }], equipoDominanteId: prefillEquipoId }
@@ -448,7 +447,7 @@ export function ProductosSection() {
     setForm({
       nombre: p.nombre,
       descripcion: p.descripcion ?? "",
-      categoria: p.categoria ?? "AUDIO",
+      categoria: p.categoria ?? "",
       tiposEvento: parseTags(p.tiposEvento),
       imagenUrl: p.imagenUrl && p.imagenUrl.startsWith("data:") ? p.imagenUrl : p.imagenUrl ?? "",
       equipoDominanteId: p.equipoDominanteId ?? "",
