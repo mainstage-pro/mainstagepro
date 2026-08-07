@@ -297,6 +297,7 @@ export default function OperacionesPage() {
   const [addToast,  setAddToast]                = useState<{ msg: string; visible: boolean } | null>(null);
   const [syncTrigger, setSyncTrigger]           = useState(0);
   const [confirmDeleteId, setConfirmDeleteId]   = useState<string | null>(null);
+  const [confirmDeleteSeccion, setConfirmDeleteSeccion] = useState<{ id: string; nombre: string; count: number } | null>(null);
   const [selectedIds, setSelectedIds]           = useState<Set<string>>(new Set());
   const [confirmBulk, setConfirmBulk]           = useState(false);
   const [noSecDropOver, setNoSecDropOver]        = useState(false);
@@ -1142,6 +1143,28 @@ export default function OperacionesPage() {
         body: JSON.stringify({ orden: i }),
       })
     ));
+  }
+
+  // Borra una sección. El backend mueve sus tareas a "sin sección" (no las
+  // elimina), así que aquí reinsertamos esas tareas sueltas en el proyecto para
+  // que no parezca que se perdieron.
+  async function deleteSeccion(id: string) {
+    const res = await fetch(`/api/operaciones/secciones/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast.error(d.error ?? "Error al eliminar");
+      return;
+    }
+    setProyectoDetalle(prev => {
+      if (!prev) return null;
+      const sec = prev.secciones.find(s => s.id === id);
+      const tareasSueltas = (sec?.tareas ?? []).map(t => ({ ...t, seccion: null }));
+      return {
+        ...prev,
+        tareas: [...prev.tareas, ...tareasSueltas],
+        secciones: prev.secciones.filter(s => s.id !== id),
+      };
+    });
   }
 
   async function crearCarpeta() {
@@ -2436,17 +2459,11 @@ export default function OperacionesPage() {
                           ...prev, secciones: prev.secciones.map(s => s.id === id ? { ...s, colapsada } : s),
                         } : null);
                       }}
-                      onDeleteSection={async (id) => {
-                        const res = await fetch(`/api/operaciones/secciones/${id}`, { method: "DELETE" });
-                        if (!res.ok) {
-                          const d = await res.json().catch(() => ({}));
-                          toast.error(d.error ?? "Error al eliminar");
-                          return;
-                        }
-                        setProyectoDetalle(prev => prev ? {
-                          ...prev, secciones: prev.secciones.filter(s => s.id !== id),
-                        } : null);
-                      }}
+                      onDeleteSection={() => setConfirmDeleteSeccion({
+                        id: seccion.id,
+                        nombre: seccion.subArea?.nombre ?? seccion.nombre,
+                        count: seccion.tareas.length,
+                      })}
                       onRename={async (id, nuevoNombre) => {
                         // Secciones gobernadas por el maestro de subáreas: el rename
                         // escribe sobre la subárea maestra para que se propague a todo
@@ -2583,6 +2600,49 @@ export default function OperacionesPage() {
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600/90 hover:bg-red-500 transition-all"
               >
                 Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDeleteSeccion && (
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setConfirmDeleteSeccion(null)}
+        >
+          <div
+            className="ms-card rounded-2xl p-6 shadow-2xl w-full max-w-sm mx-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-4 mb-5">
+              <div className="w-10 h-10 rounded-full bg-red-950/50 flex items-center justify-center shrink-0 mt-0.5">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                  <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white">¿Eliminar la sección &ldquo;{confirmDeleteSeccion.nombre}&rdquo;?</p>
+                <p className="text-xs text-[#555] mt-1 leading-relaxed">
+                  {confirmDeleteSeccion.count > 0
+                    ? <>Sus {confirmDeleteSeccion.count} {confirmDeleteSeccion.count === 1 ? "tarea" : "tareas"} no se eliminan: quedan sueltas en el proyecto. Solo se elimina la sección.</>
+                    : <>La sección se eliminará. No tiene tareas.</>}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2.5">
+              <button
+                onClick={() => setConfirmDeleteSeccion(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm text-[#777] hover:text-white border border-[#2a2a2a] hover:border-[#444] transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => { deleteSeccion(confirmDeleteSeccion.id); setConfirmDeleteSeccion(null); }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600/90 hover:bg-red-500 transition-all"
+              >
+                Eliminar sección
               </button>
             </div>
           </div>
