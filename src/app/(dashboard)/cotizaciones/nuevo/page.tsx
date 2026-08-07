@@ -362,7 +362,7 @@ function CotizadorForm() {
   const [nuevoEqForm, setNuevoEqForm] = useState({ descripcion: "", marca: "", categoriaId: "", precioRenta: "", costoProveedor: "", cantidadTotal: "1", proveedorId: "" });
   const [guardandoEq, setGuardandoEq] = useState(false);
   const [showNuevoEqPropioModal, setShowNuevoEqPropioModal] = useState(false);
-  const [nuevoEqPropioForm, setNuevoEqPropioForm] = useState({ marca: "", modelo: "", descripcion: "", precioRenta: "", categoriaId: "" });
+  const [nuevoEqPropioForm, setNuevoEqPropioForm] = useState({ tipo: "PROPIO", marca: "", modelo: "", descripcion: "", precioRenta: "", categoriaId: "", costoProveedor: "", proveedorId: "", cantidadTotal: "1" });
   const [nuevoEqPropioDescEditado, setNuevoEqPropioDescEditado] = useState(false);
   const [guardandoEqPropio, setGuardandoEqPropio] = useState(false);
   const [lineasOcasional, setLineasOcasional] = useState<LineaOcasional[]>([]);
@@ -1078,6 +1078,7 @@ function CotizadorForm() {
     }
     setGuardandoEqPropio(true);
     try {
+      const esExterno = f.tipo === "EXTERNO";
       const res = await fetch("/api/equipos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1086,9 +1087,11 @@ function CotizadorForm() {
           marca: f.marca.trim() || null,
           modelo: f.modelo.trim() || null,
           categoriaId,
-          tipo: "PROPIO",
+          tipo: f.tipo,
           precioRenta: parseFloat(f.precioRenta) || 0,
-          cantidadTotal: 1,
+          cantidadTotal: esExterno ? (parseInt(f.cantidadTotal) || 1) : 1,
+          costoProveedor: esExterno && f.costoProveedor ? parseFloat(f.costoProveedor) : null,
+          proveedorDefaultId: esExterno ? (f.proveedorId || null) : null,
         }),
       });
       if (!res.ok) {
@@ -1097,8 +1100,8 @@ function CotizadorForm() {
       }
       const { equipo: newEq } = await res.json();
       setEquipos(prev => [...prev, newEq]);
-      toast.success("Equipo registrado en inventario ✓");
-      setNuevoEqPropioForm({ marca: "", modelo: "", descripcion: "", precioRenta: "", categoriaId: "" });
+      toast.success(esExterno ? "Equipo de proveedor registrado ✓" : "Equipo registrado en inventario ✓");
+      setNuevoEqPropioForm({ tipo: "PROPIO", marca: "", modelo: "", descripcion: "", precioRenta: "", categoriaId: "", costoProveedor: "", proveedorId: "", cantidadTotal: "1" });
       setNuevoEqPropioDescEditado(false);
       setShowNuevoEqPropioModal(false);
     } catch {
@@ -2482,6 +2485,18 @@ function CotizadorForm() {
             <div className="mb-4 bg-[#0a0a0a] border border-[#B3985B]/40 rounded-xl p-4">
               <p className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider mb-1">Registrar equipo en inventario</p>
               <p className="text-[#555] text-[10px] mb-3">Se guardará en el Inventario Maestro automáticamente</p>
+              <div className="flex gap-2 mb-3">
+                {(["PROPIO", "EXTERNO"] as const).map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setNuevoEqPropioForm(p => ({ ...p, tipo: t }))}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors border ${nuevoEqPropioForm.tipo === t ? "bg-[#B3985B] text-black border-[#B3985B]" : "bg-[#1a1a1a] text-gray-400 border-[#333] hover:text-white"}`}
+                  >
+                    {t === "PROPIO" ? "Equipo propio" : "Proveedor externo"}
+                  </button>
+                ))}
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
                 <input
                   value={nuevoEqPropioForm.marca}
@@ -2525,7 +2540,7 @@ function CotizadorForm() {
                   min="0"
                   value={nuevoEqPropioForm.precioRenta}
                   onChange={e => setNuevoEqPropioForm(p => ({ ...p, precioRenta: e.target.value }))}
-                  placeholder="Precio de renta (MXN) *"
+                  placeholder={nuevoEqPropioForm.tipo === "EXTERNO" ? "Precio público (MXN) *" : "Precio de renta (MXN) *"}
                   className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                 />
                 <select
@@ -2538,6 +2553,32 @@ function CotizadorForm() {
                     <option key={c.id} value={c.id}>{c.nombre}</option>
                   ))}
                 </select>
+                {nuevoEqPropioForm.tipo === "EXTERNO" && (
+                  <>
+                    <input
+                      type="number"
+                      min="0"
+                      value={nuevoEqPropioForm.costoProveedor}
+                      onChange={e => setNuevoEqPropioForm(p => ({ ...p, costoProveedor: e.target.value }))}
+                      placeholder="Costo del proveedor (MXN)"
+                      className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                    />
+                    <input
+                      type="number"
+                      min="1"
+                      value={nuevoEqPropioForm.cantidadTotal}
+                      onChange={e => setNuevoEqPropioForm(p => ({ ...p, cantidadTotal: e.target.value }))}
+                      placeholder="Cantidad en catálogo"
+                      className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                    />
+                    <Combobox
+                      value={nuevoEqPropioForm.proveedorId}
+                      onChange={v => setNuevoEqPropioForm(p => ({ ...p, proveedorId: v }))}
+                      options={[{ value: "", label: "— Proveedor (opcional)" }, ...proveedores.map(p => ({ value: p.id, label: p.nombre }))]}
+                      className="col-span-2 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                    />
+                  </>
+                )}
               </div>
               <div className="flex gap-2">
                 <button
@@ -2548,7 +2589,7 @@ function CotizadorForm() {
                   {guardandoEqPropio ? "Registrando..." : "Registrar equipo"}
                 </button>
                 <button
-                  onClick={() => { setShowNuevoEqPropioModal(false); setNuevoEqPropioForm({ marca: "", modelo: "", descripcion: "", precioRenta: "", categoriaId: "" }); setNuevoEqPropioDescEditado(false); }}
+                  onClick={() => { setShowNuevoEqPropioModal(false); setNuevoEqPropioForm({ tipo: "PROPIO", marca: "", modelo: "", descripcion: "", precioRenta: "", categoriaId: "", costoProveedor: "", proveedorId: "", cantidadTotal: "1" }); setNuevoEqPropioDescEditado(false); }}
                   className="px-3 py-2 rounded-lg border border-[#333] text-gray-400 text-sm hover:text-white"
                 >
                   Cancelar
