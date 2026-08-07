@@ -1148,7 +1148,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           <div className="flex items-center gap-3">
             <Handshake className="w-5 h-5 text-[#B3985B]" />
             <div>
-              <p className="text-[#B3985B] text-sm font-semibold">Trato: {cot.trato.tipoEvento}</p>
+              <p className="text-[#B3985B] text-sm font-semibold">{cot.cliente.nombre}{cot.nombreEvento ? ` · ${cot.nombreEvento}` : ""}</p>
               <p className="text-[#B3985B]/60 text-xs">Haz clic para abrir el trato en el CRM</p>
             </div>
           </div>
