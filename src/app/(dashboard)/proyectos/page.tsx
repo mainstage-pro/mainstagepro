@@ -5,6 +5,9 @@ import { ESTADO_PROYECTO_LABELS, TIPO_EVENTO_LABELS } from "@/lib/constants";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
+import NuevaTareaModal from "@/app/(dashboard)/operaciones/components/NuevaTareaModal";
+
+type Usuario = { id: string; name: string };
 
 type Proyecto = {
   id: string;
@@ -86,15 +89,16 @@ function ProyectosThead() {
         <th className="ms-th hidden md:table-cell">Venue</th>
         <th className="ms-th hidden sm:table-cell">Fecha</th>
         <th className="ms-th hidden sm:table-cell w-28">Avance</th>
-        <th className="ms-th w-10"></th>
+        <th className="ms-th w-24"></th>
       </tr>
     </thead>
   );
 }
 
-function ProyectoRow({ p, onEliminar, deletingId }: {
+function ProyectoRow({ p, onEliminar, onRegistrarTarea, deletingId }: {
   p: Proyecto;
   onEliminar: () => void;
+  onRegistrarTarea: () => void;
   deletingId: string | null;
 }) {
   return (
@@ -162,22 +166,31 @@ function ProyectoRow({ p, onEliminar, deletingId }: {
         </div>
       </td>
 
-      <td className="px-3 py-3 text-right">
-        <button
-          onClick={e => { e.preventDefault(); e.stopPropagation(); onEliminar(); }}
-          disabled={deletingId === p.id}
-          className="shrink-0 text-[#2a2a2a] hover:text-red-500/60 transition-colors disabled:opacity-40 opacity-0 group-hover:opacity-100"
-          title="Eliminar proyecto"
-        >
-          {deletingId === p.id ? (
-            <span className="text-[10px] text-gray-600">...</span>
-          ) : (
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
-              <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-            </svg>
-          )}
-        </button>
+      <td className="px-3 py-3 text-right whitespace-nowrap">
+        <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={e => { e.preventDefault(); e.stopPropagation(); onRegistrarTarea(); }}
+            className="text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap"
+            title="Registrar tarea de este proyecto"
+          >
+            + Tarea
+          </button>
+          <button
+            onClick={e => { e.preventDefault(); e.stopPropagation(); onEliminar(); }}
+            disabled={deletingId === p.id}
+            className="shrink-0 text-[#2a2a2a] hover:text-red-500/60 transition-colors disabled:opacity-40"
+            title="Eliminar proyecto"
+          >
+            {deletingId === p.id ? (
+              <span className="text-[10px] text-gray-600">...</span>
+            ) : (
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+              </svg>
+            )}
+          </button>
+        </div>
       </td>
     </tr>
   );
@@ -190,6 +203,8 @@ export default function ProyectosPage() {
   const [tabActivo, setTabActivo] = useState<string>('PLANEACION');
   const [filtroTipo, setFiltroTipo] = useState<string | null>(null);
   const [busqueda, setBusqueda] = useState('');
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [tareaProyecto, setTareaProyecto] = useState<{ id: string; nombre: string } | null>(null);
   const toast = useToast();
   const confirm = useConfirm();
 
@@ -198,6 +213,7 @@ export default function ProyectosPage() {
       .then(r => r.json())
       .then(d => setProyectos(d.proyectos ?? []))
       .finally(() => setLoading(false));
+    fetch('/api/usuarios-activos').then(r => r.json()).then(d => setUsuarios(d.usuarios ?? []));
   }, []);
 
   async function eliminar(p: Proyecto) {
@@ -261,7 +277,13 @@ export default function ProyectosPage() {
   }
 
   const renderRow = (p: Proyecto) => (
-    <ProyectoRow key={p.id} p={p} onEliminar={() => eliminar(p)} deletingId={deletingId} />
+    <ProyectoRow
+      key={p.id}
+      p={p}
+      onEliminar={() => eliminar(p)}
+      onRegistrarTarea={() => setTareaProyecto({ id: p.id, nombre: p.nombre || p.cliente.nombre })}
+      deletingId={deletingId}
+    />
   );
 
   return (
@@ -388,6 +410,19 @@ export default function ProyectosPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* ── Modal: registrar tarea de un proyecto de evento ── */}
+      {tareaProyecto && (
+        <NuevaTareaModal
+          open
+          onClose={() => setTareaProyecto(null)}
+          usuarios={usuarios}
+          tipoInicial="EVENTO"
+          proyectoEventoIdInicial={tareaProyecto.id}
+          proyectoEventoNombre={tareaProyecto.nombre}
+          onCreated={() => { setTareaProyecto(null); toast.success('Tarea registrada ✓'); }}
+        />
       )}
     </div>
   );

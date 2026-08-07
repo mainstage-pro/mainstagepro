@@ -15,7 +15,7 @@ import { BadgeDias } from "@/components/ui/BadgeDias";
 import { NuevoTratoDropdown } from "@/components/NuevoTratoDropdown";
 import { diasTrato } from "@/lib/contadores";
 import { EtapaInternaBar } from "@/components/crm/EtapaInternaBar";
-import { SUBETAPAS_DE_ETAPA, ETAPA_INTERNA_LABELS, ETAPA_DE_INTERNA, type EtapaTrato, type EtapaInterna } from "@/lib/proceso/valores";
+import NuevaTareaModal from "@/app/(dashboard)/operaciones/components/NuevaTareaModal";
 
 type Usuario = { id: string; name: string; area?: string };
 
@@ -673,9 +673,8 @@ function CompactTratoRow({
   trato: t,
   onEliminar,
   onCambiarEtapa,
-  onCambiarSubetapa,
   onCambiarServicio,
-  onQuickNote,
+  onRegistrarTarea,
   onCambiarResponsable,
   deletingId,
   isExpanded,
@@ -685,9 +684,8 @@ function CompactTratoRow({
   trato: Trato;
   onEliminar: () => void;
   onCambiarEtapa: (nuevaEtapa: string) => void;
-  onCambiarSubetapa: (etapaInterna: string) => void;
   onCambiarServicio: (servicio: string | null) => void;
-  onQuickNote: () => void;
+  onRegistrarTarea: () => void;
   onCambiarResponsable: (responsableId: string | null) => void;
   deletingId: string | null;
   isExpanded: boolean;
@@ -709,20 +707,6 @@ function CompactTratoRow({
     return () => document.removeEventListener('mousedown', handler);
   }, [respOpen]);
 
-  // ── Helpers ──────────────────────────────────────────────────────────────────
-  const getSeguimientoBadge = (fecha: string | null) => {
-    if (!fecha) return { label: 'Sin seguimiento', variant: 'none' as const };
-    const diff = Math.floor((new Date(fecha).getTime() - Date.now()) / 86400000);
-    if (diff < 0)  return { label: `Vencido ${Math.abs(diff)}d`, variant: 'danger' as const };
-    if (diff === 0) return { label: 'Hoy',                        variant: 'today' as const };
-    if (diff <= 3)  return { label: fmtFechaCorta(fecha),         variant: 'soon' as const };
-    return           { label: fmtFechaCorta(fecha),               variant: 'ok' as const };
-  };
-
-  function fmtFechaCorta(iso: string) {
-    return new Date(iso.substring(0, 10) + 'T12:00:00Z').toLocaleDateString('es-MX', { day: 'numeric', month: 'short', timeZone: 'UTC' });
-  }
-
   // Fecha completa del evento
   const fechaCompletaEvento = t.fechaEventoEstimada
     ? new Date(t.fechaEventoEstimada.substring(0, 10) + 'T12:00:00Z').toLocaleDateString('es-MX', {
@@ -743,17 +727,8 @@ function CompactTratoRow({
     VENTA_CERRADA:  { dot: 'bg-emerald-400', text: 'text-emerald-400', bg: 'bg-emerald-900/20' },
     VENTA_PERDIDA:  { dot: 'bg-red-400',     text: 'text-red-400',     bg: 'bg-red-900/20' },
   };
-  const SEG_VARIANT_CLS: Record<string, string> = {
-    none:   'text-[#333]',
-    danger: 'text-red-400 bg-red-900/15 px-2 py-0.5 rounded-md',
-    today:  'text-yellow-400 bg-yellow-900/15 px-2 py-0.5 rounded-md',
-    soon:   'text-amber-400/80 bg-amber-900/10 px-2 py-0.5 rounded-md',
-    ok:     'text-[#555] bg-[#181818] px-2 py-0.5 rounded-md',
-  };
-
   const tipoStyle = TIPO_BADGE[t.tipoEvento] ?? TIPO_BADGE.OTRO;
   const etapaStyle = ETAPA_STYLE[t.etapa] ?? { dot: 'bg-gray-600', text: 'text-gray-500', bg: 'bg-gray-800/20' };
-  const seg = getSeguimientoBadge(t.fechaProximaAccion);
 
   return (
     <>
@@ -896,69 +871,30 @@ function CompactTratoRow({
           )}
         </div>
 
-        {/* ── COL 6 · Seguimiento ─────── 130px ────── */}
-        <div className="hidden xl:flex flex-col justify-center w-[130px] shrink-0 pr-3">
-          {seg.variant === 'none' ? (
-            <button
-              onClick={e => { e.stopPropagation(); onQuickNote(); }}
-              className="self-start text-[10px] text-[#2a2a2a] hover:text-[#B3985B] border border-[#1e1e1e] hover:border-[#B3985B]/30 rounded-md px-2 py-0.5 transition-colors whitespace-nowrap"
-            >
-              + Agendar
-            </button>
-          ) : (
-            <>
-              <span className={`self-start text-[11px] ${SEG_VARIANT_CLS[seg.variant]}`}>
-                {seg.label}
-              </span>
-              {t.proximaAccion && (
-                <span className="text-[10px] text-[#555] truncate mt-0.5" title={t.proximaAccion}>
-                  {t.proximaAccion}
-                </span>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* ── COL 7 · Etapa + sub-etapa ── 130px ────── */}
-        <div className="hidden md:flex flex-col justify-center gap-0.5 w-[130px] shrink-0 pr-3">
-          <div className="flex items-center gap-1.5">
-            <span className={`w-2 h-2 rounded-full shrink-0 ${etapaStyle.dot}`} />
-            <select
-              value={t.etapa}
-              onChange={e => { e.stopPropagation(); onCambiarEtapa(e.target.value); }}
-              onClick={e => e.stopPropagation()}
-              className={`flex-1 min-w-0 bg-transparent border-none text-[11px] focus:outline-none cursor-pointer transition-colors ${etapaStyle.text}`}
-              title="Cambiar etapa"
-            >
-              {ALL_ETAPAS.filter(e => e.key !== 'TODOS').map(e => (
-                <option key={e.key} value={e.key} className="bg-[#111] text-white">{e.label}</option>
-              ))}
-            </select>
-          </div>
-          {(SUBETAPAS_DE_ETAPA[t.etapa as EtapaTrato] ?? []).length > 0 && (
-            <select
-              value={t.etapaInterna ?? ''}
-              onChange={e => { e.stopPropagation(); if (e.target.value) onCambiarSubetapa(e.target.value); }}
-              onClick={e => e.stopPropagation()}
-              className="ml-3.5 bg-transparent border-none text-[10px] text-[#666] focus:outline-none cursor-pointer hover:text-[#B3985B] transition-colors"
-              title="Cambiar sub-etapa (mueve el proceso)"
-            >
-              {!t.etapaInterna && <option value="" className="bg-[#111] text-white">— sub-etapa —</option>}
-              {(SUBETAPAS_DE_ETAPA[t.etapa as EtapaTrato] ?? []).map(ei => (
-                <option key={ei} value={ei} className="bg-[#111] text-white">{ETAPA_INTERNA_LABELS[ei]}</option>
-              ))}
-            </select>
-          )}
-        </div>
-
-        {/* ── COL 8 · Acciones (hover) ── auto ───────────── */}
-        <div className="flex items-center justify-end gap-1.5 w-auto shrink-0 pr-3 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            onClick={e => { e.stopPropagation(); onQuickNote(); }}
-            className="text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap"
-            title="Seguimiento"
+        {/* ── COL 6 · Etapa (general) ─── 130px ────── */}
+        <div className="hidden md:flex items-center gap-1.5 w-[130px] shrink-0 pr-3">
+          <span className={`w-2 h-2 rounded-full shrink-0 ${etapaStyle.dot}`} />
+          <select
+            value={t.etapa}
+            onChange={e => { e.stopPropagation(); onCambiarEtapa(e.target.value); }}
+            onClick={e => e.stopPropagation()}
+            className={`flex-1 min-w-0 bg-transparent border-none text-[11px] focus:outline-none cursor-pointer transition-colors ${etapaStyle.text}`}
+            title="Cambiar etapa"
           >
-            + Nota
+            {ALL_ETAPAS.filter(e => e.key !== 'TODOS').map(e => (
+              <option key={e.key} value={e.key} className="bg-[#111] text-white">{e.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* ── COL 7 · Acciones (hover) ── 120px ───────────── */}
+        <div className="flex items-center justify-end gap-1.5 w-[120px] shrink-0 pr-3 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={e => { e.stopPropagation(); onRegistrarTarea(); }}
+            className="text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap"
+            title="Registrar tarea de este trato"
+          >
+            + Tarea
           </button>
           <button
             onClick={e => { e.stopPropagation(); onEliminar(); }}
@@ -1213,10 +1149,8 @@ export default function TratosPage() {
   const confirm = useConfirm();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
 
-  // Quick Contactado state
-  const [quickNoteId, setQuickNoteId] = useState<string | null>(null);
-  const [quickNoteText, setQuickNoteText] = useState('');
-  const [savingQuickNote, setSavingQuickNote] = useState(false);
+  // Registrar tarea de un trato (modal)
+  const [tareaTrato, setTareaTrato] = useState<{ id: string; nombre: string } | null>(null);
 
   // Lead view & completion popover
   const [activeSeguimientoPopover, setActiveSeguimientoPopover] = useState<string | null>(null);
@@ -1246,30 +1180,6 @@ export default function TratosPage() {
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
-  }
-
-  async function guardarNota(tratoId: string) {
-    setSavingQuickNote(true);
-    try {
-      await fetch(`/api/seguimientos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tratoId,
-          tipo: 'manual',
-          canal: 'whatsapp',
-          titulo: 'Contactado',
-          nota: quickNoteText.trim() || null,
-          completado: true,
-          fechaProgramada: new Date().toISOString(),
-        }),
-      });
-      toast.success('Contacto registrado ✓');
-      setQuickNoteId(null);
-      setQuickNoteText('');
-    } finally {
-      setSavingQuickNote(false);
-    }
   }
 
   useEffect(() => {
@@ -1342,29 +1252,6 @@ export default function TratosPage() {
       return;
     }
     await ejecutarCambioEtapa(tratoId, nuevaEtapa, {});
-  }
-
-  // Cambia la sub-etapa pasando por el motor de proceso (nunca escribe etapaInterna directo).
-  async function cambiarSubetapa(tratoId: string, etapaInterna: string) {
-    const nuevaEtapa = ETAPA_DE_INTERNA[etapaInterna as EtapaInterna] ?? undefined;
-    setTratos(prev => prev.map(t => t.id === tratoId ? { ...t, etapaInterna, ...(nuevaEtapa ? { etapa: nuevaEtapa } : {}) } : t));
-    try {
-      const res = await fetch(`/api/tratos/${tratoId}/proceso`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'cambiar-subetapa', etapaInterna }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error || 'Error al cambiar sub-etapa');
-      } else {
-        toast.success(`Movido a ${ETAPA_INTERNA_LABELS[etapaInterna as EtapaInterna] ?? etapaInterna}`);
-      }
-    } catch {
-      toast.error('Error al cambiar sub-etapa');
-    }
-    const refreshed = await fetch('/api/tratos').then(r => r.json());
-    setTratos(refreshed.tratos ?? []);
   }
 
   async function abrirCompletarSeguimiento(tratoId: string) {
@@ -1951,7 +1838,6 @@ export default function TratosPage() {
                   trato={t}
                   onEliminar={() => eliminar(t.id, t.cliente.nombre)}
                   onCambiarEtapa={nuevaEtapa => cambiarEtapa(t.id, nuevaEtapa)}
-                  onCambiarSubetapa={ei => cambiarSubetapa(t.id, ei)}
                   onCambiarServicio={async (servicio) => {
                     setTratos(prev => prev.map(x => x.id === t.id ? { ...x, tipoServicio: servicio } : x));
                     await fetch(`/api/tratos/${t.id}`, {
@@ -1961,7 +1847,7 @@ export default function TratosPage() {
                     });
                   }}
                   onCambiarResponsable={uid => cambiarResponsable(t.id, uid)}
-                  onQuickNote={() => { setQuickNoteId(t.id); setQuickNoteText(''); }}
+                  onRegistrarTarea={() => setTareaTrato({ id: t.id, nombre: t.cliente.nombre })}
                   deletingId={deletingId}
                   isExpanded={expandedRowId === t.id}
                   onToggle={() => setExpandedRowId(expandedRowId === t.id ? null : t.id)}
@@ -1981,9 +1867,8 @@ export default function TratosPage() {
                   <div className="hidden xl:block w-[85px] shrink-0 pr-3">Servicio</div>
                   <div className="hidden lg:block w-[90px] shrink-0 pr-3">Tipo</div>
                   <div className="hidden xl:block w-[110px] shrink-0 pr-3">Responsable</div>
-                  <div className="hidden xl:block w-[110px] shrink-0 pr-3">Seguimiento</div>
                   <div className="hidden md:block w-[130px] shrink-0 pr-3">Etapa</div>
-                  <div className="w-[72px] shrink-0" />
+                  <div className="w-[120px] shrink-0 pr-3" />
                 </div>
               );
 
@@ -2059,40 +1944,17 @@ export default function TratosPage() {
 
 
 
-      {/* ── Quick Contactado overlay + popover ── */}
-      {quickNoteId && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => { setQuickNoteId(null); setQuickNoteText(''); }}
+      {/* ── Modal: registrar tarea de un trato ── */}
+      {tareaTrato && (
+        <NuevaTareaModal
+          open
+          onClose={() => setTareaTrato(null)}
+          usuarios={usuarios}
+          tipoInicial="TRATO"
+          tratoIdInicial={tareaTrato.id}
+          tratoNombre={tareaTrato.nombre}
+          onCreated={() => { setTareaTrato(null); toast.success('Tarea registrada ✓'); }}
         />
-      )}
-      {quickNoteId && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#111] border border-[#2a2a2a] rounded-2xl shadow-2xl p-4 w-80">
-          <p className="text-xs text-gray-400 mb-2 font-medium">Registrar contacto</p>
-          <textarea
-            value={quickNoteText}
-            onChange={e => setQuickNoteText(e.target.value)}
-            placeholder="Nota rápida (opcional)..."
-            rows={2}
-            className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-none mb-3"
-            autoFocus
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={() => guardarNota(quickNoteId)}
-              disabled={savingQuickNote}
-              className="flex-1 py-2 bg-[#B3985B] text-black text-sm font-semibold rounded-xl hover:bg-[#c9a96a] disabled:opacity-40 transition-colors"
-            >
-              {savingQuickNote ? 'Guardando...' : '✓ Registrar contacto'}
-            </button>
-            <button
-              onClick={() => { setQuickNoteId(null); setQuickNoteText(''); }}
-              className="px-3 py-2 bg-[#1a1a1a] text-gray-400 text-sm rounded-xl hover:text-white transition-colors"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
       )}
 
       {/* ── Modal candado: Venta Perdida ── */}
