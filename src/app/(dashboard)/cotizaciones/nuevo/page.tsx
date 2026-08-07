@@ -1095,12 +1095,43 @@ function CotizadorForm() {
         }),
       });
       if (!res.ok) {
-        toast.error("No se pudo registrar el equipo. Intenta de nuevo.");
+        const err = await res.json().catch(() => null);
+        toast.error(err?.error ? `No se pudo registrar: ${err.error}` : "No se pudo registrar el equipo. Intenta de nuevo.");
         return;
       }
       const { equipo: newEq } = await res.json();
       setEquipos(prev => [...prev, newEq]);
-      toast.success(esExterno ? "Equipo de proveedor registrado ✓" : "Equipo registrado en inventario ✓");
+      const dias = parseInt(evento.diasEquipo) || 1;
+      if (esExterno) {
+        setLineasExterno(prev => [...prev, {
+          id: uid(),
+          equipoId: newEq.id,
+          descripcion: newEq.descripcion,
+          marca: newEq.marca ?? "",
+          cantidad: 1,
+          dias,
+          precioUnitario: newEq.precioRenta,
+          costoProveedor: newEq.costoProveedor ?? 0,
+          subtotal: newEq.precioRenta * 1 * dias,
+          costoTotal: (newEq.costoProveedor ?? 0) * 1 * dias,
+          proveedorId: newEq.proveedorDefaultId ?? null,
+        }]);
+      } else {
+        setLineasEquipo(prev => [...prev, {
+          id: uid(),
+          equipoId: newEq.id,
+          descripcion: newEq.descripcion,
+          marca: newEq.marca ?? "",
+          modelo: newEq.modelo ?? "",
+          cantidad: 1,
+          dias,
+          precioUnitario: newEq.precioRenta,
+          subtotal: newEq.precioRenta * 1 * dias,
+          categoria: newEq.categoria.nombre,
+          notas: "",
+        }]);
+      }
+      toast.success(esExterno ? "Equipo de proveedor registrado y agregado ✓" : "Equipo registrado y agregado ✓");
       setNuevoEqPropioForm({ tipo: "PROPIO", marca: "", modelo: "", descripcion: "", precioRenta: "", categoriaId: "", costoProveedor: "", proveedorId: "", cantidadTotal: "1" });
       setNuevoEqPropioDescEditado(false);
       setShowNuevoEqPropioModal(false);
@@ -2266,66 +2297,16 @@ function CotizadorForm() {
             </div>
             )}
 
-            {/* Paquetes agregados (conceptos) */}
-            {lineasPaquete.length > 0 && (
-              <div className="mb-4 border border-[#B3985B]/30 rounded-lg overflow-hidden">
-                <div className="flex items-center justify-between bg-[#B3985B]/[0.07] px-3 py-2">
-                  <span className="text-[10px] font-semibold text-[#B3985B] uppercase tracking-wider inline-flex items-center gap-1.5"><Package strokeWidth={1.75} className="w-3.5 h-3.5" /> Paquetes armados</span>
-                  <span className="text-xs text-gray-400">{formatCurrency(lineasPaquete.reduce((s, l) => s + l.subtotal, 0))}</span>
-                </div>
-                {lineasPaquete.map(l => (
-                  <div key={l.id} className="border-t border-[#111] px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm truncate">{l.nombre}</p>
-                        {l.componentes.length > 0 && (
-                          <p className="text-gray-500 text-[10px] truncate">
-                            {l.componentes.map(c => {
-                              const eq = equipos.find(e => e.id === c.equipoId);
-                              return `${c.cantidad * l.cantidad}× ${eq?.descripcion ?? "equipo"}`;
-                            }).join(" · ")}
-                          </p>
-                        )}
-                      </div>
-                      <div className="shrink-0 flex items-center gap-1.5">
-                        <NumSelect value={String(l.cantidad)} onChange={v => updatePaquete(l.id, "cantidad", parseInt(v) || 1)} max={50} className="w-16 py-1.5" />
-                        <span className="text-gray-600 text-xs">×</span>
-                        <NumSelect value={String(l.dias)} onChange={v => updatePaquete(l.id, "dias", parseInt(v) || 1)} max={10} className="w-16 py-1.5" />
-                        <span className="text-gray-600 text-xs">días</span>
-                      </div>
-                      <div className="shrink-0 flex items-center gap-1">
-                        <span className="text-gray-500 text-xs">$</span>
-                        <input
-                          type="number"
-                          value={l.precioUnitario}
-                          onChange={e => updatePaquete(l.id, "precioUnitario", parseFloat(e.target.value) || 0)}
-                          className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1.5 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]"
-                        />
-                      </div>
-                      <span className="shrink-0 text-[#B3985B] text-sm font-medium w-24 text-right">{formatCurrency(l.subtotal)}</span>
-                      <button
-                        type="button"
-                        onClick={() => removePaquete(l.id)}
-                        className="shrink-0 text-gray-500 hover:text-red-500 transition-colors"
-                        title="Quitar paquete"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {lineasEquipo.length === 0 ? (
-              lineasPaquete.length === 0 ? <p className="text-gray-600 text-sm text-center py-3">Sin equipos agregados</p> : null
+            {(lineasEquipo.length === 0 && lineasPaquete.length === 0) ? (
+              <p className="text-gray-600 text-sm text-center py-3">Sin equipos agregados</p>
             ) : (
-              /* Subsecciones por categoría */
+              /* Subsecciones por categoría (equipos sueltos + paquetes armados) */
               (() => {
-                const cats = Array.from(new Set(lineasEquipo.map(l => l.categoria || "Sin categoría")));
+                const cats = Array.from(new Set([...lineasEquipo, ...lineasPaquete].map(l => l.categoria || "Sin categoría")));
                 return cats.map(cat => {
+                  const paqs = lineasPaquete.filter(l => (l.categoria || "Sin categoría") === cat);
                   const lins = lineasEquipo.filter(l => (l.categoria || "Sin categoría") === cat);
-                  const subTotal = lins.reduce((s, l) => s + l.subtotal, 0);
+                  const subTotal = [...paqs, ...lins].reduce((s, l) => s + l.subtotal, 0);
                   return (
                     <div key={cat} className="mb-4 border border-[#222] rounded-lg overflow-hidden">
                       <div className="flex items-center justify-between bg-[#0d0d0d] px-3 py-2">
@@ -2360,6 +2341,45 @@ function CotizadorForm() {
                           </button>
                         )}
                       </div>
+
+                      {paqs.map(l => (
+                        <div key={l.id} className="border-t border-[#111] px-3 py-2 bg-[#B3985B]/[0.04]">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex-1 min-w-0 basis-full sm:basis-auto">
+                              <div className="flex items-center gap-1.5">
+                                <Package strokeWidth={1.75} className="w-3.5 h-3.5 text-[#B3985B] shrink-0" />
+                                <p className="text-white text-sm truncate">{l.nombre}</p>
+                                <span className="text-[10px] px-1.5 py-0.5 bg-[#B3985B]/20 text-[#B3985B] rounded font-medium shrink-0">paquete</span>
+                              </div>
+                              {l.componentes.length > 0 && (
+                                <p className="text-gray-500 text-[10px] truncate pl-5">
+                                  {l.componentes.map(c => {
+                                    const eq = equipos.find(e => e.id === c.equipoId);
+                                    return `${c.cantidad * l.cantidad}× ${eq?.descripcion ?? "equipo"}`;
+                                  }).join(" · ")}
+                                </p>
+                              )}
+                            </div>
+                            <NumSelect value={String(l.cantidad)} onChange={v => updatePaquete(l.id, "cantidad", parseInt(v) || 1)} max={50} className="w-14 py-1" title="Cantidad" />
+                            <NumSelect value={String(l.dias)} onChange={v => updatePaquete(l.id, "dias", parseInt(v) || 1)} max={10} className="w-14 py-1" title="Días" />
+                            <input
+                              type="number"
+                              value={l.precioUnitario}
+                              min="0"
+                              onChange={e => updatePaquete(l.id, "precioUnitario", parseFloat(e.target.value) || 0)}
+                              className="w-24 bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white text-sm text-right"
+                              title="Precio unitario"
+                            />
+                            <span className="w-24 text-right text-[#B3985B] text-sm font-medium shrink-0">{formatCurrency(l.subtotal)}</span>
+                            <button
+                              type="button"
+                              onClick={() => removePaquete(l.id)}
+                              className="text-gray-600 hover:text-red-400 text-lg leading-none shrink-0"
+                              title="Quitar paquete"
+                            >×</button>
+                          </div>
+                        </div>
+                      ))}
 
                       {lins.map(l => {
                         const precioBase = equipos.find(e => e.id === l.equipoId)?.precioRenta ?? 0;
