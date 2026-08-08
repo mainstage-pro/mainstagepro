@@ -28,6 +28,7 @@ type Cotizacion = {
 
 export default function CotizacionesPage() {
   const [cotizaciones, setCotizaciones] = useState<Cotizacion[]>([]);
+  const [busqueda, setBusqueda] = useState("");
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const toast = useToast();
@@ -54,15 +55,42 @@ export default function CotizacionesPage() {
     }
   }
 
+  const q = busqueda.trim().toLowerCase();
+  const cotizacionesFiltradas = q
+    ? cotizaciones.filter((cot) => {
+        const evento = cot.nombreEvento || (cot.tipoEvento ? TIPO_EVENTO_LABELS[cot.tipoEvento] : "");
+        return (
+          cot.numeroCotizacion.toLowerCase().includes(q) ||
+          cot.cliente.nombre.toLowerCase().includes(q) ||
+          (cot.cliente.empresa?.toLowerCase().includes(q) ?? false) ||
+          evento.toLowerCase().includes(q)
+        );
+      })
+    : cotizaciones;
+
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="ms-h1">Cotizaciones</h1>
           <p className="ms-subtitle">
-            {loading ? "Cargando..." : `${cotizaciones.length} cotizaciones`}
+            {loading
+              ? "Cargando..."
+              : q
+                ? `${cotizacionesFiltradas.length} de ${cotizaciones.length} cotizaciones`
+                : `${cotizaciones.length} cotizaciones`}
           </p>
         </div>
+      </div>
+
+      <div className="mb-4">
+        <input
+          type="text"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar por número, cliente o evento..."
+          className="w-full md:max-w-md bg-[#111] border border-[#1a1a1a] rounded-lg px-4 py-2 text-sm text-white placeholder-[#555] focus:outline-none focus:border-[#B3985B]/50 transition-colors"
+        />
       </div>
 
       <div className="ms-table-wrapper">
@@ -72,6 +100,11 @@ export default function CotizacionesPage() {
           <div className="text-center py-16">
             <p className="ms-subtitle">No hay cotizaciones</p>
             <p className="text-[#444] text-xs mt-1">Crea una cotización desde un trato</p>
+          </div>
+        ) : cotizacionesFiltradas.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="ms-subtitle">Sin resultados para “{busqueda}”</p>
+            <p className="text-[#444] text-xs mt-1">Prueba con otro número, cliente o evento</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -88,7 +121,7 @@ export default function CotizacionesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1a1a1a]">
-              {cotizaciones.map((cot) => (
+              {cotizacionesFiltradas.map((cot) => (
                 <tr
                   key={cot.id}
                   onClick={() => router.push(`/cotizaciones/${cot.id}`)}
