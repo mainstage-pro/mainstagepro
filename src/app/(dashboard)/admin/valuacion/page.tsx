@@ -693,7 +693,7 @@ export default function InventarioActivosPage() {
                       <th className="text-right px-4 py-2.5 font-medium w-36">Valor unitario</th>
                       <th className="text-right px-4 py-2.5 font-medium w-36">Precio de renta</th>
                       <th className="text-right px-4 py-2.5 font-medium w-32">Rentabilidad</th>
-                      <th className="text-center px-4 py-2.5 font-medium w-28">Propietario</th>
+                      <th className="text-center px-4 py-2.5 font-medium w-36">Propietario</th>
                       <th className="text-right px-4 py-2.5 font-medium w-36">Subtotal valor</th>
                     </tr>
                   </thead>
@@ -779,7 +779,7 @@ export default function InventarioActivosPage() {
                                 </td>
                                 {/* Propietario — estático, sin toggle */}
                                 <td className="px-4 py-2.5 text-center">
-                                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#B3985B]/20 text-[#B3985B]">
+                                  <span className="inline-block whitespace-nowrap px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#B3985B]/20 text-[#B3985B]">
                                     Mainstage Pro
                                   </span>
                                 </td>

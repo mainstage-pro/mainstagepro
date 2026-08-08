@@ -146,7 +146,7 @@ export const NAV: NavSection[] = [
       // ── Patrimonio (activos de la empresa + estructura societaria) ─────────
       {
         key: "activos",
-        label: "Patrimonio",
+        label: "Activos",
         href: "/activos",
         icon: Landmark,
         children: [
