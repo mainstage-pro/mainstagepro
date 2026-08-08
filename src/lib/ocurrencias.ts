@@ -62,9 +62,11 @@ export function parseRecurrencia(raw: string | null | undefined): RecurrenciaCon
  *   · Día con entrada en `evidenciasHistorial` → COMPLETADA con su verificación /
  *     no-realizada (lo que de verdad pasó ese día).
  *   · Día == `fecha` viva → la ocurrencia actual (vencida si su día ya pasó).
- *   · Día del patrón ANTERIOR a la fecha viva sin historial → COMPLETADA: la fila
- *     ya avanzó más allá, así que esa ocurrencia se cerró (registros previos al
- *     historial). Se omiten días anteriores a la creación de la tarea.
+ *   · Día del patrón PASADO y anterior a la fecha viva sin historial → COMPLETADA:
+ *     la fila ya avanzó más allá, así que esa ocurrencia se cerró (registros previos
+ *     al historial). Se omiten días anteriores a la creación de la tarea. Solo aplica
+ *     a días ya transcurridos: una ocurrencia futura anterior a la fecha viva NO se
+ *     asume cerrada (si no, la próxima semana saldría marcada sin haberse hecho).
  *   · Día del patrón POSTERIOR a la fecha viva → pendiente por venir.
  * Si la tarea no es recurrente devuelve [] (el llamador la trata como fecha única).
  */
@@ -121,7 +123,10 @@ export function proyectarOcurrencias(
     }
     if (!recurrenciaOcurreEnFecha(cfg, fechaLocalDeDia(dia))) continue
     if (creadoDia && dia < creadoDia) continue
-    if (liveDia && dia < liveDia) {
+    // Solo las ocurrencias YA transcurridas anteriores a la fecha viva se asumen
+    // cerradas. Un día de hoy o futuro anterior a la fecha viva NO se marca hecho:
+    // cae al bloque pendiente de abajo (evita que la próxima semana salga marcada).
+    if (liveDia && dia < liveDia && dia < hoyStr) {
       out.push({
         dia,
         completada: true,
