@@ -127,7 +127,7 @@ export async function GET(req: NextRequest) {
     const term = q.trim();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const searchWhere: Record<string, any> = {
-      estado:   { not: "CANCELADA" },
+      estado:   { notIn: ["CANCELADA", "COMPLETADA"] },
       parentId: null,
       ptTemplateId: null,
       OR: [
@@ -152,7 +152,7 @@ export async function GET(req: NextRequest) {
       where: searchWhere,
       select: SELECT,
       orderBy: [{ estado: "asc" }, { prioridad: "asc" }, { createdAt: "desc" }],
-      take: 50,
+      take: 200,
     });
     return NextResponse.json({ tareas });
   }
