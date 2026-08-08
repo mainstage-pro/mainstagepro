@@ -112,6 +112,18 @@ export async function GET(req: NextRequest) {
     ],
   };
 
+  // Las tareas derivadas de una fuente (trato / proyecto de evento / proyecto
+  // interno) solo entran a gestión operativa cuando ya tienen fecha Y responsable.
+  // Sin agendar generan ruido; se gestionan en su vista de origen (Tratos /
+  // Proyectos), no en las listas operativas (búsqueda, hoy, próximas, equipo, área).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const soloDerivadasAgendadas: Record<string, any> = {
+    OR: [
+      { tratoId: null, proyectoEventoId: null, proyectoInternoId: null },
+      { AND: [{ fecha: { not: null } }, { asignadoAId: { not: null } }] },
+    ],
+  };
+
   const { searchParams } = new URL(req.url);
   const vista             = searchParams.get("vista");
   const proyectoId        = searchParams.get("proyectoId");
@@ -147,7 +159,7 @@ export async function GET(req: NextRequest) {
       searchWhere.AND = [{ OR: searchWhere.OR }, { OR: accessOr }];
       delete searchWhere.OR;
     }
-    searchWhere.AND = [...(searchWhere.AND ?? []), proyectoInternoCond];
+    searchWhere.AND = [...(searchWhere.AND ?? []), proyectoInternoCond, soloDerivadasAgendadas];
     const tareas = await prisma.tarea.findMany({
       where: searchWhere,
       select: SELECT,
@@ -275,7 +287,7 @@ export async function GET(req: NextRequest) {
     where.createdAt = { lte: new Date(Date.now() - 15 * 86400000) };
   }
 
-  where.AND = [...(where.AND ?? []), proyectoInternoCond];
+  where.AND = [...(where.AND ?? []), proyectoInternoCond, soloDerivadasAgendadas];
 
   const tareas = await prisma.tarea.findMany({
     where,
