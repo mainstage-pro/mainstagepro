@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { getEquipoImage, resolverGaleria, resolverHero, type FotoPresentacion } from "@/lib/presentacion-imagenes";
+import { getEquipoImage, getEquipoImagenes, resolverGaleria, resolverHero, type FotoPresentacion, type GaleriaItem } from "@/lib/presentacion-imagenes";
 import { useEquipoGaleria } from "./_galeria";
 
 // Extrae solo la nota visible del campo codificado ("cat:X|nota:Y", "nota:Y", "cat:X", texto plano).
@@ -435,6 +435,20 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token, g
   const gallery  = resolverGaleria(tipoEvento, galeriaFotos);
   const heroImgs = resolverHero(tipoEvento, galeriaFotos, heroFotos);
 
+  // "Los equipos en acción": fotos reales cargadas en cada equipo de la cotización.
+  const equiposEnAccion = (() => {
+    const items: GaleriaItem[] = [];
+    const seen = new Set<string>();
+    for (const l of cotizacion.lineas) {
+      for (const f of getEquipoImagenes(l)) {
+        if (seen.has(f.src)) continue;
+        seen.add(f.src);
+        items.push(f);
+      }
+    }
+    return items;
+  })();
+
   useEffect(() => {
     const t = setInterval(() => setHeroIdx(i => (i + 1) % heroImgs.length), 5500);
     return () => clearInterval(t);
@@ -690,6 +704,19 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token, g
             </R>
           </div>
           <CinematicGallery photos={renderFotos.map((r) => ({ src: r.url, caption: paqueteNombre ?? "Concepto propuesto" }))} />
+        </section>
+      )}
+
+      {/* ── LOS EQUIPOS EN ACCIÓN (fotos reales cargadas en cada equipo) ── */}
+      {equiposEnAccion.length > 0 && (
+        <section className="bg-[#050505]">
+          <div className="px-6 sm:px-12 lg:px-20 pt-24 pb-10">
+            <R>
+              <GoldLabel>Tu equipo</GoldLabel>
+              <Heading>Los equipos<br /><span className="text-white/30">en acción.</span></Heading>
+            </R>
+          </div>
+          <CinematicGallery photos={equiposEnAccion} />
         </section>
       )}
 
