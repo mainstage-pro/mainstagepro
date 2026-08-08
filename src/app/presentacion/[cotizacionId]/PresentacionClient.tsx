@@ -174,6 +174,30 @@ function WhyIcon({ type }: { type: string }) {
   return <svg className={cls} width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
 }
 
+// ─── Iconos por rol técnico ─────────────────────────────────────────────────────
+type RolKey = "dj" | "audio" | "iluminacion" | "video" | "rigging" | "stage" | "staff";
+function rolKey(desc: string): RolKey {
+  const t = (desc ?? "").toLowerCase();
+  if (/\bdj\b|tornamesa|cdj/.test(t))                          return "dj";
+  if (/audio|sonido|sonid|monitor|in-?ear|micro|ingenier/.test(t)) return "audio";
+  if (/ilumin|luces|luz|lighting|luminotec|spot|beam/.test(t)) return "iluminacion";
+  if (/video|pantalla|proyecc|vj|led|visual/.test(t))          return "video";
+  if (/rigging|montaje|estructura|truss|colgado/.test(t))      return "rigging";
+  if (/stage|escenario|tramoya|entarimado|foro/.test(t))       return "stage";
+  return "staff";
+}
+function RolIcon({ desc, size = 20 }: { desc: string; size?: number }) {
+  const k = rolKey(desc);
+  const p = { className: "text-[#B3985B]", width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  if (k === "dj")          return <svg {...p}><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2.2"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>;
+  if (k === "audio")       return <svg {...p}><line x1="6" y1="4" x2="6" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/><line x1="18" y1="4" x2="18" y2="20"/><circle cx="6" cy="9" r="1.6"/><circle cx="12" cy="14" r="1.6"/><circle cx="18" cy="8" r="1.6"/></svg>;
+  if (k === "iluminacion") return <svg {...p}><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.7 1 1.5 1 2.5h6c0-1 .3-1.8 1-2.5A6 6 0 0 0 12 3z"/></svg>;
+  if (k === "video")       return <svg {...p}><rect x="2" y="4" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="18" x2="12" y2="21"/></svg>;
+  if (k === "rigging")     return <svg {...p}><path d="M12 3v6"/><path d="M5 9h14"/><path d="M5 9l-1.5 4M19 9l1.5 4"/><circle cx="3.5" cy="14" r="1.6"/><circle cx="20.5" cy="14" r="1.6"/><path d="M12 9v9"/><path d="M9.5 18h5"/></svg>;
+  if (k === "stage")       return <svg {...p}><rect x="3" y="10" width="18" height="4" rx="1"/><path d="M5 14v6M19 14v6M3 10l3-4h12l3 4"/></svg>;
+  return <svg {...p}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+}
+
 // ─── Cinematic Gallery ────────────────────────────────────────────────────────
 function CinematicGallery({ photos }: { photos: { src: string; caption: string }[] }) {
   const [idx, setIdx]           = useState(0);
@@ -227,7 +251,8 @@ function CinematicGallery({ photos }: { photos: { src: string; caption: string }
 // ─── Equipment card ───────────────────────────────────────────────────────────
 function EquipoCard({ linea, delay = 0 }: { linea: Linea; delay?: number }) {
   const { fotos, tieneGaleria, abrir, lightbox } = useEquipoGaleria(linea);
-  const img = getEquipoImage(linea);
+  const esRol = linea.tipo === "DJ" || linea.tipo === "OPERACION_TECNICA";
+  const img = esRol ? null : getEquipoImage(linea);
   return (
     <R delay={delay} y={24}>
       <div
@@ -239,6 +264,10 @@ function EquipoCard({ linea, delay = 0 }: { linea: Linea; delay?: number }) {
             // eslint-disable-next-line @next/next/no-img-element
             <img src={img} alt={linea.modelo ?? linea.descripcion} draggable={false}
                  className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500" />
+          ) : esRol ? (
+            <div className="w-14 h-14 rounded-full bg-[#B3985B]/10 border border-[#B3985B]/25 flex items-center justify-center group-hover:scale-105 transition-transform duration-500">
+              <RolIcon desc={linea.descripcion} size={30} />
+            </div>
           ) : (
             <div className="w-10 h-10 rounded-full bg-[#B3985B]/10 border border-[#B3985B]/20 flex items-center justify-center">
               <span className="text-[#B3985B]/60 text-sm font-bold">{(linea.marca ?? linea.descripcion).charAt(0).toUpperCase()}</span>
@@ -602,7 +631,9 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token, g
               {staff.map((l, i) => (
                 <R key={l.id} delay={i * 45}>
                   <div className="flex items-center gap-3 px-4 py-3.5 rounded-xl border border-white/6 bg-white/[0.02] hover:border-white/10 transition-colors">
-                    <span className="text-[#B3985B] text-xs shrink-0">◆</span>
+                    <span className="w-9 h-9 rounded-full bg-[#B3985B]/10 border border-[#B3985B]/25 flex items-center justify-center shrink-0">
+                      <RolIcon desc={l.descripcion} size={18} />
+                    </span>
                     <p className="text-white/75 text-sm font-medium flex-1">{l.descripcion}</p>
                     {l.cantidad > 1 && <span className="text-white/25 text-xs shrink-0">×{l.cantidad}</span>}
                   </div>
