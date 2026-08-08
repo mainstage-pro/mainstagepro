@@ -401,7 +401,8 @@ export default function OperacionesPage() {
         const res = await fetch(`/api/tareas?q=${encodeURIComponent(q)}`);
         if (res.ok) {
           const data = await res.json();
-          setSearchResults(data.tareas ?? []);
+          const items = (data.tareas ?? []) as TareaItem[];
+          setSearchResults(items.filter(t => t.estado !== "COMPLETADA"));
         }
       } catch { /* ignore */ } finally { setSearchLoading(false); }
     }, 350);
