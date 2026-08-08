@@ -6,6 +6,7 @@ import TaskItem, { type TareaItem } from "./components/TaskItem";
 import TaskModal, { type TareaDetalle } from "./components/TaskModal";
 import NuevaTareaModal from "./components/NuevaTareaModal";
 import { getPendingTareas } from "@/lib/offline-queue";
+import { puedeEditarConfigTarea } from "@/lib/permisos-tarea";
 import UndoToast, { type UndoState } from "./components/UndoToast";
 import ProyectoAccesoPanel from "./components/ProyectoAccesoPanel";
 import { VistaCapturaRapida } from "./components/VistaCapturaRapida";
@@ -158,6 +159,7 @@ export default function OperacionesPage() {
   const [sessionId, setSessionId]               = useState<string>("");
   const [sessionRole, setSessionRole]           = useState<string>("");
   const [sessionArea, setSessionArea]           = useState<string>("");
+  const [puedeConfigurar, setPuedeConfigurar]   = useState(false);
   // Sub-módulo activo dentro del hub de un proyecto (TAREA|PLAN|EVENTO|PROYECTO)
 
   const [capturaCounts, setCapturaCounts] = useState({ captura: 0, ideas: 0, iniciativas: 0 });
@@ -379,6 +381,7 @@ export default function OperacionesPage() {
       if (me?.id) setSessionId(me.id);
       if (me?.role) setSessionRole(me.role);
       if (me?.area) setSessionArea(me.area);
+      setPuedeConfigurar(puedeEditarConfigTarea(me));
     });
   }, []);
 
@@ -2557,7 +2560,7 @@ export default function OperacionesPage() {
       {selectedId && (
         <TaskModal
           tarea={selectedTask} loading={loadingPanel}
-          usuarios={usuarios} proyectos={proyectosNav} iniciativas={iniciativas} sessionId={sessionId} isAdmin={sessionRole === "ADMIN"}
+          usuarios={usuarios} proyectos={proyectosNav} iniciativas={iniciativas} sessionId={sessionId} puedeConfigurar={puedeConfigurar}
           onClose={() => setSelectedId(null)} onSave={saveTarea}
           onComplete={completeTarea} onDelete={setConfirmDeleteId}
           onAddSubtarea={addSubtarea} onCompleteSubtarea={completeTarea} onDeleteSubtarea={setConfirmDeleteId}

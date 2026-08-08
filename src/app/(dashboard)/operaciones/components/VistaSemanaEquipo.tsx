@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import TaskModal, { type TareaDetalle } from "./TaskModal";
+import { puedeEditarConfigTarea } from "@/lib/permisos-tarea";
 import NuevaTareaModal from "./NuevaTareaModal";
 
 interface Recurso { id: string; name?: string; nombre?: string; color?: string | null }
@@ -96,6 +97,7 @@ export function VistaSemanaEquipo() {
   const [proyectos, setProyectos] = useState<Recurso[]>([]);
   const [iniciativas, setIniciativas] = useState<Recurso[]>([]);
   const [sessionId, setSessionId] = useState("");
+  const [puedeConfigurar, setPuedeConfigurar] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -105,6 +107,7 @@ export function VistaSemanaEquipo() {
       fetch("/api/iniciativas").then(r => r.json()).catch(() => null),
     ]).then(([me, u, p, i]) => {
       if (me?.id) setSessionId(me.id);
+      setPuedeConfigurar(puedeEditarConfigTarea(me));
       setUsuarios(u?.usuarios ?? []);
       setProyectos(p?.proyectos ?? []);
       setIniciativas(Array.isArray(i) ? i : (i?.iniciativas ?? []));
@@ -426,7 +429,7 @@ export function VistaSemanaEquipo() {
           proyectos={proyectos as { id: string; nombre: string; color: string | null }[]}
           iniciativas={iniciativas as { id: string; nombre: string; color: string | null }[]}
           sessionId={sessionId}
-          isAdmin={data?.isAdmin === true}
+          puedeConfigurar={puedeConfigurar}
           onClose={cerrarPanel}
           onSave={guardarTarea}
           onComplete={completarTarea}

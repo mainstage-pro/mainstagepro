@@ -109,9 +109,9 @@ interface Props {
   proyectos: Proyecto[];
   iniciativas: Iniciativa[];
   sessionId: string;
-  // Solo los admins editan la configuración de la tarea (recurrencia, evidencia,
-  // acceso directo). Los usuarios estándar solo mueven la fecha.
-  isAdmin: boolean;
+  // Solo el dueño y Emiliano editan la configuración de la tarea (recurrencia,
+  // evidencia, acceso directo). El resto del equipo solo mueve la fecha.
+  puedeConfigurar: boolean;
   onClose: () => void;
   onSave: (id: string, patch: Record<string, unknown>) => void;
   onComplete: (id: string) => void;
@@ -150,7 +150,7 @@ function FlagIcon({ color, filled }: { color: string; filled: boolean }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function TaskModal({
-  tarea, loading, usuarios, proyectos, iniciativas, sessionId, isAdmin,
+  tarea, loading, usuarios, proyectos, iniciativas, sessionId, puedeConfigurar,
   onClose, onSave, onComplete, onNoRealizada, onDelete, onAddSubtarea, onCompleteSubtarea, onDeleteSubtarea,
 }: Props) {
   const toast = useToast();
@@ -1304,7 +1304,7 @@ export default function TaskModal({
               {/* Evidencia — configuración (solo admin la edita; los demás la ven) */}
               <div>
                 <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-2">Evidencia</p>
-                {isAdmin ? (
+                {puedeConfigurar ? (
                   <>
                     <label className="flex items-center gap-2 cursor-pointer mb-2">
                       <button
@@ -1340,7 +1340,7 @@ export default function TaskModal({
               </div>
 
               {/* Acceso directo — módulo del sidebar (+ sección) o enlace externo (solo admin) */}
-              {isAdmin && (
+              {puedeConfigurar && (
                 <AccesoDirectoField
                   destino={moduloDestino}
                   texto={moduloTexto}
@@ -1353,7 +1353,7 @@ export default function TaskModal({
               <div>
                 <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-2">Fecha</p>
 
-                {isAdmin && (
+                {puedeConfigurar && (
                 <div className="flex rounded-lg overflow-hidden border border-[#1a1a1a] mb-3">
                   <button
                     onClick={() => { if (tarea.recurrencia) onSave(tarea.id, { recurrencia: null }); setEditingRec(false); }}
@@ -1432,7 +1432,7 @@ export default function TaskModal({
                       </div>
                     </div>
 
-                    {isAdmin && (
+                    {puedeConfigurar && (
                       <RecurrenciaPicker
                         value={tarea.recurrencia}
                         onChange={json => {

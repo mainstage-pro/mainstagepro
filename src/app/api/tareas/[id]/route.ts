@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { puedeEditarConfigTarea } from "@/lib/permisos-tarea";
 import { ensureTareaColumns } from "@/lib/ensure-tarea-columns";
 import { calcularProximaFecha, primeraOcurrencia, type RecurrenciaConfig } from "@/lib/recurrencia";
 import { avanzarPorHito } from "@/lib/proceso/tareas-subetapa";
@@ -143,19 +144,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
-  // ── Bloqueo de configuración para no-admins ──────────────────────────────────
-  // Los usuarios estándar mueven fechas y completan tareas, pero NO cambian la
-  // configuración de la tarea (recurrencia, evidencia requerida, acceso directo,
-  // ficha del estándar). Esa definición la administra un admin. La fecha sí es
-  // editable a propósito. Se filtra en el servidor porque es la fuente de verdad.
-  const esAdmin = session.role === "ADMIN";
-  const CONFIG_SOLO_ADMIN = [
+  // ── Bloqueo de configuración de la tarea ─────────────────────────────────────
+  // Solo el dueño y Emiliano definen la configuración (recurrencia, evidencia
+  // requerida, acceso directo, ficha del estándar). El resto del equipo mueve
+  // fechas y completa tareas, pero no toca esa definición. Se filtra en el
+  // servidor porque es la fuente de verdad.
+  const puedeConfig = puedeEditarConfigTarea(session);
+  const CONFIG_PROTEGIDA = [
     "recurrencia", "requiereEvidencia", "tipoEvidencia",
     "moduloDestino", "moduloTexto", "moduloDisponible",
     "porqueSeHace", "estandarMinimo", "siNoSeHace", "cuando",
   ];
-  if (!esAdmin) {
-    for (const key of CONFIG_SOLO_ADMIN) delete data[key];
+  if (!puedeConfig) {
+    for (const key of CONFIG_PROTEGIDA) delete data[key];
   }
 
   // ── Reclasificar el sistema operativo de la tarea (tipoOrigen) ────────────────
@@ -163,7 +164,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // tarea de plan de trabajo). Operaciones agrupa por el vínculo real (FK), así que
   // al pasar a TAREA/PLAN desligamos la entidad de origen para que la clasificación
   // sea coherente y la tarea aterrice en Bandeja / Plan.
-  if (esAdmin && "tipoOrigen" in body) {
+  if (puedeConfig && "tipoOrigen" in body) {
     const TIPOS_VALIDOS = ["TAREA", "PLAN", "PROYECTO", "EVENTO", "TRATO"];
     const nuevoTipo = typeof body.tipoOrigen === "string" ? body.tipoOrigen : null;
     if (!nuevoTipo || !TIPOS_VALIDOS.includes(nuevoTipo)) {

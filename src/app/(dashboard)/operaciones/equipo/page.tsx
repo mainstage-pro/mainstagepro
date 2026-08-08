@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import TaskModal, { type TareaDetalle } from "../components/TaskModal";
+import { puedeEditarConfigTarea } from "@/lib/permisos-tarea";
 import { Calendar, MessageSquare, Zap, AlertTriangle, PartyPopper } from "lucide-react";
 
 interface TareaEquipo {
@@ -189,7 +190,7 @@ export default function EquipoPage() {
   const [proyectos, setProyectos]           = useState<{id:string;nombre:string;color:string|null}[]>([]);
   const [iniciativas, setIniciativas]       = useState<{id:string;nombre:string;color:string|null}[]>([]);
   const [sessionId, setSessionId]           = useState("");
-  const [sessionRole, setSessionRole]       = useState("");
+  const [puedeConfigurar, setPuedeConfigurar] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -202,7 +203,7 @@ export default function EquipoPage() {
       setProyectos(proy.proyectos ?? []);
       setIniciativas(init.iniciativas ?? []);
       if (me?.id) setSessionId(me.id);
-      if (me?.role) setSessionRole(me.role);
+      setPuedeConfigurar(puedeEditarConfigTarea(me));
     });
   }, []);
 
@@ -558,7 +559,7 @@ export default function EquipoPage() {
       {selectedTaskId && (
         <TaskModal
           tarea={selectedTask} loading={loadingTask}
-          usuarios={usuarios} proyectos={proyectos} iniciativas={iniciativas} sessionId={sessionId} isAdmin={sessionRole === "ADMIN"}
+          usuarios={usuarios} proyectos={proyectos} iniciativas={iniciativas} sessionId={sessionId} puedeConfigurar={puedeConfigurar}
           onClose={() => setSelectedTaskId(null)}
           onSave={handleSaveTask}
           onComplete={handleCompleteTask}
