@@ -246,6 +246,32 @@ function fmtFecha(iso: string) {
   return new Date(iso).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" });
 }
 
+// ¿El evento del trato está por venir? (sin fecha se considera próximo)
+function esEventoProximo(t: Pick<Trato, "fechaEventoEstimada">): boolean {
+  if (!t.fechaEventoEstimada) return true;
+  const hoy = new Date().toISOString().slice(0, 10);
+  return t.fechaEventoEstimada.slice(0, 10) >= hoy;
+}
+
+// Valor del trato: si sus cotizaciones son de un proyecto → total (suma);
+// si son opciones sueltas → la cotización más alta; si no hay → presupuesto estimado.
+function valorTrato(t: Pick<Trato, "cotizaciones" | "presupuestoEstimado">): number {
+  const cots = t.cotizaciones ?? [];
+  if (cots.length === 0) return t.presupuestoEstimado ?? 0;
+  const conProyecto = cots.filter(c => c.proyecto);
+  if (conProyecto.length > 0) {
+    return conProyecto.reduce((s, c) => s + (c.granTotal ?? 0), 0);
+  }
+  return Math.max(...cots.map(c => c.granTotal ?? 0));
+}
+
+function fmtValor(n: number): string {
+  if (!n) return "";
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${Math.round(n / 1_000)}k`;
+  return `$${n.toLocaleString("es-MX", { maximumFractionDigits: 0 })}`;
+}
+
 function waUrl(trato: Trato): string | null {
   const tel = trato.cliente?.telefono?.replace(/\D/g, "");
   if (!tel) return null;
@@ -630,10 +656,8 @@ function SubProcesoChips({ t }: { t: Trato }) {
     chips.push({ label: '📥 Formulario contestado', cls: 'text-[#B3985B] bg-[#B3985B]/10' });
   }
 
-  // Estado del descubrimiento
-  if (t.descubrimientoCompleto) {
-    chips.push({ label: '🔍 Descubrimiento ✓', cls: 'text-emerald-400/80 bg-emerald-900/15' });
-  } else if (['OPORTUNIDAD', 'VENTA_CERRADA'].includes(t.etapa)) {
+  // Descubrimiento pendiente en etapas avanzadas (aviso). El "✓" se omite para no engrosar la fila.
+  if (!t.descubrimientoCompleto && ['OPORTUNIDAD', 'VENTA_CERRADA'].includes(t.etapa)) {
     chips.push({ label: '🔍 Descubrimiento pendiente', cls: 'text-red-400/80 bg-red-900/15' });
   }
 
@@ -718,6 +742,10 @@ function CompactTratoRow({
   const proyectoVinculado = t.cotizaciones.find(c => c.proyecto)?.proyecto ?? null;
   const nombreProyecto = proyectoVinculado?.nombre ?? t.nombreEvento ?? null;
 
+  // Valor del trato (cotización más alta u total del proyecto)
+  const valor = valorTrato(t);
+  const valorFmt = fmtValor(valor);
+
 
   const ETAPA_STYLE: Record<string, { dot: string; text: string; bg: string }> = {
     CONTACTO_INICIAL: { dot: 'bg-amber-400',   text: 'text-amber-400',   bg: 'bg-amber-900/20' },
@@ -745,9 +773,9 @@ function CompactTratoRow({
           </svg>
         </button>
 
-        {/* ── COL 1 · Cliente + Empresa  ─── flex-[3] ──── */}
+        {/* ── COL 1 · Cliente + Empresa  ─── ancho fijo en md+ ──── */}
         <div
-          className="flex-[3] min-w-[110px] py-3 pr-4 cursor-pointer"
+          className="flex-1 md:flex-none md:w-[240px] lg:w-[250px] min-w-0 py-3 pr-4 cursor-pointer"
           onClick={() => router.push(`/crm/tratos/${t.id}`)}
         >
           <div className="flex items-center gap-1.5 min-w-0">
@@ -771,6 +799,15 @@ function CompactTratoRow({
           {t.cliente.empresa && (
             <p className="text-[11px] text-[#444] mt-0.5 truncate pl-3">{t.cliente.empresa}</p>
           )}
+          {/* Meta compacta solo en móvil (fecha + valor, ya que esas columnas se ocultan) */}
+          <div className="md:hidden flex items-center flex-wrap gap-x-2 gap-y-0.5 mt-0.5 pl-3 text-[11px]">
+            {fechaCompletaEvento && (
+              <span className="text-[#666] capitalize">{fechaCompletaEvento}</span>
+            )}
+            {valorFmt && (
+              <span className="text-[#B3985B] font-semibold tabular-nums">{valorFmt}</span>
+            )}
+          </div>
           <SubProcesoChips t={t} />
         </div>
 
@@ -786,10 +823,10 @@ function CompactTratoRow({
           )}
         </div>
 
-        {/* ── COL 3 · Fecha del evento ─── 130px ───── */}
-        <div className="hidden lg:block w-[130px] shrink-0 pr-4">
+        {/* ── COL 3 · Fecha del evento ─── 150px ───── */}
+        <div className="hidden lg:block w-[150px] shrink-0 pr-4">
           {fechaCompletaEvento ? (
-            <span className="text-[12px] text-[#777] font-medium capitalize leading-tight block truncate">
+            <span className="text-[12px] text-[#777] font-medium capitalize leading-tight block whitespace-nowrap">
               {fechaCompletaEvento}
             </span>
           ) : (
@@ -797,8 +834,17 @@ function CompactTratoRow({
           )}
         </div>
 
-        {/* ── COL 3b · Tipo de servicio ─── 85px ────── */}
-        <div className="hidden xl:block w-[85px] shrink-0 pr-3" onClick={e => e.stopPropagation()}>
+        {/* ── COL 3c · Valor del trato ─── 90px ───── */}
+        <div className="hidden md:block w-[90px] shrink-0 pr-3 text-right">
+          {valorFmt ? (
+            <span className="text-[12px] text-[#B3985B] font-semibold tabular-nums">{valorFmt}</span>
+          ) : (
+            <span className="text-[11px] text-[#2a2a2a]">&mdash;</span>
+          )}
+        </div>
+
+        {/* ── COL 3b · Tipo de servicio ─── 100px ────── */}
+        <div className="hidden xl:block w-[100px] shrink-0 pr-3" onClick={e => e.stopPropagation()}>
           <select
             value={t.tipoServicio ?? ''}
             onChange={e => onCambiarServicio(e.target.value || null)}
@@ -886,6 +932,9 @@ function CompactTratoRow({
             ))}
           </select>
         </div>
+
+        {/* ── Espaciador: absorbe el ancho sobrante para no separar columnas ── */}
+        <div className="hidden md:block flex-1" />
 
         {/* ── COL 7 · Acciones (hover) ── 120px ───────────── */}
         <div className="flex items-center justify-end gap-1.5 w-[120px] shrink-0 pr-3 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1524,6 +1573,7 @@ export default function TratosPage() {
           {(() => {
             const activos = tratos.filter(t => !['VENTA_CERRADA', 'VENTA_PERDIDA'].includes(t.etapa));
             const cerradas = tratos.filter(t => t.etapa === 'VENTA_CERRADA');
+            const cerradasProximas = cerradas.filter(esEventoProximo);
             const perdidas = tratos.filter(t => t.etapa === 'VENTA_PERDIDA');
             const sinSeguimiento = activos.filter(t => !t.fechaProximaAccion);
             const hoyStr = new Date().toISOString().split('T')[0];
@@ -1545,8 +1595,8 @@ export default function TratosPage() {
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[9px] uppercase tracking-wider text-[#444] font-semibold">Cerradas</span>
-                  <span className="text-xl font-bold text-emerald-400 tabular-nums">{cerradas.length}</span>
-                  <span className="text-[10px] text-[#555]">{valorCerrado > 0 ? fmtM(valorCerrado) : '—'}</span>
+                  <span className="text-xl font-bold text-emerald-400 tabular-nums">{cerradasProximas.length}</span>
+                  <span className="text-[10px] text-[#555]">{valorCerrado > 0 ? fmtM(valorCerrado) : '—'} · próximas</span>
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[9px] uppercase tracking-wider text-[#444] font-semibold">Perdidas</span>
@@ -1614,7 +1664,7 @@ export default function TratosPage() {
               {
                 filter: 'OPORTUNIDAD',
                 label: 'Oportunidad',
-                count: all.filter(t => t.etapa === 'OPORTUNIDAD').length,
+                count: all.filter(t => t.etapa === 'OPORTUNIDAD' && esEventoProximo(t)).length,
                 valor: all.filter(t => t.etapa === 'OPORTUNIDAD').reduce((s, t) => s + getTratoValor(t), 0),
                 color: '#8B5CF6',
                 activeGrad: 'from-violet-900/50 to-violet-950/30',
@@ -1625,7 +1675,7 @@ export default function TratosPage() {
               {
                 filter: 'VENTA_CERRADA',
                 label: 'Cerradas',
-                count: all.filter(t => t.etapa === 'VENTA_CERRADA').length,
+                count: all.filter(t => t.etapa === 'VENTA_CERRADA' && esEventoProximo(t)).length,
                 valor: all.filter(t => t.etapa === 'VENTA_CERRADA').reduce((s, t) => s + getTratoValor(t), 0),
                 activeCount: all.filter(t => !['VENTA_CERRADA', 'VENTA_PERDIDA'].includes(t.etapa)).length,
                 color: '#10B981',
@@ -1861,13 +1911,15 @@ export default function TratosPage() {
               const colHeader = (
                 <div className="hidden md:flex items-center border-b border-[#0f0f0f] bg-[#0a0a0a] px-0 py-2 mb-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-[#333]">
                   <div className="w-10 shrink-0" />
-                  <div className="flex-[3] min-w-[110px] pr-4">Cliente</div>
+                  <div className="flex-none w-[240px] lg:w-[250px] pr-4">Cliente</div>
                   <div className="hidden 2xl:block flex-[2] min-w-0 pr-4">Proyecto / Evento</div>
-                  <div className="hidden lg:block w-[130px] shrink-0 pr-4">Fecha evento</div>
-                  <div className="hidden xl:block w-[85px] shrink-0 pr-3">Servicio</div>
+                  <div className="hidden lg:block w-[150px] shrink-0 pr-4">Fecha evento</div>
+                  <div className="hidden md:block w-[90px] shrink-0 pr-3 text-right">Valor</div>
+                  <div className="hidden xl:block w-[100px] shrink-0 pr-3">Servicio</div>
                   <div className="hidden lg:block w-[90px] shrink-0 pr-3">Tipo</div>
                   <div className="hidden xl:block w-[110px] shrink-0 pr-3">Responsable</div>
                   <div className="hidden md:block w-[130px] shrink-0 pr-3">Etapa</div>
+                  <div className="hidden md:block flex-1" />
                   <div className="w-[120px] shrink-0 pr-3" />
                 </div>
               );
