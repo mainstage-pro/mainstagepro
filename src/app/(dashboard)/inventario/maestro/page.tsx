@@ -107,11 +107,11 @@ type UnidadObservacion = {
 const VOLTAJES_UNIDAD_MAESTRO = [
   { value: "110", label: "110V" },
   { value: "220", label: "220V" },
-  { value: "AMBOS", label: "Ambos" },
+  { value: "AMBOS", label: "110V - 220V" },
 ];
 function voltajeUnidadLabelMaestro(v: string | null) {
   if (!v) return null;
-  return v === "AMBOS" ? "110V + 220V" : `${v}V`;
+  return v === "AMBOS" ? "110V - 220V" : `${v}V`;
 }
 
 function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
@@ -338,7 +338,7 @@ function FormPanel({ panel, equipos, form, setForm, imagen, saving, categorias, 
             </FieldGroup>
             <FieldGroup label="Voltaje">
               <div className="flex gap-1">
-                {([["", "—"], ["110", "110V"], ["220", "220V"], ["AMBOS", "Ambos"]] as [string, string][]).map(([val, label]) => (
+                {([["", "—"], ["110", "110V"], ["220", "220V"], ["AMBOS", "110V - 220V"]] as [string, string][]).map(([val, label]) => (
                   <button
                     key={val}
                     type="button"
@@ -481,7 +481,7 @@ function UnidadEditModal({ equipoId, unidad, onClose, onUpdated }: {
         </div>
         <FieldGroup label="Voltaje">
           <div className="flex gap-1">
-            {([["", "—"], ["110", "110V"], ["220", "220V"], ["AMBOS", "Ambos"]] as [string, string][]).map(([val, label]) => (
+            {([["", "—"], ["110", "110V"], ["220", "220V"], ["AMBOS", "110V - 220V"]] as [string, string][]).map(([val, label]) => (
               <button key={val} type="button"
                 onClick={() => setForm(p => ({ ...p, voltaje: val }))}
                 className={`flex-1 py-1.5 rounded-lg text-[11px] font-medium border transition-all ${
