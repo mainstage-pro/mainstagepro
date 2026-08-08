@@ -111,11 +111,12 @@ export async function POST(request: NextRequest) {
 
     if (bodyClienteId) {
       clienteId = bodyClienteId;
-      // Actualizar atribución en el cliente si viene de un lead rápido
+      // Actualizar solo la atribución de origen; no se degrada la clasificación:
+      // un cliente al que le prospectamos sigue siendo cliente.
       if (origenLead) {
         await prisma.cliente.update({
           where: { id: clienteId },
-          data:  { esProspecto: true, origenLead: origenLead },
+          data:  { origenLead },
         });
       }
     } else if (clienteNuevo?.nombre || nombre) {
@@ -137,14 +138,8 @@ export async function POST(request: NextRequest) {
       }
 
       if (clienteExistente) {
-        // Reutilizar cliente existente
+        // Reutilizar cliente existente — no se degrada su clasificación.
         clienteId = clienteExistente.id;
-        if (origenLead) {
-          await prisma.cliente.update({
-            where: { id: clienteId },
-            data: { esProspecto: true },
-          });
-        }
       } else {
         // Crear nuevo cliente
         const nuevoCliente = await prisma.cliente.create({

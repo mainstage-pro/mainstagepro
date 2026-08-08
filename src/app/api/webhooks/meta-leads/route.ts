@@ -93,10 +93,11 @@ export async function POST(req: NextRequest) {
         if (existente) {
           // Cliente ya existe — actualizar origenLead si no tenía
           clienteId = existente.id;
+          // Solo se completa la atribución de origen; no se degrada la
+          // clasificación: si ya es cliente, sigue siendo cliente.
           await prisma.cliente.update({
             where: { id: clienteId },
             data: {
-              esProspecto: true,
               ...(existente.origenLead ? {} : { origenLead: "META_ADS" }),
               ...(campana && !existente.campana ? { campana } : {}),
             },
