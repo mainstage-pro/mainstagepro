@@ -267,8 +267,6 @@ function valorTrato(t: Pick<Trato, "cotizaciones" | "presupuestoEstimado">): num
 
 function fmtValor(n: number): string {
   if (!n) return "";
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `$${Math.round(n / 1_000)}k`;
   return `$${n.toLocaleString("es-MX", { maximumFractionDigits: 0 })}`;
 }
 
@@ -834,8 +832,8 @@ function CompactTratoRow({
           )}
         </div>
 
-        {/* ── COL 3c · Valor del trato ─── 90px ───── */}
-        <div className="hidden md:block w-[90px] shrink-0 pr-3 text-right">
+        {/* ── COL 3c · Valor del trato ─── 110px ───── */}
+        <div className="hidden md:block w-[110px] shrink-0 pr-3 text-right">
           {valorFmt ? (
             <span className="text-[12px] text-[#B3985B] font-semibold tabular-nums">{valorFmt}</span>
           ) : (
@@ -1914,7 +1912,7 @@ export default function TratosPage() {
                   <div className="flex-none w-[240px] lg:w-[250px] pr-4">Cliente</div>
                   <div className="hidden 2xl:block flex-[2] min-w-0 pr-4">Proyecto / Evento</div>
                   <div className="hidden lg:block w-[150px] shrink-0 pr-4">Fecha evento</div>
-                  <div className="hidden md:block w-[90px] shrink-0 pr-3 text-right">Valor</div>
+                  <div className="hidden md:block w-[110px] shrink-0 pr-3 text-right">Valor</div>
                   <div className="hidden xl:block w-[100px] shrink-0 pr-3">Servicio</div>
                   <div className="hidden lg:block w-[90px] shrink-0 pr-3">Tipo</div>
                   <div className="hidden xl:block w-[110px] shrink-0 pr-3">Responsable</div>
