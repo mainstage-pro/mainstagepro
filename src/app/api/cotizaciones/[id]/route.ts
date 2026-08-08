@@ -7,7 +7,7 @@ import { generarTokenPresentacion } from "@/lib/presentacion-token";
 import { syncFechaProximaAccion } from "@/app/api/seguimientos/route";
 import { defaultEtapaInterna } from "@/lib/etapasInternas";
 import { sincronizarProyectoDesdeCotizacion } from "@/lib/sync-cotizacion-proyecto";
-import { ensureCotizacionEventoConfirmadoColumn } from "@/lib/migraciones-lazy";
+import { ensureCotizacionEventoConfirmadoColumn, ensureCotizacionPaqueteColumn } from "@/lib/migraciones-lazy";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -62,11 +62,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const body = await request.json();
 
   await ensureCotizacionEventoConfirmadoColumn();
+  await ensureCotizacionPaqueteColumn();
 
   // Si viene "lineas" en el body, es una re-edición completa desde BORRADOR
   if (body.lineas !== undefined) {
     const {
       lineas,
+      paqueteId,
       notasSecciones,
       nombreEvento, tipoEvento, tipoServicio, fechaEvento, lugarEvento,
       horasOperacion, diasEquipo, diasOperacion,
@@ -151,6 +153,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         return tx.cotizacion.update({
           where: { id },
           data: {
+            paqueteId: paqueteId !== undefined ? (paqueteId || null) : undefined,
             notasSecciones: notasSecciones ?? null,
             jornadasPlan: jornadasPlan !== undefined ? (jornadasPlan ? JSON.stringify(jornadasPlan) : null) : undefined,
             zonaEvento: zonaEvento ?? "LOCAL",

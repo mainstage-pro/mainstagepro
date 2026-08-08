@@ -312,7 +312,7 @@ function EquipoCard({ linea, delay = 0 }: { linea: Linea; delay?: number }) {
 interface TradeNivel { nivel: number; nombre: string; tagline: string; pct: number; destacado: boolean; beneficios: string[]; }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function PresentacionClient({ cotizacion, tradeNiveles , token, galeriaFotos = [], heroFotos = [] }: { cotizacion: Cotizacion; tradeNiveles?: TradeNivel[] ; token?: string; galeriaFotos?: FotoPresentacion[]; heroFotos?: FotoPresentacion[] }) {
+export default function PresentacionClient({ cotizacion, tradeNiveles , token, galeriaFotos = [], heroFotos = [], renderFotos = [], paqueteNombre = null }: { cotizacion: Cotizacion; tradeNiveles?: TradeNivel[] ; token?: string; galeriaFotos?: FotoPresentacion[]; heroFotos?: FotoPresentacion[]; renderFotos?: { id: string; url: string }[]; paqueteNombre?: string | null }) {
   const TRADE_NIVELES: TradeNivel[] = tradeNiveles ?? [
     { nivel: 1, nombre: "Base",        tagline: "Visibilidad esencial",  pct: 5,  destacado: false, beneficios: ["Logo en materiales digitales del evento","1 mención en redes sociales","2 a 4 accesos al evento","Acceso a métricas de alcance post-evento"] },
     { nivel: 2, nombre: "Estratégico", tagline: "Máximo alcance",        pct: 10, destacado: true,  beneficios: ["Logo en materiales digitales y físicos","3 menciones en redes + etiqueta en contenido","4 a 8 accesos al evento","Repost en @mainstagepro","Reporte de métricas detallado"] },
@@ -676,6 +676,20 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token, g
               ))}
             </div>
           </div>
+        </section>
+      )}
+
+      {/* ── RENDERS DEL PAQUETE (solo si la cotización se desglosó de un paquete) ── */}
+      {renderFotos.length > 0 && (
+        <section className="bg-[#050505]">
+          <div className="px-6 sm:px-12 lg:px-20 pt-24 pb-10">
+            <R>
+              <GoldLabel>El concepto</GoldLabel>
+              <Heading>Así se verá<br /><span className="text-white/30">tu evento.</span></Heading>
+              {paqueteNombre && <p className="text-white/40 text-sm mt-3">Basado en la propuesta <span className="text-[#B3985B]">{paqueteNombre}</span></p>}
+            </R>
+          </div>
+          <CinematicGallery photos={renderFotos.map((r) => ({ src: r.url, caption: paqueteNombre ?? "Concepto propuesto" }))} />
         </section>
       )}
 

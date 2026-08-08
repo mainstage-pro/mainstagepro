@@ -438,6 +438,8 @@ model Cotizacion {
   descripcionCotizacion String? @map("descripcion_cotizacion") @db.Text // descripción breve visible en resumen global
   tratoId          String?
   trato            Trato?   @relation(fields: [tratoId], references: [id])
+  paqueteId        String?  // Paquete comercial base del que se desglosó (para renders en presentación)
+  paquete          Paquete? @relation(fields: [paqueteId], references: [id])
   clienteId        String
   cliente          Cliente  @relation(fields: [clienteId], references: [id])
   creadaPorId      String?
@@ -958,9 +960,10 @@ model Paquete {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  items     PaqueteItem[]
-  conceptos PaqueteConcepto[]
-  imagenes  PaqueteImagen[]
+  items        PaqueteItem[]
+  conceptos    PaqueteConcepto[]
+  imagenes     PaqueteImagen[]
+  cotizaciones Cotizacion[]
 
   @@map("paquetes")
 }

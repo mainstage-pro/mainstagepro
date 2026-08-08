@@ -383,6 +383,25 @@ export async function ensureCotizacionEventoConfirmadoColumn() {
 }
 
 /**
+ * cotizaciones.paqueteId: liga la cotización con el Paquete comercial base del que
+ * se desglosó, para poder mostrar sus renders en la presentación al cliente.
+ * Columna nullable declarada en schema.prisma. Idempotente (patrón Neon).
+ */
+let _cotizacionPaqueteReady = false;
+
+export async function ensureCotizacionPaqueteColumn() {
+  if (_cotizacionPaqueteReady) return;
+  if (!await columnExists('cotizaciones', 'paqueteId')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS "paqueteId" TEXT`
+      );
+    } catch { /* ya existe */ }
+  }
+  _cotizacionPaqueteReady = true;
+}
+
+/**
  * Migraciones lazy del pipeline de seguimientos (patrón Neon: ADD COLUMN IF NOT EXISTS).
  * - seguimientos.etapa: etapa del pipeline en que se agendó el seguimiento.
  * - presentaciones_venta.tratoId: liga la presentación con su trato (sin FK a propósito).

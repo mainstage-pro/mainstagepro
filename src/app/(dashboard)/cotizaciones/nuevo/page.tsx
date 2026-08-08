@@ -300,6 +300,8 @@ function CotizadorForm() {
   // Catálogo de paquetes comerciales (para desglosar en líneas al agregarlos desde el descubrimiento).
   const [paquetesCatalogo, setPaquetesCatalogo] = useState<PaqueteCat[]>([]);
   const [paquetesExpandidos, setPaquetesExpandidos] = useState<string[]>([]);
+  // Paquete comercial base de esta cotización (Opción A: uno solo) — su render se muestra en la presentación.
+  const [paqueteBaseId, setPaqueteBaseId] = useState<string>("");
   // Precios especiales del cliente: { equipoId → precio }
   const [preciosCliente, setPreciosCliente] = useState<Record<string, number>>({});
   // Precio original de lista al momento de registrar el especial: { equipoId → precioOriginal }
@@ -617,6 +619,7 @@ function CotizadorForm() {
         }
         if (cot.zonaEvento) setZonaEvento(cot.zonaEvento as "LOCAL"|"BAJIO"|"NACIONAL");
         if (cot.numTecnicosZona) setNumTecnicosZona(cot.numTecnicosZona);
+        if (cot.paqueteId) setPaqueteBaseId(cot.paqueteId);
         // Heredar la selección del descubrimiento del trato. Si la cotización es
         // el panel de sugerencias, donde el vendedor los agrega manualmente
         // (checklist consciente).
@@ -940,6 +943,8 @@ function CotizadorForm() {
     if (nuevasOca.length) setLineasOcasional(prev => [...prev, ...nuevasOca]);
 
     setPaquetesExpandidos(prev => prev.includes(paq.id) ? prev : [...prev, paq.id]);
+    // Opción A: el primer paquete desglosado queda como base para el render en la presentación.
+    setPaqueteBaseId(prev => prev || paq.id);
   }
 
   function expandirPaqueteDescubrimiento(paq: PaqueteCat) {
@@ -1593,6 +1598,7 @@ function CotizadorForm() {
 
     const payload = {
       tratoId: tId || null, clienteId: cId, ...evento,
+      paqueteId: paqueteBaseId || null,
       zonaEvento,
       numTecnicosZona,
       notasSecciones: Object.keys(notasSecciones).length > 0 ? JSON.stringify(notasSecciones) : null,

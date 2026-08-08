@@ -242,7 +242,7 @@ function CategorySection({ cat, lineas, index }: { cat: string; lineas: Linea[];
 // La presentación de renta no muestra galería de producciones por tipo de evento
 // (su hero es un diseño técnico sin fotos), por eso galeriaFotos/heroFotos se
 // aceptan por paridad con la de producción pero no se consumen aquí.
-export default function PresentacionRentaClient({ cotizacion, token }: { cotizacion: Cotizacion; token?: string; galeriaFotos?: FotoPresentacion[]; heroFotos?: FotoPresentacion[] }) {
+export default function PresentacionRentaClient({ cotizacion, token }: { cotizacion: Cotizacion; token?: string; galeriaFotos?: FotoPresentacion[]; heroFotos?: FotoPresentacion[]; renderFotos?: { id: string; url: string }[]; paqueteNombre?: string | null }) {
   const scrollY    = useScrollY();
   const [contractOpen, setContract] = useState(false);
   const [printing, setPrinting]       = useState(false);

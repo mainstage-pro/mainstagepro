@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
+import { ensureCotizacionPaqueteColumn } from "@/lib/migraciones-lazy";
 
 export async function GET() {
   const session = await getSession();
@@ -37,6 +38,7 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   try {
+    await ensureCotizacionPaqueteColumn();
     const body = await request.json();
 
     // Generar número de cotización — busca el número más alto existente para evitar colisiones
@@ -49,6 +51,7 @@ export async function POST(request: NextRequest) {
 
     const {
       tratoId,
+      paqueteId = null,
       clienteId: clienteIdInput,
       lineas = [],
       // Descuentos adicionales opcionales
@@ -94,6 +97,7 @@ export async function POST(request: NextRequest) {
       data: {
         numeroCotizacion,
         tratoId,
+        paqueteId: paqueteId || null,
         clienteId,
         creadaPorId: session.id,
         descuentoPatrocinioPct,
