@@ -117,19 +117,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   }
 
-  // Sincronizar esProspecto del cliente (venta cerrada ⇒ deja de ser prospecto si no hay otros tratos abiertos)
+  // Sincronizar esProspecto del cliente: contrató un servicio ⇒ deja de ser
+  // prospecto y pasa a Clientes, sin importar si tiene otros tratos abiertos.
   try {
     const t = await prisma.trato.findUnique({ where: { id }, select: { clienteId: true, prospeccionId: true } });
     if (t) {
       if (t.prospeccionId) {
         await prisma.prospeccion.update({ where: { id: t.prospeccionId }, data: { estado: "CONVERTIDO" } });
       }
-      const otrosAbiertos = await prisma.trato.count({
-        where: { clienteId: t.clienteId, id: { not: id }, etapa: { notIn: ["VENTA_CERRADA", "VENTA_PERDIDA"] } },
-      });
-      if (otrosAbiertos === 0) {
-        await prisma.cliente.update({ where: { id: t.clienteId }, data: { esProspecto: false } });
-      }
+      await prisma.cliente.update({ where: { id: t.clienteId }, data: { esProspecto: false } });
     }
   } catch (e) {
     console.error("[cerrar-venta][prospecto]", e);
