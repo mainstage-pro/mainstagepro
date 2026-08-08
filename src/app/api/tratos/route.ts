@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
         responsableId: body.responsableId || session.id,
         vendedorId: body.vendedorId || session.id,
         tipoEvento: body.tipoEvento || "OTRO",
-        tipoLead: body.tipoLead || "INBOUND",
+        tipoLead: body.tipoLead || (trato_etapa === "PROSPECCION" ? "OUTBOUND" : "INBOUND"),
         origenLead: body.origenLead || "ORGANICO",
         origenVenta: body.origenVenta || "CLIENTE_PROPIO",
         vendedorOrigenId: body.vendedorOrigenId || null,

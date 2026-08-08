@@ -1,7 +1,7 @@
 import type { ModuleNavTab } from "@/components/ModuleTabsLayout";
 
 export const tratosTabs: ModuleNavTab[] = [
-  { href: "/crm/tratos/lista", label: "Ventas", accessKey: "crm-tratos" },
+  { href: "/crm/tratos/lista", label: "Pipeline", accessKey: "crm-tratos" },
   { href: "/crm/tratos/proceso", label: "Proceso", accessKey: "crm-tratos" },
   { href: "/crm/tratos/cotizaciones", label: "Cotizaciones", accessKey: "crm-tratos" },
   { href: "/crm/tratos/plantillas", label: "Plantillas", accessKey: "crm-tratos" },

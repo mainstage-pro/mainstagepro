@@ -12,7 +12,7 @@ type CotejoEstado = "LIGADO" | "DUPLICADO_POSIBLE" | "NUEVO" | null;
 interface CotejoCliente { id: string; nombre: string; telefono: string | null; empresa: string | null; }
 
 interface Cliente {
-  id: string; nombre: string; empresa: string | null; clasificacion: string; telefono: string | null;
+  id: string; nombre: string; empresa: string | null; clasificacion: string; telefono: string | null; esProspecto?: boolean;
 }
 
 // ── Etapas con descripciones ──────────────────────────────────────────────────
@@ -74,6 +74,7 @@ export default function NuevoContactoPage() {
   const [clienteQuery, setClienteQuery] = useState("");
   const [clienteDropdown, setClienteDropdown] = useState(false);
   const clienteInputRef = useRef<HTMLInputElement>(null);
+  const prospectAplicadoRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -136,6 +137,23 @@ export default function NuevoContactoPage() {
       setModoCliente("existente");
     }
   }, [searchParams]);
+
+  // Si el cliente seleccionado es un prospecto, forzar la etapa Prospección
+  // (una sola vez por selección, para no pisar un cambio manual posterior).
+  // Cubre tanto la selección en el dropdown como la preselección por ?clienteId=.
+  useEffect(() => {
+    if (modoCliente !== "existente" || !clienteId) return;
+    if (prospectAplicadoRef.current === clienteId) return;
+    const cli = clientes.find(c => c.id === clienteId);
+    if (!cli) return; // aún no cargado; se reintenta cuando llegue
+    prospectAplicadoRef.current = clienteId;
+    if (cli.esProspecto) { setMomento("EXPLORANDO"); setEtapa("PROSPECCION"); }
+  }, [clienteId, clientes, modoCliente]);
+
+  // Prospección se categoriza como OUTBOUND por default (nosotros levantamos la mano).
+  useEffect(() => {
+    if (etapa === "PROSPECCION") setTipoLead("OUTBOUND");
+  }, [etapa]);
 
   // Cotejo en vivo del cliente nuevo (por teléfono/nombre) para avisar duplicados antes de crear.
   useEffect(() => {
