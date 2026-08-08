@@ -189,7 +189,10 @@ export async function GET(req: NextRequest) {
       for (const o of proyectarOcurrencias(t, dias, hoyCal)) {
         lista.push({
           ...base,
-          estado: o.completada ? 'COMPLETADA' : base.estado,
+          // El estado por ocurrencia sale SOLO de la proyección, nunca del estado
+          // global de la fila: una recurrente atascada en COMPLETADA (completada una
+          // vez y sin reagendar) no debe pintar sus ocurrencias futuras como hechas.
+          estado: o.completada ? 'COMPLETADA' : 'PENDIENTE',
           dia: o.dia,
           vencida: o.vencida,
           recurrente: true,
