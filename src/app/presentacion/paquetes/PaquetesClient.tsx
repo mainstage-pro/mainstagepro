@@ -155,8 +155,11 @@ function ProductoCard({ p }: { p: Producto }) {
   );
 }
 
-export default function PaquetesClient() {
-  const [tab, setTab] = useState("SOCIAL");
+const TIPOS_VALIDOS = ["SOCIAL", "MUSICAL", "EMPRESARIAL"];
+
+export default function PaquetesClient({ defaultTab }: { defaultTab?: string } = {}) {
+  const inicial = defaultTab && TIPOS_VALIDOS.includes(defaultTab) ? defaultTab : "SOCIAL";
+  const [tab, setTab] = useState(inicial);
   const [paquetes, setPaquetes] = useState<Paquete[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [cargando, setCargando] = useState(true);

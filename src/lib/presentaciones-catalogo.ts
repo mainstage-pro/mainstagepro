@@ -56,6 +56,43 @@ export const PRESENTACIONES_GENERAL: PresentacionItem[] = [
   },
 ];
 
+// Presentaciones de paquetes armados, una por tipo de evento. Muestran los
+// paquetes base ya configurados, listos para compartir con el cliente.
+export const PRESENTACIONES_PAQUETES: PresentacionItem[] = [
+  {
+    key: "paquetes-todos",
+    label: "Todos los paquetes",
+    desc: "Vitrina completa con las tres categorías de paquetes armados en una sola página.",
+    href: "/presentacion/paquetes",
+    icon: Gift,
+    audience: "Clientes potenciales",
+  },
+  {
+    key: "paquetes-social",
+    label: "Paquetes sociales",
+    desc: "Paquetes armados para bodas, XV años y fiestas. Todo lo que incluye cada uno, listo para cotizar.",
+    href: "/presentacion/paquetes/social",
+    icon: Wine,
+    audience: "Parejas · Familias",
+  },
+  {
+    key: "paquetes-musical",
+    label: "Paquetes musicales",
+    desc: "Paquetes armados para conciertos, festivales y DJ. Todo lo que incluye cada uno, listo para cotizar.",
+    href: "/presentacion/paquetes/musical",
+    icon: Music,
+    audience: "Promotores · Artistas",
+  },
+  {
+    key: "paquetes-empresarial",
+    label: "Paquetes empresariales",
+    desc: "Paquetes armados para congresos, lanzamientos y corporativos. Todo lo que incluye cada uno, listo para cotizar.",
+    href: "/presentacion/paquetes/empresarial",
+    icon: Building2,
+    audience: "Empresas · Agencias",
+  },
+];
+
 // Presentaciones por tipo de evento.
 export const PRESENTACIONES_EVENTOS: PresentacionItem[] = [
   {

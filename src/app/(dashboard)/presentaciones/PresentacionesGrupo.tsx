@@ -76,6 +76,26 @@ export default function PresentacionesGrupo({
           </div>
         </div>
       )}
+      {grupo.grupo === "Paquetes" && (
+        <div className="mb-4 bg-[#B3985B]/5 border border-[#B3985B]/20 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-white font-semibold text-sm">Paquetes armados por tipo de evento</h3>
+            <p className="text-white/40 text-xs mt-1 leading-relaxed">
+              Comparte una vitrina lista por categoría. Los paquetes, sus imágenes de render y lo que incluyen se editan en el catálogo comercial.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href="/comercial/productos/paquetes"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-center text-xs font-semibold py-2 px-3 rounded-lg border border-white/10 text-white/60 hover:text-white hover:border-[#B3985B]/40 transition-colors"
+            >
+              Editar paquetes →
+            </a>
+          </div>
+        </div>
+      )}
       {grupo.grupo === "Galería" && (
         <div className="mb-4 bg-[#B3985B]/5 border border-[#B3985B]/20 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex-1 min-w-0">
