@@ -288,6 +288,7 @@ function EquipoCard({ linea, delay = 0 }: { linea: Linea; delay?: number }) {
             {linea.modelo && <p className="text-white text-sm font-semibold truncate mt-0.5">{linea.modelo}</p>}
             {linea.descripcion && <p className="text-white/40 text-[11px] truncate mt-0.5">{linea.descripcion}</p>}
             {!linea.modelo && !linea.marca && <p className="text-white text-sm font-semibold truncate">{linea.descripcion}</p>}
+            {linea.notas && <p className="text-[#B3985B]/80 text-[11px] italic mt-1.5">{linea.notas}</p>}
             {tieneGaleria && <p className="text-[#B3985B]/70 text-[10px] mt-1">Haz click para ver la galería →</p>}
           </div>
           <span className="text-[#B3985B] text-xs font-bold shrink-0 mt-1">×{linea.cantidad}</span>
