@@ -639,21 +639,23 @@ function ContactoRow({
 
 // ─── ModalNuevoContacto ────────────────────────────────────────────────────────
 
-function ModalNuevoContacto({ onClose, onCreado, usuarios }: {
+function ModalNuevoContacto({ onClose, onCreado, usuarios, modo }: {
   onClose: () => void;
   onCreado: (c: Contacto) => void;
   usuarios: Vendedor[];
+  modo: "cliente" | "prospecto" | "libre";
 }) {
   const toast = useToast();
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     nombre: "", telefono: "", correo: "", empresa: "",
     tipoCliente: "POR_DESCUBRIR",
-    clasificacion: "PROSPECTO",
+    clasificacion: modo === "cliente" ? "NUEVO" : "PROSPECTO",
     origenLead: "META_ADS",
     notas: "",
-    esCliente: false,
+    esCliente: modo === "cliente",
   });
+  const tituloModal = modo === "cliente" ? "Nuevo cliente" : modo === "prospecto" ? "Nuevo prospecto" : "Nuevo contacto";
   function setF(k: string, v: unknown) { setForm(p => ({ ...p, [k]: v })); }
 
   async function crear() {
@@ -688,20 +690,22 @@ function ModalNuevoContacto({ onClose, onCreado, usuarios }: {
       <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-[#0d0d0d] border border-[#1e1e1e] rounded-2xl w-full max-w-lg shadow-2xl max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
-          <h3 className="text-white font-semibold text-sm">Nuevo contacto</h3>
+          <h3 className="text-white font-semibold text-sm">{tituloModal}</h3>
           <button onClick={onClose} className="text-[#444] hover:text-white text-xl leading-none transition-colors">×</button>
         </div>
         <div className="p-6 space-y-4">
-          <div className="flex gap-2 p-1.5 bg-[#111] border border-[#1a1a1a] rounded-xl">
-            <button onClick={() => setF("esCliente", false)}
-              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${!form.esCliente ? "bg-purple-900/40 text-purple-300 border border-purple-800/40" : "text-[#444] hover:text-gray-400"}`}>
-              Prospecto nuevo
-            </button>
-            <button onClick={() => setF("esCliente", true)}
-              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${form.esCliente ? "bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/30" : "text-[#444] hover:text-gray-400"}`}>
-              Ya es cliente
-            </button>
-          </div>
+          {modo === "libre" && (
+            <div className="flex gap-2 p-1.5 bg-[#111] border border-[#1a1a1a] rounded-xl">
+              <button onClick={() => setF("esCliente", false)}
+                className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${!form.esCliente ? "bg-purple-900/40 text-purple-300 border border-purple-800/40" : "text-[#444] hover:text-gray-400"}`}>
+                Prospecto nuevo
+              </button>
+              <button onClick={() => setF("esCliente", true)}
+                className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${form.esCliente ? "bg-[#B3985B]/15 text-[#B3985B] border border-[#B3985B]/30" : "text-[#444] hover:text-gray-400"}`}>
+                Ya es cliente
+              </button>
+            </div>
+          )}
           <p className="text-[10px] text-[#333]">
             {form.esCliente ? "Contacto que ya ha comprado pero no está registrado." : "Se registrará como prospecto. Se convierte a cliente al aprobar una cotización."}
           </p>
@@ -1270,9 +1274,14 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
     { key: "sin-clasificar", label: "Sin Clasificar", count: sinClasificar.length,   color: "text-amber-400"  },
   ];
 
+  const modoRegistro: "cliente" | "prospecto" | "libre" =
+    tab === "clientes" ? "cliente" : tab === "prospectos" ? "prospecto" : "libre";
+  const labelNuevo =
+    tab === "clientes" ? "Nuevo cliente" : tab === "prospectos" ? "Nuevo prospecto" : "Nuevo contacto";
+
   return (
     <>
-      {showModal && <ModalNuevoContacto onClose={() => setShowModal(false)} onCreado={onCreado} usuarios={usuarios} />}
+      {showModal && <ModalNuevoContacto onClose={() => setShowModal(false)} onCreado={onCreado} usuarios={usuarios} modo={modoRegistro} />}
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
@@ -1289,7 +1298,7 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
         <button onClick={() => setShowModal(true)}
           className="ms-btn-primary flex items-center gap-2 shrink-0">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Nuevo contacto
+          {labelNuevo}
         </button>
       </div>
 
