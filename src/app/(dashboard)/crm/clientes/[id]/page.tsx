@@ -67,6 +67,7 @@ interface Cliente {
   compania: { id: string; nombre: string; tipo?: string } | null;
   tipoCliente: string;
   clasificacion: string;
+  esProspecto: boolean;
   servicioUsual: string | null;
   telefono: string | null;
   correo: string | null;
@@ -111,6 +112,11 @@ const ESTADO_CUENTA_COLORS: Record<string, string> = {
   LIQUIDADO: "bg-green-900/40 text-green-300",
   VENCIDO: "bg-red-900/40 text-red-300",
 };
+const ESTADO_COLORS: Record<string, string> = {
+  CLIENTE: "bg-[#B3985B]/20 text-[#B3985B] border-[#B3985B]/30",
+  PROSPECTO: "bg-purple-900/50 text-purple-300 border-purple-800/40",
+};
+
 const CLASIFICACION_COLORS: Record<string, string> = {
   PROSPECTO: "bg-purple-900/50 text-purple-300 border-purple-800/40",
   NUEVO: "bg-gray-700/60 text-gray-300 border-gray-600/40",
@@ -1040,6 +1046,16 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
           )}
           {/* Selectores inline con autoguardado */}
           <div className="flex gap-3 mt-3 flex-wrap">
+            <InlineSelect
+              label="Estado"
+              value={cliente.esProspecto ? "PROSPECTO" : "CLIENTE"}
+              options={[
+                { value: "CLIENTE", label: "Cliente" },
+                { value: "PROSPECTO", label: "Prospecto" },
+              ]}
+              onSave={(val) => guardarCampoInline({ esProspecto: val === "PROSPECTO" })}
+              colorMap={ESTADO_COLORS}
+            />
             <InlineSelect
               label="Tipo"
               value={cliente.tipoCliente}

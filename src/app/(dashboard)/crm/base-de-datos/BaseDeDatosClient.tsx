@@ -596,16 +596,10 @@ function ContactoRow({
             </>
           )}
           {tab === "clientes" && (
-            <>
-              <a href={`/crm/tratos?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
-                className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
-                + Trato
-              </a>
-              <button onClick={e => { e.stopPropagation(); onReclasificar(true); }} title="Marcar como prospecto (corrección)"
-                className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#666] hover:text-purple-300 hover:border-purple-500/40 hover:bg-purple-500/10 transition-all whitespace-nowrap">
-                → Prospecto
-              </button>
-            </>
+            <a href={`/crm/tratos?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
+              className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
+              + Trato
+            </a>
           )}
           {tab === "sin-clasificar" && (
             <>
