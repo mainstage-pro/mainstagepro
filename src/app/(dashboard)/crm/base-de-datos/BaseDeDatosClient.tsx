@@ -433,7 +433,13 @@ function ContactoRow({
   const estadoActividad = actividadMap[c.id] ?? "INACTIVO";
 
   return (
-    <tr className="ms-tr group cursor-pointer" onClick={() => { window.location.href = `/crm/clientes/${c.id}`; }}>
+    <tr className="ms-tr group cursor-pointer"
+      onClick={(e) => {
+        // No navegar si el click cayó en un control interactivo o en una celda
+        // editable (data-no-nav); solo el área "muerta" de la fila abre el perfil.
+        if ((e.target as HTMLElement).closest("button, a, input, select, textarea, [data-no-nav]")) return;
+        window.location.href = `/crm/clientes/${c.id}`;
+      }}>
       {/* Nombre */}
       <td className="px-4 py-2.5 align-middle overflow-visible">
         <div className="flex flex-col gap-0.5">
@@ -460,7 +466,7 @@ function ContactoRow({
       </td>
 
       {/* Empresa */}
-      <td className="px-3 py-2.5 align-middle overflow-visible">
+      <td data-no-nav className="px-3 py-2.5 align-middle overflow-visible">
         <div className="relative" data-empresa-popover>
           <button onClick={e => { e.stopPropagation(); onEmpresaClick(); }} className="text-left focus:outline-none w-full">
             {c.compania
@@ -512,28 +518,28 @@ function ContactoRow({
       </td>
 
       {/* Tipo */}
-      <td className="px-3 py-2.5 align-middle overflow-visible">
+      <td data-no-nav className="px-3 py-2.5 align-middle overflow-visible">
         <InlineDropdown options={TIPO_CLIENTE_OPTIONS} value={c.tipoCliente}
           onChange={v => patch({ tipoCliente: v })} placeholder="Tipo"
           colorMap={TIPO_COLORS} />
       </td>
 
       {/* Clasificación */}
-      <td className="px-3 py-2.5 align-middle overflow-visible">
+      <td data-no-nav className="px-3 py-2.5 align-middle overflow-visible">
         <InlineDropdown options={CLASIFICACION_OPTIONS} value={c.clasificacion}
           onChange={v => patch({ clasificacion: v })} placeholder="Clasif."
           colorMap={CLAS_COLORS} />
       </td>
 
       {/* Servicio (multi) */}
-      <td className="px-3 py-2.5 align-middle overflow-visible">
+      <td data-no-nav className="px-3 py-2.5 align-middle overflow-visible">
         <InlineMultiSelect options={SERVICIO_OPTIONS} values={serviciosActuales}
           onChange={v => patch({ servicioUsual: stringifyServicios(v) })}
           placeholder="Servicio" maxSelect={3} colorMap={SERVICIO_COLORS} />
       </td>
 
       {/* Tipo de Evento (multi) */}
-      <td className="px-3 py-2.5 align-middle overflow-visible">
+      <td data-no-nav className="px-3 py-2.5 align-middle overflow-visible">
         <InlineMultiSelect options={TIPOS_EVENTO_OPTIONS} values={eventosActuales}
           onChange={v => patch({ tiposEvento: stringifyTiposEvento(v) })}
           placeholder="Tipo evento" maxSelect={3} colorMap={EVENTO_COLORS}
@@ -565,7 +571,7 @@ function ContactoRow({
       </td>
 
       {/* Responsable */}
-      <td className="px-3 py-2.5 align-middle overflow-visible">
+      <td data-no-nav className="px-3 py-2.5 align-middle overflow-visible">
         <InlineVendedor clienteId={c.id} vendedor={c.vendedor} usuarios={usuarios} onChange={onVendedorChange} />
       </td>
 
@@ -575,7 +581,7 @@ function ContactoRow({
       </td>
 
       {/* Acciones — overlay flotante para no encimarse con las columnas vecinas */}
-      <td className="relative px-3 py-2.5 align-middle">
+      <td data-no-nav className="relative px-3 py-2.5 align-middle">
         <div className="absolute inset-y-0 right-0 flex items-center justify-end gap-1.5 pr-3 pl-14 bg-gradient-to-l from-[#111] from-60% to-transparent opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity">
           {tab === "prospectos" && (
             <>
@@ -1187,8 +1193,10 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
     const d = await res.json();
     // Fusionar sobre el contacto existente: la respuesta del PATCH no trae _count
     // ni el resto de campos que la fila necesita para renderizar.
+    // Se queda en la pestaña actual (Prospectos); el contacto solo desaparece de
+    // esta lista y se agrega a Clientes en segundo plano.
     removerDe(c.id, tab); setClientes(prev => [{ ...c, ...d.cliente }, ...prev]);
-    toast.success(`${c.nombre} movido a Clientes`); setTab("clientes");
+    toast.success(`${c.nombre} movido a Clientes`);
   }
   async function reclasificar(c: Contacto, esProspecto: boolean) {
     const res = await fetch(`/api/clientes/${c.id}`, {
