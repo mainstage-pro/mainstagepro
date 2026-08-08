@@ -574,45 +574,51 @@ function ContactoRow({
         <span className="text-[12px] text-[#555]">{c._count.tratos || "—"}</span>
       </td>
 
-      {/* Acciones */}
-      <td className="px-3 py-2.5 align-middle">
-        <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* Acciones — overlay flotante para no encimarse con las columnas vecinas */}
+      <td className="relative px-3 py-2.5 align-middle">
+        <div className="absolute inset-y-0 right-0 flex items-center justify-end gap-1.5 pr-3 pl-14 bg-gradient-to-l from-[#111] from-60% to-transparent opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity">
           {tab === "prospectos" && (
             <>
               <button onClick={e => { e.stopPropagation(); onConvertir(); }}
-                className="text-[10px] font-medium px-2 py-1 rounded-md border border-emerald-800/30 text-emerald-500/80 hover:text-emerald-400 hover:border-emerald-500/50 hover:bg-emerald-500/10 transition-all whitespace-nowrap">
+                className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-emerald-800/30 text-emerald-500/80 hover:text-emerald-400 hover:border-emerald-500/50 hover:bg-emerald-500/10 transition-all whitespace-nowrap">
                 → Cliente
               </button>
               <a href={`/crm/tratos?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
-                className="text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
+                className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
                 + Trato
               </a>
             </>
           )}
           {tab === "clientes" && (
-            <a href={`/crm/tratos?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
-              className="text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
-              + Trato
-            </a>
+            <>
+              <a href={`/crm/tratos?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
+                className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
+                + Trato
+              </a>
+              <button onClick={e => { e.stopPropagation(); onReclasificar(true); }} title="Marcar como prospecto (corrección)"
+                className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#666] hover:text-purple-300 hover:border-purple-500/40 hover:bg-purple-500/10 transition-all whitespace-nowrap">
+                → Prospecto
+              </button>
+            </>
           )}
           {tab === "sin-clasificar" && (
             <>
               <button onClick={e => { e.stopPropagation(); onReclasificar(false); }}
-                className="text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
+                className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
                 → Cliente
               </button>
               <a href={`/crm/tratos?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
-                className="text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
+                className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
                 + Trato
               </a>
             </>
           )}
           <Link href={`/crm/clientes/${c.id}`} onClick={e => e.stopPropagation()}
-            className="p-1.5 rounded-md text-[#555] hover:text-[#B3985B] hover:bg-[#B3985B]/10 transition-all" title="Ver perfil">
+            className="cursor-pointer p-1.5 rounded-md text-[#555] hover:text-[#B3985B] hover:bg-[#B3985B]/10 transition-all" title="Ver perfil">
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           </Link>
           <button onClick={e => { e.stopPropagation(); onDelete(); }} disabled={deleting}
-            className="p-1.5 rounded-md text-[#555] hover:text-red-400 hover:bg-red-400/10 transition-all disabled:opacity-40" title="Eliminar">
+            className="cursor-pointer p-1.5 rounded-md text-[#555] hover:text-red-400 hover:bg-red-400/10 transition-all disabled:opacity-40" title="Eliminar">
             {deleting ? (
               <span className="text-[10px] font-medium">...</span>
             ) : (
@@ -1179,7 +1185,9 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
     });
     if (!res.ok) { toast.error("Error al convertir"); return; }
     const d = await res.json();
-    removerDe(c.id, tab); setClientes(prev => [d.cliente, ...prev]);
+    // Fusionar sobre el contacto existente: la respuesta del PATCH no trae _count
+    // ni el resto de campos que la fila necesita para renderizar.
+    removerDe(c.id, tab); setClientes(prev => [{ ...c, ...d.cliente }, ...prev]);
     toast.success(`${c.nombre} movido a Clientes`); setTab("clientes");
   }
   async function reclasificar(c: Contacto, esProspecto: boolean) {
@@ -1189,9 +1197,10 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
     });
     if (!res.ok) { toast.error("Error al reclasificar"); return; }
     const d = await res.json();
+    const merged = { ...c, ...d.cliente };
     removerDe(c.id, tab);
-    if (esProspecto) setProspectos(prev => [d.cliente, ...prev]);
-    else setClientes(prev => [d.cliente, ...prev]);
+    if (esProspecto) setProspectos(prev => [merged, ...prev]);
+    else setClientes(prev => [merged, ...prev]);
     toast.success(`${c.nombre} movido a ${esProspecto ? "Prospectos" : "Clientes"}`);
   }
   async function eliminar(c: Contacto) {
