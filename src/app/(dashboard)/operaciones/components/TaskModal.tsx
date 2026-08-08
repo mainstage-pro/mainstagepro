@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import DatePicker from "@/components/ui/DatePicker";
 import RecurrenciaPicker from "./RecurrenciaPicker";
 import QuickAdd from "./QuickAdd";
-import TaskItem, { type TareaItem } from "./TaskItem";
+import TaskItem, { type TareaItem, formatFecha } from "./TaskItem";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 import { Link2, Camera, Paperclip, FileText, ExternalLink, ChevronDown, ChevronRight, ShieldCheck, ClipboardCheck, AlertTriangle } from "lucide-react";
@@ -173,6 +173,7 @@ export default function TaskModal({
   const [fecha, setFecha]             = useState("");
   const [fechaVen, setFechaVen]       = useState("");
   const [editingRec, setEditingRec]   = useState(false);
+  const [editingOcurrencia, setEditingOcurrencia] = useState(false);
   const [comentario, setComentario]   = useState("");
   const [addingUrl, setAddingUrl]     = useState(false);
   const [urlManual, setUrlManual]     = useState("");
@@ -223,6 +224,7 @@ export default function TaskModal({
     setFechaVen(tarea.fechaVencimiento ? tarea.fechaVencimiento.substring(0, 10) : "");
     setShowFechaVenPicker(false);
     setEditingRec(false);
+    setEditingOcurrencia(false);
     setDirty(false);
     setSubtareasLocal(tarea.subtareas ?? []);
     setComentariosLocal(tarea.comentarios ?? []);
@@ -1372,15 +1374,51 @@ export default function TaskModal({
                     )}
                   </div>
                 ) : (
-                  <RecurrenciaPicker
-                    value={tarea.recurrencia}
-                    onChange={json => {
-                      onSave(tarea.id, { recurrencia: json });
-                      toast.success(json ? "Recurrencia guardada" : "Recurrencia eliminada");
-                      if (!json) setEditingRec(false);
-                    }}
-                    onClose={() => setEditingRec(false)}
-                  />
+                  <div className="space-y-3">
+                    {/* Fecha de ESTA ocurrencia — cambia solo el día de ejecución, la recurrencia no se toca */}
+                    <div>
+                      <p className="text-[10px] text-[#555] mb-1.5">Próxima ejecución · la recurrencia no cambia</p>
+                      <div className="relative inline-block">
+                        {(() => {
+                          const f = fecha ? formatFecha(fecha) : { label: "Elegir día", cls: "text-[#555] bg-[#0f0f0f]" };
+                          return (
+                            <button type="button" onClick={() => setEditingOcurrencia(v => !v)}
+                              className={`inline-flex items-center gap-1 text-[13px] px-2 py-1 rounded-md font-medium transition-all hover:brightness-125 cursor-pointer ${f.cls}`}>
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                              </svg>
+                              {f.label}
+                            </button>
+                          );
+                        })()}
+                        {editingOcurrencia && (
+                          <DatePicker
+                            value={fecha}
+                            autoOpen hideTrigger showClear={false}
+                            onChange={val => {
+                              if (!val) return;
+                              setFecha(val);
+                              onSave(tarea.id, { fecha: val });
+                              toast.success("Fecha de esta ocurrencia actualizada");
+                            }}
+                            onClose={() => setEditingOcurrencia(false)}
+                            className="absolute left-0 top-full mt-1 z-50"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <RecurrenciaPicker
+                      value={tarea.recurrencia}
+                      onChange={json => {
+                        onSave(tarea.id, { recurrencia: json });
+                        toast.success(json ? "Recurrencia guardada" : "Recurrencia eliminada");
+                        if (!json) setEditingRec(false);
+                      }}
+                      onClose={() => setEditingRec(false)}
+                    />
+                  </div>
                 )}
               </div>
 

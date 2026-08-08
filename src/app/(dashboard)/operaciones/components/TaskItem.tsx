@@ -63,7 +63,7 @@ const PRIO_OPTIONS = [
 // ── Umbral de indentación para detectar "hacer subtarea" (px desde el borde izq del row) ──
 const SUBTASK_INDENT_THRESHOLD = 18;
 
-function formatFecha(iso: string): { label: string; cls: string } {
+export function formatFecha(iso: string): { label: string; cls: string } {
   const d   = new Date(iso.substring(0, 10) + "T00:00:00");
   const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
   const man = new Date(hoy); man.setDate(hoy.getDate() + 1);
