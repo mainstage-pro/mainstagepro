@@ -18,6 +18,11 @@ const TIPO_ORIGEN: Record<string, { label: string; color: string; bg: string; bo
   TRATO:    { label: "Trato",    color: "#2dd4bf", bg: "rgba(45,212,191,0.12)",  border: "rgba(45,212,191,0.35)" },
 };
 
+// Etiquetas legibles del tipo de evidencia (para la vista de solo lectura de no-admins).
+const EVIDENCIA_LABEL: Record<string, string> = {
+  FOTO: "Foto", ARCHIVO: "Archivo", NOTA: "Nota", ENLACE_MODULO: "Confirmación / enlace",
+};
+
 interface Usuario { id: string; name: string }
 interface Proyecto { id: string; nombre: string; color: string | null }
 interface Iniciativa { id: string; nombre: string; color: string | null }
@@ -68,6 +73,7 @@ export interface TareaDetalle {
   area: string; estado: string; notas: string | null; etiquetas: string | null;
   fecha: string | null; fechaVencimiento: string | null; recurrencia: string | null;
   asignadoA: { id: string; name: string } | null;
+  creadoPor?: { id: string; name: string } | null;
   colaboradores?: { usuario: { id: string; name: string } }[] | null;
   proyectoTarea: { id: string; nombre: string; color: string | null } | null;
   seccion: { id: string; nombre: string } | null;
@@ -103,6 +109,9 @@ interface Props {
   proyectos: Proyecto[];
   iniciativas: Iniciativa[];
   sessionId: string;
+  // Solo los admins editan la configuración de la tarea (recurrencia, evidencia,
+  // acceso directo). Los usuarios estándar solo mueven la fecha.
+  isAdmin: boolean;
   onClose: () => void;
   onSave: (id: string, patch: Record<string, unknown>) => void;
   onComplete: (id: string) => void;
@@ -141,7 +150,7 @@ function FlagIcon({ color, filled }: { color: string; filled: boolean }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function TaskModal({
-  tarea, loading, usuarios, proyectos, iniciativas, sessionId,
+  tarea, loading, usuarios, proyectos, iniciativas, sessionId, isAdmin,
   onClose, onSave, onComplete, onNoRealizada, onDelete, onAddSubtarea, onCompleteSubtarea, onDeleteSubtarea,
 }: Props) {
   const toast = useToast();
@@ -1292,46 +1301,59 @@ export default function TaskModal({
                 </div>
               )}
 
-              {/* Evidencia — configuración (editable en los 4 sistemas) */}
+              {/* Evidencia — configuración (solo admin la edita; los demás la ven) */}
               <div>
                 <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-2">Evidencia</p>
-                <label className="flex items-center gap-2 cursor-pointer mb-2">
-                  <button
-                    type="button"
-                    onClick={() => toggleRequiereEvidencia(!requiereEvidencia)}
-                    className={`w-8 h-[18px] rounded-full transition-colors relative shrink-0 ${requiereEvidencia ? "bg-[#B3985B]" : "bg-[#222]"}`}
-                  >
-                    <span className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white transition-all ${requiereEvidencia ? "left-[15px]" : "left-0.5"}`} />
-                  </button>
-                  <span className="text-xs text-[#999]">Requiere evidencia</span>
-                </label>
-                {requiereEvidencia && (
-                  <select
-                    value={tipoEvidencia ?? ""}
-                    onChange={e => cambiarTipoEvidencia(e.target.value || null)}
-                    className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]"
-                  >
-                    <option value="">Nota o archivo</option>
-                    <option value="FOTO">Foto</option>
-                    <option value="ARCHIVO">Archivo</option>
-                    <option value="NOTA">Nota</option>
-                    <option value="ENLACE_MODULO">Confirmación / enlace</option>
-                  </select>
+                {isAdmin ? (
+                  <>
+                    <label className="flex items-center gap-2 cursor-pointer mb-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleRequiereEvidencia(!requiereEvidencia)}
+                        className={`w-8 h-[18px] rounded-full transition-colors relative shrink-0 ${requiereEvidencia ? "bg-[#B3985B]" : "bg-[#222]"}`}
+                      >
+                        <span className={`absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white transition-all ${requiereEvidencia ? "left-[15px]" : "left-0.5"}`} />
+                      </button>
+                      <span className="text-xs text-[#999]">Requiere evidencia</span>
+                    </label>
+                    {requiereEvidencia && (
+                      <select
+                        value={tipoEvidencia ?? ""}
+                        onChange={e => cambiarTipoEvidencia(e.target.value || null)}
+                        className="w-full bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]"
+                      >
+                        <option value="">Nota o archivo</option>
+                        <option value="FOTO">Foto</option>
+                        <option value="ARCHIVO">Archivo</option>
+                        <option value="NOTA">Nota</option>
+                        <option value="ENLACE_MODULO">Confirmación / enlace</option>
+                      </select>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xs text-[#777]">
+                    {requiereEvidencia
+                      ? `Requiere evidencia${tipoEvidencia ? ` · ${EVIDENCIA_LABEL[tipoEvidencia] ?? tipoEvidencia}` : " · Nota o archivo"}`
+                      : "No requiere evidencia"}
+                  </p>
                 )}
               </div>
 
-              {/* Acceso directo — módulo del sidebar (+ sección) o enlace externo */}
-              <AccesoDirectoField
-                destino={moduloDestino}
-                texto={moduloTexto}
-                onChange={(d, t) => guardarAcceso(d, t)}
-                onClear={limpiarAcceso}
-              />
+              {/* Acceso directo — módulo del sidebar (+ sección) o enlace externo (solo admin) */}
+              {isAdmin && (
+                <AccesoDirectoField
+                  destino={moduloDestino}
+                  texto={moduloTexto}
+                  onChange={(d, t) => guardarAcceso(d, t)}
+                  onClear={limpiarAcceso}
+                />
+              )}
 
               {/* Fecha / Recurrencia */}
               <div>
                 <p className="text-[10px] text-[#444] uppercase tracking-widest font-semibold mb-2">Fecha</p>
 
+                {isAdmin && (
                 <div className="flex rounded-lg overflow-hidden border border-[#1a1a1a] mb-3">
                   <button
                     onClick={() => { if (tarea.recurrencia) onSave(tarea.id, { recurrencia: null }); setEditingRec(false); }}
@@ -1359,6 +1381,7 @@ export default function TaskModal({
                     Recurrente
                   </button>
                 </div>
+                )}
 
                 {!editingRec && !tarea.recurrencia ? (
                   <div className="space-y-2">
@@ -1409,18 +1432,27 @@ export default function TaskModal({
                       </div>
                     </div>
 
-                    <RecurrenciaPicker
-                      value={tarea.recurrencia}
-                      onChange={json => {
-                        onSave(tarea.id, { recurrencia: json });
-                        toast.success(json ? "Recurrencia guardada" : "Recurrencia eliminada");
-                        if (!json) setEditingRec(false);
-                      }}
-                      onClose={() => setEditingRec(false)}
-                    />
+                    {isAdmin && (
+                      <RecurrenciaPicker
+                        value={tarea.recurrencia}
+                        onChange={json => {
+                          onSave(tarea.id, { recurrencia: json });
+                          toast.success(json ? "Recurrencia guardada" : "Recurrencia eliminada");
+                          if (!json) setEditingRec(false);
+                        }}
+                        onClose={() => setEditingRec(false)}
+                      />
+                    )}
                   </div>
                 )}
               </div>
+
+              {/* Autoría — discreto, al pie del panel */}
+              {tarea.creadoPor && (
+                <p className="text-[10px] text-[#3a3a3a] pt-1">
+                  Creada por {tarea.creadoPor.name}
+                </p>
+              )}
 
             </div>
           </div>

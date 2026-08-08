@@ -189,6 +189,7 @@ export default function EquipoPage() {
   const [proyectos, setProyectos]           = useState<{id:string;nombre:string;color:string|null}[]>([]);
   const [iniciativas, setIniciativas]       = useState<{id:string;nombre:string;color:string|null}[]>([]);
   const [sessionId, setSessionId]           = useState("");
+  const [sessionRole, setSessionRole]       = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -201,6 +202,7 @@ export default function EquipoPage() {
       setProyectos(proy.proyectos ?? []);
       setIniciativas(init.iniciativas ?? []);
       if (me?.id) setSessionId(me.id);
+      if (me?.role) setSessionRole(me.role);
     });
   }, []);
 
@@ -556,7 +558,7 @@ export default function EquipoPage() {
       {selectedTaskId && (
         <TaskModal
           tarea={selectedTask} loading={loadingTask}
-          usuarios={usuarios} proyectos={proyectos} iniciativas={iniciativas} sessionId={sessionId}
+          usuarios={usuarios} proyectos={proyectos} iniciativas={iniciativas} sessionId={sessionId} isAdmin={sessionRole === "ADMIN"}
           onClose={() => setSelectedTaskId(null)}
           onSave={handleSaveTask}
           onComplete={handleCompleteTask}

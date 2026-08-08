@@ -143,12 +143,27 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
   }
 
+  // ── Bloqueo de configuración para no-admins ──────────────────────────────────
+  // Los usuarios estándar mueven fechas y completan tareas, pero NO cambian la
+  // configuración de la tarea (recurrencia, evidencia requerida, acceso directo,
+  // ficha del estándar). Esa definición la administra un admin. La fecha sí es
+  // editable a propósito. Se filtra en el servidor porque es la fuente de verdad.
+  const esAdmin = session.role === "ADMIN";
+  const CONFIG_SOLO_ADMIN = [
+    "recurrencia", "requiereEvidencia", "tipoEvidencia",
+    "moduloDestino", "moduloTexto", "moduloDisponible",
+    "porqueSeHace", "estandarMinimo", "siNoSeHace", "cuando",
+  ];
+  if (!esAdmin) {
+    for (const key of CONFIG_SOLO_ADMIN) delete data[key];
+  }
+
   // ── Reclasificar el sistema operativo de la tarea (tipoOrigen) ────────────────
   // Permite convertir cualquier tarea entre sistemas (ej. una tarea normal en una
   // tarea de plan de trabajo). Operaciones agrupa por el vínculo real (FK), así que
   // al pasar a TAREA/PLAN desligamos la entidad de origen para que la clasificación
   // sea coherente y la tarea aterrice en Bandeja / Plan.
-  if ("tipoOrigen" in body) {
+  if (esAdmin && "tipoOrigen" in body) {
     const TIPOS_VALIDOS = ["TAREA", "PLAN", "PROYECTO", "EVENTO", "TRATO"];
     const nuevoTipo = typeof body.tipoOrigen === "string" ? body.tipoOrigen : null;
     if (!nuevoTipo || !TIPOS_VALIDOS.includes(nuevoTipo)) {

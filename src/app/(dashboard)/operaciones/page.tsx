@@ -401,8 +401,7 @@ export default function OperacionesPage() {
         const res = await fetch(`/api/tareas?q=${encodeURIComponent(q)}`);
         if (res.ok) {
           const data = await res.json();
-          const items = (data.tareas ?? []) as TareaItem[];
-          setSearchResults(items.filter(t => t.estado !== "COMPLETADA"));
+          setSearchResults(data.tareas ?? []);
         }
       } catch { /* ignore */ } finally { setSearchLoading(false); }
     }, 350);
@@ -2558,7 +2557,7 @@ export default function OperacionesPage() {
       {selectedId && (
         <TaskModal
           tarea={selectedTask} loading={loadingPanel}
-          usuarios={usuarios} proyectos={proyectosNav} iniciativas={iniciativas} sessionId={sessionId}
+          usuarios={usuarios} proyectos={proyectosNav} iniciativas={iniciativas} sessionId={sessionId} isAdmin={sessionRole === "ADMIN"}
           onClose={() => setSelectedId(null)} onSave={saveTarea}
           onComplete={completeTarea} onDelete={setConfirmDeleteId}
           onAddSubtarea={addSubtarea} onCompleteSubtarea={completeTarea} onDeleteSubtarea={setConfirmDeleteId}

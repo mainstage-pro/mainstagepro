@@ -426,6 +426,7 @@ export function VistaSemanaEquipo() {
           proyectos={proyectos as { id: string; nombre: string; color: string | null }[]}
           iniciativas={iniciativas as { id: string; nombre: string; color: string | null }[]}
           sessionId={sessionId}
+          isAdmin={data?.isAdmin === true}
           onClose={cerrarPanel}
           onSave={guardarTarea}
           onComplete={completarTarea}
