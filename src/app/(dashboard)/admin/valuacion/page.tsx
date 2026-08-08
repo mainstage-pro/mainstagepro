@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { Sliders, Armchair, Lightbulb, Plug } from "lucide-react";
 
@@ -108,6 +109,8 @@ export default function InventarioActivosPage() {
   const [agruparAcc, setAgruparAcc] = useState<"categoria" | "equipo">("equipo");
   const [equipoBusq, setEquipoBusq] = useState("");   // combobox search text
   const [equipoOpen, setEquipoOpen] = useState(false); // dropdown visible
+  // ── Ficha rápida (tarjeta al hacer click en una fila de producción)
+  const [fichaEquipo, setFichaEquipo] = useState<Equipo | null>(null);
 
   function startEdit(id: string, field: string) { setEditingCell({ id, field }); }
   function stopEdit() { setEditingCell(null); }
@@ -302,7 +305,7 @@ export default function InventarioActivosPage() {
   // ── KPIs globales
   const valorTotalProd = equiposProd.reduce((s, e) => s + (e.costoInternoEstimado ?? 0) * e.cantidadTotal, 0);
   const rentaTotalProd = equiposProd.reduce((s, e) => s + e.precioRenta * e.cantidadTotal, 0);
-  const rentabilidadProm = valorTotalProd > 0 ? (rentaTotalProd * 12 / valorTotalProd) * 100 : 0;
+  const rentabilidadProm = valorTotalProd > 0 ? (rentaTotalProd / valorTotalProd) * 100 : 0;
 
   const tabs: { key: Tab; label: string }[] = [
     { key: "resumen",     label: "Reporte General" },
@@ -718,10 +721,10 @@ export default function InventarioActivosPage() {
                             const valorUnitario = e.costoInternoEstimado;
                             const subtotal = valorUnitario != null ? valorUnitario * e.cantidadTotal : null;
                             const rentabilidad = valorUnitario && valorUnitario > 0
-                              ? (e.precioRenta * 12 / valorUnitario) * 100
+                              ? (e.precioRenta / valorUnitario) * 100
                               : null;
                             return (
-                              <tr key={e.id} className="border-t border-[#161616] hover:bg-[#0d0d0d] transition-colors">
+                              <tr key={e.id} onClick={() => setFichaEquipo(e)} className="border-t border-[#161616] hover:bg-[#0d0d0d] transition-colors cursor-pointer">
                                 <td className="px-4 py-2.5">
                                   <div className="flex items-center gap-2.5">
                                     {e.imagenUrl ? (
@@ -740,7 +743,7 @@ export default function InventarioActivosPage() {
                                   <span className="text-white font-medium tabular-nums">{e.cantidadTotal}</span>
                                 </td>
                                 {/* Valor unitario — editable */}
-                                <td className="px-4 py-2.5 text-right">
+                                <td className="px-4 py-2.5 text-right" onClick={ev => ev.stopPropagation()}>
                                   {isEditing(e.id, "costoInternoEstimado") ? (
                                     <input type="number" autoFocus defaultValue={valorUnitario ?? ""} min={0} placeholder="0"
                                       disabled={savingInline === e.id}
@@ -755,7 +758,7 @@ export default function InventarioActivosPage() {
                                   )}
                                 </td>
                                 {/* Precio renta — editable */}
-                                <td className="px-4 py-2.5 text-right">
+                                <td className="px-4 py-2.5 text-right" onClick={ev => ev.stopPropagation()}>
                                   {isEditing(e.id, "precioRenta") ? (
                                     <input type="number" autoFocus defaultValue={e.precioRenta} min={0}
                                       disabled={savingInline === e.id}
@@ -772,7 +775,7 @@ export default function InventarioActivosPage() {
                                 {/* Rentabilidad */}
                                 <td className="px-4 py-2.5 text-right">
                                   {rentabilidad != null ? (
-                                    <span className={`font-medium tabular-nums ${rentabilidad >= 30 ? "text-emerald-400" : rentabilidad >= 15 ? "text-yellow-400" : "text-red-400"}`}>
+                                    <span className={`font-medium tabular-nums ${rentabilidad >= 10 ? "text-emerald-400" : rentabilidad >= 5 ? "text-yellow-400" : "text-red-400"}`}>
                                       {pct(rentabilidad)}
                                     </span>
                                   ) : <span className="text-[#333]">—</span>}
@@ -811,7 +814,7 @@ export default function InventarioActivosPage() {
                     <p className="text-emerald-400 font-bold text-base tabular-nums">{fmx(rentaTotalProd)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] text-[#555] uppercase tracking-wider mb-0.5">Rentabilidad anual</p>
+                    <p className="text-[10px] text-[#555] uppercase tracking-wider mb-0.5">Rentabilidad prom.</p>
                     <p className="text-blue-400 font-bold text-base tabular-nums">{pct(rentabilidadProm)}</p>
                   </div>
                 </div>
@@ -1348,6 +1351,162 @@ export default function InventarioActivosPage() {
         </div>
 
       )}
+
+      {fichaEquipo && (
+        <FichaEquipoModal equipo={fichaEquipo} onClose={() => setFichaEquipo(null)} />
+      )}
+    </div>
+  );
+}
+
+// ── Tarjeta / ficha rápida de un equipo de producción ────────────────────────
+type FichaData = {
+  proyectoEquipos: Array<{
+    id: string; cantidad: number; dias: number;
+    proyecto: { id: string; nombre: string; numeroProyecto: number; fechaEvento: string | null; estado: string; cliente: { nombre: string } };
+  }>;
+  mantenimientos: Array<{ id: string; fecha: string; accionRealizada: string; tipo: string }>;
+  unidades: Array<{ id: string }>;
+  accesorios: Array<{ id: string }>;
+};
+type FichaStats = { vecesRentada: number; diasRentados: number; revenue: number; costoMantenimiento: number };
+
+function fmtFechaEvento(iso: string | null) {
+  if (!iso) return null;
+  return new Date(iso).toLocaleDateString("es-MX", { timeZone: "UTC", month: "short", day: "numeric", year: "2-digit" });
+}
+
+function MetricBox({ label, value, color = "text-white" }: { label: string; value: string; color?: string }) {
+  return (
+    <div className="bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg p-3">
+      <p className="text-[10px] text-[#555] uppercase tracking-wider mb-1">{label}</p>
+      <p className={`text-lg font-bold tabular-nums ${color}`}>{value}</p>
+    </div>
+  );
+}
+
+function FichaEquipoModal({ equipo, onClose }: { equipo: Equipo; onClose: () => void }) {
+  const [ficha, setFicha] = useState<FichaData | null>(null);
+  const [stats, setStats] = useState<FichaStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    Promise.all([
+      fetch(`/api/equipos/${equipo.id}`, { cache: "no-store" }).then(r => r.json()).catch(() => null),
+      fetch(`/api/equipos/${equipo.id}/stats`, { cache: "no-store" }).then(r => r.json()).catch(() => null),
+    ]).then(([f, s]) => {
+      if (!alive) return;
+      setFicha(f?.equipo ?? null);
+      setStats(s ?? null);
+      setLoading(false);
+    });
+    return () => { alive = false; };
+  }, [equipo.id]);
+
+  const valorUnitario = equipo.costoInternoEstimado;
+  const subtotal = valorUnitario != null ? valorUnitario * equipo.cantidadTotal : null;
+  const roi = valorUnitario && valorUnitario > 0 ? (equipo.precioRenta / valorUnitario) * 100 : null;
+  const nombre = [equipo.marca, equipo.modelo].filter(Boolean).join(" · ") || equipo.descripcion;
+  const proyectos = ficha?.proyectoEquipos ?? [];
+  const mantenimientos = ficha?.mantenimientos ?? [];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }} onClick={onClose}>
+      <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl" onClick={ev => ev.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3 px-6 py-5 border-b border-[#1e1e1e]">
+          <div className="flex items-center gap-3 min-w-0">
+            {equipo.imagenUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={equipo.imagenUrl} alt="" className="w-12 h-12 object-contain rounded-lg bg-[#0a0a0a] p-1 shrink-0" />
+            ) : (
+              <div className="w-12 h-12 rounded-lg bg-[#1a1a1a] shrink-0" />
+            )}
+            <div className="min-w-0">
+              <h2 className="text-white font-semibold truncate">{nombre}</h2>
+              <p className="text-[#6b7280] text-xs mt-0.5 truncate">
+                {(equipo.marca || equipo.modelo) && <span>{equipo.descripcion} · </span>}
+                {equipo.categoria.nombre} · Cant. {equipo.cantidadTotal}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="inline-block whitespace-nowrap px-2.5 py-1 rounded-full text-[10px] font-bold bg-[#B3985B]/20 text-[#B3985B]">Mainstage Pro</span>
+            <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div className="px-6 py-5 space-y-6">
+          {/* Financiero */}
+          <div>
+            <p className="text-[10px] text-[#6b7280] uppercase tracking-wider font-semibold mb-2">Financiero</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <MetricBox label="Valor unitario" value={valorUnitario != null ? fmx(valorUnitario) : "—"} color="text-[#9ca3af]" />
+              <MetricBox label="Precio de renta" value={fmx(equipo.precioRenta)} color="text-[#B3985B]" />
+              <MetricBox label="Rentabilidad" value={roi != null ? pct(roi) : "—"} color={roi != null ? (roi >= 10 ? "text-emerald-400" : roi >= 5 ? "text-yellow-400" : "text-red-400") : "text-[#333]"} />
+              <MetricBox label="Subtotal valor" value={subtotal != null ? fmx(subtotal) : "—"} />
+            </div>
+          </div>
+
+          {/* Uso y revenue */}
+          <div>
+            <p className="text-[10px] text-[#6b7280] uppercase tracking-wider font-semibold mb-2">Uso y revenue (histórico)</p>
+            {loading ? (
+              <div className="flex justify-center py-6"><div className="w-5 h-5 border-2 border-[#B3985B] border-t-transparent rounded-full animate-spin" /></div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <MetricBox label="Revenue generado" value={fmx(stats?.revenue ?? 0)} color="text-emerald-400" />
+                <MetricBox label="Veces rentado" value={String(stats?.vecesRentada ?? 0)} />
+                <MetricBox label="Días rentados" value={String(stats?.diasRentados ?? 0)} />
+                <MetricBox label="Costo mantenim." value={fmx(stats?.costoMantenimiento ?? 0)} color="text-red-400" />
+              </div>
+            )}
+          </div>
+
+          {/* Proyectos */}
+          <div>
+            <p className="text-[10px] text-[#6b7280] uppercase tracking-wider font-semibold mb-2">Proyectos ({proyectos.length})</p>
+            {proyectos.length === 0 ? (
+              <p className="text-[#444] text-xs py-3">Este equipo aún no se ha usado en proyectos.</p>
+            ) : (
+              <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                {proyectos.map(pe => (
+                  <Link key={pe.id} href={`/proyectos/${pe.proyecto.id}`}
+                    className="flex items-center justify-between text-xs p-2 rounded bg-[#0a0a0a] hover:bg-[#1a1a1a] transition-colors group">
+                    <div className="min-w-0">
+                      <p className="text-white group-hover:text-[#B3985B] transition-colors truncate">
+                        #{pe.proyecto.numeroProyecto} — {pe.proyecto.nombre}
+                      </p>
+                      <p className="text-[#555] truncate">{pe.proyecto.cliente.nombre} · {pe.cantidad}× · {pe.dias}d</p>
+                    </div>
+                    {pe.proyecto.fechaEvento && (
+                      <span className="text-[#555] shrink-0 ml-3">{fmtFechaEvento(pe.proyecto.fechaEvento)}</span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Operativo */}
+          <div className="grid grid-cols-3 gap-2">
+            <MetricBox label="Unidades" value={String(ficha?.unidades?.length ?? 0)} />
+            <MetricBox label="Accesorios" value={String(ficha?.accesorios?.length ?? 0)} />
+            <MetricBox label="Mantenimientos" value={String(mantenimientos.length)} />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-[#1e1e1e] flex justify-end">
+          <Link href={`/inventario/equipos/${equipo.id}`}
+            className="px-4 py-2 bg-[#B3985B] hover:bg-[#c9a960] text-black text-sm font-semibold rounded-lg transition-colors">
+            Ver ficha completa →
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

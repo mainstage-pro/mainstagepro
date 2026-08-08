@@ -49,10 +49,6 @@ interface ReporteData {
 function fmtMXN(n: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
 }
-function fmtDate(iso: string) {
-  const [y, m, d] = iso.substring(0, 10).split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
-}
 function getMeses() {
   const list: { value: string; label: string }[] = [];
   const now = new Date();
@@ -64,47 +60,12 @@ function getMeses() {
   }
   return list;
 }
-function alertaColor(alerta: EquipoStat["alerta"]) {
-  if (!alerta) return "";
-  if (alerta === "NUNCA_RENTADO") return "bg-red-950/20 border-red-900/30";
-  if (alerta === "INACTIVO_6M") return "bg-red-950/20 border-red-900/30";
-  if (alerta === "INACTIVO_3M") return "bg-orange-950/20 border-orange-900/30";
-  return "bg-yellow-950/20 border-yellow-900/30";
-}
-function AlertaBadge({ alerta, diasSinRenta }: { alerta: EquipoStat["alerta"]; diasSinRenta: number | null }) {
-  if (!alerta) return null;
-  const cfg = {
-    NUNCA_RENTADO: { text: "Nunca rentado", cls: "bg-red-900/40 text-red-400 border-red-800/50" },
-    INACTIVO_6M: { text: `${diasSinRenta}d sin rentar`, cls: "bg-red-900/40 text-red-400 border-red-800/50" },
-    INACTIVO_3M: { text: `${diasSinRenta}d sin rentar`, cls: "bg-orange-900/40 text-orange-400 border-orange-800/50" },
-    INACTIVO_1M: { text: `${diasSinRenta}d sin rentar`, cls: "bg-yellow-900/30 text-yellow-400 border-yellow-800/50" },
-  }[alerta];
-  return <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded border ${cfg.cls}`}>{cfg.text}</span>;
-}
-
-type SortField = "vecesAprobadas" | "revenueGenerado" | "diasSinRenta" | "descripcion" | "totalRentasHistoricas";
-
-function SortBtn({ field, label, current, dir, onToggle }: {
-  field: SortField; label: string; current: SortField; dir: "asc" | "desc"; onToggle: (f: SortField) => void;
-}) {
-  return (
-    <button onClick={() => onToggle(field)} className={`text-left text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1 hover:text-white transition-colors ${current === field ? "text-[#B3985B]" : "text-gray-500"}`}>
-      {label}
-      {current === field && <span>{dir === "desc" ? "↓" : "↑"}</span>}
-    </button>
-  );
-}
-
 export default function AnalisisInventarioPage() {
   const meses = getMeses();
   const [mes, setMes] = useState(meses[0].value);
   const [data, setData] = useState<ReporteData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"propio" | "externo" | "custom" | "socios">("propio");
-  const [search, setSearch] = useState("");
-  const [soloAlertas, setSoloAlertas] = useState(false);
-  const [sortField, setSortField] = useState<SortField>("vecesAprobadas");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [tab, setTab] = useState<"externo" | "custom" | "socios">("externo");
 
   const cargar = useCallback(async (m: string) => {
     setLoading(true);
@@ -119,27 +80,6 @@ export default function AnalisisInventarioPage() {
   }, []);
 
   useEffect(() => { cargar(mes); }, [mes, cargar]);
-
-  function toggleSort(field: SortField) {
-    if (sortField === field) setSortDir(d => d === "asc" ? "desc" : "asc");
-    else { setSortField(field); setSortDir("desc"); }
-  }
-
-  const equiposFiltrados = (data?.inventarioPropio ?? [])
-    .filter(e => {
-      if (soloAlertas && !e.alerta) return false;
-      if (search && !e.descripcion.toLowerCase().includes(search.toLowerCase()) &&
-          !e.marca?.toLowerCase().includes(search.toLowerCase()) &&
-          !e.categoria.toLowerCase().includes(search.toLowerCase())) return false;
-      return true;
-    })
-    .sort((a, b) => {
-      let va: number, vb: number;
-      if (sortField === "descripcion") return sortDir === "asc" ? a.descripcion.localeCompare(b.descripcion) : b.descripcion.localeCompare(a.descripcion);
-      if (sortField === "diasSinRenta") { va = a.diasSinRenta ?? 99999; vb = b.diasSinRenta ?? 99999; }
-      else { va = a[sortField] as number; vb = b[sortField] as number; }
-      return sortDir === "asc" ? va - vb : vb - va;
-    });
 
   function generarWA() {
     if (!data) return;
@@ -163,7 +103,6 @@ export default function AnalisisInventarioPage() {
   }
 
   const TABS = [
-    { key: "propio", label: `Inventario propio${data ? ` (${data.inventarioPropio.length})` : ""}` },
     { key: "externo", label: `Subrentas${data ? ` (${data.proveedoresEquipo.length})` : ""}` },
     { key: "custom", label: `Sin catálogo${data ? ` (${data.itemsCustom.length})` : ""}` },
     { key: "socios", label: `Socios & Inversión` },
@@ -175,8 +114,8 @@ export default function AnalisisInventarioPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="ms-h1">Análisis de uso de inventario</h1>
-          <p className="text-gray-500 text-sm mt-0.5">Rentabilidad, demanda y oportunidades de inversión</p>
+          <h1 className="ms-h1">Info de subrentas</h1>
+          <p className="text-gray-500 text-sm mt-0.5">Subrentas a proveedores, oportunidades e inversión de socios</p>
         </div>
         <div className="flex items-center gap-3">
           <Combobox
@@ -223,91 +162,6 @@ export default function AnalisisInventarioPage() {
       {loading && (
         <div className="flex justify-center py-20">
           <div className="w-6 h-6 border-2 border-[#B3985B] border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
-
-      {/* ── TAB: Inventario Propio ─────────────────────────────────────────── */}
-      {!loading && data && tab === "propio" && (
-        <div className="space-y-4">
-          {/* Controls */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar equipo..."
-              className="bg-[#111] border border-[#333] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-[#B3985B] w-60"
-            />
-            <button onClick={() => setSoloAlertas(v => !v)}
-              className={`inline-flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg border transition-colors ${soloAlertas ? "bg-red-900/30 border-red-700/40 text-red-400" : "bg-[#111] border-[#333] text-gray-400 hover:text-white"}`}>
-              {soloAlertas ? <><AlertTriangle strokeWidth={1.75} className="w-3.5 h-3.5" /> Solo alertas</> : "Todas"}
-            </button>
-            <span className="text-gray-600 text-xs ml-auto">{equiposFiltrados.length} equipos</span>
-          </div>
-
-          {/* Legend */}
-          <div className="flex items-center gap-4 text-[11px] text-gray-500">
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-red-950/60 border border-red-900/30 inline-block" /> Sin actividad / nunca rentado</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-orange-950/60 border border-orange-900/30 inline-block" /> +3 meses inactivo</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-yellow-950/60 border border-yellow-900/30 inline-block" /> +1 mes inactivo</span>
-          </div>
-
-          {/* Table */}
-          <div className="ms-card overflow-x-auto">
-            <table className="w-full min-w-[600px] text-sm">
-              <thead className="ms-thead">
-                <tr>
-                  <th className="text-left p-3 pl-4 w-[30%]"><SortBtn field="descripcion" label="Equipo" current={sortField} dir={sortDir} onToggle={toggleSort} /></th>
-                  <th className="text-left p-3 hidden md:table-cell"><span className="text-[10px] uppercase tracking-wider font-semibold text-gray-500">Categoría</span></th>
-                  <th className="text-center p-3"><SortBtn field="vecesAprobadas" label="Aprobado" current={sortField} dir={sortDir} onToggle={toggleSort} /></th>
-                  <th className="text-center p-3 hidden lg:table-cell"><span className="text-[10px] uppercase tracking-wider font-semibold text-gray-500">Cotizado</span></th>
-                  <th className="text-right p-3"><SortBtn field="revenueGenerado" label="Revenue" current={sortField} dir={sortDir} onToggle={toggleSort} /></th>
-                  <th className="text-right p-3 hidden lg:table-cell"><SortBtn field="totalRentasHistoricas" label="Histórico" current={sortField} dir={sortDir} onToggle={toggleSort} /></th>
-                  <th className="text-left p-3 hidden xl:table-cell"><span className="text-[10px] uppercase tracking-wider font-semibold text-gray-500">Última renta</span></th>
-                  <th className="p-3 pr-4"><span className="text-[10px] uppercase tracking-wider font-semibold text-gray-500">Estado</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                {equiposFiltrados.map((e, i) => (
-                  <tr key={e.id} className={`border-b border-[#1a1a1a] last:border-0 hover:bg-white/[0.02] transition-colors ${alertaColor(e.alerta)}`}>
-                    <td className="p-3 pl-4">
-                      <Link href={`/inventario/equipos/${e.id}`} className="hover:text-[#B3985B] transition-colors">
-                        <p className="text-white font-medium text-sm leading-tight">{e.descripcion}</p>
-                        {(e.marca || e.modelo) && <p className="text-gray-600 text-xs mt-0.5">{[e.marca, e.modelo].filter(Boolean).join(" · ")}</p>}
-                      </Link>
-                    </td>
-                    <td className="p-3 hidden md:table-cell">
-                      <span className="text-gray-400 text-xs">{e.categoria}</span>
-                    </td>
-                    <td className="p-3 text-center">
-                      <span className={`font-semibold ${e.vecesAprobadas > 0 ? "text-white" : "text-gray-600"}`}>{e.vecesAprobadas}</span>
-                    </td>
-                    <td className="p-3 text-center hidden lg:table-cell">
-                      <span className="text-gray-500 text-xs">{e.vecesCotizadas}</span>
-                    </td>
-                    <td className="p-3 text-right">
-                      <span className={`font-medium text-sm ${e.revenueGenerado > 0 ? "text-[#B3985B]" : "text-gray-700"}`}>
-                        {e.revenueGenerado > 0 ? fmtMXN(e.revenueGenerado) : "—"}
-                      </span>
-                    </td>
-                    <td className="p-3 text-right hidden lg:table-cell">
-                      <span className="text-gray-500 text-xs">{e.totalRentasHistoricas > 0 ? e.totalRentasHistoricas : "—"}</span>
-                    </td>
-                    <td className="p-3 hidden xl:table-cell">
-                      <span className="text-gray-500 text-xs">
-                        {e.ultimaRentaFecha ? fmtDate(e.ultimaRentaFecha) : "—"}
-                      </span>
-                    </td>
-                    <td className="p-3 pr-4">
-                      <AlertaBadge alerta={e.alerta} diasSinRenta={e.diasSinRenta} />
-                    </td>
-                  </tr>
-                ))}
-                {equiposFiltrados.length === 0 && (
-                  <tr><td colSpan={8} className="p-8 text-center text-gray-600 text-sm">Sin resultados</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
         </div>
       )}
 
