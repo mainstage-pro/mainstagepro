@@ -4,6 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { getEquipoImage, resolverGaleria, resolverHero, type FotoPresentacion } from "@/lib/presentacion-imagenes";
 import { useEquipoGaleria } from "./_galeria";
 
+// Extrae solo la nota visible del campo codificado ("cat:X|nota:Y", "nota:Y", "cat:X", texto plano).
+function notaVisible(notas: string | null | undefined): string | null {
+  if (!notas) return null;
+  if (notas.includes("|nota:")) return notas.split("|nota:")[1]?.trim() || null;
+  if (notas.startsWith("nota:")) return notas.slice(5).trim() || null;
+  if (notas.startsWith("cat:")) return null;
+  return notas.trim() || null;
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Linea {
   id: string; tipo: string; descripcion: string; marca: string | null; modelo: string | null;
@@ -288,7 +297,7 @@ function EquipoCard({ linea, delay = 0 }: { linea: Linea; delay?: number }) {
             {linea.modelo && <p className="text-white text-sm font-semibold truncate mt-0.5">{linea.modelo}</p>}
             {linea.descripcion && <p className="text-white/40 text-[11px] truncate mt-0.5">{linea.descripcion}</p>}
             {!linea.modelo && !linea.marca && <p className="text-white text-sm font-semibold truncate">{linea.descripcion}</p>}
-            {linea.notas && <p className="text-[#B3985B]/80 text-[11px] italic mt-1.5">{linea.notas}</p>}
+            {notaVisible(linea.notas) && <p className="text-[#B3985B]/80 text-[11px] italic mt-1.5">{notaVisible(linea.notas)}</p>}
             {tieneGaleria && <p className="text-[#B3985B]/70 text-[10px] mt-1">Haz click para ver la galería →</p>}
           </div>
           <span className="text-[#B3985B] text-xs font-bold shrink-0 mt-1">×{linea.cantidad}</span>
