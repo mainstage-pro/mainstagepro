@@ -93,11 +93,11 @@ export default function PortalCapacitacionPage() {
           </div>
         )}
 
-        {/* Grid de áreas */}
+        {/* Lista de áreas (vista de filas) */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="flex flex-col gap-2">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-40 rounded-xl animate-pulse" style={{ background: "#111" }} />
+              <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#111" }} />
             ))}
           </div>
         ) : error ? (
@@ -108,33 +108,35 @@ export default function PortalCapacitacionPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="flex flex-col gap-2">
             {areas.map((a) => {
               const Icon = iconoArea(a.icono);
               const pct = a.total ? Math.round((a.completadas / a.total) * 100) : 0;
               return (
                 <Link key={a.id} href={`/capacitacion/area/${a.slug}`} className="group block">
-                  <div className="relative h-full rounded-xl border p-5 transition-all duration-200 hover:-translate-y-0.5 overflow-hidden"
+                  <div className="relative flex items-center gap-4 rounded-xl border p-4 transition-all duration-200 hover:border-[#3a3a3a] overflow-hidden"
                     style={{ background: "#111", borderColor: "#262626" }}>
-                    <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: a.color, opacity: 0.85 }} />
-                    <div className="flex items-start justify-between gap-3 mb-4">
-                      <div className="w-11 h-11 rounded-xl flex items-center justify-center"
-                        style={{ background: `${a.color}1a`, border: `1px solid ${a.color}33` }}>
-                        <Icon size={20} style={{ color: a.color }} />
-                      </div>
-                      <span className="text-[11px] font-mono px-2 py-0.5 rounded" style={{ background: "#1a1a1a", color: "#6b7280" }}>
+                    <div style={{ position: "absolute", top: 0, bottom: 0, left: 0, width: 3, background: a.color, opacity: 0.85 }} />
+                    <div className="w-11 h-11 shrink-0 rounded-xl flex items-center justify-center"
+                      style={{ background: `${a.color}1a`, border: `1px solid ${a.color}33` }}>
+                      <Icon size={20} style={{ color: a.color }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-base font-semibold text-white group-hover:text-[#c9a96a] transition-colors truncate">
+                        {a.nombre}
+                      </h3>
+                      <span className="text-[11px]" style={{ color: "#6b7280" }}>
                         {a.total} {a.total === 1 ? "curso" : "cursos"}
                       </span>
                     </div>
-                    <h3 className="text-base font-semibold text-white group-hover:text-[#c9a96a] transition-colors mb-3">
-                      {a.nombre}
-                    </h3>
-                    <div className="flex items-center gap-2">
+                    <div className="hidden sm:flex items-center gap-2 w-48 shrink-0">
                       <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: "#1a1a1a" }}>
                         <div className="h-full rounded-full" style={{ width: `${pct}%`, background: a.color }} />
                       </div>
-                      <span className="text-[11px]" style={{ color: "#6b7280" }}>{a.completadas}/{a.total}</span>
                     </div>
+                    <span className="text-[11px] font-mono shrink-0 w-12 text-right" style={{ color: "#6b7280" }}>
+                      {a.completadas}/{a.total}
+                    </span>
                   </div>
                 </Link>
               );
