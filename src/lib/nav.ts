@@ -106,7 +106,6 @@ export const NAV: NavSection[] = [
           { key: "reporte-area-mensual", label: "Reporte mensual de área", href: "/reportes-area" },
         ],
       },
-      { key: "presentaciones", label: "Presentaciones", href: "/presentaciones", icon: Presentation },
       {
         key: "organizacion",
         label: "Organización",
@@ -221,6 +220,7 @@ export const NAV: NavSection[] = [
           { key: "grupos-equipo", label: "Grupos de equipo", href: "/admin/grupos-equipo", adminOnly: true },
         ],
       },
+      { key: "presentaciones", label: "Presentaciones", href: "/presentaciones", icon: Presentation },
       { key: "ventas-reporte",          label: "Reporte de ventas",          href: "/ventas/reporte", icon: TrendingUp },
       { key: "ventas-config",           label: "Configuración",              href: "/ventas/configuracion", adminOnly: true, icon: Settings },
     ],
