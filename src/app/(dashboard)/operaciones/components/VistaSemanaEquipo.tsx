@@ -481,11 +481,14 @@ function SemanaMiembro({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const touchRef = useRef<{
     id: string; dia: string; tipo: string;
+    titulo: string; prioridad: string;
     startX: number; startY: number;
     timer: ReturnType<typeof setTimeout> | null;
     active: boolean;
   } | null>(null);
   const [touchDragId, setTouchDragId] = useState<string | null>(null);
+  // Fantasma que sigue al dedo mientras se arrastra (móvil / iPad).
+  const [dragGhost, setDragGhost] = useState<{ x: number; y: number; titulo: string; color: string } | null>(null);
   const justDraggedRef = useRef(false);
 
   // Objetivo bajo el punto (x,y), leyendo los data-attrs del DOM.
@@ -532,6 +535,7 @@ function SemanaMiembro({
     document.removeEventListener("touchend", stableEnd);
     document.removeEventListener("touchcancel", stableEnd);
     setTouchDragId(null);
+    setDragGhost(null);
     setDragOver(null);
     setDropSlot(null);
   };
@@ -546,6 +550,7 @@ function SemanaMiembro({
       return;
     }
     e.preventDefault(); // ya agarrada: evitar que la página haga scroll
+    setDragGhost(g => (g ? { ...g, x: p.clientX, y: p.clientY } : g));
     const tgt = dropFromPoint(p.clientX, p.clientY);
     if (!tgt) { setDragOver(null); setDropSlot(null); return; }
     setDragOver(tgt.dia);
@@ -580,7 +585,7 @@ function SemanaMiembro({
     endTouch();
   };
 
-  const beginTouch = (e: React.TouchEvent, info: { id: string; dia: string; tipo: string }) => {
+  const beginTouch = (e: React.TouchEvent, info: { id: string; dia: string; tipo: string; titulo: string; prioridad: string }) => {
     if (e.touches.length !== 1) return;
     const p = e.touches[0];
     const timer = setTimeout(() => {
@@ -588,6 +593,7 @@ function SemanaMiembro({
       if (!st) return;
       st.active = true;
       setTouchDragId(st.id);
+      setDragGhost({ x: st.startX, y: st.startY, titulo: st.titulo, color: prioColor(st.prioridad) });
       navigator.vibrate?.(15);
     }, LONG_PRESS_MS);
     touchRef.current = { ...info, startX: p.clientX, startY: p.clientY, timer, active: false };
@@ -621,6 +627,7 @@ function SemanaMiembro({
   };
 
   return (
+    <>
     <div ref={containerRef} className="flex-1 min-h-0 overflow-auto px-4 md:px-6 pb-6" style={{ scrollbarWidth: "thin" }}>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 min-w-0">
         {dias.map((dia, i) => {
@@ -714,7 +721,7 @@ function SemanaMiembro({
                                 onDragEnd={() => { dragInfo.current = null; setDropSlot(null); }}
                                 onDragOverCard={index => setDropSlot(`${dia}|${tp.key}|${index}`)}
                                 onDropCard={soltarEnRanura}
-                                onTouchStart={e => beginTouch(e, { id: t.id, dia, tipo: tp.key })}
+                                onTouchStart={e => beginTouch(e, { id: t.id, dia, tipo: tp.key, titulo: t.titulo, prioridad: t.prioridad })}
                                 dragging={touchDragId === t.id}
                                 wasDragging={() => justDraggedRef.current}
                                 idx={idx}
@@ -748,6 +755,20 @@ function SemanaMiembro({
         })}
       </div>
     </div>
+
+    {/* Fantasma que sigue al dedo mientras se arrastra (móvil / iPad) */}
+    {dragGhost && (
+      <div
+        className="fixed z-50 pointer-events-none max-w-[220px] px-2.5 py-1.5 rounded-lg border border-[#B3985B] bg-[#161616] shadow-2xl"
+        style={{ left: dragGhost.x, top: dragGhost.y, transform: "translate(-50%, -130%) rotate(-2deg)" }}
+      >
+        <span className="flex items-center gap-1.5 text-[12px] text-white">
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: dragGhost.color }} />
+          <span className="truncate">{dragGhost.titulo}</span>
+        </span>
+      </div>
+    )}
+    </>
   );
 }
 
@@ -809,7 +830,7 @@ function TareaCard({
       style={{ WebkitTouchCallout: "none" } as React.CSSProperties}
       className={`group relative rounded-lg border px-2 py-1.5 cursor-grab active:cursor-grabbing select-none transition-shadow ${
         dragging
-          ? "border-[#B3985B] bg-[#B3985B]/[0.10] ring-2 ring-[#B3985B]/60 opacity-80 pointer-events-none shadow-lg"
+          ? "border-dashed border-[#B3985B]/50 bg-[#B3985B]/[0.04] opacity-40 pointer-events-none"
           : "border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04]"
       }`}
     >
