@@ -1909,7 +1909,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               })()}
 
               {/* ── Material para compartir (inbound & outbound) ── */}
-              <MaterialCompartir tipoEvento={trato.tipoEvento} esOutbound={esOutbound} materialesPrincipales={perfilSel?.materiales} perfilId={perfilSel?.id} perfilLabel={perfilSel?.label} />
+              <MaterialCompartir tipoEvento={trato.tipoEvento} esOutbound={esOutbound} materialesPrincipales={perfilSel?.materiales} />
 
               {/* ── Notas de seguimiento ── */}
               <NotasSeguimiento

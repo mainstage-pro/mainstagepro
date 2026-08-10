@@ -98,6 +98,13 @@ const CONFIG = {
       },
     ],
     tipos: ["Conciertos", "Festivales", "Música electrónica / Raves", "Presentaciones en vivo", "DJ Sets", "Showcases", "Fiestas privadas"],
+    perfiles: [
+      { label: "Promotores y productores", linea: "Producción lista a tiempo para que tú te concentres en llenar el lugar." },
+      { label: "DJs", linea: "Sonido potente y luces que siguen tu set, montado antes de que llegues a cabina." },
+      { label: "Músicos y bandas", linea: "Audio y monitoreo para que el público sienta cada nota." },
+      { label: "Foros y venues", linea: "El aliado técnico confiable para cada evento que reciben." },
+      { label: "Empresas de renta y colegas", linea: "Te complementamos con equipo y operadores cuando el evento crece." },
+    ],
     cotizar: [
       "Fecha del evento",
       "Venue o lugar — interior o exterior",
@@ -156,6 +163,12 @@ const CONFIG = {
       },
     ],
     tipos: ["Bodas", "XV Años", "Cocteles", "Cumpleaños", "Graduaciones", "Aniversarios", "Fiestas privadas"],
+    perfiles: [
+      { label: "Wedding planners", linea: "El aliado técnico que cuida cada detalle de la boda." },
+      { label: "Salones y haciendas", linea: "Producción a la medida de cada evento en tu espacio." },
+      { label: "DJs de eventos sociales", linea: "El equipo que hace que la pista explote toda la noche." },
+      { label: "Organizadores de graduaciones", linea: "Audio claro para los discursos e iluminación que da altura al momento." },
+    ],
     cotizar: [
       "Fecha del evento",
       "Venue o lugar — interior o exterior",
@@ -212,6 +225,12 @@ const CONFIG = {
       },
     ],
     tipos: ["Conferencias", "Congresos", "Lanzamientos", "Activaciones", "Networking", "Premiaciones", "Inauguraciones"],
+    perfiles: [
+      { label: "Empresas y agencias", linea: "Tu mensaje claro y con presencia, a la altura de tu marca." },
+      { label: "Desarrolladores inmobiliarios", linea: "Lanzamientos que hacen lucir tu proyecto y lo venden." },
+      { label: "Escuelas e instituciones", linea: "Cada ceremonia y festival escolar, a la altura." },
+      { label: "Conferencistas", linea: "El escenario y el audio que tu mensaje merece." },
+    ],
     cotizar: [
       "Fecha del evento",
       "Espacio o sede — sala, auditorio o exterior",
@@ -238,6 +257,7 @@ const CONFIG = {
   recomendaciones: string[];
   insights: { title: string; body: string }[];
   tipos: string[];
+  perfiles: { label: string; linea: string }[];
   cotizar: string[];
   gallery: { src: string; caption: string }[];
   cta: string; ctaSub: string;
@@ -866,6 +886,35 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
               </button>
             </div>
           </R>
+        </div>
+      </section>
+
+      {/* ── Perfiles que atendemos ── */}
+      <section className="py-24 px-6">
+        <div className="max-w-5xl mx-auto">
+          <R>
+            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-4">Para quién trabajamos</p>
+            <h2 className="font-bold text-white leading-[1.05] mb-3" style={{ fontSize: "clamp(1.5rem, 3.2vw, 2.4rem)", letterSpacing: "-0.02em" }}>
+              Perfiles que atendemos.
+            </h2>
+            <p className="text-white/40 text-sm leading-relaxed max-w-2xl mb-10">
+              Cada evento es distinto y cada quien nos necesita de forma diferente. Estos son los perfiles con los que más trabajamos en este tipo de evento.
+            </p>
+          </R>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {c.perfiles.map((p, i) => (
+              <R key={p.label} delay={i * 70}>
+                <div className="flex items-start gap-4 p-6 rounded-2xl h-full"
+                     style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <span className="shrink-0 mt-1 w-2 h-2 rounded-full" style={{ background: GOLD }} />
+                  <div>
+                    <h3 className="font-semibold text-white mb-1.5 leading-snug" style={{ fontSize: "clamp(0.98rem, 1.4vw, 1.1rem)" }}>{p.label}</h3>
+                    <p className="text-white/45 text-sm leading-relaxed">{p.linea}</p>
+                  </div>
+                </div>
+              </R>
+            ))}
+          </div>
         </div>
       </section>
 

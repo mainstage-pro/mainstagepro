@@ -76,14 +76,6 @@ export default function PresentacionesGrupo({
           </div>
         </div>
       )}
-      {grupo.grupo === "Prospección" && (
-        <div className="mb-4 bg-[#B3985B]/5 border border-[#B3985B]/20 rounded-xl p-5">
-          <h3 className="text-white font-semibold text-sm">Una presentación por perfil de cliente</h3>
-          <p className="text-white/40 text-xs mt-1 leading-relaxed">
-            Cada link es un pitch enfocado, de un solo scroll, escrito en el lenguaje de ese perfil: qué es Mainstage Pro, qué resolvemos, nuestro trabajo y contacto directo por WhatsApp. Compártelo para una primera impresión fuerte. También se sugiere solo en el CRM según el perfil del prospecto.
-          </p>
-        </div>
-      )}
       {grupo.grupo === "Paquetes" && (
         <div className="mb-4 bg-[#B3985B]/5 border border-[#B3985B]/20 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex-1 min-w-0">

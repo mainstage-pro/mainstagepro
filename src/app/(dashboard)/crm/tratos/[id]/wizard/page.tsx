@@ -293,7 +293,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
               )}
 
               {/* ── Presentaciones / material para compartir ── */}
-              <MaterialCompartir tipoEvento={trato.tipoEvento} esOutbound={esOutbound} materialesPrincipales={perfilSel?.materiales} perfilId={perfilSel?.id} perfilLabel={perfilSel?.label} />
+              <MaterialCompartir tipoEvento={trato.tipoEvento} esOutbound={esOutbound} materialesPrincipales={perfilSel?.materiales} />
 
               {/* ── Continuar en la ventana del trato ── */}
               <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-2xl p-5">

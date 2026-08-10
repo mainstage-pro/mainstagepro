@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Map, ClipboardList, Sliders, Guitar, PartyPopper, Building2, Camera, Pin, Search, Sparkles, type LucideIcon } from "lucide-react";
+import { Map, ClipboardList, Sliders, Guitar, PartyPopper, Building2, Camera, Pin, Search, type LucideIcon } from "lucide-react";
 import { useToast } from "@/components/Toast";
-import { perfilToSlug, PERFIL_COPY } from "@/lib/presentacion-perfiles";
 
 // ─── Constantes compartidas ──────────────────────────────────────────────────
 export const CONTACTOS_INBOUND = [
@@ -140,17 +139,11 @@ export function MaterialCompartir({
   tipoEvento,
   esOutbound,
   materialesPrincipales,
-  perfilId,
-  perfilLabel,
 }: {
   tipoEvento: string | null;
   esOutbound: boolean;
   // Orden de prioridad de material según el perfil de prospecto (si hay).
   materialesPrincipales?: string[];
-  // Perfil de prospecto activo: si es un perfil base con presentación propia,
-  // se ofrece su presentación de prospección a la medida como material principal.
-  perfilId?: string | null;
-  perfilLabel?: string | null;
 }) {
   const toast = useToast();
   const origin = typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app";
@@ -163,17 +156,6 @@ export function MaterialCompartir({
     { id: "empresarial", icon: Building2,     label: "Presentación Eventos Empresariales",  url: `${origin}/presentacion/evento/empresarial` },
     { id: "galeria",     icon: Camera,        label: "Galería de Eventos",                  url: `${origin}/presentacion/galeria` },
   ];
-
-  // Presentación de prospección a la medida del perfil (solo perfiles base con copy propio).
-  const tienePerfilPresentacion = !!(perfilId && PERFIL_COPY[perfilId]);
-  if (tienePerfilPresentacion) {
-    materiales.unshift({
-      id: "perfil",
-      icon: Sparkles,
-      label: perfilLabel ? `Presentación para ${perfilLabel}` : "Presentación para este perfil",
-      url: `${origin}/presentacion/perfil/${perfilToSlug(perfilId as string)}`,
-    });
-  }
 
   // Prioridad de material: primero el perfil de prospecto (si hay), si no el tipoEvento.
   const eventoMapping: Record<string, string> = { MUSICAL: "musical", SOCIAL: "social", EMPRESARIAL: "empresarial" };
@@ -188,15 +170,7 @@ export function MaterialCompartir({
       materiales.unshift(item);
     }
   }
-  // La presentación por perfil siempre va primero si existe.
-  if (tienePerfilPresentacion) {
-    const idx = materiales.findIndex(m => m.id === "perfil");
-    if (idx > 0) {
-      const [item] = materiales.splice(idx, 1);
-      materiales.unshift(item);
-    }
-  }
-  const numDestacados = Math.max(1, prioridad.length + (tienePerfilPresentacion ? 1 : 0));
+  const numDestacados = Math.max(1, prioridad.length);
 
   return (
     <div className="pt-2 pb-2">
