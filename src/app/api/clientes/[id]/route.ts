@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
 import { getCuentasScope } from "@/lib/estado-cuenta";
+import { serializePerfiles } from "@/lib/proceso/perfiles";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -70,10 +71,20 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { id } = await params;
   const body = await request.json();
 
-  const allowed = ["nombre", "tipoCliente", "clasificacion", "perfilProspecto", "telefono", "correo", "notas", "vendedorId", "origenLead"];
+  const allowed = ["nombre", "tipoCliente", "clasificacion", "telefono", "correo", "notas", "vendedorId", "origenLead"];
   const data: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) data[key] = body[key] !== undefined ? body[key] || null : null;
+  }
+  // Perfiles (multi, hasta 3). Acepta perfilesProspecto (array) o perfilProspecto (single legacy).
+  if ("perfilesProspecto" in body || "perfilProspecto" in body) {
+    const arr: string[] = Array.isArray(body.perfilesProspecto)
+      ? body.perfilesProspecto
+      : body.perfilProspecto
+        ? [body.perfilProspecto]
+        : [];
+    data.perfilesProspecto = serializePerfiles(arr);
+    data.perfilProspecto = arr[0] || null;
   }
   // esProspecto: boolean field — explicit
   if ("esProspecto" in body) {

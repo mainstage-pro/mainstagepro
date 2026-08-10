@@ -24,7 +24,7 @@ import {
   NotasSeguimiento,
   type NotaSeg,
 } from '@/components/crm/PlanContactos';
-import { resolvePerfil, type PerfilCategoria, PERFIL_CATEGORIAS } from '@/lib/proceso/perfiles';
+import { resolvePerfil, parsePerfiles, type PerfilCategoria, PERFIL_CATEGORIAS } from '@/lib/proceso/perfiles';
 import { PerfilSelect, usePerfilesCustom } from '@/components/crm/PerfilSelect';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -93,9 +93,10 @@ interface Trato {
   contactoVenueNombre: string | null;
   contactoVenueTelefono: string | null;
   camposCliente: string | null;
+  perfilProspecto: string | null;
   cliente: {
     id: string; nombre: string; empresa: string | null;
-    tipoCliente: string; clasificacion: string; perfilProspecto: string | null;
+    tipoCliente: string; clasificacion: string; perfilProspecto: string | null; perfilesProspecto: string | null;
     telefono: string | null; correo: string | null;
   };
   responsableId: string | null;
@@ -1050,12 +1051,13 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   async function guardarPerfil(perfilId: string | null) {
     if (!trato) return;
     setSavingPerfil(true);
-    const res = await fetch(`/api/clientes/${trato.cliente.id}`, {
+    // El perfil elegido es del TRATO; el API lo suma también al contacto (hasta 3).
+    const res = await fetch(`/api/tratos/${trato.id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ perfilProspecto: perfilId }),
     });
     if (res.ok) {
-      setTrato(prev => prev ? { ...prev, cliente: { ...prev.cliente, perfilProspecto: perfilId } } : prev);
+      setTrato(prev => prev ? { ...prev, perfilProspecto: perfilId } : prev);
     }
     setSavingPerfil(false);
   }
@@ -1810,7 +1812,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         const nombre = trato.cliente.nombre.split(" ")[0];
         const tel = trato.cliente.telefono?.replace(/\D/g, "");
         const num = tel ? (tel.startsWith("52") ? tel : `52${tel}`) : null;
-        const perfilSel = resolvePerfil(trato.cliente.perfilProspecto, perfilesCustom);
+        const perfilActual = trato.perfilProspecto ?? parsePerfiles(trato.cliente.perfilesProspecto ?? trato.cliente.perfilProspecto)[0] ?? "";
+        const perfilSel = resolvePerfil(perfilActual, perfilesCustom);
 
         return (
           <div className={`bg-[#0d0d0d] border-2 rounded-xl overflow-hidden ${
@@ -1855,7 +1858,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                   <p className="text-xs text-gray-500 mb-3">Elige a quién le estás hablando para sugerir el mensaje inicial y el material adecuado. Se guarda en el contacto. Si ninguno encaja, usa «+» para agregar uno.</p>
                   <PerfilSelect
-                    value={trato.cliente.perfilProspecto ?? ""}
+                    value={perfilActual}
                     onChange={v => guardarPerfil(v || null)}
                     custom={perfilesCustom}
                     onCreated={agregarPerfil}

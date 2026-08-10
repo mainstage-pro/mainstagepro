@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { EmpresaCombobox } from "@/components/EmpresaCombobox";
 import { Combobox } from "@/components/Combobox";
-import { PerfilSelect, usePerfilesCustom } from "@/components/crm/PerfilSelect";
+import { PerfilMultiSelect, usePerfilesCustom } from "@/components/crm/PerfilSelect";
 
 export default function NuevoClientePage() {
   const router = useRouter();
@@ -15,11 +15,11 @@ export default function NuevoClientePage() {
     nombre: "",
     tipoCliente: "POR_DESCUBRIR",
     clasificacion: "NUEVO",
-    perfilProspecto: "",
     telefono: "",
     correo: "",
     notas: "",
   });
+  const [perfiles, setPerfiles] = useState<string[]>([]);
   const [empresa, setEmpresa] = useState<{ id: string; nombre: string } | null>(null);
   const { custom: perfilesCustom, agregar: agregarPerfil } = usePerfilesCustom();
 
@@ -39,7 +39,7 @@ export default function NuevoClientePage() {
       const res = await fetch("/api/clientes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, empresaId: empresa?.id ?? null }),
+        body: JSON.stringify({ ...form, perfilesProspecto: perfiles, empresaId: empresa?.id ?? null }),
       });
 
       if (!res.ok) {
@@ -136,14 +136,14 @@ export default function NuevoClientePage() {
             </div>
           </div>
           <div className="mt-4">
-            <label className="block text-xs text-gray-400 mb-1">Perfil</label>
-            <PerfilSelect
-              value={form.perfilProspecto}
-              onChange={(v) => setForm((p) => ({ ...p, perfilProspecto: v }))}
+            <label className="block text-xs text-gray-400 mb-1">Perfiles (hasta 3)</label>
+            <PerfilMultiSelect
+              value={perfiles}
+              onChange={setPerfiles}
               custom={perfilesCustom}
               onCreated={agregarPerfil}
             />
-            <p className="text-[11px] text-gray-500 mt-1">Quién es el contacto. Define el mensaje de primer contacto y el material a compartir en prospección. Si ninguno encaja, usa «+» para agregar uno.</p>
+            <p className="text-[11px] text-gray-500 mt-1">Quién es el contacto. Puedes elegir hasta 3 perfiles; al abrir un trato eliges con cuál te diriges. Define el mensaje de primer contacto y el material a compartir. Si ninguno encaja, usa «+» para agregar uno.</p>
           </div>
         </div>
 

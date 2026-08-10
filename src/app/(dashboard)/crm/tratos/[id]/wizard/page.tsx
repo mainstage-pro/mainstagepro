@@ -3,20 +3,18 @@
 import { use, useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Telescope, Sprout, Search, ClipboardList, CheckCircle2, Megaphone, Mic, Hourglass, Smartphone, Package, FileText, User, AlertTriangle, Target, type LucideIcon } from "lucide-react";
+import { Telescope, Sprout, Search, ClipboardList, CheckCircle2, Package, FileText, User, AlertTriangle, Target, type LucideIcon } from "lucide-react";
 import DiscoveryForm from "@/components/crm/DiscoveryForm";
 import { useToast } from "@/components/Toast";
 import { Combobox } from "@/components/Combobox";
 import { ORIGEN_LEAD_OPTIONS, MOMENTO_OPTIONS } from "@/lib/constants";
 import {
-  CONTACTOS_INBOUND,
-  CONTACTOS_OUTBOUND,
-  PlanContactosSteps,
   MaterialCompartir,
-  NotasSeguimiento,
   type NotaSeg,
   type SegItem,
 } from "@/components/crm/PlanContactos";
+import { PerfilSelect, usePerfilesCustom } from "@/components/crm/PerfilSelect";
+import { resolvePerfil, parsePerfiles, PERFIL_CATEGORIAS, type PerfilCategoria } from "@/lib/proceso/perfiles";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface Trato {
@@ -26,7 +24,8 @@ interface Trato {
   origenLead: string;
   tipoProspecto: string;
   nurturingData: string | null;
-  cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null };
+  perfilProspecto: string | null;
+  cliente: { id: string; nombre: string; empresa: string | null; telefono: string | null; perfilProspecto: string | null; perfilesProspecto: string | null };
   responsable: { id: string; name: string } | null;
   canalAtencion: string | null;
   descubrimientoCompleto: boolean;
@@ -89,44 +88,26 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
   const [trato, setTrato] = useState<Trato | null>(null);
   const [loading, setLoading] = useState(true);
   const [nurturing, setNurturing] = useState<NurturingData>({ etapa: "PRIMER_CONTACTO", log: [], pasosMarcados: [] });
-  const [saving, setSaving] = useState(false);
   const [creandoCotizacion, setCreandoCotizacion] = useState(false);
   const [isEditingDiscovery, setIsEditingDiscovery] = useState(false);
   const [showEditInicial, setShowEditInicial] = useState(false);
+  const [savingPerfil, setSavingPerfil] = useState(false);
 
-  // Estados para formulario cliente
-  const [generandoToken, setGenerandoToken] = useState(false);
-  const [linkCopiado, setLinkCopiado] = useState(false);
-  const [forzarFormulario, setForzarFormulario] = useState(false);
-  const formUrl = trato?.formToken ? `${typeof window !== 'undefined' ? window.location.origin : ''}/f/${trato.formToken}` : "";
+  // Perfiles de prospecto: base (código) + personalizados (BD).
+  const { custom: perfilesCustom, agregar: agregarPerfil } = usePerfilesCustom();
 
-  function copiarLink(url: string) {
-    navigator.clipboard.writeText(url);
-    setLinkCopiado(true);
-    setTimeout(() => setLinkCopiado(false), 2000);
-  }
-
-  async function generarFormToken() {
-    setGenerandoToken(true);
+  // Guardar el perfil elegido para ESTE trato (el API lo agrega también al contacto, hasta 3).
+  async function guardarPerfilTrato(perfilId: string | null) {
+    setSavingPerfil(true);
+    setTrato(prev => prev ? { ...prev, perfilProspecto: perfilId } : prev);
     try {
-      const res = await fetch(`/api/tratos/${id}/form-token`, { method: "POST" });
-      const data = await res.json();
-      if (data.ok) {
-        setTrato(prev => prev ? { ...prev, formToken: data.formToken, formEstado: "NO_ENVIADO" } : prev);
-      }
+      await fetch(`/api/tratos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ perfilProspecto: perfilId }),
+      });
     } finally {
-      setGenerandoToken(false);
-    }
-  }
-
-  async function marcarFormEnviado() {
-    const res = await fetch(`/api/tratos/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ formEstado: "ENVIADO" }),
-    });
-    if (res.ok) {
-      setTrato(prev => prev ? { ...prev, formEstado: "ENVIADO" } : prev);
+      setSavingPerfil(false);
     }
   }
 
@@ -162,33 +143,6 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
     });
   }, [id]);
 
-  // Marcar / desmarcar paso
-  function togglePaso(num: number) {
-    const actuales = nurturing.pasosMarcados ?? [];
-    const nuevos = actuales.includes(num)
-      ? actuales.filter(n => n !== num)
-      : [...actuales, num];
-    const u = { ...nurturing, pasosMarcados: nuevos };
-    setNurturing(u);
-    guardarNurturing(u);
-  }
-
-  // Marcar todos
-  async function marcarTodos(contactos: typeof CONTACTOS_INBOUND) {
-    const todos = contactos.map(c => c.num);
-    const u = { ...nurturing, pasosMarcados: todos };
-    setNurturing(u);
-    await guardarNurturing(u);
-  }
-
-  // Agregar nota de seguimiento
-  async function agregarNota(texto: string) {
-    const nueva: NotaSeg = { texto, fecha: new Date().toISOString() };
-    const u = { ...nurturing, notasSeguimiento: [...(nurturing.notasSeguimiento ?? []), nueva] };
-    setNurturing(u);
-    await guardarNurturing(u);
-  }
-
   // ── Elegir modalidad de la propuesta y pasar directo al descubrimiento ──
   function elegirModalidad(m: "INVENTARIO" | "CONTRA_RIDER") {
     const u: NurturingData = { ...nurturing, modalidadPropuesta: m, preparacionHecha: true };
@@ -223,19 +177,6 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
     }
   }
 
-  async function iniciarDescubrimiento() {
-    setSaving(true);
-    const res = await fetch(`/api/tratos/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ etapa: "DESCUBRIMIENTO", tipoProspecto: "ACTIVO", canalAtencion: null }),
-    });
-    if (res.ok) {
-      router.push(`/crm/tratos/${id}?tab=descubrimiento`);
-    }
-    setSaving(false);
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -258,7 +199,6 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
   const cfg = ETAPA_CONFIG[etapa] ?? ETAPA_CONFIG.CONTACTO_INICIAL;
   const nombre1 = trato.cliente.nombre.split(" ")[0];
   const esOutbound = trato.tipoLead === "OUTBOUND";
-  const contactos = esOutbound ? CONTACTOS_OUTBOUND : CONTACTOS_INBOUND;
 
   return (
     <div className="min-h-screen bg-[#080808]">
@@ -304,133 +244,73 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-5">
 
         {/* ═══════════════════════════════════════════════════════════
-            PANEL: Prospección — Plan de contactos
+            PANEL: Prospección — Perfil, mensaje inicial y material
         ═══════════════════════════════════════════════════════════ */}
-        {esProspeccion && (
-          <>
-            {/* ── Plan de contactos (pasos) ── */}
-            <PlanContactosSteps
-              contactos={contactos}
-              esOutbound={esOutbound}
-              pasosMarcados={nurturing.pasosMarcados ?? []}
-              onToggle={togglePaso}
-              onMarcarTodos={() => marcarTodos(contactos)}
-            />
+        {esProspeccion && (() => {
+          const tel = trato.cliente.telefono?.replace(/\D/g, "");
+          const num = tel ? (tel.startsWith("52") ? tel : `52${tel}`) : null;
+          const perfilActual =
+            trato.perfilProspecto ??
+            parsePerfiles(trato.cliente.perfilesProspecto ?? trato.cliente.perfilProspecto)[0] ??
+            "";
+          const perfilSel = resolvePerfil(perfilActual, perfilesCustom);
+          const catSug = PERFIL_CATEGORIAS.includes(trato.tipoEvento as PerfilCategoria)
+            ? (trato.tipoEvento as PerfilCategoria)
+            : null;
 
-            {/* ── Material para compartir ── */}
-            <MaterialCompartir tipoEvento={trato.tipoEvento} esOutbound={esOutbound} />
-
-            {/* ── Notas de seguimiento ── */}
-            <NotasSeguimiento
-              notas={nurturing.notasSeguimiento ?? []}
-              onAdd={agregarNota}
-              esOutbound={esOutbound}
-            />
-
-            {/* ── CTA: Iniciar descubrimiento o Enviar Formulario ── */}
-            <div className="pt-2 space-y-4">
+          return (
+            <>
+              {/* ── Perfil con el que nos dirigimos en este trato ── */}
               <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-2xl p-5">
-                <p className="text-white font-semibold text-sm mb-1">¿{nombre1} está listo para el siguiente paso?</p>
-                <p className="text-gray-600 text-xs mb-4 leading-relaxed">
-                  {esOutbound
-                    ? "Cuando el prospecto muestre interés en un evento concreto, es hora de recopilar los detalles técnicos."
-                    : "Cuando tengas suficiente información y el cliente muestre intención clara, es hora de recopilar los detalles técnicos."}
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-white font-bold text-base">¿Con qué perfil te diriges a {nombre1}?</p>
+                  {savingPerfil && <span className="text-[10px] text-gray-500">Guardando…</span>}
+                </div>
+                <p className="text-gray-500 text-xs mb-3 leading-relaxed">
+                  Elige el perfil para este trato: define el mensaje inicial y el material a compartir. Se guarda en el
+                  trato y se suma al contacto (hasta 3). Si ninguno encaja, usa «+» para crear uno.
                 </p>
-                
-                {/* Arista de publicidad: para leads META_ADS / REDES_SOCIALES priorizamos
-                    la presentación antes de pedir el formulario. El formulario solo se ofrece
-                    cuando el lead ya está cotizando o el vendedor lo fuerza. */}
-                {(() => {
-                  const esPublicidad = ["META_ADS", "REDES_SOCIALES"].includes(trato.origenLead);
-                  const yaCotizando = trato.momentoContratacion === "COTIZANDO";
-                  const ofrecerFormulario = !esPublicidad || yaCotizando || forzarFormulario;
-                  return (
-                    <>
-                      {esPublicidad && !ofrecerFormulario && (
-                        <div className="mb-4 p-3 rounded-xl border border-amber-700/40 bg-amber-900/10">
-                          <p className="text-amber-300 text-xs font-semibold mb-1 inline-flex items-center gap-1.5"><Megaphone strokeWidth={1.75} className="w-3.5 h-3.5" /> Lead de publicidad</p>
-                          <p className="text-gray-500 text-[11px] leading-relaxed">
-                            Primero comparte la presentación (arriba). Cuando muestre interés concreto en cotizar,
-                            se habilita el formulario para que el cliente lo llene.
-                          </p>
-                        </div>
-                      )}
-                      <div className={`grid grid-cols-1 ${ofrecerFormulario ? "sm:grid-cols-2" : ""} gap-3 mb-4`}>
-                        {/* Opción A: Yo recopilo */}
-                        <button
-                          onClick={iniciarDescubrimiento}
-                          disabled={saving}
-                          className="border border-[#2a2a2a] bg-[#111] hover:bg-[#1a1a1a] rounded-xl p-4 text-left transition-all group disabled:opacity-50"
-                        >
-                          <div className="mb-2"><Mic strokeWidth={1.75} className="w-6 h-6 text-gray-500" /></div>
-                          <p className="text-white text-sm font-semibold group-hover:text-[#B3985B] transition-colors">Yo recopilo (Vendedor)</p>
-                          <p className="text-gray-600 text-xs mt-1 leading-relaxed">Lleno el brief en llamada o reunión con el cliente</p>
-                        </button>
-                        {/* Opción B: El cliente llena (oculta para publicidad hasta cotización) */}
-                        {ofrecerFormulario && (
-                          <button
-                            onClick={async () => {
-                              if (!trato.formToken) await generarFormToken();
-                            }}
-                            disabled={generandoToken || saving}
-                            className="border border-[#B3985B]/30 bg-[#B3985B]/5 hover:bg-[#B3985B]/10 rounded-xl p-4 text-left transition-all group disabled:opacity-50"
-                          >
-                            <div className="mb-2">{generandoToken ? <Hourglass strokeWidth={1.75} className="w-6 h-6 text-[#B3985B]" /> : <Smartphone strokeWidth={1.75} className="w-6 h-6 text-[#B3985B]" />}</div>
-                            <p className="text-[#B3985B] text-sm font-semibold group-hover:text-[#c9a96a] transition-colors">
-                              {generandoToken ? "Generando..." : "El cliente llena"}
-                            </p>
-                            <p className="text-gray-600 text-xs mt-1 leading-relaxed">Generar link para que el cliente complete su info</p>
-                          </button>
-                        )}
-                      </div>
-                      {esPublicidad && !yaCotizando && !forzarFormulario && (
-                        <button
-                          onClick={() => setForzarFormulario(true)}
-                          className="text-[11px] text-gray-500 hover:text-white transition-colors mb-2"
-                        >
-                          Forzar envío de formulario de todos modos →
-                        </button>
-                      )}
-                    </>
-                  );
-                })()}
-
-                {trato.formToken && (
-                  <div className="bg-[#111] border border-[#B3985B]/20 rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
-                    <p className="text-white text-sm font-semibold mb-1">Formulario para el cliente</p>
-                    <p className="text-[#555] text-[11px] mb-3">
-                      {trato.formEstado === "ENVIADO" ? "Link enviado · esperando respuesta" : "Link generado · compártelo"}
-                    </p>
-                    <div className="flex items-center gap-2 bg-[#000] border border-[#222] rounded-lg px-3 py-2 mb-3">
-                      <span className="text-[#666] text-[11px] truncate flex-1 font-mono">{formUrl}</span>
-                      <button
-                        onClick={() => { copiarLink(formUrl); if (trato.formEstado === "NO_ENVIADO") marcarFormEnviado(); }}
-                        className="text-[#B3985B] text-xs font-medium hover:underline shrink-0"
-                      >
-                        {linkCopiado ? "¡Copiado!" : "Copiar"}
-                      </button>
-                    </div>
-                    {trato.cliente.telefono && (
-                      <a
-                        href={`https://wa.me/52${trato.cliente.telefono}?text=${encodeURIComponent(`Hola ${nombre1} 👋, para prepararte la mejor propuesta para tu evento necesito que llenes este breve formulario (toma menos de 3 minutos): ${formUrl}`)}`}
-                        target="_blank" rel="noopener noreferrer"
-                        onClick={() => { if (trato.formEstado === "NO_ENVIADO") marcarFormEnviado(); }}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold bg-green-900/20 border border-green-800/40 text-green-400 hover:border-green-700 transition-colors"
-                      >
-                        Enviar link por WhatsApp
-                      </a>
-                    )}
-                    <div className="mt-4 pt-4 border-t border-[#1e1e1e] flex justify-center">
-                      <button onClick={iniciarDescubrimiento} className="text-xs text-gray-500 hover:text-white transition-colors">
-                        O continuar y llenar el formulario yo mismo →
-                      </button>
-                    </div>
-                  </div>
-                )}
+                <PerfilSelect
+                  value={perfilActual}
+                  onChange={v => guardarPerfilTrato(v || null)}
+                  custom={perfilesCustom}
+                  onCreated={agregarPerfil}
+                  categoriaSugerida={catSug}
+                />
               </div>
-            </div>
-          </>
-        )}
+
+              {/* ── Mensaje inicial para copiar / enviar por WhatsApp ── */}
+              {perfilSel ? (
+                <MensajeContacto
+                  label={perfilSel.label}
+                  msg={perfilSel.mensajeInicial(nombre1, trato.cliente.empresa)}
+                  num={num}
+                />
+              ) : (
+                <div className="border border-dashed border-[#2a2a2a] rounded-2xl px-4 py-8 text-center">
+                  <p className="text-gray-500 text-xs">Selecciona un perfil arriba para ver el mensaje inicial recomendado.</p>
+                </div>
+              )}
+
+              {/* ── Presentaciones / material para compartir ── */}
+              <MaterialCompartir tipoEvento={trato.tipoEvento} esOutbound={esOutbound} materialesPrincipales={perfilSel?.materiales} />
+
+              {/* ── Continuar en la ventana del trato ── */}
+              <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-2xl p-5">
+                <p className="text-white font-semibold text-sm mb-1">¿Ya hiciste el primer contacto?</p>
+                <p className="text-gray-600 text-xs mb-4 leading-relaxed">
+                  Continúa en la ventana del trato para agendar tareas y dar seguimiento al proceso.
+                </p>
+                <button
+                  onClick={() => router.push(`/crm/tratos/${id}`)}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-[#B3985B] text-black text-sm font-bold hover:bg-[#c9a96a] transition-colors"
+                >
+                  <Target strokeWidth={1.75} className="w-4 h-4" /> Ir al trato →
+                </button>
+              </div>
+            </>
+          );
+        })()}
 
         
         {/* ═══════════════════════════════════════════════════════════
@@ -454,7 +334,7 @@ export default function TratoWizardPage({ params }: { params: Promise<{ id: stri
                       { value: "INVENTARIO", icon: Package, label: "Inventario Mainstage", desc: "Armamos la propuesta con nuestro equipo. Recomendado.", recomendado: true },
                       { value: "CONTRA_RIDER", icon: FileText, label: "Rider específico / Contra-rider", desc: "El cliente necesita otras marcas o quiere subir su rider técnico para que propongamos un contra-rider.", recomendado: false },
                     ] as const).map(m => (
-                      <button key={m.value} type="button" disabled={saving} onClick={() => elegirModalidad(m.value)}
+                      <button key={m.value} type="button" onClick={() => elegirModalidad(m.value)}
                         className="text-left p-4 rounded-xl border transition-all relative border-[#222] bg-[#111] hover:border-[#B3985B] hover:bg-[#B3985B]/5 disabled:opacity-40">
                         {m.recomendado && (
                           <span className="absolute top-2 right-2 text-[9px] font-bold uppercase tracking-wider text-[#B3985B] bg-[#B3985B]/15 px-1.5 py-0.5 rounded">Recomendado</span>
@@ -762,7 +642,7 @@ function EditarDatosInicialesModal({
         tipoLead,
         origenVenta,
         vendedorId: vendedorId || null,
-        ...(cli ? { cliente: { id: cli.id, nombre: cli.nombre, empresa: cli.empresa, telefono: trato.cliente.telefono } } : {}),
+        ...(cli ? { cliente: { id: cli.id, nombre: cli.nombre, empresa: cli.empresa, telefono: trato.cliente.telefono, perfilProspecto: trato.cliente.perfilProspecto, perfilesProspecto: trato.cliente.perfilesProspecto } } : {}),
       });
     } finally {
       setSaving(false);
@@ -872,6 +752,39 @@ function EditarDatosInicialesModal({
             {saving ? "Guardando..." : "Guardar cambios"}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Mensaje de primer contacto: copiar o enviar por WhatsApp ──────────────────
+function MensajeContacto({ label, msg, num }: { label: string; msg: string; num: string | null }) {
+  const [copiado, setCopiado] = useState(false);
+  return (
+    <div className="bg-[#0d0d0d] border border-[#1e1e1e] rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-base font-bold text-white">💬 Mensaje inicial · {label}</p>
+        {!num && <span className="text-[10px] text-orange-400">Sin teléfono</span>}
+      </div>
+      <div className="bg-[#111] border border-[#222] rounded-xl px-4 py-3 mb-3">
+        <p className="text-gray-300 text-xs leading-relaxed whitespace-pre-line">{msg}</p>
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={() => { navigator.clipboard.writeText(msg); setCopiado(true); setTimeout(() => setCopiado(false), 2000); }}
+          className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold bg-[#1a1a1a] border border-[#333] text-gray-300 hover:text-white hover:border-[#444] transition-colors"
+        >
+          {copiado ? "¡Copiado!" : "Copiar mensaje"}
+        </button>
+        {num && (
+          <a
+            href={`https://wa.me/${num}?text=${encodeURIComponent(msg)}`}
+            target="_blank" rel="noopener noreferrer"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold bg-green-900/20 border border-green-800/40 text-green-400 hover:border-green-700 transition-colors"
+          >
+            Enviar por WhatsApp
+          </a>
+        )}
       </div>
     </div>
   );

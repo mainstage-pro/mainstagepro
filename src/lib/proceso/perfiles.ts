@@ -198,6 +198,36 @@ export function resolvePerfil(
 export const resolvePerfilLabel = (id: string | null | undefined, custom: CustomPerfil[] = []): string =>
   resolvePerfil(id, custom)?.label ?? "—";
 
+// ── Multi-perfil (hasta 3 por cliente) ───────────────────────────────────────
+export const MAX_PERFILES = 3;
+
+// Parsea el JSON array de perfiles del cliente. Tolera el formato viejo (single).
+export function parsePerfiles(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  const s = raw.trim();
+  if (!s) return [];
+  if (s.startsWith("[")) {
+    try {
+      const arr = JSON.parse(s);
+      return Array.isArray(arr) ? arr.filter((x): x is string => typeof x === "string" && x.length > 0) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [s]; // valor single legacy
+}
+
+// Serializa a JSON array (máx 3, sin duplicados). null si queda vacío.
+export function serializePerfiles(ids: (string | null | undefined)[]): string | null {
+  const clean = Array.from(new Set(ids.filter((x): x is string => Boolean(x && x.trim())))).slice(0, MAX_PERFILES);
+  return clean.length > 0 ? JSON.stringify(clean) : null;
+}
+
+// Resuelve una lista de ids a ResolvedPerfil[], descartando los que no existen.
+export function resolvePerfiles(ids: string[], custom: CustomPerfil[] = []): ResolvedPerfil[] {
+  return ids.map((id) => resolvePerfil(id, custom)).filter((p): p is ResolvedPerfil => p !== null);
+}
+
 // Base + custom agrupados por categoría, para pintar el selector.
 export function perfilesPorCategoriaCon(custom: CustomPerfil[] = []) {
   return PERFIL_CATEGORIAS.map((categoria) => ({

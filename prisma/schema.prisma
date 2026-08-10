@@ -149,7 +149,8 @@ model Cliente {
   compania      Empresa? @relation("ClienteEmpresa", fields: [empresaId], references: [id])
   tipoCliente   String   @default("POR_DESCUBRIR") // B2B | B2C | POR_DESCUBRIR
   clasificacion String   @default("NUEVO")          // NUEVO | BASIC | REGULAR | PRIORITY
-  perfilProspecto String? // Perfil de prospecto (src/lib/proceso/perfiles.ts): PROMOTOR | DJ_MUSICAL | MUSICO | FORO_EVENTOS | EMPRESA_RENTA | WEDDING_PLANNER | SALON_EVENTOS | DJ_SOCIAL | GRADUACIONES | EMPRESA | DESARROLLADOR_INMOBILIARIO | ESCUELA | CONFERENCISTA
+  perfilProspecto String? // (legacy, single) reemplazado por perfilesProspecto
+  perfilesProspecto String? // JSON array de hasta 3 perfiles (built-in id o custom id)
   servicioUsual String?  // RENTA | PRODUCCION_TECNICA | DIRECCION_TECNICA | MULTISERVICIO
   tiposEvento   String?  // JSON: ["MUSICAL","SOCIAL","EMPRESARIAL","VARIOS"]
   telefono      String?
@@ -208,6 +209,7 @@ model Trato {
   etapa               String   @default("PROSPECCION") // PROSPECCION | DESCUBRIMIENTO | OPORTUNIDAD | VENTA_CERRADA | VENTA_PERDIDA
   etapaInterna        String?  // sub-etapa del pipeline — valores en src/lib/proceso/valores.ts (ETAPAS_INTERNAS)
   clasificacion       String   @default("PROSPECTO")    // PROSPECTO | BASIC | REGULAR | PRIORITY
+  perfilProspecto     String?  // perfil elegido para este trato (built-in id o custom id)
 
   // ── DEPRECADOS (borrado físico diferido a la fase contract, tras reescribir UI Partes 6/7 + migrar datos Parte 8) ──
   // tipoProspecto: reemplazado por etapaInterna === 'NURTURING'. nurturingData/preferenciaContacto: contienen datos

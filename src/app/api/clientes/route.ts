@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
+import { serializePerfiles } from "@/lib/proceso/perfiles";
 
 export async function POST(request: NextRequest) {
   const session = await getSession();
@@ -9,6 +10,13 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     if (!body.nombre) return NextResponse.json({ error: "Nombre requerido" }, { status: 400 });
+
+    const perfilesArr: string[] = Array.isArray(body.perfilesProspecto)
+      ? body.perfilesProspecto
+      : body.perfilProspecto
+        ? [body.perfilProspecto]
+        : [];
+    const perfilesJson = serializePerfiles(perfilesArr);
 
     // Resolve empresaId: prefer explicit id, fall back to plain string lookup/create
     let empresaId: string | null = body.empresaId ?? null;
@@ -37,7 +45,8 @@ export async function POST(request: NextRequest) {
         empresaId,
         tipoCliente: body.tipoCliente || "POR_DESCUBRIR",
         clasificacion: body.clasificacion || "PROSPECTO",
-        perfilProspecto: body.perfilProspecto || null,
+        perfilProspecto: perfilesArr[0] || null,
+        perfilesProspecto: perfilesJson,
         telefono: body.telefono || null,
         correo: body.correo || null,
         notas: body.notas || null,
@@ -88,6 +97,7 @@ export async function GET(request: NextRequest) {
       tipoCliente: true,
       clasificacion: true,
       perfilProspecto: true,
+      perfilesProspecto: true,
       correo: true,
       esProspecto: true,
       vendedor: { select: { id: true, name: true } },

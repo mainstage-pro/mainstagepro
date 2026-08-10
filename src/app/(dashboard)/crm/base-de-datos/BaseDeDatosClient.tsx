@@ -3,8 +3,8 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import { TIPO_CLIENTE_LABELS, CLASIFICACION_LABELS, ORIGEN_LEAD_OPTIONS, ORIGEN_LEAD_LABELS } from "@/lib/constants";
-import { PerfilSelect, usePerfilesCustom } from "@/components/crm/PerfilSelect";
-import { PERFILES_POR_CATEGORIA, type CustomPerfil } from "@/lib/proceso/perfiles";
+import { PerfilMultiSelect, usePerfilesCustom } from "@/components/crm/PerfilSelect";
+import { PERFILES_POR_CATEGORIA, parsePerfiles, type CustomPerfil } from "@/lib/proceso/perfiles";
 import { CopyButton } from "@/components/CopyButton";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
@@ -26,6 +26,7 @@ interface Contacto {
   tipoCliente: string;
   clasificacion: string;
   perfilProspecto: string | null;
+  perfilesProspecto: string | null;
   esProspecto: boolean;
   origenLead: string | null;
   notas?: string | null;
@@ -368,12 +369,11 @@ function ContactoRow({
   empresaPopoverOpen, onEmpresaClick, empresaMode, setEmpresaMode,
   empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
   onVincularEmpresa, onCloseEmpresa,
-  perfilOptions = PERFIL_OPTIONS, perfilColors = PERFIL_COLORS,
+  perfilOptions = PERFIL_OPTIONS,
 }: {
   c: Contacto; usuarios: Vendedor[]; tab: Tab;
   actividadMap: Record<string, EstadoActividad>;
   perfilOptions?: { value: string; label: string }[];
-  perfilColors?: Record<string, { text: string; bg: string; border: string }>;
   onSaved: (updated: Partial<Contacto>) => void;
   onVendedorChange: (v: Vendedor | null) => void;
   onDelete: () => void; deleting: boolean;
@@ -506,9 +506,8 @@ function ContactoRow({
 
       {/* Perfil */}
       <td data-no-nav className="px-3 py-2.5 align-middle overflow-visible">
-        <InlineDropdown options={perfilOptions} value={c.perfilProspecto ?? ""}
-          onChange={v => patch({ perfilProspecto: v || null })} placeholder="Perfil"
-          colorMap={perfilColors} />
+        <InlineMultiSelect options={perfilOptions} values={parsePerfiles(c.perfilesProspecto ?? c.perfilProspecto)}
+          onChange={v => patch({ perfilesProspecto: v })} placeholder="Perfil" maxSelect={3} />
       </td>
 
       {/* Actividad */}
@@ -593,11 +592,11 @@ function ModalNuevoContacto({ onClose, onCreado, usuarios, modo, perfilesCustom,
     nombre: "", telefono: "", correo: "", empresa: "",
     tipoCliente: "POR_DESCUBRIR",
     clasificacion: modo === "cliente" ? "NUEVO" : "PROSPECTO",
-    perfilProspecto: "",
     origenLead: "META_ADS",
     notas: "",
     esCliente: modo === "cliente",
   });
+  const [perfiles, setPerfiles] = useState<string[]>([]);
   const tituloModal = modo === "cliente" ? "Nuevo cliente" : modo === "prospecto" ? "Nuevo prospecto" : "Nuevo contacto";
   function setF(k: string, v: unknown) { setForm(p => ({ ...p, [k]: v })); }
 
@@ -613,7 +612,7 @@ function ModalNuevoContacto({ onClose, onCreado, usuarios, modo, perfilesCustom,
         empresa: form.empresa.trim() || null,
         tipoCliente: form.tipoCliente,
         clasificacion: form.esCliente ? (form.clasificacion === "PROSPECTO" ? "NUEVO" : form.clasificacion) : "PROSPECTO",
-        perfilProspecto: form.perfilProspecto || null,
+        perfilesProspecto: perfiles,
         origenLead: form.origenLead,
         notas: form.notas.trim() || null,
         esProspecto: !form.esCliente,
@@ -694,10 +693,10 @@ function ModalNuevoContacto({ onClose, onCreado, usuarios, modo, perfilesCustom,
               </div>
             )}
             <div className="col-span-2">
-              <label className={labelCls}>Perfil</label>
-              <PerfilSelect
-                value={form.perfilProspecto}
-                onChange={v => setF("perfilProspecto", v)}
+              <label className={labelCls}>Perfiles (hasta 3)</label>
+              <PerfilMultiSelect
+                value={perfiles}
+                onChange={setPerfiles}
                 custom={perfilesCustom}
                 onCreated={onPerfilCreado}
               />
@@ -731,12 +730,11 @@ function ContactList({
   empresaPopoverId, setEmpresaPopoverId, empresaMode, setEmpresaMode,
   empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
   handleVincularEmpresa, closeEmpresaPopover,
-  perfilOptions, perfilColors,
+  perfilOptions,
 }: {
   contactos: Contacto[]; usuarios: Vendedor[]; tab: Tab;
   actividadMap: Record<string, EstadoActividad>;
   perfilOptions: { value: string; label: string }[];
-  perfilColors: Record<string, { text: string; bg: string; border: string }>;
   onSaved: (id: string, updated: Partial<Contacto>) => void;
   onVendedorChange: (id: string, v: Vendedor | null) => void;
   onDelete: (c: Contacto) => void; deletingId: string | null;
@@ -803,7 +801,7 @@ function ContactList({
               empresaResults={empresaResults} empresaSearching={empresaSearching}
               onVincularEmpresa={(empId, empNombre) => handleVincularEmpresa(c.id, empId, empNombre)}
               onCloseEmpresa={closeEmpresaPopover}
-              perfilOptions={perfilOptions} perfilColors={perfilColors}
+              perfilOptions={perfilOptions}
             />
           ))}
         </tbody>
@@ -1199,7 +1197,7 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
         && !(c.correo ?? "").toLowerCase().includes(q) && !(c.telefono ?? "").includes(q)) return false;
       if (filtroTipo && c.tipoCliente !== filtroTipo) return false;
       if (filtroClasificacion && c.clasificacion !== filtroClasificacion) return false;
-      if (filtroPerfil && c.perfilProspecto !== filtroPerfil) return false;
+      if (filtroPerfil && !parsePerfiles(c.perfilesProspecto ?? c.perfilProspecto).includes(filtroPerfil)) return false;
       if (filtroVendedor && c.vendedorId !== filtroVendedor) return false;
       if (filtroActividad && (actividadMap[c.id] ?? "INACTIVO") !== filtroActividad) return false;
       return true;
@@ -1221,7 +1219,7 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
     empresaPopoverId, setEmpresaPopoverId, empresaMode, setEmpresaMode,
     empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
     handleVincularEmpresa, closeEmpresaPopover,
-    perfilOptions, perfilColors,
+    perfilOptions,
   };
 
   // ─── Counts ──────────────────────────────────────────────────────────────────

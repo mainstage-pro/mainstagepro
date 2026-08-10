@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { syncFechaProximaAccion } from "@/app/api/seguimientos/route";
 import { ensureProcesoVentaColumns, ensureMultidiaColumns } from "@/lib/migraciones-lazy";
 import { defaultEtapaInterna, esEtapaInternaValida } from "@/lib/etapasInternas";
+import { parsePerfiles, serializePerfiles, MAX_PERFILES } from "@/lib/proceso/perfiles";
 
 let _vendedorColReady = false;
 async function ensureVendedorId() {
@@ -41,7 +42,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const trato = await prisma.trato.findUnique({
     where: { id },
     include: {
-      cliente: { select: { id: true, nombre: true, empresa: true, tipoCliente: true, clasificacion: true, perfilProspecto: true, telefono: true, correo: true } },
+      cliente: { select: { id: true, nombre: true, empresa: true, tipoCliente: true, clasificacion: true, perfilProspecto: true, perfilesProspecto: true, telefono: true, correo: true } },
       responsable: { select: { id: true, name: true } },
       vendedor: { select: { id: true, name: true } },
       vendedorOrigen: { select: { id: true, name: true } },
@@ -91,7 +92,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const allowed = [
     "clienteId",
     "etapa", "etapaInterna", "estatusContacto", "tipoEvento", "tipoServicio", "lugarEstimado",
-    "fechaEventoEstimada", "presupuestoEstimado", "clasificacion", "notas",
+    "fechaEventoEstimada", "presupuestoEstimado", "clasificacion", "notas", "perfilProspecto",
     "proximaAccion", "fechaProximaAccion", "motivoPerdida", "etapaCambiadaEn", "origenLead", "tipoLead",
     "origenVenta", "vendedorOrigenId", "responsableId", "vendedorId",
     // Scouting
@@ -228,6 +229,24 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     data,
     include: { cliente: { select: { nombre: true } } },
   });
+
+  // ── Perfil del trato: si es nuevo para el cliente, agregarlo (hasta 3) ───────
+  if ("perfilProspecto" in body && body.perfilProspecto) {
+    const cli = await prisma.trato.findUnique({
+      where: { id },
+      select: { clienteId: true, cliente: { select: { perfilesProspecto: true, perfilProspecto: true } } },
+    });
+    if (cli?.clienteId) {
+      const actuales = parsePerfiles(cli.cliente?.perfilesProspecto ?? cli.cliente?.perfilProspecto);
+      if (!actuales.includes(body.perfilProspecto) && actuales.length < MAX_PERFILES) {
+        const nuevos = serializePerfiles([...actuales, body.perfilProspecto]);
+        await prisma.cliente.update({
+          where: { id: cli.clienteId },
+          data: { perfilesProspecto: nuevos, perfilProspecto: actuales[0] || body.perfilProspecto },
+        });
+      }
+    }
+  }
 
   if (responsableCambio) {
     await prisma.tarea.updateMany({
