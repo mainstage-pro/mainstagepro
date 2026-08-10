@@ -18,6 +18,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { PRESENTACION_CATEGORIAS } from "@/lib/presentacion-categorias";
+import { PERFILES } from "@/lib/proceso/perfiles";
+import { PERFIL_COPY, perfilToSlug } from "@/lib/presentacion-perfiles";
 
 export type PresentacionItem = {
   key: string;
@@ -190,4 +192,31 @@ export const PRESENTACIONES_CATEGORIAS: PresentacionItem[] = PRESENTACION_CATEGO
   href: `/presentacion/categoria/${c.slug}`,
   icon: CATEGORIA_ICONS[c.slug] ?? Package,
   audience: "Clientes · Equipo",
+}));
+
+// Iconos y audiencia por categoría de perfil (= tipoEvento).
+const PERFIL_CAT_ICON: Record<string, LucideIcon> = {
+  MUSICAL: Music,
+  SOCIAL: Wine,
+  EMPRESARIAL: Building2,
+};
+const PERFIL_CAT_AUDIENCE: Record<string, string> = {
+  MUSICAL: "Musicales",
+  SOCIAL: "Sociales",
+  EMPRESARIAL: "Empresariales",
+};
+
+// Presentaciones de prospección: una por perfil base de cliente. Cada una es un
+// pitch enfocado y compartible, con el lenguaje propio de ese perfil. Derivadas
+// de PERFILES (solo los que tienen copy en PERFIL_COPY). Se muestran en la
+// pestaña "Prospección" del módulo. Se comparten desde el CRM por perfil.
+export const PRESENTACIONES_PROSPECCION: PresentacionItem[] = PERFILES.filter(
+  (p) => PERFIL_COPY[p.id],
+).map((p) => ({
+  key: `perfil-${perfilToSlug(p.id)}`,
+  label: p.label,
+  desc: PERFIL_COPY[p.id].sub,
+  href: `/presentacion/perfil/${perfilToSlug(p.id)}`,
+  icon: PERFIL_CAT_ICON[p.categoria] ?? Package,
+  audience: PERFIL_CAT_AUDIENCE[p.categoria] ?? "Prospectos",
 }));
