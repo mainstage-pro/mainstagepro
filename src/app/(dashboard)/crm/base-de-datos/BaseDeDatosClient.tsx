@@ -26,8 +26,6 @@ interface Contacto {
   tipoCliente: string;
   clasificacion: string;
   perfilProspecto: string | null;
-  servicioUsual: string | null;
-  tiposEvento: string | null;
   esProspecto: boolean;
   origenLead: string | null;
   notas?: string | null;
@@ -79,16 +77,7 @@ const CLAS_COLORS: Record<string, { text: string; bg: string; border: string }> 
   EVITABLE:  { text: "text-red-400",    bg: "bg-red-950/50",    border: "border-red-800/30"    },
 };
 
-const SERVICIO_OPTIONS = [
-  { value: "RENTA",              label: "Renta de Equipo" },
-  { value: "PRODUCCION_TECNICA", label: "Prod. Técnica" },
-  { value: "DIRECCION_TECNICA",  label: "Dir. Técnica" },
-];
-const SERVICIO_COLORS: Record<string, string> = {
-  RENTA: "#3B82F6", PRODUCCION_TECNICA: "#F59E0B", DIRECCION_TECNICA: "#8B5CF6",
-};
-
-// Perfil de prospecto: color según su categoría (alineada con tipoEvento).
+// Perfil de cliente: color según su categoría (musical / social / empresarial).
 const PERFIL_CAT_COLOR: Record<string, { text: string; bg: string; border: string }> = {
   MUSICAL:     { text: "text-indigo-300", bg: "bg-indigo-950/50", border: "border-indigo-800/30" },
   SOCIAL:      { text: "text-rose-300",   bg: "bg-rose-950/50",   border: "border-rose-800/30"   },
@@ -98,25 +87,11 @@ const PERFIL_OPTIONS = PERFILES_POR_CATEGORIA.flatMap((g) => g.perfiles.map((p) 
 const PERFIL_COLORS: Record<string, { text: string; bg: string; border: string }> = Object.fromEntries(
   PERFILES_POR_CATEGORIA.flatMap((g) => g.perfiles.map((p) => [p.id, PERFIL_CAT_COLOR[g.categoria]])),
 );
-
-const TIPOS_EVENTO_OPTIONS = [
-  { value: "MUSICAL",     label: "Musical" },
-  { value: "SOCIAL",      label: "Social" },
-  { value: "EMPRESARIAL", label: "Empresarial" },
-  { value: "VARIOS",      label: "Varios" },
-];
-const EVENTO_COLORS: Record<string, string> = {
-  MUSICAL:     "#818CF8", // indigo-400
-  SOCIAL:      "#FB7185", // rose-400
-  EMPRESARIAL: "#2DD4BF", // teal-400
-  VARIOS:      "#9CA3AF", // gray-400
-};
-
-const TIPO_EVENTO_BADGE: Record<string, { bg: string; text: string; border: string }> = {
-  MUSICAL:     { bg: 'bg-indigo-950/50', text: 'text-indigo-300', border: 'border-indigo-800/30' },
-  SOCIAL:      { bg: 'bg-rose-950/50',   text: 'text-rose-300',   border: 'border-rose-800/30'   },
-  EMPRESARIAL: { bg: 'bg-teal-950/50',   text: 'text-teal-300',   border: 'border-teal-800/30'   },
-  VARIOS:      { bg: 'bg-[#111]',        text: 'text-[#555]',     border: 'border-[#222]'        },
+// Hex para las barras de distribución, según la clase de texto de cada categoría de perfil.
+const COLOR_HEX: Record<string, string> = {
+  "text-indigo-300": "#818CF8",
+  "text-rose-300":   "#FB7185",
+  "text-teal-300":   "#2DD4BF",
 };
 
 const TIPO_COLORS: Record<string, { bg: string; text: string; border: string }> = {
@@ -133,23 +108,6 @@ const ESTADO_ACT_CFG: Record<EstadoActividad, { label: string; dot: string; text
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
-function parseTiposEvento(raw: string | null): string[] {
-  if (!raw) return [];
-  try { return JSON.parse(raw); } catch { return []; }
-}
-function stringifyTiposEvento(arr: string[]): string | null {
-  return arr.length ? JSON.stringify(arr) : null;
-}
-function parseServicios(raw: string | null): string[] {
-  if (!raw) return [];
-  try {
-    const p = JSON.parse(raw);
-    return Array.isArray(p) ? p : [raw];
-  } catch { return [raw]; }
-}
-function stringifyServicios(arr: string[]): string | null {
-  return arr.length ? JSON.stringify(arr) : null;
-}
 function formatRelativo(iso: Date | string): string {
   const d = new Date(iso);
   const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
@@ -445,8 +403,6 @@ function ContactoRow({
     setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 1500);
   }
 
-  const eventosActuales = parseTiposEvento(c.tiposEvento);
-  const serviciosActuales = parseServicios(c.servicioUsual);
   const estadoActividad = actividadMap[c.id] ?? "INACTIVO";
 
   return (
@@ -548,42 +504,11 @@ function ContactoRow({
           colorMap={CLAS_COLORS} />
       </td>
 
-      {/* Perfil de prospecto */}
+      {/* Perfil */}
       <td data-no-nav className="px-3 py-2.5 align-middle overflow-visible">
         <InlineDropdown options={perfilOptions} value={c.perfilProspecto ?? ""}
           onChange={v => patch({ perfilProspecto: v || null })} placeholder="Perfil"
           colorMap={perfilColors} />
-      </td>
-
-      {/* Servicio (multi) */}
-      <td data-no-nav className="px-3 py-2.5 align-middle overflow-visible">
-        <InlineMultiSelect options={SERVICIO_OPTIONS} values={serviciosActuales}
-          onChange={v => patch({ servicioUsual: stringifyServicios(v) })}
-          placeholder="Servicio" maxSelect={3} colorMap={SERVICIO_COLORS} />
-      </td>
-
-      {/* Tipo de Evento (multi) */}
-      <td data-no-nav className="px-3 py-2.5 align-middle overflow-visible">
-        <InlineMultiSelect options={TIPOS_EVENTO_OPTIONS} values={eventosActuales}
-          onChange={v => patch({ tiposEvento: stringifyTiposEvento(v) })}
-          placeholder="Tipo evento" maxSelect={3} colorMap={EVENTO_COLORS}
-          renderValue={(vals) => {
-            if (vals.length === 0) return <span className="text-[#2a2a2a]">Tipo evento</span>;
-            return (
-              <div className="flex flex-wrap gap-1 pointer-events-none">
-                {vals.map(t => {
-                  const opt = TIPOS_EVENTO_OPTIONS.find(o => o.value === t);
-                  const style = TIPO_EVENTO_BADGE[t] ?? TIPO_EVENTO_BADGE.VARIOS;
-                  return (
-                    <span key={t} className={`text-[11px] font-medium px-1.5 py-0.5 rounded border ${style.bg} ${style.text} ${style.border}`}>
-                      {opt?.label ?? t}
-                    </span>
-                  );
-                })}
-              </div>
-            );
-          }}
-        />
       </td>
 
       {/* Actividad */}
@@ -769,7 +694,7 @@ function ModalNuevoContacto({ onClose, onCreado, usuarios, modo, perfilesCustom,
               </div>
             )}
             <div className="col-span-2">
-              <label className={labelCls}>Perfil de prospecto</label>
+              <label className={labelCls}>Perfil</label>
               <PerfilSelect
                 value={form.perfilProspecto}
                 onChange={v => setF("perfilProspecto", v)}
@@ -831,18 +756,16 @@ function ContactList({
     </div>
   );
 
-  const HEADERS = ["Nombre", "Empresa", "Tipo", "Clasificación", "Perfil", "Servicio", "Tipo de Evento", "Actividad", "Responsable", "Tratos", ""];
+  const HEADERS = ["Nombre", "Empresa", "Tipo", "Clasificación", "Perfil", "Actividad", "Responsable", "Tratos", ""];
 
   return (
     <div className="ms-card-deep" style={{ overflowX: "auto" }}>
-      <table className="w-full table-fixed" style={{ minWidth: 1240 }}>
+      <table className="w-full table-fixed" style={{ minWidth: 970 }}>
         <colgroup>
           <col style={{ width: 220 }} />
           <col style={{ width: 140 }} />
           <col style={{ width: 100 }} />
           <col style={{ width: 115 }} />
-          <col style={{ width: 140 }} />
-          <col style={{ width: 130 }} />
           <col style={{ width: 140 }} />
           <col style={{ width: 100 }} />
           <col style={{ width: 120 }} />
@@ -920,11 +843,17 @@ function DistBar({ label, count, total, color, list }: { label: string; count: n
   );
 }
 
-function ResumenTab({ clientes, prospectos, actividadMap, usuarios }: {
+function ResumenTab({ clientes, prospectos, actividadMap, usuarios, perfilOptions, perfilColors }: {
   clientes: Contacto[]; prospectos: Contacto[];
   actividadMap: Record<string, EstadoActividad>;
   usuarios: Vendedor[];
+  perfilOptions: { value: string; label: string }[];
+  perfilColors: Record<string, { text: string; bg: string; border: string }>;
 }) {
+  const perfilLabelMap = useMemo(
+    () => Object.fromEntries(perfilOptions.map(o => [o.value, o.label])),
+    [perfilOptions],
+  );
   const todos = useMemo(() => [...clientes, ...prospectos], [clientes, prospectos]);
 
   const activosC    = useMemo(() => todos.filter(c => actividadMap[c.id] === "ACTIVO"),     [todos, actividadMap]);
@@ -947,18 +876,11 @@ function ResumenTab({ clientes, prospectos, actividadMap, usuarios }: {
     return Array.from(m.entries()).sort((a, b) => b[1].length - a[1].length);
   }, [todos]);
 
-  const porEvento    = useMemo(() => {
+  const porPerfil    = useMemo(() => {
     const m = new Map<string, Contacto[]>();
     for (const c of todos) {
-      for (const e of parseTiposEvento(c.tiposEvento)) { if (!m.has(e)) m.set(e, []); m.get(e)!.push(c); }
-    }
-    return Array.from(m.entries()).sort((a, b) => b[1].length - a[1].length);
-  }, [todos]);
-
-  const porServicio  = useMemo(() => {
-    const m = new Map<string, Contacto[]>();
-    for (const c of todos) {
-      for (const s of parseServicios(c.servicioUsual)) { if (!m.has(s)) m.set(s, []); m.get(s)!.push(c); }
+      const p = c.perfilProspecto || "__none__";
+      if (!m.has(p)) m.set(p, []); m.get(p)!.push(c);
     }
     return Array.from(m.entries()).sort((a, b) => b[1].length - a[1].length);
   }, [todos]);
@@ -1083,22 +1005,18 @@ function ResumenTab({ clientes, prospectos, actividadMap, usuarios }: {
           {porOrigen.length === 0 && <p className="text-[#333] text-xs">Sin datos</p>}
         </div>
 
-        {/* Por tipo de evento */}
-        <div className="ms-card-deep p-5">
-          <p className="text-[9px] uppercase tracking-[0.14em] text-[#333] mb-4">Por tipo de evento</p>
-          {porEvento.map(([ev, list]) => (
-            <DistBar key={ev} label={TIPOS_EVENTO_OPTIONS.find(o => o.value === ev)?.label ?? ev} count={list.length} total={todos.length} color={EVENTO_COLORS[ev] ?? "#6b7280"} list={list} />
+        {/* Por perfil */}
+        <div className="ms-card-deep p-5 col-span-2">
+          <p className="text-[9px] uppercase tracking-[0.14em] text-[#333] mb-4">Por perfil</p>
+          {porPerfil.map(([pf, list]) => (
+            <DistBar
+              key={pf}
+              label={pf === "__none__" ? "Sin perfil" : (perfilLabelMap[pf] ?? pf)}
+              count={list.length} total={todos.length}
+              color={pf === "__none__" ? "#374151" : (COLOR_HEX[perfilColors[pf]?.text ?? ""] ?? "#B3985B")}
+              list={list} />
           ))}
-          {porEvento.length === 0 && <p className="text-[#333] text-xs">Sin datos registrados de tipo evento</p>}
-        </div>
-
-        {/* Por servicio */}
-        <div className="ms-card-deep p-5">
-          <p className="text-[9px] uppercase tracking-[0.14em] text-[#333] mb-4">Por servicio habitual</p>
-          {porServicio.map(([sv, list]) => (
-            <DistBar key={sv} label={SERVICIO_OPTIONS.find(o => o.value === sv)?.label ?? sv} count={list.length} total={todos.length} color={SERVICIO_COLORS[sv] ?? "#6b7280"} list={list} />
-          ))}
-          {porServicio.length === 0 && <p className="text-[#333] text-xs">Sin servicios registrados</p>}
+          {porPerfil.length === 0 && <p className="text-[#333] text-xs">Sin datos</p>}
         </div>
       </div>
 
@@ -1160,15 +1078,14 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
   const [busqueda, setBusqueda]                     = useState("");
   const [filtroTipo, setFiltroTipo]                 = useState("");
   const [filtroClasificacion, setFiltroClasificacion] = useState("");
-  const [filtroServicio, setFiltroServicio]         = useState("");
-  const [filtroEvento, setFiltroEvento]             = useState("");
+  const [filtroPerfil, setFiltroPerfil]             = useState("");
   const [filtroVendedor, setFiltroVendedor]         = useState("");
   const [filtroActividad, setFiltroActividad]       = useState("");
 
-  const hayFiltros = busqueda || filtroTipo || filtroClasificacion || filtroServicio || filtroEvento || filtroVendedor || filtroActividad;
+  const hayFiltros = busqueda || filtroTipo || filtroClasificacion || filtroPerfil || filtroVendedor || filtroActividad;
   function limpiarFiltros() {
-    setBusqueda(""); setFiltroTipo(""); setFiltroClasificacion(""); setFiltroServicio("");
-    setFiltroEvento(""); setFiltroVendedor(""); setFiltroActividad("");
+    setBusqueda(""); setFiltroTipo(""); setFiltroClasificacion(""); setFiltroPerfil("");
+    setFiltroVendedor(""); setFiltroActividad("");
   }
 
   const vendedorOptions = usuarios.map(u => ({ value: u.id, label: u.name }));
@@ -1282,17 +1199,16 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
         && !(c.correo ?? "").toLowerCase().includes(q) && !(c.telefono ?? "").includes(q)) return false;
       if (filtroTipo && c.tipoCliente !== filtroTipo) return false;
       if (filtroClasificacion && c.clasificacion !== filtroClasificacion) return false;
-      if (filtroServicio && !parseServicios(c.servicioUsual).includes(filtroServicio)) return false;
-      if (filtroEvento && !parseTiposEvento(c.tiposEvento).includes(filtroEvento)) return false;
+      if (filtroPerfil && c.perfilProspecto !== filtroPerfil) return false;
       if (filtroVendedor && c.vendedorId !== filtroVendedor) return false;
       if (filtroActividad && (actividadMap[c.id] ?? "INACTIVO") !== filtroActividad) return false;
       return true;
     });
   }
 
-  const clientesFiltrados    = useMemo(() => filtrar(clientes),      [clientes,      busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroActividad]);
-  const prospectosFiltrados  = useMemo(() => filtrar(prospectos),    [prospectos,    busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroActividad]);
-  const sinClasifFiltrados   = useMemo(() => filtrar(sinClasificar), [sinClasificar, busqueda, filtroTipo, filtroClasificacion, filtroServicio, filtroEvento, filtroVendedor, filtroActividad]);
+  const clientesFiltrados    = useMemo(() => filtrar(clientes),      [clientes,      busqueda, filtroTipo, filtroClasificacion, filtroPerfil, filtroVendedor, filtroActividad]);
+  const prospectosFiltrados  = useMemo(() => filtrar(prospectos),    [prospectos,    busqueda, filtroTipo, filtroClasificacion, filtroPerfil, filtroVendedor, filtroActividad]);
+  const sinClasifFiltrados   = useMemo(() => filtrar(sinClasificar), [sinClasificar, busqueda, filtroTipo, filtroClasificacion, filtroPerfil, filtroVendedor, filtroActividad]);
 
   const listaActual = tab === "clientes" ? clientesFiltrados : tab === "prospectos" ? prospectosFiltrados : sinClasifFiltrados;
 
@@ -1366,7 +1282,7 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
 
       {/* ── Resumen ──────────────────────────────────────────────────────────── */}
       {tab === "resumen" && (
-        <ResumenTab clientes={clientes} prospectos={prospectos} actividadMap={actividadMap} usuarios={usuarios} />
+        <ResumenTab clientes={clientes} prospectos={prospectos} actividadMap={actividadMap} usuarios={usuarios} perfilOptions={perfilOptions} perfilColors={perfilColors} />
       )}
 
       {/* ── Lista ────────────────────────────────────────────────────────────── */}
@@ -1403,8 +1319,7 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
               <FilterSelect label="Tipo" value={filtroTipo} onChange={setFiltroTipo} options={TIPO_CLIENTE_OPTIONS} />
               <FilterSelect label="Clasificación" value={filtroClasificacion} onChange={setFiltroClasificacion}
                 options={[{ value: "NUEVO", label: "Nuevo" }, { value: "REGULAR", label: "Regular" }, { value: "PRIORITY", label: "Priority" }, { value: "EVITABLE", label: "Evitable" }, { value: "PROSPECTO", label: "Prospecto" }]} />
-              <FilterSelect label="Servicio" value={filtroServicio} onChange={setFiltroServicio} options={SERVICIO_OPTIONS} />
-              <FilterSelect label="Tipo de evento" value={filtroEvento} onChange={setFiltroEvento} options={TIPOS_EVENTO_OPTIONS} />
+              <FilterSelect label="Perfil" value={filtroPerfil} onChange={setFiltroPerfil} options={perfilOptions} />
               <FilterSelect label="Responsable" value={filtroVendedor} onChange={setFiltroVendedor} options={vendedorOptions} />
               <FilterSelect label="Actividad" value={filtroActividad} onChange={setFiltroActividad}
                 options={[{ value: "ACTIVO", label: "Activo" }, { value: "EN_PROCESO", label: "En proceso" }, { value: "INACTIVO", label: "Inactivo" }]} />

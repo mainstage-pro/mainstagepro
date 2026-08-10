@@ -12,8 +12,6 @@ const SELECT = {
   tipoCliente: true,
   clasificacion: true,
   perfilProspecto: true,
-  servicioUsual: true,
-  tiposEvento: true,
   esProspecto: true,
   origenLead: true,
   vendedorId: true,

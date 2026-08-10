@@ -69,7 +69,6 @@ interface Cliente {
   tipoCliente: string;
   clasificacion: string;
   esProspecto: boolean;
-  servicioUsual: string | null;
   telefono: string | null;
   correo: string | null;
   notas: string | null;
@@ -1078,18 +1077,6 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
               ]}
               onSave={(val) => guardarCampoInline({ clasificacion: val })}
               colorMap={CLASIFICACION_COLORS}
-            />
-            <InlineSelect
-              label="Servicio usual"
-              value={cliente.servicioUsual ?? ""}
-              options={[
-                { value: "", label: "— Sin especificar" },
-                { value: "RENTA", label: "Renta de Equipo" },
-                { value: "PRODUCCION_TECNICA", label: "Producción Técnica" },
-                { value: "DIRECCION_TECNICA", label: "Dirección Técnica" },
-                { value: "MULTISERVICIO", label: "Multiservicio" },
-              ]}
-              onSave={(val) => guardarCampoInline({ servicioUsual: val || null })}
             />
             <InlineSelect
               label="Responsable"

@@ -38,7 +38,6 @@ export async function POST(request: NextRequest) {
         tipoCliente: body.tipoCliente || "POR_DESCUBRIR",
         clasificacion: body.clasificacion || "PROSPECTO",
         perfilProspecto: body.perfilProspecto || null,
-        servicioUsual: body.servicioUsual || null,
         telefono: body.telefono || null,
         correo: body.correo || null,
         notas: body.notas || null,

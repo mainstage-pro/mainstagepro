@@ -16,7 +16,6 @@ export default function NuevoClientePage() {
     tipoCliente: "POR_DESCUBRIR",
     clasificacion: "NUEVO",
     perfilProspecto: "",
-    servicioUsual: "",
     telefono: "",
     correo: "",
     notas: "",
@@ -118,7 +117,7 @@ export default function NuevoClientePage() {
 
         <div className="ms-card p-5">
           <h2 className="text-sm font-semibold text-[#B3985B] mb-4 uppercase tracking-wider">Clasificación</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs text-gray-400 mb-1">Tipo de cliente</label>
               <Combobox
@@ -135,17 +134,9 @@ export default function NuevoClientePage() {
                 options={[{ value: "PROSPECTO", label: "Prospecto" }, { value: "NUEVO", label: "Nuevo" }, { value: "REGULAR", label: "Regular" }, { value: "PRIORITY", label: "Priority" }]}
               />
             </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Servicio usual</label>
-              <Combobox
-                value={form.servicioUsual}
-                onChange={v => setForm(p => ({ ...p, servicioUsual: v }))}
-                options={[{ value: "", label: "— Sin especificar —" }, { value: "RENTA", label: "Renta de Equipo" }, { value: "PRODUCCION_TECNICA", label: "Producción Técnica" }, { value: "DIRECCION_TECNICA", label: "Dirección Técnica" }, { value: "MULTISERVICIO", label: "Multiservicio" }]}
-              />
-            </div>
           </div>
           <div className="mt-4">
-            <label className="block text-xs text-gray-400 mb-1">Perfil de prospecto</label>
+            <label className="block text-xs text-gray-400 mb-1">Perfil</label>
             <PerfilSelect
               value={form.perfilProspecto}
               onChange={(v) => setForm((p) => ({ ...p, perfilProspecto: v }))}

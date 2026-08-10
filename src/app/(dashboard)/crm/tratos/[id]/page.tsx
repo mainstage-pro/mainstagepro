@@ -1850,7 +1850,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               {esOutbound && (
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-base font-bold text-white">Perfil de prospecto</p>
+                    <p className="text-base font-bold text-white">Perfil</p>
                     {savingPerfil && <span className="text-[10px] text-gray-500">Guardando…</span>}
                   </div>
                   <p className="text-xs text-gray-500 mb-3">Elige a quién le estás hablando para sugerir el mensaje inicial y el material adecuado. Se guarda en el contacto. Si ninguno encaja, usa «+» para agregar uno.</p>

@@ -70,7 +70,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const { id } = await params;
   const body = await request.json();
 
-  const allowed = ["nombre", "tipoCliente", "clasificacion", "perfilProspecto", "servicioUsual", "telefono", "correo", "notas", "vendedorId", "origenLead"];
+  const allowed = ["nombre", "tipoCliente", "clasificacion", "perfilProspecto", "telefono", "correo", "notas", "vendedorId", "origenLead"];
   const data: Record<string, unknown> = {};
   for (const key of allowed) {
     if (key in body) data[key] = body[key] !== undefined ? body[key] || null : null;
@@ -78,10 +78,6 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   // esProspecto: boolean field — explicit
   if ("esProspecto" in body) {
     data.esProspecto = Boolean(body.esProspecto);
-  }
-  // tiposEvento: accept JSON-stringified array or null — don't coerce empty string to null
-  if ("tiposEvento" in body) {
-    data.tiposEvento = body.tiposEvento ?? null;
   }
 
   // Handle empresa: accept empresaId (FK) or plain empresa name
