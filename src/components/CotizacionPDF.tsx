@@ -591,7 +591,7 @@ function FilaEquipo({ l, i }: { l: Linea; i: number }) {
   );
 }
 
-function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSecciones: Record<string, string> }) {
+function TablaEquipos({ lineas, notasSecciones, descCategorias }: { lineas: Linea[]; notasSecciones: Record<string, string>; descCategorias: Record<string, string> }) {
   // Parse category from notas field (format: "cat:CategoryName" or "cat:CategoryName|rest")
   function getCat(l: Linea): string {
     if (!l.notas) return "General";
@@ -636,7 +636,7 @@ function TablaEquipos({ lineas, notasSecciones }: { lineas: Linea[]; notasSeccio
         // Grouped by category
         cats.map(([cat, lins]) => {
           const catSubtotal = lins.reduce((sum, l) => sum + l.subtotal, 0);
-          const nota = notasSecciones[cat];
+          const nota = notasSecciones[cat] ?? descCategorias[cat];
           // Incluidas that belong to this category
           const catIncluidas = incluidas.filter(l => getCat(l) === cat);
           return (
@@ -809,7 +809,7 @@ function SubtotalLogistica({ lineas }: { lineas: Linea[] }) {
 }
 
 // ─── Documento principal ─────────────────────────────────────────────────────
-export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: CotizacionData; logoSrc?: string | null }) {
+export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {} }: { cotizacion: CotizacionData; logoSrc?: string | null; descCategorias?: Record<string, string> }) {
   // Leer plan de pagos configurado; si no hay, usar 50/50 por defecto
   type PagoPlanItem = { concepto: string; porcentaje: number; monto?: number; tipoPago: string };
   let parsedPlan: { pagos?: PagoPlanItem[] } | null = null;
@@ -952,7 +952,7 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
         <View style={s.divisor} />
 
         {/* ── EQUIPOS ── */}
-        <TablaEquipos lineas={c.lineas} notasSecciones={c.notasSecciones ? JSON.parse(c.notasSecciones) : {}} />
+        <TablaEquipos lineas={c.lineas} notasSecciones={c.notasSecciones ? JSON.parse(c.notasSecciones) : {}} descCategorias={descCategorias} />
 
         {/* ── CONCEPTOS ADICIONALES (OTRO) ── */}
         <TablaAdicionales lineas={c.lineas} />

@@ -31,7 +31,7 @@ type Equipo = {
   proveedoresPrecios: { precio: number; notas: string | null; proveedor: { id: string; nombre: string; empresa: string | null; prioridad: number } }[];
 };
 
-type Categoria = { id: string; nombre: string; orden: number };
+type Categoria = { id: string; nombre: string; orden: number; descripcionInterna: string | null; descMusical: string | null; descSocial: string | null; descEmpresarial: string | null };
 type Proveedor = { id: string; nombre: string; empresa: string | null; prioridad: number };
 
 type Kpis = {
@@ -699,6 +699,9 @@ export default function InventarioMaestroPage() {
   const [newCatNombre, setNewCatNombre] = useState("");
   const [savingCat, setSavingCat] = useState(false);
   const [renamingCat, setRenamingCat] = useState<{ id: string; nombre: string } | null>(null);
+  const [editingDescCat, setEditingDescCat] = useState<string | null>(null);
+  const [descForm, setDescForm] = useState<{ descripcionInterna: string; descMusical: string; descSocial: string; descEmpresarial: string }>({ descripcionInterna: "", descMusical: "", descSocial: "", descEmpresarial: "" });
+  const [savingDesc, setSavingDesc] = useState(false);
 
   async function createCategoria() {
     if (!newCatNombre.trim()) return;
@@ -736,6 +739,31 @@ export default function InventarioMaestroPage() {
     if (!res.ok) { toast.error("Error al renombrar"); return; }
     setCategorias(prev => prev.map(c => c.id === id ? { ...c, nombre: nombre.trim() } : c));
     setRenamingCat(null);
+  }
+
+  function abrirDescCategoria(cat: Categoria) {
+    setEditingDescCat(cat.id);
+    setDescForm({
+      descripcionInterna: cat.descripcionInterna ?? "",
+      descMusical: cat.descMusical ?? "",
+      descSocial: cat.descSocial ?? "",
+      descEmpresarial: cat.descEmpresarial ?? "",
+    });
+  }
+
+  async function saveDescCategoria(id: string) {
+    setSavingDesc(true);
+    try {
+      const res = await fetch(`/api/inventario/categorias/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(descForm),
+      });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); toast.error(d.error ?? "Error al guardar"); return; }
+      setCategorias(prev => prev.map(c => c.id === id ? { ...c, ...descForm } : c));
+      setEditingDescCat(null);
+      toast.success("Descripciones guardadas");
+    } finally { setSavingDesc(false); }
   }
 
   // Edición inline — guarda un campo sin abrir el modal
@@ -1068,7 +1096,8 @@ export default function InventarioMaestroPage() {
             {categorias.length === 0 ? (
               <p className="text-center text-[#444] text-sm py-6">Sin categorías aún.</p>
             ) : categorias.map(cat => (
-              <div key={cat.id} className="flex items-center gap-2 bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-2 group">
+              <div key={cat.id} className="bg-[#111] border border-[#1e1e1e] rounded-lg group">
+              <div className="flex items-center gap-2 px-3 py-2">
                 {renamingCat?.id === cat.id ? (
                   <>
                     <input autoFocus
@@ -1091,6 +1120,10 @@ export default function InventarioMaestroPage() {
                     <span className="text-[10px] text-[#444] mr-1">
                       {equipos.filter(e => e.categoria.id === cat.id).length} equipos
                     </span>
+                    <button onClick={() => editingDescCat === cat.id ? setEditingDescCat(null) : abrirDescCategoria(cat)}
+                      className={`text-[10px] transition-all ${editingDescCat === cat.id ? "text-[#B3985B]" : "opacity-0 group-hover:opacity-100 text-[#555] hover:text-[#B3985B]"}`}>
+                      Descripciones
+                    </button>
                     <button onClick={() => setRenamingCat({ id: cat.id, nombre: cat.nombre })}
                       className="opacity-0 group-hover:opacity-100 text-[10px] text-[#555] hover:text-[#B3985B] transition-all">
                       Renombrar
@@ -1101,6 +1134,45 @@ export default function InventarioMaestroPage() {
                     </button>
                   </>
                 )}
+              </div>
+              {editingDescCat === cat.id && (
+                <div className="px-3 pb-3 pt-1 space-y-2 border-t border-[#1e1e1e]">
+                  <div>
+                    <label className="block text-[10px] uppercase tracking-wide text-[#666] mb-1">Descripción interna (amplia · solo inventario)</label>
+                    <textarea rows={3} value={descForm.descripcionInterna}
+                      onChange={e => setDescForm(f => ({ ...f, descripcionInterna: e.target.value }))}
+                      className="w-full bg-[#0d0d0d] border border-[#222] rounded px-2 py-1.5 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/40" />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wide text-[#666] mb-1">Amigable · Musical</label>
+                      <textarea rows={2} value={descForm.descMusical}
+                        onChange={e => setDescForm(f => ({ ...f, descMusical: e.target.value }))}
+                        className="w-full bg-[#0d0d0d] border border-[#222] rounded px-2 py-1.5 text-xs text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/40" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wide text-[#666] mb-1">Amigable · Social</label>
+                      <textarea rows={2} value={descForm.descSocial}
+                        onChange={e => setDescForm(f => ({ ...f, descSocial: e.target.value }))}
+                        className="w-full bg-[#0d0d0d] border border-[#222] rounded px-2 py-1.5 text-xs text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/40" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wide text-[#666] mb-1">Amigable · Empresarial</label>
+                      <textarea rows={2} value={descForm.descEmpresarial}
+                        onChange={e => setDescForm(f => ({ ...f, descEmpresarial: e.target.value }))}
+                        className="w-full bg-[#0d0d0d] border border-[#222] rounded px-2 py-1.5 text-xs text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/40" />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button onClick={() => setEditingDescCat(null)}
+                      className="text-xs text-[#555] hover:text-white transition-colors px-3 py-1.5">Cancelar</button>
+                    <button onClick={() => saveDescCategoria(cat.id)} disabled={savingDesc}
+                      className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors">
+                      {savingDesc ? "..." : "Guardar"}
+                    </button>
+                  </div>
+                </div>
+              )}
               </div>
             ))}
           </div>

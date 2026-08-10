@@ -23,7 +23,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     where: { id },
     include: {
       cliente: { select: { id: true, nombre: true, empresa: true, telefono: true, correo: true, tipoCliente: true } },
-      trato: { select: { tradeCalificado: true } },
+      trato: { select: { tradeCalificado: true, tipoEvento: true } },
       creadaPor: { select: { name: true } },
       lineas: {
         orderBy: { orden: "asc" },
@@ -129,8 +129,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     })),
   };
 
+  // Descripción amigable por categoría según el tipo de evento del trato/cotización.
+  const tipoEvento = (cotizacion.tipoEvento ?? cotizacion.trato?.tipoEvento ?? "MUSICAL").toUpperCase();
+  const campoDesc = tipoEvento === "SOCIAL" ? "descSocial" : tipoEvento === "EMPRESARIAL" ? "descEmpresarial" : "descMusical";
+  const categorias = await prisma.categoriaEquipo.findMany({
+    select: { nombre: true, descMusical: true, descSocial: true, descEmpresarial: true },
+  });
+  const descCategorias: Record<string, string> = {};
+  for (const cat of categorias) {
+    const txt = (cat as Record<string, string | null>)[campoDesc];
+    if (txt) descCategorias[cat.nombre] = txt;
+  }
+
   const pdfStream = await ReactPDF.renderToStream(
-    React.createElement(CotizacionPDF, { cotizacion: cotizacionWithImgs, logoSrc }) as React.ReactElement<React.ComponentProps<typeof Document>>
+    React.createElement(CotizacionPDF, { cotizacion: cotizacionWithImgs, logoSrc, descCategorias }) as React.ReactElement<React.ComponentProps<typeof Document>>
   );
 
   const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {

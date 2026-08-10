@@ -312,7 +312,7 @@ function EquipoCard({ linea, delay = 0 }: { linea: Linea; delay?: number }) {
 interface TradeNivel { nivel: number; nombre: string; tagline: string; pct: number; destacado: boolean; beneficios: string[]; }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function PresentacionClient({ cotizacion, tradeNiveles , token, galeriaFotos = [], heroFotos = [], renderFotos = [], paqueteNombre = null }: { cotizacion: Cotizacion; tradeNiveles?: TradeNivel[] ; token?: string; galeriaFotos?: FotoPresentacion[]; heroFotos?: FotoPresentacion[]; renderFotos?: { id: string; url: string }[]; paqueteNombre?: string | null }) {
+export default function PresentacionClient({ cotizacion, tradeNiveles , token, galeriaFotos = [], heroFotos = [], renderFotos = [], paqueteNombre = null, descCategorias = {} }: { cotizacion: Cotizacion; tradeNiveles?: TradeNivel[] ; token?: string; galeriaFotos?: FotoPresentacion[]; heroFotos?: FotoPresentacion[]; renderFotos?: { id: string; url: string }[]; paqueteNombre?: string | null; descCategorias?: Record<string, string> }) {
   const TRADE_NIVELES: TradeNivel[] = tradeNiveles ?? [
     { nivel: 1, nombre: "Base",        tagline: "Visibilidad esencial",  pct: 5,  destacado: false, beneficios: ["Logo en materiales digitales del evento","1 mención en redes sociales","2 a 4 accesos al evento","Acceso a métricas de alcance post-evento"] },
     { nivel: 2, nombre: "Estratégico", tagline: "Máximo alcance",        pct: 10, destacado: true,  beneficios: ["Logo en materiales digitales y físicos","3 menciones en redes + etiqueta en contenido","4 a 8 accesos al evento","Repost en @mainstagepro","Reporte de métricas detallado"] },
@@ -619,6 +619,24 @@ export default function PresentacionClient({ cotizacion, tradeNiveles , token, g
                       </h3>
                     </div>
                     <p className="text-white/35 text-sm leading-relaxed pl-4">{cat.headline}</p>
+                    {(() => {
+                      const seen = new Set<string>();
+                      const descs: string[] = [];
+                      for (const l of cat.lineas) {
+                        const nombre = l.equipo?.categoria?.nombre;
+                        if (!nombre || seen.has(nombre)) continue;
+                        seen.add(nombre);
+                        const d = descCategorias[nombre];
+                        if (d) descs.push(d);
+                      }
+                      return descs.length ? (
+                        <div className="pl-4 mt-2.5 space-y-1.5">
+                          {descs.map((d, i) => (
+                            <p key={i} className="text-white/25 text-xs leading-relaxed">{d}</p>
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
                   </R>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 mb-6">
                     {cat.lineas.map((l, i) => <EquipoCard key={l.id} linea={l} delay={Math.min(i * 35, 300)} />)}

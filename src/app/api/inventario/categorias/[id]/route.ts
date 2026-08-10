@@ -11,11 +11,15 @@ export async function PATCH(
 
   const { id } = await params;
   const body = await req.json();
-  const { nombre, orden } = body;
+  const { nombre, orden, descripcionInterna, descMusical, descSocial, descEmpresarial } = body;
 
-  const data: { nombre?: string; orden?: number } = {};
+  const data: { nombre?: string; orden?: number; descripcionInterna?: string | null; descMusical?: string | null; descSocial?: string | null; descEmpresarial?: string | null } = {};
   if (nombre !== undefined) data.nombre = nombre.trim();
   if (orden !== undefined) data.orden = Number(orden);
+  if (descripcionInterna !== undefined) data.descripcionInterna = descripcionInterna || null;
+  if (descMusical !== undefined) data.descMusical = descMusical || null;
+  if (descSocial !== undefined) data.descSocial = descSocial || null;
+  if (descEmpresarial !== undefined) data.descEmpresarial = descEmpresarial || null;
 
   try {
     const categoria = await prisma.categoriaEquipo.update({ where: { id }, data });

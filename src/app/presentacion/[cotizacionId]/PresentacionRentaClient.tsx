@@ -215,7 +215,7 @@ function EquipoRow({ linea, index }: { linea: Linea; index: number }) {
 }
 
 // ─── Category section ─────────────────────────────────────────────────────────
-function CategorySection({ cat, lineas, index }: { cat: string; lineas: Linea[]; index: number }) {
+function CategorySection({ cat, lineas, index, descripcion }: { cat: string; lineas: Linea[]; index: number; descripcion?: string }) {
   return (
     <R delay={index * 80} y={24}>
       <div className="mb-10">
@@ -230,6 +230,9 @@ function CategorySection({ cat, lineas, index }: { cat: string; lineas: Linea[];
           </div>
           <div className="flex-1 h-px ml-2" style={{ background: "rgba(179,152,91,0.12)" }} />
         </div>
+        {descripcion ? (
+          <p className="text-white/35 text-sm leading-relaxed mb-4 max-w-2xl">{descripcion}</p>
+        ) : null}
         <div className="pl-0">
           {lineas.map((l, i) => <EquipoRow key={l.id} linea={l} index={i} />)}
         </div>
@@ -242,7 +245,7 @@ function CategorySection({ cat, lineas, index }: { cat: string; lineas: Linea[];
 // La presentación de renta no muestra galería de producciones por tipo de evento
 // (su hero es un diseño técnico sin fotos), por eso galeriaFotos/heroFotos se
 // aceptan por paridad con la de producción pero no se consumen aquí.
-export default function PresentacionRentaClient({ cotizacion, token }: { cotizacion: Cotizacion; token?: string; galeriaFotos?: FotoPresentacion[]; heroFotos?: FotoPresentacion[]; renderFotos?: { id: string; url: string }[]; paqueteNombre?: string | null }) {
+export default function PresentacionRentaClient({ cotizacion, token, descCategorias = {} }: { cotizacion: Cotizacion; token?: string; galeriaFotos?: FotoPresentacion[]; heroFotos?: FotoPresentacion[]; renderFotos?: { id: string; url: string }[]; paqueteNombre?: string | null; descCategorias?: Record<string, string> }) {
   const scrollY    = useScrollY();
   const [contractOpen, setContract] = useState(false);
   const [printing, setPrinting]       = useState(false);
@@ -557,7 +560,7 @@ Mainstage Pro puede proveer soporte técnico básico vía WhatsApp durante el us
 
           {categories.length > 0 ? (
             categories.map((cat, i) => (
-              <CategorySection key={cat} cat={cat} lineas={grouped[cat]} index={i} />
+              <CategorySection key={cat} cat={cat} lineas={grouped[cat]} index={i} descripcion={descCategorias[cat]} />
             ))
           ) : (
             <R>

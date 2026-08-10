@@ -833,6 +833,7 @@ model Equipo {
   amperajeRequerido    Float?          // Consumo eléctrico en amperes
   voltajeRequerido     String?         // Voltaje requerido ("110" | "220" | "AMBOS")
   notas                String?
+  descripcionInterna   String?         // Descripción interna del equipo (qué es / para qué sirve), no visible al cliente
   imagenUrl            String?         // URL principal del equipo (ruta /inventario/equipos/... o base64)
   imagenesUrls         String?         // JSON array de URLs adicionales
   propietario          String          @default("MAINSTAGE") // MAINSTAGE | HERVAM
@@ -899,10 +900,14 @@ model EquipoAccesorio {
 }
 
 model CategoriaEquipo {
-  id      String   @id @default(cuid())
-  nombre  String   @unique
-  orden   Int      @default(0)
-  equipos Equipo[]
+  id                 String   @id @default(cuid())
+  nombre             String   @unique
+  orden              Int      @default(0)
+  descripcionInterna String?  // Descripción amplia interna (módulo de inventario)
+  descMusical        String?  // Descripción amigable para eventos musicales (cotización/presentación)
+  descSocial         String?  // Descripción amigable para eventos sociales
+  descEmpresarial    String?  // Descripción amigable para eventos empresariales
+  equipos            Equipo[]
 
   @@map("categoria_equipos")
 }

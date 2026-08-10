@@ -80,6 +80,7 @@ type Equipo = {
   costoProveedor: number | null;
   cantidadTotal: number;
   notas: string | null;
+  descripcionInterna: string | null;
   activo: boolean;
   amperajeRequerido: number | null;
   voltajeRequerido: string | null;
@@ -633,6 +634,59 @@ function UnidadesSection({ equipoId, cantidadTotal }: { equipoId: string; cantid
   );
 }
 
+function DescripcionInternaSection({ equipoId, initial }: { equipoId: string; initial: string | null }) {
+  const toast = useToast();
+  const [valor, setValor] = useState(initial ?? "");
+  const [editando, setEditando] = useState(false);
+  const [borrador, setBorrador] = useState(initial ?? "");
+  const [guardando, setGuardando] = useState(false);
+
+  async function guardar() {
+    setGuardando(true);
+    const r = await fetch(`/api/equipos/${equipoId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ descripcionInterna: borrador.trim() || null }),
+    });
+    setGuardando(false);
+    if (!r.ok) { toast.error("No se pudo guardar la descripción"); return; }
+    setValor(borrador.trim());
+    setEditando(false);
+    toast.success("Descripción actualizada");
+  }
+
+  return (
+    <div className="ms-card p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Descripción interna</h2>
+        {!editando && (
+          <button onClick={() => { setBorrador(valor); setEditando(true); }}
+            className="text-[10px] text-gray-500 hover:text-[#B3985B] transition-colors">
+            {valor ? "Editar" : "Agregar"}
+          </button>
+        )}
+      </div>
+      <p className="text-[#555] text-[10px] mb-3">Solo visible internamente. Explica qué es el equipo y para qué sirve; no aparece en cotizaciones ni presentaciones.</p>
+      {editando ? (
+        <div className="space-y-2">
+          <textarea value={borrador} onChange={e => setBorrador(e.target.value)} rows={3}
+            className="w-full bg-[#0e0e0e] border border-[#1f1f1f] rounded-md px-3 py-2 text-sm text-[#d1d5db] focus:outline-none focus:border-[#B3985B]"
+            placeholder="Ej. Bocina activa full-range de 12 pulgadas para refuerzo principal en eventos chicos/medianos." />
+          <div className="flex gap-2">
+            <button onClick={guardar} disabled={guardando}
+              className="text-xs px-3 py-1.5 rounded-md bg-[#B3985B] text-black font-semibold disabled:opacity-50">
+              {guardando ? "Guardando…" : "Guardar"}
+            </button>
+            <button onClick={() => setEditando(false)} className="text-xs px-3 py-1.5 rounded-md text-gray-400 hover:text-white">Cancelar</button>
+          </div>
+        </div>
+      ) : (
+        <p className="text-[#9ca3af] text-sm leading-relaxed">{valor || <span className="text-[#444] italic">Sin descripción interna todavía.</span>}</p>
+      )}
+    </div>
+  );
+}
+
 export default function EquipoFichaPage() {
   const { id } = useParams<{ id: string }>();
   const [equipo, setEquipo] = useState<Equipo | null>(null);
@@ -732,6 +786,9 @@ export default function EquipoFichaPage() {
           )}
         </dl>
       </div>
+
+      {/* Descripción interna */}
+      <DescripcionInternaSection equipoId={equipo.id} initial={equipo.descripcionInterna} />
 
       {/* Unidades individuales */}
       <UnidadesSection equipoId={equipo.id} cantidadTotal={equipo.cantidadTotal} />

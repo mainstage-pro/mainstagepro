@@ -125,6 +125,18 @@ export default async function PresentacionPage({
   const renderFotos = (cotizacion.paquete?.imagenes ?? []).map((img) => ({ id: img.id, url: img.url }));
   const paqueteNombre = cotizacion.paquete?.nombre ?? null;
 
+  // Descripción amigable por categoría según el tipo de evento del trato/cotización.
+  const eventoUpper = (cotizacion.trato?.tipoEvento ?? cotizacion.tipoEvento ?? "MUSICAL").toUpperCase();
+  const campoDesc = eventoUpper === "SOCIAL" ? "descSocial" : eventoUpper === "EMPRESARIAL" ? "descEmpresarial" : "descMusical";
+  const catRows = await prisma.categoriaEquipo.findMany({
+    select: { nombre: true, descMusical: true, descSocial: true, descEmpresarial: true },
+  });
+  const descCategorias: Record<string, string> = {};
+  for (const cat of catRows) {
+    const txt = (cat as Record<string, string | null>)[campoDesc];
+    if (txt) descCategorias[cat.nombre] = txt;
+  }
+
   const defaultNiveles = [
     { nivel: 1, nombre: "Base",        tagline: "Visibilidad esencial",  pct: 5,  destacado: false, beneficios: ["Logo en materiales digitales del evento","1 mención en redes sociales","2 a 4 accesos al evento","Acceso a métricas de alcance post-evento"] },
     { nivel: 2, nombre: "Estratégico", tagline: "Máximo alcance",        pct: 10, destacado: true,  beneficios: ["Logo en materiales digitales y físicos","3 menciones en redes + etiqueta en contenido","4 a 8 accesos al evento","Repost en @mainstagepro","Reporte de métricas detallado"] },
@@ -133,8 +145,8 @@ export default async function PresentacionPage({
   const tradeNiveles = await getConfigJSON("trade.niveles", defaultNiveles);
 
   if (cotizacion.tipoServicio === "RENTA") {
-    return <PresentacionRentaClient cotizacion={data} token={token} galeriaFotos={galeriaFotos} heroFotos={heroFotos} renderFotos={renderFotos} paqueteNombre={paqueteNombre} />;
+    return <PresentacionRentaClient cotizacion={data} token={token} galeriaFotos={galeriaFotos} heroFotos={heroFotos} renderFotos={renderFotos} paqueteNombre={paqueteNombre} descCategorias={descCategorias} />;
   }
 
-  return <PresentacionClient cotizacion={data} tradeNiveles={tradeNiveles} token={token} galeriaFotos={galeriaFotos} heroFotos={heroFotos} renderFotos={renderFotos} paqueteNombre={paqueteNombre} />;
+  return <PresentacionClient cotizacion={data} tradeNiveles={tradeNiveles} token={token} galeriaFotos={galeriaFotos} heroFotos={heroFotos} renderFotos={renderFotos} paqueteNombre={paqueteNombre} descCategorias={descCategorias} />;
 }
