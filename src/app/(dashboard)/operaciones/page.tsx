@@ -1241,8 +1241,8 @@ export default function OperacionesPage() {
 
     function applySort(arr: TareaItem[]): TareaItem[] {
       if (vistaOpts.sortBy === "prioridad") return [...arr].sort((a, b) => (PRIO_ORDER[a.prioridad] ?? 3) - (PRIO_ORDER[b.prioridad] ?? 3));
-      // FIX: Ordenar por fecha de creación
-      if (vistaOpts.sortBy === "creacion") return [...base].sort((a, b) => {
+      // Ordenar por fecha de creación (dentro del grupo, no sobre toda la lista).
+      if (vistaOpts.sortBy === "creacion") return [...arr].sort((a, b) => {
         const ca = (a as unknown as Record<string, string>).createdAt ?? "";
         const cb = (b as unknown as Record<string, string>).createdAt ?? "";
         return ca.localeCompare(cb);
