@@ -107,11 +107,11 @@ const CAT_DESC: Record<string, string> = {
 };
 
 // ─── Force logo + exclude ────────────────────────────────────────────────────
+// Solo equipos que AÚN no tienen foto de portada — se muestra el logo como placeholder.
+// Al subir su portada (imagenUrl), quítalos de esta lista para que se vea la foto.
 const FORCE_LOGO_KEYWORDS = [
-  "laser led 6 watts","láser led 6 watts","cym pro",
-  "elevadores de audio","esquinero de truss a 45","motores de rigging",
-  "pantalla smart tv 50","back decorativo acabado tipo mármol",
-  "booth decorativo acabado tipo mármol","booth decorativo premium color blanco",
+  "esquinero de truss a 45","motores de rigging",
+  "booth decorativo premium color blanco",
   "torre decorativa premium blanco 2 metros","torre decorativa premium blanco 2.5 metros",
   "entarimado 2.5",
 ];
