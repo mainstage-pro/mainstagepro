@@ -1563,7 +1563,7 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
 
 
           {/* Logística */}
-          {lineasLog.length > 0 && cot.tipoServicio !== "RENTA" && (
+          {lineasLog.length > 0 && (
             <div className="ms-table-wrapper">
               <div className="px-4 pt-4 pb-2">
                 <h3 className="text-xs font-semibold text-[#B3985B] uppercase tracking-wider">Logística y Viáticos</h3>

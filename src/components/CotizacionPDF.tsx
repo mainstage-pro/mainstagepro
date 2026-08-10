@@ -964,7 +964,7 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
         <SubtotalDJ lineas={c.lineas} />
 
         {/* ── LOGÍSTICA (subtotal global, sin desglose) ── */}
-        {c.tipoServicio !== "RENTA" && <SubtotalLogistica lineas={c.lineas} />}
+        <SubtotalLogistica lineas={c.lineas} />
 
         {/* ── TOTALES ── */}
         <View style={s.totalesBloque}>
@@ -1008,7 +1008,7 @@ export function CotizacionPDF({ cotizacion: c, logoSrc }: { cotizacion: Cotizaci
                 </>
               );
             })()}
-            {c.tipoServicio !== "RENTA" && (c.subtotalTransporte + c.subtotalComidas + c.subtotalHospedaje) > 0 && (
+            {(c.subtotalTransporte + c.subtotalComidas + c.subtotalHospedaje) > 0 && (
               <View style={s.totalFila}>
                 <Text style={s.totalFilaDes}>Transporte y viáticos</Text>
                 <Text style={s.totalFilaMonto}>{fmtMXN(c.subtotalTransporte + c.subtotalComidas + c.subtotalHospedaje)}</Text>
