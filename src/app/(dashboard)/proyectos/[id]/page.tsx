@@ -61,7 +61,10 @@ interface Gasto { id: string; fecha: string; concepto: string; monto: number; me
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null }
 interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number }
 interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; necesitaRevision: boolean; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: { nombre: string }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; riderAccesorios: RiderAccesorio[] }
-interface CronoRow { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string; dia?: string; _id?: string }
+type FaseCrono = "montaje" | "operacion" | "desmontaje";
+const FASE_ORDEN: Record<FaseCrono, number> = { montaje: 0, operacion: 1, desmontaje: 2 };
+const faseDe = (r: CronoRow): FaseCrono => r.fase ?? "operacion";
+interface CronoRow { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string; dia?: string; fase?: FaseCrono; _id?: string }
 
 // Id estable por fila: permite reordenar/eliminar sin que React reutilice inputs por
 // posición (causa del bug móvil "se mueve todo y se borra" al teclear).
@@ -235,6 +238,29 @@ function InlinePicker({ value, onChange }: { value: string; onChange: (v: string
       size="sm"
       placeholder="—"
       className="w-full bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] hover:border-[#B3985B]/40 focus:border-[#B3985B] rounded px-2 py-1 text-xs text-white transition-colors focus:outline-none whitespace-nowrap"
+    />
+  );
+}
+
+// ─── CeldaTexto: input de texto para celdas de la tabla de cronograma ──────────
+// Bufferea el valor en estado local con una guarda de foco: mientras el usuario
+// escribe (input enfocado), ignora los cambios de `value` que llegan por props.
+// Sin esto, un re-render del padre a mitad de tecleo (autosave, indicador "Guardando",
+// edición concurrente) puede pisar el texto en curso — el bug de "se borra" en móvil.
+function CeldaTexto({ value, onChange, placeholder, className }:
+  { value: string; onChange: (v: string) => void; placeholder?: string; className?: string }) {
+  const [text, setText] = useState(value ?? "");
+  const focused = useRef(false);
+  useEffect(() => { if (!focused.current) setText(value ?? ""); }, [value]);
+  return (
+    <input
+      type="text"
+      value={text}
+      placeholder={placeholder}
+      onFocus={() => { focused.current = true; }}
+      onChange={(e) => { setText(e.target.value); onChange(e.target.value); }}
+      onBlur={() => { focused.current = false; }}
+      className={className}
     />
   );
 }
@@ -1472,25 +1498,19 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   const cronoLoaded = useRef(false);
   const cronoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const CRONO_BASE: CronoRow[] = [
-    { horaInicio: "", horaFin: "", actividad: "Llamado en bodega", responsable: "", involucrados: "" },
-    { horaInicio: "", horaFin: "", actividad: "Cargar transporte", responsable: "", involucrados: "" },
-    { horaInicio: "", horaFin: "", actividad: "Traslado a venue", responsable: "", involucrados: "" },
-    { horaInicio: "", horaFin: "", actividad: "Llegada a venue y descarga de equipos", responsable: "", involucrados: "" },
-    { horaInicio: "", horaFin: "", actividad: "Acomodo seccionado de equipos", responsable: "", involucrados: "" },
-    { horaInicio: "", horaFin: "", actividad: "Inicio de montaje", responsable: "", involucrados: "" },
-    { horaInicio: "", horaFin: "", actividad: "Fin de montaje", responsable: "", involucrados: "" },
-    { horaInicio: "", horaFin: "", actividad: "Pruebas de sonido", responsable: "", involucrados: "" },
-    { horaInicio: "", horaFin: "", actividad: "Pruebas de iluminación", responsable: "", involucrados: "" },
-    { horaInicio: "", horaFin: "", actividad: "Inicio de evento", responsable: "", involucrados: "" },
-    { horaInicio: "", horaFin: "", actividad: "Fin de evento / Inicio de desmontaje", responsable: "", involucrados: "" },
-    { horaInicio: "", horaFin: "", actividad: "Orden de equipos para carga a transporte", responsable: "", involucrados: "" },
-    { horaInicio: "", horaFin: "", actividad: "Carga de equipos a transporte", responsable: "", involucrados: "" },
-    { horaInicio: "", horaFin: "", actividad: "Traslado a bodega", responsable: "", involucrados: "" },
-    { horaInicio: "", horaFin: "", actividad: "Llegada a bodega y descarga de equipos", responsable: "", involucrados: "" },
-    { horaInicio: "", horaFin: "", actividad: "Acomodo de equipos en bodega", responsable: "", involucrados: "" },
-    { horaInicio: "", horaFin: "", actividad: "Fin de la jornada", responsable: "", involucrados: "" },
+  // Plantillas por fase. La operación es adaptativa: si el montaje/desmontaje viven en su
+  // propia fase (día aparte), no se duplican esos ítems dentro de la operación.
+  const MONTAJE_ITEMS = [
+    "Llamado en bodega", "Cargar transporte", "Traslado a venue", "Llegada a venue y descarga de equipos",
+    "Acomodo seccionado de equipos", "Inicio de montaje", "Fin de montaje", "Pruebas de sonido", "Pruebas de iluminación",
   ];
+  const EVENTO_ITEMS = ["Inicio de evento", "Fin de evento / Inicio de desmontaje"];
+  const DESMONTAJE_ITEMS = [
+    "Inicio de desmontaje", "Orden de equipos para carga a transporte", "Carga de equipos a transporte",
+    "Traslado a bodega", "Llegada a bodega y descarga de equipos", "Acomodo de equipos en bodega", "Fin de la jornada",
+  ];
+  const mkCronoRows = (labels: string[], fase?: FaseCrono): CronoRow[] =>
+    labels.map(a => ({ horaInicio: "", horaFin: "", actividad: a, responsable: "", involucrados: "", ...(fase ? { fase } : {}) }));
 
   // Estado de transportes (3 fichas JSON)
   const [transporteSlots, setTransporteSlots] = useState<TransporteSlot[]>([
@@ -2438,7 +2458,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // mientras el usuario tecleaba en el celular y le hacía perder/pisar lo escrito.
   async function guardarCronograma(rows: CronoRow[]) {
     setSavingCrono(true);
-    const clean = rows.map(({ _id, ...r }) => r); // eslint-disable-line @typescript-eslint/no-unused-vars
+    // Orden estable por fase (montaje → operación → desmontaje) solo al persistir: no mueve
+    // filas dentro de una misma fase, así que no interfiere con la escritura en pantalla,
+    // pero garantiza que los PDF (que leen el JSON en orden de array) salgan cronológicos.
+    const ordenadas = [...rows].sort((a, b) => FASE_ORDEN[faseDe(a)] - FASE_ORDEN[faseDe(b)]);
+    const clean = ordenadas.map(({ _id, ...r }) => r); // eslint-disable-line @typescript-eslint/no-unused-vars
     const json = JSON.stringify(clean);
     await fetch(`/api/proyectos/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -2448,28 +2472,89 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setSavingCrono(false);
   }
 
-  async function cargarPlantillaCrono(dia?: string) {
+  async function cargarPlantillaCrono(opts?: { dia?: string; fase?: FaseCrono }) {
+    const dia = opts?.dia;
+    const fase: FaseCrono = opts?.fase ?? "operacion";
     const horaInicio = proyecto?.horaInicioEvento ?? "";
     const horaFin = proyecto?.horaFinEvento ?? "";
-    const base = CRONO_BASE.map(r => {
+    const montajeAparte = proyecto?.montajeDiaAparte === true;
+    const desmontajeAparte = proyecto?.desmontajeDiaAparte === true;
+
+    let plantilla: CronoRow[];
+    if (fase === "montaje") plantilla = mkCronoRows(MONTAJE_ITEMS, "montaje");
+    else if (fase === "desmontaje") plantilla = mkCronoRows(DESMONTAJE_ITEMS, "desmontaje");
+    else {
+      // Operación adaptativa: no repite ítems que ya viven en su propia fase (día aparte).
+      plantilla = mkCronoRows([
+        ...(montajeAparte ? [] : MONTAJE_ITEMS),
+        ...EVENTO_ITEMS,
+        ...(desmontajeAparte ? [] : DESMONTAJE_ITEMS),
+      ], "operacion");
+    }
+    const base = plantilla.map(r => {
       const row: CronoRow = { ...r, _id: nuevoCronoId(), ...(dia ? { dia } : {}) };
       if (r.actividad === "Inicio de evento" && horaInicio) row.horaInicio = horaInicio;
       if (r.actividad === "Fin de evento / Inicio de desmontaje" && horaFin) row.horaInicio = horaFin;
       return row;
     });
-    if (dia) {
-      // Multidía: reemplaza solo las filas de ese día (deja intactos los demás días).
-      const yaTiene = cronoRows.some(r => r.dia === dia);
-      if (yaTiene && !await confirm({ message: "¿Reemplazar el cronograma de este día con la plantilla base?", danger: false, confirmText: "Reemplazar" })) return;
-      setCronoRows(prev => [...prev.filter(r => r.dia !== dia), ...base]);
+
+    if (fase === "montaje" || fase === "desmontaje") {
+      const yaTiene = cronoRows.some(r => faseDe(r) === fase);
+      const nombre = fase === "montaje" ? "montaje" : "desmontaje";
+      if (yaTiene && !await confirm({ message: `¿Reemplazar la cronología de ${nombre} con la plantilla base?`, danger: false, confirmText: "Reemplazar" })) return;
+      setCronoRows(prev => [...prev.filter(r => faseDe(r) !== fase), ...base]);
       return;
     }
-    if (cronoRows.length > 0 && !await confirm({ message: "¿Reemplazar el cronograma actual con la plantilla base?", danger: false, confirmText: "Reemplazar" })) return;
-    setCronoRows(base);
+    if (dia) {
+      // Multidía: reemplaza solo las filas de operación de ese día (deja intactos los demás).
+      const yaTiene = cronoRows.some(r => faseDe(r) === "operacion" && r.dia === dia);
+      if (yaTiene && !await confirm({ message: "¿Reemplazar el cronograma de este día con la plantilla base?", danger: false, confirmText: "Reemplazar" })) return;
+      setCronoRows(prev => [...prev.filter(r => !(faseDe(r) === "operacion" && r.dia === dia)), ...base]);
+      return;
+    }
+    const opRows = cronoRows.filter(r => faseDe(r) === "operacion");
+    if (opRows.length > 0 && !await confirm({ message: "¿Reemplazar el cronograma de la operación con la plantilla base?", danger: false, confirmText: "Reemplazar" })) return;
+    setCronoRows(prev => [...prev.filter(r => faseDe(r) !== "operacion"), ...base]);
   }
 
-  function addCronoRow(dia?: string) {
-    setCronoRows(prev => [...prev, { _id: nuevoCronoId(), horaInicio: "", horaFin: "", actividad: "", responsable: "", involucrados: "", ...(dia ? { dia } : {}) }]);
+  function addCronoRow(opts?: { dia?: string; fase?: FaseCrono }) {
+    const fase: FaseCrono = opts?.fase ?? "operacion";
+    setCronoRows(prev => [...prev, { _id: nuevoCronoId(), horaInicio: "", horaFin: "", actividad: "", responsable: "", involucrados: "", fase, ...(opts?.dia ? { dia: opts.dia } : {}) }]);
+  }
+
+  // ── Activar / quitar fases extra (montaje y desmontaje como días aparte) ──
+  // Se apoyan en los campos existentes montaje/desmontajeDiaAparte + fechaMontaje/fechaDesmontaje,
+  // que ya alimentan la logística y los PDF, para no duplicar fuentes de verdad.
+  function fechaMasDias(iso: string, delta: number): string {
+    const d = new Date(iso + "T12:00:00Z");
+    d.setUTCDate(d.getUTCDate() + delta);
+    return d.toISOString().substring(0, 10);
+  }
+  async function activarFaseMontaje() {
+    await guardarBool("montajeDiaAparte", true);
+    if (!proyecto?.fechaMontaje) {
+      const evt = proyecto?.fechaEvento?.substring(0, 10);
+      if (evt) await guardarCampo("fechaMontaje", fechaMasDias(evt, -1));
+    }
+  }
+  async function activarFaseDesmontaje() {
+    await guardarBool("desmontajeDiaAparte", true);
+    if (!proyecto?.fechaDesmontaje) {
+      const dias = diasEvento(proyecto?.fechaEvento, proyecto?.fechasEvento);
+      const ultimo = dias[dias.length - 1];
+      if (ultimo) await guardarCampo("fechaDesmontaje", fechaMasDias(ultimo, 1));
+    }
+  }
+  async function quitarFaseCrono(fase: "montaje" | "desmontaje") {
+    const nombre = fase === "montaje" ? "montaje" : "desmontaje";
+    const tieneRows = cronoRows.some(r => faseDe(r) === fase);
+    if (tieneRows && !await confirm({ message: `¿Quitar la cronología de ${nombre}? Se borrarán sus filas.`, danger: true, confirmText: "Quitar" })) return;
+    if (tieneRows) {
+      const next = cronoRows.filter(r => faseDe(r) !== fase);
+      setCronoRows(next);
+      guardarCronograma(next);
+    }
+    await guardarBool(fase === "montaje" ? "montajeDiaAparte" : "desmontajeDiaAparte", false);
   }
 
   function updateCronoRow(i: number, field: keyof CronoRow, value: string) {
@@ -2508,17 +2593,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   <InlinePicker value={row.horaFin} onChange={v => updateCronoRow(i, "horaFin", v)} />
                 </td>
                 <td className="py-1 pr-2">
-                  <input value={row.actividad} onChange={e => updateCronoRow(i, "actividad", e.target.value)}
+                  <CeldaTexto value={row.actividad} onChange={v => updateCronoRow(i, "actividad", v)}
                     placeholder="Actividad"
                     className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
                 </td>
                 <td className="py-1 pr-2">
-                  <input value={row.responsable} onChange={e => updateCronoRow(i, "responsable", e.target.value)}
+                  <CeldaTexto value={row.responsable} onChange={v => updateCronoRow(i, "responsable", v)}
                     placeholder="Responsable"
                     className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
                 </td>
                 <td className="py-1 pr-2">
-                  <input value={row.involucrados} onChange={e => updateCronoRow(i, "involucrados", e.target.value)}
+                  <CeldaTexto value={row.involucrados} onChange={v => updateCronoRow(i, "involucrados", v)}
                     placeholder="Involucrados"
                     className="w-full bg-[#1a1a1a] border border-[#2a2a2a] rounded px-2 py-1 text-white focus:outline-none focus:border-[#B3985B]" />
                 </td>
@@ -2530,6 +2615,47 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
             ))}
           </tbody>
         </table>
+      </div>
+    );
+  }
+
+  // Render de una fase extra (montaje o desmontaje) con su fecha propia, plantilla y filas.
+  function renderFaseExtra(fase: "montaje" | "desmontaje") {
+    const esMont = fase === "montaje";
+    const fechaField = esMont ? "fechaMontaje" : "fechaDesmontaje";
+    const fecha = (esMont ? proyecto?.fechaMontaje : proyecto?.fechaDesmontaje)?.toString().substring(0, 10) ?? "";
+    const label = esMont ? "Montaje" : "Desmontaje";
+    const badge = esMont ? "M" : "D";
+    const entries = cronoRows.map((row, i) => ({ row, i })).filter(({ row }) => faseDe(row) === fase);
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-2 border-b border-[#222] pb-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[9px] font-semibold text-black bg-[#B3985B] rounded px-1.5 py-0.5 shrink-0">{badge}</span>
+            <span className="text-white text-sm font-medium">{label}</span>
+            <input type="date" value={fecha} onChange={e => guardarCampo(fechaField, e.target.value)}
+              className="bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-xs focus:outline-none focus:border-[#B3985B]" />
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={() => cargarPlantillaCrono({ fase })}
+              className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
+              Plantilla base
+            </button>
+            <button onClick={() => addCronoRow({ fase })}
+              className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
+              + Agregar fila
+            </button>
+            <button onClick={() => quitarFaseCrono(fase)}
+              className="text-xs text-gray-500 hover:text-red-400 border border-[#333] hover:border-red-400/50 px-3 py-1 rounded-lg transition-colors">
+              Quitar
+            </button>
+          </div>
+        </div>
+        {entries.length === 0 ? (
+          <p className="text-gray-600 text-xs py-3">Sin actividades para {label.toLowerCase()}. Usa <span className="text-gray-400">Plantilla base</span> o <span className="text-gray-400">+ Agregar fila</span>.</p>
+        ) : (
+          renderCronoTabla(entries)
+        )}
       </div>
     );
   }
@@ -3670,6 +3796,8 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   // Servicio de varios días: lista canónica de fechas (día 1 = fechaEvento)
   const diasDelEvento = diasEvento(proyecto.fechaEvento, proyecto.fechasEvento);
   const esMultidia = diasDelEvento.length > 1;
+  const montajeFaseActiva = proyecto.montajeDiaAparte === true;
+  const desmontajeFaseActiva = proyecto.desmontajeDiaAparte === true;
   const fmtDiaCorto = (iso: string) =>
     new Date(iso + "T12:00:00Z").toLocaleDateString("es-MX", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short" });
   const esRenta = proyecto.tipoServicio === "RENTA" || proyecto.trato?.tipoServicio === "RENTA";
@@ -5623,25 +5751,27 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </div>
 
           {/* ── Cronograma (tabla) — solo producción técnica / dirección técnica ── */}
-          {!esRenta && (
+          {!esRenta && (() => {
+            const opRows = cronoRows.filter(r => faseDe(r) === "operacion");
+            return (
           <div className="ms-card p-5">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
               <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">
-                {esMultidia ? "Cronología por día" : "Cronología general del evento"}
+                Cronología del evento
               </p>
               <div className="flex items-center gap-2 flex-wrap">
                 {savingCrono && <span className="text-xs text-gray-600">Guardando...</span>}
-                {!esMultidia && (
-                  <>
-                    <button onClick={() => cargarPlantillaCrono()}
-                      className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
-                      Plantilla base
-                    </button>
-                    <button onClick={() => addCronoRow()}
-                      className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
-                      + Agregar fila
-                    </button>
-                  </>
+                {!montajeFaseActiva && (
+                  <button onClick={activarFaseMontaje}
+                    className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
+                    + Montaje
+                  </button>
+                )}
+                {!desmontajeFaseActiva && (
+                  <button onClick={activarFaseDesmontaje}
+                    className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
+                    + Desmontaje
+                  </button>
                 )}
                 {cronoRows.length > 0 && (
                   <button onClick={() => guardarCronograma(cronoRows)} disabled={savingCrono}
@@ -5651,49 +5781,77 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                 )}
               </div>
             </div>
-            {esMultidia ? (
-              <div className="space-y-6">
-                {diasDelEvento.map((dia, di) => {
-                  const entries = cronoRows
-                    .map((row, i) => ({ row, i }))
-                    .filter(({ row }) => (row.dia && diasDelEvento.includes(row.dia)) ? row.dia === dia : di === 0);
-                  return (
-                    <div key={dia}>
-                      <div className="flex items-center justify-between mb-2 flex-wrap gap-2 border-b border-[#222] pb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] font-semibold text-black bg-[#B3985B] rounded px-1.5 py-0.5 shrink-0">D{di + 1}</span>
-                          <span className="text-white text-sm capitalize font-medium">{fmtDiaCorto(dia)}</span>
+            <div className="space-y-8">
+              {/* 1. MONTAJE (día aparte) */}
+              {montajeFaseActiva && renderFaseExtra("montaje")}
+
+              {/* 2. OPERACIÓN (día del evento; multidía = un bloque por día) */}
+              {esMultidia ? (
+                <div className="space-y-6">
+                  {diasDelEvento.map((dia, di) => {
+                    const entries = cronoRows
+                      .map((row, i) => ({ row, i }))
+                      .filter(({ row }) => faseDe(row) === "operacion" && ((row.dia && diasDelEvento.includes(row.dia)) ? row.dia === dia : di === 0));
+                    return (
+                      <div key={dia}>
+                        <div className="flex items-center justify-between mb-2 flex-wrap gap-2 border-b border-[#222] pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-semibold text-black bg-[#B3985B] rounded px-1.5 py-0.5 shrink-0">D{di + 1}</span>
+                            <span className="text-white text-sm capitalize font-medium">{fmtDiaCorto(dia)}</span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <button onClick={() => cargarPlantillaCrono({ dia })}
+                              className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
+                              Plantilla base
+                            </button>
+                            <button onClick={() => addCronoRow({ dia })}
+                              className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
+                              + Agregar fila
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <button onClick={() => cargarPlantillaCrono(dia)}
-                            className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
-                            Plantilla base
-                          </button>
-                          <button onClick={() => addCronoRow(dia)}
-                            className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
-                            + Agregar fila
-                          </button>
-                        </div>
+                        {entries.length === 0 ? (
+                          <p className="text-gray-600 text-xs py-3">Sin actividades para este día. Usa <span className="text-gray-400">Plantilla base</span> o <span className="text-gray-400">+ Agregar fila</span>.</p>
+                        ) : (
+                          renderCronoTabla(entries)
+                        )}
                       </div>
-                      {entries.length === 0 ? (
-                        <p className="text-gray-600 text-xs py-3">Sin actividades para este día. Usa <span className="text-gray-400">Plantilla base</span> o <span className="text-gray-400">+ Agregar fila</span>.</p>
-                      ) : (
-                        renderCronoTabla(entries)
-                      )}
+                    );
+                  })}
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center justify-between mb-2 flex-wrap gap-2 border-b border-[#222] pb-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[9px] font-semibold text-black bg-[#B3985B] rounded px-1.5 py-0.5 shrink-0">O</span>
+                      <span className="text-white text-sm font-medium">Operación</span>
+                      <span className="text-gray-500 text-xs capitalize">{fmtDiaCorto(eventoStr)}</span>
                     </div>
-                  );
-                })}
-              </div>
-            ) : cronoRows.length === 0 ? (
-              <div className="text-center py-8 space-y-2">
-                <p className="text-gray-600 text-sm">Sin actividades aún.</p>
-                <p className="text-gray-700 text-xs">Presiona <span className="text-gray-400 font-medium">Plantilla base</span> para cargar las 17 actividades estándar del evento.</p>
-              </div>
-            ) : (
-              renderCronoTabla(cronoRows.map((row, i) => ({ row, i })))
-            )}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button onClick={() => cargarPlantillaCrono()}
+                        className="text-xs text-gray-400 hover:text-white border border-[#333] hover:border-[#555] px-3 py-1 rounded-lg transition-colors">
+                        Plantilla base
+                      </button>
+                      <button onClick={() => addCronoRow()}
+                        className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1 rounded-lg transition-colors">
+                        + Agregar fila
+                      </button>
+                    </div>
+                  </div>
+                  {opRows.length === 0 ? (
+                    <p className="text-gray-600 text-xs py-3">Sin actividades para la operación. Usa <span className="text-gray-400">Plantilla base</span> o <span className="text-gray-400">+ Agregar fila</span>.</p>
+                  ) : (
+                    renderCronoTabla(cronoRows.map((row, i) => ({ row, i })).filter(({ row }) => faseDe(row) === "operacion"))
+                  )}
+                </div>
+              )}
+
+              {/* 3. DESMONTAJE (día aparte) */}
+              {desmontajeFaseActiva && renderFaseExtra("desmontaje")}
+            </div>
           </div>
-          )}
+            );
+          })()}
 
           {/* ── Documentos operativos ── */}
           {!esRenta && <div className="ms-card p-5">
