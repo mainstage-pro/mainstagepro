@@ -136,28 +136,28 @@ function TipoCard({ tipo, onChange }: { tipo: Tipo; onChange: () => void }) {
     setFotos(tipo.fotos);
   }, [tipo.fotos]);
 
-  async function persistOrdenFotos(nuevas: Foto[]) {
-    await Promise.all(
-      nuevas.map((f, i) =>
-        f.orden === i
-          ? null
-          : fetch(`/api/tipos-evento/fotos/${f.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ orden: i }),
-            })
-      )
-    );
-  }
-
   function moverFoto(from: number, to: number) {
     if (from === to) return;
     const arr = [...fotos];
     const [moved] = arr.splice(from, 1);
     arr.splice(to, 0, moved);
-    const normalizadas = arr.map((f, i) => ({ ...f, orden: i }));
-    setFotos(normalizadas);
-    persistOrdenFotos(normalizadas);
+    // Calcular los PATCH desde `arr`, que aún conserva el `orden` anterior de
+    // cada foto, ANTES de normalizar. Si normalizáramos primero, todos los
+    // `orden` ya coincidirían con su índice y no se enviaría ningún PATCH
+    // (por eso el cambio de portada no se guardaba al refrescar).
+    const patches = arr
+      .map((f, i) => ({ id: f.id, orden: i, cambia: f.orden !== i }))
+      .filter((p) => p.cambia);
+    setFotos(arr.map((f, i) => ({ ...f, orden: i })));
+    Promise.all(
+      patches.map((p) =>
+        fetch(`/api/tipos-evento/fotos/${p.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orden: p.orden }),
+        })
+      )
+    ).catch(() => {});
   }
 
   async function guardar() {
@@ -456,29 +456,27 @@ function HeroSlidesManager() {
     }
   }
 
-  async function persistOrden(nuevos: Slide[]) {
-    await Promise.all(
-      nuevos.map((s, i) =>
-        s.orden === i
-          ? null
-          : fetch(`/api/galeria-inicio/${s.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ orden: i }),
-            })
-      )
-    );
-  }
-
   function onDrop(target: number) {
     if (dragIdx === null || dragIdx === target || !slides) { setDragIdx(null); return; }
     const arr = [...slides];
     const [moved] = arr.splice(dragIdx, 1);
     arr.splice(target, 0, moved);
-    const normalizados = arr.map((s, i) => ({ ...s, orden: i }));
-    setSlides(normalizados);
+    // Calcular los PATCH desde `arr` (conserva el `orden` previo) antes de
+    // normalizar, o el guard `s.orden === i` cancelaría todos los envíos.
+    const patches = arr
+      .map((s, i) => ({ id: s.id, orden: i, cambia: s.orden !== i }))
+      .filter((p) => p.cambia);
+    setSlides(arr.map((s, i) => ({ ...s, orden: i })));
     setDragIdx(null);
-    persistOrden(normalizados);
+    Promise.all(
+      patches.map((p) =>
+        fetch(`/api/galeria-inicio/${p.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orden: p.orden }),
+        })
+      )
+    ).catch(() => {});
   }
 
   async function eliminar(id: string) {

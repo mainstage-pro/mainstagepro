@@ -64,7 +64,7 @@ export function usePresentacionEdit(): EditCtx {
 export function EditableImage({
   edit, okey, fallback, alt,
   wrapClassName = "", wrapStyle, imgClassName = "", imgStyle,
-  draggable = false, loading, showEditButton = true,
+  draggable = false, loading, showEditButton = true, prominent = false,
 }: {
   edit: EditCtx;
   okey: string;
@@ -77,6 +77,7 @@ export function EditableImage({
   draggable?: boolean;
   loading?: "lazy" | "eager";
   showEditButton?: boolean;
+  prominent?: boolean;
 }) {
   const src = edit.get(okey, fallback);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -109,15 +110,28 @@ export function EditableImage({
       {edit.isAdmin && showEditButton && (
         <>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files)} />
-          <button
-            type="button"
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileRef.current?.click(); }}
-            disabled={busy}
-            className="absolute top-3 right-3 z-30 text-[11px] font-semibold tracking-wide px-3.5 py-2 rounded-full transition-all disabled:opacity-60 backdrop-blur"
-            style={{ background: "rgba(0,0,0,0.55)", border: `1px solid ${GOLD}66`, color: GOLD }}
-          >
-            {busy ? "Subiendo…" : "⤢ Cambiar imagen"}
-          </button>
+          {prominent ? (
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileRef.current?.click(); }}
+              disabled={busy}
+              className="absolute top-4 right-4 z-30 inline-flex items-center gap-2 text-[13px] font-bold tracking-wide px-5 py-3 rounded-full shadow-lg transition-all hover:scale-105 disabled:opacity-60"
+              style={{ background: GOLD, color: "#000", boxShadow: `0 6px 24px ${GOLD}66` }}
+            >
+              <span className="text-base leading-none">⤢</span>
+              {busy ? "Subiendo…" : "Cambiar imagen principal"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileRef.current?.click(); }}
+              disabled={busy}
+              className="absolute top-3 right-3 z-30 text-[11px] font-semibold tracking-wide px-3.5 py-2 rounded-full transition-all disabled:opacity-60 backdrop-blur"
+              style={{ background: "rgba(0,0,0,0.55)", border: `1px solid ${GOLD}66`, color: GOLD }}
+            >
+              {busy ? "Subiendo…" : "⤢ Cambiar imagen"}
+            </button>
+          )}
         </>
       )}
     </div>

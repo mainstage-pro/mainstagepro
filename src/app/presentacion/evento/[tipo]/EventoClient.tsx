@@ -30,14 +30,14 @@ const SERVICIOS = [
     title: "Producción técnica",
     tagline: "Operadores que montan, prueban y operan tu show.",
     detail: "Llevamos el equipo y a la gente que lo opera. Montaje, prueba de sonido y operación en vivo de audio, iluminación y video durante todo el evento, de principio a fin, con respaldo ante cualquier imprevisto.",
-    incluye: ["Montaje y prueba de sonido", "Técnicos de audio, luz y video", "Operación en vivo del show", "Respaldo ante imprevistos"],
+    incluye: ["Montaje y prueba de sonido", "Técnicos de audio, iluminación y video", "Operación en vivo del show", "Respaldo ante imprevistos"],
   },
   {
     key: "DIRECCION_TECNICA",
     n: "03",
     title: "Dirección técnica",
     tagline: "Un solo responsable de que todo llegue junto.",
-    detail: "Un director de producción coordina cada área: el rider, los cues de luz por escena, la señal de video y la comunicación directa con el artista y su equipo. La cabeza que hace que audio, luz y video lleguen al mismo tiempo.",
+    detail: "Un director de producción coordina cada área: el rider, los cues de iluminación por escena, la señal de video y la comunicación directa con el artista y su equipo. La cabeza que hace que audio, iluminación y video lleguen al mismo tiempo.",
     incluye: ["Coordinación del rider", "Cues por escena", "Enlace directo con el artista", "Guion técnico del evento"],
   },
 ] as const;
@@ -48,7 +48,7 @@ const SERVICIOS_RESUMEN: Record<EventoTipo, { n: string; title: string; linea: s
   musical: [
     { n: "01", title: "Renta de equipo",     linea: "El equipo correcto para tu show, listo y respaldado." },
     { n: "02", title: "Producción técnica",  linea: "Operadores que montan, prueban y operan tu show." },
-    { n: "03", title: "Dirección técnica",   linea: "Una sola cabeza que coordina audio, luz y video." },
+    { n: "03", title: "Dirección técnica",   linea: "Una sola cabeza que coordina audio, iluminación y video." },
   ],
   social: [
     { n: "01", title: "Renta de equipo",     linea: "El equipo justo para tu celebración, listo y respaldado." },
@@ -71,7 +71,8 @@ const CONFIG = {
     sub:      "Del primer acorde al último beat: producción que se siente en el cuerpo y sostiene la energía toda la noche.",
     problema: {
       title: "Por qué importa la producción",
-      body:  "En un evento musical, la técnica bien resuelta es lo que enciende al público. Nos encargamos de que el audio, la luz y el video trabajen a favor del artista, para que la energía suba desde el primer acorde y se sostenga toda la noche.",
+      lead:  "La técnica es lo que enciende al público.",
+      body:  "Hacemos que el audio, la iluminación y el video trabajen a favor del artista, para que la energía suba desde el primer acorde y no baje en toda la noche.",
     },
     recomendaciones: [
       "Comparte el rider técnico o referencias del artista lo antes posible.",
@@ -81,26 +82,27 @@ const CONFIG = {
     ],
     insights: [
       {
-        title: "El rider cubierto antes de que baje el artista",
-        body:  "Revisamos cada punto del rider con anticipación. Cuando el artista baja del camión, el soundcheck empieza de inmediato. No hay cables que conectar de último momento ni equipo incorrecto que retrase la prueba.",
+        title: "Todo listo antes de que empiece el show",
+        body:  "Revisamos el rider y montamos con tiempo. Cuando arranca la prueba de sonido, cada cosa está en su lugar: sin conexiones de último momento ni sorpresas que retrasen el inicio.",
       },
       {
-        title: "Audio que llega parejo, de la primera fila al fondo",
-        body:  "Cobertura uniforme de frente a fondo, sin puntos muertos ni picos inesperados. El técnico de FOH conoce el sistema antes de la prueba de sonido, y los monitores de tarima están calibrados para el artista.",
+        title: "Sonido claro en todo el lugar",
+        body:  "Diseñamos el sistema para que el sonido llegue con la misma fuerza y claridad en cada rincón del venue, con un técnico atento al audio durante todo el show.",
       },
       {
-        title: "Luz y video que siguen la música, no la persiguen",
-        body:  "No reaccionamos al show — lo seguimos. Cues programadas por escena, cambios coordinados con el set. Un operador dedicado a cada área para que audio, luz y video lleguen juntos.",
+        title: "Iluminación y video al ritmo del show",
+        body:  "No perseguimos el show, lo acompañamos. Cambios coordinados con cada momento del set, con un operador dedicado para que audio, iluminación y video lleguen siempre juntos.",
       },
       {
-        title: "Rentamos, producimos o dirigimos — lo que tu evento necesite",
-        body:  "Si ya tienes parte del equipo, rentamos lo que falta y lo integramos. Si necesitas equipo y operadores, los llevamos juntos. Si el evento necesita coordinación completa, ponemos un director técnico al frente.",
+        title: "Nos sumamos como tu evento lo necesite",
+        body:  "Si ya tienes parte del equipo, rentamos lo que falta y lo integramos. Si necesitas equipo y operadores, los llevamos juntos. Y si buscas coordinación completa, ponemos un director técnico al frente.",
       },
     ],
     tipos: ["Conciertos", "Festivales", "Música electrónica / Raves", "Presentaciones en vivo", "DJ Sets", "Showcases", "Fiestas privadas"],
     perfiles: [
       { label: "Promotores y productores", linea: "Producción lista a tiempo para que tú te concentres en llenar el lugar." },
-      { label: "DJs", linea: "Sonido potente y luces que siguen tu set, montado antes de que llegues a cabina." },
+      { label: "Promotores de música electrónica", linea: "Sistema con la potencia y la presión que un evento electrónico exige." },
+      { label: "DJ's de electrónica", linea: "Sonido potente e iluminación que sigue tu set, montado antes de que llegues a cabina." },
       { label: "Músicos y bandas", linea: "Audio y monitoreo para que el público sienta cada nota." },
       { label: "Foros y venues", linea: "El aliado técnico confiable para cada evento que reciben." },
       { label: "Empresas de renta y colegas", linea: "Te complementamos con equipo y operadores cuando el evento crece." },
@@ -119,7 +121,7 @@ const CONFIG = {
       { src: "/images/presentacion/musicales/Musicales-037.jpg",                    caption: "Iluminación · Show en escenario" },
       { src: "/images/presentacion/musicales/Musicales-076.jpg",                    caption: "DJ Set · Equipo profesional" },
       { src: "/images/presentacion/musicales/MAGIC_ROOM_260307_GUANAJUATO_078.jpg", caption: "Festival · Guanajuato" },
-      { src: "/images/presentacion/musicales/Musicales-055.jpg",                    caption: "Producción de luz · Efectos especiales" },
+      { src: "/images/presentacion/musicales/Musicales-055.jpg",                    caption: "Producción de iluminación · Efectos especiales" },
       { src: "/images/presentacion/musicales/Afrodise-59.jpg",                      caption: "Stage completo · Noche" },
       { src: "/images/presentacion/musicales/DSC07491.jpg",                         caption: "En vivo · Operación técnica" },
       { src: "/images/presentacion/musicales/Musicales-126.jpg",                    caption: "Show · Producción audiovisual" },
@@ -136,7 +138,8 @@ const CONFIG = {
     sub:      "Primer baile, brindis, pista — el sonido y la luz justos en cada instante, sin que notes que estamos ahí.",
     problema: {
       title: "Por qué importa la producción",
-      body:  "Una celebración se vive una sola vez, y cada momento merece verse y escucharse en su punto. Cuidamos que el sonido y la luz acompañen la ceremonia, el brindis y la pista tal como lo imaginaste, dejando siempre el protagonismo a los festejados.",
+      lead:  "Una celebración se vive una sola vez.",
+      body:  "Cuidamos que el sonido y la iluminación acompañen cada momento —la ceremonia, el brindis, la pista— tal como lo imaginaste, dejando siempre el protagonismo a los festejados.",
     },
     recomendaciones: [
       "Comparte el programa: ceremonia, brindis, primer baile y pastel.",
@@ -150,12 +153,12 @@ const CONFIG = {
         body:  "Primer baile, vals, brindis, entrada, pastel — revisamos cada momento con anticipación. El día del evento no hay nada que improvisar: cada transición ya está planeada y el equipo sabe qué viene.",
       },
       {
-        title: "El brindis se escucha en cada mesa",
-        body:  "Micrófonos inalámbricos manejados por un técnico dedicado. Sin retroalimentación, sin volumen disparejo. Cada palabra del discurso llega clara a todos en el salón, sin que nadie tenga que repetir.",
+        title: "El brindis se escucha claro en todo el salón",
+        body:  "Micrófonos manejados por un técnico dedicado. Sin ruidos ni volumen disparejo: cada palabra del discurso llega clara a todas las mesas, sin que nadie tenga que repetir.",
       },
       {
-        title: "La luz cambia sin que nadie lo note",
-        body:  "De la cena a la pista, los cambios de ambiente son graduales y suaves. No hay flashazos de más ni oscuridad de repente — solo la transición correcta en el momento correcto, programada con anticipación.",
+        title: "La iluminación acompaña cada momento",
+        body:  "De la cena a la pista, las transiciones son graduales y suaves. La iluminación cambia de ambiente en el momento justo, programada con anticipación para que todo fluya.",
       },
       {
         title: "Coordinamos con todos sin estorbar a nadie",
@@ -165,7 +168,10 @@ const CONFIG = {
     tipos: ["Bodas", "XV Años", "Cocteles", "Cumpleaños", "Graduaciones", "Aniversarios", "Fiestas privadas"],
     perfiles: [
       { label: "Wedding planners", linea: "El aliado técnico que cuida cada detalle de la boda." },
+      { label: "Organizadores de eventos sociales", linea: "Un solo proveedor técnico confiable para cada evento que produces." },
       { label: "Salones y haciendas", linea: "Producción a la medida de cada evento en tu espacio." },
+      { label: "XV años", linea: "El vals, el brindis y la pista, cada momento en su punto." },
+      { label: "Bautizos", linea: "Sonido claro para la ceremonia y el ambiente justo para celebrar." },
       { label: "DJs de eventos sociales", linea: "El equipo que hace que la pista explote toda la noche." },
       { label: "Organizadores de graduaciones", linea: "Audio claro para los discursos e iluminación que da altura al momento." },
     ],
@@ -198,7 +204,8 @@ const CONFIG = {
     sub:      "Audio nítido para cada presentador, pantallas que responden y una producción que refuerza la imagen de tu marca.",
     problema: {
       title: "Por qué importa la producción",
-      body:  "En un evento corporativo, la producción es parte de la imagen de tu marca. Nos aseguramos de que cada presentador se escuche con claridad y cada pantalla luzca impecable, para que toda la atención esté siempre en tu mensaje.",
+      lead:  "La producción es parte de la imagen de tu marca.",
+      body:  "Nos aseguramos de que cada presentador se escuche claro y cada pantalla luzca impecable, para que toda la atención esté en tu mensaje.",
     },
     recomendaciones: [
       "Comparte la sede y el formato: sala, auditorio o exterior.",
@@ -209,11 +216,11 @@ const CONFIG = {
     insights: [
       {
         title: "Un fallo técnico no es solo un problema técnico",
-        body:  "En un evento corporativo, la producción es parte de la imagen de tu empresa. Un micrófono que no abre, una laptop que no conecta o una pantalla con resolución incorrecta deja una impresión que cuesta. Llegamos antes para verificar todo y evitarlo.",
+        body:  "En un evento corporativo, la producción es parte de la imagen de tu empresa. Un micrófono que no abre o una pantalla mal configurada deja una impresión que cuesta. Llegamos antes para verificar cada detalle y evitarlo.",
       },
       {
-        title: "La laptop del presentador ya la probamos",
-        body:  "Conexiones verificadas, resolución calibrada, señal de video estabilizada antes de que lleguen los invitados. Hacemos la prueba con el equipo real de quien va a presentar, no con el nuestro.",
+        title: "Todo probado antes del primer invitado",
+        body:  "Audio, video y presentaciones verificados con anticipación. Hacemos las pruebas con calma para que, a la hora del evento, no haya nada que ajustar sobre la marcha.",
       },
       {
         title: "Nos integramos con tu equipo sin complicar las cosas",
@@ -226,7 +233,9 @@ const CONFIG = {
     ],
     tipos: ["Conferencias", "Congresos", "Lanzamientos", "Activaciones", "Networking", "Premiaciones", "Inauguraciones"],
     perfiles: [
-      { label: "Empresas y agencias", linea: "Tu mensaje claro y con presencia, a la altura de tu marca." },
+      { label: "Empresas", linea: "Tu mensaje claro y con presencia, a la altura de tu marca." },
+      { label: "Agencias de marketing", linea: "El respaldo técnico que hace lucir cada activación que produces." },
+      { label: "Agencias de organización de eventos", linea: "Un solo proveedor técnico confiable para cada evento que montas." },
       { label: "Desarrolladores inmobiliarios", linea: "Lanzamientos que hacen lucir tu proyecto y lo venden." },
       { label: "Escuelas e instituciones", linea: "Cada ceremonia y festival escolar, a la altura." },
       { label: "Conferencistas", linea: "El escenario y el audio que tu mensaje merece." },
@@ -253,7 +262,7 @@ const CONFIG = {
   },
 } satisfies Record<EventoTipo, {
   label: string; kicker: string; hero: string; headline: string; sub: string;
-  problema: { title: string; body: string };
+  problema: { title: string; lead: string; body: string };
   recomendaciones: string[];
   insights: { title: string; body: string }[];
   tipos: string[];
@@ -794,6 +803,7 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
             wrapClassName="relative w-full h-full"
             imgClassName="w-full h-full object-cover"
             imgStyle={{ animation: "kenBurns 18s ease forwards" }}
+            prominent
           />
           <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.35) 0%, rgba(8,8,8,0.55) 40%, rgba(8,8,8,0.9) 78%, #080808 100%)" }} />
         </div>
@@ -841,12 +851,19 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
 
       {/* ── El problema que resolvemos ── */}
       <section className="py-28 px-6">
-        <div className="max-w-3xl mx-auto text-center">
+        <div className="max-w-4xl mx-auto">
           <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-6">{c.problema.title}</p>
-            <p className="text-white/80 leading-[1.6]" style={{ fontSize: "clamp(1.25rem, 2.6vw, 1.9rem)", letterSpacing: "-0.015em" }}>
-              {c.problema.body}
-            </p>
+            <div className="relative rounded-3xl px-8 py-16 sm:px-16 sm:py-20 overflow-hidden text-center"
+                 style={{ background: "linear-gradient(180deg, rgba(179,152,91,0.07) 0%, rgba(255,255,255,0.02) 100%)", border: `1px solid ${GOLD}22` }}>
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-px" style={{ background: `linear-gradient(90deg, transparent, ${GOLD}, transparent)` }} />
+              <p className="text-[#B3985B] text-xs tracking-[0.32em] uppercase mb-8">{c.problema.title}</p>
+              <p className="font-bold text-white leading-[1.1] mb-6" style={{ fontSize: "clamp(1.9rem, 4.6vw, 3.1rem)", letterSpacing: "-0.03em" }}>
+                {c.problema.lead}
+              </p>
+              <p className="text-white/55 leading-[1.65] max-w-2xl mx-auto" style={{ fontSize: "clamp(1rem, 1.6vw, 1.15rem)" }}>
+                {c.problema.body}
+              </p>
+            </div>
           </R>
         </div>
       </section>

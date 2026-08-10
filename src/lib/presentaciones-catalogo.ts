@@ -15,6 +15,7 @@ import {
   Disc3,
   Layers,
   Zap,
+  Globe,
   type LucideIcon,
 } from "lucide-react";
 import { PRESENTACION_CATEGORIAS } from "@/lib/presentacion-categorias";
@@ -46,6 +47,32 @@ export const PRESENTACIONES_GENERAL: PresentacionItem[] = [
     icon: Gift,
     audience: "Parejas · Familias · Empresas",
   },
+  {
+    key: "inventario",
+    label: "Inventario de equipo",
+    desc: "Catálogo completo del inventario audiovisual, lista de precios y cotizador.",
+    href: "/presentacion/inventario",
+    icon: Package,
+    audience: "Clientes · Equipo",
+  },
+];
+
+// Presentación central compartible: es el índice público /presentacion, ahora
+// presentado como tarjeta dentro del módulo (antes era un banner aparte).
+export const PRESENTACION_CENTRAL: PresentacionItem = {
+  key: "central",
+  label: "Presentación Mainstage Pro",
+  desc: "Un solo link que agrupa todas las presentaciones comerciales. Nada interno se muestra aquí.",
+  href: "/presentacion",
+  icon: Globe,
+  audience: "Clientes potenciales",
+};
+
+// Items del tab "General" del módulo de presentaciones. Desacoplado de
+// PRESENTACIONES_GENERAL (que alimenta el índice público /presentacion) para
+// poder ajustar la vista interna sin alterar lo que ven los clientes.
+export const PRESENTACIONES_MODULO_GENERAL: PresentacionItem[] = [
+  PRESENTACION_CENTRAL,
   {
     key: "inventario",
     label: "Inventario de equipo",
