@@ -532,7 +532,12 @@ export default function TaskItem({
                 Alta
               </span>
             )}
-            {showProject && tarea.proyectoTarea && (
+            {/* El pill de proyecto SOLO se muestra cuando el proyecto-tarea es el
+                origen real de la tarea. Si hay un origen de mayor prioridad
+                (trato/evento/proyecto interno), la vista agrupa por ÉL —igual que
+                grupoOrigen()—, así que pintar aquí el proyecto-tarea haría que el
+                pill contradijera la sección donde cae la tarea. */}
+            {showProject && tarea.proyectoTarea && !tarea.trato && !tarea.proyectoEvento && !tarea.proyectoInterno && (
               <span className="flex items-center gap-1 text-[13px] text-[#444] font-medium">
                 <span className="w-1.5 h-1.5 rounded-full inline-block shrink-0"
                   style={{ backgroundColor: tarea.proyectoTarea.color ?? "#444" }} />
