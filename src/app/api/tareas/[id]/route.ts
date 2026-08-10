@@ -260,15 +260,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       try {
         const cfg = JSON.parse(actual.recurrencia) as RecurrenciaConfig;
         const desde = actual.fecha ?? new Date();
-        const hoyCST = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }));
-        const mananaCST = new Date(hoyCST);
-        mananaCST.setUTCDate(mananaCST.getUTCDate() + 1);
-        let prox = calcularProximaFecha(cfg, desde);
-        for (let i = 0; i < 500 && prox < mananaCST; i++) {
-          const next = calcularProximaFecha(cfg, prox);
-          if (next <= prox) break;
-          prox = next;
-        }
+        // Avanza SOLO una ocurrencia (ver nota en el flujo de completar): cada
+        // "no realizada" cierra una sola ocurrencia atrasada y deja la siguiente
+        // pendiente, en vez de saltar hasta la próxima fecha futura.
+        const prox = calcularProximaFecha(cfg, desde);
         const entrada = {
           fechaOcurrencia: actual.fecha ? actual.fecha.toISOString() : null,
           completadaAt: new Date().toISOString(),
@@ -366,19 +361,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       try {
         const cfg = JSON.parse(actual.recurrencia) as RecurrenciaConfig;
         const desde = actual.fecha ?? new Date();
-        // La próxima ocurrencia debe caer estrictamente en el futuro para que la
-        // tarea salga de "Hoy" (comportamiento estilo Todoist). Si estaba vencida y
-        // el patrón arroja una fecha pasada o de hoy, avanzamos hasta la primera
-        // ocurrencia futura (mismo límite CST que usa la vista "hoy").
-        const hoyCST = new Date(new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" }));
-        const mananaCST = new Date(hoyCST);
-        mananaCST.setUTCDate(mananaCST.getUTCDate() + 1);
-        let prox = calcularProximaFecha(cfg, desde);
-        for (let i = 0; i < 500 && prox < mananaCST; i++) {
-          const next = calcularProximaFecha(cfg, prox);
-          if (next <= prox) break; // sin avance: evita bucle infinito
-          prox = next;
-        }
+        // Reagendar avanza EXACTAMENTE una ocurrencia (la que se acaba de cerrar),
+        // no salta hasta la próxima fecha futura. Así, si había ocurrencias
+        // atrasadas acumuladas, cada check cierra solo una y la siguiente sigue
+        // apareciendo pendiente: nada se da por cerrado sin haberse marcado. Es
+        // clave para que el Rendimiento sea fiel (cada ocurrencia se cuenta) y
+        // para que al dar check a una atrasada la de hoy siga visible.
+        const prox = calcularProximaFecha(cfg, desde);
         // Snapshot de esta ocurrencia antes de limpiarla, para que quede en el
         // historial y la próxima semana arranque en blanco. Se registra SIEMPRE
         // (con o sin evidencia): así queda constancia de que la ocurrencia se
