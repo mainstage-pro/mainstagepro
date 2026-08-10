@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { TIPO_CLIENTE_LABELS, CLASIFICACION_LABELS, ORIGEN_LEAD_OPTIONS, ORIGEN_LEAD_LABELS } from "@/lib/constants";
 import { PerfilMultiSelect, usePerfilesCustom } from "@/components/crm/PerfilSelect";
-import { PERFILES_POR_CATEGORIA, parsePerfiles, type CustomPerfil } from "@/lib/proceso/perfiles";
+import { PERFILES_POR_CATEGORIA, parsePerfiles, perfilesPorCategoriaCon, PERFIL_CATEGORIAS, PERFIL_CATEGORIA_LABELS, type CustomPerfil } from "@/lib/proceso/perfiles";
 import { CopyButton } from "@/components/CopyButton";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
@@ -88,6 +88,14 @@ const PERFIL_OPTIONS = PERFILES_POR_CATEGORIA.flatMap((g) => g.perfiles.map((p) 
 const PERFIL_COLORS: Record<string, { text: string; bg: string; border: string }> = Object.fromEntries(
   PERFILES_POR_CATEGORIA.flatMap((g) => g.perfiles.map((p) => [p.id, PERFIL_CAT_COLOR[g.categoria]])),
 );
+// Hex por categoría de perfil (= tipo de evento), para los checks del selector.
+const PERFIL_CAT_HEX: Record<string, string> = {
+  MUSICAL:     "#818CF8",
+  SOCIAL:      "#FB7185",
+  EMPRESARIAL: "#2DD4BF",
+};
+// Categorías disponibles al crear un perfil nuevo desde el selector inline.
+const PERFIL_CREATE_CATEGORIAS = PERFIL_CATEGORIAS.map((c) => ({ key: c as string, label: PERFIL_CATEGORIA_LABELS[c] }));
 // Hex para las barras de distribución, según la clase de texto de cada categoría de perfil.
 const COLOR_HEX: Record<string, string> = {
   "text-indigo-300": "#818CF8",
@@ -201,34 +209,62 @@ function InlineDropdown({ options, value, onChange, placeholder = "—", colorMa
 
 // ─── InlineMultiSelect ────────────────────────────────────────────────────────
 
-function InlineMultiSelect({ options, values, onChange, placeholder = "—", maxSelect = 4, colorMap, renderValue }: {
-  options: { value: string; label: string }[];
+function InlineMultiSelect({ options, groups, values, onChange, placeholder = "—", maxSelect = 4, colorMap, renderValue, onCreate, createCategorias }: {
+  options?: { value: string; label: string }[];
+  // Si se pasan `groups`, se pintan por secciones (p. ej. tipo de evento) con encabezado.
+  groups?: { key: string; label: string; options: { value: string; label: string }[] }[];
   values: string[];
   onChange: (v: string[]) => void;
   placeholder?: string;
   maxSelect?: number;
   colorMap?: Record<string, string>;
   renderValue?: (values: string[]) => React.ReactNode;
+  // Alta inline de una opción nueva; devuelve el id creado para autoseleccionarlo.
+  onCreate?: (label: string, categoria: string) => Promise<string>;
+  createCategorias?: { key: string; label: string }[];
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const [adding, setAdding] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+  const [newCat, setNewCat] = useState(createCategorias?.[0]?.key ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   useEffect(() => {
     if (!open) return;
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setAdding(false); } };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, [open]);
 
+  const renderGroups = groups ?? [{ key: "", label: "", options: options ?? [] }];
+  const allOptions = renderGroups.flatMap(g => g.options);
+
   function toggle(v: string) {
     if (values.includes(v)) onChange(values.filter(x => x !== v));
     else if (values.length < maxSelect) onChange([...values, v]);
-    setOpen(false);
+    // No cerramos: es multi-selección (hasta `maxSelect`).
+  }
+
+  async function crear() {
+    if (!onCreate) return;
+    const l = newLabel.trim();
+    if (!l) { setError("Escribe un nombre"); return; }
+    if (!newCat) { setError("Elige un tipo de evento"); return; }
+    setSaving(true); setError("");
+    try {
+      const id = await onCreate(l, newCat);
+      if (id && !values.includes(id) && values.length < maxSelect) onChange([...values, id]);
+      setNewLabel(""); setAdding(false);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo crear");
+    } finally { setSaving(false); }
   }
 
   const displayLabel = values.length === 0
     ? null
     : values.length === 1
-    ? (options.find(o => o.value === values[0])?.label ?? values[0])
+    ? (allOptions.find(o => o.value === values[0])?.label ?? values[0])
     : `${values.length} selec.`;
 
   return (
@@ -246,27 +282,65 @@ function InlineMultiSelect({ options, values, onChange, placeholder = "—", max
         <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.5" className="opacity-50 shrink-0"><polyline points="2 4 6 8 10 4"/></svg>
       </button>
       {open && (
-        <div className="ms-dropdown left-0 top-full mt-1 min-w-[160px]">
+        <div className="ms-dropdown left-0 top-full mt-1 w-[220px] max-h-[340px] overflow-y-auto">
           <p className="text-[9px] text-[#444] uppercase tracking-wider px-3 py-1.5">Selecciona hasta {maxSelect}</p>
-          {options.map(opt => {
-            const active = values.includes(opt.value);
-            const disabled = !active && values.length >= maxSelect;
-            return (
-              <button key={opt.value} type="button" onClick={() => toggle(opt.value)} disabled={disabled}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-colors ${disabled ? "opacity-30 cursor-not-allowed" : "hover:bg-[#1e1e1e]"} ${active ? "text-white" : "text-gray-400"}`}>
-                <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-all ${active ? "border-transparent" : "border-[#333]"}`}
-                  style={active ? { backgroundColor: colorMap?.[opt.value] ?? "#B3985B" } : undefined}>
-                  {active && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>}
-                </span>
-                {opt.label}
-              </button>
-            );
-          })}
+          {renderGroups.map(g => (
+            <div key={g.key || "_"}>
+              {g.label && (
+                <p className="text-[9px] text-[#B3985B]/70 uppercase tracking-[0.14em] px-3 pt-2 pb-1 font-semibold">{g.label}</p>
+              )}
+              {g.options.map(opt => {
+                const active = values.includes(opt.value);
+                const disabled = !active && values.length >= maxSelect;
+                return (
+                  <button key={opt.value} type="button" onClick={() => toggle(opt.value)} disabled={disabled}
+                    className={`w-full flex items-start gap-2.5 px-3 py-1.5 text-[11px] text-left transition-colors ${disabled ? "opacity-30 cursor-not-allowed" : "hover:bg-[#1e1e1e]"} ${active ? "text-white" : "text-gray-400"}`}>
+                    <span className={`mt-0.5 w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-all ${active ? "border-transparent" : "border-[#333]"}`}
+                      style={active ? { backgroundColor: colorMap?.[opt.value] ?? "#B3985B" } : undefined}>
+                      {active && <svg width="8" height="8" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>}
+                    </span>
+                    <span className="leading-snug">{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
           {values.length > 0 && (
             <button type="button" onClick={() => onChange([])}
               className="w-full text-left px-3 py-2 text-[11px] text-[#444] hover:text-red-400 hover:bg-[#1e1e1e] transition-colors border-t border-[#1e1e1e] mt-0.5">
               Quitar todo
             </button>
+          )}
+          {onCreate && (
+            <div className="border-t border-[#1e1e1e] mt-0.5">
+              {!adding ? (
+                <button type="button" onClick={() => { setAdding(true); setError(""); }}
+                  className="w-full text-left px-3 py-2 text-[11px] text-[#B3985B]/70 hover:text-[#B3985B] hover:bg-[#1e1e1e] transition-colors">
+                  + Nuevo perfil
+                </button>
+              ) : (
+                <div className="p-2.5 space-y-2">
+                  <input autoFocus value={newLabel} onChange={e => setNewLabel(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); crear(); } }}
+                    placeholder="Nombre del perfil"
+                    className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-[11px] text-white placeholder:text-[#333] focus:outline-none focus:border-[#B3985B]/40" />
+                  {createCategorias && createCategorias.length > 0 && (
+                    <select value={newCat} onChange={e => setNewCat(e.target.value)}
+                      className="w-full bg-[#0d0d0d] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-[11px] text-gray-300 focus:outline-none focus:border-[#B3985B]/40">
+                      {createCategorias.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                    </select>
+                  )}
+                  {error && <p className="text-[10px] text-red-400">{error}</p>}
+                  <div className="flex justify-end gap-1.5">
+                    <button type="button" onClick={() => { setAdding(false); setError(""); }}
+                      className="px-2 py-1 text-[10px] text-gray-400 hover:text-white transition-colors">Cancelar</button>
+                    <button type="button" onClick={crear} disabled={saving}
+                      className="px-2.5 py-1 rounded-md bg-[#B3985B] text-black font-semibold text-[10px] hover:bg-[#c9a96a] transition-colors disabled:opacity-50">
+                      {saving ? "…" : "Crear"}</button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -369,11 +443,13 @@ function ContactoRow({
   empresaPopoverOpen, onEmpresaClick, empresaMode, setEmpresaMode,
   empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
   onVincularEmpresa, onCloseEmpresa,
-  perfilOptions = PERFIL_OPTIONS,
+  perfilGroups, perfilColorMap, onPerfilCreate,
 }: {
   c: Contacto; usuarios: Vendedor[]; tab: Tab;
   actividadMap: Record<string, EstadoActividad>;
-  perfilOptions?: { value: string; label: string }[];
+  perfilGroups: { key: string; label: string; options: { value: string; label: string }[] }[];
+  perfilColorMap: Record<string, string>;
+  onPerfilCreate: (label: string, categoria: string) => Promise<string>;
   onSaved: (updated: Partial<Contacto>) => void;
   onVendedorChange: (v: Vendedor | null) => void;
   onDelete: () => void; deleting: boolean;
@@ -506,7 +582,9 @@ function ContactoRow({
 
       {/* Perfil */}
       <td data-no-nav className="px-3 py-2.5 align-middle overflow-visible">
-        <InlineMultiSelect options={perfilOptions} values={parsePerfiles(c.perfilesProspecto ?? c.perfilProspecto)}
+        <InlineMultiSelect groups={perfilGroups} colorMap={perfilColorMap}
+          createCategorias={PERFIL_CREATE_CATEGORIAS} onCreate={onPerfilCreate}
+          values={parsePerfiles(c.perfilesProspecto ?? c.perfilProspecto)}
           onChange={v => patch({ perfilesProspecto: v })} placeholder="Perfil" maxSelect={3} />
       </td>
 
@@ -534,14 +612,14 @@ function ContactoRow({
                 className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-emerald-800/30 text-emerald-500/80 hover:text-emerald-400 hover:border-emerald-500/50 hover:bg-emerald-500/10 transition-all whitespace-nowrap">
                 → Cliente
               </button>
-              <a href={`/crm/tratos?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
+              <a href={`/crm/tratos/nuevo?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
                 className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
                 + Trato
               </a>
             </>
           )}
           {tab === "clientes" && (
-            <a href={`/crm/tratos?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
+            <a href={`/crm/tratos/nuevo?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
               className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
               + Trato
             </a>
@@ -552,7 +630,7 @@ function ContactoRow({
                 className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
                 → Cliente
               </button>
-              <a href={`/crm/tratos?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
+              <a href={`/crm/tratos/nuevo?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
                 className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
                 + Trato
               </a>
@@ -730,11 +808,13 @@ function ContactList({
   empresaPopoverId, setEmpresaPopoverId, empresaMode, setEmpresaMode,
   empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
   handleVincularEmpresa, closeEmpresaPopover,
-  perfilOptions,
+  perfilGroups, perfilColorMap, onPerfilCreate,
 }: {
   contactos: Contacto[]; usuarios: Vendedor[]; tab: Tab;
   actividadMap: Record<string, EstadoActividad>;
-  perfilOptions: { value: string; label: string }[];
+  perfilGroups: { key: string; label: string; options: { value: string; label: string }[] }[];
+  perfilColorMap: Record<string, string>;
+  onPerfilCreate: (label: string, categoria: string) => Promise<string>;
   onSaved: (id: string, updated: Partial<Contacto>) => void;
   onVendedorChange: (id: string, v: Vendedor | null) => void;
   onDelete: (c: Contacto) => void; deletingId: string | null;
@@ -801,7 +881,7 @@ function ContactList({
               empresaResults={empresaResults} empresaSearching={empresaSearching}
               onVincularEmpresa={(empId, empNombre) => handleVincularEmpresa(c.id, empId, empNombre)}
               onCloseEmpresa={closeEmpresaPopover}
-              perfilOptions={perfilOptions}
+              perfilGroups={perfilGroups} perfilColorMap={perfilColorMap} onPerfilCreate={onPerfilCreate}
             />
           ))}
         </tbody>
@@ -1063,6 +1143,34 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
     () => ({ ...PERFIL_COLORS, ...Object.fromEntries(perfilesCustom.map(p => [p.id, PERFIL_CAT_COLOR[p.categoria] ?? PERFIL_CAT_COLOR.EMPRESARIAL])) }),
     [perfilesCustom],
   );
+  // Perfiles agrupados por categoría (= tipo de evento) para el selector inline de la tabla.
+  const perfilGroups = useMemo(
+    () => perfilesPorCategoriaCon(perfilesCustom).map(g => ({
+      key: g.categoria as string,
+      label: g.label,
+      options: g.perfiles.map(p => ({ value: p.id, label: p.label })),
+    })),
+    [perfilesCustom],
+  );
+  const perfilColorMap = useMemo(
+    () => Object.fromEntries(
+      perfilesPorCategoriaCon(perfilesCustom).flatMap(g =>
+        g.perfiles.map(p => [p.id, PERFIL_CAT_HEX[g.categoria] ?? "#B3985B"]),
+      ),
+    ),
+    [perfilesCustom],
+  );
+  // Alta inline de un perfil desde el selector de la tabla. Devuelve el id creado.
+  const crearPerfilInline = useCallback(async (label: string, categoria: string): Promise<string> => {
+    const res = await fetch("/api/perfiles-prospecto", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label, categoria, mensajeInicial: null }),
+    });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error ?? "No se pudo crear"); }
+    const d = await res.json();
+    agregarPerfil(d.perfil);
+    return d.perfil.id as string;
+  }, [agregarPerfil]);
 
   // Empresa popover
   const [empresaPopoverId, setEmpresaPopoverId] = useState<string | null>(null);
@@ -1219,7 +1327,7 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
     empresaPopoverId, setEmpresaPopoverId, empresaMode, setEmpresaMode,
     empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
     handleVincularEmpresa, closeEmpresaPopover,
-    perfilOptions,
+    perfilGroups, perfilColorMap, onPerfilCreate: crearPerfilInline,
   };
 
   // ─── Counts ──────────────────────────────────────────────────────────────────
