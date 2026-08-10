@@ -197,29 +197,29 @@ export default function PresentacionHomeClient() {
                 <a
                   href={`/presentacion/servicio/${s.slug}`}
                   className="group relative rounded-2xl overflow-hidden h-full flex flex-col transition-all duration-300 block"
-                  style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
+                  style={{ background: "#060606", border: "1px solid rgba(255,255,255,0.06)", minHeight: "440px" }}
                   onMouseEnter={(e) => { e.currentTarget.style.borderColor = `${GOLD}40`; }}
                   onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; }}
                 >
-                  {/* Imagen grande de portada del servicio */}
-                  <div className="relative w-full overflow-hidden" style={{ aspectRatio: "4 / 3" }}>
-                    <EditableImage
-                      edit={edit}
-                      okey={`home.servicio.${s.tipoServicio}.img`}
-                      fallback={s.hero}
-                      alt={s.title}
-                      wrapClassName="absolute inset-0"
-                      imgClassName="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(6,6,6,0.92) 0%, rgba(6,6,6,0.35) 45%, transparent 100%)" }} />
-                    <span className="absolute top-4 left-5 text-white/70 text-xs font-mono tracking-widest">{s.n}</span>
-                    <h3 className="absolute bottom-4 left-5 right-5 font-bold text-white text-2xl leading-tight">{s.title}</h3>
-                  </div>
-                  {/* Contenido */}
-                  <div className="p-7 flex flex-col flex-1">
-                    <p className="text-white/55 text-sm leading-relaxed flex-1">{s.tagline}</p>
-                    <p className="text-[#B3985B]/60 text-xs mt-5 leading-relaxed border-t border-white/[0.05] pt-5">{s.detailChips}</p>
-                    <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-white/70 group-hover:text-white transition-transform duration-300 group-hover:translate-x-1">
+                  {/* Imagen de fondo difuminada al negro */}
+                  <EditableImage
+                    edit={edit}
+                    okey={`home.servicio.${s.tipoServicio}.img`}
+                    fallback={s.hero}
+                    alt={s.title}
+                    wrapClassName="absolute inset-0"
+                    imgClassName="w-full h-full object-cover opacity-60 blur-[2px] scale-105 transition-transform duration-700 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(6,6,6,0.98) 0%, rgba(6,6,6,0.85) 35%, rgba(6,6,6,0.6) 70%, rgba(6,6,6,0.45) 100%)" }} />
+                  {/* Contenido centrado */}
+                  <div className="relative flex flex-col flex-1 items-center text-center p-8">
+                    <span className="text-white/60 text-xs font-mono tracking-widest">{s.n}</span>
+                    <div className="flex-1 flex flex-col justify-center items-center">
+                      <h3 className="font-bold text-white text-3xl leading-tight mb-4" style={{ letterSpacing: "-0.02em" }}>{s.title}</h3>
+                      <p className="text-white/70 text-base leading-relaxed max-w-[22rem]">{s.tagline}</p>
+                    </div>
+                    <p className="text-[#B3985B]/70 text-xs leading-relaxed mb-4">{s.detailChips}</p>
+                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-white/75 group-hover:text-white transition-transform duration-300 group-hover:translate-x-1">
                       Ver servicio <span aria-hidden>→</span>
                     </span>
                   </div>
