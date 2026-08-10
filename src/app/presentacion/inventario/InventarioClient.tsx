@@ -5,8 +5,9 @@ import PresentacionNav from "@/components/presentacion/PresentacionNav";
 const GOLD = "#B3985B";
 const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20conocer%20el%20equipo%20disponible%20para%20mi%20evento.";
 
-// Image map fetched asynchronously after hydration (avoids 3+ MB base64 in initial HTML)
-type ImageMap = Record<string, string>;
+// Image maps fetched asynchronously after hydration (avoids 3+ MB base64 in initial HTML)
+type ImageMap = Record<string, string>;      // id -> portada
+type GaleriaMap = Record<string, string[]>;  // id -> fotos adicionales asignadas en Equipos
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface EquipoData {
@@ -186,9 +187,13 @@ function R({ children, delay = 0, y = 36, className = "" }: { children: React.Re
 }
 
 // ─── Equipo card (catálogo) ──────────────────────────────────────────────────────
-function EquipoCard({ eq, delay = 0, onImageClick, imageMap }: { eq: EquipoData; delay?: number; onImageClick: (src: string, alt: string) => void; imageMap?: ImageMap }) {
+function EquipoCard({ eq, delay = 0, onImageClick, imageMap, galeriaMap }: { eq: EquipoData; delay?: number; onImageClick: (images: string[], alt: string) => void; imageMap?: ImageMap; galeriaMap?: GaleriaMap }) {
   const img = getEqImg(eq, imageMap);
   const [hovered, setHovered] = useState(false);
+  // Galería = fotos adicionales asignadas en el módulo de Equipos. Solo clickeable si existen.
+  const extras = galeriaMap?.[eq.id] ?? [];
+  const galeria = img ? Array.from(new Set([img, ...extras])) : extras;
+  const hasGaleria = extras.length > 0 && galeria.length > 0;
   return (
     <R delay={delay}>
       <div className="group relative rounded-2xl overflow-hidden flex flex-col h-full transition-all duration-300"
@@ -198,12 +203,20 @@ function EquipoCard({ eq, delay = 0, onImageClick, imageMap }: { eq: EquipoData;
              style={{ height: "160px", background: "#050505", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
           {img ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={img} alt={eq.descripcion} draggable={false} loading="lazy" onClick={() => onImageClick(img, eq.descripcion)}
-                 className="max-h-full max-w-full object-contain transition-all duration-500 cursor-zoom-in"
+            <img src={img} alt={eq.descripcion} draggable={false} loading="lazy"
+                 onClick={hasGaleria ? () => onImageClick(galeria, eqDisplayName(eq)) : undefined}
+                 className={`max-h-full max-w-full object-contain transition-all duration-500 ${hasGaleria ? "cursor-pointer" : ""}`}
                  style={{ transform: hovered ? "scale(1.07)" : "scale(1)", filter: hovered ? "brightness(1.1)" : "brightness(0.9)" }} />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img src="/logo-icon.png" alt="Mainstage Pro" draggable={false} className="w-16 h-16 object-contain opacity-10" />
+          )}
+          {hasGaleria && (
+            <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-full px-3 py-1 pointer-events-none transition-opacity duration-300"
+                 style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.12)", opacity: hovered ? 1 : 0.75, backdropFilter: "blur(4px)" }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+              <span className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.85)" }}>Clic para ver fotos</span>
+            </div>
           )}
           <div className="absolute top-3 right-3 rounded-full px-2.5 py-1 text-xs font-bold"
                style={{ background: `${GOLD}20`, color: GOLD, border: `1px solid ${GOLD}50` }}>
@@ -880,27 +893,41 @@ function CotizadorTab({ categorias, quoteItems, onAddItem, onUpdateQty, onRemove
 export default function InventarioClient({ data }: Props) {
   const [activeTab, setActiveTab]         = useState<Tab>("catalogo");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [lightbox, setLightbox]           = useState<{ src: string; alt: string } | null>(null);
+  const [lightbox, setLightbox]           = useState<{ images: string[]; index: number; alt: string } | null>(null);
   const [quoteItems, setQuoteItems]       = useState<QuoteItem[]>([]);
   // DB images loaded asynchronously — not in initial HTML payload
   const [imageMap, setImageMap]           = useState<ImageMap>({});
+  const [galeriaMap, setGaleriaMap]       = useState<GaleriaMap>({});
 
   // Fetch DB images after hydration (runs once on client)
   useEffect(() => {
     fetch("/api/presentacion/imagenes")
-      .then(r => r.ok ? r.json() : {})
-      .then((map: ImageMap) => setImageMap(map))
+      .then(r => r.ok ? r.json() : { cover: {}, galeria: {} })
+      .then((res: { cover?: ImageMap; galeria?: GaleriaMap }) => {
+        setImageMap(res.cover ?? {});
+        setGaleriaMap(res.galeria ?? {});
+      })
       .catch(() => { /* silently ignore — static fallback images still work */ });
   }, []);
 
-  // Lightbox helpers
-  const openLightbox  = useCallback((src: string, alt: string) => setLightbox({ src, alt }), []);
+  // Lightbox helpers (gallery-capable)
+  const openLightbox  = useCallback((images: string[], alt: string, index = 0) => {
+    if (!images.length) return;
+    setLightbox({ images, index, alt });
+  }, []);
   const closeLightbox = useCallback(() => setLightbox(null), []);
+  const stepLightbox  = useCallback((delta: number) => {
+    setLightbox(lb => lb ? { ...lb, index: (lb.index + delta + lb.images.length) % lb.images.length } : lb);
+  }, []);
   useEffect(() => {
     if (!lightbox) return;
-    const fn = (e: KeyboardEvent) => { if (e.key === "Escape") closeLightbox(); };
+    const fn = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeLightbox();
+      else if (e.key === "ArrowRight") stepLightbox(1);
+      else if (e.key === "ArrowLeft") stepLightbox(-1);
+    };
     window.addEventListener("keydown", fn); return () => window.removeEventListener("keydown", fn);
-  }, [lightbox, closeLightbox]);
+  }, [lightbox, closeLightbox, stepLightbox]);
 
 
   // Quote helpers
@@ -963,15 +990,28 @@ export default function InventarioClient({ data }: Props) {
         ::-webkit-scrollbar-thumb { background:rgba(179,152,91,0.35); border-radius:2px; }
       `}</style>
 
-      {/* ── Lightbox ── */}
+      {/* ── Lightbox (galería) ── */}
       {lightbox && (
         <div onClick={closeLightbox} style={{ position:"fixed", inset:0, zIndex:9999, background:"rgba(0,0,0,0.92)", display:"flex", alignItems:"center", justifyContent:"center", backdropFilter:"blur(12px)", animation:"fadeIn 0.2s ease" }}>
           <button onClick={closeLightbox}
                   style={{ position:"absolute", top:"1.5rem", right:"1.5rem", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:"50%", width:"44px", height:"44px", color:"white", fontSize:"20px", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>✕</button>
+          {lightbox.images.length > 1 && (
+            <button onClick={e => { e.stopPropagation(); stepLightbox(-1); }} aria-label="Anterior"
+                    style={{ position:"absolute", left:"1.5rem", top:"50%", transform:"translateY(-50%)", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:"50%", width:"48px", height:"48px", color:"white", fontSize:"22px", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>‹</button>
+          )}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={lightbox.src} alt={lightbox.alt} onClick={e => e.stopPropagation()} draggable={false}
+          <img src={lightbox.images[lightbox.index]} alt={lightbox.alt} onClick={e => e.stopPropagation()} draggable={false}
                style={{ maxWidth:"90vw", maxHeight:"85vh", objectFit:"contain", borderRadius:"12px", boxShadow:"0 32px 80px rgba(0,0,0,0.8)" }} />
-          <p style={{ position:"absolute", bottom:"2rem", left:"50%", transform:"translateX(-50%)", color:"rgba(255,255,255,0.4)", fontSize:"13px", whiteSpace:"nowrap" }}>{lightbox.alt}</p>
+          {lightbox.images.length > 1 && (
+            <button onClick={e => { e.stopPropagation(); stepLightbox(1); }} aria-label="Siguiente"
+                    style={{ position:"absolute", right:"1.5rem", top:"50%", transform:"translateY(-50%)", background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:"50%", width:"48px", height:"48px", color:"white", fontSize:"22px", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>›</button>
+          )}
+          <div style={{ position:"absolute", bottom:"2rem", left:"50%", transform:"translateX(-50%)", display:"flex", flexDirection:"column", alignItems:"center", gap:"6px" }}>
+            <p style={{ color:"rgba(255,255,255,0.5)", fontSize:"13px", whiteSpace:"nowrap" }}>{lightbox.alt}</p>
+            {lightbox.images.length > 1 && (
+              <span style={{ color:"rgba(255,255,255,0.35)", fontSize:"11px", letterSpacing:"0.08em" }}>{lightbox.index + 1} / {lightbox.images.length}</span>
+            )}
+          </div>
         </div>
       )}
 
@@ -1062,7 +1102,7 @@ export default function InventarioClient({ data }: Props) {
                 </R>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   {cat.equipos.map((eq, i) => (
-                    <EquipoCard key={eq.id} eq={eq} delay={Math.min(i * 50, 400)} onImageClick={openLightbox} imageMap={imageMap} />
+                    <EquipoCard key={eq.id} eq={eq} delay={Math.min(i * 50, 400)} onImageClick={openLightbox} imageMap={imageMap} galeriaMap={galeriaMap} />
                   ))}
                 </div>
               </div>
