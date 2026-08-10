@@ -130,12 +130,30 @@ export default function NuevoContactoPage() {
   }, [clienteQuery, modoCliente]);
 
   // Pre-seleccionar cliente si viene del query param ?clienteId=
+  // Cargamos el cliente por id para poblar el input visible con nombre y
+  // contacto, aunque quede fuera del corte de 200 de la carga inicial.
   useEffect(() => {
     const paramId = searchParams.get("clienteId");
-    if (paramId) {
-      setClienteId(paramId);
-      setModoCliente("existente");
-    }
+    if (!paramId) return;
+    setClienteId(paramId);
+    setModoCliente("existente");
+    let cancel = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/clientes/${paramId}`);
+        if (!res.ok) return;
+        const d = await res.json();
+        const cli = d.cliente;
+        if (!cli || cancel) return;
+        setClientes(prev => prev.some(c => c.id === cli.id) ? prev : [...prev, {
+          id: cli.id, nombre: cli.nombre, empresa: cli.empresa ?? null,
+          clasificacion: cli.clasificacion, telefono: cli.telefono ?? null,
+          esProspecto: cli.esProspecto,
+        }]);
+        setClienteQuery(cli.nombre + (cli.empresa ? ` · ${cli.empresa}` : ""));
+      } catch { /* red o cliente inexistente: se puede buscar manualmente */ }
+    })();
+    return () => { cancel = true; };
   }, [searchParams]);
 
   // Si el cliente seleccionado es un prospecto, forzar la etapa Prospección
