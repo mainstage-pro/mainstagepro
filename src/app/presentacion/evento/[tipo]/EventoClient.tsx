@@ -1,6 +1,12 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
+import {
+  Ticket, Radio, Disc3, Guitar, MapPin, Truck,
+  Heart, PartyPopper, Landmark, Crown, Church, GraduationCap,
+  Building2, Megaphone, CalendarCheck, Building, School, Mic,
+  type LucideIcon,
+} from "lucide-react";
 import type { Proyecto } from "@/lib/proyectos";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import { usePresentacionEdit, EditableImage } from "@/components/presentacion/editable";
@@ -100,12 +106,12 @@ const CONFIG = {
     ],
     tipos: ["Conciertos", "Festivales", "Música electrónica / Raves", "Presentaciones en vivo", "DJ Sets", "Showcases", "Fiestas privadas"],
     perfiles: [
-      { label: "Promotores y productores", linea: "Producción lista a tiempo para que tú te concentres en llenar el lugar." },
-      { label: "Promotores de música electrónica", linea: "Sistema con la potencia y la presión que un evento electrónico exige." },
-      { label: "DJ's de electrónica", linea: "Sonido potente e iluminación que sigue tu set, montado antes de que llegues a cabina." },
-      { label: "Músicos y bandas", linea: "Audio y monitoreo para que el público sienta cada nota." },
-      { label: "Foros y venues", linea: "El aliado técnico confiable para cada evento que reciben." },
-      { label: "Empresas de renta y colegas", linea: "Te complementamos con equipo y operadores cuando el evento crece." },
+      { label: "Promotores y productores", linea: "Producción lista a tiempo para que tú te concentres en llenar el lugar.", icon: Ticket },
+      { label: "Promotores de música electrónica", linea: "Sistema con la potencia y la presión que un evento electrónico exige.", icon: Radio },
+      { label: "DJ's de electrónica", linea: "Sonido potente e iluminación que sigue tu set, montado antes de que llegues a cabina.", icon: Disc3 },
+      { label: "Músicos y bandas", linea: "Audio y monitoreo para que el público sienta cada nota.", icon: Guitar },
+      { label: "Foros y venues", linea: "El aliado técnico confiable para cada evento que reciben.", icon: MapPin },
+      { label: "Empresas de renta y colegas", linea: "Te complementamos con equipo y operadores cuando el evento crece.", icon: Truck },
     ],
     cotizar: [
       "Fecha del evento",
@@ -167,13 +173,13 @@ const CONFIG = {
     ],
     tipos: ["Bodas", "XV Años", "Cocteles", "Cumpleaños", "Graduaciones", "Aniversarios", "Fiestas privadas"],
     perfiles: [
-      { label: "Wedding planners", linea: "El aliado técnico que cuida cada detalle de la boda." },
-      { label: "Organizadores de eventos sociales", linea: "Un solo proveedor técnico confiable para cada evento que produces." },
-      { label: "Salones y haciendas", linea: "Producción a la medida de cada evento en tu espacio." },
-      { label: "XV años", linea: "El vals, el brindis y la pista, cada momento en su punto." },
-      { label: "Bautizos", linea: "Sonido claro para la ceremonia y el ambiente justo para celebrar." },
-      { label: "DJs de eventos sociales", linea: "El equipo que hace que la pista explote toda la noche." },
-      { label: "Organizadores de graduaciones", linea: "Audio claro para los discursos e iluminación que da altura al momento." },
+      { label: "Wedding planners", linea: "El aliado técnico que cuida cada detalle de la boda.", icon: Heart },
+      { label: "Organizadores de eventos sociales", linea: "Un solo proveedor técnico confiable para cada evento que produces.", icon: PartyPopper },
+      { label: "Salones y haciendas", linea: "Producción a la medida de cada evento en tu espacio.", icon: Landmark },
+      { label: "XV años", linea: "El vals, el brindis y la pista, cada momento en su punto.", icon: Crown },
+      { label: "Bautizos", linea: "Sonido claro para la ceremonia y el ambiente justo para celebrar.", icon: Church },
+      { label: "DJs de eventos sociales", linea: "El equipo que hace que la pista explote toda la noche.", icon: Disc3 },
+      { label: "Organizadores de graduaciones", linea: "Audio claro para los discursos e iluminación que da altura al momento.", icon: GraduationCap },
     ],
     cotizar: [
       "Fecha del evento",
@@ -233,12 +239,12 @@ const CONFIG = {
     ],
     tipos: ["Conferencias", "Congresos", "Lanzamientos", "Activaciones", "Networking", "Premiaciones", "Inauguraciones"],
     perfiles: [
-      { label: "Empresas", linea: "Tu mensaje claro y con presencia, a la altura de tu marca." },
-      { label: "Agencias de marketing", linea: "El respaldo técnico que hace lucir cada activación que produces." },
-      { label: "Agencias de organización de eventos", linea: "Un solo proveedor técnico confiable para cada evento que montas." },
-      { label: "Desarrolladores inmobiliarios", linea: "Lanzamientos que hacen lucir tu proyecto y lo venden." },
-      { label: "Escuelas e instituciones", linea: "Cada ceremonia y festival escolar, a la altura." },
-      { label: "Conferencistas", linea: "El escenario y el audio que tu mensaje merece." },
+      { label: "Empresas", linea: "Tu mensaje claro y con presencia, a la altura de tu marca.", icon: Building2 },
+      { label: "Agencias de marketing", linea: "El respaldo técnico que hace lucir cada activación que produces.", icon: Megaphone },
+      { label: "Agencias de organización de eventos", linea: "Un solo proveedor técnico confiable para cada evento que montas.", icon: CalendarCheck },
+      { label: "Desarrolladores inmobiliarios", linea: "Lanzamientos que hacen lucir tu proyecto y lo venden.", icon: Building },
+      { label: "Escuelas e instituciones", linea: "Cada ceremonia y festival escolar, a la altura.", icon: School },
+      { label: "Conferencistas", linea: "El escenario y el audio que tu mensaje merece.", icon: Mic },
     ],
     cotizar: [
       "Fecha del evento",
@@ -266,7 +272,7 @@ const CONFIG = {
   recomendaciones: string[];
   insights: { title: string; body: string }[];
   tipos: string[];
-  perfiles: { label: string; linea: string }[];
+  perfiles: { label: string; linea: string; icon: LucideIcon }[];
   cotizar: string[];
   gallery: { src: string; caption: string }[];
   cta: string; ctaSub: string;
@@ -906,16 +912,16 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
         </div>
       </section>
 
-      {/* ── Perfiles que atendemos ── */}
+      {/* ── Clientes que atendemos ── */}
       <section className="py-24 px-6">
         <div className="max-w-5xl mx-auto">
           <R>
             <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-4">Para quién trabajamos</p>
             <h2 className="font-bold text-white leading-[1.05] mb-3" style={{ fontSize: "clamp(1.5rem, 3.2vw, 2.4rem)", letterSpacing: "-0.02em" }}>
-              Perfiles que atendemos.
+              Clientes que atendemos.
             </h2>
             <p className="text-white/40 text-sm leading-relaxed max-w-2xl mb-10">
-              Cada evento es distinto y cada quien nos necesita de forma diferente. Estos son los perfiles con los que más trabajamos en este tipo de evento.
+              Cada evento es distinto y cada quien nos necesita de forma diferente. Estos son los clientes con los que más trabajamos en este tipo de evento.
             </p>
           </R>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -923,7 +929,10 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
               <R key={p.label} delay={i * 70}>
                 <div className="flex items-start gap-4 p-6 rounded-2xl h-full"
                      style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <span className="shrink-0 mt-1 w-2 h-2 rounded-full" style={{ background: GOLD }} />
+                  <span className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl"
+                        style={{ background: "rgba(179,152,91,0.12)", border: `1px solid ${GOLD}33` }}>
+                    <p.icon strokeWidth={1.75} className="w-5 h-5" style={{ color: GOLD }} />
+                  </span>
                   <div>
                     <h3 className="font-semibold text-white mb-1.5 leading-snug" style={{ fontSize: "clamp(0.98rem, 1.4vw, 1.1rem)" }}>{p.label}</h3>
                     <p className="text-white/45 text-sm leading-relaxed">{p.linea}</p>
