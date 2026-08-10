@@ -98,11 +98,11 @@ const EVENTO_COLORS: Record<string, string> = {
   VARIOS:      "#9CA3AF", // gray-400
 };
 
-const TIPO_EVENTO_BADGE: Record<string, { bg: string; text: string; dot: string }> = {
-  MUSICAL:     { bg: 'bg-indigo-900/30',  text: 'text-indigo-400',  dot: 'bg-indigo-400' },
-  SOCIAL:      { bg: 'bg-rose-900/30',    text: 'text-rose-400',    dot: 'bg-rose-400' },
-  EMPRESARIAL: { bg: 'bg-teal-900/30',    text: 'text-teal-400',    dot: 'bg-teal-400' },
-  VARIOS:      { bg: 'bg-gray-800/50',    text: 'text-gray-500',    dot: 'bg-gray-600' },
+const TIPO_EVENTO_BADGE: Record<string, { bg: string; text: string; border: string }> = {
+  MUSICAL:     { bg: 'bg-indigo-950/50', text: 'text-indigo-300', border: 'border-indigo-800/30' },
+  SOCIAL:      { bg: 'bg-rose-950/50',   text: 'text-rose-300',   border: 'border-rose-800/30'   },
+  EMPRESARIAL: { bg: 'bg-teal-950/50',   text: 'text-teal-300',   border: 'border-teal-800/30'   },
+  VARIOS:      { bg: 'bg-[#111]',        text: 'text-[#555]',     border: 'border-[#222]'        },
 };
 
 const TIPO_COLORS: Record<string, { bg: string; text: string; border: string }> = {
@@ -546,17 +546,14 @@ function ContactoRow({
           renderValue={(vals) => {
             if (vals.length === 0) return <span className="text-[#2a2a2a]">Tipo evento</span>;
             return (
-              <div className="flex flex-wrap gap-1.5 pointer-events-none">
+              <div className="flex flex-wrap gap-1 pointer-events-none">
                 {vals.map(t => {
                   const opt = TIPOS_EVENTO_OPTIONS.find(o => o.value === t);
                   const style = TIPO_EVENTO_BADGE[t] ?? TIPO_EVENTO_BADGE.VARIOS;
                   return (
-                    <div key={t} className="flex items-center gap-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`}></span>
-                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-md border border-transparent ${style.bg} ${style.text}`}>
-                        {opt?.label ?? t}
-                      </span>
-                    </div>
+                    <span key={t} className={`text-[11px] font-medium px-1.5 py-0.5 rounded border ${style.bg} ${style.text} ${style.border}`}>
+                      {opt?.label ?? t}
+                    </span>
                   );
                 })}
               </div>
