@@ -38,21 +38,26 @@ export function usePresentacionEdit(): EditCtx {
   );
 
   const save = useCallback(async (key: string, value: string | null) => {
+    // Persistimos PRIMERO y solo actualizamos la vista si el servidor confirma.
+    // Así, lo que se ve en pantalla siempre coincide con lo guardado: si el
+    // PATCH falla (401, 500 o sin red) lanzamos un error para que el UI avise,
+    // en vez de mostrar un cambio que en realidad no se guardó.
+    const res = await fetch("/api/presentacion/overrides", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, value }),
+    }).catch(() => null);
+    if (!res || !res.ok) {
+      throw new Error(
+        res ? `No se pudo guardar (error ${res.status})` : "No hay conexión con el servidor"
+      );
+    }
     setOverrides((prev) => {
       const next = { ...prev };
       if (value === null || value === "") delete next[key];
       else next[key] = value;
       return next;
     });
-    try {
-      await fetch("/api/presentacion/overrides", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key, value }),
-      });
-    } catch {
-      /* best-effort: el estado local ya se actualizó */
-    }
   }, []);
 
   return { isAdmin, loaded, get, save };
@@ -196,7 +201,12 @@ export function EditableFigure({
           {src && (
             <button
               type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); edit.save(okey, null); }}
+              onClick={(e) => {
+                e.preventDefault(); e.stopPropagation();
+                edit.save(okey, null).catch((err) =>
+                  alert("No se pudo quitar la imagen: " + (err instanceof Error ? err.message : String(err)))
+                );
+              }}
               aria-label="Quitar imagen"
               className="ml-1 inline-flex items-center justify-center text-[10px] px-2 py-1 rounded-full text-white/40"
               style={{ border: "1px solid rgba(255,255,255,0.12)" }}
@@ -233,9 +243,14 @@ export function EditableText({
 
   async function commit() {
     setBusy(true);
-    await edit.save(okey, draft.trim() === fallback.trim() ? null : draft);
-    setBusy(false);
-    setEditing(false);
+    try {
+      await edit.save(okey, draft.trim() === fallback.trim() ? null : draft);
+      setEditing(false);
+    } catch (err) {
+      alert("No se pudo guardar el texto: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (editing) {
