@@ -24,7 +24,8 @@ import {
   NotasSeguimiento,
   type NotaSeg,
 } from '@/components/crm/PlanContactos';
-import { PERFILES_POR_CATEGORIA, getPerfil, perfilLabel } from '@/lib/proceso/perfiles';
+import { resolvePerfil, type PerfilCategoria, PERFIL_CATEGORIAS } from '@/lib/proceso/perfiles';
+import { PerfilSelect, usePerfilesCustom } from '@/components/crm/PerfilSelect';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface TratoArchivo {
@@ -622,6 +623,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const [modalEditarCliente, setModalEditarCliente] = useState(false);
   const [clienteEditForm, setClienteEditForm] = useState({ nombre: '', empresa: '', telefono: '', correo: '' });
   const [savingPerfil, setSavingPerfil] = useState(false);
+  const { custom: perfilesCustom, agregar: agregarPerfil } = usePerfilesCustom();
   const [razonPerdida, setRazonPerdida] = useState("");
   const [notasPerdida, setNotasPerdida] = useState("");
 
@@ -1808,7 +1810,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         const nombre = trato.cliente.nombre.split(" ")[0];
         const tel = trato.cliente.telefono?.replace(/\D/g, "");
         const num = tel ? (tel.startsWith("52") ? tel : `52${tel}`) : null;
-        const perfilSel = getPerfil(trato.cliente.perfilProspecto);
+        const perfilSel = resolvePerfil(trato.cliente.perfilProspecto, perfilesCustom);
 
         return (
           <div className={`bg-[#0d0d0d] border-2 rounded-xl overflow-hidden ${
@@ -1851,20 +1853,14 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                     <p className="text-base font-bold text-white">Perfil de prospecto</p>
                     {savingPerfil && <span className="text-[10px] text-gray-500">Guardando…</span>}
                   </div>
-                  <p className="text-xs text-gray-500 mb-3">Elige a quién le estás hablando para sugerir el mensaje inicial y el material adecuado. Se guarda en el contacto.</p>
-                  <select
+                  <p className="text-xs text-gray-500 mb-3">Elige a quién le estás hablando para sugerir el mensaje inicial y el material adecuado. Se guarda en el contacto. Si ninguno encaja, usa «+» para agregar uno.</p>
+                  <PerfilSelect
                     value={trato.cliente.perfilProspecto ?? ""}
-                    disabled={savingPerfil}
-                    onChange={e => guardarPerfil(e.target.value || null)}
-                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-700/60 hover:border-[#333] transition-colors cursor-pointer disabled:opacity-40"
-                  >
-                    <option value="">Sin definir…</option>
-                    {PERFILES_POR_CATEGORIA.map(g => (
-                      <optgroup key={g.categoria} label={g.label}>
-                        {g.perfiles.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
-                      </optgroup>
-                    ))}
-                  </select>
+                    onChange={v => guardarPerfil(v || null)}
+                    custom={perfilesCustom}
+                    onCreated={agregarPerfil}
+                    categoriaSugerida={PERFIL_CATEGORIAS.includes(trato.tipoEvento as PerfilCategoria) ? (trato.tipoEvento as PerfilCategoria) : null}
+                  />
                 </div>
               )}
 

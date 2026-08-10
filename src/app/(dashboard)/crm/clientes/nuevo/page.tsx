@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { EmpresaCombobox } from "@/components/EmpresaCombobox";
 import { Combobox } from "@/components/Combobox";
-import { PERFILES_POR_CATEGORIA } from "@/lib/proceso/perfiles";
+import { PerfilSelect, usePerfilesCustom } from "@/components/crm/PerfilSelect";
 
 export default function NuevoClientePage() {
   const router = useRouter();
@@ -22,6 +22,7 @@ export default function NuevoClientePage() {
     notas: "",
   });
   const [empresa, setEmpresa] = useState<{ id: string; nombre: string } | null>(null);
+  const { custom: perfilesCustom, agregar: agregarPerfil } = usePerfilesCustom();
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -145,22 +146,13 @@ export default function NuevoClientePage() {
           </div>
           <div className="mt-4">
             <label className="block text-xs text-gray-400 mb-1">Perfil de prospecto</label>
-            <select
-              name="perfilProspecto"
+            <PerfilSelect
               value={form.perfilProspecto}
-              onChange={handleChange}
-              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-            >
-              <option value="">— Sin definir —</option>
-              {PERFILES_POR_CATEGORIA.map((grupo) => (
-                <optgroup key={grupo.categoria} label={grupo.label}>
-                  {grupo.perfiles.map((p) => (
-                    <option key={p.id} value={p.id}>{p.label}</option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-            <p className="text-[11px] text-gray-500 mt-1">Quién es el contacto. Define el mensaje de primer contacto y el material a compartir en prospección.</p>
+              onChange={(v) => setForm((p) => ({ ...p, perfilProspecto: v }))}
+              custom={perfilesCustom}
+              onCreated={agregarPerfil}
+            />
+            <p className="text-[11px] text-gray-500 mt-1">Quién es el contacto. Define el mensaje de primer contacto y el material a compartir en prospección. Si ninguno encaja, usa «+» para agregar uno.</p>
           </div>
         </div>
 

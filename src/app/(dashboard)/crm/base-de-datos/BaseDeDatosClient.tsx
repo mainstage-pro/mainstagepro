@@ -3,7 +3,8 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import { TIPO_CLIENTE_LABELS, CLASIFICACION_LABELS, ORIGEN_LEAD_OPTIONS, ORIGEN_LEAD_LABELS } from "@/lib/constants";
-import { PERFILES_POR_CATEGORIA } from "@/lib/proceso/perfiles";
+import { PerfilSelect, usePerfilesCustom } from "@/components/crm/PerfilSelect";
+import { PERFILES_POR_CATEGORIA, type CustomPerfil } from "@/lib/proceso/perfiles";
 import { CopyButton } from "@/components/CopyButton";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
@@ -409,9 +410,12 @@ function ContactoRow({
   empresaPopoverOpen, onEmpresaClick, empresaMode, setEmpresaMode,
   empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
   onVincularEmpresa, onCloseEmpresa,
+  perfilOptions = PERFIL_OPTIONS, perfilColors = PERFIL_COLORS,
 }: {
   c: Contacto; usuarios: Vendedor[]; tab: Tab;
   actividadMap: Record<string, EstadoActividad>;
+  perfilOptions?: { value: string; label: string }[];
+  perfilColors?: Record<string, { text: string; bg: string; border: string }>;
   onSaved: (updated: Partial<Contacto>) => void;
   onVendedorChange: (v: Vendedor | null) => void;
   onDelete: () => void; deleting: boolean;
@@ -546,9 +550,9 @@ function ContactoRow({
 
       {/* Perfil de prospecto */}
       <td data-no-nav className="px-3 py-2.5 align-middle overflow-visible">
-        <InlineDropdown options={PERFIL_OPTIONS} value={c.perfilProspecto ?? ""}
+        <InlineDropdown options={perfilOptions} value={c.perfilProspecto ?? ""}
           onChange={v => patch({ perfilProspecto: v || null })} placeholder="Perfil"
-          colorMap={PERFIL_COLORS} />
+          colorMap={perfilColors} />
       </td>
 
       {/* Servicio (multi) */}
@@ -650,11 +654,13 @@ function ContactoRow({
 
 // ─── ModalNuevoContacto ────────────────────────────────────────────────────────
 
-function ModalNuevoContacto({ onClose, onCreado, usuarios, modo }: {
+function ModalNuevoContacto({ onClose, onCreado, usuarios, modo, perfilesCustom, onPerfilCreado }: {
   onClose: () => void;
   onCreado: (c: Contacto) => void;
   usuarios: Vendedor[];
   modo: "cliente" | "prospecto" | "libre";
+  perfilesCustom: CustomPerfil[];
+  onPerfilCreado: (p: CustomPerfil) => void;
 }) {
   const toast = useToast();
   const [saving, setSaving] = useState(false);
@@ -764,15 +770,12 @@ function ModalNuevoContacto({ onClose, onCreado, usuarios, modo }: {
             )}
             <div className="col-span-2">
               <label className={labelCls}>Perfil de prospecto</label>
-              <select value={form.perfilProspecto} onChange={e => setF("perfilProspecto", e.target.value)}
-                className="ms-input">
-                <option value="">— Sin definir —</option>
-                {PERFILES_POR_CATEGORIA.map(g => (
-                  <optgroup key={g.categoria} label={g.label}>
-                    {g.perfiles.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
-                  </optgroup>
-                ))}
-              </select>
+              <PerfilSelect
+                value={form.perfilProspecto}
+                onChange={v => setF("perfilProspecto", v)}
+                custom={perfilesCustom}
+                onCreated={onPerfilCreado}
+              />
             </div>
             <div className="col-span-2">
               <label className={labelCls}>Notas</label>
@@ -803,9 +806,12 @@ function ContactList({
   empresaPopoverId, setEmpresaPopoverId, empresaMode, setEmpresaMode,
   empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
   handleVincularEmpresa, closeEmpresaPopover,
+  perfilOptions, perfilColors,
 }: {
   contactos: Contacto[]; usuarios: Vendedor[]; tab: Tab;
   actividadMap: Record<string, EstadoActividad>;
+  perfilOptions: { value: string; label: string }[];
+  perfilColors: Record<string, { text: string; bg: string; border: string }>;
   onSaved: (id: string, updated: Partial<Contacto>) => void;
   onVendedorChange: (id: string, v: Vendedor | null) => void;
   onDelete: (c: Contacto) => void; deletingId: string | null;
@@ -874,6 +880,7 @@ function ContactList({
               empresaResults={empresaResults} empresaSearching={empresaSearching}
               onVincularEmpresa={(empId, empNombre) => handleVincularEmpresa(c.id, empId, empNombre)}
               onCloseEmpresa={closeEmpresaPopover}
+              perfilOptions={perfilOptions} perfilColors={perfilColors}
             />
           ))}
         </tbody>
@@ -1130,6 +1137,17 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
   const [deletingId, setDeletingId]     = useState<string | null>(null);
   const [showModal, setShowModal]       = useState(false);
 
+  // Perfiles de prospecto: base (código) + personalizados (BD).
+  const { custom: perfilesCustom, agregar: agregarPerfil } = usePerfilesCustom();
+  const perfilOptions = useMemo(
+    () => [...PERFIL_OPTIONS, ...perfilesCustom.map(p => ({ value: p.id, label: p.label }))],
+    [perfilesCustom],
+  );
+  const perfilColors = useMemo(
+    () => ({ ...PERFIL_COLORS, ...Object.fromEntries(perfilesCustom.map(p => [p.id, PERFIL_CAT_COLOR[p.categoria] ?? PERFIL_CAT_COLOR.EMPRESARIAL])) }),
+    [perfilesCustom],
+  );
+
   // Empresa popover
   const [empresaPopoverId, setEmpresaPopoverId] = useState<string | null>(null);
   const [empresaMode, setEmpresaMode]           = useState<"view" | "search">("view");
@@ -1287,6 +1305,7 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
     empresaPopoverId, setEmpresaPopoverId, empresaMode, setEmpresaMode,
     empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
     handleVincularEmpresa, closeEmpresaPopover,
+    perfilOptions, perfilColors,
   };
 
   // ─── Counts ──────────────────────────────────────────────────────────────────
@@ -1307,7 +1326,7 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
 
   return (
     <>
-      {showModal && <ModalNuevoContacto onClose={() => setShowModal(false)} onCreado={onCreado} usuarios={usuarios} modo={modoRegistro} />}
+      {showModal && <ModalNuevoContacto onClose={() => setShowModal(false)} onCreado={onCreado} usuarios={usuarios} modo={modoRegistro} perfilesCustom={perfilesCustom} onPerfilCreado={agregarPerfil} />}
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">

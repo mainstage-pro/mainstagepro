@@ -133,3 +133,79 @@ export const PERFILES_POR_CATEGORIA: { categoria: PerfilCategoria; label: string
   }));
 
 export const zPerfilProspecto = z.enum(PERFIL_IDS as [string, ...string[]]);
+
+// ── Perfiles personalizados (BD) ─────────────────────────────────────────────
+// Cuando un contacto no encaja en ningún perfil base, se agrega uno propio bajo
+// la misma categoría (= tipoEvento). Vive en la tabla `perfiles_prospecto`.
+export type CustomPerfil = {
+  id: string;
+  label: string;
+  categoria: PerfilCategoria;
+  mensajeInicial: string | null; // plantilla con {nombre} / {empresa}; null = genérico
+  materiales: MaterialId[] | null;
+};
+
+// Material principal por categoría (fallback para perfiles sin materiales propios).
+export const MATERIALES_POR_CATEGORIA: Record<PerfilCategoria, MaterialId[]> = {
+  MUSICAL: ["musical", "galeria", "servicios"],
+  SOCIAL: ["social", "galeria", "servicios"],
+  EMPRESARIAL: ["empresarial", "galeria", "servicios"],
+};
+
+// Mensaje de primer contacto genérico por categoría (fallback).
+const MENSAJE_GENERICO: Record<PerfilCategoria, (nombre: string, empresa?: string | null) => string> = {
+  MUSICAL: (n) => `Hola ${n}, seguimos tu trabajo y nos encanta el nivel que logras con tu público.\n\nEn *Mainstage Pro* hacemos producción de audio, iluminación y video para shows en vivo y nos encantaría acompañarte en tus próximos eventos. ¿Te comparto información?`,
+  SOCIAL: (n) => `Hola ${n}, nos encanta el cuidado y el ambiente de los eventos que realizas.\n\nEn *Mainstage Pro* hacemos audio, iluminación y video, y nos encantaría ser tu aliado técnico para que todo suene y se vea impecable. ¿Te comparto información?`,
+  EMPRESARIAL: (n, e) => `Hola ${n}, hemos visto los eventos de ${emp(e)} y nos encanta cómo cuidan su imagen.\n\nEn *Mainstage Pro* producimos audio, iluminación y video para eventos corporativos y nos encantaría apoyarlos en su próximo evento. ¿Les comparto información?`,
+};
+
+const aplicarPlantilla = (tpl: string, nombre: string, empresa?: string | null) =>
+  tpl.replace(/\{nombre\}/g, nombre).replace(/\{empresa\}/g, emp(empresa));
+
+// Perfil ya resuelto (base o custom) listo para pintar mensaje y material.
+export type ResolvedPerfil = {
+  id: string;
+  label: string;
+  categoria: PerfilCategoria;
+  materiales: MaterialId[];
+  mensajeInicial: (nombre: string, empresa?: string | null) => string;
+  esCustom: boolean;
+};
+
+// Resuelve un id de perfil contra los base y luego contra los custom de BD.
+export function resolvePerfil(
+  id: string | null | undefined,
+  custom: CustomPerfil[] = [],
+): ResolvedPerfil | null {
+  if (!id) return null;
+  const base = getPerfil(id);
+  if (base) return { ...base, esCustom: false };
+  const c = custom.find((p) => p.id === id);
+  if (!c) return null;
+  return {
+    id: c.id,
+    label: c.label,
+    categoria: c.categoria,
+    materiales: c.materiales && c.materiales.length > 0 ? c.materiales : MATERIALES_POR_CATEGORIA[c.categoria],
+    mensajeInicial: c.mensajeInicial
+      ? (n, e) => aplicarPlantilla(c.mensajeInicial as string, n, e)
+      : MENSAJE_GENERICO[c.categoria],
+    esCustom: true,
+  };
+}
+
+// Etiqueta resolviendo también los custom (para tablas/badges).
+export const resolvePerfilLabel = (id: string | null | undefined, custom: CustomPerfil[] = []): string =>
+  resolvePerfil(id, custom)?.label ?? "—";
+
+// Base + custom agrupados por categoría, para pintar el selector.
+export function perfilesPorCategoriaCon(custom: CustomPerfil[] = []) {
+  return PERFIL_CATEGORIAS.map((categoria) => ({
+    categoria,
+    label: PERFIL_CATEGORIA_LABELS[categoria],
+    perfiles: [
+      ...PERFILES.filter((p) => p.categoria === categoria).map((p) => ({ id: p.id, label: p.label, esCustom: false })),
+      ...custom.filter((p) => p.categoria === categoria).map((p) => ({ id: p.id, label: p.label, esCustom: true })),
+    ],
+  }));
+}

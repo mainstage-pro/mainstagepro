@@ -4190,6 +4190,22 @@ model FotoTipoEvento {
   @@map("fotos_tipo_evento")
 }
 
+// Perfiles de prospecto personalizados (los 13 base viven en src/lib/proceso/perfiles.ts).
+// Se agregan cuando un contacto no encaja en ningún perfil base; categoria = tipoEvento.
+model PerfilProspecto {
+  id             String   @id @default(cuid())
+  label          String
+  categoria      String                      // MUSICAL | SOCIAL | EMPRESARIAL
+  mensajeInicial String?  @db.Text           // plantilla opcional; {nombre} {empresa}. Vacío = genérico por categoría
+  materiales     String?                     // JSON array opcional de MaterialId
+  orden          Int      @default(0)
+  activo         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("perfiles_prospecto")
+}
+
 // Slides del hero de la galería pública (/presentacion/galeria). Independientes
 // de los tipos de evento: rotan como carrusel al inicio.
 model FotoGaleriaInicio {
