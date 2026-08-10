@@ -74,7 +74,7 @@ const CONFIG = {
     kicker:   "Eventos musicales",
     hero:     "/images/presentacion/musicales/Musicales-016.jpg",
     headline: "El sonido y la luz\nque encienden al público.",
-    sub:      "Del primer acorde al último beat: producción que se siente en el cuerpo y sostiene la energía toda la noche.",
+    sub:      "Producción que se siente en el cuerpo y sostiene la energía toda la noche.",
     problema: {
       title: "Por qué importa la producción",
       lead:  "La técnica es lo que enciende al público.",
@@ -141,7 +141,7 @@ const CONFIG = {
     kicker:   "Eventos sociales",
     hero:     "/images/presentacion/sociales/s-boda-elegante.jpg",
     headline: "Que cada momento\nse viva perfecto.",
-    sub:      "Primer baile, brindis, pista — el sonido y la luz justos en cada instante, sin que notes que estamos ahí.",
+    sub:      "El sonido y la luz justos en cada momento, sin que notes que estamos ahí.",
     problema: {
       title: "Por qué importa la producción",
       lead:  "Una celebración se vive una sola vez.",
@@ -207,7 +207,7 @@ const CONFIG = {
     kicker:   "Eventos corporativos",
     hero:     "/images/presentacion/empresariales/e-auditorio.jpg",
     headline: "Cada mensaje,\nclaro y con presencia.",
-    sub:      "Audio nítido para cada presentador, pantallas que responden y una producción que refuerza la imagen de tu marca.",
+    sub:      "Audio nítido y pantallas que refuerzan la imagen de tu marca.",
     problema: {
       title: "Por qué importa la producción",
       lead:  "La producción es parte de la imagen de tu marca.",
@@ -977,32 +977,6 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
 
       {/* ── Proyectos ── */}
       <ProyectosSection proyectos={proyectos} isAdmin={isAdmin} tipo={tipo} />
-
-      {/* ── Recomendaciones antes de contratar ── */}
-      <section className="py-32 px-6">
-        <div className="max-w-5xl mx-auto">
-          <R>
-            <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Planeación</p>
-            <h2 className="font-bold text-white leading-[1.05] mb-5" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
-              Detalles que aseguran una producción impecable.
-            </h2>
-            <p className="text-white/40 text-sm sm:text-base leading-relaxed max-w-2xl mb-14">
-              Definir estos puntos con anticipación nos permite diseñar la propuesta más precisa para tu evento. Si aún no los tienes resueltos, los trabajamos juntos durante el descubrimiento.
-            </p>
-          </R>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {c.recomendaciones.map((rec, i) => (
-              <R key={i} delay={i * 70}>
-                <div className="flex items-start gap-5 p-6 rounded-2xl h-full"
-                     style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <span className="shrink-0 font-mono text-lg" style={{ color: GOLD, letterSpacing: "0.06em" }}>{String(i + 1).padStart(2, "0")}</span>
-                  <p className="text-white/70 text-sm sm:text-base leading-relaxed">{rec}</p>
-                </div>
-              </R>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* ── Qué necesitamos para cotizar ── */}
       <section className="py-32 px-6 bg-[#060606]">

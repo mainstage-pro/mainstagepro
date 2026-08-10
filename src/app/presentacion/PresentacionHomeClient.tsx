@@ -108,7 +108,7 @@ export default function PresentacionHomeClient() {
             detrás de cada <span style={{ color: GOLD }}>gran evento.</span>
           </h1>
           <p className="text-white/60 mt-8 max-w-2xl mx-auto" style={{ fontSize: "clamp(1rem,2vw,1.2rem)", animation: "fadeUp 0.9s ease forwards 0.65s", opacity: 0 }}>
-            Desde el equipo exacto que tu evento necesita hasta la coordinación completa de la producción. Audio, iluminación y video en manos de un solo equipo que responde por cada detalle.
+            Audio, iluminación y video en manos de un solo equipo que responde por cada detalle.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4" style={{ animation: "fadeUp 0.9s ease forwards 0.85s", opacity: 0 }}>
             <button onClick={() => iniciar()} disabled={loading} className="px-8 py-4 rounded-full font-semibold text-black text-sm tracking-wide transition-all duration-300 hover:scale-105 disabled:opacity-60" style={{ background: GOLD }}>
