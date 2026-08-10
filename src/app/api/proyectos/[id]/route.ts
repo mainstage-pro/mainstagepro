@@ -224,7 +224,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   const body = await request.json();
 
   const allowed = [
-    "estado", "nombre", "horaInicioEvento", "horaFinEvento", "horariosEvento", "fechaMontaje", "fechaEvento",
+    "estado", "nombre", "horaInicioEvento", "horaFinEvento", "horariosEvento", "fechaMontaje", "fechaEvento", "fechasEvento",
     "horaInicioMontaje", "duracionMontajeHrs", "lugarEvento", "encargadoLugar",
     "encargadoLugarContacto", "encargadoCliente", "encargadoClienteContacto",
     "descripcionGeneral", "detallesEspecificos",

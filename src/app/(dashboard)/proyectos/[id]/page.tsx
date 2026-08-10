@@ -22,7 +22,7 @@ import { ViabilidadWidget, type ViabilidadActiva, type ViabilidadHistoricoItem }
 import { DISCIPLINA_COLORS, DISCIPLINA_LABELS } from "@/lib/disciplinaColors";
 import { contarRespondidos, contarIncidencias, nivelResultado, getEvalConfig, aplicaEvaluacion, type EvalPostEventoData } from "@/lib/evaluacion-post-evento";
 import { getDireccionConfig, promedioDireccion, type EvaluacionDireccionData } from "@/lib/evaluacion-direccion";
-import { diasEvento, parseHorariosEvento, horarioDeDia } from "@/lib/fechas-evento";
+import { diasEvento, parseHorariosEvento, horarioDeDia, parseFechasEvento } from "@/lib/fechas-evento";
 import { construirCronologia } from "@/lib/cronologia-evento";
 import { checksAvanceProduccion } from "@/lib/proyecto-avance";
 
@@ -61,7 +61,13 @@ interface Gasto { id: string; fecha: string; concepto: string; monto: number; me
 interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null }
 interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number }
 interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; necesitaRevision: boolean; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: { nombre: string }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; riderAccesorios: RiderAccesorio[] }
-interface CronoRow { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string; dia?: string }
+interface CronoRow { horaInicio: string; horaFin: string; actividad: string; responsable: string; involucrados: string; dia?: string; _id?: string }
+
+// Id estable por fila: permite reordenar/eliminar sin que React reutilice inputs por
+// posición (causa del bug móvil "se mueve todo y se borra" al teclear).
+let cronoIdSeq = 0;
+function nuevoCronoId() { return `cr_${Date.now().toString(36)}_${(cronoIdSeq++).toString(36)}`; }
+function conCronoId(r: CronoRow): CronoRow { return r._id ? r : { ...r, _id: nuevoCronoId() }; }
 interface TransporteSlot { vehiculoId: string; choferId: string; horaSalida: string; comentarios: string }
 interface Proyecto {
   id: string; numeroProyecto: string; nombre: string; estado: string;
@@ -2183,7 +2189,18 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     if (!proyecto) return;
     try {
       const parsed = proyecto.cronograma ? JSON.parse(proyecto.cronograma) : [];
-      setCronoRows(Array.isArray(parsed) ? parsed : []);
+      const rows: CronoRow[] = Array.isArray(parsed) ? parsed.map(conCronoId) : [];
+      // Ordenar SOLO al cargar (por día y hora). Durante la edición nunca se reordena,
+      // para no mover las filas debajo del dedo mientras se teclea en el celular.
+      rows.sort((a, b) => {
+        const da = a.dia || "", db = b.dia || "";
+        if (da !== db) { if (!da) return 1; if (!db) return -1; return da.localeCompare(db); }
+        if (!a.horaInicio && !b.horaInicio) return 0;
+        if (!a.horaInicio) return 1;
+        if (!b.horaInicio) return -1;
+        return a.horaInicio.localeCompare(b.horaInicio);
+      });
+      setCronoRows(rows);
     } catch { setCronoRows([]); }
     try {
       const parsed = proyecto.transportes ? JSON.parse(proyecto.transportes) : [];
@@ -2396,24 +2413,38 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     setProyecto(p => p ? { ...p, [field]: value } : p);
   }
 
-  // ── Guardar cronograma (auto-sort por hora) ──
+  // ── Días del evento (multidía) ──
+  // fechasEvento guarda la lista COMPLETA de fechas (incluye el día 1 = fechaEvento).
+  async function agregarDiaEvento(fecha: string) {
+    if (!fecha || !proyecto) return;
+    const lista = diasEvento(proyecto.fechaEvento, proyecto.fechasEvento);
+    if (lista.includes(fecha)) return;
+    const json = JSON.stringify(Array.from(new Set([...lista, fecha])).sort());
+    await guardarCampo("fechasEvento", json);
+  }
+  async function quitarDiaEvento(fecha: string) {
+    if (!proyecto) return;
+    const dia1 = proyecto.fechaEvento?.substring(0, 10);
+    if (fecha === dia1) return; // el día 1 no se quita: es la fecha principal del evento
+    const restantes = parseFechasEvento(proyecto.fechasEvento).filter(f => f !== fecha);
+    // Si solo quedaría el día 1, limpiar fechasEvento (vuelve a modo un-día).
+    const soloDia1 = restantes.length === 0 || (restantes.length === 1 && restantes[0] === dia1);
+    await guardarCampo("fechasEvento", soloDia1 ? "" : JSON.stringify(restantes));
+  }
+
+  // ── Guardar cronograma ──
+  // No reordena ni reescribe el estado en vivo: persiste las filas en el orden en que
+  // están en pantalla. Reordenar aquí (en cada autosave a los 1.5s) movía las filas
+  // mientras el usuario tecleaba en el celular y le hacía perder/pisar lo escrito.
   async function guardarCronograma(rows: CronoRow[]) {
     setSavingCrono(true);
-    const sorted = [...rows].sort((a, b) => {
-      // Primero por día (las filas sin día van al final), luego por hora de inicio.
-      const da = a.dia || "", db = b.dia || "";
-      if (da !== db) { if (!da) return 1; if (!db) return -1; return da.localeCompare(db); }
-      if (!a.horaInicio && !b.horaInicio) return 0;
-      if (!a.horaInicio) return 1;
-      if (!b.horaInicio) return -1;
-      return a.horaInicio.localeCompare(b.horaInicio);
-    });
-    setCronoRows(sorted);
+    const clean = rows.map(({ _id, ...r }) => r); // eslint-disable-line @typescript-eslint/no-unused-vars
+    const json = JSON.stringify(clean);
     await fetch(`/api/proyectos/${id}`, {
       method: "PATCH", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cronograma: JSON.stringify(sorted) }),
+      body: JSON.stringify({ cronograma: json }),
     });
-    setProyecto(prev => prev ? { ...prev, cronograma: JSON.stringify(sorted) } : prev);
+    setProyecto(prev => prev ? { ...prev, cronograma: json } : prev);
     setSavingCrono(false);
   }
 
@@ -2421,7 +2452,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     const horaInicio = proyecto?.horaInicioEvento ?? "";
     const horaFin = proyecto?.horaFinEvento ?? "";
     const base = CRONO_BASE.map(r => {
-      const row: CronoRow = { ...r, ...(dia ? { dia } : {}) };
+      const row: CronoRow = { ...r, _id: nuevoCronoId(), ...(dia ? { dia } : {}) };
       if (r.actividad === "Inicio de evento" && horaInicio) row.horaInicio = horaInicio;
       if (r.actividad === "Fin de evento / Inicio de desmontaje" && horaFin) row.horaInicio = horaFin;
       return row;
@@ -2438,7 +2469,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
   }
 
   function addCronoRow(dia?: string) {
-    setCronoRows(prev => [...prev, { horaInicio: "", horaFin: "", actividad: "", responsable: "", involucrados: "", ...(dia ? { dia } : {}) }]);
+    setCronoRows(prev => [...prev, { _id: nuevoCronoId(), horaInicio: "", horaFin: "", actividad: "", responsable: "", involucrados: "", ...(dia ? { dia } : {}) }]);
   }
 
   function updateCronoRow(i: number, field: keyof CronoRow, value: string) {
@@ -2469,7 +2500,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           </thead>
           <tbody>
             {entries.map(({ row, i }, pos) => (
-              <tr key={i} className={`border-b border-[#1a1a1a] last:border-0 ${pos % 2 === 1 ? "bg-[#0d0d0d]" : ""}`}>
+              <tr key={row._id ?? i} className={`border-b border-[#1a1a1a] last:border-0 ${pos % 2 === 1 ? "bg-[#0d0d0d]" : ""}`}>
                 <td className="py-1 pr-2 w-[84px]">
                   <InlinePicker value={row.horaInicio} onChange={v => updateCronoRow(i, "horaInicio", v)} />
                 </td>
@@ -4157,7 +4188,29 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                   </div>
                   <Campo label="Contacto del lugar" value={proyecto.encargadoLugarContacto} field="encargadoLugarContacto" onSave={guardarCampo} />
                   <Campo label="Fecha del evento" value={proyecto.fechaEvento?.substring(0, 10) ?? null} field="fechaEvento" type="date" onSave={guardarCampo} />
-                  <div className="col-span-1" />
+                  <div className="col-span-2 rounded-lg border border-[#1e1e1e] bg-[#141414] p-3">
+                    <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                      <p className="text-gray-500 text-xs">Días del evento{esMultidia ? ` · ${diasDelEvento.length}` : ""}</p>
+                      <label className="text-xs text-[#B3985B] hover:text-white border border-[#B3985B]/40 hover:border-[#B3985B] px-3 py-1.5 rounded-lg transition-colors cursor-pointer">
+                        + Agregar día
+                        <input type="date" className="hidden"
+                          onChange={e => { const v = e.target.value; e.currentTarget.value = ""; if (v) agregarDiaEvento(v); }} />
+                      </label>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {diasDelEvento.map((d, i) => (
+                        <span key={d} className="inline-flex items-center gap-1.5 text-xs bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2 py-1">
+                          <span className="text-[9px] font-semibold text-black bg-[#B3985B] rounded px-1 py-0.5">D{i + 1}</span>
+                          <span className="text-white capitalize">{fmtDiaCorto(d)}</span>
+                          {i > 0 && (
+                            <button onClick={() => quitarDiaEvento(d)}
+                              className="text-gray-600 hover:text-red-400 text-sm leading-none transition-colors">×</button>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                    {!esMultidia && <p className="text-[11px] text-gray-600 mt-2">Agrega días para armar una cronología de varios días.</p>}
+                  </div>
                   {esMultidia ? (
                     <div className="col-span-2 space-y-2">
                       <p className="text-gray-500 text-xs">Horarios por día</p>
