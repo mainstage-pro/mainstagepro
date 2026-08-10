@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
       salario: salario ? parseFloat(salario) : null,
       periodoPago: periodoPago || "MENSUAL",
       fechaIngreso: fechaIngreso ? new Date(fechaIngreso) : null,
+      diasLaborables: body.diasLaborables ?? [1, 2, 3, 4, 5],
       cuentaBancaria: cuentaBancaria || null,
       datosFiscales: datosFiscales || null,
       notas: notas || null,

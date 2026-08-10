@@ -6,7 +6,7 @@ import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
-interface Personal { id: string; nombre: string; puesto: string; departamento: string; }
+interface Personal { id: string; nombre: string; puesto: string; departamento: string; diasLaborables: number[]; }
 interface Asistencia {
   id: string; personalId: string; fecha: string; estado: string;
   minutosRetardo: number | null; horaEntrada: string | null; horaSalida: string | null;
@@ -542,10 +542,14 @@ function TabReporte({ personal }: { personal: Personal[] }) {
 
   const [year, month] = mes.split("-").map(Number);
   const diasEnMes = new Date(year, month, 0).getDate();
-  const laborales = Array.from({ length: diasEnMes }, (_, i) => {
-    const dow = new Date(year, month - 1, i + 1).getDay();
-    return dow !== 0 && dow !== 6;
-  }).filter(Boolean).length;
+  const totalLaboralesEquipo = personal.reduce((acc, p) => {
+    const diasLaborablesEmpleado = p.diasLaborables ?? [1, 2, 3, 4, 5];
+    const laborales = Array.from({ length: diasEnMes }, (_, i) => {
+      const dow = new Date(year, month - 1, i + 1).getDay();
+      return diasLaborablesEmpleado.includes(dow);
+    }).filter(Boolean).length;
+    return acc + laborales;
+  }, 0);
 
   function stat(asists: Asistencia[], estado: string) {
     return asists.filter(a => a.estado === estado).length;
@@ -559,7 +563,6 @@ function TabReporte({ personal }: { personal: Personal[] }) {
         <span className="text-white text-sm font-semibold min-w-[130px] text-center">{MESES[month - 1]} {year}</span>
         <button onClick={() => { const d = new Date(`${mes}-15`); d.setMonth(d.getMonth() + 1); setMes(toMes(d)); }}
           className="w-8 h-8 ms-btn-icon">→</button>
-        <span className="text-gray-600 text-xs ml-2">{laborales} días laborales</span>
         <a href={`/api/rrhh/asistencia/pdf?mes=${mes}`} target="_blank" rel="noopener noreferrer"
           className="ml-auto px-3 py-1.5 rounded-lg text-xs font-medium bg-[#B3985B] text-black hover:bg-[#c9a96a] transition-colors">
           Descargar PDF
@@ -592,6 +595,13 @@ function TabReporte({ personal }: { personal: Personal[] }) {
             const falta      = stat(asists, "FALTA");
             const permiso    = stat(asists, "PERMISO");
             const vacaciones = stat(asists, "VACACIONES");
+            
+            const diasLaborablesEmpleado = p.diasLaborables ?? [1, 2, 3, 4, 5];
+            const laborales = Array.from({ length: diasEnMes }, (_, i) => {
+              const dow = new Date(year, month - 1, i + 1).getDay();
+              return diasLaborablesEmpleado.includes(dow);
+            }).filter(Boolean).length;
+            
             const pct = laborales > 0 ? Math.round(((presente + retardo) / laborales) * 100) : 0;
             const total = asists.length;
 
@@ -629,11 +639,11 @@ function TabReporte({ personal }: { personal: Personal[] }) {
             })}
             <div className="px-2 py-3 text-center">
               <span className="text-xs text-[#B3985B] font-semibold">
-                {personal.length > 0 && laborales > 0
+                {personal.length > 0 && totalLaboralesEquipo > 0
                   ? Math.round((personal.reduce((acc, p) => {
                       const a = data[p.id] ?? [];
                       return acc + a.filter(x => x.estado === "PRESENTE" || x.estado === "RETARDO").length;
-                    }, 0) / (personal.length * laborales)) * 100) + "%"
+                    }, 0) / totalLaboralesEquipo) * 100) + "%"
                   : "—"}
               </span>
             </div>

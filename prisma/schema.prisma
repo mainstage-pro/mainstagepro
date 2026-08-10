@@ -1624,6 +1624,7 @@ model PersonalInterno {
   salario        Float?    // Mensual (empleado) o tarifa base (freelance recurrente)
   periodoPago    String    @default("MENSUAL") // MENSUAL | QUINCENAL | SEMANAL | POR_EVENTO
   fechaIngreso   DateTime?
+  diasLaborables Int[]     @default([1, 2, 3, 4, 5]) // 0=Dom, 1=Lun, ..., 6=Sab
   activo         Boolean   @default(true)
   cuentaBancaria String?
   datosFiscales  String?

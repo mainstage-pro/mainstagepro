@@ -23,7 +23,7 @@ interface UsuarioLite { id: string; name: string; email: string; ligadoA: string
 interface PersonalData {
   id: string; nombre: string; puesto: string; departamento: string; tipo: string;
   telefono: string | null; correo: string | null; salario: number | null; periodoPago: string;
-  fechaIngreso: string | null; activo: boolean; cuentaBancaria: string | null;
+  fechaIngreso: string | null; activo: boolean; diasLaborables: number[]; cuentaBancaria: string | null;
   datosFiscales: string | null; notas: string | null;
   banco: string | null; clabe: string | null; numeroCuenta: string | null; numeroTarjeta: string | null;
   ineUrl: string | null; domicilio: string | null;
@@ -502,6 +502,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
             <Info label="Fecha de ingreso" val={fmtDate(p.fechaIngreso)} />
             <Info label="Antigüedad" val={antiguedadTexto(saldo?.antiguedad ?? 0, p.fechaIngreso)} />
             <Info label="Salario / tarifa" val={p.salario ? `${fmt(p.salario)} / ${p.periodoPago.toLowerCase()}` : null} />
+            <Info label="Días laborables" val={p.diasLaborables?.length ? p.diasLaborables.map(d => ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"][d]).join(", ") : "No configurado"} />
           </div>
         </div>
 
@@ -988,6 +989,25 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
               <div>
                 <label className="text-xs text-gray-500 mb-1 block">Periodo pago</label>
                 <Combobox value={editForm.periodoPago ?? "MENSUAL"} onChange={v => set("periodoPago", v)} options={TIPOS_PERIODO.map(t => ({ value: t, label: t }))} className={field} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="text-xs text-gray-500 mb-2 block">Días laborables (afecta porcentaje de asistencia)</label>
+                <div className="flex flex-wrap gap-3">
+                  {["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].map((d, i) => (
+                    <label key={i} className="flex items-center gap-1.5 text-sm text-gray-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="rounded border-gray-600 bg-[#0d0d0d] text-[#B3985B] focus:ring-[#B3985B]"
+                        checked={editForm.diasLaborables ? editForm.diasLaborables.includes(i) : [1, 2, 3, 4, 5].includes(i)}
+                        onChange={e => {
+                          const current = editForm.diasLaborables ?? [1, 2, 3, 4, 5];
+                          if (e.target.checked) set("diasLaborables", [...current, i].sort());
+                          else set("diasLaborables", current.filter(x => x !== i));
+                        }}
+                      /> {d}
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
 

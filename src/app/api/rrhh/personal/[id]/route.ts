@@ -81,7 +81,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params;
   const body = await req.json();
 
-  const allowed = ["nombre", "puesto", "departamento", "tipo", "telefono", "correo", "salario", "periodoPago", "fechaIngreso", "activo", "cuentaBancaria", "datosFiscales", "notas", "banco", "clabe", "numeroCuenta", "numeroTarjeta", "ineUrl", "domicilio", "emergenciaNombre", "emergenciaTel", "padecimientos", "userId", "puestoId", "rfc", "curp", "nss", "fechaNacimiento", "estadoCivil", "fotoUrl", "fechaBaja", "motivoBaja", "jefeId"];
+  const allowed = ["nombre", "puesto", "departamento", "tipo", "telefono", "correo", "salario", "periodoPago", "fechaIngreso", "activo", "cuentaBancaria", "datosFiscales", "notas", "banco", "clabe", "numeroCuenta", "numeroTarjeta", "ineUrl", "domicilio", "emergenciaNombre", "emergenciaTel", "padecimientos", "userId", "puestoId", "rfc", "curp", "nss", "fechaNacimiento", "estadoCivil", "fotoUrl", "fechaBaja", "motivoBaja", "jefeId", "diasLaborables"];
   const fechas = new Set(["fechaIngreso", "fechaNacimiento", "fechaBaja"]);
   const data: Record<string, unknown> = {};
   for (const k of allowed) {
