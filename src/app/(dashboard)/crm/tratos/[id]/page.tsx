@@ -24,6 +24,7 @@ import {
   NotasSeguimiento,
   type NotaSeg,
 } from '@/components/crm/PlanContactos';
+import { PERFILES_POR_CATEGORIA, getPerfil, perfilLabel } from '@/lib/proceso/perfiles';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface TratoArchivo {
@@ -93,7 +94,7 @@ interface Trato {
   camposCliente: string | null;
   cliente: {
     id: string; nombre: string; empresa: string | null;
-    tipoCliente: string; clasificacion: string;
+    tipoCliente: string; clasificacion: string; perfilProspecto: string | null;
     telefono: string | null; correo: string | null;
   };
   responsableId: string | null;
@@ -602,277 +603,6 @@ const NURTURING_ETAPAS = [
   { id: "LISTO",              icon: "✅", label: "Listo para propuesta" },
 ];
 
-const TOUCHPOINT_TYPES = [
-  { id: "WA_INFO",   icon: "💬", label: "WA Info" },
-  { id: "PORTFOLIO", icon: "📸", label: "Portfolio" },
-  { id: "VALOR",     icon: "💡", label: "Dato de valor" },
-  { id: "FOLLOW_UP", icon: "👋", label: "Follow-up" },
-  { id: "LLAMADA",   icon: "📞", label: "Llamada" },
-  { id: "DETECCION", icon: "🎯", label: "Detección" },
-];
-
-// ─── Playbook de Nurturing ────────────────────────────────────────────────────
-type NTpl = { id: string; tipo: string; icon: string; label: string; msg: (n: string, ctx: { evento?: string | null; fecha?: string | null }) => string };
-type NPlaybookEtapa = {
-  objetivo: string;
-  intervalo: string;
-  acciones: string[];
-  contenido: string[];
-  templates: { MUSICAL: NTpl[]; SOCIAL: NTpl[]; EMPRESARIAL: NTpl[]; OTRO: NTpl[] };
-};
-
-const NURTURING_PLAYBOOK: Record<string, NPlaybookEtapa> = {
-  PRIMER_CONTACTO: {
-    objetivo: "Romper el hielo y sembrar la semilla. El prospecto debe saber quiénes somos y qué podemos hacer por ellos — sin presión, sin venta.",
-    intervalo: "Día 1 — primer mensaje",
-    acciones: [
-      "Enviar mensaje de presentación adaptado a su tipo de evento",
-      "Confirmar que el número es correcto y está activo",
-      "Registrar el canal preferido de comunicación",
-      "Anotar cualquier detalle que el prospecto comparta sobre su evento",
-    ],
-    contenido: ["Presentación de empresa", "Frase de valor clara", "Invitación a platicar sin compromiso"],
-    templates: {
-      MUSICAL: [
-        {
-          id: "pc_musical_intro", tipo: "WA_INFO", icon: "🎸", label: "Presentación Musical",
-          msg: (n, ctx) => `Hola ${n}, buen día.\n\nTe escribo de *Mainstage Pro*, producción técnica de audio, iluminación y video con base en Querétaro.\n\nNos especializamos en eventos en vivo — conciertos, shows, festivales y lanzamientos de artistas. Trabajamos con equipo de grado profesional y técnicos con experiencia en escenario, porque sabemos que en un show no hay margen para fallas.\n\n${ctx.evento ? `Me comentaron que tienen en mente *${ctx.evento}*. ` : ""}Si tienen algo próximo o están en etapa de planeación, con gusto platicamos — sin compromiso de ningún tipo.`,
-        },
-        {
-          id: "pc_musical_rider", tipo: "WA_INFO", icon: "📋", label: "Rider técnico",
-          msg: (n, ctx) => `Hola ${n}.\n\nTe escribo de *Mainstage Pro*, producción técnica para eventos musicales en Querétaro.\n\nSi tienen un rider técnico del artista o una lista de requerimientos, con gusto lo revisamos y les preparamos una cotización punto por punto. Tenemos experiencia cubriendo inputs exigentes y coordinando con técnicos de artistas.\n\n${ctx.evento ? `¿Para *${ctx.evento}* ya cuentan con el rider? ` : "¿Tienen algo en puerta? "}Aquí estamos para apoyarles cuando quieran.`,
-        },
-      ],
-      SOCIAL: [
-        {
-          id: "pc_social_intro", tipo: "WA_INFO", icon: "🎊", label: "Presentación Social",
-          msg: (n, ctx) => `Hola ${n}, buen día.\n\nSoy de *Mainstage Pro* — producción de audio, iluminación, efectos y DJ para eventos sociales en Querétaro.\n\nTrabajamos bodas, XV años, cumpleaños y celebraciones privadas. La idea siempre es que cada detalle técnico acompañe la experiencia que tienen en mente — no que sea un servicio genérico.\n\n${ctx.evento ? `Me comentaron que están planeando *${ctx.evento}*. ` : ""}¿Ya están en proceso de armar los detalles? Con gusto platicamos cuando les venga bien.`,
-        },
-        {
-          id: "pc_social_atmosfera", tipo: "WA_INFO", icon: "✨", label: "Ambiente y atmósfera",
-          msg: (n, ctx) => `Hola ${n}.\n\nTe escribo de *Mainstage Pro*, producción para eventos sociales en Querétaro.\n\nLo que más nos importa cuando trabajamos una fiesta es la atmósfera: la iluminación que cambia con la música, el sonido que se siente bien en todo el salón, los efectos en los momentos que importan. Eso es lo que diferencia una buena fiesta de una noche que la gente recuerda.\n\n${ctx.evento ? `Para *${ctx.evento}*, ` : "Para tu próxima celebración, "}podemos ayudarte a definir exactamente eso. ¿Tienes un momento para platicar?`,
-        },
-      ],
-      EMPRESARIAL: [
-        {
-          id: "pc_emp_intro", tipo: "WA_INFO", icon: "🤝", label: "Presentación Corporativo",
-          msg: (n, ctx) => `Hola ${n}, buen día.\n\nTe escribo de *Mainstage Pro*, producción audiovisual para eventos corporativos en Querétaro y zona centro.\n\nNos especializamos en que cada evento — presentación, convención, lanzamiento — comunique lo que la organización necesita: audio impecable, proyección profesional, transmisión en vivo y producción ejecutiva.\n\n${ctx.evento ? `Entiendo que tienen en vista *${ctx.evento}*. ` : ""}Si tienen algo próximo, con gusto preparamos una propuesta técnica sin costo. ¿Les parece si platicamos 10 minutos esta semana?`,
-        },
-        {
-          id: "pc_emp_streaming", tipo: "WA_INFO", icon: "🎥", label: "Streaming y grabación",
-          msg: (n, ctx) => `Hola ${n}.\n\nTe escribo de *Mainstage Pro*, producción técnica para eventos corporativos.\n\nCada vez más empresas necesitan llegar a su audiencia más allá del salón: transmisión en vivo, grabación profesional, contenido para post-evento. Eso lo manejamos de manera integral para que el equipo interno se concentre en el mensaje y no en la parte técnica.\n\n${ctx.evento ? `¿Para *${ctx.evento}* contemplan algo de streaming o grabación? ` : "¿Tienen algún evento próximo que contemple transmisión o grabación? "}Con gusto exploramos opciones.`,
-        },
-      ],
-      OTRO: [
-        {
-          id: "pc_otro_intro", tipo: "WA_INFO", icon: "🎵", label: "Presentación General",
-          msg: (n, ctx) => `Hola ${n}, buen día.\n\nTe escribo de *Mainstage Pro*, producción de audio, iluminación y video para todo tipo de eventos en Querétaro.\n\nTrabajamos desde shows en vivo hasta eventos privados y corporativos. Lo que buscamos siempre es que el lado técnico no sea un problema — que el evento fluya y el cliente pueda estar en otra cosa.\n\n${ctx.evento ? `Para *${ctx.evento}*, ` : "Para tu próximo evento, "}con gusto preparamos una propuesta. ¿Tienes unos minutos para platicar?`,
-        },
-      ],
-    },
-  },
-
-  COMPARTIENDO_VALOR: {
-    objetivo: "Demostrar expertise compartiendo contenido relevante. El prospecto debe pensar 'estos cuates saben lo que hacen' sin sentir que le están vendiendo.",
-    intervalo: "3–5 días después del primer contacto",
-    acciones: [
-      "Enviar portfolio o caso de éxito similar a su tipo de evento",
-      "Compartir un dato de valor educativo específico para su industria",
-      "Mencionar un logro reciente o evento relevante que hayan producido",
-      "Si respondió antes: retomar el hilo de la conversación anterior",
-    ],
-    contenido: ["Portfolio de eventos similares", "Caso de éxito (fotos/video)", "Dato educativo / tip de producción", "Ficha técnica de servicios"],
-    templates: {
-      MUSICAL: [
-        {
-          id: "cv_musical_portfolio", tipo: "PORTFOLIO", icon: "📸", label: "Portfolio musical",
-          msg: (n, ctx) => `Hola ${n}, buen día.\n\nPaso a compartirte algo del trabajo reciente de *Mainstage Pro* en eventos musicales.\n\nHemos producido shows desde aforos de 200 hasta 5,000 personas — bandas, DJs, orquestas y artistas invitados. Manejo de riders complejos, consolas digitales, sistemas de línea de arreglos y coordinación técnica completa.\n\n¿Te gustaría ver fotos o videos de algún evento en particular?${ctx.evento ? ` Con gusto te mando material de algo similar a lo que tienen en mente para *${ctx.evento}*.` : " Con gusto te comparto lo que más se acerque a lo que planeas."}`,
-        },
-        {
-          id: "cv_musical_tip", tipo: "VALOR", icon: "💡", label: "Tip: sonido en vivo",
-          msg: (n) => `Hola ${n}.\n\nTe comparto algo que hemos notado en la mayoría de los shows que producimos:\n\n*El 80% de los problemas de audio en eventos en vivo ocurren antes de la prueba de sonido* — cables mal etiquetados, patch lists desactualizados, falta de coordinación entre el técnico del artista y el de sala.\n\nEn *Mainstage Pro* hacemos una revisión técnica previa con el road manager o técnico del artista para anticipar todo eso. El resultado es que los shows arrancan a tiempo y suenan como deben.\n\nCuando tengas algo próximo, con gusto te cuento cómo lo manejaríamos.`,
-        },
-      ],
-      SOCIAL: [
-        {
-          id: "cv_social_portfolio", tipo: "PORTFOLIO", icon: "📸", label: "Portfolio social",
-          msg: (n, ctx) => `Hola ${n}.\n\nPaso a compartirte algo del trabajo de *Mainstage Pro* en eventos sociales.\n\nBodas, XV años, cumpleaños — lo que más cuidamos es que la atmósfera sea la que imaginaron: desde la iluminación de llegada hasta el cierre con efectos. DJ profesional, audio limpio en todo el salón, luces que acompañan la música.\n\n¿Qué tipo de ambiente tienen en mente?${ctx.evento ? ` Para *${ctx.evento}* con gusto te muestro opciones similares.` : " ¿Te mando algunas fotos de eventos recientes?"}`,
-        },
-        {
-          id: "cv_social_efectos", tipo: "VALOR", icon: "🎆", label: "Efectos especiales",
-          msg: (n) => `Hola ${n}.\n\nTe comparto algo que vale la pena considerar para cualquier evento social:\n\nLos efectos especiales suelen ser lo que la gente más recuerda al día siguiente. En *Mainstage Pro* manejamos humo frío, confeti, chispas frías y globos LED — y los coordinamos con el audio y la iluminación para que cada momento tenga el impacto correcto.\n\nNo son un extra decorativo — son parte de la experiencia.\n\n¿Te gustaría saber cuáles encajarían mejor con lo que tienes en mente?`,
-        },
-      ],
-      EMPRESARIAL: [
-        {
-          id: "cv_emp_portfolio", tipo: "PORTFOLIO", icon: "📸", label: "Portfolio corporativo",
-          msg: (n, ctx) => `Hola ${n}.\n\nPaso a compartirte algo del trabajo reciente de *Mainstage Pro* en el sector empresarial.\n\nConvenciones, lanzamientos de producto, reuniones de consejo, transmisiones en vivo — manejamos desde el equipo técnico hasta la coordinación logística para que el equipo interno no tenga que ocuparse de esa parte.\n\n${ctx.evento ? `Para *${ctx.evento}*: ` : ""}¿Qué tipo de evento están planeando? Con el contexto adecuado puedo mandarte ejemplos más relevantes.`,
-        },
-        {
-          id: "cv_emp_tip", tipo: "VALOR", icon: "💡", label: "Tip: producción corporativa",
-          msg: (n) => `Hola ${n}.\n\nTe comparto algo que muchos organizadores de eventos corporativos descubren tarde:\n\n*La calidad del audio impacta directamente en cómo perciben la profesionalidad de la empresa.* Un micrófono que falla, una presentación que no se ve bien o un corte de transmisión en el momento clave — esos detalles quedan en la memoria del público, especialmente si hay invitados importantes.\n\nEn *Mainstage Pro* trabajamos con un checklist técnico por evento para que todo funcione desde la primera toma. Sin improvisar el día de.\n\n¿Les gustaría revisar cómo podríamos apoyarlos en lo que tienen en mente?`,
-        },
-      ],
-      OTRO: [
-        {
-          id: "cv_otro_portfolio", tipo: "PORTFOLIO", icon: "📸", label: "Portfolio general",
-          msg: (n) => `Hola ${n}.\n\nPaso a compartirte algo del trabajo de *Mainstage Pro* en distintos tipos de eventos.\n\nAudio, iluminación, video, efectos y coordinación técnica. Nos adaptamos al tipo de evento porque cada uno tiene sus propias necesidades y no tiene sentido proponer lo mismo para todos.\n\n¿Qué tipo de evento tienes en mente? Con gusto te mando ejemplos de algo similar.`,
-        },
-      ],
-    },
-  },
-
-  CONSTRUYENDO: {
-    objetivo: "Profundizar la relación humana. Que el prospecto vea que estás genuinamente interesado en su evento — no solo en venderle. Que confíe en ti como persona antes de confiar en la empresa.",
-    intervalo: "1–2 semanas después del primer contacto",
-    acciones: [
-      "Preguntar específicamente sobre la visión o el sueño que tienen para su evento",
-      "Mencionar algo personal o relevante que hayan compartido antes",
-      "Ofrecer una llamada corta o reunión sin agenda de venta",
-      "Si hay fecha: acercarse a eventos similares para entender expectativas",
-    ],
-    contenido: ["Preguntas abiertas sobre la visión del evento", "Invitación a llamada/reunión exploratoria", "Referencia a cliente o evento similar que conocen"],
-    templates: {
-      MUSICAL: [
-        {
-          id: "c_musical_vision", tipo: "FOLLOW_UP", icon: "🎤", label: "Visión del show",
-          msg: (n, ctx) => `Hola ${n}.\n\nPaso a saludarte. Seguimos pensando en cómo podríamos apoyarles.\n\nUna pregunta: cuando imaginas${ctx.evento ? ` *${ctx.evento}*` : " el show"} ya en el escenario — ¿qué es lo que más te importa que el público sienta? ¿La potencia del sonido, la presencia visual del escenario, la precisión técnica durante todo el set?\n\nCada show tiene una personalidad propia y queremos entender exactamente lo que buscan antes de proponer algo.`,
-        },
-        {
-          id: "c_musical_checkin", tipo: "FOLLOW_UP", icon: "👋", label: "Check-in de proceso",
-          msg: (n) => `Hola ${n}.\n\n¿Cómo va la organización? Los shows en vivo tienen muchas piezas moviéndose al mismo tiempo — contar con un aliado técnico desde etapas tempranas suele evitar problemas el día de.\n\nSi en algún momento quieren revisar el aspecto técnico de lo que están planeando — riders, requerimientos de escenario, logística — aquí estamos, sin compromiso de contratación.`,
-        },
-      ],
-      SOCIAL: [
-        {
-          id: "c_social_sueno", tipo: "FOLLOW_UP", icon: "✨", label: "El sueño del evento",
-          msg: (n, ctx) => `Hola ${n}.\n\nHa pasado un poco de tiempo — ¿cómo van los preparativos?\n\nMe da curiosidad saber: cuando imaginas${ctx.evento ? ` *${ctx.evento}*` : " tu evento"} en el momento más especial de la noche — ¿qué ves exactamente? ¿La primera canción, la entrada, el momento en que la pista se llena?\n\nEsa imagen es exactamente lo que convertimos en realidad técnica. Me gustaría entenderla mejor para que lo que propongamos tenga sentido con lo que tienes en mente.`,
-        },
-        {
-          id: "c_social_inspiracion", tipo: "FOLLOW_UP", icon: "💫", label: "Referencias e inspiración",
-          msg: (n) => `Hola ${n}.\n\n¿Has visto algo que te inspire para el evento — un video, una foto, algo que viviste en otra fiesta y que dijiste "así quiero que sea la mía"?\n\nEn *Mainstage Pro* trabajamos mucho mejor cuando el cliente llega con referencias, porque eso nos permite ser muy precisos en lo que proponemos. No hay una respuesta correcta genérica — hay la que funciona para ese evento en particular.\n\nSi tienes algo guardado, compártelo sin pena.`,
-        },
-      ],
-      EMPRESARIAL: [
-        {
-          id: "c_emp_llamada", tipo: "FOLLOW_UP", icon: "📞", label: "Llamada exploratoria",
-          msg: (n, ctx) => `Hola ${n}.\n\n¿Cómo van los preparativos${ctx.evento ? ` para *${ctx.evento}*` : ""}?\n\nSé que los eventos corporativos tienen muchas partes moviéndose al mismo tiempo. Si les ayudaría, podemos hacer una llamada de 15 minutos — sin agenda de venta, solo para entender qué tienen planeado y cómo está el lado técnico desde donde están hoy.\n\nUna conversación temprana suele evitar ajustes costosos más adelante. ¿Les viene esta semana o la próxima?`,
-        },
-        {
-          id: "c_emp_necesidad", tipo: "FOLLOW_UP", icon: "💬", label: "Entendiendo la necesidad",
-          msg: (n) => `Hola ${n}.\n\nUna pregunta que me ayuda a entender cómo apoyarles de verdad:\n\n¿Cuál es el resultado más importante que necesitan lograr con este evento? ¿Comunicar un mensaje clave, impresionar a un cliente importante, motivar al equipo, documentarlo para uso interno?\n\nCada objetivo tiene implicaciones técnicas distintas. Con esa claridad puedo proponer algo que realmente sirva — no la solución genérica.`,
-        },
-      ],
-      OTRO: [
-        {
-          id: "c_otro_checkin", tipo: "FOLLOW_UP", icon: "👋", label: "Check-in general",
-          msg: (n) => `Hola ${n}.\n\nPaso a saludarte — ¿cómo van los planes para el evento?\n\nEn *Mainstage Pro* siempre estamos disponibles para platicar sin compromiso. Si necesitan apoyo para definir qué equipo técnico requieren o quieren saber qué es posible dentro de su presupuesto, aquí estamos.\n\n¿Hay algo específico en lo que podamos ayudarles hoy?`,
-        },
-      ],
-    },
-  },
-
-  DETECTANDO: {
-    objetivo: "Identificar si hay una ventana de oportunidad próxima. Preguntar directamente — con tacto — si hay un evento en puerta para el que podamos cotizar.",
-    intervalo: "2–3 semanas después, o cuando haya apertura clara",
-    acciones: [
-      "Hacer la pregunta directa sobre eventos próximos con fecha estimada",
-      "Si mencionó una fecha antes: retomar ese dato y acercarse con urgencia suave",
-      "Si hay silencio prolongado: reactivar con contenido fresco antes de preguntar",
-      "Registrar la respuesta y definir próxima acción",
-    ],
-    contenido: ["Pregunta directa sobre fechas", "Urgencia suave (disponibilidad limitada)", "Oferta de presupuesto express sin compromiso"],
-    templates: {
-      MUSICAL: [
-        {
-          id: "d_musical_fecha", tipo: "DETECCION", icon: "🎯", label: "¿Hay show próximo?",
-          msg: (n, ctx) => `Hola ${n}.\n\nHa pasado un tiempo desde que platicamos. ¿Cómo van los planes${ctx.evento ? ` para *${ctx.evento}*` : ""}?\n\nLa razón por la que te escribo: queremos asegurarnos de que si tienen algo próximo, podamos apoyarles a tiempo. La producción técnica de un show requiere anticipación — especialmente si hay rider, backline o requerimientos especiales de escenario.\n\n¿Tienen algo confirmado o en proceso?`,
-        },
-        {
-          id: "d_musical_disponibilidad", tipo: "DETECCION", icon: "📅", label: "Disponibilidad de fecha",
-          msg: (n) => `Hola ${n}.\n\nQuería preguntarte: ¿ya tienen fecha confirmada para el próximo evento?\n\nEl equipo de *Mainstage Pro* está tomando compromisos para los próximos meses y quiero asegurarme de tenerlos considerados si hay algo próximo. Si hay una fecha o algo en proceso, dímelo y lo contemplamos.`,
-        },
-      ],
-      SOCIAL: [
-        {
-          id: "d_social_fecha", tipo: "DETECCION", icon: "🎊", label: "¿Fecha confirmada?",
-          msg: (n, ctx) => `Hola ${n}.\n\nPaso a preguntarte: ¿ya tienen fecha y venue definidos${ctx.evento ? ` para *${ctx.evento}*` : ""}?\n\nLo pregunto porque para eventos sociales nos gusta anticiparnos — coordinar con el salón, entender el espacio, proponer la ambientación correcta. Con más tiempo podemos hacer algo mejor y a mejor costo.\n\n¿Están en proceso de definir eso, o ya tienen algo confirmado?`,
-        },
-        {
-          id: "d_social_urgencia", tipo: "DETECCION", icon: "⏰", label: "Disponibilidad agendada",
-          msg: (n) => `Hola ${n}.\n\nTe cuento: estamos llenando agenda para los próximos meses. Si la fecha está próxima, necesitamos saberla con tiempo para poder dar lo mejor.\n\n¿Ya tienen la fecha del evento? Con eso te confirmo disponibilidad y lo que podemos preparar. Sin compromiso — solo para tenerlo claro.`,
-        },
-      ],
-      EMPRESARIAL: [
-        {
-          id: "d_emp_fecha", tipo: "DETECCION", icon: "🎯", label: "¿Hay evento próximo?",
-          msg: (n, ctx) => `Hola ${n}.\n\nPaso a preguntarte directo: ¿tienen algún evento corporativo confirmado o en proceso para los próximos meses${ctx.evento ? `, incluyendo *${ctx.evento}*` : ""}?\n\nEn *Mainstage Pro* nos gusta conocer los proyectos con anticipación, sobre todo si contemplan streaming, grabación o producción especial. Eso nos permite proponer algo que funcione dentro de sus tiempos y presupuesto.\n\n¿Hay algo concreto en el que podamos empezar a trabajar?`,
-        },
-        {
-          id: "d_emp_q", tipo: "DETECCION", icon: "💬", label: "Pregunta directa budget",
-          msg: (n) => `Hola ${n}.\n\nUna pregunta directa que suele hacer el proceso más eficiente:\n\n¿Tienen ya un presupuesto estimado para la parte de producción audiovisual del evento?\n\nNo te pregunto para ajustarnos a cualquier número — te lo pregunto para proponer la mejor opción posible dentro de lo disponible. Con eso puedo preparar algo concreto y útil, no una cotización genérica.\n\n¿Tienen alguna referencia de rango?`,
-        },
-      ],
-      OTRO: [
-        {
-          id: "d_otro_fecha", tipo: "DETECCION", icon: "🎯", label: "¿Algo en puerta?",
-          msg: (n) => `Hola ${n}.\n\nPaso a preguntarte: ¿hay algo próximo en camino? ¿Algún evento para el que ya estén en proceso de planeación?\n\nEn *Mainstage Pro* nos gustaría apoyarles a tiempo para proponer algo que realmente funcione. Si hay fecha o idea en puerta, con gusto platicamos.`,
-        },
-      ],
-    },
-  },
-
-  LISTO: {
-    objetivo: "Cerrar la transición al proceso de venta activo. El prospecto está listo — hay que guiarlo al siguiente paso con claridad y sin fricción.",
-    intervalo: "Cuando hay señales de compra o el prospecto lo indica",
-    acciones: [
-      "Proponer discovery call o reunión formal con agenda clara",
-      "Ofrecer presupuesto express en 24–48 horas si ya tienen la información",
-      "Pedir el rider técnico o briefing del evento para arrancar la cotización",
-      "Asignar al trato como ACTIVO y registrar en el pipeline de ventas",
-    ],
-    contenido: ["Propuesta de discovery call con agenda", "Presupuesto express", "Formulario de briefing técnico", "Riders o requerimientos del evento"],
-    templates: {
-      MUSICAL: [
-        {
-          id: "l_musical_propuesta", tipo: "WA_INFO", icon: "✅", label: "Propuesta de discovery",
-          msg: (n, ctx) => `Hola ${n}.\n\nEstamos listos para arrancar con la propuesta técnica${ctx.evento ? ` para *${ctx.evento}*` : ""}.\n\nPara preparar algo concreto, necesitaría:\n- Rider técnico del artista (si lo tienen)\n- Venue o tipo de espacio\n- Aforo estimado\n- Fecha del evento\n\n¿Hacemos una llamada de 20–30 minutos para alinear todo? Con esa información les confirmo en menos de 24 horas qué podemos ofrecer y a qué costo.`,
-        },
-        {
-          id: "l_musical_rapido", tipo: "WA_INFO", icon: "⚡", label: "Cotización express",
-          msg: (n) => `Hola ${n}.\n\nSi ya tienen la información del evento, puedo tener una cotización lista en menos de 24 horas.\n\nSolo necesito:\n- Tipo de evento y aforo\n- Venue o tipo de espacio\n- Rider técnico (si aplica)\n- Fecha del evento\n\nMándame lo que tengan y arranco hoy mismo.`,
-        },
-      ],
-      SOCIAL: [
-        {
-          id: "l_social_propuesta", tipo: "WA_INFO", icon: "✅", label: "Propuesta de discovery",
-          msg: (n, ctx) => `Hola ${n}.\n\nEstamos listos para arrancar con la propuesta${ctx.evento ? ` para *${ctx.evento}*` : ""}.\n\nPara preparar algo que tenga sentido con lo que imaginan, me ayudaría saber:\n- Venue y capacidad del espacio\n- Fecha confirmada\n- Los 2–3 momentos más importantes de la noche\n- Referencias o inspiración visual que tengan\n\n¿Hacemos una llamada rápida esta semana? Les tengo propuesta formal en 48 horas después de esa conversación.`,
-        },
-        {
-          id: "l_social_rapido", tipo: "WA_INFO", icon: "⚡", label: "Cotización express",
-          msg: (n) => `Hola ${n}.\n\n¿Listos para arrancar con los detalles? En *Mainstage Pro* podemos tener su cotización en 24–48 horas con esta información:\n\n- Fecha y hora del evento\n- Venue (nombre o dirección)\n- Número aproximado de invitados\n- Servicios que les interesan (DJ, luces, efectos, pantalla)\n\nMándenme lo que tengan y arrancamos.`,
-        },
-      ],
-      EMPRESARIAL: [
-        {
-          id: "l_emp_propuesta", tipo: "WA_INFO", icon: "✅", label: "Propuesta de discovery",
-          msg: (n, ctx) => `Hola ${n}.\n\nEstamos listos para preparar una propuesta técnica formal${ctx.evento ? ` para *${ctx.evento}*` : ""}.\n\nPara que sea lo más precisa posible, necesitaría:\n- Venue o tipo de espacio\n- Número de asistentes\n- Objetivos principales del evento\n- ¿Contemplan streaming, grabación o contenido para redes?\n- Fecha y duración\n\n¿Podemos agendar 20 minutos esta semana? Con esa información les entrego propuesta técnica y económica en 24–48 horas, sin costo y sin compromiso.`,
-        },
-        {
-          id: "l_emp_rapido", tipo: "WA_INFO", icon: "⚡", label: "Cotización express",
-          msg: (n) => `Hola ${n}.\n\nSi ya tienen el brief del evento, podemos tener una propuesta técnica y económica lista en 24 horas.\n\nEntendemos que los tiempos corporativos son ajustados. Solo necesito:\n- Descripción del evento y objetivos\n- Venue o tipo de espacio\n- Número de asistentes\n- Fecha y duración estimada\n- ¿Streaming o grabación? Sí / No\n\nMándenme lo que tengan y arrancamos de inmediato.`,
-        },
-      ],
-      OTRO: [
-        {
-          id: "l_otro_propuesta", tipo: "WA_INFO", icon: "✅", label: "Arrancar propuesta",
-          msg: (n, ctx) => `Hola ${n}.\n\nEstamos listos para preparar una propuesta${ctx.evento ? ` para *${ctx.evento}*` : " para tu evento"}.\n\nPara hacerla lo más precisa posible, compárteme:\n- Venue o lugar del evento\n- Fecha confirmada\n- Número de asistentes\n- Qué servicios necesitas\n\nCon eso en mano te tengo una cotización en menos de 24 horas.`,
-        },
-      ],
-    },
-  },
-};
-
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function TratoDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -891,6 +621,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const [modalPerdida, setModalPerdida] = useState(false);
   const [modalEditarCliente, setModalEditarCliente] = useState(false);
   const [clienteEditForm, setClienteEditForm] = useState({ nombre: '', empresa: '', telefono: '', correo: '' });
+  const [savingPerfil, setSavingPerfil] = useState(false);
   const [razonPerdida, setRazonPerdida] = useState("");
   const [notasPerdida, setNotasPerdida] = useState("");
 
@@ -1312,6 +1043,19 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
     const d = await patch({ nurturingData: JSON.stringify(data), ...extra });
     if (d) setTrato(prev => prev ? { ...prev, nurturingData: JSON.stringify(data), ...extra } : prev);
     setSavingNurturing(false);
+  }
+
+  async function guardarPerfil(perfilId: string | null) {
+    if (!trato) return;
+    setSavingPerfil(true);
+    const res = await fetch(`/api/clientes/${trato.cliente.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ perfilProspecto: perfilId }),
+    });
+    if (res.ok) {
+      setTrato(prev => prev ? { ...prev, cliente: { ...prev.cliente, perfilProspecto: perfilId } } : prev);
+    }
+    setSavingPerfil(false);
   }
 
   async function registrarEnvioWA(templateId: string, templateLabel: string) {
@@ -1820,7 +1564,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* ═══ DIVIDER: PROPUESTA ECONÓMICA ══════════════════════════════ */}
-      {trato._canViewFinances !== false && (
+      {trato._canViewFinances !== false && !ETAPAS_FRONTALES.includes(trato.etapa) && (
         <div className="flex items-center gap-3 px-1">
           <div className="w-5 h-5 rounded-md bg-[#B3985B]/15 border border-[#B3985B]/25 flex items-center justify-center shrink-0">
             <DollarSign strokeWidth={1.75} className="w-3 h-3 text-[#B3985B]" />
@@ -1830,8 +1574,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
-      {/* ─── SECCIÓN: COTIZACIONES ─────────────────────────────────────── */}
-      {trato._canViewFinances !== false && (
+      {/* ─── SECCIÓN: COTIZACIONES (oculta en prospección) ─────────────── */}
+      {trato._canViewFinances !== false && !ETAPAS_FRONTALES.includes(trato.etapa) && (
       <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden">
         {/* Header de sección */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#141414]">
@@ -2061,16 +1805,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       ══════════════════════════════════════════════════════════════════════ */}
       {ETAPAS_FRONTALES.includes(trato.etapa) && (() => {
         const esOutbound = trato.tipoLead === "OUTBOUND";
-        const etapaKey = nurturing.etapa as keyof typeof NURTURING_PLAYBOOK;
         const nombre = trato.cliente.nombre.split(" ")[0];
-        const ctx = { evento: trato.nombreEvento, fecha: trato.fechaEventoEstimada };
         const tel = trato.cliente.telefono?.replace(/\D/g, "");
         const num = tel ? (tel.startsWith("52") ? tel : `52${tel}`) : null;
-
-        // Guión WA según etapa del nurturing y tipo de evento
-        const playbook = NURTURING_PLAYBOOK[etapaKey];
-        const tipoEvKey = (trato.tipoEvento ?? "OTRO") as keyof NPlaybookEtapa["templates"];
-        const tplsEvento = playbook?.templates[tipoEvKey] ?? playbook?.templates["OTRO"] ?? [];
+        const perfilSel = getPerfil(trato.cliente.perfilProspecto);
 
         return (
           <div className={`bg-[#0d0d0d] border-2 rounded-xl overflow-hidden ${
@@ -2106,11 +1844,42 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               {/* El checklist "Plan de contactos" se retiró: los pasos del proceso
                   se gestionan como Tareas del trato (Agenda & Seguimiento). */}
 
-              {/* ── Guión WA ── */}
-              {esOutbound && tplsEvento.length > 0 && (() => {
-                const tpl = tplsEvento[0];
-                const msg = tpl.msg(nombre, ctx);
-                const yaEnviado = nurturing.log.some(l => l.templateId === tpl.id);
+              {/* ── Perfil de prospecto (define mensaje inicial y material) ── */}
+              {esOutbound && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-base font-bold text-white">Perfil de prospecto</p>
+                    {savingPerfil && <span className="text-[10px] text-gray-500">Guardando…</span>}
+                  </div>
+                  <p className="text-xs text-gray-500 mb-3">Elige a quién le estás hablando para sugerir el mensaje inicial y el material adecuado. Se guarda en el contacto.</p>
+                  <select
+                    value={trato.cliente.perfilProspecto ?? ""}
+                    disabled={savingPerfil}
+                    onChange={e => guardarPerfil(e.target.value || null)}
+                    className="w-full bg-[#1a1a1a] border border-[#2a2a2a] text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-700/60 hover:border-[#333] transition-colors cursor-pointer disabled:opacity-40"
+                  >
+                    <option value="">Sin definir…</option>
+                    {PERFILES_POR_CATEGORIA.map(g => (
+                      <optgroup key={g.categoria} label={g.label}>
+                        {g.perfiles.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* ── Guión de contacto (mensaje inicial según perfil) ── */}
+              {esOutbound && (() => {
+                if (!perfilSel) {
+                  return (
+                    <div className="border border-dashed border-[#2a2a2a] rounded-xl px-4 py-5 text-center">
+                      <p className="text-gray-500 text-xs">Selecciona un perfil de prospecto para ver el mensaje inicial recomendado.</p>
+                    </div>
+                  );
+                }
+                const msg = perfilSel.mensajeInicial(nombre, trato.cliente.empresa);
+                const tplId = `perfil_${perfilSel.id}`;
+                const yaEnviado = nurturing.log.some(l => l.templateId === tplId);
                 return (
                   <div>
                     <div className="flex items-center justify-between mb-3">
@@ -2120,13 +1889,13 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                     <div className={`bg-[#111] border rounded-xl overflow-hidden ${yaEnviado ? "border-emerald-900/60" : "border-[#222]"}`}>
                       <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#1a1a1a]">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold text-emerald-300">{tpl.icon} {tpl.label}</span>
+                          <span className="text-xs font-semibold text-emerald-300">💬 Mensaje inicial · {perfilSel.label}</span>
                           {yaEnviado && <span className="text-[10px] text-emerald-600 bg-emerald-900/20 border border-emerald-900/40 px-1.5 py-0.5 rounded">✓ Enviado</span>}
                         </div>
                         {num ? (
                           <a href={`https://wa.me/${num}?text=${encodeURIComponent(msg)}`}
                             target="_blank" rel="noopener noreferrer"
-                            onClick={() => registrarEnvioWA(tpl.id, tpl.label)}
+                            onClick={() => registrarEnvioWA(tplId, `Mensaje inicial · ${perfilSel.label}`)}
                             className="flex items-center gap-1.5 bg-green-900/30 hover:bg-green-800/50 border border-green-700/40 text-green-400 text-xs px-3 py-1.5 rounded-lg transition-colors">
                             {WA_ICON} {yaEnviado ? "Reenviar" : "Enviar WA"}
                           </a>
@@ -2141,7 +1910,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               })()}
 
               {/* ── Material para compartir (inbound & outbound) ── */}
-              <MaterialCompartir tipoEvento={trato.tipoEvento} esOutbound={esOutbound} />
+              <MaterialCompartir tipoEvento={trato.tipoEvento} esOutbound={esOutbound} materialesPrincipales={perfilSel?.materiales} />
 
               {/* ── Notas de seguimiento ── */}
               <NotasSeguimiento
@@ -2227,8 +1996,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
-            {/* ═══ SCOUTING · VISITA EN SITIO ═════════════════════════════════════ */}
-      {trato.etapa !== "VENTA_PERDIDA" && trato.etapa !== "VENTA_CERRADA" && (() => {
+            {/* ═══ SCOUTING · VISITA EN SITIO (oculta en prospección) ═════════════ */}
+      {!ETAPAS_FRONTALES.includes(trato.etapa) && trato.etapa !== "VENTA_PERDIDA" && trato.etapa !== "VENTA_CERRADA" && (() => {
         const fotosScouting = archivos.filter(a => a.tipo === "SCOUTING");
         return (
           <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl p-6 space-y-5 my-8 ms-card-deep">

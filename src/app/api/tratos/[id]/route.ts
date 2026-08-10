@@ -41,7 +41,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const trato = await prisma.trato.findUnique({
     where: { id },
     include: {
-      cliente: { select: { id: true, nombre: true, empresa: true, tipoCliente: true, clasificacion: true, telefono: true, correo: true } },
+      cliente: { select: { id: true, nombre: true, empresa: true, tipoCliente: true, clasificacion: true, perfilProspecto: true, telefono: true, correo: true } },
       responsable: { select: { id: true, name: true } },
       vendedor: { select: { id: true, name: true } },
       vendedorOrigen: { select: { id: true, name: true } },

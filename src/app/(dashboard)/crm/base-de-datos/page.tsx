@@ -11,6 +11,7 @@ const SELECT = {
   telefono: true,
   tipoCliente: true,
   clasificacion: true,
+  perfilProspecto: true,
   servicioUsual: true,
   tiposEvento: true,
   esProspecto: true,

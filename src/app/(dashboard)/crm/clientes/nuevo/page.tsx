@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { EmpresaCombobox } from "@/components/EmpresaCombobox";
 import { Combobox } from "@/components/Combobox";
+import { PERFILES_POR_CATEGORIA } from "@/lib/proceso/perfiles";
 
 export default function NuevoClientePage() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function NuevoClientePage() {
     nombre: "",
     tipoCliente: "POR_DESCUBRIR",
     clasificacion: "NUEVO",
+    perfilProspecto: "",
     servicioUsual: "",
     telefono: "",
     correo: "",
@@ -140,6 +142,25 @@ export default function NuevoClientePage() {
                 options={[{ value: "", label: "— Sin especificar —" }, { value: "RENTA", label: "Renta de Equipo" }, { value: "PRODUCCION_TECNICA", label: "Producción Técnica" }, { value: "DIRECCION_TECNICA", label: "Dirección Técnica" }, { value: "MULTISERVICIO", label: "Multiservicio" }]}
               />
             </div>
+          </div>
+          <div className="mt-4">
+            <label className="block text-xs text-gray-400 mb-1">Perfil de prospecto</label>
+            <select
+              name="perfilProspecto"
+              value={form.perfilProspecto}
+              onChange={handleChange}
+              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+            >
+              <option value="">— Sin definir —</option>
+              {PERFILES_POR_CATEGORIA.map((grupo) => (
+                <optgroup key={grupo.categoria} label={grupo.label}>
+                  {grupo.perfiles.map((p) => (
+                    <option key={p.id} value={p.id}>{p.label}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <p className="text-[11px] text-gray-500 mt-1">Quién es el contacto. Define el mensaje de primer contacto y el material a compartir en prospección.</p>
           </div>
         </div>
 

@@ -149,6 +149,7 @@ model Cliente {
   compania      Empresa? @relation("ClienteEmpresa", fields: [empresaId], references: [id])
   tipoCliente   String   @default("POR_DESCUBRIR") // B2B | B2C | POR_DESCUBRIR
   clasificacion String   @default("NUEVO")          // NUEVO | BASIC | REGULAR | PRIORITY
+  perfilProspecto String? // Perfil de prospecto (src/lib/proceso/perfiles.ts): PROMOTOR | DJ_MUSICAL | MUSICO | FORO_EVENTOS | EMPRESA_RENTA | WEDDING_PLANNER | SALON_EVENTOS | DJ_SOCIAL | GRADUACIONES | EMPRESA | DESARROLLADOR_INMOBILIARIO | ESCUELA | CONFERENCISTA
   servicioUsual String?  // RENTA | PRODUCCION_TECNICA | DIRECCION_TECNICA | MULTISERVICIO
   tiposEvento   String?  // JSON: ["MUSICAL","SOCIAL","EMPRESARIAL","VARIOS"]
   telefono      String?

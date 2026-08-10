@@ -138,9 +138,12 @@ export function PlanContactosSteps({
 export function MaterialCompartir({
   tipoEvento,
   esOutbound,
+  materialesPrincipales,
 }: {
   tipoEvento: string | null;
   esOutbound: boolean;
+  // Orden de prioridad de material según el perfil de prospecto (si hay).
+  materialesPrincipales?: string[];
 }) {
   const toast = useToast();
   const origin = typeof window !== "undefined" ? window.location.origin : "https://mainstagepro.vercel.app";
@@ -154,30 +157,36 @@ export function MaterialCompartir({
     { id: "galeria",     icon: Camera,        label: "Galería de Eventos",                  url: `${origin}/presentacion/galeria` },
   ];
 
-  // Colocar la presentación del tipo de evento seleccionado al principio si existe
+  // Prioridad de material: primero el perfil de prospecto (si hay), si no el tipoEvento.
   const eventoMapping: Record<string, string> = { MUSICAL: "musical", SOCIAL: "social", EMPRESARIAL: "empresarial" };
-  const tipoId = tipoEvento ? eventoMapping[tipoEvento] : undefined;
-  if (tipoId) {
-    const idx = materiales.findIndex(m => m.id === tipoId);
+  const prioridad = (materialesPrincipales && materialesPrincipales.length > 0)
+    ? materialesPrincipales
+    : (tipoEvento && eventoMapping[tipoEvento] ? [eventoMapping[tipoEvento]] : []);
+  // Reordenar poniendo la prioridad al frente, en orden.
+  for (let i = prioridad.length - 1; i >= 0; i--) {
+    const idx = materiales.findIndex(m => m.id === prioridad[i]);
     if (idx > -1) {
       const [item] = materiales.splice(idx, 1);
       materiales.unshift(item);
     }
   }
+  const numDestacados = Math.max(1, prioridad.length);
 
   return (
     <div className="pt-2 pb-2">
       <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${esOutbound ? "text-emerald-500" : "text-[#B3985B]"}`}>Material para compartir</p>
       <div className="flex flex-col gap-2">
-        {materiales.map((m, i) => (
+        {materiales.map((m, i) => {
+          const destacado = i < numDestacados;
+          return (
           <div key={m.url} className="flex items-center gap-2">
             <a href={m.url} target="_blank" rel="noopener noreferrer"
               className={`flex-1 flex items-center justify-between gap-2 border rounded-lg px-3 py-2 text-left transition-colors ${
-                i === 0
+                destacado
                   ? (esOutbound ? "bg-emerald-900/10 border-emerald-700/30 hover:bg-emerald-900/20" : "bg-[#B3985B]/10 border-[#B3985B]/30 hover:bg-[#B3985B]/20")
                   : "bg-[#111] border-[#2a2a2a] hover:border-[#444]"
               }`}>
-              <span className={`inline-flex items-center gap-2 text-sm font-medium ${i === 0 ? "text-white" : "text-gray-300"}`}><m.icon strokeWidth={1.75} className="w-4 h-4 shrink-0 text-gray-500" />{m.label}</span>
+              <span className={`inline-flex items-center gap-2 text-sm font-medium ${destacado ? "text-white" : "text-gray-300"}`}><m.icon strokeWidth={1.75} className="w-4 h-4 shrink-0 text-gray-500" />{m.label}</span>
             </a>
             <button
               onClick={() => {
@@ -185,7 +194,7 @@ export function MaterialCompartir({
                 toast.success("Enlace copiado al portapapeles");
               }}
               className={`shrink-0 flex items-center gap-1.5 border rounded-lg px-3 py-2 transition-colors ${
-                i === 0
+                destacado
                   ? (esOutbound ? "bg-emerald-900/20 border-emerald-700/40 text-emerald-400 hover:bg-emerald-900/40" : "bg-[#B3985B]/20 border-[#B3985B]/40 text-[#B3985B] hover:bg-[#B3985B]/30")
                   : "bg-[#111] border-[#2a2a2a] text-gray-400 hover:text-white hover:border-[#555]"
               }`}
@@ -193,7 +202,8 @@ export function MaterialCompartir({
               {COPY_ICON}<span className="text-[10px] uppercase font-bold">Copiar</span>
             </button>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

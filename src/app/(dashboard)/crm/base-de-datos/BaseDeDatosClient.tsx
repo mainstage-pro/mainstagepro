@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import { TIPO_CLIENTE_LABELS, CLASIFICACION_LABELS, ORIGEN_LEAD_OPTIONS, ORIGEN_LEAD_LABELS } from "@/lib/constants";
+import { PERFILES_POR_CATEGORIA } from "@/lib/proceso/perfiles";
 import { CopyButton } from "@/components/CopyButton";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
@@ -23,6 +24,7 @@ interface Contacto {
   telefono: string | null;
   tipoCliente: string;
   clasificacion: string;
+  perfilProspecto: string | null;
   servicioUsual: string | null;
   tiposEvento: string | null;
   esProspecto: boolean;
@@ -84,6 +86,17 @@ const SERVICIO_OPTIONS = [
 const SERVICIO_COLORS: Record<string, string> = {
   RENTA: "#3B82F6", PRODUCCION_TECNICA: "#F59E0B", DIRECCION_TECNICA: "#8B5CF6",
 };
+
+// Perfil de prospecto: color según su categoría (alineada con tipoEvento).
+const PERFIL_CAT_COLOR: Record<string, { text: string; bg: string; border: string }> = {
+  MUSICAL:     { text: "text-indigo-300", bg: "bg-indigo-950/50", border: "border-indigo-800/30" },
+  SOCIAL:      { text: "text-rose-300",   bg: "bg-rose-950/50",   border: "border-rose-800/30"   },
+  EMPRESARIAL: { text: "text-teal-300",   bg: "bg-teal-950/50",   border: "border-teal-800/30"   },
+};
+const PERFIL_OPTIONS = PERFILES_POR_CATEGORIA.flatMap((g) => g.perfiles.map((p) => ({ value: p.id, label: p.label })));
+const PERFIL_COLORS: Record<string, { text: string; bg: string; border: string }> = Object.fromEntries(
+  PERFILES_POR_CATEGORIA.flatMap((g) => g.perfiles.map((p) => [p.id, PERFIL_CAT_COLOR[g.categoria]])),
+);
 
 const TIPOS_EVENTO_OPTIONS = [
   { value: "MUSICAL",     label: "Musical" },
@@ -531,6 +544,13 @@ function ContactoRow({
           colorMap={CLAS_COLORS} />
       </td>
 
+      {/* Perfil de prospecto */}
+      <td data-no-nav className="px-3 py-2.5 align-middle overflow-visible">
+        <InlineDropdown options={PERFIL_OPTIONS} value={c.perfilProspecto ?? ""}
+          onChange={v => patch({ perfilProspecto: v || null })} placeholder="Perfil"
+          colorMap={PERFIL_COLORS} />
+      </td>
+
       {/* Servicio (multi) */}
       <td data-no-nav className="px-3 py-2.5 align-middle overflow-visible">
         <InlineMultiSelect options={SERVICIO_OPTIONS} values={serviciosActuales}
@@ -642,6 +662,7 @@ function ModalNuevoContacto({ onClose, onCreado, usuarios, modo }: {
     nombre: "", telefono: "", correo: "", empresa: "",
     tipoCliente: "POR_DESCUBRIR",
     clasificacion: modo === "cliente" ? "NUEVO" : "PROSPECTO",
+    perfilProspecto: "",
     origenLead: "META_ADS",
     notas: "",
     esCliente: modo === "cliente",
@@ -661,6 +682,7 @@ function ModalNuevoContacto({ onClose, onCreado, usuarios, modo }: {
         empresa: form.empresa.trim() || null,
         tipoCliente: form.tipoCliente,
         clasificacion: form.esCliente ? (form.clasificacion === "PROSPECTO" ? "NUEVO" : form.clasificacion) : "PROSPECTO",
+        perfilProspecto: form.perfilProspecto || null,
         origenLead: form.origenLead,
         notas: form.notas.trim() || null,
         esProspecto: !form.esCliente,
@@ -741,6 +763,18 @@ function ModalNuevoContacto({ onClose, onCreado, usuarios, modo }: {
               </div>
             )}
             <div className="col-span-2">
+              <label className={labelCls}>Perfil de prospecto</label>
+              <select value={form.perfilProspecto} onChange={e => setF("perfilProspecto", e.target.value)}
+                className="ms-input">
+                <option value="">— Sin definir —</option>
+                {PERFILES_POR_CATEGORIA.map(g => (
+                  <optgroup key={g.categoria} label={g.label}>
+                    {g.perfiles.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+            <div className="col-span-2">
               <label className={labelCls}>Notas</label>
               <textarea value={form.notas} onChange={e => setF("notas", e.target.value)} rows={2} placeholder="Información adicional…"
                 className={`${inputCls} resize-none`} />
@@ -791,16 +825,17 @@ function ContactList({
     </div>
   );
 
-  const HEADERS = ["Nombre", "Empresa", "Tipo", "Clasificación", "Servicio", "Tipo de Evento", "Actividad", "Responsable", "Tratos", ""];
+  const HEADERS = ["Nombre", "Empresa", "Tipo", "Clasificación", "Perfil", "Servicio", "Tipo de Evento", "Actividad", "Responsable", "Tratos", ""];
 
   return (
     <div className="ms-card-deep" style={{ overflowX: "auto" }}>
-      <table className="w-full table-fixed" style={{ minWidth: 1100 }}>
+      <table className="w-full table-fixed" style={{ minWidth: 1240 }}>
         <colgroup>
           <col style={{ width: 220 }} />
           <col style={{ width: 140 }} />
           <col style={{ width: 100 }} />
           <col style={{ width: 115 }} />
+          <col style={{ width: 140 }} />
           <col style={{ width: 130 }} />
           <col style={{ width: 140 }} />
           <col style={{ width: 100 }} />
