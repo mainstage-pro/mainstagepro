@@ -20,7 +20,7 @@ export const SERVICIOS_DETALLE: ServicioDetalle[] = [
     tipoServicio: "RENTA",
     n: "01",
     title: "Renta de equipo",
-    tagline: "El equipo correcto, listo y respaldado.",
+    tagline: "Equipo profesional, verificado y respaldado para cada evento.",
     hero: "/images/presentacion/musicales/Musicales-076.jpg",
     resumen:
       "Line arrays, subwoofers, consolas digitales, cabezas móviles y pantallas LED. Equipo profesional verificado antes de salir de bodega, disponible con o sin operador para completar tu producción o montarla desde cero.",
@@ -45,7 +45,7 @@ export const SERVICIOS_DETALLE: ServicioDetalle[] = [
     tipoServicio: "PRODUCCION_TECNICA",
     n: "02",
     title: "Producción técnica",
-    tagline: "Operadores que montan, prueban y operan tu show.",
+    tagline: "Montaje, operación y respaldo técnico integral del evento.",
     hero: "/images/presentacion/musicales/Musicales-016.jpg",
     resumen:
       "Llevamos el equipo y a la gente que lo opera. Montaje, prueba de sonido y operación en vivo de audio, iluminación y video durante todo el evento, de principio a fin, con respaldo ante cualquier imprevisto.",
@@ -72,7 +72,7 @@ export const SERVICIOS_DETALLE: ServicioDetalle[] = [
     tipoServicio: "DIRECCION_TECNICA",
     n: "03",
     title: "Dirección técnica",
-    tagline: "Un solo responsable de que todo llegue junto.",
+    tagline: "Una sola dirección que responde por todo el evento.",
     hero: "/images/presentacion/musicales/Musicales-055.jpg",
     resumen:
       "Un director de producción coordina cada área: el rider, los cues de luz por escena, la señal de video y la comunicación directa con el artista y su equipo. La cabeza que hace que audio, luz y video lleguen al mismo tiempo.",
