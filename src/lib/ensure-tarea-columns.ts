@@ -16,6 +16,7 @@ const DDL = [
   `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "evidenciaEnviadaPorId" TEXT`,
   `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "evidenciaEnviadaCanal" TEXT`,
   `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "tratoId" TEXT`,
+  `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "clienteId" TEXT`,
   `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "enBandeja" BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "noRealizada" BOOLEAN NOT NULL DEFAULT false`,
   `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "motivoNoRealizada" TEXT`,
@@ -23,6 +24,7 @@ const DDL = [
   `ALTER TABLE "tareas" ADD COLUMN IF NOT EXISTS "evidenciasHistorial" TEXT`,
   `CREATE INDEX IF NOT EXISTS "tareas_proyectoEventoId_idx" ON "tareas"("proyectoEventoId")`,
   `CREATE INDEX IF NOT EXISTS "tareas_tratoId_idx" ON "tareas"("tratoId")`,
+  `CREATE INDEX IF NOT EXISTS "tareas_clienteId_idx" ON "tareas"("clienteId")`,
   `CREATE INDEX IF NOT EXISTS "tareas_enBandeja_idx" ON "tareas"("enBandeja")`,
 ];
 

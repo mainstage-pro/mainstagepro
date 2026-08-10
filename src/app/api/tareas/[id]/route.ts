@@ -59,6 +59,8 @@ const SELECT = {
   esAccionCampo: true,
   ptTemplateId: true,
   tratoId: true,
+  clienteId: true,
+  cliente:       { select: { id: true, nombre: true } },
   iniciativaId: true,
   proyectoTareaId: true,
   seccionId: true,

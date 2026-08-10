@@ -172,6 +172,7 @@ model Cliente {
   preciosEquipos  PrecioClienteEquipo[]
   prospecciones   Prospeccion[]
   solicitudesCotizacion SolicitudCotizacion[]
+  tareas          Tarea[]  @relation("TareasDeCliente")
 
   @@map("clientes")
 }
@@ -2333,6 +2334,9 @@ model Tarea {
   // ── Trato (venta) ────────────────────────────────────────────────────────────
   tratoId          String?
   trato            Trato?             @relation("TareasDeTrato", fields: [tratoId], references: [id], onDelete: SetNull)
+  // ── Cliente (atención específica: recurrencia de eventos, cumpleaños, fechas especiales) ──
+  clienteId        String?
+  cliente          Cliente?           @relation("TareasDeCliente", fields: [clienteId], references: [id], onDelete: SetNull)
   // ── Scheduling ──────────────────────────────────────────────────────────────
   fecha            DateTime?  // When to work on it (shows in Hoy)
   fechaVencimiento DateTime?
@@ -2403,6 +2407,7 @@ model Tarea {
   @@index([asignadoAId, fecha])
   @@index([ptTemplateId])
   @@index([tratoId])
+  @@index([clienteId])
   @@map("tareas")
 }
 

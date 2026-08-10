@@ -16,6 +16,7 @@ const TIPO_ORIGEN: Record<string, { label: string; color: string; bg: string; bo
   PROYECTO: { label: "Proyecto", color: "#818cf8", bg: "rgba(99,102,241,0.14)",  border: "rgba(99,102,241,0.35)" },
   EVENTO:   { label: "Evento",   color: "#60a5fa", bg: "rgba(59,130,246,0.14)",  border: "rgba(59,130,246,0.35)" },
   TRATO:    { label: "Trato",    color: "#2dd4bf", bg: "rgba(45,212,191,0.12)",  border: "rgba(45,212,191,0.35)" },
+  CLIENTE:  { label: "Cliente",  color: "#f472b6", bg: "rgba(244,114,182,0.12)", border: "rgba(244,114,182,0.35)" },
 };
 
 // Etiquetas legibles del tipo de evidencia (para la vista de solo lectura de no-admins).
@@ -666,7 +667,7 @@ export default function TaskModal({
               <div className="flex flex-wrap items-center gap-1.5">
                 {/* Si está ligada a una entidad (Evento/Proyecto/Trato), se muestra
                     su tipo actual; convertirla a Tarea/Plan la desliga de la entidad. */}
-                {(tipoOrigen === "EVENTO" || tipoOrigen === "PROYECTO" || tipoOrigen === "TRATO") && TIPO_ORIGEN[tipoOrigen] && (
+                {(tipoOrigen === "EVENTO" || tipoOrigen === "PROYECTO" || tipoOrigen === "TRATO" || tipoOrigen === "CLIENTE") && TIPO_ORIGEN[tipoOrigen] && (
                   <span className="inline-flex items-center text-[11px] font-semibold px-2 py-0.5 rounded-md select-none"
                     style={{
                       color: TIPO_ORIGEN[tipoOrigen].color,

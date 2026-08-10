@@ -9,6 +9,7 @@ import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
 import { EmpresaCombobox } from "@/components/EmpresaCombobox";
 import { BackButton } from "@/components/BackButton";
+import TareasClienteSection from "./TareasClienteSection";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -1376,6 +1377,9 @@ export default function ClienteDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
       )}
+
+      {/* ── Tareas del cliente (atención específica, recurrentes) ───────────── */}
+      <TareasClienteSection clienteId={cliente.id} clienteNombre={cliente.nombre} usuarios={usuarios} />
 
       {/* ── Cotizaciones ────────────────────────────────────────────────────── */}
       {cliente.cotizaciones.length > 0 && (

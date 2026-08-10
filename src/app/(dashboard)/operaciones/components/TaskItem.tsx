@@ -18,6 +18,7 @@ export interface TareaItem {
   proyectoTarea: { id: string; nombre: string; color: string | null } | null;
   proyectoEvento?: { id: string; nombre: string; fechaEvento?: string | null } | null;
   trato?: { id: string; nombreEvento: string | null; cliente?: { nombre: string } | null } | null;
+  cliente?: { id: string; nombre: string } | null;
   proyectoInterno?: { id: string; nombre: string; area?: string | null } | null;
   seccion: { id: string; nombre: string } | null;
   asignadoA: { id: string; name: string } | null;
@@ -44,6 +45,7 @@ const TIPO_ORIGEN: Record<string, { label: string; color: string; bg: string; bo
   PROYECTO: { label: "Empresa",  color: "#818cf8", bg: "rgba(99,102,241,0.14)",  border: "rgba(99,102,241,0.35)" },
   EVENTO:   { label: "Evento",   color: "#60a5fa", bg: "rgba(59,130,246,0.14)",  border: "rgba(59,130,246,0.35)" },
   TRATO:    { label: "Trato",    color: "#2dd4bf", bg: "rgba(45,212,191,0.14)",  border: "rgba(45,212,191,0.35)" },
+  CLIENTE:  { label: "Cliente",  color: "#f472b6", bg: "rgba(244,114,182,0.14)", border: "rgba(244,114,182,0.35)" },
 };
 
 const PRIO: Record<string, { ring: string; dot: string; glow: string; fill: string; dotSize: string }> = {
@@ -276,6 +278,7 @@ export default function TaskItem({
     tarea.tipoOrigen === "EVENTO"   && tarea.proyectoEvento  ? tarea.proyectoEvento.nombre
     : tarea.tipoOrigen === "TRATO"    && tarea.trato           ? (tarea.trato.nombreEvento || tarea.trato.cliente?.nombre || tipoTag?.label)
     : tarea.tipoOrigen === "PROYECTO" && tarea.proyectoInterno ? tarea.proyectoInterno.nombre
+    : tarea.tipoOrigen === "CLIENTE"  && tarea.cliente          ? tarea.cliente.nombre
     : tipoTag?.label;
   // Punto de estado de verificación: ámbar=pendiente, verde=verificada, rojo=rechazada
   const verifDot = (() => {

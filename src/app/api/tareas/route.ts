@@ -64,6 +64,8 @@ const SELECT = {
   proyectoEvento:{ select: { id: true, nombre: true, fechaEvento: true } },
   tratoId: true,
   trato:         { select: { id: true, nombreEvento: true, cliente: { select: { nombre: true } } } },
+  clienteId: true,
+  cliente:       { select: { id: true, nombre: true } },
   proyectoInterno:{ select: { id: true, nombre: true, area: true } },
   seccion:       { select: { id: true, nombre: true } },
   carpeta:       { select: { id: true, nombre: true } },
@@ -344,7 +346,7 @@ export async function POST(req: NextRequest) {
     id: idCliente,
     titulo, descripcion, prioridad, area, asignadoAId, colaboradorIds, notas, etiquetas,
     iniciativaId, proyectoTareaId, seccionId, carpetaId,
-    proyectoInternoId, faseInternaId, proyectoEventoId, tratoId, esSeguimiento,
+    proyectoInternoId, faseInternaId, proyectoEventoId, tratoId, clienteId, esSeguimiento,
     parentId, fecha, fechaVencimiento, recurrencia, orden, juntaOrigenId,
     // Hub unificado: tipo de registro + comprobación
     tipoOrigen, tipoEvidencia, requiereEvidencia,
@@ -371,7 +373,7 @@ export async function POST(req: NextRequest) {
   // Deriva tipoOrigen automáticamente si no viene explícito, según el vínculo.
   const tipoResuelto: string =
     (typeof tipoOrigen === "string" && tipoOrigen) ||
-    (tratoId ? "TRATO" : proyectoEventoId ? "EVENTO" : proyectoInternoId ? "PROYECTO" : "TAREA");
+    (tratoId ? "TRATO" : proyectoEventoId ? "EVENTO" : proyectoInternoId ? "PROYECTO" : clienteId ? "CLIENTE" : "TAREA");
 
   // La comprobación (NOTA | FOTO | ARCHIVO | ENLACE_MODULO) implica requiereEvidencia.
   const evidenciaTipo = typeof tipoEvidencia === "string" && tipoEvidencia ? tipoEvidencia : null;
@@ -406,6 +408,7 @@ export async function POST(req: NextRequest) {
       proyectoTareaId: proyectoTareaId  || null,
       proyectoEventoId: proyectoEventoId || null,
       tratoId:         tratoId          || null,
+      clienteId:       clienteId        || null,
       proyectoInternoId: proyectoInternoId || null,
       faseInternaId:   faseInternaId    || null,
       esSeguimiento:   esSeguimiento === true,
