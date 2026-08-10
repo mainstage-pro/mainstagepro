@@ -26,6 +26,9 @@ interface QuoteItem {
   esPersonalizado: boolean;
 }
 type Tab = "catalogo" | "precios" | "cotizador";
+// Pestañas ocultas temporalmente del sitio público.
+const HIDDEN_TABS: Tab[] = ["precios", "cotizador"];
+const isTabVisible = (t: Tab) => !HIDDEN_TABS.includes(t);
 
 // ─── Image mapping ──────────────────────────────────────────────────────────────
 const MARCA_IMGS: Record<string, string> = {
@@ -231,11 +234,11 @@ function StatBlock({ target, suffix = "", label, sub }: { target: number; suffix
 
 // ─── Tab nav compacto (sticky scroll) ────────────────────────────────────────────
 function TabNav({ active, onChange, quoteCount }: { active: Tab; onChange: (t: Tab) => void; quoteCount: number }) {
-  const tabs: { key: Tab; label: string }[] = [
+  const tabs: { key: Tab; label: string }[] = ([
     { key: "catalogo", label: "Catálogo" },
     { key: "precios",  label: "Lista de precios" },
     { key: "cotizador", label: "Cotizador" },
-  ];
+  ] as { key: Tab; label: string }[]).filter(t => isTabVisible(t.key));
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
       {tabs.map(t => (
@@ -257,7 +260,7 @@ function TabNav({ active, onChange, quoteCount }: { active: Tab; onChange: (t: T
 
 // ─── Tab selector central (sección hero) ─────────────────────────────────────────
 function TabSelector({ active, onChange, quoteCount }: { active: Tab; onChange: (t: Tab) => void; quoteCount: number }) {
-  const cards: { key: Tab; icon: React.ReactNode; title: string; desc: string }[] = [
+  const cards: { key: Tab; icon: React.ReactNode; title: string; desc: string }[] = ([
     {
       key: "catalogo",
       icon: (
@@ -297,7 +300,8 @@ function TabSelector({ active, onChange, quoteCount }: { active: Tab; onChange: 
       title: "Cotizador",
       desc: "Selecciona equipos y obtén un presupuesto estimado al instante para tu evento.",
     },
-  ];
+  ] as { key: Tab; icon: React.ReactNode; title: string; desc: string }[]).filter(c => isTabVisible(c.key));
+  if (cards.length <= 1) return null;
   return (
     <section style={{ background: "#060606", borderBottom: `1px solid ${GOLD}10`, padding: "3rem 1.5rem" }}>
       <div style={{ maxWidth: "780px", margin: "0 auto" }}>
