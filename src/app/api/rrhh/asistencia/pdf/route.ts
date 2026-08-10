@@ -10,12 +10,23 @@ export async function GET(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const mes = req.nextUrl.searchParams.get("mes");
+  const inicio = req.nextUrl.searchParams.get("inicio");
+  const fin = req.nextUrl.searchParams.get("fin");
   const where: Record<string, unknown> = {};
   let periodoLabel = "Historial completo";
-  if (mes && /^\d{4}-\d{2}$/.test(mes)) {
+  let fechaNombrePdf = new Date().toISOString().slice(0, 10);
+
+  if (inicio && fin) {
+    const dInicio = new Date(inicio + "T00:00:00");
+    const dFin = new Date(fin + "T23:59:59");
+    where.fecha = { gte: dInicio, lte: dFin };
+    periodoLabel = `Del ${dInicio.getDate()} de ${dInicio.toLocaleDateString("es-MX", { month: "long" })} al ${dFin.getDate()} de ${dFin.toLocaleDateString("es-MX", { month: "long", year: "numeric" })}`;
+    fechaNombrePdf = `Semanal-${inicio}-al-${fin}`;
+  } else if (mes && /^\d{4}-\d{2}$/.test(mes)) {
     const [y, m] = mes.split("-").map(Number);
     where.fecha = { gte: new Date(y, m - 1, 1), lt: new Date(y, m, 1) };
     periodoLabel = new Date(y, m - 1, 1).toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+    fechaNombrePdf = mes;
   }
 
   const asistencias = await prisma.asistencia.findMany({
@@ -67,13 +78,12 @@ export async function GET(req: NextRequest) {
     pdfStream.on("end", () => resolve(Buffer.concat(chunks)));
   });
 
-  const fecha = mes ?? new Date().toISOString().slice(0, 7);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return new NextResponse(pdfBuffer as any, {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="Asistencia-${fecha}.pdf"`,
+      "Content-Disposition": `attachment; filename="Asistencia-${fechaNombrePdf}.pdf"`,
       "Content-Length": String(pdfBuffer.length),
     },
   });

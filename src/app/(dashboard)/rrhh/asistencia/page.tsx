@@ -376,6 +376,13 @@ function TabHistorial({ personal }: { personal: Personal[] }) {
   const [asistencias, setAsistencias] = useState<Asistencia[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState<string | null>(null);
+  
+  const [inicioRep, setInicioRep] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1)); return d.toISOString().slice(0, 10);
+  });
+  const [finRep, setFinRep] = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1) + 6); return d.toISOString().slice(0, 10);
+  });
 
   useEffect(() => { if (personal.length > 0 && !selId) setSelId(personal[0].id); }, [personal, selId]);
 
@@ -444,9 +451,28 @@ function TabHistorial({ personal }: { personal: Personal[] }) {
         </div>
       </div>
 
-      {/* Calendario */}
+      {/* Contenido Principal */}
       <div className="flex-1 space-y-4 min-w-0">
-        <div className="flex items-center justify-between flex-wrap gap-2">
+        
+        {/* Generador de Reporte Semanal / Rango */}
+        <div className="ms-card p-4 flex flex-col sm:flex-row items-center gap-4 justify-between bg-[#111] border-[#333]">
+          <div>
+            <h4 className="text-sm font-semibold text-white">Reporte General en PDF</h4>
+            <p className="text-[10px] text-gray-500">Selecciona el rango de fechas para descargar el reporte de todos los empleados.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <input type="date" value={inicioRep} onChange={e => setInicioRep(e.target.value)} className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]" />
+            <span className="text-gray-500 text-xs">al</span>
+            <input type="date" value={finRep} onChange={e => setFinRep(e.target.value)} className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#B3985B]" />
+            <a href={`/api/rrhh/asistencia/pdf?inicio=${inicioRep}&fin=${finRep}`} target="_blank" rel="noopener noreferrer"
+               className="ml-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-[#B3985B] text-black hover:bg-[#c9a96a] transition-colors whitespace-nowrap">
+              Descargar PDF
+            </a>
+          </div>
+        </div>
+
+        {/* Calendario */}
+        <div className="flex items-center justify-between flex-wrap gap-2 pt-2">
           <div className="flex items-center gap-2">
             <button onClick={() => { const d = new Date(`${mes}-15`); d.setMonth(d.getMonth() - 1); setMes(toMes(d)); }}
               className="w-8 h-8 ms-btn-icon">←</button>
