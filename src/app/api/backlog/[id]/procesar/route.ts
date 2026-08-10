@@ -38,7 +38,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           descripcion: item.descripcion ?? null,
           prioridad: datos.prioridad ?? "MEDIA",
           area: datos.area ?? item.area ?? "GENERAL",
-          asignadoAId: datos.asignadoAId ?? null,
+          asignadoAId: datos.asignadoAId ?? (datos.fecha ? session.id : null),
           creadoPorId: session.id,
           fecha: datos.fecha ? new Date(datos.fecha) : null,
         },

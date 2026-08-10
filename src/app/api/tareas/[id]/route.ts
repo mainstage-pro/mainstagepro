@@ -463,6 +463,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // miércoles). La recurrencia se vuelve a aplicar al COMPLETARLA: el bloque de
   // `reagendar` avanza a la siguiente ocurrencia preestablecida del patrón.
 
+  // ── Una tarea con fecha siempre debe tener responsable ────────────────────
+  // Si tras esta edición la tarea queda con `fecha` pero sin responsable, se
+  // asigna a quien la creó (así entra a las listas operativas, que exigen
+  // fecha + responsable).
+  if ("fecha" in data && data.fecha) {
+    const asignadoTrasEdicion = "asignadoAId" in data ? data.asignadoAId : undefined;
+    if (!asignadoTrasEdicion) {
+      const meta = await prisma.tarea.findUnique({
+        where: { id },
+        select: { asignadoAId: true, creadoPorId: true },
+      });
+      const quedaSinResponsable = "asignadoAId" in data ? !data.asignadoAId : !meta?.asignadoAId;
+      if (quedaSinResponsable && meta?.creadoPorId) {
+        data.asignadoAId = meta.creadoPorId;
+      }
+    }
+  }
+
   // Capture previous assignee before updating (only when assignment is being changed)
   const prevAssignee = "asignadoAId" in data
     ? await prisma.tarea.findUnique({ where: { id }, select: { asignadoAId: true } })

@@ -63,7 +63,7 @@ export async function POST(
       descripcion:      descripcion      || null,
       prioridad:        prioridad        || "MEDIA",
       area:             area             || "VENTAS",
-      asignadoAId:      asignadoAId      || null,
+      asignadoAId:      asignadoAId      || (fecha ? session.id : null),
       creadoPorId:      session.id,
       tratoId,
       tipoOrigen:       "TRATO",

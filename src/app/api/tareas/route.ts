@@ -398,7 +398,9 @@ export async function POST(req: NextRequest) {
       descripcion:     descripcion      || null,
       prioridad:       prioridad        || "MEDIA",
       area:            area             || "GENERAL",
-      asignadoAId:     asignadoAId      || null,
+      // Una tarea con fecha siempre debe tener responsable: si no se indicó,
+      // se asigna a quien la crea (así entra a las listas operativas).
+      asignadoAId:     asignadoAId      || (fechaInicial ? session.id : null),
       creadoPorId:     session.id,
       iniciativaId:    iniciativaId     || null,
       proyectoTareaId: proyectoTareaId  || null,
