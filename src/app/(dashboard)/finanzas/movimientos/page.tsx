@@ -50,6 +50,8 @@ export default function MovimientosPage() {
   const [editForm, setEditForm] = useState({ tipo: "", concepto: "", monto: "", fecha: "", notas: "", referencia: "", metodoPago: "", categoriaId: "", cuentaOrigenId: "", cuentaDestinoId: "" });
   const [guardando, setGuardando] = useState(false);
 
+  type OrdenOption = "fecha" | "categoria" | "az" | "monto" | "tipo";
+  const [orden, setOrden] = useState<OrdenOption>("fecha");
   const loadMovimientos = useCallback(async (cuentaId: string | null) => {
     const url = cuentaId ? `/api/movimientos?cuentaId=${cuentaId}` : "/api/movimientos";
     const rm = await fetch(url, { cache: "no-store" }).then(r => r.json());
@@ -176,6 +178,27 @@ export default function MovimientosPage() {
     ? movimientosFiltrados.filter(m => m.cuentaOrigen?.id === cuentaFiltro).reduce((s, m) => s + m.monto, 0)
     : movimientosFiltrados.filter(m => tNaturaleza(m.tipo) === "SALIDA" && tAfectaResultado(m.tipo)).reduce((s, m) => s + m.monto, 0);
 
+  const movimientosOrdenados = [...movimientosFiltrados].sort((a, b) => {
+    let diff = 0;
+    if (orden === "categoria") {
+      const catA = a.categoria?.nombre || "Sin Categoría";
+      const catB = b.categoria?.nombre || "Sin Categoría";
+      diff = catA.localeCompare(catB);
+    } else if (orden === "az") {
+      diff = a.concepto.localeCompare(b.concepto);
+    } else if (orden === "monto") {
+      diff = b.monto - a.monto;
+    } else if (orden === "tipo") {
+      const tipoA = tNombre(a.tipo);
+      const tipoB = tNombre(b.tipo);
+      diff = tipoA.localeCompare(tipoB);
+    }
+    
+    if (diff === 0) {
+      diff = new Date(b.fecha).getTime() - new Date(a.fecha).getTime();
+    }
+    return diff;
+  });
   const categoriasFiltradas = categorias.filter(c =>
     editando ? c.tipo === editForm.tipo : true
   );
@@ -187,10 +210,24 @@ export default function MovimientosPage() {
           <h1 className="ms-h1">Movimientos</h1>
           <p className="ms-subtitle">{movimientosFiltrados.length} movimientos{cuentaFiltro ? ` · ${cuentas.find(c => c.id === cuentaFiltro)?.nombre}` : " · todas las cuentas"}</p>
         </div>
-        <a href="/finanzas/movimientos/nuevo"
-          className="ms-btn-primary">
-          + Registrar movimiento
-        </a>
+        <div className="flex items-center gap-3">
+          <select
+            value={orden}
+            onChange={(e) => setOrden(e.target.value as OrdenOption)}
+            className="bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-xs text-[#b3b3b3] focus:outline-none focus:border-[#B3985B]"
+          >
+            <option value="fecha">Ordenar por: Fecha</option>
+            <option value="monto">Ordenar por: Monto (mayor a menor)</option>
+            <option value="categoria">Ordenar por: Categoría</option>
+            <option value="tipo">Ordenar por: Tipo de mov.</option>
+            <option value="az">Ordenar por: A-Z (Concepto)</option>
+          </select>
+          
+          <a href="/finanzas/movimientos/nuevo"
+            className="ms-btn-primary whitespace-nowrap">
+            + Registrar movimiento
+          </a>
+        </div>
       </div>
 
       {/* Filtros por cuenta */}
@@ -249,7 +286,7 @@ export default function MovimientosPage() {
       <div className="ms-card overflow-x-auto">
         {loading ? (
           <div className="py-16 text-center ms-subtitle">Cargando...</div>
-        ) : movimientosFiltrados.length === 0 ? (
+        ) : movimientosOrdenados.length === 0 ? (
           <div className="text-center py-16">
             <p className="ms-subtitle">Sin movimientos{cuentaFiltro ? " en esta cuenta" : " registrados"}</p>
           </div>
@@ -265,7 +302,7 @@ export default function MovimientosPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1a1a1a]">
-              {movimientosFiltrados.map(mov => (
+              {movimientosOrdenados.map(mov => (
                 <tr key={mov.id} onClick={() => setDetalle(mov)} className="ms-tr group cursor-pointer">
                   <td className="ms-td text-xs text-[#6b7280] whitespace-nowrap">{fmtDate(mov.fecha)}</td>
                   <td className="ms-td">
