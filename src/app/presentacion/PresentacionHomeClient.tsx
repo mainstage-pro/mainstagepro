@@ -154,25 +154,48 @@ export default function PresentacionHomeClient() {
 
       {/* ── Quiénes somos ── */}
       <section className="py-24 px-6 bg-[#060606] border-y border-white/[0.04]">
+        <div className="max-w-3xl mx-auto text-center">
+          <R>
+            <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-6">Quiénes somos</p>
+            <h2 className="font-bold text-white leading-[1.2]" style={{ fontSize: "clamp(1.5rem,3.4vw,2.4rem)", letterSpacing: "-0.02em" }}>
+              Somos una empresa de <span style={{ color: GOLD }}>producción técnica de eventos.</span> Ponemos el audio, la iluminación, el video y al equipo que lo opera para que tu evento suene y se vea impecable.
+            </h2>
+          </R>
+        </div>
+      </section>
+
+      {/* ── Eventos / para quién ── */}
+      <section id="eventos" className="py-24 px-6">
         <div className="max-w-6xl mx-auto">
           <R>
-            <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-4">Quiénes somos</p>
+            <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-4">Para qué eventos trabajamos</p>
             <h2 className="font-bold text-white leading-tight mb-12" style={{ fontSize: "clamp(1.5rem,3.3vw,2.5rem)", letterSpacing: "-0.02em" }}>
-              Creamos experiencias<br /><span style={{ color: GOLD }}>que generan impacto.</span>
+              Cada evento, con la producción<br />que merece
             </h2>
           </R>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {[
-              { k: "Propósito", t: "Por qué existimos", b: "Por la pasión por los eventos en vivo — y por lo que un espectáculo bien producido genera en las personas." },
-              { k: "Misión", t: "Qué hacemos", b: "Potenciamos proyectos, artistas y marcas a través de la producción técnica impecable de sus eventos." },
-              { k: "Visión", t: "Hacia dónde vamos", b: "Ser el aliado técnico de confianza de marcas, artistas y promotores a nivel nacional — parte real de tu equipo, no solo un proveedor." },
-            ].map((c, i) => (
-              <R key={c.k} delay={i * 100}>
-                <div className="rounded-2xl p-8 h-full" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <p className="text-[#B3985B] text-[11px] font-semibold tracking-[0.2em] uppercase mb-5">{c.k}</p>
-                  <h3 className="font-bold text-white text-xl mb-3 leading-tight">{c.t}</h3>
-                  <p className="text-white/45 text-sm leading-relaxed">{c.b}</p>
-                </div>
+            {EVENTOS.map((ev, i) => (
+              <R key={ev.title} delay={i * 120}>
+                <a href={ev.href} className="group block relative rounded-2xl overflow-hidden" style={{ height: "360px", background: "#060606", border: "1px solid rgba(255,255,255,0.06)" }}>
+                  <EditableImage
+                    edit={edit}
+                    okey={`home.evento.${i}.img`}
+                    fallback={coverPorSlug(ev.slug, ev.img)}
+                    alt={ev.title}
+                    wrapClassName="absolute inset-0"
+                    imgClassName="w-full h-full object-cover scale-105 transition-transform duration-700 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(6,6,6,0.96) 0%, rgba(6,6,6,0.75) 40%, rgba(6,6,6,0.55) 75%, rgba(6,6,6,0.45) 100%)" }} />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-7">
+                    <p className="text-[#B3985B] text-[10px] tracking-[0.16em] uppercase mb-3">{ev.para}</p>
+                    <h3 className="font-bold text-white text-3xl mb-2 leading-tight" style={{ letterSpacing: "-0.02em" }}>{ev.title}</h3>
+                    <p className="text-white/60 text-sm max-w-[20rem]">{ev.sub}</p>
+                    <div className="flex items-center gap-2 mt-5 text-[#B3985B] text-xs font-semibold tracking-wide uppercase">
+                      Ver presentación
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-hover:translate-x-1"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
+                    </div>
+                  </div>
+                </a>
               </R>
             ))}
           </div>
@@ -180,7 +203,7 @@ export default function PresentacionHomeClient() {
       </section>
 
       {/* ── Servicios ── */}
-      <section id="servicios" className="py-24 px-6">
+      <section id="servicios" className="py-24 px-6 bg-[#060606]">
         <div className="max-w-6xl mx-auto">
           <R>
             <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-4">Lo que ofrecemos</p>
@@ -201,16 +224,16 @@ export default function PresentacionHomeClient() {
                   onMouseEnter={(e) => { e.currentTarget.style.borderColor = `${GOLD}40`; }}
                   onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; }}
                 >
-                  {/* Imagen de fondo difuminada al negro */}
+                  {/* Imagen de fondo oscurecida al negro */}
                   <EditableImage
                     edit={edit}
                     okey={`home.servicio.${s.tipoServicio}.img`}
                     fallback={s.hero}
                     alt={s.title}
                     wrapClassName="absolute inset-0"
-                    imgClassName="w-full h-full object-cover opacity-60 blur-[2px] scale-105 transition-transform duration-700 group-hover:scale-110"
+                    imgClassName="w-full h-full object-cover scale-105 transition-transform duration-700 group-hover:scale-110"
                   />
-                  <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(6,6,6,0.98) 0%, rgba(6,6,6,0.85) 35%, rgba(6,6,6,0.6) 70%, rgba(6,6,6,0.45) 100%)" }} />
+                  <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(6,6,6,0.96) 0%, rgba(6,6,6,0.78) 35%, rgba(6,6,6,0.6) 70%, rgba(6,6,6,0.5) 100%)" }} />
                   {/* Contenido centrado */}
                   <div className="relative flex flex-col flex-1 items-center text-center p-8">
                     <span className="text-white/60 text-xs font-mono tracking-widest">{s.n}</span>
@@ -222,44 +245,6 @@ export default function PresentacionHomeClient() {
                     <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-white/75 group-hover:text-white transition-transform duration-300 group-hover:translate-x-1">
                       Ver servicio <span aria-hidden>→</span>
                     </span>
-                  </div>
-                </a>
-              </R>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Eventos / para quién ── */}
-      <section id="eventos" className="py-24 px-6 bg-[#060606]">
-        <div className="max-w-6xl mx-auto">
-          <R>
-            <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-4">Para qué eventos trabajamos</p>
-            <h2 className="font-bold text-white leading-tight mb-12" style={{ fontSize: "clamp(1.5rem,3.3vw,2.5rem)", letterSpacing: "-0.02em" }}>
-              Cada evento, con la producción<br />que merece
-            </h2>
-          </R>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {EVENTOS.map((ev, i) => (
-              <R key={ev.title} delay={i * 120}>
-                <a href={ev.href} className="group block relative rounded-2xl overflow-hidden" style={{ height: "360px", background: "#060606", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <EditableImage
-                    edit={edit}
-                    okey={`home.evento.${i}.img`}
-                    fallback={coverPorSlug(ev.slug, ev.img)}
-                    alt={ev.title}
-                    wrapClassName="absolute inset-0"
-                    imgClassName="w-full h-full object-cover opacity-60 blur-[2px] scale-105 transition-transform duration-700 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(6,6,6,0.98) 0%, rgba(6,6,6,0.85) 35%, rgba(6,6,6,0.6) 70%, rgba(6,6,6,0.45) 100%)" }} />
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-7">
-                    <p className="text-[#B3985B] text-[10px] tracking-[0.16em] uppercase mb-3">{ev.para}</p>
-                    <h3 className="font-bold text-white text-3xl mb-2 leading-tight" style={{ letterSpacing: "-0.02em" }}>{ev.title}</h3>
-                    <p className="text-white/60 text-sm max-w-[20rem]">{ev.sub}</p>
-                    <div className="flex items-center gap-2 mt-5 text-[#B3985B] text-xs font-semibold tracking-wide uppercase">
-                      Ver presentación
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-hover:translate-x-1"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
-                    </div>
                   </div>
                 </a>
               </R>
@@ -338,28 +323,13 @@ export default function PresentacionHomeClient() {
 
       {/* ── Pilares ── */}
       <section className="py-24 px-6">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-3xl mx-auto text-center">
           <R>
-            <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-4">Por qué Mainstage Pro</p>
-            <h2 className="font-bold text-white leading-tight mb-12" style={{ fontSize: "clamp(1.5rem,3.3vw,2.5rem)", letterSpacing: "-0.02em" }}>
-              Lo que nos hace<br /><span style={{ color: GOLD }}>la opción correcta.</span>
+            <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-6">Por qué Mainstage Pro</p>
+            <h2 className="font-bold text-white leading-[1.2]" style={{ fontSize: "clamp(1.5rem,3.4vw,2.4rem)", letterSpacing: "-0.02em" }}>
+              Claridad en cada paso, procesos confiables y la <span style={{ color: GOLD }}>misma calidad en cada evento</span> — sin importar el tamaño.
             </h2>
           </R>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {[
-              { t: "Claridad", b: "Desde la primera llamada hasta el último cable recogido. Sabes qué esperar en cada paso." },
-              { t: "Confianza", b: "Equipos confiables, procesos claros y comunicación honesta. Sin sorpresas." },
-              { t: "Consistencia", b: "Ejecución sin improvisación. La misma calidad en cada evento, sin importar el tamaño." },
-            ].map((c, i) => (
-              <R key={c.t} delay={i * 100}>
-                <div className="rounded-2xl p-8 h-full" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                  <div className="w-8 h-px mb-6" style={{ background: GOLD }} />
-                  <h4 className="font-bold text-white text-lg mb-3">{c.t}</h4>
-                  <p className="text-white/45 text-sm leading-relaxed">{c.b}</p>
-                </div>
-              </R>
-            ))}
-          </div>
         </div>
       </section>
 
