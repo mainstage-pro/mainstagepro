@@ -26,6 +26,12 @@ const TIPO_INFO = Object.fromEntries(TIPOS.map(t => [t.key, t]));
 const DIAS_LABEL = ["Lun", "Mar", "Mié", "Jue", "Vie"];
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
+// Arrastre táctil (móvil / iPad): hay que mantener presionada la tarjeta este
+// tiempo para "agarrarla". Si el dedo se desplaza antes, se interpreta como
+// scroll y no se arrastra.
+const LONG_PRESS_MS = 250;
+const TOUCH_MOVE_CANCEL_PX = 10;
+
 interface TareaSemana {
   id: string;
   titulo: string;
@@ -339,7 +345,7 @@ export function VistaSemanaEquipo() {
         <div>
           <h1 className="text-lg font-semibold text-white">Semana del equipo</h1>
           <p className="text-xs text-[#666] mt-0.5">
-            Tareas de lunes a viernes por persona, agrupadas por tipo. Haz clic para abrir y editar, arrástrala para reordenarla o moverla de día, y marca el círculo para completarla.
+            Tareas de lunes a viernes por persona, agrupadas por tipo. Haz clic para abrir y editar, arrástrala para reordenarla o moverla de día (en móvil/iPad mantén presionada la tarjeta un instante para agarrarla), y marca el círculo para completarla.
           </p>
         </div>
         <div className="flex items-center gap-1 ml-auto">
@@ -467,6 +473,131 @@ function SemanaMiembro({
   // Origen de la tarjeta que se está arrastrando.
   const dragInfo = useRef<{ id: string; dia: string; tipo: string } | null>(null);
 
+  // ── Arrastre táctil (móvil / iPad) ────────────────────────────────────────
+  // La API nativa de HTML5 drag-and-drop no dispara en touch, así que aquí
+  // replicamos el arrastre con eventos táctiles. La clave: hay que MANTENER
+  // PRESIONADA la tarjeta un instante para "agarrarla"; de lo contrario el
+  // deslizar/scroll normal las movía por accidente.
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const touchRef = useRef<{
+    id: string; dia: string; tipo: string;
+    startX: number; startY: number;
+    timer: ReturnType<typeof setTimeout> | null;
+    active: boolean;
+  } | null>(null);
+  const [touchDragId, setTouchDragId] = useState<string | null>(null);
+  const justDraggedRef = useRef(false);
+
+  // Objetivo bajo el punto (x,y), leyendo los data-attrs del DOM.
+  const dropFromPoint = (x: number, y: number) => {
+    const el = document.elementFromPoint(x, y);
+    if (!el) return null;
+    const card = el.closest<HTMLElement>("[data-tarea-id]");
+    if (card) {
+      const r = card.getBoundingClientRect();
+      const idx = parseInt(card.dataset.idx || "0", 10);
+      return {
+        kind: "card" as const,
+        dia: card.dataset.dia!,
+        tipo: card.dataset.tipo!,
+        index: y > r.top + r.height / 2 ? idx + 1 : idx,
+      };
+    }
+    const col = el.closest<HTMLElement>("[data-dia]");
+    if (col) return { kind: "col" as const, dia: col.dataset.dia! };
+    return null;
+  };
+
+  // IDs de un grupo (día+tipo) en orden visual, leídos del DOM.
+  const idsInGroup = (dia: string, tipo: string) =>
+    Array.from(
+      containerRef.current?.querySelectorAll<HTMLElement>(
+        `[data-tarea-id][data-dia="${dia}"][data-tipo="${tipo}"]`
+      ) ?? []
+    ).map(el => el.dataset.tareaId!);
+
+  // Listeners a nivel de documento (con passive:false para poder preventDefault
+  // y bloquear el scroll una vez agarrada). Delegan a la lógica fresca del render.
+  const implRef = useRef<{ move: (e: TouchEvent) => void; end: (e: TouchEvent) => void }>({
+    move: () => {}, end: () => {},
+  });
+  const stableMove = useRef((e: TouchEvent) => implRef.current.move(e)).current;
+  const stableEnd = useRef((e: TouchEvent) => implRef.current.end(e)).current;
+
+  const endTouch = () => {
+    const st = touchRef.current;
+    if (st?.timer) clearTimeout(st.timer);
+    touchRef.current = null;
+    document.removeEventListener("touchmove", stableMove);
+    document.removeEventListener("touchend", stableEnd);
+    document.removeEventListener("touchcancel", stableEnd);
+    setTouchDragId(null);
+    setDragOver(null);
+    setDropSlot(null);
+  };
+
+  implRef.current.move = (e: TouchEvent) => {
+    const st = touchRef.current;
+    if (!st || e.touches.length === 0) return;
+    const p = e.touches[0];
+    if (!st.active) {
+      // Aún no "agarrada": si el dedo se desplaza, es scroll → cancelar.
+      if (Math.hypot(p.clientX - st.startX, p.clientY - st.startY) > TOUCH_MOVE_CANCEL_PX) endTouch();
+      return;
+    }
+    e.preventDefault(); // ya agarrada: evitar que la página haga scroll
+    const tgt = dropFromPoint(p.clientX, p.clientY);
+    if (!tgt) { setDragOver(null); setDropSlot(null); return; }
+    setDragOver(tgt.dia);
+    setDropSlot(tgt.kind === "card" ? `${tgt.dia}|${tgt.tipo}|${tgt.index}` : null);
+  };
+
+  implRef.current.end = (e: TouchEvent) => {
+    const st = touchRef.current;
+    if (!st) { endTouch(); return; }
+    if (st.active) {
+      const p = e.changedTouches[0];
+      const tgt = p ? dropFromPoint(p.clientX, p.clientY) : null;
+      if (tgt) {
+        if (tgt.kind === "card" && tgt.dia === st.dia && tgt.tipo === st.tipo) {
+          // Reordenar dentro del mismo grupo.
+          const ids = idsInGroup(tgt.dia, tgt.tipo);
+          const from = ids.indexOf(st.id);
+          if (from !== -1) {
+            ids.splice(from, 1);
+            let insert = tgt.index;
+            if (from < tgt.index) insert -= 1;
+            if (insert !== from) { ids.splice(insert, 0, st.id); onReordenar(ids); }
+          }
+        } else if (tgt.dia !== st.dia) {
+          onMover(st.id, tgt.dia);
+        }
+      }
+      // Bloquear el click sintético que abriría la tarea tras arrastrarla.
+      justDraggedRef.current = true;
+      setTimeout(() => { justDraggedRef.current = false; }, 400);
+    }
+    endTouch();
+  };
+
+  const beginTouch = (e: React.TouchEvent, info: { id: string; dia: string; tipo: string }) => {
+    if (e.touches.length !== 1) return;
+    const p = e.touches[0];
+    const timer = setTimeout(() => {
+      const st = touchRef.current;
+      if (!st) return;
+      st.active = true;
+      setTouchDragId(st.id);
+      navigator.vibrate?.(15);
+    }, LONG_PRESS_MS);
+    touchRef.current = { ...info, startX: p.clientX, startY: p.clientY, timer, active: false };
+    document.addEventListener("touchmove", stableMove, { passive: false });
+    document.addEventListener("touchend", stableEnd);
+    document.addEventListener("touchcancel", stableEnd);
+  };
+
+  useEffect(() => endTouch, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Agrupar tareas por día, ordenadas por `orden` dentro de cada día.
   const porDia = useMemo(() => {
     const m = new Map<string, TareaSemana[]>();
@@ -490,7 +621,7 @@ function SemanaMiembro({
   };
 
   return (
-    <div className="flex-1 min-h-0 overflow-auto px-4 md:px-6 pb-6" style={{ scrollbarWidth: "thin" }}>
+    <div ref={containerRef} className="flex-1 min-h-0 overflow-auto px-4 md:px-6 pb-6" style={{ scrollbarWidth: "thin" }}>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 min-w-0">
         {dias.map((dia, i) => {
           const tareas = porDia.get(dia) ?? [];
@@ -500,6 +631,7 @@ function SemanaMiembro({
           return (
             <div
               key={dia}
+              data-dia={dia}
               onDragOver={e => { e.preventDefault(); setDragOver(dia); }}
               onDragLeave={() => setDragOver(prev => (prev === dia ? null : prev))}
               onDrop={() => handleDrop(dia)}
@@ -576,10 +708,15 @@ function SemanaMiembro({
                               <TareaCard
                                 t={t}
                                 dias={dias}
+                                dia={dia}
+                                tipo={tp.key}
                                 onDragStart={() => { dragInfo.current = { id: t.id, dia, tipo: tp.key }; }}
                                 onDragEnd={() => { dragInfo.current = null; setDropSlot(null); }}
                                 onDragOverCard={index => setDropSlot(`${dia}|${tp.key}|${index}`)}
                                 onDropCard={soltarEnRanura}
+                                onTouchStart={e => beginTouch(e, { id: t.id, dia, tipo: tp.key })}
+                                dragging={touchDragId === t.id}
+                                wasDragging={() => justDraggedRef.current}
                                 idx={idx}
                                 onMover={onMover}
                                 onAbrir={onAbrir}
@@ -618,10 +755,15 @@ function TareaCard({
   t,
   dias,
   idx,
+  dia,
+  tipo,
   onDragStart,
   onDragEnd,
   onDragOverCard,
   onDropCard,
+  onTouchStart,
+  dragging,
+  wasDragging,
   onMover,
   onAbrir,
   onCompletar,
@@ -629,10 +771,15 @@ function TareaCard({
   t: TareaSemana;
   dias: string[];
   idx: number;
+  dia: string;
+  tipo: string;
   onDragStart: () => void;
   onDragEnd: () => void;
   onDragOverCard: (index: number) => void;
   onDropCard: (index: number) => void;
+  onTouchStart: (e: React.TouchEvent) => void;
+  dragging: boolean;
+  wasDragging: () => boolean;
   onMover: (tareaId: string, dia: string) => void;
   onAbrir: (tareaId: string) => void;
   onCompletar: (tareaId: string, completar: boolean) => void;
@@ -649,11 +796,22 @@ function TareaCard({
   return (
     <li
       draggable
+      data-tarea-id={t.id}
+      data-dia={dia}
+      data-tipo={tipo}
+      data-idx={idx}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onDragOver={e => { e.preventDefault(); onDragOverCard(insertIndex(e)); }}
       onDrop={e => { e.preventDefault(); e.stopPropagation(); onDropCard(insertIndex(e)); }}
-      className="group relative rounded-lg border border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04] px-2 py-1.5 cursor-grab active:cursor-grabbing"
+      onTouchStart={onTouchStart}
+      onClickCapture={e => { if (wasDragging()) { e.preventDefault(); e.stopPropagation(); } }}
+      style={{ WebkitTouchCallout: "none" } as React.CSSProperties}
+      className={`group relative rounded-lg border px-2 py-1.5 cursor-grab active:cursor-grabbing select-none transition-shadow ${
+        dragging
+          ? "border-[#B3985B] bg-[#B3985B]/[0.10] ring-2 ring-[#B3985B]/60 opacity-80 pointer-events-none shadow-lg"
+          : "border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04]"
+      }`}
     >
       <div className="flex items-start gap-1.5">
         <button
