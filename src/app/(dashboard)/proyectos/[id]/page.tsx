@@ -7543,7 +7543,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
           {(() => {
             const cierreReqs = [
               { ok: !!proyecto.cotizacion, label: "Cotización generada" },
-              { ok: proyecto.personal.some(p => p.confirmado), label: "Personal confirmado" },
+              { ok: (proyecto.tipoServicio === "RENTA" && proyecto.personal.length === 0) || proyecto.personal.some(p => p.confirmado), label: "Personal confirmado" },
               { ok: proyecto.cuentasCobrar.length > 0, label: "CxC configurada" },
             ];
             const cierreReady = cierreReqs.every(r => r.ok) || !!proyecto.cierreFinanciero;
@@ -7558,13 +7558,17 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                     onClick={async () => {
                       if (!cierreReady) {
                         const faltantes = cierreReqs.filter(r => !r.ok).map(r => r.label).join(", ");
-                        toast.error(`Completa antes de cerrar: ${faltantes}`);
-                        return;
+                        const ok = await confirm({
+                          message: `Faltan requisitos sugeridos para el cierre: ${faltantes}. ¿Deseas generar el cierre de todos modos?`,
+                          confirmText: "Sí, generar cierre",
+                          danger: true
+                        });
+                        if (!ok) return;
                       }
                       await loadCierre(); setShowCierreModal(true);
                     }}
                     disabled={loadingCierre}
-                    className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 ${cierreReady ? "bg-[#B3985B] text-black hover:bg-[#c9a96a]" : "bg-[#1a1a1a] text-gray-500 border border-[#333] cursor-not-allowed"}`}
+                    className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 ${cierreReady ? "bg-[#B3985B] text-black hover:bg-[#c9a96a]" : "bg-[#1a1a1a] text-gray-300 hover:bg-[#222] border border-[#333]"}`}
                   >
                     {loadingCierre ? "Calculando..." : proyecto.cierreFinanciero ? "Ver cierre" : "Generar cierre"}
                   </button>
