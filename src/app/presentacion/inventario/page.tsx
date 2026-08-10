@@ -14,8 +14,10 @@ export default async function InventarioPage() {
   // Fetch metadata ONLY — no imagenUrl (3+ MB of base64 in the payload)
   // Images are fetched client-side from /api/presentacion/imagenes after hydration.
   // Includes both PROPIO and EXTERNO equipment — all gear Mainstage offers to clients.
+  // Categorías internas que no van en el catálogo público de clientes.
+  const CATEGORIAS_OCULTAS = ["Toldos y lonas", "Accesorios Provisionales"];
   const equipos = await prisma.equipo.findMany({
-    where: { activo: true },
+    where: { activo: true, categoria: { nombre: { notIn: CATEGORIAS_OCULTAS } } },
     select: {
       id: true,
       descripcion: true,
