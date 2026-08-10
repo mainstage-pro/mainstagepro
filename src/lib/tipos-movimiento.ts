@@ -19,7 +19,7 @@ export const TIPOS_BASE = [
   { clave: "INGRESO",       nombre: "Ingreso",       naturaleza: "ENTRADA", afectaResultado: true,  color: "green",  orden: 0, sistema: true, activo: true },
   { clave: "GASTO",         nombre: "Gasto",         naturaleza: "SALIDA",  afectaResultado: true,  color: "red",    orden: 1, sistema: true, activo: true },
   { clave: "TRANSFERENCIA", nombre: "Transferencia", naturaleza: "NEUTRO",  afectaResultado: false, color: "blue",   orden: 2, sistema: true, activo: true },
-  { clave: "INVERSION",     nombre: "Inversión",     naturaleza: "ENTRADA", afectaResultado: false, color: "purple", orden: 3, sistema: true, activo: true },
+  { clave: "INVERSION",     nombre: "Inversión",     naturaleza: "SALIDA",  afectaResultado: false, color: "purple", orden: 3, sistema: true, activo: true },
   { clave: "RETIRO",        nombre: "Retiro",        naturaleza: "SALIDA",  afectaResultado: false, color: "orange", orden: 4, sistema: true, activo: true },
 ] as const;
 
