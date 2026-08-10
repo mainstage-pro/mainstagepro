@@ -242,21 +242,21 @@ export default function PresentacionHomeClient() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {EVENTOS.map((ev, i) => (
               <R key={ev.title} delay={i * 120}>
-                <a href={ev.href} className="group block relative rounded-2xl overflow-hidden" style={{ height: "360px" }}>
+                <a href={ev.href} className="group block relative rounded-2xl overflow-hidden" style={{ height: "360px", background: "#060606", border: "1px solid rgba(255,255,255,0.06)" }}>
                   <EditableImage
                     edit={edit}
                     okey={`home.evento.${i}.img`}
                     fallback={coverPorSlug(ev.slug, ev.img)}
                     alt={ev.title}
-                    wrapClassName="relative w-full h-full"
-                    imgClassName="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    wrapClassName="absolute inset-0"
+                    imgClassName="w-full h-full object-cover opacity-60 blur-[2px] scale-105 transition-transform duration-700 group-hover:scale-110"
                   />
-                  <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.2) 55%, transparent 100%)" }} />
-                  <div className="absolute bottom-0 left-0 right-0 p-7">
-                    <p className="text-[#B3985B] text-[10px] tracking-[0.16em] uppercase mb-2">{ev.para}</p>
-                    <h3 className="font-bold text-white text-xl mb-1">{ev.title}</h3>
-                    <p className="text-white/50 text-xs">{ev.sub}</p>
-                    <div className="flex items-center gap-2 mt-4 text-[#B3985B] text-xs font-semibold tracking-wide uppercase">
+                  <div className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(to top, rgba(6,6,6,0.98) 0%, rgba(6,6,6,0.85) 35%, rgba(6,6,6,0.6) 70%, rgba(6,6,6,0.45) 100%)" }} />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-7">
+                    <p className="text-[#B3985B] text-[10px] tracking-[0.16em] uppercase mb-3">{ev.para}</p>
+                    <h3 className="font-bold text-white text-3xl mb-2 leading-tight" style={{ letterSpacing: "-0.02em" }}>{ev.title}</h3>
+                    <p className="text-white/60 text-sm max-w-[20rem]">{ev.sub}</p>
+                    <div className="flex items-center gap-2 mt-5 text-[#B3985B] text-xs font-semibold tracking-wide uppercase">
                       Ver presentación
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-hover:translate-x-1"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
                     </div>
