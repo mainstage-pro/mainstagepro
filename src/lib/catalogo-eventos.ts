@@ -51,6 +51,9 @@ export async function ensureCatalogoTables() {
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS "adicionales_productoId_idx" ON "adicionales"("productoId");`
   );
+  await prisma.$executeRawUnsafe(
+    `ALTER TABLE "adicionales" ADD COLUMN IF NOT EXISTS "composicion" TEXT;`
+  );
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS "preguntas_descubrimiento" (
       "id" TEXT NOT NULL,

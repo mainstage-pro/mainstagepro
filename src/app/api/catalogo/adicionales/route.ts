@@ -9,6 +9,28 @@ function toJsonArray(v: unknown): string | null {
   return null;
 }
 
+type LineaComposicion = { tipo: "producto" | "equipo"; referenciaId: string; cantidad: number; obligatorio: boolean };
+
+export function normalizarComposicion(v: unknown): string | null {
+  let arr: unknown = v;
+  if (typeof v === "string" && v.trim()) {
+    try { arr = JSON.parse(v); } catch { return null; }
+  }
+  if (!Array.isArray(arr)) return null;
+  const lineas: LineaComposicion[] = [];
+  for (const l of arr) {
+    if (!l || typeof l !== "object") continue;
+    const o = l as Record<string, unknown>;
+    const tipo = o.tipo === "equipo" ? "equipo" : "producto";
+    const referenciaId = String(o.referenciaId || "").trim();
+    if (!referenciaId) continue;
+    const cantidad = Math.max(1, Math.round(Number(o.cantidad) || 1));
+    const obligatorio = o.obligatorio === false ? false : true;
+    lineas.push({ tipo, referenciaId, cantidad, obligatorio });
+  }
+  return lineas.length ? JSON.stringify(lineas) : null;
+}
+
 export async function POST(req: NextRequest) {
   const session = await requireAdmin();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
@@ -27,6 +49,7 @@ export async function POST(req: NextRequest) {
       nichos: toJsonArray(body.nichos),
       frecuencia: body.frecuencia === "ocasional" ? "ocasional" : "frecuente",
       productoId: body.productoId || null,
+      composicion: normalizarComposicion(body.composicion),
       imagenUrl: body.imagenUrl || null,
       orden: (maxOrden._max.orden ?? 0) + 1,
     },

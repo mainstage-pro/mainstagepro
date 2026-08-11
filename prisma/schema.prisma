@@ -4246,8 +4246,9 @@ model Adicional {
   tiposEvento String    // JSON array de slugs legacy: ["SOCIAL","MUSICAL"]
   nichos      String?   // JSON array de slugs de nicho; vacío = todo el tipo
   frecuencia  String    @default("frecuente") // frecuente | ocasional
-  productoId  String?   // vínculo opcional al inventario
+  productoId  String?   // legacy: vínculo único al inventario (migrado a composicion)
   producto    Producto? @relation(fields: [productoId], references: [id], onDelete: SetNull)
+  composicion String?   // JSON: [{ tipo: "producto"|"equipo", referenciaId, cantidad, obligatorio }]
   imagenUrl   String?
   orden       Int       @default(0)
   activo      Boolean   @default(true)

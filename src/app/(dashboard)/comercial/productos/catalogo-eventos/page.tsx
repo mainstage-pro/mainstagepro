@@ -11,10 +11,12 @@ import { Layers, Tags, PlusCircle, HelpCircle, Pencil, Trash2, Plus, Sparkles } 
 type TipoEvento = { id: string; slug: string; nombre: string; emoji: string | null; subtitulo: string | null; descripcion: string | null; orden: number; activo: boolean };
 type Nicho = { id: string; tipoEventoSlug: string; nombre: string; slug: string; descripcion: string | null; notasComerciales: string | null; orden: number; activo: boolean };
 type Regla = { id?: string; condicion: string; categoriasEquipo: string | null; adicionalIds: string | null };
-type Adicional = { id: string; nombre: string; descripcion: string | null; tiposEvento: string; nichos: string | null; frecuencia: string; productoId: string | null; imagenUrl: string | null; orden: number; activo: boolean; producto: { id: string; nombre: string } | null };
+type Adicional = { id: string; nombre: string; descripcion: string | null; tiposEvento: string; nichos: string | null; frecuencia: string; productoId: string | null; composicion: string | null; imagenUrl: string | null; orden: number; activo: boolean; producto: { id: string; nombre: string } | null };
 type Pregunta = { id: string; texto: string; tipoRespuesta: string; opciones: string | null; nichos: string | null; orden: number; activa: boolean; reglas: Regla[] };
 type Catalogo = { tipos: TipoEvento[]; nichos: Nicho[]; adicionales: Adicional[]; preguntas: Pregunta[] };
-type ProductoLite = { id: string; nombre: string };
+// Item de inventario para el selector de composición (productos + equipos).
+type ItemInv = { id: string; tipo: "producto" | "equipo"; nombre: string; precio: number; imagenUrl: string | null; categoria: string | null };
+type LineaComp = { tipo: "producto" | "equipo"; referenciaId: string; cantidad: number; obligatorio: boolean };
 
 type Seccion = "tipos" | "nichos" | "adicionales" | "preguntas";
 
@@ -38,11 +40,25 @@ function parseArr(s: string | null | undefined): string[] {
   try { const v = JSON.parse(s); return Array.isArray(v) ? v : []; } catch { return []; }
 }
 
+function parseComposicion(s: string | null | undefined): LineaComp[] {
+  if (!s) return [];
+  try {
+    const v = JSON.parse(s);
+    if (!Array.isArray(v)) return [];
+    return v.map((l): LineaComp => ({
+      tipo: l?.tipo === "equipo" ? "equipo" : "producto",
+      referenciaId: String(l?.referenciaId || ""),
+      cantidad: Math.max(1, Math.round(Number(l?.cantidad) || 1)),
+      obligatorio: l?.obligatorio === false ? false : true,
+    })).filter((l) => l.referenciaId);
+  } catch { return []; }
+}
+
 export default function CatalogoEventosPage() {
   const { success, error } = useToast();
   const confirm = useConfirm();
   const [cat, setCat] = useState<Catalogo>({ tipos: [], nichos: [], adicionales: [], preguntas: [] });
-  const [productos, setProductos] = useState<ProductoLite[]>([]);
+  const [inventario, setInventario] = useState<ItemInv[]>([]);
   const [seccion, setSeccion] = useState<Seccion>("tipos");
   const [cargando, setCargando] = useState(true);
   const [sembrando, setSembrando] = useState(false);
@@ -56,9 +72,18 @@ export default function CatalogoEventosPage() {
   async function cargar() {
     setCargando(true);
     try {
-      const [rc, rp] = await Promise.all([fetch("/api/catalogo?todos=true"), fetch("/api/productos")]);
+      const [rc, rp, re] = await Promise.all([fetch("/api/catalogo?todos=true"), fetch("/api/productos"), fetch("/api/equipos")]);
       if (rc.ok) setCat(await rc.json());
-      if (rp.ok) setProductos((await rp.json()).productos.map((p: ProductoLite) => ({ id: p.id, nombre: p.nombre })));
+      const inv: ItemInv[] = [];
+      if (rp.ok) {
+        for (const p of (await rp.json()).productos as { id: string; nombre: string; precioFinal?: number; imagenUrl?: string | null; categoria?: string | null }[])
+          inv.push({ id: p.id, tipo: "producto", nombre: p.nombre, precio: p.precioFinal ?? 0, imagenUrl: p.imagenUrl ?? null, categoria: p.categoria ?? null });
+      }
+      if (re.ok) {
+        for (const eq of (await re.json()).equipos as { id: string; descripcion?: string; marca?: string; modelo?: string; precioRenta?: number; imagenUrl?: string | null; categoria?: { nombre: string } | null }[])
+          inv.push({ id: eq.id, tipo: "equipo", nombre: [eq.descripcion, eq.marca, eq.modelo].filter(Boolean).join(" ").trim() || "Equipo", precio: eq.precioRenta ?? 0, imagenUrl: eq.imagenUrl ?? null, categoria: eq.categoria?.nombre ?? null });
+      }
+      setInventario(inv);
     } finally {
       setCargando(false);
     }
@@ -158,17 +183,20 @@ export default function CatalogoEventosPage() {
           {/* ── ADICIONALES ── */}
           {seccion === "adicionales" && (
             <Seccionable titulo="Adicionales" onNuevo={() => setEditAdicional({ frecuencia: "frecuente", activo: true, _tipos: [], _nichos: [] })}>
-              {cat.adicionales.map((a) => (
-                <Fila key={a.id} activo={a.activo}
-                  titulo={a.nombre}
-                  sub={parseArr(a.tiposEvento).map(tipoNombre).join(" · ")}
-                  badges={[
-                    a.frecuencia === "ocasional" ? { label: "ocasional", tone: "gray" as const } : { label: "frecuente", tone: "gold" as const },
-                    a.producto ? { label: a.producto.nombre, tone: "green" as const } : { label: "Sin producto vinculado", tone: "red" as const },
-                  ]}
-                  onEdit={() => setEditAdicional({ ...a, _tipos: parseArr(a.tiposEvento), _nichos: parseArr(a.nichos) })}
-                  onDelete={() => borrar("adicionales", a.id, a.nombre)} />
-              ))}
+              {cat.adicionales.map((a) => {
+                const nLineas = parseComposicion(a.composicion).length || (a.productoId ? 1 : 0);
+                return (
+                  <Fila key={a.id} activo={a.activo}
+                    titulo={a.nombre}
+                    sub={parseArr(a.tiposEvento).map(tipoNombre).join(" · ")}
+                    badges={[
+                      a.frecuencia === "ocasional" ? { label: "ocasional", tone: "gray" as const } : { label: "frecuente", tone: "gold" as const },
+                      nLineas > 0 ? { label: `${nLineas} pza${nLineas > 1 ? "s" : ""}`, tone: "green" as const } : { label: "Sin composición", tone: "red" as const },
+                    ]}
+                    onEdit={() => setEditAdicional({ ...a, _tipos: parseArr(a.tiposEvento), _nichos: parseArr(a.nichos) })}
+                    onDelete={() => borrar("adicionales", a.id, a.nombre)} />
+                );
+              })}
               {cat.adicionales.length === 0 && <Vacio />}
             </Seccionable>
           )}
@@ -194,7 +222,7 @@ export default function CatalogoEventosPage() {
       {/* Editores */}
       {editTipo && <TipoEditor value={editTipo} onClose={() => setEditTipo(null)} onSaved={() => { setEditTipo(null); cargar(); }} toast={{ success, error }} />}
       {editNicho && <NichoEditor value={editNicho} tipos={cat.tipos} onClose={() => setEditNicho(null)} onSaved={() => { setEditNicho(null); cargar(); }} toast={{ success, error }} />}
-      {editAdicional && <AdicionalEditor value={editAdicional} tipos={cat.tipos} nichos={cat.nichos} productos={productos} onClose={() => setEditAdicional(null)} onSaved={() => { setEditAdicional(null); cargar(); }} toast={{ success, error }} />}
+      {editAdicional && <AdicionalEditor value={editAdicional} tipos={cat.tipos} nichos={cat.nichos} inventario={inventario} onClose={() => setEditAdicional(null)} onSaved={() => { setEditAdicional(null); cargar(); }} toast={{ success, error }} />}
       {editPregunta && <PreguntaEditor value={editPregunta} nichos={cat.nichos} adicionales={cat.adicionales} onClose={() => setEditPregunta(null)} onSaved={() => { setEditPregunta(null); cargar(); }} toast={{ success, error }} />}
     </div>
   );
@@ -334,20 +362,50 @@ function NichoEditor({ value, tipos, onClose, onSaved, toast }: { value: Partial
   );
 }
 
-function AdicionalEditor({ value, tipos, nichos, productos, onClose, onSaved, toast }: { value: Partial<Adicional> & { _tipos?: string[]; _nichos?: string[] }; tipos: TipoEvento[]; nichos: Nicho[]; productos: ProductoLite[]; onClose: () => void; onSaved: () => void; toast: ToastFns }) {
+function AdicionalEditor({ value, tipos, nichos, inventario, onClose, onSaved, toast }: { value: Partial<Adicional> & { _tipos?: string[]; _nichos?: string[] }; tipos: TipoEvento[]; nichos: Nicho[]; inventario: ItemInv[]; onClose: () => void; onSaved: () => void; toast: ToastFns }) {
+  // Composición inicial: usa composicion si existe; si no, migra el productoId legacy a una línea.
+  const compInicial = useMemo<LineaComp[]>(() => {
+    const c = parseComposicion(value.composicion);
+    if (c.length) return c;
+    if (value.productoId) return [{ tipo: "producto", referenciaId: value.productoId, cantidad: 1, obligatorio: true }];
+    return [];
+  }, [value.composicion, value.productoId]);
   const [f, setF] = useState({
     nombre: value.nombre || "", descripcion: value.descripcion || "", frecuencia: value.frecuencia || "frecuente",
-    productoId: value.productoId || "", imagenUrl: value.imagenUrl || "", activo: value.activo ?? true,
-    tipos: value._tipos || [], nichosSel: value._nichos || [],
+    imagenUrl: value.imagenUrl || "", activo: value.activo ?? true,
+    tipos: value._tipos || [], nichosSel: value._nichos || [], composicion: compInicial,
   });
+  const [busca, setBusca] = useState("");
   const [guardando, setGuardando] = useState(false);
   const nichosDisponibles = useMemo(() => nichos.filter((n) => f.tipos.includes(n.tipoEventoSlug.toUpperCase())), [nichos, f.tipos]);
+  const invMap = useMemo(() => new Map(inventario.map((i) => [`${i.tipo}:${i.id}`, i])), [inventario]);
+  const claveInv = (l: LineaComp) => `${l.tipo}:${l.referenciaId}`;
+  const resultados = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    if (!q) return [] as ItemInv[];
+    const enComp = new Set(f.composicion.map(claveInv));
+    return inventario.filter((i) => !enComp.has(`${i.tipo}:${i.id}`) && i.nombre.toLowerCase().includes(q)).slice(0, 8);
+  }, [busca, inventario, f.composicion]);
+  const total = useMemo(() => f.composicion.reduce((s, l) => s + l.cantidad * (invMap.get(claveInv(l))?.precio ?? 0), 0), [f.composicion, invMap]);
+
+  function agregar(i: ItemInv) {
+    setF((p) => ({ ...p, composicion: [...p.composicion, { tipo: i.tipo, referenciaId: i.id, cantidad: 1, obligatorio: true }] }));
+    setBusca("");
+  }
+  function actualizar(idx: number, patch: Partial<LineaComp>) {
+    setF((p) => ({ ...p, composicion: p.composicion.map((l, i) => (i === idx ? { ...l, ...patch } : l)) }));
+  }
+  function quitar(idx: number) {
+    setF((p) => ({ ...p, composicion: p.composicion.filter((_, i) => i !== idx) }));
+  }
+
   async function guardar() {
     if (!f.nombre.trim()) { toast.error("Nombre requerido"); return; }
     setGuardando(true);
     try {
       const url = value.id ? `/api/catalogo/adicionales/${value.id}` : "/api/catalogo/adicionales";
-      const body = { nombre: f.nombre, descripcion: f.descripcion, frecuencia: f.frecuencia, productoId: f.productoId || null, imagenUrl: f.imagenUrl || null, activo: f.activo, tiposEvento: f.tipos, nichos: f.nichosSel };
+      const productoId = f.composicion.find((l) => l.tipo === "producto")?.referenciaId || null; // compat legacy
+      const body = { nombre: f.nombre, descripcion: f.descripcion, frecuencia: f.frecuencia, productoId, composicion: f.composicion, imagenUrl: f.imagenUrl || null, activo: f.activo, tiposEvento: f.tipos, nichos: f.nichosSel };
       const r = await fetch(url, { method: value.id ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!r.ok) throw new Error((await r.json()).error || "Error");
       toast.success("Guardado"); onSaved();
@@ -371,17 +429,46 @@ function AdicionalEditor({ value, tipos, nichos, productos, onClose, onSaved, to
           </Campo>
           <Campo label="Imagen (URL)"><input className={inputCls} value={f.imagenUrl} onChange={(e) => setF({ ...f, imagenUrl: e.target.value })} /></Campo>
         </div>
-        <Campo label="Producto vinculado (inventario)">
-          <select className={inputCls} value={f.productoId} onChange={(e) => setF({ ...f, productoId: e.target.value })}>
-            <option value="">— Sin producto vinculado —</option>
-            {productos.map((p) => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-          </select>
+
+        {/* ── Composición (productos + equipos del inventario) ── */}
+        <Campo label="Composición (qué incluye este adicional)">
+          <div className="space-y-1.5">
+            {f.composicion.map((l, idx) => {
+              const it = invMap.get(claveInv(l));
+              return (
+                <div key={idx} className="flex items-center gap-2 rounded-lg bg-[#111] border border-[#1f1f1f] px-2.5 py-1.5">
+                  <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${l.tipo === "equipo" ? "bg-sky-500/15 text-sky-400" : "bg-violet-500/15 text-violet-400"}`}>{l.tipo === "equipo" ? "Equipo" : "Prod"}</span>
+                  <span className="flex-1 text-sm text-gray-200 truncate">{it?.nombre || <span className="text-red-400">No encontrado</span>}</span>
+                  <input type="number" min={1} value={l.cantidad} onChange={(e) => actualizar(idx, { cantidad: Math.max(1, Number(e.target.value) || 1) })} className="w-14 bg-[#0a0a0a] border border-[#222] rounded px-2 py-1 text-sm text-white text-center" />
+                  <button type="button" onClick={() => actualizar(idx, { obligatorio: !l.obligatorio })} className={`text-[10px] px-2 py-1 rounded font-medium ${l.obligatorio ? "bg-[#B3985B]/20 text-[#B3985B]" : "bg-[#1a1a1a] text-gray-500"}`}>{l.obligatorio ? "Obligatorio" : "Opcional"}</button>
+                  <button type="button" onClick={() => quitar(idx)} className="text-gray-600 hover:text-red-400"><Trash2 size={14} /></button>
+                </div>
+              );
+            })}
+            {f.composicion.length === 0 && <p className="text-xs text-gray-600 py-1">Aún sin piezas. Busca productos o equipos del inventario abajo.</p>}
+          </div>
+          <div className="relative mt-2">
+            <input className={inputCls} placeholder="Buscar producto o equipo…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+            {resultados.length > 0 && (
+              <div className="absolute z-10 left-0 right-0 mt-1 bg-[#0d0d0d] border border-[#242424] rounded-lg shadow-xl max-h-56 overflow-auto">
+                {resultados.map((i) => (
+                  <button key={`${i.tipo}:${i.id}`} type="button" onClick={() => agregar(i)} className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-[#161616]">
+                    <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${i.tipo === "equipo" ? "bg-sky-500/15 text-sky-400" : "bg-violet-500/15 text-violet-400"}`}>{i.tipo === "equipo" ? "Equipo" : "Prod"}</span>
+                    <span className="flex-1 text-sm text-gray-200 truncate">{i.nombre}</span>
+                    {i.categoria && <span className="text-[10px] text-gray-600 truncate max-w-[90px]">{i.categoria}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {f.composicion.length > 0 && (
+            <p className="text-[11px] text-gray-500 mt-1.5">Estimado (renta): <span className="text-gray-300">${total.toLocaleString("es-MX", { maximumFractionDigits: 0 })}</span></p>
+          )}
         </Campo>
-        {!f.productoId && (
-          <Link href="/comercial/productos/lista?nuevoProducto=1" className="inline-flex items-center gap-1.5 text-xs text-[#B3985B] hover:underline mb-3">
-            <PlusCircle size={13} /> Dar de alta en inventario
-          </Link>
-        )}
+        <Link href="/comercial/productos/lista?nuevoProducto=1" className="inline-flex items-center gap-1.5 text-xs text-[#B3985B] hover:underline mb-3">
+          <PlusCircle size={13} /> Dar de alta en inventario
+        </Link>
+
         <label className="flex items-center gap-2 text-sm text-gray-400 mb-4"><input type="checkbox" checked={f.activo} onChange={(e) => setF({ ...f, activo: e.target.checked })} /> Activo</label>
         <Acciones onClose={onClose} onSave={guardar} guardando={guardando} />
       </div>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth";
 import { ensureCatalogoTables } from "@/lib/catalogo-eventos";
+import { normalizarComposicion } from "../route";
 
 function toJsonArray(v: unknown): string | null {
   if (Array.isArray(v)) return v.length ? JSON.stringify(v) : null;
@@ -23,6 +24,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.nichos !== undefined) data.nichos = toJsonArray(body.nichos);
   if (body.frecuencia !== undefined) data.frecuencia = body.frecuencia === "ocasional" ? "ocasional" : "frecuente";
   if (body.productoId !== undefined) data.productoId = body.productoId || null;
+  if (body.composicion !== undefined) data.composicion = normalizarComposicion(body.composicion);
   if (body.imagenUrl !== undefined) data.imagenUrl = body.imagenUrl || null;
   if (body.orden !== undefined) data.orden = Number(body.orden) || 0;
   if (body.activo !== undefined) data.activo = !!body.activo;
