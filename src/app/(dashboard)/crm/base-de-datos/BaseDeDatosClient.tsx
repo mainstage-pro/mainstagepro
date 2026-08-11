@@ -8,6 +8,7 @@ import { PERFILES_POR_CATEGORIA, parsePerfiles, perfilesPorCategoriaCon, PERFIL_
 import { CopyButton } from "@/components/CopyButton";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
+import NuevaTareaModal from "../../operaciones/components/NuevaTareaModal";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -439,7 +440,7 @@ function FilterSelect({ label, value, onChange, options }: {
 function ContactoRow({
   c, usuarios, tab, actividadMap,
   onSaved, onVendedorChange, onDelete, deleting,
-  onConvertir, onReclasificar,
+  onConvertir, onReclasificar, onCrearTarea,
   empresaPopoverOpen, onEmpresaClick, empresaMode, setEmpresaMode,
   empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
   onVincularEmpresa, onCloseEmpresa,
@@ -455,6 +456,7 @@ function ContactoRow({
   onDelete: () => void; deleting: boolean;
   onConvertir: () => void;
   onReclasificar: (esProspecto: boolean) => void;
+  onCrearTarea: () => void;
   empresaPopoverOpen: boolean; onEmpresaClick: () => void;
   empresaMode: "view" | "search"; setEmpresaMode: (m: "view" | "search") => void;
   empresaSearch: string; setEmpresaSearch: (s: string) => void;
@@ -607,35 +609,25 @@ function ContactoRow({
       <td data-no-nav className="relative px-3 py-2.5 align-middle">
         <div className="absolute inset-y-0 right-0 flex items-center justify-end gap-1.5 pr-3 pl-14 bg-gradient-to-l from-[#111] from-60% to-transparent opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity">
           {tab === "prospectos" && (
-            <>
-              <button onClick={e => { e.stopPropagation(); onConvertir(); }}
-                className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-emerald-800/30 text-emerald-500/80 hover:text-emerald-400 hover:border-emerald-500/50 hover:bg-emerald-500/10 transition-all whitespace-nowrap">
-                → Cliente
-              </button>
-              <a href={`/crm/tratos/nuevo?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
-                className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
-                + Trato
-              </a>
-            </>
-          )}
-          {tab === "clientes" && (
-            <a href={`/crm/tratos/nuevo?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
-              className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
-              + Trato
-            </a>
+            <button onClick={e => { e.stopPropagation(); onConvertir(); }}
+              className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-emerald-800/30 text-emerald-500/80 hover:text-emerald-400 hover:border-emerald-500/50 hover:bg-emerald-500/10 transition-all whitespace-nowrap">
+              → Cliente
+            </button>
           )}
           {tab === "sin-clasificar" && (
-            <>
-              <button onClick={e => { e.stopPropagation(); onReclasificar(false); }}
-                className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
-                → Cliente
-              </button>
-              <a href={`/crm/tratos/nuevo?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
-                className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
-                + Trato
-              </a>
-            </>
+            <button onClick={e => { e.stopPropagation(); onReclasificar(false); }}
+              className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
+              → Cliente
+            </button>
           )}
+          <a href={`/crm/tratos/nuevo?clienteId=${c.id}`} onClick={e => e.stopPropagation()}
+            className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-[#1e1e1e] text-[#888] hover:text-[#B3985B] hover:border-[#B3985B]/40 hover:bg-[#B3985B]/10 transition-all whitespace-nowrap">
+            + Trato
+          </a>
+          <button onClick={e => { e.stopPropagation(); onCrearTarea(); }}
+            className="cursor-pointer text-[10px] font-medium px-2 py-1 rounded-md border border-rose-900/30 text-rose-400/80 hover:text-rose-300 hover:border-rose-500/50 hover:bg-rose-500/10 transition-all whitespace-nowrap">
+            + Tarea
+          </button>
           <Link href={`/crm/clientes/${c.id}`} onClick={e => e.stopPropagation()}
             className="cursor-pointer p-1.5 rounded-md text-[#555] hover:text-[#B3985B] hover:bg-[#B3985B]/10 transition-all" title="Ver perfil">
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
@@ -804,7 +796,7 @@ function ModalNuevoContacto({ onClose, onCreado, usuarios, modo, perfilesCustom,
 
 function ContactList({
   contactos, usuarios, tab, actividadMap,
-  onSaved, onVendedorChange, onDelete, deletingId, onConvertir, onReclasificar,
+  onSaved, onVendedorChange, onDelete, deletingId, onConvertir, onReclasificar, onCrearTarea,
   empresaPopoverId, setEmpresaPopoverId, empresaMode, setEmpresaMode,
   empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
   handleVincularEmpresa, closeEmpresaPopover,
@@ -820,6 +812,7 @@ function ContactList({
   onDelete: (c: Contacto) => void; deletingId: string | null;
   onConvertir: (c: Contacto) => void;
   onReclasificar: (c: Contacto, esProspecto: boolean) => void;
+  onCrearTarea: (c: Contacto) => void;
   empresaPopoverId: string | null; setEmpresaPopoverId: (id: string | null) => void;
   empresaMode: "view" | "search"; setEmpresaMode: (m: "view" | "search") => void;
   empresaSearch: string; setEmpresaSearch: (s: string) => void;
@@ -869,6 +862,7 @@ function ContactList({
               deleting={deletingId === c.id}
               onConvertir={() => onConvertir(c)}
               onReclasificar={esp => onReclasificar(c, esp)}
+              onCrearTarea={() => onCrearTarea(c)}
               empresaPopoverOpen={empresaPopoverId === c.id}
               onEmpresaClick={() => {
                 if (empresaPopoverId === c.id) { setEmpresaPopoverId(null); return; }
@@ -1132,6 +1126,7 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
   const [sinClasificar, setSinClasificar] = useState<Contacto[]>(initSin);
   const [deletingId, setDeletingId]     = useState<string | null>(null);
   const [showModal, setShowModal]       = useState(false);
+  const [tareaModal, setTareaModal]     = useState<{ clienteId: string; clienteNombre: string } | null>(null);
 
   // Perfiles de prospecto: base (código) + personalizados (BD).
   const { custom: perfilesCustom, agregar: agregarPerfil } = usePerfilesCustom();
@@ -1324,6 +1319,7 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
     usuarios, tab, actividadMap,
     onSaved: actualizarCampos, onVendedorChange: actualizarVendedor, onDelete: eliminar, deletingId,
     onConvertir: convertirACliente, onReclasificar: reclasificar,
+    onCrearTarea: (c: Contacto) => setTareaModal({ clienteId: c.id, clienteNombre: c.nombre }),
     empresaPopoverId, setEmpresaPopoverId, empresaMode, setEmpresaMode,
     empresaSearch, setEmpresaSearch, empresaResults, empresaSearching,
     handleVincularEmpresa, closeEmpresaPopover,
@@ -1349,6 +1345,17 @@ export default function BaseDeDatosClient({ clientes: initClientes, prospectos: 
   return (
     <>
       {showModal && <ModalNuevoContacto onClose={() => setShowModal(false)} onCreado={onCreado} usuarios={usuarios} modo={modoRegistro} perfilesCustom={perfilesCustom} onPerfilCreado={agregarPerfil} />}
+
+      <NuevaTareaModal
+        open={tareaModal !== null}
+        onClose={() => setTareaModal(null)}
+        usuarios={usuarios}
+        tipoInicial="CLIENTE"
+        clienteIdInicial={tareaModal?.clienteId ?? null}
+        clienteNombre={tareaModal?.clienteNombre ?? null}
+        defaultArea="VENTAS"
+        onCreated={() => { setTareaModal(null); toast.success("Tarea agendada"); }}
+      />
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
