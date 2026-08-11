@@ -402,7 +402,7 @@ export default function ReporteVentasPage() {
               </div>
 
               {/* Conversión */}
-              <div className="ms-card flex flex-col justify-between">
+              <div className="ms-stat-card flex flex-col justify-between">
                 <div>
                   <div className="flex items-center gap-3 text-[#6b7280] mb-1">
                     <p className="text-xs uppercase tracking-wider font-semibold">Conversión</p>
@@ -431,7 +431,7 @@ export default function ReporteVentasPage() {
               </div>
 
               {/* Perdidos */}
-              <div className="ms-card flex flex-col justify-between">
+              <div className="ms-stat-card flex flex-col justify-between">
                 <div className="flex items-center gap-3 text-[#6b7280] mb-1">
                   <p className="text-xs uppercase tracking-wider font-semibold">Ventas perdidas</p>
                 </div>
