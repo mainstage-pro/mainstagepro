@@ -4198,6 +4198,41 @@ model FotoTipoEvento {
   @@map("fotos_tipo_evento")
 }
 
+// ─── CATÁLOGO DE TIPOS DE SERVICIO ────────────────────────────────────────────
+// Renta de equipo, producción técnica, dirección técnica y operación técnica.
+// Espeja a TipoEvento: alimenta las galerías/presentaciones de servicios con
+// fotos y descripciones (algunas generadas con IA) preseleccionadas.
+
+model TipoServicio {
+  id          String             @id @default(cuid())
+  slug        String             @unique // "renta" | "produccion-tecnica" | "direccion-tecnica" | "operacion-tecnica"
+  nombre      String                     // "Renta de equipo"
+  emoji       String?
+  subtitulo   String?                    // tagline
+  descripcion String?            @db.Text // base/copy larga del servicio
+  orden       Int                @default(0)
+  activo      Boolean            @default(true)
+  fotos       FotoTipoServicio[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@map("tipos_servicio")
+}
+
+model FotoTipoServicio {
+  id             String       @id @default(cuid())
+  tipoServicioId String
+  tipoServicio   TipoServicio @relation(fields: [tipoServicioId], references: [id], onDelete: Cascade)
+  url            String                   // blob URL o ruta en /public
+  caption        String?
+  orden          Int          @default(0)
+  destacada      Boolean      @default(false) // "los mejores" — preseleccionadas para el hero
+  createdAt      DateTime     @default(now())
+
+  @@index([tipoServicioId])
+  @@map("fotos_tipo_servicio")
+}
+
 // Perfiles de prospecto personalizados (los 13 base viven en src/lib/proceso/perfiles.ts).
 // Se agregan cuando un contacto no encaja en ningún perfil base; categoria = tipoEvento.
 model PerfilProspecto {

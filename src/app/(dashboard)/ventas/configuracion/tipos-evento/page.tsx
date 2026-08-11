@@ -112,11 +112,102 @@ export default function TiposEventoConfigPage() {
           <TipoCard key={tipo.id} tipo={tipo} onChange={load} />
         ))}
       </div>
+
+      {/* Tipos de servicio: renta, producción, dirección y operación técnica */}
+      <TiposServicioSection />
     </div>
   );
 }
 
-function TipoCard({ tipo, onChange }: { tipo: Tipo; onChange: () => void }) {
+// ── Tipos de servicio (renta de equipo, producción/dirección/operación técnica) ─
+function TiposServicioSection() {
+  const [tipos, setTipos] = useState<Tipo[] | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [nuevoNombre, setNuevoNombre] = useState("");
+
+  const load = useCallback(async () => {
+    const r = await fetch("/api/tipos-servicio");
+    const d = await r.json();
+    setTipos(d.tipos ?? []);
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
+
+  async function crearTipo() {
+    if (!nuevoNombre.trim()) return;
+    setCreating(true);
+    const r = await fetch("/api/tipos-servicio", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre: nuevoNombre.trim(), orden: tipos?.length ?? 0 }),
+    });
+    setCreating(false);
+    if (r.ok) {
+      setNuevoNombre("");
+      load();
+    } else {
+      const d = await r.json().catch(() => ({}));
+      alert(d.error ?? "No se pudo crear");
+    }
+  }
+
+  return (
+    <div className="mt-12 border-t border-[#1a1a1a] pt-8">
+      <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider mb-1">Tipos de servicio</h2>
+      <p className="text-gray-400 text-sm mb-5">
+        Renta de equipo, producción técnica, dirección técnica y operación técnica. Cárgales fotos y genera la descripción con IA; alimentan las galerías y presentaciones de servicios.
+      </p>
+
+      <div className="ms-card p-4 mb-6 flex items-end gap-3">
+        <div className="flex-1">
+          <label className="block text-xs text-gray-400 mb-1">Nuevo tipo de servicio</label>
+          <input
+            value={nuevoNombre}
+            onChange={(e) => setNuevoNombre(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") crearTipo(); }}
+            placeholder="Ej: Operación técnica"
+            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+          />
+        </div>
+        <button
+          onClick={crearTipo}
+          disabled={creating || !nuevoNombre.trim()}
+          className="px-4 py-2 rounded-lg text-sm font-medium bg-[#B3985B] text-black disabled:opacity-40 hover:opacity-90 transition-opacity"
+        >
+          {creating ? "Creando…" : "Agregar"}
+        </button>
+      </div>
+
+      {tipos === null ? (
+        <p className="text-xs text-gray-600 py-3">Cargando…</p>
+      ) : (
+        <div className="space-y-4">
+          {tipos.length === 0 && (
+            <p className="text-gray-500 text-sm text-center py-8">Aún no hay tipos de servicio. Crea el primero arriba.</p>
+          )}
+          {tipos.map((tipo) => (
+            <TipoCard key={tipo.id} tipo={tipo} onChange={load} apiBase="/api/tipos-servicio" aiEnabled />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TipoCard({
+  tipo,
+  onChange,
+  apiBase = "/api/tipos-evento",
+  aiEnabled = false,
+}: {
+  tipo: Tipo;
+  onChange: () => void;
+  apiBase?: string;
+  aiEnabled?: boolean;
+}) {
   const [form, setForm] = useState({
     nombre: tipo.nombre,
     emoji: tipo.emoji ?? "",
@@ -128,6 +219,7 @@ function TipoCard({ tipo, onChange }: { tipo: Tipo; onChange: () => void }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [generando, setGenerando] = useState(false);
   const [fotos, setFotos] = useState<Foto[]>(tipo.fotos);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
 
@@ -151,7 +243,7 @@ function TipoCard({ tipo, onChange }: { tipo: Tipo; onChange: () => void }) {
     setFotos(arr.map((f, i) => ({ ...f, orden: i })));
     Promise.all(
       patches.map((p) =>
-        fetch(`/api/tipos-evento/fotos/${p.id}`, {
+        fetch(`${apiBase}/fotos/${p.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ orden: p.orden }),
@@ -163,7 +255,7 @@ function TipoCard({ tipo, onChange }: { tipo: Tipo; onChange: () => void }) {
   async function guardar() {
     setSaving(true);
     setSaved(false);
-    const r = await fetch(`/api/tipos-evento/${tipo.id}`, {
+    const r = await fetch(`${apiBase}/${tipo.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -184,7 +276,7 @@ function TipoCard({ tipo, onChange }: { tipo: Tipo; onChange: () => void }) {
 
   async function eliminarTipo() {
     if (!confirm(`¿Eliminar "${tipo.nombre}" y todas sus fotos?`)) return;
-    await fetch(`/api/tipos-evento/${tipo.id}`, { method: "DELETE" });
+    await fetch(`${apiBase}/${tipo.id}`, { method: "DELETE" });
     onChange();
   }
 
@@ -196,9 +288,9 @@ function TipoCard({ tipo, onChange }: { tipo: Tipo; onChange: () => void }) {
         const file = files[i];
         const blob = await upload(file.name, file, {
           access: "public",
-          handleUploadUrl: "/api/tipos-evento/imagenes",
+          handleUploadUrl: `${apiBase}/imagenes`,
         });
-        await fetch(`/api/tipos-evento/${tipo.id}/fotos`, {
+        await fetch(`${apiBase}/${tipo.id}/fotos`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url: blob.url, orden: tipo.fotos.length + i }),
@@ -209,6 +301,27 @@ function TipoCard({ tipo, onChange }: { tipo: Tipo; onChange: () => void }) {
       alert("Error al subir: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function generarDescripcion() {
+    setGenerando(true);
+    try {
+      const r = await fetch(`${apiBase}/${tipo.id}/generar-descripcion`, { method: "POST" });
+      const d = await r.json();
+      if (!r.ok) {
+        alert(d.error ?? "No se pudo generar");
+        return;
+      }
+      setForm((f) => ({
+        ...f,
+        subtitulo: d.subtitulo || f.subtitulo,
+        descripcion: d.descripcion || f.descripcion,
+      }));
+    } catch (err) {
+      alert("Error al generar: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setGenerando(false);
     }
   }
 
@@ -263,12 +376,23 @@ function TipoCard({ tipo, onChange }: { tipo: Tipo; onChange: () => void }) {
       </div>
 
       <div className="mb-4">
-        <label className="block text-xs text-gray-400 mb-1">Descripción / base</label>
+        <div className="flex items-center justify-between mb-1">
+          <label className="block text-xs text-gray-400">Descripción / base</label>
+          {aiEnabled && (
+            <button
+              onClick={generarDescripcion}
+              disabled={generando}
+              className="text-[11px] px-2.5 py-1 rounded-lg border border-[#B3985B]/50 text-[#B3985B] hover:bg-[#B3985B]/10 disabled:opacity-40 transition-colors"
+            >
+              {generando ? "Generando…" : "✨ Generar con IA"}
+            </button>
+          )}
+        </div>
         <textarea
           value={form.descripcion}
           onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
           rows={3}
-          placeholder="Texto base que describe este tipo de evento para las presentaciones."
+          placeholder="Texto base que describe este servicio para las presentaciones."
           className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] resize-y"
         />
       </div>
@@ -297,6 +421,7 @@ function TipoCard({ tipo, onChange }: { tipo: Tipo; onChange: () => void }) {
                 foto={foto}
                 index={i}
                 esPortada={i === 0}
+                apiBase={apiBase}
                 onChange={onChange}
                 onHacerPortada={() => moverFoto(i, 0)}
                 onDragStart={() => setDragIdx(i)}
@@ -328,6 +453,7 @@ function FotoTile({
   foto,
   index,
   esPortada,
+  apiBase,
   onChange,
   onHacerPortada,
   onDragStart,
@@ -338,6 +464,7 @@ function FotoTile({
   foto: Foto;
   index: number;
   esPortada: boolean;
+  apiBase: string;
   onChange: () => void;
   onHacerPortada: () => void;
   onDragStart: () => void;
@@ -348,7 +475,7 @@ function FotoTile({
   const [caption, setCaption] = useState(foto.caption ?? "");
 
   async function toggleDestacada() {
-    await fetch(`/api/tipos-evento/fotos/${foto.id}`, {
+    await fetch(`${apiBase}/fotos/${foto.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ destacada: !foto.destacada }),
@@ -358,7 +485,7 @@ function FotoTile({
 
   async function guardarCaption() {
     if (caption === (foto.caption ?? "")) return;
-    await fetch(`/api/tipos-evento/fotos/${foto.id}`, {
+    await fetch(`${apiBase}/fotos/${foto.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ caption: caption || null }),
@@ -367,7 +494,7 @@ function FotoTile({
 
   async function eliminar() {
     if (!confirm("¿Eliminar esta foto?")) return;
-    await fetch(`/api/tipos-evento/fotos/${foto.id}`, { method: "DELETE" });
+    await fetch(`${apiBase}/fotos/${foto.id}`, { method: "DELETE" });
     onChange();
   }
 
