@@ -710,10 +710,16 @@ export function ProductosSection() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error((await res.json()).error || "Error");
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Error");
       toast.success(editId ? "Producto actualizado." : "Producto creado.");
       setModalOpen(false);
-      cargar();
+      // Actualizamos en sitio para no recargar la lista ni perder la posición de scroll.
+      if (json.producto) {
+        setProductos((prev) =>
+          editId ? prev.map((p) => (p.id === editId ? json.producto : p)) : [...prev, json.producto]
+        );
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo guardar.");
     } finally {
@@ -907,6 +913,7 @@ export function ProductosSection() {
                 <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
                   <th className="text-left px-4 py-2.5 font-medium">Producto</th>
                   <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Equipos que lo componen</th>
+                  <th className="text-left px-3 py-2.5 font-medium hidden sm:table-cell">Tipo de evento</th>
                   <th className="text-center px-3 py-2.5 font-medium hidden sm:table-cell">Nº eq</th>
                   <th className="text-right px-3 py-2.5 font-medium">Precio</th>
                   <th className="px-3 py-2.5" />
@@ -916,7 +923,7 @@ export function ProductosSection() {
                 {porCategoria.map(({ cat, items }) => (
                   <Fragment key={`cat-${cat}`}>
                     <tr className="border-t border-[#1a1a1a]">
-                      <td colSpan={5} className="px-4 py-1.5 bg-[#0d0d0d]">
+                      <td colSpan={6} className="px-4 py-1.5 bg-[#0d0d0d]">
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">{cat}</span>
                           <span className="text-[#333] text-[10px]">({items.length})</span>
@@ -947,6 +954,30 @@ export function ProductosSection() {
                           <p className="text-[#6b7280] truncate max-w-[320px]">
                             {p.items.map((it) => `${it.cantidad}× ${nombreEq(it.equipo)}`).join(", ")}
                           </p>
+                        </td>
+                        <td className="px-3 py-2.5 hidden sm:table-cell">
+                          {(() => {
+                            const tipos = parseTags(p.tiposEvento);
+                            if (tipos.length === 0) return <span className="text-[#333]">—</span>;
+                            return (
+                              <div className="flex flex-wrap gap-1">
+                                {tipos.map((t) => {
+                                  const tipo = TIPOS_EVENTO.find((x) => x.key === t);
+                                  if (!tipo) return null;
+                                  const Icon = tipo.icon;
+                                  return (
+                                    <span
+                                      key={t}
+                                      className="inline-flex items-center gap-1 rounded-full bg-[#1a1a1a] px-2 py-0.5 text-[10px] text-gray-300"
+                                    >
+                                      <Icon strokeWidth={1.75} className="w-3 h-3 text-[#B3985B]" />
+                                      {tipo.label}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="px-3 py-2.5 text-center hidden sm:table-cell text-white tabular-nums">
                           {p.items.length}
