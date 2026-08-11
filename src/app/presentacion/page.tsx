@@ -1,5 +1,6 @@
 import PresentacionHomeClient from "./PresentacionHomeClient";
 import { getPresentationMetadata } from "@/lib/metadata";
+import { getOverrides } from "@/lib/presentacion-overrides";
 
 export const metadata = getPresentationMetadata({
   title: "Mainstage Pro · Producción técnica de eventos",
@@ -7,8 +8,11 @@ export const metadata = getPresentationMetadata({
   path: "/presentacion",
 });
 
-export const dynamic = "force-static";
+// Dinámica para leer los overrides (imágenes/textos elegidos) en el servidor y
+// sembrarlos en la primera pintura. Antes era force-static y por eso parpadeaba.
+export const dynamic = "force-dynamic";
 
-export default function PresentacionHomePage() {
-  return <PresentacionHomeClient />;
+export default async function PresentacionHomePage() {
+  const initialOverrides = await getOverrides().catch(() => ({}));
+  return <PresentacionHomeClient initialOverrides={initialOverrides} />;
 }

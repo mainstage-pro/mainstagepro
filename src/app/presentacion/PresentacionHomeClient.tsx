@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import type { Proyecto } from "@/lib/proyectos";
 import { SERVICIOS_DETALLE } from "@/lib/presentacion-servicios";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import { R, StatCount, GOLD } from "@/components/presentacion/anim";
@@ -21,26 +20,10 @@ const EVENTOS = [
   { slug: "empresarial", title: "Eventos empresariales", sub: "Conferencias · Lanzamientos · Corporativos", img: "/images/presentacion/empresariales/e-sala-pantallas.jpg", href: "/presentacion/evento/empresarial", para: "Empresas · Agencias" },
 ];
 
-const TIPO_LABEL: Record<string, string> = { MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial" };
-
-function useProyectos() {
-  const [proyectos, setProyectos] = useState<Proyecto[]>([]);
-  useEffect(() => {
-    let ok = true;
-    fetch("/api/proyectos/publico")
-      .then((r) => r.json())
-      .then((d) => { if (ok && Array.isArray(d?.proyectos)) setProyectos(d.proyectos); })
-      .catch(() => {});
-    return () => { ok = false; };
-  }, []);
-  return proyectos;
-}
-
-export default function PresentacionHomeClient() {
+export default function PresentacionHomeClient({ initialOverrides = {} }: { initialOverrides?: Record<string, string> }) {
   const [heroIdx, setHeroIdx] = useState(0);
-  const proyectos = useProyectos();
   const { iniciar, loading } = useDescubrimiento();
-  const edit = usePresentacionEdit();
+  const edit = usePresentacionEdit(initialOverrides);
   const { coverPorSlug } = useTiposEventoMaterial();
 
   useEffect(() => {
@@ -285,42 +268,6 @@ export default function PresentacionHomeClient() {
         </div>
       </section>
 
-      {/* ── Proyectos ── */}
-      {proyectos.length > 0 && (
-        <section id="proyectos" className="py-24 px-6 bg-[#060606]">
-          <div className="max-w-6xl mx-auto">
-            <R>
-              <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-4">Proyectos</p>
-              <h2 className="font-bold text-white leading-tight mb-12" style={{ fontSize: "clamp(1.5rem,3.3vw,2.5rem)", letterSpacing: "-0.02em" }}>
-                Eventos que hemos producido
-              </h2>
-            </R>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {proyectos.slice(0, 6).map((p, i) => (
-                <R key={p.id} delay={i * 80}>
-                  <a href={`/presentacion/proyecto/${p.slug}`} className="group block relative rounded-2xl overflow-hidden h-full" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                    <div className="relative overflow-hidden" style={{ height: "220px" }}>
-                      {p.portada ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={p.portada} alt={p.titulo} draggable={false} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                      ) : (
-                        <div className="w-full h-full" style={{ background: "rgba(255,255,255,0.03)" }} />
-                      )}
-                      <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.6), transparent 60%)" }} />
-                    </div>
-                    <div className="p-6">
-                      <p className="text-[#B3985B] text-[10px] tracking-[0.16em] uppercase mb-2">{TIPO_LABEL[p.tipoEvento] ?? p.tipoEvento}</p>
-                      <h3 className="font-bold text-white text-lg leading-tight mb-1">{p.titulo}</h3>
-                      {p.ubicacion && <p className="text-white/40 text-xs">{p.ubicacion}</p>}
-                    </div>
-                  </a>
-                </R>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
-
       {/* ── Pilares ── */}
       <section className="py-24 px-6">
         <div className="max-w-3xl mx-auto text-center">
@@ -407,31 +354,22 @@ export default function PresentacionHomeClient() {
           <div>
             <R>
               <p className="text-[#B3985B] text-sm tracking-[0.2em] uppercase mb-4">Zonas de servicio</p>
-              <h2 className="font-bold text-white leading-tight mb-10" style={{ fontSize: "clamp(1.6rem,3.5vw,2.4rem)", letterSpacing: "-0.02em" }}>
+              <h2 className="font-bold text-white leading-tight mb-6" style={{ fontSize: "clamp(1.6rem,3.5vw,2.4rem)", letterSpacing: "-0.02em" }}>
                 Dónde trabajamos
               </h2>
             </R>
             <R delay={80}>
-              <div className="border-t border-white/[0.06]">
-                {[
-                  { ciudad: "Querétaro", detalle: "Base de operaciones", primary: true },
-                  { ciudad: "León", detalle: "El Bajío", primary: true },
-                  { ciudad: "San Miguel de Allende", detalle: "Guanajuato", primary: false },
-                  { ciudad: "Ciudad de México", detalle: "CDMX y ZMVM", primary: true },
-                  { ciudad: "Puebla", detalle: "Puebla · Tlaxcala", primary: false },
-                ].map((z, i) => (
-                  <div key={i} className="flex items-center justify-between py-4 border-b border-white/[0.06]">
-                    <div className="flex items-center gap-3">
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${z.primary ? "bg-[#B3985B]" : "bg-white/20"}`} />
-                      <span className={`font-semibold tracking-tight ${z.primary ? "text-white" : "text-white/50"}`} style={{ fontSize: "clamp(1rem,2vw,1.2rem)" }}>{z.ciudad}</span>
-                    </div>
-                    <span className="text-white/30 text-xs">{z.detalle}</span>
-                  </div>
+              <div className="flex flex-wrap gap-2.5">
+                {["Querétaro", "León", "San Miguel de Allende", "Ciudad de México", "Puebla"].map((ciudad) => (
+                  <span key={ciudad} className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-white/80" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#B3985B]" />
+                    {ciudad}
+                  </span>
                 ))}
               </div>
             </R>
             <R delay={160}>
-              <p className="text-white/25 text-xs leading-relaxed mt-6">
+              <p className="text-white/25 text-xs leading-relaxed mt-5">
                 ¿Tu evento es fuera de estas ciudades? Nos desplazamos a cualquier punto de la República.
               </p>
             </R>

@@ -15,10 +15,14 @@ export type EditCtx = {
   save: (key: string, value: string | null) => Promise<void>;
 };
 
-export function usePresentacionEdit(): EditCtx {
+export function usePresentacionEdit(initialOverrides: Record<string, string> = {}): EditCtx {
   const [isAdmin, setIsAdmin] = useState(false);
-  const [overrides, setOverrides] = useState<Record<string, string>>({});
-  const [loaded, setLoaded] = useState(false);
+  // Sembramos el estado con los overrides que el servidor ya resolvió (SSR), para
+  // que la primera pintura muestre las imágenes elegidas y no las de fallback.
+  // Sin esto, la vista parpadea: se ve la imagen vieja hasta que el fetch cliente
+  // termina y la reemplaza por la elegida.
+  const [overrides, setOverrides] = useState<Record<string, string>>(initialOverrides);
+  const [loaded, setLoaded] = useState(true);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -28,8 +32,7 @@ export function usePresentacionEdit(): EditCtx {
     fetch("/api/presentacion/overrides")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d?.overrides) setOverrides(d.overrides); })
-      .catch(() => {})
-      .finally(() => setLoaded(true));
+      .catch(() => {});
   }, []);
 
   const get = useCallback(

@@ -17,9 +17,9 @@ const RENTA_CATEGORIAS: { label: string; Icon: LucideIcon }[] = [
   { label: "Cableado y energía", Icon: Cable },
 ];
 
-export default function ServicioClient({ servicio }: { servicio: ServicioDetalle }) {
+export default function ServicioClient({ servicio, initialOverrides = {} }: { servicio: ServicioDetalle; initialOverrides?: Record<string, string> }) {
   const { iniciar, loading } = useDescubrimiento();
-  const edit = usePresentacionEdit();
+  const edit = usePresentacionEdit(initialOverrides);
   const otros = SERVICIOS_DETALLE.filter((s) => s.slug !== servicio.slug);
   const esRenta = servicio.slug === "renta";
 

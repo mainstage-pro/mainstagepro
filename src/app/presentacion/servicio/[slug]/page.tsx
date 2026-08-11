@@ -1,11 +1,8 @@
 import { notFound } from "next/navigation";
-import { getServicio, SERVICIOS_DETALLE } from "@/lib/presentacion-servicios";
+import { getServicio } from "@/lib/presentacion-servicios";
 import { getPresentationMetadata } from "@/lib/metadata";
+import { getOverrides } from "@/lib/presentacion-overrides";
 import ServicioClient from "./ServicioClient";
-
-export function generateStaticParams() {
-  return SERVICIOS_DETALLE.map((s) => ({ slug: s.slug }));
-}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -25,11 +22,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   });
 }
 
-export const dynamic = "force-static";
+// Dinámica para sembrar los overrides (imágenes/textos elegidos) en la primera
+// pintura desde el servidor y evitar el parpadeo de las imágenes de fallback.
+export const dynamic = "force-dynamic";
 
 export default async function ServicioPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const servicio = getServicio(slug);
   if (!servicio) notFound();
-  return <ServicioClient servicio={servicio} />;
+  const initialOverrides = await getOverrides().catch(() => ({}));
+  return <ServicioClient servicio={servicio} initialOverrides={initialOverrides} />;
 }

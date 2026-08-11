@@ -1,13 +1,12 @@
 import { notFound } from "next/navigation";
 import EventoClient from "./EventoClient";
 import { getPresentationMetadata } from "@/lib/metadata";
+import { getOverrides } from "@/lib/presentacion-overrides";
 import { Metadata } from "next";
 
-export function generateStaticParams() {
-  return [{ tipo: "musical" }, { tipo: "social" }, { tipo: "empresarial" }];
-}
-
-export const dynamic = "force-static";
+// Dinámica para sembrar los overrides (imágenes/textos elegidos) en la primera
+// pintura desde el servidor y evitar el parpadeo de las imágenes de fallback.
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ tipo: string }> }): Promise<Metadata> {
   const { tipo } = await params;
@@ -35,5 +34,6 @@ export async function generateMetadata({ params }: { params: Promise<{ tipo: str
 export default async function EventoPage({ params }: { params: Promise<{ tipo: string }> }) {
   const { tipo } = await params;
   if (!["musical", "social", "empresarial"].includes(tipo)) notFound();
-  return <EventoClient tipo={tipo as "musical" | "social" | "empresarial"} />;
+  const initialOverrides = await getOverrides().catch(() => ({}));
+  return <EventoClient tipo={tipo as "musical" | "social" | "empresarial"} initialOverrides={initialOverrides} />;
 }

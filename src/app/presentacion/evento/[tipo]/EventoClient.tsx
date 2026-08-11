@@ -7,7 +7,6 @@ import {
   Building2, Megaphone, CalendarCheck, Building, School, Mic,
   type LucideIcon,
 } from "lucide-react";
-import type { Proyecto } from "@/lib/proyectos";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import { usePresentacionEdit, EditableImage } from "@/components/presentacion/editable";
 import { useTiposEventoMaterial } from "@/lib/tipos-evento-cliente";
@@ -320,99 +319,6 @@ function useGaleria(slug: EventoTipo, fallback: { src: string; caption: string }
   }, [slug]);
   useEffect(() => { cargar(); }, [cargar]);
   return { fotos, tipoId, setTipoId, recargar: cargar };
-}
-
-// Carga los proyectos publicados para este tipo de evento.
-function useProyectos(tipo: EventoTipo) {
-  const [proyectos, setProyectos] = useState<Proyecto[]>([]);
-  useEffect(() => {
-    fetch(`/api/proyectos/publico?tipo=${TIPO_EVENTO_MAP[tipo]}`)
-      .then(r => (r.ok ? r.json() : null))
-      .then(d => { if (Array.isArray(d?.proyectos)) setProyectos(d.proyectos); })
-      .catch(() => {});
-  }, [tipo]);
-  return proyectos;
-}
-
-function ProyectosSection({ proyectos, isAdmin, tipo }: { proyectos: Proyecto[]; isAdmin: boolean; tipo: EventoTipo }) {
-  const [creando, setCreando] = useState(false);
-  if (!proyectos.length && !isAdmin) return null;
-
-  async function crear() {
-    setCreando(true);
-    try {
-      const r = await fetch("/api/presentacion/proyectos", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipoEvento: TIPO_EVENTO_MAP[tipo], titulo: "Nuevo proyecto" }),
-      });
-      const d = await r.json();
-      if (d.proyecto?.slug) { window.location.href = `/presentacion/proyecto/${d.proyecto.slug}`; return; }
-      throw new Error(d.error || "No se pudo crear");
-    } catch (err) {
-      setCreando(false);
-      alert("Error al crear proyecto: " + (err instanceof Error ? err.message : String(err)));
-    }
-  }
-
-  return (
-    <section id="proyectos" className="py-32 px-6">
-      <div className="max-w-6xl mx-auto">
-        <R>
-          <div className="flex flex-wrap items-end justify-between gap-4 mb-4">
-            <div>
-              <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-5">Proyectos</p>
-              <h2 className="font-bold text-white leading-[1.05]" style={{ fontSize: "clamp(1.8rem, 4vw, 3rem)", letterSpacing: "-0.025em" }}>
-                Eventos que ya resolvimos.
-              </h2>
-            </div>
-            {isAdmin && (
-              <button onClick={crear} disabled={creando}
-                className="text-xs font-semibold tracking-wide px-5 py-2.5 rounded-full transition-all disabled:opacity-50"
-                style={{ background: "rgba(179,152,91,0.12)", border: `1px solid ${GOLD}55`, color: GOLD }}>
-                {creando ? "Creando…" : "＋ Nuevo proyecto"}
-              </button>
-            )}
-          </div>
-          <p className="text-white/40 text-sm sm:text-base leading-relaxed max-w-2xl mb-14">
-            Una muestra de cómo trabajamos, del reto a la ejecución. Cada proyecto con su historia.
-          </p>
-        </R>
-
-        {proyectos.length === 0 && isAdmin && (
-          <p className="text-white/30 text-sm">Aún no hay proyectos de este tipo. Crea el primero con el botón de arriba.</p>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {proyectos.map((p, i) => (
-            <R key={p.id} delay={i * 70}>
-              <a href={`/presentacion/proyecto/${p.slug}`}
-                 className="group block h-full rounded-3xl overflow-hidden transition-all duration-500"
-                 style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
-                <div className="relative aspect-[4/3] overflow-hidden">
-                  {p.portada ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img src={p.portada} alt={p.titulo} draggable={false}
-                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                  ) : (
-                    <div className="w-full h-full" style={{ background: "radial-gradient(circle at 30% 20%, rgba(179,152,91,0.22), #0c0c0c 65%)" }} />
-                  )}
-                  <div className="absolute inset-0" style={{ background: "linear-gradient(to top, rgba(8,8,8,0.75), transparent 55%)" }} />
-                </div>
-                <div className="p-6">
-                  {p.ubicacion && <p className="text-[11px] uppercase tracking-[0.14em] text-white/30 mb-2">{p.ubicacion}{p.fecha ? ` · ${p.fecha}` : ""}</p>}
-                  <h3 className="font-semibold text-white leading-snug mb-2" style={{ fontSize: "1.15rem", letterSpacing: "-0.01em" }}>{p.titulo}</h3>
-                  {p.resumen && <p className="text-white/45 text-sm leading-relaxed line-clamp-2">{p.resumen}</p>}
-                  <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium transition-transform duration-300 group-hover:translate-x-1" style={{ color: GOLD }}>
-                    Ver proyecto <span aria-hidden>→</span>
-                  </span>
-                </div>
-              </a>
-            </R>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
 }
 
 function R({ children, delay = 0, y = 32, className = "" }: { children: React.ReactNode; delay?: number; y?: number; className?: string }) {
@@ -750,13 +656,12 @@ function ContactForm({ tipo }: { tipo: EventoTipo }) {
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
-export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
+export default function EventoClient({ tipo, initialOverrides = {} }: { tipo: EventoTipo; initialOverrides?: Record<string, string> }) {
   const c = CONFIG[tipo];
   const isAdmin  = useAdmin();
-  const edit = usePresentacionEdit();
+  const edit = usePresentacionEdit(initialOverrides);
   const { coverPorSlug } = useTiposEventoMaterial();
   const { fotos, tipoId, setTipoId, recargar } = useGaleria(tipo, c.gallery);
-  const proyectos = useProyectos(tipo);
 
   const [discOpen, setDiscOpen]       = useState(false);
   const [discServicio, setDiscServicio] = useState<string | null>(null);
@@ -974,9 +879,6 @@ export default function EventoClient({ tipo }: { tipo: EventoTipo }) {
       <section>
         <CinematicGallery photos={fotos} />
       </section>
-
-      {/* ── Proyectos ── */}
-      <ProyectosSection proyectos={proyectos} isAdmin={isAdmin} tipo={tipo} />
 
       {/* ── Qué necesitamos para cotizar ── */}
       <section className="py-32 px-6 bg-[#060606]">
