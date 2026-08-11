@@ -77,8 +77,8 @@ export default function GaleriaHubClient({
           </p>
           <h1 className="font-bold text-white leading-tight"
               style={{ fontSize: "clamp(2.4rem, 6vw, 5rem)", letterSpacing: "-0.03em", animation: "fadeUp 0.95s ease forwards 0.4s", opacity: 0 }}>
-            Un poco de las experiencias<br />
-            <span style={{ color: "rgba(255,255,255,0.4)" }}>que creamos en Mainstage Pro.</span>
+            Experiencias<br />
+            <span style={{ color: "rgba(255,255,255,0.4)" }}>que creamos.</span>
           </h1>
           <p className="text-white/50 mt-7 text-sm sm:text-base leading-relaxed max-w-xl mx-auto"
              style={{ animation: "fadeUp 0.95s ease forwards 0.65s", opacity: 0 }}>
