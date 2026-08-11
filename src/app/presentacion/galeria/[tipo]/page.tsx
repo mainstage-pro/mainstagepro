@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import GaleriaClient from "../GaleriaClient";
+import GaleriaTipoClient from "./GaleriaTipoClient";
 import { getPresentationMetadata } from "@/lib/metadata";
 import { getGaleriaData } from "@/lib/tipos-evento";
 import { Metadata } from "next";
@@ -33,6 +33,7 @@ export async function generateMetadata({ params }: { params: Promise<{ tipo: str
 export default async function GaleriaTipoPage({ params }: { params: Promise<{ tipo: string }> }) {
   const { tipo } = await params;
   if (!TIPOS.includes(tipo as (typeof TIPOS)[number])) notFound();
-  const { categorias, heroSlides } = await getGaleriaData(tipo);
-  return <GaleriaClient soloSlug={tipo} initialCategorias={categorias} initialHeroSlides={heroSlides} />;
+  // Todas las categorías para poder enlazar a las otras galerías desde el pie.
+  const { categorias } = await getGaleriaData();
+  return <GaleriaTipoClient slug={tipo as (typeof TIPOS)[number]} initialCategorias={categorias} />;
 }

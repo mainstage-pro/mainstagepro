@@ -1,4 +1,4 @@
-import GaleriaClient from "./GaleriaClient";
+import GaleriaHubClient from "./GaleriaHubClient";
 import { getPresentationMetadata } from "@/lib/metadata";
 import { getGaleriaData } from "@/lib/tipos-evento";
 
@@ -15,5 +15,5 @@ export const dynamic = "force-dynamic";
 
 export default async function GaleriaPage() {
   const { categorias, heroSlides } = await getGaleriaData();
-  return <GaleriaClient initialCategorias={categorias} initialHeroSlides={heroSlides} />;
+  return <GaleriaHubClient initialCategorias={categorias} initialHeroSlides={heroSlides} />;
 }

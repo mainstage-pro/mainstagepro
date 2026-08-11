@@ -30,6 +30,61 @@ export function familiaTipo(s: string): string {
   return x;
 }
 
+// Respaldo con las imágenes de /public. Solo aplica cuando la BD aún no tiene
+// tipos con fotos (local o entorno recién sembrado); en producción manda la BD.
+export const FALLBACK_CATEGORIAS: GaleriaCategoria[] = [
+  {
+    id: "musical",
+    label: "Eventos Musicales",
+    sub: "Conciertos · Festivales · DJ Sets · Shows en vivo",
+    cover: "/images/presentacion/musicales/Musicales-076.jpg",
+    fotos: [
+      { src: "/images/presentacion/musicales/Musicales-016.jpg", caption: "Producción completa en vivo" },
+      { src: "/images/presentacion/musicales/Musicales-037.jpg", caption: "Iluminación · Show en escenario" },
+      { src: "/images/presentacion/musicales/Musicales-076.jpg", caption: "DJ Set · Equipo profesional" },
+      { src: "/images/presentacion/musicales/MAGIC_ROOM_260307_GUANAJUATO_078.jpg", caption: "Festival · Guanajuato" },
+      { src: "/images/presentacion/musicales/Musicales-055.jpg", caption: "Producción de luz · Efectos especiales" },
+      { src: "/images/presentacion/musicales/Afrodise-59.jpg", caption: "Stage completo · Noche" },
+      { src: "/images/presentacion/musicales/DSC07491.jpg", caption: "En vivo · Operación técnica" },
+      { src: "/images/presentacion/musicales/Musicales-126.jpg", caption: "Show · Producción audiovisual" },
+    ],
+  },
+  {
+    id: "social",
+    label: "Eventos Sociales",
+    sub: "Bodas · XV Años · Celebraciones privadas",
+    cover: "/images/presentacion/sociales/s-boda-elegante.jpg",
+    fotos: [
+      { src: "/images/presentacion/sociales/s-boda-elegante.jpg", caption: "Boda · Producción exterior elegante" },
+      { src: "/images/presentacion/sociales/s-dj-salon.png", caption: "DJ · Ambiente de salón" },
+      { src: "/images/presentacion/sociales/s-hacienda-iluminada.jpg", caption: "Hacienda · Iluminación dramática" },
+      { src: "/images/presentacion/sociales/s-boda-colonial.jpg", caption: "Boda · Venue colonial" },
+      { src: "/images/presentacion/sociales/s-piano-pista.jpg", caption: "Piano · Pista espejada" },
+      { src: "/images/presentacion/sociales/s-hacienda-aerea.jpg", caption: "Vista aérea · Iluminación completa" },
+    ],
+  },
+  {
+    id: "empresarial",
+    label: "Eventos Empresariales",
+    sub: "Conferencias · Lanzamientos · Corporativos",
+    cover: "/images/presentacion/empresariales/e-auditorio.jpg",
+    fotos: [
+      { src: "/images/presentacion/empresariales/e-auditorio.jpg", caption: "Auditorio · Producción completa" },
+      { src: "/images/presentacion/empresariales/e-sala-pantallas.jpg", caption: "Sala · Conferencia profesional" },
+      { src: "/images/presentacion/empresariales/e-carpa-led.jpg", caption: "Carpa · Pantalla LED exterior" },
+      { src: "/images/presentacion/empresariales/e-networking.jpg", caption: "Networking · Ambiente corporativo" },
+      { src: "/images/presentacion/empresariales/e-edificio-azul.jpg", caption: "Inauguración · Iluminación arquitectónica" },
+      { src: "/images/presentacion/empresariales/e-proyeccion-mural.jpg", caption: "Proyección artística · Evento exclusivo" },
+    ],
+  },
+];
+
+// Devuelve las categorías con fotos; si vienen vacías usa el respaldo local.
+export function categoriasConRespaldo(cats: GaleriaCategoria[], soloSlug?: string): GaleriaCategoria[] {
+  const base = cats.length ? cats : FALLBACK_CATEGORIAS;
+  return soloSlug ? base.filter(c => familiaTipo(c.id) === familiaTipo(soloSlug)) : base;
+}
+
 type TipoRaw = {
   slug: string;
   nombre: string;

@@ -148,24 +148,50 @@ export const PRESENTACIONES_EVENTOS: PresentacionItem[] = [
   },
 ];
 
-// Galería de eventos.
+// Galería de eventos. La primera es el índice (lleva a las tres galerías);
+// después las individuales por tipo, en el orden musical → social → empresarial.
 export const PRESENTACIONES_GALERIA: PresentacionItem[] = [
   {
     key: "galeria",
     label: "Galería de eventos",
-    desc: "Nuestro trabajo en imágenes: musicales, sociales y empresariales.",
+    desc: "Un solo link que agrupa las tres galerías: musicales, sociales y empresariales.",
     href: "/presentacion/galeria",
     icon: Camera,
     audience: "Clientes · Redes",
   },
+  {
+    key: "galeria-musical",
+    label: "Galería musical",
+    desc: "Conciertos, festivales y shows en vivo. Nuestro trabajo musical en fotos reales.",
+    href: "/presentacion/galeria/musical",
+    icon: Music,
+    audience: "Promotores · Artistas",
+  },
+  {
+    key: "galeria-social",
+    label: "Galería social",
+    desc: "Bodas, XV años y celebraciones. Nuestro trabajo social en fotos reales.",
+    href: "/presentacion/galeria/social",
+    icon: Wine,
+    audience: "Parejas · Familias",
+  },
+  {
+    key: "galeria-empresarial",
+    label: "Galería empresarial",
+    desc: "Conferencias, lanzamientos y corporativos. Nuestro trabajo empresarial en fotos reales.",
+    href: "/presentacion/galeria/empresarial",
+    icon: Building2,
+    audience: "Empresas · Agencias",
+  },
 ];
 
 // Unión de todas las presentaciones comerciales. Fuente única para el índice
-// público compartible (/presentacion). Nada interno se lista aquí.
+// público compartible (/presentacion). Solo el índice de galería se lista aquí
+// (las individuales cuelgan de él) para no saturar la portada pública.
 export const PRESENTACIONES_COMERCIAL: PresentacionItem[] = [
   ...PRESENTACIONES_GENERAL,
   ...PRESENTACIONES_EVENTOS,
-  ...PRESENTACIONES_GALERIA,
+  PRESENTACIONES_GALERIA[0],
 ];
 
 // Presentaciones para uso interno (equipo, agencias, candidatos). Nunca se
