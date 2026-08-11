@@ -109,6 +109,35 @@ export function mapTiposToCategorias(tipos: TipoRaw[], soloSlug?: string): Galer
   return soloSlug ? cats.filter(c => familiaTipo(c.id) === familiaTipo(soloSlug)) : cats;
 }
 
+// Combina las fotos de todas las categorías intercalándolas (round-robin) para
+// que ningún tipo de evento quede agrupado: musicales, sociales y empresariales
+// aparecen mezclados. Orden estable (mismo resultado en servidor y cliente) para
+// no romper la hidratación; el barajado aleatorio se hace en el cliente al montar.
+export function mezclarFotosCategorias(categorias: GaleriaCategoria[]): GaleriaFoto[] {
+  const listas = categorias.map(c => c.fotos);
+  const maxLen = listas.reduce((m, l) => Math.max(m, l.length), 0);
+  const out: GaleriaFoto[] = [];
+  for (let i = 0; i < maxLen; i++) {
+    for (const lista of listas) {
+      if (i < lista.length) out.push(lista[i]);
+    }
+  }
+  // Elimina duplicados por src (una misma foto podría vivir en dos categorías).
+  const vistas = new Set<string>();
+  return out.filter(f => (vistas.has(f.src) ? false : (vistas.add(f.src), true)));
+}
+
+// Baraja una copia del arreglo (Fisher-Yates). Solo para uso en el cliente:
+// produce un orden distinto en cada render, incompatible con SSR/hidratación.
+export function barajar<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 // Slides del hero. Prioridad: slides configurados en /galeria-inicio. Si no hay,
 // en la vista individual rota las fotos del propio tipo; en la combinada rota la
 // portada de cada categoría (así el hero no "copia" la primera miniatura).

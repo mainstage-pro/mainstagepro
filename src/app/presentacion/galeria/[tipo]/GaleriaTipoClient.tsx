@@ -1,14 +1,13 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Package, SlidersHorizontal, ArrowRight } from "lucide-react";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import { WA_URL, useDescubrimiento } from "@/components/presentacion/descubrimiento";
-import { GOLD, Reveal, WhatsAppIcon } from "@/components/presentacion/galeria-ui";
+import { GOLD, Masonry, Reveal, WhatsAppIcon } from "@/components/presentacion/galeria-ui";
 import {
   iconoPorSlug,
   familiaTipo,
   categoriasConRespaldo,
-  type GaleriaFoto as Foto,
   type GaleriaCategoria as Categoria,
 } from "@/lib/galeria-shared";
 
@@ -55,70 +54,6 @@ const CONFIG: Record<Familia, {
     ],
   },
 };
-
-// ─── Galería (masonry + lightbox) ───────────────────────────────────────────────
-function Masonry({ fotos }: { fotos: Foto[] }) {
-  const [lightbox, setLightbox] = useState<number | null>(null);
-  const cerrar = useCallback(() => setLightbox(null), []);
-
-  useEffect(() => {
-    if (lightbox === null) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") cerrar();
-      if (e.key === "ArrowRight") setLightbox(i => (i === null ? 0 : (i + 1) % fotos.length));
-      if (e.key === "ArrowLeft") setLightbox(i => (i === null ? 0 : (i - 1 + fotos.length) % fotos.length));
-    };
-    window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
-  }, [lightbox, fotos.length, cerrar]);
-
-  return (
-    <>
-      <div className="columns-2 md:columns-3 gap-3 [column-fill:_balance]">
-        {fotos.map((f, i) => (
-          <div key={f.src + i} className="mb-3 break-inside-avoid relative group cursor-pointer overflow-hidden rounded-xl"
-               onClick={() => setLightbox(i)} style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={f.src} alt={f.caption || `Foto ${i + 1}`} draggable={false} loading="lazy" decoding="async"
-                 className="w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]" />
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                 style={{ background: "linear-gradient(to top, rgba(0,0,0,0.6), transparent 55%)" }} />
-            {f.caption && (
-              <p className="absolute bottom-3 left-3 right-3 text-white/85 text-xs opacity-0 group-hover:opacity-100 transition-opacity">{f.caption}</p>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {lightbox !== null && fotos[lightbox] && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-             style={{ background: "rgba(4,4,4,0.95)", backdropFilter: "blur(10px)" }} onClick={cerrar}>
-          <button aria-label="Cerrar" onClick={cerrar}
-                  className="absolute top-5 right-5 w-11 h-11 rounded-full flex items-center justify-center hover:scale-110 transition-all"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-          <button aria-label="Anterior" onClick={e => { e.stopPropagation(); setLightbox(i => (i === null ? 0 : (i - 1 + fotos.length) % fotos.length)); }}
-                  className="absolute left-4 sm:left-8 w-11 h-11 rounded-full flex items-center justify-center hover:scale-110 transition-all"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <div className="max-w-5xl max-h-[85vh]" onClick={e => e.stopPropagation()}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={fotos[lightbox].src} alt={fotos[lightbox].caption} className="max-w-full max-h-[85vh] object-contain rounded-lg" />
-            {fotos[lightbox].caption && <p className="text-center text-white/50 text-sm mt-4">{fotos[lightbox].caption}</p>}
-          </div>
-          <button aria-label="Siguiente" onClick={e => { e.stopPropagation(); setLightbox(i => (i === null ? 0 : (i + 1) % fotos.length)); }}
-                  className="absolute right-4 sm:right-8 w-11 h-11 rounded-full flex items-center justify-center hover:scale-110 transition-all"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)" }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-        </div>
-      )}
-    </>
-  );
-}
 
 // ─── Main ────────────────────────────────────────────────────────────────────────
 export default function GaleriaTipoClient({

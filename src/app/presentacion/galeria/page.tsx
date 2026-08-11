@@ -4,7 +4,7 @@ import { getGaleriaData } from "@/lib/tipos-evento";
 
 export const metadata = getPresentationMetadata({
   title: "Galería de Eventos y Producciones",
-  description: "Nuestro trabajo en imágenes: musicales, sociales y empresariales. Producción audiovisual profesional en Querétaro.",
+  description: "Todo el trabajo de Mainstage Pro en un solo lugar: conciertos, bodas, lanzamientos y celebraciones. Producción audiovisual profesional en Querétaro.",
   path: "/presentacion/galeria",
   image: "/images/presentacion/musicales/Musicales-076.jpg",
 });

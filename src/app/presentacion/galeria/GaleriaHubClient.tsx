@@ -1,19 +1,20 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Package, SlidersHorizontal, ArrowRight } from "lucide-react";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import { WA_URL } from "@/components/presentacion/descubrimiento";
-import { GOLD, Reveal, WhatsAppIcon } from "@/components/presentacion/galeria-ui";
+import { GOLD, Masonry, Reveal, WhatsAppIcon } from "@/components/presentacion/galeria-ui";
 import {
-  iconoPorSlug,
-  familiaTipo,
   categoriasConRespaldo,
+  mezclarFotosCategorias,
+  barajar,
   type GaleriaFoto as Foto,
   type GaleriaCategoria as Categoria,
 } from "@/lib/galeria-shared";
 
-// Índice de galerías: una portada por tipo de evento que lleva a su galería
-// dedicada. La primera pintura la siembra el servidor (SSR) para evitar parpadeo.
+// Galería única de eventos: mezcla las fotos de todos los tipos (musicales,
+// sociales y empresariales) en un solo muro, sin agruparlas por categoría, para
+// que el visitante vea de un vistazo todo el trabajo de Mainstage Pro.
 export default function GaleriaHubClient({
   initialCategorias,
   initialHeroSlides,
@@ -22,9 +23,16 @@ export default function GaleriaHubClient({
   initialHeroSlides?: Foto[];
 } = {}) {
   const categorias = categoriasConRespaldo(initialCategorias ?? []);
+
+  // Orden estable para la primera pintura (SSR) y así no romper la hidratación;
+  // al montar en el cliente se baraja para que cada visita se sienta distinta.
+  const mezcladas = useMemo(() => mezclarFotosCategorias(categorias), [categorias]);
+  const [fotos, setFotos] = useState<Foto[]>(mezcladas);
+  useEffect(() => { setFotos(barajar(mezcladas)); }, [mezcladas]);
+
   const heroSlides: Foto[] = (initialHeroSlides?.length ?? 0) > 0
     ? initialHeroSlides!
-    : categorias.map(c => ({ src: c.cover, caption: c.label })).slice(0, 6);
+    : mezcladas.slice(0, 6);
 
   const [heroIdx, setHeroIdx] = useState(0);
   useEffect(() => {
@@ -47,7 +55,7 @@ export default function GaleriaHubClient({
       <PresentacionNav />
 
       {/* ── Hero ── */}
-      <section className="relative flex flex-col items-center justify-center overflow-hidden" style={{ height: "64vh", minHeight: "420px" }}>
+      <section className="relative flex flex-col items-center justify-center overflow-hidden" style={{ height: "70vh", minHeight: "460px" }}>
         <div className="absolute inset-0">
           {heroSlides.map((s, i) => (
             /* eslint-disable-next-line @next/next/no-img-element */
@@ -60,7 +68,7 @@ export default function GaleriaHubClient({
                  }} />
           ))}
           <div className="absolute inset-0"
-               style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.4) 0%, rgba(8,8,8,0.6) 45%, #080808 100%)" }} />
+               style={{ background: "linear-gradient(to bottom, rgba(8,8,8,0.45) 0%, rgba(8,8,8,0.65) 45%, #080808 100%)" }} />
         </div>
         <div className="relative z-10 text-center px-6 max-w-3xl mx-auto">
           <p className="text-[#B3985B] text-xs font-medium tracking-[0.4em] uppercase mb-6"
@@ -69,12 +77,14 @@ export default function GaleriaHubClient({
           </p>
           <h1 className="font-bold text-white leading-tight"
               style={{ fontSize: "clamp(2.4rem, 6vw, 5rem)", letterSpacing: "-0.03em", animation: "fadeUp 0.95s ease forwards 0.4s", opacity: 0 }}>
-            Nuestro trabajo,<br />
-            <span style={{ color: "rgba(255,255,255,0.4)" }}>en imágenes.</span>
+            Las experiencias<br />
+            <span style={{ color: "rgba(255,255,255,0.4)" }}>que creamos.</span>
           </h1>
-          <p className="text-white/45 mt-6 text-sm sm:text-base leading-relaxed max-w-lg mx-auto"
+          <p className="text-white/50 mt-7 text-sm sm:text-base leading-relaxed max-w-xl mx-auto"
              style={{ animation: "fadeUp 0.95s ease forwards 0.65s", opacity: 0 }}>
-            Producción audiovisual profesional para cada tipo de evento. Elige la galería que quieres explorar.
+            Conciertos, bodas, lanzamientos y celebraciones. Todo el trabajo de Mainstage Pro
+            en un solo lugar: audio, iluminación y video que transforman cada evento en un
+            momento que se recuerda.
           </p>
         </div>
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 opacity-20">
@@ -82,43 +92,19 @@ export default function GaleriaHubClient({
         </div>
       </section>
 
-      {/* ── Las tres galerías ── */}
+      {/* ── Galería combinada ── */}
       <section className="py-16 sm:py-20 px-6">
         <div className="max-w-6xl mx-auto">
           <Reveal>
-            <p className="text-white/20 text-xs uppercase tracking-widest mb-8 text-center">— Explora por tipo de evento —</p>
+            <div className="mb-12 text-center">
+              <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-4">Nuestro trabajo</p>
+              <h2 className="font-bold text-white leading-[1.05] mx-auto max-w-2xl" style={{ fontSize: "clamp(1.6rem, 3.4vw, 2.6rem)", letterSpacing: "-0.025em" }}>
+                Cada foto es producción real, montada y operada por nuestro equipo.
+              </h2>
+              {fotos.length > 0 && <p className="text-white/30 text-xs mt-4">{fotos.length} fotos · click para ampliar</p>}
+            </div>
           </Reveal>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {categorias.map((cat, i) => {
-              const Icon = iconoPorSlug(cat.id);
-              const href = `/presentacion/galeria/${familiaTipo(cat.id)}`;
-              return (
-                <Reveal key={cat.id} delay={i * 90}>
-                  <a href={href}
-                     className="relative overflow-hidden group block w-full"
-                     style={{ height: "62vh", minHeight: "400px", borderRadius: "22px", border: "1px solid rgba(255,255,255,0.07)" }}>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={cat.cover} alt={cat.label} draggable={false}
-                         className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                    <div className="absolute inset-0"
-                         style={{ background: "linear-gradient(to top, rgba(6,6,6,0.9) 0%, rgba(6,6,6,0.45) 50%, rgba(6,6,6,0.2) 100%)" }} />
-                    <div className="absolute inset-0 flex flex-col justify-end p-7 sm:p-8">
-                      <Icon strokeWidth={1.6} className="w-7 h-7 mb-4" style={{ color: GOLD }} />
-                      <h3 className="font-bold text-white leading-tight mb-2"
-                          style={{ fontSize: "clamp(1.3rem, 2.4vw, 1.75rem)", letterSpacing: "-0.02em" }}>
-                        {cat.label}
-                      </h3>
-                      {cat.sub && <p className="text-white/45 text-xs tracking-wide mb-5 leading-relaxed">{cat.sub}</p>}
-                      <span className="inline-flex items-center gap-2 text-xs font-semibold transition-colors duration-300"
-                            style={{ color: GOLD }}>
-                        Ver galería <ArrowRight strokeWidth={2} className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
-                      </span>
-                    </div>
-                  </a>
-                </Reveal>
-              );
-            })}
-          </div>
+          <Masonry fotos={fotos} />
         </div>
       </section>
 
