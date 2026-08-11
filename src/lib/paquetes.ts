@@ -81,22 +81,52 @@ export async function ensurePaquetesTables() {
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS "paquete_imagenes_paqueteId_idx" ON "paquete_imagenes"("paqueteId");`
   );
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "paquete_rangos" (
+      "id" TEXT NOT NULL,
+      "label" TEXT NOT NULL,
+      "orden" INTEGER NOT NULL DEFAULT 0,
+      "activo" BOOLEAN NOT NULL DEFAULT true,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "paquete_rangos_pkey" PRIMARY KEY ("id")
+    );
+  `);
+  await prisma.$executeRawUnsafe(
+    `CREATE UNIQUE INDEX IF NOT EXISTS "paquete_rangos_label_key" ON "paquete_rangos"("label");`
+  );
+  // Seed inicial de rangos (solo la primera vez, si la tabla está vacía).
+  const total = await prisma.paqueteRango.count();
+  if (total === 0) {
+    await prisma.paqueteRango.createMany({
+      data: RANGOS_PERSONAS_DEFAULT.map((label, orden) => ({ label, orden })),
+    });
+  }
   tablesEnsured = true;
 }
 
 export const TIPOS_EVENTO_PAQUETE = ["MUSICAL", "SOCIAL", "EMPRESARIAL"] as const;
 
-export const RANGOS_PERSONAS = [
-  "1-100",
-  "100-300",
+// Lista base con la que se siembra el catálogo la primera vez.
+// Después es editable desde la UI (tabla paquete_rangos).
+export const RANGOS_PERSONAS_DEFAULT = [
+  "0-50",
+  "100-200",
+  "200-300",
   "300-500",
   "500-800",
   "800-1000",
   "1000-1500",
   "1500-2000",
-  "2000-3000",
-  "3000-5000",
 ] as const;
+
+// Devuelve los rangos activos, ordenados. Requiere ensurePaquetesTables() previo.
+export async function getRangosPersonas(): Promise<{ id: string; label: string; orden: number }[]> {
+  return prisma.paqueteRango.findMany({
+    where: { activo: true },
+    orderBy: [{ orden: "asc" }, { label: "asc" }],
+    select: { id: true, label: true, orden: true },
+  });
+}
 
 // Subtipos específicos por tipo de evento — espejo del descubrimiento (DiscoveryForm).
 export const SUBTIPOS_EVENTO: Record<string, string[]> = {

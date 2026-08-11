@@ -5,18 +5,13 @@ import { upload } from "@vercel/blob/client";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
-import { Music, Wine, Building2, Sparkles, ImageIcon, Package, Puzzle, type LucideIcon } from "lucide-react";
+import { Music, Wine, Building2, Sparkles, ImageIcon, Package, Puzzle, Users, type LucideIcon } from "lucide-react";
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 const TIPOS_EVENTO: { key: string; label: string; icon: LucideIcon }[] = [
   { key: "MUSICAL", label: "Musical", icon: Music },
   { key: "SOCIAL", label: "Social", icon: Wine },
   { key: "EMPRESARIAL", label: "Empresarial", icon: Building2 },
-];
-
-const RANGOS_PERSONAS = [
-  "1-100", "100-300", "300-500", "500-800", "800-1000",
-  "1000-1500", "1500-2000", "2000-3000", "3000-5000",
 ];
 
 const SUBTIPOS_EVENTO: Record<string, string[]> = {
@@ -111,6 +106,8 @@ type Paquete = {
   imagenes: { id: string; url: string; orden: number }[];
 };
 
+type RangoItem = { id: string; label: string; orden: number };
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmx(n: number) {
   return `$${(n || 0).toLocaleString("es-MX", { maximumFractionDigits: 0 })}`;
@@ -160,7 +157,7 @@ function uid() { return Math.random().toString(36).slice(2); }
 
 // ── Editor ──────────────────────────────────────────────────────────────────────
 function PaqueteEditor({
-  form, setForm, tipoEvento, equipos, productos, roles, generandoIA, onGenerarIA,
+  form, setForm, tipoEvento, equipos, productos, roles, rangos, generandoIA, onGenerarIA,
 }: {
   form: FormState;
   setForm: (f: FormState) => void;
@@ -168,6 +165,7 @@ function PaqueteEditor({
   equipos: EquipoItem[];
   productos: ProductoLite[];
   roles: RolTecnico[];
+  rangos: string[];
   generandoIA: boolean;
   onGenerarIA: () => void;
 }) {
@@ -320,7 +318,10 @@ function PaqueteEditor({
           <label className={labelCls}>Rango de personas</label>
           <select value={form.rangoPersonas} onChange={(e) => setForm({ ...form, rangoPersonas: e.target.value })} className={inputCls}>
             <option value="">— Selecciona —</option>
-            {RANGOS_PERSONAS.map((r) => <option key={r} value={r}>{r} personas</option>)}
+            {form.rangoPersonas && !rangos.includes(form.rangoPersonas) && (
+              <option value={form.rangoPersonas}>{form.rangoPersonas} personas</option>
+            )}
+            {rangos.map((r) => <option key={r} value={r}>{r} personas</option>)}
           </select>
         </div>
       </div>
@@ -780,6 +781,8 @@ export default function PaquetesSection() {
   const [equipos, setEquipos] = useState<EquipoItem[]>([]);
   const [productos, setProductos] = useState<ProductoLite[]>([]);
   const [roles, setRoles] = useState<RolTecnico[]>([]);
+  const [rangos, setRangos] = useState<RangoItem[]>([]);
+  const [rangosModalOpen, setRangosModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tipoTab, setTipoTab] = useState<string>("MUSICAL");
 
@@ -792,21 +795,28 @@ export default function PaquetesSection() {
   async function cargar() {
     setLoading(true);
     try {
-      const [rp, re, rpr, rr] = await Promise.all([
+      const [rp, re, rpr, rr, rg] = await Promise.all([
         fetch("/api/paquetes").then((r) => r.json()),
         fetch("/api/equipos").then((r) => r.json()),
         fetch("/api/productos").then((r) => r.json()),
         fetch("/api/roles-tecnicos").then((r) => r.json()),
+        fetch("/api/paquetes/rangos").then((r) => r.json()),
       ]);
       setPaquetes(rp.paquetes ?? []);
       setEquipos(re.equipos ?? []);
       setProductos(rpr.productos ?? []);
       setRoles(rr.roles ?? []);
+      setRangos(rg.rangos ?? []);
     } finally {
       setLoading(false);
     }
   }
   useEffect(() => { cargar(); }, []);
+
+  async function recargarRangos() {
+    const rg = await fetch("/api/paquetes/rangos").then((r) => r.json());
+    setRangos(rg.rangos ?? []);
+  }
 
   function abrirNuevo() {
     setEditId(null);
@@ -928,10 +938,16 @@ export default function PaquetesSection() {
             </button>
           ))}
         </div>
-        <button onClick={abrirNuevo}
-          className="px-4 py-2 rounded-lg bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold transition-colors">
-          + Nuevo paquete
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setRangosModalOpen(true)}
+            className="px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#333] text-gray-300 hover:text-white text-sm transition-colors inline-flex items-center gap-1.5">
+            <Users strokeWidth={1.75} className="w-4 h-4" /> Rangos de personas
+          </button>
+          <button onClick={abrirNuevo}
+            className="px-4 py-2 rounded-lg bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold transition-colors">
+            + Nuevo paquete
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -989,7 +1005,7 @@ export default function PaquetesSection() {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)}
         title={`${editId ? "Editar" : "Nuevo"} paquete · ${TIPOS_EVENTO.find((t) => t.key === tipoTab)?.label}`}
         maxWidth="max-w-3xl">
-        <PaqueteEditor form={form} setForm={setForm} tipoEvento={tipoTab} equipos={equipos} productos={productos} roles={roles} generandoIA={generandoIA} onGenerarIA={generarIA} />
+        <PaqueteEditor form={form} setForm={setForm} tipoEvento={tipoTab} equipos={equipos} productos={productos} roles={roles} rangos={rangos.map((r) => r.label)} generandoIA={generandoIA} onGenerarIA={generarIA} />
         <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-[#1a1a1a]">
           <button onClick={() => setModalOpen(false)} className="px-4 py-2 rounded-lg bg-[#1a1a1a] text-gray-300 text-sm hover:text-white">Cancelar</button>
           <button onClick={guardar} disabled={saving}
@@ -998,6 +1014,145 @@ export default function PaquetesSection() {
           </button>
         </div>
       </Modal>
+
+      <RangosModal
+        open={rangosModalOpen}
+        onClose={() => setRangosModalOpen(false)}
+        rangos={rangos}
+        onChange={recargarRangos}
+      />
     </div>
+  );
+}
+
+// ── Gestión de rangos de personas ─────────────────────────────────────────────
+function RangosModal({
+  open, onClose, rangos, onChange,
+}: {
+  open: boolean;
+  onClose: () => void;
+  rangos: RangoItem[];
+  onChange: () => Promise<void> | void;
+}) {
+  const toast = useToast();
+  const confirm = useConfirm();
+  const [nuevo, setNuevo] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editLabel, setEditLabel] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function agregar() {
+    const label = nuevo.trim();
+    if (!label) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/paquetes/rangos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || "Error");
+      setNuevo("");
+      await onChange();
+      toast.success("Rango agregado.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo agregar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function guardarEdicion(id: string) {
+    const label = editLabel.trim();
+    if (!label) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/paquetes/rangos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error || "Error");
+      setEditId(null);
+      setEditLabel("");
+      await onChange();
+      toast.success("Rango actualizado.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo actualizar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function eliminar(r: RangoItem) {
+    const ok = await confirm({ message: `¿Eliminar el rango "${r.label}"?`, danger: true, confirmText: "Eliminar" });
+    if (!ok) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/paquetes/rangos/${r.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Error");
+      await onChange();
+      toast.success("Rango eliminado.");
+    } catch {
+      toast.error("No se pudo eliminar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const inputCls = "w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]";
+
+  return (
+    <Modal open={open} onClose={onClose} title="Rangos de personas" maxWidth="max-w-md">
+      <p className="text-xs text-gray-500 mb-4">
+        Estos son los rangos que aparecen al elegir el tamaño de un paquete. Agrega, edita o elimina los que necesites.
+      </p>
+
+      <div className="flex items-center gap-2 mb-4">
+        <input
+          value={nuevo}
+          onChange={(e) => setNuevo(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") agregar(); }}
+          placeholder="Ej: 50-100"
+          className={inputCls}
+        />
+        <button onClick={agregar} disabled={busy || !nuevo.trim()}
+          className="px-4 py-2 rounded-lg bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-40 text-black text-sm font-semibold whitespace-nowrap">
+          Agregar
+        </button>
+      </div>
+
+      <div className="space-y-1.5 max-h-[50vh] overflow-y-auto">
+        {rangos.length === 0 ? (
+          <p className="text-center text-gray-600 text-sm py-6">No hay rangos. Agrega el primero.</p>
+        ) : rangos.map((r) => (
+          <div key={r.id} className="flex items-center gap-2 bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg px-3 py-2">
+            {editId === r.id ? (
+              <>
+                <input
+                  value={editLabel}
+                  onChange={(e) => setEditLabel(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") guardarEdicion(r.id); }}
+                  autoFocus
+                  className="flex-1 bg-[#1a1a1a] border border-[#333] rounded-md px-2 py-1 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                />
+                <button onClick={() => guardarEdicion(r.id)} disabled={busy}
+                  className="text-xs text-[#B3985B] hover:text-[#c9a96a]">Guardar</button>
+                <button onClick={() => { setEditId(null); setEditLabel(""); }}
+                  className="text-xs text-gray-500 hover:text-white">Cancelar</button>
+              </>
+            ) : (
+              <>
+                <span className="flex-1 text-white text-sm">{r.label} <span className="text-gray-600">personas</span></span>
+                <button onClick={() => { setEditId(r.id); setEditLabel(r.label); }}
+                  className="text-xs text-gray-500 hover:text-[#B3985B]">Editar</button>
+                <button onClick={() => eliminar(r)} disabled={busy}
+                  className="text-xs text-gray-500 hover:text-red-400">Eliminar</button>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+    </Modal>
   );
 }

@@ -1023,6 +1023,16 @@ model PaqueteImagen {
   @@map("paquete_imagenes")
 }
 
+model PaqueteRango {
+  id        String   @id @default(cuid())
+  label     String   @unique // "0-50" | "100-200" | ... — rango de personas editable
+  orden     Int      @default(0)
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("paquete_rangos")
+}
+
 model RolTecnico {
   id          String  @id @default(cuid())
   nombre      String
