@@ -3034,8 +3034,14 @@ function CotizadorForm() {
                       className="flex-1 min-w-[160px] bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                     />
                     <input type="number" value={logPrecio[tipo]} onChange={e => setLogPrecio(p => ({ ...p, [tipo]: e.target.value }))} placeholder="$" className="w-24 bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                    <NumSelect value={logCant[tipo]} onChange={v => setLogCant(p => ({ ...p, [tipo]: v }))} max={50} className="w-16 py-2" title="Cantidad" />
-                    <NumSelect value={logDias[tipo]} onChange={v => setLogDias(p => ({ ...p, [tipo]: v }))} max={10} className="w-16 py-2" title="Días" />
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] uppercase tracking-wider text-[#666]">Cantidad</span>
+                      <NumSelect value={logCant[tipo]} onChange={v => setLogCant(p => ({ ...p, [tipo]: v }))} max={50} className="w-16 py-2" title="Cantidad" />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] uppercase tracking-wider text-[#666]">Días</span>
+                      <NumSelect value={logDias[tipo]} onChange={v => setLogDias(p => ({ ...p, [tipo]: v }))} max={10} className="w-16 py-2" title="Días" />
+                    </div>
                     <button onClick={() => {
                       const precio = parseFloat(logPrecio[tipo]) || 0;
                       const cant = parseFloat(logCant[tipo]) || 1;
