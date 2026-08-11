@@ -462,7 +462,7 @@ export default function ReporteVentasPage() {
             {/* ── SECCIÓN 2: Tendencia + Clientes ─────────────────────────── */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Gráfica tendencia — ocupa 2 columnas */}
-              <div className="ms-card p-5 md:grid-cols-2">
+              <div className="ms-card p-5 md:col-span-2">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-white font-semibold text-sm">Tendencia — últimos 6 meses</h2>
                   <div className="flex items-center gap-3 text-[10px] text-[#555]">
