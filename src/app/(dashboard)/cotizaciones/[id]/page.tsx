@@ -276,7 +276,6 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   const [savingTrade, setSavingTrade] = useState(false);
   const [duplicando, setDuplicando] = useState(false);
   const [sendingWA, setSendingWA] = useState(false);
-  const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
   const [opciones, setOpciones] = useState<OpcionHermana[]>([]);
   const [creandoOpcion, setCreandoOpcion] = useState(false);
   const [modalOpcion, setModalOpcion] = useState(false);
@@ -290,31 +289,6 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
   // Estado local del input de fecha — se resetea con key={cot.id}
   const [fechaInputVal, setFechaInputVal] = useState<string>("");
   const [noteEdit, setNoteEdit] = useState<NoteEditState | null>(null);
-
-  async function guardarComoPlantilla() {
-    if (!cot) return;
-    const nombre = window.prompt("Nombre de la plantilla:", cot.nombreEvento ? `${cot.nombreEvento} - ${cot.tipoEvento ?? ""}` : cot.numeroCotizacion);
-    if (!nombre) return;
-    setGuardandoPlantilla(true);
-    const res = await fetch("/api/plantillas-cotizacion", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        nombre,
-        tipoEvento: cot.tipoEvento ?? null,
-        tipoServicio: cot.tipoServicio ?? null,
-        cotizacionId: cot.id,
-        diasEquipo: cot.diasEquipo,
-        diasOperacion: cot.diasOperacion,
-        observaciones: cot.observaciones,
-        vigenciaDias: cot.vigenciaDias,
-        aplicaIva: cot.aplicaIva,
-      }),
-    });
-    setGuardandoPlantilla(false);
-    if (res.ok) toast.success("Plantilla guardada");
-    else toast.error("Error al guardar plantilla");
-  }
 
   useEffect(() => {
     // ── Resetear estado inmediatamente al cambiar cotización ──────────────
@@ -1026,10 +1000,6 @@ export default function CotizacionDetailPage({ params }: { params: Promise<{ id:
           <button onClick={duplicar} disabled={duplicando}
             className="text-xs text-gray-500 hover:text-white transition-colors disabled:opacity-40">
             {duplicando ? "Duplicando..." : "Duplicar"}
-          </button>
-          <button onClick={guardarComoPlantilla} disabled={guardandoPlantilla}
-            className="text-xs text-gray-500 hover:text-[#B3985B] transition-colors disabled:opacity-40">
-            {guardandoPlantilla ? "Guardando..." : "Guardar como plantilla"}
           </button>
         </div>
 
