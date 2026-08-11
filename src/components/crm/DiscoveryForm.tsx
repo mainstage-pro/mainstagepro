@@ -16,6 +16,30 @@ const PASOS_DISCOVERY: Array<{ id: number; label: string; icon: LucideIcon }> = 
   { id: 4, label: "Comercial", icon: Handshake },
 ];
 
+// Rangos de asistentes: son los MISMOS rangos de tamaño de los paquetes
+// (tabla paquete_rangos, editable desde la UI). Se cargan por API; este arreglo
+// es solo el fallback si la API no responde. La columna `asistentesEstimados`
+// es Int?, así que se guarda el tope del rango (ej. "500-800" → 800).
+const RANGOS_ASISTENTES_FALLBACK = [
+  "0-50", "100-200", "200-300", "300-500", "500-800", "800-1000", "1000-1500", "1500-2000",
+];
+
+// Tope numérico de un label de rango ("500-800" → 800, "1-100" → 100).
+function rangoMax(label: string): number {
+  const nums = label.match(/\d+/g);
+  return nums && nums.length ? Math.max(...nums.map(Number)) : 0;
+}
+
+// Mapea un número guardado (incluidos valores libres antiguos) al tope del
+// rango que le corresponde, para re-seleccionar la opción correcta.
+function snapRango(n: number | string, rangos: { value: number }[]): string {
+  const num = typeof n === "string" ? parseInt(n) : n;
+  if (!num || Number.isNaN(num) || rangos.length === 0) return "";
+  const ordenados = [...rangos].sort((a, b) => a.value - b.value);
+  const rango = ordenados.find(r => num <= r.value) ?? ordenados[ordenados.length - 1];
+  return String(rango.value);
+}
+
 const RENTA_NIVEL = [
   { id: "SOLO_RENTA",    label: "Solo renta",           desc: "Cliente instala y opera" },
   { id: "RENTA_ENTREGA", label: "Renta + entrega",      desc: "Llevamos y recogemos" },
@@ -241,6 +265,25 @@ export default function DiscoveryForm({
   const [saving, setSaving] = useState(false);
   const [creandoCotizacion, setCreandoCotizacion] = useState(false);
   const [eliminandoCotizacion, setEliminandoCotizacion] = useState<string | null>(null);
+
+  // Rangos de asistentes = mismos rangos de tamaño de los paquetes (editables en BD).
+  const [rangosAsistentes, setRangosAsistentes] = useState<{ label: string; value: number }[]>(
+    () => RANGOS_ASISTENTES_FALLBACK.map(l => ({ label: l, value: rangoMax(l) }))
+  );
+  useEffect(() => {
+    let cancel = false;
+    fetch("/api/paquetes/rangos")
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (cancel || !Array.isArray(d?.rangos)) return;
+        const list = d.rangos
+          .map((r: { label: string }) => ({ label: r.label, value: rangoMax(r.label) }))
+          .filter((r: { value: number }) => r.value > 0);
+        if (list.length) setRangosAsistentes(list);
+      })
+      .catch(() => { /* fallback local */ });
+    return () => { cancel = true; };
+  }, []);
 
   // Cliente state
   
@@ -920,13 +963,16 @@ export default function DiscoveryForm({
               {/* Número de asistentes — se define desde el primer paso */}
               <div>
                 <label className="text-xs text-gray-400 block mb-1">Número de asistentes estimado</label>
-                <input
-                  type="number" min="1"
-                  value={discForm.asistentesEstimados}
+                <select
+                  value={snapRango(discForm.asistentesEstimados, rangosAsistentes)}
                   onChange={e => setDiscForm(p => ({ ...p, asistentesEstimados: e.target.value }))}
-                  placeholder="Ej: 150"
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                />
+                >
+                  <option value="">— Selecciona —</option>
+                  {rangosAsistentes.map(r => (
+                    <option key={r.label} value={r.value}>{r.label} personas</option>
+                  ))}
+                </select>
               </div>
 
               {/* Cuéntanos más de tu proyecto — se convierte en la nota de la cotización */}
