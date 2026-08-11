@@ -21,16 +21,21 @@ interface ZonaItem     { zona: string; count: number; monto: number; pct: number
 interface MotivoPerdida { motivo: string; count: number; pct: number }
 
 interface ReporteMensual {
-  periodo: { mes: string; label: string }
-  ventasTotal: { count: number; monto: number }
-  ticketPromedio: number
-  crecimientoMensual: number | null
-  porTipoEvento: TipoItem[]
-  porTipoServicio: TipoItem[]
-  cotizaciones: { totalCreadas: number; ventasCerradas: number; conProyecto: number; sinProyecto: number }
-  tratosPerdidos: { count: number; montoEstimadoPerdido: number; motivosPerdida: MotivoPerdida[] }
-  top3Clientes: ClienteTop[]
-  top5Clientes: ClienteTop[]
+  periodo: { mes: string; label: string };
+  ventasTotal: { count: number; monto: number; clientesUnicos: number };
+  ticketPromedio: number;
+  crecimientoMensual: number | null;
+  porTipoEvento: { tipo: string; count: number; monto: number; pct: number }[];
+  porTipoServicio: { tipo: string; count: number; monto: number; pct: number }[];
+  cotizaciones: { totalCreadas: number; ventasCerradas: number; enSeguimiento: number };
+  tratosPerdidos: { 
+    count: number; 
+    montoEstimadoPerdido: number; 
+    motivosPerdida: { motivo: string; count: number; pct: number }[];
+    top?: { id: string; nombreEvento: string | null; clienteNombre: string; motivoPerdida: string | null; monto: number }[];
+  };
+  top3Clientes: ClienteTop[];
+  top5Clientes: ClienteTop[];
   clientesRecurrentes: { count: number }
   clientesNuevos: { count: number; lista: { nombre: string; empresa: string | null }[] }
   porServicio: {
@@ -377,8 +382,8 @@ export default function ReporteVentasPage() {
               <div className="ms-stat-card col-span-2 md:col-span-1">
                 <p className="text-[#555] text-[10px] uppercase tracking-widest mb-1">Ingresos del mes</p>
                 <p className="text-3xl font-bold text-[#B3985B] leading-none">{fmt(reporte.ventasTotal.monto)}</p>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-[#6b7280] text-[11px]">{reporte.ventasTotal.count} ventas cerradas</span>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <span className="text-[#6b7280] text-[11px]">{reporte.ventasTotal.count} ventas cerradas (a {reporte.ventasTotal.clientesUnicos} clientes distintos)</span>
                   {reporte.crecimientoMensual !== null && (
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                       reporte.crecimientoMensual >= 0 ? "bg-green-900/40 text-green-400" : "bg-red-900/40 text-red-400"
@@ -397,24 +402,67 @@ export default function ReporteVentasPage() {
               </div>
 
               {/* Conversión */}
-              <div className="ms-stat-card">
-                <p className="text-[#555] text-[10px] uppercase tracking-widest mb-1">Tasa de conversión</p>
-                <p className="text-2xl font-bold text-green-400">{conversionPct}%</p>
-                <p className="text-[#444] text-[10px] mt-1.5">{reporte.cotizaciones.ventasCerradas} de {reporte.cotizaciones.totalCreadas} cotiz.</p>
+              <div className="ms-card flex flex-col justify-between">
+                <div className="flex items-center gap-3 text-[#6b7280] mb-1">
+                  <p className="text-xs uppercase tracking-wider font-semibold">Conversión</p>
+                </div>
+                <div className="mt-4">
+                  <div className="flex items-end justify-between mb-2">
+                    <p className="text-2xl font-bold text-white">{conversionPct.toFixed(1)}%</p>
+                    <p className="text-[#B3985B] text-xs font-medium bg-[#B3985B]/10 px-2 py-0.5 rounded">Tasa Conversión</p>
+                  </div>
+                  <div className="space-y-1.5 mt-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-[#6b7280]">Ventas Cerradas</span>
+                      <span className="text-white font-medium">{reporte.cotizaciones.ventasCerradas}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-[#6b7280]">En Seguimiento</span>
+                      <span className="text-white font-medium">{reporte.cotizaciones.enSeguimiento}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-[#6b7280]">Ventas Perdidas</span>
+                      <span className="text-white font-medium">{reporte.tratosPerdidos.count}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Perdidos */}
-              <div className="ms-stat-card">
-                <p className="text-[#555] text-[10px] uppercase tracking-widest mb-1">Ventas perdidas</p>
-                <p className="text-2xl font-bold text-red-400">{reporte.tratosPerdidos.count}</p>
-                <p className="text-[#444] text-[10px] mt-1.5">{reporte.tratosPerdidos.montoEstimadoPerdido > 0 ? `~${fmt(reporte.tratosPerdidos.montoEstimadoPerdido)} estimado` : "este período"}</p>
+              <div className="ms-card flex flex-col justify-between">
+                <div className="flex items-center gap-3 text-[#6b7280] mb-1">
+                  <p className="text-xs uppercase tracking-wider font-semibold">Ventas perdidas</p>
+                </div>
+                <div className="mt-4 flex-1">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <p className="text-2xl font-bold text-red-400">{reporte.tratosPerdidos.count}</p>
+                      <p className="text-[#444] text-[10px] mt-1.5">{reporte.tratosPerdidos.montoEstimadoPerdido > 0 ? `~${fmt(reporte.tratosPerdidos.montoEstimadoPerdido)} perdidos` : "este período"}</p>
+                    </div>
+                  </div>
+                  
+                  {reporte.tratosPerdidos.top && reporte.tratosPerdidos.top.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <p className="text-[#6b7280] text-[10px] uppercase font-semibold">Principales pérdidas</p>
+                      {reporte.tratosPerdidos.top.map((t, i) => (
+                        <div key={i} className="flex justify-between items-start text-xs border-b border-[#333]/50 pb-1.5 last:border-0 last:pb-0">
+                          <div className="flex flex-col max-w-[65%]">
+                            <span className="text-white truncate">{t.nombreEvento || "Sin Nombre"}</span>
+                            <span className="text-[#555] truncate text-[10px]">{t.clienteNombre}</span>
+                          </div>
+                          <span className="text-red-400/80 font-mono text-[10px] whitespace-nowrap">{fmt(t.monto)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
             {/* ── SECCIÓN 2: Tendencia + Clientes ─────────────────────────── */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Gráfica tendencia — ocupa 2 columnas */}
-              <div className="ms-card p-5 md:col-span-2">
+              <div className="ms-card p-5 md:grid-cols-2">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-white font-semibold text-sm">Tendencia — últimos 6 meses</h2>
                   <div className="flex items-center gap-3 text-[10px] text-[#555]">
@@ -593,8 +641,8 @@ export default function ReporteVentasPage() {
                     { label: "Cotizaciones creadas", value: reporte.cotizaciones.totalCreadas, color: "#4b5563", pctVal: 100 },
                     { label: "Ventas cerradas",      value: reporte.cotizaciones.ventasCerradas, color: "#B3985B",
                       pctVal: pct(reporte.cotizaciones.ventasCerradas, reporte.cotizaciones.totalCreadas) },
-                    { label: "Con proyecto",          value: reporte.cotizaciones.conProyecto,  color: "#4ade80",
-                      pctVal: pct(reporte.cotizaciones.conProyecto, reporte.cotizaciones.totalCreadas) },
+                    { label: "En seguimiento",        value: reporte.cotizaciones.enSeguimiento,  color: "#60a5fa",
+                      pctVal: pct(reporte.cotizaciones.enSeguimiento, reporte.cotizaciones.totalCreadas) },
                     { label: "Perdidos",              value: reporte.tratosPerdidos.count, color: "#f87171",
                       pctVal: pct(reporte.tratosPerdidos.count, reporte.cotizaciones.totalCreadas) },
                   ].map((k, i) => (
@@ -748,7 +796,7 @@ export default function ReporteVentasPage() {
                     {[
                       { label: "Cotizaciones enviadas", value: reporte.cotizaciones.totalCreadas, color: "#4b5563", pctVal: 100 },
                       { label: "Ventas cerradas", value: reporte.cotizaciones.ventasCerradas, color: "#B3985B", pctVal: pct(reporte.cotizaciones.ventasCerradas, reporte.cotizaciones.totalCreadas) },
-                      { label: "Con proyecto ejecutado", value: reporte.cotizaciones.conProyecto, color: "#4ade80", pctVal: pct(reporte.cotizaciones.conProyecto, reporte.cotizaciones.totalCreadas) },
+                      { label: "En seguimiento", value: reporte.cotizaciones.enSeguimiento, color: "#60a5fa", pctVal: pct(reporte.cotizaciones.enSeguimiento, reporte.cotizaciones.totalCreadas) },
                     ].map(k => (
                       <div key={k.label}>
                         <div className="flex justify-between items-center mb-1">

@@ -71,6 +71,7 @@ export async function GET(req: NextRequest) {
     },
     select: {
       id: true,
+      nombreEvento: true,
       motivoPerdida: true,
       tipoEvento: true,
       origenLead: true,
@@ -78,7 +79,7 @@ export async function GET(req: NextRequest) {
       fechaCierre: true,
       cliente: { select: { nombre: true, empresa: true } },
       cotizaciones: {
-        where: { estado: { not: "RECHAZADA" } },
+        where: { estado: { in: ["ENVIADA", "APROBADA"] } },
         select: { granTotal: true },
         orderBy: { createdAt: "desc" },
         take: 1,
@@ -145,10 +146,15 @@ export async function GET(req: NextRequest) {
     .map(([tipo, d]) => ({ tipo, ...d, pct: tratosEnriquecidos.length ? (d.count / tratosEnriquecidos.length) * 100 : 0 }))
     .sort((a, b) => b.count - a.count);
 
-  // ── Cotizaciones vs Proyectos ───────────────────────────────────────────────
-  const conProyecto = tratosEnriquecidos.filter(t => t.tieneProyecto).length;
+  // ── Cotizaciones y Tratos en Seguimiento ──────────────────────────────────────
   const totalCotizacionesPeriodo = await prisma.cotizacion.count({
     where: { createdAt: { gte: mesStart, lt: mesEnd } },
+  });
+  const enSeguimientoCount = await prisma.trato.count({
+    where: {
+      createdAt: { gte: mesStart, lt: mesEnd },
+      etapa: { notIn: ["VENTA_CERRADA", "VENTA_PERDIDA"] },
+    }
   });
 
   // ── Top 5 clientes del período ──────────────────────────────────────────────
@@ -176,20 +182,7 @@ export async function GET(req: NextRequest) {
   const clientesRecurrentes = clienteIdsPeriodo.filter(id => idsRecurrentes.has(id)).length;
 
   // ── Clientes nuevos ─────────────────────────────────────────────────────────
-  const proyectosPeriodo = await prisma.proyecto.findMany({
-    where: { createdAt: { gte: mesStart, lt: mesEnd } },
-    select: { clienteId: true, createdAt: true },
-  });
-  const clienteIdsConProyectoEnPeriodo = [...new Set(proyectosPeriodo.map(p => p.clienteId))];
-  const clientesConProyectoPrevio = await prisma.proyecto.groupBy({
-    by: ["clienteId"],
-    where: {
-      clienteId: { in: clienteIdsConProyectoEnPeriodo },
-      createdAt: { lt: mesStart },
-    },
-  });
-  const idsConProyectoPrevio = new Set(clientesConProyectoPrevio.map(r => r.clienteId));
-  const clientesNuevosIds = clienteIdsConProyectoEnPeriodo.filter(id => !idsConProyectoPrevio.has(id));
+  const clientesNuevosIds = clienteIdsPeriodo.filter(id => !idsRecurrentes.has(id));
   const clientesNuevosData = await prisma.cliente.findMany({
     where: { id: { in: clientesNuevosIds } },
     select: { id: true, nombre: true, empresa: true },
@@ -240,7 +233,7 @@ export async function GET(req: NextRequest) {
   }
   const porVendedor = Object.values(vendedorMap).sort((a, b) => b.monto - a.monto);
 
-  // ── Tratos perdidos: motivos ────────────────────────────────────────────────
+  // ── Tratos perdidos: motivos y top ──────────────────────────────────────────
   const motivoMap: Record<string, number> = {};
   for (const t of tratosPerdidos) {
     const k = t.motivoPerdida ?? "Sin especificar";
@@ -249,6 +242,17 @@ export async function GET(req: NextRequest) {
   const motivosPerdida = Object.entries(motivoMap)
     .map(([motivo, count]) => ({ motivo, count, pct: tratosPerdidos.length > 0 ? (count / tratosPerdidos.length) * 100 : 0 }))
     .sort((a, b) => b.count - a.count);
+
+  const topVentasPerdidas = [...tratosPerdidos]
+    .map(t => ({
+      id: t.id,
+      nombreEvento: t.nombreEvento,
+      clienteNombre: t.cliente?.nombre ?? "N/A",
+      motivoPerdida: t.motivoPerdida,
+      monto: t.cotizaciones[0]?.granTotal ?? 0
+    }))
+    .sort((a, b) => b.monto - a.monto)
+    .slice(0, 5);
 
   // ── Zonas ──────────────────────────────────────────────────────────────────
   const zonaMap: Record<string, { count: number; monto: number }> = {};
@@ -298,7 +302,11 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json({
     periodo: { mes, label: label.charAt(0).toUpperCase() + label.slice(1) },
-    ventasTotal: { count: tratosEnriquecidos.length, monto: totalMonto },
+    ventasTotal: { 
+      count: tratosEnriquecidos.length, 
+      monto: totalMonto,
+      clientesUnicos: clienteIdsPeriodo.length 
+    },
     ticketPromedio,
     crecimientoMensual,
     porTipoEvento,
@@ -306,13 +314,13 @@ export async function GET(req: NextRequest) {
     cotizaciones: {
       totalCreadas: totalCotizacionesPeriodo,
       ventasCerradas: tratosEnriquecidos.length,
-      conProyecto,
-      sinProyecto: tratosEnriquecidos.length - conProyecto,
+      enSeguimiento: enSeguimientoCount,
     },
     tratosPerdidos: {
       count: tratosPerdidos.length,
       montoEstimadoPerdido: tratosPerdidos.reduce((s, t) => s + (t.cotizaciones[0]?.granTotal ?? 0), 0),
       motivosPerdida,
+      top: topVentasPerdidas
     },
     top3Clientes,
     top5Clientes,
