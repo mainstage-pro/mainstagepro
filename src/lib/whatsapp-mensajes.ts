@@ -8,16 +8,16 @@
 // dando variedad entre contactos sin romper la hidratación de React.
 
 const SALUDO_SIMPLE = [
-  "¡Qué tal, NOMBRE! Excelente día, ¿cómo estás?",
-  "¡Hola NOMBRE! ¿Cómo va todo? Espero que muy bien.",
-  "¡Hola NOMBRE! ¿Cómo estás? Un gusto saludarte.",
-  "¡Qué tal, NOMBRE! Espero que tengas un excelente día. ¿Cómo estás?",
+  "Qué tal, NOMBRE! Excelente día, cómo estás?",
+  "Hola NOMBRE! Cómo va todo? Espero que muy bien.",
+  "Hola NOMBRE! Cómo estás? Un gusto saludarte.",
+  "Qué tal, NOMBRE! Espero que tengas un excelente día. Cómo estás?",
 ];
 
 const PRESENTACION_PROSPECTO = [
-  "¡Hola NOMBRE! Soy Mauricio, de Mainstage Pro. Somos una empresa de producción de eventos y renta de equipo de audio, iluminación, video y más. Me encantaría platicar contigo. ¿Tienes un momento?",
-  "¡Qué tal, NOMBRE! Te saluda Mauricio de Mainstage Pro, producción de eventos y renta de equipo (audio, iluminación, video y más). Me gustaría conocer tu proyecto. ¿Cómo estás?",
-  "¡Hola NOMBRE! Soy Mauricio, de Mainstage Pro. Nos dedicamos a la producción de eventos y renta de equipo de audio, iluminación y video. Si estás planeando algo, con gusto te ayudo. ¿Platicamos?",
+  "Hola NOMBRE! Soy Mauricio, de Mainstage Pro. Somos una empresa de producción de eventos y renta de equipo de audio, iluminación, video y más. Me encantaría platicar contigo. Tienes un momento?",
+  "Qué tal, NOMBRE! Te saluda Mauricio de Mainstage Pro, producción de eventos y renta de equipo (audio, iluminación, video y más). Me gustaría conocer tu proyecto. Cómo estás?",
+  "Hola NOMBRE! Soy Mauricio, de Mainstage Pro. Nos dedicamos a la producción de eventos y renta de equipo de audio, iluminación y video. Si estás planeando algo, con gusto te ayudo. Platicamos?",
 ];
 
 function primerNombre(nombre: string): string {
