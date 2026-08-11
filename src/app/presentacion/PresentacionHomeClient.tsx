@@ -176,7 +176,7 @@ export default function PresentacionHomeClient() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {EVENTOS.map((ev, i) => (
               <R key={ev.title} delay={i * 120}>
-                <a href={ev.href} className="group block relative rounded-2xl overflow-hidden" style={{ height: "360px", background: "#060606", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <a href={ev.href} className="group block relative rounded-2xl overflow-hidden h-full" style={{ minHeight: "440px", background: "#060606", border: "1px solid rgba(255,255,255,0.06)" }}>
                   <EditableImage
                     edit={edit}
                     okey={`home.evento.${i}.img`}
