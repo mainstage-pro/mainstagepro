@@ -5,8 +5,9 @@ import { useEffect, useState, useRef } from "react";
 import { Inbox, MailX } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ETAPA_LABELS, TIPO_EVENTO_LABELS, ORIGEN_LEAD_LABELS, MOMENTO_LABELS, MOMENTO_COLORS } from "@/lib/constants";
+import { ETAPA_LABELS, ORIGEN_LEAD_LABELS, MOMENTO_LABELS, MOMENTO_COLORS } from "@/lib/constants";
 import { formatCurrency } from "@/lib/cotizador";
+import { waUrlContacto } from "@/lib/whatsapp-mensajes";
 import { useToast } from "@/components/Toast";
 import { Combobox } from "@/components/Combobox";
 import { useConfirm } from "@/components/Confirm";
@@ -271,15 +272,15 @@ function fmtValor(n: number): string {
 }
 
 function waUrl(trato: Trato): string | null {
-  const tel = trato.cliente?.telefono?.replace(/\D/g, "");
-  if (!tel) return null;
-  const nombre = trato.cliente.nombre.split(" ")[0];
-  const evento = trato.nombreEvento || TIPO_EVENTO_LABELS[trato.tipoEvento] || "tu evento";
-  const fecha = trato.fechaEventoEstimada
-    ? new Date(trato.fechaEventoEstimada).toLocaleDateString("es-MX", { timeZone: "UTC", day: "numeric", month: "long" })
-    : null;
-  const msg = `Hola ${nombre}, te contacto de Mainstage Pro para dar seguimiento a ${evento}${fecha ? ` estimado para el ${fecha}` : ""}. ¿Tienes un momento para platicar?`;
-  return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
+  // En el pipeline el cliente siempre tiene actividad (el trato mismo), así que
+  // usa el saludo simple; la presentación se reserva para prospectos nuevos.
+  return waUrlContacto({
+    id: trato.cliente.id,
+    nombre: trato.cliente.nombre,
+    telefono: trato.cliente.telefono,
+    esProspecto: false,
+    tieneActividad: true,
+  });
 }
 
 // ── WA icon svg ───────────────────────────────────────────────────────────────

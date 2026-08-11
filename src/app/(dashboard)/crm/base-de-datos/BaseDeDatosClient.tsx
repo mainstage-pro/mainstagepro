@@ -6,6 +6,7 @@ import { TIPO_CLIENTE_LABELS, CLASIFICACION_LABELS, ORIGEN_LEAD_OPTIONS, ORIGEN_
 import { PerfilMultiSelect, usePerfilesCustom } from "@/components/crm/PerfilSelect";
 import { PERFILES_POR_CATEGORIA, parsePerfiles, perfilesPorCategoriaCon, PERFIL_CATEGORIAS, PERFIL_CATEGORIA_LABELS, type CustomPerfil } from "@/lib/proceso/perfiles";
 import { CopyButton } from "@/components/CopyButton";
+import { waUrlContacto } from "@/lib/whatsapp-mensajes";
 import { useConfirm } from "@/components/Confirm";
 import { useToast } from "@/components/Toast";
 import NuevaTareaModal from "../../operaciones/components/NuevaTareaModal";
@@ -482,6 +483,13 @@ function ContactoRow({
   }
 
   const estadoActividad = actividadMap[c.id] ?? "INACTIVO";
+  const waHref = waUrlContacto({
+    id: c.id,
+    nombre: c.nombre,
+    telefono: c.telefono,
+    esProspecto: c.esProspecto,
+    tieneActividad: (c._count.tratos + c._count.prospecciones + c._count.cotizaciones) > 0,
+  });
 
   return (
     <tr className="ms-tr group cursor-pointer"
@@ -500,7 +508,14 @@ function ContactoRow({
               className="text-[13px] text-white font-semibold leading-tight hover:text-[#B3985B] transition-colors truncate max-w-[155px] block">
               {c.nombre}
             </Link>
-            
+            {waHref && (
+              <a href={waHref} target="_blank" rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                className="shrink-0 p-1 rounded-md text-green-700/70 hover:text-green-400 hover:bg-green-500/10 transition-all"
+                title="Escribir por WhatsApp">
+                <WaIcon />
+              </a>
+            )}
           </div>
           {c.correo && (
             <span className="flex items-center gap-0.5">
