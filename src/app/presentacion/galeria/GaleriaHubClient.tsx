@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Package, SlidersHorizontal, ArrowRight } from "lucide-react";
+import { Package, SlidersHorizontal, Sparkles, ArrowRight } from "lucide-react";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import { WA_URL } from "@/components/presentacion/descubrimiento";
 import { GOLD, Masonry, Reveal, WhatsAppIcon } from "@/components/presentacion/galeria-ui";
@@ -113,8 +113,9 @@ export default function GaleriaHubClient({
           <Reveal>
             <p className="text-white/20 text-xs uppercase tracking-widest mb-6 text-center">— O conoce lo que ofrecemos —</p>
           </Reveal>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
+              { href: "/presentacion#eventos", icon: Sparkles, label: "Eventos que realizamos", desc: "Musicales, sociales y empresariales. La producción que merece cada tipo de evento." },
               { href: "/presentacion/inventario", icon: Package, label: "Inventario de equipo", desc: "Audio, iluminación y video profesional. Catálogo completo con precios de renta." },
               { href: "/presentacion/servicios", icon: SlidersHorizontal, label: "Servicios", desc: "Renta, producción y dirección técnica. Cómo trabajamos y por qué elegirnos." },
             ].map((it, i) => (
