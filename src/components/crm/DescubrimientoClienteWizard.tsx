@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from
 import {
   PartyPopper, Music, Building2, Sparkles, Check, ChevronRight, ChevronLeft,
   Wand2, Wrench, ClipboardCheck, Star, HelpCircle, Loader2,
+  Mic, Monitor, Disc3, Lightbulb, Zap, Volume2, Boxes, Languages,
+  type LucideIcon,
 } from "lucide-react";
 import { useToast } from "@/components/Toast";
 
@@ -46,6 +48,21 @@ function valoresRespuestas(s: string | null | undefined): Record<string, string>
     else if (v && typeof v === "object") out[k] = String((v as { valor?: unknown }).valor ?? "");
   }
   return out;
+}
+
+// Ícono representativo por adicional (cuando no hay imagen). Se elige por palabra
+// clave del nombre; siempre devuelve algo visible para no dejar la tarjeta vacía.
+function iconoAdicional(nombre: string): LucideIcon {
+  const n = nombre.toLowerCase();
+  if (/(planta de luz|energ|ups|corriente)/.test(n)) return Zap;
+  if (/(micr|ceremonia|brindis|traducc)/.test(n)) return /traducc/.test(n) ? Languages : Mic;
+  if (/(pantalla|led|video|proyec|switcher|streaming|cctv|teleprompter|monitor)/.test(n)) return Monitor;
+  if (/(dj|reproductores|mixer)/.test(n)) return Disc3;
+  if (/(luz|ilumina|washes|pinspot|bruma|gobos|hazer)/.test(n)) return Lightbulb;
+  if (/(chispero|bazuca|confeti|impacto)/.test(n)) return Sparkles;
+  if (/(audio|backline|monitoreo|delay|intercom|sonido)/.test(n)) return Volume2;
+  if (/(layher|ground|rigging|estructura|templete|tarima|pista|riser)/.test(n)) return Boxes;
+  return Sparkles;
 }
 
 // Fuente de servicio expresada por RESULTADO (no por jerga técnica).
@@ -447,10 +464,12 @@ export default function DescubrimientoClienteWizard({
                     <button key={a.id} type="button"
                       onClick={() => setAdicionales(p => activo ? p.filter(x => x !== a.id) : [...p, a.id])}
                       className={`text-left rounded-xl border overflow-hidden transition-all ${activo ? "border-[#B3985B] ring-1 ring-[#B3985B]/40" : "border-[#222] hover:border-[#444]"}`}>
-                      <div className="relative aspect-[4/3] bg-[#151515]">
+                      <div className="relative aspect-[4/3] bg-gradient-to-br from-[#1c1c1c] to-[#0e0e0e]">
                         {a.imagenUrl
                           ? <img src={a.imagenUrl} alt={a.nombre} className="w-full h-full object-cover" />
-                          : <div className="w-full h-full flex items-center justify-center text-gray-700"><Sparkles strokeWidth={1.5} className="w-8 h-8" /></div>}
+                          : (() => { const Ico = iconoAdicional(a.nombre); return (
+                              <div className="w-full h-full flex items-center justify-center text-[#B3985B]/70"><Ico strokeWidth={1.5} className="w-9 h-9" /></div>
+                            ); })()}
                         {activo && <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#B3985B] flex items-center justify-center"><Check strokeWidth={3} className="w-3.5 h-3.5 text-black" /></div>}
                         {frecuente && <div className="absolute top-2 left-2 inline-flex items-center gap-1 bg-black/60 backdrop-blur rounded-full px-2 py-0.5 text-[10px] text-[#B3985B] font-semibold"><Star strokeWidth={2} className="w-3 h-3 fill-[#B3985B]" /> Popular</div>}
                       </div>

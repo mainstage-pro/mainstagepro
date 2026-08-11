@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { ClipboardList, Settings, Truck, Handshake, Music, Wine, Building2, Calendar, Package, Palette, Sliders, DollarSign, Eye, Image as ImageIcon, Folder, FileText, PenLine, BarChart3, Paperclip, Lightbulb, Phone, List, Zap, Camera, Monitor, Sparkles, PartyPopper, Clock, type LucideIcon } from "lucide-react";
 import TimePicker from "@/components/ui/TimePicker";
 import VenuePicker from "@/components/ui/VenuePicker";
@@ -156,7 +156,8 @@ function normalizarRespuestas(raw: unknown): MapaRespuestas {
 function DescubrimientoCatalogo({
   tipoEvento, nichoSlug, nichoNombre, asistentes,
   adicionales, preguntas, respuestas, adicionalesSel,
-  onRespuesta, onToggleAdicional, onUsarPaquete, readOnly,
+  categoriasSel, categoriaIdPorNombre,
+  onRespuesta, onToggleAdicional, onToggleCategoria, onUsarPaquete, readOnly,
 }: {
   tipoEvento: string;
   nichoSlug: string;
@@ -166,8 +167,11 @@ function DescubrimientoCatalogo({
   preguntas: PreguntaCat[];
   respuestas: MapaRespuestas;
   adicionalesSel: string[];
+  categoriasSel: string[];
+  categoriaIdPorNombre: Map<string, string>;
   onRespuesta: (preguntaId: string, valor: string) => void;
   onToggleAdicional: (adicionalId: string) => void;
+  onToggleCategoria: (categoriaId: string) => void;
   onUsarPaquete: (paquete: PaquetePublico) => void;
   readOnly: boolean;
 }) {
@@ -189,10 +193,15 @@ function DescubrimientoCatalogo({
   // Paquetes candidatos: mismo tipo y rango que cubre a los asistentes estimados.
   const candidatos = paquetes.filter(p => rangoIncluye(p.rangoPersonas, asistentes));
 
-  // Adicionales del tipo de evento (frecuentes primero). Si hay nicho, se marcan
-  // los específicos del nicho; ninguno se oculta.
+  // Adicionales específicos del nicho (frecuentes primero). Un adicional sin nichos
+  // aplica a todo su tipo; con nichos, solo al nicho elegido. Si no hay nicho aún,
+  // se muestran los del tipo.
   const adicionalesDelTipo = adicionales
-    .filter(a => jsonArr(a.tiposEvento).includes(tipoEvento))
+    .filter(a => {
+      if (!jsonArr(a.tiposEvento).includes(tipoEvento)) return false;
+      const ns = jsonArr(a.nichos);
+      return ns.length === 0 || !nichoSlug || ns.includes(nichoSlug);
+    })
     .sort((x, y) => (x.frecuencia === "frecuente" ? 0 : 1) - (y.frecuencia === "frecuente" ? 0 : 1));
 
   // Preguntas del nicho: las globales (sin nichos) y las del nicho elegido.
@@ -240,12 +249,37 @@ function DescubrimientoCatalogo({
       {/* 2. Descubrimiento guiado (preguntas del nicho) — plegable, opcional */}
       {preguntasDelNicho.length > 0 && (() => {
         const opcionesDe = (q: PreguntaCat) => q.tipoRespuesta === "SI_NO" ? ["Sí", "No", "No estoy seguro"] : jsonArr(q.opciones).concat("No estoy seguro");
+        // Categorías ligadas a una pregunta (ids de inventario resueltos por nombre).
+        const catsDe = (q: PreguntaCat) => q.reglas
+          .flatMap(r => jsonArr(r.categoriasEquipo))
+          .map(nm => categoriaIdPorNombre.get(nm))
+          .filter((x): x is string => !!x);
         const responder = (q: PreguntaCat, opt: string) => {
           const val = respuestas[q.id]?.valor || "";
-          onRespuesta(q.id, val === opt ? "" : opt);
-          if (opt === "Sí" && val !== opt) {
-            const enciende = q.reglas.flatMap(r => jsonArr(r.adicionalIds));
-            for (const aid of enciende) if (!adicionalesSel.includes(aid)) onToggleAdicional(aid);
+          const next = val === opt ? "" : opt;
+          onRespuesta(q.id, next);
+          const enciendeQ = q.reglas.flatMap(r => jsonArr(r.adicionalIds));
+          const catsQ = catsDe(q);
+          const antesSi = val === "Sí";
+          const despuesSi = next === "Sí";
+          if (despuesSi && !antesSi) {
+            // Encender adicionales y categorías ligadas a esta respuesta.
+            for (const aid of enciendeQ) if (!adicionalesSel.includes(aid)) onToggleAdicional(aid);
+            for (const cid of catsQ) if (!categoriasSel.includes(cid)) onToggleCategoria(cid);
+          } else if (antesSi && !despuesSi) {
+            // Apagar lo que esta pregunta encendía, salvo que otra respuesta "Sí" vigente
+            // también lo pida (regla bidireccional).
+            const adicNecesarios = new Set<string>();
+            const catNecesarias = new Set<string>();
+            for (const otra of preguntasDelNicho) {
+              if (otra.id === q.id) continue;
+              if ((respuestas[otra.id]?.valor || "") === "Sí") {
+                for (const aid of otra.reglas.flatMap(r => jsonArr(r.adicionalIds))) adicNecesarios.add(aid);
+                for (const cid of catsDe(otra)) catNecesarias.add(cid);
+              }
+            }
+            for (const aid of enciendeQ) if (adicionalesSel.includes(aid) && !adicNecesarios.has(aid)) onToggleAdicional(aid);
+            for (const cid of catsQ) if (categoriasSel.includes(cid) && !catNecesarias.has(cid)) onToggleCategoria(cid);
           }
         };
         const contestadas = preguntasDelNicho.filter(q => respuestas[q.id]?.valor).length;
@@ -552,6 +586,9 @@ export default function DiscoveryForm({
   const [catNichos, setCatNichos] = useState<{ id: string; tipoEventoSlug: string; nombre: string; slug: string }[]>([]);
   const [catAdicionales, setCatAdicionales] = useState<{ id: string; nombre: string; descripcion: string | null; tiposEvento: string; nichos: string | null; frecuencia: string; imagenUrl: string | null }[]>([]);
   const [catPreguntas, setCatPreguntas] = useState<{ id: string; texto: string; tipoRespuesta: string; opciones: string | null; nichos: string | null; reglas: { categoriasEquipo: string | null; adicionalIds: string | null }[] }[]>([]);
+  // Categorías de inventario (id↔nombre): permiten que una respuesta del descubrimiento
+  // encienda su categoría ligada dentro de equiposInteres, para que viaje a la cotización.
+  const [catCategorias, setCatCategorias] = useState<{ id: string; nombre: string }[]>([]);
   useEffect(() => {
     let cancel = false;
     fetch("/api/catalogo")
@@ -563,8 +600,17 @@ export default function DiscoveryForm({
         setCatPreguntas(Array.isArray(d.preguntas) ? d.preguntas : []);
       })
       .catch(() => { /* fallback: subtipos hardcodeados */ });
+    fetch("/api/inventario/publico")
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (!cancel && Array.isArray(d?.categorias)) setCatCategorias(d.categorias.map((c: any) => ({ id: c.id, nombre: c.nombre }))); })
+      .catch(() => {});
     return () => { cancel = true; };
   }, []);
+  const categoriaIdPorNombre = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of catCategorias) m.set(c.nombre, c.id);
+    return m;
+  }, [catCategorias]);
 
   // Cliente state
 
@@ -1385,6 +1431,11 @@ export default function DiscoveryForm({
                   preguntas={catPreguntas}
                   respuestas={discForm.respuestasDescubrimiento}
                   adicionalesSel={discForm.adicionalesSeleccionados}
+                  categoriasSel={(() => {
+                    try { const s = discForm.equiposInteres ? JSON.parse(discForm.equiposInteres) : null; return Array.isArray(s?.categorias) ? s.categorias : []; }
+                    catch { return []; }
+                  })()}
+                  categoriaIdPorNombre={categoriaIdPorNombre}
                   readOnly={readOnly}
                   onRespuesta={(pid, val) => setDiscForm(p => {
                     const next = { ...p.respuestasDescubrimiento };
@@ -1400,6 +1451,14 @@ export default function DiscoveryForm({
                       ? p.adicionalesSeleccionados.filter(x => x !== aid)
                       : [...p.adicionalesSeleccionados, aid],
                   }))}
+                  onToggleCategoria={(cid) => setDiscForm(p => {
+                    let sel: SeleccionEquipos;
+                    try { sel = p.equiposInteres ? JSON.parse(p.equiposInteres) : { categorias: [], equipos: [] }; }
+                    catch { sel = { categorias: [], equipos: [] }; }
+                    const cats = Array.isArray(sel.categorias) ? sel.categorias : [];
+                    const next = cats.includes(cid) ? cats.filter((x: string) => x !== cid) : [...cats, cid];
+                    return { ...p, equiposInteres: JSON.stringify({ ...sel, categorias: next }) };
+                  })}
                   onUsarPaquete={(paq) => setDiscForm(p => {
                     let sel: SeleccionEquipos;
                     try { sel = p.equiposInteres ? JSON.parse(p.equiposInteres) : { categorias: [], equipos: [] }; }
