@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { ClipboardList, Settings, Truck, Handshake, Music, Wine, Building2, Calendar, Package, Palette, Sliders, DollarSign, Eye, Image as ImageIcon, Folder, FileText, PenLine, BarChart3, Paperclip, Lightbulb, Phone, Zap, Camera, Monitor, Sparkles, PartyPopper, Clock, type LucideIcon } from "lucide-react";
+import { ClipboardList, Settings, Truck, Handshake, Music, Wine, Building2, Calendar, Package, Palette, Sliders, DollarSign, Eye, Image as ImageIcon, Folder, FileText, PenLine, BarChart3, Paperclip, Lightbulb, Phone, List, Zap, Camera, Monitor, Sparkles, PartyPopper, Clock, type LucideIcon } from "lucide-react";
 import TimePicker from "@/components/ui/TimePicker";
 import VenuePicker from "@/components/ui/VenuePicker";
 import { SelectorEquiposInventario, type SeleccionEquipos, type PaquetePublico } from '@/components/SelectorEquiposInventario';
@@ -133,6 +133,26 @@ function jsonArr(s: string | null): string[] {
   try { const a = JSON.parse(s); return Array.isArray(a) ? a : []; } catch { return []; }
 }
 
+// Trazabilidad de respuestas de descubrimiento: cada respuesta guarda quién la
+// contestó (vendedor|cliente) y cuándo. Compatible hacia atrás: un valor string
+// legacy se normaliza como respuesta del vendedor.
+type RespuestaTraza = { valor: string; origen: "vendedor" | "cliente"; ts: string };
+type MapaRespuestas = Record<string, RespuestaTraza>;
+
+function normalizarRespuestas(raw: unknown): MapaRespuestas {
+  if (!raw || typeof raw !== "object") return {};
+  const out: MapaRespuestas = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === "string") { if (v) out[k] = { valor: v, origen: "vendedor", ts: "" }; }
+    else if (v && typeof v === "object") {
+      const o = v as Record<string, unknown>;
+      const valor = String(o.valor ?? "");
+      if (valor) out[k] = { valor, origen: o.origen === "cliente" ? "cliente" : "vendedor", ts: String(o.ts ?? "") };
+    }
+  }
+  return out;
+}
+
 function DescubrimientoCatalogo({
   tipoEvento, nichoSlug, nichoNombre, asistentes,
   adicionales, preguntas, respuestas, adicionalesSel,
@@ -144,7 +164,7 @@ function DescubrimientoCatalogo({
   asistentes: number | null;
   adicionales: AdicionalCat[];
   preguntas: PreguntaCat[];
-  respuestas: Record<string, string>;
+  respuestas: MapaRespuestas;
   adicionalesSel: string[];
   onRespuesta: (preguntaId: string, valor: string) => void;
   onToggleAdicional: (adicionalId: string) => void;
@@ -153,6 +173,8 @@ function DescubrimientoCatalogo({
 }) {
   const [paquetes, setPaquetes] = useState<PaquetePublico[]>([]);
   const [openGuia, setOpenGuia] = useState(false);
+  const [modoLlamada, setModoLlamada] = useState(false);
+  const [idxLlamada, setIdxLlamada] = useState(0);
 
   useEffect(() => {
     if (!tipoEvento) { setPaquetes([]); return; }
@@ -216,47 +238,115 @@ function DescubrimientoCatalogo({
       )}
 
       {/* 2. Descubrimiento guiado (preguntas del nicho) — plegable, opcional */}
-      {preguntasDelNicho.length > 0 && (
+      {preguntasDelNicho.length > 0 && (() => {
+        const opcionesDe = (q: PreguntaCat) => q.tipoRespuesta === "SI_NO" ? ["Sí", "No", "No estoy seguro"] : jsonArr(q.opciones).concat("No estoy seguro");
+        const responder = (q: PreguntaCat, opt: string) => {
+          const val = respuestas[q.id]?.valor || "";
+          onRespuesta(q.id, val === opt ? "" : opt);
+          if (opt === "Sí" && val !== opt) {
+            const enciende = q.reglas.flatMap(r => jsonArr(r.adicionalIds));
+            for (const aid of enciende) if (!adicionalesSel.includes(aid)) onToggleAdicional(aid);
+          }
+        };
+        const contestadas = preguntasDelNicho.filter(q => respuestas[q.id]?.valor).length;
+        return (
         <div className="rounded-lg border border-[#2a2a2a] bg-[#0f0f0f]">
           <button type="button" onClick={() => setOpenGuia(o => !o)}
             className="w-full flex items-center justify-between px-3 py-2.5 text-left">
             <span className="text-xs text-white font-medium inline-flex items-center gap-1.5">
               <Lightbulb strokeWidth={1.75} className="w-3.5 h-3.5 text-[#B3985B]" /> Descubrimiento guiado (opcional)
+              {contestadas > 0 && <span className="text-[10px] text-gray-500">· {contestadas}/{preguntasDelNicho.length}</span>}
             </span>
             <span className="text-gray-500 text-xs">{openGuia ? "−" : "+"}</span>
           </button>
           {openGuia && (
-            <div className="px-3 pb-3 space-y-3 border-t border-[#1a1a1a] pt-3">
-              {preguntasDelNicho.map(q => {
-                const val = respuestas[q.id] || "";
-                const enciendeAdicionales = q.reglas.flatMap(r => jsonArr(r.adicionalIds));
+            <div className="px-3 pb-3 border-t border-[#1a1a1a] pt-3">
+              {/* Selector de modo: lista vs llamada */}
+              <div className="flex items-center gap-1 mb-3">
+                {(["lista", "llamada"] as const).map(m => {
+                  const activo = (m === "llamada") === modoLlamada;
+                  return (
+                    <button key={m} type="button" onClick={() => { setModoLlamada(m === "llamada"); setIdxLlamada(0); }}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-medium border transition-colors ${activo ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] text-gray-500 hover:text-gray-300"}`}>
+                      {m === "llamada" ? <Phone className="w-3 h-3" /> : <List className="w-3 h-3" />}
+                      {m === "llamada" ? "Modo llamada" : "Modo lista"}
+                    </button>
+                  );
+                })}
+                {modoLlamada && <span className="ml-auto text-[10px] text-gray-500">Pregunta {Math.min(idxLlamada + 1, preguntasDelNicho.length)} de {preguntasDelNicho.length}</span>}
+              </div>
+
+              {/* ── MODO LISTA ── */}
+              {!modoLlamada && (
+                <div className="space-y-3">
+                  {preguntasDelNicho.map(q => {
+                    const r = respuestas[q.id];
+                    return (
+                      <div key={q.id}>
+                        <p className="text-xs text-gray-300 mb-1.5 flex items-center gap-1.5">
+                          {q.texto}
+                          {r?.origen === "cliente" && <span className="text-[9px] uppercase tracking-wide text-emerald-400 border border-emerald-500/30 rounded px-1 py-0.5">respondió el cliente</span>}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {opcionesDe(q).map(opt => (
+                            <button key={opt} type="button" disabled={readOnly} onClick={() => responder(q, opt)}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] border transition-colors ${
+                                r?.valor === opt ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10" : "border-[#333] text-gray-500 hover:text-white"
+                              }`}>
+                              {opt}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* ── MODO LLAMADA (una pregunta a la vez, tipografía grande) ── */}
+              {modoLlamada && (() => {
+                const idx = Math.min(idxLlamada, preguntasDelNicho.length - 1);
+                const q = preguntasDelNicho[idx];
+                const r = respuestas[q.id];
+                const ultima = idx >= preguntasDelNicho.length - 1;
                 return (
-                  <div key={q.id}>
-                    <p className="text-xs text-gray-300 mb-1.5">{q.texto}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {(q.tipoRespuesta === "SI_NO" ? ["Sí", "No", "No estoy seguro"] : jsonArr(q.opciones).concat("No estoy seguro")).map(opt => (
+                  <div className="rounded-lg bg-[#0a0a0a] border border-[#1f1f1f] p-4">
+                    {r?.origen === "cliente" && <p className="text-[10px] uppercase tracking-wide text-emerald-400 mb-2">respondió el cliente — no se sobrescribe</p>}
+                    <p className="text-lg text-white leading-snug mb-4">{q.texto}</p>
+                    <div className="flex flex-col gap-2">
+                      {opcionesDe(q).map(opt => (
                         <button key={opt} type="button" disabled={readOnly}
-                          onClick={() => {
-                            onRespuesta(q.id, val === opt ? "" : opt);
-                            // Responder afirmativo enciende los adicionales de la regla (sugerencia).
-                            if (opt === "Sí" && val !== opt) {
-                              for (const aid of enciendeAdicionales) if (!adicionalesSel.includes(aid)) onToggleAdicional(aid);
-                            }
-                          }}
-                          className={`px-2.5 py-1 rounded-lg text-[11px] border transition-colors ${
-                            val === opt ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10" : "border-[#333] text-gray-500 hover:text-white"
+                          onClick={() => { responder(q, opt); if (!ultima) setIdxLlamada(idx + 1); }}
+                          className={`w-full text-left px-4 py-3 rounded-lg text-sm border transition-colors ${
+                            r?.valor === opt ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10" : "border-[#333] text-gray-300 hover:border-[#555] hover:text-white"
                           }`}>
                           {opt}
                         </button>
                       ))}
                     </div>
+                    <div className="flex items-center justify-between mt-4">
+                      <button type="button" onClick={() => setIdxLlamada(Math.max(0, idx - 1))} disabled={idx === 0}
+                        className="text-xs text-gray-500 hover:text-white disabled:opacity-30 px-2 py-1">← Anterior</button>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => { if (!ultima) setIdxLlamada(idx + 1); }}
+                          className="text-xs text-gray-400 hover:text-white px-2 py-1">Saltar</button>
+                        {!ultima ? (
+                          <button type="button" onClick={() => setIdxLlamada(idx + 1)}
+                            className="text-xs font-semibold text-black bg-[#B3985B] hover:bg-[#c9a96a] px-3 py-1.5 rounded-lg">Siguiente →</button>
+                        ) : (
+                          <button type="button" onClick={() => setModoLlamada(false)}
+                            className="text-xs font-semibold text-black bg-[#B3985B] hover:bg-[#c9a96a] px-3 py-1.5 rounded-lg">Terminar</button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 );
-              })}
+              })()}
             </div>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {/* 3. Adicionales frecuentes en el nicho */}
       {adicionalesDelTipo.length > 0 && (
@@ -499,7 +589,7 @@ export default function DiscoveryForm({
     // Descubrimiento por nicho (catálogo comercial): nicho elegido, respuestas del
     // descubrimiento guiado (preguntaId→valor) y adicionales sugeridos encendidos.
     nichoSlug: "",
-    respuestasDescubrimiento: {} as Record<string, string>,
+    respuestasDescubrimiento: {} as MapaRespuestas,
     adicionalesSeleccionados: [] as string[],
     notasEquipos: "",
     serviciosAdicionalesOtro: "",
@@ -593,7 +683,7 @@ export default function DiscoveryForm({
       equiposInteres: equiposRestore,
       nichoSlug: trato.nichoSlug || "",
       respuestasDescubrimiento: (() => {
-        try { const r = JSON.parse(trato.respuestasDescubrimiento || "{}"); return r && typeof r === "object" ? r : {}; } catch { return {}; }
+        try { return normalizarRespuestas(JSON.parse(trato.respuestasDescubrimiento || "{}")); } catch { return {}; }
       })(),
       adicionalesSeleccionados: (() => {
         try { const a = JSON.parse(trato.adicionalesSeleccionados || "[]"); return Array.isArray(a) ? a : []; } catch { return []; }
@@ -1298,7 +1388,10 @@ export default function DiscoveryForm({
                   readOnly={readOnly}
                   onRespuesta={(pid, val) => setDiscForm(p => {
                     const next = { ...p.respuestasDescubrimiento };
-                    if (val) next[pid] = val; else delete next[pid];
+                    // Trazabilidad: el vendedor no sobrescribe una respuesta del cliente.
+                    if (next[pid]?.origen === "cliente") return p;
+                    if (val) next[pid] = { valor: val, origen: "vendedor", ts: new Date().toISOString() };
+                    else delete next[pid];
                     return { ...p, respuestasDescubrimiento: next };
                   })}
                   onToggleAdicional={(aid) => setDiscForm(p => ({
