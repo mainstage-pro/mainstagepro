@@ -21,6 +21,9 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // ── Descubrimiento público: /f (retirado) → /descubrimiento ──────────────
+      // Links de formulario ya enviados por WhatsApp siguen funcionando.
+      { source: "/f/:token",                 destination: "/descubrimiento/:token",     permanent: true },
       // ── Proyectos internos → Proyectos de empresa (ruta renombrada) ──────────
       { source: "/proyectos-internos",      destination: "/proyectos-de-empresa",      permanent: true },
       { source: "/proyectos-internos/:id",  destination: "/proyectos-de-empresa/:id",  permanent: true },

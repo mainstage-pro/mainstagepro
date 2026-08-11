@@ -1426,7 +1426,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const serviciosSel: string[] = trato.serviciosInteres ? JSON.parse(trato.serviciosInteres) : [];
   const canalInfo = getCanal(trato.canalAtencion ?? "");
 
-  const formUrl = trato.formToken ? `${typeof window !== "undefined" ? window.location.origin : ""}/f/${trato.formToken}` : "";
+  const formUrl = trato.formToken ? `${typeof window !== "undefined" ? window.location.origin : ""}/descubrimiento/${trato.formToken}` : "";
   const _telefono = trato.cliente.telefono?.replace(/\D/g, "");
   const waUrl = _telefono ? `https://wa.me/52${_telefono}?text=${encodeURIComponent(`Hola ${trato.cliente.nombre.split(" ")[0]}, para prepararte una propuesta personalizada necesito que completes este breve formulario: ${formUrl}`)}` : null;
 

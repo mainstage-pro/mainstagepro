@@ -6,9 +6,10 @@ import DiscoveryForm from "@/components/crm/DiscoveryForm";
 import { ToastProvider } from "@/components/Toast";
 
 // Página pública del descubrimiento del cliente (link por token).
-// Renderiza EXACTAMENTE el mismo formulario que ve el vendedor internamente
-// (DiscoveryForm) en "modo cliente": mismos pasos, campos y estética, pero
-// ocultando lo interno (propuesta, Trade, render) y guardando vía /api/f/[token].
+// Reusa la infra de token/guardado parcial de /f (mismos campos del trato) y
+// renderiza el DiscoveryForm en "modo cliente": mismos pasos y estética, pero
+// ocultando lo interno (precios, propuesta, Trade, render). Reemplaza a /f, que
+// ahora redirige aquí (ver next.config.ts).
 
 const SERVICIO_LABELS: Record<string, string> = {
   PRODUCCION_TECNICA: "Producción técnica", RENTA: "Renta de equipo", DIRECCION_TECNICA: "Dirección técnica",
@@ -17,7 +18,7 @@ const EVENTO_LABELS: Record<string, string> = {
   MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial", OTRO: "Otro",
 };
 
-export default function FormProspectoPage({ params }: { params: Promise<{ token: string }> }) {
+export default function DescubrimientoPublicoPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
   const [trato, setTrato] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -140,7 +141,7 @@ export default function FormProspectoPage({ params }: { params: Promise<{ token:
 
   return (
     // ToastProvider: DiscoveryForm usa useToast(), que lanza sin provider.
-    // La ruta pública /f no está bajo el layout de (dashboard), así que lo
+    // Esta ruta pública no está bajo el layout de (dashboard), así que lo
     // montamos aquí para que el formulario funcione en el link del cliente.
     <ToastProvider>
     <div className="min-h-screen bg-[#0a0a0a]"
