@@ -377,13 +377,13 @@ export default function ReporteVentasPage() {
         ) : !reporte ? null : (
           <>
             {/* ── SECCIÓN 1: KPIs principales ─────────────────────────────── */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {/* Ventas totales */}
-              <div className="ms-stat-card col-span-2 md:col-span-1">
+              <div className="ms-stat-card col-span-2 lg:col-span-1">
                 <p className="text-[#555] text-[10px] uppercase tracking-widest mb-1">Ingresos del mes</p>
                 <p className="text-3xl font-bold text-[#B3985B] leading-none">{fmt(reporte.ventasTotal.monto)}</p>
                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                  <span className="text-[#6b7280] text-[11px]">{reporte.ventasTotal.count} ventas cerradas (a {reporte.ventasTotal.clientesUnicos} clientes distintos)</span>
+                  <span className="text-[#6b7280] text-[11px]">{reporte.ventasTotal.count} ventas cerradas (a {reporte.ventasTotal.clientesUnicos} clientes)</span>
                   {reporte.crecimientoMensual !== null && (
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                       reporte.crecimientoMensual >= 0 ? "bg-green-900/40 text-green-400" : "bg-red-900/40 text-red-400"
@@ -395,69 +395,10 @@ export default function ReporteVentasPage() {
               </div>
 
               {/* Ticket promedio */}
-              <div className="ms-stat-card">
+              <div className="ms-stat-card col-span-2 lg:col-span-1">
                 <p className="text-[#555] text-[10px] uppercase tracking-widest mb-1">Ticket promedio</p>
                 <p className="ms-h1">{fmt(reporte.ticketPromedio)}</p>
                 <p className="text-[#444] text-[10px] mt-1.5">por venta cerrada</p>
-              </div>
-
-              {/* Conversión */}
-              <div className="ms-stat-card flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-3 text-[#6b7280] mb-1">
-                    <p className="text-xs uppercase tracking-wider font-semibold">Conversión</p>
-                  </div>
-                  <div className="mt-4">
-                    <div className="flex items-end justify-between mb-2">
-                      <p className="text-2xl font-bold text-white">{conversionPct.toFixed(1)}%</p>
-                      <p className="text-[#B3985B] text-xs font-medium bg-[#B3985B]/10 px-2 py-0.5 rounded">Tasa Conversión</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-1.5 mt-3 pt-3 border-t border-[#333]/50">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-[#6b7280]">Ventas Cerradas</span>
-                    <span className="text-white font-medium">{reporte.cotizaciones.ventasCerradas}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-[#6b7280]">En Seguimiento</span>
-                    <span className="text-white font-medium">{reporte.cotizaciones.enSeguimiento}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-[#6b7280]">Ventas Perdidas</span>
-                    <span className="text-white font-medium">{reporte.tratosPerdidos.count}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Perdidos */}
-              <div className="ms-stat-card flex flex-col justify-between">
-                <div className="flex items-center gap-3 text-[#6b7280] mb-1">
-                  <p className="text-xs uppercase tracking-wider font-semibold">Ventas perdidas</p>
-                </div>
-                <div className="mt-4 flex-1">
-                  <div className="flex items-center gap-3">
-                    <div>
-                      <p className="text-2xl font-bold text-red-400">{reporte.tratosPerdidos.count}</p>
-                      <p className="text-[#444] text-[10px] mt-1.5">{reporte.tratosPerdidos.montoEstimadoPerdido > 0 ? `~${fmt(reporte.tratosPerdidos.montoEstimadoPerdido)} perdidos` : "este período"}</p>
-                    </div>
-                  </div>
-                  
-                  {reporte.tratosPerdidos.top && reporte.tratosPerdidos.top.length > 0 && (
-                    <div className="mt-4 space-y-2">
-                      <p className="text-[#6b7280] text-[10px] uppercase font-semibold">Principales pérdidas</p>
-                      {reporte.tratosPerdidos.top.map((t, i) => (
-                        <div key={i} className="flex justify-between items-start text-xs border-b border-[#333]/50 pb-1.5 last:border-0 last:pb-0">
-                          <div className="flex flex-col max-w-[65%]">
-                            <span className="text-white truncate">{t.nombreEvento || "Sin Nombre"}</span>
-                            <span className="text-[#555] truncate text-[10px]">{t.clienteNombre}</span>
-                          </div>
-                          <span className="text-red-400/80 font-mono text-[10px] whitespace-nowrap">{fmt(t.monto)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
               </div>
             </div>
 
@@ -633,7 +574,7 @@ export default function ReporteVentasPage() {
             </div>
 
             {/* ── SECCIÓN 4: Funnel + Vendedores + Perdidos ────────────────── */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
               {/* Funnel de conversión */}
               <div className="ms-card p-5">
@@ -695,6 +636,33 @@ export default function ReporteVentasPage() {
                     ))}
                   </div>
                 )}
+              </div>
+
+              {/* Ventas perdidas (Top 5) */}
+              <div className="ms-card p-5 flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-white font-semibold text-sm">Principales pérdidas</h2>
+                  <span className="text-red-400 text-sm font-bold">{reporte.tratosPerdidos.count}</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-[#444] text-[10px] mb-4">{reporte.tratosPerdidos.montoEstimadoPerdido > 0 ? `~${fmt(reporte.tratosPerdidos.montoEstimadoPerdido)} en total` : "Sin pérdidas valorizadas"}</p>
+                  
+                  {reporte.tratosPerdidos.top && reporte.tratosPerdidos.top.length > 0 ? (
+                    <div className="space-y-3">
+                      {reporte.tratosPerdidos.top.map((t, i) => (
+                        <div key={i} className="flex justify-between items-start text-xs border-b border-[#333]/50 pb-2 last:border-0 last:pb-0">
+                          <div className="flex flex-col max-w-[70%]">
+                            <span className="text-white truncate font-medium">{t.nombreEvento || "Sin Nombre"}</span>
+                            <span className="text-[#6b7280] truncate text-[10px]">{t.clienteNombre}</span>
+                          </div>
+                          <span className="text-red-400/90 font-mono text-[10px] whitespace-nowrap">{fmt(t.monto)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[#444] text-xs text-center py-6">No hay datos</p>
+                  )}
+                </div>
               </div>
 
               {/* Análisis de pérdidas */}

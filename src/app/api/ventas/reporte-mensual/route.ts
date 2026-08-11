@@ -79,9 +79,9 @@ export async function GET(req: NextRequest) {
       fechaCierre: true,
       cliente: { select: { nombre: true, empresa: true } },
       cotizaciones: {
-        where: { estado: { in: ["ENVIADA", "APROBADA"] } },
+        where: { estado: "RECHAZADA" },
         select: { granTotal: true },
-        orderBy: { createdAt: "desc" },
+        orderBy: { granTotal: "desc" },
         take: 1,
       },
     },
@@ -150,12 +150,9 @@ export async function GET(req: NextRequest) {
   const totalCotizacionesPeriodo = await prisma.cotizacion.count({
     where: { createdAt: { gte: mesStart, lt: mesEnd } },
   });
-  const enSeguimientoCount = await prisma.trato.count({
-    where: {
-      createdAt: { gte: mesStart, lt: mesEnd },
-      etapa: { notIn: ["VENTA_CERRADA", "VENTA_PERDIDA"] },
-    }
-  });
+  
+  // Cálculo estricto para evitar duplicidad o mezcla de unidades:
+  const enSeguimientoCount = Math.max(0, totalCotizacionesPeriodo - tratosEnriquecidos.length - tratosPerdidos.length);
 
   // ── Top 5 clientes del período ──────────────────────────────────────────────
   const clienteMontoMap: Record<string, { id: string; nombre: string; empresa: string | null; monto: number; eventos: number }> = {};
