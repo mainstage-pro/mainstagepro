@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { parseCoberturas, coberturaMatch, type MatchCapacidad } from "@/lib/constants";
 import { Sparkles, Package, Plus, SlidersHorizontal, Handshake, Users, Settings, Mic, Headphones, Volume2, Disc3, Lightbulb, Monitor, Construction, Layers, Guitar, Music, Tent, Zap, Sofa, Cable, Video, Wrench, ExternalLink, type LucideIcon } from "lucide-react";
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
@@ -43,6 +44,7 @@ export type ProductoPublico = {
   tiposEvento: string | null;
   imagenUrl: string | null;
   precioFinal: number;
+  coberturas?: { tipoEvento: string; rangos: string | null; subtipos: string | null }[];
   items: { cantidad: number; equipo: { id: string; descripcion: string; marca: string | null; modelo: string | null } }[];
 };
 
@@ -135,6 +137,9 @@ interface Props {
    *  No ve la selección detallada de equipos/paquetes (esa etapa es del vendedor);
    *  en su lugar puede abrir la presentación del inventario en una ventana aparte. */
   clientMode?: boolean;
+  /** Contexto de capacidad del evento (tipo, nº de asistentes, subtipos) para
+   *  recomendar productos según su cobertura definida. Opcional. */
+  capacidad?: { tipoEvento?: string | null; asistentes?: number | null; subtipos?: string[] | null };
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────────
@@ -194,7 +199,7 @@ function opcionesCantidad(cant: number): number[] {
 
 // ── Componente ─────────────────────────────────────────────────────────────────
 
-export function SelectorEquiposInventario({ value, onChange, readOnly = false, notas, onNotasChange, clientMode = false }: Props) {
+export function SelectorEquiposInventario({ value, onChange, readOnly = false, notas, onNotasChange, clientMode = false, capacidad }: Props) {
   const [categorias, setCategorias] = useState<CategoriaPublica[]>([]);
   const [productos, setProductos] = useState<ProductoPublico[]>([]);
   const [paquetes, setPaquetes] = useState<PaquetePublico[]>([]);
@@ -373,9 +378,33 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
   // viene ordenado por `orden`). Así el modelo dominante es el pilar y sus variantes
   // (mismo modelo, distinta configuración) quedan juntas en un panel desplegable.
   // Sin categoría → "Otros"; sin marca/modelo → "Sin marca/modelo", ambos al final.
+  const filtroCapacidad = useMemo(
+    () => ({
+      tipoEvento: capacidad?.tipoEvento ?? null,
+      asistentes: capacidad?.asistentes ?? null,
+      subtipos: capacidad?.subtipos ?? [],
+    }),
+    [capacidad?.tipoEvento, capacidad?.asistentes, capacidad?.subtipos]
+  );
+  const hayCapacidad = !!filtroCapacidad.tipoEvento;
+  const matchProducto = useMemo(() => {
+    const m = new Map<string, MatchCapacidad>();
+    for (const p of productos) m.set(p.id, coberturaMatch(parseCoberturas(p.coberturas), filtroCapacidad));
+    return m;
+  }, [productos, filtroCapacidad]);
+  const [soloRecomendadosProd, setSoloRecomendadosProd] = useState(false);
+
+  const productosVisibles = useMemo(
+    () =>
+      soloRecomendadosProd && hayCapacidad
+        ? productos.filter((p) => matchProducto.get(p.id) === "match")
+        : productos,
+    [productos, soloRecomendadosProd, hayCapacidad, matchProducto]
+  );
+
   const productosPorCategoria = useMemo(() => {
     const cats = new Map<string, Map<string, ProductoPublico[]>>();
-    for (const p of productos) {
+    for (const p of productosVisibles) {
       const cat = (p.categoria ?? "").trim() || "Otros";
       const dom = p.items[0]?.equipo;
       const marca = (dom?.marca ?? "").trim();
@@ -406,7 +435,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
           })
           .map(([marcaModelo, items]) => ({ marcaModelo, items })),
       }));
-  }, [productos]);
+  }, [productosVisibles]);
 
   function toggleMarca(clave: string) {
     setMarcasExpandidas((prev) => {
@@ -1245,6 +1274,17 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
               <p className="text-gray-500 text-xs">
                 Sistemas y productos ya armados, agrupados por categoría y por marca/modelo del equipo principal. Abre un modelo para ver sus opciones; al elegir un producto se consideran todos sus equipos para la disponibilidad.
               </p>
+              {hayCapacidad && (
+                <button
+                  type="button"
+                  onClick={() => setSoloRecomendadosProd((v) => !v)}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] transition-colors ${
+                    soloRecomendadosProd ? "bg-[#B3985B] text-black font-semibold" : "bg-[#1a1a1a] text-gray-400 hover:text-white"
+                  }`}
+                >
+                  <Sparkles strokeWidth={1.75} className="w-3 h-3" /> Solo recomendados para la capacidad
+                </button>
+              )}
               {productosPorCategoria.map((grupo) => {
                 const totalCat = grupo.marcas.reduce((n, m) => n + m.items.length, 0);
                 return (
@@ -1326,6 +1366,9 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                                             {sel && <span className="text-black text-[9px] font-bold leading-none">✓</span>}
                                           </span>
                                           <span className="text-white text-xs font-medium leading-tight">{p.nombre}</span>
+                                          {hayCapacidad && matchProducto.get(p.id) === "match" && (
+                                            <span className="text-[8px] bg-emerald-500/15 text-emerald-400 rounded px-1 py-0.5 shrink-0">Recomendado</span>
+                                          )}
                                         </span>
                                         {p.descripcion && (
                                           <span className="block text-gray-500 text-[10px] leading-tight line-clamp-2 mt-0.5">

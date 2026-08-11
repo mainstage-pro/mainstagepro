@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
-import { ensureProductosTables, calcularPrecioProducto, type ItemInput } from "@/lib/productos";
+import { ensureProductosTables, calcularPrecioProducto, limpiarCoberturas, type ItemInput } from "@/lib/productos";
 
 const PRODUCTO_INCLUDE = {
   items: {
@@ -22,6 +22,7 @@ const PRODUCTO_INCLUDE = {
       },
     },
   },
+  coberturas: { select: { tipoEvento: true, rangos: true, subtipos: true } },
   equipoDominante: { select: { id: true, imagenUrl: true, descripcion: true } },
 };
 
@@ -43,7 +44,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const { nombre, descripcion, categoria, tiposEvento, imagenUrl, equipoDominanteId, precioManual, items, activo } = body;
+  const { nombre, descripcion, categoria, tiposEvento, imagenUrl, equipoDominanteId, precioManual, items, activo, coberturas } = body;
 
   const data: Record<string, unknown> = {};
   if (nombre !== undefined) data.nombre = nombre;
@@ -103,6 +104,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           orden: idx,
         })),
       });
+    }
+    if (coberturas !== undefined) {
+      const cobs = limpiarCoberturas(coberturas);
+      await tx.productoCobertura.deleteMany({ where: { productoId: id } });
+      if (cobs.length > 0) {
+        await tx.productoCobertura.createMany({
+          data: cobs.map((c) => ({
+            productoId: id,
+            tipoEvento: c.tipoEvento,
+            rangos: JSON.stringify(c.rangos),
+            subtipos: JSON.stringify(c.subtipos),
+          })),
+        });
+      }
     }
   });
 

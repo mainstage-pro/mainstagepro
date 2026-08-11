@@ -5,6 +5,7 @@ import { upload } from "@vercel/blob/client";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
+import { SUBTIPOS_EVENTO, parseCoberturas, coberturaMatch, rangoBounds, type Cobertura } from "@/lib/constants";
 import { Music, Wine, Building2, Sparkles, ImageIcon, Package, Puzzle, Users, type LucideIcon } from "lucide-react";
 
 // ── Constantes ────────────────────────────────────────────────────────────────
@@ -13,12 +14,6 @@ const TIPOS_EVENTO: { key: string; label: string; icon: LucideIcon }[] = [
   { key: "SOCIAL", label: "Social", icon: Wine },
   { key: "EMPRESARIAL", label: "Empresarial", icon: Building2 },
 ];
-
-const SUBTIPOS_EVENTO: Record<string, string[]> = {
-  MUSICAL: ["Concierto", "Festival", "Música Electrónica", "Presentación Musical"],
-  SOCIAL: ["Boda", "XV Años", "Bautizo", "Cumpleaños", "Fiesta Privada"],
-  EMPRESARIAL: ["Congreso / Convención", "Lanzamiento de Marca", "Feria / Expo", "Taller / Capacitación"],
-};
 
 const CONCEPTOS_COMIDA = [
   { label: "1 comida por persona", precio: 150 },
@@ -59,6 +54,7 @@ type ProductoLite = {
   categoria: string | null;
   imagenUrl: string | null;
   precioFinal: number;
+  coberturas?: { tipoEvento: string; rangos: string | null; subtipos: string | null }[];
 };
 
 type RolTecnico = {
@@ -118,6 +114,13 @@ function nombreEq(e: EquipoItem) {
 function parseTags(json: string | null): string[] {
   if (!json) return [];
   try { const v = JSON.parse(json); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+// Nº de asistentes representativo de un rango ("100-200" → 200), para casar
+// contra la cobertura de capacidad de los productos.
+function asistentesDeRango(label: string): number | null {
+  const { max, min } = rangoBounds(label);
+  const n = Number.isFinite(max) ? max : min;
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 function getRolTarifa(rol: RolTecnico, nivel: string, jornada: string): number {
   if (rol.tipoPago === "TARIFA_PLANA" || rol.tipoPago === "POR_PROYECTO") {
@@ -574,6 +577,11 @@ function PaqueteEditor({
         items={form.items}
         onToggleEquipo={toggleEquipo}
         onToggleProducto={toggleProducto}
+        filtro={{
+          tipoEvento,
+          asistentes: form.rangoPersonas ? asistentesDeRango(form.rangoPersonas) : null,
+          subtipos: form.subtipos,
+        }}
       />
     </div>
   );
@@ -581,7 +589,7 @@ function PaqueteEditor({
 
 // ── Explorador visual del inventario ──────────────────────────────────────────
 function CatalogoPicker({
-  open, onClose, equipos, productos, items, onToggleEquipo, onToggleProducto,
+  open, onClose, equipos, productos, items, onToggleEquipo, onToggleProducto, filtro,
 }: {
   open: boolean;
   onClose: () => void;
@@ -590,10 +598,19 @@ function CatalogoPicker({
   items: FormItem[];
   onToggleEquipo: (id: string) => void;
   onToggleProducto: (id: string) => void;
+  filtro: { tipoEvento: string; asistentes: number | null; subtipos: string[] };
 }) {
   const [tab, setTab] = useState<"equipos" | "productos">("equipos");
   const [q, setQ] = useState("");
   const [catFiltro, setCatFiltro] = useState<string>("");
+  const [soloRecomendados, setSoloRecomendados] = useState(false);
+
+  const matchProducto = useMemo(() => {
+    const m = new Map<string, ReturnType<typeof coberturaMatch>>();
+    for (const p of productos) m.set(p.id, coberturaMatch(parseCoberturas(p.coberturas), filtro));
+    return m;
+  }, [productos, filtro]);
+  const hayCriterio = !!filtro.tipoEvento;
 
   useEffect(() => {
     if (!open) return;
@@ -631,8 +648,12 @@ function CatalogoPicker({
 
   const productosFiltrados = useMemo(() => {
     const query = q.trim().toLowerCase();
-    return productos.filter((p) => !query || p.nombre.toLowerCase().includes(query) || (p.categoria ?? "").toLowerCase().includes(query));
-  }, [productos, q]);
+    const base = productos.filter((p) => !query || p.nombre.toLowerCase().includes(query) || (p.categoria ?? "").toLowerCase().includes(query));
+    const filtrados = soloRecomendados && hayCriterio ? base.filter((p) => matchProducto.get(p.id) === "match") : base;
+    if (!hayCriterio) return filtrados;
+    const rank = (id: string) => (matchProducto.get(id) === "match" ? 0 : matchProducto.get(id) === "sindata" ? 1 : 2);
+    return [...filtrados].sort((a, b) => rank(a.id) - rank(b.id));
+  }, [productos, q, soloRecomendados, hayCriterio, matchProducto]);
 
   if (!open) return null;
   const totalSel = eqSel.size + prodSel.size;
@@ -662,6 +683,12 @@ function CatalogoPicker({
               className="flex-1 min-w-[140px] bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-1.5 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
             {totalSel > 0 && <span className="text-[#B3985B] text-xs font-semibold shrink-0">{totalSel} seleccionado{totalSel !== 1 ? "s" : ""}</span>}
           </div>
+          {tab === "productos" && hayCriterio && (
+            <button onClick={() => setSoloRecomendados((v) => !v)}
+              className={`self-start px-2.5 py-1 rounded-full text-[11px] transition-colors ${soloRecomendados ? "bg-[#B3985B] text-black font-semibold" : "bg-[#1a1a1a] text-gray-400 hover:text-white"}`}>
+              Solo recomendados para la capacidad
+            </button>
+          )}
           {tab === "equipos" && categorias.length > 0 && (
             <div className="flex items-center gap-1.5 flex-wrap">
               <button onClick={() => setCatFiltro("")}
@@ -726,6 +753,7 @@ function CatalogoPicker({
             <div className="space-y-1">
               {productosFiltrados.map((p) => {
                 const sel = prodSel.has(p.id);
+                const match = hayCriterio ? matchProducto.get(p.id) : undefined;
                 return (
                   <button key={p.id} type="button" onClick={() => onToggleProducto(p.id)}
                     className={`w-full flex items-center gap-3 text-left rounded-lg border px-2.5 py-1.5 transition-all ${sel ? "border-[#B3985B] bg-[#B3985B]/[0.07]" : "border-[#1e1e1e] bg-[#0d0d0d] hover:border-[#B3985B]/40"}`}>
@@ -738,7 +766,11 @@ function CatalogoPicker({
                       )}
                     </span>
                     <span className="flex-1 min-w-0">
-                      <span className="block text-white text-xs font-medium leading-tight truncate">{p.nombre}</span>
+                      <span className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-white text-xs font-medium leading-tight truncate">{p.nombre}</span>
+                        {match === "match" && <span className="text-[9px] bg-emerald-500/15 text-emerald-400 rounded px-1.5 py-0.5 shrink-0">Recomendado</span>}
+                        {match === "nomatch" && <span className="text-[9px] bg-[#1a1a1a] text-gray-500 rounded px-1.5 py-0.5 shrink-0">Fuera de capacidad</span>}
+                      </span>
                       {p.categoria && <span className="block text-gray-500 text-[10px] leading-tight truncate">{p.categoria}</span>}
                     </span>
                     <span className="text-[#B3985B] text-[11px] font-medium shrink-0">{fmx(p.precioFinal)}</span>

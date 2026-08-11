@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
-import { ensureProductosTables, calcularPrecioProducto, type ItemInput } from "@/lib/productos";
+import { ensureProductosTables, calcularPrecioProducto, limpiarCoberturas, type ItemInput } from "@/lib/productos";
 
 const PRODUCTO_INCLUDE = {
   items: {
@@ -22,6 +22,7 @@ const PRODUCTO_INCLUDE = {
       },
     },
   },
+  coberturas: { select: { tipoEvento: true, rangos: true, subtipos: true } },
   equipoDominante: { select: { id: true, imagenUrl: true, descripcion: true } },
 };
 
@@ -46,7 +47,7 @@ export async function POST(req: NextRequest) {
   await ensureProductosTables();
 
   const body = await req.json();
-  const { nombre, descripcion, categoria, tiposEvento, imagenUrl, equipoDominanteId, precioManual, items } = body;
+  const { nombre, descripcion, categoria, tiposEvento, imagenUrl, equipoDominanteId, precioManual, items, coberturas } = body;
 
   if (!nombre || !Array.isArray(items) || items.length === 0) {
     return NextResponse.json({ error: "nombre y al menos un equipo son requeridos" }, { status: 400 });
@@ -72,6 +73,7 @@ export async function POST(req: NextRequest) {
   const imagenDefault = imagenUrl || equipos.find((e) => e.id === domId)?.imagenUrl || null;
 
   const maxOrden = await prisma.producto.aggregate({ _max: { orden: true } });
+  const cobs = limpiarCoberturas(coberturas);
 
   const producto = await prisma.producto.create({
     data: {
@@ -86,6 +88,13 @@ export async function POST(req: NextRequest) {
       orden: (maxOrden._max.orden ?? 0) + 1,
       items: {
         create: limpios.map((it, idx) => ({ equipoId: it.equipoId, cantidad: it.cantidad, orden: idx })),
+      },
+      coberturas: {
+        create: cobs.map((c) => ({
+          tipoEvento: c.tipoEvento,
+          rangos: JSON.stringify(c.rangos),
+          subtipos: JSON.stringify(c.subtipos),
+        })),
       },
     },
     include: PRODUCTO_INCLUDE,

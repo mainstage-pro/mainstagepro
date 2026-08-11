@@ -43,10 +43,46 @@ export async function ensureProductosTables() {
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS "producto_equipos_productoId_idx" ON "producto_equipos"("productoId");`
   );
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "producto_coberturas" (
+      "id" TEXT NOT NULL,
+      "productoId" TEXT NOT NULL,
+      "tipoEvento" TEXT NOT NULL,
+      "rangos" TEXT,
+      "subtipos" TEXT,
+      CONSTRAINT "producto_coberturas_pkey" PRIMARY KEY ("id"),
+      CONSTRAINT "producto_coberturas_productoId_fkey"
+        FOREIGN KEY ("productoId") REFERENCES "productos"("id") ON DELETE CASCADE
+    );
+  `);
+  await prisma.$executeRawUnsafe(
+    `CREATE UNIQUE INDEX IF NOT EXISTS "producto_coberturas_productoId_tipoEvento_key" ON "producto_coberturas"("productoId", "tipoEvento");`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS "producto_coberturas_productoId_idx" ON "producto_coberturas"("productoId");`
+  );
   tablesEnsured = true;
 }
 
 export type ItemInput = { equipoId: string; cantidad: number };
+
+export type CoberturaInput = { tipoEvento: string; rangos: string[]; subtipos: string[] };
+
+const TIPOS_EVENTO_VALIDOS = new Set(["MUSICAL", "SOCIAL", "EMPRESARIAL"]);
+
+// Depura la cobertura que llega del cliente: un registro por tipo de evento
+// válido, con rangos/subtipos como arreglos de strings.
+export function limpiarCoberturas(raw: unknown): CoberturaInput[] {
+  if (!Array.isArray(raw)) return [];
+  const porTipo = new Map<string, CoberturaInput>();
+  for (const c of raw as CoberturaInput[]) {
+    if (!c || !TIPOS_EVENTO_VALIDOS.has(c.tipoEvento)) continue;
+    const rangos = Array.isArray(c.rangos) ? [...new Set(c.rangos.filter((x) => typeof x === "string" && x))] : [];
+    const subtipos = Array.isArray(c.subtipos) ? [...new Set(c.subtipos.filter((x) => typeof x === "string" && x))] : [];
+    porTipo.set(c.tipoEvento, { tipoEvento: c.tipoEvento, rangos, subtipos });
+  }
+  return [...porTipo.values()];
+}
 
 /** Precio de un producto: override manual, o suma de rentas del inventario. */
 export function calcularPrecioProducto(

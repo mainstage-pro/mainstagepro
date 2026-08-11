@@ -6,6 +6,7 @@ import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
 import ModuleIndexRedirect from "@/components/ModuleIndexRedirect";
 import { comercialProductosTabs } from "./tabs";
+import { SUBTIPOS_EVENTO, parseCoberturas, type Cobertura } from "@/lib/constants";
 import { Guitar, PartyPopper, Briefcase, Package, type LucideIcon } from "lucide-react";
 
 // ── Tipos ───────────────────────────────────────────────────────────────────
@@ -37,6 +38,7 @@ type Producto = {
   precioFinal: number;
   activo: boolean;
   items: ProductoItem[];
+  coberturas?: { tipoEvento: string; rangos: string | null; subtipos: string | null }[];
 };
 
 type EquipoSinPaquetear = EquipoItem;
@@ -96,6 +98,7 @@ type FormState = {
   equipoDominanteId: string;
   precioManual: string;
   items: FormItem[];
+  coberturas: Cobertura[];
 };
 
 const FORM_EMPTY: FormState = {
@@ -107,6 +110,7 @@ const FORM_EMPTY: FormState = {
   equipoDominanteId: "",
   precioManual: "",
   items: [],
+  coberturas: [],
 };
 
 function ProductoEditor({
@@ -114,14 +118,34 @@ function ProductoEditor({
   setForm,
   equipos,
   categorias,
+  rangos,
 }: {
   form: FormState;
   setForm: (f: FormState) => void;
   equipos: EquipoItem[];
   categorias: string[];
+  rangos: string[];
 }) {
   const [busqueda, setBusqueda] = useState("");
   const equipoMap = useMemo(() => new Map(equipos.map((e) => [e.id, e])), [equipos]);
+
+  function cobDe(tipo: string): Cobertura {
+    return form.coberturas.find((c) => c.tipoEvento === tipo) ?? { tipoEvento: tipo, rangos: [], subtipos: [] };
+  }
+  function setCob(tipo: string, next: Cobertura) {
+    const otros = form.coberturas.filter((c) => c.tipoEvento !== tipo);
+    setForm({ ...form, coberturas: [...otros, next] });
+  }
+  function toggleRango(tipo: string, label: string) {
+    const cob = cobDe(tipo);
+    const has = cob.rangos.includes(label);
+    setCob(tipo, { ...cob, rangos: has ? cob.rangos.filter((r) => r !== label) : [...cob.rangos, label] });
+  }
+  function toggleSubtipo(tipo: string, label: string) {
+    const cob = cobDe(tipo);
+    const has = cob.subtipos.includes(label);
+    setCob(tipo, { ...cob, subtipos: has ? cob.subtipos.filter((s) => s !== label) : [...cob.subtipos, label] });
+  }
 
   const precioAuto = form.items.reduce(
     (s, it) => s + it.cantidad * (equipoMap.get(it.equipoId)?.precioRenta ?? 0),
@@ -340,6 +364,79 @@ function ProductoEditor({
         )}
       </div>
 
+      {/* Cobertura de capacidad — por tipo de evento */}
+      <div>
+        <label className="text-[11px] text-[#B3985B] font-medium block mb-1">
+          Cobertura de capacidad (personas)
+        </label>
+        <p className="text-[10px] text-gray-600 mb-2">
+          Define a cuántas personas alcanza este producto en cada tipo de evento y, opcionalmente, para qué
+          eventos específicos aplica. El mismo equipo cubre distinta gente según el tipo de evento.
+        </p>
+        {form.tiposEvento.length === 0 ? (
+          <p className="text-[11px] text-gray-500 rounded-lg border border-dashed border-[#222] px-3 py-2">
+            Marca uno o más tipos de evento arriba para definir su cobertura.
+          </p>
+        ) : (
+          <div className="space-y-2.5">
+            {TIPOS_EVENTO.filter((t) => form.tiposEvento.includes(t.key)).map((t) => {
+              const cob = cobDe(t.key);
+              const subs = SUBTIPOS_EVENTO[t.key] ?? [];
+              return (
+                <div key={t.key} className="rounded-lg border border-[#1e1e1e] bg-[#0d0d0d] p-3">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <t.icon strokeWidth={1.75} className="w-3.5 h-3.5 text-[#B3985B]" />
+                    <span className="text-white text-xs font-semibold">{t.label}</span>
+                  </div>
+                  <p className="text-[10px] text-gray-500 mb-1">Rangos de personas que cubre</p>
+                  <div className="flex flex-wrap gap-1.5 mb-2.5">
+                    {rangos.length === 0 ? (
+                      <span className="text-[10px] text-gray-600">No hay rangos configurados en paquetes.</span>
+                    ) : (
+                      rangos.map((r) => {
+                        const on = cob.rangos.includes(r);
+                        return (
+                          <button
+                            key={r}
+                            type="button"
+                            onClick={() => toggleRango(t.key, r)}
+                            className={`px-2 py-1 rounded-md text-[11px] transition-colors ${
+                              on ? "bg-[#B3985B] text-black font-semibold" : "bg-[#1a1a1a] text-gray-400 hover:text-white"
+                            }`}
+                          >
+                            {r}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                  <p className="text-[10px] text-gray-500 mb-1">
+                    Eventos específicos <span className="text-gray-600">(vacío = todos)</span>
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {subs.map((s) => {
+                      const on = cob.subtipos.includes(s);
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => toggleSubtipo(t.key, s)}
+                          className={`px-2 py-1 rounded-md text-[11px] transition-colors ${
+                            on ? "bg-[#B3985B]/20 text-[#B3985B] font-medium" : "bg-[#1a1a1a] text-gray-500 hover:text-white"
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Imagen + precio */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
@@ -398,6 +495,7 @@ export function ProductosSection() {
 
   const [productos, setProductos] = useState<Producto[]>([]);
   const [equipos, setEquipos] = useState<EquipoItem[]>([]);
+  const [rangos, setRangos] = useState<string[]>([]);
   const [categoriasInv, setCategoriasInv] = useState<string[]>([]);
   const [sinPaquetear, setSinPaquetear] = useState<EquipoSinPaquetear[]>([]);
   const [loading, setLoading] = useState(true);
@@ -412,16 +510,18 @@ export function ProductosSection() {
   async function cargar() {
     setLoading(true);
     try {
-      const [rp, re, rs, rc] = await Promise.all([
+      const [rp, re, rs, rc, rr] = await Promise.all([
         fetch("/api/productos").then((r) => r.json()),
         fetch("/api/equipos").then((r) => r.json()),
         fetch("/api/productos/sin-paquetear").then((r) => r.json()),
         fetch("/api/inventario/categorias").then((r) => r.json()),
+        fetch("/api/paquetes/rangos").then((r) => r.json()),
       ]);
       setProductos(rp.productos ?? []);
       setEquipos(re.equipos ?? []);
       setSinPaquetear(rs.equipos ?? []);
       setCategoriasInv((rc.categorias ?? []).map((c: { nombre: string }) => c.nombre));
+      setRangos((rr.rangos ?? []).map((x: { label: string }) => x.label));
     } finally {
       setLoading(false);
     }
@@ -453,6 +553,7 @@ export function ProductosSection() {
       equipoDominanteId: p.equipoDominanteId ?? "",
       precioManual: p.precioManual != null ? String(p.precioManual) : "",
       items: p.items.map((it) => ({ equipoId: it.equipo.id, cantidad: it.cantidad })),
+      coberturas: parseCoberturas(p.coberturas),
     });
     setModalOpen(true);
   }
@@ -471,6 +572,7 @@ export function ProductosSection() {
         equipoDominanteId: form.equipoDominanteId || null,
         precioManual: form.precioManual,
         items: form.items,
+        coberturas: form.coberturas.filter((c) => form.tiposEvento.includes(c.tipoEvento)),
       };
       const res = await fetch(editId ? `/api/productos/${editId}` : "/api/productos", {
         method: editId ? "PATCH" : "POST",
@@ -693,7 +795,7 @@ export function ProductosSection() {
         title={editId ? "Editar producto" : "Nuevo producto"}
         maxWidth="max-w-3xl"
       >
-        <ProductoEditor form={form} setForm={setForm} equipos={equipos} categorias={categoriasInv} />
+        <ProductoEditor form={form} setForm={setForm} equipos={equipos} categorias={categoriasInv} rangos={rangos} />
         <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-[#1a1a1a]">
           <button
             onClick={() => setModalOpen(false)}

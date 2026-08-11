@@ -6,6 +6,75 @@ export const TIPO_EVENTO_LABELS: Record<string, string> = {
   OTRO: "Otro",
 };
 
+// Eventos específicos (subtipos) por tipo de evento. Fuente ÚNICA que comparten
+// el descubrimiento (DiscoveryForm), los paquetes y la cobertura de productos —
+// se guardan como estos labels tal cual, así que deben coincidir en los tres.
+export const SUBTIPOS_EVENTO: Record<string, string[]> = {
+  MUSICAL: ["Concierto", "Festival", "Música Electrónica", "Presentación Musical"],
+  SOCIAL: ["Boda", "XV Años", "Bautizo", "Cumpleaños", "Fiesta Privada"],
+  EMPRESARIAL: ["Congreso / Convención", "Lanzamiento de Marca", "Feria / Expo", "Taller / Capacitación"],
+};
+
+export const TIPOS_EVENTO_BASE = ["MUSICAL", "SOCIAL", "EMPRESARIAL"] as const;
+
+// ── Cobertura de capacidad de productos ───────────────────────────────────────
+// Helpers PUROS (sin prisma) para poder importarse desde componentes cliente.
+export type Cobertura = { tipoEvento: string; rangos: string[]; subtipos: string[] };
+
+function parseJsonArray(v: unknown): string[] {
+  if (Array.isArray(v)) return v.filter((x): x is string => typeof x === "string");
+  if (typeof v === "string" && v) {
+    try { const a = JSON.parse(v); return Array.isArray(a) ? a.filter((x) => typeof x === "string") : []; }
+    catch { return []; }
+  }
+  return [];
+}
+
+// Normaliza filas crudas de producto_coberturas (rangos/subtipos como JSON string).
+export function parseCoberturas(
+  rows: { tipoEvento: string; rangos: string | null; subtipos: string | null }[] | null | undefined
+): Cobertura[] {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((r) => ({
+    tipoEvento: r.tipoEvento,
+    rangos: parseJsonArray(r.rangos),
+    subtipos: parseJsonArray(r.subtipos),
+  }));
+}
+
+// Extremos numéricos de un label de rango ("500-800" → {min:500,max:800}).
+export function rangoBounds(label: string): { min: number; max: number } {
+  const nums = (label.match(/\d+/g) ?? []).map(Number);
+  if (!nums.length) return { min: 0, max: Infinity };
+  return { min: Math.min(...nums), max: Math.max(...nums) };
+}
+
+export function rangoIncluye(label: string, n: number): boolean {
+  const { min, max } = rangoBounds(label);
+  return n >= min && n <= max;
+}
+
+export type MatchCapacidad = "match" | "nomatch" | "sindata";
+
+// Evalúa si un producto (por sus coberturas) aplica a un evento. "sindata" =
+// el producto aún no tiene cobertura definida (no lo escondemos, pero tampoco
+// lo marcamos como recomendado).
+export function coberturaMatch(
+  coberturas: Cobertura[],
+  filtro: { tipoEvento?: string | null; asistentes?: number | null; subtipos?: string[] | null }
+): MatchCapacidad {
+  if (!coberturas.length) return "sindata";
+  const { tipoEvento, asistentes, subtipos } = filtro;
+  if (!tipoEvento) return "sindata";
+  const cob = coberturas.find((c) => c.tipoEvento === tipoEvento);
+  if (!cob) return "nomatch";
+  const rangoOk =
+    !asistentes || cob.rangos.length === 0 || cob.rangos.some((r) => rangoIncluye(r, asistentes));
+  const subtipoOk =
+    !subtipos || subtipos.length === 0 || cob.subtipos.length === 0 || cob.subtipos.some((s) => subtipos.includes(s));
+  return rangoOk && subtipoOk ? "match" : "nomatch";
+}
+
 export const TIPO_EVENTO_COLORS: Record<string, string> = {
   MUSICAL: "#1A2E4A",
   SOCIAL: "#B3985B",

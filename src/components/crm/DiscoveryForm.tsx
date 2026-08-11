@@ -1088,6 +1088,11 @@ export default function DiscoveryForm({
                     }}
                     notas={discForm.notasEquipos || ""}
                     onNotasChange={(v) => setDiscForm(p => ({ ...p, notasEquipos: v }))}
+                    capacidad={{
+                      tipoEvento: discForm.tipoEvento,
+                      asistentes: discForm.asistentesEstimados ? parseInt(discForm.asistentesEstimados) : null,
+                      subtipos: discForm.subtipoEvento ? discForm.subtipoEvento.split(", ").filter(Boolean) : [],
+                    }}
                   />
                 </div>
 
@@ -1250,6 +1255,11 @@ export default function DiscoveryForm({
                     }}
                     notas={discForm.notasEquipos || ""}
                     onNotasChange={(v) => setDiscForm(p => ({ ...p, notasEquipos: v }))}
+                    capacidad={{
+                      tipoEvento: discForm.tipoEvento,
+                      asistentes: discForm.asistentesEstimados ? parseInt(discForm.asistentesEstimados) : null,
+                      subtipos: discForm.subtipoEvento ? discForm.subtipoEvento.split(", ").filter(Boolean) : [],
+                    }}
                   />
                 </div>
 
