@@ -39,6 +39,38 @@ const DISCOVERY_KEYS = [
   "nichoSlug", "respuestasDescubrimiento", "adicionalesSeleccionados",
 ] as const;
 
+type RespTraza = { valor: string; origen: "vendedor" | "cliente"; ts: string };
+
+function parseRespuestas(s: string | null | undefined): Record<string, RespTraza> {
+  if (!s) return {};
+  let raw: unknown;
+  try { raw = JSON.parse(s); } catch { return {}; }
+  if (!raw || typeof raw !== "object") return {};
+  const out: Record<string, RespTraza> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === "string") { if (v) out[k] = { valor: v, origen: "vendedor", ts: "" }; }
+    else if (v && typeof v === "object") {
+      const o = v as Record<string, unknown>;
+      const valor = String(o.valor ?? "");
+      if (valor) out[k] = { valor, origen: o.origen === "cliente" ? "cliente" : "vendedor", ts: String(o.ts ?? "") };
+    }
+  }
+  return out;
+}
+
+// Fusiona respuestas del cliente sobre las existentes SIN sobrescribir las que
+// ya contestó el vendedor. Devuelve JSON string (o null si queda vacío).
+function fusionarRespuestas(existenteJson: string | null | undefined, entranteJson: string): string | null {
+  const existente = parseRespuestas(existenteJson);
+  const entrante = parseRespuestas(entranteJson);
+  const merged: Record<string, RespTraza> = { ...existente };
+  for (const [k, v] of Object.entries(entrante)) {
+    if (existente[k]?.origen === "vendedor") continue; // el vendedor manda
+    merged[k] = v;
+  }
+  return Object.keys(merged).length ? JSON.stringify(merged) : null;
+}
+
 function mapDiscoveryData(body: Record<string, unknown>): Record<string, unknown> {
   const data: Record<string, unknown> = {};
   for (const key of DISCOVERY_KEYS) {
@@ -170,6 +202,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
       contactoVenueNombre: true,
       contactoVenueTelefono: true,
       camposCliente: true,
+      respuestasDescubrimiento: true,
       // Para notificación al vendedor
       responsable: { select: { id: true, name: true } },
       cliente: { select: { nombre: true } },
@@ -190,6 +223,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ tok
     const data = mapDiscoveryData(body);
 
     if (trato) {
+      // Trazabilidad: el cliente NO sobrescribe respuestas contestadas por el
+      // vendedor. Se fusionan por preguntaId conservando las de origen "vendedor".
+      if (typeof data.respuestasDescubrimiento === "string") {
+        data.respuestasDescubrimiento = fusionarRespuestas(trato.respuestasDescubrimiento, data.respuestasDescubrimiento);
+      }
       if (Object.keys(data).length > 0) {
         await prisma.trato.update({ where: { id: trato.id }, data });
       }

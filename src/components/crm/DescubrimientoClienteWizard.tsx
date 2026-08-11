@@ -36,6 +36,17 @@ function jsonObj(s: string | null | undefined): Record<string, string> {
   if (!s) return {};
   try { const v = JSON.parse(s); return v && typeof v === "object" ? v : {}; } catch { return {}; }
 }
+// Las respuestas pueden venir como string plano (legacy) o como envelope de
+// trazabilidad {valor, origen, ts}. Extrae solo el valor para editar en cliente.
+function valoresRespuestas(s: string | null | undefined): Record<string, string> {
+  const raw = jsonObj(s);
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (typeof v === "string") out[k] = v;
+    else if (v && typeof v === "object") out[k] = String((v as { valor?: unknown }).valor ?? "");
+  }
+  return out;
+}
 
 // Fuente de servicio expresada por RESULTADO (no por jerga técnica).
 const SERVICIOS = [
@@ -86,7 +97,7 @@ export default function DescubrimientoClienteWizard({
   );
   const [asistentes, setAsistentes] = useState<number | "">(trato?.asistentesEstimados ?? "");
   const [tipoServicio, setTipoServicio] = useState<string>(trato?.tipoServicio || "");
-  const [respuestas, setRespuestas] = useState<Record<string, string>>(() => jsonObj(trato?.respuestasDescubrimiento));
+  const [respuestas, setRespuestas] = useState<Record<string, string>>(() => valoresRespuestas(trato?.respuestasDescubrimiento));
   const [adicionales, setAdicionales] = useState<string[]>(() => jsonArr(trato?.adicionalesSeleccionados));
   const [notas, setNotas] = useState<string>(trato?.notas || "");
   const [presupuesto, setPresupuesto] = useState<number | "">(trato?.presupuestoEstimado ?? "");
@@ -142,7 +153,13 @@ export default function DescubrimientoClienteWizard({
       tipoServicio: tipoServicio || null,
       presupuestoEstimado: presupuesto === "" || presupuesto === 0 ? null : presupuesto,
       notas: notas || null,
-      respuestasDescubrimiento: Object.keys(respuestas).length ? JSON.stringify(respuestas) : null,
+      respuestasDescubrimiento: (() => {
+        const claves = Object.keys(respuestas).filter(k => respuestas[k]);
+        if (!claves.length) return null;
+        const ts = new Date().toISOString();
+        // Trazabilidad: se marca origen "cliente"; el backend no sobrescribe lo del vendedor.
+        return JSON.stringify(Object.fromEntries(claves.map(k => [k, { valor: respuestas[k], origen: "cliente", ts }])));
+      })(),
       adicionalesSeleccionados: adicionales.length ? JSON.stringify(adicionales) : null,
     };
     if (final) {
