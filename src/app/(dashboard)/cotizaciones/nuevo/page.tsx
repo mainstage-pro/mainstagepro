@@ -602,7 +602,10 @@ function CotizadorForm() {
           concepto: l.descripcion, precioUnitario: l.precioUnitario,
           cantidad: l.cantidad, dias: l.dias, subtotal: l.subtotal,
         })));
-        setLineasOcasional(lineas.filter((l: {tipo:string}) => l.tipo === "OTRO").map((l: {descripcion:string;cantidad:number;dias:number;precioUnitario:number;subtotal:number}) => ({
+        // Excluir la línea auto-generada de "Gastos de Producción": ya se restaura
+        // desde los campos gastosProduccion* (comisión interna). Si se cargara aquí
+        // como adicional, se duplicaría en cada guardado e inflaría la base del %.
+        setLineasOcasional(lineas.filter((l: {tipo:string;descripcion:string}) => l.tipo === "OTRO" && l.descripcion !== "Gastos de Producción").map((l: {descripcion:string;cantidad:number;dias:number;precioUnitario:number;subtotal:number}) => ({
           id: uid(), descripcion: l.descripcion,
           cantidad: l.cantidad, dias: l.dias, precioUnitario: l.precioUnitario, subtotal: l.subtotal,
         })));
