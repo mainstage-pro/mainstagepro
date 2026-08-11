@@ -77,14 +77,13 @@ export default function GaleriaHubClient({
           </p>
           <h1 className="font-bold text-white leading-tight"
               style={{ fontSize: "clamp(2.4rem, 6vw, 5rem)", letterSpacing: "-0.03em", animation: "fadeUp 0.95s ease forwards 0.4s", opacity: 0 }}>
-            Las experiencias<br />
-            <span style={{ color: "rgba(255,255,255,0.4)" }}>que creamos.</span>
+            Un poco de las experiencias<br />
+            <span style={{ color: "rgba(255,255,255,0.4)" }}>que creamos en Mainstage Pro.</span>
           </h1>
           <p className="text-white/50 mt-7 text-sm sm:text-base leading-relaxed max-w-xl mx-auto"
              style={{ animation: "fadeUp 0.95s ease forwards 0.65s", opacity: 0 }}>
-            Conciertos, bodas, lanzamientos y celebraciones. Todo el trabajo de Mainstage Pro
-            en un solo lugar: audio, iluminación y video que transforman cada evento en un
-            momento que se recuerda.
+            Conciertos, bodas, lanzamientos y celebraciones, todo en un solo lugar: audio,
+            iluminación y video que transforman cada evento en un momento que se recuerda.
           </p>
         </div>
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 opacity-20">
