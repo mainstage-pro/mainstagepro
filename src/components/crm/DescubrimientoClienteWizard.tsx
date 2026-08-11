@@ -55,12 +55,12 @@ function valoresRespuestas(s: string | null | undefined): Record<string, string>
 function iconoAdicional(nombre: string): LucideIcon {
   const n = nombre.toLowerCase();
   if (/(planta de luz|energ|ups|corriente)/.test(n)) return Zap;
+  if (/(audio|backline|monitoreo|in-ear|delay|intercom|sonido)/.test(n)) return Volume2;
   if (/(micr|ceremonia|brindis|traducc)/.test(n)) return /traducc/.test(n) ? Languages : Mic;
-  if (/(pantalla|led|video|proyec|switcher|streaming|cctv|teleprompter|monitor)/.test(n)) return Monitor;
+  if (/(pantalla|led|video|proyec|switcher|streaming|cctv|teleprompter|retorno)/.test(n)) return Monitor;
   if (/(dj|reproductores|mixer)/.test(n)) return Disc3;
   if (/(luz|ilumina|washes|pinspot|bruma|gobos|hazer)/.test(n)) return Lightbulb;
   if (/(chispero|bazuca|confeti|impacto)/.test(n)) return Sparkles;
-  if (/(audio|backline|monitoreo|delay|intercom|sonido)/.test(n)) return Volume2;
   if (/(layher|ground|rigging|estructura|templete|tarima|pista|riser)/.test(n)) return Boxes;
   return Sparkles;
 }
