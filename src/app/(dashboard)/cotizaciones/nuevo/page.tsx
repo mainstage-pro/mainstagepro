@@ -297,6 +297,13 @@ function CotizadorForm() {
   // Catálogo de paquetes/productos (para expandir en líneas de equipo al agregarlos).
   const [productosCatalogo, setProductosCatalogo] = useState<Array<{ id: string; nombre: string; categoria: string | null; precioFinal: number; items: { cantidad: number; equipo: { id: string; descripcion: string; marca: string | null; modelo: string | null; precioRenta: number } }[] }>>([]);
   const [paquetesAgregados, setPaquetesAgregados] = useState<string[]>([]);
+  // Adicionales del catálogo con su composición (equipos/productos que bajan a la cotización).
+  const [adicionalesCatalogo, setAdicionalesCatalogo] = useState<Array<{ id: string; nombre: string; composicion: { tipo: string; referenciaId: string; cantidad: number; obligatorio: boolean }[] }>>([]);
+  // IDs de adicionales que el descubrimiento marcó como de interés (viven en el trato).
+  const [adicionalesInteres, setAdicionalesInteres] = useState<string[]>([]);
+  const [adicionalesAgregados, setAdicionalesAgregados] = useState<string[]>([]);
+  // Selección de líneas opcionales por adicional (las obligatorias van siempre): { adicionalId → Set(idx) }
+  const [adicionalOpcSel, setAdicionalOpcSel] = useState<Record<string, number[]>>({});
   // Catálogo de paquetes comerciales (para desglosar en líneas al agregarlos desde el descubrimiento).
   const [paquetesCatalogo, setPaquetesCatalogo] = useState<PaqueteCat[]>([]);
   const [paquetesExpandidos, setPaquetesExpandidos] = useState<string[]>([]);
@@ -425,6 +432,11 @@ function CotizadorForm() {
   useEffect(() => {
     fetch("/api/productos/publico").then(r => r.json()).then(d => setProductosCatalogo(d.productos ?? [])).catch(() => {});
     fetch("/api/paquetes/publico").then(r => r.json()).then(d => setPaquetesCatalogo(d.paquetes ?? [])).catch(() => {});
+    fetch("/api/catalogo").then(r => r.json()).then(d => setAdicionalesCatalogo((d.adicionales ?? []).map((a: { id: string; nombre: string; composicion: string | null }) => {
+      let comp: { tipo: string; referenciaId: string; cantidad: number; obligatorio: boolean }[] = [];
+      try { const v = JSON.parse(a.composicion || "[]"); if (Array.isArray(v)) comp = v.map(x => ({ tipo: String(x.tipo), referenciaId: String(x.referenciaId), cantidad: Number(x.cantidad) || 1, obligatorio: x.obligatorio !== false })); } catch {}
+      return { id: a.id, nombre: a.nombre, composicion: comp };
+    }))).catch(() => {});
     Promise.all([
       fetch("/api/equipos").then(r => r.json()),
       fetch("/api/roles-tecnicos").then(r => r.json()),
@@ -669,6 +681,7 @@ function CotizadorForm() {
         if (t.asistentesEstimados) setAsistentesEstimados(t.asistentesEstimados);
         if (t.formEstado) setTratoFormEstado(t.formEstado);
         if (t.equiposInteres) { try { const ei = JSON.parse(t.equiposInteres); setEquiposInteres({ categorias: ei.categorias ?? [], equipos: ei.equipos ?? [], cantidades: ei.cantidades ?? {}, extras: ei.extras ?? [], productos: ei.productos ?? [], paquetes: ei.paquetes ?? [] }); } catch { /* noop */ } }
+        if (t.adicionalesSeleccionados) { try { const a = JSON.parse(t.adicionalesSeleccionados); if (Array.isArray(a)) setAdicionalesInteres(a.map(String)); } catch { /* noop */ } }
       }
     });
   }, [clienteId, tratoId]);
@@ -963,6 +976,38 @@ function CotizadorForm() {
       subtotal: precio * cant * dias,
     }]);
     setExtrasAgregados(prev => prev.includes(extra.id) ? prev : [...prev, extra.id]);
+  }
+
+  // Adicional del descubrimiento → baja su composición a la cotización. Las líneas
+  // obligatorias van siempre; las opcionales solo si el vendedor las marcó. Equipos →
+  // líneas de equipo; productos → líneas de paquete. Nunca obliga: es un botón manual.
+  function agregarAdicionalDescubrimiento(ad: { id: string; nombre: string; composicion: { tipo: string; referenciaId: string; cantidad: number; obligatorio: boolean }[] }) {
+    if (adicionalesAgregados.includes(ad.id)) return;
+    const dias = parseInt(evento.diasEquipo) || 1;
+    const opc = adicionalOpcSel[ad.id] || [];
+    const nuevasEq: LineaEquipo[] = [];
+    ad.composicion.forEach((c, idx) => {
+      if (!c.obligatorio && !opc.includes(idx)) return;
+      const veces = c.cantidad > 0 ? c.cantidad : 1;
+      if (c.tipo === "producto") {
+        const prod = productosCatalogo.find(p => p.id === c.referenciaId);
+        if (prod) agregarLineaPaquete(prod, veces, dias);
+      } else {
+        const eq = equipos.find(e => e.id === c.referenciaId);
+        if (eq && !lineasEquipo.some(l => l.equipoId === eq.id) && !nuevasEq.some(n => n.equipoId === eq.id)) {
+          const precio = preciosCliente[eq.id] ?? eq.precioRenta;
+          nuevasEq.push({
+            id: uid(), equipoId: eq.id, descripcion: eq.descripcion,
+            marca: eq.marca ?? "", modelo: eq.modelo ?? "",
+            cantidad: veces, dias, precioUnitario: precio,
+            subtotal: precio * veces * dias,
+            categoria: eq.categoria?.nombre ?? "Equipos", notas: "",
+          });
+        }
+      }
+    });
+    if (nuevasEq.length) setLineasEquipo(prev => [...prev, ...nuevasEq.filter(n => !prev.some(l => l.equipoId === n.equipoId))]);
+    setAdicionalesAgregados(prev => prev.includes(ad.id) ? prev : [...prev, ad.id]);
   }
 
   function agregarSugerenciaTecnico(keyword: string, cantidad: number) {
@@ -2103,6 +2148,74 @@ function CotizadorForm() {
                   )}
                   <p className="text-gray-700 text-xs pt-3 border-t border-[#1a1a1a]">
                     Basado en lo seleccionado durante el descubrimiento. Los equipos con cantidad la traen desde ahí; los que dicen “sin cantidad” se agregan con 1 pieza para que la ajustes manualmente. Los equipos a mano se agregan como conceptos adicionales con el precio que definas.
+                  </p>
+                </div>
+              </details>
+            );
+          })()}
+
+          {(() => {
+            const adsSel = adicionalesInteres
+              .map(id => adicionalesCatalogo.find(a => a.id === id))
+              .filter((a): a is typeof adicionalesCatalogo[number] => !!a && a.composicion.length > 0);
+            if (adsSel.length === 0) return null;
+            return (
+              <details className="bg-[#0d0d0d] border border-[#B3985B]/30 rounded-xl group" open>
+                <summary className="flex items-center gap-3 px-5 py-3 cursor-pointer select-none">
+                  <span className="text-[#B3985B] text-xs font-semibold uppercase tracking-wider">Adicionales del descubrimiento</span>
+                  <span className="text-gray-500 text-xs">El cliente los pidió</span>
+                  <span className="ml-auto text-gray-600 text-xs group-open:hidden">▶ ver</span>
+                  <span className="ml-auto text-gray-600 text-xs hidden group-open:inline">▼ ocultar</span>
+                </summary>
+                <div className="px-5 pb-5 space-y-3">
+                  {adsSel.map(ad => {
+                    const yaAgregado = adicionalesAgregados.includes(ad.id);
+                    const opc = adicionalOpcSel[ad.id] || [];
+                    const nombreRef = (c: { tipo: string; referenciaId: string }) =>
+                      c.tipo === "producto"
+                        ? (productosCatalogo.find(p => p.id === c.referenciaId)?.nombre ?? "Producto")
+                        : (equipos.find(e => e.id === c.referenciaId)?.descripcion ?? "Equipo");
+                    return (
+                      <div key={ad.id} className="border border-[#1e1e1e] rounded-lg p-3">
+                        <div className="flex items-start gap-2">
+                          <span className="flex-1 text-sm font-medium text-gray-200">{ad.nombre}</span>
+                          {!yaAgregado ? (
+                            <button
+                              onClick={() => agregarAdicionalDescubrimiento(ad)}
+                              className="shrink-0 text-[10px] px-2 py-0.5 rounded bg-[#B3985B]/15 text-[#B3985B] hover:bg-[#B3985B]/30 transition-colors leading-5"
+                            >
+                              + Agregar a la cotización
+                            </button>
+                          ) : (
+                            <span className="shrink-0 text-[10px] text-green-500 px-1 leading-5">✓ agregado</span>
+                          )}
+                        </div>
+                        <div className="mt-2 space-y-1">
+                          {ad.composicion.map((c, idx) => {
+                            const marcada = c.obligatorio || opc.includes(idx);
+                            return (
+                              <label key={idx} className={`flex items-center gap-2 text-[11px] ${c.obligatorio ? "text-gray-400" : "text-gray-300 cursor-pointer"}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={marcada}
+                                  disabled={c.obligatorio || yaAgregado}
+                                  onChange={() => setAdicionalOpcSel(prev => {
+                                    const cur = prev[ad.id] || [];
+                                    return { ...prev, [ad.id]: cur.includes(idx) ? cur.filter(i => i !== idx) : [...cur, idx] };
+                                  })}
+                                  className="accent-[#B3985B]"
+                                />
+                                <span className="flex-1">{c.cantidad > 1 ? `${c.cantidad}× ` : ""}{nombreRef(c)}</span>
+                                {!c.obligatorio && <span className="text-[9px] text-gray-600 uppercase">opcional</span>}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <p className="text-gray-700 text-[11px] pt-2 border-t border-[#1a1a1a]">
+                    Los adicionales bajan sus equipos y productos como líneas normales de la cotización. Las opcionales solo se agregan si las marcas.
                   </p>
                 </div>
               </details>
