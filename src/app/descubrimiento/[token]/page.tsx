@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import { ClipboardList, MessageCircle, Image as ImageIcon, ExternalLink } from "lucide-react";
-import DiscoveryForm from "@/components/crm/DiscoveryForm";
+import DescubrimientoClienteWizard from "@/components/crm/DescubrimientoClienteWizard";
 import { ToastProvider } from "@/components/Toast";
 
 // Página pública del descubrimiento del cliente (link por token).
@@ -159,17 +159,14 @@ export default function DescubrimientoPublicoPage({ params }: { params: Promise<
         </div>
       </div>
 
-      {/* Formulario — idéntico al que ve el vendedor, en modo cliente */}
+      {/* Formulario del cliente — wizard de 3 pantallas */}
       <div className="max-w-3xl mx-auto p-4 md:p-6">
-        <DiscoveryForm
-          clientMode
+        <DescubrimientoClienteWizard
           token={token}
           huerfano={huerfano}
           contacto={contacto}
           setContacto={setContacto}
-          id={trato.id ?? ""}
           trato={trato}
-          setTrato={setTrato}
           onComplete={() => { setEnviado(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
         />
       </div>

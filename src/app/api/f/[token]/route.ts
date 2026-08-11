@@ -35,6 +35,8 @@ const DISCOVERY_KEYS = [
   "contactoVenueNombre", "contactoVenueTelefono", "contactoDecisorNombre", "contactoDecisorCargo",
   "serviciosInteres", "equiposInteres", "ideasReferencias",
   "preferenciaContacto",
+  // Descubrimiento por nicho (catálogo comercial) — JSON ya serializado por el cliente.
+  "nichoSlug", "respuestasDescubrimiento", "adicionalesSeleccionados",
 ] as const;
 
 function mapDiscoveryData(body: Record<string, unknown>): Record<string, unknown> {
@@ -98,6 +100,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
       contactoVenueTelefono: true,
       contactoDecisorNombre: true,
       contactoDecisorCargo: true,
+      nichoSlug: true,
+      respuestasDescubrimiento: true,
+      adicionalesSeleccionados: true,
       formEstado: true,
       cliente: { select: { id: true, nombre: true } },
       responsable: { select: { id: true, name: true } },
