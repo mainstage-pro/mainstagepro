@@ -6,6 +6,8 @@ import PresentacionNav from "@/components/presentacion/PresentacionNav";
 import { R, GOLD } from "@/components/presentacion/anim";
 import { WA_URL, useDescubrimiento } from "@/components/presentacion/descubrimiento";
 import { usePresentacionEdit, EditableImage } from "@/components/presentacion/editable";
+import { Masonry } from "@/components/presentacion/galeria-ui";
+import type { GaleriaFoto } from "@/lib/galeria-shared";
 
 // Categorías del inventario para el servicio de Renta (con icono representativo).
 const RENTA_CATEGORIAS: { label: string; Icon: LucideIcon }[] = [
@@ -17,7 +19,17 @@ const RENTA_CATEGORIAS: { label: string; Icon: LucideIcon }[] = [
   { label: "Cableado y energía", Icon: Cable },
 ];
 
-export default function ServicioClient({ servicio, initialOverrides = {} }: { servicio: ServicioDetalle; initialOverrides?: Record<string, string> }) {
+export default function ServicioClient({
+  servicio,
+  initialOverrides = {},
+  fotos = [],
+  portada = null,
+}: {
+  servicio: ServicioDetalle;
+  initialOverrides?: Record<string, string>;
+  fotos?: GaleriaFoto[];
+  portada?: string | null;
+}) {
   const { iniciar, loading } = useDescubrimiento();
   const edit = usePresentacionEdit(initialOverrides);
   const otros = SERVICIOS_DETALLE.filter((s) => s.slug !== servicio.slug);
@@ -40,7 +52,7 @@ export default function ServicioClient({ servicio, initialOverrides = {} }: { se
         <EditableImage
           edit={edit}
           okey={`servicio.${servicio.slug}.hero`}
-          fallback={servicio.hero}
+          fallback={portada || servicio.hero}
           alt={servicio.title}
           wrapClassName="absolute inset-0"
           imgClassName="w-full h-full object-cover"
@@ -154,6 +166,24 @@ export default function ServicioClient({ servicio, initialOverrides = {} }: { se
           </div>
         </div>
       </section>
+
+      {/* ── Galería (fotos del catálogo, ligadas al tipo de servicio) ── */}
+      {fotos.length > 0 && (
+        <section className="py-20 px-6 bg-[#060606] border-y border-white/[0.04]">
+          <div className="max-w-6xl mx-auto">
+            <R>
+              <p className="text-[#B3985B] text-xs tracking-[0.22em] uppercase mb-4">Galería</p>
+              <h2 className="font-bold text-white leading-tight mb-3" style={{ fontSize: "clamp(1.7rem,3.5vw,2.6rem)", letterSpacing: "-0.02em" }}>
+                Nuestro trabajo, en fotos reales.
+              </h2>
+              <p className="text-white/45 text-sm sm:text-base leading-relaxed max-w-2xl mb-10">
+                Una muestra de {servicio.title.toLowerCase()} en eventos reales que hemos producido.
+              </p>
+            </R>
+            <Masonry fotos={fotos} />
+          </div>
+        </section>
+      )}
 
       {/* ── CTA ── */}
       <section className="py-24 px-6" style={{ background: "#040404" }}>

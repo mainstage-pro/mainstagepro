@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getServicio } from "@/lib/presentacion-servicios";
+import { getServicioMaterial } from "@/lib/tipos-servicio";
 import { getPresentationMetadata } from "@/lib/metadata";
 import { getOverrides } from "@/lib/presentacion-overrides";
 import ServicioClient from "./ServicioClient";
@@ -30,6 +31,17 @@ export default async function ServicioPage({ params }: { params: Promise<{ slug:
   const { slug } = await params;
   const servicio = getServicio(slug);
   if (!servicio) notFound();
-  const initialOverrides = await getOverrides().catch(() => ({}));
-  return <ServicioClient servicio={servicio} initialOverrides={initialOverrides} />;
+  // Portada + galería del catálogo (BD) y overrides, sembrados por SSR.
+  const [initialOverrides, material] = await Promise.all([
+    getOverrides().catch(() => ({})),
+    getServicioMaterial(slug).catch(() => null),
+  ]);
+  return (
+    <ServicioClient
+      servicio={servicio}
+      initialOverrides={initialOverrides}
+      fotos={material?.fotos ?? []}
+      portada={material?.portada ?? null}
+    />
+  );
 }

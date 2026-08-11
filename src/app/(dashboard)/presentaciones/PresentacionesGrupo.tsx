@@ -56,6 +56,26 @@ export default function PresentacionesGrupo({
           </div>
         </div>
       )}
+      {grupo.grupo === "Servicios" && (
+        <div className="mb-4 bg-[#B3985B]/5 border border-[#B3985B]/20 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-white font-semibold text-sm">Fotos de los servicios</h3>
+            <p className="text-white/40 text-xs mt-1 leading-relaxed">
+              Sube y ordena las fotos de cada servicio en el catálogo. La primera es la portada del hero y todas alimentan la galería de la presentación de ese servicio.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href="/ventas/configuracion/tipos-evento"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-center text-xs font-semibold py-2 px-3 rounded-lg border border-white/10 text-white/60 hover:text-white hover:border-[#B3985B]/40 transition-colors"
+            >
+              Editar fotos →
+            </a>
+          </div>
+        </div>
+      )}
       {grupo.grupo === "Galería" && (
         <div className="mb-4 bg-[#B3985B]/5 border border-[#B3985B]/20 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex-1 min-w-0">

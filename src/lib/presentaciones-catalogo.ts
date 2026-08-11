@@ -148,6 +148,35 @@ export const PRESENTACIONES_EVENTOS: PresentacionItem[] = [
   },
 ];
 
+// Presentaciones por tipo de servicio (Mainstage). Cada una liga a su página
+// pública dedicada, cuya portada y galería se alimentan del catálogo de fotos.
+export const PRESENTACIONES_SERVICIOS: PresentacionItem[] = [
+  {
+    key: "servicio-renta",
+    label: "Renta de equipo",
+    desc: "Equipo profesional, verificado y respaldado para cada evento. Con o sin operador.",
+    href: "/presentacion/servicio/renta",
+    icon: Package,
+    audience: "Clientes potenciales",
+  },
+  {
+    key: "servicio-produccion-tecnica",
+    label: "Producción técnica",
+    desc: "Montaje, operación y respaldo técnico integral del evento, de principio a fin.",
+    href: "/presentacion/servicio/produccion-tecnica",
+    icon: SlidersHorizontal,
+    audience: "Clientes potenciales",
+  },
+  {
+    key: "servicio-direccion-tecnica",
+    label: "Dirección técnica",
+    desc: "Una sola dirección que coordina y responde por todo el evento.",
+    href: "/presentacion/servicio/direccion-tecnica",
+    icon: Compass,
+    audience: "Clientes potenciales",
+  },
+];
+
 // Galería de eventos. La primera es el índice (lleva a las tres galerías);
 // después las individuales por tipo, en el orden musical → social → empresarial.
 export const PRESENTACIONES_GALERIA: PresentacionItem[] = [
