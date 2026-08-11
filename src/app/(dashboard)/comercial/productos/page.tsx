@@ -37,6 +37,11 @@ type Producto = {
   precioManual: number | null;
   precioFinal: number;
   activo: boolean;
+  nichos: string | null;
+  rol: string | null;
+  disponibilidad: string | null;
+  proveedorRef: string | null;
+  costoRef: number | null;
   items: ProductoItem[];
   coberturas?: { tipoEvento: string; rangos: string | null; subtipos: string | null }[];
 };
@@ -94,6 +99,11 @@ type FormState = {
   descripcion: string;
   categoria: string;
   tiposEvento: string[];
+  nichos: string[];
+  rol: string;
+  disponibilidad: string;
+  proveedorRef: string;
+  costoRef: string;
   imagenUrl: string;
   equipoDominanteId: string;
   precioManual: string;
@@ -106,6 +116,11 @@ const FORM_EMPTY: FormState = {
   descripcion: "",
   categoria: "",
   tiposEvento: [],
+  nichos: [],
+  rol: "base",
+  disponibilidad: "propio",
+  proveedorRef: "",
+  costoRef: "",
   imagenUrl: "",
   equipoDominanteId: "",
   precioManual: "",
@@ -113,18 +128,22 @@ const FORM_EMPTY: FormState = {
   coberturas: [],
 };
 
+type NichoCatalogo = { id: string; tipoEventoSlug: string; nombre: string; slug: string; activo: boolean };
+
 function ProductoEditor({
   form,
   setForm,
   equipos,
   categorias,
   rangos,
+  nichosCat,
 }: {
   form: FormState;
   setForm: (f: FormState) => void;
   equipos: EquipoItem[];
   categorias: string[];
   rangos: string[];
+  nichosCat: NichoCatalogo[];
 }) {
   const [busqueda, setBusqueda] = useState("");
   const equipoMap = useMemo(() => new Map(equipos.map((e) => [e.id, e])), [equipos]);
@@ -186,6 +205,19 @@ function ProductoEditor({
         : [...form.tiposEvento, k],
     });
   }
+  function toggleNicho(slug: string) {
+    setForm({
+      ...form,
+      nichos: form.nichos.includes(slug)
+        ? form.nichos.filter((n) => n !== slug)
+        : [...form.nichos, slug],
+    });
+  }
+  // Nichos del catálogo relevantes a los tipos de evento marcados (o todos si ninguno).
+  const nichosVisibles =
+    form.tiposEvento.length === 0
+      ? nichosCat.filter((n) => n.activo)
+      : nichosCat.filter((n) => n.activo && form.tiposEvento.includes(n.tipoEventoSlug));
   async function onImg(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -249,6 +281,88 @@ function ProductoEditor({
             })}
           </div>
         </div>
+      </div>
+
+      {/* Clasificación comercial: rol + disponibilidad */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="text-[11px] text-[#B3985B] font-medium block mb-1">Rol en la propuesta</label>
+          <select
+            value={form.rol}
+            onChange={(e) => setForm({ ...form, rol: e.target.value })}
+            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+          >
+            <option value="base">Base</option>
+            <option value="adicional">Adicional</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-[11px] text-[#B3985B] font-medium block mb-1">Disponibilidad</label>
+          <select
+            value={form.disponibilidad}
+            onChange={(e) => setForm({ ...form, disponibilidad: e.target.value })}
+            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+          >
+            <option value="propio">Propio</option>
+            <option value="subrenta">Subrenta</option>
+            <option value="bajo_pedido">Bajo pedido</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Proveedor + costo (solo si no es propio) */}
+      {form.disponibilidad !== "propio" && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="text-[11px] text-[#B3985B] font-medium block mb-1">Proveedor (referencia)</label>
+            <input
+              value={form.proveedorRef}
+              onChange={(e) => setForm({ ...form, proveedorRef: e.target.value })}
+              placeholder="Nombre del proveedor o subrenta"
+              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+            />
+          </div>
+          <div>
+            <label className="text-[11px] text-[#B3985B] font-medium block mb-1">Costo de referencia</label>
+            <input
+              type="number"
+              value={form.costoRef}
+              onChange={(e) => setForm({ ...form, costoRef: e.target.value })}
+              placeholder="Costo estimado (interno)"
+              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Nichos del catálogo (sugerencia) */}
+      <div>
+        <label className="text-[11px] text-[#B3985B] font-medium block mb-1">Nichos (sugerencia)</label>
+        {nichosVisibles.length === 0 ? (
+          <p className="text-[11px] text-gray-500 rounded-lg border border-dashed border-[#222] px-3 py-2">
+            {nichosCat.length === 0
+              ? "No hay nichos en el catálogo todavía."
+              : "Marca un tipo de evento arriba para ver sus nichos."}
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {nichosVisibles.map((n) => {
+              const on = form.nichos.includes(n.slug);
+              return (
+                <button
+                  key={n.id}
+                  type="button"
+                  onClick={() => toggleNicho(n.slug)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
+                    on ? "bg-[#B3985B] text-black font-semibold" : "bg-[#1a1a1a] text-gray-400 hover:text-white"
+                  }`}
+                >
+                  {n.nombre}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Descripción */}
@@ -496,11 +610,16 @@ export function ProductosSection() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [equipos, setEquipos] = useState<EquipoItem[]>([]);
   const [rangos, setRangos] = useState<string[]>([]);
+  const [nichosCat, setNichosCat] = useState<NichoCatalogo[]>([]);
   const [categoriasInv, setCategoriasInv] = useState<string[]>([]);
   const [sinPaquetear, setSinPaquetear] = useState<EquipoSinPaquetear[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroCat, setFiltroCat] = useState<string>("TODAS");
+  const [filtroTipo, setFiltroTipo] = useState<string>("TODOS");
+  const [filtroRol, setFiltroRol] = useState<string>("TODOS");
+  const [filtroDisp, setFiltroDisp] = useState<string>("TODAS");
   const [showSinPaquetear, setShowSinPaquetear] = useState(false);
+  const [soloSinClasificar, setSoloSinClasificar] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -510,18 +629,20 @@ export function ProductosSection() {
   async function cargar() {
     setLoading(true);
     try {
-      const [rp, re, rs, rc, rr] = await Promise.all([
+      const [rp, re, rs, rc, rr, rcat] = await Promise.all([
         fetch("/api/productos").then((r) => r.json()),
         fetch("/api/equipos").then((r) => r.json()),
         fetch("/api/productos/sin-paquetear").then((r) => r.json()),
         fetch("/api/inventario/categorias").then((r) => r.json()),
         fetch("/api/paquetes/rangos").then((r) => r.json()),
+        fetch("/api/catalogo").then((r) => r.json()).catch(() => ({})),
       ]);
       setProductos(rp.productos ?? []);
       setEquipos(re.equipos ?? []);
       setSinPaquetear(rs.equipos ?? []);
       setCategoriasInv((rc.categorias ?? []).map((c: { nombre: string }) => c.nombre));
       setRangos((rr.rangos ?? []).map((x: { label: string }) => x.label));
+      setNichosCat(rcat.nichos ?? []);
     } finally {
       setLoading(false);
     }
@@ -549,6 +670,11 @@ export function ProductosSection() {
       descripcion: p.descripcion ?? "",
       categoria: p.categoria ?? "",
       tiposEvento: parseTags(p.tiposEvento),
+      nichos: parseTags(p.nichos),
+      rol: p.rol === "adicional" ? "adicional" : "base",
+      disponibilidad: ["subrenta", "bajo_pedido"].includes(p.disponibilidad ?? "") ? p.disponibilidad! : "propio",
+      proveedorRef: p.proveedorRef ?? "",
+      costoRef: p.costoRef != null ? String(p.costoRef) : "",
       imagenUrl: p.imagenUrl && p.imagenUrl.startsWith("data:") ? p.imagenUrl : p.imagenUrl ?? "",
       equipoDominanteId: p.equipoDominanteId ?? "",
       precioManual: p.precioManual != null ? String(p.precioManual) : "",
@@ -568,6 +694,11 @@ export function ProductosSection() {
         descripcion: form.descripcion.trim(),
         categoria: form.categoria,
         tiposEvento: form.tiposEvento,
+        nichos: form.nichos,
+        rol: form.rol,
+        disponibilidad: form.disponibilidad,
+        proveedorRef: form.disponibilidad === "propio" ? null : form.proveedorRef.trim() || null,
+        costoRef: form.disponibilidad === "propio" ? null : form.costoRef,
         imagenUrl: form.imagenUrl || null,
         equipoDominanteId: form.equipoDominanteId || null,
         precioManual: form.precioManual,
@@ -612,10 +743,16 @@ export function ProductosSection() {
     return ["TODAS", ...[...set].sort()];
   }, [productos]);
 
-  const visibles = useMemo(
-    () => (filtroCat === "TODAS" ? productos : productos.filter((p) => (p.categoria ?? "OTRO") === filtroCat)),
-    [productos, filtroCat]
-  );
+  const visibles = useMemo(() => {
+    return productos.filter((p) => {
+      if (filtroCat !== "TODAS" && (p.categoria ?? "OTRO") !== filtroCat) return false;
+      if (filtroTipo !== "TODOS" && !parseTags(p.tiposEvento).includes(filtroTipo)) return false;
+      if (filtroRol !== "TODOS" && (p.rol ?? "base") !== filtroRol) return false;
+      if (filtroDisp !== "TODAS" && (p.disponibilidad ?? "propio") !== filtroDisp) return false;
+      if (soloSinClasificar && parseTags(p.tiposEvento).length > 0) return false;
+      return true;
+    });
+  }, [productos, filtroCat, filtroTipo, filtroRol, filtroDisp, soloSinClasificar]);
 
   const porCategoria = useMemo(() => {
     const cats = [...new Set(visibles.map((p) => p.categoria ?? "OTRO"))].sort();
@@ -632,6 +769,14 @@ export function ProductosSection() {
           Sistemas armados a partir del inventario. La fuente y disponibilidad siempre es el inventario.
         </p>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSoloSinClasificar((v) => !v)}
+            className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+              soloSinClasificar ? "bg-[#B3985B] text-black font-semibold" : "bg-[#1a1a1a] text-gray-300 hover:text-white"
+            }`}
+          >
+            Sin clasificar
+          </button>
           <button
             onClick={() => setShowSinPaquetear((v) => !v)}
             className="px-3 py-2 rounded-lg bg-[#1a1a1a] text-gray-300 text-sm hover:text-white transition-colors"
@@ -694,6 +839,47 @@ export function ProductosSection() {
             {c === "TODAS" ? "Todas" : c}
           </button>
         ))}
+      </div>
+
+      {/* Filtros de clasificación */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <select
+          value={filtroTipo}
+          onChange={(e) => setFiltroTipo(e.target.value)}
+          className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+        >
+          <option value="TODOS">Todos los tipos</option>
+          {TIPOS_EVENTO.map((t) => (
+            <option key={t.key} value={t.key}>{t.label}</option>
+          ))}
+        </select>
+        <select
+          value={filtroRol}
+          onChange={(e) => setFiltroRol(e.target.value)}
+          className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+        >
+          <option value="TODOS">Todo rol</option>
+          <option value="base">Base</option>
+          <option value="adicional">Adicional</option>
+        </select>
+        <select
+          value={filtroDisp}
+          onChange={(e) => setFiltroDisp(e.target.value)}
+          className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]"
+        >
+          <option value="TODAS">Toda disponibilidad</option>
+          <option value="propio">Propio</option>
+          <option value="subrenta">Subrenta</option>
+          <option value="bajo_pedido">Bajo pedido</option>
+        </select>
+        {(filtroTipo !== "TODOS" || filtroRol !== "TODOS" || filtroDisp !== "TODAS" || soloSinClasificar) && (
+          <button
+            onClick={() => { setFiltroTipo("TODOS"); setFiltroRol("TODOS"); setFiltroDisp("TODAS"); setSoloSinClasificar(false); }}
+            className="text-[11px] text-gray-500 hover:text-white px-2 py-1"
+          >
+            Limpiar filtros
+          </button>
+        )}
       </div>
 
       {/* Productos por categoría — vista lista */}
@@ -795,7 +981,7 @@ export function ProductosSection() {
         title={editId ? "Editar producto" : "Nuevo producto"}
         maxWidth="max-w-3xl"
       >
-        <ProductoEditor form={form} setForm={setForm} equipos={equipos} categorias={categoriasInv} rangos={rangos} />
+        <ProductoEditor form={form} setForm={setForm} equipos={equipos} categorias={categoriasInv} rangos={rangos} nichosCat={nichosCat} />
         <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-[#1a1a1a]">
           <button
             onClick={() => setModalOpen(false)}

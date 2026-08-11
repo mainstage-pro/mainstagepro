@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   await ensureProductosTables();
 
   const body = await req.json();
-  const { nombre, descripcion, categoria, tiposEvento, imagenUrl, equipoDominanteId, precioManual, items, coberturas } = body;
+  const { nombre, descripcion, categoria, tiposEvento, nichos, rol, disponibilidad, proveedorRef, costoRef, imagenUrl, equipoDominanteId, precioManual, items, coberturas } = body;
 
   if (!nombre || !Array.isArray(items) || items.length === 0) {
     return NextResponse.json({ error: "nombre y al menos un equipo son requeridos" }, { status: 400 });
@@ -81,6 +81,11 @@ export async function POST(req: NextRequest) {
       descripcion: descripcion || null,
       categoria: categoria || null,
       tiposEvento: Array.isArray(tiposEvento) ? JSON.stringify(tiposEvento) : tiposEvento || null,
+      nichos: Array.isArray(nichos) ? (nichos.length ? JSON.stringify(nichos) : null) : nichos || null,
+      rol: rol === "adicional" ? "adicional" : "base",
+      disponibilidad: ["subrenta", "bajo_pedido"].includes(disponibilidad) ? disponibilidad : "propio",
+      proveedorRef: proveedorRef || null,
+      costoRef: costoRef != null && costoRef !== "" ? Number(costoRef) : null,
       imagenUrl: imagenDefault,
       equipoDominanteId: domId,
       precioManual: precioManual != null && precioManual !== "" ? Number(precioManual) : null,

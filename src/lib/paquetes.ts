@@ -101,6 +101,12 @@ export async function ensurePaquetesTables() {
       data: RANGOS_PERSONAS_DEFAULT.map((label, orden) => ({ label, orden })),
     });
   }
+  // Rango 50-100 faltante (idempotente; orden 0 para que caiga tras "0-50").
+  await prisma.paqueteRango.upsert({
+    where: { label: "50-100" },
+    update: {},
+    create: { label: "50-100", orden: 0 },
+  });
   tablesEnsured = true;
 }
 

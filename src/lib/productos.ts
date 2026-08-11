@@ -61,6 +61,12 @@ export async function ensureProductosTables() {
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS "producto_coberturas_productoId_idx" ON "producto_coberturas"("productoId");`
   );
+  // Bloque 2: clasificación de productos (columnas aditivas, idempotentes).
+  await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "nichos" TEXT;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "rol" TEXT NOT NULL DEFAULT 'base';`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "disponibilidad" TEXT NOT NULL DEFAULT 'propio';`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "proveedorRef" TEXT;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "costoRef" DOUBLE PRECISION;`);
   tablesEnsured = true;
 }
 
@@ -68,15 +74,13 @@ export type ItemInput = { equipoId: string; cantidad: number };
 
 export type CoberturaInput = { tipoEvento: string; rangos: string[]; subtipos: string[] };
 
-const TIPOS_EVENTO_VALIDOS = new Set(["MUSICAL", "SOCIAL", "EMPRESARIAL"]);
-
 // Depura la cobertura que llega del cliente: un registro por tipo de evento
-// válido, con rangos/subtipos como arreglos de strings.
+// (cualquier slug legacy del catálogo), con rangos/subtipos como arreglos.
 export function limpiarCoberturas(raw: unknown): CoberturaInput[] {
   if (!Array.isArray(raw)) return [];
   const porTipo = new Map<string, CoberturaInput>();
   for (const c of raw as CoberturaInput[]) {
-    if (!c || !TIPOS_EVENTO_VALIDOS.has(c.tipoEvento)) continue;
+    if (!c || typeof c.tipoEvento !== "string" || !c.tipoEvento.trim()) continue;
     const rangos = Array.isArray(c.rangos) ? [...new Set(c.rangos.filter((x) => typeof x === "string" && x))] : [];
     const subtipos = Array.isArray(c.subtipos) ? [...new Set(c.subtipos.filter((x) => typeof x === "string" && x))] : [];
     porTipo.set(c.tipoEvento, { tipoEvento: c.tipoEvento, rangos, subtipos });

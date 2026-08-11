@@ -921,6 +921,11 @@ model Producto {
   descripcion        String?
   categoria          String?  // AUDIO | ILUMINACION | VIDEO | DJ | ESTRUCTURA | OTRO — agrupa en la UI
   tiposEvento        String?  // JSON array: ["MUSICAL","SOCIAL","EMPRESARIAL"] — sugerencia por tipo de evento
+  nichos             String?  // JSON array de slugs de nicho donde aplica (Bloque 2)
+  rol                String   @default("base") // base | adicional
+  disponibilidad     String   @default("propio") // propio | subrenta | bajo_pedido
+  proveedorRef       String?  // proveedor de referencia si subrenta/bajo_pedido
+  costoRef           Float?   // costo de referencia si subrenta/bajo_pedido
   imagenUrl          String?  // imagen del producto (por default la del equipo dominante; editable)
   equipoDominanteId  String?  // equipo cuya imagen se usa por default
   equipoDominante    Equipo?  @relation("ProductoEquipoDominante", fields: [equipoDominanteId], references: [id])

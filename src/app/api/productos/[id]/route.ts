@@ -44,7 +44,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const { nombre, descripcion, categoria, tiposEvento, imagenUrl, equipoDominanteId, precioManual, items, activo, coberturas } = body;
+  const { nombre, descripcion, categoria, tiposEvento, nichos, rol, disponibilidad, proveedorRef, costoRef, imagenUrl, equipoDominanteId, precioManual, items, activo, coberturas } = body;
 
   const data: Record<string, unknown> = {};
   if (nombre !== undefined) data.nombre = nombre;
@@ -52,6 +52,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (categoria !== undefined) data.categoria = categoria || null;
   if (tiposEvento !== undefined)
     data.tiposEvento = Array.isArray(tiposEvento) ? JSON.stringify(tiposEvento) : tiposEvento || null;
+  if (nichos !== undefined)
+    data.nichos = Array.isArray(nichos) ? (nichos.length ? JSON.stringify(nichos) : null) : nichos || null;
+  if (rol !== undefined) data.rol = rol === "adicional" ? "adicional" : "base";
+  if (disponibilidad !== undefined) data.disponibilidad = ["subrenta", "bajo_pedido"].includes(disponibilidad) ? disponibilidad : "propio";
+  if (proveedorRef !== undefined) data.proveedorRef = proveedorRef || null;
+  if (costoRef !== undefined) data.costoRef = costoRef != null && costoRef !== "" ? Number(costoRef) : null;
   if (imagenUrl !== undefined) data.imagenUrl = imagenUrl || null;
   if (equipoDominanteId !== undefined) data.equipoDominanteId = equipoDominanteId || null;
   if (precioManual !== undefined)
