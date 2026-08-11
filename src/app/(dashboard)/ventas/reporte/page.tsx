@@ -403,27 +403,29 @@ export default function ReporteVentasPage() {
 
               {/* Conversión */}
               <div className="ms-card flex flex-col justify-between">
-                <div className="flex items-center gap-3 text-[#6b7280] mb-1">
-                  <p className="text-xs uppercase tracking-wider font-semibold">Conversión</p>
-                </div>
-                <div className="mt-4">
-                  <div className="flex items-end justify-between mb-2">
-                    <p className="text-2xl font-bold text-white">{conversionPct.toFixed(1)}%</p>
-                    <p className="text-[#B3985B] text-xs font-medium bg-[#B3985B]/10 px-2 py-0.5 rounded">Tasa Conversión</p>
+                <div>
+                  <div className="flex items-center gap-3 text-[#6b7280] mb-1">
+                    <p className="text-xs uppercase tracking-wider font-semibold">Conversión</p>
                   </div>
-                  <div className="space-y-1.5 mt-3">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-[#6b7280]">Ventas Cerradas</span>
-                      <span className="text-white font-medium">{reporte.cotizaciones.ventasCerradas}</span>
+                  <div className="mt-4">
+                    <div className="flex items-end justify-between mb-2">
+                      <p className="text-2xl font-bold text-white">{conversionPct.toFixed(1)}%</p>
+                      <p className="text-[#B3985B] text-xs font-medium bg-[#B3985B]/10 px-2 py-0.5 rounded">Tasa Conversión</p>
                     </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-[#6b7280]">En Seguimiento</span>
-                      <span className="text-white font-medium">{reporte.cotizaciones.enSeguimiento}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-[#6b7280]">Ventas Perdidas</span>
-                      <span className="text-white font-medium">{reporte.tratosPerdidos.count}</span>
-                    </div>
+                  </div>
+                </div>
+                <div className="space-y-1.5 mt-3 pt-3 border-t border-[#333]/50">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[#6b7280]">Ventas Cerradas</span>
+                    <span className="text-white font-medium">{reporte.cotizaciones.ventasCerradas}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[#6b7280]">En Seguimiento</span>
+                    <span className="text-white font-medium">{reporte.cotizaciones.enSeguimiento}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[#6b7280]">Ventas Perdidas</span>
+                    <span className="text-white font-medium">{reporte.tratosPerdidos.count}</span>
                   </div>
                 </div>
               </div>
