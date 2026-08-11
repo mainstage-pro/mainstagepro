@@ -1216,8 +1216,10 @@ function CotizadorForm() {
   // ─── Cálculo del resumen ──────────────────────────────────────────────────
   const resumen = useMemo(() => {
     const subtotalEquiposBruto = lineasEquipo.reduce((s, l) => s + l.subtotal, 0);
-    // Paquetes: precio fijo, sin descuentos de equipo. Se suman al total tal cual.
+    // Paquetes armados: entran a la base descontable junto con los equipos individuales.
     const subtotalPaquetes = lineasPaquete.reduce((s, l) => s + l.subtotal, 0);
+    // Base sobre la que corren los descuentos (volumen, B2B, especial): equipos + paquetes.
+    const baseDescuentable = subtotalEquiposBruto + subtotalPaquetes;
     // Externos: precio al cliente (sin descuento) y costo de proveedor (para viabilidad)
     const subtotalExternos = lineasExterno.reduce((s, l) => s + l.subtotal, 0);
     const costoExternos = lineasExterno.reduce((s, l) => s + l.costoTotal, 0);
@@ -1237,12 +1239,12 @@ function CotizadorForm() {
     const pctA   = cfgPctAnticipado / 100;
 
     // Auto-activar volumen si subtotal supera umbral (solo si no ha sido tocado manualmente)
-    const debeAutoVolumen = subtotalEquiposBruto > cfgUmbralVolumen;
+    const debeAutoVolumen = baseDescuentable > cfgUmbralVolumen;
     const volumenEfectivo = volumenActivo;
 
     // 1) Descuento por volumen
-    const montoVolumen = volumenEfectivo ? subtotalEquiposBruto * pctV : 0;
-    const basePostVolumen = subtotalEquiposBruto - montoVolumen;
+    const montoVolumen = volumenEfectivo ? baseDescuentable * pctV : 0;
+    const basePostVolumen = baseDescuentable - montoVolumen;
 
     // 2) Descuento B2B (sobre base post-volumen)
     const montoB2b = b2bActivo ? basePostVolumen * pctB : 0;
@@ -1259,20 +1261,25 @@ function CotizadorForm() {
           ? (basePostB2b > 0 ? montoManual / basePostB2b : 0)
           : (parseFloat(manualValor) || 0) / 100)
       : 0;
-    const subtotalEquiposNeto = basePostB2b - montoManual;
+    // Neto descontado sobre la base combinada, repartido proporcionalmente entre
+    // equipos y paquetes para conservar cada línea (y no alterar el pago anticipado).
+    const netoDescuentable = basePostB2b - montoManual;
+    const shareEquipos = baseDescuentable > 0 ? subtotalEquiposBruto / baseDescuentable : 1;
+    const subtotalEquiposNeto = netoDescuentable * shareEquipos;
+    const subtotalPaquetesNeto = netoDescuentable - subtotalEquiposNeto;
 
     // Preservados (legacy retrocompat)
     const montoDescuentoLegacy = subtotalEquiposBruto * (dMultidiaPreservado + dEspecialPreservado + dPatrocinioPreservado) + dFijoPreservado;
 
     const montoDescuento = montoVolumen + montoB2b + montoManual + montoDescuentoLegacy;
-    const descuentoTotalPct = subtotalEquiposBruto > 0 ? montoDescuento / subtotalEquiposBruto : 0;
+    const descuentoTotalPct = baseDescuentable > 0 ? montoDescuento / baseDescuentable : 0;
 
     // Pago anticipado (sobre equipos neto, NO modifica total principal)
     const montoPagoAnticipadoFinal = pagoAnticipadoActivo ? subtotalEquiposNeto * pctA : 0;
 
     const subtotalOcasionales = lineasOcasional.reduce((s, l) => s + l.subtotal, 0);
     const subtotalChofer = incluirChofer ? 500 : 0;
-    const baseTotal = subtotalEquiposNeto + subtotalPaquetes + subtotalExternos + subtotalOcasionales + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje + subtotalChofer;
+    const baseTotal = subtotalEquiposNeto + subtotalPaquetesNeto + subtotalExternos + subtotalOcasionales + subtotalOperacion + subtotalDJ + subtotalTransporte + subtotalComidas + subtotalHospedaje + subtotalChofer;
 
     // Comisión interna / Gastos de producción
     const gastosProduccionMonto = gastosActivo
@@ -1304,7 +1311,7 @@ function CotizadorForm() {
       : pctUtilidad >= VIABILIDAD.MINIMO ? "MINIMO" : "RIESGO";
 
     return {
-      subtotalEquiposBruto, subtotalPaquetes, subtotalExternos, subtotalOcasionales, costoExternos,
+      subtotalEquiposBruto, subtotalPaquetes, subtotalPaquetesNeto, subtotalExternos, subtotalOcasionales, costoExternos,
       subtotalOperacion, subtotalDJ, subtotalChofer,
       subtotalTransporte, subtotalComidas, subtotalHospedaje,
       montoVolumen, basePostVolumen, montoB2b, basePostB2b,
@@ -3318,7 +3325,7 @@ function CotizadorForm() {
                 )}
                 {resumen.montoDescuento > 0 && (
                   <div className="flex justify-between text-sm font-medium border-t border-[#222] pt-1">
-                    <span className="text-white">Total descuento equipos</span>
+                    <span className="text-white">Total descuento (equipos + paquetes)</span>
                     <span className="text-red-400 font-bold">-{formatCurrency(resumen.montoDescuento)}</span>
                   </div>
                 )}
@@ -3446,6 +3453,12 @@ function CotizadorForm() {
                 <span>Equipos bruto</span>
                 <span>{formatCurrency(resumen.subtotalEquiposBruto)}</span>
               </div>
+              {resumen.subtotalPaquetes > 0 && (
+                <div className="flex justify-between text-gray-400">
+                  <span className="inline-flex items-center gap-1.5"><Package strokeWidth={1.75} className="w-3.5 h-3.5" /> Paquetes bruto</span>
+                  <span>{formatCurrency(resumen.subtotalPaquetes)}</span>
+                </div>
+              )}
               {resumen.montoVolumen > 0 && (
                 <div className="flex justify-between text-red-400 text-xs">
                   <span>Desc. volumen ({cfgPctVolumen}%)</span>
@@ -3470,7 +3483,7 @@ function CotizadorForm() {
                   <span>{formatCurrency(resumen.subtotalEquiposNeto)}</span>
                 </div>
               )}
-              {resumen.subtotalPaquetes > 0 && <div className="flex justify-between text-gray-400"><span className="inline-flex items-center gap-1.5"><Package strokeWidth={1.75} className="w-3.5 h-3.5" /> Paquetes armados</span><span>{formatCurrency(resumen.subtotalPaquetes)}</span></div>}
+              {resumen.subtotalPaquetes > 0 && <div className="flex justify-between text-gray-400"><span className="inline-flex items-center gap-1.5"><Package strokeWidth={1.75} className="w-3.5 h-3.5" /> Paquetes neto</span><span>{formatCurrency(resumen.subtotalPaquetesNeto)}</span></div>}
               {resumen.subtotalExternos > 0 && <div className="flex justify-between text-gray-400"><span>Equipos terceros</span><span>{formatCurrency(resumen.subtotalExternos)}</span></div>}
               {resumen.subtotalOcasionales > 0 && <div className="flex justify-between text-gray-400"><span>Adicionales</span><span>{formatCurrency(resumen.subtotalOcasionales)}</span></div>}
               {resumen.subtotalOperacion > 0 && <div className="flex justify-between text-gray-400"><span>Operación técnica</span><span>{formatCurrency(resumen.subtotalOperacion)}</span></div>}
