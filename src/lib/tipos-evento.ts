@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { mapTiposToCategorias, heroFromCategorias, type GaleriaFoto } from "@/lib/galeria-shared";
 
 // Fuente maestra del material por tipo de evento (galerías + presentaciones).
 // Las fotos marcadas como destacadas (estrella) SIEMPRE van primero, en todos
@@ -33,4 +34,23 @@ export async function getTiposEventoPublico() {
       fotos: { orderBy: ORDER_FOTOS_TIPO_EVENTO, select: SELECT_FOTO },
     },
   });
+}
+
+// Datos completos de la galería pública, listos para sembrar la primera pintura
+// (SSR) y así evitar el parpadeo/cambio de portada al hidratar en el cliente.
+export async function getGaleriaData(soloSlug?: string): Promise<{
+  categorias: ReturnType<typeof mapTiposToCategorias>;
+  heroSlides: GaleriaFoto[];
+}> {
+  const [tipos, slidesRaw] = await Promise.all([
+    getTiposEventoPublico(),
+    prisma.fotoGaleriaInicio.findMany({
+      orderBy: [{ orden: "asc" }, { createdAt: "asc" }],
+      select: { url: true, caption: true },
+    }),
+  ]);
+  const categorias = mapTiposToCategorias(tipos, soloSlug);
+  const slides: GaleriaFoto[] = slidesRaw.map(s => ({ src: s.url, caption: s.caption || "" }));
+  const heroSlides = heroFromCategorias(categorias, slides, soloSlug);
+  return { categorias, heroSlides };
 }

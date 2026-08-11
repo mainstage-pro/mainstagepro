@@ -1,39 +1,15 @@
 "use client";
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Music, Wine, Building2, Sparkles, type LucideIcon } from "lucide-react";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
+import {
+  iconoPorSlug,
+  familiaTipo,
+  type GaleriaFoto as Foto,
+  type GaleriaCategoria as Categoria,
+} from "@/lib/galeria-shared";
 
 const GOLD = "#B3985B";
 const WA   = "https://wa.me/524461432565?text=Hola%2C%20me%20gustar%C3%ADa%20obtener%20informaci%C3%B3n%20sobre%20producci%C3%B3n%20para%20mi%20evento.";
-
-// ─── Tipos ─────────────────────────────────────────────────────────────────────
-type Foto = { src: string; caption: string };
-type Categoria = {
-  id: string;
-  label: string;
-  sub: string;
-  cover: string;
-  icon: LucideIcon;
-  fotos: Foto[];
-};
-
-// Ícono por slug del tipo de evento (la BD manda el resto del contenido).
-function iconoPorSlug(slug: string): LucideIcon {
-  if (slug.includes("music")) return Music;
-  if (slug.includes("social")) return Wine;
-  if (slug.includes("empres")) return Building2;
-  return Sparkles;
-}
-
-// Normaliza slugs/ids a una familia estable ("musical" | "social" | "empresarial")
-// para que la vista individual case sin importar variantes (musical/musicales).
-function familiaTipo(s: string): string {
-  const x = s.toLowerCase();
-  if (x.includes("music")) return "musical";
-  if (x.includes("social")) return "social";
-  if (x.includes("empres")) return "empresarial";
-  return x;
-}
 
 // ─── Fallback (solo si la BD aún no tiene tipos con fotos) ──────────────────────
 const FALLBACK: Categoria[] = [
@@ -42,7 +18,6 @@ const FALLBACK: Categoria[] = [
     label: "Eventos Musicales",
     sub: "Conciertos · Festivales · DJ Sets · Shows en vivo",
     cover: "/images/presentacion/musicales/Musicales-076.jpg",
-    icon: Music as LucideIcon,
     fotos: [
       { src: "/images/presentacion/musicales/Musicales-016.jpg",                    caption: "Producción completa en vivo" },
       { src: "/images/presentacion/musicales/Musicales-037.jpg",                    caption: "Iluminación · Show en escenario" },
@@ -59,7 +34,6 @@ const FALLBACK: Categoria[] = [
     label: "Eventos Sociales",
     sub: "Bodas · XV Años · Celebraciones privadas",
     cover: "/images/presentacion/sociales/s-boda-elegante.jpg",
-    icon: Wine as LucideIcon,
     fotos: [
       { src: "/images/presentacion/sociales/s-boda-elegante.jpg",   caption: "Boda · Producción exterior elegante" },
       { src: "/images/presentacion/sociales/s-dj-salon.png",        caption: "DJ · Ambiente de salón" },
@@ -74,7 +48,6 @@ const FALLBACK: Categoria[] = [
     label: "Eventos Empresariales",
     sub: "Conferencias · Lanzamientos · Corporativos",
     cover: "/images/presentacion/empresariales/e-auditorio.jpg",
-    icon: Building2 as LucideIcon,
     fotos: [
       { src: "/images/presentacion/empresariales/e-auditorio.jpg",        caption: "Auditorio · Producción completa" },
       { src: "/images/presentacion/empresariales/e-sala-pantallas.jpg",   caption: "Sala · Conferencia profesional" },
@@ -223,6 +196,7 @@ function CatCard({
   active: boolean;
   onClick: () => void;
 }) {
+  const Icon = iconoPorSlug(cat.id);
   return (
     <button
       onClick={onClick}
@@ -264,7 +238,7 @@ function CatCard({
       {/* Content */}
       <div className="absolute inset-0 flex flex-col justify-end p-8">
         <div className="flex items-center gap-3 mb-3">
-          <cat.icon strokeWidth={1.75} className="w-7 h-7" style={{ color: active ? GOLD : "rgba(255,255,255,0.85)" }} />
+          <Icon strokeWidth={1.75} className="w-7 h-7" style={{ color: active ? GOLD : "rgba(255,255,255,0.85)" }} />
           {active && (
             <span
               className="text-[10px] font-semibold uppercase tracking-widest px-2.5 py-1 rounded-full"
@@ -322,6 +296,8 @@ function ThumbnailGrid({
             src={f.src}
             alt={f.caption}
             draggable={false}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
           />
           {/* Hover overlay */}
@@ -345,67 +321,35 @@ function ThumbnailGrid({
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 // `soloSlug` limita la vista a un solo tipo de evento (musical/social/empresarial),
-// reutilizando la misma estructura que la galería combinada. Como ambas leen de la
-// misma fuente (`/api/tipos-evento/publico`), editar las fotos en el admin se refleja
-// automáticamente en la combinada y en las 3 individuales.
-export default function GaleriaClient({ soloSlug }: { soloSlug?: string } = {}) {
-  const [active, setActive]   = useState<CatId | null>(null);
+// reutilizando la misma estructura que la galería combinada. Los datos (`initialCategorias`
+// y `initialHeroSlides`) los siembra el servidor (SSR, `getGaleriaData`) en la primera
+// pintura para evitar el parpadeo/cambio de portada al hidratar. El FALLBACK solo aplica
+// si el servidor no mandó datos (BD sin tipos con fotos).
+export default function GaleriaClient({
+  soloSlug,
+  initialCategorias,
+  initialHeroSlides,
+}: {
+  soloSlug?: string;
+  initialCategorias?: Categoria[];
+  initialHeroSlides?: Foto[];
+} = {}) {
+  const seedCats: Categoria[] = (initialCategorias?.length ?? 0) > 0
+    ? initialCategorias!
+    : (soloSlug ? FALLBACK.filter(c => familiaTipo(c.id) === familiaTipo(soloSlug)) : FALLBACK);
+  const seedHero: Foto[] = (initialHeroSlides?.length ?? 0) > 0
+    ? initialHeroSlides!
+    : (soloSlug
+        ? (seedCats[0]?.fotos ?? []).slice(0, 6)
+        : seedCats.map(c => ({ src: c.cover, caption: c.label })).slice(0, 6));
+
+  // En vista individual el único tipo queda seleccionado desde el arranque.
+  const [active, setActive]   = useState<CatId | null>(soloSlug ? (seedCats[0]?.id ?? null) : null);
   const [lightbox, setLightbox] = useState<{ catId: CatId; idx: number } | null>(null);
-  const [categorias, setCategorias] = useState<Categoria[]>(
-    soloSlug ? FALLBACK.filter(c => familiaTipo(c.id) === familiaTipo(soloSlug)) : FALLBACK,
-  );
-  const [heroSlides, setHeroSlides] = useState<Foto[]>([]);
+  const [categorias] = useState<Categoria[]>(seedCats);
+  const [heroSlides] = useState<Foto[]>(seedHero);
   const [heroIdx, setHeroIdx] = useState(0);
   const galleryRef    = useRef<HTMLDivElement>(null);
-
-  // Fuente maestra: los tipos de evento configurados en Comercial. Solo caemos al
-  // FALLBACK si la BD todavía no tiene ningún tipo con fotos. El orden de las fotos
-  // dentro de cada categoría lo manda `orden` (arrastrar en el admin); la primera
-  // es la portada. En vista individual (`soloSlug`) filtramos a ese único tipo.
-  useEffect(() => {
-    fetch("/api/tipos-evento/publico")
-      .then(r => (r.ok ? r.json() : null))
-      .then(d => {
-        const cats: Categoria[] = (d?.tipos ?? [])
-          .filter((t: { fotos?: unknown[] }) => (t.fotos?.length ?? 0) > 0)
-          .map((t: { slug: string; nombre: string; subtitulo: string | null; fotos: { url: string; caption: string | null; orden: number }[] }): Categoria => {
-            const fotos = [...t.fotos].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
-            return {
-              id: t.slug,
-              label: t.nombre,
-              sub: t.subtitulo || "",
-              cover: fotos[0].url,
-              icon: iconoPorSlug(t.slug),
-              fotos: fotos.map(f => ({ src: f.url, caption: f.caption || "" })),
-            };
-          });
-        const visibles = soloSlug ? cats.filter(c => familiaTipo(c.id) === familiaTipo(soloSlug)) : cats;
-        if (visibles.length) setCategorias(visibles);
-      })
-      .catch(() => {});
-  }, [soloSlug]);
-
-  // Slides del inicio (carrusel del hero) SOLO en la galería combinada. En la vista
-  // individual el hero rota las fotos del propio tipo.
-  useEffect(() => {
-    if (soloSlug) return;
-    fetch("/api/galeria-inicio/publico")
-      .then(r => (r.ok ? r.json() : null))
-      .then(d => {
-        const s: Foto[] = (d?.slides ?? []).map((x: { url: string; caption: string | null }) => ({ src: x.url, caption: x.caption || "" }));
-        if (s.length) setHeroSlides(s);
-      })
-      .catch(() => {});
-  }, [soloSlug]);
-
-  // Vista individual: auto-selecciona el único tipo y usa sus fotos como hero.
-  useEffect(() => {
-    if (!soloSlug) return;
-    const cat = categorias[0];
-    if (!cat) return;
-    setActive(cat.id);
-    setHeroSlides(cat.fotos.slice(0, 6));
-  }, [soloSlug, categorias]);
 
   useEffect(() => {
     if (heroSlides.length < 2) return;
@@ -414,6 +358,7 @@ export default function GaleriaClient({ soloSlug }: { soloSlug?: string } = {}) 
   }, [heroSlides.length]);
 
   const activeCat = categorias.find(c => c.id === active) ?? null;
+  const ActiveIcon = activeCat ? iconoPorSlug(activeCat.id) : null;
   const soloCat = soloSlug ? categorias[0] ?? null : null;
 
   function selectCat(id: CatId) {
@@ -545,7 +490,7 @@ export default function GaleriaClient({ soloSlug }: { soloSlug?: string } = {}) 
               {/* Section header */}
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-1 inline-flex items-center gap-1.5"><activeCat.icon strokeWidth={1.75} className="w-3.5 h-3.5" /> {activeCat.id}</p>
+                  <p className="text-[#B3985B] text-xs tracking-[0.28em] uppercase mb-1 inline-flex items-center gap-1.5">{ActiveIcon && <ActiveIcon strokeWidth={1.75} className="w-3.5 h-3.5" />} {activeCat.id}</p>
                   <h2 className="font-bold text-white text-2xl" style={{ letterSpacing: "-0.02em" }}>
                     {activeCat.label}
                   </h2>

@@ -1,13 +1,14 @@
 import { notFound } from "next/navigation";
 import GaleriaClient from "../GaleriaClient";
 import { getPresentationMetadata } from "@/lib/metadata";
+import { getGaleriaData } from "@/lib/tipos-evento";
 import { Metadata } from "next";
 
 const TIPOS = ["musical", "social", "empresarial"] as const;
 
-export function generateStaticParams() {
-  return TIPOS.map(tipo => ({ tipo }));
-}
+// Dinámica para sembrar las fotos elegidas en la primera pintura (SSR) y evitar el
+// parpadeo/cambio de portada al hidratar.
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ tipo: string }> }): Promise<Metadata> {
   const { tipo } = await params;
@@ -32,5 +33,6 @@ export async function generateMetadata({ params }: { params: Promise<{ tipo: str
 export default async function GaleriaTipoPage({ params }: { params: Promise<{ tipo: string }> }) {
   const { tipo } = await params;
   if (!TIPOS.includes(tipo as (typeof TIPOS)[number])) notFound();
-  return <GaleriaClient soloSlug={tipo} />;
+  const { categorias, heroSlides } = await getGaleriaData(tipo);
+  return <GaleriaClient soloSlug={tipo} initialCategorias={categorias} initialHeroSlides={heroSlides} />;
 }
