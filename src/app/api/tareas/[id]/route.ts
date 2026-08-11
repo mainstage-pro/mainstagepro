@@ -264,8 +264,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         // "no realizada" cierra una sola ocurrencia atrasada y deja la siguiente
         // pendiente, en vez de saltar hasta la próxima fecha futura.
         const prox = calcularProximaFecha(cfg, desde);
+        // Amarra la constancia al día de la ocurrencia que se cierra. Si la fila
+        // recurrente aún no tiene `fecha` concreta, se usa el día-calendario de
+        // hoy (zona México) a medianoche UTC — así la proyección de la Semana del
+        // equipo puede ubicar esta entrada en su día en vez de dejarla sin fecha
+        // (con fechaOcurrencia null el día seguía saliendo pendiente).
+        const diaOcurrencia = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
         const entrada = {
-          fechaOcurrencia: actual.fecha ? actual.fecha.toISOString() : null,
+          fechaOcurrencia: actual.fecha ? actual.fecha.toISOString() : `${diaOcurrencia}T00:00:00.000Z`,
           completadaAt: new Date().toISOString(),
           completadaPorId: session.id,
           completadaPor: session.name ?? null,
@@ -376,8 +382,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         // quedan como NO_REQUIERE y no entran a la cola de verificación.
         const notaSnapshot = ("evidenciaNota" in data ? data.evidenciaNota : actual.evidenciaNota) as string | null;
         const archivosSnapshot = actual.archivos.map((a) => ({ nombre: a.nombre, url: a.url, tipo: a.tipo }));
+        // Ver nota en el flujo de "no realizada": si la fila aún no tiene `fecha`,
+        // se amarra la constancia al día de hoy (zona México) para que la Semana
+        // del equipo la ubique en su día en vez de dejarla sin fecha.
+        const diaOcurrencia = new Date().toLocaleDateString("en-CA", { timeZone: "America/Mexico_City" });
         const entrada = {
-          fechaOcurrencia: actual.fecha ? actual.fecha.toISOString() : null,
+          fechaOcurrencia: actual.fecha ? actual.fecha.toISOString() : `${diaOcurrencia}T00:00:00.000Z`,
           completadaAt: new Date().toISOString(),
           completadaPorId: session.id,
           completadaPor: session.name ?? null,
