@@ -3251,12 +3251,11 @@ function CotizadorForm() {
 
           {/* ── Comisión interna (Gastos de Producción) ────────────── */}
           {(() => {
-            const base = resumen.total;
-            const montoCalc = gastosActivo
-              ? (gastosEsMonto
-                  ? (parseFloat(gastosValor) || 0)
-                  : base * (parseFloat(gastosValor) || 0) / 100)
-              : 0;
+            // Fuente única de verdad: el resumen calcula la comisión sobre baseTotal
+            // (SIN incluir los propios gastos, para no crear un % circular). Reusar sus
+            // valores garantiza que el preview coincida exactamente con lo que se guarda.
+            const base = resumen.baseTotal;
+            const montoCalc = resumen.gastosProduccionMonto;
             return (
               <Seccion titulo="Comisión interna" hint="gastos de producción · se agrega al total del cliente">
                 {/* Toggle */}

@@ -101,18 +101,12 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       gastosProduccionMonto,
     } = body;
 
-    // Calcular gastos de producción y ajustar granTotal
-    let gastosMontoCalculado = 0;
-    let granTotalFinal = granTotal ?? 0;
-    if (gastosProduccionActivo) {
-      if (gastosProduccionEsMonto) {
-        gastosMontoCalculado = gastosProduccionMonto ?? 0;
-      } else {
-        gastosMontoCalculado = Math.round((total ?? 0) * ((gastosProduccionPct ?? 10) / 100) * 100) / 100;
-      }
-      // granTotal ya incluye IVA si aplica — gastos van SOBRE el granTotal
-      granTotalFinal = (granTotal ?? 0) + gastosMontoCalculado;
-    }
+    // El cliente ya calcula gastos de producción e incluye el monto tanto en `total`
+    // como en `granTotal`. Recalcular aquí duplicaba la comisión y, además, aplicaba
+    // otro /100 sobre un pct que ya viene como fracción (0.1) → granTotal inflado con
+    // decimales fantasma. El servidor solo persiste lo que envía el cliente.
+    const gastosMontoCalculado = gastosProduccionActivo ? (gastosProduccionMonto ?? 0) : 0;
+    const granTotalFinal = granTotal ?? 0;
 
     try {
       // Capture current granTotal before overwriting, so we can cascade later
