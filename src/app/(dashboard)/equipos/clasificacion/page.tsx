@@ -36,6 +36,8 @@ export default function ClasificacionEquiposPage() {
   const [aplNichos, setAplNichos] = useState<string[]>([]);
   const [aplRol, setAplRol] = useState<"" | "base" | "adicional">("");
   const [aplNoCotizable, setAplNoCotizable] = useState(false);
+  const [aplCapacidad, setAplCapacidad] = useState<Record<string, string>>({});
+  const [rangos, setRangos] = useState<string[]>([]);
   const [guardando, setGuardando] = useState(false);
 
   // Confirmación de propagación (sync equipo→productos).
@@ -45,9 +47,10 @@ export default function ClasificacionEquiposPage() {
   async function cargar() {
     setCargando(true);
     try {
-      const [rc, rcat] = await Promise.all([fetch("/api/inventario/clasificacion"), fetch("/api/catalogo")]);
+      const [rc, rcat, rr] = await Promise.all([fetch("/api/inventario/clasificacion"), fetch("/api/catalogo"), fetch("/api/paquetes/rangos")]);
       if (rc.ok) { const d = await rc.json(); setEquipos(d.equipos); setTotal(d.total); setClasificados(d.clasificados); }
       if (rcat.ok) { const d = await rcat.json(); setTipos(d.tipos || []); setNichos(d.nichos || []); }
+      if (rr.ok) { const d = await rr.json(); setRangos((d.rangos || []).map((x: { label: string }) => x.label)); }
     } finally { setCargando(false); }
   }
   useEffect(() => { cargar(); }, []);
@@ -78,6 +81,8 @@ export default function ClasificacionEquiposPage() {
       if (aplNichos.length) body.nichos = aplNichos;
       if (aplRol) body.rol = aplRol;
       if (aplNoCotizable) body.noCotizable = true;
+      const capacidad = Object.fromEntries(aplTipos.map(t => [t, aplCapacidad[t]]).filter(([, v]) => v));
+      if (Object.keys(capacidad).length) body.capacidadPorTipoEvento = capacidad;
       const r = await fetch("/api/inventario/clasificacion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!r.ok) throw new Error((await r.json()).error || "Error");
       const d = await r.json();
@@ -88,6 +93,20 @@ export default function ClasificacionEquiposPage() {
         setSyncPreview(d.syncPreview);
         setSyncEquipoIds(d.equipoIds || []);
       }
+    } catch (e) { error(e instanceof Error ? e.message : "Error"); } finally { setGuardando(false); }
+  }
+
+  // Convierte lo heredado en manual: el POST siempre marca clasifOrigen="manual",
+  // así que un POST solo con ids fija la clasificación actual y la excluye del sync.
+  async function fijarManual() {
+    if (!sel.size) { error("Selecciona al menos un equipo"); return; }
+    setGuardando(true);
+    try {
+      const r = await fetch("/api/inventario/clasificacion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ equipoIds: [...sel] }) });
+      if (!r.ok) throw new Error((await r.json()).error || "Error");
+      success(`${sel.size} equipo(s) fijados como manual`);
+      await cargar();
+      setSel(new Set());
     } catch (e) { error(e instanceof Error ? e.message : "Error"); } finally { setGuardando(false); }
   }
 
@@ -148,6 +167,22 @@ export default function ClasificacionEquiposPage() {
             </div>
           </div>
         )}
+        {aplTipos.length > 0 && rangos.length > 0 && (
+          <div>
+            <p className="text-[11px] text-gray-500 mb-1">Capacidad por tipo (rango de personas, opcional)</p>
+            <div className="flex flex-wrap gap-2">
+              {aplTipos.map(t => { const nombre = tipos.find(x => x.slug.toUpperCase() === t)?.nombre || t; return (
+                <label key={t} className="flex items-center gap-1.5 text-xs text-gray-400">
+                  <span>{nombre}:</span>
+                  <select value={aplCapacidad[t] || ""} onChange={e => setAplCapacidad(p => ({ ...p, [t]: e.target.value }))} className="bg-[#111] border border-[#242424] rounded-lg px-2 py-1 text-xs text-gray-200">
+                    <option value="">—</option>
+                    {rangos.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </label>
+              ); })}
+            </div>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] text-gray-500">Rol:</span>
@@ -156,7 +191,8 @@ export default function ClasificacionEquiposPage() {
             ))}
           </div>
           <label className="flex items-center gap-1.5 text-xs text-gray-400"><input type="checkbox" checked={aplNoCotizable} onChange={e => setAplNoCotizable(e.target.checked)} /> No cotizable (cable/consumible)</label>
-          <button onClick={aplicar} disabled={guardando || !sel.size} className="ml-auto bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-40">{guardando ? "Aplicando…" : "Aplicar"}</button>
+          <button onClick={fijarManual} disabled={guardando || !sel.size} title="Convierte la clasificación heredada en manual y la excluye del sync" className="ml-auto border border-[#333] hover:border-[#B3985B]/40 text-gray-400 hover:text-[#B3985B] text-sm px-3 py-2 rounded-lg disabled:opacity-40">Fijar como manual</button>
+          <button onClick={aplicar} disabled={guardando || !sel.size} className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-40">{guardando ? "Aplicando…" : "Aplicar"}</button>
         </div>
       </div>
 

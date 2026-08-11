@@ -24,6 +24,8 @@ type Equipo = {
   categoria: { id: string; nombre: string };
   proveedorDefault: { id: string; nombre: string; empresa: string | null } | null;
   imagenUrl: string | null;
+  tiposEvento: string | null;
+  noCotizable: boolean;
   notas: string | null;
   amperajeRequerido: number | null;
   voltajeRequerido: string | null;
@@ -58,6 +60,11 @@ const FORM_EMPTY: Form = {
 
 function fmx(n: number) {
   return `$${n.toLocaleString("es-MX", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+}
+
+function parseTiposEvento(s: string | null | undefined): string[] {
+  if (!s) return [];
+  try { const v = JSON.parse(s); return Array.isArray(v) ? v.map(String) : []; } catch { return []; }
 }
 
 async function compressImage(file: File, maxPx = 1200): Promise<string> {
@@ -813,6 +820,7 @@ export default function InventarioMaestroPage() {
   const [filtroEstado, setFiltroEstado] = useState<"" | "ACTIVO" | "EN_MANTENIMIENTO" | "EN_REPARACION" | "DADO_DE_BAJA">("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [filtroInactivos, setFiltroInactivos] = useState(false);
+  const [soloSinClasificar, setSoloSinClasificar] = useState(false);
   const [busqueda, setBusqueda] = useState("");
 
   const [vista, setVista] = useState<"lista" | "grid">("lista");
@@ -974,15 +982,24 @@ export default function InventarioMaestroPage() {
   }
 
   const equiposFiltrados = useMemo(() => {
-    if (!busqueda.trim()) return equipos;
-    const q = busqueda.toLowerCase();
-    return equipos.filter(e =>
-      e.descripcion.toLowerCase().includes(q) ||
-      (e.marca ?? "").toLowerCase().includes(q) ||
-      (e.modelo ?? "").toLowerCase().includes(q) ||
-      e.categoria.nombre.toLowerCase().includes(q)
-    );
-  }, [equipos, busqueda]);
+    const q = busqueda.trim().toLowerCase();
+    return equipos.filter(e => {
+      if (soloSinClasificar && (parseTiposEvento(e.tiposEvento).length > 0 || e.noCotizable)) return false;
+      if (!q) return true;
+      return e.descripcion.toLowerCase().includes(q) ||
+        (e.marca ?? "").toLowerCase().includes(q) ||
+        (e.modelo ?? "").toLowerCase().includes(q) ||
+        e.categoria.nombre.toLowerCase().includes(q);
+    });
+  }, [equipos, busqueda, soloSinClasificar]);
+
+  // Cobertura de clasificación: un equipo cuenta como clasificado si tiene tipo de
+  // evento o si se marcó no cotizable (decisión explícita de excluirlo).
+  const clasificacionStats = useMemo(() => {
+    const relevantes = equipos.filter(e => e.activo);
+    const clasificados = relevantes.filter(e => parseTiposEvento(e.tiposEvento).length > 0 || e.noCotizable).length;
+    return { clasificados, total: relevantes.length };
+  }, [equipos]);
 
   // ── Tab Propios / Externos ────────────────────────────────────────────────
   const [tab, setTab] = useState<"propios" | "externos">("propios");
@@ -1042,8 +1059,9 @@ export default function InventarioMaestroPage() {
         </div>
         <div className="flex items-center gap-2">
           <Link href="/equipos/clasificacion"
-            className="border border-[#333] hover:border-[#B3985B]/40 text-[#6b7280] hover:text-[#B3985B] text-sm px-3 py-2 rounded-lg transition-colors">
-            Clasificar
+            className="flex items-center gap-2 border border-[#333] hover:border-[#B3985B]/40 text-[#6b7280] hover:text-[#B3985B] text-sm px-3 py-2 rounded-lg transition-colors">
+            <span>Clasificar</span>
+            <span className="text-[11px] text-[#B3985B]">{clasificacionStats.clasificados}/{clasificacionStats.total}</span>
           </Link>
           <button onClick={() => setShowCatPanel(true)}
             className="border border-[#333] hover:border-[#B3985B]/40 text-[#6b7280] hover:text-[#B3985B] text-sm px-3 py-2 rounded-lg transition-colors">
@@ -1258,6 +1276,10 @@ export default function InventarioMaestroPage() {
           <label className="flex items-center gap-1.5 text-xs text-[#6b7280] cursor-pointer">
             <input type="checkbox" checked={filtroInactivos} onChange={e => setFiltroInactivos(e.target.checked)} className="accent-[#B3985B]" />
             Inactivos
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-[#6b7280] cursor-pointer">
+            <input type="checkbox" checked={soloSinClasificar} onChange={e => setSoloSinClasificar(e.target.checked)} className="accent-[#B3985B]" />
+            Sin clasificar
           </label>
           <div className="flex gap-0.5 bg-[#111] border border-[#222] rounded-lg p-0.5">
             <button onClick={() => setVista("lista")} title="Vista lista"

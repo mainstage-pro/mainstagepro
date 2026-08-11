@@ -10,6 +10,8 @@ import { SUBTIPOS_EVENTO, parseCoberturas, type Cobertura } from "@/lib/constant
 import { Guitar, PartyPopper, Briefcase, Package, type LucideIcon } from "lucide-react";
 
 // ── Tipos ───────────────────────────────────────────────────────────────────
+type CambioClasifProp = { id: string; nombre: string; tiposAntes: string[]; tiposDespues: string[]; nichosAntes: string[]; nichosDespues: string[] };
+
 type EquipoItem = {
   id: string;
   descripcion: string;
@@ -625,6 +627,9 @@ export function ProductosSection() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(FORM_EMPTY);
   const [saving, setSaving] = useState(false);
+  // Propagación producto→equipos: preview antes de aplicar (nada se propaga en silencio).
+  const [propagacion, setPropagacion] = useState<{ productoId: string; cambios: CambioClasifProp[] } | null>(null);
+  const [propagando, setPropagando] = useState(false);
 
   async function cargar() {
     setLoading(true);
@@ -720,10 +725,43 @@ export function ProductosSection() {
           editId ? prev.map((p) => (p.id === editId ? json.producto : p)) : [...prev, json.producto]
         );
       }
+      // Preview de propagación producto→equipos (unión, un salto, respeta manual).
+      const prodId = json.producto?.id || editId;
+      if (prodId && form.tiposEvento.length > 0) {
+        try {
+          const rp = await fetch("/api/inventario/clasificacion/sync", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ direccion: "producto-a-equipo", ids: [prodId], preview: true }),
+          });
+          if (rp.ok) {
+            const dp = await rp.json();
+            if (Array.isArray(dp.preview) && dp.preview.length > 0) setPropagacion({ productoId: prodId, cambios: dp.preview });
+          }
+        } catch { /* la clasificación se guardó; la propagación es opcional */ }
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "No se pudo guardar.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function aplicarPropagacion() {
+    if (!propagacion) return;
+    setPropagando(true);
+    try {
+      const r = await fetch("/api/inventario/clasificacion/sync", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ direccion: "producto-a-equipo", ids: [propagacion.productoId] }),
+      });
+      if (!r.ok) throw new Error((await r.json()).error || "Error");
+      const d = await r.json();
+      toast.success(`${d.cambios} equipo(s) actualizados`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "No se pudo propagar.");
+    } finally {
+      setPropagando(false);
+      setPropagacion(null);
     }
   }
 
@@ -1027,6 +1065,27 @@ export function ProductosSection() {
           >
             {saving ? "Guardando..." : editId ? "Guardar cambios" : "Crear producto"}
           </button>
+        </div>
+      </Modal>
+
+      {/* Confirmación de propagación a equipos componentes */}
+      <Modal open={!!propagacion} onClose={() => setPropagacion(null)} title="Propagar a equipos" maxWidth="max-w-lg">
+        <div className="p-1">
+          <p className="text-sm text-gray-300 mb-3">
+            Esto va a marcar también <span className="text-white font-semibold">{propagacion?.cambios.length ?? 0}</span> equipo(s) que componen este producto. Se suma a lo que ya tienen; no se quita nada ni se toca lo fijado manualmente.
+          </p>
+          <div className="space-y-2 max-h-64 overflow-auto mb-4">
+            {propagacion?.cambios.map((c) => (
+              <div key={c.id} className="rounded-lg bg-[#111] border border-[#1f1f1f] px-3 py-2">
+                <p className="text-sm text-white">{c.nombre}</p>
+                <p className="text-[11px] text-gray-500">Tipos: {c.tiposAntes.join(", ") || "—"} → <span className="text-[#B3985B]">{c.tiposDespues.join(", ")}</span></p>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setPropagacion(null)} className="text-sm text-gray-400 hover:text-white px-4 py-2">Solo este producto</button>
+            <button onClick={aplicarPropagacion} disabled={propagando} className="bg-[#B3985B] hover:bg-[#c9a96a] text-black text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50">{propagando ? "Aplicando…" : "Aplicar a los equipos"}</button>
+          </div>
         </div>
       </Modal>
     </div>

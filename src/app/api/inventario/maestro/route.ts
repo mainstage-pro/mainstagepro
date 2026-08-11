@@ -35,6 +35,8 @@ export async function GET(req: NextRequest) {
         categoria: { select: { id: true, nombre: true } },
         proveedorDefault: { select: { id: true, nombre: true, empresa: true } },
         imagenUrl: true,
+        tiposEvento: true,
+        noCotizable: true,
         notas: true,
         amperajeRequerido: true,
         voltajeRequerido: true,
