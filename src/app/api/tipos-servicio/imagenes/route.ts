@@ -19,6 +19,9 @@ export async function POST(request: NextRequest): Promise<Response> {
       onBeforeGenerateToken: async (pathname) => ({
         allowedContentTypes: ["image/jpeg", "image/png", "image/webp", "image/gif", "image/heic"],
         maximumSizeInBytes: 20 * 1024 * 1024,
+        // Sufijo aleatorio: evita el error "blob already exists" al re-subir un
+        // archivo con el mismo nombre (p. ej. tras borrar una foto y volver a subirla).
+        addRandomSuffix: true,
         tokenPayload: JSON.stringify({ userId: session.id, pathname }),
       }),
       onUploadCompleted: async ({ blob }) => {
