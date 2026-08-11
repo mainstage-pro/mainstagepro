@@ -934,6 +934,7 @@ model Producto {
   items              ProductoEquipo[]
   coberturas         ProductoCobertura[]
   paqueteItems       PaqueteItem[]
+  adicionales        Adicional[]
 
   @@map("productos")
 }
@@ -4260,6 +4261,78 @@ model FotoTipoServicio {
 
   @@index([tipoServicioId])
   @@map("fotos_tipo_servicio")
+}
+
+// ─── CATÁLOGO DE EVENTOS: NICHOS · ADICIONALES · PREGUNTAS ─────────────────────
+// Fuente única de la que derivan el wizard de descubrimiento (interno y público),
+// los paquetes y las sugerencias de cotización. Todo editable por admin sin tocar
+// código. El linkage con lo existente es por SLUG legacy en mayúscula
+// (MUSICAL | SOCIAL | EMPRESARIAL | OTRO) para no migrar los tratos/cotizaciones.
+// Tablas creadas lazy (ensureCatalogoTables en src/lib/catalogo-eventos.ts).
+
+model Nicho {
+  id               String   @id @default(cuid())
+  tipoEventoSlug   String   // legacy: MUSICAL | SOCIAL | EMPRESARIAL | OTRO
+  nombre           String   // "Boda", "Festival", "Congreso / Convención"
+  slug             String   // slug estable dentro del tipo
+  descripcion      String?
+  notasComerciales String?  @db.Text // lo que el vendedor debe saber del nicho
+  orden            Int      @default(0)
+  activo           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([tipoEventoSlug, slug])
+  @@index([tipoEventoSlug])
+  @@map("nichos")
+}
+
+model Adicional {
+  id          String    @id @default(cuid())
+  nombre      String
+  descripcion String?
+  tiposEvento String    // JSON array de slugs legacy: ["SOCIAL","MUSICAL"]
+  nichos      String?   // JSON array de slugs de nicho; vacío = todo el tipo
+  frecuencia  String    @default("frecuente") // frecuente | ocasional
+  productoId  String?   // vínculo opcional al inventario
+  producto    Producto? @relation(fields: [productoId], references: [id], onDelete: SetNull)
+  imagenUrl   String?
+  orden       Int       @default(0)
+  activo      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([productoId])
+  @@map("adicionales")
+}
+
+model PreguntaDescubrimiento {
+  id            String           @id @default(cuid())
+  texto         String
+  tipoRespuesta String           @default("SI_NO") // SI_NO | NUMERO | OPCION_UNICA | OPCION_MULTIPLE | TEXTO
+  opciones      String?          // JSON array de opciones (si aplica)
+  nichos        String?          // JSON array de slugs de nicho donde aplica
+  orden         Int              @default(0)
+  activa        Boolean          @default(true)
+  reglas        ReglaPregunta[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@map("preguntas_descubrimiento")
+}
+
+// Una regla enciende categorías de equipo y/o adicionales cuando la respuesta a
+// la pregunta cumple la condición. `condicion` = JSON { op, valor }.
+model ReglaPregunta {
+  id              String                 @id @default(cuid())
+  preguntaId      String
+  pregunta        PreguntaDescubrimiento @relation(fields: [preguntaId], references: [id], onDelete: Cascade)
+  condicion       String                 // JSON { op: "eq"|"gte"|"truthy"|..., valor?: any }
+  categoriasEquipo String?               // JSON array de categorías de equipo a encender
+  adicionalIds    String?                // JSON array de ids de Adicional a encender
+
+  @@index([preguntaId])
+  @@map("reglas_pregunta")
 }
 
 // Perfiles de prospecto personalizados (los 13 base viven en src/lib/proceso/perfiles.ts).
