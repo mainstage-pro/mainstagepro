@@ -6,7 +6,7 @@ import {
   PenTool, Megaphone, BarChart3, SlidersHorizontal, BadgeDollarSign,
   Package, TrendingUp, Settings, Speaker, BookUser, ClipboardCheck,
   ShieldCheck, ScrollText, Settings2, Building2, LayoutGrid, GraduationCap,
-  Network, Palette,
+  Network, Palette, Contact,
 } from "lucide-react";
 
 // Dueño de la plataforma. Ciertos módulos (ej. "Inicio") se muestran solo a él.
@@ -210,6 +210,7 @@ export const NAV: NavSection[] = [
           { key: "crm-base-de-datos", label: "Clientes", href: "/crm/base-de-datos" },
         ],
       },
+      { key: "crm-tareas-clientes", accessKey: "crm-base-de-datos", label: "Tareas de clientes", href: "/crm/tareas-clientes", icon: Contact },
       {
         key: "comercial-productos",
         label: "Productos y paquetes",
