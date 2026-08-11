@@ -237,6 +237,10 @@ model Trato {
   descubrimientoPendiente Boolean  @default(false) // cotización sin descubrimiento registrado (bandera de migración)
   equiposInteres         String?   // JSON: { categorias: string[], equipos: string[], roles: string[], aCriterioVendedor: boolean }
   modoDescubrimiento     String?   // FORMULARIO | LLAMADA — cómo se levantó el descubrimiento
+  // ── Descubrimiento por nicho (catálogo comercial) ──────────────────────────
+  nichoSlug                String?  // slug del Nicho elegido (catálogo de eventos)
+  respuestasDescubrimiento String?  // JSON: { preguntaId: valor } del descubrimiento guiado
+  adicionalesSeleccionados String?  // JSON: [adicionalId] sugeridos del catálogo encendidos
   // ──────────────────────────────────────────────────────────────────────────
 
   lugarEstimado       String?

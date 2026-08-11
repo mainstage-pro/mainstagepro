@@ -108,6 +108,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "equiposInteres",
     // Proceso de ventas: rama del descubrimiento y preferencia del cliente
     "modoDescubrimiento", "preferenciaContacto",
+    // Descubrimiento por nicho (catálogo comercial)
+    "nichoSlug", "respuestasDescubrimiento", "adicionalesSeleccionados",
     // Horarios del evento
     "horaInicioEvento", "horaFinEvento", "duracionMontajeHrs",
     // Logística del venue

@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { ClipboardList, Settings, Truck, Handshake, Music, Wine, Building2, Calendar, Package, Palette, Sliders, DollarSign, Eye, Image as ImageIcon, Folder, FileText, PenLine, BarChart3, Paperclip, Lightbulb, Phone, Zap, Camera, Monitor, Sparkles, PartyPopper, Clock, type LucideIcon } from "lucide-react";
 import TimePicker from "@/components/ui/TimePicker";
 import VenuePicker from "@/components/ui/VenuePicker";
-import { SelectorEquiposInventario, type SeleccionEquipos } from '@/components/SelectorEquiposInventario';
+import { SelectorEquiposInventario, type SeleccionEquipos, type PaquetePublico } from '@/components/SelectorEquiposInventario';
 import { Combobox } from "@/components/Combobox";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
@@ -110,6 +110,177 @@ function calcDuracionEvento(inicio: string, fin: string): string | null {
   const min = m % 60;
   if (h === 0) return `${min}min`;
   return min === 0 ? `${h}h` : `${h}h ${min}min`;
+}
+
+// ── Descubrimiento por nicho (catálogo comercial) ──────────────────────────────
+// Bloque del Paso 2 que deriva sugerencias del catálogo único: paquete(s) base,
+// descubrimiento guiado (preguntas → adicionales) y adicionales frecuentes del
+// nicho. Todo es sugerencia: nada bloquea, valida ni oculta las 14 categorías.
+type AdicionalCat = { id: string; nombre: string; descripcion: string | null; tiposEvento: string; nichos: string | null; frecuencia: string; imagenUrl: string | null };
+type PreguntaCat = { id: string; texto: string; tipoRespuesta: string; opciones: string | null; nichos: string | null; reglas: { categoriasEquipo: string | null; adicionalIds: string | null }[] };
+
+function rangoIncluye(label: string | null, asistentes: number | null): boolean {
+  if (!label || asistentes == null) return true; // sin dato → no filtra
+  const nums = (label.match(/\d+/g) || []).map(Number);
+  if (nums.length === 0) return true;
+  const min = nums[0];
+  const max = nums.length > 1 ? nums[1] : Infinity;
+  return asistentes >= min && asistentes <= max;
+}
+
+function jsonArr(s: string | null): string[] {
+  if (!s) return [];
+  try { const a = JSON.parse(s); return Array.isArray(a) ? a : []; } catch { return []; }
+}
+
+function DescubrimientoCatalogo({
+  tipoEvento, nichoSlug, nichoNombre, asistentes,
+  adicionales, preguntas, respuestas, adicionalesSel,
+  onRespuesta, onToggleAdicional, onUsarPaquete, readOnly,
+}: {
+  tipoEvento: string;
+  nichoSlug: string;
+  nichoNombre: string;
+  asistentes: number | null;
+  adicionales: AdicionalCat[];
+  preguntas: PreguntaCat[];
+  respuestas: Record<string, string>;
+  adicionalesSel: string[];
+  onRespuesta: (preguntaId: string, valor: string) => void;
+  onToggleAdicional: (adicionalId: string) => void;
+  onUsarPaquete: (paquete: PaquetePublico) => void;
+  readOnly: boolean;
+}) {
+  const [paquetes, setPaquetes] = useState<PaquetePublico[]>([]);
+  const [openGuia, setOpenGuia] = useState(false);
+
+  useEffect(() => {
+    if (!tipoEvento) { setPaquetes([]); return; }
+    let cancel = false;
+    fetch(`/api/paquetes?tipoEvento=${encodeURIComponent(tipoEvento)}`)
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (!cancel && Array.isArray(d?.paquetes)) setPaquetes(d.paquetes); })
+      .catch(() => {});
+    return () => { cancel = true; };
+  }, [tipoEvento]);
+
+  // Paquetes candidatos: mismo tipo y rango que cubre a los asistentes estimados.
+  const candidatos = paquetes.filter(p => rangoIncluye(p.rangoPersonas, asistentes));
+
+  // Adicionales del tipo de evento (frecuentes primero). Si hay nicho, se marcan
+  // los específicos del nicho; ninguno se oculta.
+  const adicionalesDelTipo = adicionales
+    .filter(a => jsonArr(a.tiposEvento).includes(tipoEvento))
+    .sort((x, y) => (x.frecuencia === "frecuente" ? 0 : 1) - (y.frecuencia === "frecuente" ? 0 : 1));
+
+  // Preguntas del nicho: las globales (sin nichos) y las del nicho elegido.
+  const preguntasDelNicho = preguntas.filter(q => {
+    const ns = jsonArr(q.nichos);
+    return ns.length === 0 || (nichoSlug && ns.includes(nichoSlug));
+  });
+
+  if (candidatos.length === 0 && adicionalesDelTipo.length === 0 && preguntasDelNicho.length === 0) return null;
+
+  const etiquetaNicho = nichoNombre || "este evento";
+
+  return (
+    <div className="space-y-4 rounded-xl border border-[#B3985B]/25 bg-gradient-to-br from-[#B3985B]/[0.06] to-transparent p-4">
+      <div className="flex items-center gap-2">
+        <Sparkles strokeWidth={1.75} className="w-4 h-4 text-[#B3985B]" />
+        <p className="text-sm text-white font-semibold">Sugerencias para {etiquetaNicho}</p>
+      </div>
+      <p className="text-[11px] text-gray-500 -mt-2">Todo es sugerencia. Nada obliga ni limita lo que puedes elegir abajo.</p>
+
+      {/* 1. Paquete(s) base sugerido(s) */}
+      {candidatos.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[11px] text-gray-400 uppercase tracking-wider">Paquete como punto de partida</p>
+          <div className="flex flex-wrap gap-2">
+            {candidatos.slice(0, 4).map(p => (
+              <div key={p.id} className="flex-1 min-w-[220px] rounded-lg border border-[#2a2a2a] bg-[#111] p-3">
+                <p className="text-sm text-white font-medium">{p.nombre}</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">
+                  {p.rangoPersonas ? `${p.rangoPersonas} personas · ` : ""}{p.items.length} equipos · {p.conceptos.length} conceptos
+                </p>
+                {p.resumen && <p className="text-[11px] text-gray-400 mt-1 line-clamp-2">{p.resumen}</p>}
+                {!readOnly && (
+                  <button type="button" onClick={() => onUsarPaquete(p)}
+                    className="mt-2 text-[11px] font-semibold text-black bg-[#B3985B] hover:bg-[#c9a96a] px-3 py-1.5 rounded-lg transition-colors">
+                    Usar como base
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 2. Descubrimiento guiado (preguntas del nicho) — plegable, opcional */}
+      {preguntasDelNicho.length > 0 && (
+        <div className="rounded-lg border border-[#2a2a2a] bg-[#0f0f0f]">
+          <button type="button" onClick={() => setOpenGuia(o => !o)}
+            className="w-full flex items-center justify-between px-3 py-2.5 text-left">
+            <span className="text-xs text-white font-medium inline-flex items-center gap-1.5">
+              <Lightbulb strokeWidth={1.75} className="w-3.5 h-3.5 text-[#B3985B]" /> Descubrimiento guiado (opcional)
+            </span>
+            <span className="text-gray-500 text-xs">{openGuia ? "−" : "+"}</span>
+          </button>
+          {openGuia && (
+            <div className="px-3 pb-3 space-y-3 border-t border-[#1a1a1a] pt-3">
+              {preguntasDelNicho.map(q => {
+                const val = respuestas[q.id] || "";
+                const enciendeAdicionales = q.reglas.flatMap(r => jsonArr(r.adicionalIds));
+                return (
+                  <div key={q.id}>
+                    <p className="text-xs text-gray-300 mb-1.5">{q.texto}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(q.tipoRespuesta === "SI_NO" ? ["Sí", "No", "No estoy seguro"] : jsonArr(q.opciones).concat("No estoy seguro")).map(opt => (
+                        <button key={opt} type="button" disabled={readOnly}
+                          onClick={() => {
+                            onRespuesta(q.id, val === opt ? "" : opt);
+                            // Responder afirmativo enciende los adicionales de la regla (sugerencia).
+                            if (opt === "Sí" && val !== opt) {
+                              for (const aid of enciendeAdicionales) if (!adicionalesSel.includes(aid)) onToggleAdicional(aid);
+                            }
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] border transition-colors ${
+                            val === opt ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10" : "border-[#333] text-gray-500 hover:text-white"
+                          }`}>
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 3. Adicionales frecuentes en el nicho */}
+      {adicionalesDelTipo.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[11px] text-gray-400 uppercase tracking-wider">Adicionales frecuentes en {etiquetaNicho}</p>
+          <div className="flex flex-wrap gap-2">
+            {adicionalesDelTipo.map(a => {
+              const on = adicionalesSel.includes(a.id);
+              return (
+                <button key={a.id} type="button" disabled={readOnly} onClick={() => onToggleAdicional(a.id)}
+                  title={a.descripcion || undefined}
+                  className={`px-3 py-1.5 rounded-lg text-xs border transition-colors inline-flex items-center gap-1.5 ${
+                    on ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10" : "border-[#333] text-gray-400 hover:text-white"
+                  }`}>
+                  {a.frecuencia === "frecuente" && <span className="text-[#B3985B]">★</span>}
+                  {a.nombre}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function DiscoveryForm({
@@ -285,8 +456,28 @@ export default function DiscoveryForm({
     return () => { cancel = true; };
   }, []);
 
+  // ── Catálogo comercial (fuente única de nichos, adicionales y preguntas) ──────
+  // Se lee una sola vez. Si el endpoint falla (p. ej. modo cliente sin sesión) los
+  // arrays quedan vacíos y la UI cae al comportamiento previo (subtipos hardcodeados).
+  const [catNichos, setCatNichos] = useState<{ id: string; tipoEventoSlug: string; nombre: string; slug: string }[]>([]);
+  const [catAdicionales, setCatAdicionales] = useState<{ id: string; nombre: string; descripcion: string | null; tiposEvento: string; nichos: string | null; frecuencia: string; imagenUrl: string | null }[]>([]);
+  const [catPreguntas, setCatPreguntas] = useState<{ id: string; texto: string; tipoRespuesta: string; opciones: string | null; nichos: string | null; reglas: { categoriasEquipo: string | null; adicionalIds: string | null }[] }[]>([]);
+  useEffect(() => {
+    let cancel = false;
+    fetch("/api/catalogo")
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (cancel || !d) return;
+        setCatNichos(Array.isArray(d.nichos) ? d.nichos : []);
+        setCatAdicionales(Array.isArray(d.adicionales) ? d.adicionales : []);
+        setCatPreguntas(Array.isArray(d.preguntas) ? d.preguntas : []);
+      })
+      .catch(() => { /* fallback: subtipos hardcodeados */ });
+    return () => { cancel = true; };
+  }, []);
+
   // Cliente state
-  
+
 
   // Discovery state
   const [discForm, setDiscForm] = useState({
@@ -305,6 +496,11 @@ export default function DiscoveryForm({
     notas: "",
     serviciosInteres: [] as string[],
     equiposInteres: "",
+    // Descubrimiento por nicho (catálogo comercial): nicho elegido, respuestas del
+    // descubrimiento guiado (preguntaId→valor) y adicionales sugeridos encendidos.
+    nichoSlug: "",
+    respuestasDescubrimiento: {} as Record<string, string>,
+    adicionalesSeleccionados: [] as string[],
     notasEquipos: "",
     serviciosAdicionalesOtro: "",
     familyAndFriends: false,
@@ -395,6 +591,13 @@ export default function DiscoveryForm({
       notas: trato.notas || "",
       serviciosInteres: servicios,
       equiposInteres: equiposRestore,
+      nichoSlug: trato.nichoSlug || "",
+      respuestasDescubrimiento: (() => {
+        try { const r = JSON.parse(trato.respuestasDescubrimiento || "{}"); return r && typeof r === "object" ? r : {}; } catch { return {}; }
+      })(),
+      adicionalesSeleccionados: (() => {
+        try { const a = JSON.parse(trato.adicionalesSeleccionados || "[]"); return Array.isArray(a) ? a : []; } catch { return []; }
+      })(),
       familyAndFriends: !!trato.familyAndFriends,
       realizarRender: !!trato.realizarRender,
       tradeAplica: !!trato.tradeCalificado,
@@ -479,6 +682,9 @@ export default function DiscoveryForm({
       preferenciaContacto: form.preferenciaContacto || null,
       serviciosInteres: JSON.stringify(form.serviciosInteres),
       equiposInteres: form.equiposInteres || null,
+      nichoSlug: form.nichoSlug || null,
+      respuestasDescubrimiento: Object.keys(form.respuestasDescubrimiento).length ? JSON.stringify(form.respuestasDescubrimiento) : null,
+      adicionalesSeleccionados: form.adicionalesSeleccionados.length ? JSON.stringify(form.adicionalesSeleccionados) : null,
       ideasReferencias: isRenta
         ? JSON.stringify({
             modalidadServicio: form.rentaModalidadServicio || null,
@@ -616,6 +822,9 @@ export default function DiscoveryForm({
       contactoVenueTelefono:discForm.contactoVenueTelefono || null,
       serviciosInteres: JSON.stringify(discForm.serviciosInteres),
       equiposInteres: discForm.equiposInteres || null,
+      nichoSlug: discForm.nichoSlug || null,
+      respuestasDescubrimiento: Object.keys(discForm.respuestasDescubrimiento).length ? JSON.stringify(discForm.respuestasDescubrimiento) : null,
+      adicionalesSeleccionados: discForm.adicionalesSeleccionados.length ? JSON.stringify(discForm.adicionalesSeleccionados) : null,
       ideasReferencias: isRenta
         ? JSON.stringify({
             modalidadServicio:  discForm.rentaModalidadServicio || null,
@@ -798,16 +1007,25 @@ export default function DiscoveryForm({
                     <label className="text-xs text-gray-400 block mb-2">Subtipo de evento (puedes seleccionar varios)</label>
                     <div className="flex flex-wrap gap-2">
                       {(() => {
-                        const opts = discForm.tipoEvento === "MUSICAL" ? ["Concierto", "Festival", "Música Electrónica", "Presentación Musical"] :
-                                     discForm.tipoEvento === "SOCIAL" ? ["Boda", "XV Años", "Bautizo", "Cumpleaños", "Fiesta Privada"] :
-                                     discForm.tipoEvento === "EMPRESARIAL" ? ["Congreso / Convención", "Lanzamiento de Marca", "Feria / Expo", "Taller / Capacitación"] : [];
+                        // Subtipos = nichos del catálogo para este tipo de evento (fuente
+                        // única, editable por admin). Fallback a la lista hardcodeada si el
+                        // catálogo aún no tiene nichos o no cargó (p. ej. modo cliente).
+                        const nichosDelTipo = catNichos.filter(n => n.tipoEventoSlug === discForm.tipoEvento);
+                        const slugPorLabel = new Map(nichosDelTipo.map(n => [n.nombre, n.slug]));
+                        const opts = nichosDelTipo.length
+                          ? nichosDelTipo.map(n => n.nombre)
+                          : (discForm.tipoEvento === "MUSICAL" ? ["Concierto", "Festival", "Música Electrónica", "Presentación Musical"] :
+                             discForm.tipoEvento === "SOCIAL" ? ["Boda", "XV Años", "Bautizo", "Cumpleaños", "Fiesta Privada"] :
+                             discForm.tipoEvento === "EMPRESARIAL" ? ["Congreso / Convención", "Lanzamiento de Marca", "Feria / Expo", "Taller / Capacitación"] : []);
                         const actuales = discForm.subtipoEvento ? discForm.subtipoEvento.split(', ') : [];
                         return (
                           <>
                             {opts.map(opt => (
                               <button key={opt} type="button" onClick={() => {
                                 const nuevos = actuales.includes(opt) ? actuales.filter(a => a !== opt) : [...actuales, opt].filter(x => x && !x.startsWith("Otro"));
-                                setDiscForm(p => ({ ...p, subtipoEvento: nuevos.join(', ') }));
+                                // nichoSlug = slug del primer subtipo elegido que exista en el catálogo.
+                                const nichoSlug = nuevos.map(l => slugPorLabel.get(l)).find((s): s is string => !!s) || "";
+                                setDiscForm(p => ({ ...p, subtipoEvento: nuevos.join(', '), nichoSlug }));
                               }}
                               className={`px-3 py-1.5 rounded-lg text-sm transition-colors border ${actuales.includes(opt) ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10" : "border-[#333] text-gray-500 hover:text-white"}`}>
                                 {opt}
@@ -1065,6 +1283,39 @@ export default function DiscoveryForm({
                     )}
                   </div>
                 </div>
+              )}
+              {/* Sugerencias del catálogo por nicho (solo vendedor). Nada obliga ni oculta. */}
+              {!clientMode && discForm.tipoEvento && (
+                <DescubrimientoCatalogo
+                  tipoEvento={discForm.tipoEvento}
+                  nichoSlug={discForm.nichoSlug}
+                  nichoNombre={catNichos.find(n => n.slug === discForm.nichoSlug && n.tipoEventoSlug === discForm.tipoEvento)?.nombre || ""}
+                  asistentes={discForm.asistentesEstimados ? parseInt(discForm.asistentesEstimados) : null}
+                  adicionales={catAdicionales}
+                  preguntas={catPreguntas}
+                  respuestas={discForm.respuestasDescubrimiento}
+                  adicionalesSel={discForm.adicionalesSeleccionados}
+                  readOnly={readOnly}
+                  onRespuesta={(pid, val) => setDiscForm(p => {
+                    const next = { ...p.respuestasDescubrimiento };
+                    if (val) next[pid] = val; else delete next[pid];
+                    return { ...p, respuestasDescubrimiento: next };
+                  })}
+                  onToggleAdicional={(aid) => setDiscForm(p => ({
+                    ...p,
+                    adicionalesSeleccionados: p.adicionalesSeleccionados.includes(aid)
+                      ? p.adicionalesSeleccionados.filter(x => x !== aid)
+                      : [...p.adicionalesSeleccionados, aid],
+                  }))}
+                  onUsarPaquete={(paq) => setDiscForm(p => {
+                    let sel: SeleccionEquipos;
+                    try { sel = p.equiposInteres ? JSON.parse(p.equiposInteres) : { categorias: [], equipos: [] }; }
+                    catch { sel = { categorias: [], equipos: [] }; }
+                    const paquetes = sel.paquetes ? [...sel.paquetes] : [];
+                    if (!paquetes.some(x => x.id === paq.id)) paquetes.push({ id: paq.id, cantidad: 1 });
+                    return { ...p, equiposInteres: JSON.stringify({ ...sel, paquetes }) };
+                  })}
+                />
               )}
               {discForm.tipoServicio === "RENTA" ? (
               <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">
