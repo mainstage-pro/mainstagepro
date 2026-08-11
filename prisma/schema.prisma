@@ -840,6 +840,13 @@ model Equipo {
   descripcionInterna   String?         // Descripción interna del equipo (qué es / para qué sirve), no visible al cliente
   imagenUrl            String?         // URL principal del equipo (ruta /inventario/equipos/... o base64)
   imagenesUrls         String?         // JSON array de URLs adicionales
+  // Clasificación comercial (Bloque 4) — aditivo. Alimenta cobertura y sync con Producto.
+  tiposEvento            String?       // JSON: ["MUSICAL","SOCIAL","EMPRESARIAL","OTRO"]
+  nichos                 String?       // JSON: slugs de nicho donde aplica
+  rol                    String?       // base | adicional (clasificación comercial)
+  capacidadPorTipoEvento String?       // JSON: { "MUSICAL": "100-200", ... }
+  noCotizable            Boolean       @default(false) // cables/consumibles: fuera de cobertura
+  clasifOrigen           String?       // manual | heredado (trazabilidad del sync producto↔equipo)
   propietario          String          @default("MAINSTAGE") // MAINSTAGE | HERVAM
   activo               Boolean         @default(true)
   fechaBaja            DateTime?       // Fecha en que se dió de baja (estado = DADO_DE_BAJA)

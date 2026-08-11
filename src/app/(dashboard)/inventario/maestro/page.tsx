@@ -1041,6 +1041,10 @@ export default function InventarioMaestroPage() {
           <p className="ms-subtitle mt-0.5">Gestión de equipos, categorías y proveedores</p>
         </div>
         <div className="flex items-center gap-2">
+          <Link href="/equipos/clasificacion"
+            className="border border-[#333] hover:border-[#B3985B]/40 text-[#6b7280] hover:text-[#B3985B] text-sm px-3 py-2 rounded-lg transition-colors">
+            Clasificar
+          </Link>
           <button onClick={() => setShowCatPanel(true)}
             className="border border-[#333] hover:border-[#B3985B]/40 text-[#6b7280] hover:text-[#B3985B] text-sm px-3 py-2 rounded-lg transition-colors">
             + Categoría
