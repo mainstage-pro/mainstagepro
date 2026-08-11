@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
   await ensurePaquetesTables();
 
   const body = await req.json();
-  const { nombre, tipoEvento, rangoPersonas, subtiposEvento, resumen, descripcion, propuestaValor } = body;
+  const { nombre, tipoEvento, rangoPersonas, subtiposEvento, adicionalesSugeridos, resumen, descripcion, propuestaValor } = body;
 
   if (!nombre?.trim() || !tipoEvento) {
     return NextResponse.json({ error: "nombre y tipoEvento son requeridos" }, { status: 400 });
@@ -87,6 +87,9 @@ export async function POST(req: NextRequest) {
       tipoEvento,
       rangoPersonas: rangoPersonas || null,
       subtiposEvento: Array.isArray(subtiposEvento) ? JSON.stringify(subtiposEvento) : subtiposEvento || null,
+      adicionalesSugeridos: Array.isArray(adicionalesSugeridos)
+        ? (adicionalesSugeridos.length ? JSON.stringify(adicionalesSugeridos) : null)
+        : adicionalesSugeridos || null,
       resumen: resumen?.trim() || null,
       descripcion: descripcion?.trim() || null,
       propuestaValor: propuestaValor?.trim() || null,

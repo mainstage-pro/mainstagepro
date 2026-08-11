@@ -107,6 +107,8 @@ export async function ensurePaquetesTables() {
     update: {},
     create: { label: "50-100", orden: 0 },
   });
+  // Bloque 3: adicionales sugeridos del catálogo (columna aditiva idempotente).
+  await prisma.$executeRawUnsafe(`ALTER TABLE "paquetes" ADD COLUMN IF NOT EXISTS "adicionalesSugeridos" TEXT;`);
   tablesEnsured = true;
 }
 

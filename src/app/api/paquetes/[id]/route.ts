@@ -62,7 +62,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const { nombre, tipoEvento, rangoPersonas, subtiposEvento, resumen, descripcion, propuestaValor, activo } = body;
+  const { nombre, tipoEvento, rangoPersonas, subtiposEvento, adicionalesSugeridos, resumen, descripcion, propuestaValor, activo } = body;
 
   const data: Record<string, unknown> = {};
   if (nombre !== undefined) data.nombre = nombre.trim();
@@ -70,6 +70,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (rangoPersonas !== undefined) data.rangoPersonas = rangoPersonas || null;
   if (subtiposEvento !== undefined)
     data.subtiposEvento = Array.isArray(subtiposEvento) ? JSON.stringify(subtiposEvento) : subtiposEvento || null;
+  if (adicionalesSugeridos !== undefined)
+    data.adicionalesSugeridos = Array.isArray(adicionalesSugeridos)
+      ? (adicionalesSugeridos.length ? JSON.stringify(adicionalesSugeridos) : null)
+      : adicionalesSugeridos || null;
   if (resumen !== undefined) data.resumen = resumen?.trim() || null;
   if (descripcion !== undefined) data.descripcion = descripcion?.trim() || null;
   if (propuestaValor !== undefined) data.propuestaValor = propuestaValor?.trim() || null;

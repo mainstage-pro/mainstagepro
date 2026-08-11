@@ -94,6 +94,7 @@ type Paquete = {
   tipoEvento: string;
   rangoPersonas: string | null;
   subtiposEvento: string | null;
+  adicionalesSugeridos: string | null;
   resumen: string | null;
   descripcion: string | null;
   propuestaValor: string | null;
@@ -103,6 +104,8 @@ type Paquete = {
 };
 
 type RangoItem = { id: string; label: string; orden: number };
+type NichoCatalogo = { id: string; tipoEventoSlug: string; nombre: string; slug: string; activo: boolean };
+type AdicionalCatalogo = { id: string; nombre: string; tiposEvento: string | null; frecuencia: string; activo: boolean };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmx(n: number) {
@@ -143,6 +146,7 @@ type FormState = {
   nombre: string;
   rangoPersonas: string;
   subtipos: string[];
+  adicionales: string[];
   resumen: string;
   descripcion: string;
   propuestaValor: string;
@@ -152,7 +156,7 @@ type FormState = {
 };
 
 const FORM_EMPTY: FormState = {
-  nombre: "", rangoPersonas: "", subtipos: [], resumen: "", descripcion: "",
+  nombre: "", rangoPersonas: "", subtipos: [], adicionales: [], resumen: "", descripcion: "",
   propuestaValor: "", items: [], conceptos: [], imagenes: [],
 };
 
@@ -160,7 +164,7 @@ function uid() { return Math.random().toString(36).slice(2); }
 
 // ── Editor ──────────────────────────────────────────────────────────────────────
 function PaqueteEditor({
-  form, setForm, tipoEvento, equipos, productos, roles, rangos, generandoIA, onGenerarIA,
+  form, setForm, tipoEvento, equipos, productos, roles, rangos, nichosCat, adicionalesCat, generandoIA, onGenerarIA,
 }: {
   form: FormState;
   setForm: (f: FormState) => void;
@@ -169,6 +173,8 @@ function PaqueteEditor({
   productos: ProductoLite[];
   roles: RolTecnico[];
   rangos: string[];
+  nichosCat: NichoCatalogo[];
+  adicionalesCat: AdicionalCatalogo[];
   generandoIA: boolean;
   onGenerarIA: () => void;
 }) {
@@ -184,7 +190,25 @@ function PaqueteEditor({
   const equipoMap = useMemo(() => new Map(equipos.map((e) => [e.id, e])), [equipos]);
   const productoMap = useMemo(() => new Map(productos.map((p) => [p.id, p])), [productos]);
   const rolMap = useMemo(() => new Map(roles.map((r) => [r.id, r])), [roles]);
-  const subtiposDisponibles = SUBTIPOS_EVENTO[tipoEvento] ?? [];
+  // Nichos del catálogo para este tipo de evento; fallback a los subtipos legacy.
+  const nichosDelTipo = nichosCat.filter((n) => n.activo && n.tipoEventoSlug === tipoEvento);
+  const subtiposDisponibles = nichosDelTipo.length > 0
+    ? nichosDelTipo.map((n) => n.nombre)
+    : (SUBTIPOS_EVENTO[tipoEvento] ?? []);
+  // Adicionales del catálogo que aplican a este tipo de evento.
+  const adicionalesDelTipo = adicionalesCat.filter((a) => {
+    if (!a.activo) return false;
+    if (!a.tiposEvento) return true;
+    try {
+      const arr = JSON.parse(a.tiposEvento);
+      return Array.isArray(arr) && (arr.length === 0 || arr.includes(tipoEvento));
+    } catch {
+      return true;
+    }
+  });
+  function toggleAdicional(id: string) {
+    setForm({ ...form, adicionales: form.adicionales.includes(id) ? form.adicionales.filter((x) => x !== id) : [...form.adicionales, id] });
+  }
 
   // Búsqueda combinada equipos + productos
   const resultados = useMemo(() => {
@@ -329,9 +353,9 @@ function PaqueteEditor({
         </div>
       </div>
 
-      {/* Subtipos */}
+      {/* Subtipos / nichos del catálogo */}
       <div>
-        <label className={labelCls}>Tipo de evento específico (recomendación)</label>
+        <label className={labelCls}>Nicho / tipo específico (recomendación)</label>
         <div className="flex flex-wrap gap-1.5">
           {subtiposDisponibles.map((s) => {
             const on = form.subtipos.includes(s);
@@ -344,6 +368,25 @@ function PaqueteEditor({
           })}
         </div>
       </div>
+
+      {/* Adicionales sugeridos del catálogo */}
+      {adicionalesDelTipo.length > 0 && (
+        <div>
+          <label className={labelCls}>Adicionales sugeridos (del catálogo)</label>
+          <div className="flex flex-wrap gap-1.5">
+            {adicionalesDelTipo.map((a) => {
+              const on = form.adicionales.includes(a.id);
+              return (
+                <button key={a.id} type="button" onClick={() => toggleAdicional(a.id)}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs transition-colors inline-flex items-center gap-1 ${on ? "bg-[#B3985B] text-black font-semibold" : "bg-[#1a1a1a] text-gray-400 hover:text-white"}`}>
+                  {a.nombre}
+                  {a.frecuencia === "frecuente" && <span className={`text-[9px] ${on ? "text-black/60" : "text-[#B3985B]"}`}>★</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Descripción IA */}
       <div className="rounded-xl border border-[#1e1e1e] bg-[#0d0d0d] p-4 space-y-3">
@@ -814,6 +857,8 @@ export default function PaquetesSection() {
   const [productos, setProductos] = useState<ProductoLite[]>([]);
   const [roles, setRoles] = useState<RolTecnico[]>([]);
   const [rangos, setRangos] = useState<RangoItem[]>([]);
+  const [nichosCat, setNichosCat] = useState<NichoCatalogo[]>([]);
+  const [adicionalesCat, setAdicionalesCat] = useState<AdicionalCatalogo[]>([]);
   const [rangosModalOpen, setRangosModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tipoTab, setTipoTab] = useState<string>("MUSICAL");
@@ -827,18 +872,21 @@ export default function PaquetesSection() {
   async function cargar() {
     setLoading(true);
     try {
-      const [rp, re, rpr, rr, rg] = await Promise.all([
+      const [rp, re, rpr, rr, rg, rcat] = await Promise.all([
         fetch("/api/paquetes").then((r) => r.json()),
         fetch("/api/equipos").then((r) => r.json()),
         fetch("/api/productos").then((r) => r.json()),
         fetch("/api/roles-tecnicos").then((r) => r.json()),
         fetch("/api/paquetes/rangos").then((r) => r.json()),
+        fetch("/api/catalogo").then((r) => r.json()).catch(() => ({})),
       ]);
       setPaquetes(rp.paquetes ?? []);
       setEquipos(re.equipos ?? []);
       setProductos(rpr.productos ?? []);
       setRoles(rr.roles ?? []);
       setRangos(rg.rangos ?? []);
+      setNichosCat(rcat.nichos ?? []);
+      setAdicionalesCat(rcat.adicionales ?? []);
     } finally {
       setLoading(false);
     }
@@ -862,6 +910,7 @@ export default function PaquetesSection() {
       nombre: p.nombre,
       rangoPersonas: p.rangoPersonas ?? "",
       subtipos: parseTags(p.subtiposEvento),
+      adicionales: parseTags(p.adicionalesSugeridos),
       resumen: p.resumen ?? "",
       descripcion: p.descripcion ?? "",
       propuestaValor: p.propuestaValor ?? "",
@@ -916,6 +965,7 @@ export default function PaquetesSection() {
         tipoEvento: tipoTab,
         rangoPersonas: form.rangoPersonas || null,
         subtiposEvento: form.subtipos,
+        adicionalesSugeridos: form.adicionales,
         resumen: form.resumen,
         descripcion: form.descripcion,
         propuestaValor: form.propuestaValor,
@@ -1037,7 +1087,7 @@ export default function PaquetesSection() {
       <Modal open={modalOpen} onClose={() => setModalOpen(false)}
         title={`${editId ? "Editar" : "Nuevo"} paquete · ${TIPOS_EVENTO.find((t) => t.key === tipoTab)?.label}`}
         maxWidth="max-w-3xl">
-        <PaqueteEditor form={form} setForm={setForm} tipoEvento={tipoTab} equipos={equipos} productos={productos} roles={roles} rangos={rangos.map((r) => r.label)} generandoIA={generandoIA} onGenerarIA={generarIA} />
+        <PaqueteEditor form={form} setForm={setForm} tipoEvento={tipoTab} equipos={equipos} productos={productos} roles={roles} rangos={rangos.map((r) => r.label)} nichosCat={nichosCat} adicionalesCat={adicionalesCat} generandoIA={generandoIA} onGenerarIA={generarIA} />
         <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-[#1a1a1a]">
           <button onClick={() => setModalOpen(false)} className="px-4 py-2 rounded-lg bg-[#1a1a1a] text-gray-300 text-sm hover:text-white">Cancelar</button>
           <button onClick={guardar} disabled={saving}

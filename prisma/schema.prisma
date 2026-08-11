@@ -985,6 +985,7 @@ model Paquete {
   tipoEvento     String   // MUSICAL | SOCIAL | EMPRESARIAL — define la pestaña
   rangoPersonas  String?  // "1-100" | "100-300" | ... | "3000-5000"
   subtiposEvento String?  // JSON array de subtipos específicos (Boda, Concierto, etc.)
+  adicionalesSugeridos String? // JSON array de adicionalIds del catálogo (Bloque 3)
   resumen        String?  // resumen corto (generable con IA)
   descripcion    String?  @db.Text // descripción general (generable con IA)
   propuestaValor String?  @db.Text // propuesta de valor (generable con IA)
