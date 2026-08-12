@@ -203,8 +203,8 @@ export default function PasivosPage() {
   const [planModal, setPlanModal] = useState<PasivoDeuda | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const cargar = useCallback(async () => {
-    setLoading(true);
+  const cargar = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     const [pr, pv] = await Promise.all([
       fetch("/api/finanzas/pasivos", { cache: "no-store" }).then(r => r.json()),
       fetch("/api/proveedores", { cache: "no-store" }).then(r => r.json()),
@@ -232,7 +232,7 @@ export default function PasivosPage() {
       toast.success("Deuda registrada");
       setForm(EMPTY_FORM);
       setShowForm(false);
-      cargar();
+      cargar(true);
     } else {
       const d = await r.json();
       toast.error(d.error || "Error al guardar");
@@ -242,7 +242,7 @@ export default function PasivosPage() {
   async function eliminar(p: PasivoDeuda) {
     if (!await confirm({ message: `¿Eliminar la deuda "${p.nombre}"? Esto eliminará también las cuotas y las cuentas por pagar generadas.`, danger: true, confirmText: "Eliminar" })) return;
     const r = await fetch(`/api/finanzas/pasivos/${p.id}`, { method: "DELETE" });
-    if (r.ok) { toast.success("Deuda eliminada"); cargar(); }
+    if (r.ok) { toast.success("Deuda eliminada"); cargar(true); }
     else toast.error("Error al eliminar");
   }
 

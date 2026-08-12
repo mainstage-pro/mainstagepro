@@ -76,8 +76,8 @@ export default function CatalogoEventosPage() {
   const [editAdicional, setEditAdicional] = useState<Partial<Adicional> & { _tipos?: string[]; _nichos?: string[] } | null>(null);
   const [editPregunta, setEditPregunta] = useState<(Partial<Pregunta> & { _nichos?: string[]; _adicionalIds?: string[] }) | null>(null);
 
-  async function cargar() {
-    setCargando(true);
+  async function cargar(silent = false) {
+    if (!silent) setCargando(true);
     try {
       const [rc, rp, re] = await Promise.all([fetch("/api/catalogo?todos=true"), fetch("/api/productos"), fetch("/api/equipos")]);
       if (rc.ok) setCat(await rc.json());
@@ -135,7 +135,7 @@ export default function CatalogoEventosPage() {
     const r = await fetch(`/api/catalogo/${entidad}/${id}`, { method: "DELETE" });
     if (!r.ok) { error((await r.json()).error || "No se pudo eliminar"); return; }
     success("Eliminado");
-    await cargar();
+    await cargar(true);
   }
 
   const tipoNombre = (slug: string) => cat.tipos.find((t) => t.slug.toUpperCase() === slug.toUpperCase())?.nombre || slug;
@@ -148,7 +148,7 @@ export default function CatalogoEventosPage() {
     const nueva: LineaComp[] = [...comp, { tipo: item.tipo, referenciaId: item.id, cantidad: 1, obligatorio: true }];
     setCat((prev) => ({ ...prev, adicionales: prev.adicionales.map((x) => (x.id === a.id ? { ...x, composicion: JSON.stringify(nueva) } : x)) }));
     const r = await fetch(`/api/catalogo/adicionales/${a.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ composicion: nueva }) });
-    if (!r.ok) { error("No se pudo agregar la pieza"); await cargar(); return; }
+    if (!r.ok) { error("No se pudo agregar la pieza"); await cargar(true); return; }
     success(`Agregado a ${a.nombre}`);
   }
 
@@ -298,10 +298,10 @@ export default function CatalogoEventosPage() {
       )}
 
       {/* Editores */}
-      {editTipo && <TipoEditor value={editTipo} onClose={() => setEditTipo(null)} onSaved={() => { setEditTipo(null); cargar(); }} toast={{ success, error }} />}
-      {editNicho && <NichoEditor value={editNicho} tipos={cat.tipos} onClose={() => setEditNicho(null)} onSaved={() => { setEditNicho(null); cargar(); }} toast={{ success, error }} />}
-      {editAdicional && <AdicionalEditor value={editAdicional} tipos={cat.tipos} nichos={cat.nichos} inventario={inventario} onClose={() => setEditAdicional(null)} onSaved={() => { setEditAdicional(null); cargar(); }} toast={{ success, error }} />}
-      {editPregunta && <PreguntaEditor value={editPregunta} tipos={cat.tipos} nichos={cat.nichos} adicionales={cat.adicionales} preguntas={cat.preguntas} onClose={() => setEditPregunta(null)} onSaved={() => { setEditPregunta(null); cargar(); }} toast={{ success, error }} />}
+      {editTipo && <TipoEditor value={editTipo} onClose={() => setEditTipo(null)} onSaved={() => { setEditTipo(null); cargar(true); }} toast={{ success, error }} />}
+      {editNicho && <NichoEditor value={editNicho} tipos={cat.tipos} onClose={() => setEditNicho(null)} onSaved={() => { setEditNicho(null); cargar(true); }} toast={{ success, error }} />}
+      {editAdicional && <AdicionalEditor value={editAdicional} tipos={cat.tipos} nichos={cat.nichos} inventario={inventario} onClose={() => setEditAdicional(null)} onSaved={() => { setEditAdicional(null); cargar(true); }} toast={{ success, error }} />}
+      {editPregunta && <PreguntaEditor value={editPregunta} tipos={cat.tipos} nichos={cat.nichos} adicionales={cat.adicionales} preguntas={cat.preguntas} onClose={() => setEditPregunta(null)} onSaved={() => { setEditPregunta(null); cargar(true); }} toast={{ success, error }} />}
     </div>
   );
 }

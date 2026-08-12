@@ -854,8 +854,8 @@ export default function InventarioMaestroPage() {
   const [costoEquipo, setCostoEquipo] = useState<{ estadoAnterior: string; label: string } | null>(null);
   const imgRef = useRef<HTMLInputElement>(null);
 
-  async function load() {
-    setLoading(true);
+  async function load(silent = false) {
+    if (!silent) setLoading(true);
     const qs = new URLSearchParams();
     if (filtroTipo) qs.set("tipo", filtroTipo);
     if (filtroEstado) qs.set("estado", filtroEstado);
@@ -981,7 +981,7 @@ export default function InventarioMaestroPage() {
     toast.success(panel === "nuevo" ? "Equipo creado" : "Equipo actualizado");
     setCostoEquipo(null);
     cerrarPanel();
-    await load();
+    await load(true);
     setSaving(false);
   }
 

@@ -136,8 +136,8 @@ export default function RepartosPage() {
   const [cuotaModal, setCuotaModal] = useState<RepartoUtilidad | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  const cargar = useCallback(async () => {
-    setLoading(true);
+  const cargar = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     const [rr, ss] = await Promise.all([
       fetch("/api/finanzas/repartos", { cache: "no-store" }).then(r => r.json()),
       fetch("/api/socios", { cache: "no-store" }).then(r => r.json()),
@@ -174,7 +174,7 @@ export default function RepartosPage() {
       toast.success("Reparto registrado");
       setForm(EMPTY_FORM);
       setShowForm(false);
-      cargar();
+      cargar(true);
     } else {
       const d = await r.json();
       toast.error(d.error || "Error al guardar");

@@ -72,8 +72,8 @@ export default function ActasPage() {
   const [prefill, setPrefill] = useState<{ proyectoId?: string; proyectoNombre?: string } | null>(null);
   const [detalle, setDetalle] = useState<Acta | null>(null);
 
-  const cargarActas = useCallback(async () => {
-    setLoading(true);
+  const cargarActas = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     const params = new URLSearchParams({ ambito: tab });
     if (filtroPersona) params.set("personalId", filtroPersona);
     const r = await fetch(`/api/rrhh/actas?${params.toString()}`, { cache: "no-store" });
@@ -114,7 +114,7 @@ export default function ActasPage() {
     });
     if (!r.ok) { toast.error("No se pudo anular"); return; }
     toast.success("Acta anulada");
-    cargarActas();
+    cargarActas(true);
   }
 
   async function eliminar(a: Acta) {
@@ -127,7 +127,7 @@ export default function ActasPage() {
     if (!r.ok) { toast.error("No se pudo eliminar"); return; }
     toast.success("Acta eliminada");
     setDetalle(null);
-    cargarActas();
+    cargarActas(true);
   }
 
   const abiertas = actas.filter(a => a.estado !== "ANULADA");
@@ -244,7 +244,7 @@ export default function ActasPage() {
           initialProyectoId={prefill?.proyectoId}
           initialProyectoNombre={prefill?.proyectoNombre}
           onClose={() => setModalOpen(false)}
-          onCreated={() => { setModalOpen(false); cargarActas(); }}
+          onCreated={() => { setModalOpen(false); cargarActas(true); }}
         />
       )}
 
@@ -254,7 +254,7 @@ export default function ActasPage() {
           onClose={() => setDetalle(null)}
           onAnular={() => anular(detalle)}
           onEliminar={() => eliminar(detalle)}
-          onSaved={(upd) => { setDetalle(upd); cargarActas(); }}
+          onSaved={(upd) => { setDetalle(upd); cargarActas(true); }}
         />
       )}
     </div>

@@ -108,8 +108,8 @@ export default function EmpresasPage() {
   const [guardando, setGuardando] = useState(false);
   const [expandida, setExpandida] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     const r = await fetch("/api/empresas", { cache: "no-store" });
     const d = await r.json();
     setEmpresas(d.empresas ?? []);
@@ -146,14 +146,14 @@ export default function EmpresasPage() {
       if (!res.ok) { const d = await res.json(); toast.error(d.error ?? "Error al guardar"); return; }
       toast.success(editando ? "Empresa actualizada" : "Empresa creada");
       setShowForm(false);
-      await load();
+      await load(true);
     } finally { setGuardando(false); }
   }
 
   async function eliminar(e: Empresa) {
     if (!await confirm({ message: `¿Eliminar la empresa "${e.nombre}"? Esta acción no se puede deshacer.`, danger: true, confirmText: "Eliminar" })) return;
     const res = await fetch(`/api/empresas/${e.id}`, { method: "DELETE" });
-    if (res.ok) { toast.success("Empresa eliminada"); await load(); }
+    if (res.ok) { toast.success("Empresa eliminada"); await load(true); }
     else { const d = await res.json(); toast.error(d.error ?? "No se pudo eliminar"); }
   }
 

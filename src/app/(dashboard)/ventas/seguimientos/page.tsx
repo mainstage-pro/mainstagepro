@@ -492,8 +492,8 @@ export default function SeguimientosPage() {
   const [filtroEstado, setFiltroEstado] = useState<"pendientes" | "completados" | "todos">("pendientes");
   const [busqueda, setBusqueda] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [resAll, sinMov, revision] = await Promise.all([
         fetch("/api/seguimientos").then(r => r.json()),
@@ -515,13 +515,13 @@ export default function SeguimientosPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ completado: true, notaResultado: nota || null }),
     });
-    load();
+    load(true);
   }
 
   async function handleDelete(id: string) {
     if (!confirm("¿Eliminar este seguimiento?")) return;
     await fetch(`/api/seguimientos/${id}`, { method: "DELETE" });
-    load();
+    load(true);
   }
 
   // ── Filtrado ────────────────────────────────────────────────────────────────
