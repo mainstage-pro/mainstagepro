@@ -5,7 +5,24 @@ import { ensurePaquetesTables, PAQUETE_INCLUDE } from "@/lib/paquetes";
 import { getGaleriaData } from "@/lib/tipos-evento";
 import { familiaTipo, categoriasConRespaldo } from "@/lib/galeria-shared";
 import { getPresentationMetadata } from "@/lib/metadata";
+import { getOverrides } from "@/lib/presentacion-overrides";
 import PaqueteDetalleClient from "./PaqueteDetalleClient";
+
+// Elige el campo de descripción de categoría según el tipo de evento del paquete.
+// Reutiliza las frases que ya se usan en el PDF de cotización (CategoriaEquipo).
+async function getDescCategorias(tipoEvento: string): Promise<Record<string, string>> {
+  const field =
+    tipoEvento === "MUSICAL" ? "descMusical" : tipoEvento === "EMPRESARIAL" ? "descEmpresarial" : "descSocial";
+  const cats = await prisma.categoriaEquipo.findMany({
+    select: { nombre: true, descMusical: true, descSocial: true, descEmpresarial: true },
+  });
+  const map: Record<string, string> = {};
+  for (const c of cats) {
+    const v = (c as Record<string, string | null>)[field];
+    if (v && v.trim()) map[c.nombre] = v.trim();
+  }
+  return map;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +58,11 @@ export default async function PaqueteDetallePage({ params }: { params: Promise<{
   const conRespaldo = categoriasConRespaldo(categorias, familia);
   const galeria = conRespaldo[0]?.fotos ?? [];
 
+  const [descCategorias, overrides] = await Promise.all([
+    getDescCategorias(p.tipoEvento),
+    getOverrides().catch(() => ({})),
+  ]);
+
   const paquete = {
     id: p.id,
     nombre: p.nombre,
@@ -64,11 +86,25 @@ export default async function PaqueteDetallePage({ params }: { params: Promise<{
           }
         : null,
       producto: it.producto
-        ? { nombre: it.producto.nombre, imagenUrl: it.producto.imagenUrl ?? null, categoria: it.producto.categoria ?? null }
+        ? {
+            nombre: it.producto.nombre,
+            imagenUrl: it.producto.imagenUrl ?? null,
+            categoria: it.producto.categoria ?? null,
+            // Equipos principales que componen el producto (sin accesorios: los
+            // accesorios viven en otra relación, ProductoAccesorio).
+            equipos: it.producto.items.map((pe) => ({
+              cantidad: pe.cantidad,
+              descripcion: pe.equipo?.descripcion ?? null,
+              marca: pe.equipo?.marca ?? null,
+              modelo: pe.equipo?.modelo ?? null,
+              imagenUrl: pe.equipo?.imagenUrl ?? null,
+              categoria: pe.equipo?.categoria?.nombre ?? null,
+            })),
+          }
         : null,
     })),
     conceptos: p.conceptos.map((c) => ({ tipo: c.tipo, descripcion: c.descripcion })),
   };
 
-  return <PaqueteDetalleClient paquete={paquete} galeria={galeria} />;
+  return <PaqueteDetalleClient paquete={paquete} galeria={galeria} descCategorias={descCategorias} overrides={overrides} />;
 }

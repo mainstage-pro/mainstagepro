@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { getOverrides, setOverride } from "@/lib/presentacion-overrides";
 
 export const dynamic = "force-dynamic";
@@ -15,10 +15,12 @@ export async function GET() {
   }
 }
 
-// PATCH admin: setear una o varias claves. Body: { key, value } o { overrides: {k:v} }.
+// PATCH: cualquier usuario autenticado puede ajustar textos/imágenes de la
+// presentación (los edita en vivo desde la propia página). Body: { key, value }
+// o { overrides: {k:v} }.
 export async function PATCH(req: NextRequest) {
-  const admin = await requireAdmin();
-  if (!admin) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
   const body = await req.json().catch(() => ({}));
 
   try {

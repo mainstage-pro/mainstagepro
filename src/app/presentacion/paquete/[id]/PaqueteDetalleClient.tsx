@@ -2,19 +2,28 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
+import { usePresentacionEdit, EditableText } from "@/components/presentacion/editable";
 
 const GOLD = "#B3985B";
 const WA_BASE = "https://wa.me/524461432565?text=";
 function wa(msg: string) { return WA_BASE + encodeURIComponent(msg); }
 
 type Imagen = { url: string; tipo: string };
+type ProductoEquipo = { cantidad: number; descripcion: string | null; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: string | null };
 type Item = {
   tipo: string; cantidad: number;
   equipo: { descripcion: string | null; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: string | null } | null;
-  producto: { nombre: string; imagenUrl: string | null; categoria: string | null } | null;
+  producto: { nombre: string; imagenUrl: string | null; categoria: string | null; equipos: ProductoEquipo[] } | null;
 };
 type Concepto = { tipo: string; descripcion: string };
 type ItemVista = { label: string; cantidad: number; imagenUrl: string | null };
+
+// Frase emocional por defecto según el tipo de evento (editable en vivo).
+const FRASE_EMOCIONAL: Record<string, string> = {
+  SOCIAL: "Una boda ocurre una sola vez. Nuestro trabajo es que cada momento —la entrada, el primer baile, el último brindis— se escuche y se sienta tal como lo soñaron.",
+  MUSICAL: "El escenario se recuerda por lo que se siente. Cuidamos cada detalle para que tu presentación suene y se vea a la altura del momento.",
+  EMPRESARIAL: "Una marca también se vive en vivo. Producimos cada detalle para que tu mensaje llegue con claridad, fuerza y presencia.",
+};
 type Paquete = {
   id: string; nombre: string; tipoEvento: string; rangoPersonas: string | null;
   subtiposEvento: string | null; resumen: string | null; descripcion: string | null;
@@ -28,29 +37,48 @@ function parseJSON(s: string | null): string[] {
   if (!s) return [];
   try { const v = JSON.parse(s); return Array.isArray(v) ? v : []; } catch { return []; }
 }
-function itemLabel(it: Item): string {
-  if (it.tipo === "PRODUCTO" && it.producto) return it.producto.nombre;
-  if (it.equipo) return it.equipo.descripcion || [it.equipo.marca, it.equipo.modelo].filter(Boolean).join(" ") || "Equipo";
-  return "Equipo";
+function equipoLabel(e: { descripcion: string | null; marca: string | null; modelo: string | null }): string {
+  return e.descripcion || [e.marca, e.modelo].filter(Boolean).join(" ") || "Equipo";
 }
-function itemCategoria(it: Item): string {
-  if (it.tipo === "PRODUCTO" && it.producto) return it.producto.categoria || "Producciones";
-  return it.equipo?.categoria || "Equipo técnico";
+// Aplana los items del paquete a nivel de equipo: los productos se expanden en
+// sus equipos principales (sin accesorios), para que las miniaturas muestren el
+// equipo real que compone el paquete.
+function equiposDePaquete(items: Item[]): { categoria: string; label: string; cantidad: number; imagenUrl: string | null }[] {
+  const out: { categoria: string; label: string; cantidad: number; imagenUrl: string | null }[] = [];
+  for (const it of items) {
+    if (it.tipo === "PRODUCTO" && it.producto) {
+      for (const pe of it.producto.equipos) {
+        out.push({
+          categoria: pe.categoria || "Equipo técnico",
+          label: equipoLabel(pe),
+          cantidad: Math.max(1, it.cantidad) * Math.max(1, pe.cantidad),
+          imagenUrl: pe.imagenUrl,
+        });
+      }
+    } else if (it.equipo) {
+      out.push({
+        categoria: it.equipo.categoria || "Equipo técnico",
+        label: equipoLabel(it.equipo),
+        cantidad: Math.max(1, it.cantidad),
+        imagenUrl: it.equipo.imagenUrl,
+      });
+    }
+  }
+  return out;
 }
-function itemImagen(it: Item): string | null {
-  if (it.tipo === "PRODUCTO" && it.producto) return it.producto.imagenUrl;
-  return it.equipo?.imagenUrl ?? null;
-}
-// Agrupa los items por categoría preservando el orden de aparición.
+// Agrupa por categoría y fusiona equipos repetidos (suma cantidades),
+// preservando el orden de aparición.
 function agruparPorCategoria(items: Item[]): { categoria: string; items: ItemVista[] }[] {
   const orden: string[] = [];
-  const mapa = new Map<string, ItemVista[]>();
-  for (const it of items) {
-    const cat = itemCategoria(it);
-    if (!mapa.has(cat)) { mapa.set(cat, []); orden.push(cat); }
-    mapa.get(cat)!.push({ label: itemLabel(it), cantidad: it.cantidad, imagenUrl: itemImagen(it) });
+  const mapa = new Map<string, Map<string, ItemVista>>();
+  for (const e of equiposDePaquete(items)) {
+    if (!mapa.has(e.categoria)) { mapa.set(e.categoria, new Map()); orden.push(e.categoria); }
+    const sub = mapa.get(e.categoria)!;
+    const prev = sub.get(e.label);
+    if (prev) prev.cantidad += e.cantidad;
+    else sub.set(e.label, { label: e.label, cantidad: e.cantidad, imagenUrl: e.imagenUrl });
   }
-  return orden.map((categoria) => ({ categoria, items: mapa.get(categoria)! }));
+  return orden.map((categoria) => ({ categoria, items: Array.from(mapa.get(categoria)!.values()) }));
 }
 
 function useReveal(threshold = 0.14) {
@@ -75,7 +103,12 @@ function R({ children, delay = 0, className = "" }: { children: React.ReactNode;
   );
 }
 
-export default function PaqueteDetalleClient({ paquete: p, galeria }: { paquete: Paquete; galeria: Foto[] }) {
+export default function PaqueteDetalleClient({
+  paquete: p, galeria, descCategorias, overrides,
+}: {
+  paquete: Paquete; galeria: Foto[]; descCategorias: Record<string, string>; overrides: Record<string, string>;
+}) {
+  const edit = usePresentacionEdit(overrides);
   const renders = p.imagenes.filter((im) => im.tipo === "RENDER");
   const refs = p.imagenes.filter((im) => im.tipo !== "RENDER");
   // Orden de la galería del paquete: renders primero (protagonistas), luego fotos.
@@ -85,8 +118,10 @@ export default function PaqueteDetalleClient({ paquete: p, galeria }: { paquete:
 
   const subtipos = parseJSON(p.subtiposEvento);
   const gruposEquipo = agruparPorCategoria(p.items);
-  const servicios = p.conceptos.map((c) => c.descripcion).filter(Boolean);
+  // Ocultamos "1 comida por persona" (se confirma aparte, no es parte del show técnico).
+  const servicios = p.conceptos.map((c) => c.descripcion).filter((d) => d && !/comida\s*por\s*persona/i.test(d));
   const confirmarMsg = `Hola, quiero confirmar el paquete "${p.nombre}" para mi evento. ¿Cómo continuamos?`;
+  const fraseFallback = FRASE_EMOCIONAL[p.tipoEvento] ?? FRASE_EMOCIONAL.SOCIAL;
 
   return (
     <div className="min-h-screen bg-[#080808] text-white" style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
@@ -181,6 +216,25 @@ export default function PaqueteDetalleClient({ paquete: p, galeria }: { paquete:
         </div>
       </section>
 
+      {/* Frase emocional (editable en vivo) */}
+      <section className="mx-auto max-w-4xl px-6 py-10 sm:py-14">
+        <R>
+          <div className="relative text-center">
+            <span aria-hidden className="block font-serif leading-none mb-2 select-none" style={{ fontSize: "3.5rem", color: `${GOLD}55` }}>“</span>
+            <EditableText
+              edit={edit}
+              okey={`paquete:${p.id}:fraseEmocional`}
+              fallback={fraseFallback}
+              as="p"
+              multiline
+              className="text-white/85 leading-relaxed"
+              style={{ fontSize: "clamp(1.15rem, 2.4vw, 1.7rem)", fontWeight: 300, letterSpacing: "-0.01em" }}
+            />
+            <div className="mx-auto mt-6 h-px w-16" style={{ background: `${GOLD}66` }} />
+          </div>
+        </R>
+      </section>
+
       {/* Qué incluye — miniaturas por categoría */}
       {(gruposEquipo.length > 0 || servicios.length > 0) && (
         <section className="mx-auto max-w-6xl px-6 py-14">
@@ -191,9 +245,23 @@ export default function PaqueteDetalleClient({ paquete: p, galeria }: { paquete:
             </h2>
           </R>
 
-          {gruposEquipo.map((grupo, gi) => (
-            <R key={grupo.categoria} delay={gi * 60} className="mb-10">
-              <p className="text-[11px] uppercase tracking-[0.14em] text-white/35 mb-4">{grupo.categoria}</p>
+          {gruposEquipo.map((grupo, gi) => {
+            const descKey = `paquete:${p.id}:catdesc:${grupo.categoria}`;
+            const descBase = descCategorias[grupo.categoria] ?? "";
+            const mostrarDesc = descBase || edit.isAdmin;
+            return (
+            <R key={grupo.categoria} delay={gi * 60} className="mb-12">
+              <p className="text-[11px] uppercase tracking-[0.14em] mb-2" style={{ color: GOLD }}>{grupo.categoria}</p>
+              {mostrarDesc && (
+                <EditableText
+                  edit={edit}
+                  okey={descKey}
+                  fallback={descBase}
+                  as="p"
+                  multiline
+                  className="text-white/55 text-[14.5px] leading-relaxed max-w-3xl mb-5"
+                />
+              )}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
                 {grupo.items.map((it, i) => (
                   <div key={i} className="rounded-2xl overflow-hidden group" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
@@ -218,7 +286,8 @@ export default function PaqueteDetalleClient({ paquete: p, galeria }: { paquete:
                 ))}
               </div>
             </R>
-          ))}
+            );
+          })}
 
           {servicios.length > 0 && (
             <R delay={80} className="mt-4">

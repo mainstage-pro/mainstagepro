@@ -191,7 +191,16 @@ export const PAQUETE_INCLUDE = {
             orderBy: { orden: "asc" as const },
             select: {
               cantidad: true,
-              equipo: { select: { id: true, descripcion: true, marca: true, modelo: true } },
+              equipo: {
+                select: {
+                  id: true,
+                  descripcion: true,
+                  marca: true,
+                  modelo: true,
+                  imagenUrl: true,
+                  categoria: { select: { nombre: true } },
+                },
+              },
             },
           },
         },
