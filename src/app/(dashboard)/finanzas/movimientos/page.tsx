@@ -11,6 +11,7 @@ import { badgeClass, buttonClass } from "@/lib/tipo-colores";
 interface Categoria { id: string; nombre: string; tipo: string; }
 interface TipoMov { clave: string; nombre: string; naturaleza: string; afectaResultado: boolean; color: string; }
 interface Cuenta { id: string; nombre: string; banco: string | null; }
+interface Proyecto { id: string; nombre: string; numeroProyecto: string; estado: string; }
 interface Movimiento {
   id: string;
   fecha: string;
@@ -43,11 +44,12 @@ export default function MovimientosPage() {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [tipos, setTipos] = useState<TipoMov[]>([]);
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
+  const [proyectos, setProyectos] = useState<Proyecto[]>([]);
   const [cuentaFiltro, setCuentaFiltro] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [detalle, setDetalle] = useState<Movimiento | null>(null);
   const [editando, setEditando] = useState<Movimiento | null>(null);
-  const [editForm, setEditForm] = useState({ tipo: "", concepto: "", monto: "", fecha: "", notas: "", referencia: "", metodoPago: "", categoriaId: "", cuentaOrigenId: "", cuentaDestinoId: "" });
+  const [editForm, setEditForm] = useState({ tipo: "", concepto: "", monto: "", fecha: "", notas: "", referencia: "", metodoPago: "", categoriaId: "", cuentaOrigenId: "", cuentaDestinoId: "", proyectoId: "" });
   const [guardando, setGuardando] = useState(false);
 
   type OrdenOption = "fecha" | "categoria" | "az" | "monto" | "tipo";
@@ -61,14 +63,16 @@ export default function MovimientosPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [rc, rcu, rt] = await Promise.all([
+      const [rc, rcu, rt, rp] = await Promise.all([
         fetch("/api/categorias-financieras", { cache: "no-store" }).then(r => r.json()),
         fetch("/api/cuentas", { cache: "no-store" }).then(r => r.json()),
         fetch("/api/tipos-movimiento", { cache: "no-store" }).then(r => r.json()),
+        fetch("/api/proyectos", { cache: "no-store" }).then(r => r.json()),
       ]);
       setCategorias(rc.categorias ?? []);
       setCuentas(rcu.cuentas ?? []);
       setTipos(rt.tipos ?? []);
+      setProyectos((rp.proyectos ?? []).filter((p: Proyecto) => !["CANCELADO"].includes(p.estado)));
       await loadMovimientos(null);
     } finally {
       setLoading(false);
@@ -90,6 +94,7 @@ export default function MovimientosPage() {
       categoriaId: mov.categoriaId ?? "",
       cuentaOrigenId: mov.cuentaOrigen?.id ?? "",
       cuentaDestinoId: mov.cuentaDestino?.id ?? "",
+      proyectoId: mov.proyecto?.id ?? "",
     });
   }
 
@@ -117,6 +122,7 @@ export default function MovimientosPage() {
     try {
       const nat = tNaturaleza(editForm.tipo);
       const payload: Record<string, unknown> = { ...editForm, monto: parseFloat(editForm.monto) };
+      if (!payload.proyectoId) payload.proyectoId = null; // Send null to remove project if cleared
       // Solo enviar los campos de cuenta relevantes según la naturaleza del tipo
       if (nat === "SALIDA") {
         delete payload.cuentaDestinoId;
@@ -510,6 +516,18 @@ export default function MovimientosPage() {
                   className={inputCls}
                 />
               </div>
+              
+              {tNaturaleza(editForm.tipo) !== "NEUTRO" && (
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Proyecto</label>
+                  <Combobox
+                    value={editForm.proyectoId}
+                    onChange={v => setEditForm(p => ({ ...p, proyectoId: v }))}
+                    options={[{ value: "", label: "— Sin proyecto —" }, ...proyectos.map(p => ({ value: p.id, label: `${p.numeroProyecto} - ${p.nombre}` }))]}
+                    className={inputCls}
+                  />
+                </div>
+              )}
               {/* Cuenta(s) según la naturaleza del tipo seleccionado */}
               {cuentas.length > 0 && (
                 tNaturaleza(editForm.tipo) === "NEUTRO" ? (
