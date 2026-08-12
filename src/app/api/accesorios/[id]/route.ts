@@ -57,3 +57,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const updated = await prisma.accesorio.update({ where: { id }, data });
   return NextResponse.json({ accesorio: updated });
 }
+
+// DELETE /api/accesorios/[id] — soft delete (activo=false). No borra filas puente
+// ni referencias históricas.
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await requireAdmin();
+  if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const { id } = await params;
+  await prisma.accesorio.update({ where: { id }, data: { activo: false, estado: "inactivo" } });
+  return NextResponse.json({ ok: true });
+}

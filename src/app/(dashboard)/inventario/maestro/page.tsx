@@ -9,6 +9,7 @@ import { EquipoGaleria } from "@/components/EquipoGaleria";
 import { CostoMantenimientoModal, type CostoMantenimiento } from "@/components/CostoMantenimientoModal";
 import { ESTADO_EQUIPO_LABEL, esRetornoAServicio } from "@/lib/equipo-estado";
 import { TipoEventoCell, type TipoEventoOpcion } from "@/components/TipoEventoCell";
+import { AccesoriosTab } from "@/components/AccesoriosTab";
 
 type Equipo = {
   id: string;
@@ -873,6 +874,7 @@ export default function InventarioMaestroPage() {
     setProveedores(provData.proveedores ?? []);
     if (catRes?.ok) { const c = await catRes.json(); setCatalogoTipos(c.tipos ?? []); }
     setLoading(false);
+    fetch("/api/accesorios").then(r => r.ok ? r.json() : null).then(d => { if (d) setAccesoriosCount(d.total ?? d.accesorios?.length ?? 0); }).catch(() => {});
   }
 
   useEffect(() => { load(); }, [filtroTipo, filtroEstado, filtroCategoria, filtroInactivos]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -1020,8 +1022,9 @@ export default function InventarioMaestroPage() {
     return { clasificados, total: relevantes.length };
   }, [equipos]);
 
-  // ── Tab Propios / Externos ────────────────────────────────────────────────
-  const [tab, setTab] = useState<"propios" | "externos">("propios");
+  // ── Tab Propios / Externos / Accesorios ───────────────────────────────────
+  const [tab, setTab] = useState<"propios" | "externos" | "accesorios">("propios");
+  const [accesoriosCount, setAccesoriosCount] = useState<number | null>(null);
   const propios = useMemo(() => equiposFiltrados.filter(e => e.tipo === "PROPIO"), [equiposFiltrados]);
   const externos = useMemo(() => equiposFiltrados.filter(e => e.tipo === "EXTERNO"), [equiposFiltrados]);
   const equiposTab = tab === "propios" ? propios : externos;
@@ -1237,7 +1240,7 @@ export default function InventarioMaestroPage() {
       )}
 
       {/* KPIs */}
-      {kpis && (
+      {kpis && tab !== "accesorios" && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="ms-stat-card">
             <p className="text-[#6b7280] text-xs mb-1">Total equipos</p>
@@ -1265,17 +1268,20 @@ export default function InventarioMaestroPage() {
       {/* Tabs Propios / Externos */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex gap-1 ms-card p-1">
-          {(["propios", "externos"] as const).map(t => (
+          {(["propios", "externos", "accesorios"] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
                 tab === t ? "bg-[#B3985B] text-black" : "text-[#6b7280] hover:text-white"
               }`}>
-              {t === "propios" ? `Equipos Propios (${propios.length})` : `Equipos Externos (${externos.length})`}
+              {t === "propios" ? `Equipos Propios (${propios.length})`
+                : t === "externos" ? `Equipos Externos (${externos.length})`
+                : `Accesorios${accesoriosCount !== null ? ` (${accesoriosCount})` : ""}`}
             </button>
           ))}
         </div>
 
         {/* Filtros secundarios */}
+        {tab !== "accesorios" && (
         <div className="flex flex-wrap items-center gap-2">
           <input value={busqueda} onChange={e => setBusqueda(e.target.value)} placeholder="Buscar..."
             className="bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50 transition-colors w-40" />
@@ -1321,10 +1327,13 @@ export default function InventarioMaestroPage() {
             </button>
           </div>
         </div>
+        )}
       </div>
 
       {/* Contenido */}
-      {loading ? (
+      {tab === "accesorios" ? (
+        <AccesoriosTab categorias={categorias} catalogoTipos={catalogoTipos} />
+      ) : loading ? (
         <div className="space-y-2">
           {[...Array(6)].map((_, i) => <div key={i} className="h-12 bg-[#111] rounded-lg animate-pulse" />)}
         </div>
