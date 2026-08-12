@@ -299,6 +299,9 @@ function CotizadorForm() {
   const [paquetesAgregados, setPaquetesAgregados] = useState<string[]>([]);
   // Adicionales del catálogo con su composición (equipos/productos que bajan a la cotización).
   const [adicionalesCatalogo, setAdicionalesCatalogo] = useState<Array<{ id: string; nombre: string; composicion: { tipo: string; referenciaId: string; cantidad: number; obligatorio: boolean }[] }>>([]);
+  // Catálogo de accesorios (primera clase). En cotización el precio es del contexto:
+  // se precarga precioRenta (0 si null) y es editable como cualquier adicional.
+  const [accesoriosCatalogo, setAccesoriosCatalogo] = useState<Array<{ id: string; nombre: string; marca: string | null; modelo: string | null; categoria: { nombre: string } | null; precioRenta: number | null }>>([]);
   // IDs de adicionales que el descubrimiento marcó como de interés (viven en el trato).
   const [adicionalesInteres, setAdicionalesInteres] = useState<string[]>([]);
   const [adicionalesAgregados, setAdicionalesAgregados] = useState<string[]>([]);
@@ -381,6 +384,11 @@ function CotizadorForm() {
   const [selOcPrecio, setSelOcPrecio] = useState("");
   const [selOcCant, setSelOcCant] = useState("1");
   const [selOcDias, setSelOcDias] = useState("1");
+  // Selector de accesorios (catálogo primera clase)
+  const [selAcc, setSelAcc] = useState("");
+  const [selAccPrecio, setSelAccPrecio] = useState("");
+  const [selAccCant, setSelAccCant] = useState("1");
+  const [selAccDias, setSelAccDias] = useState("1");
   // Comisión interna / Gastos de producción
   const [gastosActivo, setGastosActivo] = useState(false);
   const [gastosEsMonto, setGastosEsMonto] = useState(false); // false=%, true=$
@@ -432,6 +440,7 @@ function CotizadorForm() {
   useEffect(() => {
     fetch("/api/productos/publico").then(r => r.json()).then(d => setProductosCatalogo(d.productos ?? [])).catch(() => {});
     fetch("/api/paquetes/publico").then(r => r.json()).then(d => setPaquetesCatalogo(d.paquetes ?? [])).catch(() => {});
+    fetch("/api/accesorios").then(r => r.ok ? r.json() : null).then(d => { if (d) setAccesoriosCatalogo(d.accesorios ?? []); }).catch(() => {});
     fetch("/api/catalogo").then(r => r.json()).then(d => setAdicionalesCatalogo((d.adicionales ?? []).map((a: { id: string; nombre: string; composicion: string | null }) => {
       let comp: { tipo: string; referenciaId: string; cantidad: number; obligatorio: boolean }[] = [];
       try { const v = JSON.parse(a.composicion || "[]"); if (Array.isArray(v)) comp = v.map(x => ({ tipo: String(x.tipo), referenciaId: String(x.referenciaId), cantidad: Number(x.cantidad) || 1, obligatorio: x.obligatorio !== false })); } catch {}
@@ -1207,6 +1216,24 @@ function CotizadorForm() {
       subtotal: precio * cant * dias,
     }]);
     setSelOcDesc(""); setSelOcPrecio(""); setSelOcCant("1"); setSelOcDias("1");
+  }
+
+  // ── Agregar accesorio del catálogo como concepto de cotización ──
+  // El precio es del contexto: se precarga precioRenta (0 si null) y es editable.
+  // Se persiste como línea "OTRO" (adicional), sin registro nuevo en DB.
+  function agregarAccesorio() {
+    const acc = accesoriosCatalogo.find(a => a.id === selAcc);
+    if (!acc) return;
+    const precio = parseFloat(selAccPrecio) || 0;
+    const cant = parseFloat(selAccCant) || 1;
+    const dias = parseInt(selAccDias) || 1;
+    const nombre = [acc.nombre, acc.marca, acc.modelo].filter(Boolean).join(" · ");
+    setLineasOcasional(prev => [...prev, {
+      id: uid(), descripcion: nombre,
+      cantidad: cant, dias, precioUnitario: precio,
+      subtotal: precio * cant * dias,
+    }]);
+    setSelAcc(""); setSelAccPrecio(""); setSelAccCant("1"); setSelAccDias("1");
   }
 
   function updateExterno(id: string, field: "cantidad" | "dias" | "precioUnitario", val: number) {
@@ -2863,6 +2890,53 @@ function CotizadorForm() {
               </div>
             )}
           </Seccion>
+
+          {/* ── Accesorios (catálogo primera clase) ── */}
+          {accesoriosCatalogo.length > 0 && (
+          <Seccion titulo="Accesorios" hint="del catálogo · precio precargado editable · sin descuento">
+            <div className="flex gap-2 mb-3 items-end flex-wrap">
+              <div className="flex-1 min-w-48">
+                <p className="text-[10px] text-[#555] mb-1 px-1">Accesorio</p>
+                <select
+                  value={selAcc}
+                  onChange={e => {
+                    const id = e.target.value;
+                    setSelAcc(id);
+                    const acc = accesoriosCatalogo.find(a => a.id === id);
+                    setSelAccPrecio(acc ? String(acc.precioRenta ?? 0) : "");
+                  }}
+                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                >
+                  <option value="">— Elige un accesorio —</option>
+                  {accesoriosCatalogo.map(a => (
+                    <option key={a.id} value={a.id}>
+                      {[a.nombre, a.marca, a.modelo].filter(Boolean).join(" · ")}{a.categoria ? ` — ${a.categoria.nombre}` : ""}{a.precioRenta ? ` · ${formatCurrency(a.precioRenta)}` : " · sin precio"}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <p className="text-[10px] text-[#555] mb-1 text-center">Precio</p>
+                <input type="number" min="0" value={selAccPrecio} onChange={e => setSelAccPrecio(e.target.value)}
+                  placeholder="0"
+                  className="w-28 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-2 text-white text-sm text-right focus:outline-none focus:border-[#B3985B]" />
+              </div>
+              <div>
+                <p className="text-[10px] text-[#555] mb-1 text-center">Cant</p>
+                <NumSelect value={selAccCant} onChange={setSelAccCant} max={50} className="w-16 py-2" />
+              </div>
+              <div>
+                <p className="text-[10px] text-[#555] mb-1 text-center">Días</p>
+                <NumSelect value={selAccDias} onChange={setSelAccDias} max={10} className="w-16 py-2" />
+              </div>
+              <button onClick={agregarAccesorio} disabled={!selAcc}
+                className="px-3 py-2 rounded-lg bg-[#333] text-white font-semibold text-sm disabled:opacity-40 hover:bg-[#444]">
+                + Agregar
+              </button>
+            </div>
+            <p className="text-[11px] text-gray-600">Los accesorios se agregan como conceptos de la cotización. El precio es del contexto: edítalo aquí sin afectar el catálogo.</p>
+          </Seccion>
+          )}
 
           <Seccion titulo="Operación técnica" hint="sin descuento · tarifas por día y tipo de operación">
             {/* Zona selector + técnicos */}

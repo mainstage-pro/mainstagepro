@@ -261,7 +261,7 @@ export default function InventarioActivosPage() {
       setAccesoriosAPI(prev => {
         const exists = prev.find(a => a.id === d.accesorio.id);
         if (exists) return prev;
-        return [...prev, { id: d.accesorio.id, nombre: d.accesorio.nombre, categoria: d.accesorio.categoria, equipoId: formAcc.equipoId, equipoNombre: eqNombre, accesorioId: d.accesorio.accesorioId ?? null, tipoConteo: "default" as const, cantidad: null }].sort((a, b) => a.nombre.localeCompare(b.nombre));
+        return [...prev, { id: d.accesorio.id, nombre: d.accesorio.nombre, categoria: d.accesorio.categoria, equipoId: formAcc.equipoId, equipoNombre: eqNombre, accesorioId: d.accesorio.accesorioId ?? null, tipoConteo: "default" as const, cantidad: null, valorAdquisicion: null, precioRenta: null }].sort((a, b) => a.nombre.localeCompare(b.nombre));
       });
       setModalAcc(false);
       setFormAcc({ nombre: "", categoria: "", equipoId: "" });
