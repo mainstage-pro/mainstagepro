@@ -47,6 +47,16 @@ const nextConfig: NextConfig = {
       { source: "/backlog",                      destination: "/operaciones",                       permanent: true },
       // ── RRHH (legacy routes) ─────────────────────────────────────────────────
       { source: "/rrhh/incidencias",             destination: "/rrhh/asistencia",                   permanent: true },
+      // ── Candidatos: movido de RRHH/Personal a Dirección → Organización ───────
+      { source: "/personal/candidatos/:path*",   destination: "/organizacion/candidatos/:path*",    permanent: true },
+      { source: "/personal/candidatos",          destination: "/organizacion/candidatos",           permanent: true },
+      { source: "/reclutamiento/candidatos",     destination: "/organizacion/candidatos",           permanent: true },
+      { source: "/reclutamiento",                destination: "/organizacion/candidatos",           permanent: true },
+      // ── Integración/Onboarding y Configuración RRHH: retirados ───────────────
+      { source: "/personal/onboarding",          destination: "/personal/interno",                  permanent: true },
+      { source: "/rrhh/onboarding",              destination: "/personal/interno",                  permanent: true },
+      { source: "/personal/configuracion",       destination: "/personal/interno",                  permanent: true },
+      { source: "/reclutamiento/configuracion",  destination: "/personal/interno",                  permanent: true },
       // ── Organización (movido de RRHH/Personal a Dirección) ───────────────────
       { source: "/personal/organigrama",         destination: "/organizacion/organigrama",          permanent: true },
       { source: "/personal/puestos-operativos",  destination: "/organizacion/puestos",              permanent: true },

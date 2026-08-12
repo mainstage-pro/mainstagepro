@@ -94,7 +94,7 @@ export default function CandidatosPage() {
     setSaving(false);
     if (!r.ok) { toast.error(d.error ?? "Error al crear candidato"); return; }
     setShowNew(false);
-    if (d.candidato?.id) router.push(`/personal/candidatos/${d.candidato.id}`);
+    if (d.candidato?.id) router.push(`/organizacion/candidatos/${d.candidato.id}`);
   }
 
   async function eliminar(c: Candidato, e: React.MouseEvent) {
@@ -183,7 +183,7 @@ export default function CandidatosPage() {
                   {cols.map(c => {
                     const post = c.postulaciones[0];
                     return (
-                      <Link key={c.id} href={`/personal/candidatos/${c.id}`}
+                      <Link key={c.id} href={`/organizacion/candidatos/${c.id}`}
                         className={`block bg-[#111] border rounded-xl p-4 hover:border-[#333] transition-all ${ETAPA_BORDER[etapa]}`}>
                         <p className="text-white text-sm font-medium">{c.nombre}</p>
                         <p className="text-gray-500 text-xs mt-0.5">{getPuestoLabel(post)}</p>
@@ -209,7 +209,7 @@ export default function CandidatosPage() {
             </div>
             <div className="space-y-2 opacity-50">
               {candidatos.filter(c => getEtapa(c) === "RECHAZADO").map(c => (
-                <Link key={c.id} href={`/personal/candidatos/${c.id}`}
+                <Link key={c.id} href={`/organizacion/candidatos/${c.id}`}
                   className="block bg-[#0d0d0d] border border-[#1a1a1a] rounded-xl p-3 hover:border-[#222] transition-all">
                   <p className="text-gray-400 text-xs font-medium">{c.nombre}</p>
                 </Link>
@@ -248,7 +248,7 @@ export default function CandidatosPage() {
                     </td>
                     <td className="ms-td">
                       <div className="flex items-center gap-3 justify-end">
-                        <Link href={`/personal/candidatos/${c.id}`} className="text-xs text-[#B3985B] hover:underline">Ver →</Link>
+                        <Link href={`/organizacion/candidatos/${c.id}`} className="text-xs text-[#B3985B] hover:underline">Ver →</Link>
                         <button onClick={e => eliminar(c, e)} className="text-xs text-red-500 hover:text-red-400 transition-colors">Eliminar</button>
                       </div>
                     </td>

@@ -210,7 +210,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
       return;
     }
     toast.success("Candidato eliminado");
-    router.push("/personal/candidatos");
+    router.push("/organizacion/candidatos");
   }
 
   async function generarLinkPropuesta() {
@@ -287,7 +287,7 @@ export default function CandidatoPage({ params }: { params: Promise<{ id: string
       <div className="flex items-start gap-4 flex-wrap">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 flex-wrap">
-            <Link href="/personal/candidatos" className="text-gray-600 hover:text-white text-sm transition-colors">← Candidatos</Link>
+            <Link href="/organizacion/candidatos" className="text-gray-600 hover:text-white text-sm transition-colors">← Candidatos</Link>
             <span className="text-[#333]">|</span>
             <h1 className="ms-h1">{candidato.nombre}</h1>
             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${ETAPA_COLORS[etapa]}`}>
