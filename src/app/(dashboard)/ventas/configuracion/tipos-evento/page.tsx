@@ -32,6 +32,14 @@ interface Slide {
   orden: number;
 }
 
+interface Render {
+  id: string;
+  url: string;
+  caption: string | null;
+  etiqueta: string | null;
+  orden: number;
+}
+
 export default function TiposEventoConfigPage() {
   const [tipos, setTipos] = useState<Tipo[] | null>(null);
   const [creating, setCreating] = useState(false);
@@ -115,6 +123,176 @@ export default function TiposEventoConfigPage() {
 
       {/* Tipos de servicio: renta, producción, dirección y operación técnica */}
       <TiposServicioSection />
+
+      {/* Banco de renders comerciales reutilizables */}
+      <RendersSection />
+    </div>
+  );
+}
+
+// ── Banco de renders comerciales ──────────────────────────────────────────────
+// Biblioteca transversal de renders ya producidos, para reutilizar en paquetes,
+// presentaciones o cualquier fin comercial.
+function RendersSection() {
+  const [renders, setRenders] = useState<Render[] | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [filtro, setFiltro] = useState("");
+
+  const load = useCallback(async () => {
+    const r = await fetch("/api/renders");
+    const d = await r.json();
+    setRenders(d.renders ?? []);
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load();
+  }, [load]);
+
+  async function subir(files: FileList | null) {
+    if (!files || files.length === 0 || !renders) return;
+    setUploading(true);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const blob = await upload(files[i].name, files[i], {
+          access: "public",
+          handleUploadUrl: "/api/tipos-evento/imagenes",
+        });
+        await fetch("/api/renders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: blob.url, orden: renders.length + i }),
+        });
+      }
+      load();
+    } catch (err) {
+      alert("Error al subir: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function onDrop(target: number) {
+    if (dragIdx === null || dragIdx === target || !renders) { setDragIdx(null); return; }
+    const arr = [...renders];
+    const [moved] = arr.splice(dragIdx, 1);
+    arr.splice(target, 0, moved);
+    const patches = arr
+      .map((r, i) => ({ id: r.id, orden: i, cambia: r.orden !== i }))
+      .filter((p) => p.cambia);
+    setRenders(arr.map((r, i) => ({ ...r, orden: i })));
+    setDragIdx(null);
+    Promise.all(
+      patches.map((p) =>
+        fetch(`/api/renders/${p.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orden: p.orden }),
+        })
+      )
+    ).catch(() => {});
+  }
+
+  async function eliminar(id: string) {
+    if (!confirm("¿Eliminar este render del banco?")) return;
+    await fetch(`/api/renders/${id}`, { method: "DELETE" });
+    load();
+  }
+
+  async function guardarCampo(id: string, campo: "caption" | "etiqueta", valor: string, prev: string) {
+    if (valor === prev) return;
+    await fetch(`/api/renders/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [campo]: valor || null }),
+    });
+    setRenders((rs) => rs?.map((r) => (r.id === id ? { ...r, [campo]: valor || null } : r)) ?? rs);
+  }
+
+  const q = filtro.trim().toLowerCase();
+  const visibles = (renders ?? []).filter(
+    (r) =>
+      !q ||
+      (r.etiqueta ?? "").toLowerCase().includes(q) ||
+      (r.caption ?? "").toLowerCase().includes(q)
+  );
+
+  return (
+    <div className="mt-12 border-t border-[#1a1a1a] pt-8">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-sm font-semibold text-[#B3985B] uppercase tracking-wider">Renders comerciales</h2>
+        <label className="text-xs px-3 py-1.5 rounded-lg border border-[#333] text-gray-300 hover:border-[#B3985B] cursor-pointer transition-colors">
+          {uploading ? "Subiendo…" : "+ Subir renders"}
+          <input type="file" accept="image/*" multiple className="hidden" disabled={uploading}
+            onChange={(e) => subir(e.target.files)} />
+        </label>
+      </div>
+      <p className="text-gray-400 text-sm mb-4">
+        Banco transversal de renders ya producidos para reutilizar en paquetes, presentaciones o cualquier material comercial. Ponles una etiqueta para encontrarlos fácil.
+      </p>
+
+      {renders !== null && renders.length > 0 && (
+        <input
+          value={filtro}
+          onChange={(e) => setFiltro(e.target.value)}
+          placeholder="Buscar por etiqueta o descripción…"
+          className="w-full max-w-sm bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm mb-4 focus:outline-none focus:border-[#B3985B]"
+        />
+      )}
+
+      {renders === null ? (
+        <p className="text-xs text-gray-600 py-3">Cargando…</p>
+      ) : renders.length === 0 ? (
+        <p className="text-gray-500 text-sm text-center py-8">Aún no hay renders. Sube el primero arriba.</p>
+      ) : visibles.length === 0 ? (
+        <p className="text-xs text-gray-600 py-3">Ningún render coincide con “{filtro}”.</p>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          {visibles.map((r) => {
+            const i = (renders ?? []).indexOf(r);
+            return (
+              <div
+                key={r.id}
+                draggable={!q}
+                onDragStart={() => setDragIdx(i)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => onDrop(i)}
+                className="relative rounded-lg overflow-hidden border border-[#333] bg-[#1a1a1a] cursor-grab active:cursor-grabbing"
+                style={{ opacity: dragIdx === i ? 0.4 : 1 }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={r.url} alt={r.caption ?? ""} className="w-full aspect-[4/3] object-cover pointer-events-none" />
+                <div className="absolute top-1.5 left-1.5 flex items-center gap-1">
+                  <span className="text-[9px] font-mono bg-black/60 text-white/80 rounded px-1.5 py-0.5">{i + 1}</span>
+                </div>
+                <div className="absolute top-1.5 right-1.5 flex gap-1">
+                  <a href={r.url} target="_blank" rel="noopener noreferrer" title="Abrir original"
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs bg-black/60 text-white hover:bg-black/80">
+                    ↗
+                  </a>
+                  <button onClick={() => eliminar(r.id)} title="Eliminar"
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-xs bg-black/60 text-white hover:bg-red-600/80">
+                    ×
+                  </button>
+                </div>
+                <input
+                  defaultValue={r.etiqueta ?? ""}
+                  onBlur={(e) => guardarCampo(r.id, "etiqueta", e.target.value, r.etiqueta ?? "")}
+                  placeholder="Etiqueta…"
+                  className="w-full bg-[#111] border-t border-[#333] px-2 py-1.5 text-[11px] text-[#B3985B] focus:outline-none focus:border-[#B3985B]"
+                />
+                <input
+                  defaultValue={r.caption ?? ""}
+                  onBlur={(e) => guardarCampo(r.id, "caption", e.target.value, r.caption ?? "")}
+                  placeholder="Descripción…"
+                  className="w-full bg-[#111] border-t border-[#333] px-2 py-1.5 text-[11px] text-white focus:outline-none focus:border-[#B3985B]"
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

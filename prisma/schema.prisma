@@ -4489,6 +4489,20 @@ model FotoGaleriaInicio {
   @@map("fotos_galeria_inicio")
 }
 
+// Banco de renders comerciales: imágenes de renders ya producidos, disponibles
+// para reutilizar en paquetes, presentaciones o cualquier fin comercial.
+// Independiente de tipos de evento/servicio — es una biblioteca transversal.
+model RenderComercial {
+  id        String   @id @default(cuid())
+  url       String
+  caption   String?
+  etiqueta  String? // categoría libre para organizar/buscar ("musical", "corporativo", "escenario"…)
+  orden     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@map("renders_comerciales")
+}
+
 // ── Prospección ──────────────────────────────────────────────────────────────
 
 model Prospeccion {
