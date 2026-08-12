@@ -61,6 +61,23 @@ export async function ensureProductosTables() {
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS "producto_coberturas_productoId_idx" ON "producto_coberturas"("productoId");`
   );
+  // Accesorios que componen un producto (paralelo a producto_equipos).
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "producto_accesorios" (
+      "id" TEXT NOT NULL,
+      "productoId" TEXT NOT NULL,
+      "accesorioId" TEXT NOT NULL,
+      "cantidad" INTEGER NOT NULL DEFAULT 1,
+      "orden" INTEGER NOT NULL DEFAULT 0,
+      CONSTRAINT "producto_accesorios_pkey" PRIMARY KEY ("id")
+    );
+  `);
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS "producto_accesorios_productoId_idx" ON "producto_accesorios"("productoId");`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS "producto_accesorios_accesorioId_idx" ON "producto_accesorios"("accesorioId");`
+  );
   // Bloque 2: clasificación de productos (columnas aditivas, idempotentes).
   await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "nichos" TEXT;`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "rol" TEXT NOT NULL DEFAULT 'base';`);
@@ -71,6 +88,19 @@ export async function ensureProductosTables() {
 }
 
 export type ItemInput = { equipoId: string; cantidad: number };
+
+export type AccesorioInput = { accesorioId: string; cantidad: number };
+
+// Depura los accesorios que llegan del cliente para la composición del producto.
+export function limpiarAccesorios(raw: unknown): AccesorioInput[] {
+  if (!Array.isArray(raw)) return [];
+  const porId = new Map<string, AccesorioInput>();
+  for (const a of raw as AccesorioInput[]) {
+    if (!a || typeof a.accesorioId !== "string" || !a.accesorioId) continue;
+    porId.set(a.accesorioId, { accesorioId: a.accesorioId, cantidad: Math.max(1, Number(a.cantidad) || 1) });
+  }
+  return [...porId.values()];
+}
 
 export type CoberturaInput = { tipoEvento: string; rangos: string[]; subtipos: string[] };
 

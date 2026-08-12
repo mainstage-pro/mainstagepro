@@ -944,6 +944,7 @@ model Accesorio {
   updatedAt        DateTime         @updatedAt
 
   equipoLinks      EquipoAccesorio[]
+  productoLinks    ProductoAccesorio[]
 
   @@map("accesorios")
 }
@@ -987,6 +988,7 @@ model Producto {
   updatedAt          DateTime @updatedAt
 
   items              ProductoEquipo[]
+  accesorios         ProductoAccesorio[]
   coberturas         ProductoCobertura[]
   paqueteItems       PaqueteItem[]
   adicionales        Adicional[]
@@ -1022,6 +1024,21 @@ model ProductoEquipo {
   orden      Int      @default(0)
 
   @@map("producto_equipos")
+}
+
+// Accesorios que componen un Producto. Paralelo a ProductoEquipo pero apunta al
+// catálogo de Accesorio (primera clase). No aportan al precioFinal (los accesorios
+// van sin precio en la composición); su rol es aparecer en checklist/rider.
+model ProductoAccesorio {
+  id          String    @id @default(cuid())
+  productoId  String
+  producto    Producto  @relation(fields: [productoId], references: [id], onDelete: Cascade)
+  accesorioId String
+  accesorio   Accesorio @relation(fields: [accesorioId], references: [id])
+  cantidad    Int       @default(1)
+  orden       Int       @default(0)
+
+  @@map("producto_accesorios")
 }
 
 // ── Paquetes ──────────────────────────────────────────────────────────────────

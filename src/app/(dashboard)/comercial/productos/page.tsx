@@ -29,6 +29,21 @@ type ProductoItem = {
   equipo: EquipoItem;
 };
 
+type AccesorioCat = {
+  id: string;
+  nombre: string;
+  marca: string | null;
+  modelo: string | null;
+  precioRenta: number | null;
+  fotoUrl: string | null;
+  categoria: { id: string; nombre: string } | null;
+};
+
+type ProductoAccesorioItem = {
+  cantidad: number;
+  accesorio: AccesorioCat;
+};
+
 type Producto = {
   id: string;
   nombre: string;
@@ -46,6 +61,7 @@ type Producto = {
   proveedorRef: string | null;
   costoRef: number | null;
   items: ProductoItem[];
+  accesorios?: ProductoAccesorioItem[];
   coberturas?: { tipoEvento: string; rangos: string | null; subtipos: string | null }[];
 };
 
@@ -63,6 +79,10 @@ function fmx(n: number) {
 
 function nombreEq(e: EquipoItem): string {
   return e.marca && e.modelo ? `${e.marca} ${e.modelo}` : e.marca || e.modelo || e.descripcion;
+}
+
+function nombreAcc(a: AccesorioCat): string {
+  return [a.nombre, a.marca, a.modelo].filter(Boolean).join(" · ");
 }
 
 async function compressImage(file: File, maxPx = 1200): Promise<string> {
@@ -193,6 +213,7 @@ function CapacidadCell({ producto, rangos, onSave }: { producto: Producto; rango
 
 // ── Editor de producto (crear/editar) ────────────────────────────────────────
 type FormItem = { equipoId: string; cantidad: number };
+type FormAccesorio = { accesorioId: string; cantidad: number };
 type FormState = {
   nombre: string;
   descripcion: string;
@@ -207,6 +228,7 @@ type FormState = {
   equipoDominanteId: string;
   precioManual: string;
   items: FormItem[];
+  accesorios: FormAccesorio[];
   coberturas: Cobertura[];
 };
 
@@ -224,6 +246,7 @@ const FORM_EMPTY: FormState = {
   equipoDominanteId: "",
   precioManual: "",
   items: [],
+  accesorios: [],
   coberturas: [],
 };
 
@@ -233,6 +256,7 @@ function ProductoEditor({
   form,
   setForm,
   equipos,
+  accesoriosCat,
   categorias,
   rangos,
   nichosCat,
@@ -240,12 +264,15 @@ function ProductoEditor({
   form: FormState;
   setForm: (f: FormState) => void;
   equipos: EquipoItem[];
+  accesoriosCat: AccesorioCat[];
   categorias: string[];
   rangos: string[];
   nichosCat: NichoCatalogo[];
 }) {
   const [busqueda, setBusqueda] = useState("");
+  const [busqAcc, setBusqAcc] = useState("");
   const equipoMap = useMemo(() => new Map(equipos.map((e) => [e.id, e])), [equipos]);
+  const accMap = useMemo(() => new Map(accesoriosCat.map((a) => [a.id, a])), [accesoriosCat]);
 
   function cobDe(tipo: string): Cobertura {
     return form.coberturas.find((c) => c.tipoEvento === tipo) ?? { tipoEvento: tipo, rangos: [], subtipos: [] };
@@ -295,6 +322,30 @@ function ProductoEditor({
     const items = form.items.filter((i) => i.equipoId !== id);
     const dom = form.equipoDominanteId === id ? items[0]?.equipoId ?? "" : form.equipoDominanteId;
     setForm({ ...form, items, equipoDominanteId: dom });
+  }
+
+  const accFiltrados = useMemo(() => {
+    const q = busqAcc.trim().toLowerCase();
+    const seleccionados = new Set(form.accesorios.map((a) => a.accesorioId));
+    return accesoriosCat
+      .filter((a) => !seleccionados.has(a.id))
+      .filter((a) => !q || nombreAcc(a).toLowerCase().includes(q))
+      .slice(0, 40);
+  }, [accesoriosCat, busqAcc, form.accesorios]);
+
+  function addAccesorio(id: string) {
+    if (form.accesorios.some((a) => a.accesorioId === id)) return;
+    setForm({ ...form, accesorios: [...form.accesorios, { accesorioId: id, cantidad: 1 }] });
+    setBusqAcc("");
+  }
+  function setCantAcc(id: string, c: number) {
+    setForm({
+      ...form,
+      accesorios: form.accesorios.map((a) => (a.accesorioId === id ? { ...a, cantidad: Math.max(1, c) } : a)),
+    });
+  }
+  function removeAccesorio(id: string) {
+    setForm({ ...form, accesorios: form.accesorios.filter((a) => a.accesorioId !== id) });
   }
   function toggleTag(k: string) {
     setForm({
@@ -577,6 +628,105 @@ function ProductoEditor({
         )}
       </div>
 
+      {/* Accesorios que lo componen (sin precio — van al checklist/rider) */}
+      <div>
+        <label className="text-[11px] text-[#B3985B] font-medium block mb-1">
+          Accesorios ({form.accesorios.length})
+        </label>
+        <p className="text-[10px] text-gray-600 mb-1.5">
+          Cables, soportes, casos y demás. No suman al precio del producto; sirven para el checklist de carga.
+        </p>
+        {form.accesorios.length > 0 && (
+          <div className="space-y-1.5 mb-2">
+            {form.accesorios.map((a) => {
+              const acc = accMap.get(a.accesorioId);
+              if (!acc) return null;
+              return (
+                <div
+                  key={a.accesorioId}
+                  className="flex items-center gap-2 rounded-lg border border-[#1e1e1e] bg-[#0d0d0d] px-2 py-1.5"
+                >
+                  <span className="w-9 h-9 rounded-md bg-[#1a1a1a] overflow-hidden shrink-0 flex items-center justify-center">
+                    {acc.fotoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={acc.fotoUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <Package strokeWidth={1.75} className="w-4 h-4 text-gray-700" />
+                    )}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-xs font-medium truncate">{nombreAcc(acc)}</p>
+                    <p className="text-gray-500 text-[10px]">{acc.categoria?.nombre ?? "Accesorio"}</p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setCantAcc(a.accesorioId, a.cantidad - 1)}
+                      className="w-6 h-6 rounded-md bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white text-sm"
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      value={a.cantidad}
+                      onChange={(e) => setCantAcc(a.accesorioId, parseInt(e.target.value) || 1)}
+                      className="w-12 h-6 bg-[#111] border border-[#2a2a2a] rounded-md text-white text-xs text-center focus:outline-none focus:border-[#B3985B]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCantAcc(a.accesorioId, a.cantidad + 1)}
+                      className="w-6 h-6 rounded-md bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white text-sm"
+                    >
+                      +
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeAccesorio(a.accesorioId)}
+                    className="w-6 h-6 rounded-md text-gray-500 hover:text-red-400 hover:bg-red-500/10 text-sm shrink-0"
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {accesoriosCat.length === 0 ? (
+          <p className="text-[11px] text-gray-500 rounded-lg border border-dashed border-[#222] px-3 py-2">
+            No hay accesorios en el catálogo todavía.
+          </p>
+        ) : (
+          <>
+            <input
+              value={busqAcc}
+              onChange={(e) => setBusqAcc(e.target.value)}
+              placeholder="Buscar accesorio del catálogo para agregar..."
+              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+            />
+            {busqAcc.trim() && (
+              <div className="mt-1.5 max-h-48 overflow-y-auto space-y-1 border border-[#1e1e1e] rounded-lg p-1.5 bg-[#0d0d0d]">
+                {accFiltrados.length === 0 ? (
+                  <p className="text-gray-600 text-xs px-2 py-1">Sin resultados.</p>
+                ) : (
+                  accFiltrados.map((a) => (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => addAccesorio(a.id)}
+                      className="w-full flex items-center gap-2 text-left px-2 py-1.5 rounded-md hover:bg-[#1a1a1a] transition-colors"
+                    >
+                      <span className="text-white text-xs flex-1 truncate">{nombreAcc(a)}</span>
+                      <span className="text-gray-500 text-[10px]">{a.categoria?.nombre}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
       {/* Cobertura de capacidad — por tipo de evento */}
       <div>
         <label className="text-[11px] text-[#B3985B] font-medium block mb-1">
@@ -708,6 +858,7 @@ export function ProductosSection() {
 
   const [productos, setProductos] = useState<Producto[]>([]);
   const [equipos, setEquipos] = useState<EquipoItem[]>([]);
+  const [accesoriosCat, setAccesoriosCat] = useState<AccesorioCat[]>([]);
   const [rangos, setRangos] = useState<string[]>([]);
   const [nichosCat, setNichosCat] = useState<NichoCatalogo[]>([]);
   const [catalogoTipos, setCatalogoTipos] = useState<TipoEventoOpcion[]>([]);
@@ -733,16 +884,18 @@ export function ProductosSection() {
   async function cargar() {
     setLoading(true);
     try {
-      const [rp, re, rs, rc, rr, rcat] = await Promise.all([
+      const [rp, re, rs, rc, rr, rcat, racc] = await Promise.all([
         fetch("/api/productos").then((r) => r.json()),
         fetch("/api/equipos").then((r) => r.json()),
         fetch("/api/productos/sin-paquetear").then((r) => r.json()),
         fetch("/api/inventario/categorias").then((r) => r.json()),
         fetch("/api/paquetes/rangos").then((r) => r.json()),
         fetch("/api/catalogo").then((r) => r.json()).catch(() => ({})),
+        fetch("/api/accesorios").then((r) => r.json()).catch(() => ({})),
       ]);
       setProductos(rp.productos ?? []);
       setEquipos(re.equipos ?? []);
+      setAccesoriosCat(racc.accesorios ?? []);
       setSinPaquetear(rs.equipos ?? []);
       setCategoriasInv((rc.categorias ?? []).map((c: { nombre: string }) => c.nombre));
       setRangos((rr.rangos ?? []).map((x: { label: string }) => x.label));
@@ -784,6 +937,7 @@ export function ProductosSection() {
       equipoDominanteId: p.equipoDominanteId ?? "",
       precioManual: p.precioManual != null ? String(p.precioManual) : "",
       items: p.items.map((it) => ({ equipoId: it.equipo.id, cantidad: it.cantidad })),
+      accesorios: (p.accesorios ?? []).map((a) => ({ accesorioId: a.accesorio.id, cantidad: a.cantidad })),
       coberturas: parseCoberturas(p.coberturas),
     });
     setModalOpen(true);
@@ -808,6 +962,7 @@ export function ProductosSection() {
         equipoDominanteId: form.equipoDominanteId || null,
         precioManual: form.precioManual,
         items: form.items,
+        accesorios: form.accesorios,
         coberturas: form.coberturas.filter((c) => form.tiposEvento.includes(c.tipoEvento)),
       };
       const res = await fetch(editId ? `/api/productos/${editId}` : "/api/productos", {
@@ -1182,7 +1337,7 @@ export function ProductosSection() {
         title={editId ? "Editar producto" : "Nuevo producto"}
         maxWidth="max-w-3xl"
       >
-        <ProductoEditor form={form} setForm={setForm} equipos={equipos} categorias={categoriasInv} rangos={rangos} nichosCat={nichosCat} />
+        <ProductoEditor form={form} setForm={setForm} equipos={equipos} accesoriosCat={accesoriosCat} categorias={categoriasInv} rangos={rangos} nichosCat={nichosCat} />
         <div className="flex items-center justify-end gap-2 mt-6 pt-4 border-t border-[#1a1a1a]">
           <button
             onClick={() => setModalOpen(false)}

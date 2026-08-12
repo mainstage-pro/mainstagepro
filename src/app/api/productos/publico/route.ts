@@ -27,6 +27,15 @@ export async function GET() {
           },
         },
       },
+      accesorios: {
+        orderBy: { orden: "asc" },
+        select: {
+          cantidad: true,
+          accesorio: {
+            select: { id: true, nombre: true, marca: true, modelo: true, precioRenta: true },
+          },
+        },
+      },
     },
     orderBy: [{ categoria: "asc" }, { orden: "asc" }, { nombre: "asc" }],
   });

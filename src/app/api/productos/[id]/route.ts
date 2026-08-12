@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
-import { ensureProductosTables, calcularPrecioProducto, limpiarCoberturas, type ItemInput } from "@/lib/productos";
+import { ensureProductosTables, calcularPrecioProducto, limpiarCoberturas, limpiarAccesorios, type ItemInput, type AccesorioInput } from "@/lib/productos";
 
 const PRODUCTO_INCLUDE = {
   items: {
@@ -17,6 +17,22 @@ const PRODUCTO_INCLUDE = {
           precioRenta: true,
           cantidadTotal: true,
           imagenUrl: true,
+          categoria: { select: { id: true, nombre: true } },
+        },
+      },
+    },
+  },
+  accesorios: {
+    orderBy: { orden: "asc" as const },
+    include: {
+      accesorio: {
+        select: {
+          id: true,
+          nombre: true,
+          marca: true,
+          modelo: true,
+          precioRenta: true,
+          fotoUrl: true,
           categoria: { select: { id: true, nombre: true } },
         },
       },
@@ -44,7 +60,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const { nombre, descripcion, categoria, tiposEvento, nichos, rol, disponibilidad, proveedorRef, costoRef, imagenUrl, equipoDominanteId, precioManual, items, activo, coberturas } = body;
+  const { nombre, descripcion, categoria, tiposEvento, nichos, rol, disponibilidad, proveedorRef, costoRef, imagenUrl, equipoDominanteId, precioManual, items, accesorios, activo, coberturas } = body;
 
   const data: Record<string, unknown> = {};
   if (nombre !== undefined) data.nombre = nombre;
@@ -70,6 +86,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     recalcItems = (items as ItemInput[])
       .filter((it) => it.equipoId)
       .map((it) => ({ equipoId: it.equipoId, cantidad: Math.max(1, Number(it.cantidad) || 1) }));
+  }
+
+  // Accesorios: si vienen, reemplazamos el set completo (no afectan precioFinal)
+  let recalcAccesorios: AccesorioInput[] | null = null;
+  if (Array.isArray(accesorios)) {
+    recalcAccesorios = limpiarAccesorios(accesorios);
   }
 
   // Determinar precioFinal si cambió precioManual o items
@@ -110,6 +132,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           orden: idx,
         })),
       });
+    }
+    if (recalcAccesorios) {
+      await tx.productoAccesorio.deleteMany({ where: { productoId: id } });
+      if (recalcAccesorios.length > 0) {
+        await tx.productoAccesorio.createMany({
+          data: recalcAccesorios.map((a, idx) => ({
+            productoId: id,
+            accesorioId: a.accesorioId,
+            cantidad: a.cantidad,
+            orden: idx,
+          })),
+        });
+      }
     }
     if (coberturas !== undefined) {
       const cobs = limpiarCoberturas(coberturas);
