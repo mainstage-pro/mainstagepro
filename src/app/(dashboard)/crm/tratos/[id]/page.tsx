@@ -15,6 +15,7 @@ import { Combobox } from "@/components/Combobox";
 import { BackButton } from "@/components/BackButton";
 import { EtapaInternaBar, EtapaInternaSelect } from "@/components/crm/EtapaInternaBar";
 import TareasTratoTab from "./TareasTratoTab";
+import SiguientePasoPanel from "./SiguientePasoPanel";
 import { SEGUIMIENTO_TIPOS, SEGUIMIENTO_TIPO_LABELS, getWaMensajePrimerContacto } from '@/lib/seguimientoTypes';
 import { SelectorEquiposInventario, type SeleccionEquipos } from '@/components/SelectorEquiposInventario';
 import DiscoveryForm from '@/components/crm/DiscoveryForm';
@@ -1870,8 +1871,15 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         <div className="flex-1 h-px bg-gradient-to-r from-blue-800/20 to-transparent" />
       </div>
 
-
-
+      {/* ── Siguiente paso stage-aware (config-driven) ── */}
+      {trato.etapa !== "VENTA_PERDIDA" && trato.etapaInterna && (
+        <SiguientePasoPanel
+          key={trato.etapaInterna}
+          tratoId={trato.id}
+          etapaInterna={trato.etapaInterna}
+          etapaCambiadaEn={trato.etapaCambiadaEn}
+        />
+      )}
 
 
       {trato.etapa === "VENTA_PERDIDA" && trato.motivoPerdida && (
