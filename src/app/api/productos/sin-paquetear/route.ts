@@ -3,7 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { ensureProductosTables } from "@/lib/productos";
 
-// Equipos propios activos que aún no forman parte de ningún producto activo.
+// Equipos cotizables (propios y externos) que aún no forman parte de ningún
+// producto activo. Definición canónica de "equipos sin producto", compartida con
+// el tablero de cobertura (/api/inventario/cobertura): activo + noCotizable=false.
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
@@ -17,7 +19,7 @@ export async function GET() {
   const usadosSet = new Set(usados.map((u) => u.equipoId));
 
   const equipos = await prisma.equipo.findMany({
-    where: { activo: true, estado: "ACTIVO", tipo: "PROPIO" },
+    where: { activo: true, noCotizable: false },
     select: {
       id: true,
       descripcion: true,

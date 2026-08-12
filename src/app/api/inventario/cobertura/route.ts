@@ -34,7 +34,7 @@ export async function GET() {
       select: { id: true, nombre: true, slug: true, tipoEventoSlug: true },
       orderBy: [{ tipoEventoSlug: "asc" }, { orden: "asc" }],
     }),
-    prisma.productoEquipo.findMany({ select: { equipoId: true, productoId: true } }),
+    prisma.productoEquipo.findMany({ where: { producto: { activo: true } }, select: { equipoId: true, productoId: true } }),
     prisma.paqueteItem.findMany({ where: { productoId: { not: null } }, select: { productoId: true } }),
     prisma.paquete.findMany({ where: { activo: true }, select: { tipoEvento: true, subtiposEvento: true } }),
   ]);
