@@ -10,10 +10,11 @@ function wa(msg: string) { return WA_BASE + encodeURIComponent(msg); }
 type Imagen = { url: string; tipo: string };
 type Item = {
   tipo: string; cantidad: number;
-  equipo: { descripcion: string | null; marca: string | null; modelo: string | null } | null;
-  producto: { nombre: string } | null;
+  equipo: { descripcion: string | null; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: string | null } | null;
+  producto: { nombre: string; imagenUrl: string | null; categoria: string | null } | null;
 };
 type Concepto = { tipo: string; descripcion: string };
+type ItemVista = { label: string; cantidad: number; imagenUrl: string | null };
 type Paquete = {
   id: string; nombre: string; tipoEvento: string; rangoPersonas: string | null;
   subtiposEvento: string | null; resumen: string | null; descripcion: string | null;
@@ -31,6 +32,25 @@ function itemLabel(it: Item): string {
   if (it.tipo === "PRODUCTO" && it.producto) return it.producto.nombre;
   if (it.equipo) return it.equipo.descripcion || [it.equipo.marca, it.equipo.modelo].filter(Boolean).join(" ") || "Equipo";
   return "Equipo";
+}
+function itemCategoria(it: Item): string {
+  if (it.tipo === "PRODUCTO" && it.producto) return it.producto.categoria || "Producciones";
+  return it.equipo?.categoria || "Equipo técnico";
+}
+function itemImagen(it: Item): string | null {
+  if (it.tipo === "PRODUCTO" && it.producto) return it.producto.imagenUrl;
+  return it.equipo?.imagenUrl ?? null;
+}
+// Agrupa los items por categoría preservando el orden de aparición.
+function agruparPorCategoria(items: Item[]): { categoria: string; items: ItemVista[] }[] {
+  const orden: string[] = [];
+  const mapa = new Map<string, ItemVista[]>();
+  for (const it of items) {
+    const cat = itemCategoria(it);
+    if (!mapa.has(cat)) { mapa.set(cat, []); orden.push(cat); }
+    mapa.get(cat)!.push({ label: itemLabel(it), cantidad: it.cantidad, imagenUrl: itemImagen(it) });
+  }
+  return orden.map((categoria) => ({ categoria, items: mapa.get(categoria)! }));
 }
 
 function useReveal(threshold = 0.14) {
@@ -64,8 +84,9 @@ export default function PaqueteDetalleClient({ paquete: p, galeria }: { paquete:
   const principal = media[activa] ?? media[0] ?? null;
 
   const subtipos = parseJSON(p.subtiposEvento);
-  const equipos = p.items.map((it) => `${it.cantidad > 1 ? it.cantidad + "× " : ""}${itemLabel(it)}`).filter(Boolean);
+  const gruposEquipo = agruparPorCategoria(p.items);
   const servicios = p.conceptos.map((c) => c.descripcion).filter(Boolean);
+  const confirmarMsg = `Hola, quiero confirmar el paquete "${p.nombre}" para mi evento. ¿Cómo continuamos?`;
 
   return (
     <div className="min-h-screen bg-[#080808] text-white" style={{ fontFamily: '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif' }}>
@@ -138,40 +159,30 @@ export default function PaqueteDetalleClient({ paquete: p, galeria }: { paquete:
               </div>
             )}
 
-            <a href={wa(`Hola, me interesa el paquete "${p.nombre}". ¿Me pueden dar más información y cotización?`)} target="_blank" rel="noopener noreferrer"
+            {p.descripcion && (
+              <div className="mb-6">
+                <p className="text-[11px] uppercase tracking-[0.14em] text-white/30 mb-3">La experiencia</p>
+                <p className="text-white/70 text-[15px] leading-relaxed whitespace-pre-line">{p.descripcion}</p>
+              </div>
+            )}
+
+            {p.propuestaValor && (
+              <div className="rounded-2xl p-6 mb-8" style={{ border: `1px solid ${GOLD}33`, background: "rgba(179,152,91,0.05)" }}>
+                <p className="text-[11px] uppercase tracking-[0.14em] mb-2.5" style={{ color: GOLD }}>Por qué elegirlo</p>
+                <p className="text-white/75 text-[15px] leading-relaxed whitespace-pre-line">{p.propuestaValor}</p>
+              </div>
+            )}
+
+            <a href={wa(confirmarMsg)} target="_blank" rel="noopener noreferrer"
               className="inline-block text-sm font-semibold px-8 py-4 rounded-full transition-all hover:scale-105" style={{ background: GOLD, color: "#000" }}>
-              Solicitar este paquete
+              Confirmar paquete
             </a>
           </R>
         </div>
       </section>
 
-      {/* Descripción y propuesta de valor */}
-      {(p.descripcion || p.propuestaValor) && (
-        <section className="mx-auto max-w-6xl px-6 pb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {p.descripcion && (
-              <R>
-                <div className="rounded-3xl p-7 h-full" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
-                  <p className="text-[11px] uppercase tracking-[0.14em] text-white/30 mb-3">La experiencia</p>
-                  <p className="text-white/70 text-[15px] leading-relaxed whitespace-pre-line">{p.descripcion}</p>
-                </div>
-              </R>
-            )}
-            {p.propuestaValor && (
-              <R delay={80}>
-                <div className="rounded-3xl p-7 h-full" style={{ border: `1px solid ${GOLD}33`, background: "rgba(179,152,91,0.05)" }}>
-                  <p className="text-[11px] uppercase tracking-[0.14em] mb-3" style={{ color: GOLD }}>Por qué elegirlo</p>
-                  <p className="text-white/75 text-[15px] leading-relaxed whitespace-pre-line">{p.propuestaValor}</p>
-                </div>
-              </R>
-            )}
-          </div>
-        </section>
-      )}
-
-      {/* Qué incluye */}
-      {(equipos.length > 0 || servicios.length > 0) && (
+      {/* Qué incluye — miniaturas por categoría */}
+      {(gruposEquipo.length > 0 || servicios.length > 0) && (
         <section className="mx-auto max-w-6xl px-6 py-14">
           <R>
             <p className="text-[11px] uppercase tracking-[0.22em] mb-3" style={{ color: GOLD }}>Contenido del paquete</p>
@@ -179,34 +190,49 @@ export default function PaqueteDetalleClient({ paquete: p, galeria }: { paquete:
               Qué incluye.
             </h2>
           </R>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-10">
-            {equipos.length > 0 && (
-              <R>
-                <p className="text-[11px] uppercase tracking-[0.14em] text-white/30 mb-4">Equipo y montaje</p>
-                <ul className="space-y-2.5">
-                  {equipos.map((t, i) => (
-                    <li key={i} className="flex items-start gap-3 text-[15px] text-white/70">
-                      <span className="shrink-0 mt-2 w-1.5 h-1.5 rounded-full" style={{ background: GOLD }} />
-                      {t}
-                    </li>
-                  ))}
-                </ul>
-              </R>
-            )}
-            {servicios.length > 0 && (
-              <R delay={80}>
-                <p className="text-[11px] uppercase tracking-[0.14em] text-white/30 mb-4">Servicios y operación</p>
-                <ul className="space-y-2.5">
-                  {servicios.map((t, i) => (
-                    <li key={i} className="flex items-start gap-3 text-[15px] text-white/70">
-                      <span className="shrink-0 mt-2 w-1.5 h-1.5 rounded-full" style={{ background: GOLD }} />
-                      {t}
-                    </li>
-                  ))}
-                </ul>
-              </R>
-            )}
-          </div>
+
+          {gruposEquipo.map((grupo, gi) => (
+            <R key={grupo.categoria} delay={gi * 60} className="mb-10">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-white/35 mb-4">{grupo.categoria}</p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+                {grupo.items.map((it, i) => (
+                  <div key={i} className="rounded-2xl overflow-hidden group" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
+                    <div className="relative aspect-square overflow-hidden">
+                      {it.imagenUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={it.imagenUrl} alt={it.label} loading="lazy" draggable={false}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center" style={{ background: "radial-gradient(circle at 35% 25%, rgba(179,152,91,0.18), #0c0c0c 70%)" }}>
+                          <span className="text-2xl font-bold text-white/15">{it.label.charAt(0).toUpperCase()}</span>
+                        </div>
+                      )}
+                      {it.cantidad > 1 && (
+                        <span className="absolute top-2 right-2 text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: GOLD, color: "#000" }}>
+                          ×{it.cantidad}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[12.5px] leading-snug text-white/70 px-3 py-2.5">{it.label}</p>
+                  </div>
+                ))}
+              </div>
+            </R>
+          ))}
+
+          {servicios.length > 0 && (
+            <R delay={80} className="mt-4">
+              <p className="text-[11px] uppercase tracking-[0.14em] text-white/35 mb-4">Servicios y operación</p>
+              <div className="flex flex-wrap gap-2.5">
+                {servicios.map((t, i) => (
+                  <span key={i} className="inline-flex items-center gap-2 text-[14px] text-white/70 px-4 py-2 rounded-full" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: GOLD }} />
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </R>
+          )}
         </section>
       )}
 
@@ -248,11 +274,11 @@ export default function PaqueteDetalleClient({ paquete: p, galeria }: { paquete:
               ¿Listo para tu evento?
             </h2>
             <p className="text-white/45 text-sm sm:text-base leading-relaxed mb-9 max-w-xl mx-auto">
-              Cuéntanos la fecha y el lugar. Ajustamos este paquete a tu evento y te enviamos una cotización.
+              Cuéntanos la fecha y el lugar. Confirmamos este paquete y lo ajustamos a tu evento.
             </p>
-            <a href={wa(`Hola, me interesa el paquete "${p.nombre}". ¿Me pueden dar más información y cotización?`)} target="_blank" rel="noopener noreferrer"
+            <a href={wa(confirmarMsg)} target="_blank" rel="noopener noreferrer"
               className="inline-block text-sm font-semibold px-9 py-4 rounded-full transition-all hover:scale-105" style={{ background: GOLD, color: "#000" }}>
-              Solicitar cotización
+              Confirmar paquete
             </a>
           </R>
         </div>

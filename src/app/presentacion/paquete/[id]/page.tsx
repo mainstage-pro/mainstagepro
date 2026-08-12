@@ -54,8 +54,18 @@ export default async function PaqueteDetallePage({ params }: { params: Promise<{
     items: p.items.map((it) => ({
       tipo: it.tipo,
       cantidad: it.cantidad,
-      equipo: it.equipo ? { descripcion: it.equipo.descripcion, marca: it.equipo.marca, modelo: it.equipo.modelo } : null,
-      producto: it.producto ? { nombre: it.producto.nombre } : null,
+      equipo: it.equipo
+        ? {
+            descripcion: it.equipo.descripcion,
+            marca: it.equipo.marca,
+            modelo: it.equipo.modelo,
+            imagenUrl: it.equipo.imagenUrl ?? null,
+            categoria: it.equipo.categoria?.nombre ?? null,
+          }
+        : null,
+      producto: it.producto
+        ? { nombre: it.producto.nombre, imagenUrl: it.producto.imagenUrl ?? null, categoria: it.producto.categoria ?? null }
+        : null,
     })),
     conceptos: p.conceptos.map((c) => ({ tipo: c.tipo, descripcion: c.descripcion })),
   };
