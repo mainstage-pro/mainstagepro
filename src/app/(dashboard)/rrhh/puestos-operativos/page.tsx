@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Combobox } from "@/components/Combobox";
 import { useToast } from "@/components/Toast";
-import { LayoutList, LayoutGrid, FileText, UserCheck, UserX, Link2, Sparkles, X, Plus, AlertTriangle } from "lucide-react";
+import { LayoutList, LayoutGrid, FileText, UserCheck, UserX, Link2, X, Plus, AlertTriangle } from "lucide-react";
 import { AREA_CODES } from "@/lib/areas";
 import { useAreas } from "@/components/AreasProvider";
 import {
@@ -31,12 +31,6 @@ interface Puesto {
   ocupantes?: Ocupante[]; kpis?: KpiPuesto[];
 }
 interface PersonaLite { id: string; nombre: string; puesto: string; activo: boolean }
-interface GenSubArea { id: string; nombre: string; area: string; count: number; principal: boolean }
-interface GenInfo {
-  diagnostico: { ocupantes: number; ocupantesSinUser: number; totalTareas: number; tareasSinSubarea: number };
-  subAreas: GenSubArea[];
-  mensaje?: string;
-}
 interface Catalogos {
   prestaciones: { id: string; nombre: string }[];
   valores: { id: string; nombre: string; descripcion?: string | null }[];
@@ -104,8 +98,6 @@ export default function PuestosOperativosPage() {
   const [vista, setVista] = useState<"lista" | "grid">("lista");
   const [genPdf, setGenPdf] = useState<string | null>(null);
   const [genLink, setGenLink] = useState<string | null>(null);
-  const [generando, setGenerando] = useState(false);
-  const [genInfo, setGenInfo] = useState<GenInfo | null>(null);
   const [subareasPorArea, setSubareasPorArea] = useState<Record<string, { id: string; nombre: string }[]>>({});
   const [objetivoPorArea, setObjetivoPorArea] = useState<Record<string, string>>({});
   const [catalogos, setCatalogos] = useState<Catalogos>({ prestaciones: [], valores: [], aptitudes: [], conocimientos: [] });
@@ -167,12 +159,10 @@ export default function PuestosOperativosPage() {
     setForm(EMPTY_FORM);
     resetExtras();
     setSaveError("");
-    setGenInfo(null);
     setShowForm(true);
   }
   async function openEdit(p: Puesto) {
     setSaveError("");
-    setGenInfo(null);
     // Trae el registro completo (incluye kpis y campos estructurados).
     let full = p;
     try {
@@ -203,32 +193,6 @@ export default function PuestosOperativosPage() {
     setKpis(ks.some(k => k.esFijoPlan) ? ks : [kpiFijo(), ...ks]);
     setOcupantesIds((full.ocupantes ?? []).map(o => o.id));
     setShowForm(true);
-  }
-
-  async function generarDesdePlan() {
-    if (!editing?.id) return;
-    setGenerando(true);
-    setGenInfo(null);
-    try {
-      const res = await fetch(`/api/rrhh/puestos-operativos/${editing.id}/generar-desde-plan`, { method: "POST" });
-      const d = await res.json();
-      if (!res.ok) { toast.error(d.error ?? "Error al generar"); return; }
-      setGenInfo({ diagnostico: d.diagnostico, subAreas: d.subAreas ?? [], mensaje: d.mensaje });
-      const hayContenido = (d.responsabilidades?.length ?? 0) > 0 || (d.estandares?.length ?? 0) > 0 || d.misionPuesto;
-      if (!hayContenido) { if (!d.mensaje) toast.error("No se obtuvo contenido"); return; }
-      setForm(p => ({
-        ...p,
-        misionPuesto: d.misionPuesto || p.misionPuesto,
-        responsabilidades: (d.responsabilidades ?? []).join("\n") || p.responsabilidades,
-        subAreaId: p.subAreaId || d.subAreaPrincipalId || "",
-      }));
-      setEstandares(d.estandares ?? []);
-      toast.success("Borrador generado. Revisa y guarda.");
-    } catch {
-      toast.error("Error de conexión al generar");
-    } finally {
-      setGenerando(false);
-    }
   }
 
   async function crearCatalogo(tipo: "aptitud" | "conocimiento", nombre: string) {
@@ -560,29 +524,6 @@ export default function PuestosOperativosPage() {
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Generar desde el plan de trabajo */}
-              {editing?.id && (
-                <div className="bg-[#0d0d0d] border border-[#1f1a12] rounded-lg p-4">
-                  <div className="flex items-start justify-between gap-3 flex-wrap">
-                    <div className="min-w-0">
-                      <p className="text-sm text-white font-medium flex items-center gap-2"><Sparkles className="w-4 h-4 text-[#B3985B]" /> Generar desde el plan de trabajo</p>
-                      <p className="text-[11px] text-gray-500 mt-0.5">Resume las tareas del plan asignadas al titular y propone misión, responsabilidades y criterios. Tú revisas y guardas.</p>
-                    </div>
-                    <button onClick={generarDesdePlan} disabled={generando} className="shrink-0 text-sm bg-[#B3985B]/15 hover:bg-[#B3985B]/25 text-[#B3985B] border border-[#B3985B]/30 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors">{generando ? "Analizando plan…" : "Generar borrador"}</button>
-                  </div>
-                  {genInfo && (
-                    <div className="mt-3 pt-3 border-t border-[#1a1a1a]">
-                      {genInfo.mensaje && <p className="text-xs text-orange-400/90 mb-2">{genInfo.mensaje}</p>}
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-gray-500">
-                        <span>{genInfo.diagnostico.totalTareas} tarea(s) del plan</span>
-                        <span>{genInfo.diagnostico.ocupantes} titular(es)</span>
-                        {genInfo.diagnostico.ocupantesSinUser > 0 && <span className="text-orange-400/80">{genInfo.diagnostico.ocupantesSinUser} sin usuario ligado</span>}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
               {/* §1 Identificación */}
               <div>
                 <p className={sectionCls}>Identificación</p>
