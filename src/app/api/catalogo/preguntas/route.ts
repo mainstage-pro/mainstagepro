@@ -31,12 +31,19 @@ export async function POST(req: NextRequest) {
 
   const maxOrden = await prisma.preguntaDescubrimiento.aggregate({ _max: { orden: true } });
   const reglas = limpiarReglas(body.reglas);
+  const alcance = ["general", "tipo", "nicho"].includes(body.alcance) ? body.alcance : "nicho";
   const pregunta = await prisma.preguntaDescubrimiento.create({
     data: {
       texto,
       tipoRespuesta: body.tipoRespuesta || "SI_NO",
       opciones: toJson(body.opciones),
-      nichos: toJson(body.nichos),
+      nichos: alcance === "nicho" ? toJson(body.nichos) : null,
+      alcance,
+      tipoEventoSlug: alcance === "tipo" && body.tipoEventoSlug ? String(body.tipoEventoSlug).trim().toLowerCase() : null,
+      bloque: alcance === "general" && body.bloque ? String(body.bloque).trim().toUpperCase().slice(0, 1) : null,
+      obligatoria: !!body.obligatoria,
+      preguntaPadreId: body.preguntaPadreId ? String(body.preguntaPadreId) : null,
+      condicionValor: body.condicionValor ? String(body.condicionValor) : null,
       orden: (maxOrden._max.orden ?? 0) + 1,
       reglas: { create: reglas },
     },

@@ -29,7 +29,7 @@ export async function GET() {
     prisma.preguntaDescubrimiento.findMany({
       where: { activa: true },
       orderBy: [{ orden: "asc" }],
-      select: { id: true, texto: true, tipoRespuesta: true, opciones: true, nichos: true, orden: true },
+      select: { id: true, texto: true, tipoRespuesta: true, opciones: true, nichos: true, alcance: true, tipoEventoSlug: true, bloque: true, obligatoria: true, preguntaPadreId: true, condicionValor: true, orden: true },
     }),
     getRangosPersonas(),
   ]);

@@ -83,6 +83,13 @@ export async function ensureCatalogoTables() {
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS "reglas_pregunta_preguntaId_idx" ON "reglas_pregunta"("preguntaId");`
   );
+  // Jerarquía de descubrimiento (aditivo e idempotente).
+  await prisma.$executeRawUnsafe(`ALTER TABLE "preguntas_descubrimiento" ADD COLUMN IF NOT EXISTS "alcance" TEXT NOT NULL DEFAULT 'nicho';`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "preguntas_descubrimiento" ADD COLUMN IF NOT EXISTS "tipoEventoSlug" TEXT;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "preguntas_descubrimiento" ADD COLUMN IF NOT EXISTS "bloque" TEXT;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "preguntas_descubrimiento" ADD COLUMN IF NOT EXISTS "obligatoria" BOOLEAN NOT NULL DEFAULT false;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "preguntas_descubrimiento" ADD COLUMN IF NOT EXISTS "preguntaPadreId" TEXT;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "preguntas_descubrimiento" ADD COLUMN IF NOT EXISTS "condicionValor" TEXT;`);
   // tipos_evento ya existe como modelo Prisma (migración formal); no se crea aquí.
   tablesEnsured = true;
 }

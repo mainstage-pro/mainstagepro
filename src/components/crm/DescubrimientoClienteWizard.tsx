@@ -8,6 +8,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useToast } from "@/components/Toast";
+import { preguntasVisibles } from "@/lib/descubrimiento";
 
 // ─── Formulario público del cliente (3 pantallas con barra de progreso) ──────
 // Reemplaza al DiscoveryForm en modo cliente SOLO en /descubrimiento/[token].
@@ -18,7 +19,7 @@ import { useToast } from "@/components/Toast";
 type TipoCat = { slug: string; nombre: string; emoji: string | null; subtitulo: string | null; orden: number };
 type NichoCat = { id: string; tipoEventoSlug: string; nombre: string; slug: string; descripcion: string | null; orden: number };
 type AdicionalCat = { id: string; nombre: string; descripcion: string | null; tiposEvento: string; nichos: string | null; frecuencia: string; imagenUrl: string | null; orden: number };
-type PreguntaCat = { id: string; texto: string; tipoRespuesta: string; opciones: string | null; nichos: string | null; orden: number };
+type PreguntaCat = { id: string; texto: string; tipoRespuesta: string; opciones: string | null; nichos: string | null; alcance?: string | null; tipoEventoSlug?: string | null; bloque?: string | null; obligatoria?: boolean; preguntaPadreId?: string | null; condicionValor?: string | null; orden: number };
 type RangoCat = { id: string; label: string; orden: number };
 
 type Catalogo = { tipos: TipoCat[]; nichos: NichoCat[]; adicionales: AdicionalCat[]; preguntas: PreguntaCat[]; rangos: RangoCat[] };
@@ -135,10 +136,8 @@ export default function DescubrimientoClienteWizard({
   );
   const preguntasDelNicho = useMemo(() => {
     if (!cat) return [];
-    return cat.preguntas
-      .filter(q => { const arr = jsonArr(q.nichos); return arr.length === 0 || (nichoSlug && arr.includes(nichoSlug)); })
-      .slice(0, 8);
-  }, [cat, nichoSlug]);
+    return preguntasVisibles(cat.preguntas, tipoEvento, nichoSlug, respuestas).slice(0, 10);
+  }, [cat, tipoEvento, nichoSlug, respuestas]);
   const adicionalesDelContexto = useMemo(() => {
     if (!cat || !tipoEvento) return [];
     return cat.adicionales.filter(a => {

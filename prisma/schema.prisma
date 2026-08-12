@@ -4272,6 +4272,15 @@ model PreguntaDescubrimiento {
   tipoRespuesta String           @default("SI_NO") // SI_NO | NUMERO | OPCION_UNICA | OPCION_MULTIPLE | TEXTO
   opciones      String?          // JSON array de opciones (si aplica)
   nichos        String?          // JSON array de slugs de nicho donde aplica
+  // Jerarquía de descubrimiento: 'general' (todo evento) → 'tipo' (un tipoEvento) →
+  // 'nicho' (nichos específicos). El motor pregunta en ese orden.
+  alcance       String           @default("nicho")   // general | tipo | nicho
+  tipoEventoSlug String?         // slug del tipo cuando alcance='tipo'
+  bloque        String?          // A | B | C — agrupa las generales
+  obligatoria   Boolean          @default(false)
+  // Pregunta condicional: solo se muestra si la respuesta de su padre == condicionValor.
+  preguntaPadreId String?
+  condicionValor  String?
   orden         Int              @default(0)
   activa        Boolean          @default(true)
   reglas        ReglaPregunta[]

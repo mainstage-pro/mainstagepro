@@ -12,7 +12,7 @@ type TipoEvento = { id: string; slug: string; nombre: string; emoji: string | nu
 type Nicho = { id: string; tipoEventoSlug: string; nombre: string; slug: string; descripcion: string | null; notasComerciales: string | null; orden: number; activo: boolean };
 type Regla = { id?: string; condicion: string; categoriasEquipo: string | null; adicionalIds: string | null };
 type Adicional = { id: string; nombre: string; descripcion: string | null; tiposEvento: string; nichos: string | null; frecuencia: string; productoId: string | null; composicion: string | null; imagenUrl: string | null; orden: number; activo: boolean; producto: { id: string; nombre: string } | null };
-type Pregunta = { id: string; texto: string; tipoRespuesta: string; opciones: string | null; nichos: string | null; orden: number; activa: boolean; reglas: Regla[] };
+type Pregunta = { id: string; texto: string; tipoRespuesta: string; opciones: string | null; nichos: string | null; alcance: string | null; tipoEventoSlug: string | null; bloque: string | null; obligatoria: boolean; preguntaPadreId: string | null; condicionValor: string | null; orden: number; activa: boolean; reglas: Regla[] };
 type Catalogo = { tipos: TipoEvento[]; nichos: Nicho[]; adicionales: Adicional[]; preguntas: Pregunta[] };
 // Item de inventario para el selector de composición (productos + equipos).
 type ItemInv = { id: string; tipo: "producto" | "equipo"; nombre: string; precio: number; imagenUrl: string | null; categoria: string | null };
@@ -38,6 +38,12 @@ const TIPO_RESPUESTA_LABEL: Record<string, string> = {
 function parseArr(s: string | null | undefined): string[] {
   if (!s) return [];
   try { const v = JSON.parse(s); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+
+// Alcance efectivo: si falta la columna, se deriva de nichos (retro-compat).
+function alcanceEfectivo(q: Pregunta): "general" | "tipo" | "nicho" {
+  if (q.alcance === "general" || q.alcance === "tipo" || q.alcance === "nicho") return q.alcance;
+  return parseArr(q.nichos).length ? "nicho" : "general";
 }
 
 function parseComposicion(s: string | null | undefined): LineaComp[] {
@@ -224,9 +230,13 @@ export default function CatalogoEventosPage() {
             <Seccionable titulo="Preguntas de descubrimiento" onNuevo={() => setEditPregunta({ tipoRespuesta: "SI_NO", activa: true, reglas: [], _nichos: [], _adicionalIds: [] })}>
               {cat.preguntas.map((q) => {
                 const encendidos = q.reglas.flatMap((r) => parseArr(r.adicionalIds));
+                const alc = alcanceEfectivo(q);
+                const ambito = alc === "general" ? `General${q.bloque ? ` · Bloque ${q.bloque}` : ""}`
+                  : alc === "tipo" ? `Tipo · ${(q.tipoEventoSlug || "").toUpperCase()}`
+                  : `Nicho · ${parseArr(q.nichos).join(", ") || "—"}`;
                 return (
                   <Fila key={q.id} activo={q.activa} titulo={q.texto}
-                    sub={`${TIPO_RESPUESTA_LABEL[q.tipoRespuesta] || q.tipoRespuesta} · enciende ${encendidos.length} adicional(es)`}
+                    sub={`${ambito} · ${TIPO_RESPUESTA_LABEL[q.tipoRespuesta] || q.tipoRespuesta}${q.preguntaPadreId ? " · condicional" : ""} · enciende ${encendidos.length}`}
                     onEdit={() => setEditPregunta({ ...q, _nichos: parseArr(q.nichos), _adicionalIds: encendidos })}
                     onDelete={() => borrar("preguntas", q.id, q.texto.slice(0, 30))} />
                 );
@@ -241,7 +251,7 @@ export default function CatalogoEventosPage() {
       {editTipo && <TipoEditor value={editTipo} onClose={() => setEditTipo(null)} onSaved={() => { setEditTipo(null); cargar(); }} toast={{ success, error }} />}
       {editNicho && <NichoEditor value={editNicho} tipos={cat.tipos} onClose={() => setEditNicho(null)} onSaved={() => { setEditNicho(null); cargar(); }} toast={{ success, error }} />}
       {editAdicional && <AdicionalEditor value={editAdicional} tipos={cat.tipos} nichos={cat.nichos} inventario={inventario} onClose={() => setEditAdicional(null)} onSaved={() => { setEditAdicional(null); cargar(); }} toast={{ success, error }} />}
-      {editPregunta && <PreguntaEditor value={editPregunta} nichos={cat.nichos} adicionales={cat.adicionales} onClose={() => setEditPregunta(null)} onSaved={() => { setEditPregunta(null); cargar(); }} toast={{ success, error }} />}
+      {editPregunta && <PreguntaEditor value={editPregunta} tipos={cat.tipos} nichos={cat.nichos} adicionales={cat.adicionales} preguntas={cat.preguntas} onClose={() => setEditPregunta(null)} onSaved={() => { setEditPregunta(null); cargar(); }} toast={{ success, error }} />}
     </div>
   );
 }
@@ -602,19 +612,39 @@ function AdicionalEditor({ value, tipos, nichos, inventario, onClose, onSaved, t
   );
 }
 
-function PreguntaEditor({ value, nichos, adicionales, onClose, onSaved, toast }: { value: Partial<Pregunta> & { _nichos?: string[]; _adicionalIds?: string[] }; nichos: Nicho[]; adicionales: Adicional[]; onClose: () => void; onSaved: () => void; toast: ToastFns }) {
+function PreguntaEditor({ value, tipos, nichos, adicionales, preguntas, onClose, onSaved, toast }: { value: Partial<Pregunta> & { _nichos?: string[]; _adicionalIds?: string[] }; tipos: TipoEvento[]; nichos: Nicho[]; adicionales: Adicional[]; preguntas: Pregunta[]; onClose: () => void; onSaved: () => void; toast: ToastFns }) {
+  const alcanceInicial = (value.alcance === "general" || value.alcance === "tipo" || value.alcance === "nicho")
+    ? value.alcance
+    : ((value._nichos?.length ?? 0) ? "nicho" : "general");
   const [f, setF] = useState({
     texto: value.texto || "", tipoRespuesta: value.tipoRespuesta || "SI_NO", activa: value.activa ?? true,
+    alcance: alcanceInicial as "general" | "tipo" | "nicho",
+    tipoEventoSlug: value.tipoEventoSlug || "", bloque: value.bloque || "A", obligatoria: value.obligatoria ?? false,
+    preguntaPadreId: value.preguntaPadreId || "", condicionValor: value.condicionValor || "",
     nichosSel: value._nichos || [], adicionalIds: value._adicionalIds || [],
   });
   const [guardando, setGuardando] = useState(false);
+  // Posibles padres: cualquier otra pregunta (no ella misma). El valor esperado es libre
+  // para respetar SI_NO ("Sí"/"No") u opciones personalizadas.
+  const posiblesPadres = preguntas.filter((p) => p.id !== value.id);
   async function guardar() {
     if (!f.texto.trim()) { toast.error("Texto requerido"); return; }
+    if (f.alcance === "tipo" && !f.tipoEventoSlug) { toast.error("Elige el tipo de evento"); return; }
     setGuardando(true);
     try {
       const url = value.id ? `/api/catalogo/preguntas/${value.id}` : "/api/catalogo/preguntas";
       const reglas = [{ condicion: { op: "truthy" }, categoriasEquipo: [], adicionalIds: f.adicionalIds }];
-      const body = { texto: f.texto, tipoRespuesta: f.tipoRespuesta, activa: f.activa, nichos: f.nichosSel, reglas };
+      const body = {
+        texto: f.texto, tipoRespuesta: f.tipoRespuesta, activa: f.activa,
+        alcance: f.alcance,
+        nichos: f.alcance === "nicho" ? f.nichosSel : [],
+        tipoEventoSlug: f.alcance === "tipo" ? f.tipoEventoSlug : null,
+        bloque: f.alcance === "general" ? f.bloque : null,
+        obligatoria: f.obligatoria,
+        preguntaPadreId: f.preguntaPadreId || null,
+        condicionValor: f.preguntaPadreId ? (f.condicionValor || null) : null,
+        reglas,
+      };
       const r = await fetch(url, { method: value.id ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!r.ok) throw new Error((await r.json()).error || "Error");
       toast.success("Guardado"); onSaved();
@@ -629,8 +659,43 @@ function PreguntaEditor({ value, nichos, adicionales, onClose, onSaved, toast }:
             {Object.entries(TIPO_RESPUESTA_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </Campo>
-        <Campo label="Nichos donde aplica (vacío = todos)"><Chips options={nichos.map((n) => ({ value: n.slug, label: n.nombre }))} value={f.nichosSel} onChange={(v) => setF({ ...f, nichosSel: v })} /></Campo>
+        <Campo label="¿Dónde se pregunta? (jerarquía: general → tipo → nicho)">
+          <div className="flex gap-2">
+            {([["general", "General"], ["tipo", "Por tipo"], ["nicho", "Por nicho"]] as const).map(([k, lbl]) => (
+              <button key={k} type="button" onClick={() => setF({ ...f, alcance: k })}
+                className={`flex-1 text-sm px-3 py-2 rounded-lg border transition-colors ${f.alcance === k ? "border-[#B3985B] bg-[#B3985B]/10 text-[#B3985B]" : "border-[#2a2a2a] bg-[#111] text-gray-400 hover:border-[#444]"}`}>{lbl}</button>
+            ))}
+          </div>
+        </Campo>
+        {f.alcance === "general" && (
+          <Campo label="Bloque (agrupa las generales)">
+            <select className={inputCls} value={f.bloque} onChange={(e) => setF({ ...f, bloque: e.target.value })}>
+              {["A", "B", "C"].map((b) => <option key={b} value={b}>Bloque {b}</option>)}
+            </select>
+          </Campo>
+        )}
+        {f.alcance === "tipo" && (
+          <Campo label="Tipo de evento">
+            <select className={inputCls} value={f.tipoEventoSlug} onChange={(e) => setF({ ...f, tipoEventoSlug: e.target.value })}>
+              <option value="">— Elige —</option>
+              {tipos.map((t) => <option key={t.slug} value={t.slug}>{t.nombre}</option>)}
+            </select>
+          </Campo>
+        )}
+        {f.alcance === "nicho" && (
+          <Campo label="Nichos donde aplica (vacío = todo el tipo)"><Chips options={nichos.map((n) => ({ value: n.slug, label: n.nombre }))} value={f.nichosSel} onChange={(v) => setF({ ...f, nichosSel: v })} /></Campo>
+        )}
         <Campo label="Al responder, enciende estos adicionales"><Chips options={adicionales.map((a) => ({ value: a.id, label: a.nombre }))} value={f.adicionalIds} onChange={(v) => setF({ ...f, adicionalIds: v })} /></Campo>
+        <Campo label="Condicional: mostrar solo si otra pregunta se respondió…">
+          <select className={inputCls} value={f.preguntaPadreId} onChange={(e) => setF({ ...f, preguntaPadreId: e.target.value })}>
+            <option value="">— No es condicional —</option>
+            {posiblesPadres.map((p) => <option key={p.id} value={p.id}>{p.texto.slice(0, 60)}</option>)}
+          </select>
+        </Campo>
+        {f.preguntaPadreId && (
+          <Campo label="…con este valor (vacío = cualquier respuesta afirmativa)"><input className={inputCls} value={f.condicionValor} onChange={(e) => setF({ ...f, condicionValor: e.target.value })} placeholder="Ej. Sí" /></Campo>
+        )}
+        <label className="flex items-center gap-2 text-sm text-gray-400 mb-3"><input type="checkbox" checked={f.obligatoria} onChange={(e) => setF({ ...f, obligatoria: e.target.checked })} /> Obligatoria</label>
         <label className="flex items-center gap-2 text-sm text-gray-400 mb-4"><input type="checkbox" checked={f.activa} onChange={(e) => setF({ ...f, activa: e.target.checked })} /> Activa</label>
         <Acciones onClose={onClose} onSave={guardar} guardando={guardando} />
       </div>

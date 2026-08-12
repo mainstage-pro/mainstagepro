@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { isLegacyString, parseLinks } from "@/utils/legacyText";
 import { parseFechasEvento } from "@/lib/fechas-evento";
+import { preguntasVisibles } from "@/lib/descubrimiento";
 
 const PASOS_DISCOVERY: Array<{ id: number; label: string; icon: LucideIcon }> = [
   { id: 1, label: "Info Básica", icon: ClipboardList },
@@ -117,7 +118,7 @@ function calcDuracionEvento(inicio: string, fin: string): string | null {
 // descubrimiento guiado (preguntas → adicionales) y adicionales frecuentes del
 // nicho. Todo es sugerencia: nada bloquea, valida ni oculta las 14 categorías.
 type AdicionalCat = { id: string; nombre: string; descripcion: string | null; tiposEvento: string; nichos: string | null; frecuencia: string; imagenUrl: string | null };
-type PreguntaCat = { id: string; texto: string; tipoRespuesta: string; opciones: string | null; nichos: string | null; reglas: { categoriasEquipo: string | null; adicionalIds: string | null }[] };
+type PreguntaCat = { id: string; texto: string; tipoRespuesta: string; opciones: string | null; nichos: string | null; alcance?: string | null; tipoEventoSlug?: string | null; bloque?: string | null; obligatoria?: boolean; preguntaPadreId?: string | null; condicionValor?: string | null; orden?: number; reglas: { categoriasEquipo: string | null; adicionalIds: string | null }[] };
 
 function rangoIncluye(label: string | null, asistentes: number | null): boolean {
   if (!label || asistentes == null) return true; // sin dato → no filtra
@@ -204,11 +205,10 @@ function DescubrimientoCatalogo({
     })
     .sort((x, y) => (x.frecuencia === "frecuente" ? 0 : 1) - (y.frecuencia === "frecuente" ? 0 : 1));
 
-  // Preguntas del nicho: las globales (sin nichos) y las del nicho elegido.
-  const preguntasDelNicho = preguntas.filter(q => {
-    const ns = jsonArr(q.nichos);
-    return ns.length === 0 || (nichoSlug && ns.includes(nichoSlug));
-  });
+  // Jerarquía general → tipo → nicho, con condicionales resueltas por las respuestas.
+  const valoresResp: Record<string, string> = {};
+  for (const [k, v] of Object.entries(respuestas)) valoresResp[k] = v.valor;
+  const preguntasDelNicho = preguntasVisibles(preguntas, tipoEvento, nichoSlug, valoresResp);
 
   if (candidatos.length === 0 && adicionalesDelTipo.length === 0 && preguntasDelNicho.length === 0) return null;
 
@@ -585,7 +585,7 @@ export default function DiscoveryForm({
   // arrays quedan vacíos y la UI cae al comportamiento previo (subtipos hardcodeados).
   const [catNichos, setCatNichos] = useState<{ id: string; tipoEventoSlug: string; nombre: string; slug: string }[]>([]);
   const [catAdicionales, setCatAdicionales] = useState<{ id: string; nombre: string; descripcion: string | null; tiposEvento: string; nichos: string | null; frecuencia: string; imagenUrl: string | null }[]>([]);
-  const [catPreguntas, setCatPreguntas] = useState<{ id: string; texto: string; tipoRespuesta: string; opciones: string | null; nichos: string | null; reglas: { categoriasEquipo: string | null; adicionalIds: string | null }[] }[]>([]);
+  const [catPreguntas, setCatPreguntas] = useState<PreguntaCat[]>([]);
   // Categorías de inventario (id↔nombre): permiten que una respuesta del descubrimiento
   // encienda su categoría ligada dentro de equiposInteres, para que viaje a la cotización.
   const [catCategorias, setCatCategorias] = useState<{ id: string; nombre: string }[]>([]);
