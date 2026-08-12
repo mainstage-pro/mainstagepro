@@ -113,6 +113,84 @@ function capacidadProducto(p: Producto): { min: number; max: number } | null {
   return { min, max };
 }
 
+// Celda de capacidad editable en línea: al pasar el cursor aparece "Definir";
+// al dar clic se abre un panel con los rangos disponibles (chips) para elegir la
+// cantidad de personas que cubre. Guarda uniforme a todos los tipos del producto.
+function CapacidadCell({ producto, rangos, onSave }: { producto: Producto; rangos: string[]; onSave: (rangosSel: string[]) => Promise<void> }) {
+  const tipos = parseTags(producto.tiposEvento);
+  const actuales = useMemo(() => {
+    const s = new Set<string>();
+    for (const c of producto.coberturas ?? []) for (const r of parseTags(c.rangos)) s.add(r);
+    return [...s];
+  }, [producto]);
+  const [open, setOpen] = useState(false);
+  const [sel, setSel] = useState<string[]>(actuales);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { if (open) setSel(actuales); }, [open, actuales]);
+
+  const cap = capacidadProducto(producto);
+  const sinTipo = tipos.length === 0;
+
+  async function guardar() {
+    setSaving(true);
+    try { await onSave(sel); setOpen(false); }
+    catch { /* el toast lo maneja el padre */ }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title={sinTipo ? "Clasifica el tipo de evento primero" : "Definir capacidad"}
+        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] tabular-nums transition-colors hover:bg-[#222]"
+      >
+        {cap ? (
+          <span className="text-gray-300">{cap.min}–{cap.max} pers.</span>
+        ) : (
+          <span className="text-[#555] group-hover:text-[#B3985B]">+ capacidad</span>
+        )}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+          <div className="absolute z-30 mt-1 left-0 w-60 rounded-lg border border-[#2a2a2a] bg-[#0d0d0d] p-2.5 shadow-xl">
+            {sinTipo ? (
+              <p className="text-[11px] text-gray-500">Clasifica el tipo de evento del producto para poder asignarle capacidad.</p>
+            ) : rangos.length === 0 ? (
+              <p className="text-[11px] text-gray-500">No hay rangos configurados en paquetes todavía.</p>
+            ) : (
+              <>
+                <p className="text-[10px] text-gray-500 mb-1.5">Rangos de personas que cubre</p>
+                <div className="flex flex-wrap gap-1.5 mb-2.5">
+                  {rangos.map((r) => {
+                    const on = sel.includes(r);
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setSel((prev) => (on ? prev.filter((x) => x !== r) : [...prev, r]))}
+                        className={`px-2 py-1 rounded-md text-[11px] transition-colors ${on ? "bg-[#B3985B] text-black font-semibold" : "bg-[#1a1a1a] text-gray-400 hover:text-white"}`}
+                      >
+                        {r}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={() => setOpen(false)} className="text-[11px] text-gray-400 hover:text-white px-2 py-1">Cancelar</button>
+                  <button type="button" onClick={guardar} disabled={saving} className="text-[11px] bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold px-3 py-1 rounded-md disabled:opacity-50">{saving ? "Guardando…" : "Guardar"}</button>
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Editor de producto (crear/editar) ────────────────────────────────────────
 type FormItem = { equipoId: string; cantidad: number };
 type FormState = {
@@ -798,6 +876,26 @@ export function ProductosSection() {
     setProductos((prev) => prev.map((p) => (p.id === id ? { ...p, tiposEvento: next.length ? JSON.stringify(next) : null } : p)));
   }
 
+  // Guardado inline de capacidad: aplica los rangos elegidos de forma uniforme a
+  // cada tipo de evento del producto (conserva sus subtipos). El editor completo
+  // sigue permitiendo rangos distintos por tipo. Requiere al menos un tipo.
+  async function saveCapacidadProducto(id: string, rangosSel: string[]) {
+    const p = productos.find((x) => x.id === id);
+    if (!p) return;
+    const tipos = parseTags(p.tiposEvento);
+    if (tipos.length === 0) { toast.error("Clasifica el tipo de evento primero"); throw new Error("sin-tipo"); }
+    const existentes = new Map((p.coberturas ?? []).map((c) => [c.tipoEvento, c]));
+    const cobs = tipos.map((t) => ({ tipoEvento: t, rangos: rangosSel, subtipos: parseTags(existentes.get(t)?.subtipos ?? null) }));
+    const res = await fetch(`/api/productos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ coberturas: cobs }),
+    });
+    if (!res.ok) { toast.error("No se pudo guardar la capacidad"); throw new Error("save-failed"); }
+    const json = await res.json();
+    if (json.producto) setProductos((prev) => prev.map((x) => (x.id === id ? json.producto : x)));
+  }
+
   async function eliminar(p: Producto) {
     const ok = await confirm({
       message: `¿Eliminar el producto "${p.nombre}"?`,
@@ -1048,17 +1146,8 @@ export function ProductosSection() {
                             onSave={(next) => saveTiposEventoProducto(p.id, next)}
                           />
                         </td>
-                        <td className="px-3 py-2.5 hidden lg:table-cell">
-                          {(() => {
-                            const cap = capacidadProducto(p);
-                            return cap ? (
-                              <span className="inline-flex items-center rounded-full bg-[#1a1a1a] px-2 py-0.5 text-[10px] text-gray-300 tabular-nums">
-                                {cap.min}–{cap.max} pers.
-                              </span>
-                            ) : (
-                              <span className="text-[#333]">—</span>
-                            );
-                          })()}
+                        <td className="px-3 py-2.5 hidden lg:table-cell relative" onClick={(ev) => ev.stopPropagation()}>
+                          <CapacidadCell producto={p} rangos={rangos} onSave={(sel) => saveCapacidadProducto(p.id, sel)} />
                         </td>
                         <td className="px-3 py-2.5 text-center hidden sm:table-cell text-white tabular-nums">
                           {p.items.length}

@@ -140,6 +140,18 @@ export default function CatalogoEventosPage() {
 
   const tipoNombre = (slug: string) => cat.tipos.find((t) => t.slug.toUpperCase() === slug.toUpperCase())?.nombre || slug;
 
+  // Agrega una pieza (producto o equipo del inventario) a la composición de un
+  // adicional desde la lista, con un solo clic. Optimista + PATCH; si falla recarga.
+  async function agregarPiezaAdicional(a: Adicional, item: ItemInv) {
+    const comp = parseComposicion(a.composicion);
+    if (comp.some((l) => l.tipo === item.tipo && l.referenciaId === item.id)) { error("Ya está en la composición"); return; }
+    const nueva: LineaComp[] = [...comp, { tipo: item.tipo, referenciaId: item.id, cantidad: 1, obligatorio: true }];
+    setCat((prev) => ({ ...prev, adicionales: prev.adicionales.map((x) => (x.id === a.id ? { ...x, composicion: JSON.stringify(nueva) } : x)) }));
+    const r = await fetch(`/api/catalogo/adicionales/${a.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ composicion: nueva }) });
+    if (!r.ok) { error("No se pudo agregar la pieza"); await cargar(); return; }
+    success(`Agregado a ${a.nombre}`);
+  }
+
   // Reordena adicionales: recibe los ids en su nuevo orden global (arriba→abajo,
   // secciones concatenadas). Actualiza orden optimista y persiste solo los que
   // cambiaron. El orden es global aunque se muestre agrupado por tipo.
@@ -158,6 +170,31 @@ export default function CatalogoEventosPage() {
     await Promise.all(
       cambiados.map(({ id, i }) =>
         fetch(`/api/catalogo/adicionales/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orden: i }),
+        })
+      )
+    );
+  }
+
+  // Reordena preguntas: recibe los ids en su nuevo orden global (secciones
+  // concatenadas). Igual que adicionales: orden global, persiste solo lo cambiado.
+  async function reordenarPreguntas(idsEnOrden: string[]) {
+    const ordenActual = new Map(cat.preguntas.map((q) => [q.id, q.orden]));
+    setCat((prev) => ({
+      ...prev,
+      preguntas: prev.preguntas.map((q) => {
+        const i = idsEnOrden.indexOf(q.id);
+        return i >= 0 ? { ...q, orden: i } : q;
+      }),
+    }));
+    const cambiados = idsEnOrden
+      .map((id, i) => ({ id, i }))
+      .filter(({ id, i }) => ordenActual.get(id) !== i);
+    await Promise.all(
+      cambiados.map(({ id, i }) =>
+        fetch(`/api/catalogo/preguntas/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ orden: i }),
@@ -233,35 +270,29 @@ export default function CatalogoEventosPage() {
             <AdicionalesSeccion
               adicionales={cat.adicionales}
               tipos={cat.tipos}
+              inventario={inventario}
               tipoNombre={tipoNombre}
               onNuevo={() => setEditAdicional({ frecuencia: "frecuente", activo: true, _tipos: [], _nichos: [] })}
               onEdit={(a) => setEditAdicional({ ...a, _tipos: parseArr(a.tiposEvento), _nichos: parseArr(a.nichos) })}
               onDelete={(a) => borrar("adicionales", a.id, a.nombre)}
               onReordenar={reordenarAdicionales}
+              onAgregarPieza={agregarPiezaAdicional}
             />
           )}
 
           {/* ── PREGUNTAS ── */}
           {seccion === "preguntas" && (
-            <Seccionable titulo="Preguntas de descubrimiento"
-              onNuevo={() => setEditPregunta({ tipoRespuesta: "SI_NO", activa: true, reglas: [], _nichos: [], _adicionalIds: [] })}
-              extra={<button onClick={sembrarBase} disabled={sembrandoBase} className="inline-flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-gray-300 text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"><Sparkles size={14} /> {sembrandoBase ? "Sembrando…" : "Sembrar generales"}</button>}
-            >
-              {cat.preguntas.map((q) => {
-                const encendidos = q.reglas.flatMap((r) => parseArr(r.adicionalIds));
-                const alc = alcanceEfectivo(q);
-                const ambito = alc === "general" ? `General${q.bloque ? ` · Bloque ${q.bloque}` : ""}`
-                  : alc === "tipo" ? `Tipo · ${(q.tipoEventoSlug || "").toUpperCase()}`
-                  : `Nicho · ${parseArr(q.nichos).join(", ") || "—"}`;
-                return (
-                  <Fila key={q.id} activo={q.activa} titulo={q.texto}
-                    sub={`${ambito} · ${TIPO_RESPUESTA_LABEL[q.tipoRespuesta] || q.tipoRespuesta}${q.preguntaPadreId ? " · condicional" : ""} · enciende ${encendidos.length}`}
-                    onEdit={() => setEditPregunta({ ...q, _nichos: parseArr(q.nichos), _adicionalIds: encendidos })}
-                    onDelete={() => borrar("preguntas", q.id, q.texto.slice(0, 30))} />
-                );
-              })}
-              {cat.preguntas.length === 0 && <Vacio />}
-            </Seccionable>
+            <PreguntasSeccion
+              preguntas={cat.preguntas}
+              tipos={cat.tipos}
+              nichos={cat.nichos}
+              onNuevo={(prefill) => setEditPregunta({ tipoRespuesta: "SI_NO", activa: true, reglas: [], _nichos: [], _adicionalIds: [], ...prefill })}
+              onEdit={(q) => setEditPregunta({ ...q, _nichos: parseArr(q.nichos), _adicionalIds: q.reglas.flatMap((r) => parseArr(r.adicionalIds)) })}
+              onDelete={(q) => borrar("preguntas", q.id, q.texto.slice(0, 30))}
+              onReordenar={reordenarPreguntas}
+              onSembrarBase={sembrarBase}
+              sembrandoBase={sembrandoBase}
+            />
           )}
         </>
       )}
@@ -325,14 +356,16 @@ function Vacio() {
 // Adicionales agrupados por tipo de evento (por su tipo primario = primero de la
 // lista) y reordenables por arrastre dentro de cada sección. El orden persistido
 // es global; al soltar se recalcula la secuencia completa arriba→abajo.
-function AdicionalesSeccion({ adicionales, tipos, tipoNombre, onNuevo, onEdit, onDelete, onReordenar }: {
+function AdicionalesSeccion({ adicionales, tipos, inventario, tipoNombre, onNuevo, onEdit, onDelete, onReordenar, onAgregarPieza }: {
   adicionales: Adicional[];
   tipos: TipoEvento[];
+  inventario: ItemInv[];
   tipoNombre: (slug: string) => string;
   onNuevo: () => void;
   onEdit: (a: Adicional) => void;
   onDelete: (a: Adicional) => void;
   onReordenar: (idsEnOrden: string[]) => void;
+  onAgregarPieza: (a: Adicional, item: ItemInv) => void;
 }) {
   const [dragId, setDragId] = useState<string | null>(null);
 
@@ -416,6 +449,7 @@ function AdicionalesSeccion({ adicionales, tipos, tipoNombre, onNuevo, onEdit, o
                           <span className={`text-[10px] px-1.5 py-0.5 rounded ${nLineas > 0 ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"}`}>{nLineas > 0 ? `${nLineas} pza${nLineas > 1 ? "s" : ""}` : "Sin composición"}</span>
                         </div>
                       </div>
+                      <QuickAddPieza inventario={inventario} existentes={new Set(parseComposicion(a.composicion).map((l) => `${l.tipo}:${l.referenciaId}`))} onAgregar={(i) => onAgregarPieza(a, i)} />
                       <button onClick={() => onEdit(a)} className="text-gray-500 hover:text-white p-1"><Pencil size={14} /></button>
                       <button onClick={() => onDelete(a)} className="text-gray-500 hover:text-red-400 p-1"><Trash2 size={14} /></button>
                     </div>
@@ -425,6 +459,171 @@ function AdicionalesSeccion({ adicionales, tipos, tipoNombre, onNuevo, onEdit, o
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+// Preguntas seccionadas por jerarquía: Generales (por bloque) → cada tipo de
+// evento → sus nichos. Cada sección tiene su botón de "+ pregunta" que pre-llena
+// el alcance, y las preguntas se reordenan por arrastre dentro de su sección.
+type PrefillPregunta = Partial<Pregunta> & { _nichos?: string[] };
+type GrupoPreg = { key: string; tipoKey: string | null; tipoLabel: string; grupoLabel: string; esNicho: boolean; prefill: PrefillPregunta; items: Pregunta[] };
+
+function PreguntasSeccion({ preguntas, tipos, nichos, onNuevo, onEdit, onDelete, onReordenar, onSembrarBase, sembrandoBase }: {
+  preguntas: Pregunta[];
+  tipos: TipoEvento[];
+  nichos: Nicho[];
+  onNuevo: (prefill: PrefillPregunta) => void;
+  onEdit: (q: Pregunta) => void;
+  onDelete: (q: Pregunta) => void;
+  onReordenar: (idsEnOrden: string[]) => void;
+  onSembrarBase: () => void;
+  sembrandoBase: boolean;
+}) {
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragGrupo, setDragGrupo] = useState<string | null>(null);
+
+  const grupos = useMemo<GrupoPreg[]>(() => {
+    const porOrden = (arr: Pregunta[]) => [...arr].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+    const out: GrupoPreg[] = [];
+    // Generales por bloque (A/B/C siempre visibles para poder agregar).
+    const generales = preguntas.filter((q) => alcanceEfectivo(q) === "general");
+    const extra = [...new Set(generales.map((q) => (q.bloque || "A").toUpperCase()))].filter((b) => !["A", "B", "C"].includes(b));
+    for (const b of ["A", "B", "C", ...extra]) {
+      const items = porOrden(generales.filter((q) => (q.bloque || "A").toUpperCase() === b));
+      out.push({ key: `gen:${b}`, tipoKey: null, tipoLabel: "Generales", grupoLabel: `Bloque ${b}`, esNicho: false, prefill: { alcance: "general", bloque: b }, items });
+    }
+    // Por tipo: preguntas del tipo + un subgrupo por nicho.
+    for (const t of tipos) {
+      const slug = t.slug;
+      const tipoQs = porOrden(preguntas.filter((q) => alcanceEfectivo(q) === "tipo" && (q.tipoEventoSlug || "").toUpperCase() === slug.toUpperCase()));
+      out.push({ key: `tipo:${slug}`, tipoKey: slug.toUpperCase(), tipoLabel: t.nombre, grupoLabel: "Preguntas del tipo", esNicho: false, prefill: { alcance: "tipo", tipoEventoSlug: slug }, items: tipoQs });
+      for (const n of nichos.filter((x) => x.tipoEventoSlug.toUpperCase() === slug.toUpperCase())) {
+        const nq = porOrden(preguntas.filter((q) => alcanceEfectivo(q) === "nicho" && parseArr(q.nichos).includes(n.slug)));
+        out.push({ key: `nicho:${slug}:${n.slug}`, tipoKey: slug.toUpperCase(), tipoLabel: t.nombre, grupoLabel: n.nombre, esNicho: true, prefill: { alcance: "nicho", _nichos: [n.slug] }, items: nq });
+      }
+    }
+    // Sin ubicar: nicho sin nichos válidos o tipo sin tipo del catálogo.
+    const ubicadas = new Set(out.flatMap((g) => g.items.map((i) => i.id)));
+    const sueltas = porOrden(preguntas.filter((q) => !ubicadas.has(q.id)));
+    if (sueltas.length) out.push({ key: "__suelto", tipoKey: "__x", tipoLabel: "Sin ubicar", grupoLabel: "Revisa su clasificación", esNicho: false, prefill: {}, items: sueltas });
+    return out;
+  }, [preguntas, tipos, nichos]);
+
+  function dedupe(ids: string[]): string[] {
+    const seen = new Set<string>();
+    return ids.filter((id) => (seen.has(id) ? false : (seen.add(id), true)));
+  }
+
+  function soltarEn(grupoKey: string, targetId: string) {
+    if (!dragId || dragId === targetId || dragGrupo !== grupoKey) { setDragId(null); setDragGrupo(null); return; }
+    const nuevo: string[] = [];
+    for (const g of grupos) {
+      if (g.key !== grupoKey) { nuevo.push(...g.items.map((i) => i.id)); continue; }
+      const ids = g.items.map((i) => i.id).filter((id) => id !== dragId);
+      const at = ids.indexOf(targetId);
+      if (at < 0) { nuevo.push(...g.items.map((i) => i.id)); continue; }
+      ids.splice(at, 0, dragId);
+      nuevo.push(...ids);
+    }
+    setDragId(null);
+    setDragGrupo(null);
+    onReordenar(dedupe(nuevo));
+  }
+
+  let lastTipo: string | null | undefined = undefined;
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm font-medium text-gray-300">Preguntas por jerarquía</p>
+        <button onClick={onSembrarBase} disabled={sembrandoBase} className="inline-flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-gray-300 text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-50">
+          <Sparkles size={14} /> {sembrandoBase ? "Sembrando…" : "Sembrar generales"}
+        </button>
+      </div>
+      <div className="space-y-2">
+        {grupos.map((g) => {
+          const nuevoTipo = g.tipoKey !== lastTipo;
+          lastTipo = g.tipoKey;
+          return (
+            <div key={g.key}>
+              {nuevoTipo && (
+                <p className="text-xs font-semibold text-white mt-4 mb-1.5 border-b border-[#1a1a1a] pb-1">{g.tipoLabel}</p>
+              )}
+              <div className={g.esNicho ? "pl-3 border-l border-[#1a1a1a] ml-1" : ""}>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[11px] uppercase tracking-wide text-gray-600">{g.grupoLabel} <span className="text-gray-700">({g.items.length})</span></p>
+                  {g.key !== "__suelto" && (
+                    <button onClick={() => onNuevo(g.prefill)} className="inline-flex items-center gap-1 text-[11px] text-gray-500 hover:text-[#B3985B]"><Plus size={12} /> Pregunta</button>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  {g.items.map((q) => {
+                    const encendidos = q.reglas.flatMap((r) => parseArr(r.adicionalIds));
+                    const arrastrando = dragId === q.id;
+                    return (
+                      <div
+                        key={q.id}
+                        draggable
+                        onDragStart={() => { setDragId(q.id); setDragGrupo(g.key); }}
+                        onDragEnd={() => { setDragId(null); setDragGrupo(null); }}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={() => soltarEn(g.key, q.id)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg bg-[#111] border ${arrastrando ? "border-[#B3985B] opacity-60" : "border-[#1f1f1f]"} ${q.activa ? "" : "opacity-50"}`}
+                      >
+                        <span className="cursor-grab active:cursor-grabbing text-gray-600 hover:text-gray-400 shrink-0"><GripVertical size={14} /></span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm text-white truncate">{q.texto}{!q.activa && <span className="ml-2 text-[10px] text-gray-500">(inactiva)</span>}</p>
+                          <p className="text-[11px] text-gray-500 truncate">{TIPO_RESPUESTA_LABEL[q.tipoRespuesta] || q.tipoRespuesta}{q.obligatoria ? " · obligatoria" : ""}{q.preguntaPadreId ? " · condicional" : ""}{encendidos.length ? ` · enciende ${encendidos.length}` : ""}</p>
+                        </div>
+                        <button onClick={() => onEdit(q)} className="text-gray-500 hover:text-white p-1"><Pencil size={14} /></button>
+                        <button onClick={() => onDelete(q)} className="text-gray-500 hover:text-red-400 p-1"><Trash2 size={14} /></button>
+                      </div>
+                    );
+                  })}
+                  {g.items.length === 0 && <p className="text-[11px] text-gray-700 py-1.5">Sin preguntas aquí. Usa “+ Pregunta”.</p>}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Botón de un clic para sumar una pieza (producto/equipo del inventario) a la
+// composición de un adicional, con buscador emergente. `existentes` evita repetir.
+function QuickAddPieza({ inventario, existentes, onAgregar }: { inventario: ItemInv[]; existentes: Set<string>; onAgregar: (i: ItemInv) => void }) {
+  const [open, setOpen] = useState(false);
+  const [busca, setBusca] = useState("");
+  const resultados = useMemo(() => {
+    const q = busca.trim().toLowerCase();
+    if (!q) return [] as ItemInv[];
+    return inventario.filter((i) => !existentes.has(`${i.tipo}:${i.id}`) && i.nombre.toLowerCase().includes(q)).slice(0, 8);
+  }, [busca, inventario, existentes]);
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen((v) => !v)} title="Agregar pieza a la composición" className="text-gray-500 hover:text-[#B3985B] p-1"><Plus size={14} /></button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 z-30 mt-1 w-64 rounded-lg border border-[#2a2a2a] bg-[#0d0d0d] p-2 shadow-xl">
+            <input autoFocus className={inputCls} placeholder="Buscar producto o equipo…" value={busca} onChange={(e) => setBusca(e.target.value)} />
+            {busca.trim() && (
+              <div className="mt-1 max-h-56 overflow-auto">
+                {resultados.length === 0 ? (
+                  <p className="text-xs text-gray-600 px-2 py-1.5">Sin resultados.</p>
+                ) : resultados.map((i) => (
+                  <button key={`${i.tipo}:${i.id}`} type="button" onClick={() => { onAgregar(i); setBusca(""); setOpen(false); }} className="w-full flex items-center gap-2 px-2 py-1.5 text-left rounded-md hover:bg-[#161616]">
+                    <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${i.tipo === "equipo" ? "bg-sky-500/15 text-sky-400" : "bg-violet-500/15 text-violet-400"}`}>{i.tipo === "equipo" ? "Equipo" : "Prod"}</span>
+                    <span className="flex-1 text-sm text-gray-200 truncate">{i.nombre}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
@@ -644,7 +843,10 @@ function PreguntaEditor({ value, tipos, nichos, adicionales, preguntas, onClose,
     tipoEventoSlug: value.tipoEventoSlug || "", bloque: value.bloque || "A", obligatoria: value.obligatoria ?? false,
     preguntaPadreId: value.preguntaPadreId || "", condicionValor: value.condicionValor || "",
     nichosSel: value._nichos || [], adicionalIds: value._adicionalIds || [],
+    opciones: parseArr(value.opciones) as string[],
   });
+  const [nuevaOpcion, setNuevaOpcion] = useState("");
+  const conOpciones = f.tipoRespuesta === "OPCION_UNICA" || f.tipoRespuesta === "OPCION_MULTIPLE";
   const [guardando, setGuardando] = useState(false);
   // Posibles padres: cualquier otra pregunta (no ella misma). El valor esperado es libre
   // para respetar SI_NO ("Sí"/"No") u opciones personalizadas.
@@ -652,12 +854,14 @@ function PreguntaEditor({ value, tipos, nichos, adicionales, preguntas, onClose,
   async function guardar() {
     if (!f.texto.trim()) { toast.error("Texto requerido"); return; }
     if (f.alcance === "tipo" && !f.tipoEventoSlug) { toast.error("Elige el tipo de evento"); return; }
+    if (conOpciones && f.opciones.length === 0) { toast.error("Agrega al menos una opción de respuesta"); return; }
     setGuardando(true);
     try {
       const url = value.id ? `/api/catalogo/preguntas/${value.id}` : "/api/catalogo/preguntas";
       const reglas = [{ condicion: { op: "truthy" }, categoriasEquipo: [], adicionalIds: f.adicionalIds }];
       const body = {
         texto: f.texto, tipoRespuesta: f.tipoRespuesta, activa: f.activa,
+        opciones: conOpciones ? f.opciones : [],
         alcance: f.alcance,
         nichos: f.alcance === "nicho" ? f.nichosSel : [],
         tipoEventoSlug: f.alcance === "tipo" ? f.tipoEventoSlug : null,
@@ -681,6 +885,26 @@ function PreguntaEditor({ value, tipos, nichos, adicionales, preguntas, onClose,
             {Object.entries(TIPO_RESPUESTA_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </Campo>
+        {conOpciones && (
+          <Campo label={`Opciones de respuesta (${f.tipoRespuesta === "OPCION_MULTIPLE" ? "el cliente elige varias" : "el cliente elige una"})`}>
+            <div className="space-y-1.5">
+              {f.opciones.map((op, idx) => (
+                <div key={idx} className="flex items-center gap-2 rounded-lg bg-[#111] border border-[#1f1f1f] px-2.5 py-1.5">
+                  <span className="flex-1 text-sm text-gray-200 truncate">{op}</span>
+                  <button type="button" onClick={() => setF({ ...f, opciones: f.opciones.filter((_, i) => i !== idx) })} className="text-gray-600 hover:text-red-400"><Trash2 size={14} /></button>
+                </div>
+              ))}
+              {f.opciones.length === 0 && <p className="text-xs text-gray-600 py-1">Sin opciones todavía. Escribe una y pulsa Agregar.</p>}
+            </div>
+            <div className="flex gap-2 mt-2">
+              <input className={inputCls} placeholder="Nueva opción…" value={nuevaOpcion}
+                onChange={(e) => setNuevaOpcion(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); const v = nuevaOpcion.trim(); if (v && !f.opciones.includes(v)) setF({ ...f, opciones: [...f.opciones, v] }); setNuevaOpcion(""); } }} />
+              <button type="button" onClick={() => { const v = nuevaOpcion.trim(); if (v && !f.opciones.includes(v)) setF({ ...f, opciones: [...f.opciones, v] }); setNuevaOpcion(""); }}
+                className="shrink-0 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-white text-xs font-medium px-3 rounded-lg">Agregar</button>
+            </div>
+          </Campo>
+        )}
         <Campo label="¿Dónde se pregunta? (jerarquía: general → tipo → nicho)">
           <div className="flex gap-2">
             {([["general", "General"], ["tipo", "Por tipo"], ["nicho", "Por nicho"]] as const).map(([k, lbl]) => (
