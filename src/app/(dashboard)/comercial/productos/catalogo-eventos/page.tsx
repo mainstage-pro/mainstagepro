@@ -68,6 +68,7 @@ export default function CatalogoEventosPage() {
   const [seccion, setSeccion] = useState<Seccion>("tipos");
   const [cargando, setCargando] = useState(true);
   const [sembrando, setSembrando] = useState(false);
+  const [sembrandoBase, setSembrandoBase] = useState(false);
 
   // editores
   const [editTipo, setEditTipo] = useState<Partial<TipoEvento> | null>(null);
@@ -110,6 +111,21 @@ export default function CatalogoEventosPage() {
       error(e instanceof Error ? e.message : "No se pudo sembrar");
     } finally {
       setSembrando(false);
+    }
+  }
+
+  async function sembrarBase() {
+    setSembrandoBase(true);
+    try {
+      const r = await fetch("/api/catalogo/seed", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ base: true }) });
+      if (!r.ok) throw new Error((await r.json()).error || "Error");
+      const { resultado } = await r.json();
+      success(`Preguntas base: ${resultado.generales} generales + ${resultado.otros} de "Otros"`);
+      await cargar();
+    } catch (e) {
+      error(e instanceof Error ? e.message : "No se pudo sembrar");
+    } finally {
+      setSembrandoBase(false);
     }
   }
 
@@ -227,7 +243,10 @@ export default function CatalogoEventosPage() {
 
           {/* ── PREGUNTAS ── */}
           {seccion === "preguntas" && (
-            <Seccionable titulo="Preguntas de descubrimiento" onNuevo={() => setEditPregunta({ tipoRespuesta: "SI_NO", activa: true, reglas: [], _nichos: [], _adicionalIds: [] })}>
+            <Seccionable titulo="Preguntas de descubrimiento"
+              onNuevo={() => setEditPregunta({ tipoRespuesta: "SI_NO", activa: true, reglas: [], _nichos: [], _adicionalIds: [] })}
+              extra={<button onClick={sembrarBase} disabled={sembrandoBase} className="inline-flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-gray-300 text-xs font-medium px-3 py-1.5 rounded-lg disabled:opacity-50"><Sparkles size={14} /> {sembrandoBase ? "Sembrando…" : "Sembrar generales"}</button>}
+            >
               {cat.preguntas.map((q) => {
                 const encendidos = q.reglas.flatMap((r) => parseArr(r.adicionalIds));
                 const alc = alcanceEfectivo(q);
@@ -257,14 +276,17 @@ export default function CatalogoEventosPage() {
 }
 
 // ── Componentes de lista ──────────────────────────────────────────────────────
-function Seccionable({ titulo, onNuevo, children }: { titulo: string; onNuevo: () => void; children: React.ReactNode }) {
+function Seccionable({ titulo, onNuevo, extra, children }: { titulo: string; onNuevo: () => void; extra?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
         <p className="text-sm font-medium text-gray-300">{titulo}</p>
-        <button onClick={onNuevo} className="inline-flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-white text-xs font-medium px-3 py-1.5 rounded-lg">
-          <Plus size={14} /> Nuevo
-        </button>
+        <div className="flex items-center gap-2">
+          {extra}
+          <button onClick={onNuevo} className="inline-flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-white text-xs font-medium px-3 py-1.5 rounded-lg">
+            <Plus size={14} /> Nuevo
+          </button>
+        </div>
       </div>
       <div className="space-y-1.5">{children}</div>
     </div>

@@ -66,7 +66,9 @@ export function preguntasVisibles<T extends PreguntaJerarquia>(
     if (!resp) return false;
     // Sin condicionValor, basta con que el padre tenga respuesta afirmativa.
     if (!q.condicionValor) return norm(resp) !== "no" && norm(resp) !== "no estoy seguro";
-    return norm(resp) === norm(q.condicionValor);
+    // condicionValor admite varios valores separados por "|" (p. ej. "Exterior|Mixto").
+    const esperados = q.condicionValor.split("|").map(norm).filter(Boolean);
+    return esperados.includes(norm(resp));
   };
 
   const porId = new Map(preguntas.map(q => [q.id, q]));
