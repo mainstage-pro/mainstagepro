@@ -8,6 +8,7 @@ import { Modal } from "@/components/Modal";
 import { EquipoGaleria } from "@/components/EquipoGaleria";
 import { CostoMantenimientoModal, type CostoMantenimiento } from "@/components/CostoMantenimientoModal";
 import { ESTADO_EQUIPO_LABEL, esRetornoAServicio } from "@/lib/equipo-estado";
+import { TipoEventoCell, type TipoEventoOpcion } from "@/components/TipoEventoCell";
 
 type Equipo = {
   id: string;
@@ -789,6 +790,19 @@ export default function InventarioMaestroPage() {
     }
   }
 
+  // Clasificación inline de tipo de evento. Usa el endpoint canónico
+  // (clasifOrigen="manual" + alimenta el sync a productos). El componente ya
+  // actualizó su estado local; aquí persistimos y sincronizamos la lista.
+  async function saveTiposEvento(id: string, next: string[]) {
+    const res = await fetch("/api/inventario/clasificacion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ equipoIds: [id], tiposEvento: next }),
+    });
+    if (!res.ok) { toast.error("No se pudo clasificar"); throw new Error("save-failed"); }
+    setEquipos(prev => prev.map(e => e.id === id ? { ...e, tiposEvento: next.length ? JSON.stringify(next) : null } : e));
+  }
+
   // Cambiar proveedor default — actualiza optimistamente el objeto proveedorDefault
   async function changeProveedor(id: string, proveedorId: string) {
     setSavingInline(id);
@@ -821,6 +835,8 @@ export default function InventarioMaestroPage() {
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [filtroInactivos, setFiltroInactivos] = useState(false);
   const [soloSinClasificar, setSoloSinClasificar] = useState(false);
+  const [filtroEvento, setFiltroEvento] = useState(""); // "" | MUSICAL | SOCIAL | EMPRESARIAL | OTRO
+  const [catalogoTipos, setCatalogoTipos] = useState<TipoEventoOpcion[]>([]);
   const [busqueda, setBusqueda] = useState("");
 
   const [vista, setVista] = useState<"lista" | "grid">("lista");
@@ -845,15 +861,17 @@ export default function InventarioMaestroPage() {
     if (filtroCategoria) qs.set("categoriaId", filtroCategoria);
     if (filtroInactivos) qs.set("inactivos", "true");
 
-    const [mRes, provRes] = await Promise.all([
+    const [mRes, provRes, catRes] = await Promise.all([
       fetch(`/api/inventario/maestro?${qs}`),
       fetch("/api/proveedores"),
+      fetch("/api/catalogo").catch(() => null),
     ]);
     const [mData, provData] = await Promise.all([mRes.json(), provRes.json()]);
     setEquipos(mData.equipos ?? []);
     setCategorias(mData.categorias ?? []);
     setKpis(mData.kpis ?? null);
     setProveedores(provData.proveedores ?? []);
+    if (catRes?.ok) { const c = await catRes.json(); setCatalogoTipos(c.tipos ?? []); }
     setLoading(false);
   }
 
@@ -985,13 +1003,14 @@ export default function InventarioMaestroPage() {
     const q = busqueda.trim().toLowerCase();
     return equipos.filter(e => {
       if (soloSinClasificar && (parseTiposEvento(e.tiposEvento).length > 0 || e.noCotizable)) return false;
+      if (filtroEvento && !parseTiposEvento(e.tiposEvento).includes(filtroEvento)) return false;
       if (!q) return true;
       return e.descripcion.toLowerCase().includes(q) ||
         (e.marca ?? "").toLowerCase().includes(q) ||
         (e.modelo ?? "").toLowerCase().includes(q) ||
         e.categoria.nombre.toLowerCase().includes(q);
     });
-  }, [equipos, busqueda, soloSinClasificar]);
+  }, [equipos, busqueda, soloSinClasificar, filtroEvento]);
 
   // Cobertura de clasificación: un equipo cuenta como clasificado si tiene tipo de
   // evento o si se marcó no cotizable (decisión explícita de excluirlo).
@@ -1273,13 +1292,18 @@ export default function InventarioMaestroPage() {
             <option value="">Categoría: todas</option>
             {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
           </select>
+          <select value={filtroEvento} onChange={e => setFiltroEvento(e.target.value)}
+            className="ms-card rounded-lg px-3 py-1.5 text-xs text-[#9ca3af] focus:outline-none">
+            <option value="">Tipo de evento: todos</option>
+            {catalogoTipos.map(t => <option key={t.slug} value={t.slug.toUpperCase()}>{t.nombre}</option>)}
+          </select>
           <label className="flex items-center gap-1.5 text-xs text-[#6b7280] cursor-pointer">
             <input type="checkbox" checked={filtroInactivos} onChange={e => setFiltroInactivos(e.target.checked)} className="accent-[#B3985B]" />
             Inactivos
           </label>
           <label className="flex items-center gap-1.5 text-xs text-[#6b7280] cursor-pointer">
             <input type="checkbox" checked={soloSinClasificar} onChange={e => setSoloSinClasificar(e.target.checked)} className="accent-[#B3985B]" />
-            Sin clasificar
+            Sin clasificar por evento
           </label>
           <div className="flex gap-0.5 bg-[#111] border border-[#222] rounded-lg p-0.5">
             <button onClick={() => setVista("lista")} title="Vista lista"
@@ -1346,6 +1370,13 @@ export default function InventarioMaestroPage() {
                       </span>
                       <span className="text-sm font-bold text-white">×{e.cantidadTotal}</span>
                     </div>
+                    <div className="mt-1.5 pt-1.5 border-t border-[#161616]" onClick={ev => ev.stopPropagation()}>
+                      <TipoEventoCell
+                        value={parseTiposEvento(e.tiposEvento)}
+                        tipos={catalogoTipos}
+                        onSave={next => saveTiposEvento(e.id, next)}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1363,6 +1394,7 @@ export default function InventarioMaestroPage() {
                 <tr className="border-b border-[#1a1a1a] text-[#6b7280]">
                   <th className="text-left px-4 py-2.5 font-medium">Equipo</th>
                   <th className="text-center px-3 py-2.5 font-medium hidden sm:table-cell">Estado</th>
+                  <th className="text-left px-3 py-2.5 font-medium hidden lg:table-cell">Tipo de evento</th>
                   <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Proveedor</th>
                   <th className="text-right px-3 py-2.5 font-medium">Cant.</th>
                   <th className="text-center px-3 py-2.5 font-medium hidden xl:table-cell">Acc.</th>
@@ -1373,7 +1405,7 @@ export default function InventarioMaestroPage() {
                 {porCategoria.map(({ cat, items }) => (
                   <>
                     <tr key={`cat-${cat.id}`} className="border-t border-[#1a1a1a]">
-                      <td colSpan={6} className="px-4 py-1.5 bg-[#0d0d0d]">
+                      <td colSpan={7} className="px-4 py-1.5 bg-[#0d0d0d]">
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">{cat.nombre}</span>
                           <span className="text-[#333] text-[10px]">({items.length})</span>
@@ -1425,6 +1457,14 @@ export default function InventarioMaestroPage() {
                                 {ESTADO_LABEL[e.estado] ?? e.estado}
                               </button>
                             )}
+                          </td>
+                          <td className="px-3 py-2.5 hidden lg:table-cell">
+                            <TipoEventoCell
+                              value={parseTiposEvento(e.tiposEvento)}
+                              tipos={catalogoTipos}
+                              onSave={next => saveTiposEvento(e.id, next)}
+                              triggerId={`tipoev-${e.id}`}
+                            />
                           </td>
                           <td className="px-3 py-2.5 hidden md:table-cell">
                             {e.tipo === "PROPIO" ? (
@@ -1478,7 +1518,7 @@ export default function InventarioMaestroPage() {
                         </tr>
                         {expandedId === e.id && (
                           <tr className="bg-[#080808]">
-                            <td colSpan={6} className="px-4 py-3">
+                            <td colSpan={7} className="px-4 py-3">
                               <UnidadesInline
                                 equipoId={e.id}
                                 unidades={unidadesCache[e.id]}

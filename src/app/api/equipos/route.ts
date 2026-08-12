@@ -23,6 +23,8 @@ const EQUIPO_SELECT = {
   voltajeRequerido: true,
   imagenUrl: true,
   imagenesUrls: true,
+  tiposEvento: true,
+  noCotizable: true,
   proveedoresPrecios: {
     where: { activo: true },
     select: {

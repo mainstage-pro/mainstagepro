@@ -31,6 +31,14 @@ export default function ClasificacionEquiposPage() {
   const [filtroCat, setFiltroCat] = useState("");
   const [soloSinClasificar, setSoloSinClasificar] = useState(false);
 
+  // Persistir el filtro "solo sin clasificar" para retomar el avance entre sesiones.
+  useEffect(() => {
+    if (localStorage.getItem("clasif:soloSinClasificar") === "1") setSoloSinClasificar(true);
+  }, []);
+  useEffect(() => {
+    localStorage.setItem("clasif:soloSinClasificar", soloSinClasificar ? "1" : "0");
+  }, [soloSinClasificar]);
+
   // Estado del panel de aplicación en lote.
   const [aplTipos, setAplTipos] = useState<string[]>([]);
   const [aplNichos, setAplNichos] = useState<string[]>([]);
