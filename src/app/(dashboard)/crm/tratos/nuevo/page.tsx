@@ -259,8 +259,9 @@ export default function NuevoContactoPage() {
         return;
       }
       const { trato } = await res.json();
-      // Ir al wizard de proceso comercial según la etapa
-      router.push(`/crm/tratos/${trato.id}/wizard`);
+      // El trato ahora es un registro único: al crearlo se abre su página en el
+      // panel de descubrimiento para capturar el brief (ya no hay wizard aparte).
+      router.push(`/crm/tratos/${trato.id}?panel=descubrimiento`);
     } catch {
       setError("Error de conexión");
       setLoading(false);
@@ -483,7 +484,7 @@ export default function NuevoContactoPage() {
           {etapa !== "PROSPECCION" && (
             <div className="mt-3 p-3 bg-[#0d0d0d] rounded-lg border border-[#1e1e1e]">
               <p className="text-[11px] text-gray-500">
-                ℹ️ Al crear el contacto en esta etapa, se abrirá directamente el wizard de descubrimiento para capturar la información del evento.
+                ℹ️ Al crear el contacto en esta etapa, se abrirá su brief de descubrimiento para capturar la información del evento.
               </p>
             </div>
           )}

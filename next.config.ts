@@ -21,6 +21,9 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      // ── Wizard del trato retirado (Fase 6): el proceso vive en la página del
+      //    trato como registro único; el brief se edita en ?panel=descubrimiento. ──
+      { source: "/crm/tratos/:id/wizard",    destination: "/crm/tratos/:id?panel=descubrimiento", permanent: true },
       // ── Descubrimiento público: /f (retirado) → /descubrimiento ──────────────
       // Links de formulario ya enviados por WhatsApp siguen funcionando.
       { source: "/f/:token",                 destination: "/descubrimiento/:token",     permanent: true },

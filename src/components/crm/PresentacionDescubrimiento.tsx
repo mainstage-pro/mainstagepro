@@ -45,7 +45,7 @@ export default function PresentacionDescubrimiento({ tratoId }: { tratoId: strin
     setBusy(null);
   }
 
-  const volver = `/crm/tratos/${tratoId}/wizard`;
+  const volver = `/crm/tratos/${tratoId}?panel=descubrimiento`;
   const crearHref = `/ventas/presentaciones/nueva?tratoId=${tratoId}&volver=${encodeURIComponent(volver)}`;
 
   return (

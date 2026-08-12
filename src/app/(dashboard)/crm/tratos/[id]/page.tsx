@@ -2122,14 +2122,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                 <p className="text-gray-500 text-sm">Información técnica del evento y equipo.</p>
               </div>
             </div>
-            <Link
-              href={`/crm/tratos/${id}/wizard`}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-700/20 hover:bg-violet-700/30 border border-violet-700/40 text-violet-300 font-bold transition-colors text-sm"
-            >
-              <PenLine strokeWidth={1.75} className="w-4 h-4" /> Abrir Wizard (Modo Edición)
-            </Link>
           </div>
-          
+
           <DiscoveryForm id={id} trato={trato} setTrato={setTrato} />
         </div>
       )}
