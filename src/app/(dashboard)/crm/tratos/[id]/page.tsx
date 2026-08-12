@@ -112,6 +112,10 @@ interface Trato {
   // ── Descubrimiento adicional ──
   contactoDecisorNombre: string | null;
   contactoDecisorCargo: string | null;
+  // ── Navegación persistida ──
+  ultimoPanel: string | null;
+  ultimoTab: string | null;
+  ultimaVisita: string | null;
   cotizaciones: Array<{
     id: string; numeroCotizacion: string; opcionLetra: string; grupoId: string | null;
     estado: string; granTotal: number; nombreEvento: string | null; nombreCotizacion: string | null;
@@ -198,6 +202,20 @@ const PASOS_DISCOVERY_DIR = [
   { id: 1, icon: "📋", label: "Info del evento" },
   { id: 2, icon: "🎯", label: "Alcance del servicio" },
 ];
+
+// ─── Navegación interna del trato (query params, no rutas hermanas) ───────────
+// Todo el estado de navegación vive en ?panel=/?tab=/?campo= y se persiste en el
+// registro (ultimoPanel/ultimoTab/ultimaVisita) para restaurar la posición al
+// reabrir. Ver docs/crm-trato-campos.md (Fase 1).
+const PANELS = ["proceso", "descubrimiento", "cotizacion", "tareas"] as const;
+const TABS = ["basica", "produccion", "extra", "comercial"] as const;
+type PanelId = (typeof PANELS)[number];
+type TabId = (typeof TABS)[number];
+const PANEL_DEFAULT: PanelId = "proceso";
+// Ventana para restaurar la última posición al reabrir sin params (días).
+const RESTORAR_VISITA_DIAS = 30;
+function esPanel(v: string | null): v is PanelId { return !!v && (PANELS as readonly string[]).includes(v); }
+function esTab(v: string | null): v is TabId { return !!v && (TABS as readonly string[]).includes(v); }
 
 // Subtipos de evento — dinámicos según tipoEvento
 const SUBTIPOS_EVENTO: Record<string, { value: string; label: string }[]> = {
@@ -736,6 +754,24 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   const [creandoCotizacion, setCreandoCotizacion] = useState(false);
   const [eliminandoCotizacion, setEliminandoCotizacion] = useState<string | null>(null);
 
+  // ── Estado de navegación interna (Fase 1) ──────────────────────────────────
+  // Fuente de verdad = query params. Panel/tab/campo se leen de la URL; cambiar
+  // de panel reemplaza el history entry (el back del navegador sale del trato,
+  // no recorre tabs). La posición se persiste en el registro con debounce.
+  const panel: PanelId = esPanel(searchParams.get("panel")) ? (searchParams.get("panel") as PanelId) : PANEL_DEFAULT;
+  const tab: TabId | null = esTab(searchParams.get("tab")) ? (searchParams.get("tab") as TabId) : null;
+  const campo: string | null = searchParams.get("campo");
+  const navegar = useCallback((nextPanel: PanelId, nextTab?: TabId | null, nextCampo?: string | null) => {
+    const qs = new URLSearchParams();
+    qs.set("panel", nextPanel);
+    if (nextTab) qs.set("tab", nextTab);
+    if (nextCampo) qs.set("campo", nextCampo);
+    router.replace(`/crm/tratos/${id}?${qs.toString()}`, { scroll: false });
+  }, [router, id]);
+  // Persistencia de posición: debounce para no escribir en cada render.
+  const persistNavRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navRestauradaRef = useRef(false);
+
   // Discovery state
   const [discForm, setDiscForm] = useState({
     tipoEvento: "MUSICAL",
@@ -817,6 +853,57 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     if (typeof window !== "undefined") localStorage.setItem(`trato-paso-${id}`, String(pasoActivo));
   }, [pasoActivo, id]);
+
+  // ── Restaurar posición al abrir (Fase 1) ───────────────────────────────────
+  // Al entrar sin ?panel= y con una visita reciente (≤30 días), redirige al
+  // panel/tab persistidos. Corre una sola vez tras cargar el trato. También
+  // estampa ultimaVisita = ahora.
+  useEffect(() => {
+    if (!trato || navRestauradaRef.current) return;
+    navRestauradaRef.current = true;
+    const sinParams = !searchParams.get("panel");
+    const visitaReciente =
+      !!trato.ultimaVisita &&
+      Date.now() - new Date(trato.ultimaVisita).getTime() < RESTORAR_VISITA_DIAS * 86400000;
+    if (sinParams && visitaReciente && esPanel(trato.ultimoPanel)) {
+      navegar(trato.ultimoPanel as PanelId, esTab(trato.ultimoTab) ? (trato.ultimoTab as TabId) : null);
+    }
+    // Estampa la visita (no bloquea la UI).
+    fetch(`/api/tratos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ultimaVisita: new Date().toISOString() }),
+    }).catch(() => {});
+  }, [trato, id, navegar, searchParams]);
+
+  // ── Persistir panel/tab con debounce (Fase 1) ──────────────────────────────
+  useEffect(() => {
+    if (!trato) return;
+    if (trato.ultimoPanel === panel && (trato.ultimoTab ?? null) === tab) return;
+    if (persistNavRef.current) clearTimeout(persistNavRef.current);
+    persistNavRef.current = setTimeout(() => {
+      fetch(`/api/tratos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ultimoPanel: panel, ultimoTab: tab }),
+      })
+        .then(() => setTrato(p => (p ? { ...p, ultimoPanel: panel, ultimoTab: tab } : p)))
+        .catch(() => {});
+    }, 600);
+    return () => { if (persistNavRef.current) clearTimeout(persistNavRef.current); };
+  }, [panel, tab, trato, id]);
+
+  // ── Scroll + focus al campo indicado por ?campo= (Fase 1) ──────────────────
+  useEffect(() => {
+    if (!campo || typeof document === "undefined") return;
+    const t = setTimeout(() => {
+      const el = document.getElementById(campo) as HTMLElement | null;
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (typeof el.focus === "function") el.focus({ preventScroll: true });
+    }, 200);
+    return () => clearTimeout(t);
+  }, [campo, panel, tab]);
 
   useEffect(() => {
     fetch("/api/usuarios-activos").then(r => r.json()).then(d => setUsuarios(d.usuarios ?? []));

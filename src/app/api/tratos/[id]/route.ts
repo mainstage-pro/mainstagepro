@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { syncFechaProximaAccion } from "@/app/api/seguimientos/route";
-import { ensureProcesoVentaColumns, ensureMultidiaColumns } from "@/lib/migraciones-lazy";
+import { ensureProcesoVentaColumns, ensureMultidiaColumns, ensureNavegacionColumns } from "@/lib/migraciones-lazy";
 import { defaultEtapaInterna, esEtapaInternaValida } from "@/lib/etapasInternas";
 import { parsePerfiles, serializePerfiles, MAX_PERFILES } from "@/lib/proceso/perfiles";
 
@@ -37,6 +37,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   await ensureVendedorId();
   await ensureBriefCols();
   await ensureProcesoVentaColumns();
+  await ensureNavegacionColumns();
   const { id } = await params;
 
   const trato = await prisma.trato.findUnique({
@@ -86,6 +87,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   await ensureBriefCols();
   await ensureProcesoVentaColumns();
   await ensureMultidiaColumns();
+  await ensureNavegacionColumns();
   const { id } = await params;
   const body = await request.json();
 
@@ -126,6 +128,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     "montoFinal",
     "confirmadaEn", "metodoConfirmacion", "notaConfirmacion",
     "contactoDecisorNombre", "contactoDecisorCargo",
+    // Navegación persistida (panel/tab donde se quedó el usuario)
+    "ultimoPanel", "ultimoTab", "ultimaVisita",
   ];
 
   const data: Record<string, unknown> = {};
@@ -139,7 +143,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         data[key] = parseInt(body[key]);
       } else if (key === "montoFinal" && body[key] !== null && body[key] !== "") {
         data[key] = parseFloat(body[key]);
-      } else if (key === "confirmadaEn" && body[key]) {
+      } else if ((key === "confirmadaEn" || key === "ultimaVisita") && body[key]) {
         data[key] = new Date(body[key]);
       } else if (key === "descubrimientoCompleto" || key === "tradeCalificado" || key === "familyAndFriends" || key === "realizarRender" || key === "requiereRevision") {
         data[key] = Boolean(body[key]);

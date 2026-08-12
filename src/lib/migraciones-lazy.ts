@@ -200,6 +200,34 @@ export async function ensureMultidiaColumns() {
 }
 
 /**
+ * Navegación persistida del trato: recuerda el panel/tab donde se quedó el usuario
+ * para restaurar la posición al reabrir. Las 3 columnas están en schema.prisma, así
+ * que Prisma las pide en cualquier lectura de tratos sin select — deben existir antes
+ * de leer. Idempotente. Ver docs/crm-trato-campos.md (Fase 1).
+ */
+let _navegacionReady = false;
+
+export async function ensureNavegacionColumns() {
+  if (_navegacionReady) return;
+  if (!await columnExists('tratos', 'ultimoPanel')) {
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "ultimoPanel" TEXT`);
+    } catch { /* ya existe */ }
+  }
+  if (!await columnExists('tratos', 'ultimoTab')) {
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "ultimoTab" TEXT`);
+    } catch { /* ya existe */ }
+  }
+  if (!await columnExists('tratos', 'ultimaVisita')) {
+    try {
+      await prisma.$executeRawUnsafe(`ALTER TABLE tratos ADD COLUMN IF NOT EXISTS "ultimaVisita" TIMESTAMP(3)`);
+    } catch { /* ya existe */ }
+  }
+  _navegacionReady = true;
+}
+
+/**
  * Migraciones lazy del día de montaje/desmontaje opcional (patrón Neon).
  * - proyectos.montajeDiaAparte / desmontajeDiaAparte: si el montaje/desmontaje es un día
  *   adicional (día antes / día después) o el mismo día del evento.

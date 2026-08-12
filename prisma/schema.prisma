@@ -304,6 +304,11 @@ model Trato {
   contactoDecisorNombre String? // nombre del decisor del cliente
   contactoDecisorCargo  String? // cargo/rol del decisor
 
+  // ── Navegación persistida (panel/tab donde se quedó el usuario) ─────────────
+  ultimoPanel  String? // proceso | descubrimiento | cotizacion | tareas
+  ultimoTab    String? // basica | produccion | extra | comercial (cuando panel=descubrimiento)
+  ultimaVisita DateTime? // última vez que se abrió el trato (para restaurar posición ≤30 días)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
