@@ -847,6 +847,7 @@ model Equipo {
   capacidadPorTipoEvento String?       // JSON: { "MUSICAL": "100-200", ... }
   noCotizable            Boolean       @default(false) // cables/consumibles: fuera de cobertura
   clasifOrigen           String?       // manual | heredado (trazabilidad del sync producto↔equipo)
+  estadoMigracion        String?       // null | migrado_a_accesorio (equipo promovido a Accesorio)
   propietario          String          @default("MAINSTAGE") // MAINSTAGE | HERVAM
   activo               Boolean         @default(true)
   fechaBaja            DateTime?       // Fecha en que se dió de baja (estado = DADO_DE_BAJA)
@@ -866,6 +867,7 @@ model Equipo {
   productoItems        ProductoEquipo[]
   productosDominante   Producto[]              @relation("ProductoEquipoDominante")
   paqueteItems         PaqueteItem[]
+  accesoriosMigrados   Accesorio[]             @relation("AccesorioEquipoOrigen")
 
   @@map("equipos")
 }
@@ -897,16 +899,53 @@ model EquipoNota {
   @@map("equipo_notas")
 }
 
-// Biblioteca permanente de accesorios por equipo (persiste entre proyectos)
+// Fila de enlace accesorio↔equipo padre (vista "Por equipo"). Tras la promoción a
+// catálogo de primera clase, la identidad del accesorio vive en Accesorio; aquí
+// solo persiste el vínculo. `nombre`/`categoria` quedan como legacy hasta migrar.
 model EquipoAccesorio {
-  id        String   @id @default(cuid())
-  equipoId  String
-  equipo    Equipo   @relation(fields: [equipoId], references: [id], onDelete: Cascade)
-  nombre    String
-  categoria String?  // cable | herramienta | consumible | soporte | otro
-  createdAt DateTime @default(now())
+  id          String     @id @default(cuid())
+  equipoId    String
+  equipo      Equipo     @relation(fields: [equipoId], references: [id], onDelete: Cascade)
+  accesorioId String?
+  accesorio   Accesorio? @relation(fields: [accesorioId], references: [id])
+  nombre      String
+  categoria   String?    // cable | herramienta | consumible | soporte | otro
+  createdAt   DateTime   @default(now())
 
   @@map("equipo_accesorios")
+}
+
+// Catálogo de accesorios de primera clase: identidad propia (foto, cantidad,
+// precio, categoría, tipos de evento). Puede vincularse a uno o más equipos padre
+// vía EquipoAccesorio y componer productos vía ProductoAccesorio. El precio es un
+// atributo del catálogo; su uso (con o sin precio) lo decide el contexto de inserción.
+model Accesorio {
+  id               String           @id @default(cuid())
+  nombre           String
+  marca            String?
+  modelo           String?
+  descripcion      String?
+  fotoUrl          String?
+  categoriaId      String?
+  categoria        CategoriaEquipo? @relation(fields: [categoriaId], references: [id])
+  proveedorId      String?          // null = propio (Mainstage); set = subrenta externa
+  proveedor        Proveedor?       @relation(fields: [proveedorId], references: [id])
+  tipoConteo       String           @default("default") // cuantificable | default
+  cantidad         Int?             // obligatorio si tipoConteo=cuantificable; null si default
+  valorAdquisicion Float?           // fuente: módulo de Activos (alimenta portafolio)
+  precioRenta      Float?           // por día; null = sin precio (entra en 0 al cotizar)
+  tiposEvento      String?          // JSON: ["MUSICAL","SOCIAL","EMPRESARIAL","OTRO"]
+  estado           String           @default("activo") // activo | inactivo
+  equipoOrigenId   String?          // solo accesorios migrados desde /equipos
+  equipoOrigen     Equipo?          @relation("AccesorioEquipoOrigen", fields: [equipoOrigenId], references: [id])
+  migradoEn        DateTime?
+  activo           Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  equipoLinks      EquipoAccesorio[]
+
+  @@map("accesorios")
 }
 
 model CategoriaEquipo {
@@ -918,6 +957,7 @@ model CategoriaEquipo {
   descSocial         String?  // Descripción amigable para eventos sociales
   descEmpresarial    String?  // Descripción amigable para eventos empresariales
   equipos            Equipo[]
+  accesorios         Accesorio[]
 
   @@map("categoria_equipos")
 }
@@ -1160,6 +1200,7 @@ model Proveedor {
   equiposPrecios   EquipoProveedorPrecio[] @relation("ProveedorEquiposPrecios")
   lineasRenta      CotizacionLinea[]      @relation("ProveedorRentaLineas")
   pasivosDeuda     PasivoDeuda[]
+  accesorios       Accesorio[]
 
   @@map("proveedores")
 }
