@@ -8,6 +8,7 @@ import ModuleIndexRedirect from "@/components/ModuleIndexRedirect";
 import { comercialProductosTabs } from "./tabs";
 import { SUBTIPOS_EVENTO, parseCoberturas, type Cobertura } from "@/lib/constants";
 import { Guitar, PartyPopper, Briefcase, Package, type LucideIcon } from "lucide-react";
+import { TipoEventoCell, type TipoEventoOpcion } from "@/components/TipoEventoCell";
 
 // ── Tipos ───────────────────────────────────────────────────────────────────
 type CambioClasifProp = { id: string; nombre: string; tiposAntes: string[]; tiposDespues: string[]; nichosAntes: string[]; nichosDespues: string[] };
@@ -92,6 +93,24 @@ function parseTags(json: string | null): string[] {
   } catch {
     return [];
   }
+}
+
+// Capacidad global derivada del producto: mínimo de los mínimos y máximo de los
+// máximos entre todos los rangos por tipo de evento. El rango preciso vive por
+// tipo (ProductoCobertura); este chip es la lectura resumida para la lista.
+function capacidadProducto(p: Producto): { min: number; max: number } | null {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const c of p.coberturas ?? []) {
+    for (const label of parseTags(c.rangos)) {
+      const m = label.match(/(\d+)\D+(\d+)/);
+      if (!m) continue;
+      min = Math.min(min, parseInt(m[1], 10));
+      max = Math.max(max, parseInt(m[2], 10));
+    }
+  }
+  if (!isFinite(min) || !isFinite(max)) return null;
+  return { min, max };
 }
 
 // ── Editor de producto (crear/editar) ────────────────────────────────────────
@@ -613,6 +632,7 @@ export function ProductosSection() {
   const [equipos, setEquipos] = useState<EquipoItem[]>([]);
   const [rangos, setRangos] = useState<string[]>([]);
   const [nichosCat, setNichosCat] = useState<NichoCatalogo[]>([]);
+  const [catalogoTipos, setCatalogoTipos] = useState<TipoEventoOpcion[]>([]);
   const [categoriasInv, setCategoriasInv] = useState<string[]>([]);
   const [sinPaquetear, setSinPaquetear] = useState<EquipoSinPaquetear[]>([]);
   const [loading, setLoading] = useState(true);
@@ -622,6 +642,7 @@ export function ProductosSection() {
   const [filtroDisp, setFiltroDisp] = useState<string>("TODAS");
   const [showSinPaquetear, setShowSinPaquetear] = useState(false);
   const [soloSinClasificar, setSoloSinClasificar] = useState(false);
+  const [soloSinCapacidad, setSoloSinCapacidad] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -648,6 +669,7 @@ export function ProductosSection() {
       setCategoriasInv((rc.categorias ?? []).map((c: { nombre: string }) => c.nombre));
       setRangos((rr.rangos ?? []).map((x: { label: string }) => x.label));
       setNichosCat(rcat.nichos ?? []);
+      setCatalogoTipos(rcat.tipos ?? []);
     } finally {
       setLoading(false);
     }
@@ -765,6 +787,17 @@ export function ProductosSection() {
     }
   }
 
+  // Guardado inline del tipo de evento (optimista, sin abrir el editor completo).
+  async function saveTiposEventoProducto(id: string, next: string[]) {
+    const res = await fetch(`/api/productos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tiposEvento: next }),
+    });
+    if (!res.ok) { toast.error("No se pudo clasificar"); throw new Error("save-failed"); }
+    setProductos((prev) => prev.map((p) => (p.id === id ? { ...p, tiposEvento: next.length ? JSON.stringify(next) : null } : p)));
+  }
+
   async function eliminar(p: Producto) {
     const ok = await confirm({
       message: `¿Eliminar el producto "${p.nombre}"?`,
@@ -794,9 +827,15 @@ export function ProductosSection() {
       if (filtroRol !== "TODOS" && (p.rol ?? "base") !== filtroRol) return false;
       if (filtroDisp !== "TODAS" && (p.disponibilidad ?? "propio") !== filtroDisp) return false;
       if (soloSinClasificar && parseTags(p.tiposEvento).length > 0) return false;
+      if (soloSinCapacidad && capacidadProducto(p) !== null) return false;
       return true;
     });
-  }, [productos, filtroCat, filtroTipo, filtroRol, filtroDisp, soloSinClasificar]);
+  }, [productos, filtroCat, filtroTipo, filtroRol, filtroDisp, soloSinClasificar, soloSinCapacidad]);
+
+  const sinCapacidadCount = useMemo(
+    () => productos.filter((p) => capacidadProducto(p) === null).length,
+    [productos]
+  );
 
   const porCategoria = useMemo(() => {
     const cats = [...new Set(visibles.map((p) => p.categoria ?? "OTRO"))].sort();
@@ -820,6 +859,14 @@ export function ProductosSection() {
             }`}
           >
             Sin clasificar
+          </button>
+          <button
+            onClick={() => setSoloSinCapacidad((v) => !v)}
+            className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+              soloSinCapacidad ? "bg-[#B3985B] text-black font-semibold" : "bg-[#1a1a1a] text-gray-300 hover:text-white"
+            }`}
+          >
+            Sin capacidad ({sinCapacidadCount})
           </button>
           <button
             onClick={() => setShowSinPaquetear((v) => !v)}
@@ -916,9 +963,9 @@ export function ProductosSection() {
           <option value="subrenta">Subrenta</option>
           <option value="bajo_pedido">Bajo pedido</option>
         </select>
-        {(filtroTipo !== "TODOS" || filtroRol !== "TODOS" || filtroDisp !== "TODAS" || soloSinClasificar) && (
+        {(filtroTipo !== "TODOS" || filtroRol !== "TODOS" || filtroDisp !== "TODAS" || soloSinClasificar || soloSinCapacidad) && (
           <button
-            onClick={() => { setFiltroTipo("TODOS"); setFiltroRol("TODOS"); setFiltroDisp("TODAS"); setSoloSinClasificar(false); }}
+            onClick={() => { setFiltroTipo("TODOS"); setFiltroRol("TODOS"); setFiltroDisp("TODAS"); setSoloSinClasificar(false); setSoloSinCapacidad(false); }}
             className="text-[11px] text-gray-500 hover:text-white px-2 py-1"
           >
             Limpiar filtros
@@ -952,6 +999,7 @@ export function ProductosSection() {
                   <th className="text-left px-4 py-2.5 font-medium">Producto</th>
                   <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Equipos que lo componen</th>
                   <th className="text-left px-3 py-2.5 font-medium hidden sm:table-cell">Tipo de evento</th>
+                  <th className="text-left px-3 py-2.5 font-medium hidden lg:table-cell">Capacidad</th>
                   <th className="text-center px-3 py-2.5 font-medium hidden sm:table-cell">Nº eq</th>
                   <th className="text-right px-3 py-2.5 font-medium">Precio</th>
                   <th className="px-3 py-2.5" />
@@ -961,7 +1009,7 @@ export function ProductosSection() {
                 {porCategoria.map(({ cat, items }) => (
                   <Fragment key={`cat-${cat}`}>
                     <tr className="border-t border-[#1a1a1a]">
-                      <td colSpan={6} className="px-4 py-1.5 bg-[#0d0d0d]">
+                      <td colSpan={7} className="px-4 py-1.5 bg-[#0d0d0d]">
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-[#6b7280] uppercase tracking-widest font-semibold">{cat}</span>
                           <span className="text-[#333] text-[10px]">({items.length})</span>
@@ -993,27 +1041,22 @@ export function ProductosSection() {
                             {p.items.map((it) => `${it.cantidad}× ${nombreEq(it.equipo)}`).join(", ")}
                           </p>
                         </td>
-                        <td className="px-3 py-2.5 hidden sm:table-cell">
+                        <td className="px-3 py-2.5 hidden sm:table-cell" onClick={(ev) => ev.stopPropagation()}>
+                          <TipoEventoCell
+                            value={parseTags(p.tiposEvento)}
+                            tipos={catalogoTipos}
+                            onSave={(next) => saveTiposEventoProducto(p.id, next)}
+                          />
+                        </td>
+                        <td className="px-3 py-2.5 hidden lg:table-cell">
                           {(() => {
-                            const tipos = parseTags(p.tiposEvento);
-                            if (tipos.length === 0) return <span className="text-[#333]">—</span>;
-                            return (
-                              <div className="flex flex-wrap gap-1">
-                                {tipos.map((t) => {
-                                  const tipo = TIPOS_EVENTO.find((x) => x.key === t);
-                                  if (!tipo) return null;
-                                  const Icon = tipo.icon;
-                                  return (
-                                    <span
-                                      key={t}
-                                      className="inline-flex items-center gap-1 rounded-full bg-[#1a1a1a] px-2 py-0.5 text-[10px] text-gray-300"
-                                    >
-                                      <Icon strokeWidth={1.75} className="w-3 h-3 text-[#B3985B]" />
-                                      {tipo.label}
-                                    </span>
-                                  );
-                                })}
-                              </div>
+                            const cap = capacidadProducto(p);
+                            return cap ? (
+                              <span className="inline-flex items-center rounded-full bg-[#1a1a1a] px-2 py-0.5 text-[10px] text-gray-300 tabular-nums">
+                                {cap.min}–{cap.max} pers.
+                              </span>
+                            ) : (
+                              <span className="text-[#333]">—</span>
                             );
                           })()}
                         </td>
