@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { Modal } from "@/components/Modal";
-import { Layers, Tags, PlusCircle, HelpCircle, Pencil, Trash2, Plus, Sparkles } from "lucide-react";
+import { Layers, Tags, PlusCircle, HelpCircle, Pencil, Trash2, Plus, Sparkles, GripVertical } from "lucide-react";
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 type TipoEvento = { id: string; slug: string; nombre: string; emoji: string | null; subtitulo: string | null; descripcion: string | null; orden: number; activo: boolean };
@@ -118,6 +118,32 @@ export default function CatalogoEventosPage() {
 
   const tipoNombre = (slug: string) => cat.tipos.find((t) => t.slug.toUpperCase() === slug.toUpperCase())?.nombre || slug;
 
+  // Reordena adicionales: recibe los ids en su nuevo orden global (arriba→abajo,
+  // secciones concatenadas). Actualiza orden optimista y persiste solo los que
+  // cambiaron. El orden es global aunque se muestre agrupado por tipo.
+  async function reordenarAdicionales(idsEnOrden: string[]) {
+    const ordenActual = new Map(cat.adicionales.map((a) => [a.id, a.orden]));
+    setCat((prev) => ({
+      ...prev,
+      adicionales: prev.adicionales.map((a) => {
+        const i = idsEnOrden.indexOf(a.id);
+        return i >= 0 ? { ...a, orden: i } : a;
+      }),
+    }));
+    const cambiados = idsEnOrden
+      .map((id, i) => ({ id, i }))
+      .filter(({ id, i }) => ordenActual.get(id) !== i);
+    await Promise.all(
+      cambiados.map(({ id, i }) =>
+        fetch(`/api/catalogo/adicionales/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orden: i }),
+        })
+      )
+    );
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
       <div className="flex items-start justify-between gap-4 mb-1">
@@ -182,23 +208,15 @@ export default function CatalogoEventosPage() {
 
           {/* ── ADICIONALES ── */}
           {seccion === "adicionales" && (
-            <Seccionable titulo="Adicionales" onNuevo={() => setEditAdicional({ frecuencia: "frecuente", activo: true, _tipos: [], _nichos: [] })}>
-              {cat.adicionales.map((a) => {
-                const nLineas = parseComposicion(a.composicion).length || (a.productoId ? 1 : 0);
-                return (
-                  <Fila key={a.id} activo={a.activo}
-                    titulo={a.nombre}
-                    sub={parseArr(a.tiposEvento).map(tipoNombre).join(" · ")}
-                    badges={[
-                      a.frecuencia === "ocasional" ? { label: "ocasional", tone: "gray" as const } : { label: "frecuente", tone: "gold" as const },
-                      nLineas > 0 ? { label: `${nLineas} pza${nLineas > 1 ? "s" : ""}`, tone: "green" as const } : { label: "Sin composición", tone: "red" as const },
-                    ]}
-                    onEdit={() => setEditAdicional({ ...a, _tipos: parseArr(a.tiposEvento), _nichos: parseArr(a.nichos) })}
-                    onDelete={() => borrar("adicionales", a.id, a.nombre)} />
-                );
-              })}
-              {cat.adicionales.length === 0 && <Vacio />}
-            </Seccionable>
+            <AdicionalesSeccion
+              adicionales={cat.adicionales}
+              tipos={cat.tipos}
+              tipoNombre={tipoNombre}
+              onNuevo={() => setEditAdicional({ frecuencia: "frecuente", activo: true, _tipos: [], _nichos: [] })}
+              onEdit={(a) => setEditAdicional({ ...a, _tipos: parseArr(a.tiposEvento), _nichos: parseArr(a.nichos) })}
+              onDelete={(a) => borrar("adicionales", a.id, a.nombre)}
+              onReordenar={reordenarAdicionales}
+            />
           )}
 
           {/* ── PREGUNTAS ── */}
@@ -270,6 +288,114 @@ function Fila({ activo, titulo, sub, badges, onEdit, onDelete }: { activo: boole
 
 function Vacio() {
   return <p className="text-sm text-gray-600 py-6 text-center">Sin registros. Usa “Nuevo” o siembra el catálogo base.</p>;
+}
+
+// Adicionales agrupados por tipo de evento (por su tipo primario = primero de la
+// lista) y reordenables por arrastre dentro de cada sección. El orden persistido
+// es global; al soltar se recalcula la secuencia completa arriba→abajo.
+function AdicionalesSeccion({ adicionales, tipos, tipoNombre, onNuevo, onEdit, onDelete, onReordenar }: {
+  adicionales: Adicional[];
+  tipos: TipoEvento[];
+  tipoNombre: (slug: string) => string;
+  onNuevo: () => void;
+  onEdit: (a: Adicional) => void;
+  onDelete: (a: Adicional) => void;
+  onReordenar: (idsEnOrden: string[]) => void;
+}) {
+  const [dragId, setDragId] = useState<string | null>(null);
+
+  // Secciones en orden de catálogo de tipos; adicional filed bajo su tipo primario.
+  const grupos = useMemo(() => {
+    const ordenados = [...adicionales].sort((a, b) => a.orden - b.orden);
+    const porTipo = new Map<string, Adicional[]>();
+    const sinTipo: Adicional[] = [];
+    for (const a of ordenados) {
+      const primario = parseArr(a.tiposEvento)[0];
+      if (!primario) { sinTipo.push(a); continue; }
+      const key = primario.toUpperCase();
+      const arr = porTipo.get(key) || [];
+      arr.push(a);
+      porTipo.set(key, arr);
+    }
+    const out = tipos
+      .map((t) => ({ key: t.slug.toUpperCase(), label: t.nombre, items: porTipo.get(t.slug.toUpperCase()) || [] }))
+      .filter((g) => g.items.length > 0);
+    // Tipos presentes en datos pero fuera del catálogo activo.
+    for (const [key, items] of porTipo) {
+      if (!out.some((g) => g.key === key) && !tipos.some((t) => t.slug.toUpperCase() === key)) {
+        out.push({ key, label: tipoNombre(key), items });
+      }
+    }
+    if (sinTipo.length) out.push({ key: "__none", label: "Sin tipo de evento", items: sinTipo });
+    return out;
+  }, [adicionales, tipos, tipoNombre]);
+
+  // Reordena dentro de una sección y emite la nueva secuencia global de ids.
+  function soltarEn(grupoKey: string, targetId: string) {
+    if (!dragId || dragId === targetId) { setDragId(null); return; }
+    const nuevoGlobal: string[] = [];
+    for (const g of grupos) {
+      if (g.key !== grupoKey) { nuevoGlobal.push(...g.items.map((a) => a.id)); continue; }
+      const ids = g.items.map((a) => a.id).filter((id) => id !== dragId);
+      const at = ids.indexOf(targetId);
+      if (at < 0) { nuevoGlobal.push(...g.items.map((a) => a.id)); continue; }
+      ids.splice(at, 0, dragId);
+      nuevoGlobal.push(...ids);
+    }
+    setDragId(null);
+    onReordenar(nuevoGlobal);
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-sm font-medium text-gray-300">Adicionales</p>
+        <button onClick={onNuevo} className="inline-flex items-center gap-1.5 bg-[#1a1a1a] hover:bg-[#222] border border-[#2a2a2a] text-white text-xs font-medium px-3 py-1.5 rounded-lg">
+          <Plus size={14} /> Nuevo
+        </button>
+      </div>
+      {adicionales.length === 0 ? (
+        <Vacio />
+      ) : (
+        <div className="space-y-4">
+          {grupos.map((g) => (
+            <div key={g.key}>
+              <p className="text-[11px] uppercase tracking-wide text-gray-600 mb-1">{g.label} <span className="text-gray-700">({g.items.length})</span></p>
+              <div className="space-y-1.5">
+                {g.items.map((a) => {
+                  const nLineas = parseComposicion(a.composicion).length || (a.productoId ? 1 : 0);
+                  const arrastrando = dragId === a.id;
+                  return (
+                    <div
+                      key={a.id}
+                      draggable
+                      onDragStart={() => setDragId(a.id)}
+                      onDragEnd={() => setDragId(null)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => soltarEn(g.key, a.id)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg bg-[#111] border ${arrastrando ? "border-[#B3985B] opacity-60" : "border-[#1f1f1f]"} ${a.activo ? "" : "opacity-50"}`}
+                    >
+                      <span className="cursor-grab active:cursor-grabbing text-gray-600 hover:text-gray-400 shrink-0"><GripVertical size={14} /></span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-white truncate">{a.nombre}{!a.activo && <span className="ml-2 text-[10px] text-gray-500">(inactivo)</span>}</p>
+                        <p className="text-[11px] text-gray-500 truncate">{parseArr(a.tiposEvento).map(tipoNombre).join(" · ")}</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded ${a.frecuencia === "ocasional" ? "bg-[#2a2a2a] text-gray-400" : "bg-[#B3985B]/15 text-[#B3985B]"}`}>{a.frecuencia === "ocasional" ? "ocasional" : "frecuente"}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded ${nLineas > 0 ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"}`}>{nLineas > 0 ? `${nLineas} pza${nLineas > 1 ? "s" : ""}` : "Sin composición"}</span>
+                        </div>
+                      </div>
+                      <button onClick={() => onEdit(a)} className="text-gray-500 hover:text-white p-1"><Pencil size={14} /></button>
+                      <button onClick={() => onDelete(a)} className="text-gray-500 hover:text-red-400 p-1"><Trash2 size={14} /></button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ── Inputs compartidos ──────────────────────────────────────────────────────
