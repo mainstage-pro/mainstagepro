@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import PresentacionNav from "@/components/presentacion/PresentacionNav";
 
 const GOLD = "#B3985B";
@@ -11,7 +12,7 @@ type Equipo = { id: string; descripcion: string | null; marca: string | null; mo
 type ProductoLite = { id: string; nombre: string; categoria: string | null; imagenUrl: string | null; precioFinal: number };
 type Item = { id: string; tipo: string; cantidad: number; equipo: Equipo | null; producto: ProductoLite | null };
 type Concepto = { id: string; tipo: string; descripcion: string };
-type Imagen = { id: string; url: string; orden: number };
+type Imagen = { id: string; url: string; tipo?: string; orden: number };
 type Paquete = {
   id: string; nombre: string; tipoEvento: string; rangoPersonas: string | null;
   subtiposEvento: string | null; resumen: string | null; descripcion: string | null;
@@ -64,21 +65,24 @@ function itemLabel(it: Item): string {
 }
 
 function PaqueteCard({ p }: { p: Paquete }) {
-  const [abierto, setAbierto] = useState(false);
-  const portada = p.imagenes[0]?.url ?? null;
+  const refs = p.imagenes.filter((im) => im.tipo !== "RENDER");
+  const portada = (refs[0] ?? p.imagenes[0])?.url ?? null;
+  const tieneRender = p.imagenes.some((im) => im.tipo === "RENDER");
   const subtipos = parseJSON(p.subtiposEvento);
   const incluye = [
     ...p.items.map((it) => `${it.cantidad > 1 ? it.cantidad + "× " : ""}${itemLabel(it)}`),
     ...p.conceptos.map((c) => c.descripcion),
   ].filter(Boolean);
-  const visibles = abierto ? incluye : incluye.slice(0, 6);
+  const visibles = incluye.slice(0, 6);
 
   return (
-    <div className="flex flex-col rounded-3xl overflow-hidden h-full" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
+    <Link href={`/presentacion/paquete/${p.id}`}
+      className="group flex flex-col rounded-3xl overflow-hidden h-full transition-all hover:-translate-y-1"
+      style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
       <div className="relative aspect-[16/10] overflow-hidden">
         {portada ? (
           /* eslint-disable-next-line @next/next/no-img-element */
-          <img src={portada} alt={p.nombre} draggable={false} className="w-full h-full object-cover" />
+          <img src={portada} alt={p.nombre} draggable={false} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
         ) : (
           <div className="w-full h-full" style={{ background: "radial-gradient(circle at 30% 20%, rgba(179,152,91,0.22), #0c0c0c 65%)" }} />
         )}
@@ -87,6 +91,12 @@ function PaqueteCard({ p }: { p: Paquete }) {
           <span className="absolute top-4 left-4 text-[11px] font-medium px-3 py-1.5 rounded-full"
             style={{ background: "rgba(8,8,8,0.6)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.85)" }}>
             {p.rangoPersonas} personas
+          </span>
+        )}
+        {tieneRender && (
+          <span className="absolute top-4 right-4 text-[10px] font-semibold px-2.5 py-1 rounded-full"
+            style={{ background: GOLD, color: "#000" }}>
+            Render 3D
           </span>
         )}
       </div>
@@ -117,19 +127,16 @@ function PaqueteCard({ p }: { p: Paquete }) {
               ))}
             </ul>
             {incluye.length > 6 && (
-              <button onClick={() => setAbierto((v) => !v)} className="mt-2.5 text-xs font-medium transition-colors" style={{ color: GOLD }}>
-                {abierto ? "Ver menos" : `Ver ${incluye.length - 6} más`}
-              </button>
+              <p className="mt-2.5 text-xs font-medium" style={{ color: GOLD }}>{`+ ${incluye.length - 6} más`}</p>
             )}
           </div>
         )}
 
-        <a href={wa(`Hola, me interesa el paquete "${p.nombre}". ¿Me pueden dar más información y cotización?`)} target="_blank" rel="noopener noreferrer"
-          className="mt-auto text-center text-sm font-semibold px-6 py-3.5 rounded-full transition-all hover:scale-[1.02]" style={{ background: GOLD, color: "#000" }}>
-          Solicitar este paquete
-        </a>
+        <span className="mt-auto text-center text-sm font-semibold px-6 py-3.5 rounded-full transition-all group-hover:scale-[1.02]" style={{ background: GOLD, color: "#000" }}>
+          Ver paquete
+        </span>
       </div>
-    </div>
+    </Link>
   );
 }
 

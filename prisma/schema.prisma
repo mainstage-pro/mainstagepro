@@ -1119,6 +1119,7 @@ model PaqueteImagen {
   paqueteId String
   paquete   Paquete @relation(fields: [paqueteId], references: [id], onDelete: Cascade)
   url       String
+  tipo      String  @default("REFERENCIA") // REFERENCIA | RENDER
   orden     Int     @default(0)
 
   @@index([paqueteId])

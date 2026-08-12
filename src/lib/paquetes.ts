@@ -81,6 +81,10 @@ export async function ensurePaquetesTables() {
   await prisma.$executeRawUnsafe(
     `CREATE INDEX IF NOT EXISTS "paquete_imagenes_paqueteId_idx" ON "paquete_imagenes"("paqueteId");`
   );
+  // Distingue renders de fotos de referencia (columna aditiva idempotente).
+  await prisma.$executeRawUnsafe(
+    `ALTER TABLE "paquete_imagenes" ADD COLUMN IF NOT EXISTS "tipo" TEXT NOT NULL DEFAULT 'REFERENCIA';`
+  );
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS "paquete_rangos" (
       "id" TEXT NOT NULL,

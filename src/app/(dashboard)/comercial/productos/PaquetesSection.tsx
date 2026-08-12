@@ -100,7 +100,7 @@ type Paquete = {
   propuestaValor: string | null;
   items: PaqueteItem[];
   conceptos: PaqueteConcepto[];
-  imagenes: { id: string; url: string; orden: number }[];
+  imagenes: { id: string; url: string; tipo: string; orden: number }[];
 };
 
 type RangoItem = { id: string; label: string; orden: number };
@@ -152,7 +152,7 @@ type FormState = {
   propuestaValor: string;
   items: FormItem[];
   conceptos: FormConcepto[];
-  imagenes: { url: string }[];
+  imagenes: { url: string; tipo: "REFERENCIA" | "RENDER" }[];
 };
 
 const FORM_EMPTY: FormState = {
@@ -267,18 +267,19 @@ function PaqueteEditor({
     setForm({ ...form, items: form.items.filter((_, i) => i !== idx) });
   }
 
-  async function onImgs(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onImgs(e: React.ChangeEvent<HTMLInputElement>, tipo: "REFERENCIA" | "RENDER") {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
     setSubiendo(true);
     try {
-      const nuevas: { url: string }[] = [];
+      const carpeta = tipo === "RENDER" ? "paquetes/renders" : "paquetes";
+      const nuevas: { url: string; tipo: "REFERENCIA" | "RENDER" }[] = [];
       for (const file of files) {
-        const blob = await upload(`paquetes/${Date.now()}-${file.name}`, file, {
+        const blob = await upload(`${carpeta}/${Date.now()}-${file.name}`, file, {
           access: "public",
           handleUploadUrl: "/api/upload/token",
         });
-        nuevas.push({ url: blob.url });
+        nuevas.push({ url: blob.url, tipo });
       }
       setForm({ ...form, imagenes: [...form.imagenes, ...nuevas] });
     } catch {
@@ -418,7 +419,7 @@ function PaqueteEditor({
       <div>
         <label className={labelCls}>Imágenes de referencia</label>
         <div className="flex flex-wrap gap-2">
-          {form.imagenes.map((im) => (
+          {form.imagenes.filter((im) => im.tipo !== "RENDER").map((im) => (
             <div key={im.url} className="relative w-20 h-20 rounded-lg overflow-hidden bg-[#1a1a1a] group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={im.url} alt="" className="w-full h-full object-cover" />
@@ -427,8 +428,29 @@ function PaqueteEditor({
             </div>
           ))}
           <label className="w-20 h-20 rounded-lg border border-dashed border-[#333] flex items-center justify-center cursor-pointer hover:border-[#B3985B] text-gray-600 hover:text-[#B3985B] text-xs text-center">
-            <input type="file" accept="image/*" multiple onChange={onImgs} className="hidden" />
+            <input type="file" accept="image/*" multiple onChange={(e) => onImgs(e, "REFERENCIA")} className="hidden" />
             {subiendo ? "Subiendo…" : "+ Imagen"}
+          </label>
+        </div>
+      </div>
+
+      {/* Renders */}
+      <div>
+        <label className={labelCls}>Renders</label>
+        <p className="text-[10px] text-gray-500 -mt-0.5 mb-1.5">Imágenes de render 3D del montaje. Se muestran destacadas en la presentación del paquete.</p>
+        <div className="flex flex-wrap gap-2">
+          {form.imagenes.filter((im) => im.tipo === "RENDER").map((im) => (
+            <div key={im.url} className="relative w-20 h-20 rounded-lg overflow-hidden bg-[#1a1a1a] group">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={im.url} alt="" className="w-full h-full object-cover" />
+              <span className="absolute bottom-0.5 left-0.5 text-[8px] font-semibold px-1 py-0.5 rounded bg-[#B3985B] text-black">RENDER</span>
+              <button type="button" onClick={() => removeImg(im.url)}
+                className="absolute top-0.5 right-0.5 w-5 h-5 rounded-md bg-black/70 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+            </div>
+          ))}
+          <label className="w-20 h-20 rounded-lg border border-dashed border-[#333] flex items-center justify-center cursor-pointer hover:border-[#B3985B] text-gray-600 hover:text-[#B3985B] text-xs text-center">
+            <input type="file" accept="image/*" multiple onChange={(e) => onImgs(e, "RENDER")} className="hidden" />
+            {subiendo ? "Subiendo…" : "+ Render"}
           </label>
         </div>
       </div>
@@ -922,7 +944,7 @@ export default function PaquetesSection() {
         key: uid(), tipo: c.tipo, descripcion: c.descripcion, rolTecnicoId: c.rolTecnicoId ?? undefined,
         nivel: c.nivel ?? undefined, jornada: c.jornada ?? undefined, cantidad: c.cantidad, dias: c.dias, precioUnitario: c.precioUnitario,
       })),
-      imagenes: p.imagenes.map((im) => ({ url: im.url })),
+      imagenes: p.imagenes.map((im) => ({ url: im.url, tipo: (im.tipo === "RENDER" ? "RENDER" : "REFERENCIA") as "REFERENCIA" | "RENDER" })),
     });
     setModalOpen(true);
   }

@@ -37,11 +37,11 @@ function limpiarConceptos(conceptos: unknown): PaqueteConceptoInput[] {
     }));
 }
 
-function limpiarImagenes(imagenes: unknown): { url: string; orden: number }[] {
+function limpiarImagenes(imagenes: unknown): { url: string; tipo: string; orden: number }[] {
   if (!Array.isArray(imagenes)) return [];
-  return (imagenes as { url: string }[])
+  return (imagenes as { url: string; tipo?: string }[])
     .filter((im) => im.url)
-    .map((im, idx) => ({ url: im.url, orden: idx }));
+    .map((im, idx) => ({ url: im.url, tipo: im.tipo === "RENDER" ? "RENDER" : "REFERENCIA", orden: idx }));
 }
 
 export async function GET(req: NextRequest) {
