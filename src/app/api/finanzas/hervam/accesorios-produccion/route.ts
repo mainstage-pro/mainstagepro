@@ -10,7 +10,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
   const equipos = await prisma.equipo.findMany({
-    where: { activo: true, tipo: "PROPIO" },
+    where: { activo: true, tipo: "PROPIO", estadoMigracion: null },
     select: {
       id: true,
       descripcion: true,

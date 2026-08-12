@@ -17,7 +17,7 @@ export default async function InventarioPage() {
   // Categorías internas que no van en el catálogo público de clientes.
   const CATEGORIAS_OCULTAS = ["Toldos y lonas", "Accesorios Provisionales"];
   const equipos = await prisma.equipo.findMany({
-    where: { activo: true, categoria: { nombre: { notIn: CATEGORIAS_OCULTAS } } },
+    where: { activo: true, estadoMigracion: null, categoria: { nombre: { notIn: CATEGORIAS_OCULTAS } } },
     select: {
       id: true,
       descripcion: true,
