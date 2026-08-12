@@ -38,6 +38,9 @@ type AccProduccion = {
   categoria: string | null;
   equipoId: string;
   equipoNombre: string;
+  accesorioId: string | null;
+  tipoConteo: "cuantificable" | "default";
+  cantidad: number | null;
 };
 
 const ACC_CATS = ["cable", "herramienta", "consumible", "soporte", "otro"] as const;
@@ -137,13 +140,67 @@ export default function InventarioActivosPage() {
       for (const eq of (dataAcc.equipos ?? [])) {
         const eqNombre = [eq.marca, eq.modelo].filter(Boolean).join(" · ") || eq.descripcion;
         for (const acc of (eq.accesorios ?? [])) {
-          flat.push({ id: acc.id, nombre: acc.nombre, categoria: acc.categoria, equipoId: eq.id, equipoNombre: eqNombre });
+          flat.push({
+            id: acc.id, nombre: acc.nombre, categoria: acc.categoria, equipoId: eq.id, equipoNombre: eqNombre,
+            accesorioId: acc.accesorioId ?? null,
+            tipoConteo: acc.accesorio?.tipoConteo === "cuantificable" ? "cuantificable" : "default",
+            cantidad: acc.accesorio?.cantidad ?? null,
+          });
         }
       }
       setAccesoriosAPI(flat.sort((a, b) => a.nombre.localeCompare(b.nombre)));
     } finally {
       setLoading(false);
     }
+  }
+
+  const [focusCantidad, setFocusCantidad] = useState<string | null>(null);
+
+  async function setConteo(accesorioId: string | null, tipoConteo: "cuantificable" | "default", prevCantidad: number | null) {
+    if (!accesorioId) return;
+    if (tipoConteo === "default" && prevCantidad != null) {
+      if (!confirm("Este accesorio tiene una cantidad registrada. Al cambiar a Default se perderá. ¿Continuar?")) return;
+    }
+    setAccesoriosAPI(prev => prev.map(a => a.accesorioId === accesorioId
+      ? { ...a, tipoConteo, cantidad: tipoConteo === "default" ? null : (a.cantidad ?? 0) }
+      : a));
+    if (tipoConteo === "cuantificable") setFocusCantidad(accesorioId);
+    const res = await fetch(`/api/accesorios/${accesorioId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tipoConteo }),
+    });
+    if (!res.ok) { toast.error("No se pudo guardar el conteo"); load(); }
+  }
+
+  async function setCantidadAcc(accesorioId: string | null, cantidad: number) {
+    if (!accesorioId) return;
+    const n = Math.max(0, Number.isFinite(cantidad) ? Math.trunc(cantidad) : 0);
+    setAccesoriosAPI(prev => prev.map(a => a.accesorioId === accesorioId ? { ...a, cantidad: n } : a));
+    const res = await fetch(`/api/accesorios/${accesorioId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cantidad: n }),
+    });
+    if (!res.ok) { toast.error("No se pudo guardar la cantidad"); load(); }
+  }
+
+  function ConteoCell({ a }: { a: AccProduccion }) {
+    const isQ = a.tipoConteo === "cuantificable";
+    return (
+      <div className="flex items-center gap-2">
+        <div className="flex gap-0.5 bg-[#111] border border-[#1e1e1e] rounded-md p-0.5">
+          <button onClick={() => setConteo(a.accesorioId, "cuantificable", a.cantidad)}
+            className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${isQ ? "bg-[#B3985B] text-black" : "text-[#555] hover:text-white"}`}>Cuant.</button>
+          <button onClick={() => setConteo(a.accesorioId, "default", a.cantidad)}
+            className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${!isQ ? "bg-[#B3985B] text-black" : "text-[#555] hover:text-white"}`}>Default</button>
+        </div>
+        {isQ ? (
+          <input type="number" min={0} defaultValue={a.cantidad ?? 0} key={`${a.accesorioId}-${a.cantidad ?? 0}`}
+            autoFocus={focusCantidad === a.accesorioId}
+            onFocus={() => { if (focusCantidad === a.accesorioId) setFocusCantidad(null); }}
+            onBlur={e => setCantidadAcc(a.accesorioId, parseInt(e.target.value || "0", 10))}
+            onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+            className="w-14 bg-[#111] border border-[#1e1e1e] rounded px-1.5 py-0.5 text-xs text-white text-center focus:outline-none focus:border-[#B3985B]/40" />
+        ) : <span className="text-[#333] text-xs">—</span>}
+      </div>
+    );
   }
 
   async function crearAccesorio() {
@@ -163,7 +220,7 @@ export default function InventarioActivosPage() {
       setAccesoriosAPI(prev => {
         const exists = prev.find(a => a.id === d.accesorio.id);
         if (exists) return prev;
-        return [...prev, { id: d.accesorio.id, nombre: d.accesorio.nombre, categoria: d.accesorio.categoria, equipoId: formAcc.equipoId, equipoNombre: eqNombre }].sort((a, b) => a.nombre.localeCompare(b.nombre));
+        return [...prev, { id: d.accesorio.id, nombre: d.accesorio.nombre, categoria: d.accesorio.categoria, equipoId: formAcc.equipoId, equipoNombre: eqNombre, accesorioId: d.accesorio.accesorioId ?? null, tipoConteo: "default" as const, cantidad: null }].sort((a, b) => a.nombre.localeCompare(b.nombre));
       });
       setModalAcc(false);
       setFormAcc({ nombre: "", categoria: "", equipoId: "" });
@@ -916,9 +973,9 @@ export default function InventarioActivosPage() {
           {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <KpiCard label="Total accesorios" value={String(accesoriosProd.length)} sub="En biblioteca de equipos" />
-            <KpiCard label="Equipos con accesorios" value={String(accesoriosPorEquipo.length)} sub={`de ${equiposProd.length} en producción`} color="text-[#B3985B]" />
+            <KpiCard label="Cuantificables" value={String(accesoriosProd.filter(a => a.tipoConteo === "cuantificable").length)} sub="Con cantidad" color="text-[#B3985B]" />
+            <KpiCard label="Default" value={String(accesoriosProd.filter(a => a.tipoConteo !== "cuantificable").length)} sub="Se jalan con el equipo" color="text-gray-400" />
             <KpiCard label="Sin accesorios" value={String(equiposSinAcc.length)} sub="Pendientes por registrar" color="text-red-400" />
-            <KpiCard label="Cables" value={String(accesoriosProd.filter(a => a.categoria === "cable").length)} sub="Clasificados" color="text-blue-400" />
           </div>
 
           {/* Toolbar */}
@@ -955,6 +1012,7 @@ export default function InventarioActivosPage() {
                 <thead>
                   <tr className="border-b border-[#1e1e1e] bg-[#0a0a0a]">
                     <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Accesorio</th>
+                    <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Conteo</th>
                     <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">{agruparAcc === "equipo" ? "Categoría" : "Equipo origen"}</th>
                     <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold hidden md:table-cell">{agruparAcc === "equipo" ? "Equipo" : ""}</th>
                     <th className="w-10"></th>
@@ -969,7 +1027,7 @@ export default function InventarioActivosPage() {
                           .map(({ equipoId, equipoNombre, items }) => (
                           <>
                             <tr key={`eq-${equipoId}`}>
-                              <td colSpan={4} className="px-4 py-2 bg-[#0d0d0d] border-b border-[#1e1e1e]">
+                              <td colSpan={5} className="px-4 py-2 bg-[#0d0d0d] border-b border-[#1e1e1e]">
                                 <div className="flex items-center justify-between">
                                   <div>
                                     <span className="text-[11px] text-[#B3985B] font-semibold">{equipoNombre}</span>
@@ -986,6 +1044,7 @@ export default function InventarioActivosPage() {
                             {items.filter(a => !busquedaAcc || a.nombre.toLowerCase().includes(busquedaAcc.toLowerCase())).map(a => (
                               <tr key={a.id} className="hover:bg-[#0d0d0d] transition-colors group">
                                 <td className="px-4 py-2.5 pl-8 text-gray-300 font-medium">{a.nombre}</td>
+                                <td className="px-4 py-2.5"><ConteoCell a={a} /></td>
                                 <td className="px-4 py-2.5">
                                   {a.categoria ? (
                                     <span className={`text-xs ${ACC_CAT_COLOR[a.categoria] ?? "text-gray-500"}`}>{ACC_CAT_LABEL[a.categoria] ?? a.categoria}</span>
@@ -1007,14 +1066,14 @@ export default function InventarioActivosPage() {
                         {equiposSinAcc.length > 0 && (
                           <>
                             <tr>
-                              <td colSpan={4} className="px-4 py-2 bg-[#0a0a0a] border-t-2 border-[#1e1e1e]">
+                              <td colSpan={5} className="px-4 py-2 bg-[#0a0a0a] border-t-2 border-[#1e1e1e]">
                                 <span className="text-[10px] text-red-400/70 font-semibold uppercase tracking-wider">Sin accesorios registrados</span>
                                 <span className="text-[#333] text-[10px] ml-2">({equiposSinAcc.length})</span>
                               </td>
                             </tr>
                             {equiposSinAcc.map(eq => (
                               <tr key={eq.equipoId} className="hover:bg-[#0d0d0d] transition-colors group">
-                                <td className="px-4 py-2.5 pl-8" colSpan={2}>
+                                <td className="px-4 py-2.5 pl-8" colSpan={3}>
                                   <p className="text-[#555] text-sm font-medium">{eq.equipoNombre}</p>
                                   {eq.equipoNombre !== eq.descripcion && <p className="text-[#333] text-[10px]">{eq.descripcion}</p>}
                                 </td>
@@ -1037,7 +1096,7 @@ export default function InventarioActivosPage() {
                     : accesoriosPorCat.map(({ cat, items }) => (
                         <>
                           <tr key={`cat-${cat}`}>
-                            <td colSpan={4} className="px-4 py-2 bg-[#0d0d0d] border-b border-[#1e1e1e]">
+                            <td colSpan={5} className="px-4 py-2 bg-[#0d0d0d] border-b border-[#1e1e1e]">
                               <span className={`text-[11px] font-semibold ${ACC_CAT_COLOR[cat]}`}>{ACC_CAT_LABEL[cat]}</span>
                               <span className="text-[#333] text-[10px] ml-2">({items.length})</span>
                             </td>
@@ -1045,6 +1104,7 @@ export default function InventarioActivosPage() {
                           {items.filter(a => !busquedaAcc || a.nombre.toLowerCase().includes(busquedaAcc.toLowerCase()) || a.equipoNombre.toLowerCase().includes(busquedaAcc.toLowerCase())).map(a => (
                             <tr key={a.id} className="hover:bg-[#0d0d0d] transition-colors group">
                               <td className="px-4 py-2.5 pl-8 text-gray-300 font-medium">{a.nombre}</td>
+                              <td className="px-4 py-2.5"><ConteoCell a={a} /></td>
                               <td className="px-4 py-2.5 text-gray-500 text-xs">{a.equipoNombre}</td>
                               <td className="px-4 py-2.5 hidden md:table-cell"></td>
                               <td className="px-2">

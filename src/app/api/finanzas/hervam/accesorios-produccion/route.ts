@@ -20,7 +20,13 @@ export async function GET() {
       cantidadTotal: true,
       precioRenta: true,
       accesorios: {
-        select: { id: true, nombre: true, categoria: true },
+        select: {
+          id: true,
+          nombre: true,
+          categoria: true,
+          accesorioId: true,
+          accesorio: { select: { tipoConteo: true, cantidad: true } },
+        },
         orderBy: [{ categoria: "asc" }, { nombre: "asc" }],
       },
     },

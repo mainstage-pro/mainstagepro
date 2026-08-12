@@ -32,8 +32,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
   if (exists) return NextResponse.json({ accesorio: exists });
 
+  // Crea el accesorio de primera clase y la fila puente en una transacción.
+  const cat = await prisma.accesorio.create({
+    data: { nombre: nombre.trim(), tipoConteo: "default", estado: "activo", activo: true },
+    select: { id: true },
+  });
   const accesorio = await prisma.equipoAccesorio.create({
-    data: { equipoId: id, nombre: nombre.trim(), categoria: categoria ?? null },
+    data: { equipoId: id, nombre: nombre.trim(), categoria: categoria ?? null, accesorioId: cat.id },
   });
   return NextResponse.json({ accesorio });
 }
