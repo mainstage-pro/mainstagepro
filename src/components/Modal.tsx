@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface ModalProps {
   open: boolean;
@@ -11,7 +12,9 @@ interface ModalProps {
 }
 
 export function Modal({ open, onClose, title, children, maxWidth = "max-w-2xl" }: ModalProps) {
+  const [mounted, setMounted] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -20,11 +23,11 @@ export function Modal({ open, onClose, title, children, maxWidth = "max-w-2xl" }
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 bg-black/75 flex items-start justify-center p-4 pt-12 overflow-y-auto"
+      className="fixed inset-0 z-[9999] bg-black/75 flex items-start justify-center p-4 pt-12 overflow-y-auto"
       onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
@@ -53,4 +56,6 @@ export function Modal({ open, onClose, title, children, maxWidth = "max-w-2xl" }
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

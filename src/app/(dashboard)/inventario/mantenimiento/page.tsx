@@ -295,11 +295,13 @@ function MantenimientoContent() {
 
   async function generarUnidades() {
     if (!selectedEquipo) return;
-    const n = selectedEquipo.cantidadTotal;
-    for (let i = 1; i <= n; i++) {
+    const faltantes = selectedEquipo.cantidadTotal - unidades.length;
+    if (faltantes <= 0) return;
+    const offset = unidades.length;
+    for (let i = 1; i <= faltantes; i++) {
       await fetch(`/api/equipos/${selectedEquipo.id}/unidades?skipIncrement=true`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ codigo: `Unidad ${i}` }),
+        body: JSON.stringify({ codigo: `Unidad ${offset + i}` }),
       });
     }
     const ur = await fetch(`/api/equipos/${selectedEquipo.id}/unidades`, { cache: "no-store" });
@@ -551,10 +553,10 @@ function MantenimientoContent() {
                       })()}
                     </div>
                     <div className="flex items-center gap-2">
-                      {unidades.length === 0 && (
+                      {selectedEquipo.cantidadTotal > unidades.length && (
                         <button onClick={generarUnidades}
                           className="text-[10px] text-[#B3985B] hover:text-white border border-[#B3985B]/30 px-2 py-1 rounded transition-colors">
-                          Generar {selectedEquipo.cantidadTotal} unidades
+                          Generar {selectedEquipo.cantidadTotal - unidades.length} faltante(s)
                         </button>
                       )}
                       <button onClick={() => { setShowAddUnidad(true); setEditUnidadId(null); setUnidadForm({ codigo: "", estado: "ACTIVO", voltaje: "", notas: "" }); }}

@@ -477,10 +477,13 @@ function UnidadesSection({ equipoId, cantidadTotal }: { equipoId: string; cantid
   }
 
   async function generar() {
-    for (let i = 1; i <= cantidadTotal; i++) {
+    const faltantes = cantidadTotal - unidades.length;
+    if (faltantes <= 0) return;
+    const offset = unidades.length;
+    for (let i = 1; i <= faltantes; i++) {
       await fetch(`/api/equipos/${equipoId}/unidades?skipIncrement=true`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ codigo: `Unidad ${i}` }),
+        body: JSON.stringify({ codigo: `Unidad ${offset + i}` }),
       });
     }
     await reload();
@@ -512,10 +515,10 @@ function UnidadesSection({ equipoId, cantidadTotal }: { equipoId: string; cantid
           {voltajeResumen && <p className="text-[10px] text-yellow-500/80 mt-0.5">{voltajeResumen}</p>}
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {!loading && unidades.length === 0 && cantidadTotal > 0 && (
+          {!loading && cantidadTotal > unidades.length && (
             <button onClick={generar}
               className="text-[10px] text-[#B3985B] hover:text-white border border-[#B3985B]/30 px-2 py-1 rounded transition-colors">
-              Generar {cantidadTotal} unidades
+              Generar {cantidadTotal - unidades.length} faltante(s)
             </button>
           )}
           <button onClick={startAdd}
