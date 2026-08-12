@@ -56,3 +56,61 @@ export async function vincularSeccionConSubarea(seccionId: string): Promise<stri
   }
   return subAreaId;
 }
+
+/**
+ * Inverso de vincularSeccionConSubarea: dada una subárea del maestro, crea (o
+ * vincula) su sección en el plan de trabajo del área para que deje de ser
+ * "huérfana". Busca el proyecto operativo cuyo nombre mapea al código del área.
+ * Idempotente: si ya hay una sección PLAN ligada no hace nada. Devuelve el id de
+ * la sección, o null si el área no tiene proyecto de plan (p. ej. transversales).
+ */
+export async function crearSeccionPlanParaSubarea(subAreaId: string): Promise<string | null> {
+  const sub = await prisma.pTSubArea.findUnique({
+    where: { id: subAreaId },
+    select: { id: true, nombre: true, descripcion: true, area: { select: { codigo: true, nombre: true } } },
+  });
+  if (!sub) return null;
+
+  const yaLigada = await prisma.tareaSeccion.findFirst({
+    where: { tipoModulo: "PLAN", subAreaId: sub.id },
+    select: { id: true },
+  });
+  if (yaLigada) return yaLigada.id;
+
+  const proyectos = await prisma.tareaProyecto.findMany({
+    where: { archivado: false },
+    select: { id: true, nombre: true },
+    orderBy: { orden: "asc" },
+  });
+  const proyecto = proyectos.find(p =>
+    sub.area.codigo
+      ? areaCodeDeProyecto(p.nombre) === sub.area.codigo
+      : p.nombre.toLowerCase() === sub.area.nombre.toLowerCase()
+  );
+  if (!proyecto) return null;
+
+  // Reutiliza una sección PLAN homónima sin subárea, si la hay; si no, crea una.
+  const homonima = await prisma.tareaSeccion.findFirst({
+    where: { proyectoId: proyecto.id, tipoModulo: "PLAN", subAreaId: null, nombre: { equals: sub.nombre, mode: "insensitive" } },
+    select: { id: true },
+  });
+  if (homonima) {
+    await prisma.tareaSeccion.update({ where: { id: homonima.id }, data: { subAreaId: sub.id } });
+    return homonima.id;
+  }
+
+  const last = await prisma.tareaSeccion.findFirst({
+    where: { proyectoId: proyecto.id }, orderBy: { orden: "desc" }, select: { orden: true },
+  });
+  const seccion = await prisma.tareaSeccion.create({
+    data: {
+      nombre:      sub.nombre,
+      descripcion: sub.descripcion ?? null,
+      proyectoId:  proyecto.id,
+      orden:       (last?.orden ?? -1) + 1,
+      tipoModulo:  "PLAN",
+      subAreaId:   sub.id,
+    },
+  });
+  return seccion.id;
+}

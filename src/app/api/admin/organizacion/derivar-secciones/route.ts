@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
-import { areaCodeDeProyecto, vincularSeccionConSubarea } from "@/lib/organizacion";
+import { areaCodeDeProyecto, vincularSeccionConSubarea, crearSeccionPlanParaSubarea } from "@/lib/organizacion";
 
-// POST: recorre las secciones PLAN de los proyectos operativos y las deriva/vincula
-// como PTSubArea del maestro. No borra nada: find-or-create por nombre dentro del
-// área + set subAreaId. Re-ejecutable (idempotente).
+// POST: sincroniza en ambos sentidos maestro ↔ plan. (1) Deriva las secciones PLAN
+// como PTSubArea del maestro; (2) siembra la sección de plan para las subáreas
+// huérfanas. No borra nada: find-or-create + set subAreaId. Idempotente.
 export async function POST() {
   const session = await getSession();
   if (!session || session.role !== "ADMIN") {
@@ -31,5 +31,15 @@ export async function POST() {
     vinculadas++;
   }
 
-  return NextResponse.json({ ok: true, vinculadas, creadas, omitidas });
+  // Sentido inverso: siembra la sección de plan para las subáreas aún huérfanas.
+  let sembradas = 0;
+  const huerfanas = await prisma.pTSubArea.findMany({
+    where: { secciones: { none: { tipoModulo: "PLAN" } } },
+    select: { id: true },
+  });
+  for (const h of huerfanas) {
+    if (await crearSeccionPlanParaSubarea(h.id)) sembradas++;
+  }
+
+  return NextResponse.json({ ok: true, vinculadas, creadas, sembradas, omitidas });
 }

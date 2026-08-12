@@ -89,13 +89,13 @@ export default function AreasEditor() {
   }
 
   async function derivarSecciones() {
-    if (!confirm("Derivar subáreas desde las secciones del plan operativo. Crea o vincula subáreas por área; no borra nada. ¿Continuar?")) return;
+    if (!confirm("Sincronizar subáreas ↔ plan de trabajo en ambos sentidos: deriva subáreas desde las secciones del plan y siembra la sección de plan para las subáreas huérfanas. No borra nada. ¿Continuar?")) return;
     setBusy("derivar");
     try {
       const r = await fetch("/api/admin/organizacion/derivar-secciones", { method: "POST" });
       const d = await r.json();
-      if (!r.ok) { toast.error(d.error ?? "No se pudo derivar"); return; }
-      toast.success(`${d.vinculadas} secciones vinculadas · ${d.creadas} subáreas nuevas`);
+      if (!r.ok) { toast.error(d.error ?? "No se pudo sincronizar"); return; }
+      toast.success(`${d.vinculadas} secciones vinculadas · ${d.creadas} subáreas nuevas · ${d.sembradas} planes sembrados`);
       await load();
     } catch { toast.error("Error de conexión"); }
     finally { setBusy(null); }
@@ -168,10 +168,10 @@ export default function AreasEditor() {
           <button
             onClick={derivarSecciones}
             disabled={busy === "derivar"}
-            title="Deriva las subáreas desde las secciones del plan de trabajo (crea o vincula; no borra)"
+            title="Sincroniza subáreas ↔ plan de trabajo en ambos sentidos (crea o vincula; no borra)"
             className="flex items-center gap-1.5 text-gray-500 hover:text-gray-300 text-xs px-2 py-1.5 rounded-lg transition-colors"
           >
-            <Wand2 className="w-3.5 h-3.5" /> {busy === "derivar" ? "Derivando…" : "Derivar desde plan"}
+            <Wand2 className="w-3.5 h-3.5" /> {busy === "derivar" ? "Sincronizando…" : "Sincronizar con plan"}
           </button>
           <button
             onClick={() => setNewArea({ nombre: "", color: "#1a1a2e", objetivo: "" })}
