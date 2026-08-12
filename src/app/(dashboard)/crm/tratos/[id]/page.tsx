@@ -6,7 +6,6 @@ import Link from "next/link";
 import { Calendar, CalendarDays, Target, PenLine, Megaphone, DollarSign, MapPin, Trash2, Search, CheckCircle2, Sprout, Zap, Ticket, Settings, Clapperboard, Camera } from "lucide-react";
 import { FORM_KEY_LABELS } from "@/lib/form-labels";
 import TimePicker from "@/components/ui/TimePicker";
-import VenuePicker from "@/components/ui/VenuePicker";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
@@ -27,6 +26,7 @@ import {
 } from '@/components/crm/PlanContactos';
 import { resolvePerfil, parsePerfiles, type PerfilCategoria, PERFIL_CATEGORIAS } from '@/lib/proceso/perfiles';
 import { PerfilSelect, usePerfilesCustom } from '@/components/crm/PerfilSelect';
+import { MOMENTO_OPTIONS, ORIGEN_LEAD_OPTIONS } from '@/lib/constants';
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 interface TratoArchivo {
@@ -46,6 +46,7 @@ interface Trato {
   tipoLead: string;
   origenLead: string;
   origenVenta: string;
+  momentoContratacion: string | null;
   vendedorOrigen: { id: string; name: string } | null;
   tipoServicio: string | null;
   lugarEstimado: string | null;
@@ -1389,7 +1390,21 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
 
   async function guardar() {
     setSaving(true);
-    const d = await patch(form as Record<string, unknown>);
+    // Fase 5: este modal solo posee identidad + comercial. Los campos de brief los
+    // edita DiscoveryForm con autoguardado; mandar el `form` completo (cargado al
+    // montar) los pisaría con valores viejos. Enviamos solo lo que este modal dueña.
+    const payload: Record<string, unknown> = {
+      clasificacion: form.clasificacion,
+      notas: form.notas ?? null,
+      proximaAccion: form.proximaAccion ?? null,
+      fechaProximaAccion: form.fechaProximaAccion ?? null,
+      momentoContratacion: form.momentoContratacion ?? null,
+      origenLead: form.origenLead,
+      tipoLead: form.tipoLead,
+      origenVenta: form.origenVenta,
+      vendedorId: form.vendedorId ?? null,
+    };
+    const d = await patch(payload);
     if (d) {
       setTrato(prev => prev ? { ...prev, ...d.trato } : prev);
       setEditando(false);
@@ -2286,7 +2301,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           <div className="absolute inset-0 bg-black/70" onClick={() => setEditando(false)} />
           <div className="relative bg-[#111] border border-[#333] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a]">
-              <h3 className="text-white font-semibold">Editar trato</h3>
+              <h3 className="text-white font-semibold">Editar datos del trato</h3>
               <button onClick={() => setEditando(false)} className="text-gray-500 hover:text-white text-xl leading-none">×</button>
             </div>
             <div className="p-6 space-y-4">
@@ -2319,45 +2334,17 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                 />
               </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Nombre del evento / proyecto</label>
-                <input value={form.nombreEvento || ""} onChange={e => setForm(p => ({ ...p, nombreEvento: e.target.value }))}
-                  placeholder="Ej: Boda García-López, Concierto Verano..."
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-              </div>
+              {/* Identidad comercial — fusionado del wizard (Fase 5). Los datos del
+                  evento (brief) se editan en Descubrimiento, no aquí. */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Tipo de evento</label>
+                  <label className="block text-xs text-gray-400 mb-1">Momento de contratación</label>
                   <Combobox
-                    value={form.tipoEvento || ""}
-                    onChange={v => setForm(p => ({ ...p, tipoEvento: v }))}
-                    options={[{ value: "MUSICAL", label: "Musical" }, { value: "SOCIAL", label: "Social" }, { value: "EMPRESARIAL", label: "Empresarial" }, { value: "OTRO", label: "Otro" }]}
+                    value={form.momentoContratacion || ""}
+                    onChange={v => setForm(p => ({ ...p, momentoContratacion: v || null }))}
+                    options={[{ value: "", label: "Sin definir" }, ...MOMENTO_OPTIONS.map(m => ({ value: m.value, label: m.label }))]}
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                   />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Tipo de servicio</label>
-                  <Combobox
-                    value={form.tipoServicio || ""}
-                    onChange={v => setForm(p => ({ ...p, tipoServicio: v }))}
-                    options={[{ value: "", label: "— Sin especificar —" }, { value: "RENTA", label: "Renta de Equipo" }, { value: "PRODUCCION_TECNICA", label: "Producción Técnica" }, { value: "DIRECCION_TECNICA", label: "Dirección Técnica" }]}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Lugar estimado</label>
-                  <VenuePicker value={form.lugarEstimado || ""} onChange={(v) => setForm(p => ({ ...p, lugarEstimado: v }))} />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Fecha estimada</label>
-                  <input type="date" value={form.fechaEventoEstimada ? (form.fechaEventoEstimada as string).split("T")[0] : ""}
-                    onChange={e => setForm(p => ({ ...p, fechaEventoEstimada: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Presupuesto estimado ($)</label>
-                  <input type="number" value={form.presupuestoEstimado || ""} onChange={e => setForm(p => ({ ...p, presupuestoEstimado: parseFloat(e.target.value) }))}
-                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Clasificación</label>
@@ -2365,6 +2352,42 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                     value={form.clasificacion || "PROSPECTO"}
                     onChange={v => setForm(p => ({ ...p, clasificacion: v }))}
                     options={[{ value: "PROSPECTO", label: "Prospecto" }, { value: "BASIC", label: "Basic" }, { value: "REGULAR", label: "Regular" }, { value: "PRIORITY", label: "Priority" }]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Origen del contacto</label>
+                  <Combobox
+                    value={form.origenLead || ""}
+                    onChange={v => setForm(p => ({ ...p, origenLead: v }))}
+                    options={ORIGEN_LEAD_OPTIONS}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Tipo de lead</label>
+                  <Combobox
+                    value={form.tipoLead || ""}
+                    onChange={v => setForm(p => ({ ...p, tipoLead: v }))}
+                    options={[{ value: "INBOUND", label: "Inbound (nos buscó)" }, { value: "OUTBOUND", label: "Outbound (prospección)" }]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Origen de venta</label>
+                  <Combobox
+                    value={form.origenVenta || "CLIENTE_PROPIO"}
+                    onChange={v => setForm(p => ({ ...p, origenVenta: v }))}
+                    options={[{ value: "CLIENTE_PROPIO", label: "Cliente propio (10% comisión)" }, { value: "PUBLICIDAD", label: "Lead por publicidad (5%)" }, { value: "ASIGNADO", label: "Cliente asignado (5%+5%)" }]}
+                    className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Comisión para</label>
+                  <Combobox
+                    value={form.vendedorId || ""}
+                    onChange={v => setForm(p => ({ ...p, vendedorId: v || null }))}
+                    options={[{ value: "", label: "Yo (quien captura)" }, ...usuarios.map(u => ({ value: u.id, label: u.name }))]}
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                   />
                 </div>
@@ -2387,6 +2410,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
                     className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]" />
                 </div>
               </div>
+              <p className="text-[11px] text-gray-600 leading-relaxed">
+                Los datos del evento (nombre, tipo, fecha, lugar, presupuesto) se editan en el brief de <span className="text-gray-400">Descubrimiento</span>.
+              </p>
               <div className="flex justify-end gap-2 pt-2">
                 <button onClick={() => setEditando(false)} className="px-4 py-2 rounded-lg border border-[#333] text-gray-400 text-sm hover:text-white transition-colors">
                   Cancelar
