@@ -972,16 +972,23 @@ export default function InventarioMaestroPage() {
       method, headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    const saved = await res.json().catch(() => null);
     if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      toast.error(d.error ?? "Error al guardar");
+      toast.error(saved?.error ?? "Error al guardar");
       setSaving(false);
       return;
     }
     toast.success(panel === "nuevo" ? "Equipo creado" : "Equipo actualizado");
     setCostoEquipo(null);
+    const editadoId = panel !== "nuevo" ? panel : null;
     cerrarPanel();
-    await load(true);
+    // Edición: fusiona la fila en memoria sin recargar toda la página (evita el
+    // parpadeo/re-render completo que perdía el scroll). Alta: recarga silenciosa.
+    if (editadoId && saved?.equipo) {
+      setEquipos(prev => prev.map(x => (x.id === editadoId ? { ...x, ...saved.equipo } : x)));
+    } else {
+      await load(true);
+    }
     setSaving(false);
   }
 
