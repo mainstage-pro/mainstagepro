@@ -2549,7 +2549,6 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           // ── Fecha autoritativa: priorizar la primera cotización si existe
           const cotPrincipal = trato.cotizaciones[0];
           const fechaAutoritativa = cotPrincipal?.fechaEvento ?? trato.fechaEventoEstimada;
-          const fechaDesde = cotPrincipal?.fechaEvento ? 'cotizacion' : 'estimada';
           const lugarAutoritativo = cotPrincipal?.lugarEvento ?? trato.lugarEstimado;
           const hayInfo = fechaAutoritativa || lugarAutoritativo || trato.presupuestoEstimado || trato.tipoEvento;
           if (!hayInfo) return null;
@@ -2569,7 +2568,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
             <div className="ms-stat-card space-y-2">
               <div className="flex items-center justify-between mb-2 pb-2 border-b border-[#1a1a1a]">
                 <p className="text-[10px] text-gray-600 uppercase tracking-wider">Detalles del Evento</p>
-                {fechaDesde === 'cotizacion' && (
+                {trato.confirmadaEn && (
                   <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-900/20 border border-emerald-800/30 text-emerald-400">Confirmado</span>
                 )}
               </div>
@@ -2602,8 +2601,9 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
               {trato.presupuestoEstimado && (
                 <div className="flex items-start gap-2">
                   <DollarSign strokeWidth={1.75} className="w-3.5 h-3.5 shrink-0 text-gray-500 mt-0.5" />
-                  <p className="text-[#B3985B] text-xs font-medium">
-                    {new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(trato.presupuestoEstimado)}
+                  <p className="text-xs">
+                    <span className="text-[#B3985B] font-medium">{new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(trato.presupuestoEstimado)}</span>
+                    <span className="text-gray-600 ml-1.5">presupuesto estimado</span>
                   </p>
                 </div>
               )}
