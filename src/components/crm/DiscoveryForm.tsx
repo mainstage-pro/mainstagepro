@@ -846,7 +846,7 @@ export default function DiscoveryForm({
       await patch(buildDiscPayload(form));
       setAutoSaveStatus("saved");
       setTimeout(() => setAutoSaveStatus("idle"), 2000);
-    }, 1200);
+    }, 800);
   }, [buildDiscPayload]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Flush inmediato del guardado pendiente (al retroceder, navegar o cerrar la
@@ -1052,21 +1052,55 @@ export default function DiscoveryForm({
   }
 
 
+  // Completitud del brief (derivada del estado, no de un flag manual): cuántos
+  // datos esenciales siguen vacíos. Alimenta el chip "Faltan N datos".
+  const CAMPOS_BRIEF: { key: string; label: string }[] = [
+    { key: "nombreEvento", label: "Nombre del evento" },
+    { key: "fechaEventoEstimada", label: "Fecha del evento" },
+    { key: "lugarEstimado", label: "Lugar" },
+    { key: "asistentesEstimados", label: "Asistentes" },
+    { key: "presupuestoEstimado", label: "Presupuesto" },
+    { key: "tipoServicio", label: "Tipo de servicio" },
+  ];
+  const briefFaltantes = CAMPOS_BRIEF.filter(c => {
+    const v = (discForm as Record<string, unknown>)[c.key];
+    return v == null || String(v).trim() === "";
+  });
+  const briefFaltanN = briefFaltantes.length;
+
   return (
     <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden w-full">
                   {/* Step tabs */}
-            <div className="px-5 pt-4 pb-2 overflow-x-auto border-b border-[#1a1a1a]">
-              <div className="flex gap-1 min-w-max pb-1">
-                {PASOS_DISCOVERY.map(paso => (
-                  <button key={paso.id} onClick={() => { setPasoActivo(paso.id); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
-                      pasoActivo === paso.id
-                        ? "bg-[#B3985B] text-black"
-                        : "bg-[#111] text-gray-500 hover:text-white border border-[#222] hover:border-[#444]"
-                    }`}>
-                    <paso.icon strokeWidth={1.75} className="w-3.5 h-3.5" /> {paso.label}
-                  </button>
-                ))}
+            <div className="px-5 pt-4 pb-2 border-b border-[#1a1a1a]">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex gap-1 overflow-x-auto pb-1">
+                  {PASOS_DISCOVERY.map(paso => (
+                    <button key={paso.id} onClick={() => { setPasoActivo(paso.id); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
+                        pasoActivo === paso.id
+                          ? "bg-[#B3985B] text-black"
+                          : "bg-[#111] text-gray-500 hover:text-white border border-[#222] hover:border-[#444]"
+                      }`}>
+                      <paso.icon strokeWidth={1.75} className="w-3.5 h-3.5" /> {paso.label}
+                    </button>
+                  ))}
+                </div>
+                {!clientMode && (
+                  <div className="flex items-center gap-2 shrink-0">
+                    {autoSaveStatus === "saving" && <span className="text-[10px] text-gray-500">Guardando…</span>}
+                    {autoSaveStatus === "saved" && <span className="text-[10px] text-emerald-500">Guardado ✓</span>}
+                    {briefFaltanN > 0 ? (
+                      <span title={`Faltan: ${briefFaltantes.map(f => f.label).join(", ")}`}
+                        className="text-[10px] px-2 py-1 rounded-full bg-amber-900/30 text-amber-300 border border-amber-800/40 whitespace-nowrap cursor-default">
+                        Faltan {briefFaltanN} dato{briefFaltanN !== 1 ? "s" : ""}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-2 py-1 rounded-full bg-emerald-900/30 text-emerald-300 border border-emerald-800/40 whitespace-nowrap">
+                        Brief completo
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
