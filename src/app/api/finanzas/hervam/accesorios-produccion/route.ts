@@ -25,7 +25,7 @@ export async function GET() {
           nombre: true,
           categoria: true,
           accesorioId: true,
-          accesorio: { select: { tipoConteo: true, cantidad: true } },
+          accesorio: { select: { tipoConteo: true, cantidad: true, valorAdquisicion: true, precioRenta: true } },
         },
         orderBy: [{ categoria: "asc" }, { nombre: "asc" }],
       },

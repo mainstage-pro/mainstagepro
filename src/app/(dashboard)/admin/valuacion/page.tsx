@@ -41,6 +41,8 @@ type AccProduccion = {
   accesorioId: string | null;
   tipoConteo: "cuantificable" | "default";
   cantidad: number | null;
+  valorAdquisicion: number | null;
+  precioRenta: number | null;
 };
 
 const ACC_CATS = ["cable", "herramienta", "consumible", "soporte", "otro"] as const;
@@ -145,6 +147,8 @@ export default function InventarioActivosPage() {
             accesorioId: acc.accesorioId ?? null,
             tipoConteo: acc.accesorio?.tipoConteo === "cuantificable" ? "cuantificable" : "default",
             cantidad: acc.accesorio?.cantidad ?? null,
+            valorAdquisicion: acc.accesorio?.valorAdquisicion ?? null,
+            precioRenta: acc.accesorio?.precioRenta ?? null,
           });
         }
       }
@@ -179,6 +183,43 @@ export default function InventarioActivosPage() {
       method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cantidad: n }),
     });
     if (!res.ok) { toast.error("No se pudo guardar la cantidad"); load(); }
+  }
+
+  async function setValorAcc(accesorioId: string | null, valor: number | null) {
+    if (!accesorioId) return;
+    setAccesoriosAPI(prev => prev.map(a => a.accesorioId === accesorioId ? { ...a, valorAdquisicion: valor } : a));
+    const res = await fetch(`/api/accesorios/${accesorioId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ valorAdquisicion: valor }),
+    });
+    if (!res.ok) { toast.error("No se pudo guardar el valor"); load(); }
+  }
+
+  async function setPrecioAcc(accesorioId: string | null, precio: number | null) {
+    if (!accesorioId) return;
+    setAccesoriosAPI(prev => prev.map(a => a.accesorioId === accesorioId ? { ...a, precioRenta: precio } : a));
+    const res = await fetch(`/api/accesorios/${accesorioId}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ precioRenta: precio }),
+    });
+    if (!res.ok) { toast.error("No se pudo guardar el precio"); load(); }
+  }
+
+  function ValorInput({ a, field }: { a: AccProduccion; field: "valorAdquisicion" | "precioRenta" }) {
+    const val = field === "valorAdquisicion" ? a.valorAdquisicion : a.precioRenta;
+    const save = field === "valorAdquisicion" ? setValorAcc : setPrecioAcc;
+    if (!a.accesorioId) return <span className="text-[#333] text-xs">—</span>;
+    if (isEditing(a.id, field)) {
+      return (
+        <input type="number" min={0} autoFocus defaultValue={val ?? ""} placeholder="0"
+          onBlur={e => { const s = e.target.value.trim(); save(a.accesorioId, s === "" ? null : (parseFloat(s) || 0)); stopEdit(); }}
+          onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") stopEdit(); }}
+          className="w-20 bg-[#111] border border-[#1e1e1e] rounded px-1.5 py-0.5 text-xs text-white text-right focus:outline-none focus:border-[#B3985B]/40" />
+      );
+    }
+    return (
+      <button onClick={() => startEdit(a.id, field)} className="text-xs tabular-nums hover:text-[#B3985B] transition-colors">
+        {val != null && val > 0 ? <span className="text-white">{fmx(val)}</span> : <span className="text-[#444] italic">—</span>}
+      </button>
+    );
   }
 
   function ConteoCell({ a }: { a: AccProduccion }) {
@@ -358,6 +399,11 @@ export default function InventarioActivosPage() {
 
   // ── Accesorios de Producción = datos reales desde la API dedicada
   const accesoriosProd = accesoriosAPI;
+  // Portafolio de accesorios: valor de adquisición × cantidad (default cuenta como 1)
+  const valorAccTotal = accesoriosAPI.reduce((s, a) => {
+    const qty = a.tipoConteo === "cuantificable" ? (a.cantidad ?? 0) : 1;
+    return s + (a.valorAdquisicion ?? 0) * qty;
+  }, 0);
 
   // ── KPIs globales
   const valorTotalProd = equiposProd.reduce((s, e) => s + (e.costoInternoEstimado ?? 0) * e.cantidadTotal, 0);
@@ -437,7 +483,7 @@ export default function InventarioActivosPage() {
   // ── Resumen: vars computadas fuera del JSX para evitar IIFE
   const resumenTotalOficina = activosOficina.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0);
   const resumenTotalIntangibles = activosIntangibles.reduce((s, a) => s + (a.valorActual > 0 ? a.valorActual : a.valorAdquisicion), 0);
-  const resumenTotalPropios = resumenTotalOficina + resumenTotalIntangibles;
+  const resumenTotalPropios = resumenTotalOficina + resumenTotalIntangibles + valorAccTotal;
   const resumenGrandTotal = valorTotalProd + resumenTotalPropios;
   const RESUMEN_COLORS = ["bg-amber-500","bg-blue-500","bg-emerald-500","bg-purple-500","bg-rose-500","bg-cyan-500","bg-orange-500","bg-teal-500","bg-indigo-500","bg-pink-500","bg-lime-500","bg-sky-500","bg-violet-500"];
   const resumenCatValores = [...porCategoriaProd]
@@ -602,12 +648,14 @@ export default function InventarioActivosPage() {
                       <>
                         <div className="flex h-4 rounded-full overflow-hidden gap-0.5 mb-5">
                           {valorTotalProd > 0 && <div className="bg-amber-500/80 transition-all" style={{ width: `${(valorTotalProd / resumenGrandTotal) * 100}%` }} />}
+                          {valorAccTotal > 0 && <div className="bg-teal-500/80 transition-all" style={{ width: `${(valorAccTotal / resumenGrandTotal) * 100}%` }} />}
                           {resumenTotalOficina > 0 && <div className="bg-[#B3985B]/80 transition-all" style={{ width: `${(resumenTotalOficina / resumenGrandTotal) * 100}%` }} />}
                           {resumenTotalIntangibles > 0 && <div className="bg-purple-500/80 transition-all" style={{ width: `${(resumenTotalIntangibles / resumenGrandTotal) * 100}%` }} />}
                         </div>
                         <div className="space-y-3">
                           {[
                             { label: "Equipos de Producción", nota: "Administrado", valor: valorTotalProd, dot: "bg-amber-500", text: "text-amber-400" },
+                            { label: "Accesorios",            nota: "Administrado", valor: valorAccTotal,          dot: "bg-teal-500",  text: "text-teal-400" },
                             { label: "Oficina y Mobiliario",  nota: "Propio",       valor: resumenTotalOficina,    dot: "bg-[#B3985B]", text: "text-[#B3985B]" },
                             { label: "Activos Intangibles",   nota: "Propio",       valor: resumenTotalIntangibles, dot: "bg-purple-500", text: "text-purple-400" },
                           ].filter(s => s.valor > 0).map(s => (
@@ -669,6 +717,22 @@ export default function InventarioActivosPage() {
                     <div className="text-right">
                       <p className="text-sm font-semibold text-amber-400">{fmx(valorTotalProd)}</p>
                       <button onClick={() => setTab("produccion")} className="text-[10px] text-[#444] hover:text-[#B3985B] transition-colors">Ver detalle →</button>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <Plug strokeWidth={1.75} className="w-4 h-4 text-gray-400" />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm text-white/90">Accesorios</p>
+                          <span className="text-[9px] bg-teal-900/30 text-teal-400 border border-teal-800/30 px-1.5 py-0.5 rounded-full font-medium">Administrado</span>
+                        </div>
+                        <p className="text-xs text-[#555]">{accesoriosProd.length} accesorios en catálogo</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-teal-400">{fmx(valorAccTotal)}</p>
+                      <button onClick={() => setTab("accesorios")} className="text-[10px] text-[#444] hover:text-[#B3985B] transition-colors">Ver detalle →</button>
                     </div>
                   </div>
                   <div className="flex items-center justify-between px-4 py-3">
@@ -971,10 +1035,11 @@ export default function InventarioActivosPage() {
           )}
 
           {/* KPIs */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <KpiCard label="Total accesorios" value={String(accesoriosProd.length)} sub="En biblioteca de equipos" />
             <KpiCard label="Cuantificables" value={String(accesoriosProd.filter(a => a.tipoConteo === "cuantificable").length)} sub="Con cantidad" color="text-[#B3985B]" />
             <KpiCard label="Default" value={String(accesoriosProd.filter(a => a.tipoConteo !== "cuantificable").length)} sub="Se jalan con el equipo" color="text-gray-400" />
+            <KpiCard label="Valor de accesorios" value={fmx(valorAccTotal)} sub="Portafolio (× cantidad)" color="text-[#B3985B]" />
             <KpiCard label="Sin accesorios" value={String(equiposSinAcc.length)} sub="Pendientes por registrar" color="text-red-400" />
           </div>
 
@@ -1013,8 +1078,9 @@ export default function InventarioActivosPage() {
                   <tr className="border-b border-[#1e1e1e] bg-[#0a0a0a]">
                     <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Accesorio</th>
                     <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Conteo</th>
-                    <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">{agruparAcc === "equipo" ? "Categoría" : "Equipo origen"}</th>
-                    <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold hidden md:table-cell">{agruparAcc === "equipo" ? "Equipo" : ""}</th>
+                    <th className="text-right px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Valor adq.</th>
+                    <th className="text-right px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold">Precio renta</th>
+                    <th className="text-left px-4 py-3 text-[10px] text-gray-500 uppercase tracking-wider font-semibold hidden lg:table-cell">{agruparAcc === "equipo" ? "Categoría" : "Equipo origen"}</th>
                     <th className="w-10"></th>
                   </tr>
                 </thead>
@@ -1027,7 +1093,7 @@ export default function InventarioActivosPage() {
                           .map(({ equipoId, equipoNombre, items }) => (
                           <>
                             <tr key={`eq-${equipoId}`}>
-                              <td colSpan={5} className="px-4 py-2 bg-[#0d0d0d] border-b border-[#1e1e1e]">
+                              <td colSpan={6} className="px-4 py-2 bg-[#0d0d0d] border-b border-[#1e1e1e]">
                                 <div className="flex items-center justify-between">
                                   <div>
                                     <span className="text-[11px] text-[#B3985B] font-semibold">{equipoNombre}</span>
@@ -1045,12 +1111,13 @@ export default function InventarioActivosPage() {
                               <tr key={a.id} className="hover:bg-[#0d0d0d] transition-colors group">
                                 <td className="px-4 py-2.5 pl-8 text-gray-300 font-medium">{a.nombre}</td>
                                 <td className="px-4 py-2.5"><ConteoCell a={a} /></td>
-                                <td className="px-4 py-2.5">
+                                <td className="px-4 py-2.5 text-right"><ValorInput a={a} field="valorAdquisicion" /></td>
+                                <td className="px-4 py-2.5 text-right"><ValorInput a={a} field="precioRenta" /></td>
+                                <td className="px-4 py-2.5 hidden lg:table-cell">
                                   {a.categoria ? (
                                     <span className={`text-xs ${ACC_CAT_COLOR[a.categoria] ?? "text-gray-500"}`}>{ACC_CAT_LABEL[a.categoria] ?? a.categoria}</span>
                                   ) : <span className="text-[#333] text-xs">—</span>}
                                 </td>
-                                <td className="px-4 py-2.5 hidden md:table-cell"></td>
                                 <td className="px-2">
                                   <button onClick={() => deleteAccesorio(a.equipoId, a.id)}
                                     className="opacity-0 group-hover:opacity-100 text-[#333] hover:text-red-500 transition-all p-1">
@@ -1066,18 +1133,18 @@ export default function InventarioActivosPage() {
                         {equiposSinAcc.length > 0 && (
                           <>
                             <tr>
-                              <td colSpan={5} className="px-4 py-2 bg-[#0a0a0a] border-t-2 border-[#1e1e1e]">
+                              <td colSpan={6} className="px-4 py-2 bg-[#0a0a0a] border-t-2 border-[#1e1e1e]">
                                 <span className="text-[10px] text-red-400/70 font-semibold uppercase tracking-wider">Sin accesorios registrados</span>
                                 <span className="text-[#333] text-[10px] ml-2">({equiposSinAcc.length})</span>
                               </td>
                             </tr>
                             {equiposSinAcc.map(eq => (
                               <tr key={eq.equipoId} className="hover:bg-[#0d0d0d] transition-colors group">
-                                <td className="px-4 py-2.5 pl-8" colSpan={3}>
+                                <td className="px-4 py-2.5 pl-8" colSpan={4}>
                                   <p className="text-[#555] text-sm font-medium">{eq.equipoNombre}</p>
                                   {eq.equipoNombre !== eq.descripcion && <p className="text-[#333] text-[10px]">{eq.descripcion}</p>}
                                 </td>
-                                <td className="px-4 py-2.5 hidden md:table-cell">
+                                <td className="px-4 py-2.5 hidden lg:table-cell">
                                   <span className="text-[#2a2a2a] text-xs">{eq.categoria}</span>
                                 </td>
                                 <td className="px-2">
@@ -1105,8 +1172,9 @@ export default function InventarioActivosPage() {
                             <tr key={a.id} className="hover:bg-[#0d0d0d] transition-colors group">
                               <td className="px-4 py-2.5 pl-8 text-gray-300 font-medium">{a.nombre}</td>
                               <td className="px-4 py-2.5"><ConteoCell a={a} /></td>
-                              <td className="px-4 py-2.5 text-gray-500 text-xs">{a.equipoNombre}</td>
-                              <td className="px-4 py-2.5 hidden md:table-cell"></td>
+                              <td className="px-4 py-2.5 text-right"><ValorInput a={a} field="valorAdquisicion" /></td>
+                              <td className="px-4 py-2.5 text-right"><ValorInput a={a} field="precioRenta" /></td>
+                              <td className="px-4 py-2.5 text-gray-500 text-xs hidden lg:table-cell">{a.equipoNombre}</td>
                               <td className="px-2">
                                 <button onClick={() => deleteAccesorio(a.equipoId, a.id)}
                                   className="opacity-0 group-hover:opacity-100 text-[#333] hover:text-red-500 transition-all p-1">
