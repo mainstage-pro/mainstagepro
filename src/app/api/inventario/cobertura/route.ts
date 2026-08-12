@@ -15,7 +15,7 @@ export async function GET() {
 
   const [equipos, productos, adicionales, nichos, prodEquipos, paqueteItems, paquetes] = await Promise.all([
     prisma.equipo.findMany({
-      where: { activo: true, noCotizable: false },
+      where: { activo: true, noCotizable: false, estadoMigracion: null },
       select: { id: true, descripcion: true, marca: true, modelo: true, tiposEvento: true, categoria: { select: { nombre: true } } },
       orderBy: [{ descripcion: "asc" }],
     }),

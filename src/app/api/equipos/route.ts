@@ -44,6 +44,9 @@ export async function GET(req: NextRequest) {
 
   const where: Record<string, unknown> = todos ? {} : { activo: true };
   if (tipo) where.tipo = tipo;
+  // Los equipos promovidos a Accesorio se ocultan de los selectores (siguen
+  // resolviéndose por id en referencias históricas).
+  where.estadoMigracion = null;
 
   const equipos = await prisma.equipo.findMany({
     where,

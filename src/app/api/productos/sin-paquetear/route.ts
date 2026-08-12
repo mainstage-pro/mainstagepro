@@ -19,7 +19,7 @@ export async function GET() {
   const usadosSet = new Set(usados.map((u) => u.equipoId));
 
   const equipos = await prisma.equipo.findMany({
-    where: { activo: true, noCotizable: false },
+    where: { activo: true, noCotizable: false, estadoMigracion: null },
     select: {
       id: true,
       descripcion: true,

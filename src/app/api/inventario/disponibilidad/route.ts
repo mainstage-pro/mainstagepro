@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 
   // 1. Todos los equipos propios activos
   const equipos = await prisma.equipo.findMany({
-    where: { tipo: "PROPIO", activo: true },
+    where: { tipo: "PROPIO", activo: true, estadoMigracion: null },
     include: {
       categoria: { select: { nombre: true, orden: true } },
       unidades: { where: { activo: true }, select: { estado: true } },

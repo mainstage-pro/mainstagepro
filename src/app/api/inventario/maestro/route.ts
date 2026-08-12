@@ -13,6 +13,8 @@ export async function GET(req: NextRequest) {
 
   const where: Record<string, unknown> = {};
   if (!inactivos) where.activo = true;
+  // Excluye equipos promovidos a Accesorio (se gestionan en la pestaña Accesorios).
+  where.estadoMigracion = null;
   if (tipo) where.tipo = tipo;
   if (estado) where.estado = estado;
   if (categoriaId) where.categoriaId = categoriaId;

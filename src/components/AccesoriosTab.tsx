@@ -80,6 +80,11 @@ export function AccesoriosTab({ categorias, catalogoTipos }: { categorias: Categ
   const [saving, setSaving] = useState(false);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const imgRef = useRef<HTMLInputElement>(null);
+  // Migración equipo → accesorio
+  const [migrarOpen, setMigrarOpen] = useState(false);
+  const [equiposCand, setEquiposCand] = useState<{ id: string; marca: string | null; modelo: string | null; descripcion: string; imagenUrl: string | null; categoria: { nombre: string } | null }[]>([]);
+  const [busqMig, setBusqMig] = useState("");
+  const [migrando, setMigrando] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -93,6 +98,32 @@ export function AccesoriosTab({ categorias, catalogoTipos }: { categorias: Categ
     setLoading(false);
   }
   useEffect(() => { load(); }, []);
+
+  async function cargarCandidatos() {
+    const res = await fetch("/api/equipos?tipo=PROPIO").catch(() => null);
+    if (res?.ok) { const d = await res.json(); setEquiposCand(d.equipos ?? []); }
+  }
+  function abrirMigrar() { setBusqMig(""); setMigrarOpen(true); cargarCandidatos(); }
+
+  async function migrarEquipo(id: string) {
+    setMigrando(id);
+    try {
+      const res = await fetch(`/api/equipos/${id}/migrar-accesorio`, { method: "POST" });
+      if (!res.ok) { toast.error("No se pudo migrar"); return; }
+      toast.success("Equipo promovido a accesorio");
+      setEquiposCand(prev => prev.filter(e => e.id !== id));
+      await load();
+    } finally { setMigrando(null); }
+  }
+
+  async function revertirMigracion(a: Accesorio) {
+    if (!a.equipoOrigenId) return;
+    if (!confirm(`¿Revertir la migración de "${a.nombre}"? El equipo volverá a los selectores y el accesorio se desactivará.`)) return;
+    const res = await fetch(`/api/equipos/${a.equipoOrigenId}/migrar-accesorio`, { method: "DELETE" });
+    if (!res.ok) { toast.error("No se pudo revertir"); return; }
+    toast.success("Migración revertida");
+    await load();
+  }
 
   const filtrados = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
@@ -200,7 +231,10 @@ export function AccesoriosTab({ categorias, catalogoTipos }: { categorias: Categ
           <div className="flex items-center gap-2.5 min-w-0">
             <Foto url={a.fotoUrl} alt={a.nombre} />
             <div className="min-w-0">
-              <p className="text-white font-medium truncate">{(a.marca || a.modelo) ? [a.marca, a.modelo].filter(Boolean).join(" · ") : a.nombre}</p>
+              <p className="text-white font-medium truncate flex items-center gap-1.5">
+                <span className="truncate">{(a.marca || a.modelo) ? [a.marca, a.modelo].filter(Boolean).join(" · ") : a.nombre}</span>
+                {a.equipoOrigenId && <span className="text-[9px] px-1 py-0.5 rounded bg-[#1a1a1a] text-[#6b7280] shrink-0" title="Migrado desde inventario de equipos">desde equipo</span>}
+              </p>
               <p className="text-[#555] text-xs truncate">{a.descripcion || a.nombre}</p>
             </div>
           </div>
@@ -231,6 +265,11 @@ export function AccesoriosTab({ categorias, catalogoTipos }: { categorias: Categ
             <button onClick={() => abrirEdit(a)} className="text-[#555] hover:text-[#B3985B] p-1" title="Editar">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
+            {a.equipoOrigenId && (
+              <button onClick={() => revertirMigracion(a)} className="text-[#555] hover:text-amber-400 p-1" title="Revertir migración (devolver a equipos)">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+              </button>
+            )}
             <button onClick={() => eliminar(a)} className="text-[#333] hover:text-red-500 p-1" title="Eliminar">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
             </button>
@@ -280,6 +319,10 @@ export function AccesoriosTab({ categorias, catalogoTipos }: { categorias: Categ
             <input type="checkbox" checked={soloSinPrecio} onChange={e => setSoloSinPrecio(e.target.checked)} className="accent-[#B3985B]" />
             Sin precio de renta
           </label>
+          <button onClick={abrirMigrar} className="flex items-center gap-1.5 px-3 py-1.5 border border-[#2a2a2a] hover:border-[#B3985B]/40 text-[#9ca3af] hover:text-[#B3985B] text-sm rounded-lg transition-colors" title="Promover un equipo del inventario a accesorio">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="17 11 12 6 7 11"/><line x1="12" y1="18" x2="12" y2="6"/></svg>
+            Migrar equipo
+          </button>
           <button onClick={abrirNuevo} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#B3985B] hover:bg-[#c9a960] text-black text-sm font-semibold rounded-lg transition-colors">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Nuevo accesorio
@@ -440,6 +483,53 @@ export function AccesoriosTab({ categorias, catalogoTipos }: { categorias: Categ
             <div className="px-6 py-4 border-t border-[#1e1e1e] flex gap-2 justify-end">
               <button onClick={() => setModal(null)} className="px-4 py-2 text-sm text-gray-500 hover:text-white transition-colors">Cancelar</button>
               <button onClick={guardar} disabled={saving} className="px-5 py-2 bg-[#B3985B] hover:bg-[#c9a960] disabled:opacity-50 text-black text-sm font-semibold rounded-lg transition-colors">{saving ? "Guardando..." : "Guardar"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal migrar equipo → accesorio */}
+      {migrarOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }}>
+          <div className="bg-[#0d0d0d] border border-[#2a2a2a] rounded-2xl w-full max-w-xl shadow-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e1e1e]">
+              <div>
+                <h2 className="text-white font-semibold">Migrar equipo a accesorio</h2>
+                <p className="text-[11px] text-[#6b7280] mt-0.5">El equipo se oculta de los selectores y se conserva su histórico. Reversible.</p>
+              </div>
+              <button onClick={() => setMigrarOpen(false)} className="text-gray-500 hover:text-white">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div className="px-6 py-3 border-b border-[#1e1e1e]">
+              <input value={busqMig} onChange={e => setBusqMig(e.target.value)} placeholder="Buscar equipo propio..."
+                className="w-full bg-[#111] border border-[#1e1e1e] rounded-lg px-3 py-2 text-sm text-white placeholder:text-[#444] focus:outline-none focus:border-[#B3985B]/50" />
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-1">
+              {(() => {
+                const q = busqMig.trim().toLowerCase();
+                const list = equiposCand.filter(e => !q || [e.marca, e.modelo, e.descripcion, e.categoria?.nombre].filter(Boolean).join(" ").toLowerCase().includes(q));
+                if (list.length === 0) return <p className="text-center text-[#333] text-sm py-10">Sin equipos propios disponibles para migrar.</p>;
+                return list.map(e => (
+                  <div key={e.id} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#111] transition-colors">
+                    {e.imagenUrl
+                      // eslint-disable-next-line @next/next/no-img-element
+                      ? <img src={e.imagenUrl} alt="" className="w-8 h-8 object-contain rounded bg-[#0a0a0a] p-0.5 shrink-0" />
+                      : <div className="w-8 h-8 rounded bg-[#1a1a1a] shrink-0" />}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-white text-sm font-medium truncate">{(e.marca || e.modelo) ? [e.marca, e.modelo].filter(Boolean).join(" · ") : e.descripcion}</p>
+                      <p className="text-[#555] text-xs truncate">{e.categoria?.nombre ?? "Sin categoría"} · {e.descripcion}</p>
+                    </div>
+                    <button onClick={() => migrarEquipo(e.id)} disabled={migrando === e.id}
+                      className="shrink-0 px-3 py-1.5 text-xs font-medium bg-[#B3985B] hover:bg-[#c9a960] disabled:opacity-50 text-black rounded-lg transition-colors">
+                      {migrando === e.id ? "..." : "Migrar"}
+                    </button>
+                  </div>
+                ));
+              })()}
+            </div>
+            <div className="px-6 py-3 border-t border-[#1e1e1e] flex justify-end">
+              <button onClick={() => setMigrarOpen(false)} className="px-4 py-2 text-sm text-gray-500 hover:text-white transition-colors">Cerrar</button>
             </div>
           </div>
         </div>

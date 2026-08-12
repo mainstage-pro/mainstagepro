@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
   if (existe) await prisma.checklistBodega.delete({ where: { semana } });
 
   const equipos = await prisma.equipo.findMany({
-    where: { tipo: "PROPIO", activo: true, estado: { not: "PERDIDO" } },
+    where: { tipo: "PROPIO", activo: true, estado: { not: "PERDIDO" }, estadoMigracion: null },
     include: { categoria: { select: { nombre: true } } },
     orderBy: [{ categoriaId: "asc" }, { descripcion: "asc" }],
   });
