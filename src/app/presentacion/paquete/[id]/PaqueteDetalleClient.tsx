@@ -16,13 +16,14 @@ type Item = {
   producto: { nombre: string; imagenUrl: string | null; categoria: string | null; equipos: ProductoEquipo[] } | null;
 };
 type Concepto = { tipo: string; descripcion: string };
-type ItemVista = { label: string; cantidad: number; imagenUrl: string | null };
+type ItemVista = { titulo: string; descripcion: string; cantidad: number; imagenUrl: string | null };
 
 // Frase emocional por defecto según el tipo de evento (editable en vivo).
+// Se mantienen breves para que caigan en ~2 líneas centradas.
 const FRASE_EMOCIONAL: Record<string, string> = {
-  SOCIAL: "Una boda ocurre una sola vez. Nuestro trabajo es que cada momento —la entrada, el primer baile, el último brindis— se escuche y se sienta tal como lo soñaron.",
-  MUSICAL: "El escenario se recuerda por lo que se siente. Cuidamos cada detalle para que tu presentación suene y se vea a la altura del momento.",
-  EMPRESARIAL: "Una marca también se vive en vivo. Producimos cada detalle para que tu mensaje llegue con claridad, fuerza y presencia.",
+  SOCIAL: "Una boda ocurre una sola vez. Hacemos que cada momento se escuche y se sienta tal como lo soñaron.",
+  MUSICAL: "El escenario se recuerda por lo que se siente. Cuidamos cada detalle para estar a la altura del show.",
+  EMPRESARIAL: "Tu marca también se vive en vivo. Producimos cada detalle para que tu mensaje llegue con fuerza.",
 };
 type Paquete = {
   id: string; nombre: string; tipoEvento: string; rangoPersonas: string | null;
@@ -37,20 +38,31 @@ function parseJSON(s: string | null): string[] {
   if (!s) return [];
   try { const v = JSON.parse(s); return Array.isArray(v) ? v : []; } catch { return []; }
 }
-function equipoLabel(e: { descripcion: string | null; marca: string | null; modelo: string | null }): string {
-  return e.descripcion || [e.marca, e.modelo].filter(Boolean).join(" ") || "Equipo";
+type EquipoBase = { descripcion: string | null; marca: string | null; modelo: string | null };
+// Título de la miniatura = marca + modelo del equipo (lo que el cliente reconoce).
+function equipoTitulo(e: EquipoBase): string {
+  const modelo = [e.marca, e.modelo].filter(Boolean).join(" ").trim();
+  return modelo || (e.descripcion || "").trim() || "Equipo";
+}
+// Descripción simple debajo del modelo. Solo se muestra si aporta algo distinto
+// al título (evita repetir el modelo cuando el equipo no tiene marca/modelo).
+function equipoDesc(e: EquipoBase): string {
+  const titulo = equipoTitulo(e);
+  const desc = (e.descripcion || "").trim();
+  return desc && desc !== titulo ? desc : "";
 }
 // Aplana los items del paquete a nivel de equipo: los productos se expanden en
 // sus equipos principales (sin accesorios), para que las miniaturas muestren el
 // equipo real que compone el paquete.
-function equiposDePaquete(items: Item[]): { categoria: string; label: string; cantidad: number; imagenUrl: string | null }[] {
-  const out: { categoria: string; label: string; cantidad: number; imagenUrl: string | null }[] = [];
+function equiposDePaquete(items: Item[]): (ItemVista & { categoria: string })[] {
+  const out: (ItemVista & { categoria: string })[] = [];
   for (const it of items) {
     if (it.tipo === "PRODUCTO" && it.producto) {
       for (const pe of it.producto.equipos) {
         out.push({
           categoria: pe.categoria || "Equipo técnico",
-          label: equipoLabel(pe),
+          titulo: equipoTitulo(pe),
+          descripcion: equipoDesc(pe),
           cantidad: Math.max(1, it.cantidad) * Math.max(1, pe.cantidad),
           imagenUrl: pe.imagenUrl,
         });
@@ -58,7 +70,8 @@ function equiposDePaquete(items: Item[]): { categoria: string; label: string; ca
     } else if (it.equipo) {
       out.push({
         categoria: it.equipo.categoria || "Equipo técnico",
-        label: equipoLabel(it.equipo),
+        titulo: equipoTitulo(it.equipo),
+        descripcion: equipoDesc(it.equipo),
         cantidad: Math.max(1, it.cantidad),
         imagenUrl: it.equipo.imagenUrl,
       });
@@ -74,9 +87,9 @@ function agruparPorCategoria(items: Item[]): { categoria: string; items: ItemVis
   for (const e of equiposDePaquete(items)) {
     if (!mapa.has(e.categoria)) { mapa.set(e.categoria, new Map()); orden.push(e.categoria); }
     const sub = mapa.get(e.categoria)!;
-    const prev = sub.get(e.label);
+    const prev = sub.get(e.titulo);
     if (prev) prev.cantidad += e.cantidad;
-    else sub.set(e.label, { label: e.label, cantidad: e.cantidad, imagenUrl: e.imagenUrl });
+    else sub.set(e.titulo, { titulo: e.titulo, descripcion: e.descripcion, cantidad: e.cantidad, imagenUrl: e.imagenUrl });
   }
   return orden.map((categoria) => ({ categoria, items: Array.from(mapa.get(categoria)!.values()) }));
 }
@@ -202,33 +215,28 @@ export default function PaqueteDetalleClient({
             )}
 
             {p.propuestaValor && (
-              <div className="rounded-2xl p-6 mb-8" style={{ border: `1px solid ${GOLD}33`, background: "rgba(179,152,91,0.05)" }}>
+              <div className="rounded-2xl p-6" style={{ border: `1px solid ${GOLD}33`, background: "rgba(179,152,91,0.05)" }}>
                 <p className="text-[11px] uppercase tracking-[0.14em] mb-2.5" style={{ color: GOLD }}>Por qué elegirlo</p>
                 <p className="text-white/75 text-[15px] leading-relaxed whitespace-pre-line">{p.propuestaValor}</p>
               </div>
             )}
-
-            <a href={wa(confirmarMsg)} target="_blank" rel="noopener noreferrer"
-              className="inline-block text-sm font-semibold px-8 py-4 rounded-full transition-all hover:scale-105" style={{ background: GOLD, color: "#000" }}>
-              Confirmar paquete
-            </a>
           </R>
         </div>
       </section>
 
       {/* Frase emocional (editable en vivo) */}
-      <section className="mx-auto max-w-4xl px-6 py-10 sm:py-14">
+      <section className="mx-auto max-w-2xl px-6 py-10 sm:py-14">
         <R>
           <div className="relative text-center">
-            <span aria-hidden className="block font-serif leading-none mb-2 select-none" style={{ fontSize: "3.5rem", color: `${GOLD}55` }}>“</span>
+            <span aria-hidden className="block font-serif leading-none mb-1 select-none" style={{ fontSize: "3rem", color: `${GOLD}55` }}>“</span>
             <EditableText
               edit={edit}
               okey={`paquete:${p.id}:fraseEmocional`}
               fallback={fraseFallback}
               as="p"
               multiline
-              className="text-white/85 leading-relaxed"
-              style={{ fontSize: "clamp(1.15rem, 2.4vw, 1.7rem)", fontWeight: 300, letterSpacing: "-0.01em" }}
+              className="text-white/85 leading-snug mx-auto"
+              style={{ fontSize: "clamp(1.2rem, 2.6vw, 1.65rem)", fontWeight: 300, letterSpacing: "-0.01em", textWrap: "balance", maxWidth: "34rem" }}
             />
             <div className="mx-auto mt-6 h-px w-16" style={{ background: `${GOLD}66` }} />
           </div>
@@ -268,11 +276,11 @@ export default function PaqueteDetalleClient({
                     <div className="relative aspect-square overflow-hidden">
                       {it.imagenUrl ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
-                        <img src={it.imagenUrl} alt={it.label} loading="lazy" draggable={false}
+                        <img src={it.imagenUrl} alt={it.titulo} loading="lazy" draggable={false}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center" style={{ background: "radial-gradient(circle at 35% 25%, rgba(179,152,91,0.18), #0c0c0c 70%)" }}>
-                          <span className="text-2xl font-bold text-white/15">{it.label.charAt(0).toUpperCase()}</span>
+                          <span className="text-2xl font-bold text-white/15">{it.titulo.charAt(0).toUpperCase()}</span>
                         </div>
                       )}
                       {it.cantidad > 1 && (
@@ -281,7 +289,12 @@ export default function PaqueteDetalleClient({
                         </span>
                       )}
                     </div>
-                    <p className="text-[12.5px] leading-snug text-white/70 px-3 py-2.5">{it.label}</p>
+                    <div className="px-3 py-2.5">
+                      <p className="text-[13px] font-medium leading-snug text-white/90">{it.titulo}</p>
+                      {it.descripcion && (
+                        <p className="text-[11.5px] leading-snug text-white/45 mt-0.5">{it.descripcion}</p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
