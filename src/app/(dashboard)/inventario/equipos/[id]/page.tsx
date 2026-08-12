@@ -478,7 +478,7 @@ function UnidadesSection({ equipoId, cantidadTotal }: { equipoId: string; cantid
 
   async function generar() {
     for (let i = 1; i <= cantidadTotal; i++) {
-      await fetch(`/api/equipos/${equipoId}/unidades`, {
+      await fetch(`/api/equipos/${equipoId}/unidades?skipIncrement=true`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ codigo: `Unidad ${i}` }),
       });
@@ -544,7 +544,7 @@ function UnidadesSection({ equipoId, cantidadTotal }: { equipoId: string; cantid
           </div>
           <div>
             <label className="text-[10px] text-gray-600 mb-1 block">Voltaje</label>
-            <div className="flex gap-1.5">
+            <div className="flex flex-wrap gap-1.5">
               {VOLTAJES_UNIDAD.map(v => (
                 <button key={v.value} type="button"
                   onClick={() => setForm(p => ({ ...p, voltaje: p.voltaje === v.value ? "" : v.value }))}

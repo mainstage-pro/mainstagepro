@@ -38,6 +38,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
   await ensureVoltajeColumn();
   const { id } = await params;
+  const skipIncrement = request.nextUrl.searchParams.get("skipIncrement") === "true";
   const body = await request.json();
   const { codigo, estado, voltaje, notas } = body;
 
@@ -54,5 +55,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       mantenimientos: { orderBy: { fecha: "desc" }, take: 1, select: { fecha: true, proximoMantenimiento: true, tipo: true } },
     },
   });
+
+  if (!skipIncrement) {
+    await prisma.equipo.update({
+      where: { id },
+      data: { cantidadTotal: { increment: 1 } }
+    });
+  }
+
   return NextResponse.json({ unidad }, { status: 201 });
 }

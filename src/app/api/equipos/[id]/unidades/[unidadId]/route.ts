@@ -83,7 +83,13 @@ export async function DELETE(
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
 
-  const { unidadId } = await params;
+  const { id, unidadId } = await params;
   await prisma.equipoUnidad.delete({ where: { id: unidadId } });
+  
+  await prisma.equipo.update({
+    where: { id },
+    data: { cantidadTotal: { decrement: 1 } }
+  });
+
   return NextResponse.json({ ok: true });
 }
