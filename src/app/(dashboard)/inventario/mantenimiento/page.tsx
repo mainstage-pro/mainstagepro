@@ -297,7 +297,7 @@ function MantenimientoContent() {
     if (!selectedEquipo) return;
     const n = selectedEquipo.cantidadTotal;
     for (let i = 1; i <= n; i++) {
-      await fetch(`/api/equipos/${selectedEquipo.id}/unidades`, {
+      await fetch(`/api/equipos/${selectedEquipo.id}/unidades?skipIncrement=true`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ codigo: `Unidad ${i}` }),
       });
@@ -585,7 +585,7 @@ function MantenimientoContent() {
                         </div>
                         <div className="col-span-3">
                           <label className="text-[10px] text-gray-600 mb-1 block">Voltaje</label>
-                          <div className="flex gap-1.5">
+                          <div className="flex flex-wrap gap-1.5">
                             {VOLTAJES.map(v => (
                               <button key={v.value} type="button"
                                 onClick={() => setUnidadForm(p => ({ ...p, voltaje: p.voltaje === v.value ? "" : v.value }))}
