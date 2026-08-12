@@ -58,8 +58,8 @@ interface CxP { id: string; concepto: string; monto: number; estado: string; fec
 interface Bitacora { id: string; tipo: string; contenido: string; createdAt: string; usuario: { name: string } | null }
 interface GastoOp { id: string; tipo: string; concepto: string; monto: number; cantidad: number; entregado: boolean; fechaEntrega: string | null; notas: string | null; cxpId: string | null }
 interface Gasto { id: string; fecha: string; concepto: string; monto: number; metodoPago: string; notas: string | null; referencia: string | null; categoriaId?: string | null; categoria: { id?: string; nombre: string } | null; proveedorId?: string | null; proveedor: { id?: string; nombre: string; empresa?: string | null } | null; cuentaOrigenId?: string | null; cuentaOrigen: { id: string; nombre: string; banco: string | null } | null }
-interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null }
-interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number }
+interface EquipoAccesorioLib { id: string; nombre: string; categoria: string | null; accesorioId?: string | null }
+interface RiderAccesorio { id: string; nombre: string; cantidad: number; categoria: string | null; completado: boolean; esSugerencia: boolean; orden: number; origen?: string | null; accesorioId?: string | null }
 interface ProyectoEquipoItem { id: string; tipo: string; cantidad: number; dias: number; costoExterno: number | null; confirmado: boolean; confirmToken: string | null; confirmDisponible: boolean | null; notas: string | null; necesitaRevision: boolean; equipo: { descripcion: string; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: { nombre: string }; accesorios: EquipoAccesorioLib[] }; proveedor: { nombre: string; empresa: string | null; telefono: string | null } | null; riderAccesorios: RiderAccesorio[] }
 type FaseCrono = "montaje" | "operacion" | "desmontaje";
 const FASE_ORDEN: Record<FaseCrono, number> = { montaje: 0, operacion: 1, desmontaje: 2 };
@@ -2882,6 +2882,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
         cantidad: riderAddCantidad,
         categoria: riderAddCategoria || null,
         guardarEnBiblioteca: riderAddGuardar,
+        origen: "manual",
       }),
     });
     const d = await res.json();
@@ -2935,11 +2936,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
     ));
   }
 
-  async function riderAgregarSugerencia(proyectoEquipoId: string, nombre: string, cantidad: number = 1) {
+  async function riderAgregarSugerencia(proyectoEquipoId: string, nombre: string, cantidad: number = 1, origen: string = "sistema", accesorioId?: string) {
     const res = await fetch(`/api/proyectos/${id}/rider-accesorios`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ proyectoEquipoId, nombre, cantidad, guardarEnBiblioteca: false }),
+      body: JSON.stringify({ proyectoEquipoId, nombre, cantidad, guardarEnBiblioteca: false, origen, accesorioId }),
     });
     const d = await res.json();
     if (d.accesorio) {
@@ -6381,6 +6382,11 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                           <div key={a.id} className="flex items-center gap-2.5 group py-1">
                                             <span className="text-[#B3985B] font-bold text-sm w-8 shrink-0">×{a.cantidad ?? 1}</span>
                                             <span className="flex-1 text-sm text-gray-200">{a.nombre}</span>
+                                            {a.origen && a.origen !== "manual" && (
+                                              <span className="text-[9px] text-[#666] border border-[#2a2a2a] px-1.5 rounded uppercase tracking-wide">
+                                                {a.origen === "equipo" ? "biblioteca" : a.origen === "sistema" ? "sistema" : a.origen === "producto" ? "producto" : a.origen}
+                                              </span>
+                                            )}
                                             {a.categoria && <span className="text-[9px] text-[#444] bg-[#1a1a1a] px-1.5 rounded">{a.categoria}</span>}
                                             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
                                               <button onClick={() => riderActualizarCantidad(e.id, a.id, Math.max(1, (a.cantidad ?? 1) - 1))} className="text-gray-600 hover:text-white w-5 text-center text-sm leading-none transition-colors">−</button>
@@ -6410,7 +6416,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                               <span className="text-white text-xs font-semibold w-5 text-center">{cant}</span>
                                               <button type="button" onClick={() => setSugCantidad(prev => ({ ...prev, [sk]: cant + 1 }))} className="text-gray-500 hover:text-white w-5 text-center text-sm leading-none transition-colors">+</button>
                                             </div>
-                                            <button type="button" onClick={() => riderAgregarSugerencia(e.id, a.nombre, cant)} className="text-[10px] font-semibold text-gray-500 hover:text-black hover:bg-[#B3985B] border border-[#333] hover:border-[#B3985B] px-2 py-1 rounded-md shrink-0 transition-colors">Agregar</button>
+                                            <button type="button" onClick={() => riderAgregarSugerencia(e.id, a.nombre, cant, "equipo", a.accesorioId ?? undefined)} className="text-[10px] font-semibold text-gray-500 hover:text-black hover:bg-[#B3985B] border border-[#333] hover:border-[#B3985B] px-2 py-1 rounded-md shrink-0 transition-colors">Agregar</button>
                                           </div>
                                           );
                                         })}
@@ -6435,7 +6441,7 @@ export default function ProyectoDetailPage({ params }: { params: Promise<{ id: s
                                               <span className="text-white text-xs font-semibold w-5 text-center">{cant}</span>
                                               <button type="button" onClick={() => setSugCantidad(prev => ({ ...prev, [sk]: cant + 1 }))} className="text-gray-500 hover:text-white w-5 text-center text-sm leading-none transition-colors">+</button>
                                             </div>
-                                            <button type="button" onClick={() => riderAgregarSugerencia(e.id, s, cant)} className="text-[10px] font-semibold text-gray-500 hover:text-black hover:bg-[#B3985B] border border-[#333] hover:border-[#B3985B] px-2 py-1 rounded-md shrink-0 transition-colors">Agregar</button>
+                                            <button type="button" onClick={() => riderAgregarSugerencia(e.id, s, cant, "sistema")} className="text-[10px] font-semibold text-gray-500 hover:text-black hover:bg-[#B3985B] border border-[#333] hover:border-[#B3985B] px-2 py-1 rounded-md shrink-0 transition-colors">Agregar</button>
                                           </div>
                                           );
                                         })}

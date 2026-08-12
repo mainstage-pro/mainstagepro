@@ -3,15 +3,16 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
 // POST /api/proyectos/[id]/rider-accesorios
-// Body: { proyectoEquipoId, nombre, categoria?, cantidad? }
+// Body: { proyectoEquipoId, nombre, categoria?, cantidad?, origen?, accesorioId? }
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await req.json();
-  const { proyectoEquipoId, nombre, categoria, cantidad = 1, guardarEnBiblioteca = true } = body;
+  const { proyectoEquipoId, nombre, categoria, cantidad = 1, guardarEnBiblioteca = true, origen, accesorioId } = body;
 
   if (!proyectoEquipoId || !nombre?.trim()) {
     return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
   }
+  const origenValido = ["manual", "equipo", "sistema", "producto"].includes(origen) ? origen : "manual";
 
   const pe = await prisma.proyectoEquipo.findFirst({
     where: { id: proyectoEquipoId, proyectoId: id },
@@ -32,6 +33,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       categoria: categoria ?? null,
       orden,
       esSugerencia: false,
+      origen: origenValido,
+      accesorioId: typeof accesorioId === "string" && accesorioId ? accesorioId : null,
     },
   });
 

@@ -769,6 +769,8 @@ model RiderAccesorio {
   categoria        String?        // cable | herramienta | consumible | soporte | otro
   completado       Boolean        @default(false)
   esSugerencia     Boolean        @default(false)
+  origen           String?        // manual | equipo | sistema | producto — de dónde salió el accesorio
+  accesorioId      String?        // enlace opcional al catálogo unificado de accesorios
   orden            Int            @default(0)
   createdAt        DateTime       @default(now())
 
