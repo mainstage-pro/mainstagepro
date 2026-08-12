@@ -56,6 +56,14 @@
     {
       "path": "/api/cron/nomina-semanal",
       "schedule": "30 10 * * 1"
+    },
+    {
+      "path": "/api/cron/evaluaciones-mensual",
+      "schedule": "0 9 1 * *"
+    },
+    {
+      "path": "/api/cron/evaluaciones-recordatorio",
+      "schedule": "0 9 5 * *"
     }
   ]
 }

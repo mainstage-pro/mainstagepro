@@ -3,6 +3,11 @@
 // exactamente lo que se ofreció, aunque el puesto o la persona cambien después.
 
 import { prisma } from "@/lib/prisma";
+import {
+  jparse, jornadaToString,
+  type JornadaDia, type EstandarMinimo, type ValorPerfil,
+  type AptitudPerfil, type ConocimientoPerfil,
+} from "@/lib/puesto";
 
 export interface Estandar { subarea: string; responsabilidad: string; estandar: string }
 
@@ -33,15 +38,23 @@ export interface DocLaboralSnapshot {
   personaTelefono?: string | null;
   personaDomicilio?: string | null;
   puestoNombre: string;
+  puestoVersion?: number | null;
   area: string;
   objetivoArea?: string | null;
+  descripcionPuesto?: string | null;
+  objetivoPuesto?: string | null;
   misionPuesto?: string | null;
   responsabilidades: string[];
   estandares: Estandar[];
+  estandaresMinimos: EstandarMinimo[];
+  valores: ValorPerfil[];
+  aptitudes: AptitudPerfil[];
+  conocimientos: ConocimientoPerfil[];
   coordinaCon: string[];
   supervisaA: string[];
   funciones: string[];
   beneficios: string[];
+  prestacionesOtro?: string | null;
   salario?: number | null;
   periodoPago: string;
   tipoContrato?: string | null;
@@ -78,10 +91,13 @@ type PersonaLike = {
   puesto?: string | null;
 };
 type PuestoLike = {
-  nombre: string; area: string; objetivoArea?: string | null; misionPuesto?: string | null;
-  responsabilidades?: string | null; estandares?: string | null;
+  nombre: string; area: string; version?: number | null;
+  objetivoArea?: string | null; descripcionPuesto?: string | null; objetivoPuesto?: string | null; misionPuesto?: string | null;
+  responsabilidades?: string | null; estandares?: string | null; estandaresMinimos?: string | null;
+  valores?: string | null; aptitudes?: string | null; conocimientos?: string | null;
   coordinaCon?: string | null; supervisaA?: string | null;
-  funciones?: string | null; prestaciones?: string | null;
+  funciones?: string | null; prestaciones?: string | null; prestacionesOtro?: string | null;
+  jornada?: string | null;
   tipoContrato?: string | null; modalidad?: string | null; horario?: string | null;
   reportaA?: { nombre: string } | null;
 } | null;
@@ -95,6 +111,8 @@ export function buildSnapshot(
   const fecha = persona.fechaIngreso
     ? (typeof persona.fechaIngreso === "string" ? persona.fechaIngreso : persona.fechaIngreso.toISOString()).slice(0, 10)
     : null;
+  const jornada = jparse<JornadaDia[]>(puesto?.jornada ?? null, []);
+  const horario = puesto?.horario ?? (jornada.length ? jornadaToString(jornada) : null);
   return {
     tipo,
     personaNombre: persona.nombre,
@@ -102,21 +120,30 @@ export function buildSnapshot(
     personaTelefono: persona.telefono ?? null,
     personaDomicilio: persona.domicilio ?? null,
     puestoNombre: puesto?.nombre ?? persona.puesto ?? "Colaborador",
+    // §9: congela la versión del puesto vigente al firmar.
+    puestoVersion: puesto?.version ?? null,
     area: puesto?.area ?? "GENERAL",
     objetivoArea: puesto?.objetivoArea ?? null,
+    descripcionPuesto: puesto?.descripcionPuesto ?? null,
+    objetivoPuesto: puesto?.objetivoPuesto ?? null,
     misionPuesto: puesto?.misionPuesto ?? null,
     responsabilidades: arr(puesto?.responsabilidades),
     estandares: estArr(puesto?.estandares),
+    estandaresMinimos: jparse<EstandarMinimo[]>(puesto?.estandaresMinimos ?? null, []),
+    valores: jparse<ValorPerfil[]>(puesto?.valores ?? null, []),
+    aptitudes: jparse<AptitudPerfil[]>(puesto?.aptitudes ?? null, []),
+    conocimientos: jparse<ConocimientoPerfil[]>(puesto?.conocimientos ?? null, []),
     coordinaCon: arr(puesto?.coordinaCon),
     supervisaA: arr(puesto?.supervisaA),
     // Condiciones laborales: se leen del puesto operativo.
     funciones: arr(puesto?.funciones),
     beneficios: arr(puesto?.prestaciones),
+    prestacionesOtro: puesto?.prestacionesOtro ?? null,
     salario: persona.salario ?? null,
     periodoPago: persona.periodoPago ?? "MENSUAL",
     tipoContrato: puesto?.tipoContrato ?? null,
     modalidad: puesto?.modalidad ?? null,
-    horario: puesto?.horario ?? null,
+    horario,
     fechaIngreso: fecha,
     reportaA: puesto?.reportaA?.nombre ?? null,
     responsableNombre,

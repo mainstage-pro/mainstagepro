@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { METRICAS, normalizarCriterios, normalizarAcuerdos, normalizarObjetivos, normalizarCompetenciaNotas, calcularPuntajes, safeParseCriterios, CALIFICACIONES_FINALES } from "@/lib/evaluaciones";
+import { calcularEvaluacion, perfilPorcentaje, type CompetenciaItem, type EstMinCheck, type ResultadosBloque } from "@/lib/puesto-evaluacion";
+
+const parse = <T,>(s: string | null | undefined, fb: T): T => { if (!s) return fb; try { return (JSON.parse(s) ?? fb) as T; } catch { return fb; } };
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -60,6 +63,39 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       data.puntajeTotal = total;
     }
   }
+
+  // ── Evaluación reestructurada (§7/§8): perfil calificado + estándares mínimos como
+  // filtro. Recalcula la calificación derivada y la lleva a puntajeTotal (columna Eval.).
+  if ("ajusteJustificacion" in body) data.ajusteJustificacion = body.ajusteJustificacion || null;
+  const nuevoEstilo = "perfilCompetencias" in body || "estandaresMinData" in body || "resultadosData" in body;
+  if (nuevoEstilo) {
+    const current = await prisma.evaluacionEmpleado.findUnique({ where: { id } });
+    const perfil = "perfilCompetencias" in body
+      ? (body.perfilCompetencias as CompetenciaItem[])
+      : parse<CompetenciaItem[]>(current?.perfilCompetencias, []);
+    const estMin = "estandaresMinData" in body
+      ? (body.estandaresMinData as EstMinCheck[])
+      : parse<EstMinCheck[]>(current?.estandaresMinData, []);
+    const resultados = "resultadosData" in body
+      ? (body.resultadosData as ResultadosBloque)
+      : parse<ResultadosBloque>(current?.resultadosData, { planPct: null, kpiPct: null, kpis: [] });
+
+    if ("perfilCompetencias" in body) data.perfilCompetencias = JSON.stringify(perfil);
+    if ("estandaresMinData" in body) data.estandaresMinData = JSON.stringify(estMin);
+    if ("resultadosData" in body) data.resultadosData = JSON.stringify(resultados);
+
+    const calc = calcularEvaluacion({
+      planPct: resultados.planPct ?? null,
+      kpiPct: resultados.kpiPct ?? null,
+      perfilPct: perfilPorcentaje(perfil),
+      estMinFallidos: estMin.filter(e => e.cumple === false).length,
+    });
+    data.calificacionCalculada = calc.label;
+    // El evaluador puede sobrescribir la calificación nombrada (requiere justificación),
+    // pero el puntaje numérico que alimenta el tablero es siempre el derivado.
+    data.puntajeTotal = calc.puntaje1a5;
+  }
+
   const evaluacion = await prisma.evaluacionEmpleado.update({ where: { id }, data });
   return NextResponse.json({ evaluacion });
 }

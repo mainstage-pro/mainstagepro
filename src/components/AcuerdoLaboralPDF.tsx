@@ -54,8 +54,24 @@ function fmt(n: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n);
 }
 const PERIODO: Record<string, string> = { MENSUAL: "mensual", QUINCENAL: "quincenal", SEMANAL: "semanal", POR_EVENTO: "por evento" };
+const NIVEL: Record<string, string> = { basico: "básico", intermedio: "intermedio", avanzado: "avanzado" };
+const FREC: Record<string, string> = { diaria: "diaria", semanal: "semanal", mensual: "mensual", por_evento: "por evento" };
 
-export function AcuerdoLaboralPDF(p: DocLaboralSnapshot) {
+export function AcuerdoLaboralPDF(raw: DocLaboralSnapshot) {
+  // Tolerante con snapshots antiguos que no traen los campos nuevos (§8/§9).
+  const p = {
+    ...raw,
+    responsabilidades: raw.responsabilidades ?? [],
+    estandares: raw.estandares ?? [],
+    estandaresMinimos: raw.estandaresMinimos ?? [],
+    valores: raw.valores ?? [],
+    aptitudes: raw.aptitudes ?? [],
+    conocimientos: raw.conocimientos ?? [],
+    coordinaCon: raw.coordinaCon ?? [],
+    supervisaA: raw.supervisaA ?? [],
+    funciones: raw.funciones ?? [],
+    beneficios: raw.beneficios ?? [],
+  };
   return (
     <Document title={`Acuerdo — ${p.personaNombre}`}>
       <Page size="LETTER" style={s.page}>
@@ -96,6 +112,8 @@ export function AcuerdoLaboralPDF(p: DocLaboralSnapshot) {
             {p.reportaA && <View style={s.campo}><Text style={s.campoLabel}>REPORTA A</Text><Text style={s.campoValue}>{p.reportaA}</Text></View>}
           </View>
           {p.objetivoArea && (<><Text style={s.campoLabel}>OBJETIVO DEL ÁREA</Text><Text style={s.texto}>{p.objetivoArea}</Text></>)}
+          {p.descripcionPuesto && (<><Text style={s.campoLabel}>DESCRIPCIÓN DEL PUESTO</Text><Text style={s.texto}>{p.descripcionPuesto}</Text></>)}
+          {p.objetivoPuesto && (<><Text style={s.campoLabel}>OBJETIVO DEL PUESTO</Text><Text style={s.texto}>{p.objetivoPuesto}</Text></>)}
           {p.misionPuesto && (<><Text style={s.campoLabel}>MISIÓN DEL PUESTO</Text><Text style={s.texto}>{p.misionPuesto}</Text></>)}
 
           {p.responsabilidades.length > 0 && (
@@ -116,9 +134,22 @@ export function AcuerdoLaboralPDF(p: DocLaboralSnapshot) {
             </>
           )}
 
+          {p.estandaresMinimos.length > 0 && (
+            <>
+              <Text style={s.seccionTitulo}>4 — Estándares mínimos (no negociables)</Text>
+              <Text style={s.texto}>El/La colaborador(a) se compromete a cumplir de forma no negociable con los siguientes estándares mínimos verificables:</Text>
+              {p.estandaresMinimos.map((m, i) => (
+                <View key={i} style={s.bullet}>
+                  <Text style={s.bulletDot}>•</Text>
+                  <Text style={s.bulletText}>{m.enunciado} <Text style={{ color: LIGHT }}>({FREC[m.frecuencia] ?? m.frecuencia}{m.evidencia ? ` · evidencia: ${m.evidencia}` : ""})</Text></Text>
+                </View>
+              ))}
+            </>
+          )}
+
           {p.estandares.length > 0 && (
             <>
-              <Text style={s.seccionTitulo}>4 — Estándares de desempeño</Text>
+              <Text style={s.seccionTitulo}>5 — Criterios de calidad</Text>
               <View style={s.estHead}>
                 <View style={s.estColSub}><Text style={s.estHeadTxt}>Subárea</Text></View>
                 <View style={s.estColResp}><Text style={s.estHeadTxt}>Responsabilidad</Text></View>
@@ -134,7 +165,31 @@ export function AcuerdoLaboralPDF(p: DocLaboralSnapshot) {
             </>
           )}
 
-          <Text style={s.seccionTitulo}>5 — Plan de trabajo variable</Text>
+          {(p.valores.length > 0 || p.aptitudes.length > 0 || p.conocimientos.length > 0) && (
+            <>
+              <Text style={s.seccionTitulo}>6 — Perfil requerido</Text>
+              {p.valores.length > 0 && (
+                <Text style={s.texto}>
+                  <Text style={s.bold}>Valores: </Text>
+                  {p.valores.map(v => v.comoSeVe ? `${v.nombre} (${v.comoSeVe})` : v.nombre).join("; ")}.
+                </Text>
+              )}
+              {p.aptitudes.length > 0 && (
+                <Text style={s.texto}>
+                  <Text style={s.bold}>Aptitudes y habilidades: </Text>
+                  {p.aptitudes.map(a => `${a.nombre} (${NIVEL[a.nivel] ?? a.nivel})`).join("; ")}.
+                </Text>
+              )}
+              {p.conocimientos.length > 0 && (
+                <Text style={s.texto}>
+                  <Text style={s.bold}>Conocimientos: </Text>
+                  {p.conocimientos.map(c => `${c.nombre} (${NIVEL[c.nivel] ?? c.nivel}${c.indispensable ? ", indispensable" : ""})`).join("; ")}.
+                </Text>
+              )}
+            </>
+          )}
+
+          <Text style={s.seccionTitulo}>7 — Plan de trabajo variable</Text>
           <Text style={s.texto}>
             Además de las responsabilidades permanentes, el/la colaborador(a) atenderá el plan de trabajo que le sea asignado,
             el cual podrá actualizarse periódicamente según las prioridades operativas. El plan de trabajo vigente y su avance
@@ -142,7 +197,18 @@ export function AcuerdoLaboralPDF(p: DocLaboralSnapshot) {
             estándares aquí definidos es la base para la evaluación de desempeño.
           </Text>
 
-          <Text style={s.seccionTitulo}>6 — Compensación</Text>
+          <Text style={s.seccionTitulo}>8 — Condiciones y compensación</Text>
+          <View style={s.row2}>
+            {p.tipoContrato && <View style={s.campo}><Text style={s.campoLabel}>TIPO DE CONTRATO</Text><Text style={s.campoValue}>{p.tipoContrato}</Text></View>}
+            {p.modalidad && <View style={s.campo}><Text style={s.campoLabel}>MODALIDAD</Text><Text style={s.campoValue}>{p.modalidad}</Text></View>}
+          </View>
+          {p.horario && (<><Text style={s.campoLabel}>JORNADA</Text><Text style={s.texto}>{p.horario}</Text></>)}
+          {(p.beneficios.length > 0 || p.prestacionesOtro) && (
+            <>
+              <Text style={s.campoLabel}>PRESTACIONES</Text>
+              <Text style={s.texto}>{[...p.beneficios, ...(p.prestacionesOtro ? [p.prestacionesOtro] : [])].join(" · ")}</Text>
+            </>
+          )}
           <View style={s.row2}>
             {p.salario != null && <View style={s.campo}><Text style={s.campoLabel}>COMPENSACIÓN</Text><Text style={s.campoValue}>{fmt(p.salario)} {PERIODO[p.periodoPago] ?? ""}</Text></View>}
             {p.fechaIngreso && <View style={s.campo}><Text style={s.campoLabel}>FECHA DE INGRESO</Text><Text style={s.campoValue}>{p.fechaIngreso}</Text></View>}
@@ -170,7 +236,7 @@ export function AcuerdoLaboralPDF(p: DocLaboralSnapshot) {
         </View>
 
         <View style={s.footer} fixed>
-          <Text style={s.footerBrand}>MAINSTAGE PRODUCCIONES</Text>
+          <Text style={s.footerBrand}>MAINSTAGE PRODUCCIONES{p.puestoVersion ? ` · Puesto v${p.puestoVersion}` : ""}</Text>
           <Text style={s.footerPage}>Acuerdo confidencial · Uso exclusivo de las partes</Text>
         </View>
       </Page>
