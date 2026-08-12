@@ -758,7 +758,11 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
   // Fuente de verdad = query params. Panel/tab/campo se leen de la URL; cambiar
   // de panel reemplaza el history entry (el back del navegador sale del trato,
   // no recorre tabs). La posición se persiste en el registro con debounce.
-  const panel: PanelId = esPanel(searchParams.get("panel")) ? (searchParams.get("panel") as PanelId) : PANEL_DEFAULT;
+  const panelParam = searchParams.get("panel");
+  // Default por etapa: frontales (prospección) arrancan en el proceso; el resto en
+  // cotización, que es donde vive su contenido principal. El param explícito manda.
+  const panelDefault: PanelId = trato && !ETAPAS_FRONTALES.includes(trato.etapa) ? "cotizacion" : PANEL_DEFAULT;
+  const panel: PanelId = esPanel(panelParam) ? (panelParam as PanelId) : panelDefault;
   const tab: TabId | null = esTab(searchParams.get("tab")) ? (searchParams.get("tab") as TabId) : null;
   const campo: string | null = searchParams.get("campo");
   const navegar = useCallback((nextPanel: PanelId, nextTab?: TabId | null, nextCampo?: string | null) => {
@@ -1654,8 +1658,30 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
+      {/* ── Navegación de paneles (una sola URL por objeto, ?panel=) ── */}
+      <nav className="flex items-center gap-1 border-b border-[#1a1a1a] overflow-x-auto sticky top-0 z-10 bg-[#0a0a0a]/95 backdrop-blur">
+        {([
+          { id: "proceso" as PanelId, label: "Proceso" },
+          { id: "descubrimiento" as PanelId, label: "Descubrimiento" },
+          { id: "cotizacion" as PanelId, label: "Cotización" },
+          { id: "tareas" as PanelId, label: "Seguimiento" },
+        ]).filter(p => !(p.id === "cotizacion" && trato._canViewFinances === false)).map(p => (
+          <button
+            key={p.id}
+            onClick={() => navegar(p.id)}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${
+              panel === p.id ? "border-[#B3985B] text-white" : "border-transparent text-gray-500 hover:text-gray-300"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </nav>
+
+      {/* ═══ PANEL: COTIZACIÓN ══════════════════════════════════════════ */}
+      {panel === "cotizacion" && (<>
       {/* ═══ DIVIDER: PROPUESTA ECONÓMICA ══════════════════════════════ */}
-      {trato._canViewFinances !== false && !ETAPAS_FRONTALES.includes(trato.etapa) && (
+      {trato._canViewFinances !== false && (
         <div className="flex items-center gap-3 px-1">
           <div className="w-5 h-5 rounded-md bg-[#B3985B]/15 border border-[#B3985B]/25 flex items-center justify-center shrink-0">
             <DollarSign strokeWidth={1.75} className="w-3 h-3 text-[#B3985B]" />
@@ -1666,7 +1692,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
       )}
 
       {/* ─── SECCIÓN: COTIZACIONES (oculta en prospección) ─────────────── */}
-      {trato._canViewFinances !== false && !ETAPAS_FRONTALES.includes(trato.etapa) && (
+      {trato._canViewFinances !== false && (
       <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden">
         {/* Header de sección */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#141414]">
@@ -1831,8 +1857,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
       )}
+      </>)}
 
-
+      {/* ═══ PANEL: PROCESO ══════════════════════════════════════════════ */}
+      {panel === "proceso" && (<>
       {/* ═══ DIVIDER: PROCESO COMERCIAL ══════════════════════════════ */}
       <div className="flex items-center gap-3 px-1">
         <div className="w-5 h-5 rounded-md bg-blue-900/20 border border-blue-700/20 flex items-center justify-center shrink-0">
@@ -2054,9 +2082,10 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         );
       })()}
+      </>)}
 
-
-      
+      {/* ═══ PANEL: DESCUBRIMIENTO ═══════════════════════════════════════ */}
+      {panel === "descubrimiento" && (<>
             {/* ═══ WIZARD DE DESCUBRIMIENTO EMBEBIDO ══════════════════════════════ */}
       {!ETAPAS_FRONTALES.includes(trato.etapa) && trato.etapa !== "VENTA_PERDIDA" && (
         <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl p-6 space-y-6 my-8 ms-card-deep">
@@ -2151,6 +2180,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           </div>
         );
       })()}
+      </>)}
 
             {/* ── Modal: Editar Cliente ── */}
       {modalEditarCliente && (
@@ -2363,6 +2393,8 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
         </div>
       )}
 
+      {/* ═══ PANEL: SEGUIMIENTO / TAREAS ═════════════════════════════════ */}
+      {panel === "tareas" && (<>
       {/* ═══ DIVIDER: SEGUIMIENTO COMERCIAL ═════════════════════════ */}
       <div className="flex items-center gap-3 px-1">
         <div className="w-5 h-5 rounded-md bg-blue-900/20 border border-blue-700/20 flex items-center justify-center shrink-0">
@@ -2396,6 +2428,7 @@ export default function TratoDetailPage({ params }: { params: Promise<{ id: stri
           />
         </div>
       </div>
+      </>)}
 
       </div> {/* end left column */}
 
