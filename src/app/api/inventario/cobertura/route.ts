@@ -42,6 +42,15 @@ export async function GET() {
   const equiposEnProducto = new Set(prodEquipos.map(pe => pe.equipoId));
   const productosEnPaquete = new Set(paqueteItems.map(pi => pi.productoId as string));
 
+  // Tipos declarados por cada equipo (para detectar divergencias con sus productos).
+  const equipoTipos = new Map(equipos.map(e => [e.id, parseArr(e.tiposEvento)]));
+  const miembrosPorProducto = new Map<string, string[]>();
+  for (const pe of prodEquipos) {
+    const arr = miembrosPorProducto.get(pe.productoId) || [];
+    arr.push(pe.equipoId);
+    miembrosPorProducto.set(pe.productoId, arr);
+  }
+
   // Un nicho está cubierto si algún paquete de su tipo lo referencia por slug/nombre
   // en subtiposEvento, o —a falta de esa granularidad— si existe cualquier paquete
   // de su mismo tipo de evento (señal mínima previa a Bloque 6).
@@ -87,6 +96,22 @@ export async function GET() {
     .filter(n => !nichoCubierto(n))
     .map(n => ({ id: n.id, nombre: n.nombre, sub: n.tipoEventoSlug, href: "/comercial/productos/paquetes" }));
 
+  // Inconsistencias equipo↔producto: un producto cuyos equipos componentes declaran
+  // un tipo de evento que el producto no tiene. Señal aditiva (nunca resta): sugiere
+  // correr el sync equipo→producto. No incluye la dirección inversa para no duplicar.
+  const inconsistencias: ItemCobertura[] = productos
+    .map(p => {
+      const propios = parseArr(p.tiposEvento);
+      const union = new Set<string>();
+      for (const eid of miembrosPorProducto.get(p.id) || []) {
+        for (const t of equipoTipos.get(eid) || []) union.add(t);
+      }
+      const faltan = [...union].filter(t => !propios.includes(t));
+      return { p, faltan };
+    })
+    .filter(({ faltan }) => faltan.length > 0)
+    .map(({ p, faltan }) => ({ id: p.id, nombre: p.nombre, sub: `Sus equipos sugieren: ${faltan.join(", ")}`, href: "/comercial/productos/lista" }));
+
   const cubetas: Cubeta[] = [
     { clave: "equipos-sin-tipo", titulo: "Equipos sin tipo de evento", descripcion: "No sabemos para qué eventos sirven; no aparecen en sugerencias.", items: equiposSinTipo },
     { clave: "equipos-sin-producto", titulo: "Equipos sin producto", descripcion: "No están armados en ningún producto cotizable.", items: equiposSinProducto },
@@ -94,6 +119,7 @@ export async function GET() {
     { clave: "productos-sin-paquete", titulo: "Productos sin paquete", descripcion: "No forman parte de ninguna propuesta base.", items: productosSinPaquete },
     { clave: "adicionales-sin-composicion", titulo: "Adicionales sin composición", descripcion: "No tienen qué cotizar cuando el cliente los pide.", items: adicionalesSinComposicion },
     { clave: "nichos-sin-paquete", titulo: "Nichos sin paquete", descripcion: "No hay propuesta base que ofrecer para ese nicho.", items: nichosSinPaquete },
+    { clave: "clasif-inconsistente", titulo: "Clasificación inconsistente", descripcion: "Los equipos del producto declaran un tipo que el producto no tiene; conviene sincronizar.", items: inconsistencias },
   ];
 
   const totales = {
