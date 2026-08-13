@@ -8,7 +8,10 @@ import {
 import EntradaModal, { type TipoEventoOpt } from "./EntradaModal";
 import CrearTareaModal from "./CrearTareaModal";
 
+type Vista = "anio" | "mes" | "semana";
+
 const DIAS_INI = ["L", "M", "M", "J", "V", "S", "D"];
+const DIAS_LARGO = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 function mesData(year: number, month: number) {
   const primerDia = new Date(year, month, 1).getDay();
@@ -16,7 +19,15 @@ function mesData(year: number, month: number) {
   return { offset: primerDia === 0 ? 6 : primerDia - 1, dias };
 }
 
-// ¿La entrada-periodo cubre (mes0, dia) en el año mostrado?
+// Lunes de la semana que contiene a d.
+function inicioSemana(d: Date): Date {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dow = x.getDay();
+  x.setDate(x.getDate() + (dow === 0 ? -6 : 1 - dow));
+  return x;
+}
+
+// ¿La entrada-periodo cubre (mes0, dia)? (sin validar año)
 function cubreDia(e: Entrada, mes0: number, dia: number): boolean {
   if (!esRango(e)) return false;
   const ini = (e.mesInicio - 1) * 32 + (e.diaInicio ?? 1);
@@ -29,7 +40,11 @@ function cubreDia(e: Entrada, mes0: number, dia: number): boolean {
 
 export default function AnnualCalendar({ calendario }: { calendario: CalendarioKey }) {
   const cal = CALENDARIOS[calendario];
-  const [anio, setAnio] = useState(new Date().getFullYear());
+  const hoy = useMemo(() => new Date(), []);
+  const [vista, setVista] = useState<Vista>("anio");
+  const [cursor, setCursor] = useState<Date>(new Date());
+  const anio = cursor.getFullYear();
+
   const [entradas, setEntradas] = useState<Entrada[]>([]);
   const [loading, setLoading] = useState(true);
   const [tiposEvento, setTiposEvento] = useState<TipoEventoOpt[]>([]);
@@ -56,11 +71,11 @@ export default function AnnualCalendar({ calendario }: { calendario: CalendarioK
     }).catch(() => {});
   }, [cal.ligaTipoEvento]);
 
-  const periodos = useMemo(() => entradas.filter(esRango).sort((a, b) => ordenCronologico(a) - ordenCronologico(b)), [entradas]);
-  const puntos = useMemo(() => entradas.filter(e => !esRango(e)), [entradas]);
-  const ordenadas = useMemo(() => [...entradas].sort((a, b) => ordenCronologico(a) - ordenCronologico(b)), [entradas]);
+  const delAnio = useMemo(() => entradas.filter(e => e.anio == null || e.anio === anio), [entradas, anio]);
+  const periodos = useMemo(() => delAnio.filter(esRango).sort((a, b) => ordenCronologico(a) - ordenCronologico(b)), [delAnio]);
+  const puntos = useMemo(() => delAnio.filter(e => !esRango(e)), [delAnio]);
+  const ordenadas = useMemo(() => [...delAnio].sort((a, b) => ordenCronologico(a) - ordenCronologico(b)), [delAnio]);
 
-  // Puntos por (mes,dia) para pintar en las mini-vistas.
   const puntosPorDia = useMemo(() => {
     const map: Record<string, Entrada[]> = {};
     for (const e of puntos) {
@@ -69,6 +84,9 @@ export default function AnnualCalendar({ calendario }: { calendario: CalendarioK
     }
     return map;
   }, [puntos]);
+
+  function puntosDe(m0: number, dia: number) { return puntosPorDia[`${m0}-${dia}`] ?? []; }
+  function periodoDe(m0: number, dia: number) { return periodos.find(e => cubreDia(e, m0, dia)); }
 
   function abrirNueva(mes = new Date().getMonth() + 1, dia: number | null = null) {
     setEditando(null); setInitFecha({ mes, dia }); setModalOpen(true);
@@ -81,6 +99,27 @@ export default function AnnualCalendar({ calendario }: { calendario: CalendarioK
     return `${y}-${String(e.mesInicio).padStart(2, "0")}-${String(e.diaInicio).padStart(2, "0")}`;
   }
 
+  // ── Navegación por vista ──────────────────────────────────────────────────
+  function mover(dir: number) {
+    const d = new Date(cursor);
+    if (vista === "anio") d.setFullYear(d.getFullYear() + dir);
+    else if (vista === "mes") d.setMonth(d.getMonth() + dir);
+    else d.setDate(d.getDate() + dir * 7);
+    setCursor(d);
+  }
+  function irAMes(m0: number) { setCursor(new Date(anio, m0, 1)); setVista("mes"); }
+
+  const tituloPeriodo = (() => {
+    if (vista === "anio") return String(anio);
+    if (vista === "mes") return `${MESES[cursor.getMonth()]} ${anio}`;
+    const ini = inicioSemana(cursor);
+    const fin = new Date(ini); fin.setDate(fin.getDate() + 6);
+    const mismoMes = ini.getMonth() === fin.getMonth();
+    return mismoMes
+      ? `${ini.getDate()}–${fin.getDate()} ${MESES_CORTOS[fin.getMonth()]} ${anio}`
+      : `${ini.getDate()} ${MESES_CORTOS[ini.getMonth()]} – ${fin.getDate()} ${MESES_CORTOS[fin.getMonth()]} ${anio}`;
+  })();
+
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-5">
       {/* Header */}
@@ -89,15 +128,28 @@ export default function AnnualCalendar({ calendario }: { calendario: CalendarioK
           <h1 className="ms-h1">Calendario {cal.nombre}</h1>
           <p className="text-gray-500 text-sm mt-1 max-w-2xl">{cal.descripcion}</p>
         </div>
+        <button onClick={() => abrirNueva()} className="bg-[#B3985B] hover:bg-[#c9a96a] text-black px-3 py-2 rounded-lg text-sm font-medium transition-colors self-start sm:self-auto">
+          + Nueva entrada
+        </button>
+      </div>
+
+      {/* Controles: vista + navegación */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-1 bg-[#111] border border-[#222] rounded-lg p-1 w-fit">
+          {(["anio", "mes", "semana"] as Vista[]).map(v => (
+            <button key={v} onClick={() => setVista(v)}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${vista === v ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"}`}>
+              {v === "anio" ? "Año" : v === "mes" ? "Mes" : "Semana"}
+            </button>
+          ))}
+        </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setCursor(new Date())} className="ms-btn-secondary text-sm">Hoy</button>
           <div className="flex items-center gap-1 bg-[#111] border border-[#222] rounded-lg p-1">
-            <button onClick={() => setAnio(a => a - 1)} className="px-2 py-1 text-gray-400 hover:text-white text-sm">←</button>
-            <span className="px-2 text-white font-semibold text-sm tabular-nums">{anio}</span>
-            <button onClick={() => setAnio(a => a + 1)} className="px-2 py-1 text-gray-400 hover:text-white text-sm">→</button>
+            <button onClick={() => mover(-1)} className="px-2 py-1 text-gray-400 hover:text-white text-sm">←</button>
+            <span className="px-2 text-white font-semibold text-sm tabular-nums min-w-[9rem] text-center">{tituloPeriodo}</span>
+            <button onClick={() => mover(1)} className="px-2 py-1 text-gray-400 hover:text-white text-sm">→</button>
           </div>
-          <button onClick={() => abrirNueva()} className="bg-[#B3985B] hover:bg-[#c9a96a] text-black px-3 py-2 rounded-lg text-sm font-medium transition-colors">
-            + Nueva entrada
-          </button>
         </div>
       </div>
 
@@ -111,89 +163,15 @@ export default function AnnualCalendar({ calendario }: { calendario: CalendarioK
         ))}
       </div>
 
-      {/* Línea de tiempo de temporadas */}
-      {periodos.length > 0 && (
-        <div className="ms-card p-4">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-[#B3985B] font-bold mb-3">Temporadas del año</p>
-          <div className="grid grid-cols-12 gap-px mb-2">
-            {MESES_CORTOS.map(m => (
-              <div key={m} className="text-center text-[10px] text-gray-600 uppercase">{m}</div>
-            ))}
-          </div>
-          <div className="space-y-1.5">
-            {periodos.map(e => {
-              const desde = (e.mesInicio - 1) + ((e.diaInicio ?? 1) - 1) / 31;
-              const finMes = (e.mesFin ?? e.mesInicio) - 1;
-              const finDiaMax = new Date(2001, finMes + 1, 0).getDate();
-              const hasta = finMes + (e.diaFin ?? finDiaMax) / finDiaMax;
-              const left = (desde / 12) * 100;
-              const width = Math.max(((hasta - desde) / 12) * 100, 4);
-              const color = colorEntrada(cal, e);
-              return (
-                <div key={e.id} className="relative h-8">
-                  <div className="absolute inset-0 grid grid-cols-12 gap-px pointer-events-none">
-                    {Array.from({ length: 12 }).map((_, i) => <div key={i} className="border-r border-[#161616]" />)}
-                  </div>
-                  <button onClick={() => abrirEdicion(e)}
-                    className="absolute top-0 h-8 rounded-md flex items-center px-2 text-[11px] font-medium text-white truncate hover:brightness-110 transition-all"
-                    style={{ left: `${left}%`, width: `${width}%`, backgroundColor: color + "cc", border: `1px solid ${color}` }}
-                    title={`${e.titulo} · ${etiquetaFecha(e)}`}>
-                    {e.icono ? `${e.icono} ` : ""}{e.titulo}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {vista === "anio" && <VistaAnio />}
+      {vista === "mes" && <VistaMes />}
+      {vista === "semana" && <VistaSemana />}
 
-      {/* Mini-meses (vista año) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {MESES.map((nombreMes, m) => {
-          const { offset, dias } = mesData(anio, m);
-          const celdas = Math.ceil((offset + dias) / 7) * 7;
-          return (
-            <div key={m} className="ms-card p-3">
-              <p className="text-xs font-semibold text-white mb-2">{nombreMes}</p>
-              <div className="grid grid-cols-7 gap-0.5 mb-1">
-                {DIAS_INI.map((d, i) => <div key={i} className="text-center text-[9px] text-gray-600">{d}</div>)}
-              </div>
-              <div className="grid grid-cols-7 gap-0.5">
-                {Array.from({ length: celdas }).map((_, i) => {
-                  const dia = i - offset + 1;
-                  const valido = dia >= 1 && dia <= dias;
-                  if (!valido) return <div key={i} />;
-                  const pts = puntosPorDia[`${m}-${dia}`] ?? [];
-                  const periodo = periodos.find(e => cubreDia(e, m, dia));
-                  const bg = periodo ? colorEntrada(cal, periodo) + "26" : undefined;
-                  return (
-                    <button key={i}
-                      onClick={() => pts.length === 1 ? abrirEdicion(pts[0]) : abrirNueva(m + 1, dia)}
-                      className="relative aspect-square rounded-[4px] flex items-center justify-center text-[10px] text-gray-400 hover:bg-[#1c1c1c] transition-colors"
-                      style={bg ? { backgroundColor: bg } : undefined}
-                      title={pts.map(p => p.titulo).join(", ")}>
-                      <span>{dia}</span>
-                      {pts.length > 0 && (
-                        <span className="absolute bottom-0.5 flex gap-0.5">
-                          {pts.slice(0, 3).map(p => (
-                            <span key={p.id} className="w-1 h-1 rounded-full" style={{ backgroundColor: colorEntrada(cal, p) }} />
-                          ))}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Lista gestionable */}
+      {/* Lista gestionable (siempre visible) */}
       <div className="ms-table-wrapper">
         <div className="px-4 py-3 border-b border-[#1a1a1a] flex items-center justify-between">
-          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Entradas del calendario</p>
-          <span className="text-xs text-gray-600">{entradas.length}</span>
+          <p className="text-xs text-[#B3985B] font-semibold uppercase tracking-wider">Entradas del calendario · {anio}</p>
+          <span className="text-xs text-gray-600">{ordenadas.length}</span>
         </div>
         {loading ? (
           <div className="p-6 text-center text-gray-600 text-sm">Cargando…</div>
@@ -243,4 +221,199 @@ export default function AnnualCalendar({ calendario }: { calendario: CalendarioK
       />
     </div>
   );
+
+  // ── VISTA AÑO ───────────────────────────────────────────────────────────────
+  function VistaAnio() {
+    return (
+      <>
+        {/* Línea de tiempo de temporadas */}
+        {periodos.length > 0 && (
+          <div className="ms-card p-4">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-[#B3985B] font-bold mb-3">Línea de tiempo · {anio}</p>
+            <div className="grid grid-cols-12 gap-px mb-2">
+              {MESES_CORTOS.map((m, i) => (
+                <button key={m} onClick={() => irAMes(i)} className="text-center text-[10px] text-gray-500 hover:text-[#B3985B] uppercase transition-colors">{m}</button>
+              ))}
+            </div>
+            <div className="relative space-y-1.5">
+              {periodos.map(e => {
+                const desde = (e.mesInicio - 1) + ((e.diaInicio ?? 1) - 1) / 31;
+                const finMes = (e.mesFin ?? e.mesInicio) - 1;
+                const finDiaMax = new Date(2001, finMes + 1, 0).getDate();
+                const hasta = finMes + (e.diaFin ?? finDiaMax) / finDiaMax;
+                const left = (desde / 12) * 100;
+                const width = Math.max(((hasta - desde) / 12) * 100, 4);
+                const color = colorEntrada(cal, e);
+                return (
+                  <div key={e.id} className="relative h-9">
+                    <div className="absolute inset-0 grid grid-cols-12 gap-px pointer-events-none">
+                      {Array.from({ length: 12 }).map((_, i) => <div key={i} className="border-r border-[#161616]" />)}
+                    </div>
+                    <button onClick={() => abrirEdicion(e)}
+                      className="absolute top-0 h-9 rounded-md flex items-center px-2.5 text-[11px] font-medium text-white truncate hover:brightness-110 transition-all shadow-sm"
+                      style={{ left: `${left}%`, width: `${width}%`, backgroundColor: color + "cc", border: `1px solid ${color}` }}
+                      title={`${e.titulo} · ${etiquetaFecha(e)}`}>
+                      {e.icono ? `${e.icono} ` : ""}{e.titulo}
+                    </button>
+                  </div>
+                );
+              })}
+              {/* Marcador de hoy */}
+              {hoy.getFullYear() === anio && (() => {
+                const frac = (hoy.getMonth() + (hoy.getDate() - 1) / 31) / 12;
+                return (
+                  <div className="absolute top-0 bottom-0 w-px bg-[#B3985B] pointer-events-none" style={{ left: `${frac * 100}%` }}>
+                    <span className="absolute -top-0.5 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#B3985B]" />
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
+        {/* Mini-meses */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {MESES.map((nombreMes, m) => {
+            const { offset, dias } = mesData(anio, m);
+            const celdas = Math.ceil((offset + dias) / 7) * 7;
+            return (
+              <div key={m} className="ms-card p-3">
+                <button onClick={() => irAMes(m)} className="text-xs font-semibold text-white hover:text-[#B3985B] mb-2 transition-colors">{nombreMes}</button>
+                <div className="grid grid-cols-7 gap-0.5 mb-1">
+                  {DIAS_INI.map((d, i) => <div key={i} className="text-center text-[9px] text-gray-600">{d}</div>)}
+                </div>
+                <div className="grid grid-cols-7 gap-0.5">
+                  {Array.from({ length: celdas }).map((_, i) => {
+                    const dia = i - offset + 1;
+                    const valido = dia >= 1 && dia <= dias;
+                    if (!valido) return <div key={i} />;
+                    const pts = puntosDe(m, dia);
+                    const periodo = periodoDe(m, dia);
+                    const esHoy = hoy.getFullYear() === anio && hoy.getMonth() === m && hoy.getDate() === dia;
+                    const bg = periodo ? colorEntrada(cal, periodo) + "26" : undefined;
+                    return (
+                      <button key={i}
+                        onClick={() => pts.length === 1 ? abrirEdicion(pts[0]) : abrirNueva(m + 1, dia)}
+                        className={`relative aspect-square rounded-[4px] flex items-center justify-center text-[10px] hover:bg-[#1c1c1c] transition-colors ${esHoy ? "ring-1 ring-[#B3985B] text-white" : "text-gray-400"}`}
+                        style={bg ? { backgroundColor: bg } : undefined}
+                        title={pts.map(p => p.titulo).join(", ")}>
+                        <span>{dia}</span>
+                        {pts.length > 0 && (
+                          <span className="absolute bottom-0.5 flex gap-0.5">
+                            {pts.slice(0, 3).map(p => (
+                              <span key={p.id} className="w-1 h-1 rounded-full" style={{ backgroundColor: colorEntrada(cal, p) }} />
+                            ))}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </>
+    );
+  }
+
+  // ── VISTA MES ─────────────────────────────────────────────────────────────
+  function VistaMes() {
+    const m = cursor.getMonth();
+    const { offset, dias } = mesData(anio, m);
+    const celdas = Math.ceil((offset + dias) / 7) * 7;
+    return (
+      <div className="ms-card p-3 md:p-4">
+        <div className="grid grid-cols-7 gap-1 mb-1">
+          {DIAS_LARGO.map((d, i) => <div key={i} className="text-center text-[11px] font-medium text-gray-500 uppercase tracking-wider">{d}</div>)}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {Array.from({ length: celdas }).map((_, i) => {
+            const dia = i - offset + 1;
+            const valido = dia >= 1 && dia <= dias;
+            if (!valido) return <div key={i} className="min-h-[92px] rounded-lg bg-[#0b0b0b]" />;
+            const pts = puntosDe(m, dia);
+            const periodo = periodoDe(m, dia);
+            const esHoy = hoy.getFullYear() === anio && hoy.getMonth() === m && hoy.getDate() === dia;
+            const bg = periodo ? colorEntrada(cal, periodo) + "1f" : undefined;
+            return (
+              <div key={i}
+                className="min-h-[92px] rounded-lg border border-[#1a1a1a] p-1.5 hover:border-[#2a2a2a] transition-colors flex flex-col group/cell"
+                style={bg ? { backgroundColor: bg } : undefined}>
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs ${esHoy ? "bg-[#B3985B] text-black rounded-full w-5 h-5 flex items-center justify-center font-semibold" : "text-gray-400"}`}>{dia}</span>
+                  <button onClick={() => abrirNueva(m + 1, dia)} className="text-gray-600 hover:text-[#B3985B] text-sm leading-none opacity-0 group-hover/cell:opacity-100 transition-opacity" title="Nueva entrada">+</button>
+                </div>
+                <div className="mt-1 space-y-0.5 overflow-hidden">
+                  {periodo && (
+                    <button onClick={() => abrirEdicion(periodo)} className="w-full truncate text-left text-[10px] px-1 py-0.5 rounded"
+                      style={{ backgroundColor: colorEntrada(cal, periodo) + "33", color: colorEntrada(cal, periodo) }}>
+                      {periodo.icono ? `${periodo.icono} ` : ""}{periodo.titulo}
+                    </button>
+                  )}
+                  {pts.map(p => (
+                    <button key={p.id} onClick={() => abrirEdicion(p)} className="w-full truncate text-left text-[10px] px-1 py-0.5 rounded flex items-center gap-1 hover:brightness-125"
+                      style={{ backgroundColor: colorEntrada(cal, p) + "22", color: colorEntrada(cal, p) }}>
+                      <span className="w-1 h-1 rounded-full shrink-0" style={{ backgroundColor: colorEntrada(cal, p) }} />
+                      <span className="truncate">{p.icono ? `${p.icono} ` : ""}{p.titulo}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── VISTA SEMANA ──────────────────────────────────────────────────────────
+  function VistaSemana() {
+    const ini = inicioSemana(cursor);
+    const dias = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(ini); d.setDate(d.getDate() + i); return d;
+    });
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-7 gap-2">
+        {dias.map((d, i) => {
+          const m0 = d.getMonth();
+          const dia = d.getDate();
+          const yr = d.getFullYear();
+          const pts = (yr === anio) ? puntosDe(m0, dia) : [];
+          const periodo = (yr === anio) ? periodoDe(m0, dia) : undefined;
+          const esHoy = hoy.getFullYear() === yr && hoy.getMonth() === m0 && hoy.getDate() === dia;
+          return (
+            <div key={i} className={`ms-card p-2 min-h-[180px] flex flex-col ${esHoy ? "ring-1 ring-[#B3985B]" : ""}`}>
+              <div className="flex items-center justify-between mb-2 pb-2 border-b border-[#1a1a1a]">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-gray-500">{DIAS_LARGO[i]}</p>
+                  <p className={`text-sm font-semibold ${esHoy ? "text-[#B3985B]" : "text-white"}`}>{dia} {MESES_CORTOS[m0]}</p>
+                </div>
+                <button onClick={() => abrirNueva(m0 + 1, dia)} className="text-gray-600 hover:text-[#B3985B] text-base leading-none" title="Nueva entrada">+</button>
+              </div>
+              <div className="space-y-1 flex-1">
+                {periodo && (
+                  <button onClick={() => abrirEdicion(periodo)} className="w-full text-left text-[11px] px-2 py-1 rounded-md"
+                    style={{ backgroundColor: colorEntrada(cal, periodo) + "33", color: colorEntrada(cal, periodo) }}>
+                    {periodo.icono ? `${periodo.icono} ` : ""}{periodo.titulo}
+                  </button>
+                )}
+                {pts.map(p => (
+                  <button key={p.id} onClick={() => abrirEdicion(p)} className="w-full text-left text-[11px] px-2 py-1 rounded-md hover:brightness-125 transition-all"
+                    style={{ backgroundColor: colorEntrada(cal, p) + "22", color: colorEntrada(cal, p), border: `1px solid ${colorEntrada(cal, p)}44` }}>
+                    {p.icono ? `${p.icono} ` : ""}{p.titulo}
+                  </button>
+                ))}
+                {!periodo && pts.length === 0 && (
+                  <button onClick={() => abrirNueva(m0 + 1, dia)} className="w-full h-full min-h-[80px] rounded-md text-gray-700 hover:text-gray-500 hover:bg-[#131313] transition-colors text-xs">
+                    +
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 }
