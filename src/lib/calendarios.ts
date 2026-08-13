@@ -5,7 +5,7 @@
 // conceptuales/recurrentes: se guardan por mes/día (no por fecha absoluta) para
 // que la vista anual se repita cada año, con `anio` opcional para fijarlas a uno.
 
-export type CalendarioKey = "ADMINISTRATIVO" | "COMERCIAL" | "FECHAS_ESPECIALES";
+export type CalendarioKey = "ADMINISTRATIVO" | "COMERCIAL" | "FECHAS_ESPECIALES" | "FESTIVIDADES";
 
 export interface TipoEntrada {
   key: string;
@@ -70,6 +70,19 @@ export const CALENDARIOS: Record<CalendarioKey, CalendarioDef> = {
       { key: "FECHA",      label: "Fecha especial",  color: "#B3985B" },
       { key: "EFEMERIDE",  label: "Efeméride gremio", color: "#06b6d4" },
       { key: "ESTACIONAL", label: "Estacional",       color: "#22c55e" },
+    ],
+  },
+  FESTIVIDADES: {
+    key: "FESTIVIDADES",
+    slug: "festividades",
+    nombre: "Festividades MX",
+    descripcion: "Días festivos y de asueto en México. Consulta de descansos obligatorios por ley (Art. 74 LFT) y fechas cívicas para planear cierres y avisos.",
+    tag: "Cal. Festividades",
+    ideasLabel: "Nota operativa / aviso",
+    tipos: [
+      { key: "ASUETO_LEY",     label: "Asueto obligatorio (LFT)", color: "#ef4444" },
+      { key: "ASUETO_OFICIAL", label: "Descanso oficial / común", color: "#3b82f6" },
+      { key: "CONMEMORACION",  label: "Fecha cívica",             color: "#94a3b8" },
     ],
   },
 };
@@ -205,5 +218,23 @@ export const SEEDS: Record<CalendarioKey, SeedRow[]> = {
     { tipo: "FECHA", titulo: "Halloween", mi: 10, di: 31, icono: "🎃", ideas: "Iluminación de terror; fiestas temáticas." },
     { tipo: "FECHA", titulo: "Día de muertos", mi: 11, di: 2, icono: "💀", ideas: "Altar de la empresa; iluminación temática." },
     { tipo: "FECHA", titulo: "Navidad", mi: 12, di: 25, icono: "🎄", ideas: "Felicitación; recap de posadas." },
+  ],
+  FESTIVIDADES: [
+    // ── Descansos obligatorios por ley (Art. 74 Ley Federal del Trabajo) ──
+    { tipo: "ASUETO_LEY", titulo: "Año Nuevo", mi: 1, di: 1, icono: "🎆", descripcion: "Descanso obligatorio (Art. 74 I LFT).", ideas: "Bodega cerrada; confirmar que no haya montajes ni cargas programadas." },
+    { tipo: "ASUETO_LEY", titulo: "Día de la Constitución", mi: 2, di: 5, icono: "📜", descripcion: "Descanso obligatorio (Art. 74 II LFT). Se recorre al PRIMER LUNES de febrero — verificar la fecha exacta del año.", ideas: "Fin de semana largo: alta demanda de eventos sociales." },
+    { tipo: "ASUETO_LEY", titulo: "Natalicio de Benito Juárez", mi: 3, di: 21, icono: "🎩", descripcion: "Descanso obligatorio (Art. 74 III LFT). Se recorre al TERCER LUNES de marzo — verificar la fecha exacta del año.", ideas: "Fin de semana largo: alta demanda de eventos sociales." },
+    { tipo: "ASUETO_LEY", titulo: "Día del Trabajo", mi: 5, di: 1, icono: "🛠️", descripcion: "Descanso obligatorio (Art. 74 IV LFT).", ideas: "Avisar a clientes con eventos; prever pago doble a personal que labore." },
+    { tipo: "ASUETO_LEY", titulo: "Independencia de México", mi: 9, di: 16, icono: "🇲🇽", descripcion: "Descanso obligatorio (Art. 74 V LFT).", ideas: "Alta demanda por fiestas patrias; planear turnos y descansos del equipo." },
+    { tipo: "ASUETO_LEY", titulo: "Revolución Mexicana", mi: 11, di: 20, icono: "🏇", descripcion: "Descanso obligatorio (Art. 74 VI LFT). Se recorre al TERCER LUNES de noviembre — verificar la fecha exacta del año.", ideas: "Fin de semana largo previo a temporada alta de fin de año." },
+    { tipo: "ASUETO_LEY", titulo: "Transmisión del Poder Ejecutivo Federal", mi: 10, di: 1, icono: "🏛️", descripcion: "Descanso obligatorio cada seis años (Art. 74 VII LFT). Próximo: 1 de octubre de 2030.", ideas: "Solo en año de cambio presidencial." },
+    { tipo: "ASUETO_LEY", titulo: "Navidad", mi: 12, di: 25, icono: "🎄", descripcion: "Descanso obligatorio (Art. 74 VIII LFT).", ideas: "Bodega cerrada; cierre operativo de fin de año." },
+    // ── Descansos oficiales / de práctica común (no obligatorios por LFT) ──
+    { tipo: "ASUETO_OFICIAL", titulo: "Jueves y Viernes Santo (Semana Santa)", mi: 4, di: 2, mf: 4, df: 4, icono: "✝️", descripcion: "No es asueto obligatorio por LFT, pero suele darse descanso. Fecha MÓVIL (marzo/abril) — verificar cada año.", ideas: "Muchos clientes cierran; confirmar disponibilidad de personal y bodega." },
+    { tipo: "ASUETO_OFICIAL", titulo: "Día de Muertos", mi: 11, di: 2, icono: "💀", descripcion: "Descanso oficial de facto en muchas empresas; no obligatorio por LFT.", ideas: "Alta demanda de eventos y activaciones temáticas." },
+    { tipo: "ASUETO_OFICIAL", titulo: "Virgen de Guadalupe", mi: 12, di: 12, icono: "🕯️", descripcion: "Festividad religiosa de amplia observancia; no es asueto obligatorio por LFT.", ideas: "Considerar disponibilidad reducida de proveedores." },
+    // ── Fechas cívicas (izamiento de bandera; no son días de descanso) ──
+    { tipo: "CONMEMORACION", titulo: "Día de la Bandera", mi: 2, di: 24, icono: "🇲🇽", descripcion: "Fecha cívica; día laborable." },
+    { tipo: "CONMEMORACION", titulo: "Batalla de Puebla (5 de mayo)", mi: 5, di: 5, icono: "⚔️", descripcion: "Fecha cívica; día laborable." },
   ],
 };
