@@ -5,6 +5,7 @@ import VenuePicker from "@/components/ui/VenuePicker";
 import { SelectorEquiposInventario, type SeleccionEquipos, type PaquetePublico, type ProductoPublico } from '@/components/SelectorEquiposInventario';
 import { Combobox } from "@/components/Combobox";
 import Link from "next/link";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import { isLegacyString, parseLinks } from "@/utils/legacyText";
 import { parseFechasEvento } from "@/lib/fechas-evento";
@@ -554,6 +555,11 @@ export default function DiscoveryForm({
   setContacto?: (c: any) => void,
 }) {
   const toast = useToast();
+  // Fase 5: el sub-paso se refleja en la URL (?paso=2b) para que sea compartible
+  // y sobreviva al botón atrás. Solo se usa fuera del modo cliente.
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   // Rutas base según el modo. En modo cliente todo pasa por el endpoint por token.
   const archivosBase = clientMode ? `/api/f/${token}/archivos` : `/api/tratos/${id}/archivos`;
   
@@ -845,17 +851,24 @@ export default function DiscoveryForm({
   // ── Fase 3: sub-paso dentro del Paso 2 (2a Estrategia · 2b Selección · 2c Adicionales) ──
   // Se persiste en `equiposInteres` (sin migración), igual que modoCotizacion/ruta.
   const subPaso = useMemo<"2a" | "2b" | "2c">(() => {
+    const fromUrl = clientMode ? null : searchParams.get("paso");
+    if (fromUrl === "2a" || fromUrl === "2b" || fromUrl === "2c") return fromUrl;
     try { const s = discForm.equiposInteres ? JSON.parse(discForm.equiposInteres) : null; return (s?.subpaso as "2a" | "2b" | "2c") ?? "2a"; }
     catch { return "2a"; }
-  }, [discForm.equiposInteres]);
+  }, [discForm.equiposInteres, searchParams, clientMode]);
   const setSubPaso = useCallback((sp: "2a" | "2b" | "2c") => {
     setDiscForm(p => {
       let sel: Record<string, unknown> = {};
       try { sel = p.equiposInteres ? JSON.parse(p.equiposInteres) : {}; } catch { sel = {}; }
       return { ...p, equiposInteres: JSON.stringify({ ...sel, subpaso: sp }) };
     });
+    if (!clientMode) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("paso", sp);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, []);
+  }, [clientMode, searchParams, pathname, router]);
   // Cambiar de estrategia: confirma, limpia la selección base (categorias/equipos/
   // productos/paquetes) pero conserva adicionales; regresa a 2a.
   const cambiarEstrategia = useCallback(() => {
@@ -868,14 +881,26 @@ export default function DiscoveryForm({
       delete resto.categorias; delete resto.equipos; delete resto.productos; delete resto.paquetes; delete resto.cantidades;
       return { ...p, equiposInteres: JSON.stringify({ ...resto, categorias: [], equipos: [], productos: [], paquetes: [], subpaso: "2a" }) };
     });
+    if (!clientMode) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("paso", "2a");
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
-  }, []);
+  }, [clientMode, searchParams, pathname, router]);
   const resumenSeleccion = useMemo(() => {
     try {
       const s = discForm.equiposInteres ? JSON.parse(discForm.equiposInteres) : {};
       const n = ["equipos", "productos", "paquetes", "categorias"].reduce((acc, k) => acc + (Array.isArray(s[k]) ? s[k].length : 0), 0);
       return n ? `${n} elemento${n === 1 ? "" : "s"}` : "sin elementos aún";
     } catch { return "sin elementos aún"; }
+  }, [discForm.equiposInteres]);
+  // Fase 5: 2C (adicionales) queda bloqueado hasta que 2B tenga al menos un ítem.
+  const tieneSeleccion = useMemo(() => {
+    try {
+      const s = discForm.equiposInteres ? JSON.parse(discForm.equiposInteres) : {};
+      return ["equipos", "productos", "paquetes", "categorias"].some(k => Array.isArray(s[k]) && s[k].length > 0);
+    } catch { return false; }
   }, [discForm.equiposInteres]);
 
   // Hidratar el formulario con la información ya capturada en el trato
@@ -1288,7 +1313,7 @@ export default function DiscoveryForm({
   const avanzar = () => {
     if (subStepper && pasoActivo === 2) {
       if (subPaso === "2a") { if (!modoCotizacion) return; setSubPaso("2b"); return; }
-      if (subPaso === "2b") { setSubPaso("2c"); return; }
+      if (subPaso === "2b") { if (!tieneSeleccion) return; setSubPaso("2c"); return; }
       irAPaso(3); return;
     }
     irAPaso(pasoActivo + 1);
@@ -1657,7 +1682,7 @@ export default function DiscoveryForm({
                   {([["2a", "Estrategia"], ["2b", "Selección"], ["2c", "Adicionales"]] as const).map(([sp, lb], i) => {
                     const activo = subPaso === sp;
                     const done = ["2a", "2b", "2c"].indexOf(subPaso) > i;
-                    const bloqueado = sp !== "2a" && !modoCotizacion;
+                    const bloqueado = (sp !== "2a" && !modoCotizacion) || (sp === "2c" && !tieneSeleccion);
                     return (
                       <button key={sp} type="button" disabled={bloqueado}
                         onClick={() => setSubPaso(sp)}
@@ -2416,7 +2441,7 @@ export default function DiscoveryForm({
                 </Link>
               ) : (pasoActivo < pasosVisibles.length || (subStepper && pasoActivo === 2 && subPaso !== "2c")) ? (
                 <button onClick={avanzar}
-                  className={`text-xs px-4 py-2 font-semibold rounded-lg transition-colors ${(paso1Incompleto && pasoActivo === 1) || (subStepper && pasoActivo === 2 && subPaso === "2a" && !modoCotizacion) ? "bg-[#B3985B]/40 text-black/60" : "bg-[#B3985B] text-black hover:bg-[#c9a96a]"}`}>
+                  className={`text-xs px-4 py-2 font-semibold rounded-lg transition-colors ${(paso1Incompleto && pasoActivo === 1) || (subStepper && pasoActivo === 2 && ((subPaso === "2a" && !modoCotizacion) || (subPaso === "2b" && !tieneSeleccion))) ? "bg-[#B3985B]/40 text-black/60" : "bg-[#B3985B] text-black hover:bg-[#c9a96a]"}`}>
                   Siguiente →
                 </button>
               ) : (

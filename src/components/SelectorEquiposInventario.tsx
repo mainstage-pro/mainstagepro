@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useAccess } from "@/components/AccessProvider";
 import { parseCoberturas, coberturaMatch, type MatchCapacidad } from "@/lib/constants";
 import { Sparkles, Package, Plus, SlidersHorizontal, Handshake, Users, Settings, Mic, Headphones, Volume2, Disc3, Lightbulb, Monitor, Construction, Layers, Guitar, Music, Tent, Zap, Sofa, Cable, Video, Wrench, ExternalLink, type LucideIcon } from "lucide-react";
 
@@ -210,6 +211,10 @@ function opcionesCantidad(cant: number): number[] {
 // ── Componente ─────────────────────────────────────────────────────────────────
 
 export function SelectorEquiposInventario({ value, onChange, readOnly = false, notas, onNotasChange, clientMode = false, capacidad, modo }: Props) {
+  // Solo ADMIN ve la etiqueta "Sin foto" (pista de calidad de catálogo). En el
+  // portal público no hay AccessProvider: useAccess devuelve el contexto por
+  // defecto (role USER → isAdmin=false), así que la etiqueta queda oculta.
+  const { isAdmin } = useAccess();
   const [categorias, setCategorias] = useState<CategoriaPublica[]>([]);
   const [productos, setProductos] = useState<ProductoPublico[]>([]);
   const [paquetes, setPaquetes] = useState<PaquetePublico[]>([]);
@@ -1438,6 +1443,9 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                                           <span className="text-white text-xs font-medium leading-tight">{p.nombre}</span>
                                           {hayCapacidad && matchProducto.get(p.id) === "match" && (
                                             <span className="text-[8px] bg-emerald-500/15 text-emerald-400 rounded px-1 py-0.5 shrink-0">Recomendado</span>
+                                          )}
+                                          {!p.imagenUrl && isAdmin && (
+                                            <span className="text-[8px] bg-amber-500/15 text-amber-400 rounded px-1 py-0.5 shrink-0">Sin foto</span>
                                           )}
                                         </span>
                                         {p.descripcion && (
