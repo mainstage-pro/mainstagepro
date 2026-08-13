@@ -92,6 +92,10 @@ export type SeleccionEquipos = {
   /** Si true, el cliente deja la cantidad/selección exacta de equipos a criterio del vendedor;
    *  las categorías elegidas quedan solo como referencia de interés. */
   aCriterioVendedor?: boolean;
+  /** Estrategia de cotización elegida por el vendedor en el descubrimiento: armar
+   *  por equipos sueltos, por productos armados o por paquetes comerciales. Solo
+   *  enruta la sub-pestaña inicial; no limita lo que se puede elegir. */
+  modoCotizacion?: "equipos" | "productos" | "paquetes";
 };
 
 // Categorías sintéticas de servicio (no existen en el inventario; se arman con roles técnicos).
@@ -141,6 +145,9 @@ interface Props {
   /** Contexto de capacidad del evento (tipo, nº de asistentes, subtipos) para
    *  recomendar productos según su cobertura definida. Opcional. */
   capacidad?: { tipoEvento?: string | null; asistentes?: number | null; subtipos?: string[] | null };
+  /** Sub-sección a la que saltar (equipos|productos|paquetes). Al cambiar, abre esa
+   *  pestaña y fuerza el paso 2; el vendedor puede seguir navegando después. */
+  modo?: "equipos" | "productos" | "paquetes" | null;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────────
@@ -200,7 +207,7 @@ function opcionesCantidad(cant: number): number[] {
 
 // ── Componente ─────────────────────────────────────────────────────────────────
 
-export function SelectorEquiposInventario({ value, onChange, readOnly = false, notas, onNotasChange, clientMode = false, capacidad }: Props) {
+export function SelectorEquiposInventario({ value, onChange, readOnly = false, notas, onNotasChange, clientMode = false, capacidad, modo }: Props) {
   const [categorias, setCategorias] = useState<CategoriaPublica[]>([]);
   const [productos, setProductos] = useState<ProductoPublico[]>([]);
   const [paquetes, setPaquetes] = useState<PaquetePublico[]>([]);
@@ -220,6 +227,11 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
   );
   // Sub-pestaña dentro del paso 2: equipos individuales (default), productos o paquetes
   const [subTab, setSubTab] = useState<"equipos" | "productos" | "paquetes">("equipos");
+  // El modo de cotización elegido en el descubrimiento enruta la sub-pestaña y
+  // salta al paso 2. Solo reacciona al cambio; después el vendedor navega libre.
+  useEffect(() => {
+    if (modo) { setSubTab(modo); setPaso(2); }
+  }, [modo]);
   const [extraNombre, setExtraNombre] = useState("");
   const [extraCategoria, setExtraCategoria] = useState("");
 

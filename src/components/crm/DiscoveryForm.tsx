@@ -680,6 +680,25 @@ export default function DiscoveryForm({
   const equiposPersistidosRef = useRef<string | null>(null);
   useEffect(() => { latestDiscRef.current = discForm; });
 
+  // ── Estrategia de cotización (solo vendedor) ──────────────────────────────────
+  // Tres formas de armar la propuesta: por equipo, por producto o por paquete. Se
+  // guarda dentro de `equiposInteres` (sin migración) y enruta la sub-pestaña del
+  // selector. Para "aterrizar" en la sección, traemos su bloque a la vista.
+  const selectorEquiposRef = useRef<HTMLDivElement>(null);
+  const modoCotizacion = useMemo<"equipos" | "productos" | "paquetes" | null>(() => {
+    try { const s = discForm.equiposInteres ? JSON.parse(discForm.equiposInteres) : null; return s?.modoCotizacion ?? null; }
+    catch { return null; }
+  }, [discForm.equiposInteres]);
+  const elegirModoCotizacion = useCallback((m: "equipos" | "productos" | "paquetes") => {
+    setDiscForm(p => {
+      let sel: SeleccionEquipos;
+      try { sel = p.equiposInteres ? JSON.parse(p.equiposInteres) : { categorias: [], equipos: [] }; }
+      catch { sel = { categorias: [], equipos: [] }; }
+      return { ...p, equiposInteres: JSON.stringify({ ...sel, modoCotizacion: m }) };
+    });
+    requestAnimationFrame(() => selectorEquiposRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, []);
+
   // Hidratar el formulario con la información ya capturada en el trato
   // (ej. nombre y fecha que se ingresan al crear el contacto en Venta Cerrada,
   // o datos guardados en visitas anteriores). Se ejecuta una sola vez para no
@@ -1454,6 +1473,33 @@ export default function DiscoveryForm({
                   </div>
                 </div>
               )}
+              {/* ── ¿Cómo cotizar? Tres estrategias (solo vendedor). Enruta a la sección. ── */}
+              {!clientMode && discForm.tipoEvento && discForm.tipoServicio !== "DIRECCION_TECNICA" && (
+                <div className="rounded-xl border border-[#2a2a2a] bg-[#0e0e0e] p-4 space-y-3">
+                  <div>
+                    <p className="text-sm text-white font-semibold">¿Cómo quieres cotizar este evento?</p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">Elige la estrategia para armar la propuesta. Te llevamos directo a esa sección; las sugerencias se ajustan al tipo de evento, nicho y número de asistentes. Los adicionales quedan disponibles en cualquier caso.</p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { id: "equipos", icon: Sliders, label: "Por equipo", desc: "Arma con equipos sueltos del inventario" },
+                      { id: "productos", icon: Package, label: "Por producto", desc: "Soluciones ya armadas por categoría" },
+                      { id: "paquetes", icon: Sparkles, label: "Por paquete", desc: "Paquetes completos listos para el evento" },
+                    ] as const).map(op => {
+                      const activo = modoCotizacion === op.id;
+                      return (
+                        <button key={op.id} type="button" disabled={readOnly}
+                          onClick={() => elegirModoCotizacion(op.id)}
+                          className={`flex flex-col items-start gap-1.5 rounded-lg border p-3 text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${activo ? "border-[#B3985B] bg-[#B3985B]/10" : "border-[#2a2a2a] hover:border-[#555]"}`}>
+                          <op.icon strokeWidth={1.75} className={`w-4 h-4 ${activo ? "text-[#B3985B]" : "text-gray-400"}`} />
+                          <p className={`text-xs font-semibold ${activo ? "text-[#B3985B]" : "text-white"}`}>{op.label}</p>
+                          <p className="text-[10px] text-gray-500 leading-tight">{op.desc}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               {/* Sugerencias del catálogo por nicho (solo vendedor). Nada obliga ni oculta. */}
               {!clientMode && discForm.tipoEvento && (
                 <DescubrimientoCatalogo
@@ -1508,7 +1554,7 @@ export default function DiscoveryForm({
                 <p className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold">Detalles de renta</p>
 
                 {/* ── Selector de equipos del inventario (igual que producción) ── */}
-                <div>
+                <div ref={selectorEquiposRef}>
                   <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1">Equipos e inventario de interés</label>
                   <p className="text-[11px] text-gray-600 mb-3">{clientMode
                     ? "Elige las categorías que te interesan y cuéntanos los detalles de cada una. No necesitas saber de equipos: tu asesor arma la propuesta."
@@ -1530,6 +1576,7 @@ export default function DiscoveryForm({
                       asistentes: discForm.asistentesEstimados ? parseInt(discForm.asistentesEstimados) : null,
                       subtipos: discForm.subtipoEvento ? discForm.subtipoEvento.split(", ").filter(Boolean) : [],
                     }}
+                    modo={modoCotizacion}
                   />
                 </div>
 
@@ -1675,7 +1722,7 @@ export default function DiscoveryForm({
             ) : (
               <div className="space-y-4">
                 {/* ── Selector de equipos del inventario ─────────────────── */}
-                <div>
+                <div ref={selectorEquiposRef}>
                   <label className="text-xs text-gray-400 uppercase tracking-wider block mb-1">Equipos e inventario de interés</label>
                   <p className="text-[11px] text-gray-600 mb-3">{clientMode
                     ? "Elige las categorías que te interesan y cuéntanos los detalles de cada una. No necesitas saber de equipos: tu asesor arma la propuesta."
@@ -1697,6 +1744,7 @@ export default function DiscoveryForm({
                       asistentes: discForm.asistentesEstimados ? parseInt(discForm.asistentesEstimados) : null,
                       subtipos: discForm.subtipoEvento ? discForm.subtipoEvento.split(", ").filter(Boolean) : [],
                     }}
+                    modo={modoCotizacion}
                   />
                 </div>
 
