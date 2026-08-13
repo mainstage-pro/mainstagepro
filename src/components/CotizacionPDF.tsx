@@ -266,11 +266,15 @@ const s = StyleSheet.create({
   totalFilaDes: {
     fontSize: 8.5,
     color: GRAY,
+    flex: 1,
+    paddingRight: 10,
   },
   totalFilaMonto: {
     fontSize: 8.5,
     color: BLACK,
     fontFamily: "Helvetica-Bold",
+    flexShrink: 0,
+    textAlign: "right",
   },
   totalFilaDescuento: {
     color: "#c0392b",
