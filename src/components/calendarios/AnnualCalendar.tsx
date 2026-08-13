@@ -85,6 +85,37 @@ export default function AnnualCalendar({ calendario }: { calendario: CalendarioK
     return map;
   }, [puntos]);
 
+  // Temporada actual y siguiente respecto a HOY (para el resumen de Administrativo).
+  const periodosHoy = useMemo(
+    () => entradas.filter(e => (e.anio == null || e.anio === hoy.getFullYear()) && esRango(e)),
+    [entradas, hoy],
+  );
+  const { tempActual, tempSiguiente, diasParaSiguiente } = useMemo(() => {
+    const hoyVal = hoy.getMonth() * 32 + hoy.getDate();
+    const rango = (e: Entrada) => {
+      const ini = (e.mesInicio - 1) * 32 + (e.diaInicio ?? 1);
+      const fm = (e.mesFin ?? e.mesInicio) - 1;
+      const fd = e.diaFin ?? new Date(2001, fm + 1, 0).getDate();
+      return { ini, fin: fm * 32 + fd };
+    };
+    const conR = periodosHoy.map(e => ({ e, ...rango(e) }));
+    const actual = conR.find(x => hoyVal >= x.ini && hoyVal <= x.fin)?.e ?? null;
+    const futuros = conR.filter(x => x.ini > hoyVal && x.e.id !== actual?.id).sort((a, b) => a.ini - b.ini);
+    let sig = futuros[0]?.e ?? null;
+    if (!sig) {
+      const rest = conR.filter(x => x.e.id !== actual?.id).sort((a, b) => a.ini - b.ini);
+      sig = rest[0]?.e ?? null;
+    }
+    let dias: number | null = null;
+    if (sig) {
+      const h0 = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+      let d = new Date(hoy.getFullYear(), sig.mesInicio - 1, sig.diaInicio ?? 1);
+      if (d < h0) d = new Date(hoy.getFullYear() + 1, sig.mesInicio - 1, sig.diaInicio ?? 1);
+      dias = Math.round((d.getTime() - h0.getTime()) / 86400000);
+    }
+    return { tempActual: actual, tempSiguiente: sig, diasParaSiguiente: dias };
+  }, [periodosHoy, hoy]);
+
   function puntosDe(m0: number, dia: number) { return puntosPorDia[`${m0}-${dia}`] ?? []; }
   function periodoDe(m0: number, dia: number) { return periodos.find(e => cubreDia(e, m0, dia)); }
 
@@ -163,6 +194,31 @@ export default function AnnualCalendar({ calendario }: { calendario: CalendarioK
         ))}
       </div>
 
+      {/* Temporada actual / siguiente (calendarios con temporadas) */}
+      {periodosHoy.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {([
+            { rot: "Temporada actual", e: tempActual, badge: null as string | null },
+            { rot: "Siguiente temporada", e: tempSiguiente, badge: diasParaSiguiente != null ? `en ${diasParaSiguiente} día${diasParaSiguiente === 1 ? "" : "s"}` : null },
+          ]).map(({ rot, e, badge }) => {
+            const color = e ? colorEntrada(cal, e) : "#333";
+            return (
+              <div key={rot} className="ms-card p-4 flex items-center gap-3 relative overflow-hidden">
+                <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: color }} />
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0" style={{ backgroundColor: color + "22", border: `1px solid ${color}55` }}>
+                  {e?.icono || "—"}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-gray-500 font-bold">{rot}</p>
+                  <p className="text-white font-semibold truncate">{e ? e.titulo : "Sin definir"}</p>
+                  {e && <p className="text-xs text-gray-500 truncate">{etiquetaFecha(e)}{badge ? ` · ${badge}` : ""}</p>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {vista === "anio" && <VistaAnio />}
       {vista === "mes" && <VistaMes />}
       {vista === "semana" && <VistaSemana />}
@@ -226,51 +282,6 @@ export default function AnnualCalendar({ calendario }: { calendario: CalendarioK
   function VistaAnio() {
     return (
       <>
-        {/* Línea de tiempo de temporadas */}
-        {periodos.length > 0 && (
-          <div className="ms-card p-4">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-[#B3985B] font-bold mb-3">Línea de tiempo · {anio}</p>
-            <div className="grid grid-cols-12 gap-px mb-2">
-              {MESES_CORTOS.map((m, i) => (
-                <button key={m} onClick={() => irAMes(i)} className="text-center text-[10px] text-gray-500 hover:text-[#B3985B] uppercase transition-colors">{m}</button>
-              ))}
-            </div>
-            <div className="relative space-y-1.5">
-              {periodos.map(e => {
-                const desde = (e.mesInicio - 1) + ((e.diaInicio ?? 1) - 1) / 31;
-                const finMes = (e.mesFin ?? e.mesInicio) - 1;
-                const finDiaMax = new Date(2001, finMes + 1, 0).getDate();
-                const hasta = finMes + (e.diaFin ?? finDiaMax) / finDiaMax;
-                const left = (desde / 12) * 100;
-                const width = Math.max(((hasta - desde) / 12) * 100, 4);
-                const color = colorEntrada(cal, e);
-                return (
-                  <div key={e.id} className="relative h-9">
-                    <div className="absolute inset-0 grid grid-cols-12 gap-px pointer-events-none">
-                      {Array.from({ length: 12 }).map((_, i) => <div key={i} className="border-r border-[#161616]" />)}
-                    </div>
-                    <button onClick={() => abrirEdicion(e)}
-                      className="absolute top-0 h-9 rounded-md flex items-center px-2.5 text-[11px] font-medium text-white truncate hover:brightness-110 transition-all shadow-sm"
-                      style={{ left: `${left}%`, width: `${width}%`, backgroundColor: color + "cc", border: `1px solid ${color}` }}
-                      title={`${e.titulo} · ${etiquetaFecha(e)}`}>
-                      {e.icono ? `${e.icono} ` : ""}{e.titulo}
-                    </button>
-                  </div>
-                );
-              })}
-              {/* Marcador de hoy */}
-              {hoy.getFullYear() === anio && (() => {
-                const frac = (hoy.getMonth() + (hoy.getDate() - 1) / 31) / 12;
-                return (
-                  <div className="absolute top-0 bottom-0 w-px bg-[#B3985B] pointer-events-none" style={{ left: `${frac * 100}%` }}>
-                    <span className="absolute -top-0.5 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#B3985B]" />
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        )}
-
         {/* Mini-meses */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {MESES.map((nombreMes, m) => {
@@ -290,20 +301,21 @@ export default function AnnualCalendar({ calendario }: { calendario: CalendarioK
                     const pts = puntosDe(m, dia);
                     const periodo = periodoDe(m, dia);
                     const esHoy = hoy.getFullYear() === anio && hoy.getMonth() === m && hoy.getDate() === dia;
-                    const bg = periodo ? colorEntrada(cal, periodo) + "26" : undefined;
+                    const primary = pts[0] ? colorEntrada(cal, pts[0]) : null;
+                    const style: React.CSSProperties | undefined = primary
+                      ? { backgroundColor: primary, color: "#0d0d0d" }
+                      : periodo
+                        ? { backgroundColor: colorEntrada(cal, periodo) + "3d", color: "#e5e5e5" }
+                        : undefined;
                     return (
                       <button key={i}
                         onClick={() => pts.length === 1 ? abrirEdicion(pts[0]) : abrirNueva(m + 1, dia)}
-                        className={`relative aspect-square rounded-[4px] flex items-center justify-center text-[10px] hover:bg-[#1c1c1c] transition-colors ${esHoy ? "ring-1 ring-[#B3985B] text-white" : "text-gray-400"}`}
-                        style={bg ? { backgroundColor: bg } : undefined}
-                        title={pts.map(p => p.titulo).join(", ")}>
+                        className={`relative aspect-square rounded-md flex items-center justify-center text-[10px] transition-transform ${primary ? "font-bold shadow-md hover:scale-110" : periodo ? "font-medium hover:brightness-125" : "text-gray-500 hover:bg-[#1c1c1c]"} ${esHoy ? "ring-2 ring-[#B3985B]" : ""}`}
+                        style={style}
+                        title={pts.map(p => p.titulo).join(", ") || periodo?.titulo || ""}>
                         <span>{dia}</span>
-                        {pts.length > 0 && (
-                          <span className="absolute bottom-0.5 flex gap-0.5">
-                            {pts.slice(0, 3).map(p => (
-                              <span key={p.id} className="w-1 h-1 rounded-full" style={{ backgroundColor: colorEntrada(cal, p) }} />
-                            ))}
-                          </span>
+                        {pts.length > 1 && (
+                          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-[#0d0d0d] text-[#B3985B] text-[8px] font-bold flex items-center justify-center border border-[#B3985B]/60">{pts.length}</span>
                         )}
                       </button>
                     );
