@@ -739,3 +739,40 @@ export async function ensureActasFaltas() {
   _actasFaltasReady = true;
 }
 
+/**
+ * Glosario del inventario (patrón Neon: CREATE TABLE IF NOT EXISTS).
+ * Tabla nueva y aislada — ninguna lectura existente depende de ella — así que crearla
+ * lazy es seguro. Mapea términos coloquiales normalizados a objetos del catálogo
+ * (Equipo/Accesorio/RolTecnico). `termino` es UNIQUE para impedir que una misma palabra
+ * apunte a dos objetos. La consulta el asistente de cotización en lenguaje natural.
+ * Idempotente y segura de correr múltiples veces.
+ */
+let _glosarioReady = false;
+
+export async function ensureGlosarioTabla() {
+  if (_glosarioReady) return;
+  try {
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS glosario_terminos (
+        id TEXT PRIMARY KEY,
+        termino TEXT NOT NULL,
+        original TEXT NOT NULL,
+        "tipoObjetivo" TEXT NOT NULL,
+        "objetivoId" TEXT NOT NULL,
+        peso INTEGER NOT NULL DEFAULT 0,
+        fuente TEXT NOT NULL DEFAULT 'manual',
+        activo BOOLEAN NOT NULL DEFAULT true,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await prisma.$executeRawUnsafe(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "glosario_terminos_termino_key" ON glosario_terminos (termino)`
+    );
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "glosario_terminos_tipoObjetivo_objetivoId_idx" ON glosario_terminos ("tipoObjetivo", "objetivoId")`
+    );
+  } catch { /* ya existe */ }
+  _glosarioReady = true;
+}
+

@@ -972,6 +972,29 @@ model CategoriaEquipo {
   @@map("categoria_equipos")
 }
 
+// Glosario del inventario: mapea un término coloquial (normalizado, sin acentos y en
+// minúsculas) a un objeto único del catálogo — un Equipo, un Accesorio o un RolTecnico.
+// `termino` es @unique a nivel BD: garantiza que una misma palabra NO pueda apuntar a
+// dos objetos distintos (no se repite entre equipos/conceptos). Un objeto puede tener
+// muchos términos (sinónimos). Se usa por el asistente de cotización en lenguaje natural
+// para resolver "4 bocinas, 8 beams..." a IDs concretos del inventario. Tabla aislada:
+// ninguna lectura existente depende de ella (creación lazy segura, patrón Neon).
+model GlosarioTermino {
+  id           String   @id @default(cuid())
+  termino      String   @unique // forma normalizada (lowercase, sin acentos, singular)
+  original     String // como lo capturó el humano, para mostrar en la UI
+  tipoObjetivo String // EQUIPO | ACCESORIO | ROL_TECNICO
+  objetivoId   String // id del Equipo/Accesorio/RolTecnico apuntado
+  peso         Int      @default(0) // prioridad ante empates (mayor gana)
+  fuente       String   @default("manual") // manual | ia
+  activo       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tipoObjetivo, objetivoId])
+  @@map("glosario_terminos")
+}
+
 // Producto/paquete comercial: agrupa varios equipos del inventario en un solo
 // concepto vendible ("Sistema EV EKX12P — 2 medios + 2 bajos"). El precio y la
 // disponibilidad siempre se derivan del inventario (Equipo), nunca se duplican.

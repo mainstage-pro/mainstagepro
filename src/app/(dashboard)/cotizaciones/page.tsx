@@ -8,6 +8,7 @@ import { formatCurrency } from "@/lib/cotizador";
 import { useToast } from "@/components/Toast";
 import { useConfirm } from "@/components/Confirm";
 import { SkeletonPage } from "@/components/Skeleton";
+import AsistenteCotizacion from "@/components/cotizaciones/AsistenteCotizacion";
 
 type Cotizacion = {
   id: string;
@@ -31,6 +32,7 @@ export default function CotizacionesPage() {
   const [busqueda, setBusqueda] = useState("");
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [asistenteAbierto, setAsistenteAbierto] = useState(false);
   const toast = useToast();
   const confirm = useConfirm();
   const router = useRouter();
@@ -81,7 +83,15 @@ export default function CotizacionesPage() {
                 : `${cotizaciones.length} cotizaciones`}
           </p>
         </div>
+        <button
+          onClick={() => setAsistenteAbierto(true)}
+          className="px-4 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-medium hover:bg-[#c5a86a] transition-colors"
+        >
+          Asistente IA
+        </button>
       </div>
+
+      {asistenteAbierto && <AsistenteCotizacion onClose={() => setAsistenteAbierto(false)} />}
 
       <div className="mb-4">
         <input
