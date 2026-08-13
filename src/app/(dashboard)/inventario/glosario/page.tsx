@@ -95,10 +95,13 @@ export default function GlosarioPage() {
     setTerminos((prev) => prev.filter((x) => x.id !== t.id));
   }
 
-  async function autogenerar() {
+  async function autogenerar(soloFaltantes: boolean) {
+    const label = TABS.find((x) => x.key === tab)?.label;
     const ok = await confirm({
-      message: `Generar sinónimos con IA para "${TABS.find((x) => x.key === tab)?.label}" que aún no tengan términos. Puede tardar. ¿Continuar?`,
-      confirmText: "Generar",
+      message: soloFaltantes
+        ? `Generar sinónimos con IA para "${label}" que aún no tengan términos. Puede tardar. ¿Continuar?`
+        : `Ampliar el vocabulario con IA para TODOS los "${label}" (agrega más formas a los que ya tienen términos). Tarda más. ¿Continuar?`,
+      confirmText: soloFaltantes ? "Generar" : "Ampliar todos",
     });
     if (!ok) return;
     setGenerando(true);
@@ -106,7 +109,7 @@ export default function GlosarioPage() {
       const res = await fetch("/api/glosario/autogenerar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tipoObjetivo: tab, soloFaltantes: true }),
+        body: JSON.stringify({ tipoObjetivo: tab, soloFaltantes }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -126,14 +129,28 @@ export default function GlosarioPage() {
         <div>
           <h1 className="ms-h1">Glosario del inventario</h1>
           <p className="ms-subtitle">Palabras con las que el asistente reconoce cada equipo, accesorio o rol. Únicas: una palabra no puede apuntar a dos objetos.</p>
+          <div className="flex items-center gap-3 mt-1 text-[11px] text-[#666]">
+            <span className="text-[#ccc]">● Manual</span>
+            <span className="text-[#B3985B]">● IA</span>
+            <span className="text-emerald-300">● Aprendido</span>
+          </div>
         </div>
-        <button
-          onClick={autogenerar}
-          disabled={generando}
-          className="px-4 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-medium disabled:opacity-40"
-        >
-          {generando ? "Generando..." : "Autogenerar con IA"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => autogenerar(true)}
+            disabled={generando}
+            className="px-4 py-2 rounded-lg bg-[#1a1a1a] text-white text-sm font-medium border border-[#2a2a2a] disabled:opacity-40"
+          >
+            {generando ? "Generando..." : "Generar faltantes"}
+          </button>
+          <button
+            onClick={() => autogenerar(false)}
+            disabled={generando}
+            className="px-4 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-medium disabled:opacity-40"
+          >
+            {generando ? "Generando..." : "Ampliar vocabulario"}
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-2 mb-4">
@@ -178,8 +195,13 @@ export default function GlosarioPage() {
                   {terms.map((t) => (
                     <span
                       key={t.id}
+                      title={t.fuente === "aprendido" ? "Aprendido de una reasignación" : t.fuente === "ia" ? "Generado con IA" : "Manual"}
                       className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border ${
-                        t.fuente === "ia" ? "border-[#B3985B]/30 text-[#B3985B]" : "border-[#2a2a2a] text-[#ccc]"
+                        t.fuente === "aprendido"
+                          ? "border-emerald-500/40 text-emerald-300"
+                          : t.fuente === "ia"
+                          ? "border-[#B3985B]/30 text-[#B3985B]"
+                          : "border-[#2a2a2a] text-[#ccc]"
                       }`}
                     >
                       {t.termino}

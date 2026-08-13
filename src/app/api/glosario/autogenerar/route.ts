@@ -17,16 +17,25 @@ interface Objetivo {
 }
 
 const SYSTEM = `Eres un experto en producción técnica de eventos en México (audio, iluminación, video, estructura, DJ).
-Recibes una lista JSON de objetos del inventario/catálogo. Para CADA objeto debes proponer MUCHAS formas coloquiales
-en que un cliente, vendedor o técnico podría referirse a él al pedir una cotización: sinónimos, jerga del gremio,
-apócopes, singular y plural, con y sin marca, errores comunes de dedo. Español de México.
+Recibes una lista JSON de objetos del inventario/catálogo. Para CADA objeto debes proponer TODAS las formas
+coloquiales imaginables en que un cliente, vendedor o técnico podría referirse a él al pedir una cotización.
+El objetivo es que NUNCA quede sin reconocer: cubre el vocabulario de forma exhaustiva. Español de México.
+
+Incluye para cada objeto:
+- Sinónimos y jerga del gremio (ej. "bafle", "bocina", "caja", "monitor").
+- Apócopes y abreviaturas ("sub" por subwoofer, "cabeza" por cabeza móvil).
+- Singular y plural.
+- Con marca y sin marca; con modelo y sin modelo; marca+modelo pegado y separado ("ekx12p", "ekx 12p").
+- Errores de dedo y de escritura frecuentes ("bosina", "bafles", "suvwoofer", "iluminacion", "microfono").
+- Formas con y sin acentos.
 
 REGLAS CRÍTICAS:
 - Devuelve ÚNICAMENTE un objeto JSON (sin markdown, sin explicación): { "<id>": ["termino1","termino2",...], ... }
-- Cada término debe ser inequívoco para ESE objeto. Un mismo término NO puede aparecer en dos objetos distintos.
-- No inventes términos genéricos que apliquen a varios objetos (ej. "luz", "equipo", "cable" a secas si hay varios).
-  Prefiere términos específicos ("beam", "cabeza móvil beam", "beams", "spot beam").
-- Entre 6 y 16 términos por objeto. Todo en minúsculas.`;
+- Cada término debe ser inequívoco para ESE objeto. Un mismo término NO puede aparecer en dos objetos distintos:
+  si una palabra podría referirse a varios objetos, NO la incluyas (deja que el humano desambigüe).
+- No uses genéricos que apliquen a varios objetos ("luz", "equipo", "cable" a secas). Prefiere específicos
+  ("beam", "cabeza móvil beam", "beams", "spot beam").
+- Entre 15 y 30 términos por objeto. Todo en minúsculas. Sin duplicados dentro del mismo objeto.`;
 
 function extraerJson(txt: string): Record<string, unknown> | null {
   const m = txt.match(/\{[\s\S]*\}/);
@@ -113,7 +122,8 @@ export async function POST(req: NextRequest) {
   // Lotes de 35 objetos por llamada; el set `usados` se comparte entre lotes.
   // Se inserta AL CERRAR CADA LOTE (no al final): así el avance se persiste aunque la
   // función se corte por timeout de Vercel, y un reintento con soloFaltantes reanuda.
-  const LOTE = 35;
+  // Lotes más chicos porque ahora pedimos hasta 30 términos por objeto (más salida).
+  const LOTE = 20;
   for (let i = 0; i < objetivos.length; i += LOTE) {
     const lote = objetivos.slice(i, i + LOTE);
     const nuevos: { termino: string; original: string; tipoObjetivo: string; objetivoId: string }[] = [];
@@ -123,7 +133,7 @@ export async function POST(req: NextRequest) {
     try {
       const msg = await client.messages.create({
         model: "claude-sonnet-4-6",
-        max_tokens: 8000,
+        max_tokens: 16000,
         system: SYSTEM,
         messages: [{ role: "user", content: `Objetos:\n${JSON.stringify(payload)}` }],
       });

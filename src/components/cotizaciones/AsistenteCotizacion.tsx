@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 
 interface LineaDraft {
   tipo: string;
+  termino: string;
   descripcion: string;
   categoria: string | null;
   cantidad: number;
@@ -16,6 +17,8 @@ interface LineaDraft {
   equipoId: string | null;
   rolTecnicoId: string | null;
   revisar: boolean;
+  ambiguo: boolean;
+  candidatos: Candidato[];
 }
 interface Resumen {
   subtotalEquiposNeto: number;
@@ -79,7 +82,23 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
       rolTecnicoId: l.rolTecnicoId,
       cantidad: l.cantidad,
       descripcion: l.descripcion,
+      termino: l.termino,
     }));
+
+  // Aprendizaje: enseña "frase original → objeto elegido" para la próxima vez.
+  async function aprender(termino: string, c: Candidato) {
+    if (!termino.trim()) return;
+    const tipoObjetivo = c.kind === "ROL" ? "ROL_TECNICO" : c.kind === "ACCESORIO" ? "ACCESORIO" : "EQUIPO";
+    try {
+      await fetch("/api/cotizaciones/asistente/aprender", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ termino, tipoObjetivo, objetivoId: c.equipoId ?? c.rolTecnicoId }),
+      });
+    } catch {
+      /* el aprendizaje es best-effort; no bloquea la cotización */
+    }
+  }
 
   async function analizar() {
     if (!texto.trim()) return;
@@ -140,6 +159,7 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
   function aplicarReasignacion(idx: number, c: Candidato) {
     setBorrador((prev) => {
       if (!prev) return prev;
+      const term = prev.lineas[idx]?.termino ?? "";
       const tipo =
         c.kind === "ROL" ? (c.categoria === "DJ" ? "DJ" : "OPERACION_TECNICA") : "EQUIPO_PROPIO";
       const lineas = prev.lineas.map((l, i) =>
@@ -154,11 +174,14 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
               precioUnitario: c.precio,
               subtotal: c.precio * l.cantidad * l.dias,
               revisar: false,
+              ambiguo: false,
+              candidatos: [],
             }
           : l
       );
       const nb = { ...prev, lineas };
       recalcular(nb);
+      aprender(term, c); // el humano corrige → el asistente aprende
       return nb;
     });
     setReasignando(null);
@@ -258,7 +281,10 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
               {borrador.lineas.map((l, i) => (
                 <div key={i} className="px-3 py-2 text-xs">
                   <div className="flex items-center gap-2">
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${l.revisar ? "bg-red-500" : "bg-emerald-500"}`} />
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full shrink-0 ${l.revisar ? "bg-red-500" : l.ambiguo ? "bg-amber-400" : "bg-emerald-500"}`}
+                      title={l.revisar ? "Sin resolver" : l.ambiguo ? "Elige cuál es" : "Resuelto"}
+                    />
                     <input
                       type="number"
                       min={1}
@@ -278,6 +304,25 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
                     </button>
                     <button onClick={() => quitarLinea(i)} className="text-[#666] hover:text-red-400 text-sm leading-none shrink-0" title="Quitar">×</button>
                   </div>
+                  {l.ambiguo && l.candidatos.length > 0 && reasignando !== i && (
+                    <div className="mt-1.5 ml-4 flex flex-wrap items-center gap-1.5">
+                      <span className="text-amber-400/80 text-[11px]">¿Cuál es?</span>
+                      {l.candidatos.map((c, k) => {
+                        const activo = (c.equipoId ?? c.rolTecnicoId) === (l.equipoId ?? l.rolTecnicoId);
+                        return (
+                          <button
+                            key={k}
+                            onClick={() => aplicarReasignacion(i, c)}
+                            className={`px-2 py-0.5 rounded-full border text-[11px] ${
+                              activo ? "border-emerald-500/60 text-emerald-300" : "border-[#2a2a2a] text-[#ccc] hover:border-[#B3985B]/50"
+                            }`}
+                          >
+                            {c.descripcion}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                   {reasignando === i && (
                     <BuscadorReasignar
                       tipoLinea={l.rolTecnicoId ? "ROL" : "EQUIPO"}

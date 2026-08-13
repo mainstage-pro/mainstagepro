@@ -62,11 +62,26 @@ export async function cargarGlosario(): Promise<GlosarioRow[]> {
   return rows;
 }
 
+/** Un objetivo candidato para un término, con su puntaje interno de ranking. */
+export interface Candidato {
+  objetivoId: string;
+  tipoObjetivo: TipoObjetivo;
+  termino: string;
+  /** Puntaje bruto de ranking (suma IDF + señales). Escala relativa, mayor = mejor. */
+  val: number;
+  /** Puntaje 0..1 de cadena completa (1 = exacta). */
+  score: number;
+}
+
 export interface Resolucion {
   entradaTermino: string;
   match: GlosarioRow | null;
   /** Puntaje 0..1 de la mejor coincidencia (1 = exacta). Útil para depurar/UI. */
   score: number;
+  /** Mejores objetivos distintos, ordenados desc por `val` (incluye al ganador). */
+  candidatos: Candidato[];
+  /** true cuando el 2º candidato queda muy cerca del 1º (conviene que el humano elija). */
+  ambiguo: boolean;
 }
 
 /** Distancia de edición (Levenshtein) entre dos cadenas cortas. */
@@ -179,6 +194,18 @@ function esNumero(t: string): boolean {
 }
 
 /**
+ * ¿La frase es lo bastante específica para APRENDERLA como término fijo?
+ * Sí cuando tiene ≥2 palabras de contenido o incluye un número de modelo (dígito).
+ * Las genéricas de una sola palabra ("bocina", "luz") NO se aprenden para no
+ * encasillarlas a un modelo: seguirán mostrando el selector de desambiguación.
+ */
+export function esFraseEspecifica(frase: string): boolean {
+  const norm = normalizarTermino(frase);
+  if (/\d/.test(norm)) return true;
+  return tokens(norm).length >= 2;
+}
+
+/**
  * Resuelve una lista de términos coloquiales contra el glosario cargado.
  *
  * Estrategia por PALABRA CLAVE (la que pidió el usuario): cada palabra significativa
@@ -212,13 +239,17 @@ export function resolverTerminos(
   for (const f of filas) for (const t of f.set) df.set(t, (df.get(t) ?? 0) + 1);
   const idf = (t: string) => Math.log((N + 1) / ((df.get(t) ?? 0) + 1)) + 0.5;
 
+  // Margen de ambigüedad: si el 2º objetivo distinto queda al ≥72% del puntaje del
+  // 1º, no hay ganador claro y conviene que el humano elija (bandera `ambiguo`).
+  const RATIO_AMBIGUO = 0.72;
+
   return terminos.map((entrada) => {
     const inTokens = prep(entrada).filter((t) => t.length > 1);
     const inSet = new Set(inTokens);
 
-    let mejor: GlosarioRow | null = null;
-    let mejorVal = 0;
-    let mejorScore = 0;
+    // Mejor puntaje por OBJETIVO distinto (no por término): así los candidatos son
+    // equipos/roles diferentes, no varias formas del mismo objeto.
+    const porObjetivo = new Map<string, { row: GlosarioRow; val: number; score: number }>();
 
     for (const f of filas) {
       // Votos ponderados por IDF: token exacto vale su IDF; difuso (typo) vale menos.
@@ -254,13 +285,28 @@ export function resolverTerminos(
       const val = peso + cadena + cobertura + f.row.peso * 0.001;
 
       const resolvible = matchedContenido >= 1 || cadena >= UMBRAL_CADENA;
-      if (resolvible && val > mejorVal) {
-        mejorVal = val;
-        mejor = f.row;
-        mejorScore = cadena;
-      }
+      if (!resolvible) continue;
+      const prev = porObjetivo.get(f.row.objetivoId);
+      if (!prev || val > prev.val) porObjetivo.set(f.row.objetivoId, { row: f.row, val, score: cadena });
     }
 
-    return { entradaTermino: entrada, match: mejor, score: mejorScore };
+    const ordenados = [...porObjetivo.values()].sort((a, b) => b.val - a.val);
+    const match = ordenados[0]?.row ?? null;
+    const mejorScore = ordenados[0]?.score ?? 0;
+    const candidatos: Candidato[] = ordenados.slice(0, 4).map((c) => ({
+      objetivoId: c.row.objetivoId,
+      tipoObjetivo: c.row.tipoObjetivo,
+      termino: c.row.termino,
+      val: c.val,
+      score: c.score,
+    }));
+    // Ambiguo solo si el ganador no es una coincidencia exacta/casi-exacta de cadena
+    // y hay un segundo objetivo muy cerca en puntaje.
+    const ambiguo =
+      ordenados.length >= 2 &&
+      mejorScore < 0.9 &&
+      ordenados[1].val >= ordenados[0].val * RATIO_AMBIGUO;
+
+    return { entradaTermino: entrada, match, score: mejorScore, candidatos, ambiguo };
   });
 }

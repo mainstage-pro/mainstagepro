@@ -81,8 +81,20 @@ function horasEntre(inicio: string | null, fin: string | null): number {
 }
 
 // ── Construye las líneas de cotización a partir de la extracción resuelta ─────
+// Candidato mostrado para desambiguar/reasignar una línea (mismo shape que /buscar).
+interface DisplayCandidato {
+  kind: "EQUIPO" | "ACCESORIO" | "ROL";
+  equipoId: string | null;
+  rolTecnicoId: string | null;
+  descripcion: string;
+  categoria: string | null;
+  precio: number;
+}
+
 interface LineaDraft extends Record<string, unknown> {
   tipo: string;
+  /** Frase original del pedido (para aprender la reasignación). */
+  termino: string;
   descripcion: string;
   categoria: string | null;
   marca: string | null;
@@ -97,6 +109,10 @@ interface LineaDraft extends Record<string, unknown> {
   rolTecnicoId: string | null;
   esExterno: boolean;
   revisar: boolean;
+  /** El motor no tuvo un ganador claro: conviene que el humano elija. */
+  ambiguo: boolean;
+  /** Alternativas probables para elegir de un clic. */
+  candidatos: DisplayCandidato[];
 }
 
 type EquipoRec = {
@@ -128,47 +144,72 @@ function tarifaDe(r: RolRec, jornada: string): number {
   return typeof val === "number" ? val : 0;
 }
 
-function lineaEquipo(e: EquipoRec, cant: number, dias: number): LineaDraft {
+function lineaEquipo(e: EquipoRec, termino: string, cant: number, dias: number): LineaDraft {
   const esExterno = e.tipo === "EXTERNO";
   const precio = e.precioRenta || 0;
   const costo = e.costoInternoEstimado ?? e.costoProveedor ?? 0;
   const cat = e.categoria?.nombre ?? null;
   const desc = e.descripcion || [e.marca, e.modelo].filter(Boolean).join(" ");
   return {
-    tipo: esExterno ? "EQUIPO_EXTERNO" : "EQUIPO_PROPIO",
+    tipo: esExterno ? "EQUIPO_EXTERNO" : "EQUIPO_PROPIO", termino,
     descripcion: desc, categoria: cat, marca: e.marca ?? null, modelo: e.modelo ?? null,
     notas: cat ? `cat:${cat}` : null,
     cantidad: cant, dias, precioUnitario: precio, costoUnitario: costo, subtotal: precio * cant * dias,
-    equipoId: e.id, rolTecnicoId: null, esExterno, revisar: false,
+    equipoId: e.id, rolTecnicoId: null, esExterno, revisar: false, ambiguo: false, candidatos: [],
   };
 }
 
-function lineaAccesorio(a: AccesorioRec, cant: number, dias: number): LineaDraft {
+function lineaAccesorio(a: AccesorioRec, termino: string, cant: number, dias: number): LineaDraft {
   const precio = a.precioRenta || 0;
   return {
-    tipo: "EQUIPO_PROPIO", descripcion: a.nombre, categoria: "Accesorios", marca: null, modelo: null,
+    tipo: "EQUIPO_PROPIO", termino, descripcion: a.nombre, categoria: "Accesorios", marca: null, modelo: null,
     notas: "cat:Accesorios",
     cantidad: cant, dias, precioUnitario: precio, costoUnitario: 0, subtotal: precio * cant * dias,
-    equipoId: null, rolTecnicoId: null, esExterno: false, revisar: false,
+    equipoId: null, rolTecnicoId: null, esExterno: false, revisar: false, ambiguo: false, candidatos: [],
   };
 }
 
-function lineaRol(r: RolRec, cant: number, dias: number, jornada: string): LineaDraft {
+function lineaRol(r: RolRec, termino: string, cant: number, dias: number, jornada: string): LineaDraft {
   const precio = tarifaDe(r, jornada);
   const tipo = r.disciplina === "DJ" ? "DJ" : "OPERACION_TECNICA";
   return {
-    tipo, descripcion: r.nombre, categoria: null, marca: null, modelo: null, notas: null,
+    tipo, termino, descripcion: r.nombre, categoria: null, marca: null, modelo: null, notas: null,
     cantidad: cant, dias, precioUnitario: precio, costoUnitario: 0, subtotal: precio * cant * dias,
-    equipoId: null, rolTecnicoId: r.id, esExterno: false, revisar: precio === 0,
+    equipoId: null, rolTecnicoId: r.id, esExterno: false, revisar: precio === 0, ambiguo: false, candidatos: [],
   };
 }
 
 function lineaOtro(termino: string, cant: number, dias: number): LineaDraft {
   return {
-    tipo: "OTRO", descripcion: termino, categoria: null, marca: null, modelo: null, notas: null,
+    tipo: "OTRO", termino, descripcion: termino, categoria: null, marca: null, modelo: null, notas: null,
     cantidad: cant, dias, precioUnitario: 0, costoUnitario: 0, subtotal: 0,
-    equipoId: null, rolTecnicoId: null, esExterno: false, revisar: true,
+    equipoId: null, rolTecnicoId: null, esExterno: false, revisar: true, ambiguo: false, candidatos: [],
   };
+}
+
+// Convierte un objetivo (por id + tipo) en un candidato mostrable para la previa.
+function displayCandidato(
+  objetivoId: string,
+  tipoObjetivo: string,
+  maps: { eqMap: Map<string, EquipoRec>; acMap: Map<string, AccesorioRec>; rlMap: Map<string, RolRec> }
+): DisplayCandidato | null {
+  if (tipoObjetivo === "EQUIPO") {
+    const e = maps.eqMap.get(objetivoId);
+    if (!e) return null;
+    return {
+      kind: "EQUIPO", equipoId: e.id, rolTecnicoId: null,
+      descripcion: e.descripcion || [e.marca, e.modelo].filter(Boolean).join(" "),
+      categoria: e.categoria?.nombre ?? null, precio: e.precioRenta || 0,
+    };
+  }
+  if (tipoObjetivo === "ACCESORIO") {
+    const a = maps.acMap.get(objetivoId);
+    if (!a) return null;
+    return { kind: "ACCESORIO", equipoId: null, rolTecnicoId: null, descripcion: a.nombre, categoria: "Accesorios", precio: a.precioRenta || 0 };
+  }
+  const r = maps.rlMap.get(objetivoId);
+  if (!r) return null;
+  return { kind: "ROL", equipoId: null, rolTecnicoId: r.id, descripcion: r.nombre, categoria: r.disciplina ?? null, precio: 0 };
 }
 
 async function cargarCatalogo(equipoIds: Set<string>, accesorioIds: Set<string>, rolIds: Set<string>) {
@@ -202,35 +243,54 @@ async function armarLineas(
   ];
   const resueltos = resolverTerminos(pedidos.map((p) => p.termino), glosario);
 
+  // IDs a cargar: tanto los ganadores como TODOS los candidatos (para poder mostrarlos).
   const equipoIds = new Set<string>();
   const accesorioIds = new Set<string>();
   const rolIds = new Set<string>();
+  const encolar = (tipo: string, id: string) => {
+    if (tipo === "EQUIPO") equipoIds.add(id);
+    else if (tipo === "ACCESORIO") accesorioIds.add(id);
+    else rolIds.add(id);
+  };
   for (const r of resueltos) {
-    if (!r.match) continue;
-    if (r.match.tipoObjetivo === "EQUIPO") equipoIds.add(r.match.objetivoId);
-    else if (r.match.tipoObjetivo === "ACCESORIO") accesorioIds.add(r.match.objetivoId);
-    else rolIds.add(r.match.objetivoId);
+    if (r.match) encolar(r.match.tipoObjetivo, r.match.objetivoId);
+    for (const c of r.candidatos) encolar(c.tipoObjetivo, c.objetivoId);
   }
-  const { eqMap, acMap, rlMap } = await cargarCatalogo(equipoIds, accesorioIds, rolIds);
+  const maps = await cargarCatalogo(equipoIds, accesorioIds, rolIds);
+  const { eqMap, acMap, rlMap } = maps;
 
   pedidos.forEach((pedido, idx) => {
-    const match = resueltos[idx]?.match;
+    const res = resueltos[idx];
+    const match = res?.match;
     const cant = Math.max(1, Math.round(pedido.cantidad || 1));
     if (!match) {
       noResueltos.push(pedido.termino);
       lineas.push(lineaOtro(pedido.termino, cant, dias));
       return;
     }
+    let linea: LineaDraft | null = null;
     if (match.tipoObjetivo === "EQUIPO") {
       const e = eqMap.get(match.objetivoId);
-      if (e) lineas.push(lineaEquipo(e, cant, dias));
+      if (e) linea = lineaEquipo(e, pedido.termino, cant, dias);
     } else if (match.tipoObjetivo === "ACCESORIO") {
       const a = acMap.get(match.objetivoId);
-      if (a) lineas.push(lineaAccesorio(a, cant, dias));
+      if (a) linea = lineaAccesorio(a, pedido.termino, cant, dias);
     } else {
       const r = rlMap.get(match.objetivoId);
-      if (r) lineas.push(lineaRol(r, cant, dias, jornada));
+      if (r) linea = lineaRol(r, pedido.termino, cant, dias, jornada);
     }
+    if (!linea) return;
+    // Desambiguación: si el motor no tuvo ganador claro, adjunta las alternativas.
+    if (res?.ambiguo) {
+      const cands = res.candidatos
+        .map((c) => displayCandidato(c.objetivoId, c.tipoObjetivo, maps))
+        .filter((c): c is DisplayCandidato => c !== null);
+      if (cands.length >= 2) {
+        linea.ambiguo = true;
+        linea.candidatos = cands;
+      }
+    }
+    lineas.push(linea);
   });
 
   return { lineas, noResueltos: [...new Set(noResueltos)] };
@@ -241,6 +301,7 @@ async function armarLineas(
 // precio/costo/categoría se re-hidrata desde la BD para que reasignar sea fiel.
 interface LineaEditada {
   tipo?: string;
+  termino?: string;
   descripcion?: string;
   cantidad?: number;
   equipoId?: string | null;
@@ -264,10 +325,11 @@ async function hidratarLineas(
   const lineas: LineaDraft[] = [];
   for (const l of editadas) {
     const cant = Math.max(1, Math.round(l.cantidad || 1));
+    const term = l.termino || l.descripcion || "";
     if (l.equipoId && eqMap.has(l.equipoId)) {
-      lineas.push(lineaEquipo(eqMap.get(l.equipoId)!, cant, dias));
+      lineas.push(lineaEquipo(eqMap.get(l.equipoId)!, term, cant, dias));
     } else if (l.rolTecnicoId && rlMap.has(l.rolTecnicoId)) {
-      lineas.push(lineaRol(rlMap.get(l.rolTecnicoId)!, cant, dias, jornada));
+      lineas.push(lineaRol(rlMap.get(l.rolTecnicoId)!, term, cant, dias, jornada));
     } else {
       lineas.push(lineaOtro(l.descripcion || "Sin resolver", cant, dias));
     }
