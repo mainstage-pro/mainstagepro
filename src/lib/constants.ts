@@ -61,10 +61,15 @@ export type MatchCapacidad = "match" | "nomatch" | "sindata";
 // lo marcamos como recomendado).
 export function coberturaMatch(
   coberturas: Cobertura[],
-  filtro: { tipoEvento?: string | null; asistentes?: number | null; subtipos?: string[] | null }
+  filtro: { tipoEvento?: string | null; asistentes?: number | null; subtipos?: string[] | null },
+  // "Aplica a cualquier capacidad" (Producto.capacidadUniversal): el producto
+  // sirve para cualquier tamaño de evento, así que ignora el rango de personas y,
+  // si no tiene coberturas definidas, se considera recomendado para todo tipo.
+  capacidadUniversal = false
 ): MatchCapacidad {
-  if (!coberturas.length) return "sindata";
-  const { tipoEvento, asistentes, subtipos } = filtro;
+  const { tipoEvento, subtipos } = filtro;
+  const asistentes = capacidadUniversal ? null : filtro.asistentes;
+  if (!coberturas.length) return capacidadUniversal && tipoEvento ? "match" : "sindata";
   if (!tipoEvento) return "sindata";
   const cob = coberturas.find((c) => c.tipoEvento === tipoEvento);
   if (!cob) return "nomatch";

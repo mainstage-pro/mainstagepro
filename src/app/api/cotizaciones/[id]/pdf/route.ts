@@ -24,6 +24,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     include: {
       cliente: { select: { id: true, nombre: true, empresa: true, telefono: true, correo: true, tipoCliente: true } },
       trato: { select: { tradeCalificado: true, tipoEvento: true } },
+      paquete: { select: { nombre: true, resumen: true } },
       creadaPor: { select: { name: true } },
       lineas: {
         orderBy: { orden: "asc" },
@@ -99,6 +100,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     ...cotizacion,
     tradeCalificado: cotizacion.trato?.tradeCalificado ?? false,
     mainstageTradeData: cotizacion.mainstageTradeData ?? null,
+    paqueteNombre: cotizacion.paquete?.nombre ?? null,
+    paqueteResumen: cotizacion.paquete?.resumen ?? null,
     lineas: await Promise.all(cotizacion.lineas.map(async l => {
       if (l.tipo === "PAQUETE") {
         // El nombre del producto (ya en descripcion) es autodescriptivo; va solo

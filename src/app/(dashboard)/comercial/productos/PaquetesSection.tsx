@@ -54,6 +54,7 @@ type ProductoLite = {
   categoria: string | null;
   imagenUrl: string | null;
   precioFinal: number;
+  capacidadUniversal?: boolean;
   coberturas?: { tipoEvento: string; rangos: string | null; subtipos: string | null }[];
 };
 
@@ -672,7 +673,7 @@ function CatalogoPicker({
 
   const matchProducto = useMemo(() => {
     const m = new Map<string, ReturnType<typeof coberturaMatch>>();
-    for (const p of productos) m.set(p.id, coberturaMatch(parseCoberturas(p.coberturas), filtro));
+    for (const p of productos) m.set(p.id, coberturaMatch(parseCoberturas(p.coberturas), filtro, p.capacidadUniversal));
     return m;
   }, [productos, filtro]);
   const hayCriterio = !!filtro.tipoEvento;

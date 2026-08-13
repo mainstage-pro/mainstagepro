@@ -44,6 +44,7 @@ export type ProductoPublico = {
   tiposEvento: string | null;
   imagenUrl: string | null;
   precioFinal: number;
+  capacidadUniversal?: boolean;
   coberturas?: { tipoEvento: string; rangos: string | null; subtipos: string | null }[];
   items: { cantidad: number; equipo: { id: string; descripcion: string; marca: string | null; modelo: string | null } }[];
 };
@@ -423,7 +424,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
   const hayCapacidad = !!filtroCapacidad.tipoEvento;
   const matchProducto = useMemo(() => {
     const m = new Map<string, MatchCapacidad>();
-    for (const p of productos) m.set(p.id, coberturaMatch(parseCoberturas(p.coberturas), filtroCapacidad));
+    for (const p of productos) m.set(p.id, coberturaMatch(parseCoberturas(p.coberturas), filtroCapacidad, p.capacidadUniversal));
     return m;
   }, [productos, filtroCapacidad]);
   const [soloRecomendadosProd, setSoloRecomendadosProd] = useState(false);

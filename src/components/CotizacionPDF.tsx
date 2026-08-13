@@ -144,6 +144,37 @@ const s = StyleSheet.create({
     letterSpacing: 1.5,
     textTransform: "uppercase",
   },
+  // Apartado del paquete comercial (solo si la cotización viene de un paquete)
+  paqueteBloque: {
+    marginHorizontal: 40,
+    marginTop: 6,
+    marginBottom: 2,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#F0EDE8",
+    borderLeft: `3 solid ${GOLD}`,
+    borderRadius: 2,
+  },
+  paqueteLabel: {
+    fontSize: 6.5,
+    fontFamily: "Helvetica-Bold",
+    color: GOLD,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+    marginBottom: 2,
+  },
+  paqueteNombre: {
+    fontSize: 11,
+    fontFamily: "Helvetica-Bold",
+    color: BLACK,
+  },
+  paqueteResumen: {
+    fontSize: 8,
+    color: GRAY,
+    fontFamily: "Helvetica-Oblique",
+    lineHeight: 1.4,
+    marginTop: 2,
+  },
   // Tabla
   tablaHeader: {
     flexDirection: "row",
@@ -551,6 +582,9 @@ interface CotizacionData {
   tradeCalificado?: boolean;
   mainstageTradeData?: string | null;
   planPagos?: string | null;
+  // Presente solo cuando la cotización se desglosó de un paquete comercial.
+  paqueteNombre?: string | null;
+  paqueteResumen?: string | null;
 }
 
 // ─── Sub-componentes ─────────────────────────────────────────────────────────
@@ -950,6 +984,15 @@ export function CotizacionPDF({ cotizacion: c, logoSrc, descCategorias = {} }: {
         </View>
 
         <View style={s.divisor} />
+
+        {/* ── PAQUETE (solo si la cotización se desglosó de un paquete comercial) ── */}
+        {c.paqueteNombre ? (
+          <View style={s.paqueteBloque}>
+            <Text style={s.paqueteLabel}>Paquete</Text>
+            <Text style={s.paqueteNombre}>{c.paqueteNombre}</Text>
+            {c.paqueteResumen ? <Text style={s.paqueteResumen}>{c.paqueteResumen}</Text> : null}
+          </View>
+        ) : null}
 
         {/* ── EQUIPOS ── */}
         <TablaEquipos lineas={c.lineas} notasSecciones={c.notasSecciones ? JSON.parse(c.notasSecciones) : {}} descCategorias={descCategorias} />

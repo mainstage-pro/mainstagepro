@@ -17,6 +17,7 @@ export async function GET() {
       tiposEvento: true,
       imagenUrl: true,
       precioFinal: true,
+      capacidadUniversal: true,
       coberturas: { select: { tipoEvento: true, rangos: true, subtipos: true } },
       items: {
         orderBy: { orden: "asc" },
