@@ -36,6 +36,7 @@ export function normalizarTermino(texto: string): string {
  */
 function singular(t: string): string {
   if (t.length <= 3) return t;
+  if (t.endsWith("ss")) return t; // "truss", "bass": no estemizar la doble s
   if (t.endsWith("es")) return t.slice(0, -2);
   if (t.endsWith("s")) return t.slice(0, -1);
   return t;
@@ -100,6 +101,8 @@ const STOPWORDS = new Set([
   "metro", "metros", "mt", "mts", "cm", "mm", "altura", "alto", "alta", "ancho",
   "largo", "frente", "fondo", "diametro", "pulgada", "pulgadas", "medida", "medidas",
   "tamano", "aprox",
+  // Genéricas del pedido que no identifican equipo.
+  "servicio", "tipo",
 ]);
 
 /** Extrae tokens significativos (sin stopwords), conservando dígitos. */
@@ -107,6 +110,31 @@ function tokens(t: string): string[] {
   return normalizarTermino(t)
     .split(" ")
     .filter((w) => w.length > 1 && !STOPWORDS.has(w));
+}
+
+/**
+ * Expande un token de modelo separando el prefijo de letras del número:
+ * "ekx12p" → ["ekx12p","ekx","12p"]. Así "ekx12p" (junta) casa con "ekx 12p"
+ * (separada en el glosario) y el número de modelo puede desambiguar.
+ */
+function expandir(tok: string): string[] {
+  const out = new Set([tok]);
+  const m = tok.match(/^([a-z]+)(\d[a-z0-9]*)$/);
+  if (m) {
+    if (m[1].length >= 2) out.add(m[1]);
+    out.add(m[2]);
+  }
+  return [...out];
+}
+
+/**
+ * Tokens finales para el match por palabra clave: sin stopwords, singularizados
+ * y con los modelos expandidos. Se usa igual para el pedido y para cada término.
+ */
+function prep(t: string): string[] {
+  const out = new Set<string>();
+  for (const w of tokens(t)) for (const e of expandir(singular(w))) out.add(e);
+  return [...out];
 }
 
 /** Índice de Jaccard entre dos conjuntos de tokens. */
@@ -140,7 +168,7 @@ function puntuar(entrada: string, entTokens: Set<string>, row: GlosarioRow): num
   }
 
   // solape de palabras: útil para términos multi-palabra ("cabeza movil beam")
-  const rowTokens = new Set(tokens(row.termino));
+  const rowTokens = new Set(prep(row.termino));
   best = Math.max(best, jaccard(entTokens, rowTokens) * 0.9);
 
   return best;
@@ -172,9 +200,9 @@ export function resolverTerminos(
 ): Resolucion[] {
   const UMBRAL_CADENA = 0.55;
 
-  // Índice de filas con sus tokens singularizados (una sola pasada).
+  // Índice de filas con sus tokens singularizados y modelos expandidos (una sola pasada).
   const filas = glosario.map((row) => {
-    const toks = [...new Set(tokens(row.termino).map(singular))];
+    const toks = prep(row.termino);
     return { row, toks, set: new Set(toks) };
   });
 
@@ -185,7 +213,7 @@ export function resolverTerminos(
   const idf = (t: string) => Math.log((N + 1) / ((df.get(t) ?? 0) + 1)) + 0.5;
 
   return terminos.map((entrada) => {
-    const inTokens = [...new Set(tokens(entrada).map(singular))].filter((t) => t.length > 1);
+    const inTokens = prep(entrada).filter((t) => t.length > 1);
     const inSet = new Set(inTokens);
 
     let mejor: GlosarioRow | null = null;
