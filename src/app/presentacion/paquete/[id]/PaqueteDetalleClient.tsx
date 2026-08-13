@@ -9,14 +9,15 @@ const WA_BASE = "https://wa.me/524461432565?text=";
 function wa(msg: string) { return WA_BASE + encodeURIComponent(msg); }
 
 type Imagen = { url: string; tipo: string };
-type ProductoEquipo = { cantidad: number; descripcion: string | null; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: string | null };
+type Foto = { src: string; caption: string };
+type ProductoEquipo = { cantidad: number; descripcion: string | null; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: string | null; galeria: Foto[] };
 type Item = {
   tipo: string; cantidad: number;
-  equipo: { descripcion: string | null; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: string | null } | null;
+  equipo: { descripcion: string | null; marca: string | null; modelo: string | null; imagenUrl: string | null; categoria: string | null; galeria: Foto[] } | null;
   producto: { nombre: string; imagenUrl: string | null; categoria: string | null; equipos: ProductoEquipo[] } | null;
 };
 type Concepto = { tipo: string; descripcion: string };
-type ItemVista = { titulo: string; descripcion: string; cantidad: number; imagenUrl: string | null };
+type ItemVista = { titulo: string; descripcion: string; cantidad: number; imagenUrl: string | null; galeria: Foto[] };
 
 // Frase emocional por defecto según el tipo de evento (editable en vivo).
 // Se mantienen breves para que caigan en ~2 líneas centradas.
@@ -30,7 +31,6 @@ type Paquete = {
   subtiposEvento: string | null; resumen: string | null; descripcion: string | null;
   propuestaValor: string | null; imagenes: Imagen[]; items: Item[]; conceptos: Concepto[];
 };
-type Foto = { src: string; caption: string };
 
 const TIPO_LABEL: Record<string, string> = { SOCIAL: "Evento social", MUSICAL: "Evento musical", EMPRESARIAL: "Evento empresarial" };
 
@@ -65,6 +65,7 @@ function equiposDePaquete(items: Item[]): (ItemVista & { categoria: string })[] 
           descripcion: equipoDesc(pe),
           cantidad: Math.max(1, it.cantidad) * Math.max(1, pe.cantidad),
           imagenUrl: pe.imagenUrl,
+          galeria: pe.galeria ?? [],
         });
       }
     } else if (it.equipo) {
@@ -74,6 +75,7 @@ function equiposDePaquete(items: Item[]): (ItemVista & { categoria: string })[] 
         descripcion: equipoDesc(it.equipo),
         cantidad: Math.max(1, it.cantidad),
         imagenUrl: it.equipo.imagenUrl,
+        galeria: it.equipo.galeria ?? [],
       });
     }
   }
@@ -88,8 +90,8 @@ function agruparPorCategoria(items: Item[]): { categoria: string; items: ItemVis
     if (!mapa.has(e.categoria)) { mapa.set(e.categoria, new Map()); orden.push(e.categoria); }
     const sub = mapa.get(e.categoria)!;
     const prev = sub.get(e.titulo);
-    if (prev) prev.cantidad += e.cantidad;
-    else sub.set(e.titulo, { titulo: e.titulo, descripcion: e.descripcion, cantidad: e.cantidad, imagenUrl: e.imagenUrl });
+    if (prev) { prev.cantidad += e.cantidad; if (prev.galeria.length === 0 && e.galeria.length > 0) prev.galeria = e.galeria; }
+    else sub.set(e.titulo, { titulo: e.titulo, descripcion: e.descripcion, cantidad: e.cantidad, imagenUrl: e.imagenUrl, galeria: e.galeria });
   }
   return orden.map((categoria) => ({ categoria, items: Array.from(mapa.get(categoria)!.values()) }));
 }
@@ -128,6 +130,24 @@ export default function PaqueteDetalleClient({
   const media = [...renders, ...refs];
   const [activa, setActiva] = useState(0);
   const principal = media[activa] ?? media[0] ?? null;
+
+  // Lightbox de fotos por equipo (cómo se ve en evento). Abre/cierra fácil,
+  // pensado sobre todo para móvil: tap fuera o la X cierra, flechas/swipe navegan.
+  const [lightbox, setLightbox] = useState<{ fotos: Foto[]; titulo: string; i: number } | null>(null);
+  const touchX = useRef<number | null>(null);
+  const irLightbox = (d: number) =>
+    setLightbox((s) => (s ? { ...s, i: (s.i + d + s.fotos.length) % s.fotos.length } : s));
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === "Escape") setLightbox(null);
+      else if (ev.key === "ArrowRight") irLightbox(1);
+      else if (ev.key === "ArrowLeft") irLightbox(-1);
+    };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
+  }, [lightbox]);
 
   const subtipos = parseJSON(p.subtiposEvento);
   const gruposEquipo = agruparPorCategoria(p.items);
@@ -270,9 +290,11 @@ export default function PaqueteDetalleClient({
                   className="text-white/55 text-[14.5px] leading-relaxed max-w-3xl mb-5"
                 />
               )}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-                {grupo.items.map((it, i) => (
-                  <div key={i} className="rounded-2xl overflow-hidden group" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2.5 sm:gap-3">
+                {grupo.items.map((it, i) => {
+                  const tieneGaleria = it.galeria.length > 0;
+                  return (
+                  <div key={i} className="rounded-xl overflow-hidden group" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
                     <div className="relative aspect-square overflow-hidden">
                       {it.imagenUrl ? (
                         /* eslint-disable-next-line @next/next/no-img-element */
@@ -284,19 +306,33 @@ export default function PaqueteDetalleClient({
                         </div>
                       )}
                       {it.cantidad > 1 && (
-                        <span className="absolute top-2 right-2 text-[11px] font-bold px-2 py-0.5 rounded-full" style={{ background: GOLD, color: "#000" }}>
+                        <span className="absolute top-1.5 right-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: GOLD, color: "#000" }}>
                           ×{it.cantidad}
                         </span>
                       )}
+                      {tieneGaleria && (
+                        <button
+                          type="button"
+                          onClick={() => setLightbox({ fotos: it.galeria, titulo: it.titulo, i: 0 })}
+                          className="absolute inset-0 flex items-end justify-start p-1.5 transition-colors hover:bg-black/20 active:bg-black/30"
+                          aria-label={`Ver fotos de ${it.titulo} en evento`}
+                        >
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full backdrop-blur-md" style={{ background: "rgba(0,0,0,0.55)", color: "#fff", border: `1px solid ${GOLD}66` }}>
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><path d="m21 15-5-5L5 21" /></svg>
+                            {it.galeria.length}
+                          </span>
+                        </button>
+                      )}
                     </div>
-                    <div className="px-3 py-2.5">
-                      <p className="text-[13px] font-medium leading-snug text-white/90">{it.titulo}</p>
+                    <div className="px-2.5 py-2">
+                      <p className="text-[12px] font-medium leading-snug text-white/90">{it.titulo}</p>
                       {it.descripcion && (
-                        <p className="text-[11.5px] leading-snug text-white/45 mt-0.5">{it.descripcion}</p>
+                        <p className="text-[11px] leading-snug text-white/45 mt-0.5">{it.descripcion}</p>
                       )}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </R>
             );
@@ -371,6 +407,70 @@ export default function PaqueteDetalleClient({
           Mainstage Pro · Producción técnica de eventos
         </div>
       </footer>
+
+      {/* Lightbox: fotos del equipo en evento */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-[100] flex flex-col"
+          style={{ background: "rgba(0,0,0,0.92)", backdropFilter: "blur(8px)" }}
+          onClick={() => setLightbox(null)}
+        >
+          <div className="flex items-center justify-between px-5 py-4 shrink-0">
+            <div className="min-w-0">
+              <p className="text-white text-sm font-medium truncate">{lightbox.titulo}</p>
+              <p className="text-white/45 text-xs">{lightbox.i + 1} / {lightbox.fotos.length} · en evento</p>
+            </div>
+            <button type="button" onClick={(e) => { e.stopPropagation(); setLightbox(null); }}
+              className="shrink-0 w-10 h-10 flex items-center justify-center rounded-full text-white/80 hover:text-white transition-colors"
+              style={{ background: "rgba(255,255,255,0.08)" }} aria-label="Cerrar galería">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            </button>
+          </div>
+
+          <div className="flex-1 flex items-center justify-center px-4 pb-4 min-h-0 relative"
+            onTouchStart={(e) => { touchX.current = e.touches[0].clientX; }}
+            onTouchEnd={(e) => {
+              if (touchX.current == null) return;
+              const dx = e.changedTouches[0].clientX - touchX.current;
+              if (Math.abs(dx) > 40) irLightbox(dx < 0 ? 1 : -1);
+              touchX.current = null;
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={lightbox.fotos[lightbox.i].src} alt={lightbox.fotos[lightbox.i].caption}
+              draggable={false} onClick={(e) => e.stopPropagation()}
+              className="max-w-full max-h-full object-contain rounded-xl" />
+
+            {lightbox.fotos.length > 1 && (
+              <>
+                <button type="button" onClick={(e) => { e.stopPropagation(); irLightbox(-1); }}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-11 h-11 hidden sm:flex items-center justify-center rounded-full text-white/85 hover:text-white transition-colors"
+                  style={{ background: "rgba(255,255,255,0.1)" }} aria-label="Foto anterior">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+                </button>
+                <button type="button" onClick={(e) => { e.stopPropagation(); irLightbox(1); }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-11 h-11 hidden sm:flex items-center justify-center rounded-full text-white/85 hover:text-white transition-colors"
+                  style={{ background: "rgba(255,255,255,0.1)" }} aria-label="Foto siguiente">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+                </button>
+              </>
+            )}
+          </div>
+
+          {lightbox.fotos.length > 1 && (
+            <div className="shrink-0 px-4 pb-6 pt-1 flex gap-2 overflow-x-auto justify-start sm:justify-center" onClick={(e) => e.stopPropagation()}>
+              {lightbox.fotos.map((f, i) => (
+                <button key={i} type="button" onClick={() => setLightbox((s) => (s ? { ...s, i } : s))}
+                  className="shrink-0 w-14 h-14 rounded-lg overflow-hidden transition-all"
+                  style={{ border: `1px solid ${i === lightbox.i ? GOLD : "rgba(255,255,255,0.12)"}`, opacity: i === lightbox.i ? 1 : 0.5 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={f.src} alt="" draggable={false} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

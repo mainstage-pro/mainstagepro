@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { ensurePaquetesTables, PAQUETE_INCLUDE } from "@/lib/paquetes";
 import { getGaleriaData } from "@/lib/tipos-evento";
+import { getEquipoImagenes } from "@/lib/presentacion-imagenes";
 import { familiaTipo, categoriasConRespaldo } from "@/lib/galeria-shared";
 import { getPresentationMetadata } from "@/lib/metadata";
 import { getOverrides } from "@/lib/presentacion-overrides";
@@ -25,6 +26,20 @@ async function getDescCategorias(tipoEvento: string): Promise<Record<string, str
 }
 
 export const dynamic = "force-dynamic";
+
+// Fotos reales del equipo en eventos (imagenesUrls EXTERNO), para la galería
+// que se abre desde cada miniatura de "Qué incluye".
+function galeriaDe(
+  equipo: { marca: string | null; modelo: string | null; imagenesUrls?: string | null } | null,
+): { src: string; caption: string }[] {
+  if (!equipo) return [];
+  return getEquipoImagenes({
+    id: "paquete",
+    marca: equipo.marca,
+    modelo: equipo.modelo,
+    equipo: { imagenesUrls: equipo.imagenesUrls },
+  });
+}
 
 async function getPaquete(id: string) {
   await ensurePaquetesTables();
@@ -83,6 +98,7 @@ export default async function PaqueteDetallePage({ params }: { params: Promise<{
             modelo: it.equipo.modelo,
             imagenUrl: it.equipo.imagenUrl ?? null,
             categoria: it.equipo.categoria?.nombre ?? null,
+            galeria: galeriaDe(it.equipo),
           }
         : null,
       producto: it.producto
@@ -99,6 +115,7 @@ export default async function PaqueteDetallePage({ params }: { params: Promise<{
               modelo: pe.equipo?.modelo ?? null,
               imagenUrl: pe.equipo?.imagenUrl ?? null,
               categoria: pe.equipo?.categoria?.nombre ?? null,
+              galeria: galeriaDe(pe.equipo ?? null),
             })),
           }
         : null,
