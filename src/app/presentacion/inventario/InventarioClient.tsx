@@ -452,40 +452,67 @@ function familiaKey(p: ProductoData): string {
   return (eq ? nombreEqProd(eq) : p.nombre) || "Otros";
 }
 
-function FamiliaCard({ fam, delay = 0, onClick }: { fam: FamiliaProducto; delay?: number; onClick: () => void }) {
-  const [hovered, setHovered] = useState(false);
+// Reúne los tipos de evento de todas las configuraciones de la familia (sin duplicar).
+function familiaTipos(fam: FamiliaProducto): string[] {
+  const set = new Set<string>();
+  for (const p of fam.productos) for (const t of parseTags(p.tiposEvento)) set.add(t);
+  return Array.from(set);
+}
+
+// Fila de lista (no tarjeta): miniatura discreta + nombre + acción "Ver configuraciones"
+// colocada abajo/al costado, nunca encimada sobre la imagen.
+function FamiliaRow({ fam, onClick }: { fam: FamiliaProducto; onClick: () => void }) {
   const n = fam.productos.length;
+  const tipos = familiaTipos(fam);
+  const thumb = (
+    <div className="w-11 h-11 rounded-lg overflow-hidden flex items-center justify-center shrink-0"
+         style={{ background: "#080808", border: "1px solid rgba(255,255,255,0.06)" }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={fam.img || "/logo-icon.png"} alt="" draggable={false} loading="lazy"
+           className={`object-contain ${fam.img ? "w-10 h-10" : "w-4 h-4 opacity-15"}`} />
+    </div>
+  );
+  const verBtn = (
+    <button type="button" onClick={onClick}
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap"
+            style={{ background: `${GOLD}12`, color: GOLD, border: `1px solid ${GOLD}30` }}>
+      Ver {n === 1 ? "configuración" : `${n} configuraciones`}
+      <span>→</span>
+    </button>
+  );
+  const tiposBadges = tipos.length > 0 ? (
+    <div className="flex flex-wrap gap-1">
+      {tipos.map(t => (
+        <span key={t} className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+              style={{ background: `${GOLD}12`, color: GOLD, border: `1px solid ${GOLD}20` }}>
+          {TIPO_EVENTO_LABEL[t] || t}
+        </span>
+      ))}
+    </div>
+  ) : <span className="text-white/20 text-xs">—</span>;
   return (
-    <R delay={delay}>
-      <button type="button" onClick={onClick}
-              onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-              className="group relative rounded-2xl overflow-hidden flex flex-col h-full w-full text-left transition-all duration-300"
-              style={{ background: hovered ? "rgba(179,152,91,0.04)" : "rgba(255,255,255,0.025)", border: `1px solid ${hovered ? GOLD + "40" : "rgba(255,255,255,0.07)"}`, boxShadow: hovered ? "0 8px 40px rgba(0,0,0,0.4)" : "none", cursor: "pointer" }}>
-        <div className="relative flex items-center justify-center p-5 overflow-hidden"
-             style={{ height: "160px", background: "#050505", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-          {fam.img ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={fam.img} alt={fam.key} draggable={false} loading="lazy"
-                 className="max-h-full max-w-full object-contain transition-all duration-500"
-                 style={{ transform: hovered ? "scale(1.07)" : "scale(1)", filter: hovered ? "brightness(1.1)" : "brightness(0.9)" }} />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src="/logo-icon.png" alt="Mainstage Pro" draggable={false} className="w-16 h-16 object-contain opacity-10" />
-          )}
-          <div className="absolute top-3 right-3 rounded-full px-2.5 py-1 text-xs font-bold"
-               style={{ background: `${GOLD}20`, color: GOLD, border: `1px solid ${GOLD}50` }}>
-            {n}<span style={{ fontSize: "9px", fontWeight: 400, opacity: 0.8, marginLeft: "2px" }}>{n === 1 ? "opción" : "opciones"}</span>
-          </div>
+    <div>
+      {/* Desktop */}
+      <div className="hidden md:grid px-5 py-3.5 items-center transition-colors hover:bg-white/[0.025]"
+           style={{ gridTemplateColumns: "52px 1.9fr 1.4fr auto", gap: "16px", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+        {thumb}
+        <div className="min-w-0">
+          <p className="text-white text-sm font-medium leading-snug line-clamp-2">{fam.key}</p>
+          <p className="text-white/35 text-xs leading-snug mt-0.5">{n} {n === 1 ? "configuración disponible" : "configuraciones disponibles"}</p>
         </div>
-        <div className="p-5 flex-1 flex flex-col">
-          <p className="text-white font-semibold text-sm leading-snug mb-1 line-clamp-2">{fam.key}</p>
-          <p className="text-xs mt-auto pt-1 inline-flex items-center gap-1" style={{ color: GOLD }}>
-            Ver {n === 1 ? "configuración" : "configuraciones"}
-            <span style={{ transition: "transform 0.25s", transform: hovered ? "translateX(3px)" : "none" }}>→</span>
-          </p>
+        {tiposBadges}
+        <div className="justify-self-end">{verBtn}</div>
+      </div>
+      {/* Mobile */}
+      <div className="md:hidden flex gap-3 px-4 py-3.5" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+        {thumb}
+        <div className="min-w-0 flex-1">
+          <p className="text-white text-sm font-medium leading-snug line-clamp-2">{fam.key}</p>
+          <div className="flex items-center gap-2 flex-wrap mt-2">{tiposBadges}</div>
+          <div className="mt-2.5">{verBtn}</div>
         </div>
-      </button>
-    </R>
+      </div>
+    </div>
   );
 }
 
@@ -566,12 +593,12 @@ function ProductosTab({ productos, loading, categoriaOrden = [] }: { productos: 
   }, [productos, categoriaOrden]);
 
   return (
-    <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6">
+    <div className="max-w-6xl mx-auto py-16 px-4 sm:px-6">
       <R>
         <div className="mb-10">
           <p className="text-white/20 text-xs tracking-[0.3em] uppercase mb-3 font-mono">Mainstage Pro · Sistemas listos</p>
           <h2 className="font-bold text-white" style={{ fontSize: "clamp(2rem,5vw,3.5rem)", letterSpacing: "-0.03em" }}>Productos por categoría</h2>
-          <p className="text-white/35 text-sm mt-3 max-w-2xl">Sistemas armados a partir de nuestro inventario, listos para operar. Toca un equipo para ver las configuraciones disponibles.</p>
+          <p className="text-white/35 text-sm mt-3 max-w-2xl">Sistemas armados a partir de nuestro inventario, listos para operar. Abre cada equipo para ver las configuraciones disponibles.</p>
         </div>
       </R>
 
@@ -580,20 +607,28 @@ function ProductosTab({ productos, loading, categoriaOrden = [] }: { productos: 
       ) : cats.length === 0 ? (
         <R><p className="text-white/30 text-sm py-16 text-center">Aún no hay productos publicados.</p></R>
       ) : (
-        <div className="space-y-14">
+        <div className="space-y-10">
           {cats.map((g, gi) => (
             <R key={g.cat} delay={Math.min(gi * 30, 300)}>
               <section>
-                <div className="flex items-center justify-between gap-4 mb-6 pb-3" style={{ borderBottom: `1px solid ${GOLD}18` }}>
+                <div className="flex items-center justify-between gap-4 mb-4 pb-3" style={{ borderBottom: `1px solid ${GOLD}18` }}>
                   <h3 className="font-bold text-white" style={{ fontSize: "clamp(1.15rem,3vw,1.7rem)", letterSpacing: "-0.02em" }}>{g.cat}</h3>
                   <span className="text-xs px-2.5 py-1 rounded-full font-medium shrink-0" style={{ background: `${GOLD}15`, color: GOLD, border: `1px solid ${GOLD}20` }}>
                     {g.total} {g.total === 1 ? "producto" : "productos"}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                  {g.familias.map((f, i) => (
-                    <FamiliaCard key={f.key} fam={f} delay={Math.min(i * 50, 400)}
-                                 onClick={() => setOpenFam({ label: f.key, productos: f.productos })} />
+                <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
+                  {/* Encabezados (desktop) */}
+                  <div className="hidden md:grid px-5 py-3 text-[10px] font-semibold text-white/25 tracking-widest uppercase"
+                       style={{ gridTemplateColumns: "52px 1.9fr 1.4fr auto", gap: "16px" }}>
+                    <span />
+                    <span>Equipo</span>
+                    <span>Tipo de evento</span>
+                    <span className="justify-self-end">Configuraciones</span>
+                  </div>
+                  {g.familias.map((f) => (
+                    <FamiliaRow key={f.key} fam={f}
+                                onClick={() => setOpenFam({ label: f.key, productos: f.productos })} />
                   ))}
                 </div>
               </section>
