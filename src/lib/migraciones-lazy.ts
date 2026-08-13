@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { SEEDS, type CalendarioKey } from "@/lib/calendarios";
 
 /**
  * Helper: verifica si una columna ya existe en la tabla antes de hacer ALTER TABLE.
@@ -604,6 +605,66 @@ export async function ensureProcesoTablas() {
     `);
   } catch { /* ya existen */ }
   _procesoTablasReady = true;
+}
+
+/**
+ * Módulo "Calendarios": tabla aislada de entradas de los calendarios anuales
+ * editables (Administrativo, Comercial, Fechas especiales). Tabla nueva y aislada
+ * — ninguna lectura existente depende de ella — así que CREATE TABLE IF NOT EXISTS
+ * es seguro. Se consulta sólo con SQL crudo (no hay modelo Prisma) para no arriesgar
+ * el gotcha de "columna nueva en schema rompe lecturas al desplegar". Idempotente.
+ * Siembra cada calendario una sola vez (si aún no tiene filas).
+ */
+let _calendariosReady = false;
+
+export async function ensureCalendariosTabla() {
+  if (_calendariosReady) return;
+  try {
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS calendario_entradas (
+        id TEXT PRIMARY KEY,
+        calendario TEXT NOT NULL,
+        tipo TEXT NOT NULL DEFAULT 'HITO',
+        titulo TEXT NOT NULL,
+        descripcion TEXT,
+        anio INTEGER,
+        mes_inicio INTEGER NOT NULL,
+        dia_inicio INTEGER,
+        mes_fin INTEGER,
+        dia_fin INTEGER,
+        color TEXT,
+        icono TEXT,
+        ideas TEXT,
+        tipo_evento_slug TEXT,
+        servicio TEXT,
+        orden INTEGER NOT NULL DEFAULT 0,
+        activo BOOLEAN NOT NULL DEFAULT true,
+        created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await prisma.$executeRawUnsafe(
+      `CREATE INDEX IF NOT EXISTS "calendario_entradas_calendario_idx" ON calendario_entradas (calendario)`
+    );
+    // Siembra por calendario, sólo si está vacío (idempotente).
+    for (const key of Object.keys(SEEDS) as CalendarioKey[]) {
+      const rows = await prisma.$queryRawUnsafe<{ n: bigint }[]>(
+        `SELECT COUNT(*)::int AS n FROM calendario_entradas WHERE calendario = $1`, key,
+      );
+      if (Number(rows[0]?.n ?? 0) > 0) continue;
+      let orden = 0;
+      for (const s of SEEDS[key]) {
+        await prisma.$executeRawUnsafe(
+          `INSERT INTO calendario_entradas
+             (id, calendario, tipo, titulo, descripcion, mes_inicio, dia_inicio, mes_fin, dia_fin, icono, ideas, tipo_evento_slug, servicio, orden)
+           VALUES (gen_random_uuid()::text, $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+          key, s.tipo, s.titulo, s.descripcion ?? null, s.mi, s.di ?? null, s.mf ?? null, s.df ?? null,
+          s.icono ?? null, s.ideas ?? null, s.tipoEvento ?? null, s.servicio ?? null, orden++,
+        );
+      }
+    }
+  } catch { /* ya existe / ya sembrado */ }
+  _calendariosReady = true;
 }
 
 /**

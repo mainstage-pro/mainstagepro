@@ -52,7 +52,7 @@ export const NAV: NavSection[] = [
     items: [
       { key: "inicio", label: "Inicio", href: "/inicio", icon: LayoutGrid, adminOnly: true, ownerOnly: true },
       { label: "Mi Dashboard", href: "/dashboard", icon: LayoutDashboard },
-      { key: "calendario", label: "Calendario de eventos", href: "/calendario", icon: CalendarDays },
+      { key: "calendario", label: "Calendarios", href: "/calendarios/eventos", icon: CalendarDays },
       { key: "portal-capacitacion", label: "Capacitación", href: "/capacitacion", icon: GraduationCap },
       {
         key: "gestion-operativa",

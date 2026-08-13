@@ -27,6 +27,8 @@ const nextConfig: NextConfig = {
       // ── Descubrimiento público: /f (retirado) → /descubrimiento ──────────────
       // Links de formulario ya enviados por WhatsApp siguen funcionando.
       { source: "/f/:token",                 destination: "/descubrimiento/:token",     permanent: true },
+      // ── Calendario de eventos → Calendarios (módulo con pestañas) ────────────
+      { source: "/calendario",               destination: "/calendarios/eventos",       permanent: true },
       // ── Proyectos internos → Proyectos de empresa (ruta renombrada) ──────────
       { source: "/proyectos-internos",      destination: "/proyectos-de-empresa",      permanent: true },
       { source: "/proyectos-internos/:id",  destination: "/proyectos-de-empresa/:id",  permanent: true },

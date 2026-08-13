@@ -11,18 +11,21 @@ type Nivel = 'por_confirmar' | 'confirmado';
 
 // Expande un evento (posiblemente de varios días) en las celdas que caen dentro del
 // mes consultado. Devuelve el número de día del mes, el índice (0-based) y el total.
+// Expande un evento en sus celdas dentro del rango pedido. Si `month` es null se
+// consideran todos los meses del año (vista anual). Devuelve día, mes (0-based),
+// índice del día dentro del evento y total de días.
 function celdasDelMes(
   fechaPrincipal: Date | string | null | undefined,
   fechasEventoJson: string | null | undefined,
   year: number,
-  month: number,
-): { dia: number; idx: number; total: number }[] {
+  month: number | null,
+): { dia: number; mes: number; idx: number; total: number }[] {
   const dias = diasEvento(fechaPrincipal, fechasEventoJson);
   const total = dias.length;
-  const out: { dia: number; idx: number; total: number }[] = [];
+  const out: { dia: number; mes: number; idx: number; total: number }[] = [];
   dias.forEach((d, idx) => {
     const [y, m, dd] = d.split("-").map(Number);
-    if (y === year && m - 1 === month) out.push({ dia: dd, idx, total });
+    if (y === year && (month == null || m - 1 === month)) out.push({ dia: dd, mes: m - 1, idx, total });
   });
   return out;
 }
@@ -38,16 +41,20 @@ export async function GET(req: NextRequest) {
 
   const sp = req.nextUrl.searchParams;
   const mes = sp.get("mes"); // "2026-04"
+  const anioParam = sp.get("anio"); // "2026" → vista anual (todos los meses)
 
   let year = new Date().getFullYear();
-  let month = new Date().getMonth();
-  if (mes) {
+  let month: number | null = new Date().getMonth();
+  if (anioParam) {
+    const y = Number(anioParam);
+    if (!isNaN(y)) { year = y; month = null; }
+  } else if (mes) {
     const [y, m] = mes.split("-").map(Number);
     if (!isNaN(y) && !isNaN(m)) { year = y; month = m - 1; }
   }
 
-  const inicio = new Date(year, month, 1);
-  const fin    = new Date(year, month + 1, 0, 23, 59, 59);
+  const inicio = month == null ? new Date(year, 0, 1) : new Date(year, month, 1);
+  const fin    = month == null ? new Date(year, 11, 31, 23, 59, 59) : new Date(year, month + 1, 0, 23, 59, 59);
 
   // El calendario solo muestra eventos confirmados vía COTIZACIÓN. Un evento aparece si
   // (a) ya tiene proyecto —el proyecto solo nace de una cotización aprobada— o (b) el
@@ -64,9 +71,10 @@ export async function GET(req: NextRequest) {
   });
 
   const eventosProyecto = proyectos.flatMap(p =>
-    celdasDelMes(p.fechaEvento, (p as unknown as { fechasEvento?: string | null }).fechasEvento, year, month).map(({ dia, idx, total }) => ({
+    celdasDelMes(p.fechaEvento, (p as unknown as { fechasEvento?: string | null }).fechasEvento, year, month).map(({ dia, mes, idx, total }) => ({
       id: `proy-${p.id}-d${idx}`,
       dia,
+      mes,
       titulo: total > 1 ? `${p.nombre} · Día ${idx + 1}/${total}` : p.nombre,
       subtitulo: p.cliente.nombre,
       estado: p.estado,
@@ -107,9 +115,10 @@ export async function GET(req: NextRequest) {
     if (!fechaPrincipal) return [];
     const titulo = t.nombreEvento || cot?.nombreEvento || "Evento";
     // La lista canónica de días sale del descubrimiento (trato.fechasEvento); día 1 = fecha principal.
-    return celdasDelMes(fechaPrincipal, (t as unknown as { fechasEvento?: string | null }).fechasEvento, year, month).map(({ dia, idx, total }) => ({
+    return celdasDelMes(fechaPrincipal, (t as unknown as { fechasEvento?: string | null }).fechasEvento, year, month).map(({ dia, mes, idx, total }) => ({
       id: `tratocot-${t.id}-d${idx}`,
       dia,
+      mes,
       titulo: total > 1 ? `${titulo} · Día ${idx + 1}/${total}` : titulo,
       subtitulo: t.cliente?.nombre || "",
       estado: aprobada ? "APROBADA" : "POR_CONFIRMAR",
