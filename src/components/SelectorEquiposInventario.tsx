@@ -354,6 +354,21 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
     [categoriasVisibles, value.categorias]
   );
 
+  // Ligadura producto → categoría: los productos no tienen FK de categoría, pero
+  // sus equipos sí. Construimos equipoId → categoriaId para poder filtrar los
+  // productos por las categorías de equipo elegidas en el paso 1 (igual que Equipos).
+  const equipoCatMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const cat of categorias) for (const eq of cat.equipos) m.set(eq.id, cat.id);
+    return m;
+  }, [categorias]);
+
+  // Solo las categorías de equipo elegidas (excluye las sintéticas de servicio).
+  const categoriasEquipoElegidas = useMemo(
+    () => new Set(value.categorias.filter((id) => !CATS_SERVICIO.has(id))),
+    [value.categorias]
+  );
+
   // Categorías de servicio (sintéticas). Siempre se muestran las 5 (DJ + técnicos por
   // disciplina) para poder marcar el tipo de personal técnico en el descubrimiento aunque
   // todavía no haya roles cargados con esa disciplina; los roles existentes se anidan para
@@ -395,13 +410,22 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
   }, [productos, filtroCapacidad]);
   const [soloRecomendadosProd, setSoloRecomendadosProd] = useState(false);
 
-  const productosVisibles = useMemo(
-    () =>
+  const productosVisibles = useMemo(() => {
+    const base =
       soloRecomendadosProd && hayCapacidad
         ? productos.filter((p) => matchProducto.get(p.id) === "match")
-        : productos,
-    [productos, soloRecomendadosProd, hayCapacidad, matchProducto]
-  );
+        : productos;
+    // Ligados a las categorías del paso 1: un producto entra si alguno de sus
+    // equipos pertenece a una categoría elegida. Sin categorías de equipo
+    // elegidas no hay a qué ligar, así que se muestran todos.
+    if (categoriasEquipoElegidas.size === 0) return base;
+    return base.filter((p) =>
+      p.items.some((it) => {
+        const cid = equipoCatMap.get(it.equipo.id);
+        return cid != null && categoriasEquipoElegidas.has(cid);
+      })
+    );
+  }, [productos, soloRecomendadosProd, hayCapacidad, matchProducto, categoriasEquipoElegidas, equipoCatMap]);
 
   // Un paquete se trata como una cobertura única: su tipo, su rango de personas y
   // sus subtipos. Así reutilizamos la misma lógica de casado por capacidad.
