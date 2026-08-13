@@ -266,6 +266,8 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
           </a>
         </div>
 
+        {!borrador && <GuiaOrientacion texto={texto} />}
+
         {borrador && (
           <div className="mt-5 space-y-4">
             <div className="grid grid-cols-2 gap-2 text-xs">
@@ -432,6 +434,117 @@ function BuscadorReasignar({ tipoLinea, onPick }: { tipoLinea: "ROL" | "EQUIPO";
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+// Checklist de orientación: mientras el usuario escribe, detecta con heurísticas
+// simples (sin llamar al servidor) qué datos ya incluyó y cuáles le faltan.
+const MESES = "enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre";
+const CAMPOS_GUIA: {
+  key: string;
+  label: string;
+  hint: string;
+  requerido: boolean;
+  test: (t: string) => boolean;
+}[] = [
+  {
+    key: "equipos",
+    label: "Equipos y cantidades",
+    hint: "ej. 4 bocinas, 8 beams, 2 pantallas",
+    requerido: true,
+    test: (t) => /\d+\s*[a-záéíóúñ]{2,}/i.test(t),
+  },
+  {
+    key: "cliente",
+    label: "Cliente",
+    hint: "ej. para el cliente Juan Manuel Nava",
+    requerido: true,
+    test: (t) => /\bcliente\b/i.test(t) || /\bpara\s+(el|la)\s+/i.test(t),
+  },
+  {
+    key: "fecha",
+    label: "Fecha del evento",
+    hint: "ej. 10 de octubre o 10/10",
+    requerido: true,
+    test: (t) => new RegExp(`\\d{1,2}\\s+de\\s+(${MESES})`, "i").test(t) || /\b\d{1,2}[\/\-]\d{1,2}/.test(t),
+  },
+  {
+    key: "lugar",
+    label: "Lugar / sede",
+    hint: "ej. en Santa Rosa Jáuregui",
+    requerido: false,
+    test: (t) => /\ben\s+[A-ZÁÉÍÓÚ][a-záéíóúñ]/.test(t),
+  },
+  {
+    key: "horario",
+    label: "Horario",
+    hint: "ej. de 3:00 pm a 1:00 am",
+    requerido: false,
+    test: (t) => /\d{1,2}(:\d{2})?\s*(am|pm|hrs?|horas?)\b/i.test(t) || /\bde\s+\d.{0,20}\ba\s+\d/i.test(t),
+  },
+  {
+    key: "servicio",
+    label: "Servicio",
+    hint: "ej. producción técnica, renta, montaje",
+    requerido: false,
+    test: (t) => /\bservicio\b|producci[oó]n t[eé]cnica|monta[jd]e|\brenta\b|\baudio\b|iluminaci[oó]n|\bvideo\b/i.test(t),
+  },
+  {
+    key: "personal",
+    label: "Personal / operadores",
+    hint: "ej. operador de audio, DJ, técnico",
+    requerido: false,
+    test: (t) => /operador|t[eé]cnic[oa]|\bdj\b|ingenier[oa]|\bstaff\b|montador|responsable/i.test(t),
+  },
+  {
+    key: "descuento",
+    label: "Descuento (opcional)",
+    hint: "ej. descuento del 15% sobre equipos",
+    requerido: false,
+    test: (t) => /descuento|\b\d{1,2}\s*%/i.test(t),
+  },
+];
+
+function GuiaOrientacion({ texto }: { texto: string }) {
+  const vacio = !texto.trim();
+  const evaluados = CAMPOS_GUIA.map((c) => ({ ...c, ok: !vacio && c.test(texto) }));
+  const faltanReq = evaluados.filter((c) => c.requerido && !c.ok);
+  const listos = evaluados.filter((c) => c.ok).length;
+
+  return (
+    <div className="mt-4 border border-[#1a1a1a] rounded-lg p-3 bg-[#0e0e0e]">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[#888] text-xs font-medium">Guía: qué incluir en el pedido</span>
+        <span className="text-[10px] text-[#666]">{listos}/{CAMPOS_GUIA.length} detectados</span>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+        {evaluados.map((c) => (
+          <div key={c.key} className="flex items-start gap-2">
+            <span
+              className={`mt-0.5 w-3.5 h-3.5 rounded-full shrink-0 flex items-center justify-center text-[9px] leading-none ${
+                c.ok
+                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                  : c.requerido
+                  ? "bg-transparent text-amber-400/70 border border-amber-500/40"
+                  : "bg-transparent text-[#555] border border-[#2a2a2a]"
+              }`}
+            >
+              {c.ok ? "✓" : ""}
+            </span>
+            <div className="min-w-0">
+              <div className={`text-xs ${c.ok ? "text-white" : "text-[#aaa]"}`}>
+                {c.label}
+                {c.requerido && !c.ok && <span className="ml-1 text-amber-400/80 text-[10px]">falta</span>}
+              </div>
+              {!c.ok && <div className="text-[#5c5c5c] text-[10px] truncate">{c.hint}</div>}
+            </div>
+          </div>
+        ))}
+      </div>
+      {!vacio && faltanReq.length === 0 && (
+        <p className="mt-2 text-[11px] text-emerald-300/80">Tienes lo esencial. Puedes analizar el pedido.</p>
+      )}
     </div>
   );
 }
