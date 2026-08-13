@@ -371,18 +371,20 @@ function AdicionalesSeccion({ adicionales, tipos, inventario, tipoNombre, onNuev
 }) {
   const [dragId, setDragId] = useState<string | null>(null);
 
-  // Secciones en orden de catálogo de tipos; adicional filed bajo su tipo primario.
+  // Secciones en orden de catálogo de tipos; el adicional aparece en CADA tipo
+  // de evento al que está asociado (uno multi-tipo sale en todas sus secciones).
   const grupos = useMemo(() => {
     const ordenados = [...adicionales].sort((a, b) => a.orden - b.orden);
     const porTipo = new Map<string, Adicional[]>();
     const sinTipo: Adicional[] = [];
     for (const a of ordenados) {
-      const primario = parseArr(a.tiposEvento)[0];
-      if (!primario) { sinTipo.push(a); continue; }
-      const key = primario.toUpperCase();
-      const arr = porTipo.get(key) || [];
-      arr.push(a);
-      porTipo.set(key, arr);
+      const claves = [...new Set(parseArr(a.tiposEvento).map((t) => t.toUpperCase()).filter(Boolean))];
+      if (claves.length === 0) { sinTipo.push(a); continue; }
+      for (const key of claves) {
+        const arr = porTipo.get(key) || [];
+        arr.push(a);
+        porTipo.set(key, arr);
+      }
     }
     const out = tipos
       .map((t) => ({ key: t.slug.toUpperCase(), label: t.nombre, items: porTipo.get(t.slug.toUpperCase()) || [] }))
@@ -410,7 +412,8 @@ function AdicionalesSeccion({ adicionales, tipos, inventario, tipoNombre, onNuev
       nuevoGlobal.push(...ids);
     }
     setDragId(null);
-    onReordenar(nuevoGlobal);
+    const seen = new Set<string>();
+    onReordenar(nuevoGlobal.filter((id) => (seen.has(id) ? false : (seen.add(id), true))));
   }
 
   return (
