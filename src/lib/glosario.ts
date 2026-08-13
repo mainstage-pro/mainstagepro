@@ -64,27 +64,112 @@ export async function cargarGlosario(): Promise<GlosarioRow[]> {
 export interface Resolucion {
   entradaTermino: string;
   match: GlosarioRow | null;
+  /** Puntaje 0..1 de la mejor coincidencia (1 = exacta). Útil para depurar/UI. */
+  score: number;
+}
+
+/** Distancia de edición (Levenshtein) entre dos cadenas cortas. */
+function levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      cur[j] = Math.min(cur[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+    }
+    prev = cur;
+  }
+  return prev[b.length];
+}
+
+/** Similitud 0..1 basada en Levenshtein normalizado por la longitud mayor. */
+function similitud(a: string, b: string): number {
+  if (!a && !b) return 1;
+  const max = Math.max(a.length, b.length);
+  if (!max) return 1;
+  return 1 - levenshtein(a, b) / max;
+}
+
+const STOPWORDS = new Set([
+  "de", "la", "el", "los", "las", "un", "una", "unos", "unas", "y", "o", "con",
+  "sin", "para", "por", "del", "al", "en", "a", "que", "su", "sus", "mi",
+]);
+
+/** Extrae tokens significativos (sin stopwords), conservando dígitos. */
+function tokens(t: string): string[] {
+  return normalizarTermino(t)
+    .split(" ")
+    .filter((w) => w.length > 1 && !STOPWORDS.has(w));
+}
+
+/** Índice de Jaccard entre dos conjuntos de tokens. */
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (!a.size || !b.size) return 0;
+  let inter = 0;
+  for (const x of a) if (b.has(x)) inter++;
+  return inter / (a.size + b.size - inter);
+}
+
+/**
+ * Puntúa qué tan bien la entrada del usuario refiere al término del glosario.
+ * Combina varias señales amplias y devuelve la mayor (0..1):
+ *  - exacto normalizado (1.0) y singular (0.97)
+ *  - inclusión de subcadena en cualquier dirección (0.85)
+ *  - solape de palabras / Jaccard de tokens (hasta 0.9)
+ *  - similitud difusa por Levenshtein para typos (peso 0.8)
+ */
+function puntuar(entrada: string, entTokens: Set<string>, row: GlosarioRow): number {
+  const rowNorm = row.termino; // ya está normalizado al guardarse
+  let best = 0;
+
+  for (const cand of variantesLookup(entrada)) {
+    if (cand === rowNorm) return 1;
+    if (singular(cand) === singular(rowNorm)) best = Math.max(best, 0.97);
+    // inclusión de subcadena (evita falsos por 1-2 letras)
+    if (cand.length >= 3 && rowNorm.length >= 3) {
+      if (rowNorm.includes(cand) || cand.includes(rowNorm)) best = Math.max(best, 0.85);
+    }
+    best = Math.max(best, similitud(cand, rowNorm) * 0.8);
+  }
+
+  // solape de palabras: útil para términos multi-palabra ("cabeza movil beam")
+  const rowTokens = new Set(tokens(row.termino));
+  best = Math.max(best, jaccard(entTokens, rowTokens) * 0.9);
+
+  return best;
 }
 
 /**
  * Resuelve una lista de términos coloquiales contra el glosario cargado.
- * Para cada término prueba: exacto normalizado → singular. Ante empate gana el mayor peso.
+ * Usa el glosario como referencia AMPLIA: exacto/singular como señales fuertes,
+ * más inclusión de subcadena, solape de palabras y similitud difusa (typos).
+ * Se acepta el mejor candidato por encima de un umbral moderado; ante empate gana el mayor peso.
  */
 export function resolverTerminos(
   terminos: string[],
   glosario: GlosarioRow[]
 ): Resolucion[] {
-  const index = new Map<string, GlosarioRow>();
-  for (const row of glosario) {
-    const prev = index.get(row.termino);
-    if (!prev || row.peso > prev.peso) index.set(row.termino, row);
-  }
+  const UMBRAL = 0.55;
 
   return terminos.map((entrada) => {
-    for (const cand of variantesLookup(entrada)) {
-      const hit = index.get(cand);
-      if (hit) return { entradaTermino: entrada, match: hit };
+    const entTokens = new Set(tokens(entrada));
+    let mejor: GlosarioRow | null = null;
+    let mejorScore = 0;
+
+    for (const row of glosario) {
+      const s = puntuar(entrada, entTokens, row);
+      if (s > mejorScore || (s === mejorScore && mejor && row.peso > mejor.peso)) {
+        mejorScore = s;
+        mejor = row;
+      }
     }
-    return { entradaTermino: entrada, match: null };
+
+    if (mejor && mejorScore >= UMBRAL) {
+      return { entradaTermino: entrada, match: mejor, score: mejorScore };
+    }
+    return { entradaTermino: entrada, match: null, score: mejorScore };
   });
 }
