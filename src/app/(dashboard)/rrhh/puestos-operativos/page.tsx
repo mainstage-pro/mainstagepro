@@ -5,6 +5,8 @@ import { useToast } from "@/components/Toast";
 import { LayoutList, LayoutGrid, FileText, UserCheck, UserX, Link2, X, Plus, AlertTriangle } from "lucide-react";
 import { AREA_CODES } from "@/lib/areas";
 import { useAreas } from "@/components/AreasProvider";
+import { MODULOS_POR_SECCION } from "@/lib/nav";
+import { parseIdList } from "@/lib/onboarding";
 import {
   TIPOS_CONTRATO, MODALIDADES, DIAS_SEMANA, FRECUENCIAS_KPI, UNIDADES_KPI, FRECUENCIAS_ESTANDAR,
   FUENTES_KPI, KPI_PLAN_NOMBRE, KPI_PLAN_META_DEFAULT, jparse, jornadaToString, horasSemanales,
@@ -26,6 +28,7 @@ interface Puesto {
   valores?: string | null; aptitudes?: string | null; conocimientos?: string | null;
   funciones?: string | null; prestaciones?: string | null; prestacionesOtro?: string | null;
   tipoContrato?: string | null; modalidad?: string | null; horario?: string | null; jornada?: string | null;
+  onboardingModulos?: string | null; onboardingCapacitaciones?: string | null;
   version?: number | null;
   color?: string | null; activo: boolean;
   ocupantes?: Ocupante[]; kpis?: KpiPuesto[];
@@ -91,6 +94,9 @@ export default function PuestosOperativosPage() {
   const [conocimientos, setConocimientos] = useState<ConocimientoPerfil[]>([]);
   const [kpis, setKpis] = useState<KpiPuesto[]>([]);
   const [ocupantesIds, setOcupantesIds] = useState<string[]>([]);
+  const [onbModulos, setOnbModulos] = useState<string[]>([]);
+  const [onbCapacitaciones, setOnbCapacitaciones] = useState<string[]>([]);
+  const [categoriasCap, setCategoriasCap] = useState<{ id: string; nombre: string; slug: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [selected, setSelected] = useState<Puesto | null>(null);
@@ -134,6 +140,10 @@ export default function PuestosOperativosPage() {
         aptitudes: d.aptitudes ?? [], conocimientos: d.conocimientos ?? [],
       }))
       .catch(() => {});
+    fetch("/api/capacitacion/categorias", { cache: "no-store" })
+      .then(r => r.json())
+      .then((d: { categorias?: { id: string; nombre: string; slug: string }[] }) => setCategoriasCap(d.categorias ?? []))
+      .catch(() => {});
   }, []);
 
   // Mapa puesto→reportaAId para validar ciclos.
@@ -152,6 +162,7 @@ export default function PuestosOperativosPage() {
     setEstandares([]); setEstMinimos([]); setCoordina([]); setJornada([]);
     setPrestacionesSel([]); setValores([]); setAptitudes([]); setConocimientos([]);
     setKpis([kpiFijo()]); setOcupantesIds([]);
+    setOnbModulos([]); setOnbCapacitaciones([]);
   }
 
   function openNew() {
@@ -192,6 +203,8 @@ export default function PuestosOperativosPage() {
     // Garantiza que el KPI fijo esté presente y primero.
     setKpis(ks.some(k => k.esFijoPlan) ? ks : [kpiFijo(), ...ks]);
     setOcupantesIds((full.ocupantes ?? []).map(o => o.id));
+    setOnbModulos(parseIdList(full.onboardingModulos));
+    setOnbCapacitaciones(parseIdList(full.onboardingCapacitaciones));
     setShowForm(true);
   }
 
@@ -256,6 +269,8 @@ export default function PuestosOperativosPage() {
         jornada: jornada,
         kpis: kpis.filter(k => k.esFijoPlan || k.nombre.trim()),
         ocupantesIds,
+        onboardingModulos: onbModulos,
+        onboardingCapacitaciones: onbCapacitaciones,
       };
       const url = editing ? `/api/rrhh/puestos-operativos/${editing.id}` : "/api/rrhh/puestos-operativos";
       const method = editing ? "PATCH" : "POST";
@@ -844,6 +859,44 @@ export default function PuestosOperativosPage() {
                       <span>{pe.nombre}</span><span className="text-gray-600 text-xs">· {pe.puesto}</span>
                     </label>
                   ))}
+                </div>
+              </div>
+
+              {/* Onboarding del puesto */}
+              <div>
+                <p className={sectionCls}>Onboarding del puesto</p>
+                <p className="text-[11px] text-gray-500 mb-3 -mt-1">
+                  El recorrido de integración es fijo (firma de documentos, cultura, plan de trabajo, etc.). Aquí eliges solo lo específico de este puesto: qué módulos de la plataforma revisa y qué áreas de capacitación le tocan.
+                </p>
+
+                <label className={labelCls}>Módulos de la plataforma a revisar</label>
+                <div className="space-y-2 mb-4">
+                  {MODULOS_POR_SECCION.map(sec => (
+                    <div key={sec.seccion}>
+                      <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-1">{sec.seccion}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {sec.items.map(m => {
+                          const on = onbModulos.includes(m.key);
+                          return (
+                            <button key={m.key} type="button" onClick={() => setOnbModulos(a => on ? a.filter(x => x !== m.key) : [...a, m.key])}
+                              className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${on ? "bg-[#B3985B]/15 text-[#B3985B] border-[#B3985B]/40" : "border-[#222] text-gray-500 hover:text-white"}`}>{m.label}</button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <label className={labelCls}>Áreas de capacitación asignadas</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {categoriasCap.length === 0 && <span className="text-gray-700 text-xs">No hay áreas de capacitación registradas.</span>}
+                  {categoriasCap.map(c => {
+                    const on = onbCapacitaciones.includes(c.id);
+                    return (
+                      <button key={c.id} type="button" onClick={() => setOnbCapacitaciones(a => on ? a.filter(x => x !== c.id) : [...a, c.id])}
+                        className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${on ? "bg-[#B3985B]/15 text-[#B3985B] border-[#B3985B]/40" : "border-[#222] text-gray-500 hover:text-white"}`}>{c.nombre}</button>
+                    );
+                  })}
                 </div>
               </div>
             </div>

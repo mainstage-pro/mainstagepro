@@ -51,6 +51,9 @@ export async function ensurePuestoSchema() {
   await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS jornada TEXT`);
   await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1`);
   await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS legacy_data TEXT`);
+  // Configuración de onboarding por puesto (§ Onboarding)
+  await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS onboarding_modulos TEXT`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE puestos ADD COLUMN IF NOT EXISTS onboarding_capacitaciones TEXT`);
   // KPIs del puesto (§4)
   await prisma.$executeRawUnsafe(`ALTER TABLE pt_kpis ADD COLUMN IF NOT EXISTS puesto_id TEXT`);
   await prisma.$executeRawUnsafe(`ALTER TABLE pt_kpis ADD COLUMN IF NOT EXISTS resultado_esperado TEXT`);
@@ -126,6 +129,8 @@ export async function POST(req: NextRequest) {
         modalidad: b.modalidad || null,
         horario: b.horario || null,
         jornada: jstr(b.jornada),
+        onboardingModulos: arr(b.onboardingModulos),
+        onboardingCapacitaciones: arr(b.onboardingCapacitaciones),
         color: b.color || null,
       },
     });

@@ -58,6 +58,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (b.modalidad !== undefined) data.modalidad = b.modalidad || null;
     if (b.horario !== undefined) data.horario = b.horario || null;
     if (b.jornada !== undefined) data.jornada = jstr(b.jornada);
+    if (b.onboardingModulos !== undefined) data.onboardingModulos = arr(b.onboardingModulos);
+    if (b.onboardingCapacitaciones !== undefined) data.onboardingCapacitaciones = arr(b.onboardingCapacitaciones);
     if (b.color !== undefined) data.color = b.color || null;
     if (b.posX !== undefined) data.posX = b.posX === null ? null : Number(b.posX);
     if (b.posY !== undefined) data.posY = b.posY === null ? null : Number(b.posY);

@@ -1730,6 +1730,9 @@ model Puesto {
   modalidad         String? // Presencial | Remoto | Híbrido (§3.2)
   horario           String? // legado texto libre (§3.3)
   jornada           String?    @db.Text // JSON [{ dia, entrada, salida, ubicacion }] (§3.3)
+  // Configuración de onboarding (Organización → Puesto → Onboarding)
+  onboardingModulos       String? @map("onboarding_modulos") @db.Text // JSON string[] — moduloKeys de plataforma a revisar
+  onboardingCapacitaciones String? @map("onboarding_capacitaciones") @db.Text // JSON string[] — ids de CategoriaCapacitacion (áreas)
   // Versionado del registro (§7/§9): se congela en acuerdos y evaluaciones
   version           Int        @default(1)
   legacyData        String?    @map("legacy_data") @db.Text // JSON snapshot de textos libres previos (§10)
@@ -1810,6 +1813,7 @@ model PersonalInterno {
   vacaciones            SolicitudVacaciones[]
   encuestasSatisfaccion EncuestaSatisfaccionEquipo[]
   capacitaciones        CapacitacionParticipante[]
+  onboarding            OnboardingPlan?             @relation("PersonalOnboarding")
 
   @@map("personal_interno")
 }
@@ -2822,9 +2826,14 @@ model OnboardingPlan {
   area          String?
   fechaIngreso  DateTime?          @map("fecha_ingreso")
   estado        String             @default("EN_CURSO") // EN_CURSO | COMPLETADO | PAUSADO | CANCELADO
+  origen        String             @default("PUESTO") // PUESTO (plantilla fija) | IA (legado)
   notas         String?
   postulacionId String?            @unique @map("postulacion_id")
   postulacion   Postulacion?       @relation(fields: [postulacionId], references: [id])
+  // Onboarding instanciado desde el puesto para una persona concreta (una por persona)
+  personalId    String?            @unique @map("personal_id")
+  personal      PersonalInterno?   @relation("PersonalOnboarding", fields: [personalId], references: [id], onDelete: Cascade)
+  puestoId      String?            @map("puesto_id")
   createdAt     DateTime           @default(now()) @map("created_at")
   updatedAt     DateTime           @updatedAt @map("updated_at")
   modulos       OnboardingModulo[]

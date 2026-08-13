@@ -20,6 +20,9 @@ interface Incidencia { id: string; fecha: string; descripcion: string | null; mo
 interface Vacacion { id: string; fechaInicio: string; fechaFin: string; dias: number; estado: string; motivo: string | null; aprobadaPor: string | null }
 interface PersonaLite { id: string; nombre: string; puesto: string }
 interface UsuarioLite { id: string; name: string; email: string; ligadoA: string | null }
+interface OnbTarea { id: string; titulo: string; descripcion: string | null; tipo: string; orden: number; completada: boolean; recurso: string | null }
+interface OnbModulo { id: string; nombre: string; descripcion: string | null; tipo: string; orden: number; completado: boolean; tareas: OnbTarea[] }
+interface OnbPlan { id: string; nombre: string; estado: string; modulos: OnbModulo[] }
 
 const DOC_LABEL: Record<string, string> = {
   OFERTA: "Oferta de trabajo",
@@ -50,10 +53,11 @@ const TIPOS_PERIODO = ["MENSUAL", "QUINCENAL", "SEMANAL", "POR_EVENTO"];
 const ESTADOS_CIVIL = ["", "Soltero(a)", "Casado(a)", "Unión libre", "Divorciado(a)", "Viudo(a)"];
 const MOTIVOS_BAJA = ["", "RENUNCIA", "DESPIDO", "TERMINO_CONTRATO", "ABANDONO", "OTRO"];
 
-type Tab = "perfil" | "laboral" | "pagos" | "asistencia" | "vacaciones" | "desempeno" | "disciplina" | "documentos";
+type Tab = "perfil" | "laboral" | "onboarding" | "pagos" | "asistencia" | "vacaciones" | "desempeno" | "disciplina" | "documentos";
 const TABS: { key: Tab; label: string }[] = [
   { key: "perfil", label: "Perfil" },
   { key: "laboral", label: "Laboral" },
+  { key: "onboarding", label: "Onboarding" },
   { key: "pagos", label: "Nómina" },
   { key: "asistencia", label: "Asistencia" },
   { key: "vacaciones", label: "Vacaciones" },
@@ -116,6 +120,10 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
   const [docsLaborales, setDocsLaborales] = useState<DocLaboral[]>([]);
   const [generando, setGenerando] = useState<string | null>(null);
   const [copiado, setCopiado] = useState<string | null>(null);
+  const [onbPlan, setOnbPlan] = useState<OnbPlan | null>(null);
+  const [onbPuestoAsignado, setOnbPuestoAsignado] = useState(false);
+  const [onbPuestoNombre, setOnbPuestoNombre] = useState<string | null>(null);
+  const [onbIniciando, setOnbIniciando] = useState(false);
 
   const [showVacForm, setShowVacForm] = useState(false);
   const [vacForm, setVacForm] = useState({ fechaInicio: "", fechaFin: "", motivo: "", aprobar: false });
@@ -140,8 +148,58 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
   useEffect(() => {
     load();
     loadDocsLaborales();
+    loadOnboarding();
     fetch("/api/cuentas").then(r => r.json()).then(d => setCuentas(d.cuentas ?? []));
   }, [id]);
+
+  async function loadOnboarding() {
+    try {
+      const r = await fetch(`/api/onboarding/iniciar?personalId=${id}`, { cache: "no-store" });
+      if (!r.ok) return;
+      const d = await r.json();
+      setOnbPlan(d.plan ?? null);
+      setOnbPuestoAsignado(!!d.puestoAsignado);
+      setOnbPuestoNombre(d.puestoNombre ?? null);
+    } catch { /* silencioso */ }
+  }
+
+  async function iniciarOnboarding() {
+    setOnbIniciando(true);
+    try {
+      const r = await fetch("/api/onboarding/iniciar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ personalId: id }),
+      });
+      const d = await r.json();
+      if (!r.ok) { toast.error(d.error ?? "No se pudo iniciar el onboarding"); return; }
+      setOnbPlan(d.plan);
+      toast.success(d.yaExistia ? "Onboarding ya existente" : "Onboarding iniciado");
+    } catch {
+      toast.error("Error de conexión");
+    } finally {
+      setOnbIniciando(false);
+    }
+  }
+
+  async function toggleOnbTarea(tareaId: string, completada: boolean) {
+    // Optimista
+    setOnbPlan(prev => prev ? {
+      ...prev,
+      modulos: prev.modulos.map(m => ({
+        ...m,
+        tareas: m.tareas.map(t => t.id === tareaId ? { ...t, completada } : t),
+      })).map(m => ({ ...m, completado: m.tareas.every(t => t.completada) })),
+    } : prev);
+    try {
+      await fetch(`/api/onboarding/tareas/${tareaId}`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completada }),
+      });
+    } catch {
+      toast.error("No se pudo guardar el cambio");
+      loadOnboarding();
+    }
+  }
 
   async function generarDoc(tipo: "OFERTA" | "ACUERDO" | "CONVENIO_TECNICO") {
     setGenerando(tipo);
@@ -403,6 +461,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
 
       {tab === "perfil" && <PerfilTab />}
       {tab === "laboral" && <LaboralTab />}
+      {tab === "onboarding" && <OnboardingTab />}
       {tab === "pagos" && <PagosTab />}
       {tab === "asistencia" && <AsistenciaTab />}
       {tab === "vacaciones" && <VacacionesTab />}
@@ -819,6 +878,80 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
               ))}
             </div>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  function OnboardingTab() {
+    if (!onbPlan) {
+      return (
+        <div className="ms-card p-6 text-center space-y-4">
+          <div>
+            <p className="text-white font-semibold text-sm">Onboarding del puesto</p>
+            <p className="text-gray-500 text-xs mt-1 max-w-md mx-auto">
+              Genera el recorrido de integración estándar (firma de documentos, cultura, plan de trabajo, revisión de módulos y capacitación del área) a partir del puesto asignado.
+            </p>
+          </div>
+          {!onbPuestoAsignado ? (
+            <p className="text-yellow-500/80 text-xs">
+              Esta persona no tiene un puesto principal asignado. Asígnalo en la pestaña <span className="text-white">Laboral</span> antes de iniciar el onboarding.
+            </p>
+          ) : (
+            <>
+              <p className="text-gray-400 text-xs">Puesto: <span className="text-white">{onbPuestoNombre}</span></p>
+              <button onClick={iniciarOnboarding} disabled={onbIniciando}
+                className="bg-[#B3985B] hover:bg-[#c9a96a] disabled:opacity-50 text-black font-semibold text-sm px-6 py-2 rounded-lg transition-colors">
+                {onbIniciando ? "Iniciando..." : "Iniciar onboarding"}
+              </button>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    const tareas = onbPlan.modulos.flatMap(m => m.tareas);
+    const total = tareas.length;
+    const hechas = tareas.filter(t => t.completada).length;
+    const pct = total ? Math.round((hechas / total) * 100) : 0;
+
+    return (
+      <div className="space-y-4">
+        <div className="ms-card p-5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] text-[#B3985B] font-semibold uppercase tracking-wider">Progreso del onboarding</p>
+            <span className="text-xs text-gray-400">{hechas}/{total} · {pct}%</span>
+          </div>
+          <div className="h-2 rounded-full bg-[#1a1a1a] overflow-hidden">
+            <div className="h-full bg-[#B3985B] transition-all" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {onbPlan.modulos.map((m, i) => (
+            <div key={m.id} className="ms-card p-5">
+              <div className="flex items-start gap-3 mb-3">
+                <span className={`mt-0.5 shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${m.completado ? "bg-green-900/40 text-green-300" : "bg-[#1a1a1a] text-gray-500"}`}>
+                  {m.completado ? "✓" : i + 1}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-white font-semibold text-sm">{m.nombre}</p>
+                  {m.descripcion && <p className="text-gray-500 text-xs mt-0.5">{m.descripcion}</p>}
+                </div>
+              </div>
+              <div className="space-y-1.5 pl-9">
+                {m.tareas.map(t => (
+                  <label key={t.id} className="flex items-center gap-2 text-sm text-gray-300 py-1 rounded cursor-pointer hover:bg-[#161616] px-1 -mx-1">
+                    <input type="checkbox" checked={t.completada} onChange={() => toggleOnbTarea(t.id, !t.completada)} className="accent-[#B3985B]" />
+                    <span className={t.completada ? "text-gray-500 line-through" : ""}>{t.titulo}</span>
+                    {t.recurso && (
+                      <Link href={t.recurso} className="text-[#B3985B] hover:text-white text-xs ml-1 transition-colors" onClick={e => e.stopPropagation()}>abrir →</Link>
+                    )}
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
