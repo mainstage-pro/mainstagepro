@@ -16,9 +16,24 @@ export function useOnlineStatus() {
     setQueueSize(size);
   }, []);
 
+  // Verificación real de conectividad: un HEAD a /api/health. El Service Worker no
+  // intercepta HEAD, así que siempre va a la red y nunca sirve caché. `navigator.onLine`
+  // por sí solo da falsos "offline" ante cualquier parpadeo de red del SO.
+  const verifyOnline = useCallback(async () => {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 5000);
+      const res = await fetch("/api/health", { method: "HEAD", cache: "no-store", signal: ctrl.signal });
+      clearTimeout(t);
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }, []);
+
   useEffect(() => {
-    // Estado inicial
-    setOnline(navigator.onLine);
+    // Estado inicial: confirmar con un ping real en vez de confiar en navigator.onLine.
+    verifyOnline().then(setOnline);
     refreshQueue();
 
     const goOnline = () => {
@@ -35,7 +50,10 @@ export function useOnlineStatus() {
       }, 800);
     };
 
-    const goOffline = () => {
+    const goOffline = async () => {
+      // navigator dice "offline", pero suele ser falso positivo. Confirmar con un ping
+      // real antes de mostrar el banner; si el servidor responde, seguimos online.
+      if (await verifyOnline()) return;
       setOnline(false);
       refreshQueue();
     };
@@ -76,7 +94,18 @@ export function useOnlineStatus() {
         navigator.serviceWorker.removeEventListener("message", swHandler);
       }
     };
-  }, [refreshQueue]);
+  }, [refreshQueue, verifyOnline]);
+
+  // Mientras creemos estar offline, sondear cada 8s. Si el servidor responde,
+  // reconectar solos aunque el navegador nunca dispare el evento "online"
+  // (así el banner no se queda pegado tras un falso "sin conexión").
+  useEffect(() => {
+    if (online) return;
+    const id = setInterval(async () => {
+      if (await verifyOnline()) window.dispatchEvent(new Event("online"));
+    }, 8000);
+    return () => clearInterval(id);
+  }, [online, verifyOnline]);
 
   const syncWatchdog = useCallback(() => {
     const t = setTimeout(() => {
