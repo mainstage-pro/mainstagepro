@@ -1,12 +1,17 @@
 import { neon } from "@neondatabase/serverless";
 import { randomUUID } from "crypto";
+import { readFileSync } from "fs";
 
 // Siembra los documentos operativos ancla en la tabla `politicas` (Organización).
 // Idempotente: si ya existe un documento con el mismo título, no lo duplica.
 // Se crean en estado BORRADOR para que Dirección los revise/publique desde la UI.
 //   Uso:  ENV_FILE=.env.prod.backup npx tsx scripts/seed-documentos-operativos.ts
 
-const raw = process.env.DATABASE_URL!;
+const envFile = process.env.ENV_FILE || ".env.prod.backup";
+const envRaw = readFileSync(envFile, "utf8");
+const match = envRaw.match(/^DATABASE_URL=(.*)$/m);
+if (!match) throw new Error(`No DATABASE_URL en ${envFile}`);
+const raw = match[1].trim().replace(/^["']|["']$/g, "");
 const url = raw
   .replace(/[?&](pgbouncer|connection_limit)=[^&]*/g, "")
   .replace(/\?&/, "?")
@@ -94,8 +99,8 @@ async function main() {
     const found = await sql.query(`SELECT id FROM politicas WHERE titulo = $1 LIMIT 1`, [d.titulo]);
     if (found.length) { existentes++; console.log(`= ya existe: ${d.titulo}`); continue; }
     await sql.query(
-      `INSERT INTO politicas (id, titulo, categoria, resumen, contenido, version, estado, requiere_acuse, orden)
-       VALUES ($1, $2, $3, $4, $5, 1, 'BORRADOR', true, $6)`,
+      `INSERT INTO politicas (id, titulo, categoria, resumen, contenido, version, estado, requiere_acuse, orden, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, 1, 'BORRADOR', true, $6, now(), now())`,
       [randomUUID(), d.titulo, d.categoria, d.resumen, d.contenido, d.orden],
     );
     creados++;
