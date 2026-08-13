@@ -34,7 +34,7 @@ interface QuoteItem {
   precioUnitario: number;
   esPersonalizado: boolean;
 }
-type Tab = "catalogo" | "productos" | "lista" | "precios" | "cotizador";
+type Tab = "catalogo" | "lista" | "precios" | "cotizador";
 // Pestañas ocultas por completo del sitio público.
 const HIDDEN_TABS: Tab[] = ["precios", "cotizador"];
 // Pestañas accesibles como pill (nav compacta) pero SIN tarjeta grande en el hero — presencia discreta.
@@ -223,13 +223,14 @@ function R({ children, delay = 0, y = 36, className = "" }: { children: React.Re
 }
 
 // ─── Equipo card (catálogo) ──────────────────────────────────────────────────────
-function EquipoCard({ eq, delay = 0, onImageClick, imageMap, galeriaMap }: { eq: EquipoData; delay?: number; onImageClick: (images: string[], alt: string) => void; imageMap?: ImageMap; galeriaMap?: GaleriaMap }) {
+function EquipoCard({ eq, delay = 0, onImageClick, onProductosClick, imageMap, galeriaMap, productosDelEquipo = [] }: { eq: EquipoData; delay?: number; onImageClick: (images: string[], alt: string) => void; onProductosClick: (label: string, productos: ProductoData[]) => void; imageMap?: ImageMap; galeriaMap?: GaleriaMap; productosDelEquipo?: ProductoData[] }) {
   const img = getEqImg(eq, imageMap);
   const [hovered, setHovered] = useState(false);
   // Galería = fotos adicionales asignadas en el módulo de Equipos. Solo clickeable si existen.
   const extras = galeriaMap?.[eq.id] ?? [];
   const galeria = img ? Array.from(new Set([img, ...extras])) : extras;
   const hasGaleria = extras.length > 0 && galeria.length > 0;
+  const nProd = productosDelEquipo.length;
   return (
     <R delay={delay}>
       <div className="group relative rounded-2xl overflow-hidden flex flex-col h-full transition-all duration-300"
@@ -247,13 +248,6 @@ function EquipoCard({ eq, delay = 0, onImageClick, imageMap, galeriaMap }: { eq:
             // eslint-disable-next-line @next/next/no-img-element
             <img src="/logo-icon.png" alt="Mainstage Pro" draggable={false} className="w-16 h-16 object-contain opacity-10" />
           )}
-          {hasGaleria && (
-            <div className="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex items-center gap-1.5 rounded-full px-3 py-1 pointer-events-none transition-opacity duration-300"
-                 style={{ background: "rgba(0,0,0,0.55)", border: "1px solid rgba(255,255,255,0.12)", opacity: hovered ? 1 : 0.75, backdropFilter: "blur(4px)" }}>
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={GOLD} strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
-              <span className="text-[10px] tracking-wide" style={{ color: "rgba(255,255,255,0.85)" }}>Clic para ver fotos</span>
-            </div>
-          )}
           <div className="absolute top-3 right-3 rounded-full px-2.5 py-1 text-xs font-bold"
                style={{ background: `${GOLD}20`, color: GOLD, border: `1px solid ${GOLD}50` }}>
             {eq.cantidadTotal}<span style={{fontSize:"9px",fontWeight:400,opacity:0.8,marginLeft:"2px"}}>unidades</span>
@@ -263,6 +257,27 @@ function EquipoCard({ eq, delay = 0, onImageClick, imageMap, galeriaMap }: { eq:
           <p className="text-white font-semibold text-sm leading-snug mb-1 line-clamp-2">{eqDisplayName(eq)}</p>
           {(eq.marca || eq.modelo) && <p className="text-white/40 text-xs leading-snug line-clamp-2">{eq.descripcion}</p>}
           {eq.notas && <p className="text-white/20 text-xs mt-2 leading-relaxed line-clamp-2">{eq.notas}</p>}
+          {/* Acciones — debajo de la imagen, no encimadas: galería de fotos + productos que arma el equipo */}
+          {(hasGaleria || nProd > 0) && (
+            <div className="mt-auto pt-3 flex flex-wrap gap-1.5">
+              {hasGaleria && (
+                <button type="button" onClick={() => onImageClick(galeria, eqDisplayName(eq))}
+                        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-medium transition-colors"
+                        style={{ background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.1)" }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+                  Fotos<span style={{ opacity: 0.55 }}>· {galeria.length}</span>
+                </button>
+              )}
+              {nProd > 0 && (
+                <button type="button" onClick={() => onProductosClick(eqDisplayName(eq), productosDelEquipo)}
+                        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[11px] font-medium transition-colors"
+                        style={{ background: `${GOLD}14`, color: GOLD, border: `1px solid ${GOLD}30` }}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2l9 5v10l-9 5-9-5V7l9-5z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/></svg>
+                  Productos<span style={{ opacity: 0.7 }}>· {nProd}</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </R>
@@ -285,7 +300,6 @@ function StatBlock({ target, suffix = "", label, sub }: { target: number; suffix
 function TabNav({ active, onChange, quoteCount }: { active: Tab; onChange: (t: Tab) => void; quoteCount: number }) {
   const tabs: { key: Tab; label: string }[] = ([
     { key: "catalogo", label: "Catálogo" },
-    { key: "productos", label: "Productos" },
     { key: "lista",    label: "Lista" },
     { key: "precios",  label: "Lista de precios" },
     { key: "cotizador", label: "Cotizador" },
@@ -323,18 +337,7 @@ function TabSelector({ active, onChange, quoteCount }: { active: Tab; onChange: 
         </svg>
       ),
       title: "Catálogo",
-      desc: "Explora todo el equipo disponible por categoría con fichas técnicas y fotos.",
-    },
-    {
-      key: "productos",
-      icon: (
-        <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
-          <path d="M16 3l11 6v14l-11 6-11-6V9l11-6z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-          <path d="M5 9l11 6 11-6M16 15v14" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-        </svg>
-      ),
-      title: "Productos",
-      desc: "Sistemas armados a partir del inventario, listos para operar, con el equipo que los compone.",
+      desc: "Explora todo el equipo disponible por categoría, con fotos y los productos que arma cada equipo.",
     },
     {
       key: "lista",
@@ -435,88 +438,14 @@ function TabSelector({ active, onChange, quoteCount }: { active: Tab; onChange: 
   );
 }
 
-// ─── Productos (sistemas armados a partir del inventario) ─────────────────────────
-// Familia = grupo de productos con el mismo equipo dominante (el item de mayor cantidad).
-// Colapsa variantes por cantidad (x04, x08, x12…) en una sola miniatura; al hacer clic
-// se muestran todas las configuraciones/sets de esa familia.
-interface FamiliaProducto { key: string; img: string | null; productos: ProductoData[] }
-
-function equipoDominante(p: ProductoData): ProductoItemData["equipo"] | null {
-  if (!p.items?.length) return null;
-  let best = p.items[0];
-  for (const it of p.items) if (it.cantidad > best.cantidad) best = it;
-  return best.equipo;
-}
-function familiaKey(p: ProductoData): string {
-  const eq = equipoDominante(p);
-  return (eq ? nombreEqProd(eq) : p.nombre) || "Otros";
-}
-
-// Reúne los tipos de evento de todas las configuraciones de la familia (sin duplicar).
-function familiaTipos(fam: FamiliaProducto): string[] {
-  const set = new Set<string>();
-  for (const p of fam.productos) for (const t of parseTags(p.tiposEvento)) set.add(t);
-  return Array.from(set);
-}
-
-// Fila de lista (no tarjeta): miniatura discreta + nombre + acción "Ver configuraciones"
-// colocada abajo/al costado, nunca encimada sobre la imagen.
-function FamiliaRow({ fam, onClick }: { fam: FamiliaProducto; onClick: () => void }) {
-  const n = fam.productos.length;
-  const tipos = familiaTipos(fam);
-  const thumb = (
-    <div className="w-11 h-11 rounded-lg overflow-hidden flex items-center justify-center shrink-0"
-         style={{ background: "#080808", border: "1px solid rgba(255,255,255,0.06)" }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={fam.img || "/logo-icon.png"} alt="" draggable={false} loading="lazy"
-           className={`object-contain ${fam.img ? "w-10 h-10" : "w-4 h-4 opacity-15"}`} />
-    </div>
-  );
-  const verBtn = (
-    <button type="button" onClick={onClick}
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap"
-            style={{ background: `${GOLD}12`, color: GOLD, border: `1px solid ${GOLD}30` }}>
-      Ver {n === 1 ? "configuración" : `${n} configuraciones`}
-      <span>→</span>
-    </button>
-  );
-  const tiposBadges = tipos.length > 0 ? (
-    <div className="flex flex-wrap gap-1">
-      {tipos.map(t => (
-        <span key={t} className="text-[10px] px-2 py-0.5 rounded-full font-medium"
-              style={{ background: `${GOLD}12`, color: GOLD, border: `1px solid ${GOLD}20` }}>
-          {TIPO_EVENTO_LABEL[t] || t}
-        </span>
-      ))}
-    </div>
-  ) : <span className="text-white/20 text-xs">—</span>;
-  return (
-    <div>
-      {/* Desktop */}
-      <div className="hidden md:grid px-5 py-3.5 items-center transition-colors hover:bg-white/[0.025]"
-           style={{ gridTemplateColumns: "52px 1.9fr 1.4fr auto", gap: "16px", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-        {thumb}
-        <div className="min-w-0">
-          <p className="text-white text-sm font-medium leading-snug line-clamp-2">{fam.key}</p>
-          <p className="text-white/35 text-xs leading-snug mt-0.5">{n} {n === 1 ? "configuración disponible" : "configuraciones disponibles"}</p>
-        </div>
-        {tiposBadges}
-        <div className="justify-self-end">{verBtn}</div>
-      </div>
-      {/* Mobile */}
-      <div className="md:hidden flex gap-3 px-4 py-3.5" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-        {thumb}
-        <div className="min-w-0 flex-1">
-          <p className="text-white text-sm font-medium leading-snug line-clamp-2">{fam.key}</p>
-          <div className="flex items-center gap-2 flex-wrap mt-2">{tiposBadges}</div>
-          <div className="mt-2.5">{verBtn}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
+// ─── Modal de productos de un equipo ──────────────────────────────────────────────
+// Lista los productos (sistemas armados) que incluyen un equipo dado. Se abre desde
+// la tarjeta del catálogo con el botón "Productos".
 function FamiliaModal({ label, productos, onClose }: { label: string; productos: ProductoData[]; onClose: () => void }) {
+  useEffect(() => {
+    const fn = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", fn); return () => window.removeEventListener("keydown", fn);
+  }, [onClose]);
   return (
     <div onClick={onClose}
          style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", padding: "1.25rem", backdropFilter: "blur(12px)", animation: "fadeIn 0.2s ease" }}>
@@ -524,7 +453,7 @@ function FamiliaModal({ label, productos, onClose }: { label: string; productos:
            style={{ maxHeight: "85vh", background: "#0a0a0a", border: `1px solid ${GOLD}25`, boxShadow: "0 32px 80px rgba(0,0,0,0.8)" }}>
         <div className="flex items-start justify-between gap-4 px-6 py-5" style={{ borderBottom: `1px solid ${GOLD}15` }}>
           <div>
-            <p className="text-white/25 text-[10px] tracking-[0.28em] uppercase mb-1.5 font-mono">Configuraciones disponibles</p>
+            <p className="text-white/25 text-[10px] tracking-[0.28em] uppercase mb-1.5 font-mono">Productos con este equipo</p>
             <h3 className="text-white font-bold leading-tight" style={{ fontSize: "clamp(1.1rem,3vw,1.5rem)", letterSpacing: "-0.02em" }}>{label}</h3>
           </div>
           <button onClick={onClose} aria-label="Cerrar"
@@ -553,91 +482,6 @@ function FamiliaModal({ label, productos, onClose }: { label: string; productos:
           })}
         </div>
       </div>
-    </div>
-  );
-}
-
-function ProductosTab({ productos, loading, categoriaOrden = [] }: { productos: ProductoData[]; loading: boolean; categoriaOrden?: string[] }) {
-  const [openFam, setOpenFam] = useState<{ label: string; productos: ProductoData[] } | null>(null);
-
-  useEffect(() => {
-    if (!openFam) return;
-    const fn = (e: KeyboardEvent) => { if (e.key === "Escape") setOpenFam(null); };
-    window.addEventListener("keydown", fn); return () => window.removeEventListener("keydown", fn);
-  }, [openFam]);
-
-  // Agrupa por categoría (orden del inventario de equipos, categoriaOrden) y dentro de
-  // cada una por familia de equipo dominante.
-  const cats = useMemo(() => {
-    const catMap = new Map<string, ProductoData[]>();
-    for (const p of productos) {
-      const c = (p.categoria || "OTRO").trim() || "OTRO";
-      if (!catMap.has(c)) catMap.set(c, []);
-      catMap.get(c)!.push(p);
-    }
-    const orderIdx = (c: string) => { const i = categoriaOrden.indexOf(c); return i === -1 ? Number.MAX_SAFE_INTEGER : i; };
-    return Array.from(catMap.entries())
-      .map(([cat, ps]) => {
-        const famMap = new Map<string, FamiliaProducto>();
-        for (const p of ps) {
-          const k = familiaKey(p);
-          if (!famMap.has(k)) famMap.set(k, { key: k, img: null, productos: [] });
-          const f = famMap.get(k)!;
-          f.productos.push(p);
-          if (!f.img && p.imagenUrl) f.img = p.imagenUrl;
-        }
-        return { cat, familias: Array.from(famMap.values()), total: ps.length };
-      })
-      .filter(g => g.familias.length > 0)
-      .sort((a, b) => { const d = orderIdx(a.cat) - orderIdx(b.cat); return d !== 0 ? d : a.cat.localeCompare(b.cat); });
-  }, [productos, categoriaOrden]);
-
-  return (
-    <div className="max-w-6xl mx-auto py-16 px-4 sm:px-6">
-      <R>
-        <div className="mb-10">
-          <p className="text-white/20 text-xs tracking-[0.3em] uppercase mb-3 font-mono">Mainstage Pro · Sistemas listos</p>
-          <h2 className="font-bold text-white" style={{ fontSize: "clamp(2rem,5vw,3.5rem)", letterSpacing: "-0.03em" }}>Productos por categoría</h2>
-          <p className="text-white/35 text-sm mt-3 max-w-2xl">Sistemas armados a partir de nuestro inventario, listos para operar. Abre cada equipo para ver las configuraciones disponibles.</p>
-        </div>
-      </R>
-
-      {loading && productos.length === 0 ? (
-        <R><p className="text-white/30 text-sm py-16 text-center">Cargando productos…</p></R>
-      ) : cats.length === 0 ? (
-        <R><p className="text-white/30 text-sm py-16 text-center">Aún no hay productos publicados.</p></R>
-      ) : (
-        <div className="space-y-10">
-          {cats.map((g, gi) => (
-            <R key={g.cat} delay={Math.min(gi * 30, 300)}>
-              <section>
-                <div className="flex items-center justify-between gap-4 mb-4 pb-3" style={{ borderBottom: `1px solid ${GOLD}18` }}>
-                  <h3 className="font-bold text-white" style={{ fontSize: "clamp(1.15rem,3vw,1.7rem)", letterSpacing: "-0.02em" }}>{g.cat}</h3>
-                  <span className="text-xs px-2.5 py-1 rounded-full font-medium shrink-0" style={{ background: `${GOLD}15`, color: GOLD, border: `1px solid ${GOLD}20` }}>
-                    {g.total} {g.total === 1 ? "producto" : "productos"}
-                  </span>
-                </div>
-                <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
-                  {/* Encabezados (desktop) */}
-                  <div className="hidden md:grid px-5 py-3 text-[10px] font-semibold text-white/25 tracking-widest uppercase"
-                       style={{ gridTemplateColumns: "52px 1.9fr 1.4fr auto", gap: "16px" }}>
-                    <span />
-                    <span>Equipo</span>
-                    <span>Tipo de evento</span>
-                    <span className="justify-self-end">Configuraciones</span>
-                  </div>
-                  {g.familias.map((f) => (
-                    <FamiliaRow key={f.key} fam={f}
-                                onClick={() => setOpenFam({ label: f.key, productos: f.productos })} />
-                  ))}
-                </div>
-              </section>
-            </R>
-          ))}
-        </div>
-      )}
-
-      {openFam && <FamiliaModal label={openFam.label} productos={openFam.productos} onClose={() => setOpenFam(null)} />}
     </div>
   );
 }
@@ -1271,7 +1115,8 @@ export default function InventarioClient({ data }: Props) {
   const [galeriaMap, setGaleriaMap]       = useState<GaleriaMap>({});
   // Productos (sistemas armados) — cargados en cliente vía endpoint público
   const [productos, setProductos]         = useState<ProductoData[]>([]);
-  const [productosLoading, setProductosLoading] = useState(true);
+  // Modal de "productos de este equipo" (abierto desde la tarjeta del catálogo)
+  const [openProdEquipo, setOpenProdEquipo] = useState<{ label: string; productos: ProductoData[] } | null>(null);
 
   // Fetch DB images after hydration (runs once on client)
   useEffect(() => {
@@ -1289,8 +1134,7 @@ export default function InventarioClient({ data }: Props) {
     fetch("/api/productos/publico")
       .then(r => r.ok ? r.json() : { productos: [] })
       .then((res: { productos?: ProductoData[] }) => setProductos(res.productos ?? []))
-      .catch(() => { /* silently ignore */ })
-      .finally(() => setProductosLoading(false));
+      .catch(() => { /* silently ignore */ });
   }, []);
 
   // Lightbox helpers (gallery-capable)
@@ -1332,6 +1176,24 @@ export default function InventarioClient({ data }: Props) {
   const addCustom  = useCallback((desc: string) => {
     setQuoteItems(prev => [...prev, { id: `custom-${Date.now()}`, descripcion: desc, cantidad: 1, precioUnitario: 0, esPersonalizado: true }]);
   }, []);
+
+  // Mapa equipoId -> productos (sistemas armados) que lo incluyen. Alimenta el botón
+  // "Productos" de cada tarjeta del catálogo.
+  const productosPorEquipo = useMemo(() => {
+    const map = new Map<string, ProductoData[]>();
+    for (const p of productos) {
+      const vistos = new Set<string>();
+      for (const it of p.items ?? []) {
+        const id = it.equipo?.id;
+        if (!id || vistos.has(id)) continue;
+        vistos.add(id);
+        if (!map.has(id)) map.set(id, []);
+        map.get(id)!.push(p);
+      }
+    }
+    return map;
+  }, [productos]);
+  const openProductos = useCallback((label: string, prods: ProductoData[]) => setOpenProdEquipo({ label, productos: prods }), []);
 
   // Filter excluded
   const filteredCategorias = useMemo(() =>
@@ -1396,6 +1258,11 @@ export default function InventarioClient({ data }: Props) {
             )}
           </div>
         </div>
+      )}
+
+      {/* ── Modal: productos que arma un equipo ── */}
+      {openProdEquipo && (
+        <FamiliaModal label={openProdEquipo.label} productos={openProdEquipo.productos} onClose={() => setOpenProdEquipo(null)} />
       )}
 
       {/* ── Nav unificada ── */}
@@ -1485,7 +1352,7 @@ export default function InventarioClient({ data }: Props) {
                 </R>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
                   {cat.equipos.map((eq, i) => (
-                    <EquipoCard key={eq.id} eq={eq} delay={Math.min(i * 50, 400)} onImageClick={openLightbox} imageMap={imageMap} galeriaMap={galeriaMap} />
+                    <EquipoCard key={eq.id} eq={eq} delay={Math.min(i * 50, 400)} onImageClick={openLightbox} onProductosClick={openProductos} imageMap={imageMap} galeriaMap={galeriaMap} productosDelEquipo={productosPorEquipo.get(eq.id) ?? []} />
                   ))}
                 </div>
               </div>
@@ -1548,10 +1415,6 @@ export default function InventarioClient({ data }: Props) {
             </div>
           </section>
         </>
-      )}
-
-      {activeTab === "productos" && (
-        <ProductosTab productos={productos} loading={productosLoading} categoriaOrden={data.categoriaOrden ?? []} />
       )}
 
       {activeTab === "lista" && (
