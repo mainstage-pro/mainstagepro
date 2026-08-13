@@ -93,8 +93,83 @@ export default async function PresentacionPage({
 
   if (!cotizacion) notFound();
 
+  // Las líneas PAQUETE (productos armados) no tienen equipo asociado, así que la
+  // presentación no les muestra miniatura ni cantidad. Como el producto está
+  // compuesto de equipos con cantidades exactas (guardadas en notasInternas),
+  // las expandimos en líneas sintéticas por equipo — sumando cantidades entre
+  // productos — para que se rendericen igual que una cotización de equipos.
+  const parseComponentes = (notasInternas: string | null): { equipoId: string; cantidad: number }[] => {
+    if (!notasInternas) return [];
+    try {
+      const arr = JSON.parse(notasInternas).componentes;
+      return Array.isArray(arr) ? arr.filter((c: { equipoId?: string }) => c?.equipoId) : [];
+    } catch {
+      return [];
+    }
+  };
+  const paqueteLineas = cotizacion.lineas.filter((l) => l.tipo === "PAQUETE");
+  let lineasExpandidas = cotizacion.lineas;
+  if (paqueteLineas.length > 0) {
+    const equipoIds = [
+      ...new Set(paqueteLineas.flatMap((l) => parseComponentes(l.notasInternas).map((c) => c.equipoId))),
+    ];
+    const equipos = equipoIds.length
+      ? await prisma.equipo.findMany({
+          where: { id: { in: equipoIds } },
+          select: {
+            id: true,
+            marca: true,
+            modelo: true,
+            descripcion: true,
+            imagenUrl: true,
+            imagenesUrls: true,
+            categoria: { select: { nombre: true } },
+          },
+        })
+      : [];
+    const equipoMap = new Map(equipos.map((e) => [e.id, e]));
+
+    const acumulado = new Map<string, number>();
+    for (const l of paqueteLineas) {
+      for (const c of parseComponentes(l.notasInternas)) {
+        acumulado.set(c.equipoId, (acumulado.get(c.equipoId) ?? 0) + c.cantidad * l.cantidad);
+      }
+    }
+
+    const base = paqueteLineas[0];
+    const sinteticas = [...acumulado.entries()]
+      .filter(([equipoId]) => equipoMap.has(equipoId))
+      .map(([equipoId, cantidad], idx) => {
+        const e = equipoMap.get(equipoId)!;
+        return {
+          ...base,
+          id: `paq-${equipoId}`,
+          tipo: "EQUIPO_PROPIO",
+          equipoId,
+          marca: e.marca,
+          modelo: e.modelo,
+          descripcion: e.descripcion,
+          cantidad,
+          subtotal: 0,
+          esIncluido: false,
+          notas: null,
+          notasInternas: null,
+          orden: (base.orden ?? 0) + idx,
+          equipo: { categoria: e.categoria, imagenUrl: e.imagenUrl, imagenesUrls: e.imagenesUrls },
+        };
+      });
+
+    const firstPaqIdx = cotizacion.lineas.findIndex((l) => l.tipo === "PAQUETE");
+    lineasExpandidas = [
+      ...cotizacion.lineas.slice(0, firstPaqIdx),
+      ...sinteticas,
+      ...cotizacion.lineas.slice(firstPaqIdx + 1).filter((l) => l.tipo !== "PAQUETE"),
+    ] as typeof cotizacion.lineas;
+  }
+
   const data = {
     ...cotizacion,
+    lineas: lineasExpandidas,
     fechaEvento: cotizacion.fechaEvento?.toISOString() ?? null,
     createdAt: cotizacion.createdAt.toISOString(),
     updatedAt: cotizacion.updatedAt.toISOString(),

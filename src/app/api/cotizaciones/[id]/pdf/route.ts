@@ -85,24 +85,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .filter((id): id is string => Boolean(id))
   )];
   const productoImgMap = new Map<string, string | null>();
-  const productoMetaMap = new Map<string, { descripcion: string; marcaModelo: string }>();
   if (productoIds.length > 0) {
     const productos = await prisma.producto.findMany({
       where: { id: { in: productoIds } },
-      select: {
-        id: true,
-        imagenUrl: true,
-        items: {
-          orderBy: { orden: "asc" },
-          select: { equipo: { select: { descripcion: true, marca: true, modelo: true } } },
-        },
-      },
+      select: { id: true, imagenUrl: true },
     });
     for (const p of productos) {
       productoImgMap.set(p.id, p.imagenUrl ?? null);
-      const descs = [...new Set(p.items.map(it => it.equipo?.descripcion).filter((d): d is string => Boolean(d)))];
-      const mms = [...new Set(p.items.map(it => [it.equipo?.marca, it.equipo?.modelo].filter(Boolean).join(" ")).filter(Boolean))];
-      productoMetaMap.set(p.id, { descripcion: descs.join(" · "), marcaModelo: mms.join(" · ") });
     }
   }
 
@@ -112,12 +101,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     mainstageTradeData: cotizacion.mainstageTradeData ?? null,
     lineas: await Promise.all(cotizacion.lineas.map(async l => {
       if (l.tipo === "PAQUETE") {
+        // El nombre del producto (ya en descripcion) es autodescriptivo; va solo
+        // en la columna ancha. Evita amontonar marca+desc en la columna angosta.
         const productoId = getProductoId(l.notasInternas) ?? "";
-        const meta = productoMetaMap.get(productoId);
         return {
           ...l,
-          descripcion: meta?.descripcion || l.descripcion,
-          marca: l.descripcion,
+          marca: null,
           modelo: null,
           imagenUrl: await resolveImg(productoImgMap.get(productoId)),
         };
