@@ -450,8 +450,8 @@ const CAMPOS_GUIA: {
 }[] = [
   {
     key: "equipos",
-    label: "Equipos y cantidades",
-    hint: "ej. 4 bocinas, 8 beams, 2 pantallas",
+    label: "Equipos o productos",
+    hint: "ej. 4 bocinas, 8 beams / paquete DJ básico",
     requerido: true,
     test: (t) => /\d+\s*[a-záéíóúñ]{2,}/i.test(t),
   },
@@ -463,11 +463,33 @@ const CAMPOS_GUIA: {
     test: (t) => /\bcliente\b/i.test(t) || /\bpara\s+(el|la)\s+/i.test(t),
   },
   {
+    key: "tipoEvento",
+    label: "Tipo de evento",
+    hint: "ej. boda, XV años, corporativo, concierto",
+    requerido: false,
+    test: (t) =>
+      /\b(boda|xv|quince|quincea[ñn]era|graduaci[oó]n|concierto|festival|corporativ[oa]|conferencia|posada|fiesta|antro|bar|cumplea[ñn]os|aniversario|expo|feria|gala|show|desfile|congreso|activaci[oó]n)\b/i.test(t),
+  },
+  {
     key: "fecha",
     label: "Fecha del evento",
     hint: "ej. 10 de octubre o 10/10",
     requerido: true,
     test: (t) => new RegExp(`\\d{1,2}\\s+de\\s+(${MESES})`, "i").test(t) || /\b\d{1,2}[\/\-]\d{1,2}/.test(t),
+  },
+  {
+    key: "horario",
+    label: "Horario / duración",
+    hint: "ej. de 3:00 pm a 1:00 am (o 5 horas)",
+    requerido: false,
+    test: (t) => /\d{1,2}(:\d{2})?\s*(am|pm|hrs?|horas?)\b/i.test(t) || /\bde\s+\d.{0,20}\ba\s+\d/i.test(t),
+  },
+  {
+    key: "asistentes",
+    label: "N.º de asistentes",
+    hint: "ej. 300 personas / 500 invitados",
+    requerido: false,
+    test: (t) => /\d+\s*(personas|asistentes|invitados|pax|gente|butacas|comensales)\b/i.test(t),
   },
   {
     key: "lugar",
@@ -477,15 +499,8 @@ const CAMPOS_GUIA: {
     test: (t) => /\ben\s+[A-ZÁÉÍÓÚ][a-záéíóúñ]/.test(t),
   },
   {
-    key: "horario",
-    label: "Horario",
-    hint: "ej. de 3:00 pm a 1:00 am",
-    requerido: false,
-    test: (t) => /\d{1,2}(:\d{2})?\s*(am|pm|hrs?|horas?)\b/i.test(t) || /\bde\s+\d.{0,20}\ba\s+\d/i.test(t),
-  },
-  {
     key: "servicio",
-    label: "Servicio",
+    label: "Tipo de servicio",
     hint: "ej. producción técnica, renta, montaje",
     requerido: false,
     test: (t) => /\bservicio\b|producci[oó]n t[eé]cnica|monta[jd]e|\brenta\b|\baudio\b|iluminaci[oó]n|\bvideo\b/i.test(t),
