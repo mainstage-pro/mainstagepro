@@ -433,29 +433,18 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
     );
   }, [productos, soloRecomendadosProd, hayCapacidad, matchProducto, categoriasEquipoElegidas, equipoCatMap]);
 
-  // Un paquete se trata como una cobertura única: su tipo, su rango de personas y
-  // sus subtipos. Así reutilizamos la misma lógica de casado por capacidad.
-  const matchPaquete = useMemo(() => {
-    const m = new Map<string, MatchCapacidad>();
-    for (const p of paquetes) {
-      const cob = [{
-        tipoEvento: p.tipoEvento,
-        rangos: p.rangoPersonas ? JSON.stringify([p.rangoPersonas]) : null,
-        subtipos: p.subtiposEvento,
-      }];
-      m.set(p.id, coberturaMatch(parseCoberturas(cob), filtroCapacidad));
-    }
-    return m;
+  // Los paquetes se filtran SIEMPRE por tipo de evento y, si el paquete define
+  // nicho (subtipos), también por nicho. La capacidad (nº de personas) NO filtra
+  // paquetes: reutilizamos la cobertura pero sin rango (asistentes en null).
+  const paquetesVisibles = useMemo(() => {
+    const tipo = filtroCapacidad.tipoEvento;
+    if (!tipo) return paquetes;
+    const filtroTipoNicho = { tipoEvento: tipo, asistentes: null, subtipos: filtroCapacidad.subtipos };
+    return paquetes.filter((p) => {
+      const cob = parseCoberturas([{ tipoEvento: p.tipoEvento, rangos: null, subtipos: p.subtiposEvento }]);
+      return coberturaMatch(cob, filtroTipoNicho) === "match";
+    });
   }, [paquetes, filtroCapacidad]);
-  const [soloRecomendadosPaq, setSoloRecomendadosPaq] = useState(false);
-
-  const paquetesVisibles = useMemo(
-    () =>
-      soloRecomendadosPaq && hayCapacidad
-        ? paquetes.filter((p) => matchPaquete.get(p.id) === "match")
-        : paquetes,
-    [paquetes, soloRecomendadosPaq, hayCapacidad, matchPaquete]
-  );
 
   const productosPorCategoria = useMemo(() => {
     const filtrando = categoriasEquipoElegidas.size > 0;
@@ -1475,19 +1464,8 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
           {subTab === "paquetes" && (
             <div className="space-y-2">
               <p className="text-gray-500 text-xs">
-                Paquetes comerciales por tipo y tamaño de evento. Se desglosan en la cotización con sus equipos y conceptos.
+                Paquetes del tipo de evento{filtroCapacidad.subtipos && filtroCapacidad.subtipos.length > 0 ? " y nicho" : ""} de este evento. Se desglosan en la cotización con sus equipos y conceptos.
               </p>
-              {hayCapacidad && paquetes.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setSoloRecomendadosPaq((v) => !v)}
-                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] transition-colors ${
-                    soloRecomendadosPaq ? "bg-[#B3985B] text-black font-semibold" : "bg-[#1a1a1a] text-gray-400 hover:text-white"
-                  }`}
-                >
-                  <Sparkles strokeWidth={1.75} className="w-3 h-3" /> Solo recomendados para la capacidad
-                </button>
-              )}
               {paquetes.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-[#2a2a2a] bg-[#0d0d0d] px-4 py-8 text-center">
                   <Sparkles strokeWidth={1.75} className="w-8 h-8 mx-auto mb-2 text-gray-600" />
@@ -1498,7 +1476,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                 </div>
               ) : paquetesVisibles.length === 0 ? (
                 <p className="text-gray-600 text-[11px] rounded-xl border border-dashed border-[#2a2a2a] bg-[#0d0d0d] px-4 py-6 text-center">
-                  Ningún paquete cubre esta capacidad. Quita el filtro para verlos todos.
+                  Ningún paquete aplica a este tipo de evento.
                 </p>
               ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1506,7 +1484,6 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                   const sel = paquetesSel.some((s) => s.id === p.id);
                   const cant = paquetesSel.find((s) => s.id === p.id)?.cantidad ?? 1;
                   const numEquipos = p.items.reduce((a, it) => a + (it.cantidad || 1), 0);
-                  const matchPaq = hayCapacidad ? matchPaquete.get(p.id) : undefined;
                   return (
                     <div
                       key={p.id}
@@ -1537,9 +1514,6 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
                               {sel && <span className="text-black text-[9px] font-bold leading-none">✓</span>}
                             </span>
                             <span className="text-white text-xs font-medium leading-tight">{p.nombre}</span>
-                            {matchPaq === "match" && (
-                              <span className="text-[8px] bg-emerald-500/15 text-emerald-400 rounded px-1 py-0.5 shrink-0">Recomendado</span>
-                            )}
                           </span>
                           {(p.resumen || p.descripcion) && (
                             <span className="block text-gray-500 text-[10px] leading-tight line-clamp-2 mt-0.5">
