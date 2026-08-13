@@ -176,6 +176,7 @@ function DescubrimientoCatalogo({
   adicionales, preguntas, respuestas, adicionalesSel,
   categoriasSel, categoriaIdPorNombre, productosSel,
   onRespuesta, onToggleAdicional, onToggleCategoria, onUsarPaquete, onUsarProducto, readOnly,
+  seccion,
 }: {
   tipoEvento: string;
   nichoSlug: string;
@@ -194,6 +195,9 @@ function DescubrimientoCatalogo({
   onUsarPaquete: (paquete: PaquetePublico) => void;
   onUsarProducto: (producto: ProductoPublico) => void;
   readOnly: boolean;
+  // Fase 3: separa el sub-paso de Selección (paquetes/productos base) del de
+  // Adicionales (complementos + preguntas guiadas). undefined = mostrar todo.
+  seccion?: "seleccion" | "adicionales";
 }) {
   const [paquetes, setPaquetes] = useState<PaquetePublico[]>([]);
   const [productos, setProductos] = useState<ProductoPublico[]>([]);
@@ -260,16 +264,18 @@ function DescubrimientoCatalogo({
   if (candidatos.length === 0 && productosRecomendados.length === 0 && adicionalesDelTipo.length === 0 && preguntasDelNicho.length === 0) return null;
 
   const etiquetaNicho = nichoNombre || "este evento";
+  const showSel = seccion !== "adicionales";
+  const showAdic = seccion !== "seleccion";
 
   return (
     <div className="space-y-4 rounded-xl border border-[#B3985B]/25 bg-gradient-to-br from-[#B3985B]/[0.06] to-transparent p-4">
       <div className="flex items-center gap-2">
         <Sparkles strokeWidth={1.75} className="w-4 h-4 text-[#B3985B]" />
-        <p className="text-sm text-white font-semibold">Sugerencias para {etiquetaNicho}</p>
+        <p className="text-sm text-white font-semibold">{seccion === "adicionales" ? `Adicionales para ${etiquetaNicho}` : `Sugerencias para ${etiquetaNicho}`}</p>
       </div>
 
       {/* 1. Paquete(s) base sugerido(s) */}
-      {candidatos.length > 0 && (
+      {showSel && candidatos.length > 0 && (
         <div className="space-y-2">
           <p className="text-[11px] text-gray-400 uppercase tracking-wider">Paquete como punto de partida</p>
           <div className="flex flex-wrap gap-2">
@@ -293,7 +299,7 @@ function DescubrimientoCatalogo({
       )}
 
       {/* 1a-bis. Adicionales que sugieren los paquetes candidatos */}
-      {adicionalesDelPaquete.length > 0 && (
+      {showAdic && adicionalesDelPaquete.length > 0 && (
         <div className="space-y-2">
           <p className="text-[11px] text-gray-400 uppercase tracking-wider inline-flex items-center gap-1.5">
             <Sparkles strokeWidth={1.75} className="w-3 h-3 text-[#B3985B]" /> Recomendados por el paquete
@@ -324,7 +330,7 @@ function DescubrimientoCatalogo({
       )}
 
       {/* 1b. Productos recomendados por capacidad (mismo criterio que "Por producto") */}
-      {productosRecomendados.length > 0 && (
+      {showSel && productosRecomendados.length > 0 && (
         <div className="space-y-2">
           <p className="text-[11px] text-gray-400 uppercase tracking-wider inline-flex items-center gap-1.5">
             <Package strokeWidth={1.75} className="w-3 h-3" /> Productos recomendados para {asistentes ?? "—"} asistentes
@@ -357,7 +363,7 @@ function DescubrimientoCatalogo({
       )}
 
       {/* 2. Descubrimiento guiado (preguntas del nicho) — plegable, opcional */}
-      {preguntasDelNicho.length > 0 && (() => {
+      {showAdic && preguntasDelNicho.length > 0 && (() => {
         const opcionesDe = (q: PreguntaCat) => q.tipoRespuesta === "SI_NO" ? ["Sí", "No", "No estoy seguro"] : jsonArr(q.opciones).concat("No estoy seguro");
         // Categorías ligadas a una pregunta (ids de inventario resueltos por nombre).
         const catsDe = (q: PreguntaCat) => q.reglas
@@ -493,7 +499,7 @@ function DescubrimientoCatalogo({
       })()}
 
       {/* 3. Adicionales frecuentes en el nicho */}
-      {adicionalesDelTipo.length > 0 && (
+      {showAdic && adicionalesDelTipo.length > 0 && (
         <div className="space-y-2">
           <p className="text-[11px] text-gray-400 uppercase tracking-wider">Adicionales frecuentes en {etiquetaNicho}</p>
           <div className="flex flex-wrap gap-2">
@@ -819,7 +825,6 @@ export default function DiscoveryForm({
       catch { sel = { categorias: [], equipos: [] }; }
       return { ...p, equiposInteres: JSON.stringify({ ...sel, modoCotizacion: m }) };
     });
-    requestAnimationFrame(() => selectorEquiposRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
   }, []);
 
   // Ruta del trato: 'full' (descubrimiento completo) vs 'direct' (salta a cotización).
@@ -836,6 +841,42 @@ export default function DiscoveryForm({
     });
     if (r === "direct") setPasoActivo(1);
   }, []);
+
+  // ── Fase 3: sub-paso dentro del Paso 2 (2a Estrategia · 2b Selección · 2c Adicionales) ──
+  // Se persiste en `equiposInteres` (sin migración), igual que modoCotizacion/ruta.
+  const subPaso = useMemo<"2a" | "2b" | "2c">(() => {
+    try { const s = discForm.equiposInteres ? JSON.parse(discForm.equiposInteres) : null; return (s?.subpaso as "2a" | "2b" | "2c") ?? "2a"; }
+    catch { return "2a"; }
+  }, [discForm.equiposInteres]);
+  const setSubPaso = useCallback((sp: "2a" | "2b" | "2c") => {
+    setDiscForm(p => {
+      let sel: Record<string, unknown> = {};
+      try { sel = p.equiposInteres ? JSON.parse(p.equiposInteres) : {}; } catch { sel = {}; }
+      return { ...p, equiposInteres: JSON.stringify({ ...sel, subpaso: sp }) };
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+  // Cambiar de estrategia: confirma, limpia la selección base (categorias/equipos/
+  // productos/paquetes) pero conserva adicionales; regresa a 2a.
+  const cambiarEstrategia = useCallback(() => {
+    setDiscForm(p => {
+      let sel: Record<string, unknown> = {};
+      try { sel = p.equiposInteres ? JSON.parse(p.equiposInteres) : {}; } catch { sel = {}; }
+      const tieneBase = ["categorias", "equipos", "productos", "paquetes"].some(k => Array.isArray(sel[k]) && (sel[k] as unknown[]).length > 0);
+      if (tieneBase && typeof window !== "undefined" && !window.confirm("Cambiar la estrategia limpiará los equipos y productos ya elegidos (los adicionales se conservan). ¿Continuar?")) return p;
+      const resto = { ...sel };
+      delete resto.categorias; delete resto.equipos; delete resto.productos; delete resto.paquetes; delete resto.cantidades;
+      return { ...p, equiposInteres: JSON.stringify({ ...resto, categorias: [], equipos: [], productos: [], paquetes: [], subpaso: "2a" }) };
+    });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+  const resumenSeleccion = useMemo(() => {
+    try {
+      const s = discForm.equiposInteres ? JSON.parse(discForm.equiposInteres) : {};
+      const n = ["equipos", "productos", "paquetes", "categorias"].reduce((acc, k) => acc + (Array.isArray(s[k]) ? s[k].length : 0), 0);
+      return n ? `${n} elemento${n === 1 ? "" : "s"}` : "sin elementos aún";
+    } catch { return "sin elementos aún"; }
+  }, [discForm.equiposInteres]);
 
   // Hidratar el formulario con la información ya capturada en el trato
   // (ej. nombre y fecha que se ingresan al crear el contacto en Venta Cerrada,
@@ -1239,6 +1280,27 @@ export default function DiscoveryForm({
   // Pasos visibles: en ruta directa solo se muestra el Paso 1.
   const pasosVisibles = (!clientMode && rutaDirecta) ? PASOS_DISCOVERY.slice(0, 1) : PASOS_DISCOVERY;
 
+  // ── Fase 3: el sub-stepper 2A/2B/2C solo aplica al vendedor en servicios que
+  // arman propuesta (no Dirección Técnica). En modo cliente el flujo es único. ──
+  const subStepper = !clientMode && !!discForm.tipoEvento && discForm.tipoServicio !== "DIRECCION_TECNICA";
+  const modoLabel = modoCotizacion === "equipos" ? "Por equipo" : modoCotizacion === "productos" ? "Por producto" : modoCotizacion === "paquetes" ? "Por paquete" : "";
+  const subLabel = subPaso === "2a" ? "Estrategia" : subPaso === "2b" ? "Selección" : "Adicionales";
+  const avanzar = () => {
+    if (subStepper && pasoActivo === 2) {
+      if (subPaso === "2a") { if (!modoCotizacion) return; setSubPaso("2b"); return; }
+      if (subPaso === "2b") { setSubPaso("2c"); return; }
+      irAPaso(3); return;
+    }
+    irAPaso(pasoActivo + 1);
+  };
+  const retroceder = () => {
+    if (subStepper && pasoActivo === 2) {
+      if (subPaso === "2c") { setSubPaso("2b"); return; }
+      if (subPaso === "2b") { setSubPaso("2a"); return; }
+    }
+    setPasoActivo(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
     <div className="bg-[#0d0d0d] border border-[#1a1a1a] rounded-2xl overflow-hidden w-full">
                   {/* Step tabs */}
@@ -1589,8 +1651,26 @@ export default function DiscoveryForm({
 
             {/* PASO 2: Detalles y extras */}
             {pasoActivo === 2 && (<div className="space-y-4">
+              {/* ── Sub-stepper 2A/2B/2C (Fase 3) ── */}
+              {subStepper && (
+                <div className="flex items-center gap-2">
+                  {([["2a", "Estrategia"], ["2b", "Selección"], ["2c", "Adicionales"]] as const).map(([sp, lb], i) => {
+                    const activo = subPaso === sp;
+                    const done = ["2a", "2b", "2c"].indexOf(subPaso) > i;
+                    const bloqueado = sp !== "2a" && !modoCotizacion;
+                    return (
+                      <button key={sp} type="button" disabled={bloqueado}
+                        onClick={() => setSubPaso(sp)}
+                        className={`flex-1 rounded-lg border px-3 py-2 text-left transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${activo ? "border-[#B3985B] bg-[#B3985B]/10" : done ? "border-[#2a2a2a] bg-[#0e0e0e]" : "border-[#1a1a1a] bg-[#0a0a0a]"}`}>
+                        <span className={`text-[10px] uppercase tracking-wider ${activo ? "text-[#B3985B]" : "text-gray-600"}`}>Paso {sp.toUpperCase()}</span>
+                        <p className={`text-xs font-medium ${activo ? "text-white" : done ? "text-gray-400" : "text-gray-600"}`}>{lb}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               {/* ── Rider específico / Contra-rider (modalidad elegida en el paso previo) ── */}
-              {modalidad === "CONTRA_RIDER" && (
+              {modalidad === "CONTRA_RIDER" && (!subStepper || subPaso === "2b") && (
                 <div className="rounded-xl border border-blue-800/40 bg-blue-950/20 p-4 space-y-3">
                   <div className="flex items-start gap-3">
                     <FileText strokeWidth={1.75} className="w-5 h-5 text-blue-300 shrink-0 mt-0.5" />
@@ -1636,8 +1716,8 @@ export default function DiscoveryForm({
                   </div>
                 </div>
               )}
-              {/* ── ¿Cómo cotizar? Tres estrategias (solo vendedor). Enruta a la sección. ── */}
-              {!clientMode && discForm.tipoEvento && discForm.tipoServicio !== "DIRECCION_TECNICA" && (
+              {/* ── 2A Estrategia: elegir cómo cotizar (solo vendedor). No navega solo. ── */}
+              {subStepper && subPaso === "2a" && (
                 <div className="rounded-xl border border-[#2a2a2a] bg-[#0e0e0e] p-4 space-y-3">
                   <div>
                     <p className="text-sm text-white font-semibold">¿Cómo quieres cotizar este evento?</p>
@@ -1662,9 +1742,27 @@ export default function DiscoveryForm({
                   </div>
                 </div>
               )}
-              {/* Sugerencias del catálogo por nicho (solo vendedor). Nada obliga ni oculta. */}
-              {!clientMode && discForm.tipoEvento && (
+              {/* Estrategia colapsada a línea editable en 2B/2C. */}
+              {subStepper && subPaso !== "2a" && (
+                <button type="button" onClick={cambiarEstrategia}
+                  className="w-full flex items-center justify-between rounded-lg border border-[#2a2a2a] bg-[#0e0e0e] px-3 py-2 text-left transition-colors hover:border-[#444]">
+                  <span className="text-xs text-gray-300">Estrategia: <span className="text-white font-medium">{modoLabel || "—"}</span></span>
+                  <span className="text-[11px] text-[#B3985B]">Cambiar</span>
+                </button>
+              )}
+              {/* Selección colapsada a resumen editable en 2C. */}
+              {subStepper && subPaso === "2c" && (
+                <button type="button" onClick={() => setSubPaso("2b")}
+                  className="w-full flex items-center justify-between rounded-lg border border-[#2a2a2a] bg-[#0e0e0e] px-3 py-2 text-left transition-colors hover:border-[#444]">
+                  <span className="text-xs text-gray-300">Selección: <span className="text-white font-medium">{resumenSeleccion}</span></span>
+                  <span className="text-[11px] text-[#B3985B]">Editar</span>
+                </button>
+              )}
+              {/* Sugerencias del catálogo por nicho (solo vendedor). Nada obliga ni oculta.
+                  En sub-stepper: 2B muestra selección (paquetes/productos base), 2C adicionales. */}
+              {!clientMode && discForm.tipoEvento && (!subStepper || subPaso !== "2a") && (
                 <DescubrimientoCatalogo
+                  seccion={subStepper ? (subPaso === "2c" ? "adicionales" : "seleccion") : undefined}
                   tipoEvento={discForm.tipoEvento}
                   nichoSlug={discForm.nichoSlug}
                   nichoNombre={catNichos.find(n => n.slug === discForm.nichoSlug && n.tipoEventoSlug === discForm.tipoEvento)?.nombre || ""}
@@ -1729,7 +1827,7 @@ export default function DiscoveryForm({
                   })}
                 />
               )}
-              {discForm.tipoServicio === "RENTA" ? (
+              {(!subStepper || subPaso === "2b") && (discForm.tipoServicio === "RENTA" ? (
               <div className="space-y-4 pt-2 border-t border-[#1a1a1a]">
                 <p className="text-xs text-[#B3985B] uppercase tracking-wider font-semibold">Detalles de renta</p>
 
@@ -1928,8 +2026,8 @@ export default function DiscoveryForm({
                   />
                 </div>
               </div>
-            )}
-            
+            ))}
+
             {/* ── Notas Técnicas / Equipos Adicionales (Manual) ───────────────────────
                 En producción técnica y renta el campo lo maneja el selector (tras las
                 categorías); aquí solo para Dirección Técnica. */}
@@ -2304,11 +2402,11 @@ export default function DiscoveryForm({
 
             {/* Wizard footer navigation */}
             <div className="px-5 py-4 border-t border-[#1a1a1a] flex items-center justify-between">
-              <button onClick={() => { setPasoActivo(p => Math.max(1, p - 1)); window.scrollTo({ top: 0, behavior: "smooth" }); }} disabled={pasoActivo === 1}
+              <button onClick={retroceder} disabled={pasoActivo === 1 && (!subStepper || subPaso === "2a")}
                 className="text-xs text-gray-500 hover:text-white transition-colors disabled:opacity-30 px-3 py-2 rounded-lg border border-[#222] hover:border-[#444]">
                 ← Anterior
               </button>
-              <span className="text-[10px] text-gray-600">{pasoActivo} / {pasosVisibles.length}</span>
+              <span className="text-[10px] text-gray-600">{pasoActivo} / {pasosVisibles.length}{subStepper && pasoActivo === 2 ? ` · ${subLabel}` : ""}</span>
               {!clientMode && rutaDirecta ? (
                 <Link
                   href={`/cotizaciones/nuevo?tratoId=${trato.id}&clienteId=${trato.cliente.id}`}
@@ -2316,9 +2414,9 @@ export default function DiscoveryForm({
                   className="text-xs px-4 py-2 bg-[#B3985B] text-black font-semibold rounded-lg hover:bg-[#c9a96a] transition-colors">
                   Hacer cotización →
                 </Link>
-              ) : pasoActivo < pasosVisibles.length ? (
-                <button onClick={() => irAPaso(pasoActivo + 1)}
-                  className={`text-xs px-4 py-2 font-semibold rounded-lg transition-colors ${paso1Incompleto && pasoActivo === 1 ? "bg-[#B3985B]/40 text-black/60" : "bg-[#B3985B] text-black hover:bg-[#c9a96a]"}`}>
+              ) : (pasoActivo < pasosVisibles.length || (subStepper && pasoActivo === 2 && subPaso !== "2c")) ? (
+                <button onClick={avanzar}
+                  className={`text-xs px-4 py-2 font-semibold rounded-lg transition-colors ${(paso1Incompleto && pasoActivo === 1) || (subStepper && pasoActivo === 2 && subPaso === "2a" && !modoCotizacion) ? "bg-[#B3985B]/40 text-black/60" : "bg-[#B3985B] text-black hover:bg-[#c9a96a]"}`}>
                   Siguiente →
                 </button>
               ) : (
