@@ -96,6 +96,10 @@ function similitud(a: string, b: string): number {
 const STOPWORDS = new Set([
   "de", "la", "el", "los", "las", "un", "una", "unos", "unas", "y", "o", "con",
   "sin", "para", "por", "del", "al", "en", "a", "que", "su", "sus", "mi",
+  // Unidades y dimensiones: son calificativos del pedido, no la palabra clave del equipo.
+  "metro", "metros", "mt", "mts", "cm", "mm", "altura", "alto", "alta", "ancho",
+  "largo", "frente", "fondo", "diametro", "pulgada", "pulgadas", "medida", "medidas",
+  "tamano", "aprox",
 ]);
 
 /** Extrae tokens significativos (sin stopwords), conservando dígitos. */
@@ -142,34 +146,93 @@ function puntuar(entrada: string, entTokens: Set<string>, row: GlosarioRow): num
   return best;
 }
 
+function esNumero(t: string): boolean {
+  return /^\d+$/.test(t);
+}
+
 /**
  * Resuelve una lista de términos coloquiales contra el glosario cargado.
- * Usa el glosario como referencia AMPLIA: exacto/singular como señales fuertes,
- * más inclusión de subcadena, solape de palabras y similitud difusa (typos).
- * Se acepta el mejor candidato por encima de un umbral moderado; ante empate gana el mayor peso.
+ *
+ * Estrategia por PALABRA CLAVE (la que pidió el usuario): cada palabra significativa
+ * del pedido —singularizada— vota por las filas del glosario que la contienen como
+ * token. Así "bocinas ev" activa "bocina ev 12p" aunque el término guardado tenga
+ * calificativos, y "4 beam" activa "beam 280".
+ *
+ * Cada palabra vota con un peso IDF (rareza): palabras distintivas como "truss", "beam"
+ * o "chauvet" pesan más que términos comunes, y las coincidencias difusas (typos) valen
+ * menos que las exactas. Así "trusses de 3 metros de altura" cae en un truss y no en una
+ * estructura solo por compartir "metros"/"altura". Ante empate gana el mayor peso.
+ *
+ * Se exige al menos una palabra de CONTENIDO coincidente (los números por sí solos no
+ * bastan) o, en su defecto, una coincidencia fuerte de cadena completa (≥0.55).
  */
 export function resolverTerminos(
   terminos: string[],
   glosario: GlosarioRow[]
 ): Resolucion[] {
-  const UMBRAL = 0.55;
+  const UMBRAL_CADENA = 0.55;
+
+  // Índice de filas con sus tokens singularizados (una sola pasada).
+  const filas = glosario.map((row) => {
+    const toks = [...new Set(tokens(row.termino).map(singular))];
+    return { row, toks, set: new Set(toks) };
+  });
+
+  // Frecuencia documental por token → IDF: palabras raras pesan más que las comunes.
+  const N = filas.length;
+  const df = new Map<string, number>();
+  for (const f of filas) for (const t of f.set) df.set(t, (df.get(t) ?? 0) + 1);
+  const idf = (t: string) => Math.log((N + 1) / ((df.get(t) ?? 0) + 1)) + 0.5;
 
   return terminos.map((entrada) => {
-    const entTokens = new Set(tokens(entrada));
+    const inTokens = [...new Set(tokens(entrada).map(singular))].filter((t) => t.length > 1);
+    const inSet = new Set(inTokens);
+
     let mejor: GlosarioRow | null = null;
+    let mejorVal = 0;
     let mejorScore = 0;
 
-    for (const row of glosario) {
-      const s = puntuar(entrada, entTokens, row);
-      if (s > mejorScore || (s === mejorScore && mejor && row.peso > mejor.peso)) {
-        mejorScore = s;
-        mejor = row;
+    for (const f of filas) {
+      // Votos ponderados por IDF: token exacto vale su IDF; difuso (typo) vale menos.
+      let peso = 0;
+      let matchedContenido = 0;
+      for (const it of inTokens) {
+        if (f.set.has(it)) {
+          peso += idf(it);
+          if (!esNumero(it)) matchedContenido++;
+          continue;
+        }
+        if (esNumero(it) || it.length < 4) continue;
+        let mejorSim = 0;
+        let mejorIdf = 0;
+        for (const rt of f.set) {
+          if (rt.length < 4) continue;
+          const s = similitud(it, rt);
+          if (s >= 0.82 && s > mejorSim) {
+            mejorSim = s;
+            mejorIdf = idf(rt);
+          }
+        }
+        if (mejorSim) {
+          peso += mejorIdf * mejorSim * 0.7; // penaliza el match difuso frente al exacto
+          matchedContenido++;
+        }
+      }
+
+      const cadena = puntuar(entrada, inSet, f.row); // señal fina de cadena completa
+      const cobertura = inTokens.length ? (matchedContenido / inTokens.length) * 0.5 : 0;
+
+      // Los votos IDF dominan; cadena/cobertura/peso solo afinan el desempate.
+      const val = peso + cadena + cobertura + f.row.peso * 0.001;
+
+      const resolvible = matchedContenido >= 1 || cadena >= UMBRAL_CADENA;
+      if (resolvible && val > mejorVal) {
+        mejorVal = val;
+        mejor = f.row;
+        mejorScore = cadena;
       }
     }
 
-    if (mejor && mejorScore >= UMBRAL) {
-      return { entradaTermino: entrada, match: mejor, score: mejorScore };
-    }
-    return { entradaTermino: entrada, match: null, score: mejorScore };
+    return { entradaTermino: entrada, match: mejor, score: mejorScore };
   });
 }
