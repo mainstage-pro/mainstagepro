@@ -5,6 +5,7 @@ import { AREA_MODULE_PRESETS } from "@/lib/nav";
 import Sidebar from "@/components/Sidebar";
 import GlobalNewTaskPanel from "@/components/GlobalNewTaskPanel";
 import QuickAccessPanel from "@/components/QuickAccessPanel";
+import SolicitarCotizacionButton from "@/components/cotizaciones/SolicitarCotizacionButton";
 import PwaRefreshButton from "@/components/PwaRefreshButton";
 import { Providers } from "@/components/Providers";
 import { NavConfigProvider } from "@/components/nav/NavConfigProvider";
@@ -71,6 +72,7 @@ export default async function DashboardLayout({
           </main>
           <GlobalNewTaskPanel />
           <QuickAccessPanel />
+          <SolicitarCotizacionButton />
           <PwaRefreshButton />
         </div>
       </NavConfigProvider>

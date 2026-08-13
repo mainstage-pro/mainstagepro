@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
 import { ensureCotizacionPaqueteColumn } from "@/lib/migraciones-lazy";
+import { crearTratoParaCotizacion } from "@/lib/trato-auto";
 
 export async function GET() {
   const session = await getSession();
@@ -96,10 +97,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "El cliente seleccionado ya no existe. Vuelve a seleccionarlo." }, { status: 400 });
     }
 
+    // Regla de negocio: toda cotización queda ligada a un trato. Si no viene uno,
+    // creamos uno automáticamente con los datos del evento capturados.
+    let tratoFinalId: string = tratoId;
+    if (!tratoFinalId) {
+      tratoFinalId = await crearTratoParaCotizacion({
+        clienteId,
+        vendedorId: session.id,
+        tipoEvento: campos.tipoEvento,
+        tipoServicio: campos.tipoServicio,
+        nombreEvento: campos.nombreEvento,
+        fechaEvento: campos.fechaEvento || null,
+        lugar: campos.lugarEvento,
+        asistentesEstimados: campos.asistentesEstimados ?? null,
+        presupuestoEstimado: campos.granTotal ?? null,
+      });
+    }
+
     const cotizacion = await prisma.cotizacion.create({
       data: {
         numeroCotizacion,
-        tratoId,
+        tratoId: tratoFinalId,
         paqueteId: paqueteId || null,
         clienteId,
         creadaPorId: session.id,

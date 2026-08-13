@@ -3283,6 +3283,35 @@ function CotizadorForm() {
                 <span className="text-white font-semibold text-sm">{resumen.bonusZonaTotal.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 })}</span>
               </div>
             )}
+
+            {/* Operadores sueltos (ej. los que crea el asistente): editables aquí para
+                que sean visibles en la sección, no sólo en el desglose. */}
+            {lineasOp.length > 0 && (
+              <div className="mt-3 border border-[#222] rounded-lg overflow-hidden">
+                <p className="text-[10px] uppercase tracking-wider text-[#666] px-3 pt-2">Operadores agregados</p>
+                {lineasOp.map(l => (
+                  <div key={l.id} className="flex items-center gap-2 px-3 py-2 border-b border-[#1a1a1a] last:border-0 flex-wrap">
+                    <span className="text-white text-sm flex-1 min-w-[140px] truncate">{l.descripcion}</span>
+                    <div className="flex items-center gap-1">
+                      <input type="number" min="1" value={l.cantidad}
+                        onChange={e => { const c = parseFloat(e.target.value) || 1; setLineasOp(prev => prev.map(x => x.id !== l.id ? x : { ...x, cantidad: c, subtotal: c * x.precioUnitario * x.dias })); }}
+                        className="w-14 bg-[#1a1a1a] border border-[#333] rounded-lg px-2 py-1 text-white text-sm focus:outline-none text-center" />
+                      <span className="text-gray-600 text-xs">×</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-gray-600 text-xs">$</span>
+                      <input type="number" min="0" value={l.precioUnitario}
+                        onChange={e => { const p = parseFloat(e.target.value) || 0; setLineasOp(prev => prev.map(x => x.id !== l.id ? x : { ...x, precioUnitario: p, subtotal: p * x.cantidad * x.dias })); }}
+                        className="w-24 bg-[#1a1a1a] border border-[#B3985B]/50 rounded-lg px-2 py-1 text-white text-sm focus:outline-none focus:border-[#B3985B] text-right" />
+                    </div>
+                    <div className="flex items-center gap-3 ml-auto">
+                      <span className="text-white text-sm font-medium">{formatCurrency(l.subtotal)}</span>
+                      <button onClick={() => setLineasOp(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none">×</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </Seccion>
 
           {/* ── Servicio de DJ ── */}

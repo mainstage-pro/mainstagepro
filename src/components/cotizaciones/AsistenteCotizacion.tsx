@@ -56,6 +56,16 @@ interface Candidato {
   precio: number;
 }
 
+// Etiqueta para mostrar un candidato: en equipos priorizamos marca + modelo
+// (más claro para elegir "cuál es") y sólo caemos a la descripción si no hay modelo.
+function etiquetaCandidato(c: Candidato): string {
+  if (c.kind === "EQUIPO") {
+    const mm = [c.marca, c.modelo].filter(Boolean).join(" ").trim();
+    return mm || c.descripcion;
+  }
+  return c.descripcion;
+}
+
 const EJEMPLO =
   "Necesito una cotización con 4 bocinas, 4 bajos, 8 beams, 8 kaleidos, 4 flasher, 8 blinder, 4 trusses de 3 metros, consola yamaha 10 canales, operador de audio, operador de video, para el cliente Juan Manuel Nava, con servicio de producción técnica para el 10 de octubre en Santa Rosa Jáuregui, de 3:00 pm a 1:00 am, con descuento del 15% sobre equipos";
 
@@ -396,8 +406,9 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
                             className={`px-2 py-0.5 rounded-full border text-[11px] ${
                               activo ? "border-emerald-500/60 text-emerald-300" : "border-[#2a2a2a] text-[#ccc] hover:border-[#B3985B]/50"
                             }`}
+                            title={c.descripcion}
                           >
-                            {c.descripcion}
+                            {etiquetaCandidato(c)}
                           </button>
                         );
                       })}
@@ -507,7 +518,7 @@ function BuscadorReasignar({ tipoLinea, onPick }: { tipoLinea: "ROL" | "EQUIPO" 
             <span className="text-[10px] uppercase text-[#B3985B] w-14 shrink-0">
               {c.kind === "ROL" ? "Rol" : c.kind === "ACCESORIO" ? "Acces." : c.kind === "PRODUCTO" ? "Paquete" : "Equipo"}
             </span>
-            <span className="text-white text-xs flex-1 truncate">{c.descripcion}</span>
+            <span className="text-white text-xs flex-1 truncate" title={c.descripcion}>{etiquetaCandidato(c)}</span>
             {c.categoria && <span className="text-[#666] text-[10px] truncate max-w-[90px]">{c.categoria}</span>}
             {c.precio > 0 && <span className="text-[#9ca3af] text-[11px]">{formatCurrency(c.precio)}</span>}
           </button>

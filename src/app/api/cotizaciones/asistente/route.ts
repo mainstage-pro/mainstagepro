@@ -6,6 +6,7 @@ import { logActividad } from "@/lib/actividad";
 import { calcularJornada, calcularResumen, type LineaCotizacion } from "@/lib/cotizador";
 import { cargarGlosario, cargarGlosarioProductos, resolverTerminos, type GlosarioRow } from "@/lib/glosario";
 import { ensureGlosarioTabla } from "@/lib/migraciones-lazy";
+import { crearTratoParaCotizacion } from "@/lib/trato-auto";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -89,6 +90,8 @@ interface DisplayCandidato {
   productoId: string | null;
   descripcion: string;
   categoria: string | null;
+  marca: string | null;
+  modelo: string | null;
   precio: number;
 }
 
@@ -214,22 +217,23 @@ function displayCandidato(
     return {
       kind: "EQUIPO", equipoId: e.id, rolTecnicoId: null, productoId: null,
       descripcion: e.descripcion || [e.marca, e.modelo].filter(Boolean).join(" "),
-      categoria: e.categoria?.nombre ?? null, precio: e.precioRenta || 0,
+      categoria: e.categoria?.nombre ?? null, marca: e.marca ?? null, modelo: e.modelo ?? null,
+      precio: e.precioRenta || 0,
     };
   }
   if (tipoObjetivo === "ACCESORIO") {
     const a = maps.acMap.get(objetivoId);
     if (!a) return null;
-    return { kind: "ACCESORIO", equipoId: null, rolTecnicoId: null, productoId: null, descripcion: a.nombre, categoria: "Accesorios", precio: a.precioRenta || 0 };
+    return { kind: "ACCESORIO", equipoId: null, rolTecnicoId: null, productoId: null, descripcion: a.nombre, categoria: "Accesorios", marca: null, modelo: null, precio: a.precioRenta || 0 };
   }
   if (tipoObjetivo === "PRODUCTO") {
     const p = maps.prMap.get(objetivoId);
     if (!p) return null;
-    return { kind: "PRODUCTO", equipoId: null, rolTecnicoId: null, productoId: p.id, descripcion: p.nombre, categoria: p.categoria ?? "Paquete", precio: p.precioFinal || 0 };
+    return { kind: "PRODUCTO", equipoId: null, rolTecnicoId: null, productoId: p.id, descripcion: p.nombre, categoria: p.categoria ?? "Paquete", marca: null, modelo: null, precio: p.precioFinal || 0 };
   }
   const r = maps.rlMap.get(objetivoId);
   if (!r) return null;
-  return { kind: "ROL", equipoId: null, rolTecnicoId: r.id, productoId: null, descripcion: r.nombre, categoria: r.disciplina ?? null, precio: 0 };
+  return { kind: "ROL", equipoId: null, rolTecnicoId: r.id, productoId: null, descripcion: r.nombre, categoria: r.disciplina ?? null, marca: null, modelo: null, precio: 0 };
 }
 
 async function cargarCatalogo(equipoIds: Set<string>, accesorioIds: Set<string>, rolIds: Set<string>, productoIds: Set<string> = new Set()) {
@@ -502,9 +506,23 @@ export async function POST(req: NextRequest) {
   const lastNum = last ? parseInt(last.numeroCotizacion.replace("COT-", "")) || 0 : 0;
   const numeroCotizacion = `COT-${String(lastNum + 1).padStart(4, "0")}`;
 
+  // Regla de negocio: toda cotización nace ligada a un trato. Como el asistente
+  // no parte de un trato, creamos uno automáticamente y lo ligamos.
+  const tratoId = await crearTratoParaCotizacion({
+    clienteId: cliente.id,
+    vendedorId: session.id,
+    tipoEvento: extra.tipoEvento,
+    tipoServicio: extra.servicio,
+    nombreEvento: extra.nombreEvento,
+    fechaEvento: extra.fechaEvento,
+    lugar: extra.lugar,
+    presupuestoEstimado: resumen.granTotal,
+  });
+
   const cotizacion = await prisma.cotizacion.create({
     data: {
       numeroCotizacion,
+      tratoId,
       clienteId: cliente.id,
       creadaPorId: session.id,
       descuentoEspecialPct,

@@ -87,7 +87,7 @@ export default function CotizacionesPage() {
           onClick={() => setAsistenteAbierto(true)}
           className="px-4 py-2 rounded-lg bg-[#B3985B] text-black text-sm font-medium hover:bg-[#c5a86a] transition-colors"
         >
-          Asistente IA
+          Solicitar cotización
         </button>
       </div>
 
