@@ -107,13 +107,16 @@ export async function POST(req: NextRequest) {
   }
 
   const client = new Anthropic({ apiKey });
-  const nuevos: { termino: string; original: string; tipoObjetivo: string; objetivoId: string }[] = [];
   let colisiones = 0;
+  let creados = 0;
 
   // Lotes de 35 objetos por llamada; el set `usados` se comparte entre lotes.
+  // Se inserta AL CERRAR CADA LOTE (no al final): así el avance se persiste aunque la
+  // función se corte por timeout de Vercel, y un reintento con soloFaltantes reanuda.
   const LOTE = 35;
   for (let i = 0; i < objetivos.length; i += LOTE) {
     const lote = objetivos.slice(i, i + LOTE);
+    const nuevos: { termino: string; original: string; tipoObjetivo: string; objetivoId: string }[] = [];
     const payload = lote.map((o) => ({ id: o.id, nombre: o.nombre, tipo: o.tipoObjetivo, detalle: o.detalle, grupo: o.grupo }));
 
     let mapa: Record<string, unknown> | null = null;
@@ -150,15 +153,14 @@ export async function POST(req: NextRequest) {
         nuevos.push({ termino, original: t.trim(), tipoObjetivo: o.tipoObjetivo, objetivoId: o.id });
       }
     }
-  }
 
-  let creados = 0;
-  if (nuevos.length) {
-    const res = await prisma.glosarioTermino.createMany({
-      data: nuevos.map((n) => ({ ...n, fuente: "ia" })),
-      skipDuplicates: true,
-    });
-    creados = res.count;
+    if (nuevos.length) {
+      const res = await prisma.glosarioTermino.createMany({
+        data: nuevos.map((n) => ({ ...n, fuente: "ia" })),
+        skipDuplicates: true,
+      });
+      creados += res.count;
+    }
   }
 
   return NextResponse.json({ ok: true, creados, colisiones, objetos: objetivos.length });
