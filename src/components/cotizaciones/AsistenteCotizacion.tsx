@@ -154,7 +154,22 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
         }),
       });
       const data = await res.json();
-      if (res.ok) setBorrador(data);
+      if (res.ok) {
+        // El recálculo sólo actualiza precios/subtotales; la desambiguación
+        // (ambiguo + candidatos con marca/modelo) es estado de UI que el backend
+        // de recálculo no re-adjunta. La preservamos por índice para no perder
+        // los chips "¿Cuál es?" al editar cantidades.
+        setBorrador((prev) => {
+          if (!prev) return data;
+          const lineas = (data.lineas as LineaDraft[]).map((l, i) => {
+            const antes = prev.lineas[i];
+            return antes && (antes.equipoId ?? antes.rolTecnicoId ?? antes.productoId) === (l.equipoId ?? l.rolTecnicoId ?? l.productoId)
+              ? { ...l, ambiguo: antes.ambiguo, candidatos: antes.candidatos }
+              : l;
+          });
+          return { ...data, lineas };
+        });
+      }
     } catch {
       /* silencioso: la previa conserva el estado local */
     } finally {
