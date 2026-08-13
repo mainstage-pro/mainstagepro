@@ -41,6 +41,7 @@ export interface ResumenCotizacion {
   montoBeneficio: number;
   subtotalEquiposNeto: number;
   subtotalPaquetes: number;
+  subtotalPaquetesNeto: number;
   subtotalTerceros: number;
   subtotalOperacion: number;
   subtotalTransporte: number;
@@ -114,8 +115,10 @@ export function calcularResumen(params: {
     .filter((l) => l.tipo === "HOSPEDAJE")
     .reduce((s, l) => s + l.subtotal, 0);
 
-  // Descuentos (solo sobre equipos propios)
-  const descuentoVolumenPct = calcularDescuentoVolumen(subtotalEquiposBruto);
+  // Descuentos sobre equipos propios + paquetes (mismo criterio que el editor
+  // principal en cotizaciones/nuevo). Base descontable = equipos + paquetes.
+  const baseDescontable = subtotalEquiposBruto + subtotalPaquetes;
+  const descuentoVolumenPct = calcularDescuentoVolumen(baseDescontable);
   const descuentoB2bPct = tipoCliente === "B2B" ? DESCUENTO_B2B : 0;
   const descuentoMultidiaPct = calcularDescuentoMultidia(diasEquipo);
 
@@ -127,13 +130,17 @@ export function calcularResumen(params: {
     descuentoEspecialPct +
     descuentoFamilyFriendsPct;
 
-  const montoDescuento = subtotalEquiposBruto * descuentoTotalPct;
+  const montoDescuento = baseDescontable * descuentoTotalPct;
   const montoBeneficio = montoDescuento;
-  const subtotalEquiposNeto = subtotalEquiposBruto - montoDescuento;
+  const netoDescontable = baseDescontable - montoDescuento;
+  // Reparte el neto proporcionalmente entre equipos y paquetes.
+  const shareEquipos = baseDescontable > 0 ? subtotalEquiposBruto / baseDescontable : 1;
+  const subtotalEquiposNeto = netoDescontable * shareEquipos;
+  const subtotalPaquetesNeto = netoDescontable - subtotalEquiposNeto;
 
   const total =
     subtotalEquiposNeto +
-    subtotalPaquetes +
+    subtotalPaquetesNeto +
     subtotalTerceros +
     subtotalOperacion +
     subtotalTransporte +
@@ -174,6 +181,7 @@ export function calcularResumen(params: {
     montoBeneficio,
     subtotalEquiposNeto,
     subtotalPaquetes,
+    subtotalPaquetesNeto,
     subtotalTerceros,
     subtotalOperacion,
     subtotalTransporte,
