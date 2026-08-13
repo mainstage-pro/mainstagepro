@@ -15,8 +15,8 @@ export async function crearTratoParaCotizacion(params: {
   asistentesEstimados?: number | null;
   presupuestoEstimado?: number | null;
 }): Promise<string> {
-  // La cotización implica que ya estamos armando propuesta → etapa DESCUBRIMIENTO.
-  const etapa = "DESCUBRIMIENTO";
+  // Ya existe una cotización → es una oportunidad activa. Entra directo a OPORTUNIDAD.
+  const etapa = "OPORTUNIDAD";
   const trato = await prisma.trato.create({
     data: {
       clienteId: params.clienteId,
