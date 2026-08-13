@@ -26,7 +26,7 @@ interface QuoteItem {
   precioUnitario: number;
   esPersonalizado: boolean;
 }
-type Tab = "catalogo" | "precios" | "cotizador";
+type Tab = "catalogo" | "lista" | "precios" | "cotizador";
 // Pestañas ocultas temporalmente del sitio público.
 const HIDDEN_TABS: Tab[] = ["precios", "cotizador"];
 const isTabVisible = (t: Tab) => !HIDDEN_TABS.includes(t);
@@ -249,6 +249,7 @@ function StatBlock({ target, suffix = "", label, sub }: { target: number; suffix
 function TabNav({ active, onChange, quoteCount }: { active: Tab; onChange: (t: Tab) => void; quoteCount: number }) {
   const tabs: { key: Tab; label: string }[] = ([
     { key: "catalogo", label: "Catálogo" },
+    { key: "lista",    label: "Lista" },
     { key: "precios",  label: "Lista de precios" },
     { key: "cotizador", label: "Cotizador" },
   ] as { key: Tab; label: string }[]).filter(t => isTabVisible(t.key));
@@ -286,6 +287,19 @@ function TabSelector({ active, onChange, quoteCount }: { active: Tab; onChange: 
       ),
       title: "Catálogo",
       desc: "Explora todo el equipo disponible por categoría con fichas técnicas y fotos.",
+    },
+    {
+      key: "lista",
+      icon: (
+        <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
+          <path d="M11 8h17M11 16h17M11 24h17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          <circle cx="5" cy="8" r="1.5" fill="currentColor"/>
+          <circle cx="5" cy="16" r="1.5" fill="currentColor"/>
+          <circle cx="5" cy="24" r="1.5" fill="currentColor"/>
+        </svg>
+      ),
+      title: "Lista",
+      desc: "Vista de tabla con todo el equipo por categoría: marca, modelo y unidades.",
     },
     {
       key: "precios",
@@ -370,6 +384,108 @@ function TabSelector({ active, onChange, quoteCount }: { active: Tab; onChange: 
         </div>
       </div>
     </section>
+  );
+}
+
+// ─── Lista (tabla por categoría) ─────────────────────────────────────────────────
+function ListaTab({ categorias, imageMap }: { categorias: CategoriaData[]; imageMap?: ImageMap }) {
+  const COLS = "44px 2.2fr 1fr 1fr 72px";
+  const totalEquipos  = categorias.reduce((s, c) => s + c.equipos.length, 0);
+  const totalUnidades = categorias.reduce((s, c) => s + c.equipos.reduce((a, e) => a + e.cantidadTotal, 0), 0);
+
+  return (
+    <div className="max-w-6xl mx-auto py-16 px-4 sm:px-6">
+      <R>
+        <div className="mb-10">
+          <p className="text-white/20 text-xs tracking-[0.3em] uppercase mb-3 font-mono">Mainstage Pro · Catálogo técnico</p>
+          <h2 className="font-bold text-white" style={{ fontSize: "clamp(2rem,5vw,3.5rem)", letterSpacing: "-0.03em" }}>Inventario por categoría</h2>
+          <p className="text-white/35 text-sm mt-3">Vista de lista de todo el equipo disponible, organizado por categoría.</p>
+          <div className="flex items-center gap-2 mt-5">
+            <span className="text-xs px-3 py-1.5 rounded-full font-semibold" style={{ background: `${GOLD}15`, color: GOLD, border: `1px solid ${GOLD}25` }}>
+              {totalEquipos} equipos
+            </span>
+            <span className="text-xs px-3 py-1.5 rounded-full text-white/40" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              {totalUnidades} unidades
+            </span>
+          </div>
+        </div>
+      </R>
+
+      <div className="space-y-10">
+        {categorias.map((cat, ci) => (
+          <R key={cat.nombre} delay={Math.min(ci * 30, 300)}>
+            <section>
+              <div className="flex items-center justify-between gap-4 mb-4 pb-3" style={{ borderBottom: `1px solid ${GOLD}18` }}>
+                <h3 className="font-bold text-white" style={{ fontSize: "clamp(1.15rem,3vw,1.7rem)", letterSpacing: "-0.02em" }}>{cat.nombre}</h3>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: `${GOLD}15`, color: GOLD, border: `1px solid ${GOLD}20` }}>
+                    {cat.equipos.length} {cat.equipos.length === 1 ? "equipo" : "equipos"}
+                  </span>
+                  <span className="text-xs px-2.5 py-1 rounded-full text-white/40" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                    {cat.equipos.reduce((a, e) => a + e.cantidadTotal, 0)} unid.
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
+                {/* Encabezados (desktop) */}
+                <div className="hidden md:grid px-5 py-3 text-[10px] font-semibold text-white/25 tracking-widest uppercase"
+                     style={{ gridTemplateColumns: COLS, gap: "16px" }}>
+                  <span />
+                  <span>Equipo</span>
+                  <span>Marca</span>
+                  <span>Modelo</span>
+                  <span className="text-center">Unid.</span>
+                </div>
+
+                {cat.equipos.map((eq, i) => {
+                  const img = getEqImg(eq, imageMap);
+                  const thumb = (
+                    <div className="w-9 h-9 rounded-lg overflow-hidden flex items-center justify-center shrink-0"
+                         style={{ background: "#080808", border: "1px solid rgba(255,255,255,0.06)" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img || "/logo-icon.png"} alt="" draggable={false} loading="lazy"
+                           className={`object-contain ${img ? "w-8 h-8" : "w-4 h-4 opacity-15"}`} />
+                    </div>
+                  );
+                  const unidBadge = (
+                    <span className="inline-flex items-center justify-center text-xs font-bold rounded-full px-2.5 py-1"
+                          style={{ background: `${GOLD}18`, color: GOLD, border: `1px solid ${GOLD}40` }}>
+                      {eq.cantidadTotal}
+                    </span>
+                  );
+                  return (
+                    <div key={eq.id}>
+                      {/* Desktop */}
+                      <div className="hidden md:grid px-5 py-3 items-center transition-colors hover:bg-white/[0.025]"
+                           style={{ gridTemplateColumns: COLS, gap: "16px", borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                        {thumb}
+                        <span className="text-white text-sm font-medium leading-snug line-clamp-2">{eq.descripcion}</span>
+                        <span className="text-white/50 text-sm truncate">{eq.marca || "—"}</span>
+                        <span className="text-white/50 text-sm truncate">{eq.modelo || "—"}</span>
+                        <span className="text-center">{unidBadge}</span>
+                      </div>
+                      {/* Mobile */}
+                      <div className="md:hidden flex items-center gap-3 px-4 py-3"
+                           style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                        {thumb}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-white text-sm font-medium leading-snug line-clamp-2">{eq.descripcion}</p>
+                          {(eq.marca || eq.modelo) && (
+                            <p className="text-white/40 text-xs truncate mt-0.5">{[eq.marca, eq.modelo].filter(Boolean).join(" · ")}</p>
+                          )}
+                        </div>
+                        {unidBadge}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          </R>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -1165,6 +1281,10 @@ export default function InventarioClient({ data }: Props) {
             </div>
           </section>
         </>
+      )}
+
+      {activeTab === "lista" && (
+        <ListaTab categorias={filteredCategorias} imageMap={imageMap} />
       )}
 
       {activeTab === "precios" && (
