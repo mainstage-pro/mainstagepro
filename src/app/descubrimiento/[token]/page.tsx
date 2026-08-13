@@ -26,6 +26,7 @@ export default function DescubrimientoPublicoPage({ params }: { params: Promise<
   const [enviado, setEnviado] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [huerfano, setHuerfano] = useState(false);
+  const [paquetePresentado, setPaquetePresentado] = useState<any>(null);
   // Datos de contacto para links huérfanos (sin trato previo).
   const [contacto, setContacto] = useState({ nombre: "", whatsapp: "", correo: "", momentoContratacion: "" });
 
@@ -37,6 +38,7 @@ export default function DescubrimientoPublicoPage({ params }: { params: Promise<
         if (d.huerfano) setHuerfano(true);
         if (d.completado) setCompletado(true);
         if (d.trato) setTrato(d.trato);
+        if (d.paquetePresentado) setPaquetePresentado(d.paquetePresentado);
         setLoading(false);
       })
       .catch(() => { setNotFound(true); setLoading(false); });
@@ -167,6 +169,7 @@ export default function DescubrimientoPublicoPage({ params }: { params: Promise<
           contacto={contacto}
           setContacto={setContacto}
           trato={trato}
+          paquetePresentado={paquetePresentado}
           onComplete={() => { setEnviado(true); window.scrollTo({ top: 0, behavior: "smooth" }); }}
         />
       </div>

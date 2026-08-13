@@ -17,7 +17,23 @@ type Item = {
   producto: { nombre: string; imagenUrl: string | null; categoria: string | null; equipos: ProductoEquipo[] } | null;
 };
 type Concepto = { tipo: string; descripcion: string };
+type Adicional = { id: string; nombre: string; descripcion: string | null; imagenUrl: string | null; composicion: string | null };
 type ItemVista = { titulo: string; descripcion: string; cantidad: number; imagenUrl: string | null; galeria: Foto[] };
+
+// Cuenta cuántos equipos/productos componen un adicional (para el badge).
+function contarComposicion(composicion: string | null): { equipos: number; productos: number } {
+  if (!composicion) return { equipos: 0, productos: 0 };
+  try {
+    const arr = JSON.parse(composicion);
+    if (!Array.isArray(arr)) return { equipos: 0, productos: 0 };
+    let equipos = 0, productos = 0;
+    for (const c of arr) {
+      if (c?.tipo === "producto") productos += 1;
+      else if (c?.tipo === "equipo") equipos += 1;
+    }
+    return { equipos, productos };
+  } catch { return { equipos: 0, productos: 0 }; }
+}
 
 // Frase emocional por defecto según el tipo de evento (editable en vivo).
 // Se mantienen breves para que caigan en ~2 líneas centradas.
@@ -30,6 +46,7 @@ type Paquete = {
   id: string; nombre: string; tipoEvento: string; rangoPersonas: string | null;
   subtiposEvento: string | null; resumen: string | null; descripcion: string | null;
   propuestaValor: string | null; imagenes: Imagen[]; items: Item[]; conceptos: Concepto[];
+  adicionales: Adicional[];
 };
 
 const TIPO_LABEL: Record<string, string> = { SOCIAL: "Evento social", MUSICAL: "Evento musical", EMPRESARIAL: "Evento empresarial" };
@@ -351,6 +368,53 @@ export default function PaqueteDetalleClient({
               </div>
             </R>
           )}
+        </section>
+      )}
+
+      {/* Adicionales sugeridos — complementos opcionales del paquete */}
+      {p.adicionales.length > 0 && (
+        <section className="mx-auto max-w-6xl px-6 py-14">
+          <R>
+            <p className="text-[11px] uppercase tracking-[0.22em] mb-3" style={{ color: GOLD }}>Lleva tu evento más allá</p>
+            <h2 className="font-bold text-white leading-[1.05] mb-3" style={{ fontSize: "clamp(1.6rem, 3.5vw, 2.6rem)", letterSpacing: "-0.025em" }}>
+              Adicionales sugeridos.
+            </h2>
+            <p className="text-white/40 text-sm sm:text-base leading-relaxed max-w-2xl mb-10">
+              Complementos opcionales que elevan la producción. Agrégalos al confirmar tu paquete.
+            </p>
+          </R>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {p.adicionales.map((a, i) => {
+              const comp = contarComposicion(a.composicion);
+              const total = comp.equipos + comp.productos;
+              return (
+                <R key={a.id} delay={(i % 3) * 60}>
+                  <div className="rounded-2xl overflow-hidden h-full flex flex-col" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
+                    <div className="relative aspect-[16/10] overflow-hidden shrink-0">
+                      {a.imagenUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={a.imagenUrl} alt={a.nombre} loading="lazy" draggable={false} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center" style={{ background: "radial-gradient(circle at 35% 25%, rgba(179,152,91,0.18), #0c0c0c 70%)" }}>
+                          <span className="text-3xl font-bold text-white/15">{a.nombre.charAt(0).toUpperCase()}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4 flex-1 flex flex-col">
+                      <p className="text-[15px] font-semibold text-white/90 leading-snug">{a.nombre}</p>
+                      {a.descripcion && <p className="text-[13px] text-white/50 leading-relaxed mt-1.5 flex-1">{a.descripcion}</p>}
+                      {total > 0 && (
+                        <span className="inline-flex items-center gap-1.5 self-start mt-3 text-[11px] font-medium px-2.5 py-1 rounded-full" style={{ background: "rgba(179,152,91,0.1)", border: `1px solid ${GOLD}33`, color: GOLD }}>
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: GOLD }} />
+                          Incluye {total} {total === 1 ? "elemento" : "elementos"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </R>
+              );
+            })}
+          </div>
         </section>
       )}
 

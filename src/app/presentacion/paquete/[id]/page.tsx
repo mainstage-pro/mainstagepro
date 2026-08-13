@@ -78,6 +78,32 @@ export default async function PaqueteDetallePage({ params }: { params: Promise<{
     getOverrides().catch(() => ({})),
   ]);
 
+  // Adicionales sugeridos del paquete (IDs guardados en modo edición).
+  let adicionales: {
+    id: string;
+    nombre: string;
+    descripcion: string | null;
+    imagenUrl: string | null;
+    composicion: string | null;
+  }[] = [];
+  const adicIds: string[] = (() => {
+    try {
+      const arr = JSON.parse(p.adicionalesSugeridos || "[]");
+      return Array.isArray(arr) ? arr.filter((x) => typeof x === "string") : [];
+    } catch {
+      return [];
+    }
+  })();
+  if (adicIds.length) {
+    const rows = await prisma.adicional.findMany({
+      where: { id: { in: adicIds }, activo: true },
+      select: { id: true, nombre: true, descripcion: true, imagenUrl: true, composicion: true },
+    });
+    // Respeta el orden guardado en adicionalesSugeridos.
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    adicionales = adicIds.map((id) => byId.get(id)).filter(Boolean) as typeof adicionales;
+  }
+
   const paquete = {
     id: p.id,
     nombre: p.nombre,
@@ -121,6 +147,7 @@ export default async function PaqueteDetallePage({ params }: { params: Promise<{
         : null,
     })),
     conceptos: p.conceptos.map((c) => ({ tipo: c.tipo, descripcion: c.descripcion })),
+    adicionales,
   };
 
   return <PaqueteDetalleClient paquete={paquete} galeria={galeria} descCategorias={descCategorias} overrides={overrides} />;

@@ -224,6 +224,15 @@ function DescubrimientoCatalogo({
   // Paquetes candidatos: mismo tipo y rango que cubre a los asistentes estimados.
   const candidatos = paquetes.filter(p => rangoIncluye(p.rangoPersonas, asistentes));
 
+  // Adicionales sugeridos por los paquetes candidatos (unión, sin duplicados).
+  // Solo los que existen en el catálogo activo de adicionales.
+  const adicIdsPorPaquete = (() => {
+    const set = new Set<string>();
+    for (const p of candidatos) for (const id of jsonArr(p.adicionalesSugeridos)) set.add(id);
+    return set;
+  })();
+  const adicionalesDelPaquete = adicionales.filter(a => adicIdsPorPaquete.has(a.id));
+
   // Productos recomendados: mismo criterio que la pestaña "Por producto" del
   // selector — cobertura por tipo de evento + capacidad (rango de asistentes).
   // Solo mostramos los que hacen "match" explícito; nada obliga ni oculta.
@@ -280,6 +289,37 @@ function DescubrimientoCatalogo({
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* 1a-bis. Adicionales que sugieren los paquetes candidatos */}
+      {adicionalesDelPaquete.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[11px] text-gray-400 uppercase tracking-wider inline-flex items-center gap-1.5">
+            <Sparkles strokeWidth={1.75} className="w-3 h-3 text-[#B3985B]" /> Recomendados por el paquete
+          </p>
+          <p className="text-[10px] text-gray-500 -mt-1">Complementos que el paquete sugiere. Al usar el paquete como base se encienden solos; también puedes marcarlos aquí.</p>
+          <div className="flex flex-wrap gap-2">
+            {adicionalesDelPaquete.map(a => {
+              const on = adicionalesSel.includes(a.id);
+              const comp = contarComposicion(a.composicion);
+              const piezas = comp.equipos + comp.productos;
+              return (
+                <button key={a.id} type="button" disabled={readOnly} onClick={() => onToggleAdicional(a.id)}
+                  title={a.descripcion || undefined}
+                  className={`px-3 py-1.5 rounded-lg text-xs border transition-colors inline-flex items-center gap-1.5 ${
+                    on ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10" : "border-[#333] text-gray-400 hover:text-white"
+                  }`}>
+                  {a.nombre}
+                  {piezas > 0 && (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] text-gray-500">
+                      <Package strokeWidth={1.75} className="w-2.5 h-2.5" />{piezas}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
@@ -1630,7 +1670,13 @@ export default function DiscoveryForm({
                     catch { sel = { categorias: [], equipos: [] }; }
                     const paquetes = sel.paquetes ? [...sel.paquetes] : [];
                     if (!paquetes.some(x => x.id === paq.id)) paquetes.push({ id: paq.id, cantidad: 1 });
-                    return { ...p, equiposInteres: JSON.stringify({ ...sel, paquetes }) };
+                    // Enciende los adicionales que el paquete sugiere (sin duplicar).
+                    let adicIds: string[] = [];
+                    try { const arr = JSON.parse(paq.adicionalesSugeridos || "[]"); if (Array.isArray(arr)) adicIds = arr.filter((x): x is string => typeof x === "string"); }
+                    catch {}
+                    const adicionalesSeleccionados = [...p.adicionalesSeleccionados];
+                    for (const aid of adicIds) if (!adicionalesSeleccionados.includes(aid)) adicionalesSeleccionados.push(aid);
+                    return { ...p, equiposInteres: JSON.stringify({ ...sel, paquetes }), adicionalesSeleccionados };
                   })}
                   onUsarProducto={(prod) => setDiscForm(p => {
                     let sel: SeleccionEquipos;

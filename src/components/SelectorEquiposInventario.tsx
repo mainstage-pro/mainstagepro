@@ -58,6 +58,7 @@ export type PaquetePublico = {
   subtiposEvento: string | null;
   resumen: string | null;
   descripcion: string | null;
+  adicionalesSugeridos: string | null;
   imagenes: { url: string }[];
   items: { cantidad: number; tipo: string }[];
   conceptos: { tipo: string; descripcion: string }[];

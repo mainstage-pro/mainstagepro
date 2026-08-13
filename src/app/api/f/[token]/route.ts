@@ -4,6 +4,7 @@ import { cotejarOCrearCliente } from "@/lib/cotejo-cliente";
 import { ensureFormularioLeadTable, etapaDesdeMomento } from "@/lib/formulario-lead";
 import { ensureProcesoVentaColumns, ensureMultidiaColumns, ensureProcesoTablas, ensureSeguimientoColumns } from "@/lib/migraciones-lazy";
 import { completarDescubrimiento } from "@/lib/proceso/motor";
+import { ensurePaquetesTables } from "@/lib/paquetes";
 
 // ─── Ensure formRecibidoEn column exists ─────────────────────────────────────
 let _colReady = false;
@@ -167,13 +168,59 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
     return NextResponse.json({ error: "Formulario no encontrado" }, { status: 404 });
   }
 
+  // Paquete presentado al cliente (si el vendedor asignó uno en equiposInteres):
+  // resolvemos su ficha + adicionales sugeridos para que el cliente los seleccione.
+  const paquetePresentado = await resolverPaquetePresentado(trato.equiposInteres);
+
   // Si ya fue completado, lo devolvemos con completado=true PERO también incluimos
   // la info del trato para que el cliente pueda verla y pueda re-enviar
   if (trato.formEstado === "COMPLETADO") {
-    return NextResponse.json({ completado: true, trato });
+    return NextResponse.json({ completado: true, trato, paquetePresentado });
   }
 
-  return NextResponse.json({ trato });
+  return NextResponse.json({ trato, paquetePresentado });
+}
+
+// Extrae el primer paquete asignado en equiposInteres.paquetes y resuelve su ficha
+// pública + adicionales sugeridos (para el bloque "Tu paquete" del wizard cliente).
+async function resolverPaquetePresentado(equiposInteres: string | null) {
+  if (!equiposInteres) return null;
+  let paqueteId: string | null = null;
+  try {
+    const sel = JSON.parse(equiposInteres);
+    const arr = Array.isArray(sel?.paquetes) ? sel.paquetes : [];
+    const first = arr.find((x: { id?: string }) => x?.id);
+    paqueteId = first?.id ?? null;
+  } catch { return null; }
+  if (!paqueteId) return null;
+
+  await ensurePaquetesTables();
+  const paq = await prisma.paquete.findFirst({
+    where: { id: paqueteId, activo: true },
+    select: {
+      id: true, nombre: true, resumen: true, rangoPersonas: true,
+      adicionalesSugeridos: true,
+      imagenes: { select: { url: true, tipo: true }, orderBy: { orden: "asc" } },
+    },
+  });
+  if (!paq) return null;
+
+  let adicIds: string[] = [];
+  try { const a = JSON.parse(paq.adicionalesSugeridos || "[]"); if (Array.isArray(a)) adicIds = a.filter((x): x is string => typeof x === "string"); }
+  catch {}
+
+  let adicionales: { id: string; nombre: string; descripcion: string | null; imagenUrl: string | null }[] = [];
+  if (adicIds.length) {
+    const rows = await prisma.adicional.findMany({
+      where: { id: { in: adicIds }, activo: true },
+      select: { id: true, nombre: true, descripcion: true, imagenUrl: true },
+    });
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    adicionales = adicIds.map((id) => byId.get(id)).filter(Boolean) as typeof adicionales;
+  }
+
+  const portada = paq.imagenes.find((im) => im.tipo === "RENDER")?.url ?? paq.imagenes[0]?.url ?? null;
+  return { id: paq.id, nombre: paq.nombre, resumen: paq.resumen, rangoPersonas: paq.rangoPersonas, portada, adicionales };
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {

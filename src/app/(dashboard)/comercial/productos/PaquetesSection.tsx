@@ -1097,6 +1097,7 @@ export default function PaquetesSection() {
                     <span className="text-[#B3985B] font-semibold text-sm">{fmx(precioPaquete(p))}</span>
                   </div>
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 justify-end mt-2">
+                    <a href={`/presentacion/paquete/${p.id}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="text-[10px] text-[#555] hover:text-[#B3985B]">Ver</a>
                     <button onClick={(e) => { e.stopPropagation(); abrirEditar(p); }} className="text-[10px] text-[#555] hover:text-[#B3985B]">Editar</button>
                     <button onClick={(e) => { e.stopPropagation(); eliminar(p); }} className="text-[10px] text-[#333] hover:text-red-400">Eliminar</button>
                   </div>

@@ -26,6 +26,16 @@ type Catalogo = { tipos: TipoCat[]; nichos: NichoCat[]; adicionales: AdicionalCa
 
 type Contacto = { nombre: string; whatsapp: string; correo: string; momentoContratacion: string };
 
+// Paquete asignado por el vendedor + adicionales que sugiere (bloque "Tu paquete").
+type PaquetePresentado = {
+  id: string;
+  nombre: string;
+  resumen: string | null;
+  rangoPersonas: string | null;
+  portada: string | null;
+  adicionales: { id: string; nombre: string; descripcion: string | null; imagenUrl: string | null }[];
+};
+
 // Tope numérico de un label de rango ("500-800" → 800).
 function rangoMax(label: string): number {
   const nums = label.match(/\d+/g);
@@ -89,7 +99,7 @@ const TIPO_ICON: Record<string, typeof Music> = {
 };
 
 export default function DescubrimientoClienteWizard({
-  token, trato, huerfano = false, contacto, setContacto, onComplete,
+  token, trato, huerfano = false, contacto, setContacto, onComplete, paquetePresentado = null,
 }: {
   token: string;
   trato: any;
@@ -97,6 +107,7 @@ export default function DescubrimientoClienteWizard({
   contacto?: Contacto;
   setContacto?: Dispatch<SetStateAction<Contacto>>;
   onComplete?: () => void;
+  paquetePresentado?: PaquetePresentado | null;
 }) {
   const toast = useToast();
   const [cat, setCat] = useState<Catalogo | null>(null);
@@ -138,14 +149,21 @@ export default function DescubrimientoClienteWizard({
     if (!cat) return [];
     return preguntasVisibles(cat.preguntas, tipoEvento, nichoSlug, respuestas).slice(0, 10);
   }, [cat, tipoEvento, nichoSlug, respuestas]);
+  // IDs de adicionales que ya vienen en el bloque "Tu paquete": se excluyen del
+  // grid genérico para no mostrarlos dos veces.
+  const idsDelPaquete = useMemo(
+    () => new Set((paquetePresentado?.adicionales || []).map(a => a.id)),
+    [paquetePresentado]
+  );
   const adicionalesDelContexto = useMemo(() => {
     if (!cat || !tipoEvento) return [];
     return cat.adicionales.filter(a => {
+      if (idsDelPaquete.has(a.id)) return false;
       const tipos = jsonArr(a.tiposEvento);
       const nichosA = jsonArr(a.nichos);
       return tipos.includes(tipoEvento) && (nichosA.length === 0 || (nichoSlug && nichosA.includes(nichoSlug)));
     });
-  }, [cat, tipoEvento, nichoSlug]);
+  }, [cat, tipoEvento, nichoSlug, idsDelPaquete]);
 
   const rangos = useMemo(() => {
     const list = (cat?.rangos || []).map(r => ({ label: r.label, value: rangoMax(r.label) })).filter(r => r.value > 0);
@@ -451,6 +469,53 @@ export default function DescubrimientoClienteWizard({
       {/* ══ PANTALLA 3 — Galería de opciones ══ */}
       {paso === 3 && (
         <div className="space-y-6">
+          {/* Tu paquete — el que tu asesor te preparó, con sus adicionales sugeridos */}
+          {paquetePresentado && (
+            <div className="rounded-2xl border border-[#B3985B]/30 bg-gradient-to-br from-[#B3985B]/[0.08] to-transparent overflow-hidden">
+              <div className="flex items-center gap-3 p-4">
+                {paquetePresentado.portada && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={paquetePresentado.portada} alt={paquetePresentado.nombre} className="w-16 h-16 rounded-xl object-cover shrink-0" />
+                )}
+                <div className="min-w-0">
+                  <p className="text-[11px] text-[#B3985B] uppercase tracking-wider font-semibold">Tu paquete</p>
+                  <p className="text-white text-sm font-semibold truncate">{paquetePresentado.nombre}</p>
+                  {paquetePresentado.rangoPersonas && <p className="text-[11px] text-gray-500 mt-0.5">{paquetePresentado.rangoPersonas} personas</p>}
+                  {paquetePresentado.resumen && <p className="text-[12px] text-gray-400 mt-0.5 line-clamp-2">{paquetePresentado.resumen}</p>}
+                </div>
+              </div>
+              {paquetePresentado.adicionales.length > 0 && (
+                <div className="border-t border-[#B3985B]/15 p-4">
+                  <p className="text-sm text-white font-semibold mb-1">Complementa tu paquete</p>
+                  <p className="text-[12px] text-gray-500 mb-3">Adicionales que van perfecto con este paquete. Toca los que te interesen.</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {paquetePresentado.adicionales.map(a => {
+                      const activo = adicionales.includes(a.id);
+                      return (
+                        <button key={a.id} type="button"
+                          onClick={() => setAdicionales(p => activo ? p.filter(x => x !== a.id) : [...p, a.id])}
+                          className={`text-left rounded-xl border overflow-hidden transition-all ${activo ? "border-[#B3985B] ring-1 ring-[#B3985B]/40" : "border-[#222] hover:border-[#444]"}`}>
+                          <div className="relative aspect-[4/3] bg-gradient-to-br from-[#1c1c1c] to-[#0e0e0e]">
+                            {a.imagenUrl
+                              ? <img src={a.imagenUrl} alt={a.nombre} className="w-full h-full object-cover" />
+                              : (() => { const Ico = iconoAdicional(a.nombre); return (
+                                  <div className="w-full h-full flex items-center justify-center text-[#B3985B]/70"><Ico strokeWidth={1.5} className="w-9 h-9" /></div>
+                                ); })()}
+                            {activo && <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#B3985B] flex items-center justify-center"><Check strokeWidth={3} className="w-3.5 h-3.5 text-black" /></div>}
+                          </div>
+                          <div className="p-2.5 bg-[#111]">
+                            <p className={`text-[13px] font-semibold ${activo ? "text-[#B3985B]" : "text-white"}`}>{a.nombre}</p>
+                            {a.descripcion && <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">{a.descripcion}</p>}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {adicionalesDelContexto.length > 0 && (
             <div>
               <label className="text-sm text-white font-semibold block mb-1">¿Algo de esto le vendría bien a tu evento?</label>
