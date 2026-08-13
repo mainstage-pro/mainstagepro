@@ -363,6 +363,12 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
     return m;
   }, [categorias]);
 
+  const catNombreMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const cat of categorias) m.set(cat.id, cat.nombre);
+    return m;
+  }, [categorias]);
+
   // Solo las categorías de equipo elegidas (excluye las sintéticas de servicio).
   const categoriasEquipoElegidas = useMemo(
     () => new Set(value.categorias.filter((id) => !CATS_SERVICIO.has(id))),
@@ -452,9 +458,25 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
   );
 
   const productosPorCategoria = useMemo(() => {
+    const filtrando = categoriasEquipoElegidas.size > 0;
     const cats = new Map<string, Map<string, ProductoPublico[]>>();
     for (const p of productosVisibles) {
-      const cat = (p.categoria ?? "").trim() || "Otros";
+      // Al filtrar por categorías del paso 1, el encabezado es la categoría de
+      // equipo elegida a la que pertenece el producto (dominante primero), no su
+      // etiqueta libre — así solo aparecen las categorías seleccionadas.
+      let cat: string;
+      if (filtrando) {
+        const domCid = equipoCatMap.get(p.items[0]?.equipo.id ?? "");
+        const cid =
+          domCid && categoriasEquipoElegidas.has(domCid)
+            ? domCid
+            : p.items
+                .map((it) => equipoCatMap.get(it.equipo.id))
+                .find((c) => c != null && categoriasEquipoElegidas.has(c));
+        cat = (cid && catNombreMap.get(cid)) || (p.categoria ?? "").trim() || "Otros";
+      } else {
+        cat = (p.categoria ?? "").trim() || "Otros";
+      }
       const dom = p.items[0]?.equipo;
       const marca = (dom?.marca ?? "").trim();
       const modelo = (dom?.modelo ?? "").trim();
@@ -484,7 +506,7 @@ export function SelectorEquiposInventario({ value, onChange, readOnly = false, n
           })
           .map(([marcaModelo, items]) => ({ marcaModelo, items })),
       }));
-  }, [productosVisibles]);
+  }, [productosVisibles, categoriasEquipoElegidas, equipoCatMap, catNombreMap]);
 
   function toggleMarca(clave: string) {
     setMarcasExpandidas((prev) => {
