@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, Suspense, useRef } from "react";
+import React, { useEffect, useState, useMemo, useCallback, Suspense, useRef } from "react";
 import { useConfirm } from "@/components/Confirm";
 import { useRouter, useSearchParams } from "next/navigation";
 import { calcularDescuentoVolumen, calcularDescuentoMultidia, formatCurrency, formatPct } from "@/lib/cotizador";
@@ -24,6 +24,7 @@ interface Equipo {
   precioRenta: number;
   costoProveedor: number | null;
   cantidadTotal: number;
+  imagenUrl: string | null;
   proveedorDefaultId: string | null;
   categoria: { id: string; nombre: string; orden: number };
   proveedoresPrecios: { precio: number; proveedor: { id: string; nombre: string; empresa: string | null; prioridad: number } }[];
@@ -64,6 +65,15 @@ interface LineaPaquete {
   cantidad: number; dias: number; precioUnitario: number; subtotal: number;
   componentes: { equipoId: string; cantidad: number }[];
   categoria: string;
+}
+
+// Ítem genérico para el selector en cascada de productos/paquetes.
+interface CascadeItem {
+  id: string;
+  nombre: string;
+  sub: string | null;      // subtítulo (rango de personas, resumen, etc.)
+  precio: number | null;   // precio a mostrar (null = "INCLUYE")
+  imagenUrl: string | null;
 }
 
 // ─── Helpers de codificación notas ────────────────────────────────────────────
@@ -295,7 +305,7 @@ function CotizadorForm() {
   const [extrasPrecios, setExtrasPrecios] = useState<Record<string, string>>({});
   const [extrasAgregados, setExtrasAgregados] = useState<string[]>([]);
   // Catálogo de paquetes/productos (para expandir en líneas de equipo al agregarlos).
-  const [productosCatalogo, setProductosCatalogo] = useState<Array<{ id: string; nombre: string; categoria: string | null; precioFinal: number; items: { cantidad: number; equipo: { id: string; descripcion: string; marca: string | null; modelo: string | null; precioRenta: number } }[] }>>([]);
+  const [productosCatalogo, setProductosCatalogo] = useState<Array<{ id: string; nombre: string; categoria: string | null; imagenUrl: string | null; precioFinal: number; items: { cantidad: number; equipo: { id: string; descripcion: string; marca: string | null; modelo: string | null; precioRenta: number } }[] }>>([]);
   const [paquetesAgregados, setPaquetesAgregados] = useState<string[]>([]);
   // Adicionales del catálogo con su composición (equipos/productos que bajan a la cotización).
   const [adicionalesCatalogo, setAdicionalesCatalogo] = useState<Array<{ id: string; nombre: string; composicion: { tipo: string; referenciaId: string; cantidad: number; obligatorio: boolean }[] }>>([]);
@@ -343,9 +353,10 @@ function CotizadorForm() {
   // Selectores rápidos
 
   const [selEq, setSelEq] = useState(""); const [selEqCant, setSelEqCant] = useState("1"); const [selEqDias, setSelEqDias] = useState("1");
-  // Caja de "Equipos propios": pestaña individual (default) vs. catálogo de paquetes
-  const [equipoTab, setEquipoTab] = useState<"individual" | "paquete">("individual");
+  // Caja de "Equipos propios": pestaña equipo individual (default) / producto armado / paquete comercial
+  const [equipoTab, setEquipoTab] = useState<"individual" | "producto" | "paquete">("individual");
   const [selPaq, setSelPaq] = useState(""); const [selPaqCant, setSelPaqCant] = useState("1");
+  const [selPaqCom, setSelPaqCom] = useState(""); const [selPaqComCant, setSelPaqComCant] = useState("1");
   const [selExt, setSelExt] = useState(""); const [selExtCant, setSelExtCant] = useState("1"); const [selExtDias, setSelExtDias] = useState("1");
   const [selRol, setSelRol] = useState(""); const [selRolJornada, setSelRolJornada] = useState("CORTA"); const [selRolCant, setSelRolCant] = useState("1"); const [selRolNivel, setSelRolNivel] = useState("AAA");
   const [selDJHoras, setSelDJHoras] = useState("4"); const [selDJNivel, setSelDJNivel] = useState("AAA"); const [selDJTarifa, setSelDJTarifa] = useState("");
@@ -436,18 +447,39 @@ function CotizadorForm() {
   const [dispMap, setDispMap] = useState<Record<string, { disponible: number; comprometido: number; total: number; eventos: Array<{ ref: string; nombre: string; estado: string }> }>>({});
   const [loadingDisp, setLoadingDisp] = useState(false);
 
+  // Recarga los catálogos (equipos, productos, paquetes, accesorios) desde el servidor.
+  // Se llama al montar y cada vez que la pestaña recupera el foco, para reflejar
+  // altas/cambios hechos en el módulo de inventario sin recargar la página.
+  const recargarCatalogos = useCallback(() => {
+    fetch("/api/equipos", { cache: "no-store" }).then(r => r.json()).then(d => setEquipos(d.equipos ?? [])).catch(() => {});
+    fetch("/api/productos/publico", { cache: "no-store" }).then(r => r.json()).then(d => setProductosCatalogo(d.productos ?? [])).catch(() => {});
+    fetch("/api/paquetes/publico", { cache: "no-store" }).then(r => r.json()).then(d => setPaquetesCatalogo(d.paquetes ?? [])).catch(() => {});
+    fetch("/api/accesorios", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(d => { if (d) setAccesoriosCatalogo(d.accesorios ?? []); }).catch(() => {});
+  }, []);
+
+  // Refresca catálogos al volver a la pestaña (visibilitychange) o recuperar el foco.
+  useEffect(() => {
+    const onFocus = () => { if (document.visibilityState === "visible") recargarCatalogos(); };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
+  }, [recargarCatalogos]);
+
   // Cargar datos (modo nuevo O modo edición)
   useEffect(() => {
-    fetch("/api/productos/publico").then(r => r.json()).then(d => setProductosCatalogo(d.productos ?? [])).catch(() => {});
-    fetch("/api/paquetes/publico").then(r => r.json()).then(d => setPaquetesCatalogo(d.paquetes ?? [])).catch(() => {});
-    fetch("/api/accesorios").then(r => r.ok ? r.json() : null).then(d => { if (d) setAccesoriosCatalogo(d.accesorios ?? []); }).catch(() => {});
+    fetch("/api/productos/publico", { cache: "no-store" }).then(r => r.json()).then(d => setProductosCatalogo(d.productos ?? [])).catch(() => {});
+    fetch("/api/paquetes/publico", { cache: "no-store" }).then(r => r.json()).then(d => setPaquetesCatalogo(d.paquetes ?? [])).catch(() => {});
+    fetch("/api/accesorios", { cache: "no-store" }).then(r => r.ok ? r.json() : null).then(d => { if (d) setAccesoriosCatalogo(d.accesorios ?? []); }).catch(() => {});
     fetch("/api/catalogo").then(r => r.json()).then(d => setAdicionalesCatalogo((d.adicionales ?? []).map((a: { id: string; nombre: string; composicion: string | null }) => {
       let comp: { tipo: string; referenciaId: string; cantidad: number; obligatorio: boolean }[] = [];
       try { const v = JSON.parse(a.composicion || "[]"); if (Array.isArray(v)) comp = v.map(x => ({ tipo: String(x.tipo), referenciaId: String(x.referenciaId), cantidad: Number(x.cantidad) || 1, obligatorio: x.obligatorio !== false })); } catch {}
       return { id: a.id, nombre: a.nombre, composicion: comp };
     }))).catch(() => {});
     Promise.all([
-      fetch("/api/equipos").then(r => r.json()),
+      fetch("/api/equipos", { cache: "no-store" }).then(r => r.json()),
       fetch("/api/roles-tecnicos").then(r => r.json()),
       clienteId ? fetch(`/api/clientes/${clienteId}`).then(r => r.json()) : Promise.resolve(null),
       tratoId ? fetch(`/api/tratos/${tratoId}`).then(r => r.json()) : Promise.resolve(null),
@@ -748,6 +780,54 @@ function CotizadorForm() {
     });
   }, [equipos]);
 
+  // Productos armados agrupados por categoría (string) para el selector en cascada.
+  const productosPorCategoria = useMemo<[string, CascadeItem[]][]>(() => {
+    const ORDEN_CAT = ["AUDIO", "ILUMINACION", "VIDEO", "DJ", "ESTRUCTURA", "OTRO"];
+    const map = new Map<string, CascadeItem[]>();
+    for (const p of productosCatalogo) {
+      const cat = p.categoria || "Sin categoría";
+      if (!map.has(cat)) map.set(cat, []);
+      map.get(cat)!.push({
+        id: p.id, nombre: p.nombre, sub: null,
+        precio: p.precioFinal, imagenUrl: p.imagenUrl,
+      });
+    }
+    return Array.from(map.entries()).sort((a, b) => {
+      const ia = ORDEN_CAT.indexOf(a[0]); const ib = ORDEN_CAT.indexOf(b[0]);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || a[0].localeCompare(b[0]);
+    });
+  }, [productosCatalogo]);
+
+  // Paquetes comerciales agrupados por tipo de evento para el selector en cascada.
+  const paquetesPorTipo = useMemo<[string, CascadeItem[]][]>(() => {
+    const LABEL: Record<string, string> = { MUSICAL: "Musical", SOCIAL: "Social", EMPRESARIAL: "Empresarial" };
+    const ORDEN = ["MUSICAL", "SOCIAL", "EMPRESARIAL"];
+    const map = new Map<string, CascadeItem[]>();
+    for (const paq of paquetesCatalogo) {
+      // Precio estimado por 1 paquete: suma de equipos/productos + conceptos.
+      let precio = 0;
+      for (const it of paq.items) {
+        const cant = it.cantidad || 1;
+        if (it.tipo === "PRODUCTO" && it.producto) precio += (it.producto.precioFinal || 0) * cant;
+        else if (it.equipo) precio += (it.equipo.precioRenta || 0) * cant;
+      }
+      for (const c of paq.conceptos) precio += (c.precioUnitario || 0) * (c.cantidad || 1) * (c.dias || 1);
+      const key = LABEL[paq.tipoEvento] ?? paq.tipoEvento;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push({
+        id: paq.id, nombre: paq.nombre,
+        sub: paq.rangoPersonas ? `${paq.rangoPersonas} pers.` : (paq.resumen ?? null),
+        precio: precio || null,
+        imagenUrl: paq.imagenes[0]?.url ?? null,
+      });
+    }
+    return Array.from(map.entries()).sort((a, b) => {
+      const ka = ORDEN.indexOf(paquetesCatalogo.find(p => (LABEL[p.tipoEvento] ?? p.tipoEvento) === a[0])?.tipoEvento ?? "");
+      const kb = ORDEN.indexOf(paquetesCatalogo.find(p => (LABEL[p.tipoEvento] ?? p.tipoEvento) === b[0])?.tipoEvento ?? "");
+      return (ka < 0 ? 99 : ka) - (kb < 0 ? 99 : kb);
+    });
+  }, [paquetesCatalogo]);
+
   // Equipos externos (de terceros)
   const equiposExternos = useMemo(() => equipos.filter(e => e.tipo === "EXTERNO"), [equipos]);
 
@@ -875,6 +955,15 @@ function CotizadorForm() {
     agregarLineaPaquete(prod, cant, dias);
     setPaquetesAgregados(prev => prev.includes(prod.id) ? prev : [...prev, prod.id]);
     setSelPaq(""); setSelPaqCant("1");
+  }
+
+  // Paquete comercial elegido manualmente desde el catálogo → se desglosa en líneas.
+  function agregarPaqueteComercialManual() {
+    const paq = paquetesCatalogo.find(p => p.id === selPaqCom);
+    if (!paq) return;
+    const cant = parseInt(selPaqComCant) || 1;
+    expandirPaquete(paq, cant);
+    setSelPaqCom(""); setSelPaqComCant("1");
   }
 
   function updatePaquete(id: string, field: "cantidad" | "dias" | "precioUnitario", val: number) {
@@ -2251,7 +2340,7 @@ function CotizadorForm() {
 
           {/* ── Equipos propios ── */}
           <Seccion titulo="Equipos propios" hint="aplican descuentos · precio editable por línea · ★ = precio especial del cliente">
-            {/* Pestañas de la caja: equipo individual vs. catálogo de paquetes */}
+            {/* Pestañas de la caja: equipo individual · producto armado · paquete comercial */}
             <div className="flex items-center gap-1.5 p-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-xl mb-4">
               <button
                 type="button"
@@ -2260,9 +2349,20 @@ function CotizadorForm() {
                   equipoTab === "individual" ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
                 }`}
               >
-                <SlidersHorizontal strokeWidth={1.75} className="w-3.5 h-3.5" /> Equipo individual
+                <SlidersHorizontal strokeWidth={1.75} className="w-3.5 h-3.5" /> Equipo
               </button>
               {productosCatalogo.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setEquipoTab("producto")}
+                  className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors inline-flex items-center justify-center gap-1.5 ${
+                    equipoTab === "producto" ? "bg-[#B3985B] text-black" : "text-gray-400 hover:text-white"
+                  }`}
+                >
+                  <Package strokeWidth={1.75} className="w-3.5 h-3.5" /> Producto
+                </button>
+              )}
+              {paquetesCatalogo.length > 0 && (
                 <button
                   type="button"
                   onClick={() => setEquipoTab("paquete")}
@@ -2272,7 +2372,7 @@ function CotizadorForm() {
                       : "text-[#B3985B] bg-gradient-to-r from-[#B3985B]/15 to-[#B3985B]/5 ring-1 ring-[#B3985B]/40 hover:from-[#B3985B]/25"
                   }`}
                 >
-                  <Sparkles strokeWidth={1.75} className="w-3.5 h-3.5" /> Del catálogo de paquetes
+                  <Sparkles strokeWidth={1.75} className="w-3.5 h-3.5" /> Paquete
                 </button>
               )}
             </div>
@@ -2317,23 +2417,18 @@ function CotizadorForm() {
             </div>
             )}
 
-            {/* Selector — catálogo de paquetes */}
-            {equipoTab === "paquete" && (
+            {/* Selector — producto armado */}
+            {equipoTab === "producto" && (
             <div className="flex gap-2 mb-4 items-end">
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-[#555] mb-1 px-1">Paquete / producto armado</p>
-                <select
+                <p className="text-[10px] text-[#555] mb-1 px-1">Producto armado</p>
+                <CascadeCatalogSelect
                   value={selPaq}
-                  onChange={e => setSelPaq(e.target.value)}
-                  className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
-                >
-                  <option value="">— Elige un paquete —</option>
-                  {productosCatalogo.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {p.nombre} · {formatCurrency(p.precioFinal)}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelPaq}
+                  grupos={productosPorCategoria}
+                  placeholder="— Seleccionar producto —"
+                  categoriaLabel="producto"
+                />
               </div>
               <div className="shrink-0">
                 <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
@@ -2347,6 +2442,34 @@ function CotizadorForm() {
                 type="button"
                 onClick={agregarPaqueteManual}
                 disabled={!selPaq}
+                className="shrink-0 px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40 hover:bg-[#c9a96a] transition-colors"
+              >
+                + Agregar
+              </button>
+            </div>
+            )}
+
+            {/* Selector — paquete comercial (se desglosa en líneas) */}
+            {equipoTab === "paquete" && (
+            <div className="flex gap-2 mb-4 items-end">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-[#555] mb-1 px-1">Paquete comercial · se desglosa en líneas</p>
+                <CascadeCatalogSelect
+                  value={selPaqCom}
+                  onChange={setSelPaqCom}
+                  grupos={paquetesPorTipo}
+                  placeholder="— Seleccionar paquete —"
+                  categoriaLabel="paquete"
+                />
+              </div>
+              <div className="shrink-0">
+                <p className="text-[10px] text-[#555] mb-1 text-center">Cantidad</p>
+                <NumSelect value={selPaqComCant} onChange={setSelPaqComCant} max={50} className="w-20 py-2" />
+              </div>
+              <button
+                type="button"
+                onClick={agregarPaqueteComercialManual}
+                disabled={!selPaqCom}
                 className="shrink-0 px-3 py-2 rounded-lg bg-[#B3985B] text-black font-semibold text-sm disabled:opacity-40 hover:bg-[#c9a96a] transition-colors"
               >
                 + Agregar
@@ -2439,7 +2562,9 @@ function CotizadorForm() {
                       ))}
 
                       {lins.map(l => {
-                        const precioBase = equipos.find(e => e.id === l.equipoId)?.precioRenta ?? 0;
+                        const eqRef = equipos.find(e => e.id === l.equipoId);
+                        const precioBase = eqRef?.precioRenta ?? 0;
+                        const imagenUrl = eqRef?.imagenUrl ?? null;
                         const tienePrecioEspecial = preciosCliente[l.equipoId] != null;
                         const precioOriginalCliente = preciosClienteOriginal[l.equipoId] ?? null;
                         const esPrecioModificado = l.precioUnitario !== precioBase;
@@ -2478,6 +2603,13 @@ function CotizadorForm() {
                         })()}
                         <div key={l.id} className="border-t border-[#111]">
                           <div className="flex flex-wrap items-center gap-2 px-3 py-2">
+                            {imagenUrl ? (
+                              <img src={imagenUrl} alt="" className="w-9 h-9 object-contain rounded bg-[#0a0a0a] p-0.5 shrink-0" />
+                            ) : (
+                              <span className="w-9 h-9 rounded bg-[#141414] shrink-0 flex items-center justify-center">
+                                <Package className="w-4 h-4 text-gray-700" />
+                              </span>
+                            )}
                             <div className="flex-1 min-w-0 basis-full sm:basis-auto">
                               <div className="flex items-center gap-1.5">
                                 <p className="text-white text-sm truncate">{[l.marca, l.modelo].filter(Boolean).join(" ") || l.descripcion}</p>
@@ -2544,9 +2676,9 @@ function CotizadorForm() {
                   <span>Registrar equipo nuevo</span>
                 </button>
                 <button
-                  onClick={() => fetch("/api/equipos").then(r => r.json()).then(data => setEquipos(data.equipos ?? []))}
+                  onClick={() => recargarCatalogos()}
                   className="text-[10px] text-[#555] hover:text-[#B3985B] transition-colors"
-                  title="Recargar lista de equipos del catálogo"
+                  title="Recargar equipos, productos y paquetes del catálogo"
                 >
                   ↻ Recargar catálogo
                 </button>
@@ -3888,6 +4020,13 @@ function CascadeEquipoSelect({
                               : 'text-gray-400 hover:bg-[#111] hover:text-white'
                           }`}
                         >
+                          {eq.imagenUrl ? (
+                            <img src={eq.imagenUrl} alt="" className="w-8 h-8 object-contain rounded bg-[#0a0a0a] p-0.5 shrink-0" />
+                          ) : (
+                            <span className="w-8 h-8 rounded bg-[#141414] shrink-0 flex items-center justify-center">
+                              <Package className="w-3.5 h-3.5 text-gray-700" />
+                            </span>
+                          )}
                           <span className="flex-1 min-w-0">
                             <span className="block font-medium truncate">
                               {[eq.marca, eq.modelo].filter(Boolean).join(' ') || eq.descripcion}
@@ -3900,6 +4039,165 @@ function CascadeEquipoSelect({
                             {q && <span className="text-[9px] text-gray-600 max-w-[60px] truncate font-normal">{eq.categoria.nombre}</span>}
                             <span className="text-gray-600">{precio > 0 ? formatCurrency(precio) : 'INCLUYE'}</span>
                             <span style={{ color: dispColor }}>{dispText}</span>
+                          </span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="text-gray-600 text-xs px-4 py-6 text-center">Pasa el cursor sobre una categoría</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Cascade Catalog Selector (productos / paquetes) ───────────────────────────
+// Misma vista que CascadeEquipoSelect (categorías a la izquierda, búsqueda +
+// lista con miniaturas a la derecha), pero genérica sobre CascadeItem.
+function CascadeCatalogSelect({
+  value, onChange, grupos, placeholder, categoriaLabel,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+  grupos: [string, CascadeItem[]][];
+  placeholder: string;
+  categoriaLabel: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [activeCat, setActiveCat] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (open && !activeCat && grupos.length > 0) setActiveCat(grupos[0][0]);
+  }, [open, activeCat, grupos]);
+
+  useEffect(() => {
+    if (activeCat && searchRef.current) { setSearch(''); searchRef.current.focus(); }
+  }, [activeCat]);
+
+  const allItems = grupos.flatMap(([, items]) => items);
+  const selected = allItems.find(i => i.id === value);
+
+  const q = search.toLowerCase().trim();
+  const items = q
+    ? allItems.filter(i => i.nombre.toLowerCase().includes(q) || (i.sub ?? '').toLowerCase().includes(q))
+    : activeCat
+    ? (grupos.find(([cat]) => cat === activeCat)?.[1] ?? [])
+    : [];
+
+  function handleSelect(id: string) { onChange(id); setOpen(false); setSearch(''); }
+  function handleClear(e: React.MouseEvent) { e.stopPropagation(); onChange(''); }
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className={`w-full flex items-center justify-between bg-[#1a1a1a] border ${
+          open ? 'border-[#B3985B]/60' : 'border-[#2a2a2a]'
+        } rounded-lg px-3 py-2 text-sm text-left focus:outline-none hover:border-[#B3985B]/60 transition-colors`}
+      >
+        <span className={selected ? 'text-white truncate flex-1' : 'text-gray-500 flex-1'}>
+          {selected ? selected.nombre : placeholder}
+        </span>
+        <div className="flex items-center gap-1 shrink-0 ml-2">
+          {value && (
+            <span
+              role="button" tabIndex={0}
+              onClick={handleClear}
+              onKeyDown={e => e.key === 'Enter' && handleClear(e as unknown as React.MouseEvent)}
+              className="text-gray-600 hover:text-gray-300 text-sm leading-none px-0.5 cursor-pointer transition-colors"
+            >×</span>
+          )}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            className={`text-gray-600 transition-transform ${open ? 'rotate-180' : ''}`}>
+            <path d="M6 9l6 6 6-6"/>
+          </svg>
+        </div>
+      </button>
+
+      {open && (
+        <div
+          className="absolute z-50 top-full mt-1 left-0 bg-[#0d0d0d] border border-[#222] rounded-xl shadow-2xl overflow-hidden flex"
+          style={{ minWidth: Math.max(460, containerRef.current?.offsetWidth ?? 460) }}
+        >
+          {/* Categorías */}
+          <div className="w-44 shrink-0 border-r border-[#1a1a1a] py-1 overflow-y-auto" style={{ maxHeight: 260 }}>
+            {grupos.length === 0 ? (
+              <p className="text-gray-600 text-xs px-3 py-4">Sin {categoriaLabel}</p>
+            ) : grupos.map(([cat, its]) => (
+              <button
+                key={cat}
+                type="button"
+                onMouseEnter={() => setActiveCat(cat)}
+                onClick={() => setActiveCat(cat)}
+                className={`w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center justify-between ${
+                  activeCat === cat ? 'bg-[#1a1a1a] text-white' : 'text-gray-500 hover:text-gray-300 hover:bg-[#111]'
+                }`}
+              >
+                <span className="truncate">{cat}</span>
+                <span className="text-gray-700 text-[10px] shrink-0 ml-1">({its.length})</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Lista */}
+          <div className="flex-1 flex flex-col min-w-0" style={{ maxHeight: 260 }}>
+            {activeCat ? (
+              <>
+                <div className="px-3 py-2 border-b border-[#1a1a1a] shrink-0">
+                  <input
+                    ref={searchRef}
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder={`Buscar ${categoriaLabel}...`}
+                    className="w-full bg-[#111] border border-[#1a1a1a] rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none focus:border-[#B3985B]/50"
+                  />
+                </div>
+                <div className="overflow-y-auto flex-1">
+                  {items.length === 0 ? (
+                    <p className="text-gray-600 text-xs px-3 py-4 text-center">Sin resultados</p>
+                  ) : (
+                    items.map(it => {
+                      const isSelected = value === it.id;
+                      return (
+                        <button
+                          key={it.id}
+                          type="button"
+                          onClick={() => handleSelect(it.id)}
+                          className={`w-full text-left px-3 py-2 text-xs transition-colors flex items-center gap-2 ${
+                            isSelected ? 'bg-[#B3985B]/10 text-[#B3985B]' : 'text-gray-400 hover:bg-[#111] hover:text-white'
+                          }`}
+                        >
+                          {it.imagenUrl ? (
+                            <img src={it.imagenUrl} alt="" className="w-8 h-8 object-contain rounded bg-[#0a0a0a] p-0.5 shrink-0" />
+                          ) : (
+                            <span className="w-8 h-8 rounded bg-[#141414] shrink-0 flex items-center justify-center">
+                              <Package className="w-3.5 h-3.5 text-gray-700" />
+                            </span>
+                          )}
+                          <span className="flex-1 min-w-0">
+                            <span className="block font-medium truncate">{it.nombre}</span>
+                            {it.sub && <span className="block text-[10px] text-gray-500 truncate">{it.sub}</span>}
+                          </span>
+                          <span className="shrink-0 text-[10px] whitespace-nowrap text-gray-600">
+                            {it.precio != null && it.precio > 0 ? formatCurrency(it.precio) : 'INCLUYE'}
                           </span>
                         </button>
                       );
