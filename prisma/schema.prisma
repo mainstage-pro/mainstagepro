@@ -991,6 +991,7 @@ model Producto {
   equipoDominante   Equipo?  @relation("ProductoEquipoDominante", fields: [equipoDominanteId], references: [id])
   precioManual      Float? // override opcional; si es null el precio = suma de rentas de los items
   precioFinal       Float    @default(0) // cache: precioManual ?? Σ(cantidad × equipo.precioRenta)
+  capacidadUniversal Boolean @default(false) // true = sirve para cualquier tamaño de evento; no depende de rangos de cobertura
   activo            Boolean  @default(true)
   orden             Int      @default(0)
   createdAt         DateTime @default(now())

@@ -54,6 +54,7 @@ type Producto = {
   equipoDominanteId: string | null;
   precioManual: number | null;
   precioFinal: number;
+  capacidadUniversal?: boolean;
   activo: boolean;
   nichos: string | null;
   rol: string | null;
@@ -136,7 +137,7 @@ function capacidadProducto(p: Producto): { min: number; max: number } | null {
 // Celda de capacidad editable en línea: al pasar el cursor aparece "Definir";
 // al dar clic se abre un panel con los rangos disponibles (chips) para elegir la
 // cantidad de personas que cubre. Guarda uniforme a todos los tipos del producto.
-function CapacidadCell({ producto, rangos, onSave }: { producto: Producto; rangos: string[]; onSave: (rangosSel: string[]) => Promise<void> }) {
+function CapacidadCell({ producto, rangos, onSave }: { producto: Producto; rangos: string[]; onSave: (rangosSel: string[], universal: boolean) => Promise<void> }) {
   const tipos = parseTags(producto.tiposEvento);
   const actuales = useMemo(() => {
     const s = new Set<string>();
@@ -145,15 +146,16 @@ function CapacidadCell({ producto, rangos, onSave }: { producto: Producto; rango
   }, [producto]);
   const [open, setOpen] = useState(false);
   const [sel, setSel] = useState<string[]>(actuales);
+  const [universal, setUniversal] = useState<boolean>(!!producto.capacidadUniversal);
   const [saving, setSaving] = useState(false);
-  useEffect(() => { if (open) setSel(actuales); }, [open, actuales]);
+  useEffect(() => { if (open) { setSel(actuales); setUniversal(!!producto.capacidadUniversal); } }, [open, actuales, producto]);
 
   const cap = capacidadProducto(producto);
   const sinTipo = tipos.length === 0;
 
   async function guardar() {
     setSaving(true);
-    try { await onSave(sel); setOpen(false); }
+    try { await onSave(sel, universal); setOpen(false); }
     catch { /* el toast lo maneja el padre */ }
     finally { setSaving(false); }
   }
@@ -163,10 +165,12 @@ function CapacidadCell({ producto, rangos, onSave }: { producto: Producto; rango
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        title={sinTipo ? "Clasifica el tipo de evento primero" : "Definir capacidad"}
+        title={producto.capacidadUniversal ? "Aplica a cualquier capacidad" : sinTipo ? "Clasifica el tipo de evento primero" : "Definir capacidad"}
         className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] tabular-nums transition-colors hover:bg-[#222]"
       >
-        {cap ? (
+        {producto.capacidadUniversal ? (
+          <span className="text-[#B3985B]">Cualquier tamaño</span>
+        ) : cap ? (
           <span className="text-gray-300">{cap.min}–{cap.max} pers.</span>
         ) : (
           <span className="text-[#555] group-hover:text-[#B3985B]">+ capacidad</span>
@@ -176,10 +180,16 @@ function CapacidadCell({ producto, rangos, onSave }: { producto: Producto; rango
         <>
           <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} />
           <div className="absolute z-30 mt-1 left-0 w-60 rounded-lg border border-[#2a2a2a] bg-[#0d0d0d] p-2.5 shadow-xl">
-            {sinTipo ? (
-              <p className="text-[11px] text-gray-500">Clasifica el tipo de evento del producto para poder asignarle capacidad.</p>
+            <label className="flex items-center gap-2 cursor-pointer mb-2.5">
+              <input type="checkbox" checked={universal} onChange={(e) => setUniversal(e.target.checked)} className="accent-[#B3985B]" />
+              <span className="text-[11px] text-gray-300">Aplica a cualquier capacidad</span>
+            </label>
+            {universal ? (
+              <p className="text-[10px] text-gray-500 mb-2.5">Sirve para cualquier tamaño de evento; no depende de un rango de personas.</p>
+            ) : sinTipo ? (
+              <p className="text-[11px] text-gray-500 mb-2.5">Clasifica el tipo de evento del producto para poder asignarle capacidad.</p>
             ) : rangos.length === 0 ? (
-              <p className="text-[11px] text-gray-500">No hay rangos configurados en paquetes todavía.</p>
+              <p className="text-[11px] text-gray-500 mb-2.5">No hay rangos configurados en paquetes todavía.</p>
             ) : (
               <>
                 <p className="text-[10px] text-gray-500 mb-1.5">Rangos de personas que cubre</p>
@@ -198,12 +208,12 @@ function CapacidadCell({ producto, rangos, onSave }: { producto: Producto; rango
                     );
                   })}
                 </div>
-                <div className="flex justify-end gap-2">
-                  <button type="button" onClick={() => setOpen(false)} className="text-[11px] text-gray-400 hover:text-white px-2 py-1">Cancelar</button>
-                  <button type="button" onClick={guardar} disabled={saving} className="text-[11px] bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold px-3 py-1 rounded-md disabled:opacity-50">{saving ? "Guardando…" : "Guardar"}</button>
-                </div>
               </>
             )}
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setOpen(false)} className="text-[11px] text-gray-400 hover:text-white px-2 py-1">Cancelar</button>
+              <button type="button" onClick={guardar} disabled={saving || (!universal && sinTipo)} className="text-[11px] bg-[#B3985B] hover:bg-[#c9a96a] text-black font-semibold px-3 py-1 rounded-md disabled:opacity-50">{saving ? "Guardando…" : "Guardar"}</button>
+            </div>
           </div>
         </>
       )}
@@ -230,6 +240,7 @@ type FormState = {
   items: FormItem[];
   accesorios: FormAccesorio[];
   coberturas: Cobertura[];
+  capacidadUniversal: boolean;
 };
 
 const FORM_EMPTY: FormState = {
@@ -248,6 +259,7 @@ const FORM_EMPTY: FormState = {
   items: [],
   accesorios: [],
   coberturas: [],
+  capacidadUniversal: false,
 };
 
 type NichoCatalogo = { id: string; tipoEventoSlug: string; nombre: string; slug: string; activo: boolean };
@@ -736,7 +748,22 @@ function ProductoEditor({
           Define a cuántas personas alcanza este producto en cada tipo de evento y, opcionalmente, para qué
           eventos específicos aplica. El mismo equipo cubre distinta gente según el tipo de evento.
         </p>
-        {form.tiposEvento.length === 0 ? (
+        <label className="flex items-center gap-2 cursor-pointer mb-2.5">
+          <input
+            type="checkbox"
+            checked={form.capacidadUniversal}
+            onChange={(e) => setForm({ ...form, capacidadUniversal: e.target.checked })}
+            className="accent-[#B3985B]"
+          />
+          <span className="text-[11px] text-gray-300">
+            Aplica a cualquier capacidad <span className="text-gray-600">(independiente del tamaño del evento)</span>
+          </span>
+        </label>
+        {form.capacidadUniversal ? (
+          <p className="text-[11px] text-gray-500 rounded-lg border border-dashed border-[#222] px-3 py-2">
+            Este producto sirve para cualquier tamaño de evento; no depende de un rango de personas.
+          </p>
+        ) : form.tiposEvento.length === 0 ? (
           <p className="text-[11px] text-gray-500 rounded-lg border border-dashed border-[#222] px-3 py-2">
             Marca uno o más tipos de evento arriba para definir su cobertura.
           </p>
@@ -939,6 +966,7 @@ export function ProductosSection() {
       items: p.items.map((it) => ({ equipoId: it.equipo.id, cantidad: it.cantidad })),
       accesorios: (p.accesorios ?? []).map((a) => ({ accesorioId: a.accesorio.id, cantidad: a.cantidad })),
       coberturas: parseCoberturas(p.coberturas),
+      capacidadUniversal: !!p.capacidadUniversal,
     });
     setModalOpen(true);
   }
@@ -964,6 +992,7 @@ export function ProductosSection() {
         items: form.items,
         accesorios: form.accesorios,
         coberturas: form.coberturas.filter((c) => form.tiposEvento.includes(c.tipoEvento)),
+        capacidadUniversal: form.capacidadUniversal,
       };
       const res = await fetch(editId ? `/api/productos/${editId}` : "/api/productos", {
         method: editId ? "PATCH" : "POST",
@@ -1034,17 +1063,24 @@ export function ProductosSection() {
   // Guardado inline de capacidad: aplica los rangos elegidos de forma uniforme a
   // cada tipo de evento del producto (conserva sus subtipos). El editor completo
   // sigue permitiendo rangos distintos por tipo. Requiere al menos un tipo.
-  async function saveCapacidadProducto(id: string, rangosSel: string[]) {
+  async function saveCapacidadProducto(id: string, rangosSel: string[], universal: boolean) {
     const p = productos.find((x) => x.id === id);
     if (!p) return;
-    const tipos = parseTags(p.tiposEvento);
-    if (tipos.length === 0) { toast.error("Clasifica el tipo de evento primero"); throw new Error("sin-tipo"); }
-    const existentes = new Map((p.coberturas ?? []).map((c) => [c.tipoEvento, c]));
-    const cobs = tipos.map((t) => ({ tipoEvento: t, rangos: rangosSel, subtipos: parseTags(existentes.get(t)?.subtipos ?? null) }));
+    let payload: Record<string, unknown>;
+    if (universal) {
+      // No depende del tamaño: basta con marcar la bandera; los rangos previos se conservan.
+      payload = { capacidadUniversal: true };
+    } else {
+      const tipos = parseTags(p.tiposEvento);
+      if (tipos.length === 0) { toast.error("Clasifica el tipo de evento primero"); throw new Error("sin-tipo"); }
+      const existentes = new Map((p.coberturas ?? []).map((c) => [c.tipoEvento, c]));
+      const cobs = tipos.map((t) => ({ tipoEvento: t, rangos: rangosSel, subtipos: parseTags(existentes.get(t)?.subtipos ?? null) }));
+      payload = { coberturas: cobs, capacidadUniversal: false };
+    }
     const res = await fetch(`/api/productos/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ coberturas: cobs }),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) { toast.error("No se pudo guardar la capacidad"); throw new Error("save-failed"); }
     const json = await res.json();
@@ -1080,13 +1116,13 @@ export function ProductosSection() {
       if (filtroRol !== "TODOS" && (p.rol ?? "base") !== filtroRol) return false;
       if (filtroDisp !== "TODAS" && (p.disponibilidad ?? "propio") !== filtroDisp) return false;
       if (soloSinClasificar && parseTags(p.tiposEvento).length > 0) return false;
-      if (soloSinCapacidad && capacidadProducto(p) !== null) return false;
+      if (soloSinCapacidad && (p.capacidadUniversal || capacidadProducto(p) !== null)) return false;
       return true;
     });
   }, [productos, filtroCat, filtroTipo, filtroRol, filtroDisp, soloSinClasificar, soloSinCapacidad]);
 
   const sinCapacidadCount = useMemo(
-    () => productos.filter((p) => capacidadProducto(p) === null).length,
+    () => productos.filter((p) => !p.capacidadUniversal && capacidadProducto(p) === null).length,
     [productos]
   );
 
@@ -1312,7 +1348,7 @@ export function ProductosSection() {
                           />
                         </td>
                         <td className="px-3 py-2.5 hidden lg:table-cell relative" onClick={(ev) => ev.stopPropagation()}>
-                          <CapacidadCell producto={p} rangos={rangos} onSave={(sel) => saveCapacidadProducto(p.id, sel)} />
+                          <CapacidadCell producto={p} rangos={rangos} onSave={(sel, universal) => saveCapacidadProducto(p.id, sel, universal)} />
                         </td>
                         <td className="px-3 py-2.5 text-center hidden sm:table-cell text-white tabular-nums">
                           {p.items.length}

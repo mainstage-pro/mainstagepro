@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
   await ensureProductosTables();
 
   const body = await req.json();
-  const { nombre, descripcion, categoria, tiposEvento, nichos, rol, disponibilidad, proveedorRef, costoRef, imagenUrl, equipoDominanteId, precioManual, items, accesorios, coberturas } = body;
+  const { nombre, descripcion, categoria, tiposEvento, nichos, rol, disponibilidad, proveedorRef, costoRef, imagenUrl, equipoDominanteId, precioManual, items, accesorios, coberturas, capacidadUniversal } = body;
 
   if (!nombre || !Array.isArray(items) || items.length === 0) {
     return NextResponse.json({ error: "nombre y al menos un equipo son requeridos" }, { status: 400 });
@@ -108,6 +108,7 @@ export async function POST(req: NextRequest) {
       equipoDominanteId: domId,
       precioManual: precioManual != null && precioManual !== "" ? Number(precioManual) : null,
       precioFinal,
+      capacidadUniversal: !!capacidadUniversal,
       orden: (maxOrden._max.orden ?? 0) + 1,
       items: {
         create: limpios.map((it, idx) => ({ equipoId: it.equipoId, cantidad: it.cantidad, orden: idx })),

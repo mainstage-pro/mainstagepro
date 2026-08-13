@@ -60,7 +60,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const { nombre, descripcion, categoria, tiposEvento, nichos, rol, disponibilidad, proveedorRef, costoRef, imagenUrl, equipoDominanteId, precioManual, items, accesorios, activo, coberturas } = body;
+  const { nombre, descripcion, categoria, tiposEvento, nichos, rol, disponibilidad, proveedorRef, costoRef, imagenUrl, equipoDominanteId, precioManual, items, accesorios, activo, coberturas, capacidadUniversal } = body;
 
   const data: Record<string, unknown> = {};
   if (nombre !== undefined) data.nombre = nombre;
@@ -79,6 +79,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (precioManual !== undefined)
     data.precioManual = precioManual != null && precioManual !== "" ? Number(precioManual) : null;
   if (activo !== undefined) data.activo = !!activo;
+  if (capacidadUniversal !== undefined) data.capacidadUniversal = !!capacidadUniversal;
 
   // Si vienen items, reemplazamos el set completo y recalculamos precio
   let recalcItems: ItemInput[] | null = null;
