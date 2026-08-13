@@ -85,6 +85,9 @@ export async function ensureProductosTables() {
   await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "proveedorRef" TEXT;`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "costoRef" DOUBLE PRECISION;`);
   await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "capacidadUniversal" BOOLEAN NOT NULL DEFAULT false;`);
+  // Clasificación fina para el intercambio de conceptos (botón ⇄).
+  await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "familia" TEXT;`);
+  await prisma.$executeRawUnsafe(`ALTER TABLE "productos" ADD COLUMN IF NOT EXISTS "subfamilia" TEXT;`);
   tablesEnsured = true;
 }
 

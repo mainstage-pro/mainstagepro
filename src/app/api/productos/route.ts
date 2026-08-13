@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
 import { ensureProductosTables, calcularPrecioProducto, limpiarCoberturas, limpiarAccesorios, type ItemInput } from "@/lib/productos";
+import { clasificarFamilia } from "@/lib/producto-familias";
 
 const PRODUCTO_INCLUDE = {
   items: {
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
   await ensureProductosTables();
 
   const body = await req.json();
-  const { nombre, descripcion, categoria, tiposEvento, nichos, rol, disponibilidad, proveedorRef, costoRef, imagenUrl, equipoDominanteId, precioManual, items, accesorios, coberturas, capacidadUniversal } = body;
+  const { nombre, descripcion, categoria, familia, subfamilia, tiposEvento, nichos, rol, disponibilidad, proveedorRef, costoRef, imagenUrl, equipoDominanteId, precioManual, items, accesorios, coberturas, capacidadUniversal } = body;
 
   if (!nombre || !Array.isArray(items) || items.length === 0) {
     return NextResponse.json({ error: "nombre y al menos un equipo son requeridos" }, { status: 400 });
@@ -93,11 +94,18 @@ export async function POST(req: NextRequest) {
   const maxOrden = await prisma.producto.aggregate({ _max: { orden: true } });
   const cobs = limpiarCoberturas(coberturas);
 
+  // familia/subfamilia: explícitas si vienen; si no, se auto-clasifican por el nombre.
+  const auto = clasificarFamilia(nombre);
+  const familiaFinal = familia !== undefined ? (familia || null) : auto.familia;
+  const subfamiliaFinal = subfamilia !== undefined ? (subfamilia || null) : auto.subfamilia;
+
   const producto = await prisma.producto.create({
     data: {
       nombre,
       descripcion: descripcion || null,
       categoria: categoria || null,
+      familia: familiaFinal,
+      subfamilia: subfamiliaFinal,
       tiposEvento: Array.isArray(tiposEvento) ? JSON.stringify(tiposEvento) : tiposEvento || null,
       nichos: Array.isArray(nichos) ? (nichos.length ? JSON.stringify(nichos) : null) : nichos || null,
       rol: rol === "adicional" ? "adicional" : "base",

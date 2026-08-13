@@ -455,6 +455,7 @@ model Cotizacion {
   trato                 Trato?    @relation(fields: [tratoId], references: [id])
   paqueteId             String? // Paquete comercial base del que se desglosó (para renders en presentación)
   paquete               Paquete?  @relation(fields: [paqueteId], references: [id])
+  sustituciones         String? // JSON: sustituciones de concepto vs el paquete base [{ slot, base, final, deltaPrecio, cambioDisponibilidad }]
   clienteId             String
   cliente               Cliente   @relation(fields: [clienteId], references: [id])
   creadaPorId           String?
@@ -1003,6 +1004,8 @@ model Producto {
   nombre            String
   descripcion       String?
   categoria         String? // AUDIO | ILUMINACION | VIDEO | DJ | ESTRUCTURA | OTRO — agrupa en la UI
+  familia           String? // slug de familia comercial (sistema-audio, microfonia, ...) — agrupa alternativas para el botón ⇄
+  subfamilia        String? // segundo nivel para set-iluminacion (beam / spot / wash / par-led / flasher / blinder / laser / kaleidos / pinspot)
   tiposEvento       String? // JSON array: ["MUSICAL","SOCIAL","EMPRESARIAL"] — sugerencia por tipo de evento
   nichos            String? // JSON array de slugs de nicho donde aplica (Bloque 2)
   rol               String   @default("base") // base | adicional
@@ -1087,6 +1090,7 @@ model Paquete {
   rangoPersonas        String? // "1-100" | "100-300" | ... | "3000-5000"
   subtiposEvento       String? // JSON array de subtipos específicos (Boda, Concierto, etc.)
   adicionalesSugeridos String? // JSON array de adicionalIds del catálogo (Bloque 3)
+  esBase               Boolean  @default(false) // true = Paquete Base (esqueleto sin nicho, seccionado por tipo de evento)
   resumen              String? // resumen corto (generable con IA)
   descripcion          String?  @db.Text // descripción general (generable con IA)
   propuestaValor       String?  @db.Text // propuesta de valor (generable con IA)

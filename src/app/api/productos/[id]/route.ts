@@ -60,12 +60,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params;
   const body = await req.json();
-  const { nombre, descripcion, categoria, tiposEvento, nichos, rol, disponibilidad, proveedorRef, costoRef, imagenUrl, equipoDominanteId, precioManual, items, accesorios, activo, coberturas, capacidadUniversal } = body;
+  const { nombre, descripcion, categoria, familia, subfamilia, tiposEvento, nichos, rol, disponibilidad, proveedorRef, costoRef, imagenUrl, equipoDominanteId, precioManual, items, accesorios, activo, coberturas, capacidadUniversal } = body;
 
   const data: Record<string, unknown> = {};
   if (nombre !== undefined) data.nombre = nombre;
   if (descripcion !== undefined) data.descripcion = descripcion || null;
   if (categoria !== undefined) data.categoria = categoria || null;
+  if (familia !== undefined) data.familia = familia || null;
+  if (subfamilia !== undefined) data.subfamilia = subfamilia || null;
   if (tiposEvento !== undefined)
     data.tiposEvento = Array.isArray(tiposEvento) ? JSON.stringify(tiposEvento) : tiposEvento || null;
   if (nichos !== undefined)

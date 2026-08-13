@@ -92,6 +92,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       jornadasPlan,
       zonaEvento,
       numTecnicosZona,
+      sustituciones,
       // Multi-evento + Gastos de producción
       nombreCotizacion,
       descripcionCotizacion,
@@ -148,6 +149,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
           where: { id },
           data: {
             paqueteId: paqueteId !== undefined ? (paqueteId || null) : undefined,
+            sustituciones: sustituciones !== undefined
+              ? (Array.isArray(sustituciones) ? (sustituciones.length ? JSON.stringify(sustituciones) : null) : (sustituciones || null))
+              : undefined,
             notasSecciones: notasSecciones ?? null,
             jornadasPlan: jornadasPlan !== undefined ? (jornadasPlan ? JSON.stringify(jornadasPlan) : null) : undefined,
             zonaEvento: zonaEvento ?? "LOCAL",

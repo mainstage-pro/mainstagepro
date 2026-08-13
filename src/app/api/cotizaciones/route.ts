@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
       incluirChofer = false,
       zonaEvento = "LOCAL",
       numTecnicosZona = 0,
+      sustituciones = null,
       ...campos
     } = body;
 
@@ -119,6 +120,9 @@ export async function POST(request: NextRequest) {
         numeroCotizacion,
         tratoId: tratoFinalId,
         paqueteId: paqueteId || null,
+        sustituciones: Array.isArray(sustituciones)
+          ? (sustituciones.length ? JSON.stringify(sustituciones) : null)
+          : (sustituciones || null),
         clienteId,
         creadaPorId: session.id,
         descuentoPatrocinioPct,

@@ -215,7 +215,6 @@ export const NAV: NavSection[] = [
         icon: Package,
         children: [
           { key: "comercial-productos", label: "Productos y paquetes", href: "/comercial/productos" },
-          { key: "grupos-equipo", label: "Grupos de equipo", href: "/admin/grupos-equipo", adminOnly: true },
         ],
       },
       { key: "presentaciones", label: "Presentaciones", href: "/presentaciones", icon: Presentation },

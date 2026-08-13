@@ -427,6 +427,14 @@ export async function ensureCotizacionPaqueteColumn() {
       );
     } catch { /* ya existe */ }
   }
+  // Trazabilidad de sustituciones vs el paquete base (JSON). Aditiva idempotente.
+  if (!await columnExists('cotizaciones', 'sustituciones')) {
+    try {
+      await prisma.$executeRawUnsafe(
+        `ALTER TABLE cotizaciones ADD COLUMN IF NOT EXISTS "sustituciones" TEXT`
+      );
+    } catch { /* ya existe */ }
+  }
   _cotizacionPaqueteReady = true;
 }
 

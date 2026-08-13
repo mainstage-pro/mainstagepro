@@ -137,6 +137,8 @@ export async function ensurePaquetesTables() {
   });
   // Bloque 3: adicionales sugeridos del catálogo (columna aditiva idempotente).
   await prisma.$executeRawUnsafe(`ALTER TABLE "paquetes" ADD COLUMN IF NOT EXISTS "adicionalesSugeridos" TEXT;`);
+  // Paquetes Base: esqueletos sin nicho, seccionados por tipo de evento (columna aditiva idempotente).
+  await prisma.$executeRawUnsafe(`ALTER TABLE "paquetes" ADD COLUMN IF NOT EXISTS "esBase" BOOLEAN NOT NULL DEFAULT false;`);
   tablesEnsured = true;
 }
 

@@ -5,5 +5,4 @@ export const comercialProductosTabs: ModuleNavTab[] = [
   { href: "/comercial/productos/paquetes", label: "Paquetes", accessKey: "comercial-productos" },
   { href: "/comercial/productos/catalogo-eventos", label: "Catálogo de Eventos", accessKey: "comercial-productos" },
   { href: "/comercial/productos/cobertura", label: "Cobertura", accessKey: "comercial-productos" },
-  { href: "/comercial/productos/grupos-equipo", label: "Grupos de equipo", accessKey: "grupos-equipo", adminOnly: true },
 ];

@@ -9,6 +9,7 @@ import { comercialProductosTabs } from "./tabs";
 import { SUBTIPOS_EVENTO, parseCoberturas, type Cobertura } from "@/lib/constants";
 import { Guitar, PartyPopper, Briefcase, Package, type LucideIcon } from "lucide-react";
 import { TipoEventoCell, type TipoEventoOpcion } from "@/components/TipoEventoCell";
+import { FAMILIAS, SUBFAMILIAS_ILUMINACION } from "@/lib/producto-familias";
 
 // ── Tipos ───────────────────────────────────────────────────────────────────
 type CambioClasifProp = { id: string; nombre: string; tiposAntes: string[]; tiposDespues: string[]; nichosAntes: string[]; nichosDespues: string[] };
@@ -49,6 +50,8 @@ type Producto = {
   nombre: string;
   descripcion: string | null;
   categoria: string | null;
+  familia: string | null;
+  subfamilia: string | null;
   tiposEvento: string | null;
   imagenUrl: string | null;
   equipoDominanteId: string | null;
@@ -228,6 +231,8 @@ type FormState = {
   nombre: string;
   descripcion: string;
   categoria: string;
+  familia: string;
+  subfamilia: string;
   tiposEvento: string[];
   nichos: string[];
   rol: string;
@@ -247,6 +252,8 @@ const FORM_EMPTY: FormState = {
   nombre: "",
   descripcion: "",
   categoria: "",
+  familia: "",
+  subfamilia: "",
   tiposEvento: [],
   nichos: [],
   rol: "base",
@@ -443,6 +450,38 @@ function ProductoEditor({
             })}
           </div>
         </div>
+      </div>
+
+      {/* Familia comercial (agrupa alternativas para el botón ⇄) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="text-[11px] text-[#B3985B] font-medium block mb-1">Familia (intercambio)</label>
+          <select
+            value={form.familia}
+            onChange={(e) => setForm({ ...form, familia: e.target.value, subfamilia: e.target.value === "set-iluminacion" ? form.subfamilia : "" })}
+            className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+          >
+            <option value="">— Sin familia —</option>
+            {FAMILIAS.map((f) => (
+              <option key={f.slug} value={f.slug}>{f.label}</option>
+            ))}
+          </select>
+        </div>
+        {form.familia === "set-iluminacion" && (
+          <div>
+            <label className="text-[11px] text-[#B3985B] font-medium block mb-1">Subfamilia (fixture)</label>
+            <select
+              value={form.subfamilia}
+              onChange={(e) => setForm({ ...form, subfamilia: e.target.value })}
+              className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
+            >
+              <option value="">— Sin subfamilia —</option>
+              {SUBFAMILIAS_ILUMINACION.map((s) => (
+                <option key={s.slug} value={s.slug}>{s.label}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       {/* Clasificación comercial: rol + disponibilidad */}
@@ -954,6 +993,8 @@ export function ProductosSection() {
       nombre: p.nombre,
       descripcion: p.descripcion ?? "",
       categoria: p.categoria ?? "",
+      familia: p.familia ?? "",
+      subfamilia: p.subfamilia ?? "",
       tiposEvento: parseTags(p.tiposEvento),
       nichos: parseTags(p.nichos),
       rol: p.rol === "adicional" ? "adicional" : "base",
@@ -980,6 +1021,8 @@ export function ProductosSection() {
         nombre: form.nombre.trim(),
         descripcion: form.descripcion.trim(),
         categoria: form.categoria,
+        familia: form.familia || null,
+        subfamilia: form.familia === "set-iluminacion" ? (form.subfamilia || null) : null,
         tiposEvento: form.tiposEvento,
         nichos: form.nichos,
         rol: form.rol,

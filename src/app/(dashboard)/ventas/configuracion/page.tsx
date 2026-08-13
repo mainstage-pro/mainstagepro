@@ -23,7 +23,6 @@ export default function VentasConfiguracionPage() {
           title: "Plantillas de cotización",
           items: [
             { label: "Plantillas de cotización", description: "Combos de líneas, precios y vigencia reutilizables al cotizar", href: "/cotizaciones/plantillas" },
-            { label: "Grupos / paquetes de equipo", description: "Paquetes predefinidos de equipo sugeridos en cotizaciones", href: "/admin/grupos-equipo" },
           ],
         },
         {

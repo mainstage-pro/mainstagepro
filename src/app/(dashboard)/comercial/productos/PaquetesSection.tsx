@@ -99,6 +99,7 @@ type Paquete = {
   resumen: string | null;
   descripcion: string | null;
   propuestaValor: string | null;
+  esBase: boolean;
   items: PaqueteItem[];
   conceptos: PaqueteConcepto[];
   imagenes: { id: string; url: string; tipo: string; orden: number }[];
@@ -151,6 +152,7 @@ type FormState = {
   resumen: string;
   descripcion: string;
   propuestaValor: string;
+  esBase: boolean;
   items: FormItem[];
   conceptos: FormConcepto[];
   imagenes: { url: string; tipo: "REFERENCIA" | "RENDER" }[];
@@ -158,7 +160,7 @@ type FormState = {
 
 const FORM_EMPTY: FormState = {
   nombre: "", rangoPersonas: "", subtipos: [], adicionales: [], resumen: "", descripcion: "",
-  propuestaValor: "", items: [], conceptos: [], imagenes: [],
+  propuestaValor: "", esBase: false, items: [], conceptos: [], imagenes: [],
 };
 
 function uid() { return Math.random().toString(36).slice(2); }
@@ -183,6 +185,7 @@ function PaqueteEditor({
   const [busqueda, setBusqueda] = useState("");
   const [subiendo, setSubiendo] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [swapIdx, setSwapIdx] = useState<number | null>(null);
   const [nuevoConcepto, setNuevoConcepto] = useState<{ tipo: string; rolTecnicoId: string; nivel: string; jornada: string; concepto: string; descripcion: string; precio: string; cantidad: string; dias: string }>({
     tipo: "OPERACION_TECNICA", rolTecnicoId: "", nivel: "AA", jornada: "MEDIA",
     concepto: CONCEPTOS_COMIDA[0].label, descripcion: "", precio: "", cantidad: "1", dias: "1",
@@ -267,6 +270,46 @@ function PaqueteEditor({
   function removeItem(idx: number) {
     setForm({ ...form, items: form.items.filter((_, i) => i !== idx) });
   }
+  // Sustituye un renglón por otro del mismo tipo, conservando la cantidad.
+  function swapItem(idx: number, nuevoId: string) {
+    setForm({
+      ...form,
+      items: form.items.map((it, i) => {
+        if (i !== idx) return it;
+        return it.tipo === "PRODUCTO"
+          ? { ...it, productoId: nuevoId }
+          : { ...it, equipoId: nuevoId };
+      }),
+    });
+    setSwapIdx(null);
+  }
+  // Candidatos de sustitución: mismo tipo y misma categoría, ordenados por
+  // cercanía de precio al renglón actual; excluye el propio y los ya en la lista.
+  const swapCandidatos = useMemo(() => {
+    if (swapIdx === null) return [] as { id: string; nombre: string; precio: number; imagenUrl: string | null; extra: string }[];
+    const it = form.items[swapIdx];
+    if (!it) return [];
+    if (it.tipo === "PRODUCTO") {
+      const actual = productoMap.get(it.productoId!);
+      const cat = actual?.categoria ?? null;
+      const usados = new Set(form.items.filter((x) => x.tipo === "PRODUCTO").map((x) => x.productoId));
+      const base = actual?.precioFinal ?? 0;
+      return productos
+        .filter((p) => p.id !== it.productoId && !usados.has(p.id) && (cat ? p.categoria === cat : true))
+        .sort((a, b) => Math.abs(a.precioFinal - base) - Math.abs(b.precioFinal - base))
+        .slice(0, 40)
+        .map((p) => ({ id: p.id, nombre: p.nombre, precio: p.precioFinal, imagenUrl: p.imagenUrl, extra: p.categoria ?? "" }));
+    }
+    const actual = equipoMap.get(it.equipoId!);
+    const catId = actual?.categoria?.id ?? null;
+    const usados = new Set(form.items.filter((x) => x.tipo === "EQUIPO").map((x) => x.equipoId));
+    const base = actual?.precioRenta ?? 0;
+    return equipos
+      .filter((e) => e.id !== it.equipoId && !usados.has(e.id) && (catId ? e.categoria?.id === catId : true))
+      .sort((a, b) => Math.abs(a.precioRenta - base) - Math.abs(b.precioRenta - base))
+      .slice(0, 40)
+      .map((e) => ({ id: e.id, nombre: nombreEq(e), precio: e.precioRenta, imagenUrl: e.imagenUrl, extra: e.categoria?.nombre ?? "" }));
+  }, [swapIdx, form.items, productos, equipos, productoMap, equipoMap]);
 
   async function onImgs(e: React.ChangeEvent<HTMLInputElement>, tipo: "REFERENCIA" | "RENDER") {
     const files = Array.from(e.target.files ?? []);
@@ -354,6 +397,16 @@ function PaqueteEditor({
           </select>
         </div>
       </div>
+
+      {/* Paquete base */}
+      <label className="flex items-start gap-2.5 rounded-lg border border-[#1e1e1e] bg-[#0d0d0d] px-3 py-2.5 cursor-pointer">
+        <input type="checkbox" checked={form.esBase} onChange={(e) => setForm({ ...form, esBase: e.target.checked })}
+          className="mt-0.5 accent-[#B3985B]" />
+        <span>
+          <span className="text-white text-sm font-medium">Paquete base (plantilla)</span>
+          <span className="block text-gray-500 text-xs mt-0.5">Esqueleto reutilizable sin nicho, punto de partida para armar cotizaciones. Los paquetes base aparecen en la pestaña «Base».</span>
+        </span>
+      </label>
 
       {/* Subtipos / nichos del catálogo */}
       <div>
@@ -491,6 +544,7 @@ function PaqueteEditor({
                       className="w-12 h-6 bg-[#111] border border-[#2a2a2a] rounded-md text-white text-xs text-center focus:outline-none focus:border-[#B3985B]" />
                     <button type="button" onClick={() => setItemCant(idx, it.cantidad + 1)} className="w-6 h-6 rounded-md bg-[#1e1e1e] hover:bg-[#2a2a2a] text-white text-sm">+</button>
                   </div>
+                  <button type="button" title="Sustituir por equivalente" onClick={() => setSwapIdx(idx)} className="w-6 h-6 rounded-md text-gray-500 hover:text-[#B3985B] hover:bg-[#B3985B]/10 text-sm shrink-0">⇄</button>
                   <button type="button" onClick={() => removeItem(idx)} className="w-6 h-6 rounded-md text-gray-500 hover:text-red-400 hover:bg-red-500/10 text-sm shrink-0">×</button>
                 </div>
               );
@@ -649,7 +703,79 @@ function PaqueteEditor({
           subtipos: form.subtipos,
         }}
       />
+
+      <SwapModal
+        open={swapIdx !== null}
+        onClose={() => setSwapIdx(null)}
+        actual={swapIdx !== null ? (() => {
+          const it = form.items[swapIdx];
+          if (!it) return null;
+          if (it.tipo === "PRODUCTO") { const p = productoMap.get(it.productoId!); return p ? { nombre: p.nombre, precio: p.precioFinal } : null; }
+          const e = equipoMap.get(it.equipoId!); return e ? { nombre: nombreEq(e), precio: e.precioRenta } : null;
+        })() : null}
+        candidatos={swapCandidatos}
+        onPick={(id) => { if (swapIdx !== null) swapItem(swapIdx, id); }}
+      />
     </div>
+  );
+}
+
+// ── Sustitución de un renglón por equivalente ─────────────────────────────────
+function SwapModal({
+  open, onClose, actual, candidatos, onPick,
+}: {
+  open: boolean;
+  onClose: () => void;
+  actual: { nombre: string; precio: number } | null;
+  candidatos: { id: string; nombre: string; precio: number; imagenUrl: string | null; extra: string }[];
+  onPick: (id: string) => void;
+}) {
+  const [q, setQ] = useState("");
+  useEffect(() => { if (open) setQ(""); }, [open]);
+  const base = actual?.precio ?? 0;
+  const lista = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return s ? candidatos.filter((c) => c.nombre.toLowerCase().includes(s)) : candidatos;
+  }, [q, candidatos]);
+  return (
+    <Modal open={open} onClose={onClose} title="Sustituir por equivalente" maxWidth="max-w-lg">
+      {actual && (
+        <div className="mb-3 rounded-lg border border-[#1e1e1e] bg-[#0d0d0d] px-3 py-2 flex items-center justify-between">
+          <span className="text-white text-sm truncate">Actual: {actual.nombre}</span>
+          <span className="text-[#B3985B] text-sm shrink-0 ml-2">{fmx(base)}</span>
+        </div>
+      )}
+      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filtrar candidatos…"
+        className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B] mb-2" />
+      <div className="space-y-1 max-h-[50vh] overflow-y-auto">
+        {lista.length === 0 ? (
+          <p className="text-center text-gray-600 text-sm py-6">No hay equivalentes en la misma categoría.</p>
+        ) : lista.map((c) => {
+          const delta = c.precio - base;
+          return (
+            <button key={c.id} type="button" onClick={() => onPick(c.id)}
+              className="w-full flex items-center gap-2.5 text-left px-2 py-1.5 rounded-lg border border-[#1e1e1e] bg-[#0d0d0d] hover:border-[#B3985B]/40 transition-colors">
+              <span className="w-9 h-9 rounded-md bg-[#1a1a1a] overflow-hidden shrink-0 flex items-center justify-center">
+                {c.imagenUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={c.imagenUrl} alt="" className="w-full h-full object-cover" />
+                ) : <Package strokeWidth={1.75} className="w-4 h-4 text-gray-700" />}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-xs font-medium truncate">{c.nombre}</p>
+                {c.extra && <p className="text-gray-500 text-[10px] truncate">{c.extra}</p>}
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-[#B3985B] text-xs">{fmx(c.precio)}</p>
+                <p className={`text-[10px] ${delta > 0 ? "text-red-400" : delta < 0 ? "text-emerald-400" : "text-gray-600"}`}>
+                  {delta === 0 ? "igual" : `${delta > 0 ? "+" : "−"}${fmx(Math.abs(delta))}`}
+                </p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </Modal>
   );
 }
 
@@ -885,6 +1011,7 @@ export default function PaquetesSection() {
   const [rangosModalOpen, setRangosModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tipoTab, setTipoTab] = useState<string>("MUSICAL");
+  const [baseTab, setBaseTab] = useState<"TODOS" | "BASE" | "MEDIDA">("TODOS");
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -937,6 +1064,7 @@ export default function PaquetesSection() {
       resumen: p.resumen ?? "",
       descripcion: p.descripcion ?? "",
       propuestaValor: p.propuestaValor ?? "",
+      esBase: p.esBase,
       items: p.items.map((it) => ({
         tipo: it.tipo === "PRODUCTO" ? "PRODUCTO" : "EQUIPO",
         equipoId: it.equipo?.id, productoId: it.producto?.id, cantidad: it.cantidad,
@@ -992,6 +1120,7 @@ export default function PaquetesSection() {
         resumen: form.resumen,
         descripcion: form.descripcion,
         propuestaValor: form.propuestaValor,
+        esBase: form.esBase,
         items: form.items,
         conceptos: form.conceptos,
         imagenes: form.imagenes,
@@ -1020,7 +1149,10 @@ export default function PaquetesSection() {
     else toast.error("No se pudo eliminar.");
   }
 
-  const visibles = useMemo(() => paquetes.filter((p) => p.tipoEvento === tipoTab), [paquetes, tipoTab]);
+  const visibles = useMemo(() => paquetes.filter((p) =>
+    p.tipoEvento === tipoTab &&
+    (baseTab === "TODOS" || (baseTab === "BASE" ? p.esBase : !p.esBase))
+  ), [paquetes, tipoTab, baseTab]);
 
   function precioPaquete(p: Paquete): number {
     const items = p.items.reduce((s, it) => {
@@ -1044,6 +1176,14 @@ export default function PaquetesSection() {
           ))}
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 p-1 bg-[#0d0d0d] border border-[#1e1e1e] rounded-lg">
+            {([["TODOS", "Todos"], ["BASE", "Base"], ["MEDIDA", "A medida"]] as const).map(([k, label]) => (
+              <button key={k} onClick={() => setBaseTab(k)}
+                className={`px-3 py-1.5 rounded-md text-xs transition-colors ${baseTab === k ? "bg-[#B3985B] text-black font-semibold" : "text-gray-400 hover:text-white"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
           <button onClick={() => setRangosModalOpen(true)}
             className="px-3 py-2 rounded-lg bg-[#1a1a1a] border border-[#333] text-gray-300 hover:text-white text-sm transition-colors inline-flex items-center gap-1.5">
             <Users strokeWidth={1.75} className="w-4 h-4" /> Rangos de personas
@@ -1080,6 +1220,9 @@ export default function PaquetesSection() {
                   )}
                   {p.rangoPersonas && (
                     <span className="absolute top-2 left-2 text-[10px] bg-black/70 text-white rounded-full px-2 py-0.5">{p.rangoPersonas} pers.</span>
+                  )}
+                  {p.esBase && (
+                    <span className="absolute top-2 right-2 text-[9px] font-semibold uppercase tracking-wide bg-[#B3985B] text-black rounded-full px-2 py-0.5">Base</span>
                   )}
                 </div>
                 <div className="p-3">

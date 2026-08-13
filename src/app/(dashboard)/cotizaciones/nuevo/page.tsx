@@ -341,6 +341,9 @@ function CotizadorForm() {
 
   // Líneas
   const [lineasEquipo, setLineasEquipo] = useState<LineaEquipo[]>([]);
+  // Trazabilidad de sustituciones de equipo vs el paquete base / lista original.
+  const [sustituciones, setSustituciones] = useState<{ base: string; final: string; deltaPrecio: number; fecha: string }[]>([]);
+  const [swapLineaId, setSwapLineaId] = useState<string | null>(null);
   const [lineasPaquete, setLineasPaquete] = useState<LineaPaquete[]>([]);
   const [lineasExterno, setLineasExterno] = useState<LineaExterno[]>([]);
   const [lineasOp, setLineasOp] = useState<LineaOp[]>([]);
@@ -671,6 +674,9 @@ function CotizadorForm() {
         if (cot.zonaEvento) setZonaEvento(cot.zonaEvento as "LOCAL"|"BAJIO"|"NACIONAL");
         if (cot.numTecnicosZona) setNumTecnicosZona(cot.numTecnicosZona);
         if (cot.paqueteId) setPaqueteBaseId(cot.paqueteId);
+        if (cot.sustituciones) {
+          try { const s = JSON.parse(cot.sustituciones); if (Array.isArray(s)) setSustituciones(s); } catch { /* ignore */ }
+        }
         // Heredar la selección del descubrimiento del trato. Si la cotización es
         // el panel de sugerencias, donde el vendedor los agrega manualmente
         // (checklist consciente).
@@ -1131,6 +1137,37 @@ function CotizadorForm() {
       u.subtotal = u.precioUnitario * u.cantidad * u.dias;
       return u;
     }));
+  }
+
+  // Sustituye el equipo de una línea por un equivalente, conservando cantidad y días.
+  // Registra la sustitución en `sustituciones` para trazabilidad vs el paquete base.
+  function swapEquipoLinea(lineId: string, nuevoEquipoId: string) {
+    const nuevo = equipos.find(e => e.id === nuevoEquipoId);
+    if (!nuevo) return;
+    const linea = lineasEquipo.find(l => l.id === lineId);
+    const anterior = linea ? equipos.find(e => e.id === linea.equipoId) : null;
+    const precioNuevo = preciosCliente[nuevoEquipoId] ?? nuevo.precioRenta;
+    setLineasEquipo(prev => prev.map(l => {
+      if (l.id !== lineId) return l;
+      const u: LineaEquipo = {
+        ...l,
+        equipoId: nuevo.id,
+        descripcion: nuevo.descripcion,
+        marca: nuevo.marca ?? "",
+        modelo: nuevo.modelo ?? "",
+        precioUnitario: precioNuevo,
+        categoria: nuevo.categoria?.nombre ?? l.categoria,
+      };
+      u.subtotal = u.precioUnitario * u.cantidad * u.dias;
+      return u;
+    }));
+    const nombreAnt = anterior ? ([anterior.marca, anterior.modelo].filter(Boolean).join(" ") || anterior.descripcion) : (linea?.descripcion ?? "—");
+    const nombreNvo = [nuevo.marca, nuevo.modelo].filter(Boolean).join(" ") || nuevo.descripcion;
+    setSustituciones(prev => [
+      ...prev,
+      { base: nombreAnt, final: nombreNvo, deltaPrecio: precioNuevo - (anterior?.precioRenta ?? 0), fecha: new Date().toISOString() },
+    ]);
+    setSwapLineaId(null);
   }
 
   // ── Guardar precio especial del cliente para un equipo ──
@@ -1776,6 +1813,7 @@ function CotizadorForm() {
     const payload = {
       tratoId: tId || null, clienteId: cId, ...evento,
       paqueteId: paqueteBaseId || null,
+      sustituciones: sustituciones.length ? sustituciones : null,
       zonaEvento,
       numTecnicosZona,
       notasSecciones: Object.keys(notasSecciones).length > 0 ? JSON.stringify(notasSecciones) : null,
@@ -2660,6 +2698,7 @@ function CotizadorForm() {
                                 {guardandoPrecio === l.id ? "..." : "★ guardar"}
                               </button>
                             )}
+                            <button onClick={() => setSwapLineaId(l.id)} title="Sustituir por equivalente" className="text-gray-600 hover:text-[#B3985B] text-base leading-none shrink-0">⇄</button>
                             <button onClick={() => setLineasEquipo(p => p.filter(x => x.id !== l.id))} className="text-gray-600 hover:text-red-400 text-lg leading-none shrink-0">×</button>
                           </div>
                           <ConceptoNotaEditor
@@ -3858,6 +3897,63 @@ function CotizadorForm() {
           </div>
         </div>
       )}
+
+      {/* Modal: sustituir equipo por equivalente */}
+      {swapLineaId && (() => {
+        const linea = lineasEquipo.find(l => l.id === swapLineaId);
+        const actual = linea ? equipos.find(e => e.id === linea.equipoId) : null;
+        const catId = actual?.categoria?.id ?? null;
+        const base = actual?.precioRenta ?? 0;
+        const usados = new Set(lineasEquipo.map(l => l.equipoId));
+        const candidatos = equipos
+          .filter(e => e.id !== linea?.equipoId && !usados.has(e.id) && (catId ? e.categoria?.id === catId : true))
+          .sort((a, b) => Math.abs(a.precioRenta - base) - Math.abs(b.precioRenta - base))
+          .slice(0, 40);
+        return (
+          <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-16 overflow-y-auto" onClick={() => setSwapLineaId(null)}>
+            <div className="bg-[#111] border border-[#2a2a2a] rounded-2xl p-5 max-w-lg w-full" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-white font-semibold text-sm">Sustituir por equivalente</h3>
+                <button onClick={() => setSwapLineaId(null)} className="text-gray-500 hover:text-white text-lg leading-none">×</button>
+              </div>
+              {actual && (
+                <div className="mb-3 rounded-lg border border-[#1e1e1e] bg-[#0d0d0d] px-3 py-2 flex items-center justify-between">
+                  <span className="text-white text-sm truncate">Actual: {[actual.marca, actual.modelo].filter(Boolean).join(" ") || actual.descripcion}</span>
+                  <span className="text-[#B3985B] text-sm shrink-0 ml-2">{formatCurrency(base)}</span>
+                </div>
+              )}
+              <div className="space-y-1 max-h-[55vh] overflow-y-auto">
+                {candidatos.length === 0 ? (
+                  <p className="text-center text-gray-600 text-sm py-6">No hay equivalentes en la misma categoría.</p>
+                ) : candidatos.map(e => {
+                  const precio = preciosCliente[e.id] ?? e.precioRenta;
+                  const delta = precio - base;
+                  return (
+                    <button key={e.id} type="button" onClick={() => swapEquipoLinea(swapLineaId, e.id)}
+                      className="w-full flex items-center gap-2.5 text-left px-2 py-1.5 rounded-lg border border-[#1e1e1e] bg-[#0d0d0d] hover:border-[#B3985B]/40 transition-colors">
+                      <span className="w-9 h-9 rounded bg-[#141414] overflow-hidden shrink-0 flex items-center justify-center">
+                        {e.imagenUrl ? (
+                          <img src={e.imagenUrl} alt="" className="w-full h-full object-contain p-0.5" />
+                        ) : <Package className="w-4 h-4 text-gray-700" />}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-xs font-medium truncate">{[e.marca, e.modelo].filter(Boolean).join(" ") || e.descripcion}</p>
+                        <p className="text-gray-500 text-[10px] truncate">{e.categoria?.nombre}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-[#B3985B] text-xs">{formatCurrency(precio)}</p>
+                        <p className={`text-[10px] ${delta > 0 ? "text-red-400" : delta < 0 ? "text-emerald-400" : "text-gray-600"}`}>
+                          {delta === 0 ? "igual" : `${delta > 0 ? "+" : "−"}${formatCurrency(Math.abs(delta))}`}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

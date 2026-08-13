@@ -51,11 +51,13 @@ export async function GET(req: NextRequest) {
 
   const todos = req.nextUrl.searchParams.get("todos") === "true";
   const tipoEvento = req.nextUrl.searchParams.get("tipoEvento");
+  const esBaseParam = req.nextUrl.searchParams.get("esBase"); // "true" | "false" | null (todos)
 
   const paquetes = await prisma.paquete.findMany({
     where: {
       ...(todos ? {} : { activo: true }),
       ...(tipoEvento ? { tipoEvento } : {}),
+      ...(esBaseParam === "true" ? { esBase: true } : esBaseParam === "false" ? { esBase: false } : {}),
     },
     include: PAQUETE_INCLUDE,
     orderBy: [{ tipoEvento: "asc" }, { orden: "asc" }, { nombre: "asc" }],
@@ -70,7 +72,7 @@ export async function POST(req: NextRequest) {
   await ensurePaquetesTables();
 
   const body = await req.json();
-  const { nombre, tipoEvento, rangoPersonas, subtiposEvento, adicionalesSugeridos, resumen, descripcion, propuestaValor } = body;
+  const { nombre, tipoEvento, rangoPersonas, subtiposEvento, adicionalesSugeridos, resumen, descripcion, propuestaValor, esBase } = body;
 
   if (!nombre?.trim() || !tipoEvento) {
     return NextResponse.json({ error: "nombre y tipoEvento son requeridos" }, { status: 400 });
@@ -93,6 +95,7 @@ export async function POST(req: NextRequest) {
       resumen: resumen?.trim() || null,
       descripcion: descripcion?.trim() || null,
       propuestaValor: propuestaValor?.trim() || null,
+      esBase: !!esBase,
       orden: (maxOrden._max.orden ?? 0) + 1,
       items: { create: items.map((it, idx) => ({ ...it, orden: idx })) },
       conceptos: { create: conceptos.map((c, idx) => ({ ...c, orden: idx })) },
