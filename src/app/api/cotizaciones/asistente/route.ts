@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { logActividad } from "@/lib/actividad";
 import { calcularJornada, calcularResumen, type LineaCotizacion } from "@/lib/cotizador";
-import { cargarGlosario, resolverTerminos, type GlosarioRow } from "@/lib/glosario";
+import { cargarGlosario, cargarGlosarioProductos, resolverTerminos, type GlosarioRow } from "@/lib/glosario";
 import { ensureGlosarioTabla } from "@/lib/migraciones-lazy";
 
 export const runtime = "nodejs";
@@ -83,9 +83,10 @@ function horasEntre(inicio: string | null, fin: string | null): number {
 // ── Construye las líneas de cotización a partir de la extracción resuelta ─────
 // Candidato mostrado para desambiguar/reasignar una línea (mismo shape que /buscar).
 interface DisplayCandidato {
-  kind: "EQUIPO" | "ACCESORIO" | "ROL";
+  kind: "EQUIPO" | "ACCESORIO" | "ROL" | "PRODUCTO";
   equipoId: string | null;
   rolTecnicoId: string | null;
+  productoId: string | null;
   descripcion: string;
   categoria: string | null;
   precio: number;
@@ -107,6 +108,7 @@ interface LineaDraft extends Record<string, unknown> {
   subtotal: number;
   equipoId: string | null;
   rolTecnicoId: string | null;
+  productoId: string | null;
   esExterno: boolean;
   revisar: boolean;
   /** El motor no tuvo un ganador claro: conviene que el humano elija. */
@@ -121,6 +123,7 @@ type EquipoRec = {
   tipo: string; categoria: { nombre: string } | null;
 };
 type AccesorioRec = { id: string; nombre: string; precioRenta: number | null };
+type ProductoRec = { id: string; nombre: string; categoria: string | null; precioFinal: number | null };
 type RolRec = {
   id: string; nombre: string; disciplina: string;
   tarifaACorta: number | null; tarifaAMedia: number | null; tarifaALarga: number | null;
@@ -130,6 +133,7 @@ type RolRec = {
 
 const EQUIPO_SELECT = { id: true, descripcion: true, marca: true, modelo: true, precioRenta: true, costoInternoEstimado: true, costoProveedor: true, tipo: true, categoria: { select: { nombre: true } } } as const;
 const ACCESORIO_SELECT = { id: true, nombre: true, precioRenta: true } as const;
+const PRODUCTO_SELECT = { id: true, nombre: true, categoria: true, precioFinal: true } as const;
 const ROL_SELECT = {
   id: true, nombre: true, disciplina: true,
   tarifaACorta: true, tarifaAMedia: true, tarifaALarga: true,
@@ -155,7 +159,18 @@ function lineaEquipo(e: EquipoRec, termino: string, cant: number, dias: number):
     descripcion: desc, categoria: cat, marca: e.marca ?? null, modelo: e.modelo ?? null,
     notas: cat ? `cat:${cat}` : null,
     cantidad: cant, dias, precioUnitario: precio, costoUnitario: costo, subtotal: precio * cant * dias,
-    equipoId: e.id, rolTecnicoId: null, esExterno, revisar: false, ambiguo: false, candidatos: [],
+    equipoId: e.id, rolTecnicoId: null, productoId: null, esExterno, revisar: false, ambiguo: false, candidatos: [],
+  };
+}
+
+function lineaProducto(p: ProductoRec, termino: string, cant: number, dias: number): LineaDraft {
+  const precio = p.precioFinal || 0;
+  const cat = p.categoria ?? "Paquete";
+  return {
+    tipo: "PAQUETE", termino, descripcion: p.nombre, categoria: cat, marca: null, modelo: null,
+    notas: `prod:${p.id}`,
+    cantidad: cant, dias, precioUnitario: precio, costoUnitario: 0, subtotal: precio * cant * dias,
+    equipoId: null, rolTecnicoId: null, productoId: p.id, esExterno: false, revisar: precio === 0, ambiguo: false, candidatos: [],
   };
 }
 
@@ -165,7 +180,7 @@ function lineaAccesorio(a: AccesorioRec, termino: string, cant: number, dias: nu
     tipo: "EQUIPO_PROPIO", termino, descripcion: a.nombre, categoria: "Accesorios", marca: null, modelo: null,
     notas: "cat:Accesorios",
     cantidad: cant, dias, precioUnitario: precio, costoUnitario: 0, subtotal: precio * cant * dias,
-    equipoId: null, rolTecnicoId: null, esExterno: false, revisar: false, ambiguo: false, candidatos: [],
+    equipoId: null, rolTecnicoId: null, productoId: null, esExterno: false, revisar: false, ambiguo: false, candidatos: [],
   };
 }
 
@@ -175,7 +190,7 @@ function lineaRol(r: RolRec, termino: string, cant: number, dias: number, jornad
   return {
     tipo, termino, descripcion: r.nombre, categoria: null, marca: null, modelo: null, notas: null,
     cantidad: cant, dias, precioUnitario: precio, costoUnitario: 0, subtotal: precio * cant * dias,
-    equipoId: null, rolTecnicoId: r.id, esExterno: false, revisar: precio === 0, ambiguo: false, candidatos: [],
+    equipoId: null, rolTecnicoId: r.id, productoId: null, esExterno: false, revisar: precio === 0, ambiguo: false, candidatos: [],
   };
 }
 
@@ -183,7 +198,7 @@ function lineaOtro(termino: string, cant: number, dias: number): LineaDraft {
   return {
     tipo: "OTRO", termino, descripcion: termino, categoria: null, marca: null, modelo: null, notas: null,
     cantidad: cant, dias, precioUnitario: 0, costoUnitario: 0, subtotal: 0,
-    equipoId: null, rolTecnicoId: null, esExterno: false, revisar: true, ambiguo: false, candidatos: [],
+    equipoId: null, rolTecnicoId: null, productoId: null, esExterno: false, revisar: true, ambiguo: false, candidatos: [],
   };
 }
 
@@ -191,13 +206,13 @@ function lineaOtro(termino: string, cant: number, dias: number): LineaDraft {
 function displayCandidato(
   objetivoId: string,
   tipoObjetivo: string,
-  maps: { eqMap: Map<string, EquipoRec>; acMap: Map<string, AccesorioRec>; rlMap: Map<string, RolRec> }
+  maps: { eqMap: Map<string, EquipoRec>; acMap: Map<string, AccesorioRec>; rlMap: Map<string, RolRec>; prMap: Map<string, ProductoRec> }
 ): DisplayCandidato | null {
   if (tipoObjetivo === "EQUIPO") {
     const e = maps.eqMap.get(objetivoId);
     if (!e) return null;
     return {
-      kind: "EQUIPO", equipoId: e.id, rolTecnicoId: null,
+      kind: "EQUIPO", equipoId: e.id, rolTecnicoId: null, productoId: null,
       descripcion: e.descripcion || [e.marca, e.modelo].filter(Boolean).join(" "),
       categoria: e.categoria?.nombre ?? null, precio: e.precioRenta || 0,
     };
@@ -205,23 +220,30 @@ function displayCandidato(
   if (tipoObjetivo === "ACCESORIO") {
     const a = maps.acMap.get(objetivoId);
     if (!a) return null;
-    return { kind: "ACCESORIO", equipoId: null, rolTecnicoId: null, descripcion: a.nombre, categoria: "Accesorios", precio: a.precioRenta || 0 };
+    return { kind: "ACCESORIO", equipoId: null, rolTecnicoId: null, productoId: null, descripcion: a.nombre, categoria: "Accesorios", precio: a.precioRenta || 0 };
+  }
+  if (tipoObjetivo === "PRODUCTO") {
+    const p = maps.prMap.get(objetivoId);
+    if (!p) return null;
+    return { kind: "PRODUCTO", equipoId: null, rolTecnicoId: null, productoId: p.id, descripcion: p.nombre, categoria: p.categoria ?? "Paquete", precio: p.precioFinal || 0 };
   }
   const r = maps.rlMap.get(objetivoId);
   if (!r) return null;
-  return { kind: "ROL", equipoId: null, rolTecnicoId: r.id, descripcion: r.nombre, categoria: r.disciplina ?? null, precio: 0 };
+  return { kind: "ROL", equipoId: null, rolTecnicoId: r.id, productoId: null, descripcion: r.nombre, categoria: r.disciplina ?? null, precio: 0 };
 }
 
-async function cargarCatalogo(equipoIds: Set<string>, accesorioIds: Set<string>, rolIds: Set<string>) {
-  const [equipos, accesorios, roles] = await Promise.all([
+async function cargarCatalogo(equipoIds: Set<string>, accesorioIds: Set<string>, rolIds: Set<string>, productoIds: Set<string> = new Set()) {
+  const [equipos, accesorios, roles, productos] = await Promise.all([
     prisma.equipo.findMany({ where: { id: { in: [...equipoIds] } }, select: EQUIPO_SELECT }),
     prisma.accesorio.findMany({ where: { id: { in: [...accesorioIds] } }, select: ACCESORIO_SELECT }),
     prisma.rolTecnico.findMany({ where: { id: { in: [...rolIds] } }, select: ROL_SELECT }),
+    prisma.producto.findMany({ where: { id: { in: [...productoIds] } }, select: PRODUCTO_SELECT }),
   ]);
   return {
     eqMap: new Map(equipos.map((e) => [e.id, e as EquipoRec])),
     acMap: new Map(accesorios.map((a) => [a.id, a as AccesorioRec])),
     rlMap: new Map(roles.map((r) => [r.id, r as RolRec])),
+    prMap: new Map(productos.map((p) => [p.id, p as ProductoRec])),
   };
 }
 
@@ -247,17 +269,19 @@ async function armarLineas(
   const equipoIds = new Set<string>();
   const accesorioIds = new Set<string>();
   const rolIds = new Set<string>();
+  const productoIds = new Set<string>();
   const encolar = (tipo: string, id: string) => {
     if (tipo === "EQUIPO") equipoIds.add(id);
     else if (tipo === "ACCESORIO") accesorioIds.add(id);
+    else if (tipo === "PRODUCTO") productoIds.add(id);
     else rolIds.add(id);
   };
   for (const r of resueltos) {
     if (r.match) encolar(r.match.tipoObjetivo, r.match.objetivoId);
     for (const c of r.candidatos) encolar(c.tipoObjetivo, c.objetivoId);
   }
-  const maps = await cargarCatalogo(equipoIds, accesorioIds, rolIds);
-  const { eqMap, acMap, rlMap } = maps;
+  const maps = await cargarCatalogo(equipoIds, accesorioIds, rolIds, productoIds);
+  const { eqMap, acMap, rlMap, prMap } = maps;
 
   pedidos.forEach((pedido, idx) => {
     const res = resueltos[idx];
@@ -275,6 +299,9 @@ async function armarLineas(
     } else if (match.tipoObjetivo === "ACCESORIO") {
       const a = acMap.get(match.objetivoId);
       if (a) linea = lineaAccesorio(a, pedido.termino, cant, dias);
+    } else if (match.tipoObjetivo === "PRODUCTO") {
+      const p = prMap.get(match.objetivoId);
+      if (p) linea = lineaProducto(p, pedido.termino, cant, dias);
     } else {
       const r = rlMap.get(match.objetivoId);
       if (r) linea = lineaRol(r, pedido.termino, cant, dias, jornada);
@@ -306,6 +333,7 @@ interface LineaEditada {
   cantidad?: number;
   equipoId?: string | null;
   rolTecnicoId?: string | null;
+  productoId?: string | null;
 }
 
 async function hidratarLineas(
@@ -316,11 +344,13 @@ async function hidratarLineas(
   const jornada = calcularJornada(horas);
   const equipoIds = new Set<string>();
   const rolIds = new Set<string>();
+  const productoIds = new Set<string>();
   for (const l of editadas) {
     if (l.equipoId) equipoIds.add(l.equipoId);
     if (l.rolTecnicoId) rolIds.add(l.rolTecnicoId);
+    if (l.productoId) productoIds.add(l.productoId);
   }
-  const { eqMap, rlMap } = await cargarCatalogo(equipoIds, new Set(), rolIds);
+  const { eqMap, rlMap, prMap } = await cargarCatalogo(equipoIds, new Set(), rolIds, productoIds);
 
   const lineas: LineaDraft[] = [];
   for (const l of editadas) {
@@ -330,6 +360,8 @@ async function hidratarLineas(
       lineas.push(lineaEquipo(eqMap.get(l.equipoId)!, term, cant, dias));
     } else if (l.rolTecnicoId && rlMap.has(l.rolTecnicoId)) {
       lineas.push(lineaRol(rlMap.get(l.rolTecnicoId)!, term, cant, dias, jornada));
+    } else if (l.productoId && prMap.has(l.productoId)) {
+      lineas.push(lineaProducto(prMap.get(l.productoId)!, term, cant, dias));
     } else {
       lineas.push(lineaOtro(l.descripcion || "Sin resolver", cant, dias));
     }
@@ -387,6 +419,9 @@ export async function POST(req: NextRequest) {
   // como al crear. Si vienen líneas, se re-hidratan desde la BD para respetar la reasignación.
   const lineasEditadas = Array.isArray(body?.lineas) ? (body.lineas as LineaEditada[]) : null;
   const clienteIdSel = typeof body?.clienteId === "string" ? body.clienteId : null;
+  // Modo de cotización: "PRODUCTOS" resuelve contra el catálogo de productos
+  // (paquetes) + roles; por defecto "EQUIPOS" resuelve equipos/accesorios + roles.
+  const modo = body?.modo === "PRODUCTOS" ? "PRODUCTOS" : "EQUIPOS";
 
   // La extracción viene reenviada por el frontend (para no re-llamar a la IA) o se interpreta del texto.
   let extra: Extraccion | null = null;
@@ -407,7 +442,7 @@ export async function POST(req: NextRequest) {
     lineas = await hidratarLineas(lineasEditadas, dias, horas);
     noResueltos = lineas.filter((l) => l.revisar).map((l) => l.descripcion);
   } else {
-    const glosario = await cargarGlosario();
+    const glosario = modo === "PRODUCTOS" ? await cargarGlosarioProductos() : await cargarGlosario();
     ({ lineas, noResueltos } = await armarLineas(extra, glosario, dias, horas));
   }
 

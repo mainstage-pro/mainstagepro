@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ensureGlosarioTabla } from "@/lib/migraciones-lazy";
 
-export type TipoObjetivo = "EQUIPO" | "ACCESORIO" | "ROL_TECNICO";
+export type TipoObjetivo = "EQUIPO" | "ACCESORIO" | "ROL_TECNICO" | "PRODUCTO";
 
 export interface GlosarioRow {
   id: string;
@@ -60,6 +60,44 @@ export async function cargarGlosario(): Promise<GlosarioRow[]> {
        FROM glosario_terminos WHERE activo = true`
   );
   return rows;
+}
+
+/**
+ * Glosario para el MODO PRODUCTOS: se "indexa en caliente" el catálogo de
+ * productos a partir de su `nombre` (una fila sintética por producto, sin
+ * pasar por la tabla de términos), y se suman los términos APRENDIDOS/manuales
+ * de productos y los ROLES (para que en modo productos también se reconozca
+ * personal: operador, dj, técnico, etc.).
+ *
+ * Los productos se resuelven por nombre; las correcciones del humano se aprenden
+ * como términos `tipoObjetivo=PRODUCTO`, que enriquecen el reconocimiento futuro.
+ */
+export async function cargarGlosarioProductos(): Promise<GlosarioRow[]> {
+  await ensureGlosarioTabla();
+  const [productos, terminos] = await Promise.all([
+    prisma.producto.findMany({ where: { activo: true }, select: { id: true, nombre: true } }),
+    prisma.$queryRawUnsafe<GlosarioRow[]>(
+      `SELECT id, termino, original, "tipoObjetivo", "objetivoId", peso, fuente, activo
+         FROM glosario_terminos
+        WHERE activo = true AND "tipoObjetivo" IN ('PRODUCTO','ROL_TECNICO')`
+    ),
+  ]);
+  const sinteticos: GlosarioRow[] = [];
+  for (const p of productos) {
+    const t = normalizarTermino(p.nombre);
+    if (!t) continue;
+    sinteticos.push({
+      id: `prod-nombre-${p.id}`,
+      termino: t,
+      original: p.nombre,
+      tipoObjetivo: "PRODUCTO",
+      objetivoId: p.id,
+      peso: 10,
+      fuente: "catalogo",
+      activo: true,
+    });
+  }
+  return [...sinteticos, ...terminos];
 }
 
 /** Un objetivo candidato para un término, con su puntaje interno de ranking. */

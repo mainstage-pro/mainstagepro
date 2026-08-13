@@ -6,7 +6,7 @@ import { normalizarTermino, esFraseEspecifica, type TipoObjetivo } from "@/lib/g
 
 export const runtime = "nodejs";
 
-const TIPOS: TipoObjetivo[] = ["EQUIPO", "ACCESORIO", "ROL_TECNICO"];
+const TIPOS: TipoObjetivo[] = ["EQUIPO", "ACCESORIO", "ROL_TECNICO", "PRODUCTO"];
 
 // Aprendizaje: cuando el humano reasigna una línea de la previa, guardamos la frase
 // que escribió → el objeto que eligió, como término "aprendido". Así la próxima vez

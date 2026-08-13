@@ -16,6 +16,7 @@ interface LineaDraft {
   subtotal: number;
   equipoId: string | null;
   rolTecnicoId: string | null;
+  productoId: string | null;
   revisar: boolean;
   ambiguo: boolean;
   candidatos: Candidato[];
@@ -44,9 +45,10 @@ interface Borrador {
   resumen: Resumen;
 }
 interface Candidato {
-  kind: "EQUIPO" | "ACCESORIO" | "ROL";
+  kind: "EQUIPO" | "ACCESORIO" | "ROL" | "PRODUCTO";
   equipoId: string | null;
   rolTecnicoId: string | null;
+  productoId: string | null;
   descripcion: string;
   categoria: string | null;
   marca: string | null;
@@ -60,6 +62,7 @@ const EJEMPLO =
 const TIPO_LABEL: Record<string, string> = {
   EQUIPO_PROPIO: "Equipo",
   EQUIPO_EXTERNO: "Equipo externo",
+  PAQUETE: "Paquete",
   OPERACION_TECNICA: "Personal",
   DJ: "DJ",
   OTRO: "Sin resolver",
@@ -67,6 +70,7 @@ const TIPO_LABEL: Record<string, string> = {
 
 export default function AsistenteCotizacion({ onClose }: { onClose: () => void }) {
   const [texto, setTexto] = useState("");
+  const [modo, setModo] = useState<"EQUIPOS" | "PRODUCTOS">("EQUIPOS");
   const [analizando, setAnalizando] = useState(false);
   const [creando, setCreando] = useState(false);
   const [recalculando, setRecalculando] = useState(false);
@@ -80,6 +84,7 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
     b.lineas.map((l) => ({
       equipoId: l.equipoId,
       rolTecnicoId: l.rolTecnicoId,
+      productoId: l.productoId,
       cantidad: l.cantidad,
       descripcion: l.descripcion,
       termino: l.termino,
@@ -88,12 +93,13 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
   // Aprendizaje: enseña "frase original → objeto elegido" para la próxima vez.
   async function aprender(termino: string, c: Candidato) {
     if (!termino.trim()) return;
-    const tipoObjetivo = c.kind === "ROL" ? "ROL_TECNICO" : c.kind === "ACCESORIO" ? "ACCESORIO" : "EQUIPO";
+    const tipoObjetivo =
+      c.kind === "ROL" ? "ROL_TECNICO" : c.kind === "ACCESORIO" ? "ACCESORIO" : c.kind === "PRODUCTO" ? "PRODUCTO" : "EQUIPO";
     try {
       await fetch("/api/cotizaciones/asistente/aprender", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ termino, tipoObjetivo, objetivoId: c.equipoId ?? c.rolTecnicoId }),
+        body: JSON.stringify({ termino, tipoObjetivo, objetivoId: c.equipoId ?? c.rolTecnicoId ?? c.productoId }),
       });
     } catch {
       /* el aprendizaje es best-effort; no bloquea la cotización */
@@ -108,7 +114,7 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
       const res = await fetch("/api/cotizaciones/asistente", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ texto }),
+        body: JSON.stringify({ texto, modo }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -161,7 +167,13 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
       if (!prev) return prev;
       const term = prev.lineas[idx]?.termino ?? "";
       const tipo =
-        c.kind === "ROL" ? (c.categoria === "DJ" ? "DJ" : "OPERACION_TECNICA") : "EQUIPO_PROPIO";
+        c.kind === "ROL"
+          ? c.categoria === "DJ"
+            ? "DJ"
+            : "OPERACION_TECNICA"
+          : c.kind === "PRODUCTO"
+          ? "PAQUETE"
+          : "EQUIPO_PROPIO";
       const lineas = prev.lineas.map((l, i) =>
         i === idx
           ? {
@@ -171,6 +183,7 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
               categoria: c.categoria,
               equipoId: c.equipoId,
               rolTecnicoId: c.rolTecnicoId,
+              productoId: c.productoId,
               precioUnitario: c.precio,
               subtotal: c.precio * l.cantidad * l.dias,
               revisar: false,
@@ -242,6 +255,30 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
           </div>
           <button onClick={onClose} className="text-[#666] hover:text-white text-xl leading-none">×</button>
         </div>
+
+        {!borrador && (
+          <div className="mb-3">
+            <div className="text-[#666] text-[10px] uppercase tracking-wide mb-1">Cotizar con</div>
+            <div className="inline-flex rounded-lg border border-[#1f1f1f] overflow-hidden">
+              {(["EQUIPOS", "PRODUCTOS"] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setModo(m)}
+                  className={`px-4 py-1.5 text-xs font-medium transition-colors ${
+                    modo === m ? "bg-[#B3985B] text-black" : "bg-[#111] text-[#888] hover:text-white"
+                  }`}
+                >
+                  {m === "EQUIPOS" ? "Equipos individuales" : "Productos (paquetes)"}
+                </button>
+              ))}
+            </div>
+            <p className="text-[#5c5c5c] text-[10px] mt-1">
+              {modo === "EQUIPOS"
+                ? "Reconoce equipos y accesorios sueltos del inventario, más el personal."
+                : "Reconoce productos/paquetes por su nombre, más el personal (operadores, DJ, técnicos)."}
+            </p>
+          </div>
+        )}
 
         <textarea
           value={texto}
@@ -327,7 +364,7 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
                   )}
                   {reasignando === i && (
                     <BuscadorReasignar
-                      tipoLinea={l.rolTecnicoId ? "ROL" : "EQUIPO"}
+                      tipoLinea={l.productoId ? "PRODUCTO" : l.rolTecnicoId ? "ROL" : "EQUIPO"}
                       onPick={(c) => aplicarReasignacion(i, c)}
                     />
                   )}
@@ -362,9 +399,9 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
   );
 }
 
-function BuscadorReasignar({ tipoLinea, onPick }: { tipoLinea: "ROL" | "EQUIPO"; onPick: (c: Candidato) => void }) {
+function BuscadorReasignar({ tipoLinea, onPick }: { tipoLinea: "ROL" | "EQUIPO" | "PRODUCTO"; onPick: (c: Candidato) => void }) {
   const [q, setQ] = useState("");
-  const [ambito, setAmbito] = useState<"" | "EQUIPO" | "ROL">(tipoLinea);
+  const [ambito, setAmbito] = useState<"" | "EQUIPO" | "ROL" | "PRODUCTO">(tipoLinea);
   const [resultados, setResultados] = useState<Candidato[]>([]);
   const [buscando, setBuscando] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -406,11 +443,12 @@ function BuscadorReasignar({ tipoLinea, onPick }: { tipoLinea: "ROL" | "EQUIPO";
         />
         <select
           value={ambito}
-          onChange={(e) => setAmbito(e.target.value as "" | "EQUIPO" | "ROL")}
+          onChange={(e) => setAmbito(e.target.value as "" | "EQUIPO" | "ROL" | "PRODUCTO")}
           className="bg-[#111] border border-[#1a1a1a] rounded px-1 py-1 text-xs text-[#aaa]"
         >
           <option value="">Todo</option>
           <option value="EQUIPO">Equipos</option>
+          <option value="PRODUCTO">Productos</option>
           <option value="ROL">Roles</option>
         </select>
       </div>
@@ -426,7 +464,7 @@ function BuscadorReasignar({ tipoLinea, onPick }: { tipoLinea: "ROL" | "EQUIPO";
             className="w-full text-left px-2 py-1.5 hover:bg-[#161616] flex items-center gap-2"
           >
             <span className="text-[10px] uppercase text-[#B3985B] w-14 shrink-0">
-              {c.kind === "ROL" ? "Rol" : c.kind === "ACCESORIO" ? "Acces." : "Equipo"}
+              {c.kind === "ROL" ? "Rol" : c.kind === "ACCESORIO" ? "Acces." : c.kind === "PRODUCTO" ? "Paquete" : "Equipo"}
             </span>
             <span className="text-white text-xs flex-1 truncate">{c.descripcion}</span>
             {c.categoria && <span className="text-[#666] text-[10px] truncate max-w-[90px]">{c.categoria}</span>}
