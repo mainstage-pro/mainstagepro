@@ -23,7 +23,7 @@ const PASOS_DISCOVERY: Array<{ id: number; label: string; icon: LucideIcon }> = 
 // es solo el fallback si la API no responde. La columna `asistentesEstimados`
 // es Int?, así que se guarda el tope del rango (ej. "500-800" → 800).
 const RANGOS_ASISTENTES_FALLBACK = [
-  "0-50", "100-200", "200-300", "300-500", "500-800", "800-1000", "1000-1500", "1500-2000",
+  "0-100", "100-200", "200-300", "300-500", "500-800", "800-1000", "1000-1500", "1500-2000", "2000-2500", "2500-3000",
 ];
 
 // Tope numérico de un label de rango ("500-800" → 800, "1-100" → 100).

@@ -105,11 +105,35 @@ export async function ensurePaquetesTables() {
       data: RANGOS_PERSONAS_DEFAULT.map((label, orden) => ({ label, orden })),
     });
   }
-  // Rango 50-100 faltante (idempotente; orden 0 para que caiga tras "0-50").
+  // Reconciliación idempotente de rangos (corre en cada deploy):
+  // fusiona "0-50"/"50-100" en "0-100" y agrega tramos altos hasta 3000.
+  // Migra las referencias como string antes de borrar las filas de opción.
+  await prisma.$executeRawUnsafe(
+    `UPDATE "producto_coberturas" SET "rangos" = REPLACE("rangos", '"50-100"', '"0-100"') WHERE "rangos" LIKE '%"50-100"%';`
+  );
+  await prisma.$executeRawUnsafe(
+    `UPDATE "producto_coberturas" SET "rangos" = REPLACE("rangos", '"0-50"', '"0-100"') WHERE "rangos" LIKE '%"0-50"%';`
+  );
+  await prisma.$executeRawUnsafe(
+    `UPDATE "paquetes" SET "rangoPersonas" = '0-100' WHERE "rangoPersonas" IN ('0-50', '50-100');`
+  );
+  await prisma.$executeRawUnsafe(
+    `DELETE FROM "paquete_rangos" WHERE "label" IN ('0-50', '50-100');`
+  );
   await prisma.paqueteRango.upsert({
-    where: { label: "50-100" },
+    where: { label: "0-100" },
+    update: { activo: true, orden: 0 },
+    create: { label: "0-100", orden: 0 },
+  });
+  await prisma.paqueteRango.upsert({
+    where: { label: "2000-2500" },
     update: {},
-    create: { label: "50-100", orden: 0 },
+    create: { label: "2000-2500", orden: 8 },
+  });
+  await prisma.paqueteRango.upsert({
+    where: { label: "2500-3000" },
+    update: {},
+    create: { label: "2500-3000", orden: 9 },
   });
   // Bloque 3: adicionales sugeridos del catálogo (columna aditiva idempotente).
   await prisma.$executeRawUnsafe(`ALTER TABLE "paquetes" ADD COLUMN IF NOT EXISTS "adicionalesSugeridos" TEXT;`);
@@ -121,7 +145,7 @@ export const TIPOS_EVENTO_PAQUETE = ["MUSICAL", "SOCIAL", "EMPRESARIAL"] as cons
 // Lista base con la que se siembra el catálogo la primera vez.
 // Después es editable desde la UI (tabla paquete_rangos).
 export const RANGOS_PERSONAS_DEFAULT = [
-  "0-50",
+  "0-100",
   "100-200",
   "200-300",
   "300-500",
@@ -129,6 +153,8 @@ export const RANGOS_PERSONAS_DEFAULT = [
   "800-1000",
   "1000-1500",
   "1500-2000",
+  "2000-2500",
+  "2500-3000",
 ] as const;
 
 // Devuelve los rangos activos, ordenados. Requiere ensurePaquetesTables() previo.

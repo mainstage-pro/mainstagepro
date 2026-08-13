@@ -1219,7 +1219,7 @@ function RangosModal({
           value={nuevo}
           onChange={(e) => setNuevo(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") agregar(); }}
-          placeholder="Ej: 50-100"
+          placeholder="Ej: 3000-3500"
           className={inputCls}
         />
         <button onClick={agregar} disabled={busy || !nuevo.trim()}

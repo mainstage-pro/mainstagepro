@@ -168,8 +168,9 @@ export default function DescubrimientoClienteWizard({
   const rangos = useMemo(() => {
     const list = (cat?.rangos || []).map(r => ({ label: r.label, value: rangoMax(r.label) })).filter(r => r.value > 0);
     return list.length ? list : [
-      { label: "0-50", value: 50 }, { label: "100-200", value: 200 }, { label: "200-300", value: 300 },
+      { label: "0-100", value: 100 }, { label: "100-200", value: 200 }, { label: "200-300", value: 300 },
       { label: "300-500", value: 500 }, { label: "500-800", value: 800 }, { label: "800-1000", value: 1000 },
+      { label: "2000-2500", value: 2500 }, { label: "2500-3000", value: 3000 },
     ];
   }, [cat]);
 
