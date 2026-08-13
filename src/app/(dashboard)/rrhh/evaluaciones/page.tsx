@@ -97,7 +97,6 @@ export default function EvaluacionesPage() {
   const [cargandoEst, setCargandoEst] = useState(false);
   const [puestoNombre, setPuestoNombre] = useState<string | null>(null);
   const [periodoPrevio, setPeriodoPrevio] = useState<string | null>(null);
-  const [sugiriendo, setSugiriendo] = useState(false);
   const [autoLink, setAutoLink] = useState<string | null>(null);
 
   async function load() {
@@ -132,30 +131,6 @@ export default function EvaluacionesPage() {
   }
   function removeObjetivo(idx: number) {
     setForm(p => ({ ...p, objetivos: p.objetivos.filter((_, i) => i !== idx) }));
-  }
-
-  async function sugerir() {
-    if (!form.personalId) return;
-    setSugiriendo(true);
-    try {
-      const r = await fetch("/api/rrhh/evaluaciones/sugerir-objetivos", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ personalId: form.personalId, periodo: form.periodo }),
-      });
-      const d = await r.json();
-      if (!r.ok) { toast.error(d.error ?? "No se pudo sugerir"); return; }
-      if (!d.ok || !(d.objetivos?.length)) { toast.error(d.mensaje ?? "Sin objetivos para sugerir"); return; }
-      setForm(p => ({
-        ...p,
-        objetivos: [
-          ...p.objetivos,
-          ...d.objetivos.map((o: { texto: string }) => ({ texto: o.texto, resultado: "PENDIENTE", comentario: "", evidencias: [] })),
-        ],
-      }));
-      toast.success(`${d.objetivos.length} objetivos sugeridos`);
-    } finally {
-      setSugiriendo(false);
-    }
   }
 
   async function subirEvidencia(file: File): Promise<string | null> {
@@ -316,17 +291,13 @@ export default function EvaluacionesPage() {
                 className="ms-input" /></div>
           </div>
 
-          {/* Objetivos del período (IA) */}
+          {/* Objetivos del período */}
           <div className="mt-5">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs text-[#B3985B] uppercase tracking-wider flex items-center gap-1.5">
                   <Target strokeWidth={1.75} className="w-3.5 h-3.5" /> Objetivos del período
                 </p>
                 <div className="flex items-center gap-3">
-                  <button type="button" onClick={sugerir} disabled={sugiriendo||!form.personalId}
-                    className="text-[11px] text-[#B3985B] hover:text-[#c9a96a] disabled:opacity-50 flex items-center gap-1 transition-colors">
-                    <Sparkles strokeWidth={2} className="w-3.5 h-3.5" /> {sugiriendo ? "Sugiriendo…" : "Sugerir con IA"}
-                  </button>
                   <button type="button" onClick={addObjetivo}
                     className="text-[11px] text-gray-400 hover:text-white flex items-center gap-1 transition-colors">
                     <Plus strokeWidth={2} className="w-3.5 h-3.5" /> Agregar
@@ -335,7 +306,7 @@ export default function EvaluacionesPage() {
               </div>
               {form.objetivos.length === 0 ? (
                 <p className="text-xs text-gray-600 bg-[#0d0d0d] border border-[#1a1a1a] rounded-lg px-3 py-2">
-                  Define objetivos medibles del período. Usa <span className="text-[#B3985B]">Sugerir con IA</span> para generarlos desde el plan de trabajo y las responsabilidades del puesto.
+                  Define objetivos medibles del período con base en el plan de trabajo y las responsabilidades del puesto.
                 </p>
               ) : (
                 <div className="space-y-2.5">

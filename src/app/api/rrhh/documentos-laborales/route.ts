@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   try {
     await ensureDocLaboralSchema();
     const b = await req.json();
-    const tipo = b.tipo === "OFERTA" ? "OFERTA" : "ACUERDO";
+    const tipo = b.tipo === "OFERTA" ? "OFERTA" : b.tipo === "CONVENIO_TECNICO" ? "CONVENIO_TECNICO" : "ACUERDO";
     if (!b.personalId) return NextResponse.json({ error: "personalId requerido" }, { status: 400 });
 
     const persona = await prisma.personalInterno.findUnique({

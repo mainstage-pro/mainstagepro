@@ -14,7 +14,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const snapshot = JSON.parse(doc.datos) as DocLaboralSnapshot;
   const pdf = await renderDocLaboralPdf(snapshot);
   const nombre = snapshot.personaNombre.replace(/\s+/g, "-");
-  const label = snapshot.tipo === "OFERTA" ? "Oferta" : "Acuerdo";
+  const label = snapshot.tipo === "OFERTA" ? "Oferta"
+    : snapshot.tipo === "CONVENIO_TECNICO" ? "Convenio-Tecnico"
+    : "Acuerdo";
   return new NextResponse(pdf as unknown as BodyInit, {
     headers: {
       "Content-Type": "application/pdf",

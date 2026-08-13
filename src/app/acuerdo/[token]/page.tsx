@@ -34,6 +34,12 @@ interface AcuerdoPublico {
 
 const FONT = '-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",system-ui,sans-serif';
 
+const TIPO_ENCABEZADO: Record<string, string> = {
+  OFERTA: "Oferta de trabajo",
+  ACUERDO: "Acuerdo de alineación operativa",
+  CONVENIO_TECNICO: "Convenio de operación técnica",
+};
+
 function fmtFecha(s: string) {
   return new Date(s.length <= 10 ? s + "T12:00:00" : s).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" });
 }
@@ -127,7 +133,7 @@ export default function AcuerdoAcusePage() {
       <div className="max-w-lg mx-auto space-y-6">
         {/* Encabezado */}
         <div className="text-center space-y-1">
-          <p className="text-[10px] text-gray-600 uppercase tracking-[0.2em]">Acuerdo de alineación y cumplimiento</p>
+          <p className="text-[10px] text-gray-600 uppercase tracking-[0.2em]">{TIPO_ENCABEZADO[acuerdo.tipo] ?? "Acuerdo de alineación y cumplimiento"}</p>
           <p className="text-[#B3985B] text-sm font-semibold">{s.puestoNombre}</p>
         </div>
 

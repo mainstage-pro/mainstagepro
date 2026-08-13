@@ -31,8 +31,10 @@ export async function ensureDocLaboralSchema() {
   `);
 }
 
+export type TipoDocLaboral = "OFERTA" | "ACUERDO" | "CONVENIO_TECNICO";
+
 export interface DocLaboralSnapshot {
-  tipo: "OFERTA" | "ACUERDO";
+  tipo: TipoDocLaboral;
   personaNombre: string;
   personaCorreo?: string | null;
   personaTelefono?: string | null;
@@ -103,7 +105,7 @@ type PuestoLike = {
 } | null;
 
 export function buildSnapshot(
-  tipo: "OFERTA" | "ACUERDO",
+  tipo: TipoDocLaboral,
   persona: PersonaLike,
   puesto: PuestoLike,
   responsableNombre: string,
@@ -153,5 +155,6 @@ export function buildSnapshot(
 
 export const TIPO_LABEL: Record<string, string> = {
   OFERTA: "Oferta de trabajo",
-  ACUERDO: "Acuerdo laboral",
+  ACUERDO: "Acuerdo de Alineación Operativa",
+  CONVENIO_TECNICO: "Convenio de Operación Técnica",
 };

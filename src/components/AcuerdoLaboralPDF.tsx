@@ -24,6 +24,8 @@ const s = StyleSheet.create({
   parteLabel: { fontSize: 7, color: LIGHT, letterSpacing: 1, textTransform: "uppercase", marginBottom: 4 },
   parteNombre: { fontSize: 9.5, fontFamily: "Helvetica-Bold", color: BLACK, marginBottom: 2 },
   parteDetalle: { fontSize: 8, color: GRAY },
+  aviso: { backgroundColor: CREAM, borderLeftWidth: 2, borderLeftColor: GOLD, paddingVertical: 8, paddingHorizontal: 10, marginBottom: 12 },
+  avisoTxt: { fontSize: 7.5, color: GRAY, lineHeight: 1.5 },
   seccionTitulo: { fontSize: 8, fontFamily: "Helvetica-Bold", color: GOLD, letterSpacing: 1, textTransform: "uppercase", borderBottomWidth: 1, borderBottomColor: "#e5e5e5", paddingBottom: 4, marginBottom: 8, marginTop: 14 },
   texto: { fontSize: 8.5, color: BLACK, lineHeight: 1.65, marginBottom: 6 },
   bold: { fontFamily: "Helvetica-Bold" },
@@ -81,7 +83,7 @@ export function AcuerdoLaboralPDF(raw: DocLaboralSnapshot) {
             <Text style={s.tagline}>PRODUCCIÓN TÉCNICA · AUDIO · ILUMINACIÓN · VIDEO</Text>
           </View>
           <View style={{ alignItems: "flex-end" }}>
-            <Text style={s.docTipo}>ACUERDO LABORAL</Text>
+            <Text style={s.docTipo}>ACUERDO DE ALINEACIÓN</Text>
             <Text style={s.docSub}>{p.fechaDocumento}</Text>
           </View>
         </View>
@@ -89,6 +91,16 @@ export function AcuerdoLaboralPDF(raw: DocLaboralSnapshot) {
 
         <View style={s.body}>
           <Text style={s.titulo}>ACUERDO DE ALINEACIÓN OPERATIVA</Text>
+
+          <View style={s.aviso}>
+            <Text style={s.avisoTxt}>
+              Este documento es un acuerdo de alineación operativa interna. Establece los compromisos, las
+              responsabilidades y los estándares de desempeño que El/La Colaborador(a) asume como parte del equipo de
+              Mainstage Producciones. No constituye un contrato laboral ni genera por sí mismo derechos u obligaciones
+              de naturaleza laboral o prestacional. Cualquier condición económica y esquema de colaboración se pacta de
+              forma separada entre las partes.
+            </Text>
+          </View>
 
           <View style={s.partes}>
             <View style={s.parteCol}>
@@ -214,9 +226,9 @@ export function AcuerdoLaboralPDF(raw: DocLaboralSnapshot) {
             {p.fechaIngreso && <View style={s.campo}><Text style={s.campoLabel}>FECHA DE INGRESO</Text><Text style={s.campoValue}>{p.fechaIngreso}</Text></View>}
           </View>
           <Text style={s.texto}>
-            Ambas partes acuerdan que las presentes condiciones son válidas y serán respetadas de conformidad con lo establecido
-            en la Ley Federal del Trabajo. El presente acuerdo alinea las expectativas de desempeño y no sustituye al contrato
-            laboral formal cuando este resulte aplicable.
+            Las condiciones económicas, la modalidad de pago y cualquier compensación acordada se pactan de forma
+            individual entre las partes y pueden formalizarse en una adenda. El presente acuerdo alinea las expectativas
+            de desempeño y no constituye ni sustituye a un contrato laboral formal cuando este resulte aplicable.
           </Text>
 
           <View style={s.firmaRow}>

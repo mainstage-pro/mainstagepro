@@ -20,6 +20,12 @@ interface Incidencia { id: string; fecha: string; descripcion: string | null; mo
 interface Vacacion { id: string; fechaInicio: string; fechaFin: string; dias: number; estado: string; motivo: string | null; aprobadaPor: string | null }
 interface PersonaLite { id: string; nombre: string; puesto: string }
 interface UsuarioLite { id: string; name: string; email: string; ligadoA: string | null }
+
+const DOC_LABEL: Record<string, string> = {
+  OFERTA: "Oferta de trabajo",
+  ACUERDO: "Acuerdo de Alineación Operativa",
+  CONVENIO_TECNICO: "Convenio de Operación Técnica",
+};
 interface PersonalData {
   id: string; nombre: string; puesto: string; departamento: string; tipo: string;
   telefono: string | null; correo: string | null; salario: number | null; periodoPago: string;
@@ -137,7 +143,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
     fetch("/api/cuentas").then(r => r.json()).then(d => setCuentas(d.cuentas ?? []));
   }, [id]);
 
-  async function generarDoc(tipo: "OFERTA" | "ACUERDO") {
+  async function generarDoc(tipo: "OFERTA" | "ACUERDO" | "CONVENIO_TECNICO") {
     setGenerando(tipo);
     const res = await fetch("/api/rrhh/documentos-laborales", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -147,7 +153,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
       const d = await res.json().catch(() => ({}));
       toast.error(d.error ?? "Error al generar documento");
     } else {
-      toast.success(tipo === "OFERTA" ? "Oferta generada" : "Acuerdo generado");
+      toast.success(`${DOC_LABEL[tipo] ?? "Documento"} generado`);
       await loadDocsLaborales();
     }
     setGenerando(null);
@@ -842,9 +848,10 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
             <p className="text-gray-500 text-xs mt-0.5">Genera la oferta o el acuerdo desde el puesto principal y compártelo para acuse de recibo.</p>
           </div>
           {!p.puesto && <p className="text-yellow-500/80 text-xs mb-3">Asigna un puesto principal a esta persona para llenar el documento con sus responsabilidades y estándares.</p>}
-          <div className="flex gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-4">
             <button onClick={() => generarDoc("OFERTA")} disabled={generando !== null} className="text-xs px-3 py-2 bg-[#1a1a1a] border border-[#333] rounded-lg text-gray-300 hover:text-white hover:border-[#B3985B] disabled:opacity-50 transition-colors">{generando === "OFERTA" ? "Generando..." : "+ Generar oferta de trabajo"}</button>
-            <button onClick={() => generarDoc("ACUERDO")} disabled={generando !== null} className="text-xs px-3 py-2 bg-[#1a1a1a] border border-[#333] rounded-lg text-gray-300 hover:text-white hover:border-[#B3985B] disabled:opacity-50 transition-colors">{generando === "ACUERDO" ? "Generando..." : "+ Generar acuerdo laboral"}</button>
+            <button onClick={() => generarDoc("ACUERDO")} disabled={generando !== null} className="text-xs px-3 py-2 bg-[#1a1a1a] border border-[#333] rounded-lg text-gray-300 hover:text-white hover:border-[#B3985B] disabled:opacity-50 transition-colors">{generando === "ACUERDO" ? "Generando..." : "+ Generar acuerdo de alineación"}</button>
+            <button onClick={() => generarDoc("CONVENIO_TECNICO")} disabled={generando !== null} className="text-xs px-3 py-2 bg-[#1a1a1a] border border-[#333] rounded-lg text-gray-300 hover:text-white hover:border-[#B3985B] disabled:opacity-50 transition-colors">{generando === "CONVENIO_TECNICO" ? "Generando..." : "+ Generar convenio técnico"}</button>
           </div>
           {docsLaborales.length === 0 ? (
             <p className="text-gray-600 text-sm text-center py-6">Aún no has generado documentos</p>
@@ -853,7 +860,7 @@ export default function PersonalDetailPage({ params }: { params: Promise<{ id: s
               {docsLaborales.map(doc => (
                 <div key={doc.id} className="flex items-center justify-between gap-3 py-3 border-b border-[#1a1a1a] last:border-0">
                   <div className="min-w-0">
-                    <p className="text-white text-sm">{doc.tipo === "OFERTA" ? "Oferta de trabajo" : "Acuerdo laboral"}</p>
+                    <p className="text-white text-sm">{DOC_LABEL[doc.tipo] ?? doc.tipo}</p>
                     <p className="text-gray-500 text-xs">
                       {fmtDate(doc.createdAt)}
                       {doc.aceptado ? <span className="text-green-400"> · Aceptado por {doc.aceptadoNombre}{doc.aceptadoEn ? ` (${fmtDate(doc.aceptadoEn)})` : ""}</span> : <span className="text-yellow-500/80"> · Pendiente de acuse</span>}
