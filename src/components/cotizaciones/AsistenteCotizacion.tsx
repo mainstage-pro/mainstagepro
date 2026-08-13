@@ -209,10 +209,27 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
     });
   }
 
+  // Edición en la previa de campos extraídos (servicio / tipo de evento).
+  // Persisten al crear porque la ruta reusa body.extraido en modo crear.
+  function setExtraidoCampo(campo: "servicio" | "tipoEvento", valor: string) {
+    setBorrador((prev) =>
+      prev ? { ...prev, extraido: { ...prev.extraido, [campo]: valor || null } } : prev
+    );
+  }
+
   async function crear() {
     if (!borrador) return;
     if (!borrador.cliente.nombre) {
       toast.error("Falta el nombre del cliente en el pedido");
+      return;
+    }
+    // Bloqueo: servicio y tipo de evento son obligatorios para generar.
+    if (!borrador.extraido.servicio) {
+      toast.error("Selecciona el tipo de servicio antes de crear la cotización");
+      return;
+    }
+    if (!borrador.extraido.tipoEvento) {
+      toast.error("Selecciona el tipo de evento antes de crear la cotización");
       return;
     }
     setCreando(true);
@@ -309,7 +326,31 @@ export default function AsistenteCotizacion({ onClose }: { onClose: () => void }
           <div className="mt-5 space-y-4">
             <div className="grid grid-cols-2 gap-2 text-xs">
               <Dato label="Cliente" valor={borrador.cliente.nombre ?? "—"} nota={borrador.cliente.match ? "existente" : "nuevo"} />
-              <Dato label="Servicio" valor={borrador.extraido.servicio ?? "—"} />
+              <DatoSelect
+                label="Tipo de servicio"
+                requerido
+                value={borrador.extraido.servicio ?? ""}
+                onChange={(v) => setExtraidoCampo("servicio", v)}
+                options={[
+                  { value: "", label: "— Selecciona —" },
+                  { value: "RENTA", label: "Renta de Equipo" },
+                  { value: "PRODUCCION_TECNICA", label: "Producción Técnica" },
+                  { value: "DIRECCION_TECNICA", label: "Dirección Técnica" },
+                ]}
+              />
+              <DatoSelect
+                label="Tipo de evento"
+                requerido
+                value={borrador.extraido.tipoEvento ?? ""}
+                onChange={(v) => setExtraidoCampo("tipoEvento", v)}
+                options={[
+                  { value: "", label: "— Selecciona —" },
+                  { value: "MUSICAL", label: "Musical" },
+                  { value: "SOCIAL", label: "Social" },
+                  { value: "EMPRESARIAL", label: "Empresarial" },
+                  { value: "OTRO", label: "Otro" },
+                ]}
+              />
               <Dato label="Fecha" valor={borrador.extraido.fechaEvento ?? "—"} />
               <Dato label="Lugar" valor={borrador.extraido.lugar ?? "—"} />
               <Dato label="Jornada" valor={`${borrador.jornada} (${borrador.horas}h)`} />
@@ -610,6 +651,41 @@ function Dato({ label, valor, nota }: { label: string; valor: string; nota?: str
         {valor}
         {nota && <span className="ml-1 text-[#B3985B]">· {nota}</span>}
       </div>
+    </div>
+  );
+}
+
+function DatoSelect({
+  label,
+  value,
+  onChange,
+  options,
+  requerido,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  requerido?: boolean;
+}) {
+  const vacio = requerido && !value;
+  return (
+    <div className={`bg-[#111] border rounded-lg px-3 py-2 ${vacio ? "border-amber-500/60" : "border-[#1a1a1a]"}`}>
+      <div className="text-[#666] text-[10px] uppercase tracking-wide">
+        {label}
+        {requerido && <span className="ml-1 text-amber-400">{vacio ? "· falta" : "*"}</span>}
+      </div>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full bg-transparent text-white text-xs mt-0.5 focus:outline-none"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value} className="bg-[#111]">
+            {o.label}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

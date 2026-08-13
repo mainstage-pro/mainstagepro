@@ -1670,6 +1670,17 @@ function CotizadorForm() {
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
+    // Bloqueo: tipo de evento y tipo de servicio son obligatorios para avanzar.
+    if (!evento.tipoEvento) {
+      setError("Selecciona el tipo de evento para continuar");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    if (!evento.tipoServicio) {
+      setError("Selecciona el tipo de servicio para continuar");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     setClienteSelectorError(false);
     setSaving(true); setError("");
 
@@ -2038,7 +2049,7 @@ function CotizadorForm() {
                 <Input label="Nombre del evento" value={evento.nombreEvento} onChange={e => setEvento(p => ({ ...p, nombreEvento: e.target.value }))} placeholder="Boda García, Concierto XYZ..." />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Tipo de evento</label>
+                <label className="block text-xs text-gray-400 mb-1">Tipo de evento <span className="text-red-400">*</span></label>
                 <Combobox
                   value={evento.tipoEvento}
                   onChange={v => setEvento(p => ({ ...p, tipoEvento: v }))}
@@ -2047,11 +2058,11 @@ function CotizadorForm() {
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1">Tipo de servicio</label>
+                <label className="block text-xs text-gray-400 mb-1">Tipo de servicio <span className="text-red-400">*</span></label>
                 <Combobox
                   value={evento.tipoServicio}
                   onChange={v => setEvento(p => ({ ...p, tipoServicio: v }))}
-                  options={[{ value: "", label: "— Sin especificar —" }, { value: "RENTA", label: "Renta de Equipo" }, { value: "PRODUCCION_TECNICA", label: "Producción Técnica" }, { value: "DIRECCION_TECNICA", label: "Dirección Técnica" }]}
+                  options={[{ value: "", label: "— Selecciona —" }, { value: "RENTA", label: "Renta de Equipo" }, { value: "PRODUCCION_TECNICA", label: "Producción Técnica" }, { value: "DIRECCION_TECNICA", label: "Dirección Técnica" }]}
                   className="w-full bg-[#1a1a1a] border border-[#333] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#B3985B]"
                 />
               </div>

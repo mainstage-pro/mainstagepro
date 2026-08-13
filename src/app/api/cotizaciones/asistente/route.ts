@@ -490,6 +490,14 @@ export async function POST(req: NextRequest) {
   }
   if (!cliente) return NextResponse.json({ error: "Falta el nombre del cliente para crear la cotización." }, { status: 400 });
 
+  // Bloqueo: tipo de servicio y tipo de evento son obligatorios antes de generar.
+  if (!extra.servicio) {
+    return NextResponse.json({ error: "Falta el tipo de servicio (Renta, Producción Técnica o Dirección Técnica). Selecciónalo antes de crear." }, { status: 400 });
+  }
+  if (!extra.tipoEvento) {
+    return NextResponse.json({ error: "Falta el tipo de evento (Musical, Social, Empresarial u Otro). Selecciónalo antes de crear." }, { status: 400 });
+  }
+
   const last = await prisma.cotizacion.findFirst({ orderBy: { numeroCotizacion: "desc" }, select: { numeroCotizacion: true } });
   const lastNum = last ? parseInt(last.numeroCotizacion.replace("COT-", "")) || 0 : 0;
   const numeroCotizacion = `COT-${String(lastNum + 1).padStart(4, "0")}`;
