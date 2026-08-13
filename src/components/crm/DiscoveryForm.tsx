@@ -2,13 +2,14 @@ import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { ClipboardList, Settings, Truck, Handshake, Music, Wine, Building2, Calendar, Package, Palette, Sliders, DollarSign, Eye, Image as ImageIcon, Folder, FileText, PenLine, BarChart3, Paperclip, Lightbulb, Phone, List, Zap, Camera, Monitor, Sparkles, PartyPopper, Clock, type LucideIcon } from "lucide-react";
 import TimePicker from "@/components/ui/TimePicker";
 import VenuePicker from "@/components/ui/VenuePicker";
-import { SelectorEquiposInventario, type SeleccionEquipos, type PaquetePublico } from '@/components/SelectorEquiposInventario';
+import { SelectorEquiposInventario, type SeleccionEquipos, type PaquetePublico, type ProductoPublico } from '@/components/SelectorEquiposInventario';
 import { Combobox } from "@/components/Combobox";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { isLegacyString, parseLinks } from "@/utils/legacyText";
 import { parseFechasEvento } from "@/lib/fechas-evento";
 import { preguntasVisibles } from "@/lib/descubrimiento";
+import { parseCoberturas, coberturaMatch } from "@/lib/constants";
 
 const PASOS_DISCOVERY: Array<{ id: number; label: string; icon: LucideIcon }> = [
   { id: 1, label: "Info Básica", icon: ClipboardList },
@@ -117,7 +118,23 @@ function calcDuracionEvento(inicio: string, fin: string): string | null {
 // Bloque del Paso 2 que deriva sugerencias del catálogo único: paquete(s) base,
 // descubrimiento guiado (preguntas → adicionales) y adicionales frecuentes del
 // nicho. Todo es sugerencia: nada bloquea, valida ni oculta las 14 categorías.
-type AdicionalCat = { id: string; nombre: string; descripcion: string | null; tiposEvento: string; nichos: string | null; frecuencia: string; imagenUrl: string | null };
+type AdicionalCat = { id: string; nombre: string; descripcion: string | null; tiposEvento: string; nichos: string | null; frecuencia: string; imagenUrl: string | null; composicion?: string | null };
+
+// Cuenta las piezas (equipos/productos) que un adicional trae ligadas en su
+// composición, para hacer visible el linkeo en el descubrimiento. La expansión
+// real a la cotización ocurre en el cotizador (agregarAdicionalDescubrimiento).
+function contarComposicion(composicion: string | null | undefined): { equipos: number; productos: number } {
+  const out = { equipos: 0, productos: 0 };
+  if (!composicion) return out;
+  try {
+    const arr = JSON.parse(composicion);
+    if (Array.isArray(arr)) for (const l of arr) {
+      if (l?.tipo === "equipo") out.equipos++;
+      else if (l?.tipo === "producto") out.productos++;
+    }
+  } catch { /* noop */ }
+  return out;
+}
 type PreguntaCat = { id: string; texto: string; tipoRespuesta: string; opciones: string | null; nichos: string | null; alcance?: string | null; tipoEventoSlug?: string | null; bloque?: string | null; obligatoria?: boolean; preguntaPadreId?: string | null; condicionValor?: string | null; orden?: number; reglas: { categoriasEquipo: string | null; adicionalIds: string | null }[] };
 
 function rangoIncluye(label: string | null, asistentes: number | null): boolean {
@@ -157,8 +174,8 @@ function normalizarRespuestas(raw: unknown): MapaRespuestas {
 function DescubrimientoCatalogo({
   tipoEvento, nichoSlug, nichoNombre, asistentes,
   adicionales, preguntas, respuestas, adicionalesSel,
-  categoriasSel, categoriaIdPorNombre,
-  onRespuesta, onToggleAdicional, onToggleCategoria, onUsarPaquete, readOnly,
+  categoriasSel, categoriaIdPorNombre, productosSel,
+  onRespuesta, onToggleAdicional, onToggleCategoria, onUsarPaquete, onUsarProducto, readOnly,
 }: {
   tipoEvento: string;
   nichoSlug: string;
@@ -170,13 +187,16 @@ function DescubrimientoCatalogo({
   adicionalesSel: string[];
   categoriasSel: string[];
   categoriaIdPorNombre: Map<string, string>;
+  productosSel: string[];
   onRespuesta: (preguntaId: string, valor: string) => void;
   onToggleAdicional: (adicionalId: string) => void;
   onToggleCategoria: (categoriaId: string) => void;
   onUsarPaquete: (paquete: PaquetePublico) => void;
+  onUsarProducto: (producto: ProductoPublico) => void;
   readOnly: boolean;
 }) {
   const [paquetes, setPaquetes] = useState<PaquetePublico[]>([]);
+  const [productos, setProductos] = useState<ProductoPublico[]>([]);
   const [openGuia, setOpenGuia] = useState(false);
   const [modoLlamada, setModoLlamada] = useState(false);
   const [idxLlamada, setIdxLlamada] = useState(0);
@@ -191,8 +211,26 @@ function DescubrimientoCatalogo({
     return () => { cancel = true; };
   }, [tipoEvento]);
 
+  // Productos armados del catálogo comercial (para recomendarlos por capacidad).
+  useEffect(() => {
+    let cancel = false;
+    fetch("/api/productos/publico")
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (!cancel && Array.isArray(d?.productos)) setProductos(d.productos); })
+      .catch(() => {});
+    return () => { cancel = true; };
+  }, []);
+
   // Paquetes candidatos: mismo tipo y rango que cubre a los asistentes estimados.
   const candidatos = paquetes.filter(p => rangoIncluye(p.rangoPersonas, asistentes));
+
+  // Productos recomendados: mismo criterio que la pestaña "Por producto" del
+  // selector — cobertura por tipo de evento + capacidad (rango de asistentes).
+  // Solo mostramos los que hacen "match" explícito; nada obliga ni oculta.
+  const subtipos = nichoNombre ? [nichoNombre] : [];
+  const productosRecomendados = productos.filter(p =>
+    coberturaMatch(parseCoberturas(p.coberturas), { tipoEvento, asistentes, subtipos }, p.capacidadUniversal) === "match"
+  );
 
   // Adicionales específicos del nicho (frecuentes primero). Un adicional sin nichos
   // aplica a todo su tipo; con nichos, solo al nicho elegido. Si no hay nicho aún,
@@ -210,7 +248,7 @@ function DescubrimientoCatalogo({
   for (const [k, v] of Object.entries(respuestas)) valoresResp[k] = v.valor;
   const preguntasDelNicho = preguntasVisibles(preguntas, tipoEvento, nichoSlug, valoresResp);
 
-  if (candidatos.length === 0 && adicionalesDelTipo.length === 0 && preguntasDelNicho.length === 0) return null;
+  if (candidatos.length === 0 && productosRecomendados.length === 0 && adicionalesDelTipo.length === 0 && preguntasDelNicho.length === 0) return null;
 
   const etiquetaNicho = nichoNombre || "este evento";
 
@@ -242,6 +280,39 @@ function DescubrimientoCatalogo({
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* 1b. Productos recomendados por capacidad (mismo criterio que "Por producto") */}
+      {productosRecomendados.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[11px] text-gray-400 uppercase tracking-wider inline-flex items-center gap-1.5">
+            <Package strokeWidth={1.75} className="w-3 h-3" /> Productos recomendados para {asistentes ?? "—"} asistentes
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {productosRecomendados.slice(0, 6).map(p => {
+              const on = productosSel.includes(p.id);
+              return (
+                <div key={p.id} className="flex-1 min-w-[220px] rounded-lg border border-[#2a2a2a] bg-[#111] p-3">
+                  <p className="text-sm text-white font-medium">{p.nombre}</p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    {p.categoria ? `${p.categoria} · ` : ""}{p.items.length} equipos
+                    {p.capacidadUniversal ? " · cualquier capacidad" : ""}
+                  </p>
+                  {p.descripcion && <p className="text-[11px] text-gray-400 mt-1 line-clamp-2">{p.descripcion}</p>}
+                  {!readOnly && (
+                    <button type="button" onClick={() => onUsarProducto(p)} disabled={on}
+                      className={`mt-2 text-[11px] font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                        on ? "text-[#B3985B] border border-[#B3985B]/40 bg-[#B3985B]/10 cursor-default"
+                           : "text-black bg-[#B3985B] hover:bg-[#c9a96a]"
+                      }`}>
+                      {on ? "✓ Agregado" : "Agregar producto"}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -389,14 +460,24 @@ function DescubrimientoCatalogo({
           <div className="flex flex-wrap gap-2">
             {adicionalesDelTipo.map(a => {
               const on = adicionalesSel.includes(a.id);
+              const comp = contarComposicion(a.composicion);
+              const piezas = comp.equipos + comp.productos;
+              const ligadoTitle = piezas > 0
+                ? `Incluye ${[comp.equipos ? `${comp.equipos} equipo(s)` : "", comp.productos ? `${comp.productos} producto(s)` : ""].filter(Boolean).join(" y ")} — bajan a la cotización`
+                : undefined;
               return (
                 <button key={a.id} type="button" disabled={readOnly} onClick={() => onToggleAdicional(a.id)}
-                  title={a.descripcion || undefined}
+                  title={ligadoTitle || a.descripcion || undefined}
                   className={`px-3 py-1.5 rounded-lg text-xs border transition-colors inline-flex items-center gap-1.5 ${
                     on ? "border-[#B3985B] text-[#B3985B] bg-[#B3985B]/10" : "border-[#333] text-gray-400 hover:text-white"
                   }`}>
                   {a.frecuencia === "frecuente" && <span className="text-[#B3985B]">★</span>}
                   {a.nombre}
+                  {piezas > 0 && (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] text-gray-500">
+                      <Package strokeWidth={1.75} className="w-2.5 h-2.5" />{piezas}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -584,7 +665,7 @@ export default function DiscoveryForm({
   // Se lee una sola vez. Si el endpoint falla (p. ej. modo cliente sin sesión) los
   // arrays quedan vacíos y la UI cae al comportamiento previo (subtipos hardcodeados).
   const [catNichos, setCatNichos] = useState<{ id: string; tipoEventoSlug: string; nombre: string; slug: string }[]>([]);
-  const [catAdicionales, setCatAdicionales] = useState<{ id: string; nombre: string; descripcion: string | null; tiposEvento: string; nichos: string | null; frecuencia: string; imagenUrl: string | null }[]>([]);
+  const [catAdicionales, setCatAdicionales] = useState<{ id: string; nombre: string; descripcion: string | null; tiposEvento: string; nichos: string | null; frecuencia: string; imagenUrl: string | null; composicion?: string | null }[]>([]);
   const [catPreguntas, setCatPreguntas] = useState<PreguntaCat[]>([]);
   // Categorías de inventario (id↔nombre): permiten que una respuesta del descubrimiento
   // encienda su categoría ligada dentro de equiposInteres, para que viaje a la cotización.
@@ -1516,6 +1597,10 @@ export default function DiscoveryForm({
                     catch { return []; }
                   })()}
                   categoriaIdPorNombre={categoriaIdPorNombre}
+                  productosSel={(() => {
+                    try { const s = discForm.equiposInteres ? JSON.parse(discForm.equiposInteres) : null; return Array.isArray(s?.productos) ? s.productos.map((x: { id: string }) => x.id) : []; }
+                    catch { return []; }
+                  })()}
                   readOnly={readOnly}
                   onRespuesta={(pid, val) => setDiscForm(p => {
                     const next = { ...p.respuestasDescubrimiento };
@@ -1546,6 +1631,14 @@ export default function DiscoveryForm({
                     const paquetes = sel.paquetes ? [...sel.paquetes] : [];
                     if (!paquetes.some(x => x.id === paq.id)) paquetes.push({ id: paq.id, cantidad: 1 });
                     return { ...p, equiposInteres: JSON.stringify({ ...sel, paquetes }) };
+                  })}
+                  onUsarProducto={(prod) => setDiscForm(p => {
+                    let sel: SeleccionEquipos;
+                    try { sel = p.equiposInteres ? JSON.parse(p.equiposInteres) : { categorias: [], equipos: [] }; }
+                    catch { sel = { categorias: [], equipos: [] }; }
+                    const productos = sel.productos ? [...sel.productos] : [];
+                    if (!productos.some(x => x.id === prod.id)) productos.push({ id: prod.id, cantidad: 1 });
+                    return { ...p, equiposInteres: JSON.stringify({ ...sel, productos }) };
                   })}
                 />
               )}
